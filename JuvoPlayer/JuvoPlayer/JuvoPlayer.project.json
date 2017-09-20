@@ -1,0 +1,14 @@
+﻿{
+  "dependencies": {
+    "Microsoft.NETCore.App": "1.1.0",
+    "Tizen.Applications.Common": "1.5.11",
+    "Tizen.NUI": "0.2.49",
+    "Tizen.TV.NUI": "1.0.24"
+  },
+  "frameworks": {
+    "netcoreapp1.0": {}
+  },
+  "runtimes": {
+    "win": {}
+  }
+}
