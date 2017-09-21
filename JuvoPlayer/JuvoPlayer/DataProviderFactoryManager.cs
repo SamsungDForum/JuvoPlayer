@@ -12,24 +12,43 @@
 // this software or its derivatives.
 
 using JuvoPlayer.Common;
+using System;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace JuvoPlayer
 {
     public class DataProviderFactoryManager
     {
+        private List<IDataProviderFactory> dataProviders_ = new List<IDataProviderFactory>();
+
         public DataProviderFactoryManager()
         {
-
         }
 
-        public IDataProviderFactory CreateDataProvider(ClipDefinition clip)
+        public IDataProvider CreateDataProvider(ClipDefinition clip)
         {
-            return null;
+            if (clip == null)
+            {
+                throw new ArgumentNullException("clip cannot be null");
+            }
+
+            return dataProviders_.First(o => o.SupportsClip(clip)).Create(clip);
         }
 
         public void RegisterDataProviderFactory(IDataProviderFactory factory)
         {
+            if (factory == null)
+            {
+                throw new ArgumentNullException("factory cannot be null");
+            }
+      
+            if (dataProviders_.Exists(o => o == factory))
+            {
+                throw new ArgumentException("factory has been already registered");
+            }
 
+            dataProviders_.Add(factory);
         }
     }
 }

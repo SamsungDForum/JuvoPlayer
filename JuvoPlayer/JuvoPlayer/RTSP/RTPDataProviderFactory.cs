@@ -12,6 +12,7 @@
 // this software or its derivatives.
 
 using JuvoPlayer.Common;
+using System;
 
 namespace JuvoPlayer.RTSP
 {
@@ -20,17 +21,31 @@ namespace JuvoPlayer.RTSP
 
         public RTPDataProviderFactory()
         {
-
         }
 
         public IDataProvider Create(ClipDefinition clip)
         {
+            if (clip == null)
+            {
+                throw new ArgumentNullException("clip cannot be null");
+            }
+
+            if (SupportsClip(clip))
+            {
+                throw new ArgumentException("unsupported clip type");
+            }
+
             return null;
         }
 
         public bool SupportsClip(ClipDefinition clip)
         {
-            return false;
+            if (clip == null)
+            {
+                throw new ArgumentNullException("clip cannot be null");
+            }
+
+            return clip.Type == "RTP" || clip.Type == "RTSP";
         }
     }
 }

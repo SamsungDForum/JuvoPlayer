@@ -12,62 +12,23 @@
 // this software or its derivatives.
 
 using JuvoPlayer.Common;
+using System;
 using System.Collections.Generic;
 
 namespace JuvoPlayer.Player
 {
     public class PlayerController : IPlayerController
     {
-
-        public PlayerController()
-        {
-
-        }
+        private IPlayerAdapter playerAdapter_;
 
         public PlayerController(IPlayerAdapter player)
         {
-
+            playerAdapter_ = player ?? throw new ArgumentNullException("player cannot be null");
         }
 
-        event Pause IPlayerController.Pause
-        {
-            add
-            {
-                throw new System.NotImplementedException();
-            }
-
-            remove
-            {
-                throw new System.NotImplementedException();
-            }
-        }
-
-        event Play IPlayerController.Play
-        {
-            add
-            {
-                throw new System.NotImplementedException();
-            }
-
-            remove
-            {
-                throw new System.NotImplementedException();
-            }
-        }
-
-        event Seek IPlayerController.Seek
-        {
-            add
-            {
-                throw new System.NotImplementedException();
-            }
-
-            remove
-            {
-                throw new System.NotImplementedException();
-            }
-        }
-
+        public event Pause Pause;
+        public event Play Play;
+        public event Seek Seek;
 
         public void OnDrmDataFound(DRMData data)
         {
@@ -88,21 +49,5 @@ namespace JuvoPlayer.Player
         {
 
         }
-
-        public void Pause()
-        {
-
-        }
-
-        public void Play()
-        {
-
-        }
-
-        public void Seek(double time)
-        {
-
-        }
     }
-
 }

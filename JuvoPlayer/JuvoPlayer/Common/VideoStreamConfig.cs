@@ -17,7 +17,6 @@ namespace JuvoPlayer.Common
     {
         public VideoStreamConfig()
         {
-
         }
 
         public override StreamType StreamType()

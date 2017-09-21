@@ -12,20 +12,16 @@
 // this software or its derivatives.
 
 using JuvoPlayer.Common;
+using System;
 
 namespace JuvoPlayer.Player
 {
     public class VideoPacketStream : IPacketStream
     {
-
-        public VideoPacketStream()
-        {
-
-        }
-
+        private IPlayerAdapter playerAdapter_;
         public VideoPacketStream(IPlayerAdapter player)
         {
-
+            playerAdapter_ = player ?? throw new ArgumentNullException("player cannot be null");
         }
 
         public void OnAppendPacket(StreamPacket packet)

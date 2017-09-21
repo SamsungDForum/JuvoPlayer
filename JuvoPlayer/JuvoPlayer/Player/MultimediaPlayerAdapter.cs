@@ -58,7 +58,8 @@ namespace JuvoPlayer.Player
 
         }
 
-        public void Stop() {
+        public void Stop()
+        {
 
         }
 

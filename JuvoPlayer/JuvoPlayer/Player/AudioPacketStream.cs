@@ -12,31 +12,30 @@
 // this software or its derivatives.
 
 using JuvoPlayer.Common;
+using System;
 
 namespace JuvoPlayer.Player
 {
-    public class AudioPacketStream : IPacketStream {
-
-
-        public AudioPacketStream()
-        {
-
-        }
-
+    public class AudioPacketStream : IPacketStream
+    {
+        private IPlayerAdapter playerAdapter_;
         public AudioPacketStream(IPlayerAdapter player)
         {
+            playerAdapter_ = player ?? throw new ArgumentNullException("player cannot be null");
+        }
+
+        public void OnAppendPacket(StreamPacket packet)
+        {
 
         }
 
-        public void OnAppendPacket(StreamPacket packet) {
+        public void OnClearStream()
+        {
 
         }
 
-        public void OnClearStream() {
-
-        }
-
-        public void OnDRMFound(DRMData data) {
+        public void OnDRMFound(DRMData data)
+        {
 
         }
     }

@@ -15,13 +15,11 @@ namespace JuvoPlayer.Common
 {
     public class ClipDefinition
     {
-
-        private int Type;
-        private string url;
+        public string Type { get; set; }
+        public string Url { get; set; }
 
         public ClipDefinition()
         {
-
         }
     }
 }

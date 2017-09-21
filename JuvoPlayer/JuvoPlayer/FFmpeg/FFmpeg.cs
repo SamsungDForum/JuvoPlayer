@@ -20,7 +20,7 @@ namespace JuvoPlayer.FFmpeg
 {
     public unsafe class FFmpeg
     {
-#region filenames
+        #region filenames
         const string libavcodecFilename = @"libavcodec.so.57";
         const string libavdeviceFilename = @"";
         const string libavfilterFilename = @"libavfilter.so.6";
@@ -29,8 +29,9 @@ namespace JuvoPlayer.FFmpeg
         const string libpostprocFilename = @"";
         const string libswresampleFilename = @"libswresample.so.2";
         const string libswscaleFilename = @"libswscale.so.4";
-#endregion
+        #endregion
 
+        #region libidl
         // dlopen flags
         const int RTLD_NOW = 2;
         const int RTLD_GLOBAL = 8;
@@ -40,8 +41,9 @@ namespace JuvoPlayer.FFmpeg
         protected static extern IntPtr dlopen(string filename, int flags);
         [DllImport("libdl.so.2")]
         protected static extern IntPtr dlsym(IntPtr handle, string symbol);
+        #endregion
 
-#region delegates
+        #region delegates
         unsafe public delegate int audio_resample_d(ReSampleContext* @s, short* @output, short* @input, int @nb_samples);
         unsafe public delegate void audio_resample_close_d(ReSampleContext* @s);
         unsafe public delegate ReSampleContext* av_audio_resample_init_d(int @output_channels, int @input_channels, int @output_rate, int @input_rate, AVSampleFormat @sample_fmt_out, AVSampleFormat @sample_fmt_in, int @filter_length, int @log2_phase_count, int @linear, double @cutoff);
@@ -785,7 +787,7 @@ namespace JuvoPlayer.FFmpeg
         unsafe public delegate uint swscale_version_d();
         #endregion
 
-#region callables
+        #region callables
         static public audio_resample_d audio_resample;
         static public audio_resample_close_d audio_resample_close;
         static public av_audio_resample_init_d av_audio_resample_init;
@@ -1527,11 +1529,10 @@ namespace JuvoPlayer.FFmpeg
         static public swscale_configuration_d swscale_configuration;
         static public swscale_license_d swscale_license;
         static public swscale_version_d swscale_version;
-#endregion
+        #endregion
 
         static private bool initialized_ = false;
         public static bool Initialized => initialized_;
-
 
         // Init function pointers
         public static void Initialize(string libdir)
@@ -2501,7 +2502,7 @@ namespace JuvoPlayer.FFmpeg
             swresample_license = Marshal.GetDelegateForFunctionPointer<swresample_license_d>(dlsym(libswresampleHandle, "swresample_license"));
             swresample_version = Marshal.GetDelegateForFunctionPointer<swresample_version_d>(dlsym(libswresampleHandle, "swresample_version"));
         }
+        #endregion
     }
-#endregion
 }
  

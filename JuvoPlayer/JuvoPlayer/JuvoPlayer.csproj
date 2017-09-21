@@ -58,7 +58,7 @@
     <Compile Include="Player\PlayerController.cs" />
     <Compile Include="Player\SMPlayerAdapter.cs" />
     <Compile Include="RTSP\FFmpegDemuxer.cs" />
-    <Compile Include="FFmpeg\FFmpegInterface.cs" />
+    <Compile Include="FFmpeg\FFmpeg.cs" />
     <Compile Include="RTSP\IDemuxer.cs" />
     <Compile Include="RTSP\IRTPClient.cs" />
     <Compile Include="RTSP\ISharedBuffer.cs" />

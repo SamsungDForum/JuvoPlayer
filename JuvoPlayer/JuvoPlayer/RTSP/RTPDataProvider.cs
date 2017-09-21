@@ -25,65 +25,14 @@ namespace JuvoPlayer.RTSP
             if (!FFmpeg.FFmpeg.Initialized)
             {
                 FFmpeg.FFmpeg.Initialize(ffmpegPath);
+                FFmpeg.FFmpeg.avcodec_register_all();
             }
         }
 
-        event DRMDataFound IDataProvider.DRMDataFound
-        {
-            add
-            {
-                throw new System.NotImplementedException();
-            }
-
-            remove
-            {
-                throw new System.NotImplementedException();
-            }
-        }
-
-        event StreamConfigReady IDataProvider.StreamConfigReady
-        {
-            add
-            {
-                throw new System.NotImplementedException();
-            }
-
-            remove
-            {
-                throw new System.NotImplementedException();
-            }
-        }
-
-        event StreamPacketReady IDataProvider.StreamPacketReady
-        {
-            add
-            {
-                throw new System.NotImplementedException();
-            }
-
-            remove
-            {
-                throw new System.NotImplementedException();
-            }
-        }
-
-        event StreamsFound IDataProvider.StreamsFound
-        {
-            add
-            {
-                throw new System.NotImplementedException();
-            }
-
-            remove
-            {
-                throw new System.NotImplementedException();
-            }
-        }
-
-        public void DRMDataFound(DRMData data)
-        {
-
-        }
+        public event DRMDataFound DRMDataFound;
+        public event StreamConfigReady StreamConfigReady;
+        public event StreamPacketReady StreamPacketReady;
+        public event StreamsFound StreamsFound;
 
         public void OnChangeRepresentation(int representationId)
         {
