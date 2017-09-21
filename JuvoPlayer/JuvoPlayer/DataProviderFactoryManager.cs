@@ -33,7 +33,13 @@ namespace JuvoPlayer
                 throw new ArgumentNullException("clip cannot be null");
             }
 
-            return dataProviders_.First(o => o.SupportsClip(clip)).Create(clip);
+            var factory = dataProviders_.FirstOrDefault(o => o.SupportsClip(clip));
+            if (factory == null)
+            {
+                throw new ArgumentException("clip is not supported");
+            }
+
+            return factory.Create(clip);
         }
 
         public void RegisterDataProviderFactory(IDataProviderFactory factory)

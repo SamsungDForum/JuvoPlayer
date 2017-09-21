@@ -1,0 +1,14 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns="http://tizen.org/ns/packages" api-version="3.0" package="org.tizen.example.JuvoPlayer.Tests" version="1.0.0">
+  <profile name="tv" />
+  <ui-application appid="org.tizen.example.JuvoPlayer.Tests"
+					exec="JuvoPlayer.Tests.exe"
+					type="dotnet"
+					multiple="false"
+					taskmanage="true"
+					nodisplay="false"
+					launch_mode="single">
+    <icon>JuvoPlayer.Tests.png</icon>
+    <label>JuvoPlayer.Tests</label>
+  </ui-application>
+</manifest>
