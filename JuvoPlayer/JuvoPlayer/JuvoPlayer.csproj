@@ -58,7 +58,7 @@
     <Compile Include="Player\PlayerController.cs" />
     <Compile Include="Player\SMPlayerAdapter.cs" />
     <Compile Include="RTSP\FFmpegDemuxer.cs" />
-    <Compile Include="RTSP\FFmpegInterface.cs" />
+    <Compile Include="FFmpeg\FFmpegInterface.cs" />
     <Compile Include="RTSP\IDemuxer.cs" />
     <Compile Include="RTSP\IRTPClient.cs" />
     <Compile Include="RTSP\ISharedBuffer.cs" />
@@ -71,12 +71,12 @@
     <Compile Include="Player\VideoPacketStream.cs" />
     <Compile Include="Common\VideoStreamConfig.cs" />
     <Compile Include="Common\VideoStreamDefinition.cs" />
-    <Compile Include="RTSP\ffmpeg-autogen\FFmpeg.arrays.g.cs" />
-    <Compile Include="RTSP\ffmpeg-autogen\FFmpeg.delegates.g.cs" />
-    <Compile Include="RTSP\ffmpeg-autogen\FFmpeg.enums.g.cs" />
-    <Compile Include="RTSP\ffmpeg-autogen\FFmpeg.macros.g.cs" />
-    <Compile Include="RTSP\ffmpeg-autogen\FFmpeg.structs.g.cs" />
-    <Compile Include="RTSP\ffmpeg-autogen\FFmpeg.structs.incomplete.g.cs" />
+    <Compile Include="FFmpeg\FFmpeg.arrays.cs" />
+    <Compile Include="FFmpeg\FFmpeg.delegates.cs" />
+    <Compile Include="FFmpeg\FFmpeg.enums.cs" />
+    <Compile Include="FFmpeg\FFmpeg.macros.cs" />
+    <Compile Include="FFmpeg\FFmpeg.structs.cs" />
+    <Compile Include="FFmpeg\FFmpeg.structs.incomplete.cs" />
     <Compile Include="JuvoPlayer.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
   </ItemGroup>

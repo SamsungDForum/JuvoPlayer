@@ -12,21 +12,20 @@
 // this software or its derivatives.
 
 using JuvoPlayer.Common;
-using System.Collections.Generic;
+using System.IO;
+using Tizen.Applications;
 
 namespace JuvoPlayer.RTSP
 {
     public class RTPDataProvider : IDataProvider
     {
-
-        public RTPDataProvider()
-        {
-
-        }
-
         public RTPDataProvider(string url)
         {
-
+            var ffmpegPath = Path.Combine(Path.GetDirectoryName(Path.GetDirectoryName(Application.Current.ApplicationInfo.ExecutablePath)), "lib");
+            if (!FFmpeg.FFmpeg.Initialized)
+            {
+                FFmpeg.FFmpeg.Initialize(ffmpegPath);
+            }
         }
 
         event DRMDataFound IDataProvider.DRMDataFound
@@ -91,19 +90,11 @@ namespace JuvoPlayer.RTSP
 
         }
 
-        /**
-         * 
-         * @param url
-         */
         public void OnPlay(string url)
         {
 
         }
 
-        /**
-         * 
-         * @param time
-         */
         public void OnSeek(double time)
         {
 
