@@ -16,7 +16,7 @@ namespace JuvoPlayer.RTSP
     public interface ISharedBuffer
     {
         void ClearData();
-        string ReadData(int size);
-        void WriteData(string data);
+        byte[] ReadData(int size);
+        void WriteData(byte[] data);
     }
 }

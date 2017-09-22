@@ -35,7 +35,7 @@ namespace JuvoPlayer.RTSP
                 throw new ArgumentException("unsupported clip type");
             }
 
-            return null;
+            return new RTPDataProvider(clip);
         }
 
         public bool SupportsClip(ClipDefinition clip)

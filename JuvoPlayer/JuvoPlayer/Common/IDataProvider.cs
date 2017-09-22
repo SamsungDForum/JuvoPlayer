@@ -23,10 +23,9 @@ namespace JuvoPlayer.Common
     public interface IDataProvider
     {
         void OnChangeRepresentation(int representationId);
-
-        void OnPlay(string url);
-
+        void OnPlay();
         void OnSeek(double time);
+        void Start();
 
         event DRMDataFound DRMDataFound;
         event StreamConfigReady StreamConfigReady;

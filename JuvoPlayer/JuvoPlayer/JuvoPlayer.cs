@@ -11,6 +11,10 @@
 // damages suffered by licensee as a result of using, modifying or distributing
 // this software or its derivatives.
 
+using JuvoPlayer.Common;
+using JuvoPlayer.Player;
+using JuvoPlayer.RTSP;
+using JuvoPlayer.UI;
 using Tizen;
 using Tizen.Applications;
 using Tizen.NUI;
@@ -21,52 +25,47 @@ namespace JuvoPlayer
 {
     internal class JuvoPlayer : TVUIApplication
     {
-        private View myView;
-        private TextLabel myText;
+        private UIController uiController;
+        private DataProviderFactoryManager dataProviders;
+
+        private IDataProvider dataProvider;
+        private IPlayerController playerController;
+
+        private void Initialize()
+        {
+            dataProviders = new DataProviderFactoryManager();
+            dataProviders.RegisterDataProviderFactory(new RTPDataProviderFactory());
+
+            uiController = new UIController();
+            uiController.ShowClip += OnShowClip;
+
+            //TODO(p.galiszewsk)
+            var playerAdapter = new MultimediaPlayerAdapter();
+            playerController = new PlayerController(playerAdapter);
+            uiController.ChangeRepresentation += playerController.ChangeRepresentation; //TODO(p.galiszewsk): is it in proper place
+            uiController.Pause += playerController.OnPause;
+            uiController.Play += playerController.OnPlay;
+            uiController.Seek += playerController.OnSeek;
+            uiController.SetExternalSubtitles += playerController.OnSetExternalSubtitles;
+
+            uiController.Initialize();
+        }
+
+        private void OnShowClip(ClipDefinition clip)
+        {
+            dataProvider = dataProviders.CreateDataProvider(clip);
+            dataProvider.DRMDataFound += playerController.OnDrmDataFound;
+            dataProvider.StreamConfigReady += playerController.OnStreamConfigReady;
+            dataProvider.StreamPacketReady += playerController.OnStreamPacketReady;
+            dataProvider.StreamsFound += playerController.OnStreamsFound;
+            dataProvider.Start();
+        }
 
         protected override void OnCreate()
         {
             base.OnCreate();
 
-            //Create a View instance and add it to the stage
-            myView = new View();
-            myView.Size2D = new Size2D(300, 200);
-            myView.BackgroundColor = Color.Red;
-            myView.Position = new Position(810, 440, 0);
-            //Subscribe Key Event
-            myView.Focusable = true;
-            myView.KeyEvent += MyView_KeyEvent;
-
-            Window.Instance.GetDefaultLayer().Add(myView);
-
-            //Create a child view and add it to the parent view.
-            myText = new TextLabel("Hello World")
-            {
-                Position = new Position(40, 80, 0),
-                TextColor = Color.Black,
-                PointSize = 40
-            };
-
-            myView.Add(myText);
-
-            FocusManager.Instance.SetCurrentFocusView(myView);
-        }
-
-        private bool MyView_KeyEvent(object source, View.KeyEventArgs e)
-        {
-            if (e.Key.State == Key.StateType.Down)
-            {
-                if (e.Key.KeyPressedName == "Right")
-                {
-                    myText.TextColor = Color.White;
-                }
-                else if (e.Key.KeyPressedName == "Left")
-                {
-                    myText.TextColor = Color.Black;
-                }
-            }
-
-            return false;
+            Initialize();
         }
 
         protected override void OnPause()

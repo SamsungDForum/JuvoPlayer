@@ -12,6 +12,7 @@
 // this software or its derivatives.
 
 using JuvoPlayer.Common;
+using System;
 using System.IO;
 using Tizen.Applications;
 
@@ -19,14 +20,10 @@ namespace JuvoPlayer.RTSP
 {
     public class RTPDataProvider : IDataProvider
     {
-        public RTPDataProvider(string url)
+        private ClipDefinition currentClip;
+        public RTPDataProvider(ClipDefinition clip)
         {
-            var ffmpegPath = Path.Combine(Path.GetDirectoryName(Path.GetDirectoryName(Application.Current.ApplicationInfo.ExecutablePath)), "lib");
-            if (!FFmpeg.FFmpeg.Initialized)
-            {
-                FFmpeg.FFmpeg.Initialize(ffmpegPath);
-                FFmpeg.FFmpeg.avcodec_register_all();
-            }
+            currentClip = clip ?? throw new ArgumentNullException("clip cannot be null");
         }
 
         public event DRMDataFound DRMDataFound;
@@ -39,7 +36,7 @@ namespace JuvoPlayer.RTSP
 
         }
 
-        public void OnPlay(string url)
+        public void OnPlay()
         {
 
         }
@@ -47,6 +44,16 @@ namespace JuvoPlayer.RTSP
         public void OnSeek(double time)
         {
 
+        }
+
+        public void Start()
+        {
+            var ffmpegPath = Path.Combine(Path.GetDirectoryName(Path.GetDirectoryName(Application.Current.ApplicationInfo.ExecutablePath)), "lib");
+            if (!FFmpeg.FFmpeg.Initialized)
+            {
+                FFmpeg.FFmpeg.Initialize(ffmpegPath);
+                FFmpeg.FFmpeg.avcodec_register_all();
+            }
         }
     }
 }

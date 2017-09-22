@@ -79,6 +79,7 @@
     <Compile Include="FFmpeg\FFmpeg.structs.incomplete.cs" />
     <Compile Include="JuvoPlayer.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
+    <Compile Include="UI\UIController.cs" />
   </ItemGroup>
   <ItemGroup>
     <None Include="JuvoPlayer.project.json" />
@@ -112,7 +113,6 @@
   </ItemGroup>
   <ItemGroup>
     <Folder Include="res\" />
-    <Folder Include="UI\" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it.

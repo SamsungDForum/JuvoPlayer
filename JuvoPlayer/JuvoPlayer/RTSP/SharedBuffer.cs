@@ -23,12 +23,12 @@ namespace JuvoPlayer.RTSP
 
         }
 
-        public void WriteData(string data)
+        public void WriteData(byte[] data)
         {
             throw new System.NotImplementedException();
         }
 
-        string ISharedBuffer.ReadData(int size)
+        byte[] ISharedBuffer.ReadData(int size)
         {
             throw new System.NotImplementedException();
         }

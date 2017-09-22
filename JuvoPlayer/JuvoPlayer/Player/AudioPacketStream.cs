@@ -18,10 +18,10 @@ namespace JuvoPlayer.Player
 {
     public class AudioPacketStream : IPacketStream
     {
-        private IPlayerAdapter playerAdapter_;
+        private IPlayerAdapter playerAdapter;
         public AudioPacketStream(IPlayerAdapter player)
         {
-            playerAdapter_ = player ?? throw new ArgumentNullException("player cannot be null");
+            playerAdapter = player ?? throw new ArgumentNullException("player cannot be null");
         }
 
         public void OnAppendPacket(StreamPacket packet)

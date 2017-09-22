@@ -21,10 +21,20 @@ namespace JuvoPlayer.Player
     public delegate void Seek(double time);
     public interface IPlayerController
     {
+        #region ui_slots
+        void ChangeRepresentation(int pid);
+        void OnPause();
+        void OnPlay();
+        void OnSeek(double time);
+        void OnSetExternalSubtitles(string path);
+        #endregion
+
+        #region data_provider_slots
         void OnDrmDataFound(DRMData data);
         void OnStreamConfigReady(StreamConfig config);
         void OnStreamPacketReady(StreamPacket packet);
         void OnStreamsFound(List<StreamDefinition> streams);
+        #endregion
 
         event Pause Pause;
         event Play Play;

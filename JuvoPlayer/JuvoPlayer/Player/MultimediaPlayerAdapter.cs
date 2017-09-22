@@ -12,15 +12,26 @@
 // this software or its derivatives.
 
 using JuvoPlayer.Common;
+using Tizen.Multimedia;
 
 namespace JuvoPlayer.Player
 {
     public class MultimediaPlayerAdapter : IPlayerAdapter
     {
+        private ElmSharp.Window playerContainer;
+        private Tizen.Multimedia.Player player;
 
         public MultimediaPlayerAdapter()
         {
+            player = new Tizen.Multimedia.Player();
 
+            playerContainer = new ElmSharp.Window("player");
+
+            player.Display = new Display(playerContainer);
+            player.DisplaySettings.Mode = PlayerDisplayMode.FullScreen;
+            player.DisplaySettings.SetRoi(new Tizen.Multimedia.Rectangle(300, 300, 800, 600));
+            playerContainer.Show();
+            playerContainer.BringDown();
         }
 
         public void OnShowSubtitle(Subtitle subtitle)

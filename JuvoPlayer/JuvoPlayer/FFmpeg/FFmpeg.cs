@@ -1531,13 +1531,12 @@ namespace JuvoPlayer.FFmpeg
         static public swscale_version_d swscale_version;
         #endregion
 
-        static private bool initialized_ = false;
-        public static bool Initialized => initialized_;
+        public static bool Initialized { get; private set; } = false;
 
         // Init function pointers
         public static void Initialize(string libdir)
         {
-            if (initialized_ == true)
+            if (Initialized)
             {
                 throw new InvalidOperationException("ffmpeg already initialized");
             }
@@ -1571,7 +1570,7 @@ namespace JuvoPlayer.FFmpeg
             //InitializeLibpostproc(libdir, libpostprocFilename);
             //InitializeLibavdevice(libdir, libavdeviceFilename);
 
-            initialized_ = true;
+            Initialized = true;
         }
 
         #region imports

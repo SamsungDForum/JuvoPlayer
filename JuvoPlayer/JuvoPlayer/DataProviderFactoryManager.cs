@@ -20,7 +20,7 @@ namespace JuvoPlayer
 {
     public class DataProviderFactoryManager
     {
-        private List<IDataProviderFactory> dataProviders_ = new List<IDataProviderFactory>();
+        private List<IDataProviderFactory> dataProviders = new List<IDataProviderFactory>();
 
         public DataProviderFactoryManager()
         {
@@ -33,7 +33,7 @@ namespace JuvoPlayer
                 throw new ArgumentNullException("clip cannot be null");
             }
 
-            var factory = dataProviders_.FirstOrDefault(o => o.SupportsClip(clip));
+            var factory = dataProviders.FirstOrDefault(o => o.SupportsClip(clip));
             if (factory == null)
             {
                 throw new ArgumentException("clip is not supported");
@@ -49,12 +49,12 @@ namespace JuvoPlayer
                 throw new ArgumentNullException("factory cannot be null");
             }
       
-            if (dataProviders_.Exists(o => o == factory))
+            if (dataProviders.Exists(o => o == factory))
             {
                 throw new ArgumentException("factory has been already registered");
             }
 
-            dataProviders_.Add(factory);
+            dataProviders.Add(factory);
         }
     }
 }

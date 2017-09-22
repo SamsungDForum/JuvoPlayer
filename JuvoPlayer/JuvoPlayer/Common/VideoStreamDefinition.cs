@@ -15,7 +15,6 @@ namespace JuvoPlayer.Common
 {
     public class VideoStreamDefinition : StreamDefinition
     {
-
         public VideoStreamDefinition()
         {
 

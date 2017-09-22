@@ -19,20 +19,35 @@ namespace JuvoPlayer.Player
 {
     public class PlayerController : IPlayerController
     {
-        private IPlayerAdapter playerAdapter_;
+        private IPlayerAdapter playerAdapter;
 
         public PlayerController(IPlayerAdapter player)
         {
-            playerAdapter_ = player ?? throw new ArgumentNullException("player cannot be null");
+            playerAdapter = player ?? throw new ArgumentNullException("player cannot be null");
         }
 
         public event Pause Pause;
         public event Play Play;
         public event Seek Seek;
 
+        public void ChangeRepresentation(int pid)
+        {
+        }
+
         public void OnDrmDataFound(DRMData data)
         {
+        }
 
+        public void OnPause()
+        {
+        }
+
+        public void OnPlay()
+        {
+        }
+
+        public void OnSeek(double time)
+        {
         }
 
         public void OnStreamConfigReady(StreamConfig config)
@@ -48,6 +63,10 @@ namespace JuvoPlayer.Player
         public void OnStreamsFound(List<StreamDefinition> streams)
         {
 
+        }
+
+        public void OnSetExternalSubtitles(string path)
+        {
         }
     }
 }
