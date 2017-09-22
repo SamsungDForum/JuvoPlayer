@@ -1,0 +1,5 @@
+# git ignore file
+.vs
+bin
+obj
+JuvoPlayer.project.lock.json
