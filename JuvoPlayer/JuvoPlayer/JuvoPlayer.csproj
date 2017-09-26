@@ -65,6 +65,7 @@
     <Compile Include="RTSP\RTPClient.cs" />
     <Compile Include="RTSP\RTPDataProvider.cs" />
     <Compile Include="RTSP\RTPDataProviderFactory.cs" />
+    <Compile Include="RTSP\RTPTransportType.cs" />
     <Compile Include="RTSP\SharedBuffer.cs" />
     <Compile Include="Common\StreamConfig.cs" />
     <Compile Include="Common\StreamDefinition.cs" />
@@ -113,6 +114,9 @@
   </ItemGroup>
   <ItemGroup>
     <Folder Include="res\" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="lib\Rtsp.dll" />
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it.

@@ -1,7 +1,7 @@
 ﻿{
   "dependencies": {
     "ElmSharp": "1.2.2",
-    "Microsoft.NETCore.App": "1.1.0",
+    "Microsoft.NETCore.App": "2.0.0",
     "Tizen.Applications.Common": "1.5.11",
     "Tizen.Multimedia.MediaPlayer": "1.0.4",
     "Tizen.NUI": "0.2.49",

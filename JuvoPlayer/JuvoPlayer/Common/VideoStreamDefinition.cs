@@ -19,10 +19,6 @@ namespace JuvoPlayer.Common
         {
 
         }
-        public int Id()
-        {
-            return 0;
-        }
 
        override public StreamType StreamType()
         {

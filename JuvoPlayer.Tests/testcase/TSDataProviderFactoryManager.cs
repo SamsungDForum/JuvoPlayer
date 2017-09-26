@@ -26,7 +26,17 @@ namespace JuvoPlayer.Tests
                 throw new NotImplementedException();
             }
 
+            public void OnPlay()
+            {
+                throw new NotImplementedException();
+            }
+
             public void OnSeek(double time)
+            {
+                throw new NotImplementedException();
+            }
+
+            public void Start()
             {
                 throw new NotImplementedException();
             }

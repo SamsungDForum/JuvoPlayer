@@ -11,21 +11,30 @@
 // damages suffered by licensee as a result of using, modifying or distributing
 // this software or its derivatives.
 
+using System;
+
 namespace JuvoPlayer.RTSP
 {
     public class RTPClient : IRTPClient
     {
-        public RTPClient()
-        {
-
-        }
+        ISharedBuffer buffer;
         public RTPClient(ISharedBuffer buffer)
         {
-
+            this.buffer = buffer ?? throw new ArgumentNullException("buffer cannot be null");
         }
         public void Seek(int position)
         {
+            throw new NotImplementedException();
+        }
 
+        public void Start()
+        {
+            throw new NotImplementedException();
+        }
+
+        public void Stop()
+        {
+            throw new NotImplementedException();
         }
     }
 }

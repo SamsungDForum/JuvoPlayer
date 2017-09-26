@@ -20,11 +20,6 @@ namespace JuvoPlayer.Common
 
         }
 
-        public int Id()
-        {
-            return 0;
-        }
-
         public override StreamType StreamType()
         {
             return Common.StreamType.Audio;

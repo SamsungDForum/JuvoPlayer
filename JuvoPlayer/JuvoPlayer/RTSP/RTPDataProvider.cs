@@ -20,10 +20,14 @@ namespace JuvoPlayer.RTSP
 {
     public class RTPDataProvider : IDataProvider
     {
+        private IDemuxer demuxer;
+        private IRTPClient rtpClient;
         private ClipDefinition currentClip;
-        public RTPDataProvider(ClipDefinition clip)
+        public RTPDataProvider(IDemuxer demuxer, IRTPClient rtpClient, ClipDefinition currentClip)
         {
-            currentClip = clip ?? throw new ArgumentNullException("clip cannot be null");
+            this.demuxer = demuxer ?? throw new ArgumentNullException("demuxer cannot be null");
+            this.rtpClient = rtpClient ?? throw new ArgumentNullException("rtpClient cannot be null");
+            this.currentClip = currentClip ?? throw new ArgumentNullException("clip cannot be null");
         }
 
         public event DRMDataFound DRMDataFound;

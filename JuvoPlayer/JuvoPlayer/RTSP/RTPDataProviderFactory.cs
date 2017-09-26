@@ -35,7 +35,11 @@ namespace JuvoPlayer.RTSP
                 throw new ArgumentException("unsupported clip type");
             }
 
-            return new RTPDataProvider(clip);
+            var sharedBuffer = new SharedBuffer();
+            var rtspClient = new RTPClient(sharedBuffer);
+            var demuxer = new FFmpegDemuxer(sharedBuffer);
+
+            return new RTPDataProvider(demuxer, rtspClient, clip);
         }
 
         public bool SupportsClip(ClipDefinition clip)
