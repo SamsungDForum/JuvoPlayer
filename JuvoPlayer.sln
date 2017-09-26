@@ -7,6 +7,8 @@ Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "JuvoPlayer", "JuvoPlayer\Ju
 EndProject
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "JuvoPlayer.Tests", "JuvoPlayer.Tests\JuvoPlayer.Tests.csproj", "{9739D28B-D9E0-4259-9B0B-C36E144D271B}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "RTSP", "thirdparty\RTSP\RTSP.csproj", "{1AC958D3-6FDF-4D80-8155-1A4F17C2C008}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -21,6 +23,10 @@ Global
 		{9739D28B-D9E0-4259-9B0B-C36E144D271B}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{9739D28B-D9E0-4259-9B0B-C36E144D271B}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{9739D28B-D9E0-4259-9B0B-C36E144D271B}.Release|Any CPU.Build.0 = Release|Any CPU
+		{1AC958D3-6FDF-4D80-8155-1A4F17C2C008}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{1AC958D3-6FDF-4D80-8155-1A4F17C2C008}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{1AC958D3-6FDF-4D80-8155-1A4F17C2C008}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{1AC958D3-6FDF-4D80-8155-1A4F17C2C008}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE

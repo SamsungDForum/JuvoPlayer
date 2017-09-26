@@ -118,6 +118,12 @@
   <ItemGroup>
     <Content Include="lib\Rtsp.dll" />
   </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\thirdparty\RTSP\RTSP.csproj">
+      <Project>{1ac958d3-6fdf-4d80-8155-1a4f17c2c008}</Project>
+      <Name>RTSP</Name>
+    </ProjectReference>
+  </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it.
        Other similar extension points exist, see Microsoft.Common.targets.

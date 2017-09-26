@@ -1,0 +1,8 @@
+﻿{
+  "dependencies": {
+    "Microsoft.NETCore.App": "2.0.0"
+  },
+  "frameworks": {
+    "netcoreapp1.0": {}
+  }
+}
