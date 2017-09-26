@@ -11,12 +11,13 @@
 // damages suffered by licensee as a result of using, modifying or distributing
 // this software or its derivatives.
 
+using JuvoPlayer.FFmpeg;
 using System;
 using System.IO;
-using Tizen.Applications;
-using JuvoPlayer.FFmpeg;
 using System.Runtime.InteropServices;
+using System.Threading.Tasks;
 using Tizen;
+using Tizen.Applications;
 
 namespace JuvoPlayer.RTSP
 {
@@ -32,19 +33,23 @@ namespace JuvoPlayer.RTSP
 
         public unsafe FFmpegDemuxer(ISharedBuffer dataBuffer)
         {
-            int ret = -1;
+            // TODO(g.skowinski): FFmpeg library is loaded at the moment in RTPDataProvider::Start() - should it be done there or here?
+            /*
             string ffmpegLibdir = Path.Combine(Path.GetDirectoryName(Path.GetDirectoryName(Application.Current.ApplicationInfo.ExecutablePath)), "lib");
             try
             {
-                FFmpeg.FFmpeg.Initialize(ffmpegLibdir);
-                FFmpeg.FFmpeg.av_register_all();
+                if(FFmpeg.FFmeg.Initialized) // TODO(g.skowinski): It's already checked in FFmpeg::Initialize() and an exception is thrown in case it's already initialized.
+                {
+                    FFmpeg.FFmpeg.Initialize(ffmpegLibdir);
+                }
+                FFmpeg.FFmpeg.av_register_all(); // TODO(g.skowinski): Is registering multiple times unwanted or doesn't it matter?
             }
             catch(Exception)
             {
                 // TODO(g.skowinski): Handle ("Could not load and register FFmpeg library!").
                 throw;
             }
-
+            */
             buffer = (byte*) FFmpeg.FFmpeg.av_malloc((ulong)bufferSize);
             formatContext = FFmpeg.FFmpeg.avformat_alloc_context();
             ioContext = FFmpeg.FFmpeg.avio_alloc_context(buffer,
@@ -65,25 +70,36 @@ namespace JuvoPlayer.RTSP
             AVProbeData probeData;
             probeData.buf = buffer;
             probeData.buf_size = bufferSize;
-            try
+            /*try
             {
-                formatContext->iformat = FFmpeg.FFmpeg.av_probe_input_format(&probeData, 1);
+                formatContext->iformat = FFmpeg.FFmpeg.av_probe_input_format(&probeData, 1); // TODO(g.skowinski): Is this even necessary?
             }
             catch (Exception)
             {
                 // TODO(g.skowinski): Handle.
                 throw;
-            }
+            }*/
 
             //context->video_codec_id = ;
             //context->audio_codec_id = ;
 
             if (ioContext == null || formatContext == null)
             {
-                throw new Exception("Could not create FFmpeg context."); // TODO(g.skowinski): Handle.
+                DeallocFFmpeg();
+                throw new Exception("Could not create FFmpeg context.");
             }
 
-            fixed(AVFormatContext** formatContextPointer = &formatContext)
+            // Potentially time-consuming part of initialization and demuxation loop will be executed on a detached thread.
+            Task.Factory.StartNew(DemuxTask);
+        }
+
+        unsafe private void DemuxTask()
+        {
+            int ret = -1;
+
+            // Finish more time-consuming init things
+
+            fixed (AVFormatContext** formatContextPointer = &formatContext)
             {
                 ret = FFmpeg.FFmpeg.avformat_open_input(formatContextPointer, null, null, null);
             }
@@ -91,6 +107,7 @@ namespace JuvoPlayer.RTSP
             {
                 try
                 {
+                    DeallocFFmpeg();
                     const int errorBufferSize = 1024;
                     byte[] errorBuffer = new byte[errorBufferSize];
                     fixed (byte* errbuf = errorBuffer)
@@ -101,6 +118,7 @@ namespace JuvoPlayer.RTSP
                 }
                 catch (Exception)
                 {
+                    Log.Info("Tag", "Error opening input and getting error info (" + ret.ToString() + ").");
                     throw;
                 }
                 //FFmpeg.av_free(buffer);
@@ -110,6 +128,7 @@ namespace JuvoPlayer.RTSP
             ret = FFmpeg.FFmpeg.avformat_find_stream_info(formatContext, null);
             if (ret < 0)
             {
+                DeallocFFmpeg();
                 throw new Exception("Could not find stream info (error code: " + ret.ToString() + ")!"); // TODO(g.skowinski): Handle.
             }
 
@@ -117,19 +136,19 @@ namespace JuvoPlayer.RTSP
             video_idx = FFmpeg.FFmpeg.av_find_best_stream(formatContext, AVMediaType.AVMEDIA_TYPE_VIDEO, -1, -1, null, 0);
             if (audio_idx < 0 || video_idx < 0)
             {
+                DeallocFFmpeg();
                 throw new Exception("Could not find video or audio stream!"); // TODO(g.skowinski): Handle.
             }
-        }
 
-        unsafe public void Demux()
-        {
-            int ret = -1;
+            // Now it's demuxing time
 
             const int kMicrosecondsPerSecond = 1000000;
             const double kOneMicrosecond = 1.0 / kMicrosecondsPerSecond;
-            AVRational kMicrosBase = new AVRational();
-            kMicrosBase.num = 1;
-            kMicrosBase.den = kMicrosecondsPerSecond;
+            AVRational kMicrosBase = new AVRational
+            {
+                num = 1,
+                den = kMicrosecondsPerSecond
+            };
 
             AVPacket pkt;
             bool parse = true;
@@ -160,14 +179,27 @@ namespace JuvoPlayer.RTSP
             }
         }
 
+        unsafe private void DeallocFFmpeg()
+        {
+            if (formatContext != null)
+            {
+                fixed (AVFormatContext** formatContextPointer = &formatContext)
+                {
+                    FFmpeg.FFmpeg.avformat_close_input(formatContextPointer);
+                }
+                FFmpeg.FFmpeg.avformat_free_context(formatContext);
+                formatContext = null;
+            }
+            if (buffer != null)
+            {
+                FFmpeg.FFmpeg.av_free(buffer); // TODO(g.skowinski): causes segfault - investigate
+                buffer = null;
+            }
+        }
+
         unsafe ~FFmpegDemuxer()
         {
-            fixed (AVFormatContext** formatContextPointer = &formatContext)
-            {
-                FFmpeg.FFmpeg.avformat_close_input(formatContextPointer);
-            }
-            FFmpeg.FFmpeg.avformat_free_context(formatContext);
-            //FFmpeg.av_free(buffer); // TODO(g.skowinski): causes segfault - investigate
+            DeallocFFmpeg();
         }
 
         public void ChangePID(int pid)
@@ -196,6 +228,7 @@ namespace JuvoPlayer.RTSP
             }
             catch (Exception)
             {
+                Log.Info("Tag", "Retrieveing SharedBuffer reference failed!");
                 throw;
             }
             return sharedBuffer;
@@ -204,6 +237,7 @@ namespace JuvoPlayer.RTSP
         static private unsafe int ReadPacket(void* @opaque, byte* @buf, int @buf_size)
         {
             ISharedBuffer sharedBuffer = RetrieveSharedBufferReference(opaque);
+            // TODO(g.skowinski): Wait untill enough data is available; how to check is some kind of EOF has been reached?
             byte[] data = sharedBuffer.ReadData(buf_size);
             Marshal.Copy(data, 0, (IntPtr)buf, data.Length);
             return data.Length;
