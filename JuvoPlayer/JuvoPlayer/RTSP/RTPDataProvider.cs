@@ -30,6 +30,11 @@ namespace JuvoPlayer.RTSP
             this.currentClip = currentClip ?? throw new ArgumentNullException("clip cannot be null");
         }
 
+        ~RTPDataProvider()
+        {
+            rtpClient?.Stop();
+        }
+
         public event DRMDataFound DRMDataFound;
         public event StreamConfigReady StreamConfigReady;
         public event StreamPacketReady StreamPacketReady;
@@ -58,6 +63,8 @@ namespace JuvoPlayer.RTSP
                 FFmpeg.FFmpeg.Initialize(ffmpegPath);
                 FFmpeg.FFmpeg.avcodec_register_all();
             }
+
+            rtpClient.Start();
         }
     }
 }
