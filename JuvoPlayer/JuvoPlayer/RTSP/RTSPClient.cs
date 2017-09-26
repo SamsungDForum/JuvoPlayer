@@ -20,7 +20,7 @@ using System.Threading;
 
 namespace JuvoPlayer.RTSP
 {
-    public class RTPClient : IRTPClient
+    public class RTSPClient : IRTSPClient
     {
         RTPTransportType rtpTransportType = RTPTransportType.TCP; // Mode, either RTP over UDP or RTP over TCP using the RTSP socket
         UDPSocketPair udpPair = null;       // Pair of UDP ports used in RTP over UDP mode or in MULTICAST mode
@@ -41,7 +41,7 @@ namespace JuvoPlayer.RTSP
 
         int videoPayloadType = -1;          // Payload Type for the Video. (often 96 which is the first dynamic payload value)
 
-        public RTPClient(ISharedBuffer buffer)
+        public RTSPClient(ISharedBuffer buffer)
         {
             this.buffer = buffer ?? throw new ArgumentNullException("buffer cannot be null");
         }

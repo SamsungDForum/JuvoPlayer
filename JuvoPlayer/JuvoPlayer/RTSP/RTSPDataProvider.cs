@@ -18,19 +18,19 @@ using Tizen.Applications;
 
 namespace JuvoPlayer.RTSP
 {
-    public class RTPDataProvider : IDataProvider
+    public class RTSPDataProvider : IDataProvider
     {
         private IDemuxer demuxer;
-        private IRTPClient rtpClient;
+        private IRTSPClient rtpClient;
         private ClipDefinition currentClip;
-        public RTPDataProvider(IDemuxer demuxer, IRTPClient rtpClient, ClipDefinition currentClip)
+        public RTSPDataProvider(IDemuxer demuxer, IRTSPClient rtpClient, ClipDefinition currentClip)
         {
             this.demuxer = demuxer ?? throw new ArgumentNullException("demuxer cannot be null");
             this.rtpClient = rtpClient ?? throw new ArgumentNullException("rtpClient cannot be null");
             this.currentClip = currentClip ?? throw new ArgumentNullException("clip cannot be null");
         }
 
-        ~RTPDataProvider()
+        ~RTSPDataProvider()
         {
             rtpClient?.Stop();
         }

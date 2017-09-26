@@ -60,11 +60,11 @@
     <Compile Include="RTSP\FFmpegDemuxer.cs" />
     <Compile Include="FFmpeg\FFmpeg.cs" />
     <Compile Include="RTSP\IDemuxer.cs" />
-    <Compile Include="RTSP\IRTPClient.cs" />
+    <Compile Include="RTSP\IRTSPClient.cs" />
     <Compile Include="RTSP\ISharedBuffer.cs" />
-    <Compile Include="RTSP\RTPClient.cs" />
-    <Compile Include="RTSP\RTPDataProvider.cs" />
-    <Compile Include="RTSP\RTPDataProviderFactory.cs" />
+    <Compile Include="RTSP\RTSPClient.cs" />
+    <Compile Include="RTSP\RTSPDataProvider.cs" />
+    <Compile Include="RTSP\RTSPDataProviderFactory.cs" />
     <Compile Include="RTSP\RTPTransportType.cs" />
     <Compile Include="RTSP\SharedBuffer.cs" />
     <Compile Include="Common\StreamConfig.cs" />

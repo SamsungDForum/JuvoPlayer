@@ -16,10 +16,10 @@ using System;
 
 namespace JuvoPlayer.RTSP
 {
-    public class RTPDataProviderFactory : IDataProviderFactory
+    public class RTSPDataProviderFactory : IDataProviderFactory
     {
 
-        public RTPDataProviderFactory()
+        public RTSPDataProviderFactory()
         {
         }
 
@@ -36,10 +36,10 @@ namespace JuvoPlayer.RTSP
             }
 
             var sharedBuffer = new SharedBuffer();
-            var rtspClient = new RTPClient(sharedBuffer);
+            var rtspClient = new RTSPClient(sharedBuffer);
             var demuxer = new FFmpegDemuxer(sharedBuffer);
 
-            return new RTPDataProvider(demuxer, rtspClient, clip);
+            return new RTSPDataProvider(demuxer, rtspClient, clip);
         }
 
         public bool SupportsClip(ClipDefinition clip)

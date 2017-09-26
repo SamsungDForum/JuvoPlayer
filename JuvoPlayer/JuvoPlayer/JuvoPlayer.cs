@@ -34,7 +34,7 @@ namespace JuvoPlayer
         private void Initialize()
         {
             dataProviders = new DataProviderFactoryManager();
-            dataProviders.RegisterDataProviderFactory(new RTPDataProviderFactory());
+            dataProviders.RegisterDataProviderFactory(new RTSPDataProviderFactory());
 
             uiController = new UIController();
             uiController.ShowClip += OnShowClip;
