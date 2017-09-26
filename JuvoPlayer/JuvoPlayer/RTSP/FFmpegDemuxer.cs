@@ -23,6 +23,13 @@ namespace JuvoPlayer.RTSP
     public class FFmpegDemuxer : IDemuxer
     {
 
+        private int bufferSize = 128 * 1024;
+        private unsafe byte* buffer = null;
+        private unsafe AVFormatContext* formatContext = null;
+        private unsafe AVIOContext* ioContext = null;
+        int audio_idx = -1;
+        int video_idx = -1;
+
         public unsafe FFmpegDemuxer(ISharedBuffer dataBuffer)
         {
             int ret = -1;
@@ -38,20 +45,19 @@ namespace JuvoPlayer.RTSP
                 throw;
             }
 
-            int bufferSize = 128 * 1024;
-            byte* buffer = (byte*) FFmpeg.FFmpeg.av_malloc((ulong)bufferSize);
-            AVFormatContext* formatContext = FFmpeg.FFmpeg.avformat_alloc_context();
-            AVIOContext* ioContext = FFmpeg.FFmpeg.avio_alloc_context(buffer,
-                                                                      bufferSize,
-                                                                      0,
-                                                                      (void*)GCHandle.ToIntPtr(GCHandle.Alloc(dataBuffer)),
-                                                                      (avio_alloc_context_read_packet)ReadPacket,
-                                                                      (avio_alloc_context_write_packet)WritePacket,
-                                                                      (avio_alloc_context_seek)Seek);
+            buffer = (byte*) FFmpeg.FFmpeg.av_malloc((ulong)bufferSize);
+            formatContext = FFmpeg.FFmpeg.avformat_alloc_context();
+            ioContext = FFmpeg.FFmpeg.avio_alloc_context(buffer,
+                                                         bufferSize,
+                                                         0,
+                                                         (void*)GCHandle.ToIntPtr(GCHandle.Alloc(dataBuffer)),
+                                                         (avio_alloc_context_read_packet)ReadPacket,
+                                                         (avio_alloc_context_write_packet)WritePacket,
+                                                         (avio_alloc_context_seek)Seek);
             ioContext->seekable = 0;
             ioContext->write_flag = 0;
 
-            formatContext->probesize = 128 * 1024;
+            formatContext->probesize = bufferSize;
             formatContext->max_analyze_duration = 10 * 1000000;
             formatContext->flags |= FFmpegMacros.AVFMT_FLAG_CUSTOM_IO;
             formatContext->pb = ioContext;
@@ -77,7 +83,10 @@ namespace JuvoPlayer.RTSP
                 throw new Exception("Could not create FFmpeg context."); // TODO(g.skowinski): Handle.
             }
 
-            ret = FFmpeg.FFmpeg.avformat_open_input(&formatContext, null, null, null);
+            fixed(AVFormatContext** formatContextPointer = &formatContext)
+            {
+                ret = FFmpeg.FFmpeg.avformat_open_input(formatContextPointer, null, null, null);
+            }
             if (ret != 0) // -1094995529 = -0x41444E49 = "INDA" = AVERROR_INVALID_DATA
             {
                 try
@@ -104,12 +113,17 @@ namespace JuvoPlayer.RTSP
                 throw new Exception("Could not find stream info (error code: " + ret.ToString() + ")!"); // TODO(g.skowinski): Handle.
             }
 
-            var audio_idx = ret = FFmpeg.FFmpeg.av_find_best_stream(formatContext, AVMediaType.AVMEDIA_TYPE_AUDIO, -1, -1, null, 0);
-            var video_idx = ret = FFmpeg.FFmpeg.av_find_best_stream(formatContext, AVMediaType.AVMEDIA_TYPE_VIDEO, -1, -1, null, 0);
+            audio_idx = FFmpeg.FFmpeg.av_find_best_stream(formatContext, AVMediaType.AVMEDIA_TYPE_AUDIO, -1, -1, null, 0);
+            video_idx = FFmpeg.FFmpeg.av_find_best_stream(formatContext, AVMediaType.AVMEDIA_TYPE_VIDEO, -1, -1, null, 0);
             if (audio_idx < 0 || video_idx < 0)
             {
                 throw new Exception("Could not find video or audio stream!"); // TODO(g.skowinski): Handle.
             }
+        }
+
+        unsafe public void Demux()
+        {
+            int ret = -1;
 
             const int kMicrosecondsPerSecond = 1000000;
             const double kOneMicrosecond = 1.0 / kMicrosecondsPerSecond;
@@ -144,8 +158,14 @@ namespace JuvoPlayer.RTSP
 
                 FFmpeg.FFmpeg.av_packet_unref(&pkt);
             }
+        }
 
-            FFmpeg.FFmpeg.avformat_close_input(&formatContext);
+        unsafe ~FFmpegDemuxer()
+        {
+            fixed (AVFormatContext** formatContextPointer = &formatContext)
+            {
+                FFmpeg.FFmpeg.avformat_close_input(formatContextPointer);
+            }
             FFmpeg.FFmpeg.avformat_free_context(formatContext);
             //FFmpeg.av_free(buffer); // TODO(g.skowinski): causes segfault - investigate
         }
@@ -166,7 +186,7 @@ namespace JuvoPlayer.RTSP
             // TODO(g.skowinski): Implement.
         }
 
-        static private unsafe ISharedBuffer GetSharedBufferFromOpaque(void* @opaque)
+        static private unsafe ISharedBuffer RetrieveSharedBufferReference(void* @opaque)
         {
             ISharedBuffer sharedBuffer;
             try
@@ -183,7 +203,7 @@ namespace JuvoPlayer.RTSP
 
         static private unsafe int ReadPacket(void* @opaque, byte* @buf, int @buf_size)
         {
-            ISharedBuffer sharedBuffer = GetSharedBufferFromOpaque(opaque);
+            ISharedBuffer sharedBuffer = RetrieveSharedBufferReference(opaque);
             byte[] data = sharedBuffer.ReadData(buf_size);
             Marshal.Copy(data, 0, (IntPtr)buf, data.Length);
             return data.Length;
