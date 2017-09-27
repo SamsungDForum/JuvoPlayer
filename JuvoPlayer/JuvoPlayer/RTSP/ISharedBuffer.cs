@@ -11,12 +11,19 @@
 // damages suffered by licensee as a result of using, modifying or distributing
 // this software or its derivatives.
 
+
+using System.Threading;
+
 namespace JuvoPlayer.RTSP
 {
     public interface ISharedBuffer
     {
         void ClearData();
-        byte[] ReadData(int size);
+        byte[] ReadData(int size); // it should remove leading [size] bytes of data that it returns
         void WriteData(byte[] data);
+
+        WaitHandle GetWaitHandle(); // the wait handle should be set when new data is received or end of stream is reached
+        int StoredDataSize(); // return current size of stored data
+        bool EndOfData(); // return true if no more data will be available or false otherwise
     }
 }

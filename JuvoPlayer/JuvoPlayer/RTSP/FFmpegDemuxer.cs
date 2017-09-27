@@ -15,6 +15,7 @@ using JuvoPlayer.FFmpeg;
 using System;
 using System.IO;
 using System.Runtime.InteropServices;
+using System.Threading;
 using System.Threading.Tasks;
 using Tizen;
 using Tizen.Applications;
@@ -70,18 +71,6 @@ namespace JuvoPlayer.RTSP
             AVProbeData probeData;
             probeData.buf = buffer;
             probeData.buf_size = bufferSize;
-            /*try
-            {
-                formatContext->iformat = FFmpeg.FFmpeg.av_probe_input_format(&probeData, 1); // TODO(g.skowinski): Is this even necessary?
-            }
-            catch (Exception)
-            {
-                // TODO(g.skowinski): Handle.
-                throw;
-            }*/
-
-            //context->video_codec_id = ;
-            //context->audio_codec_id = ;
 
             if (ioContext == null || formatContext == null)
             {
@@ -89,8 +78,7 @@ namespace JuvoPlayer.RTSP
                 throw new Exception("Could not create FFmpeg context.");
             }
 
-            // Potentially time-consuming part of initialization and demuxation loop will be executed on a detached thread.
-            Task.Factory.StartNew(DemuxTask);
+            Task.Factory.StartNew(DemuxTask); // Potentially time-consuming part of initialization and demuxation loop will be executed on a detached thread.
         }
 
         unsafe private void DemuxTask()
@@ -121,15 +109,15 @@ namespace JuvoPlayer.RTSP
                     Log.Info("Tag", "Error opening input and getting error info (" + ret.ToString() + ").");
                     throw;
                 }
-                //FFmpeg.av_free(buffer);
-                throw new Exception("Could not parse input data!"); // TODO(g.skowinski): Handle.
+                //FFmpeg.av_free(buffer); // should be freed by avformat_open_input if i recall correctly
+                throw new Exception("Could not parse input data!");
             }
 
             ret = FFmpeg.FFmpeg.avformat_find_stream_info(formatContext, null);
             if (ret < 0)
             {
                 DeallocFFmpeg();
-                throw new Exception("Could not find stream info (error code: " + ret.ToString() + ")!"); // TODO(g.skowinski): Handle.
+                throw new Exception("Could not find stream info (error code: " + ret.ToString() + ")!");
             }
 
             audio_idx = FFmpeg.FFmpeg.av_find_best_stream(formatContext, AVMediaType.AVMEDIA_TYPE_AUDIO, -1, -1, null, 0);
@@ -137,7 +125,7 @@ namespace JuvoPlayer.RTSP
             if (audio_idx < 0 || video_idx < 0)
             {
                 DeallocFFmpeg();
-                throw new Exception("Could not find video or audio stream!"); // TODO(g.skowinski): Handle.
+                throw new Exception("Could not find video or audio stream!");
             }
 
             // Now it's demuxing time
@@ -236,11 +224,35 @@ namespace JuvoPlayer.RTSP
 
         static private unsafe int ReadPacket(void* @opaque, byte* @buf, int @buf_size)
         {
-            ISharedBuffer sharedBuffer = RetrieveSharedBufferReference(opaque);
-            // TODO(g.skowinski): Wait untill enough data is available; how to check is some kind of EOF has been reached?
-            byte[] data = sharedBuffer.ReadData(buf_size);
-            Marshal.Copy(data, 0, (IntPtr)buf, data.Length);
-            return data.Length;
+            ISharedBuffer sharedBuffer;
+            try
+            {
+                sharedBuffer = RetrieveSharedBufferReference(opaque);
+            }
+            catch(Exception)
+            {
+                return 0;
+            }
+            WaitHandle waitHandle = sharedBuffer.GetWaitHandle();
+            int receivedDataSize = 0;
+            while(receivedDataSize == 0) // try until enough data is inside the buffer or until no more data will be aquired
+            {
+                lock(sharedBuffer)
+                {
+                    int storedDataSize = sharedBuffer.StoredDataSize();
+                    bool endOfData = sharedBuffer.EndOfData();
+                    if(endOfData == true || storedDataSize >= buf_size)
+                    {
+                        if (storedDataSize == 0) // in case the data stream has ended
+                            break; // or return 0 - same effect
+                        byte[] data = sharedBuffer.ReadData(Math.Min(storedDataSize, buf_size));
+                        Marshal.Copy(data, 0, (IntPtr)buf, data.Length);
+                        receivedDataSize = storedDataSize;
+                    }
+                }
+                waitHandle.WaitOne(); // wait until more data is available (or end of data is signalized)
+            }
+            return receivedDataSize;
         }
 
         static private unsafe int WritePacket(void* @opaque, byte* @buf, int @buf_size)
