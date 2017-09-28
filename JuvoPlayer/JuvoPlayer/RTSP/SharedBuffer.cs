@@ -38,6 +38,7 @@ namespace JuvoPlayer.RTSP
             lock(buffer)
             {
                 buffer = new System.IO.MemoryStream();
+                waitHandle.Reset();
             }
         }
 
@@ -61,7 +62,7 @@ namespace JuvoPlayer.RTSP
                     if(buffer.Length >= size || EndOfFile == true)
                     {
                         long dsize = Math.Min(buffer.Length, size);
-                        byte[] temp = new byte[dsize];
+                        byte[] temp = new byte[dsize]; // should be optimized later by removing excessive copying
                         buffer.Read(temp, 0, (int)dsize);
                         return temp;
                     }
