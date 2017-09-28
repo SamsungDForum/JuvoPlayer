@@ -24,7 +24,7 @@ namespace JuvoPlayer.RTSP
         // Returns byte array of leading [size] bytes of data from the buffer; it should remove the leading [size] bytes of data from the buffer.
         byte[] ReadData(int size);
         
-        void WriteData(byte[] data, bool endOfData);
+        void WriteData(byte[] data, bool endOfData = false);
 
     }
 }
