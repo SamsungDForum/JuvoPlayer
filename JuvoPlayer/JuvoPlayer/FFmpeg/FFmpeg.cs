@@ -15,6 +15,7 @@ using System;
 using System.Runtime.InteropServices;
 using System.IO;
 using Tizen;
+using Tizen.Applications;
 
 namespace JuvoPlayer.FFmpeg
 {
@@ -1538,7 +1539,8 @@ namespace JuvoPlayer.FFmpeg
         {
             if (Initialized)
             {
-                throw new InvalidOperationException("ffmpeg already initialized");
+                //throw new InvalidOperationException("ffmpeg already initialized");
+                return; // No need to initialize again.
             }
 
             if (libdir.Length == 0)
@@ -1548,7 +1550,7 @@ namespace JuvoPlayer.FFmpeg
 
             if (!Directory.Exists(libdir))
             {
-                throw new ArgumentException("libdir does not exist");
+                throw new ArgumentException("libdir does not exist: " + libdir);
             }
 
             // Parial order of libraries loading must be preserved, because some libraries depend on others:
@@ -1560,16 +1562,22 @@ namespace JuvoPlayer.FFmpeg
             // libswresample dependencies: libavutil
             // libpostproc   dependencies: ????????????????????? (not available in current build)
             // libavdevice   dependencies: ????????????????????? (not available in current build)
-
-            InitializeLibavutil(libdir, libavutilFilename);
-            InitializeLibavcodec(libdir, libavcodecFilename);
-            InitializeLibavformat(libdir, libavformatFilename);
-            InitializeLibswscale(libdir, libswscaleFilename);
-            InitializeLibavfilter(libdir, libavfilterFilename);
-            InitializeLibswresample(libdir, libswresampleFilename);
-            //InitializeLibpostproc(libdir, libpostprocFilename);
-            //InitializeLibavdevice(libdir, libavdeviceFilename);
-
+            try
+            {
+                InitializeLibavutil(libdir, libavutilFilename);
+                InitializeLibavcodec(libdir, libavcodecFilename);
+                InitializeLibavformat(libdir, libavformatFilename);
+                InitializeLibswscale(libdir, libswscaleFilename);
+                InitializeLibavfilter(libdir, libavfilterFilename);
+                InitializeLibswresample(libdir, libswresampleFilename);
+                //InitializeLibpostproc(libdir, libpostprocFilename);
+                //InitializeLibavdevice(libdir, libavdeviceFilename);
+            }
+            catch (Exception e)
+            {
+                Log.Info("Tag", e.ToString());
+                throw;
+            }
             Initialized = true;
         }
 
@@ -1590,7 +1598,7 @@ namespace JuvoPlayer.FFmpeg
 
             if (!File.Exists(path))
             {
-                throw new ArgumentException("file does not exist");
+                throw new ArgumentException("file does not exist: " + path);
             }
 
             var libavcodecHandle = dlopen(path, RTLD_NOW | RTLD_GLOBAL);
@@ -1773,7 +1781,7 @@ namespace JuvoPlayer.FFmpeg
 
             if (!File.Exists(path))
             {
-                throw new ArgumentException("file does not exist");
+                throw new ArgumentException("file does not exist: " + path);
             }
 
             var libavdeviceHandle = dlopen(path, RTLD_NOW | RTLD_GLOBAL);
@@ -1812,7 +1820,7 @@ namespace JuvoPlayer.FFmpeg
 
             if (!File.Exists(path))
             {
-                throw new ArgumentException("file does not exist");
+                throw new ArgumentException("file does not exist: " + path);
             }
 
             var libavfilterHandle = dlopen(path, RTLD_NOW | RTLD_GLOBAL);
@@ -1901,7 +1909,7 @@ namespace JuvoPlayer.FFmpeg
 
             if (!File.Exists(path))
             {
-                throw new ArgumentException("file does not exist");
+                throw new ArgumentException("file does not exist: " + path);
             }
 
             var libavformatHandle = dlopen(path, RTLD_NOW | RTLD_GLOBAL);
@@ -2085,7 +2093,7 @@ namespace JuvoPlayer.FFmpeg
 
             if (!File.Exists(path))
             {
-                throw new ArgumentException("file does not exist");
+                throw new ArgumentException("file does not exist: " + path);
             }
 
             var libavutilHandle = dlopen(path, RTLD_NOW | RTLD_GLOBAL);
@@ -2385,7 +2393,7 @@ namespace JuvoPlayer.FFmpeg
 
             if (!File.Exists(path))
             {
-                throw new ArgumentException("file does not exist");
+                throw new ArgumentException("file does not exist: " + path);
             }
 
             var libpostprocHandle = dlopen(path, RTLD_NOW | RTLD_GLOBAL);
@@ -2416,7 +2424,7 @@ namespace JuvoPlayer.FFmpeg
 
             if (!File.Exists(path))
             {
-                throw new ArgumentException("file does not exist");
+                throw new ArgumentException("file does not exist: " + path);
             }
 
             var libswscaleHandle = dlopen(path, RTLD_NOW | RTLD_GLOBAL);
@@ -2473,7 +2481,7 @@ namespace JuvoPlayer.FFmpeg
 
             if (!File.Exists(path))
             {
-                throw new ArgumentException("file does not exist");
+                throw new ArgumentException("file does not exist: " + path);
             }
 
             var libswresampleHandle = dlopen(path, RTLD_NOW | RTLD_GLOBAL);
