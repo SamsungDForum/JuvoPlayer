@@ -11,12 +11,14 @@
 // damages suffered by licensee as a result of using, modifying or distributing
 // this software or its derivatives.
 
+using JuvoPlayer.Common;
+
 namespace JuvoPlayer.RTSP
 {
     public interface IRTSPClient
     {
         void Seek(int position);
-        void Start();
+        void Start(ClipDefinition clip);
         void Stop();
     }
 }

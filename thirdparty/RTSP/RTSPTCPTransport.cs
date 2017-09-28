@@ -3,6 +3,7 @@ using System.IO;
 using System.Net;
 using System.Net.Sockets;
 using System.Globalization;
+using System.Threading.Tasks;
 
 namespace Rtsp
 {
@@ -88,7 +89,8 @@ namespace Rtsp
             if (Connected)
                 return;
             _RtspServerClient = new TcpClient();
-            _RtspServerClient.ConnectAsync(_currentEndPoint.Address, _currentEndPoint.Port);
+            var task = Task.Run(async () => { await _RtspServerClient.ConnectAsync(_currentEndPoint.Address, _currentEndPoint.Port); });
+            task.Wait();
         }
 
         #endregion

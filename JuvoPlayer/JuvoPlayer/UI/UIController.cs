@@ -76,7 +76,7 @@ namespace JuvoPlayer.UI
                     ClipDefinition clip1 = new ClipDefinition()
                     {
                         Type = "RTP",
-                        Url = "test"
+                        Url = "rtsp://192.168.137.200/2kkk.ts"
 
                     };
 

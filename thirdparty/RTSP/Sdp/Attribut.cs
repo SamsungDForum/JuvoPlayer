@@ -53,18 +53,23 @@ namespace Rtsp.Sdp
             attributMap.TryGetValue(listValues[0], out childType);
             if (childType != null)
             {
-                throw new Exception();
+                if (listValues[0] == AttributRtpMap.NAME)
+                {
+                    returnValue = new AttributRtpMap();
+                }
+                else if (listValues[0] == AttributFmtp.NAME)
+                {
+                    returnValue = new AttributFmtp();
+                }
+                else
+                {
+                    returnValue = new Attribut(listValues[0]);
+                }
             }
-
-            //if (false && childType != null)
-            //{
-            //    var defaultContructor = childType.GetConstructor(Type.EmptyTypes);
-            //    returnValue = defaultContructor.Invoke(Type.EmptyTypes) as Attribut;
-            //}
-            //else
-            //{
-            returnValue = new Attribut(listValues[0]);
-            //}
+            else
+            {
+                returnValue = new Attribut(listValues[0]);
+            }
             // Parse the value. Note most attributes have a value but recvonly does not have a value
             if (listValues.Count() > 1) returnValue.ParseValue(listValues[1]);
 

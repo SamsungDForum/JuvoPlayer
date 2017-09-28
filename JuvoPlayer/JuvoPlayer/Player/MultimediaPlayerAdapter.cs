@@ -29,7 +29,7 @@ namespace JuvoPlayer.Player
 
             player.Display = new Display(playerContainer);
             player.DisplaySettings.Mode = PlayerDisplayMode.FullScreen;
-            player.DisplaySettings.SetRoi(new Tizen.Multimedia.Rectangle(300, 300, 800, 600));
+//            player.DisplaySettings.SetRoi(new Tizen.Multimedia.Rectangle(300, 300, 800, 600));
             playerContainer.Show();
             playerContainer.BringDown();
         }

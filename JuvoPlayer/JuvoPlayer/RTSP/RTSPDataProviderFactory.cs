@@ -30,7 +30,7 @@ namespace JuvoPlayer.RTSP
                 throw new ArgumentNullException("clip cannot be null");
             }
 
-            if (SupportsClip(clip))
+            if (!SupportsClip(clip))
             {
                 throw new ArgumentException("unsupported clip type");
             }
