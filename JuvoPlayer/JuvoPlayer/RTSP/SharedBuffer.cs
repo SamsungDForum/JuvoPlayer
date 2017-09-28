@@ -31,6 +31,7 @@ namespace JuvoPlayer.RTSP
         public SharedBuffer() {
             buffer = new System.IO.MemoryStream();
             EndOfFile = true;
+            waitHandle = new AutoResetEvent(false);
         }
 
         public void ClearData() {
