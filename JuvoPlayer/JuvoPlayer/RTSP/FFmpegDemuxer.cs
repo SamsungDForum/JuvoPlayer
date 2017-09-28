@@ -148,14 +148,24 @@ namespace JuvoPlayer.RTSP
                 {
                     if (pkt.stream_index == audio_idx || pkt.stream_index == video_idx)
                     {
-                        AVStream* s = formatContext->streams[pkt.stream_index];
-                        var data = pkt.data;
-                        var data_size = pkt.size;
+                        // TODO(g.skowinski): Write output data to packet object/stream
 
-                        var pts = FFmpeg.FFmpeg.av_rescale_q(pkt.pts, s->time_base, kMicrosBase) * kOneMicrosecond;
-                        var dts = FFmpeg.FFmpeg.av_rescale_q(pkt.dts, s->time_base, kMicrosBase) * kOneMicrosecond;
+                        AVStream* s = formatContext->streams[pkt.stream_index]; // :784
+                        var data = pkt.data; // :781
+                        var data_size = pkt.size; // :781
+
+                        var pts = FFmpeg.FFmpeg.av_rescale_q(pkt.pts, s->time_base, kMicrosBase) * kOneMicrosecond; // :789
+                        var dts = FFmpeg.FFmpeg.av_rescale_q(pkt.dts, s->time_base, kMicrosBase) * kOneMicrosecond; // :790
 
                         Log.Info("Tag", "data size: " + data_size.ToString() + "; pts: " + pts.ToString() + "; dts: " + dts.ToString());
+
+                        var duration = FFmpeg.FFmpeg.av_rescale_q(pkt.duration, s->time_base, kMicrosBase) * kOneMicrosecond; // :786
+                        var key_frame = (pkt.flags == 1); // :787
+                        var timestamp = 0; // :791-801 - should I check for timestamp/pts/dts inconsistencies?
+
+                        // AVEncInfo* enc_info = (AVEncInfo*)FFmpeg.FFmpeg.av_packet_get_side_data(pkt, AV_PKT_DATA_ENCRYPT_INFO, null); // :807
+                        // :808-816
+
                     }
                 }
                 else

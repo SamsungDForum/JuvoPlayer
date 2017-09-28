@@ -16,10 +16,10 @@ using System.Threading;
 
 namespace JuvoPlayer.RTSP
 {
-    public interface ISharedBuffer
+    public interface ISharedBuffer // using object of a class implementing ISharedBuffer interface should be done inside lock(sharedBufferObject) block!
     {
-        void ClearData();
-        byte[] ReadData(int size); // it should remove leading [size] bytes of data that it returns
+        void ClearData(); // clears the buffer; it should make surethat EndOfData() method will return a proper value afterwards
+        byte[] ReadData(int size); // returns byte array of leading [size] bytes of data from the buffer; it should remove the leading [size] bytes of data from the buffer
         void WriteData(byte[] data);
 
         WaitHandle GetWaitHandle(); // the wait handle should be set when new data is received or end of stream is reached
