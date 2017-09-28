@@ -34,23 +34,17 @@ namespace JuvoPlayer.RTSP
 
         public unsafe FFmpegDemuxer(ISharedBuffer dataBuffer)
         {
-            // TODO(g.skowinski): FFmpeg library is loaded at the moment in RTPDataProvider::Start() - should it be done there or here?
-            /*
             string ffmpegLibdir = Path.Combine(Path.GetDirectoryName(Path.GetDirectoryName(Application.Current.ApplicationInfo.ExecutablePath)), "lib");
             try
             {
-                if(FFmpeg.FFmeg.Initialized) // TODO(g.skowinski): It's already checked in FFmpeg::Initialize() and an exception is thrown in case it's already initialized.
-                {
-                    FFmpeg.FFmpeg.Initialize(ffmpegLibdir);
-                }
+                FFmpeg.FFmpeg.Initialize(ffmpegLibdir);
                 FFmpeg.FFmpeg.av_register_all(); // TODO(g.skowinski): Is registering multiple times unwanted or doesn't it matter?
             }
             catch(Exception)
             {
-                // TODO(g.skowinski): Handle ("Could not load and register FFmpeg library!").
+                Log.Info("Tag", "Could not load and register FFmpeg library!");
                 throw;
             }
-            */
             buffer = (byte*) FFmpeg.FFmpeg.av_malloc((ulong)bufferSize);
             formatContext = FFmpeg.FFmpeg.avformat_alloc_context();
             ioContext = FFmpeg.FFmpeg.avio_alloc_context(buffer,
@@ -166,6 +160,10 @@ namespace JuvoPlayer.RTSP
                         // AVEncInfo* enc_info = (AVEncInfo*)FFmpeg.FFmpeg.av_packet_get_side_data(pkt, AV_PKT_DATA_ENCRYPT_INFO, null); // :807
                         // :808-816
 
+                        /*if(video_idx != -1 && pkt.stream_index == video_idx)
+                        {
+                            FFmpeg.FFmpeg.avcodec_decode_video2();
+                        }*/
                     }
                 }
                 else
@@ -243,26 +241,9 @@ namespace JuvoPlayer.RTSP
             {
                 return 0;
             }
-            WaitHandle waitHandle = sharedBuffer.GetWaitHandle();
-            int receivedDataSize = 0;
-            while(receivedDataSize == 0) // try until enough data is inside the buffer or until no more data will be aquired
-            {
-                lock(sharedBuffer)
-                {
-                    int storedDataSize = sharedBuffer.StoredDataSize();
-                    bool endOfData = sharedBuffer.EndOfData();
-                    if(endOfData == true || storedDataSize >= buf_size)
-                    {
-                        if (storedDataSize == 0) // in case the data stream has ended
-                            break; // or return 0 - same effect
-                        byte[] data = sharedBuffer.ReadData(Math.Min(storedDataSize, buf_size));
-                        Marshal.Copy(data, 0, (IntPtr)buf, data.Length);
-                        receivedDataSize = storedDataSize;
-                    }
-                }
-                waitHandle.WaitOne(); // wait until more data is available (or end of data is signalized)
-            }
-            return receivedDataSize;
+            byte[] data = sharedBuffer.ReadData(buf_size); // SharedBuffer::ReadData(int size) is blocking - it will block until it has enough data or return less data if EOF is reached
+            Marshal.Copy(data, 0, (IntPtr)buf, data.Length);
+            return data.Length;
         }
 
         static private unsafe int WritePacket(void* @opaque, byte* @buf, int @buf_size)

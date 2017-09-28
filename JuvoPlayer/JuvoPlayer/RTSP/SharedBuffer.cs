@@ -11,26 +11,62 @@
 // damages suffered by licensee as a result of using, modifying or distributing
 // this software or its derivatives.
 
+using System;
+using System.Threading;
+
 namespace JuvoPlayer.RTSP
 {
     public class SharedBuffer : ISharedBuffer {
 
-        public SharedBuffer() {
+        private AutoResetEvent waitHandle;
+        private bool eof;
+        private System.IO.MemoryStream buffer;
 
+        public bool EndOfFile
+        {
+            get { return eof; }
+            set { eof = value; }
+        }
+
+        public SharedBuffer() {
+            buffer = new System.IO.MemoryStream();
+            EndOfFile = true;
         }
 
         public void ClearData() {
-
+            lock(buffer)
+            {
+                buffer = new System.IO.MemoryStream();
+            }
         }
 
         public void WriteData(byte[] data)
         {
-            throw new System.NotImplementedException();
+            lock(buffer)
+            {
+                buffer.Write(data, 0, data.Length);
+            }
+            waitHandle.Set();
         }
 
+        // SharedBuffer::ReadData(int size) is blocking - it will block until it has enough data or return less data if EOF is reached.
+        // Returns byte array of leading [size] bytes of data from the buffer; it should remove the leading [size] bytes of data from the buffer.
         byte[] ISharedBuffer.ReadData(int size)
         {
-            throw new System.NotImplementedException();
+            while(true)
+            {
+                lock(buffer)
+                {
+                    if(buffer.Length >= size || EndOfFile == true)
+                    {
+                        long dsize = Math.Min(buffer.Length, size);
+                        byte[] temp = new byte[dsize];
+                        buffer.Read(temp, 0, (int)dsize);
+                        return temp;
+                    }
+                }
+                waitHandle.WaitOne();
+            }
         }
     }
 

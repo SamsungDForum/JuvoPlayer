@@ -1539,7 +1539,8 @@ namespace JuvoPlayer.FFmpeg
         {
             if (Initialized)
             {
-                throw new InvalidOperationException("ffmpeg already initialized");
+                //throw new InvalidOperationException("ffmpeg already initialized");
+                return; // No need to initialize again.
             }
 
             if (libdir.Length == 0)
