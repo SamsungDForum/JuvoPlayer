@@ -18,56 +18,48 @@ namespace JuvoPlayer.RTSP
 {
     public class SharedBuffer : ISharedBuffer {
 
-        private AutoResetEvent waitHandle;
-        private bool eof;
-        private System.IO.MemoryStream buffer;
+        static readonly object _locker = new object();
+        private System.IO.MemoryStream buffer = new System.IO.MemoryStream();
 
-        public bool EndOfFile
-        {
-            get { return eof; }
-            set { eof = value; }
-        }
+        public bool EndOfData { get; private set; } = false;
 
         public SharedBuffer() {
-            buffer = new System.IO.MemoryStream();
-            EndOfFile = true;
-            waitHandle = new AutoResetEvent(false);
         }
 
         public void ClearData() {
-            lock(buffer)
+            lock(_locker)
             {
                 buffer = new System.IO.MemoryStream();
-                waitHandle.Reset();
             }
         }
 
-        public void WriteData(byte[] data)
+        public void WriteData(byte[] data, bool endOfData = false) // endOfData=true should be atomic with writing last bit of data
         {
-            lock(buffer)
+            lock(_locker)
             {
                 buffer.Write(data, 0, data.Length);
+                EndOfData = endOfData;
+                Monitor.PulseAll(_locker);
             }
-            waitHandle.Set();
         }
 
         // SharedBuffer::ReadData(int size) is blocking - it will block until it has enough data or return less data if EOF is reached.
         // Returns byte array of leading [size] bytes of data from the buffer; it should remove the leading [size] bytes of data from the buffer.
         byte[] ISharedBuffer.ReadData(int size)
         {
-            while(true)
+            lock(_locker)
             {
-                lock(buffer)
+                while(true)
                 {
-                    if(buffer.Length >= size || EndOfFile == true)
+                    if(buffer.Length >= size || EndOfData == true)
                     {
                         long dsize = Math.Min(buffer.Length, size);
                         byte[] temp = new byte[dsize]; // should be optimized later by removing excessive copying
                         buffer.Read(temp, 0, (int)dsize);
                         return temp;
                     }
+                    Monitor.Wait(_locker); // lock is released while waiting
                 }
-                waitHandle.WaitOne();
             }
         }
     }

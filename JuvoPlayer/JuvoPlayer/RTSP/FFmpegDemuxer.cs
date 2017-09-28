@@ -75,36 +75,37 @@ namespace JuvoPlayer.RTSP
             Task.Factory.StartNew(DemuxTask); // Potentially time-consuming part of initialization and demuxation loop will be executed on a detached thread.
         }
 
-        unsafe private void DemuxTask()
+        unsafe string getErrorText(int returnCode) // -1094995529 = -0x41444E49 = "INDA" = AVERROR_INVALID_DATA
+        {
+            const int errorBufferSize = 1024;
+            byte[] errorBuffer = new byte[errorBufferSize];
+            try
+            {
+                fixed (byte* errbuf = errorBuffer)
+                {
+                    FFmpeg.FFmpeg.av_strerror(returnCode, errbuf, errorBufferSize);
+                }
+            }
+            catch (Exception)
+            {
+                return "";
+            }
+            return System.Text.Encoding.UTF8.GetString(errorBuffer);
+        }
+
+        unsafe private void Init()
         {
             int ret = -1;
-
-            // Finish more time-consuming init things
 
             fixed (AVFormatContext** formatContextPointer = &formatContext)
             {
                 ret = FFmpeg.FFmpeg.avformat_open_input(formatContextPointer, null, null, null);
             }
-            if (ret != 0) // -1094995529 = -0x41444E49 = "INDA" = AVERROR_INVALID_DATA
+            if (ret != 0)
             {
-                try
-                {
-                    DeallocFFmpeg();
-                    const int errorBufferSize = 1024;
-                    byte[] errorBuffer = new byte[errorBufferSize];
-                    fixed (byte* errbuf = errorBuffer)
-                    {
-                        FFmpeg.FFmpeg.av_strerror(ret, errbuf, errorBufferSize);
-                    }
-                    throw new Exception("Error info: " + System.Text.Encoding.UTF8.GetString(errorBuffer));
-                }
-                catch (Exception)
-                {
-                    Log.Info("Tag", "Error opening input and getting error info (" + ret.ToString() + ").");
-                    throw;
-                }
+                DeallocFFmpeg();
                 //FFmpeg.av_free(buffer); // should be freed by avformat_open_input if i recall correctly
-                throw new Exception("Could not parse input data!");
+                throw new Exception("Could not parse input data: " + getErrorText(ret));
             }
 
             ret = FFmpeg.FFmpeg.avformat_find_stream_info(formatContext, null);
@@ -121,8 +122,12 @@ namespace JuvoPlayer.RTSP
                 DeallocFFmpeg();
                 throw new Exception("Could not find video or audio stream!");
             }
+        }
 
-            // Now it's demuxing time
+        unsafe private void DemuxTask()
+        {
+            // Finish more time-consuming init things
+            Init();
 
             const int kMicrosecondsPerSecond = 1000000;
             const double kOneMicrosecond = 1.0 / kMicrosecondsPerSecond;
@@ -131,14 +136,13 @@ namespace JuvoPlayer.RTSP
                 num = 1,
                 den = kMicrosecondsPerSecond
             };
-
             AVPacket pkt;
             bool parse = true;
+
             while (parse)
             {
                 FFmpeg.FFmpeg.av_init_packet(&pkt);
-                ret = FFmpeg.FFmpeg.av_read_frame(formatContext, &pkt);
-                if (ret >= 0)
+                if (FFmpeg.FFmpeg.av_read_frame(formatContext, &pkt) >= 0)
                 {
                     if (pkt.stream_index == audio_idx || pkt.stream_index == video_idx)
                     {
@@ -188,7 +192,7 @@ namespace JuvoPlayer.RTSP
             }
             if (buffer != null)
             {
-                FFmpeg.FFmpeg.av_free(buffer); // TODO(g.skowinski): causes segfault - investigate
+                //FFmpeg.FFmpeg.av_free(buffer); // TODO(g.skowinski): causes segfault - investigate
                 buffer = null;
             }
         }
