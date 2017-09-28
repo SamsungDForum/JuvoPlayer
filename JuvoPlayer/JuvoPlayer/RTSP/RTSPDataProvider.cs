@@ -64,7 +64,7 @@ namespace JuvoPlayer.RTSP
                 FFmpeg.FFmpeg.avcodec_register_all();
             }
 
-            rtpClient.Start();
+            rtpClient.Start(currentClip);
         }
     }
 }

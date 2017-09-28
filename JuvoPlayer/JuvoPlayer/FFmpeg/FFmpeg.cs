@@ -25,7 +25,7 @@ namespace JuvoPlayer.FFmpeg
         const string libavdeviceFilename = @"";
         const string libavfilterFilename = @"libavfilter.so.6";
         const string libavformatFilename = @"libavformat.so.57";
-        const string libavutilFilename = @"libavutil.so.5";
+        const string libavutilFilename = @"libavutil.so.55";
         const string libpostprocFilename = @"";
         const string libswresampleFilename = @"libswresample.so.2";
         const string libswscaleFilename = @"libswscale.so.4";
@@ -1969,7 +1969,7 @@ namespace JuvoPlayer.FFmpeg
             av_register_all = Marshal.GetDelegateForFunctionPointer<av_register_all_d>(dlsym(libavformatHandle, "av_register_all"));
             av_register_input_format = Marshal.GetDelegateForFunctionPointer<av_register_input_format_d>(dlsym(libavformatHandle, "av_register_input_format"));
             av_register_output_format = Marshal.GetDelegateForFunctionPointer<av_register_output_format_d>(dlsym(libavformatHandle, "av_register_output_format"));
-            av_sdp_create = Marshal.GetDelegateForFunctionPointer<av_sdp_create_d>(dlsym(libavformatHandle, "av_sdp_create"));
+            //av_sdp_create = Marshal.GetDelegateForFunctionPointer<av_sdp_create_d>(dlsym(libavformatHandle, "av_sdp_create"));
             av_seek_frame = Marshal.GetDelegateForFunctionPointer<av_seek_frame_d>(dlsym(libavformatHandle, "av_seek_frame"));
             av_stream_add_side_data = Marshal.GetDelegateForFunctionPointer<av_stream_add_side_data_d>(dlsym(libavformatHandle, "av_stream_add_side_data"));
             av_stream_get_codec_timebase = Marshal.GetDelegateForFunctionPointer<av_stream_get_codec_timebase_d>(dlsym(libavformatHandle, "av_stream_get_codec_timebase"));

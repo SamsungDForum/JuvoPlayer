@@ -11,17 +11,25 @@
 // damages suffered by licensee as a result of using, modifying or distributing
 // this software or its derivatives.
 
+using JuvoPlayer.Common;
 using Rtsp.Messages;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Net.Sockets;
 using System.Threading;
+using System.Threading.Tasks;
 
 namespace JuvoPlayer.RTSP
 {
     public class RTSPClient : IRTSPClient
     {
+        enum RTPPayloadType
+        {
+            MPEGTS = 33,
+            H264 = 98
+        };
+
         RTPTransportType rtpTransportType = RTPTransportType.TCP; // Mode, either RTP over UDP or RTP over TCP using the RTSP socket
         UDPSocketPair udpPair = null;       // Pair of UDP ports used in RTP over UDP mode or in MULTICAST mode
         String url = "";                 // RTSP URL
@@ -50,21 +58,32 @@ namespace JuvoPlayer.RTSP
             throw new NotImplementedException();
         }
 
-        public void Start()
+        public void Start(ClipDefinition clip)
         {
+            if (clip == null)
+                throw new ArgumentNullException("clip cannot be null");
+
+            if (clip.Url.Length  < 7)
+                throw new ArgumentException("clip url cannot be empty");
+
+            url = clip.Url;
+
             try
             {
+                Uri uri = new Uri(url);
                 TcpClient tcpClient = new TcpClient();
-                tcpClient.ConnectAsync("127.0.0.1", 8080).RunSynchronously();
-                var rtsp_socket = new Rtsp.RtspTcpTransport(tcpClient);
-                if (rtsp_socket.Connected == false)
+                var task = Task.Run(async () => { await tcpClient.ConnectAsync(uri.Host, uri.Port > 0 ? uri.Port : 554); });
+                task.Wait();
+
+                rtspSocket = new Rtsp.RtspTcpTransport(tcpClient);
+                if (rtspSocket.Connected == false)
                 {
-                    Console.WriteLine("Error - did not connect");
+                    Tizen.Log.Info("JuvoPlayer", "Error - did not connect");
                     return;
                 }
 
                 // Connect a RTSP Listener to the RTSP Socket (or other Stream) to send RTSP messages and listen for RTSP replies
-                rtspListener = new Rtsp.RtspListener(rtsp_socket);
+                rtspListener = new Rtsp.RtspListener(rtspSocket);
 
                 rtspListener.MessageReceived += RtspMessageReceived;
                 rtspListener.DataReceived += RtpDataReceived;
@@ -78,9 +97,9 @@ namespace JuvoPlayer.RTSP
 
                 rtspListener.SendMessage(optionsMessage);
             }
-            catch
+            catch (Exception e)
             {
-                Tizen.Log.Info("JuvoPlayer", "Error - did not connect");
+                Tizen.Log.Info("JuvoPlayer", "Error - did not connect: " + e.Message);
                 return;
             }
         }
@@ -171,34 +190,38 @@ namespace JuvoPlayer.RTSP
                                + " Size=" + e.Message.Data.Length);
 
             // Check the payload type in the RTP packet matches the Payload Type value from the SDP
-            if (rtpPayloadType != videoPayloadType)
+            if (videoPayloadType > 0 && rtpPayloadType != videoPayloadType)
             {
-                Tizen.Log.Info("JuvoPlayer", "Ignoring this RTP payload");
+                Tizen.Log.Info("JuvoPlayer", "Ignoring this RTP payload: " + rtpPayloadType);
                 return; // ignore this data
             }
 
-            // If rtp_marker is '1' then this is the final transmission for this packet.
-            // If rtp_marker is '0' we need to accumulate data with the same timestamp
 
-            // ToDo - Check Timestamp
-            // ToDo - Could avoid a copy if there is only one RTP frame for the data (temp list is zero)
-
-            // Add the RTP packet to the tempoary_rtp list
-
-            byte[] rtp_payload = new byte[e.Message.Data.Length - rtpPayloadStart]; // payload with RTP header removed
-            Array.Copy(e.Message.Data, rtpPayloadStart, rtp_payload, 0, rtp_payload.Length); // copy payload
-            temporary_rtp_payloads.Add(rtp_payload);
-
-            if (rtpMarker == 1)
+            if (rtpPayloadType == (int)RTPPayloadType.H264)
             {
-                // End Marker is set. Process the RTP frame
-                ProcessRTPFrame(temporary_rtp_payloads);
-                temporary_rtp_payloads.Clear();
+                // If rtp_marker is '1' then this is the final transmission for this packet.
+                // If rtp_marker is '0' we need to accumulate data with the same timestamp
+
+                // Add the RTP packet to the tempoary_rtp list
+                byte[] rtp_payload = new byte[e.Message.Data.Length - rtpPayloadStart]; // payload with RTP header removed
+                Array.Copy(e.Message.Data, rtpPayloadStart, rtp_payload, 0, rtp_payload.Length); // copy payload
+                temporary_rtp_payloads.Add(rtp_payload);
+
+                if (rtpMarker == 1)
+                {
+                    // End Marker is set. Process the RTP frame
+                    ProcessH264RTPFrame(temporary_rtp_payloads);
+                    temporary_rtp_payloads.Clear();
+                }
+            }
+            else if (rtpPayloadType == (int)RTPPayloadType.MPEGTS)
+            {
+
             }
         }
 
         // Process an RTP Frame. A RTP Frame can consist of several RTP Packets
-        public void ProcessRTPFrame(List<byte[]> rtpPayloads)
+        public void ProcessH264RTPFrame(List<byte[]> rtpPayloads)
         {
             Tizen.Log.Info("JuvoPlayer", "RTP Data comprised of " + rtpPayloads.Count + " rtp packets");
 
@@ -429,7 +452,6 @@ namespace JuvoPlayer.RTSP
                     videoPayloadType = 0;
                     if (rtpmap != null)
                         videoPayloadType = rtpmap.PayloadNumber;
-
 
                     RtspRequestSetup setupMessage = new RtspRequestSetup();
                     setupMessage.RtspUri = new Uri(url + "/" + control);
