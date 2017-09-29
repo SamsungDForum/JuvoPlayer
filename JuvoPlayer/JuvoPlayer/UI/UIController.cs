@@ -24,6 +24,7 @@ namespace JuvoPlayer.UI
     public delegate void Seek(double time);
     public delegate void SetExternalSubtitles(string path);
     public delegate void ShowClip(ClipDefinition clip);
+    public delegate void Stop();
 
     public class UIController
     {
@@ -33,6 +34,7 @@ namespace JuvoPlayer.UI
         public event Seek Seek;
         public event SetExternalSubtitles SetExternalSubtitles;
         public event ShowClip ShowClip;
+        public event Stop Stop;
 
         private View myView;
         private TextLabel myText;
@@ -94,6 +96,10 @@ namespace JuvoPlayer.UI
                     };
 
                     ShowClip(clip2);
+                }
+                else if (e.Key.KeyPressedName == "Esc")
+                {
+                    Stop();
                 }
             }
 

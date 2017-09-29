@@ -196,28 +196,29 @@ namespace JuvoPlayer.RTSP
                 return; // ignore this data
             }
 
+            buffer.WriteData(e.Message.Data);
 
-            if (rtpPayloadType == (int)RTPPayloadType.H264)
-            {
-                // If rtp_marker is '1' then this is the final transmission for this packet.
-                // If rtp_marker is '0' we need to accumulate data with the same timestamp
+            //if (rtpPayloadType == (int)RTPPayloadType.H264)
+            //{
+            //    // If rtp_marker is '1' then this is the final transmission for this packet.
+            //    // If rtp_marker is '0' we need to accumulate data with the same timestamp
 
-                // Add the RTP packet to the tempoary_rtp list
-                byte[] rtp_payload = new byte[e.Message.Data.Length - rtpPayloadStart]; // payload with RTP header removed
-                Array.Copy(e.Message.Data, rtpPayloadStart, rtp_payload, 0, rtp_payload.Length); // copy payload
-                temporary_rtp_payloads.Add(rtp_payload);
+            //    // Add the RTP packet to the tempoary_rtp list
+            //    byte[] rtp_payload = new byte[e.Message.Data.Length - rtpPayloadStart]; // payload with RTP header removed
+            //    Array.Copy(e.Message.Data, rtpPayloadStart, rtp_payload, 0, rtp_payload.Length); // copy payload
+            //    temporary_rtp_payloads.Add(rtp_payload);
 
-                if (rtpMarker == 1)
-                {
-                    // End Marker is set. Process the RTP frame
-                    ProcessH264RTPFrame(temporary_rtp_payloads);
-                    temporary_rtp_payloads.Clear();
-                }
-            }
-            else if (rtpPayloadType == (int)RTPPayloadType.MPEGTS)
-            {
+            //    if (rtpMarker == 1)
+            //    {
+            //        // End Marker is set. Process the RTP frame
+            //        ProcessH264RTPFrame(temporary_rtp_payloads);
+            //        temporary_rtp_payloads.Clear();
+            //    }
+            //}
+            //else if (rtpPayloadType == (int)RTPPayloadType.MPEGTS)
+            //{
 
-            }
+            //}
         }
 
         // Process an RTP Frame. A RTP Frame can consist of several RTP Packets
