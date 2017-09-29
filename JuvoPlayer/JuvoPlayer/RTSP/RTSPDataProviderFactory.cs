@@ -13,6 +13,8 @@
 
 using JuvoPlayer.Common;
 using System;
+using System.IO;
+using Tizen.Applications;
 
 namespace JuvoPlayer.RTSP
 {
@@ -37,7 +39,9 @@ namespace JuvoPlayer.RTSP
 
             var sharedBuffer = new SharedBuffer();
             var rtspClient = new RTSPClient(sharedBuffer);
-            var demuxer = new FFmpegDemuxer(sharedBuffer);
+
+            var libPath = Path.Combine(Path.GetDirectoryName(Path.GetDirectoryName(Application.Current.ApplicationInfo.ExecutablePath)), "lib");
+            var demuxer = new FFmpegDemuxer(sharedBuffer, libPath);
 
             return new RTSPDataProvider(demuxer, rtspClient, clip);
         }

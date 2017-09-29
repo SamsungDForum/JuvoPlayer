@@ -57,14 +57,8 @@ namespace JuvoPlayer.RTSP
 
         public void Start()
         {
-            var ffmpegPath = Path.Combine(Path.GetDirectoryName(Path.GetDirectoryName(Application.Current.ApplicationInfo.ExecutablePath)), "lib");
-            if (!FFmpeg.FFmpeg.Initialized)
-            {
-                FFmpeg.FFmpeg.Initialize(ffmpegPath);
-                FFmpeg.FFmpeg.avcodec_register_all();
-            }
-
             rtpClient.Start(currentClip);
+            demuxer.Start();
         }
     }
 }

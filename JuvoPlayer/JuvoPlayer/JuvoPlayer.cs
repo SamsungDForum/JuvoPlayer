@@ -38,6 +38,7 @@ namespace JuvoPlayer
 
             uiController = new UIController();
             uiController.ShowClip += OnShowClip;
+            uiController.Stop += OnStop;
 
             //TODO(p.galiszewsk)
             var playerAdapter = new MultimediaPlayerAdapter();
@@ -59,6 +60,11 @@ namespace JuvoPlayer
             dataProvider.StreamPacketReady += playerController.OnStreamPacketReady;
             dataProvider.StreamsFound += playerController.OnStreamsFound;
             dataProvider.Start();
+        }
+
+        private void OnStop()
+        {
+            dataProvider = null;
         }
 
         protected override void OnCreate()

@@ -31,11 +31,9 @@
         /// <param name="connection">The connection.</param>
         public RtspListener(IRtspTransport connection)
         {
-            if (connection == null)
-                throw new ArgumentNullException("connection");
-//            Contract.EndContractBlock();
+            //            Contract.EndContractBlock();
 
-            _transport = connection;
+            _transport = connection ?? throw new ArgumentNullException("connection");
             _stream = connection.GetStream();
         }
 
@@ -82,10 +80,7 @@
         /// <param name="e">The <see cref="Rtsp.RtspChunkEventArgs"/> instance containing the event data.</param>
         protected void OnMessageReceived(RtspChunkEventArgs e)
         {
-            EventHandler<RtspChunkEventArgs> handler = MessageReceived;
-
-            if (handler != null)
-                handler(this, e);
+            MessageReceived?.Invoke(this, e);
         }
 
         /// <summary>
@@ -99,10 +94,7 @@
         /// <param name="rtspChunkEventArgs">The <see cref="Rtsp.RtspChunkEventArgs"/> instance containing the event data.</param>
         protected void OnDataReceived(RtspChunkEventArgs rtspChunkEventArgs)
         {
-            EventHandler<RtspChunkEventArgs> handler = DataReceived;
-
-            if (handler != null)
-                handler(this, rtspChunkEventArgs);
+            DataReceived?.Invoke(this, rtspChunkEventArgs);
         }
 
         /// <summary>
@@ -139,8 +131,7 @@
                             lock (_sentMessage)
                             {
                                 // add the original question to the response.
-                                RtspRequest originalRequest;
-                                if (_sentMessage.TryGetValue(response.CSeq, out originalRequest))
+                                if (_sentMessage.TryGetValue(response.CSeq, out RtspRequest originalRequest))
                                 {
                                     _sentMessage.Remove(response.CSeq);
                                     response.OriginalRequest = originalRequest;
