@@ -89,22 +89,22 @@
   <ItemGroup>
     <None Include="lib\libavcodec.so" />
     <None Include="lib\libavcodec.so.57" />
-    <None Include="lib\libavcodec.so.57.89.100" />
+    <None Include="lib\libavcodec.so.57.106.104" />
     <None Include="lib\libavfilter.so" />
     <None Include="lib\libavfilter.so.6" />
-    <None Include="lib\libavfilter.so.6.82.100" />
+    <None Include="lib\libavfilter.so.6.106.100" />
     <None Include="lib\libavformat.so" />
     <None Include="lib\libavformat.so.57" />
-    <None Include="lib\libavformat.so.57.71.100" />
+    <None Include="lib\libavformat.so.57.82.102" />
     <None Include="lib\libavutil.so" />
     <None Include="lib\libavutil.so.55" />
-    <None Include="lib\libavutil.so.55.58.100" />
+    <None Include="lib\libavutil.so.55.77.101" />
     <None Include="lib\libswresample.so" />
     <None Include="lib\libswresample.so.2" />
-    <None Include="lib\libswresample.so.2.7.100" />
+    <None Include="lib\libswresample.so.2.8.100" />
     <None Include="lib\libswscale.so" />
     <None Include="lib\libswscale.so.4" />
-    <None Include="lib\libswscale.so.4.6.100" />
+    <None Include="lib\libswscale.so.4.7.103" />
     <None Include="shared\res\JuvoPlayer.png" />
   </ItemGroup>
   <ItemGroup>

@@ -11,6 +11,7 @@
 // damages suffered by licensee as a result of using, modifying or distributing
 // this software or its derivatives.
 
+using JuvoPlayer.Common;
 using JuvoPlayer.FFmpeg;
 using System;
 using System.IO;
@@ -24,6 +25,9 @@ namespace JuvoPlayer.RTSP
 {
     public class FFmpegDemuxer : IDemuxer
     {
+        public event Common.StreamConfigReady StreamConfigReady;
+        public event Common.StreamPacketReady StreamPacketReady;
+
         private int bufferSize = 128 * 1024;
         private unsafe byte* buffer = null;
         private unsafe AVFormatContext* formatContext = null;
@@ -31,8 +35,10 @@ namespace JuvoPlayer.RTSP
         int audio_idx = -1;
         int video_idx = -1;
 
+        private ISharedBuffer dataBuffer;
         public unsafe FFmpegDemuxer(ISharedBuffer dataBuffer, string libPath)
         {
+            this.dataBuffer = dataBuffer ?? throw new ArgumentNullException("dataBuffer cannot be null");
             try
             {
                 FFmpeg.FFmpeg.Initialize(libPath);
@@ -42,35 +48,6 @@ namespace JuvoPlayer.RTSP
             {
                 Log.Info("JuvoPlayer", "Could not load and register FFmpeg library!");
                 throw;
-            }
-
-            buffer = (byte*) FFmpeg.FFmpeg.av_malloc((ulong)bufferSize);
-            formatContext = FFmpeg.FFmpeg.avformat_alloc_context();
-            ioContext = FFmpeg.FFmpeg.avio_alloc_context(buffer,
-                                                         bufferSize,
-                                                         0,
-                                                         (void*)GCHandle.ToIntPtr(GCHandle.Alloc(dataBuffer)),
-                                                         (avio_alloc_context_read_packet)ReadPacket,
-                                                         (avio_alloc_context_write_packet)WritePacket,
-                                                         (avio_alloc_context_seek)Seek);
-            ioContext->seekable = 0;
-            ioContext->write_flag = 0;
-
-            formatContext->probesize = bufferSize;
-            formatContext->max_analyze_duration = 10 * 1000000;
-            formatContext->flags |= FFmpegMacros.AVFMT_FLAG_CUSTOM_IO;
-            formatContext->pb = ioContext;
-
-            AVProbeData probeData;
-            probeData.buf = buffer;
-            probeData.buf_size = bufferSize;
-
-            if (ioContext == null || formatContext == null)
-            {
-                DeallocFFmpeg();
-                Log.Info("JuvoPlayer", "Could not create FFmpeg context.!");
-
-                throw new Exception("Could not create FFmpeg context.");
             }
         }
 
@@ -104,9 +81,39 @@ namespace JuvoPlayer.RTSP
             int ret = -1;
             Log.Info("JuvoPlayer", "INIT");
 
+            buffer = (byte*)FFmpeg.FFmpeg.av_malloc((ulong)bufferSize);
+            formatContext = FFmpeg.FFmpeg.avformat_alloc_context();
+            ioContext = FFmpeg.FFmpeg.avio_alloc_context(buffer,
+                                                         bufferSize,
+                                                         0,
+                                                         (void*)GCHandle.ToIntPtr(GCHandle.Alloc(dataBuffer)),
+                                                         (avio_alloc_context_read_packet)ReadPacket,
+                                                         (avio_alloc_context_write_packet)WritePacket,
+                                                         (avio_alloc_context_seek)Seek);
+            ioContext->seekable = 0;
+            ioContext->write_flag = 0;
+
+            formatContext->probesize = bufferSize;
+            formatContext->max_analyze_duration = 10 * 1000000;
+            formatContext->flags |= FFmpegMacros.AVFMT_FLAG_CUSTOM_IO;
+            formatContext->pb = ioContext;
+
+            AVProbeData probeData;
+            probeData.buf = buffer;
+            probeData.buf_size = bufferSize;
+
+            if (ioContext == null || formatContext == null)
+            {
+                DeallocFFmpeg();
+                Log.Info("JuvoPlayer", "Could not create FFmpeg context.!");
+
+                throw new Exception("Could not create FFmpeg context.");
+            }
+
             fixed (AVFormatContext** formatContextPointer = &formatContext)
             {
                 ret = FFmpeg.FFmpeg.avformat_open_input(formatContextPointer, "dummy", null, null);
+                //ret = FFmpeg.FFmpeg.avformat_open_input(formatContextPointer, "rtsp://192.168.137.200/2kkk.ts", null, null);
             }
             if (ret != 0)
             {
@@ -117,9 +124,6 @@ namespace JuvoPlayer.RTSP
                 throw new Exception("Could not parse input data: " + GetErrorText(ret));
             }
 
-            Log.Info("JuvoPlayer", "INIT 2222222222");
-
-
             ret = FFmpeg.FFmpeg.avformat_find_stream_info(formatContext, null);
             if (ret < 0)
             {
@@ -129,22 +133,25 @@ namespace JuvoPlayer.RTSP
                 throw new Exception("Could not find stream info (error code: " + ret.ToString() + ")!");
             }
 
-            Log.Info("JuvoPlayer", "Stream info");
-
             audio_idx = FFmpeg.FFmpeg.av_find_best_stream(formatContext, AVMediaType.AVMEDIA_TYPE_AUDIO, -1, -1, null, 0);
             video_idx = FFmpeg.FFmpeg.av_find_best_stream(formatContext, AVMediaType.AVMEDIA_TYPE_VIDEO, -1, -1, null, 0);
-            if (audio_idx < 0 || video_idx < 0)
+            if (audio_idx < 0 && video_idx < 0)
             {
                 DeallocFFmpeg();
-                Log.Info("JuvoPlayer", "Could not find video or audio stream");
+                Log.Info("JuvoPlayer", "Could not find video or audio stream: " + audio_idx.ToString() + "      " + video_idx.ToString());
                 throw new Exception("Could not find video or audio stream!");
             }
+
+            Log.Info("JuvoPlayer", "streamids: " + audio_idx.ToString() + "      " + video_idx.ToString());
         }
 
         unsafe private void DemuxTask()
         {
             // Finish more time-consuming init things
             Init();
+
+            ReadAudioConfig();
+            ReadVideoConfig();
 
             const int kMicrosecondsPerSecond = 1000000;
             const double kOneMicrosecond = 1.0 / kMicrosecondsPerSecond;
@@ -155,7 +162,6 @@ namespace JuvoPlayer.RTSP
             };
             AVPacket pkt;
             bool parse = true;
-            Log.Info("JuvoPlayer", "XX");
 
             while (parse)
             {
@@ -220,11 +226,78 @@ namespace JuvoPlayer.RTSP
             DeallocFFmpeg();
         }
 
+        unsafe private void ReadAudioConfig()
+        {
+            AVStream* s = formatContext->streams[audio_idx];
+            AudioStreamConfig config = new AudioStreamConfig();
+
+            AVSampleFormat sampleFormat = (AVSampleFormat)s->codecpar->format;
+            config.Codec = ConvertAudioCodec(s->codecpar->codec_id);
+            //config.sample_format = ConvertSampleFormat(sample_format);
+            if (s->codecpar->bits_per_coded_sample > 0)
+            {
+                config.BitsPerChannel = s->codecpar->bits_per_coded_sample;
+            }
+            else
+            {
+                config.BitsPerChannel = FFmpeg.FFmpeg.av_get_bytes_per_sample(sampleFormat) * 8;
+                config.BitsPerChannel /= s->codecpar->channels;
+            }
+            config.ChannelLayout = s->codecpar->channels;
+            config.SampleRate = s->codecpar->sample_rate;
+
+            StreamConfigReady(config);
+        }
+
+        unsafe private void ReadVideoConfig()
+        {
+            AVStream* s = formatContext->streams[audio_idx];
+            VideoStreamConfig config = new VideoStreamConfig();
+            config.Codec = ConvertVideoCodec(s->codecpar->codec_id, s->codecpar->profile);
+            config.Size = new Tizen.Multimedia.Size(s->codecpar->width, s->codecpar->height);
+            config.FrameRate = s->r_frame_rate.num / s->r_frame_rate.den;
+
+            StreamConfigReady(config);
+        }
+
+        Tizen.Multimedia.MediaFormatAudioMimeType ConvertAudioCodec(AVCodecID codec)
+        {
+            switch (codec)
+            {
+                case AVCodecID.AV_CODEC_ID_AAC:
+                    return Tizen.Multimedia.MediaFormatAudioMimeType.Aac;
+                default:
+                   throw new Exception("Unsupported codec: " + codec.ToString());
+            }
+        }
+
+        Tizen.Multimedia.MediaFormatVideoMimeType ConvertVideoCodec(AVCodecID codec, int profile)
+        {
+            switch (codec)
+            {
+                case AVCodecID.AV_CODEC_ID_H264:
+                    return ConvertH264VideoCodecProfile(profile);
+                default:
+                    throw new Exception("Unsupported codec: " + codec.ToString());
+            }
+        }
+
+        Tizen.Multimedia.MediaFormatVideoMimeType ConvertH264VideoCodecProfile(int profile)
+        {
+            profile &= ~FFmpegMacros.FF_PROFILE_H264_CONSTRAINED;
+            profile &= ~FFmpegMacros.FF_PROFILE_H264_INTRA;
+            if (profile == FFmpegMacros.FF_PROFILE_H264_BASELINE)
+                return Tizen.Multimedia.MediaFormatVideoMimeType.H264SP;
+            else if (profile == FFmpegMacros.FF_PROFILE_H264_MAIN)
+                return Tizen.Multimedia.MediaFormatVideoMimeType.H264MP;
+            else
+                return Tizen.Multimedia.MediaFormatVideoMimeType.H264HP;
+        }
+
         public void ChangePID(int pid)
         {
             // TODO(g.skowinski): Implement.
         }
-
 
         public void Reset()
         {
@@ -254,13 +327,9 @@ namespace JuvoPlayer.RTSP
 
         static private unsafe int ReadPacket(void* @opaque, byte* @buf, int @buf_size)
         {
-            Log.Info("JuvoPlayer", "rrr");
-
             ISharedBuffer sharedBuffer;
             try
             {
-                Log.Info("JuvoPlayer", "ReadPacket!");
-
                 sharedBuffer = RetrieveSharedBufferReference(opaque);
             }
             catch(Exception)
@@ -274,16 +343,12 @@ namespace JuvoPlayer.RTSP
 
         static private unsafe int WritePacket(void* @opaque, byte* @buf, int @buf_size)
         {
-            Log.Info("JuvoPlayer", "www");
-
             // TODO(g.skowinski): Implement.
             return 0;
         }
 
         static private unsafe long Seek(void* @opaque, long @offset, int @whenc)
         {
-            Log.Info("JuvoPlayer", "sss");
-
             // TODO(g.skowinski): Implement.
             return 0;
         }

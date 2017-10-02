@@ -19,5 +19,8 @@ namespace JuvoPlayer.RTSP
         void ChangePID(int pid);
         void Reset();
         void Seek(double position);
+
+        event Common.StreamConfigReady StreamConfigReady;
+        event Common.StreamPacketReady StreamPacketReady;
     }
 }
