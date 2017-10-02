@@ -28,6 +28,9 @@ namespace JuvoPlayer.RTSP
             this.demuxer = demuxer ?? throw new ArgumentNullException("demuxer cannot be null");
             this.rtpClient = rtpClient ?? throw new ArgumentNullException("rtpClient cannot be null");
             this.currentClip = currentClip ?? throw new ArgumentNullException("clip cannot be null");
+
+            this.demuxer.StreamConfigReady += StreamConfigReady;
+            this.demuxer.StreamPacketReady += StreamPacketReady;
         }
 
         ~RTSPDataProvider()
@@ -57,7 +60,7 @@ namespace JuvoPlayer.RTSP
 
         public void Start()
         {
-            rtpClient.Start(currentClip);
+         //   rtpClient.Start(currentClip);
             demuxer.Start();
         }
     }

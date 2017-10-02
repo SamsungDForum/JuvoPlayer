@@ -15,13 +15,15 @@ namespace JuvoPlayer.Common
 {
     public class VideoStreamConfig : StreamConfig
     {
-        public VideoStreamConfig()
-        {
-        }
-
         public override StreamType StreamType()
         {
             return Common.StreamType.Video;
         }
+
+        //TODO(p.galiszewsk)
+        public Tizen.Multimedia.MediaFormatVideoMimeType Codec { get; set; }
+        public Tizen.Multimedia.Size Size { get; set; }
+        public int FrameRate { get; set; }
+        public int BitRate { get; set; }
     }
 }

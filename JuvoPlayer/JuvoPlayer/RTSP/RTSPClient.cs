@@ -177,17 +177,17 @@ namespace JuvoPlayer.RTSP
                 rtpPayloadStart += 4 + (int)rtpExtensionSize;  // extension header and extension payload
             }
 
-            Tizen.Log.Info("JuvoPlayer", "RTP Data"
-                               + " V=" + rtpVersion
-                               + " P=" + rtpPadding
-                               + " X=" + rtpRxtension
-                               + " CC=" + rtpCSRCCount
-                               + " M=" + rtpMarker
-                               + " PT=" + rtpPayloadType
-                               + " Seq=" + rtpSequenceNumber
-                               + " Time (MS)=" + rtpTimestamp / 90 // convert from 90kHZ clock to ms
-                               + " SSRC=" + rtpSSRC
-                               + " Size=" + e.Message.Data.Length);
+            //Tizen.Log.Info("JuvoPlayer", "RTP Data"
+            //                   + " V=" + rtpVersion
+            //                   + " P=" + rtpPadding
+            //                   + " X=" + rtpRxtension
+            //                   + " CC=" + rtpCSRCCount
+            //                   + " M=" + rtpMarker
+            //                   + " PT=" + rtpPayloadType
+            //                   + " Seq=" + rtpSequenceNumber
+            //                   + " Time (MS)=" + rtpTimestamp / 90 // convert from 90kHZ clock to ms
+            //                   + " SSRC=" + rtpSSRC
+            //                   + " Size=" + e.Message.Data.Length);
 
             // Check the payload type in the RTP packet matches the Payload Type value from the SDP
             if (videoPayloadType > 0 && rtpPayloadType != videoPayloadType)
@@ -196,7 +196,9 @@ namespace JuvoPlayer.RTSP
                 return; // ignore this data
             }
 
-            buffer.WriteData(e.Message.Data);
+            byte[] rtp_payload = new byte[e.Message.Data.Length - rtpPayloadStart]; // payload with RTP header removed
+            Array.Copy(e.Message.Data, rtpPayloadStart, rtp_payload, 0, rtp_payload.Length); // copy payload
+            buffer.WriteData(rtp_payload);
 
             //if (rtpPayloadType == (int)RTPPayloadType.H264)
             //{

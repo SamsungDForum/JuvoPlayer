@@ -15,15 +15,16 @@ namespace JuvoPlayer.Common
 {
     public class AudioStreamConfig : StreamConfig
     {
-
-        public AudioStreamConfig()
-        {
-
-        }
-
         public override StreamType StreamType()
         {
             return Common.StreamType.Audio;
         }
+
+        //TODO(p.galiszewsk):
+        public Tizen.Multimedia.MediaFormatAudioMimeType Codec { get; set; }
+        public int ChannelLayout { get; set; }
+        public int SampleRate { get; set; }
+        public int BitsPerChannel { get; set; }
+        public int BitRate { get; set; }
     }
 }
