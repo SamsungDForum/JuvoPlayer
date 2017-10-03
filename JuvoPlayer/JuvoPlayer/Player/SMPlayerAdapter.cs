@@ -17,16 +17,19 @@ namespace JuvoPlayer.Player
 {
     public class SMPlayerAdapter : IPlayerAdapter
     {
+        public event ShowSubtitile ShowSubtitle;
+        public event PlaybackCompleted PlaybackCompleted;
 
         public SMPlayerAdapter()
         {
 
         }
 
-        public void OnShowSubtitle(Subtitle subtitle)
+        public void AppendPacket(StreamPacket packet)
         {
 
         }
+
 
         public void Play()
         {
@@ -34,6 +37,11 @@ namespace JuvoPlayer.Player
         }
 
         public void Seek(double time)
+        {
+
+        }
+
+        public void SetAudioStreamConfig(AudioStreamConfig config)
         {
 
         }
@@ -48,12 +56,17 @@ namespace JuvoPlayer.Player
 
         }
 
-        public void SetPlaybackRate()
+        public void SetPlaybackRate(float rate)
         {
 
         }
 
-        public void SetStreamInfo()
+        public void SetSubtitleDelay(int offset)
+        {
+
+        }
+
+        public void SetVideoStreamConfig(VideoStreamConfig config)
         {
 
         }
@@ -64,6 +77,10 @@ namespace JuvoPlayer.Player
         }
 
         public void TimeUpdated(double time)
+        {
+
+        }
+        public void Pause()
         {
 
         }

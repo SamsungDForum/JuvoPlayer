@@ -14,5 +14,7 @@ namespace JuvoPlayer.Common
 {
     public class Subtitle
     {
+        public string Text { get; set; }
+        public uint Duration { get; set; }
     }
 }

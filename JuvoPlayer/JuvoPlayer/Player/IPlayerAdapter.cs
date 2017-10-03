@@ -17,14 +17,21 @@ namespace JuvoPlayer.Player
 {
     public interface IPlayerAdapter
     {
-        void OnShowSubtitle(Subtitle subtitle);
+        event ShowSubtitile ShowSubtitle;
+        event PlaybackCompleted PlaybackCompleted;
+
+        void Pause();
         void Play();
         void Seek(double time);
         void SetDuration(double duration);
         void SetExternalSubtitles(string file);
-        void SetPlaybackRate();
-        void SetStreamInfo();
+        void SetPlaybackRate(float rate);
+        void SetSubtitleDelay(int offset);
         void Stop();
         void TimeUpdated(double time);
+
+        void SetAudioStreamConfig(AudioStreamConfig config);
+        void SetVideoStreamConfig(VideoStreamConfig config);
+        void AppendPacket(StreamPacket packet);
     }
 }

@@ -19,6 +19,11 @@ namespace JuvoPlayer.Player
     public delegate void Pause();
     public delegate void Play();
     public delegate void Seek(double time);
+    public delegate void Stop();
+
+    public delegate void ShowSubtitile(Subtitle subtitle);
+    public delegate void PlaybackCompleted();
+
     public interface IPlayerController
     {
         #region ui_slots
@@ -27,6 +32,9 @@ namespace JuvoPlayer.Player
         void OnPlay();
         void OnSeek(double time);
         void OnSetExternalSubtitles(string path);
+        void OnSetPlaybackRate(float rate);
+        void OnSetSubtitleDelay(int offset);
+        void OnStop();
         #endregion
 
         #region data_provider_slots
@@ -39,5 +47,9 @@ namespace JuvoPlayer.Player
         event Pause Pause;
         event Play Play;
         event Seek Seek;
+        event Stop Stop;
+
+        event ShowSubtitile ShowSubtitle;
+        event PlaybackCompleted PlaybackCompleted;
     }
 }

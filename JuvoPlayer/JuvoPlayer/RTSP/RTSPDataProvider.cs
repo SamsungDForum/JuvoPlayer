@@ -14,6 +14,7 @@
 using JuvoPlayer.Common;
 using System;
 using System.IO;
+using Tizen;
 using Tizen.Applications;
 
 namespace JuvoPlayer.RTSP
@@ -29,8 +30,8 @@ namespace JuvoPlayer.RTSP
             this.rtpClient = rtpClient ?? throw new ArgumentNullException("rtpClient cannot be null");
             this.currentClip = currentClip ?? throw new ArgumentNullException("clip cannot be null");
 
-            this.demuxer.StreamConfigReady += StreamConfigReady;
-            this.demuxer.StreamPacketReady += StreamPacketReady;
+            this.demuxer.StreamConfigReady += OnStreamConfigReady;
+            this.demuxer.StreamPacketReady += OnStreamPacketReady;
         }
 
         ~RTSPDataProvider()
@@ -42,6 +43,16 @@ namespace JuvoPlayer.RTSP
         public event StreamConfigReady StreamConfigReady;
         public event StreamPacketReady StreamPacketReady;
         public event StreamsFound StreamsFound;
+
+        private void OnStreamConfigReady(StreamConfig config)
+        {
+            StreamConfigReady?.Invoke(config);
+        }
+
+        private void OnStreamPacketReady(StreamPacket packet)
+        {
+            StreamPacketReady?.Invoke(packet);
+        }
 
         public void OnChangeRepresentation(int representationId)
         {
@@ -60,7 +71,7 @@ namespace JuvoPlayer.RTSP
 
         public void Start()
         {
-         //   rtpClient.Start(currentClip);
+            rtpClient.Start(currentClip);
             demuxer.Start();
         }
     }

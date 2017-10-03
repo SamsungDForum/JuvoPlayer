@@ -39,6 +39,7 @@ namespace JuvoPlayer.RTSP
         public unsafe FFmpegDemuxer(ISharedBuffer dataBuffer, string libPath)
         {
             this.dataBuffer = dataBuffer ?? throw new ArgumentNullException("dataBuffer cannot be null");
+
             try
             {
                 FFmpeg.FFmpeg.Initialize(libPath);
@@ -55,7 +56,8 @@ namespace JuvoPlayer.RTSP
         {
             Log.Info("JuvoPlayer", "StartDemuxer!");
 
-            Task.Factory.StartNew(DemuxTask); // Potentially time-consuming part of initialization and demuxation loop will be executed on a detached thread.
+            // Potentially time-consuming part of initialization and demuxation loop will be executed on a detached thread.
+            Task.Run(() => DemuxTask()); 
         }
 
         private unsafe string GetErrorText(int returnCode) // -1094995529 = -0x41444E49 = "INDA" = AVERROR_INVALID_DATA
@@ -98,10 +100,6 @@ namespace JuvoPlayer.RTSP
             formatContext->flags |= FFmpegMacros.AVFMT_FLAG_CUSTOM_IO;
             formatContext->pb = ioContext;
 
-            AVProbeData probeData;
-            probeData.buf = buffer;
-            probeData.buf_size = bufferSize;
-
             if (ioContext == null || formatContext == null)
             {
                 DeallocFFmpeg();
@@ -113,7 +111,7 @@ namespace JuvoPlayer.RTSP
             fixed (AVFormatContext** formatContextPointer = &formatContext)
             {
                 ret = FFmpeg.FFmpeg.avformat_open_input(formatContextPointer, "dummy", null, null);
-                //ret = FFmpeg.FFmpeg.avformat_open_input(formatContextPointer, "rtsp://192.168.137.200/2kkk.ts", null, null);
+                //ret = FFmpeg.FFmpeg.avformat_open_input(formatContextPointer, "rtsp://192.168.137.200/video_aac2.ts", null, null);
             }
             if (ret != 0)
             {
@@ -147,11 +145,18 @@ namespace JuvoPlayer.RTSP
 
         unsafe private void DemuxTask()
         {
-            // Finish more time-consuming init things
-            Init();
+            try
+            {
+                // Finish more time-consuming init things
+                Init();
 
-            ReadAudioConfig();
-            ReadVideoConfig();
+                ReadAudioConfig();
+                ReadVideoConfig();
+            }
+            catch (Exception e)
+            {
+                Log.Error("JuvoPlayer", "An error occured: " + e.Message);
+            }
 
             const int kMicrosecondsPerSecond = 1000000;
             const double kOneMicrosecond = 1.0 / kMicrosecondsPerSecond;
@@ -168,31 +173,31 @@ namespace JuvoPlayer.RTSP
                 FFmpeg.FFmpeg.av_init_packet(&pkt);
                 if (FFmpeg.FFmpeg.av_read_frame(formatContext, &pkt) >= 0)
                 {
-                    if (pkt.stream_index == audio_idx || pkt.stream_index == video_idx)
+                    if (pkt.stream_index != audio_idx && pkt.stream_index != video_idx)
+                        continue;
+
+                    AVStream* s = formatContext->streams[pkt.stream_index];
+                    var data = pkt.data;
+                    var dataSize = pkt.size;
+
+                    var pts = FFmpeg.FFmpeg.av_rescale_q(pkt.pts, s->time_base, kMicrosBase) * kOneMicrosecond;
+                    var dts = FFmpeg.FFmpeg.av_rescale_q(pkt.dts, s->time_base, kMicrosBase) * kOneMicrosecond;
+
+                    var duration = FFmpeg.FFmpeg.av_rescale_q(pkt.duration, s->time_base, kMicrosBase) * kOneMicrosecond;
+
+                    Log.Info("JuvoPlayer", "data size: " + dataSize.ToString() + "; pts: " + pts.ToString() + "; dts: " + dts.ToString() + "; duration:" + duration);
+
+                    var streamPacket = new StreamPacket
                     {
-                        // TODO(g.skowinski): Write output data to packet object/stream
+                        StreamType = pkt.stream_index != audio_idx ? StreamType.Video : StreamType.Audio,
+                        Pts = (ulong)pts,
+                        Dts = (ulong)dts,
+                        Data = new byte[dataSize],
+                        IsKeyFrame = (pkt.flags == 1)
+                    };
+                    Marshal.Copy((IntPtr)data, streamPacket.Data, 0, dataSize);
 
-                        AVStream* s = formatContext->streams[pkt.stream_index]; // :784
-                        var data = pkt.data; // :781
-                        var data_size = pkt.size; // :781
-
-                        var pts = FFmpeg.FFmpeg.av_rescale_q(pkt.pts, s->time_base, kMicrosBase) * kOneMicrosecond; // :789
-                        var dts = FFmpeg.FFmpeg.av_rescale_q(pkt.dts, s->time_base, kMicrosBase) * kOneMicrosecond; // :790
-
-                        Log.Info("JuvoPlayer", "data size: " + data_size.ToString() + "; pts: " + pts.ToString() + "; dts: " + dts.ToString());
-
-                        var duration = FFmpeg.FFmpeg.av_rescale_q(pkt.duration, s->time_base, kMicrosBase) * kOneMicrosecond; // :786
-                        var key_frame = (pkt.flags == 1); // :787
-                        var timestamp = 0; // :791-801 - should I check for timestamp/pts/dts inconsistencies?
-
-                        // AVEncInfo* enc_info = (AVEncInfo*)FFmpeg.FFmpeg.av_packet_get_side_data(pkt, AV_PKT_DATA_ENCRYPT_INFO, null); // :807
-                        // :808-816
-
-                        /*if(video_idx != -1 && pkt.stream_index == video_idx)
-                        {
-                            FFmpeg.FFmpeg.avcodec_decode_video2();
-                        }*/
-                    }
+                    StreamPacketReady(streamPacket);
                 }
                 else
                 {
@@ -246,18 +251,18 @@ namespace JuvoPlayer.RTSP
             config.ChannelLayout = s->codecpar->channels;
             config.SampleRate = s->codecpar->sample_rate;
 
-            StreamConfigReady(config);
+            StreamConfigReady?.Invoke(config);
         }
 
         unsafe private void ReadVideoConfig()
         {
-            AVStream* s = formatContext->streams[audio_idx];
+            AVStream* s = formatContext->streams[video_idx];
             VideoStreamConfig config = new VideoStreamConfig();
             config.Codec = ConvertVideoCodec(s->codecpar->codec_id, s->codecpar->profile);
             config.Size = new Tizen.Multimedia.Size(s->codecpar->width, s->codecpar->height);
             config.FrameRate = s->r_frame_rate.num / s->r_frame_rate.den;
 
-            StreamConfigReady(config);
+            StreamConfigReady?.Invoke(config);
         }
 
         Tizen.Multimedia.MediaFormatAudioMimeType ConvertAudioCodec(AVCodecID codec)
@@ -267,7 +272,7 @@ namespace JuvoPlayer.RTSP
                 case AVCodecID.AV_CODEC_ID_AAC:
                     return Tizen.Multimedia.MediaFormatAudioMimeType.Aac;
                 default:
-                   throw new Exception("Unsupported codec: " + codec.ToString());
+                    throw new Exception("Unsupported codec: " + codec.ToString());
             }
         }
 

@@ -12,6 +12,8 @@
 // this software or its derivatives.
 
 using JuvoPlayer.Common;
+using System;
+using Tizen;
 using Tizen.Multimedia;
 
 namespace JuvoPlayer.Player
@@ -19,14 +21,25 @@ namespace JuvoPlayer.Player
     public class MultimediaPlayerAdapter : IPlayerAdapter
     {
         private ElmSharp.Window playerContainer;
+
         private Tizen.Multimedia.Player player;
+        private MediaStreamSource source = null;
+        private AudioMediaFormat audioFormat = null;
+        private VideoMediaFormat videoFormat = null;
+
+        public event ShowSubtitile ShowSubtitle;
+        public event PlaybackCompleted PlaybackCompleted;
 
         public MultimediaPlayerAdapter()
         {
             player = new Tizen.Multimedia.Player();
+            player.BufferingProgressChanged += OnBufferingProgressChanged;
+            player.ErrorOccurred += OnErrorOccured;
+            player.PlaybackCompleted += OnPlaybackCompleted;
+            player.PlaybackInterrupted += OnPlaybackInterrupted;
+            player.SubtitleUpdated += OnSubtitleUpdated;
 
             playerContainer = new ElmSharp.Window("player");
-
             player.Display = new Display(playerContainer);
             player.DisplaySettings.Mode = PlayerDisplayMode.FullScreen;
 //            player.DisplaySettings.SetRoi(new Tizen.Multimedia.Rectangle(300, 300, 800, 600));
@@ -34,49 +47,144 @@ namespace JuvoPlayer.Player
             playerContainer.BringDown();
         }
 
-        public void OnShowSubtitle(Subtitle subtitle)
+        private void OnSubtitleUpdated(object sender, SubtitleUpdatedEventArgs e)
         {
+            Log.Info("JuvoPlayer", "OnSubtitleUpdated");
+            Subtitle subtitle = new Subtitle
+            {
+                Duration = e.Duration,
+                Text = e.Text
+            };
 
+            ShowSubtitle(subtitle);
+        }
+
+        private void OnBufferingProgressChanged(object sender, BufferingProgressChangedEventArgs e)
+        {
+            Log.Info("JuvoPlayer", "OnBufferingProgressChanged: " + e.Percent);
+        }
+
+        private void OnPlaybackInterrupted(object sender, PlaybackInterruptedEventArgs e)
+        {
+            Log.Info("JuvoPlayer", "OnPlaybackInterrupted: " + e.Reason);
+        }
+
+        private void OnPlaybackCompleted(object sender, EventArgs e)
+        {
+            Log.Info("JuvoPlayer", "OnPlaybackCompleted");
+
+            PlaybackCompleted();
+        }
+
+        private void OnErrorOccured(object sender, PlayerErrorOccurredEventArgs e)
+        {
+            Log.Info("JuvoPlayer", "OnErrorOccured: " + e.Error.ToString());
+        }
+
+        public void AppendPacket(StreamPacket packet)
+        {
+            if (packet.StreamType == StreamType.Audio)
+                AppendPacket(videoFormat, packet);
+            else if (packet.StreamType == StreamType.Video)
+                AppendPacket(audioFormat, packet);
+        }
+
+        private void AppendPacket(MediaFormat format, StreamPacket packet)
+        {
+            if (source == null)
+            {
+                Log.Info("JuvoPlayer", "stream has not been properly configured");
+                return;
+            }
+
+            Log.Info("JuvoPlayer", "Append packet");
+
+            var mediaPacket = MediaPacket.Create(audioFormat);
+            mediaPacket.Dts = packet.Dts;
+            mediaPacket.Pts = packet.Pts;
+            if (packet.IsKeyFrame)
+                mediaPacket.BufferFlags = MediaPacketBufferFlags.SyncFrame;
+
+            var buffer = mediaPacket.Buffer;
+            buffer.CopyFrom(packet.Data, 0, packet.Data.Length);
         }
 
         public void Play()
         {
-
+            player.Start();
         }
 
         public void Seek(double time)
         {
+            player.SetPlayPositionAsync((int)time, false);
+        }
 
+        public void SetAudioStreamConfig(AudioStreamConfig config)
+        {
+            if (config == null)
+                throw new ArgumentNullException("config cannot be null");
+
+            audioFormat = new AudioMediaFormat(config.Codec, config.ChannelLayout, config.SampleRate, config.BitsPerChannel, config.BitRate);
+
+            StreamInitialized();
         }
 
         public void SetDuration(double duration)
         {
-
         }
 
         public void SetExternalSubtitles(string file)
         {
-
+            player.SetSubtitle(file);
         }
 
-        public void SetPlaybackRate()
+        public void SetPlaybackRate(float rate)
         {
-
+            player.SetPlaybackRate(rate);
         }
 
-        public void SetStreamInfo()
+        public void SetVideoStreamConfig(VideoStreamConfig config)
         {
+            if (config == null)
+                throw new ArgumentNullException("config cannot be null");
 
+            videoFormat = new VideoMediaFormat(config.Codec, config.Size, config.FrameRate, config.BitRate);
+
+            StreamInitialized();
         }
 
         public void Stop()
         {
+            player.Stop();
+        }
 
+        private void StreamInitialized()
+        {
+            Log.Info("JuvoPlayer", "Stream initialized");
+
+            if (audioFormat == null || videoFormat == null)
+                return;
+
+            source = new MediaStreamSource(audioFormat, videoFormat);
+            player.SetSource(source);
+            player.PrepareAsync();
+
+            Log.Info("JuvoPlayer", "Stream initialized 222");
         }
 
         public void TimeUpdated(double time)
         {
 
+        }
+
+        public void SetSubtitleDelay(int offset)
+        {
+            player.SetSubtitleOffset(offset);
+        }
+
+        public void Pause()
+        {
+            player.Pause();
         }
     }
 

@@ -19,9 +19,12 @@ namespace JuvoPlayer.Player
     public class VideoPacketStream : IPacketStream
     {
         private IPlayerAdapter playerAdapter;
-        public VideoPacketStream(IPlayerAdapter player)
+        private StreamConfig config;
+
+        public VideoPacketStream(IPlayerAdapter player, StreamConfig config)
         {
             playerAdapter = player ?? throw new ArgumentNullException("player cannot be null");
+            this.config = config ?? throw new ArgumentNullException("config cannot be null");
         }
 
         public void OnAppendPacket(StreamPacket packet)
