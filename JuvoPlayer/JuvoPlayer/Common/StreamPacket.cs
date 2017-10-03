@@ -15,5 +15,10 @@ namespace JuvoPlayer.Common
 {
     public class StreamPacket
     {
+        public byte[] Data = null;
+        public StreamType StreamType { get; set; }
+        public ulong Dts { get; set; }
+        public ulong Pts { get; set; }
+        public bool IsKeyFrame { get; set; }
     }
 }

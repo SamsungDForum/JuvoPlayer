@@ -13,15 +13,21 @@
 
 using JuvoPlayer.Common;
 using System;
+using Tizen;
 
 namespace JuvoPlayer.Player
 {
     public class AudioPacketStream : IPacketStream
     {
         private IPlayerAdapter playerAdapter;
-        public AudioPacketStream(IPlayerAdapter player)
+        private StreamConfig config;
+
+        public AudioPacketStream(IPlayerAdapter player, StreamConfig config)
         {
+            Log.Info("JuvoPlayer", "AudioPacketStream");
+
             playerAdapter = player ?? throw new ArgumentNullException("player cannot be null");
+            this.config = config ?? throw new ArgumentNullException("config cannot be null");
         }
 
         public void OnAppendPacket(StreamPacket packet)

@@ -43,11 +43,12 @@ namespace JuvoPlayer
             //TODO(p.galiszewsk)
             var playerAdapter = new MultimediaPlayerAdapter();
             playerController = new PlayerController(playerAdapter);
-            uiController.ChangeRepresentation += playerController.ChangeRepresentation; //TODO(p.galiszewsk): is it in proper place
+//            uiController.ChangeRepresentation += playerController.ChangeRepresentation; //TODO(p.galiszewsk): is it in proper place
             uiController.Pause += playerController.OnPause;
             uiController.Play += playerController.OnPlay;
             uiController.Seek += playerController.OnSeek;
             uiController.SetExternalSubtitles += playerController.OnSetExternalSubtitles;
+            playerController.ShowSubtitle += uiController.OnRenderSubtitle;
 
             uiController.Initialize();
         }
@@ -59,11 +60,14 @@ namespace JuvoPlayer
             dataProvider.StreamConfigReady += playerController.OnStreamConfigReady;
             dataProvider.StreamPacketReady += playerController.OnStreamPacketReady;
             dataProvider.StreamsFound += playerController.OnStreamsFound;
+
             dataProvider.Start();
         }
 
         private void OnStop()
         {
+            Log.Info("JuvoPlayer", "OnStop");
+
             dataProvider = null;
         }
 
@@ -88,6 +92,8 @@ namespace JuvoPlayer
 
         protected override void OnTerminate()
         {
+            Log.Info("JuvoPlayer", "OnTerminate");
+
             //This function is called when the app exit normally.
             base.OnTerminate();
         }
