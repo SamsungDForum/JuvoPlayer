@@ -25,11 +25,19 @@ namespace JuvoPlayer.Player
         {
             playerAdapter = player ?? throw new ArgumentNullException("player cannot be null");
             this.config = config ?? throw new ArgumentNullException("config cannot be null");
+
+            if (!(config is VideoStreamConfig))
+                throw new ArgumentException("config should be videoconfig");
+
+            playerAdapter.SetVideoStreamConfig(config as VideoStreamConfig);
         }
 
         public void OnAppendPacket(StreamPacket packet)
         {
+            if (packet.StreamType != StreamType.Video)
+                throw new ArgumentException("packet should be video");
 
+            playerAdapter.AppendPacket(packet);
         }
 
         public void OnClearStream()

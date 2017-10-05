@@ -66,7 +66,7 @@ namespace JuvoPlayer.Player
         public void OnPlay()
         {
             playerAdapter.Play();
-            Play();
+//            Play();
         }
 
         public void OnSeek(double time)
@@ -89,7 +89,7 @@ namespace JuvoPlayer.Player
 
         public void OnStreamPacketReady(StreamPacket packet)
         {
-            Log.Info("JuvoPlayer", "OnStreamPacketReady");
+//            Log.Info("JuvoPlayer", "OnStreamPacketReady");
 
             if (!Streams.ContainsKey(packet.StreamType))
                 throw new Exception("Received packet for not configured stream");

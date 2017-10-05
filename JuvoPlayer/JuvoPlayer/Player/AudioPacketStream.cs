@@ -13,6 +13,7 @@
 
 using JuvoPlayer.Common;
 using System;
+using System.Collections.Generic;
 using Tizen;
 
 namespace JuvoPlayer.Player
@@ -28,11 +29,19 @@ namespace JuvoPlayer.Player
 
             playerAdapter = player ?? throw new ArgumentNullException("player cannot be null");
             this.config = config ?? throw new ArgumentNullException("config cannot be null");
+
+            if (!(config is AudioStreamConfig))
+                throw new ArgumentException("config should be audioconfig");
+
+            playerAdapter.SetAudioStreamConfig(config as AudioStreamConfig);
         }
 
         public void OnAppendPacket(StreamPacket packet)
         {
+            if (packet.StreamType != StreamType.Audio)
+                throw new ArgumentException("packet should be audio");
 
+            playerAdapter.AppendPacket(packet);
         }
 
         public void OnClearStream()

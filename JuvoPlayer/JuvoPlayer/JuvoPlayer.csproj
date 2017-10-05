@@ -124,6 +124,10 @@
       <Project>{1ac958d3-6fdf-4d80-8155-1a4f17c2c008}</Project>
       <Name>RTSP</Name>
     </ProjectReference>
+    <ProjectReference Include="..\..\thirdparty\SMPlayerCS\SMPlayerCS.csproj">
+      <Project>{14fb2c4e-7cd5-4b92-84a7-26bef2d18ee8}</Project>
+      <Name>SMPlayerCS</Name>
+    </ProjectReference>
   </ItemGroup>
   <Import Project="$(MSBuildToolsPath)\Microsoft.CSharp.targets" />
   <!-- To modify your build process, add your task inside one of the targets below and uncomment it.

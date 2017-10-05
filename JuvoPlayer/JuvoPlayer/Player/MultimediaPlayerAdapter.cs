@@ -13,6 +13,8 @@
 
 using JuvoPlayer.Common;
 using System;
+using System.Threading;
+using System.Threading.Tasks;
 using Tizen;
 using Tizen.Multimedia;
 
@@ -29,6 +31,8 @@ namespace JuvoPlayer.Player
 
         public event ShowSubtitile ShowSubtitle;
         public event PlaybackCompleted PlaybackCompleted;
+
+        bool append = false;
 
         public MultimediaPlayerAdapter()
         {
@@ -84,9 +88,9 @@ namespace JuvoPlayer.Player
         public void AppendPacket(StreamPacket packet)
         {
             if (packet.StreamType == StreamType.Audio)
-                AppendPacket(videoFormat, packet);
-            else if (packet.StreamType == StreamType.Video)
                 AppendPacket(audioFormat, packet);
+            else if (packet.StreamType == StreamType.Video)
+                AppendPacket(videoFormat, packet);
         }
 
         private void AppendPacket(MediaFormat format, StreamPacket packet)
@@ -97,25 +101,56 @@ namespace JuvoPlayer.Player
                 return;
             }
 
-            Log.Info("JuvoPlayer", "Append packet");
+            try
+            {
+                Log.Info("JuvoPlayer", "Append packet " + packet.StreamType.ToString());
 
-            var mediaPacket = MediaPacket.Create(audioFormat);
-            mediaPacket.Dts = packet.Dts;
-            mediaPacket.Pts = packet.Pts;
-            if (packet.IsKeyFrame)
-                mediaPacket.BufferFlags = MediaPacketBufferFlags.SyncFrame;
+                var mediaPacket = MediaPacket.Create(format);
+                mediaPacket.Dts = packet.Dts;
+                mediaPacket.Pts = packet.Pts;
+                if (packet.IsKeyFrame)
+                    mediaPacket.BufferFlags = MediaPacketBufferFlags.SyncFrame;
 
-            var buffer = mediaPacket.Buffer;
-            buffer.CopyFrom(packet.Data, 0, packet.Data.Length);
+                var buffer = mediaPacket.Buffer;
+                buffer.CopyFrom(packet.Data, 0, packet.Data.Length);
+
+                source.Push(mediaPacket);
+            }
+            catch (Exception e)
+            {
+                Log.Error("JuvoPlayer", "error on append packet: " + e.GetType().ToString() + " " + e.Message);
+            }
         }
 
         public void Play()
         {
-            player.Start();
+            if (source == null)
+            {
+                Log.Info("JuvoPlayer", "stream has not been properly configured");
+                return;
+            }
+
+            Log.Info("JuvoPlayer", "Play");
+
+            try
+            { 
+                player.Start();
+            }
+            catch (Exception e)
+            {
+                Log.Info("JuvoPlayer", "Play exception: " + e.Message);
+            }
+
         }
 
         public void Seek(double time)
         {
+            if (source == null)
+            {
+                Log.Info("JuvoPlayer", "stream has not been properly configured");
+                return;
+            }
+
             player.SetPlayPositionAsync((int)time, false);
         }
 
@@ -166,9 +201,14 @@ namespace JuvoPlayer.Player
                 return;
 
             source = new MediaStreamSource(audioFormat, videoFormat);
-            player.SetSource(source);
-            player.PrepareAsync();
 
+            player.SetSource(source);
+            var task = Task.Run(async () => { await player.PrepareAsync(); });
+            task.Wait();
+            if (task.IsFaulted)
+            {
+                Log.Info("JuvoPlayer", task.Exception.Flatten().InnerException.Message);
+            }
             Log.Info("JuvoPlayer", "Stream initialized 222");
         }
 
