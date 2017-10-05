@@ -111,7 +111,7 @@ namespace JuvoPlayer.RTSP
             fixed (AVFormatContext** formatContextPointer = &formatContext)
             {
                 ret = FFmpeg.FFmpeg.avformat_open_input(formatContextPointer, "dummy", null, null);
-                //ret = FFmpeg.FFmpeg.avformat_open_input(formatContextPointer, "rtsp://192.168.137.200/video_aac2.ts", null, null);
+                //ret = FFmpeg.FFmpeg.avformat_open_input(formatContextPointer, "rtsp://192.168.137.200/h264+mp2.ts", null, null);
             }
             if (ret != 0)
             {
@@ -185,7 +185,7 @@ namespace JuvoPlayer.RTSP
 
                     var duration = FFmpeg.FFmpeg.av_rescale_q(pkt.duration, s->time_base, kMicrosBase) * kOneMicrosecond;
 
-                    Log.Info("JuvoPlayer", "data size: " + dataSize.ToString() + "; pts: " + pts.ToString() + "; dts: " + dts.ToString() + "; duration:" + duration);
+//                    Log.Info("JuvoPlayer", "data size: " + dataSize.ToString() + "; pts: " + pts.ToString() + "; dts: " + dts.ToString() + "; duration:" + duration);
 
                     var streamPacket = new StreamPacket
                     {
@@ -270,6 +270,8 @@ namespace JuvoPlayer.RTSP
             switch (codec)
             {
                 case AVCodecID.AV_CODEC_ID_AAC:
+                    return Tizen.Multimedia.MediaFormatAudioMimeType.Aac;
+                case AVCodecID.AV_CODEC_ID_MP2:
                     return Tizen.Multimedia.MediaFormatAudioMimeType.Aac;
                 default:
                     throw new Exception("Unsupported codec: " + codec.ToString());

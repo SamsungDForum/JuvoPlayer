@@ -13,6 +13,7 @@
 
 using JuvoPlayer.Common;
 using System.Collections.Generic;
+using Tizen;
 using Tizen.NUI;
 using Tizen.NUI.BaseComponents;
 
@@ -71,35 +72,41 @@ namespace JuvoPlayer.UI
         {
             if (e.Key.State == Key.StateType.Down)
             {
-                if (e.Key.KeyPressedName == "Right")
+                Log.Info("JuvoPlayer", e.Key.KeyPressedName);
+
+                if (e.Key.KeyPressedName == "1")
                 {
                     myText.TextColor = Color.White;
 
                     ClipDefinition clip1 = new ClipDefinition()
                     {
-                        Type = "RTP",
+                        Type = "RTSP",
                         Url = "rtsp://192.168.137.200/2kkk.ts"
 
                     };
 
                     ShowClip(clip1);
                 }
-                else if (e.Key.KeyPressedName == "Left")
+                else if (e.Key.KeyPressedName == "2")
                 {
                     myText.TextColor = Color.Black;
 
                     ClipDefinition clip2 = new ClipDefinition()
                     {
-                        Type = "RTP",
+                        Type = "RTSP",
                         Url = "test"
 
                     };
 
                     ShowClip(clip2);
                 }
-                else if (e.Key.KeyPressedName == "Esc")
+                else if (e.Key.KeyPressedName == "XF86Back")
                 {
                     Stop();
+                }
+                else if (e.Key.KeyPressedName == "Return")
+                {
+                    Play();
                 }
             }
 
