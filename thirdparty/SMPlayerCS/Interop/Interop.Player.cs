@@ -78,7 +78,7 @@ internal static partial class Interop
         [DllImport(Libraries.SMPlayer, EntryPoint = "SetAppSrcVideoDataEnoughCallback", CallingConvention = CallingConvention.Cdecl)]
         public static extern bool SetAppSrcVideoDataEnoughCallback(SmPlayerAppSrcDataEnoughCallback cbFunction, IntPtr user_param);
 
-        [DllImport(Libraries.SMPlayer, EntryPoint = "SubmitEOS", CallingConvention = CallingConvention.Cdecl)]
+        [DllImport(Libraries.SMPlayer, EntryPoint = "SubmitEOSPacket", CallingConvention = CallingConvention.Cdecl)]
         public static extern bool SubmitEOS(TrackType_Samsung eStreamType);
 
         [DllImport(Libraries.SMPlayer, EntryPoint = "SetAppSrcDuration", CallingConvention = CallingConvention.Cdecl)]
@@ -123,6 +123,9 @@ internal static partial class Interop
 
         [DllImport(Libraries.SMPlayer, EntryPoint = "SetDisplayWin", CallingConvention = CallingConvention.Cdecl)]
         public static extern bool SetDisplayWin(int winId, int x, int y, int width, int height);
+
+        [DllImport(Libraries.SMPlayer, EntryPoint = "SetDisplay", CallingConvention = CallingConvention.Cdecl)]
+        public static extern bool SetDisplay(PlayerDisplayType_Samsung type,IntPtr display);
 
         [DllImport(Libraries.SMPlayer, EntryPoint = "StartSubtitle", CallingConvention = CallingConvention.Cdecl)]
         public static extern bool StartSubtitle(string pFilePath, SmpSubtitleDataCallback cbFunction);

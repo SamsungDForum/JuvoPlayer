@@ -14,13 +14,12 @@
 using CSPlayer;
 using JuvoPlayer.Common;
 using System;
+using System.Runtime.InteropServices;
 
 namespace JuvoPlayer.Player
 {
     class CSDemoPlayerListener : IPlayerEventListener
     {
-
-
         //This param and setPlayer() is just used for internal test print dlog, not official code
         private CSPlayer.IPlayerAdapter player;
         public void setPlayer(CSPlayer.IPlayerAdapter playerInstance)
@@ -111,14 +110,14 @@ namespace JuvoPlayer.Player
         }
     }
 
-    public class SMPlayerAdapter : IPlayerAdapter
+    public class SMPlayerAdapter1 : IPlayerAdapter
     {
         public event ShowSubtitile ShowSubtitle;
         public event PlaybackCompleted PlaybackCompleted;
 
         CSPlayer.SMplayerAdapter playerAdatpter;
-
-        public SMPlayerAdapter()
+        static public HandleRef refMainStage;
+        public SMPlayerAdapter1()
         {
             try
             {
@@ -126,9 +125,15 @@ namespace JuvoPlayer.Player
                 var playerEventListener = new CSDemoPlayerListener();
                 playerAdatpter.RegisterPlayerEventListener(playerEventListener);
                 var playerContainer = new ElmSharp.Window("player");
-//                playerAdatpter.SetDisplay(playerContainer., 0, 0, 1920, 1080);
+
+                //                playerAdatpter.SetDisplay(PlayerDisplayType_Samsung.PLAYER_DISPLAY_TYPE_OVERLAY, playerContainer);
+                //                playerAdatpter.SetDisplay(playerContainer, 0, 0, 1920, 1080);
+                Tizen.Log.Info("JuvoPlayer", "2222222222222222222222222222222222222222");
+
                 playerAdatpter.Initialize();
                 playerAdatpter.PrepareES();
+                Tizen.Log.Info("JuvoPlayer", "33333333333333333333333333333333333");
+
             }
             catch (Exception e)
             {

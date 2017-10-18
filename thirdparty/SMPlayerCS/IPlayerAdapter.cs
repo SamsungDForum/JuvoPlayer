@@ -3,6 +3,13 @@ using System.Runtime.InteropServices;
 
 namespace CSPlayer
 {
+    public enum PlayerDisplayType_Samsung
+    {
+        PLAYER_DISPLAY_TYPE_OVERLAY = 0,    /**< Overlay surface display */
+        PLAYER_DISPLAY_TYPE_EVAS,           /**< Evas image object surface display */
+        PLAYER_DISPLAY_TYPE_NONE,           /**< This disposes off buffers */
+    };
+
     public enum TrackType_Samsung
     {
         TRACK_TYPE_AUDIO = 0,              /**< track type audio */
@@ -138,12 +145,13 @@ namespace CSPlayer
         bool SetVideoStreamInfo(VideoStreamInfo_Samsung pVideoStreamInfo);
 
 
-        bool SetDisplay(int winId, int x, int y, int width, int height);    //Need to confirm with cp side, this winId is wayland window id, need to create by App
+        //bool SetDisplay(int winId, int x, int y, int width, int height);    //Need to confirm with cp side, this winId is wayland window id, need to create by App
                                                                             //For Display below APIs need to confirm with cp / app side if they need
                                                                             //int32_t SetDisplay(void* display, bool is_windowless) override;
                                                                             //int32_t SetDisplayRect(const PP_Rect& display_rect,const PP_FloatRect& crop_ratio_rect) override;
                                                                             //int32_t SetDisplayMode(PP_MediaPlayerDisplayMode display_mode) override;
-                                                                            //bool IsDisplayModeSupported(PP_MediaPlayerDisplayMode display_mode) override;                                                                     
+                                                                            //bool IsDisplayModeSupported(PP_MediaPlayerDisplayMode display_mode) override;
+        bool SetDisplay(PlayerDisplayType_Samsung type, IntPtr display);              //New API, display should be a evas handler, its type should be elm_win.
 
 
 
