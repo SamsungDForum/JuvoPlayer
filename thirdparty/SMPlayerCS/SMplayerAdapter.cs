@@ -424,9 +424,10 @@ namespace CSPlayer
             return result;
         }
 
-        public bool SetDisplay(int winId, int x, int y, int width, int height)
+        public bool SetDisplay(PlayerDisplayType_Samsung type, IntPtr display)
         {
-            bool result = NativeSMPlayer.SetDisplayWin(winId, x, y, width, height);
+            //bool result = NativeSMPlayer.SetDisplayWin(winId, x, y, width, height);
+            bool result = NativeSMPlayer.SetDisplay(type, display);
             return result;
         }
 

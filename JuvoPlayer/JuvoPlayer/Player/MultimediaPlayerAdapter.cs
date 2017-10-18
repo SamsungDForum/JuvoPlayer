@@ -32,8 +32,6 @@ namespace JuvoPlayer.Player
         public event ShowSubtitile ShowSubtitle;
         public event PlaybackCompleted PlaybackCompleted;
 
-        bool append = false;
-
         public MultimediaPlayerAdapter()
         {
             player = new Tizen.Multimedia.Player();
@@ -46,7 +44,6 @@ namespace JuvoPlayer.Player
             playerContainer = new ElmSharp.Window("player");
             player.Display = new Display(playerContainer);
             player.DisplaySettings.Mode = PlayerDisplayMode.FullScreen;
-//            player.DisplaySettings.SetRoi(new Tizen.Multimedia.Rectangle(300, 300, 800, 600));
             playerContainer.Show();
             playerContainer.BringDown();
         }

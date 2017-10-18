@@ -41,7 +41,7 @@ namespace JuvoPlayer
             uiController.Stop += OnStop;
 
             //TODO(p.galiszewsk)
-            var playerAdapter = new MultimediaPlayerAdapter();
+            var playerAdapter = new SMPlayerAdapter1();
             playerController = new PlayerController(playerAdapter);
 //            uiController.ChangeRepresentation += playerController.ChangeRepresentation; //TODO(p.galiszewsk): is it in proper place
             uiController.Pause += playerController.OnPause;
