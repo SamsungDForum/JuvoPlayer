@@ -2,4 +2,4 @@
 .vs
 bin
 obj
-JuvoPlayer.project.lock.json
+*.lock.json

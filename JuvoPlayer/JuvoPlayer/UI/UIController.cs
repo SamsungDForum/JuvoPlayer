@@ -47,7 +47,7 @@ namespace JuvoPlayer.UI
             //Create a View instance and add it to the stage
             myView = new View();
             myView.Size2D = new Size2D(300, 200);
-            myView.BackgroundColor = Color.Red;
+            myView.BackgroundColor = new Color(1.0f, 1.0f, 1.0f, 0.1f);
             myView.Position = new Position(810, 440, 0);
             //Subscribe Key Event
             myView.Focusable = true;
@@ -56,7 +56,7 @@ namespace JuvoPlayer.UI
             Window.Instance.GetDefaultLayer().Add(myView);
 
             //Create a child view and add it to the parent view.
-            myText = new TextLabel("Hello World")
+            myText = new TextLabel("JuvoPlayer")
             {
                 Position = new Position(40, 80, 0),
                 TextColor = Color.Black,
@@ -64,6 +64,8 @@ namespace JuvoPlayer.UI
             };
 
             myView.Add(myText);
+
+            Window.Instance.BackgroundColor = new Color(0.0f, 0.0f, 0.0f, 0.0f);
 
             FocusManager.Instance.SetCurrentFocusView(myView);
         }
