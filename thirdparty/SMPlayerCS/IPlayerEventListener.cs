@@ -31,11 +31,6 @@ namespace CSPlayer
 
     public interface IPlayerEventListener
     {
-
-        //This setPlayer() is not API ,just for our internal dlog test
-        void setPlayer(IPlayerAdapter playerInstance);
-
-
         //OnEnoughData means that sm-player dont want you to send data with type streamType, please stop submit and wait for related OnNeedData()
         void OnEnoughData(StreamType_Samsung streamType);
 

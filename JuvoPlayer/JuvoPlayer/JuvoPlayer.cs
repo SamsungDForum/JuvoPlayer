@@ -11,10 +11,12 @@
 // damages suffered by licensee as a result of using, modifying or distributing
 // this software or its derivatives.
 
+using CSPlayer;
 using JuvoPlayer.Common;
 using JuvoPlayer.Player;
 using JuvoPlayer.RTSP;
 using JuvoPlayer.UI;
+using System;
 using Tizen;
 using Tizen.Applications;
 using Tizen.NUI;
@@ -40,8 +42,7 @@ namespace JuvoPlayer
             uiController.ShowClip += OnShowClip;
             uiController.Stop += OnStop;
 
-            //TODO(p.galiszewsk)
-            var playerAdapter = new SMPlayerAdapter1();
+            var playerAdapter = new SMPlayerAdapter();
             playerController = new PlayerController(playerAdapter);
 //            uiController.ChangeRepresentation += playerController.ChangeRepresentation; //TODO(p.galiszewsk): is it in proper place
             uiController.Pause += playerController.OnPause;

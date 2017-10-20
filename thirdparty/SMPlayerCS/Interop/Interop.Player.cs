@@ -78,7 +78,7 @@ internal static partial class Interop
         [DllImport(Libraries.SMPlayer, EntryPoint = "SetAppSrcVideoDataEnoughCallback", CallingConvention = CallingConvention.Cdecl)]
         public static extern bool SetAppSrcVideoDataEnoughCallback(SmPlayerAppSrcDataEnoughCallback cbFunction, IntPtr user_param);
 
-        [DllImport(Libraries.SMPlayer, EntryPoint = "SubmitEOSPacket", CallingConvention = CallingConvention.Cdecl)]
+        [DllImport(Libraries.SMPlayer, EntryPoint = "SubmitEOS", CallingConvention = CallingConvention.Cdecl)]
         public static extern bool SubmitEOS(TrackType_Samsung eStreamType);
 
         [DllImport(Libraries.SMPlayer, EntryPoint = "SetAppSrcDuration", CallingConvention = CallingConvention.Cdecl)]
@@ -90,8 +90,8 @@ internal static partial class Interop
         [DllImport(Libraries.SMPlayer, EntryPoint = "SetAudioStreamInfo", CallingConvention = CallingConvention.Cdecl)]
         public static extern bool SetAudioStreamInfo(AudioStreamInfo_Samsung pAudioStreamInfo);
 
-        [DllImport(Libraries.SMPlayer, EntryPoint = "SubmitPacket", CallingConvention = CallingConvention.Cdecl)]
-        public static extern bool SubmitPacket(IntPtr pBuf, uint iSize, System.UInt64 iPTS, TrackType_Samsung eStreamType, IntPtr drm_info);
+        [DllImport(Libraries.SMPlayer, EntryPoint = "SubmitPacket", CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
+        public static extern bool SubmitPacket(IntPtr  pBuf, uint iSize, System.UInt64 iPTS, TrackType_Samsung eStreamType, IntPtr drm_info);
         //unsigned char *pBuf I use IntPtr need to check if OK
 
         [DllImport(Libraries.SMPlayer, EntryPoint = "SetAppInfo", CallingConvention = CallingConvention.Cdecl)]

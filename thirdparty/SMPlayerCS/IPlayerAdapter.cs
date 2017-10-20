@@ -94,7 +94,7 @@ namespace CSPlayer
     public interface IPlayerAdapter
     {
         // Player preparing
-        bool Initialize();
+        bool Initialize(bool isEsPlay);
 
         bool Reset();
 
