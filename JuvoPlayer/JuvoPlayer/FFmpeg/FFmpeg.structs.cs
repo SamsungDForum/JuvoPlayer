@@ -246,7 +246,7 @@ namespace JuvoPlayer.FFmpeg
         public AVPacketSideDataType @type;
     }
 
-    public unsafe struct AVPacket
+    /*public unsafe struct AVPacket
     {
         public AVBufferRef* @buf;
         public long @pts;
@@ -260,6 +260,22 @@ namespace JuvoPlayer.FFmpeg
         public long @duration;
         public long @pos;
         public long @convergence_duration;
+    }*/
+
+    public unsafe struct AVPacket
+    {
+        public AVBufferRef* @buf;
+        public System.Int64 @pts;
+        public System.Int64 @dts;
+        public byte* @data;
+        public int @size;
+        public int @stream_index;
+        public int @flags;
+        public AVPacketSideData* @side_data;
+        public int @side_data_elems;
+        public System.Int64 @duration;
+        public System.Int64 @pos;
+        public System.Int64 @convergence_duration;
     }
 
     public unsafe struct AVCodecContext

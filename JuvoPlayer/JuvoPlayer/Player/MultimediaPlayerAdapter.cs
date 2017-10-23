@@ -130,7 +130,7 @@ namespace JuvoPlayer.Player
             Log.Info("JuvoPlayer", "Play");
 
             try
-            { 
+            {
                 player.Start();
             }
             catch (Exception e)
@@ -156,9 +156,45 @@ namespace JuvoPlayer.Player
             if (config == null)
                 throw new ArgumentNullException("config cannot be null");
 
-            audioFormat = new AudioMediaFormat(config.Codec, config.ChannelLayout, config.SampleRate, config.BitsPerChannel, config.BitRate);
+            audioFormat = new AudioMediaFormat(CastAudioCodedToAudioMimeType(config.Codec), config.ChannelLayout, config.SampleRate, config.BitsPerChannel, config.BitRate);
 
             StreamInitialized();
+        }
+
+        private MediaFormatAudioMimeType CastAudioCodedToAudioMimeType(AudioCodec audioCodec)
+        {
+            switch (audioCodec)
+            {
+                case AudioCodec.AAC:
+                    return MediaFormatAudioMimeType.Aac;
+                case AudioCodec.MP3:
+                    return MediaFormatAudioMimeType.MP3;
+                case AudioCodec.PCM:
+                    return MediaFormatAudioMimeType.Pcm;
+                case AudioCodec.VORBIS:
+                    return MediaFormatAudioMimeType.Vorbis;
+                case AudioCodec.FLAC:
+                    return MediaFormatAudioMimeType.Flac;
+                case AudioCodec.AMR_NB:
+                    return MediaFormatAudioMimeType.AmrNB;
+                case AudioCodec.AMR_WB:
+                    return MediaFormatAudioMimeType.AmrWB;
+                case AudioCodec.WMAV1:
+                    return MediaFormatAudioMimeType.Wma1;
+                case AudioCodec.WMAV2:
+                    return MediaFormatAudioMimeType.Wma2;
+                case AudioCodec.PCM_MULAW:
+                case AudioCodec.GSM_MS:
+                case AudioCodec.PCM_S16BE:
+                case AudioCodec.PCM_S24BE:
+                case AudioCodec.OPUS:
+                case AudioCodec.AC3:
+                case AudioCodec.EAC3:
+                case AudioCodec.MP2:
+                case AudioCodec.DTS:
+                    throw new NotImplementedException();
+            }
+            return new MediaFormatAudioMimeType();
         }
 
         public void SetDuration(double duration)
@@ -180,9 +216,36 @@ namespace JuvoPlayer.Player
             if (config == null)
                 throw new ArgumentNullException("config cannot be null");
 
-            videoFormat = new VideoMediaFormat(config.Codec, config.Size, config.FrameRate, config.BitRate);
+            videoFormat = new VideoMediaFormat(CastVideoCodedToAudioMimeType(config.Codec), config.Size, config.FrameRate, config.BitRate);
 
             StreamInitialized();
+        }
+
+        private MediaFormatVideoMimeType CastVideoCodedToAudioMimeType(VideoCodec videoCodec)
+        {
+            switch (videoCodec)
+            {
+                case VideoCodec.H263:
+                    return MediaFormatVideoMimeType.H263P;
+                case VideoCodec.H264:
+                    return MediaFormatVideoMimeType.H264HP; // TODO(g.skowinski): H264HP? H264MP? H264SP?
+                case VideoCodec.H265:
+                    throw new NotImplementedException(); // TODO(g.skowinski): ???
+                case VideoCodec.MPEG2:
+                    return MediaFormatVideoMimeType.Mpeg2HP; // TODO(g.skowinski): HP? MP? SP?
+                case VideoCodec.MPEG4:
+                    return MediaFormatVideoMimeType.Mpeg4SP; // TODO(g.skowinski): Asp? SP?
+                case VideoCodec.THEORA:
+                case VideoCodec.VC1:
+                case VideoCodec.VP8:
+                case VideoCodec.VP9:
+                case VideoCodec.WMV1:
+                case VideoCodec.WMV2:
+                case VideoCodec.WMV3:
+                case VideoCodec.INDEO3:
+                default:
+                    throw new NotImplementedException();
+            }
         }
 
         public void Stop()
@@ -223,6 +286,17 @@ namespace JuvoPlayer.Player
         {
             player.Pause();
         }
-    }
 
+        // TODO(g.skowinski): Remove
+        public void PlayerNeedsData(StreamType streamType)
+        {
+            throw new NotImplementedException();
+        }
+
+        // TODO(g.skowinski): Remove
+        public void PlayerDoesntNeedData(StreamType streamType)
+        {
+            throw new NotImplementedException();
+        }
+    }
 }

@@ -20,10 +20,13 @@ namespace JuvoPlayer.Common
             return Common.StreamType.Video;
         }
 
+        public VideoCodec Codec { get; set; }
         //TODO(p.galiszewsk)
-        public Tizen.Multimedia.MediaFormatVideoMimeType Codec { get; set; }
+        public int CodecProfile { get; set; }
         public Tizen.Multimedia.Size Size { get; set; }
         public int FrameRate { get; set; }
+        public int FrameRateNum { get; set; }
+        public int FrameRateDen { get; set; }
         public int BitRate { get; set; }
     }
 }
