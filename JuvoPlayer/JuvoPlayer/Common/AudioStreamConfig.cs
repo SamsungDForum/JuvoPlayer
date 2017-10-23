@@ -20,8 +20,7 @@ namespace JuvoPlayer.Common
             return Common.StreamType.Audio;
         }
 
-        //TODO(p.galiszewsk):
-        public Tizen.Multimedia.MediaFormatAudioMimeType Codec { get; set; }
+        public AudioCodec Codec { get; set; }
         public int ChannelLayout { get; set; }
         public int SampleRate { get; set; }
         public int BitsPerChannel { get; set; }
