@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Reflection;
 
 namespace MpdParser
 {
@@ -152,7 +151,7 @@ namespace MpdParser
                 result += (ch ?? "") + "]";
             }
 
-            return result;
+            return result + " (length:" + ((Segments?.Length)?.ToString() ?? "-") + ")";
         }
     }
 
@@ -171,7 +170,7 @@ namespace MpdParser
             Id = set.Id;
             Group = set.Group;
             Lang = set.GetLang() ?? "und";
-            Type = set.GetContentType();
+            Type = set.GetContentType() ?? GuessFromMimeType(set.MimeType);
 
             Roles = new string[set.Roles.Length];
             for (int i = 0; i < Roles.Length; ++i)
@@ -189,14 +188,42 @@ namespace MpdParser
                 Lang + " / " + Type;
             if (Roles.Length > 0)
                 result += " [" + string.Join(", ", Roles) + "]";
-            return result;
+            return result + " (length:" + (Longest()?.ToString() ?? "-") + ")";
+        }
+
+        private string GuessFromMimeType(string mimeType)
+        {
+            if (mimeType == null)
+                return null;
+            string[] mime = mimeType.Split(new char[] { '/' }, 2);
+            if (mime.Length > 1)
+                return mime[0];
+            return null;
+        }
+
+        public TimeSpan? Longest()
+        {
+            TimeSpan? current = null;
+            foreach (Representation repr in Representations)
+            {
+                TimeSpan? length = repr.Segments?.Length;
+                if (length == null) continue;
+                if (current == null)
+                {
+                    current = length.Value;
+                    continue;
+                }
+                if (length.Value > current.Value)
+                    current = length.Value;
+            }
+            return current;
         }
     }
 
     public class Period
     {
-        public TimeSpan? Start { get; }
-        public TimeSpan? Duration { get; }
+        public TimeSpan? Start { get; internal set; }
+        public TimeSpan? Duration { get; internal set; }
         public Media[] Sets { get; }
 
         public Period(Node.Period period)
@@ -211,8 +238,26 @@ namespace MpdParser
         public override string ToString()
         {
             return
-                (Start ?? TimeSpan.Zero).ToString() + " + " +
-                (Duration ?? TimeSpan.Zero).ToString();
+                Start.ToString() + " + " +
+                (Duration?.ToString() ?? "(-)");
+        }
+
+        public TimeSpan? Longest()
+        {
+            TimeSpan? current = null;
+            foreach (Media set in Sets)
+            {
+                TimeSpan? length = set.Longest();
+                if (length == null) continue;
+                if (current == null)
+                {
+                    current = length.Value;
+                    continue;
+                }
+                if (length.Value > current.Value)
+                    current = length.Value;
+            }
+            return current;
         }
     }
 
@@ -246,13 +291,39 @@ namespace MpdParser
 
             Periods = new Period[dash.Periods.Length];
             for (int i = 0; i < Periods.Length; ++i)
+            {
                 Periods[i] = new Period(dash.Periods[i]);
+                if (Periods[i].Duration == null)
+                    Periods[i].Duration = Periods[i].Longest();
+            }
+
+            if (Periods.Length > 0)
+            {
+                if (Periods[0].Start == null)
+                    Periods[0].Start = TimeSpan.Zero;
+                if (Periods[0].Duration == null)
+                    Periods[0].Duration = MediaPresentationDuration;
+
+                for (int i = 1; i < Periods.Length; ++i)
+                {
+                    if (Periods[i].Start == null &&
+                        Periods[i - 1].Start != null &&
+                        Periods[i - 1].Duration != null)
+                    {
+                        Periods[i].Start = Periods[i - 1].Start + Periods[i - 1].Duration;
+                    }
+                }
+
+                Period p = Periods[Periods.Length - 1];
+                if (MediaPresentationDuration == null && p.Start != null && p.Duration != null)
+                    MediaPresentationDuration = p.Start + p.Duration;
+            }
         }
 
-        public static Document FromText(string manifest)
+        public static Document FromText(string manifestText, string manifestUrl)
         {
-            Node.DASH dash = new Node.DASH();
-            System.IO.StringReader reader = new System.IO.StringReader(manifest);
+            Node.DASH dash = new Node.DASH(manifestUrl);
+            System.IO.StringReader reader = new System.IO.StringReader(manifestText);
             Xml.Parser.Parse(reader, dash, "MPD");
             return new Document(dash);
         }
@@ -260,8 +331,8 @@ namespace MpdParser
         public override string ToString()
         {
             return
-                "presentation:" + (MediaPresentationDuration ?? TimeSpan.Zero).ToString() +
-                ", min:" + (MinBufferTime ?? TimeSpan.Zero).ToString();
+                "presentation:" + (MediaPresentationDuration?.ToString() ?? "(-)") +
+                ", min:" + (MinBufferTime?.ToString() ?? "(-)");
         }
     }
 }

@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using MpdParser.Node.Dynamic;
 using System.Reflection;
 
 namespace MpdParser.Node
@@ -62,6 +61,50 @@ namespace MpdParser.Node
         }
     };
 
+    public partial class Formatter
+    {
+        public Formatter(string key)
+        {
+            Positions = new List<int>();
+            string[] key_fmt = key.Split('%');
+            TrueKey = key_fmt[0];
+            pad = 1;
+            fill = '0';
+
+            if (key_fmt.Length > 1 && !string.IsNullOrEmpty(key_fmt[1]))
+            {
+                string fmt = key_fmt[1];
+                int ndx = 0;
+                if (fmt[0] < '1' || fmt[0] > '9')
+                {
+                    fill = fmt[0];
+                    ndx = 1;
+                }
+                pad = 0;
+                while (fmt[ndx] >= '0' && fmt[ndx] <= '9')
+                {
+                    pad *= 10;
+                    pad += fmt[ndx] - '0';
+                    ++ndx;
+                }
+                if (pad < 1)
+                    pad = 1;
+            }
+        }
+
+        public string GetValue(object value)
+        {
+            if (value == null)
+            {
+                if (string.IsNullOrEmpty(TrueKey))
+                    return "$"; // $$ escapes a dollar sign
+                return "$" + TrueKey + "$"; // de
+            }
+
+            return value.ToString().PadLeft(pad, fill);
+        }
+    }
+
     public partial class Template
     {
         private string Get(Dictionary<string, object> args)
@@ -72,31 +115,18 @@ namespace MpdParser.Node
             {
                 if ((i % 2) == 0)
                     continue;
-                result[i] = "";
+                result[i] = "$"; // assume empty
             }
 
             foreach (string key in keys_.Keys)
             {
-                string[] key_fmt = key.Split('%');
-                string value;
-                if (args.ContainsKey(key_fmt[0]))
-                {
-                    value = args[key_fmt[0]].ToString();
+                Formatter fmt = keys_[key];
 
-                    if (key_fmt.Length > 1)
-                    {
-                        throw new UnexpectedTemplateArgumentException(
-                            "Format of a template variable ignored: " + key
-                            );
-                    }
-                }
-                else
-                {
-                    value = "$" + key_fmt[0] + "$";
-                }
+                string value = fmt.GetValue(
+                    args.TryGetValue(fmt.TrueKey, out object arg) ? arg : null
+                    );
 
-                List<int> refs = keys_[key];
-                foreach (int i in refs)
+                foreach (int i in fmt.Positions)
                 {
                     result[i] = value;
                 }
@@ -174,6 +204,7 @@ namespace MpdParser.Node
             switch (best)
             {
                 case SegmentType.Base: return CreateBaseRepresentationStream();
+                case SegmentType.List: return CreateListRepresentationStream();
                 case SegmentType.Template: return CreateTemplateRepresentationStream();
             }
             return null;
@@ -182,29 +213,58 @@ namespace MpdParser.Node
         private IRepresentationStream CreateBaseRepresentationStream()
         {
             Dynamic.SegmentBase seg = SegmentBase();
-            URL[] init = seg.Initializations;
-            URL init_url = GetFirst(init);
-            if (init_url == null)
-                return null;
+            URL init_url = GetFirst(seg.Initializations);
 
             URI media_uri = CalcURL();
-            URI init_uri = media_uri;
+            URI init_uri = null;
 
             // If the init_url.SourceUrl is present,
             // it is relative to AdpativeSet, not Representation.
             // Representation's BaseURI is for media only.
-            if (init_url.SourceURL != null)
+            if (init_url?.SourceURL != null)
+                init_uri = AdaptationSet.CalcURL()?.With(init_url.SourceURL);
+
+            if (init_uri == null)
             {
-                init_uri = AdaptationSet.CalcURL()?.With(init_url.SourceURL) ?? media_uri;
+                if (media_uri == null)
+                    return null;
+
+                return new Dynamic.BaseRepresentationStream(
+                    null,
+                    new Dynamic.Segment(media_uri.Uri, null)
+                    );
             }
 
+            if (media_uri == null)
+                return null;
+
             return new Dynamic.BaseRepresentationStream(
-                new Segment(init_uri.Uri, init_url.Range),
-                new Segment(media_uri.Uri, null)
+                new Dynamic.Segment(init_uri.Uri, init_url?.Range),
+                new Dynamic.Segment(media_uri.Uri, null)
                 );
         }
 
-        private TimelineItem[] FromDuration(uint startNumber, Dynamic.SegmentTemplate seg)
+        private IRepresentationStream CreateListRepresentationStream()
+        {
+            Dynamic.SegmentList seg = SegmentList();
+            URL init_url = GetFirst(seg.Initializations) ?? GetFirst(SegmentBase().Initializations);
+            URI init_uri = null;
+            if (init_url?.SourceURL != null)
+                init_uri = AdaptationSet.CalcURL()?.With(init_url.SourceURL);
+
+            Dynamic.Segment init = init_uri == null ? null : new Dynamic.Segment(init_uri.Uri, init_url?.Range);
+
+            Dynamic.ListItem[] items = Dynamic.ListItem.FromXml(
+                seg.StartNumber ?? 1,
+                Period.Start ?? TimeSpan.Zero,
+                seg.Timescale ?? 1,
+                seg.Duration ?? 0,
+                seg.SegmentURLs);
+            return new Dynamic.ListRepresentationStream(CalcURL().Uri,
+                init, seg.Timescale ?? 1, items);
+        }
+
+        private Dynamic.TimelineItem[] FromDuration(uint startNumber, Dynamic.SegmentTemplate seg)
         {
             uint? segDuration = seg.Duration;
             if (segDuration == null)
@@ -225,13 +285,13 @@ namespace MpdParser.Node
             if (duration.Equals(TimeSpan.Zero))
                 return null;
 
-            return Timeline.FromDuration(startNumber, start,
+            return Dynamic.Timeline.FromDuration(startNumber, start,
                 duration.Value, segDuration.Value, seg.Timescale ?? 1);
         }
 
-        private TimelineItem[] FromTimeline(uint startNumber, Dynamic.SegmentTemplate seg, SegmentTimeline segmentTimeline)
+        private Dynamic.TimelineItem[] FromTimeline(uint startNumber, Dynamic.SegmentTemplate seg, SegmentTimeline segmentTimeline)
         {
-            return Timeline.FromXml(startNumber, Period.Start ?? TimeSpan.Zero, seg.Timescale ?? 1, segmentTimeline.Ss);
+            return Dynamic.Timeline.FromXml(startNumber, Period.Start ?? TimeSpan.Zero, seg.Timescale ?? 1, segmentTimeline.Ss);
         }
 
         private IRepresentationStream CreateTemplateRepresentationStream()
@@ -240,7 +300,7 @@ namespace MpdParser.Node
             SegmentTimeline segTimeline = GetFirst(seg.SegmentTimelines);
             uint startNumber = seg.StartNumber ?? 1;
 
-            TimelineItem[] timeline = null;
+            Dynamic.TimelineItem[] timeline = null;
             if (segTimeline == null)
             {
                 timeline = FromDuration(startNumber, seg);
@@ -357,9 +417,17 @@ namespace MpdParser.Node
 
     public partial class DASH
     {
+        private URI manifestUrl;
+
+        public DASH(string manifestUrl)
+        {
+            this.manifestUrl = string.IsNullOrEmpty(manifestUrl) ? null : new URI(manifestUrl);
+        }
+
         public URI CalcURL()
         {
-            return URI.FromBaseURLs(BaseURLs) ?? new URI();
+            URI local = URI.FromBaseURLs(BaseURLs);
+            return manifestUrl?.With(local) ?? local ?? new URI();
         }
     }
 

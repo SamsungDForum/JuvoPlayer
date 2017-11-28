@@ -289,10 +289,10 @@ namespace MpdParser.Node.Dynamic
         public readonly TimeSpan start;
         public readonly TimeSpan duration;
 
-        public TimeRange(TimeSpan start, TimeSpan stop)
+        public TimeRange(TimeSpan start, TimeSpan duration)
         {
             this.start = start;
-            this.duration = stop;
+            this.duration = duration;
         }
     }
 
@@ -327,10 +327,12 @@ namespace MpdParser.Node.Dynamic
             media_ = media;
             InitSegment = init;
             Count = media == null ? 0 : 1;
+            Length = media?.Period?.duration;
         }
 
         private Segment media_;
 
+        public TimeSpan? Length { get; }
         public Segment InitSegment { get; }
         public int Count { get; }
 
@@ -365,7 +367,7 @@ namespace MpdParser.Node.Dynamic
         {
             if (point < Time)
                 return null;
-            if (point >= Time + Duration * (ulong)(Repeats + 1))
+            if (point > Time + Duration * (ulong)(Repeats + 1))
                 return null;
             point -= Time;
             return (uint)(point / Duration);
@@ -442,12 +444,18 @@ namespace MpdParser.Node.Dynamic
             timeline_ = timeline;
 
             int count = timeline.Length;
+            ulong totalDuration = 0;
             foreach (TimelineItem item in timeline)
+            {
                 count += item.Repeats;
+                ulong rightMost = item.Time + (1 + (ulong)item.Repeats) * item.Duration;
+                if (rightMost > totalDuration)
+                    totalDuration = rightMost;
+            }
 
             Count = count;
-
-            InitSegment = MakeSegment(init.Get(bandwidth, reprId), null);
+            Length = Scaled(totalDuration - (timeline.Length > 0 ? timeline[0].Time : 0));
+            InitSegment = init == null ? null : MakeSegment(init.Get(bandwidth, reprId), null);
         }
 
         private Segment MakeSegment(string url, TimeRange span)
@@ -457,7 +465,7 @@ namespace MpdParser.Node.Dynamic
                 file = new Uri(url, UriKind.RelativeOrAbsolute);
             else if (!Uri.TryCreate(baseURL_, url, out file))
                 return null;
-            return new Segment(file, null, span); // new TimeRange(item.Time, item.Time + item.Duration));
+            return new Segment(file, null, span);
         }
 
         private TimeSpan Scaled(ulong point)
@@ -478,6 +486,7 @@ namespace MpdParser.Node.Dynamic
         private uint timescale_;
         private TimelineItem[] timeline_;
 
+        public TimeSpan? Length { get; }
         public Segment InitSegment { get; }
         public int Count { get; }
 
@@ -519,6 +528,124 @@ namespace MpdParser.Node.Dynamic
             {
                 for (uint repeat = 0; repeat <= item.Repeats; ++repeat)
                     yield return MakeSegment(item, repeat);
+            }
+        }
+    }
+
+    public struct ListItem
+    {
+        public string Media;
+        public string Range;
+        public ulong Time;
+        public ulong Duration;
+
+        public bool Contains(ulong timepoint)
+        {
+            return timepoint >= Time && ((timepoint - Time) <= Duration);
+        }
+
+        public static ListItem[] FromXml(uint startNumber, TimeSpan startPoint, uint timescale, ulong duration, SegmentURL[] urls)
+        {
+            ulong start = (ulong)Math.Ceiling(startPoint.TotalSeconds * timescale);
+            int size = 0;
+            for (int i = 0; i < urls.Length; ++i)
+            {
+                if (string.IsNullOrEmpty(urls[i].Media))
+                    continue;
+                ++size;
+            }
+            ListItem[] result = new ListItem[size];
+
+            int pos = 0;
+            for (int i = 0; i < urls.Length; ++i)
+            {
+                if (string.IsNullOrEmpty(urls[i].Media))
+                    continue;
+
+                result[pos].Media = urls[i].Media;
+                result[pos].Range = urls[i].MediaRange;
+                result[pos].Time = start;
+                result[pos].Duration = duration;
+                ++pos;
+                start += duration;
+            }
+
+            return result;
+        }
+    }
+
+    public class ListRepresentationStream : IRepresentationStream
+    {
+        public ListRepresentationStream(Uri baseURL, Segment init, uint timescale, ListItem[] uris)
+        {
+            baseURL_ = baseURL;
+            timescale_ = timescale;
+            uris_ = uris ?? new ListItem[] { };
+
+            ulong totalDuration = 0;
+            foreach (ListItem item in uris_)
+            {
+                ulong rightMost = item.Time + item.Duration;
+                if (rightMost > totalDuration)
+                    totalDuration = rightMost;
+            }
+
+            Count = uris.Length;
+            Length = Scaled(totalDuration - (uris_.Length > 0 ? uris_[0].Time : 0));
+            InitSegment = init;
+        }
+
+        private Segment MakeSegment(string media, string range, TimeRange span)
+        {
+            Uri file;
+            if (baseURL_ == null)
+                file = new Uri(media, UriKind.RelativeOrAbsolute);
+            else if (!Uri.TryCreate(baseURL_, media, out file))
+                return null;
+            return new Segment(file, range, span);
+        }
+
+        private TimeSpan Scaled(ulong point)
+        {
+            return TimeSpan.FromSeconds((double)point / timescale_);
+        }
+        private Segment MakeSegment(ListItem item)
+        {
+            return MakeSegment(item.Media, item.Range, new TimeRange(Scaled(item.Time), Scaled(item.Duration)));
+        }
+
+        private Uri baseURL_;
+        private uint timescale_;
+        private ListItem[] uris_;
+
+        public TimeSpan? Length { get; }
+        public Segment InitSegment { get; }
+        public int Count { get; }
+
+        public Segment MediaSegmentAtPos(int pos)
+        {
+            if (pos < uris_.Length)
+                return MakeSegment(uris_[pos]);
+            return null;
+        }
+
+        public Segment MediaSegmentAtTime(TimeSpan durationSpan)
+        {
+            ulong duration = (ulong)Math.Ceiling(durationSpan.TotalSeconds * timescale_);
+            foreach (ListItem item in uris_)
+            {
+                if (!item.Contains(duration))
+                    continue;
+                return MakeSegment(item);
+            }
+            return null;
+        }
+
+        public IEnumerable<Segment> MediaSegments()
+        {
+            foreach (ListItem item in uris_)
+            {
+                yield return MakeSegment(item);
             }
         }
     }

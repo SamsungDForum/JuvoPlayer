@@ -158,7 +158,7 @@ namespace MpdParser.Xml
         }
     }
 
-    public class Parser
+    internal class Parser
     {
         private static string InnerText(System.Xml.XmlReader reader)
         {

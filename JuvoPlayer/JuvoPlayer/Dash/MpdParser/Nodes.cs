@@ -86,10 +86,18 @@ namespace MpdParser.Node
         public UnexpectedTemplateArgumentException(string msg) : base(msg) { }
     }
 
+    public partial class Formatter
+    {
+        public List<int> Positions;
+        public string TrueKey;
+        private int pad;
+        private char fill;
+    }
+
     public partial class Template
     {
         private string[] chunks_;
-        private Dictionary<string, List<int>> keys_ = new Dictionary<string, List<int>>();
+        private Dictionary<string, Formatter> keys_ = new Dictionary<string, Formatter>();
         public Template(string text)
         {
             chunks_ = text.Split('$');
@@ -99,8 +107,8 @@ namespace MpdParser.Node
                     continue;
                 string chunk = chunks_[i];
                 if (!keys_.ContainsKey(chunk))
-                    keys_.Add(chunk, new List<int>());
-                keys_[chunk].Add(i);
+                    keys_.Add(chunk, new Formatter(chunk));
+                keys_[chunk].Positions.Add(i);
             }
         }
 
@@ -120,7 +128,7 @@ namespace MpdParser.Node
 
     public class SegmentList : MultipleSegmentBase
     {
-        [Xml.Element] public SegmentURL[] SegmentURLs { get; }
+        [Xml.Element] public SegmentURL[] SegmentURLs { get; internal set; }
     }
 
     public class Event
@@ -184,6 +192,7 @@ namespace MpdParser.Node
 
     public interface IRepresentationStream
     {
+        TimeSpan? Length { get; }
         Segment InitSegment { get; }
         int Count { get; }
         IEnumerable<Segment> MediaSegments();
