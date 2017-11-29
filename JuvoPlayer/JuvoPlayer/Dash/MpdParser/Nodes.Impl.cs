@@ -212,6 +212,10 @@ namespace MpdParser.Node
 
         private IRepresentationStream CreateBaseRepresentationStream()
         {
+            Dynamic.TimeRange periodRange = null;
+            if (Period.Start != null && Period.Duration != null)
+                periodRange = new Dynamic.TimeRange(Period.Start.Value, Period.Duration.Value);
+
             Dynamic.SegmentBase seg = SegmentBase();
             URL init_url = GetFirst(seg.Initializations);
 
@@ -223,6 +227,8 @@ namespace MpdParser.Node
             // Representation's BaseURI is for media only.
             if (init_url?.SourceURL != null)
                 init_uri = AdaptationSet.CalcURL()?.With(init_url.SourceURL);
+            else if (init_url != null)
+                init_uri = media_uri;
 
             if (init_uri == null)
             {
@@ -231,7 +237,7 @@ namespace MpdParser.Node
 
                 return new Dynamic.BaseRepresentationStream(
                     null,
-                    new Dynamic.Segment(media_uri.Uri, null)
+                    new Dynamic.Segment(media_uri.Uri, null, periodRange)
                     );
             }
 
@@ -240,7 +246,7 @@ namespace MpdParser.Node
 
             return new Dynamic.BaseRepresentationStream(
                 new Dynamic.Segment(init_uri.Uri, init_url?.Range),
-                new Dynamic.Segment(media_uri.Uri, null)
+                new Dynamic.Segment(media_uri.Uri, null, periodRange)
                 );
         }
 
@@ -291,7 +297,7 @@ namespace MpdParser.Node
 
         private Dynamic.TimelineItem[] FromTimeline(uint startNumber, Dynamic.SegmentTemplate seg, SegmentTimeline segmentTimeline)
         {
-            return Dynamic.Timeline.FromXml(startNumber, Period.Start ?? TimeSpan.Zero, seg.Timescale ?? 1, segmentTimeline.Ss);
+            return Dynamic.Timeline.FromXml(startNumber, Period.Start ?? TimeSpan.Zero, Period.End, seg.Timescale ?? 1, segmentTimeline.Ss);
         }
 
         private IRepresentationStream CreateTemplateRepresentationStream()
@@ -406,6 +412,7 @@ namespace MpdParser.Node
 
     public partial class Period
     {
+        internal TimeSpan? End { get; set; }
         public URI CalcURL()
         {
             URI parent = Document.CalcURL();
@@ -428,6 +435,86 @@ namespace MpdParser.Node
         {
             URI local = URI.FromBaseURLs(BaseURLs);
             return manifestUrl?.With(local) ?? local ?? new URI();
+        }
+
+        public void PeriodFixup()
+        {
+            for (int i = 0; i < Periods.Length; ++i)
+            {
+                Period curr = Periods[i];
+                if (curr.Start == null)
+                {
+                    if (i == 0)
+                        curr.Start = TimeSpan.Zero;
+                    else
+                        curr.Start = Periods[i - 1].End;
+                }
+
+                if (curr.End == null)
+                {
+                    // for the last period, if @mediaPresentationDuration
+                    // is present, it takes precedence
+                    if (i == (Periods.Length - 1))
+                    {
+                        if (MediaPresentationDuration != null)
+                            curr.End = MediaPresentationDuration;
+                    }
+                    else
+                    {
+                        // for any other period, the end time is
+                        // the start time of the next period
+                        curr.End = Periods[i + 1].Start;
+                    }
+
+                    // fallback to @start + @duration, if present
+                    if (curr.End == null && curr.Start != null && curr.Duration != null)
+                        curr.End = curr.Start.Value + curr.Duration.Value;
+                }
+            }
+            for (int i = 0; i < Periods.Length; ++i)
+            {
+                Period curr = Periods[i];
+                if (curr.Start == null) continue;
+
+                if (curr.End != null)
+                    curr.Duration = curr.End.Value - curr.Start.Value;
+
+                if (curr.Duration == null)
+                    curr.Duration = GuessFromRepresentations(curr);
+            }
+        }
+
+        private TimeSpan? GuessFromRepresentations(Period curr)
+        {
+            TimeSpan? result = null;
+            foreach (AdaptationSet set in curr.AdaptationSets)
+            {
+                TimeSpan? longest = GuessFromRepresentations(set);
+                if (result == null)
+                    result = longest;
+                else if (longest != null && result.Value < longest.Value)
+                    result = longest.Value;
+            }
+            return result;
+        }
+
+        private TimeSpan? GuessFromRepresentations(AdaptationSet set)
+        {
+            TimeSpan? result = null;
+            foreach (Representation repr in set.Representations)
+            {
+                TimeSpan? longest = GuessFromRepresentations(repr);
+                if (result == null)
+                    result = longest;
+                else if (longest != null && result.Value < longest.Value)
+                    result = longest.Value;
+            }
+            return result;
+        }
+
+        private TimeSpan? GuessFromRepresentations(Representation repr)
+        {
+            return repr.SegmentsStream()?.Duration;
         }
     }
 
