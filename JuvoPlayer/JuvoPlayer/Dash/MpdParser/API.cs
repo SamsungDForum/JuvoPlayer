@@ -151,7 +151,7 @@ namespace MpdParser
                 result += (ch ?? "") + "]";
             }
 
-            return result + " (length:" + ((Segments?.Length)?.ToString() ?? "-") + ")";
+            return result + " (duration:" + ((Segments?.Duration)?.ToString() ?? "-") + ")";
         }
     }
 
@@ -170,7 +170,6 @@ namespace MpdParser
             Id = set.Id;
             Group = set.Group;
             Lang = set.GetLang() ?? "und";
-            Type = set.GetContentType() ?? GuessFromMimeType(set.MimeType);
 
             Roles = new string[set.Roles.Length];
             for (int i = 0; i < Roles.Length; ++i)
@@ -179,6 +178,10 @@ namespace MpdParser
             Representations = new Representation[set.Representations.Length];
             for (int i = 0; i < Representations.Length; ++i)
                 Representations[i] = new Representation(set.Representations[i]);
+
+            Type = set.GetContentType() ??
+                GuessFromMimeType(set.MimeType) ??
+                GuessFromRepresentations();
         }
 
         public override string ToString()
@@ -201,12 +204,25 @@ namespace MpdParser
             return null;
         }
 
+        private string GuessFromRepresentations()
+        {
+            string guessed = null;
+            foreach (Representation r in Representations)
+            {
+                string cand = GuessFromMimeType(r.MimeType);
+                if (cand == null) continue;
+                if (guessed == null) guessed = cand;
+                else if (guessed != cand) return null; // At least two different types
+            }
+            return guessed;
+        }
+
         public TimeSpan? Longest()
         {
             TimeSpan? current = null;
             foreach (Representation repr in Representations)
             {
-                TimeSpan? length = repr.Segments?.Length;
+                TimeSpan? length = repr.Segments?.Duration;
                 if (length == null) continue;
                 if (current == null)
                 {
@@ -238,7 +254,7 @@ namespace MpdParser
         public override string ToString()
         {
             return
-                Start.ToString() + " + " +
+                (Start?.ToString() ?? "(-)") + " + " +
                 (Duration?.ToString() ?? "(-)");
         }
 
@@ -291,33 +307,7 @@ namespace MpdParser
 
             Periods = new Period[dash.Periods.Length];
             for (int i = 0; i < Periods.Length; ++i)
-            {
                 Periods[i] = new Period(dash.Periods[i]);
-                if (Periods[i].Duration == null)
-                    Periods[i].Duration = Periods[i].Longest();
-            }
-
-            if (Periods.Length > 0)
-            {
-                if (Periods[0].Start == null)
-                    Periods[0].Start = TimeSpan.Zero;
-                if (Periods[0].Duration == null)
-                    Periods[0].Duration = MediaPresentationDuration;
-
-                for (int i = 1; i < Periods.Length; ++i)
-                {
-                    if (Periods[i].Start == null &&
-                        Periods[i - 1].Start != null &&
-                        Periods[i - 1].Duration != null)
-                    {
-                        Periods[i].Start = Periods[i - 1].Start + Periods[i - 1].Duration;
-                    }
-                }
-
-                Period p = Periods[Periods.Length - 1];
-                if (MediaPresentationDuration == null && p.Start != null && p.Duration != null)
-                    MediaPresentationDuration = p.Start + p.Duration;
-            }
         }
 
         public static Document FromText(string manifestText, string manifestUrl)
@@ -325,6 +315,7 @@ namespace MpdParser
             Node.DASH dash = new Node.DASH(manifestUrl);
             System.IO.StringReader reader = new System.IO.StringReader(manifestText);
             Xml.Parser.Parse(reader, dash, "MPD");
+            dash.PeriodFixup();
             return new Document(dash);
         }
 

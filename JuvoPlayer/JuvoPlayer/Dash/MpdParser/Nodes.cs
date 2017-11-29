@@ -192,12 +192,12 @@ namespace MpdParser.Node
 
     public interface IRepresentationStream
     {
-        TimeSpan? Length { get; }
+        TimeSpan? Duration { get; }
         Segment InitSegment { get; }
-        int Count { get; }
+        uint Count { get; }
         IEnumerable<Segment> MediaSegments();
-        Segment MediaSegmentAtPos(int pos);
-        Segment MediaSegmentAtTime(TimeSpan duration);
+        Segment MediaSegmentAtPos(uint pos);
+        uint? MediaSegmentAtTime(TimeSpan duration);
     }
 
     public enum SegmentType

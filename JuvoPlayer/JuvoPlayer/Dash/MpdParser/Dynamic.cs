@@ -296,6 +296,13 @@ namespace MpdParser.Node.Dynamic
         }
     }
 
+    internal enum TimeRelation
+    {
+        UNKNOWN = -2,
+        EARLIER,
+        SPOTON,
+        LATER
+    }
     public class Segment
     {
         public readonly Uri Url;
@@ -309,14 +316,14 @@ namespace MpdParser.Node.Dynamic
             Period = period;
         }
 
-        internal bool Contains(TimeSpan time_point)
+        internal TimeRelation Contains(TimeSpan time_point)
         {
             if (Period == null)
-                return false;
+                return TimeRelation.UNKNOWN;
             if (time_point < Period.start)
-                return false;
+                return TimeRelation.LATER;
             time_point -= Period.start;
-            return time_point <= Period.duration;
+            return time_point <= Period.duration ? TimeRelation.SPOTON : TimeRelation.EARLIER;
         }
     }
 
@@ -326,27 +333,27 @@ namespace MpdParser.Node.Dynamic
         {
             media_ = media;
             InitSegment = init;
-            Count = media == null ? 0 : 1;
-            Length = media?.Period?.duration;
+            Count = media == null ? 0u : 1u;
+            Duration = media?.Period?.duration;
         }
 
         private Segment media_;
 
-        public TimeSpan? Length { get; }
+        public TimeSpan? Duration { get; }
         public Segment InitSegment { get; }
-        public int Count { get; }
+        public uint Count { get; }
 
-        public Segment MediaSegmentAtPos(int pos)
+        public Segment MediaSegmentAtPos(uint pos)
         {
-            if (pos < 1)
+            if (pos == 0)
                 return media_;
             return null;
         }
 
-        public Segment MediaSegmentAtTime(TimeSpan duration)
+        public uint? MediaSegmentAtTime(TimeSpan duration)
         {
-            if (media_ != null && media_.Contains(duration))
-                return media_;
+            if (media_ != null && media_.Contains(duration) > TimeRelation.EARLIER)
+                return 0;
             return null;
         }
 
@@ -363,14 +370,16 @@ namespace MpdParser.Node.Dynamic
         public ulong Duration;
         public int Repeats;
 
-        public uint? RepeatFor(ulong point)
+        internal TimeRelation RepeatFor(ulong point, out uint repeat)
         {
+            repeat = 0;
             if (point < Time)
-                return null;
+                return TimeRelation.LATER;
             if (point > Time + Duration * (ulong)(Repeats + 1))
-                return null;
+                return TimeRelation.EARLIER;
             point -= Time;
-            return (uint)(point / Duration);
+            repeat = (uint)(point / Duration);
+            return TimeRelation.SPOTON;
         }
     }
 
@@ -402,9 +411,10 @@ namespace MpdParser.Node.Dynamic
             return result;
         }
 
-        public static TimelineItem[] FromXml(uint startNumber, TimeSpan startPoint, uint timescale, S[] esses)
+        public static TimelineItem[] FromXml(uint startNumber, TimeSpan periodStart, TimeSpan? periodEnd, uint timescale, S[] esses)
         {
-            ulong start = (ulong)Math.Ceiling(startPoint.TotalSeconds * timescale);
+            ulong offset = (ulong)Math.Ceiling(periodStart.TotalSeconds * timescale);
+            ulong start = 0;
             TimelineItem[] result = new TimelineItem[esses.Length];
             for (int i = 0; i < esses.Length; ++i)
             {
@@ -412,16 +422,32 @@ namespace MpdParser.Node.Dynamic
                 if (s.D == null)
                     return null;
 
-                uint count = 1;
-                int rep = s.R ?? 0;
-                if (rep < 0)
-                    rep = 0;
-                count += (uint)rep;
-
                 start = s.T ?? start;
 
+                uint count = 1;
+                int rep = s.R ?? -1; // non-existing and invalid @r should be treated the same:
+                if (rep < 0)
+                {
+                    if (i < (esses.Length - 1))
+                    {
+                        // if t[s+1] is present, then r[s] is the ceil of (t[s+1] - t[s])/d[s]
+                        ulong nextStart = esses[i + 1].T ?? (start + s.D.Value);
+                        ulong chunks = (ulong)Math.Ceiling(((double)nextStart - start) / s.D.Value);
+                        rep = (int)chunks - 1;
+                    }
+                    else
+                    {
+                        // else r[s] is the ceil of (PEwc[i] - PSwc[i] - t[s]/ts)*ts/d[s])
+                        ulong totalEnd = periodEnd == null ? start + s.D.Value :
+                            (ulong)Math.Ceiling(periodEnd.Value.TotalSeconds * timescale);
+                        ulong chunks = (ulong)Math.Ceiling(((double)totalEnd - offset - start) / s.D.Value);
+                        rep = (int)chunks - 1;
+                    }
+                }
+                count += (uint)rep;
+
                 result[i].Number = startNumber;
-                result[i].Time = start;
+                result[i].Time = start + offset;
                 result[i].Duration = s.D.Value;
                 result[i].Repeats = (int)count - 1;
 
@@ -443,18 +469,18 @@ namespace MpdParser.Node.Dynamic
             timescale_ = timescale;
             timeline_ = timeline;
 
-            int count = timeline.Length;
+            uint count = (uint)timeline.Length;
             ulong totalDuration = 0;
             foreach (TimelineItem item in timeline)
             {
-                count += item.Repeats;
+                count += (uint)item.Repeats;
                 ulong rightMost = item.Time + (1 + (ulong)item.Repeats) * item.Duration;
                 if (rightMost > totalDuration)
                     totalDuration = rightMost;
             }
 
             Count = count;
-            Length = Scaled(totalDuration - (timeline.Length > 0 ? timeline[0].Time : 0));
+            Duration = Scaled(totalDuration - (timeline.Length > 0 ? timeline[0].Time : 0));
             InitSegment = init == null ? null : MakeSegment(init.Get(bandwidth, reprId), null);
         }
 
@@ -486,39 +512,34 @@ namespace MpdParser.Node.Dynamic
         private uint timescale_;
         private TimelineItem[] timeline_;
 
-        public TimeSpan? Length { get; }
+        public TimeSpan? Duration { get; }
         public Segment InitSegment { get; }
-        public int Count { get; }
+        public uint Count { get; }
 
-        public Segment MediaSegmentAtPos(int pos)
+        public Segment MediaSegmentAtPos(uint pos)
         {
-            int true_pos = 0;
-            while (true_pos < timeline_.Length &&
-                timeline_[true_pos].Number < pos)
+            foreach (TimelineItem item in timeline_)
             {
-                ++true_pos;
+                if (pos <= (uint)item.Repeats)
+                    return MakeSegment(item, pos);
+                pos -= (uint)item.Repeats;
+                --pos;
             }
-            if (true_pos < 0)
-                return null;
-            --true_pos;
-
-            TimelineItem item = timeline_[true_pos];
-            uint repeat = (uint)pos - item.Number;
-            if (repeat > item.Repeats)
-                return null;
-            return MakeSegment(item, repeat);
+            return null;
         }
 
-        public Segment MediaSegmentAtTime(TimeSpan durationSpan)
+        public uint? MediaSegmentAtTime(TimeSpan durationSpan)
         {
             ulong duration = (ulong)Math.Ceiling(durationSpan.TotalSeconds * timescale_);
-            foreach(TimelineItem item in timeline_)
+            uint pos = 0;
+            foreach (TimelineItem item in timeline_)
             {
-                uint? repeat = item.RepeatFor(duration);
-                if (repeat == null)
-                    continue;
-                return MakeSegment(item, repeat.Value);
+                TimeRelation rel = item.RepeatFor(duration, out uint repeat);
+                if (rel > TimeRelation.EARLIER)
+                    return pos + repeat;
+                pos += (uint)item.Repeats + 1;
             }
+
             return null;
         }
 
@@ -539,9 +560,13 @@ namespace MpdParser.Node.Dynamic
         public ulong Time;
         public ulong Duration;
 
-        public bool Contains(ulong timepoint)
+        internal TimeRelation Contains(ulong timepoint)
         {
-            return timepoint >= Time && ((timepoint - Time) <= Duration);
+            if (timepoint < Time)
+                return TimeRelation.LATER;
+            if ((timepoint - Time) > Duration)
+                return TimeRelation.EARLIER;
+            return TimeRelation.SPOTON;
         }
 
         public static ListItem[] FromXml(uint startNumber, TimeSpan startPoint, uint timescale, ulong duration, SegmentURL[] urls)
@@ -590,8 +615,8 @@ namespace MpdParser.Node.Dynamic
                     totalDuration = rightMost;
             }
 
-            Count = uris.Length;
-            Length = Scaled(totalDuration - (uris_.Length > 0 ? uris_[0].Time : 0));
+            Count = (uint)uris.Length;
+            Duration = Scaled(totalDuration - (uris_.Length > 0 ? uris_[0].Time : 0));
             InitSegment = init;
         }
 
@@ -618,25 +643,24 @@ namespace MpdParser.Node.Dynamic
         private uint timescale_;
         private ListItem[] uris_;
 
-        public TimeSpan? Length { get; }
+        public TimeSpan? Duration { get; }
         public Segment InitSegment { get; }
-        public int Count { get; }
+        public uint Count { get; }
 
-        public Segment MediaSegmentAtPos(int pos)
+        public Segment MediaSegmentAtPos(uint pos)
         {
             if (pos < uris_.Length)
                 return MakeSegment(uris_[pos]);
             return null;
         }
 
-        public Segment MediaSegmentAtTime(TimeSpan durationSpan)
+        public uint? MediaSegmentAtTime(TimeSpan durationSpan)
         {
             ulong duration = (ulong)Math.Ceiling(durationSpan.TotalSeconds * timescale_);
-            foreach (ListItem item in uris_)
+            for (uint pos = 0; pos < uris_.Length; ++pos)
             {
-                if (!item.Contains(duration))
-                    continue;
-                return MakeSegment(item);
+                if (uris_[pos].Contains(duration) > TimeRelation.EARLIER)
+                    return pos;
             }
             return null;
         }
