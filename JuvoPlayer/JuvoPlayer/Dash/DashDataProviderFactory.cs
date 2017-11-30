@@ -25,21 +25,24 @@ namespace JuvoPlayer.Dash
 
 
             IDemuxer demuxer = null;
+            IDashClient dashClient = null;
             try
             {
                 var libPath = Path.Combine(
                     Path.GetDirectoryName(
                         Application.Current.ApplicationInfo.ExecutablePath),
                     "lib");
-                //var demuxer = new FFmpegDemuxer(sharedBuffer, libPath);
+                var sharedBuffer = new SharedBufferByteArrayQueue();
+                dashClient = new DashClient(sharedBuffer);
+                demuxer = new FFmpegDemuxer(sharedBuffer, libPath);
             }
-            catch (NullReferenceException ex)
+            catch (NullReferenceException)
             {
                 Tizen.Log.Error(
                     "JuvoPlayer",
                     "Cannot find application executable path.");
             }
-            return new DashDataProvider(demuxer, clip);
+            return new DashDataProvider(dashClient, demuxer, clip);
         }
 
         public bool SupportsClip(ClipDefinition clip)

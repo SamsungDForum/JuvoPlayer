@@ -10,21 +10,34 @@ namespace JuvoPlayer.Dash
     class DashDataProvider : IDataProvider
     {
         private IDemuxer demuxer;
+        private IDashClient dashClient;
         private ClipDefinition currentClip;
+        // TODO change manifest to private
         public DashManifest manifest { get; set; }
-        public DashDataProvider(IDemuxer demuxer, ClipDefinition currentClip)
+        public DashDataProvider(
+            IDashClient dashClient,
+            IDemuxer demuxer,
+            ClipDefinition currentClip)
         {
             this.demuxer =
-                demuxer;
-                //??
-                //throw new ArgumentNullException("Demuxer", "Demuxer cannot be null.");
+                demuxer ??
+                throw new ArgumentNullException(
+                    "Demuxer",
+                    "Demuxer cannot be null.");
             this.currentClip =
                 currentClip ??
-                throw new ArgumentNullException("Clip", "Clip cannot be null.");
+                throw new ArgumentNullException(
+                    "Clip",
+                    "Clip cannot be null.");
+            this.dashClient =
+                dashClient ??
+                throw new ArgumentNullException(
+                    "dashClient",
+                    "dashClient cannot be null");
             this.manifest = new DashManifest(this.currentClip.Url);
 
-            //this.demuxer.StreamConfigReady += OnStreamConfigReady;
-            //this.demuxer.StreamPacketReady += OnStreamPacketReady;
+            this.demuxer.StreamConfigReady += OnStreamConfigReady;
+            this.demuxer.StreamPacketReady += OnStreamPacketReady;
         }
 
         public event DRMDataFound DRMDataFound;
