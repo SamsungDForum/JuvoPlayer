@@ -207,6 +207,10 @@ namespace MpdParser.Node
                 case SegmentType.List: return CreateListRepresentationStream();
                 case SegmentType.Template: return CreateTemplateRepresentationStream();
             }
+            // No "SegmentXyz" elements, but at least one BaseURL present
+            // This setup could be in e.g. subtitles
+            if (BaseURLs.Length > 0)
+                return CreateBaseURLRepresentationStream();
             return null;
         }
 
@@ -246,6 +250,25 @@ namespace MpdParser.Node
 
             return new Dynamic.BaseRepresentationStream(
                 new Dynamic.Segment(init_uri.Uri, init_url?.Range),
+                new Dynamic.Segment(media_uri.Uri, null, periodRange)
+                );
+        }
+
+        private IRepresentationStream CreateBaseURLRepresentationStream()
+        {
+            Dynamic.TimeRange periodRange = null;
+            if (Period.Start != null && Period.Duration != null)
+                periodRange = new Dynamic.TimeRange(Period.Start.Value, Period.Duration.Value);
+
+            URI media_uri = AdaptationSet.CalcURL();
+            foreach (BaseURL url in BaseURLs)
+            {
+                if (!string.IsNullOrEmpty(url.BaseUrlValue))
+                    media_uri = media_uri.With(url.BaseUrlValue);
+            }
+
+            return new Dynamic.BaseRepresentationStream(
+                null,
                 new Dynamic.Segment(media_uri.Uri, null, periodRange)
                 );
         }

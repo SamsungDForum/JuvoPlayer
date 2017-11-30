@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 
 namespace MpdParser
 {
@@ -155,14 +156,92 @@ namespace MpdParser
         }
     }
 
+    public enum MediaRole {
+        Main,
+        Alternate,
+        Captions,
+        Subtitle,
+        Supplementary,
+        Commentary,
+        Dub,
+        Other
+    };
+
+    public class Role {
+        public MediaRole Kind { get; }
+        public string Scheme { get; }
+        public string Value { get; }
+        public Role(string scheme, string value) {
+            Kind = MediaRole.Other;
+            Scheme = scheme;
+            Value = value;
+            if (scheme.Equals(Node.AdaptationSet.UrnRole) ||
+                scheme.Equals(Node.AdaptationSet.UrnRole2011)) {
+                Kind = ParseDashUrn(value);
+            }
+        }
+        public static MediaRole ParseDashUrn(string value)
+        {
+            if (value == "main") return MediaRole.Main;
+            if (value == "alternate") return MediaRole.Alternate;
+            if (value == "captions") return MediaRole.Captions;
+            if (value == "subtitle") return MediaRole.Subtitle;
+            if (value == "supplementary") return MediaRole.Supplementary;
+            if (value == "commentary") return MediaRole.Commentary;
+            if (value == "dub") return MediaRole.Dub;
+            return MediaRole.Other;
+        }
+        public override string ToString()
+        {
+            if (Kind == MediaRole.Other)
+                return Scheme + "/" + Value;
+            return Value;
+        }
+    }
+
+
+    public enum MediaType
+    {
+        Unknown,
+        Video,
+        Audio,
+        Application,
+        Text,
+        Other
+    };
+
+    public class MimeType
+    {
+        public MediaType Value { get; }
+        public string Key { get; }
+        public MimeType(string value)
+        {
+            Key = value;
+            Value = Parse(value);
+        }
+        public static MediaType Parse(string value)
+        {
+            if (string.IsNullOrEmpty(value)) return MediaType.Unknown;
+            if (value == "video") return MediaType.Video;
+            if (value == "audio") return MediaType.Audio;
+            if (value == "application") return MediaType.Application;
+            if (value == "text") return MediaType.Text;
+            return MediaType.Other;
+        }
+        public override string ToString()
+        {
+            return Key;
+        }
+    }
+
     // a.k.a. AdaptationSet
     public class Media
     {
         public uint? Id { get; }
         public uint? Group { get; }
         public string Lang { get; }
-        public string Type { get; }
-        public string[] Roles { get; }
+        public MimeType Type { get; }
+        public Role[] Roles { get; }
         public Representation[] Representations { get; }
 
         public Media(Node.AdaptationSet set)
@@ -171,26 +250,57 @@ namespace MpdParser
             Group = set.Group;
             Lang = set.GetLang() ?? "und";
 
-            Roles = new string[set.Roles.Length];
+            Roles = new Role[set.Roles.Length];
             for (int i = 0; i < Roles.Length; ++i)
-                Roles[i] = set.Roles[i].Value;
+            {
+                Node.Descriptor r = set.Roles[i];
+                Roles[i] = new Role(r.SchemeIdUri, r.Value);
+            }
 
             Representations = new Representation[set.Representations.Length];
             for (int i = 0; i < Representations.Length; ++i)
                 Representations[i] = new Representation(set.Representations[i]);
 
-            Type = set.GetContentType() ??
+            Type = new MimeType(set.GetContentType() ??
                 GuessFromMimeType(set.MimeType) ??
-                GuessFromRepresentations();
+                GuessFromRepresentations());
+        }
+
+        public bool HasRole(MediaRole kind)
+        {
+            if (kind == MediaRole.Other)
+                return false;
+
+            foreach (Role r in Roles)
+            {
+                if (r.Kind == kind)
+                    return true;
+            }
+            return false;
+        }
+
+        public bool HasRole(string uri, string kind)
+        {
+            if (uri.Equals(Node.AdaptationSet.UrnRole) ||
+                uri.Equals(Node.AdaptationSet.UrnRole2011))
+                return HasRole(Role.ParseDashUrn(kind));
+
+            foreach (Role r in Roles)
+            {
+                if (r.Kind != MediaRole.Other)
+                    continue;
+
+                if (r.Scheme.Equals(uri) && r.Value.Equals(kind))
+                    return true;
+            }
+            return false;
         }
 
         public override string ToString()
         {
-            string result =
-                (Id?.ToString() ?? "-") + (Group?.ToString() ?? "") + " / " +
-                Lang + " / " + Type;
+            string result = Lang + " / " + Type;
             if (Roles.Length > 0)
-                result += " [" + string.Join(", ", Roles) + "]";
+                result += " [" + string.Join(", ", (IEnumerable<Role>)Roles) + "]";
             return result + " (length:" + (Longest()?.ToString() ?? "-") + ")";
         }
 

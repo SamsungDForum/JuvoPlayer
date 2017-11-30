@@ -307,6 +307,9 @@ namespace MpdParser.Node
         public Period Period { get; }
         public DASH Document { get { return this.Period.Document; } }
 
+        public static string UrnRole2011 = "urn:mpeg:dash:role:2011";
+        public static string UrnRole = "urn:mpeg:dash:role";
+
         public AdaptationSet( Period period)
         {
             Period = period;
