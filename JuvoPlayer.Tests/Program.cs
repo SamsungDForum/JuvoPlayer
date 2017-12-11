@@ -5,8 +5,10 @@ using System.Runtime.InteropServices;
 using System.Threading;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
 using Tizen;
 using NUnitLite;
+using NUnit.Common;
 
 namespace JuvoPlayer.Tests
 {
@@ -41,7 +43,14 @@ namespace JuvoPlayer.Tests
         private static void ThreadEntry()
         {
             needExitMainLoop = false;
-            new AutoRun(typeof(Program).GetTypeInfo().Assembly).Execute(globalArgs);
+            StringBuilder sb = new StringBuilder();
+
+            using (ExtendedTextWrapper writer = new ExtendedTextWrapper(new StringWriter(sb)))
+            {
+                new AutoRun(typeof(Program).GetTypeInfo().Assembly).Execute(globalArgs, writer, Console.In);
+            }
+
+            Log.Info(Tag, sb.ToString());
             needExitMainLoop = true;
         }
 

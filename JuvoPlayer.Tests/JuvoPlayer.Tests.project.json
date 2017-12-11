@@ -1,9 +1,9 @@
 ﻿{
   "dependencies": {
-    "Microsoft.NETCore.App": "2.0.0",
-    "NUnit": "3.8.1",
-    "NUnitLite": "3.8.1",
-    "Tizen": "1.0.5"
+    "Microsoft.NETCore.App": "1.1.0",
+    "NUnit": "3.6.0",
+    "NUnitLite": "3.6.0",
+    "Tizen": "1.0.3"
   },
   "frameworks": {
     "netcoreapp1.0": {}
