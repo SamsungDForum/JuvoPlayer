@@ -2,7 +2,7 @@
 <manifest xmlns="http://tizen.org/ns/packages" api-version="3.0" package="org.tizen.example.JuvoPlayer.Tests" version="1.0.0">
   <profile name="tv" />
   <ui-application appid="org.tizen.example.JuvoPlayer.Tests"
-					exec="JuvoPlayer.Tests.exe"
+					exec="JuvoPlayer.Tests.dll"
 					type="dotnet"
 					multiple="false"
 					taskmanage="true"
