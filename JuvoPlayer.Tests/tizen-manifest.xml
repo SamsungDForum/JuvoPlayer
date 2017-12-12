@@ -11,4 +11,8 @@
     <icon>JuvoPlayer.Tests.png</icon>
     <label>JuvoPlayer.Tests</label>
   </ui-application>
+  <tv-info api-version="4.4.0">
+    <Infolink>T-2017-1000</Infolink>
+    <infolink>T-2018-1000</infolink>
+  </tv-info>
 </manifest>
