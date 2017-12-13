@@ -21,6 +21,7 @@ namespace JuvoPlayer.Player
     public class PlayerController : IPlayerController
     {
         private IPlayerAdapter playerAdapter;
+        private IDataProvider dataProvider;
         private Dictionary<StreamType, IPacketStream> Streams = new Dictionary<StreamType, IPacketStream>();
 
         public PlayerController(IPlayerAdapter player)
@@ -29,6 +30,7 @@ namespace JuvoPlayer.Player
 
             playerAdapter.PlaybackCompleted += OnPlaybackCompleted;
             playerAdapter.ShowSubtitle += OnShowSubtitle;
+            playerAdapter.TimeUpdated += OnTimeUpdated;
         }
 
         public event Pause Pause;
@@ -36,17 +38,23 @@ namespace JuvoPlayer.Player
         public event Seek Seek;
         public event Stop Stop;
 
-        public event ShowSubtitile ShowSubtitle;
         public event PlaybackCompleted PlaybackCompleted;
+        public event ShowSubtitile ShowSubtitle;
+        public event TimeUpdated TimeUpdated;
+
+        private void OnPlaybackCompleted()
+        {
+            PlaybackCompleted?.Invoke();
+        }
 
         private void OnShowSubtitle(Subtitle subtitle)
         {
             ShowSubtitle?.Invoke(subtitle);
         }
 
-        private void OnPlaybackCompleted()
+        private void OnTimeUpdated(double time)
         {
-            PlaybackCompleted?.Invoke();
+            TimeUpdated?.Invoke(time);
         }
 
         public void ChangeRepresentation(int pid)
@@ -132,6 +140,27 @@ namespace JuvoPlayer.Player
         public void OnSetSubtitleDelay(int offset)
         {
             playerAdapter.SetSubtitleDelay(offset);
+        }
+
+        public void SetDataProvider(IDataProvider dataProvider)
+        {
+            if (this.dataProvider != null)
+            {
+                this.dataProvider.DRMDataFound -= OnDrmDataFound;
+                this.dataProvider.StreamConfigReady -= OnStreamConfigReady;
+                this.dataProvider.StreamPacketReady -= OnStreamPacketReady;
+                this.dataProvider.StreamsFound -= OnStreamsFound;
+            }
+
+            this.dataProvider = dataProvider;
+
+            if (this.dataProvider != null)
+            {
+                this.dataProvider.DRMDataFound += OnDrmDataFound;
+                this.dataProvider.StreamConfigReady += OnStreamConfigReady;
+                this.dataProvider.StreamPacketReady += OnStreamPacketReady;
+                this.dataProvider.StreamsFound += OnStreamsFound;
+            }
         }
     }
 }

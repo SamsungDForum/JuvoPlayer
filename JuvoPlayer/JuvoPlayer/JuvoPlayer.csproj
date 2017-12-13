@@ -1,9 +1,9 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <OutputType>Exe</OutputType>
+    <OutputType>Library</OutputType>
     <TargetFramework>netcoreapp2.0</TargetFramework>
-    <StartupObject>JuvoPlayer.JuvoPlayer</StartupObject>
+    <StartupObject></StartupObject>
     <ApplicationIcon />
   </PropertyGroup>
 
@@ -34,7 +34,6 @@
       <ExcludeAssets>Runtime</ExcludeAssets>
     </PackageReference>
     <PackageReference Include="Tizen.NET.Sdk" Version="1.0.0" />
-    <PackageReference Include="Tizen.TV.NUI" Version="1.0.46" />
   </ItemGroup>
 
   <ItemGroup>

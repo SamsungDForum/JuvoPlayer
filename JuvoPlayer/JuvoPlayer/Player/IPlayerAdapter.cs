@@ -17,8 +17,9 @@ namespace JuvoPlayer.Player
 {
     public interface IPlayerAdapter
     {
-        event ShowSubtitile ShowSubtitle;
         event PlaybackCompleted PlaybackCompleted;
+        event ShowSubtitile ShowSubtitle;
+        event TimeUpdated TimeUpdated;
 
         void Pause();
         void Play();
@@ -28,7 +29,6 @@ namespace JuvoPlayer.Player
         void SetPlaybackRate(float rate);
         void SetSubtitleDelay(int offset);
         void Stop();
-        void TimeUpdated(double time);
 
         void SetAudioStreamConfig(AudioStreamConfig config);
         void SetVideoStreamConfig(VideoStreamConfig config);

@@ -29,8 +29,9 @@ namespace JuvoPlayer.Player
         private AudioMediaFormat audioFormat = null;
         private VideoMediaFormat videoFormat = null;
 
-        public event ShowSubtitile ShowSubtitle;
         public event PlaybackCompleted PlaybackCompleted;
+        public event ShowSubtitile ShowSubtitle;
+        public event TimeUpdated TimeUpdated;
 
         public MultimediaPlayerAdapter()
         {
@@ -44,6 +45,7 @@ namespace JuvoPlayer.Player
             playerContainer = new ElmSharp.Window("player");
             player.Display = new Display(playerContainer);
             player.DisplaySettings.Mode = PlayerDisplayMode.FullScreen;
+
             playerContainer.Show();
             playerContainer.BringDown();
         }
@@ -57,7 +59,7 @@ namespace JuvoPlayer.Player
                 Text = e.Text
             };
 
-            ShowSubtitle(subtitle);
+            ShowSubtitle?.Invoke(subtitle);
         }
 
         private void OnBufferingProgressChanged(object sender, BufferingProgressChangedEventArgs e)
@@ -272,9 +274,8 @@ namespace JuvoPlayer.Player
             Log.Info("JuvoPlayer", "Stream initialized 222");
         }
 
-        public void TimeUpdated(double time)
+        public void OnTimeUpdated(double time)
         {
-
         }
 
         public void SetSubtitleDelay(int offset)
