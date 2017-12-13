@@ -21,8 +21,9 @@ namespace JuvoPlayer.Player
     public delegate void Seek(double time);
     public delegate void Stop();
 
-    public delegate void ShowSubtitile(Subtitle subtitle);
     public delegate void PlaybackCompleted();
+    public delegate void ShowSubtitile(Subtitle subtitle);
+    public delegate void TimeUpdated(double time);
 
     public interface IPlayerController
     {
@@ -44,12 +45,16 @@ namespace JuvoPlayer.Player
         void OnStreamsFound(List<StreamDefinition> streams);
         #endregion
 
+        // TODO(p.galiszewsk): rethink this
+        void SetDataProvider(IDataProvider dataProvider);
+
         event Pause Pause;
         event Play Play;
         event Seek Seek;
         event Stop Stop;
 
-        event ShowSubtitile ShowSubtitle;
         event PlaybackCompleted PlaybackCompleted;
+        event ShowSubtitile ShowSubtitle;
+        event TimeUpdated TimeUpdated;
     }
 }

@@ -1,0 +1,18 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<manifest xmlns="http://tizen.org/ns/packages" api-version="4" package="org.tizen.example.NUIPlayer" version="1.0.0">
+  <profile name="tv" />
+  <ui-application appid="org.tizen.example.NUIPlayer"
+					exec="NUIPlayer.dll"
+					type="dotnet"
+					multiple="false"
+					taskmanage="true"
+					nodisplay="false"
+					launch_mode="single">
+    <icon>NUIPlayer.png</icon>
+    <label>NUIPlayer</label>
+  </ui-application>
+  <tv-info api-version="4.4.0">
+    <Infolink>T-2017-1000</Infolink>
+    <infolink>T-2018-1000</infolink>
+  </tv-info>
+</manifest>

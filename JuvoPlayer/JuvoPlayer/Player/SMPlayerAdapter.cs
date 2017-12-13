@@ -113,13 +113,16 @@ namespace JuvoPlayer.Player
         {
             string msg = "CSDemoPlayerListener::OnCurrentPosition = " + lCurrTime;
             Tizen.Log.Info("JuvoPlayer", msg);
+
+            playerAdapter.OnTimeUpdated(lCurrTime);
         }
     }
 
     unsafe public class SMPlayerAdapter : IPlayerAdapter
     {
-        public event ShowSubtitile ShowSubtitle;
         public event PlaybackCompleted PlaybackCompleted;
+        public event ShowSubtitile ShowSubtitle;
+        public event TimeUpdated TimeUpdated;
 
         SMPlayerWrapper playerInstance;
         static public HandleRef refMainStage;
@@ -402,10 +405,11 @@ namespace JuvoPlayer.Player
             playerInstance.Stop(); // This is async method - wait for D2TV_MESSAGE_STOP_SUCCESS message before doing anything else with the player.
         }
 
-        public void TimeUpdated(double time)
+        public void OnTimeUpdated(double time)
         {
-
+            TimeUpdated?.Invoke(time);
         }
+
         public void Pause() // TODO(g.skowinski): Handle asynchronicity (like in Stop() method?).
         {
             playerInstance.Pause();

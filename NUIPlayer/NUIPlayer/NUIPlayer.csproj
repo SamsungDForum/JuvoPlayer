@@ -1,45 +1,34 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+<Project Sdk="Microsoft.NET.Sdk">
 
   <PropertyGroup>
-    <OutputType>Library</OutputType>
+    <OutputType>Exe</OutputType>
     <TargetFramework>netcoreapp2.0</TargetFramework>
-    <StartupObject></StartupObject>
-    <ApplicationIcon />
   </PropertyGroup>
 
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugType>portable</DebugType>
-    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-    <NoWarn>;1701;1702;</NoWarn>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>None</DebugType>
   </PropertyGroup>
-  <ItemGroup>
-    <Compile Remove="res\**" />
-    <EmbeddedResource Remove="res\**" />
-    <None Remove="res\**" />
-  </ItemGroup>
-  <ItemGroup>
-    <Compile Remove="Common\UI.cs" />
-  </ItemGroup>
 
   <ItemGroup>
     <Folder Include="lib\" />
+    <Folder Include="res\" />
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Newtonsoft.Json" Version="10.0.3" />
     <PackageReference Include="Tizen.NET" Version="4.0.0">
+      <ExcludeAssets>Runtime</ExcludeAssets>
+    </PackageReference>
+    <PackageReference Include="Tizen.TV.NUI" Version="1.0.47">
       <ExcludeAssets>Runtime</ExcludeAssets>
     </PackageReference>
     <PackageReference Include="Tizen.NET.Sdk" Version="1.0.0" />
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\thirdparty\RTSP\RTSP.csproj" />
-    <ProjectReference Include="..\..\thirdparty\SMPlayerCS\SMPlayerCS.csproj" />
+    <ProjectReference Include="..\..\JuvoPlayer\JuvoPlayer\JuvoPlayer.csproj" />
   </ItemGroup>
 
 </Project>
-
