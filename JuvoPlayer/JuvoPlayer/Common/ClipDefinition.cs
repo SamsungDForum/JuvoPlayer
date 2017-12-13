@@ -11,15 +11,26 @@
 // damages suffered by licensee as a result of using, modifying or distributing
 // this software or its derivatives.
 
+using System.Collections.Generic;
+
 namespace JuvoPlayer.Common
 {
+    public class SubtitleInfo
+    {
+        public string Id { get; set; }
+        public string Subtitle { get; set; }
+        public string Language { get; set; }
+        public string Encoding { get; set; }
+        public bool IsActive { get; set; }
+
+    }
     public class ClipDefinition
     {
+        public string Title { get; set; }
         public string Type { get; set; }
         public string Url { get; set; }
-
-        public ClipDefinition()
-        {
-        }
+        public List<SubtitleInfo> Subtitles { get; set; }
+        public string Poster { get; set; }
+        public string Description { get; set; }
     }
 }
