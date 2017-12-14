@@ -2,46 +2,39 @@
 
   <!-- Property Group for Tizen40 Project -->
   <PropertyGroup>
-    <OutputType>Library</OutputType>
+    <OutputType>Exe</OutputType>
     <TargetFramework>tizen40</TargetFramework>
-    <StartupObject></StartupObject>
-    <ApplicationIcon />
   </PropertyGroup>
 
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugType>portable</DebugType>
-    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
-    <NoWarn>;1701;1702;</NoWarn>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>None</DebugType>
   </PropertyGroup>
-  <ItemGroup>
-    <Compile Remove="res\**" />
-    <EmbeddedResource Remove="res\**" />
-    <None Remove="res\**" />
-  </ItemGroup>
-  <ItemGroup>
-    <Compile Remove="Common\UI.cs" />
-  </ItemGroup>
 
   <ItemGroup>
     <Folder Include="lib\" />
+    <Folder Include="res\" />
   </ItemGroup>
 
+  
+  <!-- If solution already has PCL project, will reference -->
+  
+
+  <!-- Include Nuget Package for Tizen Project building -->
   <ItemGroup>
-    <PackageReference Include="Newtonsoft.Json" Version="10.0.3" />
     <PackageReference Include="Tizen.NET" Version="4.0.0">
       <ExcludeAssets>Runtime</ExcludeAssets>
     </PackageReference>
     <PackageReference Include="Tizen.NET.Sdk" Version="1.0.0" />
+    <PackageReference Include="Xamarin.Forms" Version="2.5.0.121934" />
+    <PackageReference Include="Xamarin.Forms.Platform.Tizen" Version="2.5.0.77107" />
   </ItemGroup>
-
   <ItemGroup>
     <ProjectReference Include="..\..\JuvoPlayer.Common\JuvoPlayer.Common.csproj" />
-    <ProjectReference Include="..\..\thirdparty\RTSP\RTSP.csproj" />
-    <ProjectReference Include="..\..\thirdparty\SMPlayerCS\SMPlayerCS.csproj" />
+    <ProjectReference Include="..\..\JuvoPlayer\JuvoPlayer\JuvoPlayer.csproj" />
+    <ProjectReference Include="..\XamarinPlayer\XamarinPlayer.csproj" />
   </ItemGroup>
 
 </Project>
-

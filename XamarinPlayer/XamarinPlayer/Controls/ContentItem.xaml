@@ -1,0 +1,39 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<AbsoluteLayout xmlns="http://xamarin.com/schemas/2014/forms"
+            xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+            x:Class="XamarinMediaPlayer.Controls.ContentItem"
+            HorizontalOptions="Center"
+            ContentImg="{Binding Bg}"
+            ContentTitle="{Binding Title}"
+            ContentDescription ="{Binding Description}"
+            ContentFocusedCommand="{Binding ContentFocusedCommand}">
+    <BoxView x:Name="ImageBorder"
+             HorizontalOptions="Fill"
+             VerticalOptions="Fill"
+             AbsoluteLayout.LayoutBounds="0,0,1,1" AbsoluteLayout.LayoutFlags="All"/>
+    <Image x:Name="ContentImage"
+           HorizontalOptions="Center"
+           VerticalOptions="Center"
+           Aspect="Fill"
+           AbsoluteLayout.LayoutBounds="0,0,1,1" AbsoluteLayout.LayoutFlags="All"
+           Margin="3, 3, 3, 3"/>
+    <BoxView x:Name="Dim"
+             HorizontalOptions="Fill"
+             VerticalOptions="Fill"
+             Margin="3, 3, 3, 3"
+             AbsoluteLayout.LayoutBounds="0,0,1,1" AbsoluteLayout.LayoutFlags="All"/>
+    <Image x:Name="PlayImage"
+           Opacity="0"
+           Source="btn_viewer_control_play_normal.png"
+           HorizontalOptions="Center"
+           VerticalOptions="Center"
+           AbsoluteLayout.LayoutBounds="0,0,1,1" AbsoluteLayout.LayoutFlags="All"/>
+    <Button x:Name="FocusArea"
+            Opacity="0"
+            AbsoluteLayout.LayoutBounds="0,0,1,1" AbsoluteLayout.LayoutFlags="All"
+            HorizontalOptions="Fill"
+            VerticalOptions="Fill"
+            Clicked="OnItemClicked"
+            Focused="OnItemFocused"
+            Unfocused="OnItemUnfocused"/>
+</AbsoluteLayout>

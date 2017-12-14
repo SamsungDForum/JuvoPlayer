@@ -1,0 +1,74 @@
+﻿<?xml version="1.0" encoding="utf-8" ?>
+<ContentPage xmlns="http://xamarin.com/schemas/2014/forms"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="XamarinMediaPlayer.Views.PlayerView"
+             ContentSource="{Binding Source}">
+    <ContentPage.Content>
+        <StackLayout HorizontalOptions="FillAndExpand"
+                     VerticalOptions="FillAndExpand">
+            <StackLayout.GestureRecognizers>
+                <TapGestureRecognizer
+                        Tapped="OnTapGestureRecognizerViewTapped"/>
+            </StackLayout.GestureRecognizers>
+            <StackLayout HorizontalOptions="FillAndExpand"
+                         VerticalOptions="FillAndExpand"
+                         x:Name="Controller">
+                <StackLayout BackgroundColor="#B0101010"
+                             Padding="0, 20">
+                    <Label x:Name="VideoTitle"
+                           Text="{Binding Title}"
+                           TextColor="White"
+                           FontSize="Large"
+                           HorizontalOptions="CenterAndExpand"
+                           VerticalOptions="Fill"/>
+                </StackLayout>
+                <BoxView VerticalOptions="FillAndExpand">
+                    <BoxView.GestureRecognizers>
+                        <TapGestureRecognizer
+                            Tapped="OnTapGestureRecognizerControllerTapped"/>
+                    </BoxView.GestureRecognizers>
+                </BoxView>
+                <StackLayout BackgroundColor="#B0101010"
+                             Padding="20, 10">
+                    <RelativeLayout>
+                        <BoxView Color="#20303030"
+                                 HeightRequest="4"
+                                 RelativeLayout.WidthConstraint="{ConstraintExpression Type=RelativeToParent, Property=Width, Factor=0.898}"
+                                 RelativeLayout.XConstraint="{ConstraintExpression Type=RelativeToParent, Property=Width, Factor=0.051}"/>
+                        <ProgressBar x:Name="Progressbar"
+                                     Progress=".0"
+                                     RelativeLayout.WidthConstraint="{ConstraintExpression Type=RelativeToParent, Property=Width, Factor=1.0}"
+                                     RelativeLayout.XConstraint="{ConstraintExpression Type=RelativeToParent, Property=Width, Factor=0.0}" />
+                    </RelativeLayout>
+                    <StackLayout Orientation="Horizontal">
+                        <Label x:Name="CurrentTime"
+                               HorizontalOptions="StartAndExpand"
+                               Text="00:00"
+                               TextColor="White"
+                               FontSize="Small"/>
+                        <Label x:Name="TotalTime"
+                               HorizontalOptions="EndAndExpand"
+                               Text="00:00"
+                               TextColor="White"
+                               FontSize="Small"/>
+                    </StackLayout>
+                    <StackLayout Orientation="Horizontal" HorizontalOptions="CenterAndExpand">
+                        <AbsoluteLayout>
+                            <Image x:Name="PlayImage"
+                                    Source="btn_viewer_control_play_normal.png"
+                                    HorizontalOptions="Center"
+                                    VerticalOptions="Center"
+                                    AbsoluteLayout.LayoutBounds="0,0,1,1" AbsoluteLayout.LayoutFlags="All"/>
+                            <Button x:Name="Play"
+                                    Opacity="0.1"
+                                    AbsoluteLayout.LayoutBounds="0,0,1,1" AbsoluteLayout.LayoutFlags="All"
+                                    HorizontalOptions="Fill"
+                                    VerticalOptions="Fill"
+                                    WidthRequest="100"/>
+                        </AbsoluteLayout>
+                    </StackLayout>
+                </StackLayout>
+            </StackLayout>
+        </StackLayout>
+    </ContentPage.Content>
+</ContentPage>

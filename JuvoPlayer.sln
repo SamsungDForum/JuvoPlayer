@@ -11,7 +11,13 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SMPlayerCS", "thirdparty\SM
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "JuvoPlayer.Tests", "JuvoPlayer.Tests\JuvoPlayer.Tests.csproj", "{38617D04-C61E-4707-8497-2EAF96521525}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "NUIPlayer", "NUIPlayer\NUIPlayer\NUIPlayer.csproj", "{4D7CF89D-65FA-4FEE-94CA-8E68AC7D8A77}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "NUIPlayer", "NUIPlayer\NUIPlayer\NUIPlayer.csproj", "{4D7CF89D-65FA-4FEE-94CA-8E68AC7D8A77}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "JuvoPlayer.Common", "JuvoPlayer.Common\JuvoPlayer.Common.csproj", "{2031849B-4F72-4D3A-B970-DA72C720C6E6}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "XamarinPlayer", "XamarinPlayer\XamarinPlayer\XamarinPlayer.csproj", "{36BC28B7-C4F2-4227-93A4-F521E95D967D}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "XamarinPlayer.Tizen.TV", "XamarinPlayer\XamarinPlayer.Tizen.TV\XamarinPlayer.Tizen.TV.csproj", "{9388FB85-93F0-4FD5-A787-E702AA1581A3}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -39,6 +45,18 @@ Global
 		{4D7CF89D-65FA-4FEE-94CA-8E68AC7D8A77}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{4D7CF89D-65FA-4FEE-94CA-8E68AC7D8A77}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{4D7CF89D-65FA-4FEE-94CA-8E68AC7D8A77}.Release|Any CPU.Build.0 = Release|Any CPU
+		{2031849B-4F72-4D3A-B970-DA72C720C6E6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{2031849B-4F72-4D3A-B970-DA72C720C6E6}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{2031849B-4F72-4D3A-B970-DA72C720C6E6}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{2031849B-4F72-4D3A-B970-DA72C720C6E6}.Release|Any CPU.Build.0 = Release|Any CPU
+		{36BC28B7-C4F2-4227-93A4-F521E95D967D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{36BC28B7-C4F2-4227-93A4-F521E95D967D}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{36BC28B7-C4F2-4227-93A4-F521E95D967D}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{36BC28B7-C4F2-4227-93A4-F521E95D967D}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9388FB85-93F0-4FD5-A787-E702AA1581A3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9388FB85-93F0-4FD5-A787-E702AA1581A3}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9388FB85-93F0-4FD5-A787-E702AA1581A3}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9388FB85-93F0-4FD5-A787-E702AA1581A3}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
