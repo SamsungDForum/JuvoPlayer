@@ -1,8 +1,9 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
 
+  <!-- Property Group for Tizen40 Project -->
   <PropertyGroup>
     <OutputType>Library</OutputType>
-    <TargetFramework>netcoreapp2.0</TargetFramework>
+    <TargetFramework>tizen40</TargetFramework>
     <StartupObject></StartupObject>
     <ApplicationIcon />
   </PropertyGroup>
@@ -37,6 +38,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\..\JuvoPlayer.Common\JuvoPlayer.Common.csproj" />
     <ProjectReference Include="..\..\thirdparty\RTSP\RTSP.csproj" />
     <ProjectReference Include="..\..\thirdparty\SMPlayerCS\SMPlayerCS.csproj" />
   </ItemGroup>

@@ -20,18 +20,21 @@ namespace JuvoPlayer.Player
 {
     public class PlayerController : IPlayerController
     {
+        private enum PlayerState
+        {
+            Unitialized,
+            Ready,
+            Paused,
+            Playing,
+            Finished,
+            Error = -1
+        };
+
+        private PlayerState state = PlayerState.Unitialized;
+
         private IPlayerAdapter playerAdapter;
         private IDataProvider dataProvider;
         private Dictionary<StreamType, IPacketStream> Streams = new Dictionary<StreamType, IPacketStream>();
-
-        public PlayerController(IPlayerAdapter player)
-        {
-            playerAdapter = player ?? throw new ArgumentNullException("player cannot be null");
-
-            playerAdapter.PlaybackCompleted += OnPlaybackCompleted;
-            playerAdapter.ShowSubtitle += OnShowSubtitle;
-            playerAdapter.TimeUpdated += OnTimeUpdated;
-        }
 
         public event Pause Pause;
         public event Play Play;
@@ -42,8 +45,19 @@ namespace JuvoPlayer.Player
         public event ShowSubtitile ShowSubtitle;
         public event TimeUpdated TimeUpdated;
 
+        public PlayerController(IPlayerAdapter player)
+        {
+            playerAdapter = player ?? throw new ArgumentNullException("player cannot be null");
+
+            playerAdapter.PlaybackCompleted += OnPlaybackCompleted;
+            playerAdapter.ShowSubtitle += OnShowSubtitle;
+            playerAdapter.TimeUpdated += OnTimeUpdated;
+        }
+
         private void OnPlaybackCompleted()
         {
+            state = PlayerState.Finished;
+
             PlaybackCompleted?.Invoke();
         }
 
@@ -67,26 +81,41 @@ namespace JuvoPlayer.Player
 
         public void OnPause()
         {
+            if (state != PlayerState.Playing)
+                return;
+
             playerAdapter.Pause();
-            Pause();
+
+            state = PlayerState.Paused;
+
+            Pause?.Invoke();
         }
 
         public void OnPlay()
         {
+            if (state < PlayerState.Ready)
+                return;
+
             playerAdapter.Play();
-//            Play();
+
+            state = PlayerState.Playing;
+
+            Play?.Invoke();
         }
 
         public void OnSeek(double time)
         {
             playerAdapter.Seek(time);
-            Seek(time);
+            Seek?.Invoke(time);
         }
 
         public void OnStop()
         {
             playerAdapter.Stop();
-            Stop();
+
+            state = PlayerState.Finished;
+
+            Stop?.Invoke();
         }
 
         public void OnStreamConfigReady(StreamConfig config)
@@ -144,6 +173,8 @@ namespace JuvoPlayer.Player
 
         public void SetDataProvider(IDataProvider dataProvider)
         {
+            Stop?.Invoke();
+
             if (this.dataProvider != null)
             {
                 this.dataProvider.DRMDataFound -= OnDrmDataFound;

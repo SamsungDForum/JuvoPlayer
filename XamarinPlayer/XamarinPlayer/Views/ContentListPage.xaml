@@ -1,0 +1,51 @@
+﻿<?xml version="1.0" encoding="UTF-8"?>
+<ContentPage xmlns="http://xamarin.com/schemas/2014/forms"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:vm="clr-namespace:XamarinMediaPlayer.ViewModels"
+             xmlns:Controls="clr-namespace:XamarinMediaPlayer.Controls"
+             x:Class="XamarinMediaPlayer.Views.ContentListPage"
+             BackgroundColor="#000000"
+             FocusedContent="{Binding FocusedContent}">
+    <ContentPage.BindingContext>
+        <vm:ContentListPageViewModel />
+    </ContentPage.BindingContext>
+    <ContentPage.Content>
+        <RelativeLayout>
+            <RelativeLayout x:Name="ImageLayout"
+                            RelativeLayout.HeightConstraint="{ConstraintExpression Type=RelativeToParent, Property=Height, Factor=0.7}"
+                            RelativeLayout.WidthConstraint="{ConstraintExpression Type=RelativeToParent, Property=Width, Factor=0.7}"
+                            RelativeLayout.YConstraint="{ConstraintExpression Type=RelativeToParent, Property=Height, Factor=0}"
+                            RelativeLayout.XConstraint="{ConstraintExpression Type=RelativeToParent, Property=Width, Factor=0.3}">
+                <Image x:Name="ContentImage"
+                       Aspect="AspectFill"
+                       RelativeLayout.HeightConstraint="{ConstraintExpression Type=RelativeToParent, Property=Height, Factor=1}"
+                       RelativeLayout.WidthConstraint="{ConstraintExpression Type=RelativeToParent, Property=Width, Factor=1}" />
+                <Image x:Name="BgImage"
+                       Aspect="Fill"
+                       Source="content_list_bg.png"
+                       RelativeLayout.HeightConstraint="{ConstraintExpression Type=RelativeToParent, Property=Height, Factor=1}"
+                       RelativeLayout.WidthConstraint="{ConstraintExpression Type=RelativeToParent, Property=Width, Factor=1}" />
+            </RelativeLayout>
+            <StackLayout x:Name="TextLayout"
+                         RelativeLayout.HeightConstraint="{ConstraintExpression Type=RelativeToParent, Property=Height, Factor=0.6}"
+                         RelativeLayout.WidthConstraint="{ConstraintExpression Type=RelativeToParent, Property=Width, Factor=0.42}"
+                         RelativeLayout.YConstraint="{ConstraintExpression Type=RelativeToParent, Property=Height, Factor=0.07}"
+                         RelativeLayout.XConstraint="{ConstraintExpression Type=RelativeToParent, Property=Width, Factor=0.03}">
+                <Label x:Name="ContentTitle"
+                       TextColor="#ffffff"
+                       FontSize="Large"/>
+                <BoxView HeightRequest="20"/>
+                <Label x:Name="ContentDesc"
+                       FontSize="Small"
+                       TextColor="#999999"/>
+            </StackLayout>
+            <Controls:ContentList x:Name="ContentListView"
+                                  HorizontalOptions="Center"
+                                  VerticalOptions="Center"
+                                  RelativeLayout.HeightConstraint="{ConstraintExpression Type=RelativeToParent, Property=Height, Factor=0.21}"
+                                  RelativeLayout.WidthConstraint="{ConstraintExpression Type=RelativeToParent, Property=Width, Factor=0.94}"
+                                  RelativeLayout.YConstraint="{ConstraintExpression Type=RelativeToParent, Property=Height, Factor=0.7}"
+                                  RelativeLayout.XConstraint="{ConstraintExpression Type=RelativeToParent, Property=Width, Factor=0.03}"/>
+        </RelativeLayout>
+    </ContentPage.Content>
+</ContentPage>
