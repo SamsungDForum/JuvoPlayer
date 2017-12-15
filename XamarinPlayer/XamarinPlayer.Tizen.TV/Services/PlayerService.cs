@@ -2,12 +2,12 @@
 using System.Threading.Tasks;
 using Xamarin.Forms;
 using Xamarin.Forms.Platform.Tizen;
-using XamarinMediaPlayer.Services;
-using XamarinMediaPlayer.Tizen.Services;
+using XamarinPlayer.Services;
+using XamarinPlayer.Tizen.Services;
 using Multimedia = Tizen.Multimedia;
 
 [assembly: Dependency(typeof(PlayerService))]
-namespace XamarinMediaPlayer.Tizen.Services
+namespace XamarinPlayer.Tizen.Services
 {
     class PlayerService : IPlayerService, IDisposable
     {

@@ -1,4 +1,4 @@
-﻿namespace XamarinMediaPlayer.Services
+﻿namespace XamarinPlayer.Services
 {
     public enum PlayerState
     {

@@ -1,6 +1,6 @@
-﻿using XamarinMediaPlayer.Controls;
+﻿using XamarinPlayer.Controls;
 
-namespace XamarinMediaPlayer.Services
+namespace XamarinPlayer.Services
 {
     public delegate void ContentSelectHandler(ContentItem item);
 }

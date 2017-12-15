@@ -3,12 +3,13 @@
 using Xamarin.Forms;
 using Xamarin.Forms.Xaml;
 
-using XamarinMediaPlayer.ViewModels;
-using XamarinMediaPlayer.Models;
-using XamarinMediaPlayer.Controls;
-using XamarinMediaPlayer.Services;
+using XamarinPlayer.ViewModels;
+using XamarinPlayer.Models;
+using XamarinPlayer.Controls;
+using XamarinPlayer.Services;
+using JuvoPlayer.Common;
 
-namespace XamarinMediaPlayer.Views
+namespace XamarinPlayer.Views
 {
     [XamlCompilation(XamlCompilationOptions.Compile)]
 

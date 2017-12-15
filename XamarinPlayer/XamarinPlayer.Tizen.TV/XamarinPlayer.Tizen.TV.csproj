@@ -4,6 +4,7 @@
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <TargetFramework>tizen40</TargetFramework>
+    <NoWin32Manifest>true</NoWin32Manifest>
   </PropertyGroup>
 
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
@@ -14,8 +15,9 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <Folder Include="lib\" />
-    <Folder Include="res\" />
+    <Folder Include="lib\">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Folder>
   </ItemGroup>
 
   
@@ -35,6 +37,11 @@
     <ProjectReference Include="..\..\JuvoPlayer.Common\JuvoPlayer.Common.csproj" />
     <ProjectReference Include="..\..\JuvoPlayer\JuvoPlayer\JuvoPlayer.csproj" />
     <ProjectReference Include="..\XamarinPlayer\XamarinPlayer.csproj" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Update="shared\res\videoclips.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
 
 </Project>
