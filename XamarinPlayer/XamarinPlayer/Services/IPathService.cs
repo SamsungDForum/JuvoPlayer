@@ -1,12 +1,11 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Text;
-using System.Threading.Tasks;
 
 namespace XamarinPlayer.Services
 {
-    public interface IKeyEventSender
+    public interface IPathService : IDisposable
     {
+        string ApplicationPath { get; }
     }
 }

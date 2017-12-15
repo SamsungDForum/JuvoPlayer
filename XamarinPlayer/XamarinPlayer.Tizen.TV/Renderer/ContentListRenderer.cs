@@ -1,10 +1,10 @@
 ﻿using System.ComponentModel;
 using Xamarin.Forms;
 using Xamarin.Forms.Platform.Tizen;
-using XamarinMediaPlayer.Controls;
+using XamarinPlayer.Controls;
 
 [assembly: ExportRenderer(typeof(ContentList), typeof(ContentListRenderer))]
-namespace XamarinMediaPlayer.Controls
+namespace XamarinPlayer.Controls
 {
     public class ContentListRenderer : ScrollViewRenderer
     {

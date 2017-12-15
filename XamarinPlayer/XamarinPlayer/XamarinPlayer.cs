@@ -1,7 +1,7 @@
 using Xamarin.Forms;
-using XamarinMediaPlayer.Views;
+using XamarinPlayer.Views;
 
-namespace XamarinMediaPlayer
+namespace XamarinPlayer
 {
     public class App : Application
     {

@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Threading.Tasks;
 
-namespace XamarinMediaPlayer.Services
+namespace XamarinPlayer.Services
 {
     public delegate void PlayerStateChangedEventHandler(object sender, PlayerStateChangedEventArgs e);
 

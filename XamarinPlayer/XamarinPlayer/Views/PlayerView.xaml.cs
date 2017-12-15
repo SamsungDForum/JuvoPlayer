@@ -1,9 +1,9 @@
 ﻿using System;
 using Xamarin.Forms;
 using Xamarin.Forms.Xaml;
-using XamarinMediaPlayer.Services;
+using XamarinPlayer.Services;
 
-namespace XamarinMediaPlayer.Views
+namespace XamarinPlayer.Views
 {
     [XamlCompilation(XamlCompilationOptions.Compile)]
     public partial class PlayerView : ContentPage

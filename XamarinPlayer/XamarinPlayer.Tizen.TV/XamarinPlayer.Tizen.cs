@@ -1,7 +1,7 @@
 using ElmSharp;
-using XamarinMediaPlayer.Services;
+using XamarinPlayer.Services;
 
-namespace XamarinMediaPlayer.Tizen
+namespace XamarinPlayer.Tizen
 {
     class Program : global::Xamarin.Forms.Platform.Tizen.FormsApplication, IKeyEventSender
     {
