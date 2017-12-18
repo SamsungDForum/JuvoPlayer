@@ -1,14 +1,6 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
 using System.Net.Http;
-using System.Text;
-using System.Xml;
-using System.Threading.Tasks;
-using Tizen.Applications;
-using System.Xml.Serialization;
-using MpdParser;
+using JuvoPlayer.Dash.MpdParser;
 
 namespace JuvoPlayer.Dash
 {
@@ -21,17 +13,16 @@ namespace JuvoPlayer.Dash
         public DashManifest(string url)
         {
             Uri = new Uri(
-                url ?? throw new ArgumentNullException(
-                    "Dash manifest url is empty."));
-            this.XmlManifest = DownloadManifest();
-            this.Document = ParseManifest();
+                url ?? throw new ArgumentNullException(nameof(url)));
+            XmlManifest = DownloadManifest();
+            Document = ParseManifest();
 
         }
 
         public Document ReloadManifest() {
-            this.XmlManifest = DownloadManifest();
-            this.Document = ParseManifest();
-            return this.Document;
+            XmlManifest = DownloadManifest();
+            Document = ParseManifest();
+            return Document;
         }
 
         private string DownloadManifest()
@@ -39,7 +30,7 @@ namespace JuvoPlayer.Dash
             try
             {
                 var client = new HttpClient();
-                HttpResponseMessage response = client.GetAsync(
+                var response = client.GetAsync(
                     Uri,
                     HttpCompletionOption.ResponseHeadersRead).Result;
                 response.EnsureSuccessStatusCode();
@@ -57,9 +48,8 @@ namespace JuvoPlayer.Dash
         {
             try
             {
-                var document = Document.FromText(
-                    this.XmlManifest ?? throw new ArgumentNullException(
-                        "Xml manifest is empty."),
+                var document = new Document(
+                    XmlManifest ?? throw new ArgumentNullException(nameof(XmlManifest)),
                     Uri.ToString());
                 return document;
             }

@@ -17,7 +17,7 @@ namespace JuvoPlayer.Dash
     public interface IDemuxer
     {
         void Start();
-        void ChangePID(int pid);
+        void ChangePid(int pid);
         void Reset();
         void Seek(double position);
 

@@ -1,56 +1,59 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Text;
 using JuvoPlayer.Common;
-using MpdParser;
+using JuvoPlayer.Dash.MpdParser;
+using System.Net.Http;
+using System.Net;
 
 namespace JuvoPlayer.Dash
 {
     class DashClient : IDashClient
     {
         static string Tag = "JuvoPlayer";
-        private ISharedBuffer sharedBuffer;
-        private DashManifest manifest;
+        private ISharedBuffer _sharedBuffer;
+        private DashManifest _manifest;
         private int currentPeriod;
 
         public DashClient(
             DashManifest dashManifest,
             ISharedBuffer sharedBuffer)
         {
-            manifest = dashManifest ??
+            _manifest = dashManifest ??
                 throw new ArgumentNullException(
-                    "manifest",
+                    nameof(dashManifest),
                     "dashManifest cannot be null");
-            this.sharedBuffer = sharedBuffer;
-            if (manifest.Document.Periods.Length == 0)
+            _sharedBuffer = sharedBuffer;
+            if (_manifest.Document.Periods.Length == 0)
             {
                 Tizen.Log.Error(Tag, "No periods present in MPD file.");
             }
-            else
-            {
-                currentPeriod = 0;
-            }
-            foreach (Period p in manifest.Document.Periods)
+            foreach (var p in _manifest.Document.Periods)
             {
                 Tizen.Log.Info(Tag, p.ToString());
                 try
                 {
-                    Media m = Find(p, "eng", MediaType.Video) ??
+                    var m = Find(p, "eng", MediaType.Video) ??
                         Find(p, "und", MediaType.Video);
-                    Tizen.Log.Info(Tag, "Media: " + m.ToString());
-                    foreach (Representation r in m.Representations)
+                    Tizen.Log.Info(Tag, "Media: " + m);
+                    string segmentUrl = null;
+                    foreach (var r in m.Representations)
                     {
                         Tizen.Log.Info(Tag, r.ToString());
                         var segments = r.Segments;
-                        Tizen.Log.Info(Tag, "Segment: " + segments.MediaSegmentAtPos(0).Url);
+                        Tizen.Log.Info(
+                            Tag,
+                            "Segment: " + segments.MediaSegmentAtPos(0).Url);
+                        segmentUrl =
+                            segments.MediaSegmentAtPos(0).Url.ToString();
+                        break; // only first representation
                     }
+                    DownloadSegment(segmentUrl);
+                    Tizen.Log.Info(Tag, "data: " + sharedBuffer.ReadData(1024));
                 }
                 catch (Exception ex)
                 {
                     Tizen.Log.Info(Tag, ex.Message);
                 }
             }
-
         }
 
         public void Seek(int position)
@@ -69,16 +72,12 @@ namespace JuvoPlayer.Dash
             throw new NotImplementedException();
         }
 
-        public bool UpdateManifest(DashManifest manifest)
+        public bool UpdateManifest(DashManifest newManifest)
         {
-            if (manifest == null) {
+            if (newManifest == null)
                 return false;
-            }
-            else
-            {
-                this.manifest = manifest;
-                return true;
-            }
+            _manifest = newManifest;
+            return true;
         }
 
         private static Media Find(
@@ -88,7 +87,7 @@ namespace JuvoPlayer.Dash
             MediaRole role = MediaRole.Main)
         {
             Media missingRole = null;
-            foreach (Media set in p.Sets)
+            foreach (var set in p.Sets)
             {
                 if (set.Type.Value == type && set.Lang == language)
                 {
@@ -96,7 +95,7 @@ namespace JuvoPlayer.Dash
                     {
                         return set;
                     }
-                    else if (set.Roles.Length == 0)
+                    if (set.Roles.Length == 0)
                     {
                         missingRole = set;
 
@@ -105,6 +104,28 @@ namespace JuvoPlayer.Dash
             }
             return missingRole;
 
+        }
+        private bool DownloadSegment(
+            string url)
+        {
+            try
+            {
+                var client = new HttpClient();
+                var response = client.GetAsync(
+                    url,
+                    HttpCompletionOption.ResponseHeadersRead).Result;
+                response.EnsureSuccessStatusCode();
+                _sharedBuffer.WriteData(
+                    response.Content.ReadAsByteArrayAsync().Result);
+                return true;
+            }
+            catch (Exception ex)
+            {
+                Tizen.Log.Error(
+                    Tag,
+                    "Cannot download segment file. Error: " + ex.Message);
+                return false;
+            }
         }
     }
 
@@ -116,4 +137,29 @@ namespace JuvoPlayer.Dash
         }
     }
 
+    public class WebClientEx : WebClient
+    {
+        private readonly long _from;
+        private readonly long _to;
+
+        public WebClientEx(long from, long to)
+        {
+            _from = from;
+            _to = to;
+        }
+
+        public UInt64 GetBytes(Uri address)
+        {
+            OpenRead(address.ToString());
+            return Convert.ToUInt64(ResponseHeaders["Content-Length"]);
+
+        }
+
+        protected override WebRequest GetWebRequest(Uri address)
+        {
+            var request = (HttpWebRequest)base.GetWebRequest(address);
+            request.AddRange(_from, _to);
+            return request;
+        }
+    }
 }
