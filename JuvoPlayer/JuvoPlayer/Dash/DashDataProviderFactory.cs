@@ -1,5 +1,4 @@
 ﻿using JuvoPlayer.Common;
-using JuvoPlayer.RTSP;
 using System;
 using System.IO;
 using Tizen.Applications;
@@ -8,16 +7,12 @@ namespace JuvoPlayer.Dash
 {
     class DashDataProviderFactory : IDataProviderFactory
     {
-        public DashDataProviderFactory()
-        {
-        }
-
         public IDataProvider Create(ClipDefinition clip)
         {
             Tizen.Log.Info("JuvoPlayer", "Create.");
             if (clip == null)
             {
-                throw new ArgumentNullException("Clip", "Clip cannot be null.");
+                throw new ArgumentNullException(nameof(clip), "Clip cannot be null.");
             }
 
             if (!SupportsClip(clip))
@@ -28,6 +23,7 @@ namespace JuvoPlayer.Dash
 
             IDemuxer demuxer = null;
             IDashClient dashClient = null;
+            DashManifest manifest = null;
             string libPath = null;
             try
             {
@@ -44,8 +40,8 @@ namespace JuvoPlayer.Dash
             }
             try
             {
-                var sharedBuffer = new SharedBuffer();
-                var manifest = new DashManifest(clip.Url);
+//                var sharedBuffer = new SharedBU();
+                manifest = new DashManifest(clip.Url);
                 dashClient = new DashClient(manifest, null);
                 demuxer = new FFmpegDemuxer(null, libPath);
             }
@@ -53,16 +49,16 @@ namespace JuvoPlayer.Dash
             {
                 Tizen.Log.Error("JuvoPlayer", ex.Message);
             }
-            return new DashDataProvider(dashClient, demuxer, clip);
+            return new DashDataProvider(dashClient, demuxer, clip, manifest);
         }
 
         public bool SupportsClip(ClipDefinition clip)
         {
             if (clip == null)
             {
-                throw new ArgumentNullException("Clip", "Clip cannot be null.");
+                throw new ArgumentNullException(nameof(clip), "Clip cannot be null.");
             }
-            return clip.Type == "DASH";
+            return clip.Type == "Dash";
         }
     }
 }
