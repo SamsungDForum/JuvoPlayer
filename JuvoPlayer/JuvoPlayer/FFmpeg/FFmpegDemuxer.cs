@@ -48,10 +48,20 @@ namespace JuvoPlayer.FFmpeg
             }
         }
 
-        public unsafe void Start()
+        public void StartForExternalSource()
         {
             Log.Info("JuvoPlayer", "StartDemuxer!");
-            Task.Run(() => DemuxTask()); // Potentially time-consuming part of initialization and demuxation loop will be executed on a detached thread.
+
+            // Potentially time-consuming part of initialization and demuxation loop will be executed on a detached thread.
+            Task.Run(() => DemuxTask(InitES)); 
+        }
+
+        public void StartForUrl(string url)
+        {
+            Log.Info("JuvoPlayer", "StartDemuxer!");
+
+            // Potentially time-consuming part of initialization and demuxation loop will be executed on a detached thread.
+            Task.Run(() => DemuxTask(() => InitURL(url))); 
         }
 
         unsafe private void InitES()
@@ -93,27 +103,9 @@ namespace JuvoPlayer.FFmpeg
                 //FFmpeg.av_free(buffer); // should be freed by avformat_open_input if i recall correctly
                 throw new Exception("Could not parse input data: " + GetErrorText(ret));
             }
-
-            ret = FFmpeg.avformat_find_stream_info(formatContext, null);
-            if (ret < 0) {
-                Log.Info("JuvoPlayer", "Could not find stream info (error code: " + ret.ToString() + ")!");
-
-                DeallocFFmpeg();
-                throw new Exception("Could not find stream info (error code: " + ret.ToString() + ")!");
-            }
-
-            audio_idx = FFmpeg.av_find_best_stream(formatContext, AVMediaType.AVMEDIA_TYPE_AUDIO, -1, -1, null, 0);
-            video_idx = FFmpeg.av_find_best_stream(formatContext, AVMediaType.AVMEDIA_TYPE_VIDEO, -1, -1, null, 0);
-            if (audio_idx < 0 && video_idx < 0) {
-                DeallocFFmpeg();
-                Log.Info("JuvoPlayer", "Could not find video or audio stream: " + audio_idx.ToString() + "      " + video_idx.ToString());
-                throw new Exception("Could not find video or audio stream!");
-            }
-
-            Log.Info("JuvoPlayer", "streamids: " + audio_idx.ToString() + "      " + video_idx.ToString());
         }
 
-        unsafe private void InitURL()
+        unsafe private void InitURL(string url)
         {
             int ret = -1;
             Log.Info("JuvoPlayer", "INIT");
@@ -124,31 +116,26 @@ namespace JuvoPlayer.FFmpeg
             formatContext->probesize = bufferSize;
             formatContext->max_analyze_duration = 10 * 1000000;
 
-            if (formatContext == null) {
-                DeallocFFmpeg();
+            if (formatContext == null)
+            {
                 Log.Info("JuvoPlayer", "Could not create FFmpeg context!");
+
+                DeallocFFmpeg();
                 throw new Exception("Could not create FFmpeg context.");
             }
 
-            fixed (AVFormatContext** formatContextPointer = &formatContext) {
-                string url = "";
-
-                // LOCAL CONTENT
-                //url = "/opt/media/USBDriveA1/test2.ts";
-
-                // RTSP CONTENT
-                url = "rtsp://192.168.137.3/test2.ts"; // test.mp4 file converted with "ffmpeg -i test.mp4 -acodec copy -vcodec copy test.ts" command and served via rtsp using live555MediaServer_v74.exe
-
-                // HLS CONTENT
-                //url = "http://bitdash-a.akamaihd.net/content/MI201109210084_1/m3u8s/f08e80da-bf1d-4e3d-8899-f0f6155f6efa.m3u8"; // changed from https to http - single frame is displayed
-                //url = "http://devimages.apple.com/iphone/samples/bipbop/gear4/prog_index.m3u8"; // single frame is displayed
-
+            fixed (AVFormatContext** formatContextPointer = &formatContext)
+            {
                 ret = FFmpeg.avformat_open_input(formatContextPointer, url, null, null);
                 Log.Info("JuvoPlayer", "avformat_open_input(" + url + ") = " + (ret == 0 ? "ok" : ret.ToString() + " (" + GetErrorText(ret) + ")"));
             }
+        }
 
-            ret = FFmpeg.avformat_find_stream_info(formatContext, null);
-            if (ret < 0) {
+        private unsafe void FindStreamsInfo()
+        {
+            int ret = FFmpeg.avformat_find_stream_info(formatContext, null);
+            if (ret < 0)
+            {
                 Log.Info("JuvoPlayer", "Could not find stream info (error code: " + ret.ToString() + ")!");
 
                 DeallocFFmpeg();
@@ -157,17 +144,20 @@ namespace JuvoPlayer.FFmpeg
 
             audio_idx = FFmpeg.av_find_best_stream(formatContext, AVMediaType.AVMEDIA_TYPE_AUDIO, -1, -1, null, 0);
             video_idx = FFmpeg.av_find_best_stream(formatContext, AVMediaType.AVMEDIA_TYPE_VIDEO, -1, -1, null, 0);
-            if (audio_idx < 0 && video_idx < 0) {
-                DeallocFFmpeg();
+            if (audio_idx < 0 && video_idx < 0)
+            {
                 Log.Info("JuvoPlayer", "Could not find video or audio stream: " + audio_idx.ToString() + "      " + video_idx.ToString());
+
+                DeallocFFmpeg();
                 throw new Exception("Could not find video or audio stream!");
             }
         }
 
-        unsafe private void DemuxTask()
+        unsafe private void DemuxTask(Action initAction)
         {
             try {
-                InitURL(); // Finish more time-consuming init things
+                initAction(); // Finish more time-consuming init things
+                FindStreamsInfo();
                 ReadAudioConfig();
                 ReadVideoConfig();
             }
@@ -510,5 +500,4 @@ namespace JuvoPlayer.FFmpeg
             return 0;
         }
     }
-
 }

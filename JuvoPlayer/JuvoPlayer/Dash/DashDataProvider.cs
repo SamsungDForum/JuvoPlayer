@@ -5,9 +5,11 @@ namespace JuvoPlayer.Dash
 {
     class DashDataProvider : IDataProvider
     {
+        private IDemuxer _demuxer;
         private IDashClient _dashClient;
         private ClipDefinition _currentClip;
         private DashManifest _manifest;
+
         public DashDataProvider(
             IDashClient dashClient,
             IDemuxer demuxer,
@@ -15,19 +17,13 @@ namespace JuvoPlayer.Dash
             DashManifest manifest)
         {
             _manifest = manifest;
-            _currentClip =
-                currentClip ??
-                throw new ArgumentNullException(
-                    nameof(currentClip),
-                    "Clip cannot be null.");
-            _dashClient =
-                dashClient ??
-                throw new ArgumentNullException(
-                    nameof(dashClient),
-                    "dashClient cannot be null");
 
-            demuxer.StreamConfigReady += OnStreamConfigReady;
-            demuxer.StreamPacketReady += OnStreamPacketReady;
+            _currentClip = currentClip ?? throw new ArgumentNullException(nameof(currentClip), "Clip cannot be null.");
+            _dashClient = dashClient ?? throw new ArgumentNullException(nameof(dashClient), "dashClient cannot be null");
+            _demuxer = demuxer ?? throw new ArgumentNullException(nameof(dashClient), "demuxer cannot be null");
+
+            _demuxer.StreamConfigReady += OnStreamConfigReady;
+            _demuxer.StreamPacketReady += OnStreamPacketReady;
         }
 
         public event DRMDataFound DRMDataFound;
@@ -62,7 +58,7 @@ namespace JuvoPlayer.Dash
         public void Start()
         {
             Tizen.Log.Info("JuvoPlayer", "Dash start.");
-            //demuxer.Start();
+            _demuxer.StartForExternalSource();
         }
     }
 }
