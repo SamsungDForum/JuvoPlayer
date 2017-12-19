@@ -1,4 +1,5 @@
 ﻿using JuvoPlayer.Common;
+using JuvoPlayer.FFmpeg;
 using System;
 using System.IO;
 using Tizen.Applications;
@@ -58,7 +59,7 @@ namespace JuvoPlayer.Dash
             {
                 throw new ArgumentNullException(nameof(clip), "Clip cannot be null.");
             }
-            return clip.Type == "Dash";
+            return string.Equals(clip.Type, "Dash", StringComparison.CurrentCultureIgnoreCase);
         }
     }
 }
