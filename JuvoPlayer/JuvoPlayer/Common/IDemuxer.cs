@@ -15,7 +15,8 @@ namespace JuvoPlayer.Common
 {
     public interface IDemuxer
     {
-        void Start();
+        void StartForExternalSource();
+        void StartForUrl(string url);
         void ChangePID(int pid);
         void Reset();
         void Seek(double position);
