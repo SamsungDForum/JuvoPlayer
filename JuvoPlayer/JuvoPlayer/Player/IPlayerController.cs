@@ -12,6 +12,8 @@
 // this software or its derivatives.
 
 using JuvoPlayer.Common;
+using JuvoPlayer.Common.Delegates;
+using System;
 using System.Collections.Generic;
 
 namespace JuvoPlayer.Player
@@ -21,11 +23,7 @@ namespace JuvoPlayer.Player
     public delegate void Seek(double time);
     public delegate void Stop();
 
-    public delegate void PlaybackCompleted();
-    public delegate void ShowSubtitile(Subtitle subtitle);
-    public delegate void TimeUpdated(double time);
-
-    public interface IPlayerController
+    public interface IPlayerController : IDisposable
     {
         #region ui_slots
         void ChangeRepresentation(int pid);

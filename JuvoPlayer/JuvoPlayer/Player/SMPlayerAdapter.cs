@@ -13,6 +13,7 @@
 
 using CSPlayer;
 using JuvoPlayer.Common;
+using JuvoPlayer.Common.Delegates;
 using System;
 using System.Runtime.InteropServices;
 using System.Threading;

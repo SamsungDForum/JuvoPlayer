@@ -1,4 +1,9 @@
-﻿using System;
+﻿using JuvoPlayer;
+using JuvoPlayer.Common;
+using JuvoPlayer.Common.Delegates;
+using JuvoPlayer.Player;
+using JuvoPlayer.RTSP;
+using System;
 using System.Threading.Tasks;
 using Xamarin.Forms;
 using Xamarin.Forms.Platform.Tizen;
@@ -11,95 +16,89 @@ namespace XamarinPlayer.Tizen.Services
 {
     class PlayerService : IPlayerService, IDisposable
     {
-        private Multimedia.Player _player;
-        private PlayerState _playerState = PlayerState.Idle;
+        private IDataProvider dataProvider;
+        private IPlayerController playerController;
+        private DataProviderFactoryManager dataProviders;
+        private PlayerState playerState = PlayerState.Idle;
+
+        private double currentTime = 0;
 
         public event PlayerStateChangedEventHandler StateChanged;
-        public event EventHandler PlaybackCompleted;
 
-        public int Duration => _player == null ? 0 : _player.StreamInfo.GetDuration();
+        public event PlaybackCompleted PlaybackCompleted;
+        public event ShowSubtitile ShowSubtitle;
 
-        public int CurrentPosition => _player == null ? 0 : _player.GetPlayPosition();
+        //TODO(p.galiszewsk):
+        public int Duration => dataProvider == null ? 0 : 100000;
+
+        public int CurrentPosition => dataProvider == null ? 0 : (int)currentTime;
 
         public PlayerState State
         {
-            get { return _playerState; }
+            get { return playerState; }
             private set
             {
-                _playerState = value;
-                StateChanged?.Invoke(this, new PlayerStateChangedEventArgs(_playerState));
+                playerState = value;
+                StateChanged?.Invoke(this, new PlayerStateChangedEventArgs(playerState));
             }
         }
 
         public PlayerService()
         {
-            _player = new Multimedia.Player();
+            dataProviders = new DataProviderFactoryManager();
+            dataProviders.RegisterDataProviderFactory(new RTSPDataProviderFactory());
 
-            _player.PlaybackCompleted += (s, e) =>
+            var playerAdapter = new SMPlayerAdapter();
+            playerController = new PlayerController(playerAdapter);
+            playerController.PlaybackCompleted += () =>
             {
-                PlaybackCompleted?.Invoke(this, e);
+                PlaybackCompleted?.Invoke();
                 State = PlayerState.Stopped;
             };
+            playerController.ShowSubtitle += (subtitle) =>
+            {
+                ShowSubtitle?.Invoke(subtitle);
+            };
+            playerController.TimeUpdated += OnTimeUpdated;
+        }
+
+        private void OnTimeUpdated(double time)
+        {
+            currentTime = time;
         }
 
         public void Pause()
         {
-            if (_player.State == Multimedia.PlayerState.Playing)
-            {
-                _player.Pause();
-
-                State = PlayerState.Paused;
-            }
-        }
-
-        public async Task PrepareAsync()
-        {
-            State = PlayerState.Preparing;
-
-            var display = new Multimedia.Display(Forms.Context.MainWindow);
-            _player.Display = display;
-
-            await _player.PrepareAsync();
-
-            State = PlayerState.Prepared;
+            playerController.OnPause();
+            State = PlayerState.Paused;
         }
 
         public void SeekTo(int to)
         {
-            _player.SetPlayPositionAsync(to, false);
+            playerController.OnSeek(to);
         }
 
-        public void SetSource(string uri)
+        public void SetSource(ClipDefinition clip)
         {
-            if (_player.State != Multimedia.PlayerState.Idle)
-            {
-                _player.Unprepare();
-            }
+            dataProvider = dataProviders.CreateDataProvider(clip);
 
-            var mediaSource = new Multimedia.MediaUriSource(uri);
-            _player.SetSource(mediaSource);
+            playerController.SetDataProvider(dataProvider);
+
+            dataProvider.Start();
         }
 
         public void Start()
         {
-            if (_player.State == Multimedia.PlayerState.Ready ||
-                _player.State == Multimedia.PlayerState.Paused)
-            {
-                _player.Start();
+            playerController.OnPlay();
 
-                State = PlayerState.Playing;
-            }
+            State = PlayerState.Playing;
         }
 
         public void Stop()
         {
-            if (_player.State == Multimedia.PlayerState.Playing ||
-                _player.State == Multimedia.PlayerState.Paused)
-            {
-                _player.Stop();
+            playerController.OnStop();
 
-                State = PlayerState.Stopped;
-            }
+            State = PlayerState.Stopped;
         }
 
         public void Dispose()
@@ -111,7 +110,7 @@ namespace XamarinPlayer.Tizen.Services
         {
             if (disposing)
             {
-                _player.Dispose();
+                playerController.Dispose();
             }
         }
     }

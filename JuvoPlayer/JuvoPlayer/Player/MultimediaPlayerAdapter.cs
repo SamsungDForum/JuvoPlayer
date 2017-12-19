@@ -12,6 +12,7 @@
 // this software or its derivatives.
 
 using JuvoPlayer.Common;
+using JuvoPlayer.Common.Delegates;
 using System;
 using System.Threading;
 using System.Threading.Tasks;

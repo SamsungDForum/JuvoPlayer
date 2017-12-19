@@ -12,6 +12,7 @@
 // this software or its derivatives.
 
 using JuvoPlayer.Common;
+using JuvoPlayer.Common.Delegates;
 using System;
 using System.Collections.Generic;
 using Tizen;
@@ -192,6 +193,10 @@ namespace JuvoPlayer.Player
                 this.dataProvider.StreamPacketReady += OnStreamPacketReady;
                 this.dataProvider.StreamsFound += OnStreamsFound;
             }
+        }
+
+        public void Dispose()
+        {
         }
     }
 }
