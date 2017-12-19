@@ -12,6 +12,7 @@
 // this software or its derivatives.
 
 using JuvoPlayer.Common;
+using JuvoPlayer.FFmpeg;
 using System;
 using System.IO;
 using Tizen.Applications;
@@ -53,7 +54,8 @@ namespace JuvoPlayer.RTSP
                 throw new ArgumentNullException("clip cannot be null");
             }
 
-            return clip.Type == "RTP" || clip.Type == "RTSP";
+            return string.Equals(clip.Type, "Rtp", StringComparison.CurrentCultureIgnoreCase)
+                || string.Equals(clip.Type, "Rtsp", StringComparison.CurrentCultureIgnoreCase);
         }
     }
 }

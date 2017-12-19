@@ -11,7 +11,7 @@
 // damages suffered by licensee as a result of using, modifying or distributing
 // this software or its derivatives.
 
-namespace JuvoPlayer.RTSP
+namespace JuvoPlayer.Common
 {
     public interface IDemuxer
     {

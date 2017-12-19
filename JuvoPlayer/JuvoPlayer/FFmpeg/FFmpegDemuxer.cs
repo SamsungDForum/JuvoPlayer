@@ -12,7 +12,6 @@
 // this software or its derivatives.
 
 using JuvoPlayer.Common;
-using JuvoPlayer.FFmpeg;
 using System;
 using System.IO;
 using System.Runtime.InteropServices;
@@ -21,7 +20,7 @@ using System.Threading.Tasks;
 using Tizen;
 using Tizen.Applications;
 
-namespace JuvoPlayer.RTSP
+namespace JuvoPlayer.FFmpeg
 {
     public class FFmpegDemuxer : IDemuxer
     {
@@ -40,8 +39,8 @@ namespace JuvoPlayer.RTSP
         {
             this.dataBuffer = dataBuffer ?? throw new ArgumentNullException("dataBuffer cannot be null");
             try {
-                FFmpeg.FFmpeg.Initialize(libPath);
-                FFmpeg.FFmpeg.av_register_all(); // TODO(g.skowinski): Is registering multiple times unwanted or doesn't it matter?
+                FFmpeg.Initialize(libPath);
+                FFmpeg.av_register_all(); // TODO(g.skowinski): Is registering multiple times unwanted or doesn't it matter?
             }
             catch (Exception) {
                 Log.Info("JuvoPlayer", "Could not load and register FFmpeg library!");
@@ -60,15 +59,15 @@ namespace JuvoPlayer.RTSP
             int ret = -1;
             Log.Info("JuvoPlayer", "INIT");
 
-            buffer = (byte*)FFmpeg.FFmpeg.av_mallocz((ulong)bufferSize); // let's try AllocHGlobal later on
-            ioContext = FFmpeg.FFmpeg.avio_alloc_context(buffer,
+            buffer = (byte*)FFmpeg.av_mallocz((ulong)bufferSize); // let's try AllocHGlobal later on
+            ioContext = FFmpeg.avio_alloc_context(buffer,
                                                          bufferSize,
                                                          0,
                                                          (void*)GCHandle.ToIntPtr(GCHandle.Alloc(dataBuffer)), // TODO(g.skowinski): Check if allocating memory used by ffmpeg with Marshal.AllocHGlobal helps!
                                                          (avio_alloc_context_read_packet)ReadPacket,
                                                          (avio_alloc_context_write_packet)WritePacket,
                                                          (avio_alloc_context_seek)Seek);
-            formatContext = FFmpeg.FFmpeg.avformat_alloc_context(); // it was before avio_alloc_context before, but I'm changing ordering so it's like in LiveTVApp
+            formatContext = FFmpeg.avformat_alloc_context(); // it was before avio_alloc_context before, but I'm changing ordering so it's like in LiveTVApp
             ioContext->seekable = 0;
             ioContext->write_flag = 0;
 
@@ -85,7 +84,7 @@ namespace JuvoPlayer.RTSP
             }
 
             fixed (AVFormatContext** formatContextPointer = &formatContext) {
-                ret = FFmpeg.FFmpeg.avformat_open_input(formatContextPointer, "", null, null);
+                ret = FFmpeg.avformat_open_input(formatContextPointer, "", null, null);
             }
             if (ret != 0) {
                 Log.Info("JuvoPlayer", "Could not parse input data: " + GetErrorText(ret));
@@ -95,7 +94,7 @@ namespace JuvoPlayer.RTSP
                 throw new Exception("Could not parse input data: " + GetErrorText(ret));
             }
 
-            ret = FFmpeg.FFmpeg.avformat_find_stream_info(formatContext, null);
+            ret = FFmpeg.avformat_find_stream_info(formatContext, null);
             if (ret < 0) {
                 Log.Info("JuvoPlayer", "Could not find stream info (error code: " + ret.ToString() + ")!");
 
@@ -103,8 +102,8 @@ namespace JuvoPlayer.RTSP
                 throw new Exception("Could not find stream info (error code: " + ret.ToString() + ")!");
             }
 
-            audio_idx = FFmpeg.FFmpeg.av_find_best_stream(formatContext, AVMediaType.AVMEDIA_TYPE_AUDIO, -1, -1, null, 0);
-            video_idx = FFmpeg.FFmpeg.av_find_best_stream(formatContext, AVMediaType.AVMEDIA_TYPE_VIDEO, -1, -1, null, 0);
+            audio_idx = FFmpeg.av_find_best_stream(formatContext, AVMediaType.AVMEDIA_TYPE_AUDIO, -1, -1, null, 0);
+            video_idx = FFmpeg.av_find_best_stream(formatContext, AVMediaType.AVMEDIA_TYPE_VIDEO, -1, -1, null, 0);
             if (audio_idx < 0 && video_idx < 0) {
                 DeallocFFmpeg();
                 Log.Info("JuvoPlayer", "Could not find video or audio stream: " + audio_idx.ToString() + "      " + video_idx.ToString());
@@ -119,8 +118,8 @@ namespace JuvoPlayer.RTSP
             int ret = -1;
             Log.Info("JuvoPlayer", "INIT");
 
-            buffer = (byte*)FFmpeg.FFmpeg.av_mallocz((ulong)bufferSize);
-            formatContext = FFmpeg.FFmpeg.avformat_alloc_context();
+            buffer = (byte*)FFmpeg.av_mallocz((ulong)bufferSize);
+            formatContext = FFmpeg.avformat_alloc_context();
 
             formatContext->probesize = bufferSize;
             formatContext->max_analyze_duration = 10 * 1000000;
@@ -144,11 +143,11 @@ namespace JuvoPlayer.RTSP
                 //url = "http://bitdash-a.akamaihd.net/content/MI201109210084_1/m3u8s/f08e80da-bf1d-4e3d-8899-f0f6155f6efa.m3u8"; // changed from https to http - single frame is displayed
                 //url = "http://devimages.apple.com/iphone/samples/bipbop/gear4/prog_index.m3u8"; // single frame is displayed
 
-                ret = FFmpeg.FFmpeg.avformat_open_input(formatContextPointer, url, null, null);
+                ret = FFmpeg.avformat_open_input(formatContextPointer, url, null, null);
                 Log.Info("JuvoPlayer", "avformat_open_input(" + url + ") = " + (ret == 0 ? "ok" : ret.ToString() + " (" + GetErrorText(ret) + ")"));
             }
 
-            ret = FFmpeg.FFmpeg.avformat_find_stream_info(formatContext, null);
+            ret = FFmpeg.avformat_find_stream_info(formatContext, null);
             if (ret < 0) {
                 Log.Info("JuvoPlayer", "Could not find stream info (error code: " + ret.ToString() + ")!");
 
@@ -156,8 +155,8 @@ namespace JuvoPlayer.RTSP
                 throw new Exception("Could not find stream info (error code: " + ret.ToString() + ")!");
             }
 
-            audio_idx = FFmpeg.FFmpeg.av_find_best_stream(formatContext, AVMediaType.AVMEDIA_TYPE_AUDIO, -1, -1, null, 0);
-            video_idx = FFmpeg.FFmpeg.av_find_best_stream(formatContext, AVMediaType.AVMEDIA_TYPE_VIDEO, -1, -1, null, 0);
+            audio_idx = FFmpeg.av_find_best_stream(formatContext, AVMediaType.AVMEDIA_TYPE_AUDIO, -1, -1, null, 0);
+            video_idx = FFmpeg.av_find_best_stream(formatContext, AVMediaType.AVMEDIA_TYPE_VIDEO, -1, -1, null, 0);
             if (audio_idx < 0 && video_idx < 0) {
                 DeallocFFmpeg();
                 Log.Info("JuvoPlayer", "Could not find video or audio stream: " + audio_idx.ToString() + "      " + video_idx.ToString());
@@ -186,19 +185,19 @@ namespace JuvoPlayer.RTSP
             bool parse = true;
 
             while (parse) {
-                FFmpeg.FFmpeg.av_init_packet(&pkt);
+                FFmpeg.av_init_packet(&pkt);
                 pkt.data = null;
                 pkt.size = 0;
-                int ret = FFmpeg.FFmpeg.av_read_frame(formatContext, &pkt);
+                int ret = FFmpeg.av_read_frame(formatContext, &pkt);
                 if (ret >= 0) {
                     if (pkt.stream_index != audio_idx && pkt.stream_index != video_idx)
                         continue;
                     AVStream* s = formatContext->streams[pkt.stream_index];
                     var data = pkt.data;
                     var dataSize = pkt.size;
-                    var pts = FFmpeg.FFmpeg.av_rescale_q(pkt.pts, s->time_base, kMicrosBase) * kOneMicrosecond;
-                    var dts = FFmpeg.FFmpeg.av_rescale_q(pkt.dts, s->time_base, kMicrosBase) * kOneMicrosecond;
-                    var duration = FFmpeg.FFmpeg.av_rescale_q(pkt.duration, s->time_base, kMicrosBase) * kOneMicrosecond;
+                    var pts = FFmpeg.av_rescale_q(pkt.pts, s->time_base, kMicrosBase) * kOneMicrosecond;
+                    var dts = FFmpeg.av_rescale_q(pkt.dts, s->time_base, kMicrosBase) * kOneMicrosecond;
+                    var duration = FFmpeg.av_rescale_q(pkt.duration, s->time_base, kMicrosBase) * kOneMicrosecond;
                     var streamPacket = new StreamPacket {
                         StreamType = pkt.stream_index != audio_idx ? StreamType.Video : StreamType.Audio,
                         Pts = pts >= 0 ? (System.UInt64)(pts * 1000000000) : 0, // gstreamer needs nanoseconds, value cannot be negative
@@ -217,7 +216,7 @@ namespace JuvoPlayer.RTSP
                     Log.Info("JuvoPlayer", "DEMUXER: ----DEMUXING----AV_READ_FRAME----ERROR---- av_read_frame()=" + ret.ToString() + " (" + GetErrorText(ret) + ")");
                     parse = false;
                 }
-                FFmpeg.FFmpeg.av_packet_unref(&pkt);
+                FFmpeg.av_packet_unref(&pkt);
             }
         }
 
@@ -255,7 +254,7 @@ namespace JuvoPlayer.RTSP
             byte[] errorBuffer = new byte[errorBufferSize];
             try {
                 fixed (byte* errbuf = errorBuffer) {
-                    FFmpeg.FFmpeg.av_strerror(returnCode, errbuf, errorBufferSize);
+                    FFmpeg.av_strerror(returnCode, errbuf, errorBufferSize);
                 }
             }
             catch (Exception) {
@@ -291,9 +290,9 @@ namespace JuvoPlayer.RTSP
         {
             if (formatContext != null) {
                 fixed (AVFormatContext** formatContextPointer = &formatContext) {
-                    FFmpeg.FFmpeg.avformat_close_input(formatContextPointer);
+                    FFmpeg.avformat_close_input(formatContextPointer);
                 }
-                FFmpeg.FFmpeg.avformat_free_context(formatContext);
+                FFmpeg.avformat_free_context(formatContext);
                 formatContext = null;
             }
             if (buffer != null) {
@@ -323,7 +322,7 @@ namespace JuvoPlayer.RTSP
                 config.BitsPerChannel = s->codecpar->bits_per_coded_sample; // per channel? not per sample? o_O
             }
             else {
-                config.BitsPerChannel = FFmpeg.FFmpeg.av_get_bytes_per_sample(sampleFormat) * 8;
+                config.BitsPerChannel = FFmpeg.av_get_bytes_per_sample(sampleFormat) * 8;
                 config.BitsPerChannel /= s->codecpar->channels;
             }
             config.ChannelLayout = s->codecpar->channels;
