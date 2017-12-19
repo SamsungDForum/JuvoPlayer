@@ -286,7 +286,7 @@ namespace JuvoPlayer.Dash
             AudioStreamConfig config = new AudioStreamConfig();
 
             AVSampleFormat sampleFormat = (AVSampleFormat)s->codecpar->format;
-            config.Codec = ConvertAudioCodec(s->codecpar->codec_id);
+//            config.Codec = ConvertAudioCodec(s->codecpar->codec_id);
             //config.sample_format = ConvertSampleFormat(sample_format);
             if (s->codecpar->bits_per_coded_sample > 0)
             {
@@ -319,7 +319,7 @@ namespace JuvoPlayer.Dash
             AVStream* s = formatContext->streams[video_idx];
             VideoStreamConfig config = new VideoStreamConfig
             {
-                Codec = ConvertVideoCodec(s->codecpar->codec_id, s->codecpar->profile),
+//                Codec = ConvertVideoCodec(s->codecpar->codec_id, s->codecpar->profile),
                 Size = new Tizen.Multimedia.Size(s->codecpar->width, s->codecpar->height),
                 FrameRate = s->r_frame_rate.num / s->r_frame_rate.den
             };

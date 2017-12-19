@@ -20,6 +20,6 @@ namespace JuvoPlayer.Dash
         void Seek(int position);
         void Start(ClipDefinition clip);
         void Stop();
-        void UpdateManifest(DashManifest manifest);
+        bool UpdateManifest(DashManifest manifest);
     }
 }
