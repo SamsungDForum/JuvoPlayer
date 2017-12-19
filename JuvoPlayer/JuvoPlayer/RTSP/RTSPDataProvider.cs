@@ -71,7 +71,10 @@ namespace JuvoPlayer.RTSP
 
         public void Start()
         {
-            //rtpClient.Start(currentClip);
+            if (rtpClient == null)
+                return;
+
+            rtpClient.Start(currentClip);
             demuxer.Start();
         }
     }

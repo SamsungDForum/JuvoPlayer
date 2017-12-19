@@ -1,4 +1,6 @@
-﻿using System;
+﻿using JuvoPlayer.Common;
+using JuvoPlayer.Common.Delegates;
+using System;
 using System.Threading.Tasks;
 
 namespace XamarinPlayer.Services
@@ -8,7 +10,9 @@ namespace XamarinPlayer.Services
     public interface IPlayerService : IDisposable
     {
         event PlayerStateChangedEventHandler StateChanged;
-        event EventHandler PlaybackCompleted;
+
+        event PlaybackCompleted PlaybackCompleted;
+        event ShowSubtitile ShowSubtitle;
 
         int Duration { get; }
 
@@ -16,9 +20,7 @@ namespace XamarinPlayer.Services
 
         PlayerState State { get; }
 
-        void SetSource(string uri);
-
-        Task PrepareAsync();
+        void SetSource(ClipDefinition clip);
 
         void Start();
 

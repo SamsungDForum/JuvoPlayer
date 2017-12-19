@@ -1,4 +1,5 @@
-﻿using System;
+﻿using JuvoPlayer.Common;
+using System;
 using Xamarin.Forms;
 using Xamarin.Forms.Xaml;
 using XamarinPlayer.Services;
@@ -16,11 +17,11 @@ namespace XamarinPlayer.Views
         private bool _isPageDisappeared = false;
         private bool _isShowing = false;
 
-        public static readonly BindableProperty ContentSourceProperty = BindableProperty.Create("ContentSource", typeof(string), typeof(PlayerView), default(string));
-        public string ContentSource
+        public static readonly BindableProperty ContentSourceProperty = BindableProperty.Create("ContentSource", typeof(ClipDefinition), typeof(PlayerView), default(ClipDefinition));
+        public ClipDefinition ContentSource
         {
             set { SetValue(ContentSourceProperty, value); }
-            get { return (string)GetValue(ContentSourceProperty); }
+            get { return (ClipDefinition)GetValue(ContentSourceProperty); }
         }
 
         public PlayerView()
@@ -32,6 +33,7 @@ namespace XamarinPlayer.Views
             _playerService = DependencyService.Get<IPlayerService>(DependencyFetchTarget.NewInstance);
             _playerService.StateChanged += OnPlayerStateChanged;
             _playerService.PlaybackCompleted += OnPlaybackCompleted;
+            _playerService.ShowSubtitle += OnShowSubtitle;
 
             Play.Clicked += (s, e) =>
             {
@@ -95,14 +97,17 @@ namespace XamarinPlayer.Views
                     return;
 
                 _playerService.SetSource(ContentSource);
-                _playerService.PrepareAsync();
             }
         }
 
-        private void OnPlaybackCompleted(object sender, EventArgs e)
+        private void OnPlaybackCompleted()
         {
             UpdatePlayTime();
             Show();
+        }
+
+        private void OnShowSubtitle(Subtitle subtitle)
+        {
         }
 
         protected override void OnAppearing()
