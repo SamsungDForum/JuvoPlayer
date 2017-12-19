@@ -1,4 +1,5 @@
 ﻿using JuvoPlayer.Common;
+using JuvoPlayer.RTSP;
 using System;
 using System.IO;
 using Tizen.Applications;
@@ -13,6 +14,7 @@ namespace JuvoPlayer.Dash
 
         public IDataProvider Create(ClipDefinition clip)
         {
+            Tizen.Log.Info("JuvoPlayer", "Create.");
             if (clip == null)
             {
                 throw new ArgumentNullException("Clip", "Clip cannot be null.");
@@ -26,21 +28,30 @@ namespace JuvoPlayer.Dash
 
             IDemuxer demuxer = null;
             IDashClient dashClient = null;
+            string libPath = null;
             try
             {
-                var libPath = Path.Combine(
-                    Path.GetDirectoryName(
-                        Application.Current.ApplicationInfo.ExecutablePath),
+                libPath = Path.Combine(
+                    Path.GetDirectoryName(Path.GetDirectoryName(
+                        Application.Current.ApplicationInfo.ExecutablePath)),
                     "lib");
-                var sharedBuffer = new SharedBufferByteArrayQueue();
-                dashClient = new DashClient(sharedBuffer);
-                demuxer = new FFmpegDemuxer(sharedBuffer, libPath);
             }
             catch (NullReferenceException)
             {
                 Tizen.Log.Error(
                     "JuvoPlayer",
                     "Cannot find application executable path.");
+            }
+            try
+            {
+                var sharedBuffer = new SharedBuffer();
+                var manifest = new DashManifest(clip.Url);
+                dashClient = new DashClient(manifest, null);
+                demuxer = new FFmpegDemuxer(null, libPath);
+            }
+            catch (Exception ex)
+            {
+                Tizen.Log.Error("JuvoPlayer", ex.Message);
             }
             return new DashDataProvider(dashClient, demuxer, clip);
         }

@@ -346,10 +346,10 @@ namespace MpdParser
         }
     }
 
-    public class Period
+    public class Period: IComparable
     {
-        public TimeSpan? Start { get; internal set; }
-        public TimeSpan? Duration { get; internal set; }
+        public TimeSpan ? Start { get; internal set; }
+        public TimeSpan ? Duration { get; internal set; }
         public Media[] Sets { get; }
 
         public Period(Node.Period period)
@@ -385,6 +385,32 @@ namespace MpdParser
             }
             return current;
         }
+
+        public int CompareTo(object obj)
+        {
+            Period p = (Period)obj;
+            if (this.Start == null)
+            {
+                if (p.Start == null)
+                {
+                    return 0;
+                }
+                else
+                {
+                    return -1;
+                }
+            }
+            else if (p.Start == null)
+            {
+                return 1;
+            }
+            else
+            {
+                return TimeSpan.Compare(
+                    (TimeSpan)this.Start,
+                    (TimeSpan)p.Start);
+            }
+        }
     }
 
     public class Document
@@ -418,6 +444,7 @@ namespace MpdParser
             Periods = new Period[dash.Periods.Length];
             for (int i = 0; i < Periods.Length; ++i)
                 Periods[i] = new Period(dash.Periods[i]);
+            Array.Sort(Periods);
         }
 
         public static Document FromText(string manifestText, string manifestUrl)

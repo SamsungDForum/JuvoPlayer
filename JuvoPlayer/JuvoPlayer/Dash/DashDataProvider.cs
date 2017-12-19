@@ -12,8 +12,7 @@ namespace JuvoPlayer.Dash
         private IDemuxer demuxer;
         private IDashClient dashClient;
         private ClipDefinition currentClip;
-        // TODO change manifest to private
-        public DashManifest manifest { get; set; }
+        private DashManifest manifest;
         public DashDataProvider(
             IDashClient dashClient,
             IDemuxer demuxer,
@@ -34,7 +33,6 @@ namespace JuvoPlayer.Dash
                 throw new ArgumentNullException(
                     "dashClient",
                     "dashClient cannot be null");
-            this.manifest = new DashManifest(this.currentClip.Url);
 
             this.demuxer.StreamConfigReady += OnStreamConfigReady;
             this.demuxer.StreamPacketReady += OnStreamPacketReady;
@@ -71,7 +69,8 @@ namespace JuvoPlayer.Dash
 
         public void Start()
         {
-            demuxer.Start();
+            Tizen.Log.Info("JuvoPlayer", "Dash start.");
+            //demuxer.Start();
         }
     }
 }
