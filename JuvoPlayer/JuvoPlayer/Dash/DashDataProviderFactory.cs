@@ -40,10 +40,10 @@ namespace JuvoPlayer.Dash
             }
             try
             {
-//                var sharedBuffer = new SharedBU();
+                var sharedBuffer = new SharedBuffer();
                 manifest = new DashManifest(clip.Url);
-                dashClient = new DashClient(manifest, null);
-                demuxer = new FFmpegDemuxer(null, libPath);
+                dashClient = new DashClient(manifest, sharedBuffer);
+                demuxer = new FFmpegDemuxer(sharedBuffer, libPath);
             }
             catch (Exception ex)
             {

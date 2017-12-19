@@ -14,7 +14,7 @@
 
 using System.Threading;
 
-namespace JuvoPlayer.RTSP
+namespace JuvoPlayer.Common
 {
     public interface ISharedBuffer
     {
