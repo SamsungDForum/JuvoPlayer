@@ -15,7 +15,7 @@ using System;
 using System.Threading;
 using Tizen;
 
-namespace JuvoPlayer.RTSP {
+namespace JuvoPlayer.Common {
 
     public class SharedBuffer : ISharedBuffer {
 
