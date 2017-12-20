@@ -66,5 +66,9 @@ namespace JuvoPlayer.HLS
         {
             demuxer.StartForUrl(currentClip.Url);
         }
+
+        public void OnTimeUpdated(double time)
+        {
+        }
     }
 }

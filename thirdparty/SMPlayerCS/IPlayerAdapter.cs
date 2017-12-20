@@ -172,8 +172,6 @@ namespace CSPlayer
         //int32_t GetVideoTracksList(std::vector<PP_VideoTrackInfo>* track_list) override;
         //string GetAvailableBitrates();
 
-        uint GetCurrentTime();
-
         uint GetCurrentTrack(TrackType_Samsung stream_type);
 
         System.UInt32 GetDuration();

@@ -13,6 +13,14 @@
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>None</DebugType>
   </PropertyGroup>
+  <ItemGroup>
+    <None Remove="shared\res\videoclips.json" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="shared\res\videoclips.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
 
   <ItemGroup>
     <Folder Include="lib\">
@@ -37,11 +45,6 @@
     <ProjectReference Include="..\..\JuvoPlayer.Common\JuvoPlayer.Common.csproj" />
     <ProjectReference Include="..\..\JuvoPlayer\JuvoPlayer\JuvoPlayer.csproj" />
     <ProjectReference Include="..\XamarinPlayer\XamarinPlayer.csproj" />
-  </ItemGroup>
-  <ItemGroup>
-    <None Update="shared\res\videoclips.json">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
   </ItemGroup>
 
 </Project>

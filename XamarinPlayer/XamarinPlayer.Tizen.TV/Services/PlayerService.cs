@@ -1,6 +1,8 @@
 ﻿using JuvoPlayer;
 using JuvoPlayer.Common;
 using JuvoPlayer.Common.Delegates;
+using JuvoPlayer.Dash;
+using JuvoPlayer.HLS;
 using JuvoPlayer.Player;
 using JuvoPlayer.RTSP;
 using System;
@@ -9,7 +11,6 @@ using Xamarin.Forms;
 using Xamarin.Forms.Platform.Tizen;
 using XamarinPlayer.Services;
 using XamarinPlayer.Tizen.Services;
-using Multimedia = Tizen.Multimedia;
 
 [assembly: Dependency(typeof(PlayerService))]
 namespace XamarinPlayer.Tizen.Services
@@ -46,6 +47,8 @@ namespace XamarinPlayer.Tizen.Services
         public PlayerService()
         {
             dataProviders = new DataProviderFactoryManager();
+            dataProviders.RegisterDataProviderFactory(new DashDataProviderFactory());
+            dataProviders.RegisterDataProviderFactory(new HLSDataProviderFactory());
             dataProviders.RegisterDataProviderFactory(new RTSPDataProviderFactory());
 
             var playerAdapter = new SMPlayerAdapter();

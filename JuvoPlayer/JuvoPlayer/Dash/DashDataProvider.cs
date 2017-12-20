@@ -60,5 +60,9 @@ namespace JuvoPlayer.Dash
             Tizen.Log.Info("JuvoPlayer", "Dash start.");
             _demuxer.StartForExternalSource();
         }
+
+        public void OnTimeUpdated(double time)
+        {
+        }
     }
 }
