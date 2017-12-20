@@ -25,6 +25,7 @@ namespace JuvoPlayer.Player
     unsafe class CSDemoPlayerListener : IPlayerEventListener
     {
         private SMPlayerAdapter playerAdapter;
+        private System.UInt32 currentTime;
 
         public CSDemoPlayerListener(SMPlayerAdapter playerInstance)
         {
@@ -98,6 +99,7 @@ namespace JuvoPlayer.Player
         public void OnEndOfStream()
         {
             Tizen.Log.Info("JuvoPlayer", "CSDemoPlayerListener::OnEndOfStream!");
+            playerAdapter.OnEndOfStream();
         }
 
         public void OnSeekCompleted()
@@ -110,12 +112,16 @@ namespace JuvoPlayer.Player
             Tizen.Log.Info("JuvoPlayer", "CSDemoPlayerListener::OnSeekStartedBuffering!");
         }
 
-        public void OnCurrentPosition(System.UInt32 lCurrTime)
+        public void OnCurrentPosition(System.UInt32 currTime)
         {
-            string msg = "CSDemoPlayerListener::OnCurrentPosition = " + lCurrTime;
+            if (currentTime == currTime)
+                return;
+
+            string msg = "CSDemoPlayerListener::OnCurrentPosition = " + currTime;
             Tizen.Log.Info("JuvoPlayer", msg);
 
-            playerAdapter.OnTimeUpdated(lCurrTime);
+            currentTime = currTime;
+            playerAdapter.OnTimeUpdated(currentTime);
         }
     }
 
