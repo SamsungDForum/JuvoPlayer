@@ -219,7 +219,7 @@ namespace JuvoPlayer.Player
             if (config == null)
                 throw new ArgumentNullException("config cannot be null");
 
-            videoFormat = new VideoMediaFormat(CastVideoCodedToAudioMimeType(config.Codec), config.Size, config.FrameRate, config.BitRate);
+            videoFormat = new VideoMediaFormat(CastVideoCodedToAudioMimeType(config.Codec), config.Size, config.FrameRateNum/config.FrameRateDen, config.BitRate);
 
             StreamInitialized();
         }

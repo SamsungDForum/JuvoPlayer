@@ -326,7 +326,7 @@ namespace JuvoPlayer.Player
             else
                 playerInstance.Play();
 
-             playCalled = true;
+            playCalled = true;
         }
 
         public void Seek(double time) // TODO(g.skowinski): Make sure units are compatible.
@@ -337,21 +337,17 @@ namespace JuvoPlayer.Player
         public void SetAudioStreamConfig(AudioStreamConfig config)
         {
             Log.Info("JuvoPlayer", "SMPlayerAdapter1::SetAudioStreamConfig()");
-            AudioStreamInfo_Samsung m_AudioStreamInfo = new AudioStreamInfo_Samsung();
-            switch (config.Codec)
+
+            var audioStreamInfo = new AudioStreamInfo_Samsung
             {
-                case AudioCodec.AC3:
-                    m_AudioStreamInfo.mime = Marshal.StringToHGlobalAnsi("audio/x-eac3"); // "audio/mpeg" or "audio/x-eac3"
-                    break;
-                case AudioCodec.AAC:
-                default:
-                    m_AudioStreamInfo.mime = Marshal.StringToHGlobalAnsi("audio/mpeg"); // "audio/mpeg" or "audio/x-eac3"
-                    m_AudioStreamInfo.version = 4; // Needed when mime is set to "audio/mpeg". When it's set to "audio/x-eac3", the field should NOT be set.
-                    break;
-            }
-            m_AudioStreamInfo.sample_rate = (uint)config.SampleRate; // m_AudioStreamInfo.sample_rate = 44100;
-            m_AudioStreamInfo.channels = (uint)config.ChannelLayout; // m_AudioStreamInfo.channels = 2;
-            playerInstance.SetAudioStreamInfo(m_AudioStreamInfo);
+                mime = Marshal.StringToHGlobalAnsi(GetCodecMimeType(config.Codec)),
+                version = GetCodecVersion(config.Codec),
+                sample_rate = (uint)config.SampleRate,
+                channels = (uint)config.ChannelLayout
+            };
+
+            playerInstance.SetAudioStreamInfo(audioStreamInfo);
+
             audioSet = true;
         }
 
@@ -359,21 +355,18 @@ namespace JuvoPlayer.Player
         {
             Log.Info("JuvoPlayer", "SMPlayerAdapter1::SetVideoStreamConfig()");
 
-            VideoStreamInfo_Samsung videoStreamInfo = new VideoStreamInfo_Samsung();
-            switch (config.Codec)
+            var videoStreamInfo = new VideoStreamInfo_Samsung
             {
-                case VideoCodec.H264:
-                default:
-                    videoStreamInfo.mime = Marshal.StringToHGlobalAnsi("video/x-h264"); // "video/x-h264" or "video/x-h265"
-                    break;
-            }
-            videoStreamInfo.drm_type = 0;  // 0 for no DRM
-            videoStreamInfo.framerate_num = 2997; // videoStreamInfo.framerate_num = (uint)config.FrameRateNum;
-            videoStreamInfo.framerate_den = 125; // videoStreamInfo.framerate_den = (uint)config.FrameRateDen;
-            videoStreamInfo.width = (uint)config.Size.Width; // videoStreamInfo.width = 640;
-            videoStreamInfo.max_width = (uint)config.Size.Width; // videoStreamInfo.height = 480;
-            videoStreamInfo.height = (uint)config.Size.Height; // videoStreamInfo.max_width = 640;
-            videoStreamInfo.max_height = (uint)config.Size.Height; // videoStreamInfo.max_height = 480;
+                mime = Marshal.StringToHGlobalAnsi(GetCodecMimeType(config.Codec)),
+                version = GetCodecVersion(config.Codec),
+                drm_type = 0,  // 0 for no DRM
+                framerate_num = (uint)config.FrameRateNum,
+                framerate_den = (uint)config.FrameRateDen,
+                width = (uint)config.Size.Width,
+                max_width = (uint)config.Size.Width,
+                height = (uint)config.Size.Height,
+                max_height = (uint)config.Size.Height
+            };
 
             playerInstance.SetVideoStreamInfo(videoStreamInfo);
 
@@ -387,17 +380,18 @@ namespace JuvoPlayer.Player
 
         public void SetExternalSubtitles(string file)
         {
-
+            playerInstance.SetExternalSubtitlesPath(file, string.Empty);
         }
 
         public void SetPlaybackRate(float rate)
         {
-
+            playerInstance.SetPlaybackRate(rate);
         }
 
         public void SetSubtitleDelay(int offset)
         {
-
+            //TODO(p.galiszewsk): check time format
+            playerInstance.SetSubtitlesDelay(offset);
         }
 
         public void Stop() // TODO(g.skowinski): Handle asynchronicity.
@@ -419,6 +413,107 @@ namespace JuvoPlayer.Player
         public void Pause() // TODO(g.skowinski): Handle asynchronicity (like in Stop() method?).
         {
             playerInstance.Pause();
+        }
+
+        private string GetCodecMimeType(VideoCodec videoCodec)
+        {
+            switch (videoCodec)
+            {
+                case VideoCodec.H264:
+                    return "video/x-h264";
+                case VideoCodec.H265:
+                    return "video/x-h265";
+                case VideoCodec.MPEG2:
+                case VideoCodec.MPEG4:
+                    return "video/mpeg";
+                case VideoCodec.VP8:
+                    return "video/x-vp8";
+                case VideoCodec.VP9:
+                    return "video/x-vp9";
+                case VideoCodec.WMV1:
+                case VideoCodec.WMV2:
+                case VideoCodec.WMV3:
+                    return "video/x-wmv";
+                default:
+                    return "";
+            }
+        }
+
+        private string GetCodecMimeType(AudioCodec audioCodec)
+        {
+            switch (audioCodec)
+            {
+                case AudioCodec.AAC:
+                case AudioCodec.MP2:
+                case AudioCodec.MP3:
+                    return "audio/mpeg";
+                case AudioCodec.PCM:
+                    return "audio/x-raw-int";
+                case AudioCodec.VORBIS:
+                    return "audio/x-vorbis";
+                case AudioCodec.FLAC:
+                    return "audio/x-flac";
+                case AudioCodec.AMR_NB:
+                    return "audio/AMR";
+                case AudioCodec.AMR_WB:
+                    return "audio/AMR-WB";
+                case AudioCodec.PCM_MULAW:
+                    return "audio/x-mulaw";
+                case AudioCodec.GSM_MS:
+                    return "audio/ms-gsm";
+                case AudioCodec.PCM_S16BE:
+                    return "audio/x-raw";
+                case AudioCodec.PCM_S24BE:
+                    return "audio/x-raw";
+                case AudioCodec.OPUS:
+                    return "audio/ogg";
+                case AudioCodec.EAC3:
+                    return "audio/x-eac3";
+                case AudioCodec.DTS:
+                    return "audio/x-dts";
+                case AudioCodec.AC3:
+                    return "audio/x-ac3";
+                case AudioCodec.WMAV1:
+                case AudioCodec.WMAV2:
+                    return "audio/x-ms-wma";
+                default:
+                    return "";
+            }
+        }
+
+        uint GetCodecVersion(VideoCodec videoCodec)
+        {
+            switch (videoCodec)
+            {
+                case VideoCodec.MPEG2:
+                case VideoCodec.WMV2:
+                    return 2;
+                case VideoCodec.MPEG4:
+                    return 4;
+                case VideoCodec.WMV1:
+                    return 1;
+                case VideoCodec.WMV3:
+                    return 3;
+                case VideoCodec.H264:
+                    return 4;
+                default:
+                    return 0;
+            }
+        }
+
+        uint GetCodecVersion(AudioCodec audioCodec)
+        {
+            switch (audioCodec)
+            {
+                case AudioCodec.AAC:
+                    return 4;
+                case AudioCodec.MP3:
+                    return 1;
+                case AudioCodec.MP2:
+                    return 1;
+                default:
+                    return 0;
+            }
         }
     }
 }

@@ -24,7 +24,6 @@ namespace JuvoPlayer.Common
         //TODO(p.galiszewsk)
         public int CodecProfile { get; set; }
         public Tizen.Multimedia.Size Size { get; set; }
-        public int FrameRate { get; set; }
         public int FrameRateNum { get; set; }
         public int FrameRateDen { get; set; }
         public int BitRate { get; set; }

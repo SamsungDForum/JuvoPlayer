@@ -136,8 +136,6 @@ namespace JuvoPlayer.Player
 
         public void OnStreamPacketReady(StreamPacket packet)
         {
-//            Log.Info("JuvoPlayer", "OnStreamPacketReady");
-
             if (!Streams.ContainsKey(packet.StreamType))
                 throw new Exception("Received packet for not configured stream");
 

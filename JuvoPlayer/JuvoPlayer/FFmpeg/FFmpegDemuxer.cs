@@ -356,7 +356,6 @@ namespace JuvoPlayer.FFmpeg
             config.Codec = ConvertVideoCodec(s->codecpar->codec_id);
             config.CodecProfile = s->codecpar->profile;
             config.Size = new Tizen.Multimedia.Size(s->codecpar->width, s->codecpar->height);
-            config.FrameRate = s->r_frame_rate.num / s->r_frame_rate.den;
             config.FrameRateNum = s->r_frame_rate.num;
             config.FrameRateDen = s->r_frame_rate.den;
 
@@ -371,7 +370,7 @@ namespace JuvoPlayer.FFmpeg
             Log.Info("JuvoPlayer", "Setting video stream to " + video_idx.ToString() + "/" + formatContext->nb_streams.ToString());
             Log.Info("JuvoPlayer", "  Codec = " + config.Codec.ToString());
             Log.Info("JuvoPlayer", "  Size = " + config.Size.ToString());
-            Log.Info("JuvoPlayer", "  FrameRate = " + config.FrameRate.ToString() + " (" + config.FrameRateNum + "/" + config.FrameRateDen + ")");
+            Log.Info("JuvoPlayer", "  FrameRate = (" + config.FrameRateNum + "/" + config.FrameRateDen + ")");
 
             StreamConfigReady?.Invoke(config);
         }
