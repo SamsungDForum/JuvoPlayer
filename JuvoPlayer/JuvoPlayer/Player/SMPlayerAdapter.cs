@@ -144,7 +144,7 @@ namespace JuvoPlayer.Player
                 var playerEventListener = new CSDemoPlayerListener(this);
                 playerInstance.RegisterPlayerEventListener(playerEventListener);
 
-                bool result = playerInstance.Initialize(true);
+                bool result = playerInstance.Initialize();
                 if (!result)
                 {
                     Tizen.Log.Info("JuvoPlayer", " playerInstance.Initialize() Failed !!!!!!!");
