@@ -39,6 +39,7 @@ namespace JuvoPlayer.RTSP
             rtpClient?.Stop();
         }
 
+        public event ClipDurationChanged ClipDurationChanged;
         public event DRMDataFound DRMDataFound;
         public event StreamConfigReady StreamConfigReady;
         public event StreamPacketReady StreamPacketReady;

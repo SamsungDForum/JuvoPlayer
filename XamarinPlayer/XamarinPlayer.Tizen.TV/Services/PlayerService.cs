@@ -22,17 +22,15 @@ namespace XamarinPlayer.Tizen.Services
         private DataProviderFactoryManager dataProviders;
         private PlayerState playerState = PlayerState.Idle;
 
-        private double currentTime = 0;
-
         public event PlayerStateChangedEventHandler StateChanged;
 
         public event PlaybackCompleted PlaybackCompleted;
         public event ShowSubtitile ShowSubtitle;
 
-        //TODO(p.galiszewsk):
-        public int Duration => dataProvider == null ? 0 : 100000;
+        //UI requires duration in ms:
+        public int Duration => playerController == null ? 0 : (int)(playerController.ClipDuration * 1000);
 
-        public int CurrentPosition => dataProvider == null ? 0 : (int)currentTime;
+        public int CurrentPosition => dataProvider == null ? 0 : (int)playerController.CurrentTime;
 
         public PlayerState State
         {
@@ -62,12 +60,6 @@ namespace XamarinPlayer.Tizen.Services
             {
                 ShowSubtitle?.Invoke(subtitle);
             };
-            playerController.TimeUpdated += OnTimeUpdated;
-        }
-
-        private void OnTimeUpdated(double time)
-        {
-            currentTime = time;
         }
 
         public void Pause()
@@ -83,9 +75,11 @@ namespace XamarinPlayer.Tizen.Services
 
         public void SetSource(ClipDefinition clip)
         {
+            ControllerConnector.DisconnectDataProvider(playerController, dataProvider);
+
             dataProvider = dataProviders.CreateDataProvider(clip);
 
-            playerController.SetDataProvider(dataProvider);
+            ControllerConnector.ConnectDataProvider(playerController, dataProvider);
 
             dataProvider.Start();
         }

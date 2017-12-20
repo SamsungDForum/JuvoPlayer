@@ -73,9 +73,11 @@ namespace NUIPlayer
         // method executed when clip is selected
         private void ShowClip(ClipDefinition clip)
         {
+            ControllerConnector.DisconnectDataProvider(playerController, dataProvider);
+
             dataProvider = dataProviders.CreateDataProvider(clip);
 
-            playerController.SetDataProvider(dataProvider);
+            ControllerConnector.ConnectDataProvider(playerController, dataProvider);
 
             dataProvider.Start();
         }

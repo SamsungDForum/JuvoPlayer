@@ -28,14 +28,21 @@ namespace JuvoPlayer.HLS
             this.demuxer = demuxer ?? throw new ArgumentNullException("demuxer cannot be null");
             this.currentClip = currentClip ?? throw new ArgumentNullException("clip cannot be null");
 
+            this.demuxer.ClipDuration += OnClipDurationChanged;
             this.demuxer.StreamConfigReady += OnStreamConfigReady;
             this.demuxer.StreamPacketReady += OnStreamPacketReady;
         }
 
+        public event ClipDurationChanged ClipDurationChanged;
         public event DRMDataFound DRMDataFound;
         public event StreamConfigReady StreamConfigReady;
         public event StreamPacketReady StreamPacketReady;
         public event StreamsFound StreamsFound;
+
+        private void OnClipDurationChanged(double clipDuration)
+        {
+            ClipDurationChanged?.Invoke(clipDuration);
+        }
 
         private void OnStreamConfigReady(StreamConfig config)
         {
