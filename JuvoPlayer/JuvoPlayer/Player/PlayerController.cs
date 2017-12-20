@@ -32,9 +32,10 @@ namespace JuvoPlayer.Player
         };
 
         private PlayerState state = PlayerState.Unitialized;
+        private double currentTime;
+        private double duration;
 
         private IPlayerAdapter playerAdapter;
-        private IDataProvider dataProvider;
         private Dictionary<StreamType, IPacketStream> Streams = new Dictionary<StreamType, IPacketStream>();
 
         public event Pause Pause;
@@ -69,11 +70,17 @@ namespace JuvoPlayer.Player
 
         private void OnTimeUpdated(double time)
         {
+            currentTime = time;
+
             TimeUpdated?.Invoke(time);
         }
 
         public void ChangeRepresentation(int pid)
         {
+        }
+        public void OnClipDurationChanged(double duration)
+        {
+            this.duration = duration;
         }
 
         public void OnDrmDataFound(DRMData data)
@@ -174,32 +181,11 @@ namespace JuvoPlayer.Player
             playerAdapter.SetSubtitleDelay(offset);
         }
 
-        public void SetDataProvider(IDataProvider dataProvider)
-        {
-            Stop?.Invoke();
+        #region getters
+        double IPlayerController.CurrentTime => currentTime;
 
-            if (this.dataProvider != null)
-            {
-                this.dataProvider.DRMDataFound -= OnDrmDataFound;
-                this.dataProvider.StreamConfigReady -= OnStreamConfigReady;
-                this.dataProvider.StreamPacketReady -= OnStreamPacketReady;
-                this.dataProvider.StreamsFound -= OnStreamsFound;
-
-                TimeUpdated -= this.dataProvider.OnTimeUpdated;
-            }
-
-            this.dataProvider = dataProvider;
-
-            if (this.dataProvider != null)
-            {
-                this.dataProvider.DRMDataFound += OnDrmDataFound;
-                this.dataProvider.StreamConfigReady += OnStreamConfigReady;
-                this.dataProvider.StreamPacketReady += OnStreamPacketReady;
-                this.dataProvider.StreamsFound += OnStreamsFound;
-
-                TimeUpdated += this.dataProvider.OnTimeUpdated;
-            }
-        }
+        double IPlayerController.ClipDuration => duration;
+        #endregion
 
         public void Dispose()
         {

@@ -26,6 +26,7 @@ namespace JuvoPlayer.Dash
             _demuxer.StreamPacketReady += OnStreamPacketReady;
         }
 
+        public event ClipDurationChanged ClipDurationChanged;
         public event DRMDataFound DRMDataFound;
         public event StreamConfigReady StreamConfigReady;
         public event StreamPacketReady StreamPacketReady;

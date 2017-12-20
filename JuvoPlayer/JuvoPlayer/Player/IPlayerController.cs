@@ -37,14 +37,17 @@ namespace JuvoPlayer.Player
         #endregion
 
         #region data_provider_slots
+        void OnClipDurationChanged(double duration);
         void OnDrmDataFound(DRMData data);
         void OnStreamConfigReady(StreamConfig config);
         void OnStreamPacketReady(StreamPacket packet);
         void OnStreamsFound(List<StreamDefinition> streams);
         #endregion
 
-        // TODO(p.galiszewsk): rethink this
-        void SetDataProvider(IDataProvider dataProvider);
+        #region getters
+        double CurrentTime { get; }
+        double ClipDuration { get; }
+        #endregion
 
         event Pause Pause;
         event Play Play;

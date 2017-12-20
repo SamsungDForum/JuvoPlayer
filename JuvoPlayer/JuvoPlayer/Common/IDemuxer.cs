@@ -21,7 +21,8 @@ namespace JuvoPlayer.Common
         void Reset();
         void Seek(double position);
 
-        event Common.StreamConfigReady StreamConfigReady;
-        event Common.StreamPacketReady StreamPacketReady;
+        event ClipDurationChanged ClipDuration;
+        event StreamConfigReady StreamConfigReady;
+        event StreamPacketReady StreamPacketReady;
     }
 }

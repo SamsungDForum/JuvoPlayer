@@ -24,6 +24,7 @@ namespace JuvoPlayer.FFmpeg
 {
     public class FFmpegDemuxer : IDemuxer
     {
+        public event Common.ClipDurationChanged ClipDuration;
         public event Common.StreamConfigReady StreamConfigReady;
         public event Common.StreamPacketReady StreamPacketReady;
 
@@ -31,8 +32,16 @@ namespace JuvoPlayer.FFmpeg
         private unsafe byte* buffer = null;
         private unsafe AVFormatContext* formatContext = null;
         private unsafe AVIOContext* ioContext = null;
-        int audio_idx = -1;
-        int video_idx = -1;
+        private int audio_idx = -1;
+        private int video_idx = -1;
+
+        const int kMicrosecondsPerSecond = 1000000;
+        const double kOneMicrosecond = 1.0 / kMicrosecondsPerSecond;
+        AVRational kMicrosBase = new AVRational
+        {
+            num = 1,
+            den = kMicrosecondsPerSecond
+        };
 
         private ISharedBuffer dataBuffer;
         public unsafe FFmpegDemuxer(ISharedBuffer dataBuffer, string libPath)
@@ -142,6 +151,9 @@ namespace JuvoPlayer.FFmpeg
                 throw new Exception("Could not find stream info (error code: " + ret.ToString() + ")!");
             }
 
+            if (formatContext->duration > 0)
+                ClipDuration?.Invoke(formatContext->duration * kOneMicrosecond);
+
             audio_idx = FFmpeg.av_find_best_stream(formatContext, AVMediaType.AVMEDIA_TYPE_AUDIO, -1, -1, null, 0);
             video_idx = FFmpeg.av_find_best_stream(formatContext, AVMediaType.AVMEDIA_TYPE_VIDEO, -1, -1, null, 0);
             if (audio_idx < 0 && video_idx < 0)
@@ -165,12 +177,7 @@ namespace JuvoPlayer.FFmpeg
                 Log.Error("JuvoPlayer", "An error occured: " + e.Message);
             }
 
-            const int kMicrosecondsPerSecond = 1000000;
-            const double kOneMicrosecond = 1.0 / kMicrosecondsPerSecond;
-            AVRational kMicrosBase = new AVRational {
-                num = 1,
-                den = kMicrosecondsPerSecond
-            };
+
             AVPacket pkt;
             bool parse = true;
 
