@@ -21,7 +21,6 @@ namespace JuvoPlayer.HLS
 {
     public class HLSDataProviderFactory : IDataProviderFactory
     {
-
         public HLSDataProviderFactory()
         {
         }

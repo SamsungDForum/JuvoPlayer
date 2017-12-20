@@ -128,7 +128,7 @@ namespace JuvoPlayer.Player
         SMPlayerWrapper playerInstance;
         static public HandleRef refMainStage;
 
-        bool audioSet, videoSet, playCalled, isPlayerInit;
+        bool audioSet, videoSet, isPlayerInitialized, playCalled;
 
         PacketBuffer audioBuffer, videoBuffer;
 
@@ -165,8 +165,6 @@ namespace JuvoPlayer.Player
                 //The next steps of init player is as following sequences:
                 //PrepareES() and Play() should be called after SetVideoStreamInfo() and SetAudioStreamInfo() success.
                 //And SetVideoStreamInfo() and SetAudioStreamInfo() should be called after playerInstance.Initialize().
-
-                audioSet = videoSet = isPlayerInit = playCalled = false;
             }
             catch (Exception e)
             {
@@ -197,6 +195,7 @@ namespace JuvoPlayer.Player
         unsafe public void AppendPacket(StreamPacket packet)
         {
             PrepareES();
+
             if (packet.StreamType == StreamType.Video)
                 videoBuffer.Enqueue(packet);
             else if (packet.StreamType == StreamType.Audio)
@@ -208,7 +207,7 @@ namespace JuvoPlayer.Player
             while (audioSet != true || videoSet != true)
                 continue;
 
-            if (isPlayerInit != true)
+            if (isPlayerInitialized != true)
             {
                 bool result = playerInstance.PrepareES();
                 if (result != true)
@@ -217,18 +216,7 @@ namespace JuvoPlayer.Player
                     return;
                 }
                 Tizen.Log.Info("JuvoPlayer", "playerInstance.PrepareES() Done!!!!!!!!");
-                isPlayerInit = true;
-            }
-
-            if (playCalled != true)
-            {
-                bool result = playerInstance.Play();
-                if (result != true)
-                {
-                    Tizen.Log.Info("JuvoPlayer", "playerInstance.Play() Failed!!!!!!!!");
-                    return;
-                }
-                playCalled = true;
+                isPlayerInitialized = true;
             }
         }
 
@@ -326,8 +314,13 @@ namespace JuvoPlayer.Player
 
         public void Play() // TODO(g.skowinski): Handle asynchronicity (like in Stop() method?)
         {
-            Log.Info("JuvoPlayer", "SMPlayerAdapter::Play()");
-            playerInstance.Play();
+            //TODO(p.galiszewsk) HACK
+            if (playCalled)
+                playerInstance.Resume();
+            else
+                playerInstance.Play();
+
+             playCalled = true;
         }
 
         public void Seek(double time) // TODO(g.skowinski): Make sure units are compatible.
@@ -404,11 +397,17 @@ namespace JuvoPlayer.Player
         public void Stop() // TODO(g.skowinski): Handle asynchronicity.
         {
             playerInstance.Stop(); // This is async method - wait for D2TV_MESSAGE_STOP_SUCCESS message before doing anything else with the player.
+            playCalled = false;
         }
 
         public void OnTimeUpdated(double time)
         {
             TimeUpdated?.Invoke(time);
+        }
+
+        public void OnEndOfStream()
+        {
+            PlaybackCompleted?.Invoke();
         }
 
         public void Pause() // TODO(g.skowinski): Handle asynchronicity (like in Stop() method?).

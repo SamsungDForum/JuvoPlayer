@@ -77,5 +77,9 @@ namespace JuvoPlayer.RTSP
             rtpClient.Start(currentClip);
             demuxer.StartForExternalSource();
         }
+
+        public void OnTimeUpdated(double time)
+        {
+        }
     }
 }

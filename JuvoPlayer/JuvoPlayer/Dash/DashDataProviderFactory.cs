@@ -6,7 +6,7 @@ using Tizen.Applications;
 
 namespace JuvoPlayer.Dash
 {
-    class DashDataProviderFactory : IDataProviderFactory
+    public class DashDataProviderFactory : IDataProviderFactory
     {
         public IDataProvider Create(ClipDefinition clip)
         {

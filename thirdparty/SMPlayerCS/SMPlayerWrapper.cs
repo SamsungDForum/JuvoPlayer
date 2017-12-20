@@ -263,6 +263,12 @@ namespace CSPlayer
                 return result;
             }
 
+            result = NativeSMPlayer.SetCurrentPositionCallback(currentPosCallback, (IntPtr)0);
+            if (result == false)
+            {
+                return result;
+            }
+
             result = NativeSMPlayer.SetAppSrcAudioSeekCallback(audioSeekDataCallback, (IntPtr)0);
             if (result == false)
             {
@@ -439,12 +445,6 @@ namespace CSPlayer
         {
             bool result = NativeSMPlayer.SetSubtitleSync(iMilliSec);
             return result;
-        }
-
-        public uint GetCurrentTime()
-        {
-            //CurrentTime comes from currentPosCB, so we dont need to call API
-            return currentPosition;
         }
 
         public uint GetCurrentTrack(TrackType_Samsung stream_type)

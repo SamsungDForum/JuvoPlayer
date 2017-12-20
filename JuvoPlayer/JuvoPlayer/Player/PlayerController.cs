@@ -123,6 +123,8 @@ namespace JuvoPlayer.Player
         {
             Log.Info("JuvoPlayer", "OnStreamConfigReady");
             Streams[config.StreamType()] = CreatePacketStream(config);
+
+            state = PlayerState.Ready;
         }
 
         public void OnStreamPacketReady(StreamPacket packet)
@@ -182,6 +184,8 @@ namespace JuvoPlayer.Player
                 this.dataProvider.StreamConfigReady -= OnStreamConfigReady;
                 this.dataProvider.StreamPacketReady -= OnStreamPacketReady;
                 this.dataProvider.StreamsFound -= OnStreamsFound;
+
+                TimeUpdated -= this.dataProvider.OnTimeUpdated;
             }
 
             this.dataProvider = dataProvider;
@@ -192,6 +196,8 @@ namespace JuvoPlayer.Player
                 this.dataProvider.StreamConfigReady += OnStreamConfigReady;
                 this.dataProvider.StreamPacketReady += OnStreamPacketReady;
                 this.dataProvider.StreamsFound += OnStreamsFound;
+
+                TimeUpdated += this.dataProvider.OnTimeUpdated;
             }
         }
 

@@ -25,6 +25,8 @@ namespace JuvoPlayer.Common
         void OnChangeRepresentation(int representationId);
         void OnPlay();
         void OnSeek(double time);
+        void OnTimeUpdated(double time);
+
         void Start();
 
         event DRMDataFound DRMDataFound;
