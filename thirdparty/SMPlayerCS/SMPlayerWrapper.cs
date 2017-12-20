@@ -231,9 +231,9 @@ namespace CSPlayer
             //No need to do until now
         }
 
-        public bool Initialize(bool isEsPlay)
+        public bool Initialize()
         {
-            return NativeSMPlayer.Initialize() && SetPlayerCallbacks(isEsPlay);
+            return NativeSMPlayer.Initialize() && SetPlayerCallbacks();
         }
 
         public bool Reset()                //Reset will stop player and destroy its instance
@@ -243,7 +243,7 @@ namespace CSPlayer
             return result;
         }
 
-        bool SetPlayerCallbacks(bool isEsPlay)
+        bool SetPlayerCallbacks()
         {
             bool result = false;
 
@@ -263,15 +263,6 @@ namespace CSPlayer
                 return result;
             }
 
-            if (!isEsPlay)
-            { 
-                result = NativeSMPlayer.SetCurrentPositionCallback(currentPosCallback, (IntPtr)0);
-                if (result == false)
-                {
-                    return result;
-                }
-                return result;
-            }
             result = NativeSMPlayer.SetAppSrcAudioSeekCallback(audioSeekDataCallback, (IntPtr)0);
             if (result == false)
             {
