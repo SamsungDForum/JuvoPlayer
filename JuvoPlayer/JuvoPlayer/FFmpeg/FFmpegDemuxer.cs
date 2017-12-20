@@ -195,7 +195,7 @@ namespace JuvoPlayer.FFmpeg
                         Data = new byte[dataSize],
                         IsKeyFrame = (pkt.flags == 1)
                     };
-                    Log.Info("JuvoPlayer", "DEMUXER (" + (streamPacket.StreamType == StreamType.Audio ? "A" : "V") + "): data size: " + dataSize.ToString() + "; pts: " + pts.ToString() + "; dts: " + dts.ToString() + "; duration:" + duration + "; ret: " + ret.ToString());
+//                    Log.Info("JuvoPlayer", "DEMUXER (" + (streamPacket.StreamType == StreamType.Audio ? "A" : "V") + "): data size: " + dataSize.ToString() + "; pts: " + pts.ToString() + "; dts: " + dts.ToString() + "; duration:" + duration + "; ret: " + ret.ToString());
                     CopyPacketData(data, 0, dataSize, streamPacket, true); //Marshal.Copy((IntPtr)data, streamPacket.Data, 0, dataSize);
                     StreamPacketReady(streamPacket);
                 }
