@@ -239,14 +239,24 @@ namespace JuvoPlayer.Player
                     Log.Info("JuvoPlayer", "SubmittingPacketsTask: AUDIO: " + audioBuffer.Count().ToString() + ", VIDEO: " + videoBuffer.Count().ToString());
 
                     StreamPacket packet;
-                    if (audioBuffer.PeekSortingValue() <= videoBuffer.PeekSortingValue())
+                    if (audioBuffer.Count() > 0 && videoBuffer.Count() > 0)
+                    {
+                        if (audioBuffer.PeekSortingValue() <= videoBuffer.PeekSortingValue())
+                            packet = audioBuffer.Dequeue();
+                        else
+                            packet = videoBuffer.Dequeue();
+                    }
+                    else if (audioBuffer.Count() > 0)
                         packet = audioBuffer.Dequeue();
                     else
                         packet = videoBuffer.Dequeue();
 
                     Log.Info("JuvoPlayer", "Peeked");
 
-                    SubmitPacket(packet);
+                    if (packet.IsEOS)
+                        SubmitEOSPacket(packet);
+                    else
+                        SubmitPacket(packet);
                 }
                 else
                 {
@@ -308,14 +318,23 @@ namespace JuvoPlayer.Player
                 // Free the unmanaged memory. It need to check, no need to clear here, in Amazon es play case, the es data memory is cleared by decoder or sink element after it is used and played
                 //  Marshal.FreeHGlobal(pnt);
             }
+        }
 
-            // ------------------------------------------------
-            //After there is no es data,means End of Stream,  you need to call SubmitEOS for both audio and video.
-            //playerInstance.SubmitEOSPacket(TrackType_Samsung.TRACK_TYPE_AUDIO);
-            //playerInstance.SubmitEOSPacket(TrackType_Samsung.TRACK_TYPE_VIDEO);
+        unsafe private void SubmitEOSPacket(StreamPacket packet)
+        {
+            TrackType_Samsung trackType;
+            if (packet.StreamType == StreamType.Video)
+                trackType = TrackType_Samsung.TRACK_TYPE_VIDEO;
+            else if (packet.StreamType == StreamType.Audio)
+                trackType = TrackType_Samsung.TRACK_TYPE_AUDIO;
+            else if (packet.StreamType == StreamType.Subtitle)
+                trackType = TrackType_Samsung.TRACK_TYPE_SUBTITLE;
+            else
+                trackType = TrackType_Samsung.TRACK_TYPE_MAX; // TODO(g.skowinski): Handle StreamType.Teletext and TrackType_Samsung.TRACK_TYPE_MAX properly.
 
-            //D2TV_MESSAGE_END_OF_STREAM message will come when d2tv-player done EOS, then you need to make your own module prepare for stop and shutdown.
+            Tizen.Log.Info("JuvoPlayer", "[HQ] send EOS packet: " + packet.Pts.ToString() + " (" + (trackType == TrackType_Samsung.TRACK_TYPE_AUDIO ? "AUDIO" : trackType == TrackType_Samsung.TRACK_TYPE_VIDEO ? "VIDEO" : "OTHER") + ")");
 
+            playerInstance.SubmitEOSPacket(trackType);
         }
 
         public void Play() // TODO(g.skowinski): Handle asynchronicity (like in Stop() method?)

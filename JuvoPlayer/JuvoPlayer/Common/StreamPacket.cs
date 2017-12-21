@@ -19,6 +19,18 @@ namespace JuvoPlayer.Common
         public StreamType StreamType { get; set; }
         public ulong Dts { get; set; }
         public ulong Pts { get; set; }
+        public bool IsEOS { get; set; }
         public bool IsKeyFrame { get; set; }
+
+        public static StreamPacket CreateEOS(StreamType streamType)
+        {
+            return new StreamPacket
+            {
+                StreamType = streamType,
+                Dts = ulong.MaxValue,
+                Pts = ulong.MaxValue,
+                IsEOS = true
+            };
+        }
     }
 }

@@ -39,7 +39,16 @@ namespace JuvoPlayer.Dash
 
         private void OnStreamPacketReady(StreamPacket packet)
         {
-            StreamPacketReady?.Invoke(packet);
+            if (packet != null)
+            {
+                StreamPacketReady?.Invoke(packet);
+                return;
+            }
+            // TODO(p.galiszewsk): Here we need two demuxers, so 
+            // this should be reworked later
+            StreamPacketReady?.Invoke(StreamPacket.CreateEOS(StreamType.Audio));
+            StreamPacketReady?.Invoke(StreamPacket.CreateEOS(StreamType.Video));
+
         }
 
         public void OnChangeRepresentation(int representationId)
