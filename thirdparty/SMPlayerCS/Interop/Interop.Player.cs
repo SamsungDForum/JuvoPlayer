@@ -78,8 +78,8 @@ internal static partial class Interop
         [DllImport(Libraries.SMPlayer, EntryPoint = "SetAppSrcVideoDataEnoughCallback", CallingConvention = CallingConvention.Cdecl)]
         public static extern bool SetAppSrcVideoDataEnoughCallback(SmPlayerAppSrcDataEnoughCallback cbFunction, IntPtr user_param);
 
-        [DllImport(Libraries.SMPlayer, EntryPoint = "SubmitEOS", CallingConvention = CallingConvention.Cdecl)]
-        public static extern bool SubmitEOS(TrackType_Samsung eStreamType);
+        [DllImport(Libraries.SMPlayer, EntryPoint = "SubmitEOSPacket", CallingConvention = CallingConvention.Cdecl)]
+        public static extern bool SubmitEOSPacket(TrackType_Samsung eStreamType);
 
         [DllImport(Libraries.SMPlayer, EntryPoint = "SetAppSrcDuration", CallingConvention = CallingConvention.Cdecl)]
         public static extern bool SetAppSrcDuration(System.UInt32 iDuration);      //API use unsigned long, need to check if this type System.UInt32 is OK

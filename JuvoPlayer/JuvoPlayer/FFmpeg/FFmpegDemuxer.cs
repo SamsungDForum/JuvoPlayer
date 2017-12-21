@@ -208,7 +208,8 @@ namespace JuvoPlayer.FFmpeg
                 }
                 else {
                     if (ret == -541478725) {
-                        // send End of File event.
+                        // null means EOF
+                        StreamPacketReady(null);
                     }
                     Log.Info("JuvoPlayer", "DEMUXER: ----DEMUXING----AV_READ_FRAME----ERROR---- av_read_frame()=" + ret.ToString() + " (" + GetErrorText(ret) + ")");
                     parse = false;

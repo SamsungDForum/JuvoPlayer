@@ -51,7 +51,15 @@ namespace JuvoPlayer.HLS
 
         private void OnStreamPacketReady(StreamPacket packet)
         {
-            StreamPacketReady?.Invoke(packet);
+            if (packet != null)
+            {
+                StreamPacketReady?.Invoke(packet);
+                return;
+            }
+            // found empty packet which means EOS. We need to send two fake 
+            // eos packets, one for audio and one for video
+            StreamPacketReady?.Invoke(StreamPacket.CreateEOS(StreamType.Audio));
+            StreamPacketReady?.Invoke(StreamPacket.CreateEOS(StreamType.Video));
         }
 
         public void OnChangeRepresentation(int representationId)

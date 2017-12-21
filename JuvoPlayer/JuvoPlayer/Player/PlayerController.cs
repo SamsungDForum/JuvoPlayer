@@ -58,6 +58,7 @@ namespace JuvoPlayer.Player
 
         private void OnPlaybackCompleted()
         {
+            Log.Error("JuvoPlayer", "OnPlaybackCompleted");
             state = PlayerState.Finished;
 
             PlaybackCompleted?.Invoke();
@@ -137,7 +138,13 @@ namespace JuvoPlayer.Player
         public void OnStreamPacketReady(StreamPacket packet)
         {
             if (!Streams.ContainsKey(packet.StreamType))
+            {
+                // Ignore unneeded fake eos
+                if (packet.IsEOS)
+                    return;
+
                 throw new Exception("Received packet for not configured stream");
+            }
 
             Streams[packet.StreamType].OnAppendPacket(packet);
         }

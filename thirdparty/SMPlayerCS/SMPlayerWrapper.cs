@@ -375,7 +375,7 @@ namespace CSPlayer
 
         public bool SubmitEOSPacket(TrackType_Samsung track_type)
         {
-            bool result = NativeSMPlayer.SubmitEOS(track_type);
+            bool result = NativeSMPlayer.SubmitEOSPacket(track_type);
             return result;
         }
 
