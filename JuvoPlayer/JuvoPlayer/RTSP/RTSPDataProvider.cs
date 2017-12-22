@@ -68,6 +68,11 @@ namespace JuvoPlayer.RTSP
 
         }
 
+        public void OnPause()
+        {
+
+        }
+
         public void OnPlay()
         {
 

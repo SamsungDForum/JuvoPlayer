@@ -1,60 +1,61 @@
 ﻿[
-  {
-    "title": "Google DASH Car",
-    "url": "http://yt-dash-mse-test.commondatastorage.googleapis.com/media/car-20120827-manifest.mpd",
-    "subtitles": [
-      {
-        "subtitle": "./subs/sample_cyrilic_utf8.srt",
-        "language": "en (external)",
-        "id": "10",
-        "isActive": true
-      }
-    ],
-    "type": "dash",
-    "poster": "car.jpg",
-    "description": "This is clip with DASH content. User can choose desired video/audio representation"
-  },
-  {
-    "title": "Google DASH encrypted",
-    "url": "http://yt-dash-mse-test.commondatastorage.googleapis.com/media/oops_cenc-20121114-signedlicenseurl-manifest.mpd",
-    "type": "dash",
-    "poster": "oops.jpg",
-    "description": "This is clip with DASH content with DRM. User can choose desired video/audio representation"
-  },
-  {
-    "title": "Big Buck Bunny mp4",
-    "url": "http://distribution.bbb3d.renderfarming.net/video/mp4/bbb_sunflower_1080p_30fps_normal.mp4",
-    "subtitles": [
-      {
-        "subtitle": "./subs/sample_cyrilic.srt",
-        "encoding": "windows-1251",
-        "language": "en (external)",
-        "id": "11"
-      },
-      {
-        "subtitle": "./subs/sample_cyrilic_utf8.srt",
-        "language": "ko (external)",
-        "id": "10",
-        "isActive": true,
-        "encoding": "windows-1251"
-      }
-    ],
-    "type": "url",
-    "poster": "bunny.jpg",
-    "description": "This is clip played directly from URL"
-  },
-  {
-    "title": "HEVC Single Resolution Multi-Rate",
-    "url": "http://dash.akamaized.net/dash264/TestCasesHEVC/1a/1/TOS_OnDemand_HEVC_MultiRate.mpd",
-    "type": "dash",
-    "poster": "tos-poster.jpg",
-    "describe": "http://testassets.dashif.org/#testvector/list"
-  },
-  {
-    "title": "HLS",
-    "url": "http://bitdash-a.akamaihd.net/content/MI201109210084_1/m3u8s/f08e80da-bf1d-4e3d-8899-f0f6155f6efa.m3u8",
-    "type": "hls",
-    "poster": "tos-poster.jpg",
-    "describe": "http://testassets.dashif.org/#testvector/list"
-  }
+    {
+        "title": "MPEG DASH - Google Car",
+        "url": "http://yt-dash-mse-test.commondatastorage.googleapis.com/media/car-20120827-manifest.mpd",
+        "subtitles": [
+            {
+                "subtitle": "./subs/sample_cyrilic_utf8.srt",
+                "language": "en (external)",
+                "id": "10",
+                "isActive": true
+            }
+        ],
+        "type": "dash",
+        "poster": "car.jpg",
+        "description": "This is clip with DASH content. User can choose desired video/audio representation"
+    },
+    {
+        "title": "MPEG DASH - Google oops encrypted",
+        "url": "http://yt-dash-mse-test.commondatastorage.googleapis.com/media/oops_cenc-20121114-signedlicenseurl-manifest.mpd",
+        "type": "dash",
+        "poster": "oops.jpg",
+        "description": "This is clip with DASH content with DRM. User can choose desired video/audio representation"
+    },
+    {
+        "title": "MP4: Big Buck Bunny",
+        "url": "http://distribution.bbb3d.renderfarming.net/video/mp4/bbb_sunflower_1080p_30fps_normal.mp4",
+        "subtitles": [
+            {
+                "subtitle": "./subs/sample_cyrilic.srt",
+                "encoding": "windows-1251",
+                "language": "en (external)",
+                "id": "11"
+            },
+            {
+                "subtitle": "./subs/sample_cyrilic_utf8.srt",
+                "language": "ko (external)",
+                "id": "10",
+                "isActive": true,
+                "encoding": "windows-1251"
+            }
+        ],
+        "type": "url",
+        "poster": "bunny.jpg",
+        "description": "This is clip played directly from URL"
+    },
+    {
+        "title": "HLS",
+        "url": "http://bitdash-a.akamaihd.net/content/MI201109210084_1/m3u8s/f08e80da-bf1d-4e3d-8899-f0f6155f6efa.m3u8",
+        "type": "hls",
+        "poster": "tos-poster.jpg",
+        "describe": "http://testassets.dashif.org/#testvector/list"
+    },
+    {
+        "title": "RTSP - H264 + AAC",
+        "url": "rtsp://192.168.137.200/video_aac.ts",
+        "type": "rtsp",
+        "poster": "tos-poster.jpg",
+        "describe": "http://testassets.dashif.org/#testvector/list"
+    }
+
 ]

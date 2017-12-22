@@ -43,6 +43,11 @@ namespace JuvoPlayer.FFmpeg
             den = kMicrosecondsPerSecond
         };
 
+        // delegates for custom io callbacks
+        private avio_alloc_context_read_packet ReadFunctionDelegate;
+        private avio_alloc_context_write_packet WriteFunctionDelegate;
+        private avio_alloc_context_seek SeekFunctionDelegate;
+
         private ISharedBuffer dataBuffer;
         public unsafe FFmpegDemuxer(ISharedBuffer dataBuffer, string libPath)
         {
@@ -55,6 +60,11 @@ namespace JuvoPlayer.FFmpeg
                 Log.Info("JuvoPlayer", "Could not load and register FFmpeg library!");
                 throw;
             }
+
+            // we need to make sure that delegate lifetime is the same as our demuxer class
+            ReadFunctionDelegate = new avio_alloc_context_read_packet(ReadPacket);
+            WriteFunctionDelegate = new avio_alloc_context_write_packet(WritePacket);
+            SeekFunctionDelegate = new avio_alloc_context_seek(Seek);
         }
 
         public void StartForExternalSource()
@@ -79,13 +89,17 @@ namespace JuvoPlayer.FFmpeg
             Log.Info("JuvoPlayer", "INIT");
 
             buffer = (byte*)FFmpeg.av_mallocz((ulong)bufferSize); // let's try AllocHGlobal later on
+            var readFunction = new avio_alloc_context_read_packet_func { Pointer = Marshal.GetFunctionPointerForDelegate(ReadFunctionDelegate) };
+            var writeFunction = new avio_alloc_context_write_packet_func { Pointer = Marshal.GetFunctionPointerForDelegate(WriteFunctionDelegate) };
+            var seekFunction = new avio_alloc_context_seek_func { Pointer = Marshal.GetFunctionPointerForDelegate(SeekFunctionDelegate) };
+
             ioContext = FFmpeg.avio_alloc_context(buffer,
                                                          bufferSize,
                                                          0,
                                                          (void*)GCHandle.ToIntPtr(GCHandle.Alloc(dataBuffer)), // TODO(g.skowinski): Check if allocating memory used by ffmpeg with Marshal.AllocHGlobal helps!
-                                                         (avio_alloc_context_read_packet)ReadPacket,
-                                                         (avio_alloc_context_write_packet)WritePacket,
-                                                         (avio_alloc_context_seek)Seek);
+                                                         readFunction,
+                                                         writeFunction,
+                                                         seekFunction);
             formatContext = FFmpeg.avformat_alloc_context(); // it was before avio_alloc_context before, but I'm changing ordering so it's like in LiveTVApp
             ioContext->seekable = 0;
             ioContext->write_flag = 0;
@@ -467,7 +481,7 @@ namespace JuvoPlayer.FFmpeg
             // TODO(g.skowinski): Implement.
         }
 
-        static private unsafe ISharedBuffer RetrieveSharedBufferReference(void* @opaque)
+        private static unsafe ISharedBuffer RetrieveSharedBufferReference(void* @opaque)
         {
             ISharedBuffer sharedBuffer;
             try {
@@ -481,7 +495,7 @@ namespace JuvoPlayer.FFmpeg
             return sharedBuffer;
         }
 
-        static private unsafe int ReadPacket(void* @opaque, byte* @buf, int @buf_size)
+        private unsafe int ReadPacket(void* @opaque, byte* @buf, int @buf_size)
         {
             ISharedBuffer sharedBuffer;
             try {
