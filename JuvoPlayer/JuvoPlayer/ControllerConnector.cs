@@ -24,6 +24,9 @@ namespace JuvoPlayer
             newDataProvider.StreamsFound += controller.OnStreamsFound;
 
             controller.TimeUpdated += newDataProvider.OnTimeUpdated;
+            controller.Paused += newDataProvider.OnPaused;
+            controller.Played += newDataProvider.OnPlayed;
+            controller.Stopped += newDataProvider.OnPlayed;
         }
 
         public static void DisconnectDataProvider(IPlayerController controller, IDataProvider oldDataProvider)
@@ -34,13 +37,16 @@ namespace JuvoPlayer
             if (oldDataProvider == null)
                 return;
 
-            oldDataProvider.ClipDurationChanged += controller.OnClipDurationChanged;
-            oldDataProvider.DRMDataFound += controller.OnDrmDataFound;
-            oldDataProvider.StreamConfigReady += controller.OnStreamConfigReady;
-            oldDataProvider.StreamPacketReady += controller.OnStreamPacketReady;
-            oldDataProvider.StreamsFound += controller.OnStreamsFound;
+            oldDataProvider.ClipDurationChanged -= controller.OnClipDurationChanged;
+            oldDataProvider.DRMDataFound -= controller.OnDrmDataFound;
+            oldDataProvider.StreamConfigReady -= controller.OnStreamConfigReady;
+            oldDataProvider.StreamPacketReady -= controller.OnStreamPacketReady;
+            oldDataProvider.StreamsFound -= controller.OnStreamsFound;
 
-            controller.TimeUpdated += oldDataProvider.OnTimeUpdated;
+            controller.TimeUpdated -= oldDataProvider.OnTimeUpdated;
+            controller.Paused -= oldDataProvider.OnPaused;
+            controller.Played -= oldDataProvider.OnPlayed;
+            controller.Stopped -= oldDataProvider.OnPlayed;
         }
     }
 }

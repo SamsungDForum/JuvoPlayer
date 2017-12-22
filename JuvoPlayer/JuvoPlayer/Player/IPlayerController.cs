@@ -49,10 +49,10 @@ namespace JuvoPlayer.Player
         double ClipDuration { get; }
         #endregion
 
-        event Pause Pause;
-        event Play Play;
+        event Pause Paused;
+        event Play Played;
         event Seek Seek;
-        event Stop Stop;
+        event Stop Stopped;
 
         event PlaybackCompleted PlaybackCompleted;
         event ShowSubtitile ShowSubtitle;

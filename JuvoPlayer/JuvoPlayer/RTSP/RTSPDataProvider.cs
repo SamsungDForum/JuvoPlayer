@@ -68,14 +68,14 @@ namespace JuvoPlayer.RTSP
 
         }
 
-        public void OnPause()
+        public void OnPaused()
         {
-
+            rtpClient?.Pause();
         }
 
-        public void OnPlay()
+        public void OnPlayed()
         {
-
+            rtpClient?.Play();
         }
 
         public void OnSeek(double time)
@@ -90,6 +90,9 @@ namespace JuvoPlayer.RTSP
 
             rtpClient.Start(currentClip);
             demuxer.StartForExternalSource();
+        }
+        public void OnStopped()
+        {
         }
 
         public void OnTimeUpdated(double time)

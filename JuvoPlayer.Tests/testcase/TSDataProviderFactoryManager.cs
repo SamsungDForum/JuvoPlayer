@@ -22,22 +22,22 @@ namespace JuvoPlayer.Tests
                 throw new NotImplementedException();
             }
 
-            public void OnPause()
+            public void OnPaused()
             {
                 throw new NotImplementedException();
             }
 
-            public void OnPlay(string url)
-            {
-                throw new NotImplementedException();
-            }
-
-            public void OnPlay()
+            public void OnPlayed()
             {
                 throw new NotImplementedException();
             }
 
             public void OnSeek(double time)
+            {
+                throw new NotImplementedException();
+            }
+
+            public void OnStopped()
             {
                 throw new NotImplementedException();
             }
