@@ -15,8 +15,14 @@ namespace JuvoPlayer.Tests
             public event StreamConfigReady StreamConfigReady;
             public event StreamPacketReady StreamPacketReady;
             public event StreamsFound StreamsFound;
+            public event ClipDurationChanged ClipDurationChanged;
 
             public void OnChangeRepresentation(int representationId)
+            {
+                throw new NotImplementedException();
+            }
+
+            public void OnPause()
             {
                 throw new NotImplementedException();
             }
@@ -32,6 +38,11 @@ namespace JuvoPlayer.Tests
             }
 
             public void OnSeek(double time)
+            {
+                throw new NotImplementedException();
+            }
+
+            public void OnTimeUpdated(double time)
             {
                 throw new NotImplementedException();
             }
