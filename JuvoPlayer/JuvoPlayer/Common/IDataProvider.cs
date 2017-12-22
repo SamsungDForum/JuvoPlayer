@@ -24,6 +24,7 @@ namespace JuvoPlayer.Common
     public interface IDataProvider
     {
         void OnChangeRepresentation(int representationId);
+        void OnPause();
         void OnPlay();
         void OnSeek(double time);
         void OnTimeUpdated(double time);

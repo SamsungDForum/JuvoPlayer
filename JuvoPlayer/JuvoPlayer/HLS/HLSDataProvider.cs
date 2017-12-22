@@ -67,6 +67,11 @@ namespace JuvoPlayer.HLS
 
         }
 
+        public void OnPause()
+        {
+            throw new NotImplementedException();
+        }
+
         public void OnPlay()
         {
 
