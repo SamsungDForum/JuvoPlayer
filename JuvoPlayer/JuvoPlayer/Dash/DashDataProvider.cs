@@ -56,18 +56,22 @@ namespace JuvoPlayer.Dash
             throw new NotImplementedException();
         }
 
-        public void OnPause()
+        public void OnPaused()
         {
             throw new NotImplementedException();
         }
 
-        public void OnPlay()
+        public void OnPlayed()
         {
         }
 
         public void OnSeek(double time)
         {
             throw new NotImplementedException();
+        }
+
+        public void OnStopped()
+        {
         }
 
         public void Start()

@@ -38,10 +38,10 @@ namespace JuvoPlayer.Player
         private IPlayerAdapter playerAdapter;
         private Dictionary<StreamType, IPacketStream> Streams = new Dictionary<StreamType, IPacketStream>();
 
-        public event Pause Pause;
-        public event Play Play;
+        public event Pause Paused;
+        public event Play Played;
         public event Seek Seek;
-        public event Stop Stop;
+        public event Stop Stopped;
 
         public event PlaybackCompleted PlaybackCompleted;
         public event ShowSubtitile ShowSubtitle;
@@ -97,7 +97,7 @@ namespace JuvoPlayer.Player
 
             state = PlayerState.Paused;
 
-            Pause?.Invoke();
+            Paused?.Invoke();
         }
 
         public void OnPlay()
@@ -109,7 +109,7 @@ namespace JuvoPlayer.Player
 
             state = PlayerState.Playing;
 
-            Play?.Invoke();
+            Played?.Invoke();
         }
 
         public void OnSeek(double time)
@@ -124,7 +124,7 @@ namespace JuvoPlayer.Player
 
             state = PlayerState.Finished;
 
-            Stop?.Invoke();
+            Stopped?.Invoke();
         }
 
         public void OnStreamConfigReady(StreamConfig config)

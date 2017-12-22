@@ -24,12 +24,6 @@ namespace JuvoPlayer.RTSP
 {
     public class RTSPClient : IRTSPClient
     {
-        enum RTPPayloadType
-        {
-            MPEGTS = 33,
-            H264 = 98
-        };
-
         RTPTransportType rtpTransportType = RTPTransportType.TCP; // Mode, either RTP over UDP or RTP over TCP using the RTSP socket
         UDPSocketPair udpPair = null;       // Pair of UDP ports used in RTP over UDP mode or in MULTICAST mode
         String url = "";                 // RTSP URL
@@ -53,6 +47,29 @@ namespace JuvoPlayer.RTSP
         {
             this.buffer = buffer ?? throw new ArgumentNullException("buffer cannot be null");
         }
+
+        public void Pause()
+        {
+            RtspRequest pauseMessage = new RtspRequestPause
+            {
+                RtspUri = new Uri(url),
+                Session = session
+            };
+
+            rtspListener.SendMessage(pauseMessage);
+        }
+
+        public void Play()
+        {
+            RtspRequest playMessage = new RtspRequestPlay
+            {
+                RtspUri = new Uri(url),
+                Session = session
+            };
+
+            rtspListener.SendMessage(playMessage);
+        }
+
         public void Seek(int position)
         {
             throw new NotImplementedException();
@@ -199,155 +216,7 @@ namespace JuvoPlayer.RTSP
             byte[] rtp_payload = new byte[e.Message.Data.Length - rtpPayloadStart]; // payload with RTP header removed
             Array.Copy(e.Message.Data, rtpPayloadStart, rtp_payload, 0, rtp_payload.Length); // copy payload
             buffer.WriteData(rtp_payload);
-
-            //if (rtpPayloadType == (int)RTPPayloadType.H264)
-            //{
-            //    // If rtp_marker is '1' then this is the final transmission for this packet.
-            //    // If rtp_marker is '0' we need to accumulate data with the same timestamp
-
-            //    // Add the RTP packet to the tempoary_rtp list
-            //    byte[] rtp_payload = new byte[e.Message.Data.Length - rtpPayloadStart]; // payload with RTP header removed
-            //    Array.Copy(e.Message.Data, rtpPayloadStart, rtp_payload, 0, rtp_payload.Length); // copy payload
-            //    temporary_rtp_payloads.Add(rtp_payload);
-
-            //    if (rtpMarker == 1)
-            //    {
-            //        // End Marker is set. Process the RTP frame
-            //        ProcessH264RTPFrame(temporary_rtp_payloads);
-            //        temporary_rtp_payloads.Clear();
-            //    }
-            //}
-            //else if (rtpPayloadType == (int)RTPPayloadType.MPEGTS)
-            //{
-
-            //}
         }
-
-        // Process an RTP Frame. A RTP Frame can consist of several RTP Packets
-        public void ProcessH264RTPFrame(List<byte[]> rtpPayloads)
-        {
-            Tizen.Log.Info("JuvoPlayer", "RTP Data comprised of " + rtpPayloads.Count + " rtp packets");
-
-            List<byte[]> nalUnits = new List<byte[]>(); // Stores the NAL units for a Video Frame. May be more than one NAL unit in a video frame.
-
-            for (int payloadIndex = 0; payloadIndex < rtpPayloads.Count; payloadIndex++)
-            {
-                // Examine the first rtp_payload and the first byte (the NAL header)
-                int nal_header_f_bit = (rtpPayloads[payloadIndex][0] >> 7) & 0x01;
-                int nal_header_nri = (rtpPayloads[payloadIndex][0] >> 5) & 0x03;
-                int nalHeaderType = (rtpPayloads[payloadIndex][0] >> 0) & 0x1F;
-
-                // If the Nal Header Type is in the range 1..23 this is a normal NAL (not fragmented)
-                // So write the NAL to the file
-                if (nalHeaderType >= 1 && nalHeaderType <= 23)
-                {
-                    Tizen.Log.Info("JuvoPlayer", "Normal NAL");
-
-                    nalUnits.Add(rtpPayloads[payloadIndex]);
-                }
-                // There are 4 types of Aggregation Packet (split over RTP payloads)
-                else if (nalHeaderType == 24)
-                {
-                    Tizen.Log.Info("JuvoPlayer", "Agg STAP-A");
-
-                    // RTP packet contains multiple NALs, each with a 16 bit header
-                    //   Read 16 byte size
-                    //   Read NAL
-                    try
-                    {
-                        int ptr = 1; // start after the nal_header_type which was '24'
-                        // if we have at least 2 more bytes (the 16 bit size) then consume more data
-                        while (ptr + 2 < (rtpPayloads[payloadIndex].Length - 1))
-                        {
-                            int size = (rtpPayloads[payloadIndex][ptr] << 8) + (rtpPayloads[payloadIndex][ptr + 1] << 0);
-                            ptr = ptr + 2;
-                            byte[] nal = new byte[size];
-                            System.Array.Copy(rtpPayloads[payloadIndex], ptr, nal, 0, size); // copy the NAL
-                            nalUnits.Add(nal); // Add to list of NALs for this RTP frame. Start Codes like 00 00 00 01 get added later
-                            ptr = ptr + size;
-                        }
-                    }
-                    catch
-                    {
-                        // do nothing
-                    }
-                }
-                else if (nalHeaderType == 25)
-                {
-                    Tizen.Log.Info("JuvoPlayer", "Agg STAP-B not supported");
-                }
-                else if (nalHeaderType == 26)
-                {
-                    Tizen.Log.Info("JuvoPlayer", "Agg MTAP16 not supported");
-                }
-                else if (nalHeaderType == 27)
-                {
-                    Tizen.Log.Info("JuvoPlayer", "Agg MTAP24 not supported");
-                }
-                else if (nalHeaderType == 28)
-                {
-                    Tizen.Log.Info("JuvoPlayer", "Frag FU-A");
-                    // Parse Fragmentation Unit Header
-                    int fu_header_s = (rtpPayloads[payloadIndex][1] >> 7) & 0x01;  // start marker
-                    int fu_header_e = (rtpPayloads[payloadIndex][1] >> 6) & 0x01;  // end marker
-                    int fu_header_r = (rtpPayloads[payloadIndex][1] >> 5) & 0x01;  // reserved. should be 0
-                    int fu_header_type = (rtpPayloads[payloadIndex][1] >> 0) & 0x1F; // Original NAL unit header
-
-                    Tizen.Log.Info("JuvoPlayer", "Frag FU-A s=" + fu_header_s + "e=" + fu_header_e);
-
-                    // Check Start and End flags
-                    if (fu_header_s == 1 && fu_header_e == 0)
-                    {
-                        // Start of Fragment.
-                        // Initiise the fragmented_nal byte array
-                        // Build the NAL header with the original F and NRI flags but use the the Type field from the fu_header_type
-                        byte reconstructed_nal_type = (byte)((nal_header_f_bit << 7) + (nal_header_nri << 5) + fu_header_type);
-
-                        // Empty the stream
-                        fragmentedNAL.SetLength(0);
-
-                        // Add reconstructed_nal_type byte to the memory stream
-                        fragmentedNAL.WriteByte(reconstructed_nal_type);
-
-                        // copy the rest of the RTP payload to the memory stream
-                        fragmentedNAL.Write(rtpPayloads[payloadIndex], 2, rtpPayloads[payloadIndex].Length - 2);
-                    }
-
-                    if (fu_header_s == 0 && fu_header_e == 0)
-                    {
-                        // Middle part of Fragment
-                        // Append this payload to the fragmented_nal
-                        // Data starts after the NAL Unit Type byte and the FU Header byte
-                        fragmentedNAL.Write(rtpPayloads[payloadIndex], 2, rtpPayloads[payloadIndex].Length - 2);
-                    }
-
-                    if (fu_header_s == 0 && fu_header_e == 1)
-                    {
-                        // End part of Fragment
-                        // Append this payload to the fragmented_nal
-                        // Data starts after the NAL Unit Type byte and the FU Header byte
-                        fragmentedNAL.Write(rtpPayloads[payloadIndex], 2, rtpPayloads[payloadIndex].Length - 2);
-
-                        // Add the NAL to the array of NAL units
-                        nalUnits.Add(fragmentedNAL.ToArray());
-                    }
-                }
-
-                else if (nalHeaderType == 29)
-                {
-                    Tizen.Log.Info("JuvoPlayer", "Frag FU-B not supported");
-                }
-                else
-                {
-                    Tizen.Log.Info("JuvoPlayer", "Unknown NAL header " + nalHeaderType + " not supported");
-                }
-
-            }
-
-            // Output all the NALs that form one RTP Frame (one frame of video)
-            OutputNAL(nalUnits);
-        }
-
 
         // RTSP Messages are OPTIONS, DESCRIBE, SETUP, PLAY etc
         private void RtspMessageReceived(object sender, Rtsp.RtspChunkEventArgs e)

@@ -19,6 +19,8 @@ namespace JuvoPlayer.Common
         void StartForUrl(string url);
         void ChangePID(int pid);
         void Reset();
+        void Paused();
+        void Played();
         void Seek(double position);
 
         event ClipDurationChanged ClipDuration;

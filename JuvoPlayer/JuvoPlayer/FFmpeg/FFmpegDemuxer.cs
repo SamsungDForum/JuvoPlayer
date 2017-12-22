@@ -476,6 +476,16 @@ namespace JuvoPlayer.FFmpeg
             // TODO(g.skowinski): Implement.
         }
 
+        unsafe public void Paused()
+        {
+            FFmpeg.av_read_pause(formatContext);
+        }
+
+        unsafe public void Played()
+        {
+            FFmpeg.av_read_play(formatContext);
+        }
+
         public void Seek(double position)
         {
             // TODO(g.skowinski): Implement.

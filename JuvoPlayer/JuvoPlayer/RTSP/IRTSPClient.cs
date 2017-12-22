@@ -17,6 +17,8 @@ namespace JuvoPlayer.RTSP
 {
     public interface IRTSPClient
     {
+        void Pause();
+        void Play();
         void Seek(int position);
         void Start(ClipDefinition clip);
         void Stop();

@@ -67,19 +67,23 @@ namespace JuvoPlayer.HLS
 
         }
 
-        public void OnPause()
+        public void OnPaused()
         {
-            throw new NotImplementedException();
+            demuxer.Paused();
         }
 
-        public void OnPlay()
+        public void OnPlayed()
         {
-
+            demuxer.Played();
         }
 
         public void OnSeek(double time)
         {
 
+        }
+
+        public void OnStopped()
+        {
         }
 
         public void Start()

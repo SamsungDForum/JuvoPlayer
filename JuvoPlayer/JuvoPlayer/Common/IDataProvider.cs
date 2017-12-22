@@ -24,9 +24,10 @@ namespace JuvoPlayer.Common
     public interface IDataProvider
     {
         void OnChangeRepresentation(int representationId);
-        void OnPause();
-        void OnPlay();
+        void OnPaused();
+        void OnPlayed();
         void OnSeek(double time);
+        void OnStopped();
         void OnTimeUpdated(double time);
 
         void Start();
