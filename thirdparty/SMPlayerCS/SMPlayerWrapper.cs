@@ -189,7 +189,6 @@ namespace CSPlayer
                     break;
             }
 
-
             return 1;
         }
 

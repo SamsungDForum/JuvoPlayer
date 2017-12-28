@@ -60,6 +60,14 @@ namespace XamarinPlayer.Tizen.Services
             {
                 ShowSubtitle?.Invoke(subtitle);
             };
+            playerController.PlayerInitialized += () =>
+            {
+                State = PlayerState.Prepared;
+            };
+            playerController.PlaybackError += (message) =>
+            {
+                State = PlayerState.Error;
+            };
         }
 
         public void Pause()

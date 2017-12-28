@@ -31,6 +31,8 @@ namespace JuvoPlayer.Player
         private VideoMediaFormat videoFormat = null;
 
         public event PlaybackCompleted PlaybackCompleted;
+        public event PlaybackError PlaybackError;
+        public event PlayerInitialized PlayerInitialized;
         public event ShowSubtitile ShowSubtitle;
         public event TimeUpdated TimeUpdated;
 
