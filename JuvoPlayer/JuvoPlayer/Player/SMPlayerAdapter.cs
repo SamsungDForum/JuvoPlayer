@@ -22,133 +22,32 @@ using Tizen;
 
 namespace JuvoPlayer.Player
 {
-    unsafe class CSDemoPlayerListener : IPlayerEventListener
-    {
-        private SMPlayerAdapter playerAdapter;
-        private System.UInt32 currentTime;
-
-        public CSDemoPlayerListener(SMPlayerAdapter playerInstance)
-        {
-            playerAdapter = playerInstance;
-        }
-
-        public void OnEnoughData(StreamType_Samsung streamType)
-        {
-            if (streamType == StreamType_Samsung.STREAM_TYPE_SAMSUNG_AUDIO)
-            {
-                Tizen.Log.Info("JuvoPlayer", "CSDemoPlayerListener::OnEnoughData : STREAM_TYPE_SAMSUNG_AUDIO!");
-                playerAdapter.EnoughData(StreamType.Audio);
-            }
-            else
-            {
-                Tizen.Log.Info("JuvoPlayer", "CSDemoPlayerListener::OnEnoughData : STREAM_TYPE_SAMSUNG_VIDEO!");
-                playerAdapter.EnoughData(StreamType.Video);
-            }
-        }
-
-        public void OnNeedData(StreamType_Samsung streamType, uint size)
-        {
-            if (streamType == StreamType_Samsung.STREAM_TYPE_SAMSUNG_AUDIO)
-            {
-                Tizen.Log.Info("JuvoPlayer", "CSDemoPlayerListener::OnNeedData : STREAM_TYPE_SAMSUNG_AUDIO!");
-                playerAdapter.NeedData(StreamType.Audio);
-            }
-            else
-            {
-                Tizen.Log.Info("JuvoPlayer", "CSDemoPlayerListener::OnNeedData : STREAM_TYPE_SAMSUNG_VIDEO!");
-                playerAdapter.NeedData(StreamType.Video);
-            }
-        }
-
-        public void OnSeekData(StreamType_Samsung streamType, System.UInt64 offset)
-        {
-            if (streamType == StreamType_Samsung.STREAM_TYPE_SAMSUNG_AUDIO)
-            {
-                string msg = "CSDemoPlayerListener::OnSeekData : STREAM_TYPE_SAMSUNG_AUDIO offset = " + offset;
-                Tizen.Log.Info("JuvoPlayer", msg);
-            }
-            else
-            {
-                string msg = "CSDemoPlayerListener::OnSeekData : STREAM_TYPE_SAMSUNG_VIDEO offset = " + offset;
-                Tizen.Log.Info("JuvoPlayer", msg);
-            }
-        }
-
-        public void OnError(PlayerErrorType_Samsung errorType, string msg)
-        {
-            string msg1 = "CSDemoPlayerListener::OnError msg:" + msg;
-            Tizen.Log.Info("JuvoPlayer", msg1);
-        }
-
-        public void OnMessage(PlayerMsgType_Samsung msgType)
-        {
-            string msg = "CSDemoPlayerListener::OnMessage Type:" + msgType;
-            Tizen.Log.Info("JuvoPlayer", msg);
-        }
-
-        public void OnInitComplete()
-        {
-            Tizen.Log.Info("JuvoPlayer", "CSDemoPlayerListener::OnInitComplete!");
-        }
-
-        public void OnInitFailed()
-        {
-            Tizen.Log.Info("JuvoPlayer", "CSDemoPlayerListener::OnInitFailed!");
-        }
-
-        public void OnEndOfStream()
-        {
-            Tizen.Log.Info("JuvoPlayer", "CSDemoPlayerListener::OnEndOfStream!");
-            playerAdapter.OnEndOfStream();
-        }
-
-        public void OnSeekCompleted()
-        {
-            Tizen.Log.Info("JuvoPlayer", "CSDemoPlayerListener::OnSeekCompleted!");
-        }
-
-        public void OnSeekStartedBuffering()
-        {
-            Tizen.Log.Info("JuvoPlayer", "CSDemoPlayerListener::OnSeekStartedBuffering!");
-        }
-
-        public void OnCurrentPosition(System.UInt32 currTime)
-        {
-            if (currentTime == currTime)
-                return;
-
-            string msg = "CSDemoPlayerListener::OnCurrentPosition = " + currTime;
-            Tizen.Log.Info("JuvoPlayer", msg);
-
-            currentTime = currTime;
-            playerAdapter.OnTimeUpdated(currentTime);
-        }
-    }
-
-    unsafe public class SMPlayerAdapter : IPlayerAdapter
+     unsafe public class SMPlayerAdapter : IPlayerAdapter, IPlayerEventListener
     {
         public event PlaybackCompleted PlaybackCompleted;
         public event ShowSubtitile ShowSubtitle;
         public event TimeUpdated TimeUpdated;
 
-        SMPlayerWrapper playerInstance;
-        static public HandleRef refMainStage;
+        private SMPlayerWrapper playerInstance;
 
-        bool audioSet, videoSet, isPlayerInitialized, playCalled;
+        private bool audioSet, videoSet, isPlayerInitialized, playCalled;
 
-        PacketBuffer audioBuffer, videoBuffer;
+        private PacketBuffer audioBuffer, videoBuffer;
 
-        bool needDataVideo, needDataAudio, needDataInitMode;
-        AutoResetEvent needDataEvent;
-        object needDataLock;
+        private bool needDataVideo, needDataAudio;
+        private bool needDataInitMode = true;
+
+        private AutoResetEvent needDataEvent = new AutoResetEvent(false);
+        private object needDataLock = new object();
+
+        private System.UInt32 currentTime;
 
         unsafe public SMPlayerAdapter()
         {
             try
             {
                 playerInstance = new SMPlayerWrapper();
-                var playerEventListener = new CSDemoPlayerListener(this);
-                playerInstance.RegisterPlayerEventListener(playerEventListener);
+                playerInstance.RegisterPlayerEventListener(this);
 
                 bool result = playerInstance.Initialize();
                 if (!result)
@@ -183,12 +82,6 @@ namespace JuvoPlayer.Player
 
             audioBuffer = new PacketBuffer(sortBy);
             videoBuffer = new PacketBuffer(sortBy);
-
-            needDataVideo = false;
-            needDataAudio = false;
-            needDataInitMode = true;
-            needDataEvent = new AutoResetEvent(false);
-            needDataLock = new object();
 
             Task.Run(() => SubmittingPacketsTask());
         }
@@ -238,18 +131,7 @@ namespace JuvoPlayer.Player
                     Log.Info("JuvoPlayer", "SubmittingPacketsTask: Feeding (" + i.ToString() + ").");
                     Log.Info("JuvoPlayer", "SubmittingPacketsTask: AUDIO: " + audioBuffer.Count().ToString() + ", VIDEO: " + videoBuffer.Count().ToString());
 
-                    StreamPacket packet;
-                    if (audioBuffer.Count() > 0 && videoBuffer.Count() > 0)
-                    {
-                        if (audioBuffer.PeekSortingValue() <= videoBuffer.PeekSortingValue())
-                            packet = audioBuffer.Dequeue();
-                        else
-                            packet = videoBuffer.Dequeue();
-                    }
-                    else if (audioBuffer.Count() > 0)
-                        packet = audioBuffer.Dequeue();
-                    else
-                        packet = videoBuffer.Dequeue();
+                    StreamPacket packet = DequeuePacket();
 
                     Log.Info("JuvoPlayer", "Peeked");
 
@@ -266,24 +148,22 @@ namespace JuvoPlayer.Player
             }
         }
 
-        unsafe public void NeedData(StreamType streamType)
+        private StreamPacket DequeuePacket()
         {
-            if (streamType == StreamType.Audio)
-                needDataAudio = true;
-            else if (streamType == StreamType.Video)
-                needDataVideo = true;
+            StreamPacket packet;
+            if (audioBuffer.Count() > 0 && videoBuffer.Count() > 0)
+            {
+                if (audioBuffer.PeekSortingValue() <= videoBuffer.PeekSortingValue())
+                    packet = audioBuffer.Dequeue();
+                else
+                    packet = videoBuffer.Dequeue();
+            }
+            else if (audioBuffer.Count() > 0)
+                packet = audioBuffer.Dequeue();
+            else
+                packet = videoBuffer.Dequeue();
 
-            needDataEvent.Set();
-        }
-
-        unsafe public void EnoughData(StreamType streamType)
-        {
-            if (streamType == StreamType.Audio)
-                needDataAudio = false;
-            else if (streamType == StreamType.Video)
-                needDataVideo = false;
-
-            needDataInitMode = false;
+            return packet;
         }
 
         unsafe public void SubmitPacket(StreamPacket packet) // TODO(g.skowinski): Implement it properly.
@@ -299,19 +179,10 @@ namespace JuvoPlayer.Player
                 // Copy the unmanaged array back to another managed array.
                 //byte[] managedArray2 = new byte[managedArray.Length];
                 //Marshal.Copy(pnt, managedArray2, 0, managedArray.Length);
-                TrackType_Samsung trackType;
-                if (packet.StreamType == StreamType.Video)
-                    trackType = TrackType_Samsung.TRACK_TYPE_VIDEO;
-                else if (packet.StreamType == StreamType.Audio)
-                    trackType = TrackType_Samsung.TRACK_TYPE_AUDIO;
-                else if (packet.StreamType == StreamType.Subtitle)
-                    trackType = TrackType_Samsung.TRACK_TYPE_SUBTITLE;
-                else
-                    trackType = TrackType_Samsung.TRACK_TYPE_MAX; // TODO(g.skowinski): Handle StreamType.Teletext and TrackType_Samsung.TRACK_TYPE_MAX properly.
-                Tizen.Log.Info("JuvoPlayer", "[HQ] send es data to SubmitPacket: " + packet.Pts.ToString() + " (" + (trackType == TrackType_Samsung.TRACK_TYPE_AUDIO ? "AUDIO" : trackType == TrackType_Samsung.TRACK_TYPE_VIDEO ? "VIDEO" : "OTHER") + ")");
+                var trackType = SMPlayerUtils.GetTrackType(packet);
+                Tizen.Log.Info("JuvoPlayer", string.Format("[HQ] send es data to SubmitPacket: {0} ( {1} )", packet.Pts, trackType));
 
                 playerInstance.SubmitPacket(pnt, (uint)packet.Data.Length, packet.Pts, trackType, IntPtr.Zero);
-
             }
             finally
             {
@@ -322,17 +193,9 @@ namespace JuvoPlayer.Player
 
         unsafe private void SubmitEOSPacket(StreamPacket packet)
         {
-            TrackType_Samsung trackType;
-            if (packet.StreamType == StreamType.Video)
-                trackType = TrackType_Samsung.TRACK_TYPE_VIDEO;
-            else if (packet.StreamType == StreamType.Audio)
-                trackType = TrackType_Samsung.TRACK_TYPE_AUDIO;
-            else if (packet.StreamType == StreamType.Subtitle)
-                trackType = TrackType_Samsung.TRACK_TYPE_SUBTITLE;
-            else
-                trackType = TrackType_Samsung.TRACK_TYPE_MAX; // TODO(g.skowinski): Handle StreamType.Teletext and TrackType_Samsung.TRACK_TYPE_MAX properly.
+            var trackType = SMPlayerUtils.GetTrackType(packet);
 
-            Tizen.Log.Info("JuvoPlayer", "[HQ] send EOS packet: " + packet.Pts.ToString() + " (" + (trackType == TrackType_Samsung.TRACK_TYPE_AUDIO ? "AUDIO" : trackType == TrackType_Samsung.TRACK_TYPE_VIDEO ? "VIDEO" : "OTHER") + ")");
+            Tizen.Log.Info("JuvoPlayer", string.Format("[HQ] send EOS packet: {0} ( {1} )", packet.Pts, trackType));
 
             playerInstance.SubmitEOSPacket(trackType);
         }
@@ -355,12 +218,12 @@ namespace JuvoPlayer.Player
 
         public void SetAudioStreamConfig(AudioStreamConfig config)
         {
-            Log.Info("JuvoPlayer", "SMPlayerAdapter1::SetAudioStreamConfig()");
+            Log.Info("JuvoPlayer", "");
 
             var audioStreamInfo = new AudioStreamInfo_Samsung
             {
-                mime = Marshal.StringToHGlobalAnsi(GetCodecMimeType(config.Codec)),
-                version = GetCodecVersion(config.Codec),
+                mime = Marshal.StringToHGlobalAnsi(SMPlayerUtils.GetCodecMimeType(config.Codec)),
+                version = SMPlayerUtils.GetCodecVersion(config.Codec),
                 sample_rate = (uint)config.SampleRate,
                 channels = (uint)config.ChannelLayout
             };
@@ -372,12 +235,12 @@ namespace JuvoPlayer.Player
 
         public void SetVideoStreamConfig(VideoStreamConfig config)
         {
-            Log.Info("JuvoPlayer", "SMPlayerAdapter1::SetVideoStreamConfig()");
+            Log.Info("JuvoPlayer", "");
 
             var videoStreamInfo = new VideoStreamInfo_Samsung
             {
-                mime = Marshal.StringToHGlobalAnsi(GetCodecMimeType(config.Codec)),
-                version = GetCodecVersion(config.Codec),
+                mime = Marshal.StringToHGlobalAnsi(SMPlayerUtils.GetCodecMimeType(config.Codec)),
+                version = SMPlayerUtils.GetCodecVersion(config.Codec),
                 drm_type = 0,  // 0 for no DRM
                 framerate_num = (uint)config.FrameRateNum,
                 framerate_den = (uint)config.FrameRateDen,
@@ -416,17 +279,8 @@ namespace JuvoPlayer.Player
         public void Stop() // TODO(g.skowinski): Handle asynchronicity.
         {
             playerInstance.Stop(); // This is async method - wait for D2TV_MESSAGE_STOP_SUCCESS message before doing anything else with the player.
+
             playCalled = false;
-        }
-
-        public void OnTimeUpdated(double time)
-        {
-            TimeUpdated?.Invoke(time);
-        }
-
-        public void OnEndOfStream()
-        {
-            PlaybackCompleted?.Invoke();
         }
 
         public void Pause() // TODO(g.skowinski): Handle asynchronicity (like in Stop() method?).
@@ -434,105 +288,89 @@ namespace JuvoPlayer.Player
             playerInstance.Pause();
         }
 
-        private string GetCodecMimeType(VideoCodec videoCodec)
+        #region IPlayerEventListener
+        public void OnEnoughData(StreamType_Samsung streamType)
         {
-            switch (videoCodec)
-            {
-                case VideoCodec.H264:
-                    return "video/x-h264";
-                case VideoCodec.H265:
-                    return "video/x-h265";
-                case VideoCodec.MPEG2:
-                case VideoCodec.MPEG4:
-                    return "video/mpeg";
-                case VideoCodec.VP8:
-                    return "video/x-vp8";
-                case VideoCodec.VP9:
-                    return "video/x-vp9";
-                case VideoCodec.WMV1:
-                case VideoCodec.WMV2:
-                case VideoCodec.WMV3:
-                    return "video/x-wmv";
-                default:
-                    return "";
-            }
+            Log.Info("JuvoPlayer", "Received OnEnoughData: " + streamType.ToString());
+
+            if (streamType == StreamType_Samsung.STREAM_TYPE_SAMSUNG_AUDIO)
+                needDataAudio = false;
+            else if (streamType == StreamType_Samsung.STREAM_TYPE_SAMSUNG_VIDEO)
+                needDataVideo = false;
+            else
+                return;
+
+            needDataInitMode = false;
         }
 
-        private string GetCodecMimeType(AudioCodec audioCodec)
+        public void OnNeedData(StreamType_Samsung streamType, uint size)
         {
-            switch (audioCodec)
-            {
-                case AudioCodec.AAC:
-                case AudioCodec.MP2:
-                case AudioCodec.MP3:
-                    return "audio/mpeg";
-                case AudioCodec.PCM:
-                    return "audio/x-raw-int";
-                case AudioCodec.VORBIS:
-                    return "audio/x-vorbis";
-                case AudioCodec.FLAC:
-                    return "audio/x-flac";
-                case AudioCodec.AMR_NB:
-                    return "audio/AMR";
-                case AudioCodec.AMR_WB:
-                    return "audio/AMR-WB";
-                case AudioCodec.PCM_MULAW:
-                    return "audio/x-mulaw";
-                case AudioCodec.GSM_MS:
-                    return "audio/ms-gsm";
-                case AudioCodec.PCM_S16BE:
-                    return "audio/x-raw";
-                case AudioCodec.PCM_S24BE:
-                    return "audio/x-raw";
-                case AudioCodec.OPUS:
-                    return "audio/ogg";
-                case AudioCodec.EAC3:
-                    return "audio/x-eac3";
-                case AudioCodec.DTS:
-                    return "audio/x-dts";
-                case AudioCodec.AC3:
-                    return "audio/x-ac3";
-                case AudioCodec.WMAV1:
-                case AudioCodec.WMAV2:
-                    return "audio/x-ms-wma";
-                default:
-                    return "";
-            }
+            Log.Info("JuvoPlayer", "Received OnNeedData: " + streamType.ToString());
+
+            if (streamType == StreamType_Samsung.STREAM_TYPE_SAMSUNG_AUDIO)
+                needDataAudio = true;
+            else if (streamType == StreamType_Samsung.STREAM_TYPE_SAMSUNG_VIDEO)
+                needDataVideo = true;
+            else
+                return;
+
+            needDataEvent.Set();
         }
 
-        uint GetCodecVersion(VideoCodec videoCodec)
+        public void OnSeekData(StreamType_Samsung streamType, System.UInt64 offset)
         {
-            switch (videoCodec)
-            {
-                case VideoCodec.MPEG2:
-                case VideoCodec.WMV2:
-                    return 2;
-                case VideoCodec.MPEG4:
-                    return 4;
-                case VideoCodec.WMV1:
-                    return 1;
-                case VideoCodec.WMV3:
-                    return 3;
-                case VideoCodec.H264:
-                    return 4;
-                default:
-                    return 0;
-            }
+            Log.Info("JuvoPlayer", string.Format("Received OnSeekData: {0} offset: {1}", streamType, offset));
         }
 
-        uint GetCodecVersion(AudioCodec audioCodec)
+        public void OnError(PlayerErrorType_Samsung errorType, string msg)
         {
-            switch (audioCodec)
-            {
-                case AudioCodec.AAC:
-                    return 4;
-                case AudioCodec.MP3:
-                    return 1;
-                case AudioCodec.MP2:
-                    return 1;
-                default:
-                    return 0;
-            }
+            Log.Info("JuvoPlayer", string.Format("Type: {0} msg: {1}", errorType, msg));
         }
+
+        public void OnMessage(PlayerMsgType_Samsung msgType)
+        {
+            Log.Info("JuvoPlayer", "Type" + msgType.ToString());
+        }
+
+        public void OnInitComplete()
+        {
+            Log.Info("JuvoPlayer", "");
+        }
+
+        public void OnInitFailed()
+        {
+            Log.Info("JuvoPlayer", "");
+        }
+
+        public void OnEndOfStream()
+        {
+            Log.Info("JuvoPlayer", "");
+
+            PlaybackCompleted?.Invoke();
+        }
+
+        public void OnSeekCompleted()
+        {
+            Log.Info("JuvoPlayer", "");
+        }
+
+        public void OnSeekStartedBuffering()
+        {
+            Log.Info("JuvoPlayer", "");
+        }
+
+        public void OnCurrentPosition(System.UInt32 currTime)
+        {
+            if (currentTime == currTime)
+                return;
+
+            Log.Info("JuvoPlayer", "OnCurrentPosition = " + currTime);
+
+            currentTime = currTime;
+
+            TimeUpdated?.Invoke(currentTime);
+        }
+
+        #endregion
     }
 }
