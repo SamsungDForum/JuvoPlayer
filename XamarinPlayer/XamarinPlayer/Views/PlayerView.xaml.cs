@@ -150,10 +150,14 @@ namespace XamarinPlayer.Views
 
         private void OnPlayerStateChanged(object sender, Services.PlayerStateChangedEventArgs e)
         {
-            if (e.State == PlayerState.Prepared)
+            if (e.State == PlayerState.Error)
             {
-                _playerService.Start();
-                _hideTime = DefaultTimeout;
+                Play.IsEnabled = false;
+            }
+            else if (e.State == PlayerState.Prepared)
+            {
+                Play.IsEnabled = true;
+                Play.Focus();
             }
             else if (e.State == PlayerState.Playing)
             {

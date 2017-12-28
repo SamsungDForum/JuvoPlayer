@@ -44,6 +44,8 @@ namespace JuvoPlayer.Player
         public event Stop Stopped;
 
         public event PlaybackCompleted PlaybackCompleted;
+        public event PlaybackError PlaybackError;
+        public event PlayerInitialized PlayerInitialized;
         public event ShowSubtitile ShowSubtitle;
         public event TimeUpdated TimeUpdated;
 
@@ -52,16 +54,31 @@ namespace JuvoPlayer.Player
             playerAdapter = player ?? throw new ArgumentNullException("player cannot be null");
 
             playerAdapter.PlaybackCompleted += OnPlaybackCompleted;
+            playerAdapter.PlaybackError += OnPlaybackError;
+            playerAdapter.PlayerInitialized += OnPlayerInitialized;
             playerAdapter.ShowSubtitle += OnShowSubtitle;
             playerAdapter.TimeUpdated += OnTimeUpdated;
         }
 
         private void OnPlaybackCompleted()
         {
-            Log.Error("JuvoPlayer", "OnPlaybackCompleted");
             state = PlayerState.Finished;
 
             PlaybackCompleted?.Invoke();
+        }
+
+        private void OnPlaybackError(string error)
+        {
+            state = PlayerState.Finished;
+
+            PlaybackError?.Invoke(error);
+        }
+
+        private void OnPlayerInitialized()
+        {
+            state = PlayerState.Ready;
+
+            PlayerInitialized?.Invoke();
         }
 
         private void OnShowSubtitle(Subtitle subtitle)
@@ -131,8 +148,6 @@ namespace JuvoPlayer.Player
         {
             Log.Info("JuvoPlayer", "OnStreamConfigReady");
             Streams[config.StreamType()] = CreatePacketStream(config);
-
-            state = PlayerState.Ready;
         }
 
         public void OnStreamPacketReady(StreamPacket packet)

@@ -23,8 +23,10 @@ using Tizen;
 namespace JuvoPlayer.Player
 {
      unsafe public class SMPlayerAdapter : IPlayerAdapter, IPlayerEventListener
-    {
+     {
         public event PlaybackCompleted PlaybackCompleted;
+        public event PlaybackError PlaybackError;
+        public event PlayerInitialized PlayerInitialized;
         public event ShowSubtitile ShowSubtitle;
         public event TimeUpdated TimeUpdated;
 
@@ -325,6 +327,8 @@ namespace JuvoPlayer.Player
         public void OnError(PlayerErrorType_Samsung errorType, string msg)
         {
             Log.Info("JuvoPlayer", string.Format("Type: {0} msg: {1}", errorType, msg));
+
+            PlaybackError?.Invoke(msg);
         }
 
         public void OnMessage(PlayerMsgType_Samsung msgType)
@@ -335,11 +339,15 @@ namespace JuvoPlayer.Player
         public void OnInitComplete()
         {
             Log.Info("JuvoPlayer", "");
+
+            PlayerInitialized?.Invoke();
         }
 
         public void OnInitFailed()
         {
             Log.Info("JuvoPlayer", "");
+
+            PlaybackError?.Invoke("Initialization error.");
         }
 
         public void OnEndOfStream()

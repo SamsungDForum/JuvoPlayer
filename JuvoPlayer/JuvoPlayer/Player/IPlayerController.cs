@@ -55,6 +55,8 @@ namespace JuvoPlayer.Player
         event Stop Stopped;
 
         event PlaybackCompleted PlaybackCompleted;
+        event PlaybackError PlaybackError;
+        event PlayerInitialized PlayerInitialized;
         event ShowSubtitile ShowSubtitle;
         event TimeUpdated TimeUpdated;
     }
