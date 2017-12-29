@@ -1,223 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 
-namespace JuvoPlayer.Dash.MpdParser
+namespace MpdParser
 {
-    /// <summary>
-    /// Main class representing MPD file.
-    /// </summary>
-    public class Document
-    {
-        public string Title { get; }
-        public TimeSpan? MediaPresentationDuration { get; }
-        public TimeSpan? MinBufferTime { get; }
-        public string[] Profiles { get; }
-        public Period[] Periods { get; }
-
-        public Document(string manifestText, string manifestUrl)
-        {
-            var dash = new Node.Dash(manifestUrl);
-            var reader = new System.IO.StringReader(manifestText);
-            Xml.Parser.Parse(reader, dash, "MPD");
-
-            dash.PeriodFixup();
-            MediaPresentationDuration = dash.MediaPresentationDuration;
-            MinBufferTime = dash.MinBufferTime;
-            Profiles = Xml.TypeConverter.String2Array(dash.Profiles);
-
-            foreach (var info in dash.ProgramInformations)
-            {
-                foreach(var title in info.Titles)
-                {
-                    if (string.IsNullOrEmpty(title)) continue;
-                    Title = title;
-                    break;
-                }
-                if (!string.IsNullOrEmpty(Title))
-                    break;
-            }
-
-            Periods = new Period[dash.Periods.Length];
-            for (var i = 0; i < Periods.Length; ++i)
-                Periods[i] = new Period(dash.Periods[i]);
-            Array.Sort(Periods);
-        }
-
-        public override string ToString()
-        {
-            return
-                "presentation:" +
-                (MediaPresentationDuration?.ToString() ?? "(-)") +
-                ", min:" +
-                (MinBufferTime?.ToString() ?? "(-)");
-        }
-    }
-    /// <inheritdoc />
-    /// <summary>
-    /// Class represent each Period in MPD file 
-    /// </summary>
-    public class Period: IComparable
-    {
-        public TimeSpan ? Start { get; internal set; }
-        public TimeSpan ? Duration { get; internal set; }
-        public Media[] Sets { get; }
-
-        public Period(Node.Period period)
-        {
-            Start = period.Start;
-            Duration = period.Duration;
-            Sets = new Media[period.AdaptationSets.Length];
-            for (var i = 0; i < Sets.Length; ++i)
-                Sets[i] = new Media(period.AdaptationSets[i]);
-        }
-
-        public override string ToString()
-        {
-            return
-                (Start?.ToString() ?? "(-)") +
-                " + " +
-                (Duration?.ToString() ?? "(-)");
-        }
-
-        public TimeSpan? Longest()
-        {
-            TimeSpan? current = null;
-            foreach (var set in Sets)
-            {
-                var length = set.Longest();
-                if (length == null) continue;
-                if (current == null)
-                {
-                    current = length.Value;
-                    continue;
-                }
-                if (length.Value > current.Value)
-                    current = length.Value;
-            }
-            return current;
-        }
-
-        public int CompareTo(object obj)
-        {
-            var p = (Period)obj;
-            if (Start == null)
-            {
-                if (p.Start == null)
-                {
-                    return 0;
-                }
-                return -1;
-            }
-            if (p.Start == null)
-            {
-                return 1;
-            }
-            return TimeSpan.Compare(
-                (TimeSpan)Start,
-                (TimeSpan)p.Start);
-        }
-    }
-
-    /// <summary>
-    /// Class represent AdaptationSet in MPD file
-    /// </summary>
-    public class Media
-    {
-        public uint? Id { get; }
-        public uint? Group { get; }
-        public string Lang { get; }
-        public MimeType Type { get; }
-        public Role[] Roles { get; }
-        public Representation[] Representations { get; }
-
-        public Media(Node.AdaptationSet set)
-        {
-            Id = set.Id;
-            Group = set.Group;
-            Lang = set.GetLang() ?? "und";
-
-            Roles = new Role[set.Roles.Length];
-            for (var i = 0; i < Roles.Length; ++i)
-            {
-                var r = set.Roles[i];
-                Roles[i] = new Role(r.SchemeIdUri, r.Value);
-            }
-
-            Representations = new Representation[set.Representations.Length];
-            for (var i = 0; i < Representations.Length; ++i)
-                Representations[i] = new Representation(set.Representations[i]);
-
-            Type = new MimeType(set.GetContentType() ??
-                GuessFromMimeType(set.MimeType) ??
-                GuessFromRepresentations());
-        }
-
-        public bool HasRole(MediaRole kind)
-        {
-            if (kind == MediaRole.Other)
-                return false;
-
-            return Roles.Any(r => r.Kind == kind);
-        }
-
-        public bool HasRole(string uri, string kind)
-        {
-            if (uri.Equals(Node.AdaptationSet.UrnRole) ||
-                uri.Equals(Node.AdaptationSet.UrnRole2011))
-                return HasRole(Role.ParseDashUrn(kind));
-
-            return Roles.Where(r => r.Kind == MediaRole.Other).Any(r => r.Scheme.Equals(uri) && r.Value.Equals(kind));
-        }
-
-        public override string ToString()
-        {
-            string result = Lang + " / " + Type;
-            if (Roles.Length > 0)
-                result += " [" + string.Join(", ", (IEnumerable<Role>)Roles) + "]";
-            return result + " (length:" + (Longest()?.ToString() ?? "-") + ")";
-        }
-
-        private static string GuessFromMimeType(string mimeType)
-        {
-            var mime = mimeType?.Split(new[] { '/' }, 2);
-            return mime?.Length > 1 ? mime[0] : null;
-        }
-
-        private string GuessFromRepresentations()
-        {
-            string guessed = null;
-            foreach (var r in Representations)
-            {
-                var cand = GuessFromMimeType(r.MimeType);
-                if (cand == null) continue;
-                if (guessed == null) guessed = cand;
-                else if (guessed != cand) return null; // At least two different types
-            }
-            return guessed;
-        }
-
-        public TimeSpan? Longest()
-        {
-            TimeSpan? current = null;
-            foreach (var repr in Representations)
-            {
-                var length = repr.Segments?.Duration;
-                if (length == null) continue;
-                if (current == null)
-                {
-                    current = length.Value;
-                    continue;
-                }
-                if (length.Value > current.Value)
-                    current = length.Value;
-            }
-            return current;
-        }
-    }
-    /// <summary>
-    /// Class represents Representation in MPD file
-    /// </summary>
     public class Representation
     {
         // REPR or ADAPTATION SET:
@@ -254,27 +39,39 @@ namespace JuvoPlayer.Dash.MpdParser
 
             if (NumChannels == null)
             {
-                var channels = (from d in repr.AudioChannelConfigurations where !string.IsNullOrEmpty(d.Value) select d.Value).FirstOrDefault();
-                if (channels == null)
+                string channels = null;
+                foreach (Node.Descriptor d in repr.AudioChannelConfigurations)
                 {
-                    foreach (var d in repr.AudioChannelConfigurations)
+                    if (!string.IsNullOrEmpty(d.Value))
                     {
-                        if (string.IsNullOrEmpty(d.Value)) continue;
                         channels = d.Value;
                         break;
+                    }
+                }
+                if (channels == null)
+                {
+                    foreach (Node.Descriptor d in repr.AudioChannelConfigurations)
+                    {
+                        if (!string.IsNullOrEmpty(d.Value))
+                        {
+                            channels = d.Value;
+                            break;
+                        }
                     }
                 }
                 if (channels != null)
                     NumChannels = System.Xml.XmlConvert.ToUInt32(channels);
             }
 
-            if (SampleRate != null) return;
-            var sampling = repr.AudioSamplingRate ?? repr.AdaptationSet.AudioSamplingRate;
-            if (sampling != null)
-                SampleRate = System.Xml.XmlConvert.ToUInt32(sampling);
+            if (SampleRate == null)
+            {
+                string sampling = repr.AudioSamplingRate ?? repr.AdaptationSet.AudioSamplingRate;
+                if (sampling != null)
+                    SampleRate = System.Xml.XmlConvert.ToUInt32(sampling);
+            }
         }
 
-        private static string GetMimeType(string type, string codecs)
+        static string GetMimeType(string type, string codecs)
         {
             if (string.IsNullOrEmpty(type))
                 return null;
@@ -285,34 +82,35 @@ namespace JuvoPlayer.Dash.MpdParser
             return type + "; codecs=" + codecs;
         }
 
-        private static string Size(uint? width, uint? height)
+        static string Size(uint? width, uint? height)
         {
             if (width == null && height == null)
                 return null;
             return (width?.ToString() ?? "-") + "x" + (height?.ToString() ?? "-");
         }
 
-        private static string Channels(uint? num)
+        static string Channels(uint? num)
         {
             if (num == null)
                 return null;
-            if (num.Value == 1)
-                return "mono";
-            if (num.Value == 2)
-                return "stereo";
-            return num.Value + "ch";
+            switch (num.Value)
+            {
+                case 1: return "mono";
+                case 2: return "stereo";
+            }
+            return num.Value.ToString() + "ch";
         }
 
-        private static string Rate(ulong? rate)
+        static string Rate(ulong? rate)
         {
             if (rate == null)
                 return null;
-            var suffix = "Hz";
-            var val = rate.Value * 10;
+            string suffix = "Hz";
+            ulong val = rate.Value * 10;
 
             string[] fixes = { "kHz", "MHz", "GHz" };
 
-            foreach (var fix in fixes)
+            foreach (string fix in fixes)
             {
                 if (val < 10000)
                     break;
@@ -320,20 +118,20 @@ namespace JuvoPlayer.Dash.MpdParser
                 suffix = fix;
             }
 
-            if (val % 10 == 0)
-                return val / 10 + suffix;
-            return val / 10 + "." + val % 10 + suffix;
+            if ((val % 10) == 0)
+                return (val / 10).ToString() + suffix;
+            return (val / 10).ToString() + "." + (val % 10).ToString() + suffix;
         }
 
         public override string ToString()
         {
-            var result = Bandwidth?.ToString() ?? "-";
+            string result = (Bandwidth?.ToString() ?? "-");
             if (Profile != null)
-                result += " / " + Profile;
+                result += " / " + Profile.ToString();
             result += " / " + (GetMimeType(MimeType, Codecs) ?? "-");
 
-            var size = Size(Width, Height);
-            var frate = FrameRate;
+            string size = Size(Width, Height);
+            string frate = FrameRate;
 
             if (size != null || frate != null)
             {
@@ -343,24 +141,23 @@ namespace JuvoPlayer.Dash.MpdParser
                 result += "]";
             }
 
-            var rate = Rate(SampleRate);
-            var ch = Channels(NumChannels);
+            string rate = Rate(SampleRate);
+            string ch = Channels(NumChannels);
 
-            if (rate == null && ch == null)
-                return result + " (duration:" + (Segments?.Duration?.ToString() ?? "-") + ")";
-            result += " [" + (rate ?? "");
-            if (rate != null && ch != null)
-                result += " ";
-            result += (ch ?? "") + "]";
+            if (rate != null || ch != null)
+            {
+                result += " [" + (rate ?? "");
+                if (rate != null && ch != null)
+                    result += " ";
+                result += (ch ?? "") + "]";
+            }
 
-            return result + " (duration:" + (Segments?.Duration?.ToString() ?? "-") + ")";
+            return result + " (duration:" + ((Segments?.Duration)?.ToString() ?? "-") + ")";
         }
     }
 
-    /// <summary>
-    /// Type of AdaptationSet roles
-    /// </summary>
-    public enum MediaRole {
+    public enum MediaRole
+    {
         Main,
         Alternate,
         Captions,
@@ -370,43 +167,33 @@ namespace JuvoPlayer.Dash.MpdParser
         Dub,
         Other
     };
-    /// <summary>
-    /// Class represents Role of AdaptationSet
-    /// </summary>
-    public class Role {
+
+    public class Role
+    {
         public MediaRole Kind { get; }
         public string Scheme { get; }
         public string Value { get; }
-        public Role(string scheme, string value) {
+        public Role(string scheme, string value)
+        {
             Kind = MediaRole.Other;
             Scheme = scheme;
             Value = value;
             if (scheme.Equals(Node.AdaptationSet.UrnRole) ||
-                scheme.Equals(Node.AdaptationSet.UrnRole2011)) {
+                scheme.Equals(Node.AdaptationSet.UrnRole2011))
+            {
                 Kind = ParseDashUrn(value);
             }
         }
         public static MediaRole ParseDashUrn(string value)
         {
-            switch (value)
-            {
-                case "main":
-                    return MediaRole.Main;
-                case "alternate":
-                    return MediaRole.Alternate;
-                case "captions":
-                    return MediaRole.Captions;
-                case "subtitle":
-                    return MediaRole.Subtitle;
-                case "supplementary":
-                    return MediaRole.Supplementary;
-                case "commentary":
-                    return MediaRole.Commentary;
-                case "dub":
-                    return MediaRole.Dub;
-                default:
-                    return MediaRole.Other;
-            }
+            if (value == "main") return MediaRole.Main;
+            if (value == "alternate") return MediaRole.Alternate;
+            if (value == "captions") return MediaRole.Captions;
+            if (value == "subtitle") return MediaRole.Subtitle;
+            if (value == "supplementary") return MediaRole.Supplementary;
+            if (value == "commentary") return MediaRole.Commentary;
+            if (value == "dub") return MediaRole.Dub;
+            return MediaRole.Other;
         }
         public override string ToString()
         {
@@ -415,6 +202,7 @@ namespace JuvoPlayer.Dash.MpdParser
             return Value;
         }
     }
+
 
     public enum MediaType
     {
@@ -426,9 +214,6 @@ namespace JuvoPlayer.Dash.MpdParser
         Other
     };
 
-    /// <summary>
-    /// Class represent mime type of AdaptationSet
-    /// </summary>
     public class MimeType
     {
         public MediaType Value { get; }
@@ -441,19 +226,11 @@ namespace JuvoPlayer.Dash.MpdParser
         public static MediaType Parse(string value)
         {
             if (string.IsNullOrEmpty(value)) return MediaType.Unknown;
-            switch (value)
-            {
-                case "video":
-                    return MediaType.Video;
-                case "audio":
-                    return MediaType.Audio;
-                case "application":
-                    return MediaType.Application;
-                case "text":
-                    return MediaType.Text;
-                default:
-                    return MediaType.Other;
-            }
+            if (value == "video") return MediaType.Video;
+            if (value == "audio") return MediaType.Audio;
+            if (value == "application") return MediaType.Application;
+            if (value == "text") return MediaType.Text;
+            return MediaType.Other;
         }
         public override string ToString()
         {
@@ -461,6 +238,233 @@ namespace JuvoPlayer.Dash.MpdParser
         }
     }
 
+    // a.k.a. AdaptationSet
+    public class Media
+    {
+        public uint? Id { get; }
+        public uint? Group { get; }
+        public string Lang { get; }
+        public MimeType Type { get; }
+        public Role[] Roles { get; }
+        public Representation[] Representations { get; }
 
+        public Media(Node.AdaptationSet set)
+        {
+            Id = set.Id;
+            Group = set.Group;
+            Lang = set.GetLang() ?? "und";
 
+            Roles = new Role[set.Roles.Length];
+            for (int i = 0; i < Roles.Length; ++i)
+            {
+                Node.Descriptor r = set.Roles[i];
+                Roles[i] = new Role(r.SchemeIdUri, r.Value);
+            }
+
+            Representations = new Representation[set.Representations.Length];
+            for (int i = 0; i < Representations.Length; ++i)
+                Representations[i] = new Representation(set.Representations[i]);
+
+            Type = new MimeType(set.GetContentType() ??
+                GuessFromMimeType(set.MimeType) ??
+                GuessFromRepresentations());
+        }
+
+        public bool HasRole(MediaRole kind)
+        {
+            if (kind == MediaRole.Other)
+                return false;
+
+            foreach (Role r in Roles)
+            {
+                if (r.Kind == kind)
+                    return true;
+            }
+            return false;
+        }
+
+        public bool HasRole(string uri, string kind)
+        {
+            if (uri.Equals(Node.AdaptationSet.UrnRole) ||
+                uri.Equals(Node.AdaptationSet.UrnRole2011))
+                return HasRole(Role.ParseDashUrn(kind));
+
+            foreach (Role r in Roles)
+            {
+                if (r.Kind != MediaRole.Other)
+                    continue;
+
+                if (r.Scheme.Equals(uri) && r.Value.Equals(kind))
+                    return true;
+            }
+            return false;
+        }
+
+        public override string ToString()
+        {
+            string result = Lang + " / " + Type;
+            if (Roles.Length > 0)
+                result += " [" + string.Join(", ", (IEnumerable<Role>)Roles) + "]";
+            return result + " (length:" + (Longest()?.ToString() ?? "-") + ")";
+        }
+
+        private string GuessFromMimeType(string mimeType)
+        {
+            if (mimeType == null)
+                return null;
+            string[] mime = mimeType.Split(new char[] { '/' }, 2);
+            if (mime.Length > 1)
+                return mime[0];
+            return null;
+        }
+
+        private string GuessFromRepresentations()
+        {
+            string guessed = null;
+            foreach (Representation r in Representations)
+            {
+                string cand = GuessFromMimeType(r.MimeType);
+                if (cand == null) continue;
+                if (guessed == null) guessed = cand;
+                else if (guessed != cand) return null; // At least two different types
+            }
+            return guessed;
+        }
+
+        public TimeSpan? Longest()
+        {
+            TimeSpan? current = null;
+            foreach (Representation repr in Representations)
+            {
+                TimeSpan? length = repr.Segments?.Duration;
+                if (length == null) continue;
+                if (current == null)
+                {
+                    current = length.Value;
+                    continue;
+                }
+                if (length.Value > current.Value)
+                    current = length.Value;
+            }
+            return current;
+        }
+    }
+
+    public class Period : IComparable
+    {
+        public TimeSpan? Start { get; internal set; }
+        public TimeSpan? Duration { get; internal set; }
+        public Media[] Sets { get; }
+
+        public Period(Node.Period period)
+        {
+            Start = period.Start;
+            Duration = period.Duration;
+            Sets = new Media[period.AdaptationSets.Length];
+            for (int i = 0; i < Sets.Length; ++i)
+                Sets[i] = new Media(period.AdaptationSets[i]);
+        }
+
+        public override string ToString()
+        {
+            return
+                (Start?.ToString() ?? "(-)") + " + " +
+                (Duration?.ToString() ?? "(-)");
+        }
+
+        public TimeSpan? Longest()
+        {
+            TimeSpan? current = null;
+            foreach (Media set in Sets)
+            {
+                TimeSpan? length = set.Longest();
+                if (length == null) continue;
+                if (current == null)
+                {
+                    current = length.Value;
+                    continue;
+                }
+                if (length.Value > current.Value)
+                    current = length.Value;
+            }
+            return current;
+        }
+
+        public int CompareTo(object obj)
+        {
+            Period p = (Period)obj;
+            if (this.Start == null)
+            {
+                if (p.Start == null)
+                {
+                    return 0;
+                }
+                else
+                {
+                    return -1;
+                }
+            }
+            else if (p.Start == null)
+            {
+                return 1;
+            }
+            else
+            {
+                return TimeSpan.Compare(
+                    (TimeSpan)this.Start,
+                    (TimeSpan)p.Start);
+            }
+        }
+    }
+
+    public class Document
+    {
+        public string Title { get; }
+        public TimeSpan? MediaPresentationDuration { get; }
+        public TimeSpan? MinBufferTime { get; }
+        public string[] Profiles { get; }
+        public Period[] Periods { get; }
+
+        private Document(Node.DASH dash)
+        {
+            MediaPresentationDuration = dash.MediaPresentationDuration;
+            MinBufferTime = dash.MinBufferTime;
+            Profiles = Xml.Conv.A2s(dash.Profiles);
+
+            foreach (Node.ProgramInformation info in dash.ProgramInformations)
+            {
+                foreach (string title in info.Titles)
+                {
+                    if (!string.IsNullOrEmpty(title))
+                    {
+                        Title = title;
+                        break;
+                    }
+                }
+                if (!string.IsNullOrEmpty(Title))
+                    break;
+            }
+
+            Periods = new Period[dash.Periods.Length];
+            for (int i = 0; i < Periods.Length; ++i)
+                Periods[i] = new Period(dash.Periods[i]);
+            Array.Sort(Periods);
+        }
+
+        public static Document FromText(string manifestText, string manifestUrl)
+        {
+            Node.DASH dash = new Node.DASH(manifestUrl);
+            System.IO.StringReader reader = new System.IO.StringReader(manifestText);
+            Xml.Parser.Parse(reader, dash, "MPD");
+            dash.PeriodFixup();
+            return new Document(dash);
+        }
+
+        public override string ToString()
+        {
+            return
+                "presentation:" + (MediaPresentationDuration?.ToString() ?? "(-)") +
+                ", min:" + (MinBufferTime?.ToString() ?? "(-)");
+        }
+    }
 }

@@ -1,9 +1,7 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using JuvoPlayer.Dash.MpdParser.Node;
 
-namespace JuvoPlayer.Dash.MpdParser.Dynamic
+namespace MpdParser.Node.Dynamic
 {
     public enum SegmentLocation
     {
@@ -13,54 +11,103 @@ namespace JuvoPlayer.Dash.MpdParser.Dynamic
         Repr
     }
 
-    public class SegmentBaseTmplt<TSegment>
-        where TSegment : Node.SegmentBase
+    public class SegmentBaseTmplt<S> where S : Node.SegmentBase
     {
-        protected TSegment Representation;
-        protected TSegment AdaptationSet;
-        protected TSegment Period;
+        protected S repr_;
+        protected S set_;
+        protected S period_;
 
-        public uint? Timescale => Representation?.Timescale ??
-                                  AdaptationSet?.Timescale ??
-                                  Period?.Timescale;
-
-        public string IndexRange => Representation?.IndexRange ??
-                                    AdaptationSet?.IndexRange ??
-                                    Period?.IndexRange;
-
-        public bool IndexRangeExact => Flag(Representation?.IndexRangeExact) ||
-                    Flag(AdaptationSet?.IndexRangeExact) ||
-                    Flag(Period?.IndexRangeExact);
-        public ulong? PresentationTimeOffset => Representation?.PresentationTimeOffset ??
-                                                AdaptationSet?.PresentationTimeOffset ??
-                                                Period?.PresentationTimeOffset;
-
-        public double? AvailabilityTimeOffset => Representation?.AvailabilityTimeOffset ??
-                                                 AdaptationSet?.AvailabilityTimeOffset ??
-                                                 Period?.AvailabilityTimeOffset;
-
-        public bool AvailabilityTimeComplete => Flag(Representation?.AvailabilityTimeComplete) ||
-                                                Flag(AdaptationSet?.AvailabilityTimeComplete) ||
-                                                Flag(Period?.AvailabilityTimeComplete);
-
-        public URL[] Initializations => Nonempty(Representation?.Initializations) ??
-                                        Nonempty(AdaptationSet?.Initializations) ??
-                                        Nonempty(Period?.Initializations) ??
-                                        new URL[] { };
-
-        public URL[] RepresentationIndexes => Nonempty(Representation?.RepresentationIndexes) ??
-                                              Nonempty(AdaptationSet?.RepresentationIndexes) ??
-                                              Nonempty(Period?.RepresentationIndexes) ??
-                                              new URL[] { };
-
-        internal SegmentBaseTmplt(
-            TSegment representation,
-            TSegment adaptationSet,
-            TSegment period)
+        public uint? Timescale
         {
-            Representation = representation;
-            AdaptationSet = adaptationSet;
-            Period = period;
+            get
+            {
+                return
+                    repr_?.Timescale ??
+                    set_?.Timescale ??
+                    period_?.Timescale;
+            }
+        }
+        public string IndexRange
+        {
+            get
+            {
+                return
+                    repr_?.IndexRange ??
+                    set_?.IndexRange ??
+                    period_?.IndexRange;
+            }
+        }
+        public bool IndexRangeExact
+        {
+            get
+            {
+                return
+                    Flag(repr_?.IndexRangeExact) ||
+                    Flag(set_?.IndexRangeExact) ||
+                    Flag(period_?.IndexRangeExact);
+            }
+        }
+        public ulong? PresentationTimeOffset
+        {
+            get
+            {
+                return
+                    repr_?.PresentationTimeOffset ??
+                    set_?.PresentationTimeOffset ??
+                    period_?.PresentationTimeOffset;
+            }
+        }
+        public double? AvailabilityTimeOffset
+        {
+            get
+            {
+                return
+                    repr_?.AvailabilityTimeOffset ??
+                    set_?.AvailabilityTimeOffset ??
+                    period_?.AvailabilityTimeOffset;
+            }
+        }
+
+        public bool AvailabilityTimeComplete
+        {
+            get
+            {
+                return
+                    Flag(repr_?.AvailabilityTimeComplete) ||
+                    Flag(set_?.AvailabilityTimeComplete) ||
+                    Flag(period_?.AvailabilityTimeComplete);
+            }
+        }
+
+        public URL[] Initializations
+        {
+            get
+            {
+                return
+                    Nonempty(repr_?.Initializations) ??
+                    Nonempty(set_?.Initializations) ??
+                    Nonempty(period_?.Initializations) ??
+                    new URL[] { };
+            }
+        }
+
+        public URL[] RepresentationIndexes
+        {
+            get
+            {
+                return
+                    Nonempty(repr_?.RepresentationIndexes) ??
+                    Nonempty(set_?.RepresentationIndexes) ??
+                    Nonempty(period_?.RepresentationIndexes) ??
+                    new URL[] { };
+            }
+        }
+
+        internal SegmentBaseTmplt(S repr, S set, S period)
+        {
+            repr_ = repr;
+            set_ = set;
+            period_ = period;
         }
 
         protected bool Flag(bool? f) { return f ?? false; }
@@ -71,129 +118,168 @@ namespace JuvoPlayer.Dash.MpdParser.Dynamic
 
         public SegmentLocation HighestAvailable()
         {
-            if (Representation != null)
+            if (repr_ != null)
                 return SegmentLocation.Repr;
-            if (AdaptationSet != null)
+            if (set_ != null)
                 return SegmentLocation.Set;
-            if (Period != null)
+            if (period_ != null)
                 return SegmentLocation.Period;
             return SegmentLocation.None;
         }
 
         public SegmentLocation NextAvailable(SegmentLocation below)
         {
-            switch (below)
-            {
-                case SegmentLocation.None:
-                    throw new Exception("Can't get lower, than SegmentLocation.None");
-                case SegmentLocation.Repr when AdaptationSet != null:
-                    return SegmentLocation.Set;
-                case SegmentLocation.Period:
-                    break;
-                case SegmentLocation.Set:
-                    break;
-                default:
-                    throw new ArgumentOutOfRangeException(nameof(below), below, null);
-            }
-            if (below != SegmentLocation.Period && Period != null)
+            if (below == SegmentLocation.None)
+                throw new Exception("Can't get lower, than SegmentLocation.None");
+
+            if (below == SegmentLocation.Repr && set_ != null)
+                return SegmentLocation.Set;
+            if (below != SegmentLocation.Period && period_ != null)
                 return SegmentLocation.Period;
             return SegmentLocation.None;
         }
 
-        public TSegment GetDirect(SegmentLocation which)
+        public S GetDirect(SegmentLocation which)
         {
             switch (which)
             {
-                case SegmentLocation.Repr:
-                    return Representation;
-                case SegmentLocation.Set:
-                    return AdaptationSet;
-                case SegmentLocation.Period:
-                    return Period;
-                case SegmentLocation.None:
-                    return null;
-                default:
-                    return null;
+                case SegmentLocation.Repr: return repr_;
+                case SegmentLocation.Set: return set_;
+                case SegmentLocation.Period: return period_;
             }
+            return null;
         }
     }
 
-    public class MultipleSegmentBaseTmplt<TSegment> : SegmentBaseTmplt<TSegment>
-        where TSegment : MultipleSegmentBase
+    public class MultipleSegmentBaseTmplt<S> : SegmentBaseTmplt<S> where S : Node.MultipleSegmentBase
     {
-        public uint? Duration => Representation?.Duration ??
-                                 AdaptationSet?.Duration ??
-                                 Period?.Duration;
+        public uint? Duration
+        {
+            get
+            {
+                return
+                    repr_?.Duration ??
+                    set_?.Duration ??
+                    period_?.Duration;
+            }
+        }
 
-        public uint? StartNumber => Representation?.StartNumber ??
-                                    AdaptationSet?.StartNumber ??
-                                    Period?.StartNumber;
+        public uint? StartNumber
+        {
+            get
+            {
+                return
+                    repr_?.StartNumber ??
+                    set_?.StartNumber ??
+                    period_?.StartNumber;
+            }
+        }
 
-        public SegmentTimeline[] SegmentTimelines => Nonempty(Representation?.SegmentTimelines) ??
-                                                     Nonempty(AdaptationSet?.SegmentTimelines) ??
-                                                     Nonempty(Period?.SegmentTimelines) ??
-                                                     new SegmentTimeline[] { };
+        public SegmentTimeline[] SegmentTimelines
+        {
+            get
+            {
+                return
+                    Nonempty(repr_?.SegmentTimelines) ??
+                    Nonempty(set_?.SegmentTimelines) ??
+                    Nonempty(period_?.SegmentTimelines) ??
+                    new SegmentTimeline[] { };
+            }
+        }
 
-        public URL[] BitstreamSwitchings => Nonempty(Representation?.BitstreamSwitchings) ??
-                                            Nonempty(AdaptationSet?.BitstreamSwitchings) ??
-                                            Nonempty(Period?.BitstreamSwitchings) ??
-                                            new URL[] { };
+        public URL[] BitstreamSwitchings
+        {
+            get
+            {
+                return
+                    Nonempty(repr_?.BitstreamSwitchings) ??
+                    Nonempty(set_?.BitstreamSwitchings) ??
+                    Nonempty(period_?.BitstreamSwitchings) ??
+                    new URL[] { };
+            }
+        }
 
-        internal MultipleSegmentBaseTmplt(
-            TSegment representation,
-            TSegment adaptationSet,
-            TSegment period): base(representation, adaptationSet, period)
+        internal MultipleSegmentBaseTmplt(S repr, S set, S period) : base(repr, set, period)
         {
         }
     }
 
     public class SegmentBase : SegmentBaseTmplt<Node.SegmentBase>
     {
-        public SegmentBase(
-            Node.SegmentBase representation,
-            Node.SegmentBase adaptationSet,
-            Node.SegmentBase period): base(representation, adaptationSet, period)
+        public SegmentBase(Node.SegmentBase repr, Node.SegmentBase set, Node.SegmentBase period)
+            : base(repr, set, period)
         {
         }
     }
 
     public class SegmentTemplate : MultipleSegmentBaseTmplt<Node.SegmentTemplate>
     {
-        public Template Media => Representation?.Media ??
-                                 AdaptationSet?.Media ??
-                                 Period?.Media;
+        public Template Media
+        {
+            get
+            {
+                return
+                    repr_?.Media ??
+                    set_?.Media ??
+                    period_?.Media;
+            }
+        }
 
-        public Template Index => Representation?.Index ??
-                                 AdaptationSet?.Index ??
-                                 Period?.Index;
+        public Template Index
+        {
+            get
+            {
+                return
+                    repr_?.Index ??
+                    set_?.Index ??
+                    period_?.Index;
+            }
+        }
 
-        public Template Initialization => Representation?.Initialization ??
-                                          AdaptationSet?.Initialization ??
-                                          Period?.Initialization;
+        public Template Initialization
+        {
+            get
+            {
+                return
+                    repr_?.Initialization ??
+                    set_?.Initialization ??
+                    period_?.Initialization;
+            }
+        }
 
-        public string BitstreamSwitching => Representation?.BitstreamSwitching ??
-                                            AdaptationSet?.BitstreamSwitching ??
-                                            Period?.BitstreamSwitching;
+        public string BitstreamSwitching
+        {
+            get
+            {
+                return
+                    repr_?.BitstreamSwitching ??
+                    set_?.BitstreamSwitching ??
+                    period_?.BitstreamSwitching;
+            }
+        }
 
-        public SegmentTemplate(
-            Node.SegmentTemplate representation,
-            Node.SegmentTemplate adaptationSet,
-            Node.SegmentTemplate period): base(representation, adaptationSet, period)
+        public SegmentTemplate(Node.SegmentTemplate repr, Node.SegmentTemplate set, Node.SegmentTemplate period)
+            : base(repr, set, period)
         {
         }
     }
 
     public class SegmentList : MultipleSegmentBaseTmplt<Node.SegmentList>
     {
-        public SegmentURL[] SegmentUrls => Nonempty(Representation?.SegmentURLs) ??
-                                           Nonempty(AdaptationSet?.SegmentURLs) ??
-                                           Nonempty(Period?.SegmentURLs) ??
-                                           new SegmentURL[] { };
+        public SegmentURL[] SegmentURLs
+        {
+            get
+            {
+                return
+                    Nonempty(repr_?.SegmentURLs) ??
+                    Nonempty(set_?.SegmentURLs) ??
+                    Nonempty(period_?.SegmentURLs) ??
+                    new SegmentURL[] { };
+            }
+        }
 
-        public SegmentList(
-            Node.SegmentList representation,
-            Node.SegmentList adaptationSet,
-            Node.SegmentList period): base(representation, adaptationSet, period)
+        public SegmentList(Node.SegmentList repr, Node.SegmentList set, Node.SegmentList period)
+            : base(repr, set, period)
         {
         }
     }
@@ -212,10 +298,10 @@ namespace JuvoPlayer.Dash.MpdParser.Dynamic
 
     internal enum TimeRelation
     {
-        Unknown = -2,
-        Earlier,
-        Spoton,
-        Later
+        UNKNOWN = -2,
+        EARLIER,
+        SPOTON,
+        LATER
     }
     public class Segment
     {
@@ -230,14 +316,14 @@ namespace JuvoPlayer.Dash.MpdParser.Dynamic
             Period = period;
         }
 
-        internal TimeRelation Contains(TimeSpan timePoint)
+        internal TimeRelation Contains(TimeSpan time_point)
         {
             if (Period == null)
-                return TimeRelation.Unknown;
-            if (timePoint < Period.Start)
-                return TimeRelation.Later;
-            timePoint -= Period.Start;
-            return timePoint <= Period.Duration ? TimeRelation.Spoton : TimeRelation.Earlier;
+                return TimeRelation.UNKNOWN;
+            if (time_point < Period.Start)
+                return TimeRelation.LATER;
+            time_point -= Period.Start;
+            return time_point <= Period.Duration ? TimeRelation.SPOTON : TimeRelation.EARLIER;
         }
     }
 
@@ -245,13 +331,13 @@ namespace JuvoPlayer.Dash.MpdParser.Dynamic
     {
         public BaseRepresentationStream(Segment init, Segment media)
         {
-            _media = media;
+            media_ = media;
             InitSegment = init;
             Count = media == null ? 0u : 1u;
             Duration = media?.Period?.Duration;
         }
 
-        private readonly Segment _media;
+        private Segment media_;
 
         public TimeSpan? Duration { get; }
         public Segment InitSegment { get; }
@@ -259,24 +345,27 @@ namespace JuvoPlayer.Dash.MpdParser.Dynamic
 
         public Segment MediaSegmentAtPos(uint pos)
         {
-            return pos == 0 ? _media : null;
+            if (pos == 0)
+                return media_;
+            return null;
         }
 
         public uint? MediaSegmentAtTime(TimeSpan duration)
         {
-            if (_media != null && _media.Contains(duration) > TimeRelation.Earlier)
+            if (media_ != null && media_.Contains(duration) > TimeRelation.EARLIER)
                 return 0;
             return null;
         }
 
         public IEnumerable<Segment> MediaSegments()
         {
-            if (_media != null)
-                yield return _media;
+            if (media_ != null)
+                yield return media_;
         }
     };
 
-    public struct TimelineItem {
+    public struct TimelineItem
+    {
         public uint Number;
         public ulong Time;
         public ulong Duration;
@@ -286,81 +375,73 @@ namespace JuvoPlayer.Dash.MpdParser.Dynamic
         {
             repeat = 0;
             if (point < Time)
-                return TimeRelation.Later;
+                return TimeRelation.LATER;
             if (point > Time + Duration * (ulong)(Repeats + 1))
-                return TimeRelation.Earlier;
+                return TimeRelation.EARLIER;
             point -= Time;
             repeat = (uint)(point / Duration);
-            return TimeRelation.Spoton;
+            return TimeRelation.SPOTON;
         }
     }
 
     public class Timeline
     {
-        public static TimelineItem[] FromDuration(
-            uint startNumber,
-            TimeSpan start,
-            TimeSpan duration,
-            uint segDuration,
-            uint timescale)
+        public static TimelineItem[] FromDuration(uint startNumber, TimeSpan start, TimeSpan duration, uint segDuration, uint timescale)
         {
-            var totalDuration = (uint)Math.Ceiling(duration.TotalSeconds * timescale);
-            var totalStart = (uint)Math.Ceiling(start.TotalSeconds * timescale);
+            uint totalDuration = (uint)Math.Ceiling(duration.TotalSeconds * timescale);
+            uint totalStart = (uint)Math.Ceiling(start.TotalSeconds * timescale);
+            TimeSpan scaledDuration = TimeSpan.FromSeconds((double)segDuration / timescale);
 
-            var count = totalDuration / segDuration;
-            var end = count * segDuration;
+            uint count = totalDuration / segDuration;
+            uint end = count * segDuration;
 
-            var result = new TimelineItem[totalDuration == end ? 1 : 2];
+            TimelineItem[] result = new TimelineItem[totalDuration == end ? 1 : 2];
             result[0].Number = startNumber;
             result[0].Time = totalStart;
             result[0].Duration = segDuration;
             result[0].Repeats = (int)count - 1;
 
-            if (totalDuration == end) return result;
-            result[1].Number = startNumber + count;
-            result[1].Time = totalStart + end;
-            result[1].Duration = totalDuration - end;
-            result[1].Repeats = 0;
+            if (totalDuration != end)
+            {
+                result[1].Number = startNumber + count;
+                result[1].Time = totalStart + end;
+                result[1].Duration = totalDuration - end;
+                result[1].Repeats = 0;
+            }
 
             return result;
         }
 
-        public static TimelineItem[] FromXml(
-            uint startNumber,
-            TimeSpan periodStart,
-            TimeSpan? periodEnd,
-            uint timescale,
-            S[] esses)
+        public static TimelineItem[] FromXml(uint startNumber, TimeSpan periodStart, TimeSpan? periodEnd, uint timescale, S[] esses)
         {
-            var offset = (ulong)Math.Ceiling(periodStart.TotalSeconds * timescale);
+            ulong offset = (ulong)Math.Ceiling(periodStart.TotalSeconds * timescale);
             ulong start = 0;
-            var result = new TimelineItem[esses.Length];
-            for (var i = 0; i < esses.Length; ++i)
+            TimelineItem[] result = new TimelineItem[esses.Length];
+            for (int i = 0; i < esses.Length; ++i)
             {
-                var segment = esses[i];
-                if (segment.D == null)
+                S s = esses[i];
+                if (s.D == null)
                     return null;
 
-                start = segment.T ?? start;
+                start = s.T ?? start;
 
                 uint count = 1;
-                var rep = segment.R ?? -1; // non-existing and invalid @r should be treated the same:
+                int rep = s.R ?? -1; // non-existing and invalid @r should be treated the same:
                 if (rep < 0)
                 {
                     if (i < (esses.Length - 1))
                     {
-                        // if t[segment+1] is present, then r[segment] is the ceil of (t[segment+1] - t[segment])/d[segment]
-                        var nextStart = esses[i + 1].T ?? start + segment.D.Value;
-                        var chunks = (ulong)Math.Ceiling(((double)nextStart - start) / segment.D.Value);
+                        // if t[s+1] is present, then r[s] is the ceil of (t[s+1] - t[s])/d[s]
+                        ulong nextStart = esses[i + 1].T ?? (start + s.D.Value);
+                        ulong chunks = (ulong)Math.Ceiling(((double)nextStart - start) / s.D.Value);
                         rep = (int)chunks - 1;
                     }
                     else
                     {
-                        // else r[segment] is the ceil of (PEwc[i] - PSwc[i] - t[segment]/ts)*ts/d[segment])
-                        var totalEnd = periodEnd == null ?
-                            start + segment.D.Value :
+                        // else r[s] is the ceil of (PEwc[i] - PSwc[i] - t[s]/ts)*ts/d[s])
+                        ulong totalEnd = periodEnd == null ? start + s.D.Value :
                             (ulong)Math.Ceiling(periodEnd.Value.TotalSeconds * timescale);
-                        var chunks = (ulong)Math.Ceiling(((double)totalEnd - offset - start) / segment.D.Value);
+                        ulong chunks = (ulong)Math.Ceiling(((double)totalEnd - offset - start) / s.D.Value);
                         rep = (int)chunks - 1;
                     }
                 }
@@ -368,10 +449,10 @@ namespace JuvoPlayer.Dash.MpdParser.Dynamic
 
                 result[i].Number = startNumber;
                 result[i].Time = start + offset;
-                result[i].Duration = segment.D.Value;
+                result[i].Duration = s.D.Value;
                 result[i].Repeats = (int)count - 1;
 
-                start += segment.D.Value * count;
+                start += s.D.Value * count;
                 startNumber += count;
             }
             return result;
@@ -380,65 +461,57 @@ namespace JuvoPlayer.Dash.MpdParser.Dynamic
 
     public class TemplateRepresentationStream : IRepresentationStream
     {
-        public TemplateRepresentationStream(
-            Uri baseUrl,
-            Template init,
-            Template media,
-            uint? bandwidth,
-            string reprId,
-            uint timescale,
-            TimelineItem[] timeline)
+        public TemplateRepresentationStream(Uri baseURL, Template init, Template media, uint? bandwidth, string reprId, uint timescale, TimelineItem[] timeline)
         {
-            _baseUrl = baseUrl;
-            _media = media;
-            _bandwidth = bandwidth;
-            _reprId = reprId;
-            _timescale = timescale;
-            _timeline = timeline;
+            baseURL_ = baseURL;
+            media_ = media;
+            bandwidth_ = bandwidth;
+            reprId_ = reprId;
+            timescale_ = timescale;
+            timeline_ = timeline;
 
-            var count = (uint)timeline.Length;
+            uint count = (uint)timeline.Length;
             ulong totalDuration = 0;
-            foreach (var item in timeline)
+            foreach (TimelineItem item in timeline)
             {
                 count += (uint)item.Repeats;
-                var rightMost = item.Time + (1 + (ulong)item.Repeats) * item.Duration;
+                ulong rightMost = item.Time + (1 + (ulong)item.Repeats) * item.Duration;
                 if (rightMost > totalDuration)
                     totalDuration = rightMost;
             }
 
             Count = count;
             Duration = Scaled(totalDuration - (timeline.Length > 0 ? timeline[0].Time : 0));
-            InitSegment = init == null ?
-                null : MakeSegment(init.Get(bandwidth, reprId), null);
+            InitSegment = init == null ? null : MakeSegment(init.Get(bandwidth, reprId), null);
         }
 
         private Segment MakeSegment(string url, TimeRange span)
         {
             Uri file;
-            if (_baseUrl == null)
+            if (baseURL_ == null)
                 file = new Uri(url, UriKind.RelativeOrAbsolute);
-            else if (!Uri.TryCreate(_baseUrl, url, out file))
+            else if (!Uri.TryCreate(baseURL_, url, out file))
                 return null;
             return new Segment(file, null, span);
         }
 
         private TimeSpan Scaled(ulong point)
         {
-            return TimeSpan.FromSeconds((double)point / _timescale);
+            return TimeSpan.FromSeconds((double)point / timescale_);
         }
         private Segment MakeSegment(TimelineItem item, uint repeat)
         {
             ulong start = item.Time + item.Duration * repeat;
-            string uri = _media.Get(_bandwidth, _reprId, item.Number + repeat, (uint)start);
+            string uri = media_.Get(bandwidth_, reprId_, item.Number + repeat, (uint)start);
             return MakeSegment(uri, new TimeRange(Scaled(start), Scaled(item.Duration)));
         }
 
-        private readonly Uri _baseUrl;
-        private readonly Template _media;
-        private readonly uint? _bandwidth;
-        private readonly string _reprId;
-        private readonly uint _timescale;
-        private readonly TimelineItem[] _timeline;
+        private Uri baseURL_;
+        private Template media_;
+        private uint? bandwidth_;
+        private string reprId_;
+        private uint timescale_;
+        private TimelineItem[] timeline_;
 
         public TimeSpan? Duration { get; }
         public Segment InitSegment { get; }
@@ -446,11 +519,11 @@ namespace JuvoPlayer.Dash.MpdParser.Dynamic
 
         public Segment MediaSegmentAtPos(uint pos)
         {
-            foreach (var timelineItem in _timeline)
+            foreach (TimelineItem item in timeline_)
             {
-                if (pos <= (uint)timelineItem.Repeats)
-                    return MakeSegment(timelineItem, pos);
-                pos -= (uint)timelineItem.Repeats;
+                if (pos <= (uint)item.Repeats)
+                    return MakeSegment(item, pos);
+                pos -= (uint)item.Repeats;
                 --pos;
             }
             return null;
@@ -458,21 +531,22 @@ namespace JuvoPlayer.Dash.MpdParser.Dynamic
 
         public uint? MediaSegmentAtTime(TimeSpan durationSpan)
         {
-            var duration = (ulong)Math.Ceiling(durationSpan.TotalSeconds * _timescale);
+            ulong duration = (ulong)Math.Ceiling(durationSpan.TotalSeconds * timescale_);
             uint pos = 0;
-            foreach (var timelineItem in _timeline)
+            foreach (TimelineItem item in timeline_)
             {
-                var rel = timelineItem.RepeatFor(duration, out var repeat);
-                if (rel > TimeRelation.Earlier)
+                TimeRelation rel = item.RepeatFor(duration, out uint repeat);
+                if (rel > TimeRelation.EARLIER)
                     return pos + repeat;
-                pos += (uint)timelineItem.Repeats + 1;
+                pos += (uint)item.Repeats + 1;
             }
+
             return null;
         }
 
         public IEnumerable<Segment> MediaSegments()
         {
-            foreach (var item in _timeline)
+            foreach (TimelineItem item in timeline_)
             {
                 for (uint repeat = 0; repeat <= item.Repeats; ++repeat)
                     yield return MakeSegment(item, repeat);
@@ -490,31 +564,32 @@ namespace JuvoPlayer.Dash.MpdParser.Dynamic
         internal TimeRelation Contains(ulong timepoint)
         {
             if (timepoint < Time)
-                return TimeRelation.Later;
-            if (timepoint - Time > Duration)
-                return TimeRelation.Earlier;
-            return TimeRelation.Spoton;
+                return TimeRelation.LATER;
+            if ((timepoint - Time) > Duration)
+                return TimeRelation.EARLIER;
+            return TimeRelation.SPOTON;
         }
 
-        public static ListItem[] FromXml(
-            uint startNumber,
-            TimeSpan startPoint,
-            uint timescale,
-            ulong duration,
-            SegmentURL[] urls)
+        public static ListItem[] FromXml(uint startNumber, TimeSpan startPoint, uint timescale, ulong duration, SegmentURL[] urls)
         {
-            var start = (ulong)Math.Ceiling(startPoint.TotalSeconds * timescale);
-            var size = urls.Count(url => !string.IsNullOrEmpty(url.Media));
-            var result = new ListItem[size];
-
-            var pos = 0;
-            foreach (var url in urls)
+            ulong start = (ulong)Math.Ceiling(startPoint.TotalSeconds * timescale);
+            int size = 0;
+            for (int i = 0; i < urls.Length; ++i)
             {
-                if (string.IsNullOrEmpty(url.Media))
+                if (string.IsNullOrEmpty(urls[i].Media))
+                    continue;
+                ++size;
+            }
+            ListItem[] result = new ListItem[size];
+
+            int pos = 0;
+            for (int i = 0; i < urls.Length; ++i)
+            {
+                if (string.IsNullOrEmpty(urls[i].Media))
                     continue;
 
-                result[pos].Media = url.Media;
-                result[pos].Range = url.MediaRange;
+                result[pos].Media = urls[i].Media;
+                result[pos].Range = urls[i].MediaRange;
                 result[pos].Time = start;
                 result[pos].Duration = duration;
                 ++pos;
@@ -527,55 +602,47 @@ namespace JuvoPlayer.Dash.MpdParser.Dynamic
 
     public class ListRepresentationStream : IRepresentationStream
     {
-        public ListRepresentationStream(
-            Uri baseUrl,
-            Segment init,
-            uint timescale,
-            ListItem[] uris)
+        public ListRepresentationStream(Uri baseURL, Segment init, uint timescale, ListItem[] uris)
         {
-            _baseUrl = baseUrl;
-            _timescale = timescale;
-            _uris = uris ?? new ListItem[] { };
+            baseURL_ = baseURL;
+            timescale_ = timescale;
+            uris_ = uris ?? new ListItem[] { };
 
             ulong totalDuration = 0;
-            foreach (var item in _uris)
+            foreach (ListItem item in uris_)
             {
-                var rightMost = item.Time + item.Duration;
+                ulong rightMost = item.Time + item.Duration;
                 if (rightMost > totalDuration)
                     totalDuration = rightMost;
             }
 
-            if (uris != null) Count = (uint) uris.Length;
-            Duration = Scaled(totalDuration - (_uris.Length > 0 ? _uris[0].Time : 0));
+            Count = (uint)uris.Length;
+            Duration = Scaled(totalDuration - (uris_.Length > 0 ? uris_[0].Time : 0));
             InitSegment = init;
         }
 
         private Segment MakeSegment(string media, string range, TimeRange span)
         {
             Uri file;
-            if (_baseUrl == null)
+            if (baseURL_ == null)
                 file = new Uri(media, UriKind.RelativeOrAbsolute);
-            else if (!Uri.TryCreate(_baseUrl, media, out file))
+            else if (!Uri.TryCreate(baseURL_, media, out file))
                 return null;
             return new Segment(file, range, span);
         }
 
         private TimeSpan Scaled(ulong point)
         {
-            return TimeSpan.FromSeconds((double)point / _timescale);
+            return TimeSpan.FromSeconds((double)point / timescale_);
         }
         private Segment MakeSegment(ListItem item)
         {
-            return MakeSegment(
-                item.Media,
-                item.Range,
-                new TimeRange(Scaled(item.Time),
-                Scaled(item.Duration)));
+            return MakeSegment(item.Media, item.Range, new TimeRange(Scaled(item.Time), Scaled(item.Duration)));
         }
 
-        private readonly Uri _baseUrl;
-        private readonly uint _timescale;
-        private readonly ListItem[] _uris;
+        private Uri baseURL_;
+        private uint timescale_;
+        private ListItem[] uris_;
 
         public TimeSpan? Duration { get; }
         public Segment InitSegment { get; }
@@ -583,17 +650,17 @@ namespace JuvoPlayer.Dash.MpdParser.Dynamic
 
         public Segment MediaSegmentAtPos(uint pos)
         {
-            if (pos < _uris.Length)
-                return MakeSegment(_uris[pos]);
+            if (pos < uris_.Length)
+                return MakeSegment(uris_[pos]);
             return null;
         }
 
         public uint? MediaSegmentAtTime(TimeSpan durationSpan)
         {
-            var duration = (ulong)Math.Ceiling(durationSpan.TotalSeconds * _timescale);
-            for (uint pos = 0; pos < _uris.Length; ++pos)
+            ulong duration = (ulong)Math.Ceiling(durationSpan.TotalSeconds * timescale_);
+            for (uint pos = 0; pos < uris_.Length; ++pos)
             {
-                if (_uris[pos].Contains(duration) > TimeRelation.Earlier)
+                if (uris_[pos].Contains(duration) > TimeRelation.EARLIER)
                     return pos;
             }
             return null;
@@ -601,7 +668,10 @@ namespace JuvoPlayer.Dash.MpdParser.Dynamic
 
         public IEnumerable<Segment> MediaSegments()
         {
-            return _uris.Select(MakeSegment);
+            foreach (ListItem item in uris_)
+            {
+                yield return MakeSegment(item);
+            }
         }
     }
 }
