@@ -21,10 +21,8 @@ namespace JuvoPlayer.Dash
                 throw new ArgumentException("Unsupported clip type.");
             }
 
-
             IDemuxer demuxer = null;
             IDashClient dashClient = null;
-            DashManifest manifest = null;
             string libPath = null;
             try
             {
@@ -42,7 +40,7 @@ namespace JuvoPlayer.Dash
             try
             {
                 var sharedBuffer = new SharedBuffer();
-                manifest = new DashManifest(clip.Url);
+                var manifest = new DashManifest(clip.Url);
                 dashClient = new DashClient(manifest, sharedBuffer);
                 demuxer = new FFmpegDemuxer(sharedBuffer, libPath);
             }
@@ -50,7 +48,8 @@ namespace JuvoPlayer.Dash
             {
                 Tizen.Log.Error("JuvoPlayer", ex.Message);
             }
-            return new DashDataProvider(dashClient, demuxer, clip, manifest);
+
+            return new DashDataProvider(dashClient, demuxer);
         }
 
         public bool SupportsClip(ClipDefinition clip)
@@ -59,6 +58,7 @@ namespace JuvoPlayer.Dash
             {
                 throw new ArgumentNullException(nameof(clip), "Clip cannot be null.");
             }
+
             return string.Equals(clip.Type, "Dash", StringComparison.CurrentCultureIgnoreCase);
         }
     }

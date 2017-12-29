@@ -1,19 +1,19 @@
 ﻿using System;
 using System.Net.Http;
-using JuvoPlayer.Dash.MpdParser;
+using MpdParser;
 
 namespace JuvoPlayer.Dash
 {
     public class DashManifest
     {
-        public static string Tag = "JuvoPlayer";
         public Uri Uri { get; set; }
         public string XmlManifest { get; set; }
         public Document Document { get; set; }
         public DashManifest(string url)
         {
             Uri = new Uri(
-                url ?? throw new ArgumentNullException(nameof(url)));
+                url ?? throw new ArgumentNullException(
+                    "Dash manifest url is empty."));
             XmlManifest = DownloadManifest();
             Document = ParseManifest();
 
@@ -30,7 +30,7 @@ namespace JuvoPlayer.Dash
             try
             {
                 var client = new HttpClient();
-                var response = client.GetAsync(
+                HttpResponseMessage response = client.GetAsync(
                     Uri,
                     HttpCompletionOption.ResponseHeadersRead).Result;
                 response.EnsureSuccessStatusCode();
@@ -39,7 +39,7 @@ namespace JuvoPlayer.Dash
             catch (Exception ex)
             {
                 Tizen.Log.Error(
-                    Tag,
+                    "JuvoPlayer",
                     "Cannot download manifest file. Error: " + ex.Message);
                 return null;
             }
@@ -48,15 +48,16 @@ namespace JuvoPlayer.Dash
         {
             try
             {
-                var document = new Document(
-                    XmlManifest ?? throw new ArgumentNullException(nameof(XmlManifest)),
+                var document = Document.FromText(
+                    XmlManifest ?? throw new ArgumentNullException(
+                        "Xml manifest is empty."),
                     Uri.ToString());
                 return document;
             }
             catch (Exception ex)
             {
                 Tizen.Log.Error(
-                    Tag,
+                    "JuvoPlayer",
                     "Cannot parse manifest file. Error: " + ex.Message);
                 return null;
             }

@@ -3,22 +3,15 @@ using JuvoPlayer.Common;
 
 namespace JuvoPlayer.Dash
 {
-    class DashDataProvider : IDataProvider
+    internal class DashDataProvider : IDataProvider
     {
-        private IDemuxer _demuxer;
-        private IDashClient _dashClient;
-        private ClipDefinition _currentClip;
-        private DashManifest _manifest;
+        private readonly IDemuxer _demuxer;
+        private readonly IDashClient _dashClient;
 
         public DashDataProvider(
             IDashClient dashClient,
-            IDemuxer demuxer,
-            ClipDefinition currentClip,
-            DashManifest manifest)
+            IDemuxer demuxer)
         {
-            _manifest = manifest;
-
-            _currentClip = currentClip ?? throw new ArgumentNullException(nameof(currentClip), "Clip cannot be null.");
             _dashClient = dashClient ?? throw new ArgumentNullException(nameof(dashClient), "dashClient cannot be null");
             _demuxer = demuxer ?? throw new ArgumentNullException(nameof(dashClient), "demuxer cannot be null");
 
@@ -48,7 +41,6 @@ namespace JuvoPlayer.Dash
             // this should be reworked later
             StreamPacketReady?.Invoke(StreamPacket.CreateEOS(StreamType.Audio));
             StreamPacketReady?.Invoke(StreamPacket.CreateEOS(StreamType.Video));
-
         }
 
         public void OnChangeRepresentation(int representationId)
@@ -77,11 +69,13 @@ namespace JuvoPlayer.Dash
         public void Start()
         {
             Tizen.Log.Info("JuvoPlayer", "Dash start.");
+            _dashClient.Start();
             _demuxer.StartForExternalSource();
         }
 
         public void OnTimeUpdated(double time)
         {
+            _dashClient.OnTimeUpdated(time);
         }
     }
 }
