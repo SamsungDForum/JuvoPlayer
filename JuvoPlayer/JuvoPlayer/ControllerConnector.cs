@@ -27,6 +27,9 @@ namespace JuvoPlayer
             controller.Paused += newDataProvider.OnPaused;
             controller.Played += newDataProvider.OnPlayed;
             controller.Stopped += newDataProvider.OnPlayed;
+
+            // pause buffering when player finished initialization
+            controller.PlayerInitialized += newDataProvider.OnPaused;
         }
 
         public static void DisconnectDataProvider(IPlayerController controller, IDataProvider oldDataProvider)
@@ -47,6 +50,9 @@ namespace JuvoPlayer
             controller.Paused -= oldDataProvider.OnPaused;
             controller.Played -= oldDataProvider.OnPlayed;
             controller.Stopped -= oldDataProvider.OnPlayed;
+
+            // pause buffering when player finished initialization
+            controller.PlayerInitialized -= oldDataProvider.OnPaused;
         }
     }
 }
