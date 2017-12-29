@@ -1,17 +1,23 @@
-﻿using System;
-using JuvoPlayer.Common;
-using JuvoPlayer.Dash.MpdParser;
-using System.Net.Http;
+﻿using JuvoPlayer.Common;
+using MpdParser;
+using MpdParser.Node;
+using System;
+using System.Linq;
 using System.Net;
+using System.Threading;
 
 namespace JuvoPlayer.Dash
 {
-    class DashClient : IDashClient
+    internal class DashClient : IDashClient
     {
-        static string Tag = "JuvoPlayer";
-        private ISharedBuffer _sharedBuffer;
+        private const string Tag = "JuvoPlayer";
+        private static ISharedBuffer _sharedBuffer;
         private DashManifest _manifest;
-        private int currentPeriod;
+        private static double _currentTime;
+        private static double _bufferTime;
+        private static bool _playback;
+        private readonly Thread _dThread;
+        private static IRepresentationStream _currentStreams;
 
         public DashClient(
             DashManifest dashManifest,
@@ -26,28 +32,35 @@ namespace JuvoPlayer.Dash
             {
                 Tizen.Log.Error(Tag, "No periods present in MPD file.");
             }
-            foreach (var p in _manifest.Document.Periods)
+            _dThread = new Thread(DownloadThread);
+        }
+
+        public void Seek(int position)
+        {
+            throw new NotImplementedException();
+        }
+
+        public void Start()
+        {
+            Tizen.Log.Info(Tag, "DashClient start.");
+            _playback = true;
+            foreach (var period in _manifest.Document.Periods)
             {
-                Tizen.Log.Info(Tag, p.ToString());
+                Tizen.Log.Info(Tag, period.ToString());
                 try
                 {
-                    var m = Find(p, "eng", MediaType.Video) ??
-                        Find(p, "und", MediaType.Video);
-                    Tizen.Log.Info(Tag, "Media: " + m);
-                    string segmentUrl = null;
-                    foreach (var r in m.Representations)
-                    {
-                        Tizen.Log.Info(Tag, r.ToString());
-                        var segments = r.Segments;
-                        Tizen.Log.Info(
-                            Tag,
-                            "Segment: " + segments.MediaSegmentAtPos(0).Url);
-                        segmentUrl =
-                            segments.MediaSegmentAtPos(0).Url.ToString();
-                        break; // only first representation
-                    }
-                    DownloadSegment(segmentUrl);
-                    Tizen.Log.Info(Tag, "data: " + sharedBuffer.ReadData(1024));
+                    var video = Find(period, "eng", MediaType.Video) ??
+                        Find(period, "und", MediaType.Video);
+                    var audio = Find(period, "eng", MediaType.Audio) ??
+                        Find(period, "und", MediaType.Audio);
+
+                    Tizen.Log.Info(Tag, "Media: " + video);
+                    // get first element of sorted array 
+                    var representation = video.Representations.First();
+                    Tizen.Log.Info(Tag, representation.ToString());
+                    _currentStreams = representation.Segments;
+                    _dThread.Start();
+                    Tizen.Log.Info(Tag, "data: " + _sharedBuffer.ReadData(1024));
                 }
                 catch (Exception ex)
                 {
@@ -56,32 +69,26 @@ namespace JuvoPlayer.Dash
             }
         }
 
-        public void Seek(int position)
-        {
-            throw new NotImplementedException();
-        }
-
-        public void Start(ClipDefinition clip)
-        {
-            Tizen.Log.Info(Tag, "DashClient start.");
-            //throw new NotImplementedException();
-        }
-
         public void Stop()
         {
-            throw new NotImplementedException();
+            _playback = false;
+            _dThread.Abort();
         }
 
         public bool UpdateManifest(DashManifest newManifest)
         {
-            if (newManifest == null)
-                return false;
+            if (newManifest == null) return false;
             _manifest = newManifest;
             return true;
         }
 
+        public void OnTimeUpdated(double time)
+        {
+            _currentTime = time;
+        }
+
         private static Media Find(
-            Period p,
+            MpdParser.Period p,
             string language,
             MediaType type,
             MediaRole role = MediaRole.Main)
@@ -89,76 +96,140 @@ namespace JuvoPlayer.Dash
             Media missingRole = null;
             foreach (var set in p.Sets)
             {
-                if (set.Type.Value == type && set.Lang == language)
+                if (set.Type.Value != type || set.Lang != language) continue;
+                if (set.HasRole(role))
                 {
-                    if (set.HasRole(role))
-                    {
-                        return set;
-                    }
-                    if (set.Roles.Length == 0)
-                    {
-                        missingRole = set;
+                    return set;
+                }
+                if (set.Roles.Length == 0)
+                {
+                    missingRole = set;
 
-                    }
                 }
             }
             return missingRole;
-
         }
-        private bool DownloadSegment(
-            string url)
+
+        private static void DownloadThread()
         {
+            DownloadInitSegment(_currentStreams);
+            while (true)
+            {
+                var currentTime = _currentTime;
+                var stream = _currentStreams.MediaSegmentAtPos((uint)currentTime);
+                const double magicBufferTime = 7000.0; // miliseconds
+                while (_playback &&
+                       _bufferTime - currentTime <= magicBufferTime)
+                {
+                    try
+                    {
+                        var url = stream.Url;
+                        long startByte;
+                        long endByte;
+                        var client = new WebClientEx();
+                        if (stream.ByteRange != null)
+                        {
+                            var range = new ByteRange(stream.ByteRange);
+                            startByte = range.Low;
+                            endByte = range.High;
+                        }
+                        else
+                        {
+                            startByte = 0;
+                            endByte = (long)client.GetBytes(url);
+                        }
+                        _bufferTime += stream.Period.Duration.TotalMilliseconds;
+                        if (startByte != endByte)
+                        {
+                            client.SetRange(startByte, endByte);
+                        }
+                        else
+                        {
+                            client.ClearRange();
+                        }
+                        var streamBytes = client.DownloadData(url);
+                        _sharedBuffer.WriteData(streamBytes);
+                    }
+                    catch (Exception ex)
+                    {
+                        Tizen.Log.Error(
+                            Tag,
+                            "Cannot download segment file. Error: " + ex.Message);
+                    }
+                }
+            }
+        }
+
+        private static void DownloadInitSegment(
+            IRepresentationStream streamSegments)
+        {
+            var initSegment = streamSegments.InitSegment;
+            var client = new WebClientEx();
+            if (initSegment.ByteRange != null)
+            {
+                var range = new ByteRange(initSegment.ByteRange);
+                client.SetRange(range.Low, range.High);
+            }
+            var streamBytes = client.DownloadData(initSegment.Url);
+            _sharedBuffer.WriteData(streamBytes);
+            Tizen.Log.Info("JuvoPlayer", "Init segment downloaded.");
+        }
+    }
+    internal class ByteRange
+    {
+        public long Low { get; }
+        public long High { get; }
+        public ByteRange(string range)
+        {
+            Low = 0;
+            High = 0;
+            var ranges = range.Split("-");
+            if (ranges.Length != 2)
+            {
+                throw new ArgumentException("Range cannot be parsed.");
+            }
             try
             {
-                var client = new HttpClient();
-                var response = client.GetAsync(
-                    url,
-                    HttpCompletionOption.ResponseHeadersRead).Result;
-                response.EnsureSuccessStatusCode();
-                _sharedBuffer.WriteData(
-                    response.Content.ReadAsByteArrayAsync().Result);
-                return true;
+                Low = long.Parse(ranges[0]);
+                High = long.Parse(ranges[1]);
             }
             catch (Exception ex)
             {
-                Tizen.Log.Error(
-                    Tag,
-                    "Cannot download segment file. Error: " + ex.Message);
-                return false;
+                Tizen.Log.Error("JuvoPlayer", ex + " Cannot parse range.");
             }
-        }
-    }
-
-    public class DashTest
-    {
-        public static void Print(string val)
-        {
-            Tizen.Log.Info("JuvoPlayer", val);
         }
     }
 
     public class WebClientEx : WebClient
     {
-        private readonly long _from;
-        private readonly long _to;
+        private long? _from;
+        private long? _to;
 
-        public WebClientEx(long from, long to)
+        public void SetRange(long from, long to)
         {
             _from = from;
             _to = to;
         }
 
-        public UInt64 GetBytes(Uri address)
+        public void ClearRange()
+        {
+            _from = null;
+            _to = null;
+        }
+
+        public ulong GetBytes(Uri address)
         {
             OpenRead(address.ToString());
             return Convert.ToUInt64(ResponseHeaders["Content-Length"]);
-
         }
 
         protected override WebRequest GetWebRequest(Uri address)
         {
             var request = (HttpWebRequest)base.GetWebRequest(address);
-            request.AddRange(_from, _to);
+            if (_to != null && _from != null)
+            {
+                request?.AddRange((int)_from, (int)_to);
+            }
             return request;
         }
     }

@@ -11,15 +11,14 @@
 // damages suffered by licensee as a result of using, modifying or distributing
 // this software or its derivatives.
 
-using JuvoPlayer.Common;
-
 namespace JuvoPlayer.Dash
 {
     public interface IDashClient
     {
         void Seek(int position);
-        void Start(ClipDefinition clip);
+        void Start();
         void Stop();
         bool UpdateManifest(DashManifest newManifest);
+        void OnTimeUpdated(double time);
     }
 }
