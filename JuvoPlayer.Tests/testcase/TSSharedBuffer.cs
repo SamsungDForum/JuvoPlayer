@@ -29,13 +29,13 @@ namespace JuvoPlayer.Tests
             Assert.NotNull(buffer);
             int testSize = 64 * 1024 * 1024;
             int averageChunkSize = 32 * 1024; // random value will be in range [0, 2 * averageChunkSize]
-            int averageSleepTime = 10; // random value will be in range [0, 2 * averageSleepTime]
+            int averageSleepTime = 0; // random value will be in range [0, 2 * averageSleepTime]
             bool writingTaskSuccess = true;
             bool readingTaskSuccess = true;
             WritingTask(buffer, ref writingTaskSuccess, testSize, averageChunkSize, averageSleepTime);
             ReadingTask(buffer, ref readingTaskSuccess, testSize, averageChunkSize, averageSleepTime);
-            Assert.AreEqual(writingTaskSuccess, true);
-            Assert.AreEqual(readingTaskSuccess, true);
+            Assert.AreEqual(writingTaskSuccess, true, "SharedBuffer sync writing failed.");
+            Assert.AreEqual(readingTaskSuccess, true, "SharedBuffer sync reading failed.");
         }
 
         [Test]
@@ -46,15 +46,15 @@ namespace JuvoPlayer.Tests
             Assert.NotNull(buffer);
             int testSize = 64 * 1024 * 1024;
             int averageChunkSize = 32 * 1024; // random value will be in range [0, 2 * averageChunkSize]
-            int averageSleepTime = 10; // random value will be in range [0, 2 * averageSleepTime]
+            int averageSleepTime = 0; // random value will be in range [0, 2 * averageSleepTime]
             bool writingTaskSuccess = true;
             bool readingTaskSuccess = true;
             Task writingTask = Task.Factory.StartNew(() => WritingTask(buffer, ref writingTaskSuccess, testSize, averageChunkSize, averageSleepTime));
             Task readingTask = Task.Factory.StartNew(() => ReadingTask(buffer, ref readingTaskSuccess, testSize, averageChunkSize, averageSleepTime));
             Task[] tasks = { writingTask, readingTask };
             Task.WaitAll(tasks);
-            Assert.AreEqual(writingTaskSuccess, true);
-            Assert.AreEqual(readingTaskSuccess, true);
+            Assert.AreEqual(writingTaskSuccess, true, "SharedBuffer sync writing failed.");
+            Assert.AreEqual(readingTaskSuccess, true, "SharedBuffer sync reading failed.");
         }
 
         private static void WritingTask(SharedBuffer buffer, ref bool success, int size, int averageChunkSize, int averageSleepTime)
@@ -88,7 +88,7 @@ namespace JuvoPlayer.Tests
             byte[] data = new byte[numberOfValues];
             for (int i = 0; i < numberOfValues; ++i)
                 data[i] = (byte)((startingValue + i) % byte.MaxValue);
-            Assert.DoesNotThrow(() => buffer.WriteData(data));
+            Assert.DoesNotThrow(() => buffer.WriteData(data), "SharedBuffer writing data failed.");
             return true;
         }
 
@@ -96,7 +96,7 @@ namespace JuvoPlayer.Tests
         private static bool ReadConsecutiveValues(SharedBuffer buffer, int startingValue, int numberOfValues)
         {
             byte[] data = new byte[0];
-            Assert.DoesNotThrow(() => data = buffer.ReadData(numberOfValues));
+            Assert.DoesNotThrow(() => data = buffer.ReadData(numberOfValues), "SharedBuffer reading data failed.");
             if (data.Length != numberOfValues)
                 return false;
             for(int i = 0; i < numberOfValues; ++i)
