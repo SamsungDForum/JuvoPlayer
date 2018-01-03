@@ -1,6 +1,6 @@
 ﻿[
     {
-        "title": "MPEG DASH - Google Car",
+        "title": "MPEG DASH - Google Car byte range",
         "url": "http://yt-dash-mse-test.commondatastorage.googleapis.com/media/car-20120827-manifest.mpd",
         "subtitles": [
             {
@@ -12,6 +12,13 @@
         ],
         "type": "dash",
         "poster": "car.jpg",
+        "description": "This is clip with DASH content. User can choose desired video/audio representation"
+    },
+    {
+        "title": "MPEG DASH - fmp4",
+        "url": "http://dash.edgesuite.net/envivio/dashpr/clear/Manifest.mpd",
+        "type": "dash",
+        "poster": "default_bg.png",
         "description": "This is clip with DASH content. User can choose desired video/audio representation"
     },
     {

@@ -52,7 +52,8 @@ namespace JuvoPlayer.HLS
                 throw new ArgumentNullException("clip cannot be null");
             }
 
-            return string.Equals(clip.Type, "Hls", StringComparison.CurrentCultureIgnoreCase);
+            return string.Equals(clip.Type, "Hls", StringComparison.CurrentCultureIgnoreCase) ||
+                string.Equals(clip.Type, "Url", StringComparison.CurrentCultureIgnoreCase);
         }
     }
 }

@@ -26,7 +26,7 @@ namespace XamarinPlayer.Tizen.Services
 
         public event PlaybackCompleted PlaybackCompleted;
         public event ShowSubtitile ShowSubtitle;
-
+        
         //UI requires duration in ms:
         public int Duration => playerController == null ? 0 : (int)(playerController.ClipDuration * 1000);
 
