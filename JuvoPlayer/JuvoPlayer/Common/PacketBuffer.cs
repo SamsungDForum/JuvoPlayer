@@ -17,7 +17,7 @@ using System.Threading;
 using Tizen;
 
 namespace JuvoPlayer.Common {
-    class PacketBuffer {
+    public class PacketBuffer {
 
         private List<StreamPacket> data;
 

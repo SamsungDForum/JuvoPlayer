@@ -19,7 +19,7 @@ namespace JuvoPlayer.Common {
 
     public class SharedBuffer : ISharedBuffer {
 
-        public class ByteArrayQueue {
+        private class ByteArrayQueue {
             private byte[] _buffer;
             private int _head;
             private int _tail;

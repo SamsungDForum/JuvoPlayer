@@ -56,6 +56,12 @@
         "type": "rtsp",
         "poster": "tos-poster.jpg",
         "describe": "http://testassets.dashif.org/#testvector/list"
+    },
+    {
+        "title": "The Call 2: RTSP - H264 + AAC",
+        "url": "rtsp://192.168.137.3/test2.ts",
+        "type": "rtsp",
+        "poster": "tos-poster.jpg",
+        "describe": "http://testassets.dashif.org/#testvector/list"
     }
-
 ]
