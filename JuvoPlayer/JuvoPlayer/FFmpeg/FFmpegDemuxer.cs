@@ -94,17 +94,17 @@ namespace JuvoPlayer.FFmpeg
             var seekFunction = new avio_alloc_context_seek_func { Pointer = Marshal.GetFunctionPointerForDelegate(SeekFunctionDelegate) };
 
             ioContext = FFmpeg.avio_alloc_context(buffer,
-                                                         bufferSize,
-                                                         0,
-                                                         (void*)GCHandle.ToIntPtr(GCHandle.Alloc(dataBuffer)), // TODO(g.skowinski): Check if allocating memory used by ffmpeg with Marshal.AllocHGlobal helps!
-                                                         readFunction,
-                                                         writeFunction,
-                                                         seekFunction);
+                                                 bufferSize,
+                                                 0,
+                                                 (void*)GCHandle.ToIntPtr(GCHandle.Alloc(dataBuffer)), // TODO(g.skowinski): Check if allocating memory used by ffmpeg with Marshal.AllocHGlobal helps!
+                                                 readFunction,
+                                                 writeFunction,
+                                                 seekFunction);
             formatContext = FFmpeg.avformat_alloc_context(); // it was before avio_alloc_context before, but I'm changing ordering so it's like in LiveTVApp
             ioContext->seekable = 0;
             ioContext->write_flag = 0;
 
-            formatContext->probesize = bufferSize;
+            formatContext->probesize = 128 * 1024;
             formatContext->max_analyze_duration = 10 * 1000000;
             formatContext->flags |= FFmpegMacros.AVFMT_FLAG_CUSTOM_IO;
             formatContext->pb = ioContext;

@@ -14,7 +14,7 @@ namespace JuvoPlayer.Dash
         private static ISharedBuffer _sharedBuffer;
         private DashManifest _manifest;
         private static double _currentTime;
-        private static double _bufferTime;
+        private static TimeSpan _bufferTime;
         private static bool _playback;
         private readonly Thread _dThread;
         private static IRepresentationStream _currentStreams;
@@ -60,7 +60,6 @@ namespace JuvoPlayer.Dash
                     Tizen.Log.Info(Tag, representation.ToString());
                     _currentStreams = representation.Segments;
                     _dThread.Start();
-                    Tizen.Log.Info(Tag, "data: " + _sharedBuffer.ReadData(1024));
                 }
                 catch (Exception ex)
                 {
@@ -113,41 +112,22 @@ namespace JuvoPlayer.Dash
         private static void DownloadThread()
         {
             DownloadInitSegment(_currentStreams);
+
             while (true)
             {
                 var currentTime = _currentTime;
-                var stream = _currentStreams.MediaSegmentAtPos((uint)currentTime);
                 const double magicBufferTime = 7000.0; // miliseconds
                 while (_playback &&
-                       _bufferTime - currentTime <= magicBufferTime)
+                       _bufferTime.TotalMilliseconds - currentTime <= magicBufferTime)
                 {
                     try
                     {
-                        var url = stream.Url;
-                        long startByte;
-                        long endByte;
-                        var client = new WebClientEx();
-                        if (stream.ByteRange != null)
-                        {
-                            var range = new ByteRange(stream.ByteRange);
-                            startByte = range.Low;
-                            endByte = range.High;
-                        }
-                        else
-                        {
-                            startByte = 0;
-                            endByte = (long)client.GetBytes(url);
-                        }
-                        _bufferTime += stream.Period.Duration.TotalMilliseconds;
-                        if (startByte != endByte)
-                        {
-                            client.SetRange(startByte, endByte);
-                        }
-                        else
-                        {
-                            client.ClearRange();
-                        }
-                        var streamBytes = client.DownloadData(url);
+                        var currentSegmentId = _currentStreams.MediaSegmentAtTime(_bufferTime);
+                        var stream = _currentStreams.MediaSegmentAtPos(currentSegmentId.Value);
+
+                        byte[] streamBytes = DownloadSegment(stream);
+                        _bufferTime += stream.Period.Duration;
+
                         _sharedBuffer.WriteData(streamBytes);
                     }
                     catch (Exception ex)
@@ -160,10 +140,50 @@ namespace JuvoPlayer.Dash
             }
         }
 
+        private static byte[] DownloadSegment(MpdParser.Node.Dynamic.Segment stream)
+        {
+            Tizen.Log.Info("JuvoPlayer", string.Format("Downloading segment {0} : {1}", stream.Period.Start, stream.Period.Start + stream.Period.Duration));
+            Tizen.Log.Info("JuvoPlayer", "Downloading segment: " + stream.Url);
+
+            var url = stream.Url;
+            long startByte;
+            long endByte;
+            var client = new WebClientEx();
+            if (stream.ByteRange != null)
+            {
+                var range = new ByteRange(stream.ByteRange);
+                startByte = range.Low;
+                endByte = range.High;
+            }
+            else
+            {
+                startByte = 0;
+                endByte = (long)client.GetBytes(url);
+            }
+
+            if (startByte != endByte)
+            {
+                client.SetRange(startByte, endByte);
+            }
+            else
+            {
+                client.ClearRange();
+            }
+
+            var streamBytes = client.DownloadData(url);
+
+            Tizen.Log.Info("JuvoPlayer", "Segment downloaded.");
+
+            return streamBytes;
+        }
+
         private static void DownloadInitSegment(
             IRepresentationStream streamSegments)
         {
             var initSegment = streamSegments.InitSegment;
+
+            Tizen.Log.Info("JuvoPlayer", "Downloading segment: " + initSegment.Url);
+
             var client = new WebClientEx();
             if (initSegment.ByteRange != null)
             {
@@ -171,6 +191,7 @@ namespace JuvoPlayer.Dash
                 client.SetRange(range.Low, range.High);
             }
             var streamBytes = client.DownloadData(initSegment.Url);
+
             _sharedBuffer.WriteData(streamBytes);
             Tizen.Log.Info("JuvoPlayer", "Init segment downloaded.");
         }
