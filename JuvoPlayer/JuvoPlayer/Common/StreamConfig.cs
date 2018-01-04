@@ -19,6 +19,8 @@ namespace JuvoPlayer.Common
         {
         }
 
+        public byte[] CodecExtraData = null;
+
         public abstract StreamType StreamType();
     }
 }

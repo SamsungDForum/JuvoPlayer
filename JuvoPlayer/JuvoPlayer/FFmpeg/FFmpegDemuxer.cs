@@ -356,17 +356,21 @@ namespace JuvoPlayer.FFmpeg
             config.ChannelLayout = s->codecpar->channels;
             config.SampleRate = s->codecpar->sample_rate;
 
+            if (s->codecpar->extradata_size > 0)
+            {
+                config.CodecExtraData = new byte[s->codecpar->extradata_size];
+                Marshal.Copy((IntPtr)s->codecpar->extradata, config.CodecExtraData, 0, s->codecpar->extradata_size);
+            }
+
             // these could be useful:
             // ----------------------
             // s->codec->block_align
             // s->codec->bit_rate
-            // s->codec->extradata_size
-            // s->codec->extradata
             // s->codec->codec_tag
             // s->time_base.den
             // s->time_base.num
 
-            Log.Info("JuvoPlayer", "Setting audio stream to " + audio_idx.ToString() + "/" + formatContext->nb_streams.ToString());
+                Log.Info("JuvoPlayer", "Setting audio stream to " + audio_idx.ToString() + "/" + formatContext->nb_streams.ToString());
             Log.Info("JuvoPlayer", "  Codec = " + config.Codec.ToString());
             Log.Info("JuvoPlayer", "  BitsPerChannel = " + config.BitsPerChannel.ToString());
             Log.Info("JuvoPlayer", "  ChannelLayout = " + config.ChannelLayout.ToString());
@@ -390,10 +394,14 @@ namespace JuvoPlayer.FFmpeg
             config.FrameRateNum = s->r_frame_rate.num;
             config.FrameRateDen = s->r_frame_rate.den;
 
+            if (s->codecpar->extradata_size > 0)
+            {
+                config.CodecExtraData = new byte[s->codecpar->extradata_size];
+                Marshal.Copy((IntPtr)s->codecpar->extradata, config.CodecExtraData, 0, s->codecpar->extradata_size);
+            }
+
             // these could be useful:
             // ----------------------
-            // s->codec->extradata_size
-            // s->codec->extradata
             // s->codec->codec_tag
             // s->time_base.den
             // s->time_base.num
