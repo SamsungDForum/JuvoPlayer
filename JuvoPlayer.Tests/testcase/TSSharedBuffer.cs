@@ -17,7 +17,6 @@ namespace JuvoPlayer.Tests
         public static void Init()
         {
             buffer = new SharedBuffer();
-            Assert.NotNull(buffer);
         }
 
         [TearDown]
@@ -30,6 +29,7 @@ namespace JuvoPlayer.Tests
         [Description("Test SharedBuffer singlethreaded usage (write everything, then read everything; nondeterministic).")]
         public static void TestSharedBuffer()
         {
+            Assert.NotNull(buffer);
             int testSize = 64 * 1024 * 1024; // total number of bytes to be read and written during the test
             int averageChunkSize = 32 * 1024; // number of bytes to be read/written in one operation at average ( => random value in range [0, 2 * averageChunkSize])
             int averageSleepTime = 0; // average argument for Thread.Sleep in milliseconds ( => random value in range [0, 2 * averageSleepTime])
@@ -45,6 +45,7 @@ namespace JuvoPlayer.Tests
         [Description("Test SharedBuffer multithreaded usage (one writer, one reader; multiple write/read operations; nondeterministic).")]
         public static void TestSharedBufferAsync()
         {
+            Assert.NotNull(buffer);
             int testSize = 64 * 1024 * 1024; // total number of bytes to be read and written during the test
             int averageChunkSize = 32 * 1024; // number of bytes to be read/written in one operation at average ( => random value in range [0, 2 * averageChunkSize])
             int averageSleepTime = 0; // average argument for Thread.Sleep in milliseconds ( => random value in range [0, 2 * averageSleepTime])
@@ -62,6 +63,7 @@ namespace JuvoPlayer.Tests
         [Description("Test SharedBuffer.ClearData, SharedBuffer.Length and SharedBuffer.EndOfData basic functionality.")]
         public static void TestSharedBufferClearData()
         {
+            Assert.NotNull(buffer);
             int testLength = 1024;
             Assert.AreEqual(buffer.EndOfData, false);
             Assert.AreEqual(buffer.Length(), 0);
