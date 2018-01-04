@@ -59,8 +59,8 @@ namespace JuvoPlayer.RTSP {
             Log.Info("JuvoPlayer", "SharedBuffer::ReadData(" + size + ") IN");
             lock (_locker) {
                 while (true) {
-                    if (buffer.Length - readOffset >= size || EndOfData == true) {
-                        long dsize = Math.Min(buffer.Length, size);
+                    if (buffer.Length - readOffset > 0 || EndOfData == true) {
+                        long dsize = Math.Min(buffer.Length - readOffset, size);
                         byte[] temp = new byte[dsize]; // should be optimized later by removing excessive copying
                         buffer.Position = readOffset;
                         readOffset += buffer.Read(temp, 0, (int)dsize);

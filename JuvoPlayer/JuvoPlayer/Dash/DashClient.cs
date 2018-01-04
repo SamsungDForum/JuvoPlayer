@@ -127,7 +127,6 @@ namespace JuvoPlayer.Dash
 
                         byte[] streamBytes = DownloadSegment(stream);
                         _bufferTime += stream.Period.Duration;
-
                         _sharedBuffer.WriteData(streamBytes);
                     }
                     catch (Exception ex)
@@ -191,8 +190,8 @@ namespace JuvoPlayer.Dash
                 client.SetRange(range.Low, range.High);
             }
             var streamBytes = client.DownloadData(initSegment.Url);
-
             _sharedBuffer.WriteData(streamBytes);
+
             Tizen.Log.Info("JuvoPlayer", "Init segment downloaded.");
         }
     }
