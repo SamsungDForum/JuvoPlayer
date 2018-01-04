@@ -18,7 +18,7 @@ namespace JuvoPlayer.Dash
         void Seek(int position);
         void Start();
         void Stop();
-        bool UpdateManifest(DashManifest newManifest);
+        bool UpdateMedia(MpdParser.Media newMedia);
         void OnTimeUpdated(double time);
     }
 }

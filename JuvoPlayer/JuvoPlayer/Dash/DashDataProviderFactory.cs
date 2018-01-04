@@ -21,8 +21,6 @@ namespace JuvoPlayer.Dash
                 throw new ArgumentException("Unsupported clip type.");
             }
 
-            IDemuxer demuxer = null;
-            IDashClient dashClient = null;
             string libPath = null;
             try
             {
@@ -37,19 +35,21 @@ namespace JuvoPlayer.Dash
                     "JuvoPlayer",
                     "Cannot find application executable path.");
             }
-            try
-            {
-                var sharedBuffer = new SharedBuffer();
-                var manifest = new DashManifest(clip.Url);
-                dashClient = new DashClient(manifest, sharedBuffer);
-                demuxer = new FFmpegDemuxer(sharedBuffer, libPath);
-            }
-            catch (Exception ex)
-            {
-                Tizen.Log.Error("JuvoPlayer", ex.Message);
-            }
 
-            return new DashDataProvider(dashClient, demuxer);
+            var manifest = new DashManifest(clip.Url);
+            var audioPipeline = CreateMediaPipeline(StreamType.Audio, libPath);
+            var videoPipeline = CreateMediaPipeline(StreamType.Video, libPath);
+
+            return new DashDataProvider(manifest, audioPipeline, videoPipeline);
+        }
+
+        private static DashMediaPipeline CreateMediaPipeline(StreamType streamType, string libPath)
+        {
+            var sharedBuffer = new SharedBuffer();
+            IDashClient dashClient = new DashClient(sharedBuffer, streamType);
+            IDemuxer demuxer = new FFmpegDemuxer(sharedBuffer, libPath);
+
+            return new DashMediaPipeline(dashClient, demuxer, streamType);
         }
 
         public bool SupportsClip(ClipDefinition clip)
