@@ -93,7 +93,7 @@ namespace JuvoPlayer.Tests
             for (int read = 0, chunk = 0; read < size; read += chunk)
             {
                 chunk = Math.Min(size - read, rnd.Next(0, averageChunkSize * 2));
-                if ((success = ReadConsecutiveValues(buffer, read, chunk)) == false)
+                if ((success = ReadConsecutiveValues(buffer, read, ref chunk)) == false)
                     return;
                 Thread.Sleep(rnd.Next(0, 2 * averageSleepTime));
             }
@@ -110,12 +110,12 @@ namespace JuvoPlayer.Tests
         }
 
 
-        private static bool ReadConsecutiveValues(SharedBuffer buffer, int startingValue, int numberOfValues)
+        private static bool ReadConsecutiveValues(SharedBuffer buffer, int startingValue, ref int numberOfValues)
         {
             byte[] data = new byte[0];
-            Assert.DoesNotThrow(() => data = buffer.ReadData(numberOfValues), "SharedBuffer reading data failed.");
-            if (data.Length != numberOfValues)
-                return false;
+            int size = numberOfValues;
+            Assert.DoesNotThrow(() => data = buffer.ReadData(size), "SharedBuffer reading data failed.");
+            numberOfValues = data.Length;
             for(int i = 0; i < numberOfValues; ++i)
                 if (data[i] != (byte) ((startingValue + i) % byte.MaxValue))
                     return false;
