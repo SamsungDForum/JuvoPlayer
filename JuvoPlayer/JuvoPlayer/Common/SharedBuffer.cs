@@ -19,7 +19,7 @@ namespace JuvoPlayer.Common {
 
     public class SharedBuffer : ISharedBuffer {
 
-        public class ByteArrayQueue {
+        private class ByteArrayQueue {
             private byte[] _buffer;
             private int _head;
             private int _tail;
@@ -123,12 +123,19 @@ namespace JuvoPlayer.Common {
             }
         }
 
-        static readonly object _locker = new object();
-        private ByteArrayQueue buffer = new ByteArrayQueue();
+        private readonly object _locker = new object();
+        private readonly ByteArrayQueue buffer = new ByteArrayQueue();
 
-        public bool EndOfData { get; set; } = false;
+        public bool EndOfData { get; set; }
 
-        public SharedBuffer() {
+        public SharedBuffer()
+        {
+            EndOfData = false;
+        }
+
+        public ulong Length()
+        {
+                return (ulong) buffer.Length;
         }
 
         public void ClearData() {
@@ -146,7 +153,8 @@ namespace JuvoPlayer.Common {
             }
         }
 
-        // SharedBuffer::ReadData(int size) is blocking - it will block until it has enough data or return less data if EOF is reached.
+        // SharedBuffer::ReadData(int size) is blocking - it will block until buffor is not empty or if EOF is reached.
+        // It may return less data then requested if there is not enough data in the buffor, but the buffor is not empty.
         // Returns byte array of leading [size] bytes of data from the buffer; it should remove the leading [size] bytes of data from the buffer.
         public byte[] ReadData(int size) {
             Log.Info("JuvoPlayer", "SharedBuffer::ReadData(" + size + ") IN");
