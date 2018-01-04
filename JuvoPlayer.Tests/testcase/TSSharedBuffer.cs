@@ -8,28 +8,31 @@ using JuvoPlayer.Common;
 namespace JuvoPlayer.Tests
 {
     [TestFixture]
-    [Description("")]
+    [Description("Tests for SharedBuffer class - cyclic, expandable byte array buffer.")]
     class SharedBufferTests
     {
+        private static SharedBuffer buffer;
+
         [SetUp]
         public static void Init()
         {
+            buffer = new SharedBuffer();
+            Assert.NotNull(buffer);
         }
 
         [TearDown]
         public static void Destroy()
         {
+            buffer = null;
         }
 
         [Test]
-        [Description("Test SharedBuffer singlethreaded usage (write all, then read all).")]
+        [Description("Test SharedBuffer singlethreaded usage (write everything, then read everything; nondeterministic).")]
         public static void TestSharedBuffer()
         {
-            SharedBuffer buffer = new SharedBuffer();
-            Assert.NotNull(buffer);
-            int testSize = 64 * 1024 * 1024;
-            int averageChunkSize = 32 * 1024; // random value will be in range [0, 2 * averageChunkSize]
-            int averageSleepTime = 0; // random value will be in range [0, 2 * averageSleepTime]
+            int testSize = 64 * 1024 * 1024; // total number of bytes to be read and written during the test
+            int averageChunkSize = 32 * 1024; // number of bytes to be read/written in one operation at average ( => random value in range [0, 2 * averageChunkSize])
+            int averageSleepTime = 0; // average argument for Thread.Sleep in milliseconds ( => random value in range [0, 2 * averageSleepTime])
             bool writingTaskSuccess = true;
             bool readingTaskSuccess = true;
             WritingTask(buffer, ref writingTaskSuccess, testSize, averageChunkSize, averageSleepTime);
@@ -39,14 +42,12 @@ namespace JuvoPlayer.Tests
         }
 
         [Test]
-        [Description("Test SharedBuffer multithreaded usage.")]
+        [Description("Test SharedBuffer multithreaded usage (one writer, one reader; multiple write/read operations; nondeterministic).")]
         public static void TestSharedBufferAsync()
         {
-            SharedBuffer buffer = new SharedBuffer();
-            Assert.NotNull(buffer);
-            int testSize = 64 * 1024 * 1024;
-            int averageChunkSize = 32 * 1024; // random value will be in range [0, 2 * averageChunkSize]
-            int averageSleepTime = 0; // random value will be in range [0, 2 * averageSleepTime]
+            int testSize = 64 * 1024 * 1024; // total number of bytes to be read and written during the test
+            int averageChunkSize = 32 * 1024; // number of bytes to be read/written in one operation at average ( => random value in range [0, 2 * averageChunkSize])
+            int averageSleepTime = 0; // average argument for Thread.Sleep in milliseconds ( => random value in range [0, 2 * averageSleepTime])
             bool writingTaskSuccess = true;
             bool readingTaskSuccess = true;
             Task writingTask = Task.Factory.StartNew(() => WritingTask(buffer, ref writingTaskSuccess, testSize, averageChunkSize, averageSleepTime));
@@ -55,6 +56,22 @@ namespace JuvoPlayer.Tests
             Task.WaitAll(tasks);
             Assert.AreEqual(writingTaskSuccess, true, "SharedBuffer sync writing failed.");
             Assert.AreEqual(readingTaskSuccess, true, "SharedBuffer sync reading failed.");
+        }
+
+        [Test]
+        [Description("Test SharedBuffer.ClearData, SharedBuffer.Length and SharedBuffer.EndOfData basic functionality.")]
+        public static void TestSharedBufferClearData()
+        {
+            int testLength = 1024;
+            Assert.AreEqual(buffer.EndOfData, false);
+            Assert.AreEqual(buffer.Length(), 0);
+            buffer.WriteData(new byte[testLength]);
+            Assert.AreEqual(buffer.Length(), testLength);
+            buffer.EndOfData = true;
+            Assert.AreEqual(buffer.EndOfData, true);
+            buffer.ClearData();
+            Assert.AreEqual(buffer.EndOfData, false);
+            Assert.AreEqual(buffer.Length(), 0);
         }
 
         private static void WritingTask(SharedBuffer buffer, ref bool success, int size, int averageChunkSize, int averageSleepTime)

@@ -8,25 +8,28 @@ using System.Threading;
 namespace JuvoPlayer.Tests
 {
     [TestFixture]
-    [Description("")]
+    [Description("Tests for PacketBuffer class - buffer for StreamPacket objects that can act as a FIFO or a Prority Queue (sorted by Dts/Pts, Asc/Desc).")]
     class PacketBufferTests
     {
+        private static PacketBuffer buffer;
+
         [SetUp]
         public static void Init()
         {
+            buffer = new PacketBuffer(PacketBuffer.Ordering.Fifo);
+            Assert.NotNull(buffer, "PacketBuffer " + PacketBuffer.Ordering.Fifo + " object creation failed.");
         }
 
         [TearDown]
         public static void Destroy()
         {
+            buffer = null;
         }
 
         [Test]
-        [Description("Test PacketBuffer singlethreaded usage (write all, then read all; FIFO mode; Data, Pts and Dts fields test).")]
+        [Description("Test PacketBuffer singlethreaded usage (write all, then read all; FIFO mode; Data, Pts and Dts fields test; nondeterministic).")]
         public static void TestPacketBufferFIFO()
         {
-            PacketBuffer buffer = new PacketBuffer(PacketBuffer.Ordering.Fifo);
-            Assert.NotNull(buffer, "PacketBuffer " + PacketBuffer.Ordering.Fifo + " object creation failed.");
             int testSize = 64 * 1024;
             int averageChunkSize = 32; // random value will be in range [0, 2 * averageChunkSize]
             int averageSleepTime = 0; // random value will be in range [0, 2 * averageSleepTime]
@@ -34,16 +37,14 @@ namespace JuvoPlayer.Tests
             bool readingTaskSuccess = true;
             WritingTask(buffer, ref writingTaskSuccess, testSize, averageChunkSize, averageSleepTime);
             ReadingTask(buffer, ref readingTaskSuccess, testSize, averageChunkSize, averageSleepTime);
-            Assert.AreEqual(writingTaskSuccess, true, "PacketBuffer Sync " + PacketBuffer.Ordering.Fifo + " writing failed.");
-            Assert.AreEqual(readingTaskSuccess, true, "PacketBuffer Sync " + PacketBuffer.Ordering.Fifo + " reading failed.");
+            Assert.AreEqual(writingTaskSuccess, true, "PacketBuffer sync " + PacketBuffer.Ordering.Fifo + " writing failed.");
+            Assert.AreEqual(readingTaskSuccess, true, "PacketBuffer sync " + PacketBuffer.Ordering.Fifo + " reading failed.");
         }
 
         [Test]
-        [Description("Test PacketBuffer multithreaded usage (FIFO mode; Data, Pts and Dts fields test).")]
+        [Description("Test PacketBuffer multithreaded usage (FIFO mode; Data, Pts and Dts fields test; nondeterministic).")]
         public static void TestPacketBufferFIFOAsync()
         {
-            PacketBuffer buffer = new PacketBuffer(PacketBuffer.Ordering.Fifo);
-            Assert.NotNull(buffer, "PacketBuffer " + PacketBuffer.Ordering.Fifo + " object creation failed.");
             int testSize = 64 * 1024;
             int averageChunkSize = 32; // random value will be in range [0, 2 * averageChunkSize]
             int averageSleepTime = 5; // random value will be in range [0, 2 * averageSleepTime]
@@ -53,8 +54,8 @@ namespace JuvoPlayer.Tests
             Task readingTask = Task.Factory.StartNew(() => ReadingTask(buffer, ref readingTaskSuccess, testSize, averageChunkSize, averageSleepTime));
             Task[] tasks = { writingTask, readingTask };
             Task.WaitAll(tasks);
-            Assert.AreEqual(writingTaskSuccess, true, "PacketBuffer Async " + PacketBuffer.Ordering.Fifo + " writing failed.");
-            Assert.AreEqual(readingTaskSuccess, true, "PacketBuffer Async " + PacketBuffer.Ordering.Fifo + " reading failed.");
+            Assert.AreEqual(writingTaskSuccess, true, "PacketBuffer async " + PacketBuffer.Ordering.Fifo + " writing failed.");
+            Assert.AreEqual(readingTaskSuccess, true, "PacketBuffer async " + PacketBuffer.Ordering.Fifo + " reading failed.");
         }
 
         [Test]
@@ -85,9 +86,74 @@ namespace JuvoPlayer.Tests
             TestPQ(PacketBuffer.Ordering.PtsDesc);
         }
 
+        [Test]
+        [Description("Test PacketBuffer methods for Fifo mode: Peek, PeekSortingValue, AvailablePacketsCount, Count, Clear.")]
+        public static void TestPacketBufferFifoMinorMethods()
+        {
+            Assert.AreEqual(buffer.QueueOrdering, PacketBuffer.Ordering.Fifo);
+            TestMinorMethods(buffer);
+        }
+
+        [Test]
+        [Description("Test PacketBuffer methods for PtsAsc mode: Peek, PeekSortingValue, AvailablePacketsCount, Count, Clear.")]
+        public static void TestPacketBufferPtsAscMinorMethods()
+        {
+            buffer = new PacketBuffer(PacketBuffer.Ordering.PtsAsc);
+            Assert.AreEqual(buffer.QueueOrdering, PacketBuffer.Ordering.PtsAsc);
+            TestMinorMethods(buffer);
+        }
+
+        private static void TestMinorMethods(PacketBuffer buffer) // should work the same for Fifo and PtsAsc => it's not testing priority queues' implementation correctness, but other tests are, so it' enough for now
+        {
+            // Test empty buffer
+            Assert.AreEqual(buffer.Count(), 0);
+            Assert.AreEqual(buffer.AvailablePacketsCount(), 0);
+            Assert.Throws<ArgumentOutOfRangeException>(() => buffer.Peek());
+
+            // Test after some packets are enqueued
+            int testCount = 1024;
+            for (int i = 0; i < testCount; ++i)
+            {
+                StreamPacket packet = new StreamPacket();
+                packet.Pts = (ulong) (i + testCount);
+                packet.Dts = (ulong) (i + 2 * testCount);
+                packet.Data = null;
+                buffer.Enqueue(packet);
+            }
+            Assert.AreEqual(buffer.Count(), testCount);
+            Assert.AreEqual(buffer.AvailablePacketsCount(), testCount);
+            Assert.AreEqual(buffer.Peek().Pts, testCount); // first element in PtsAsc priority queue
+            Assert.AreEqual(buffer.PeekSortingValue(), testCount); // first element's pts
+
+            // Test after some packets are dequeued
+            int secondTestCount = 123;
+            for (int i = 0; i < secondTestCount; ++i)
+                buffer.Dequeue();
+            Assert.AreEqual(buffer.Count(), testCount - secondTestCount);
+            Assert.AreEqual(buffer.AvailablePacketsCount(), testCount - secondTestCount);
+            Assert.AreEqual(buffer.Peek().Pts, testCount + secondTestCount); // first element in PtsAsc priority queue
+            Assert.AreEqual(buffer.PeekSortingValue(), testCount + secondTestCount); // first element's pts
+
+            // Test cleared buffer
+            buffer.Clear();
+            Assert.AreEqual(buffer.Count(), 0);
+            Assert.AreEqual(buffer.AvailablePacketsCount(), 0);
+            Assert.Throws<ArgumentOutOfRangeException>(() => buffer.Peek());
+        }
+
+        [Test]
+        [Description("Test PacketBuffer thresholds' test.")]
+        public static void TestPacketBufferThresholds()
+        {
+            // TODO(g.skowinski): Implement such test.
+            //                    Must be done with at least 2 threads since not meeting threshold requirements blocks inside called Enqueue/Dequeue method.
+            //                    But thresholds are not used right now, so tests can be written latter.
+            //                    Or the threshold functionality can be removed if it won't be used.
+        }
+
         private static void TestPQ(PacketBuffer.Ordering ordering)
         {
-            PacketBuffer buffer = new PacketBuffer(ordering);
+            buffer = new PacketBuffer(ordering);
             Assert.NotNull(buffer, "PacketBuffer " + ordering + " object creation failed.");
             int testSize = 1024;
             int averageChunkSize = 16; // random value will be in range [0, 2 * averageChunkSize]
@@ -99,8 +165,8 @@ namespace JuvoPlayer.Tests
             Task readingTask = Task.Factory.StartNew(() => ReadingTaskPQ(buffer, ref readingTaskSuccess, testSize, averageChunkSize, averageSleepTime, ordering, lockPQ));
             Task[] tasks = { writingTask, readingTask };
             Task.WaitAll(tasks);
-            Assert.AreEqual(writingTaskSuccess, true, "PacketBuffer Async " + ordering + " writing failed.");
-            Assert.AreEqual(readingTaskSuccess, true, "PacketBuffer Async " + ordering + " reading failed.");
+            Assert.AreEqual(writingTaskSuccess, true, "PacketBuffer async " + ordering + " writing failed.");
+            Assert.AreEqual(readingTaskSuccess, true, "PacketBuffer async " + ordering + " reading failed.");
         }
 
         private static void WritingTaskPQ(PacketBuffer buffer, ref bool success, int size, int averageChunkSize, int averageSleepTime, PacketBuffer.Ordering ordering, object lockPQ)

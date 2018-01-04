@@ -123,12 +123,19 @@ namespace JuvoPlayer.Common {
             }
         }
 
-        static readonly object _locker = new object();
-        private ByteArrayQueue buffer = new ByteArrayQueue();
+        private readonly object _locker = new object();
+        private readonly ByteArrayQueue buffer = new ByteArrayQueue();
 
-        public bool EndOfData { get; set; } = false;
+        public bool EndOfData { get; set; }
 
-        public SharedBuffer() {
+        public SharedBuffer()
+        {
+            EndOfData = false;
+        }
+
+        public ulong Length()
+        {
+                return (ulong) buffer.Length;
         }
 
         public void ClearData() {
