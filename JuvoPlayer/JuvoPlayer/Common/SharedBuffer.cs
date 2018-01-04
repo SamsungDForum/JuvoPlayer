@@ -153,13 +153,14 @@ namespace JuvoPlayer.Common {
             }
         }
 
-        // SharedBuffer::ReadData(int size) is blocking - it will block until it has enough data or return less data if EOF is reached.
+        // SharedBuffer::ReadData(int size) is blocking - it will block until buffor is not empty or if EOF is reached.
+        // It may return less data then requested if there is not enough data in the buffor, but the buffor is not empty.
         // Returns byte array of leading [size] bytes of data from the buffer; it should remove the leading [size] bytes of data from the buffer.
         public byte[] ReadData(int size) {
             Log.Info("JuvoPlayer", "SharedBuffer::ReadData(" + size + ") IN");
             lock (_locker) {
                 while (true) {
-                    if (buffer.Length >= size || EndOfData == true) {
+                    if (buffer.Length > 0 || EndOfData == true) {
                         long dsize = Math.Min(buffer.Length, size);
                         byte[] temp = new byte[dsize]; // should be optimized later by removing excessive copying
                         buffer.Pop(temp, 0, (int)dsize);
