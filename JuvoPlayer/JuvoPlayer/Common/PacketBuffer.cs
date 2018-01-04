@@ -17,7 +17,7 @@ using System.Threading;
 using Tizen;
 
 namespace JuvoPlayer.Common {
-    class PacketBuffer {
+    public class PacketBuffer {
 
         private List<StreamPacket> data;
 
@@ -31,9 +31,9 @@ namespace JuvoPlayer.Common {
 
         public int MinimumSizeThreshold { get; set; }
         public int MaximumSizeThreshold { get; set; }
-        private Ordering QueueOrdering { get; set; }
+        public Ordering QueueOrdering { get; } // reconstructing heap isn't implemented, so ordering type cannot be changed on the fly => that's why it's get-only auto-property
 
-        AutoResetEvent bufferFull, bufferEmpty, bufferPeek;
+        private readonly AutoResetEvent bufferFull, bufferEmpty, bufferPeek;
 
         public PacketBuffer(Ordering queueOrdering = Ordering.Fifo, int minimumSizeThreshold = 0, int maximumSizeThreshold = int.MaxValue) {
             data = new List<StreamPacket>();
@@ -115,7 +115,7 @@ namespace JuvoPlayer.Common {
             }
         }
 
-        public void Flush() {
+        public void Clear() {
             lock (data) {
                 data = new List<StreamPacket>();
             }
@@ -150,8 +150,7 @@ namespace JuvoPlayer.Common {
             }
         }
 
-
-        public ulong PeekSortingValue() {
+        public ulong PeekSortingValue() { // blocks if buffer is empty!
             for (; true; bufferPeek.WaitOne()) {
                 lock (data) {
                     if (data.Count - MinimumSizeThreshold > 0) {
@@ -170,27 +169,5 @@ namespace JuvoPlayer.Common {
                 }
             }
         }
-
-        /*
-        public bool IsConsistent() {
-            lock (data) {
-                if (QueueOrdering == Ordering.Fifo)
-                    return true;
-                if (data.Count == 0)
-                    return true;
-                int lastIndex = data.Count - 1;
-                for (int parentIndex = 0; parentIndex < data.Count; ++parentIndex) {
-                    int leftChildIndex = 2 * parentIndex + 1;
-                    int rightChildIndex = 2 * parentIndex + 2;
-
-                    if (leftChildIndex <= lastIndex && Compare(data[parentIndex], data[leftChildIndex]) > 0)
-                        return false;
-                    if (rightChildIndex <= lastIndex && Compare(data[parentIndex], data[rightChildIndex]) > 0)
-                        return false;
-                }
-                return true;
-            }
-        }
-        */
     }
 }
