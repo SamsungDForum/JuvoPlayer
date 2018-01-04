@@ -77,7 +77,7 @@ namespace JuvoPlayer.Tests
         //[Property("COVPARAM", " ")]
         public static void DeserializeJsonText_ThrowsInvalid()
         {
-            Assert.Throws<Exception>(() => JSONFileReader.DeserializeJsonText<List<ClipDefinition>>("invalid"));
+            Assert.Throws<Newtonsoft.Json.JsonReaderException>(() => JSONFileReader.DeserializeJsonText<List<ClipDefinition>>("invalid"));
         }
 
         [Test]
@@ -109,7 +109,7 @@ namespace JuvoPlayer.Tests
             Assert.IsNotNull(clips[1].Subtitles[0]);
             Assert.AreEqual(clips[1].Subtitles[0].Subtitle, "./subs/sample_cyrilic.srt");
             Assert.AreEqual(clips[1].Subtitles[0].Encoding, "windows-1251");
-            Assert.AreEqual(clips[1].Subtitles[0].Language, "en(external)");
+            Assert.AreEqual(clips[1].Subtitles[0].Language, "en (external)");
             Assert.AreEqual(clips[1].Subtitles[0].IsActive, true);
             Assert.AreEqual(clips[1].Subtitles[0].Id, "11");
         }
