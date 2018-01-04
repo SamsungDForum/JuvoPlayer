@@ -15,6 +15,7 @@ using JuvoPlayer.Common;
 using System;
 using System.IO;
 using System.Runtime.InteropServices;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using Tizen;
@@ -55,6 +56,21 @@ namespace JuvoPlayer.FFmpeg
             try {
                 FFmpeg.Initialize(libPath);
                 FFmpeg.av_register_all(); // TODO(g.skowinski): Is registering multiple times unwanted or doesn't it matter?
+
+                FFmpeg.av_log_set_level(56);
+                av_log_set_callback_callback logCallback = (p0, level, format, vl) =>
+                {
+                    if (level > FFmpeg.av_log_get_level()) return;
+
+                    var lineSize = 1024;
+                    var lineBuffer = stackalloc byte[lineSize];
+                    var printPrefix = 1;
+                    FFmpeg.av_log_format_line(p0, level, format, vl, lineBuffer, lineSize, &printPrefix);
+                    var line = Marshal.PtrToStringAnsi((IntPtr)lineBuffer);
+
+                    Log.Info("JuvoPlayer", line);
+                };
+                FFmpeg.av_log_set_callback(logCallback);
             }
             catch (Exception) {
                 Log.Info("JuvoPlayer", "Could not load and register FFmpeg library!");
@@ -90,8 +106,8 @@ namespace JuvoPlayer.FFmpeg
 
             buffer = (byte*)FFmpeg.av_mallocz((ulong)bufferSize); // let's try AllocHGlobal later on
             var readFunction = new avio_alloc_context_read_packet_func { Pointer = Marshal.GetFunctionPointerForDelegate(ReadFunctionDelegate) };
-            var writeFunction = new avio_alloc_context_write_packet_func { Pointer = Marshal.GetFunctionPointerForDelegate(WriteFunctionDelegate) };
-            var seekFunction = new avio_alloc_context_seek_func { Pointer = Marshal.GetFunctionPointerForDelegate(SeekFunctionDelegate) };
+            var writeFunction = new avio_alloc_context_write_packet_func { Pointer = IntPtr.Zero };
+            var seekFunction = new avio_alloc_context_seek_func { Pointer = IntPtr.Zero };
 
             ioContext = FFmpeg.avio_alloc_context(buffer,
                                                  bufferSize,
@@ -117,7 +133,7 @@ namespace JuvoPlayer.FFmpeg
             }
 
             fixed (AVFormatContext** formatContextPointer = &formatContext) {
-                ret = FFmpeg.avformat_open_input(formatContextPointer, "", null, null);
+                ret = FFmpeg.avformat_open_input(formatContextPointer, null, null, null);
             }
             if (ret != 0) {
                 Log.Info("JuvoPlayer", "Could not parse input data: " + GetErrorText(ret));
@@ -514,7 +530,8 @@ namespace JuvoPlayer.FFmpeg
             catch (Exception) {
                 return 0;
             }
-            byte[] data = sharedBuffer.ReadData(buf_size); // SharedBuffer::ReadData(int size) is blocking - it will block until it has enough data or return less data if EOF is reached
+            // SharedBuffer::ReadData(int size) is blocking - it will block until it has data or return 0 if EOF is reached
+            byte[] data = sharedBuffer.ReadData(buf_size);
             Marshal.Copy(data, 0, (IntPtr)buf, data.Length);
             return data.Length;
         }
