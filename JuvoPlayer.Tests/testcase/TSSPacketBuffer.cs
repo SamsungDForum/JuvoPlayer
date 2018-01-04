@@ -17,7 +17,6 @@ namespace JuvoPlayer.Tests
         public static void Init()
         {
             buffer = new PacketBuffer(PacketBuffer.Ordering.Fifo);
-            Assert.NotNull(buffer, "PacketBuffer " + PacketBuffer.Ordering.Fifo + " object creation failed.");
         }
 
         [TearDown]
@@ -30,6 +29,7 @@ namespace JuvoPlayer.Tests
         [Description("Test PacketBuffer singlethreaded usage (write all, then read all; FIFO mode; Data, Pts and Dts fields test; nondeterministic).")]
         public static void TestPacketBufferFIFO()
         {
+            Assert.NotNull(buffer, "PacketBuffer object creation failed.");
             int testSize = 64 * 1024;
             int averageChunkSize = 32; // random value will be in range [0, 2 * averageChunkSize]
             int averageSleepTime = 0; // random value will be in range [0, 2 * averageSleepTime]
@@ -45,6 +45,7 @@ namespace JuvoPlayer.Tests
         [Description("Test PacketBuffer multithreaded usage (FIFO mode; Data, Pts and Dts fields test; nondeterministic).")]
         public static void TestPacketBufferFIFOAsync()
         {
+            Assert.NotNull(buffer, "PacketBuffer object creation failed.");
             int testSize = 64 * 1024;
             int averageChunkSize = 32; // random value will be in range [0, 2 * averageChunkSize]
             int averageSleepTime = 5; // random value will be in range [0, 2 * averageSleepTime]
@@ -62,6 +63,7 @@ namespace JuvoPlayer.Tests
         [Description("Test PacketBuffer multithreaded usage (DtsAsc mode).")]
         public static void TestPacketBufferDtsAscAsync()
         {
+            Assert.NotNull(buffer, "PacketBuffer object creation failed.");
             TestPQ(PacketBuffer.Ordering.DtsAsc);
         }
 
@@ -69,6 +71,7 @@ namespace JuvoPlayer.Tests
         [Description("Test PacketBuffer multithreaded usage (PtsAsc mode).")]
         public static void TestPacketBufferPtsAscAsync()
         {
+            Assert.NotNull(buffer, "PacketBuffer object creation failed.");
             TestPQ(PacketBuffer.Ordering.PtsAsc);
         }
 
@@ -76,6 +79,7 @@ namespace JuvoPlayer.Tests
         [Description("Test PacketBuffer multithreaded usage (DtsDesc mode).")]
         public static void TestPacketBufferDtsDescAsync()
         {
+            Assert.NotNull(buffer, "PacketBuffer object creation failed.");
             TestPQ(PacketBuffer.Ordering.DtsDesc);
         }
 
@@ -83,6 +87,7 @@ namespace JuvoPlayer.Tests
         [Description("Test PacketBuffer multithreaded usage (PtsDesc mode).")]
         public static void TestPacketBufferPtsDescAsync()
         {
+            Assert.NotNull(buffer, "PacketBuffer object creation failed.");
             TestPQ(PacketBuffer.Ordering.PtsDesc);
         }
 
@@ -90,6 +95,7 @@ namespace JuvoPlayer.Tests
         [Description("Test PacketBuffer methods for Fifo mode: Peek, PeekSortingValue, AvailablePacketsCount, Count, Clear.")]
         public static void TestPacketBufferFifoMinorMethods()
         {
+            Assert.NotNull(buffer, "PacketBuffer object creation failed.");
             Assert.AreEqual(buffer.QueueOrdering, PacketBuffer.Ordering.Fifo);
             TestMinorMethods(buffer);
         }
@@ -99,6 +105,7 @@ namespace JuvoPlayer.Tests
         public static void TestPacketBufferPtsAscMinorMethods()
         {
             buffer = new PacketBuffer(PacketBuffer.Ordering.PtsAsc);
+            Assert.NotNull(buffer, "PacketBuffer object creation failed.");
             Assert.AreEqual(buffer.QueueOrdering, PacketBuffer.Ordering.PtsAsc);
             TestMinorMethods(buffer);
         }
@@ -145,6 +152,7 @@ namespace JuvoPlayer.Tests
         [Description("Test PacketBuffer thresholds' test.")]
         public static void TestPacketBufferThresholds()
         {
+            Assert.NotNull(buffer, "PacketBuffer object creation failed.");
             // TODO(g.skowinski): Implement such test.
             //                    Must be done with at least 2 threads since not meeting threshold requirements blocks inside called Enqueue/Dequeue method.
             //                    But thresholds are not used right now, so tests can be written latter.
