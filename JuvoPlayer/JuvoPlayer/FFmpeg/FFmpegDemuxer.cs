@@ -26,6 +26,7 @@ namespace JuvoPlayer.FFmpeg
     public class FFmpegDemuxer : IDemuxer
     {
         public event Common.ClipDurationChanged ClipDuration;
+        public event Common.DRMDataFound DRMDataFound;
         public event Common.StreamConfigReady StreamConfigReady;
         public event Common.StreamPacketReady StreamPacketReady;
 
@@ -200,6 +201,7 @@ namespace JuvoPlayer.FFmpeg
             try {
                 initAction(); // Finish more time-consuming init things
                 FindStreamsInfo();
+                UpdateContentProtectionConfig();
                 ReadAudioConfig();
                 ReadVideoConfig();
             }
@@ -334,6 +336,29 @@ namespace JuvoPlayer.FFmpeg
             DeallocFFmpeg();
         }
 
+        unsafe private void UpdateContentProtectionConfig()
+        {            
+            if (formatContext->protection_system_data_count <= 0)
+                return;
+
+            for (uint i = 0; i < formatContext->protection_system_data_count; ++i)
+            {
+                AVProtectionSystemSpecificData systemData = formatContext->protection_system_data[i];
+                if (systemData.pssh_box_size > 0)
+                {
+                    var drmData = new DRMData
+                    {
+                        systemId = systemData.system_id.ToArray(),
+                        initData = new byte[systemData.pssh_box_size]
+                    };
+
+                    Marshal.Copy((IntPtr)systemData.pssh_box, drmData.initData, 0, (int)systemData.pssh_box_size);
+
+                    DRMDataFound?.Invoke(drmData);
+                }
+            }
+        }
+
         unsafe private void ReadAudioConfig()
         {
             if (audio_idx < 0 || audio_idx >= formatContext->nb_streams) {
@@ -370,7 +395,7 @@ namespace JuvoPlayer.FFmpeg
             // s->time_base.den
             // s->time_base.num
 
-                Log.Info("JuvoPlayer", "Setting audio stream to " + audio_idx.ToString() + "/" + formatContext->nb_streams.ToString());
+            Log.Info("JuvoPlayer", "Setting audio stream to " + audio_idx.ToString() + "/" + formatContext->nb_streams.ToString());
             Log.Info("JuvoPlayer", "  Codec = " + config.Codec.ToString());
             Log.Info("JuvoPlayer", "  BitsPerChannel = " + config.BitsPerChannel.ToString());
             Log.Info("JuvoPlayer", "  ChannelLayout = " + config.ChannelLayout.ToString());
