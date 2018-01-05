@@ -759,7 +759,10 @@ namespace JuvoPlayer.FFmpeg
         @AV_PKT_DATA_MPEGTS_STREAM_ID = 78,
         @AV_PKT_DATA_MASTERING_DISPLAY_METADATA = 79,
         @AV_PKT_DATA_SPHERICAL = 80,
-        @AV_PKT_DATA_NB = 81,
+        @AV_PKT_DATA_CONTENT_LIGHT_LEVEL = 81,
+        @AV_PKT_DATA_A53_CC = 82,
+        @AV_PKT_DATA_ENCRYPT_INFO = 83,
+        @AV_PKT_DATA_NB = 84,
     }
 
     public enum AVPictureStructure : int
