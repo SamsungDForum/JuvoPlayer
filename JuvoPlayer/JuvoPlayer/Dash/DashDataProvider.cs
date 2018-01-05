@@ -20,31 +20,23 @@ namespace JuvoPlayer.Dash
             this.audioPipeline = audioPipeline ?? throw new ArgumentNullException(nameof(audioPipeline), "audioPipeline cannot be null");
             this.videoPipeline = videoPipeline ?? throw new ArgumentNullException(nameof(videoPipeline), "videoPipeline cannot be null");
 
-            audioPipeline.DRMInitDataFound += OnDRMInitDataFound;
-            audioPipeline.SetDrmConfiguration += OnSetDrmConfiguration;
+            audioPipeline.DRMDataFound += OnDRMDataFound;
             audioPipeline.StreamConfigReady += OnStreamConfigReady;
             audioPipeline.StreamPacketReady += OnStreamPacketReady;
-            videoPipeline.DRMInitDataFound += OnDRMInitDataFound;
-            videoPipeline.SetDrmConfiguration += OnSetDrmConfiguration;
+            videoPipeline.DRMDataFound += OnDRMDataFound;
             videoPipeline.StreamConfigReady += OnStreamConfigReady;
             videoPipeline.StreamPacketReady += OnStreamPacketReady;
         }
 
         public event ClipDurationChanged ClipDurationChanged;
-        public event DRMInitDataFound DRMInitDataFound;
-        public event SetDrmConfiguration SetDrmConfiguration;
+        public event DRMDataFound DRMDataFound;
         public event StreamConfigReady StreamConfigReady;
         public event StreamPacketReady StreamPacketReady;
         public event StreamsFound StreamsFound;
 
-        private void OnDRMInitDataFound(DRMInitData drmData)
+        private void OnDRMDataFound(DRMData drmData)
         {
-            DRMInitDataFound?.Invoke(drmData);
-        }
-
-        private void OnSetDrmConfiguration(DRMDescription description)
-        {
-            SetDrmConfiguration?.Invoke(description);
+            DRMDataFound?.Invoke(drmData);
         }
 
         private void OnStreamConfigReady(StreamConfig config)
@@ -81,33 +73,38 @@ namespace JuvoPlayer.Dash
         public void Start()
         {
             Tizen.Log.Info("JuvoPlayer", "Dash start.");
+
+            Media audio = null;
+            Media video = null;
             
             foreach (var period in manifest.Document.Periods)
             {
                 Tizen.Log.Info("JuvoPlayer", period.ToString());
 
-                Media audio = Find(period, "en", MediaType.Audio) ??
+                if (audio == null)
+                {
+                    audio = Find(period, "en", MediaType.Audio) ??
                         Find(period, "und", MediaType.Audio);
 
-                Media video = Find(period, "en", MediaType.Video) ??
-                        Find(period, "und", MediaType.Video);
-
-                // TODO(p.galiszewsk): is it possible to have period without audio/video?
-                if (audio != null && video != null)
+                }
+                if (video == null)
                 {
-                    Tizen.Log.Info("JuvoPlayer", "Video: " + video);
-                    videoPipeline.Start(video);
-
-                    Tizen.Log.Info("JuvoPlayer", "Audio: " + audio);
-                    audioPipeline.Start(audio);
-
-                    // TODO(p.galiszewsk): unify time management
-                    if (period.Duration.HasValue)
-                        ClipDurationChanged?.Invoke(period.Duration.Value.TotalSeconds);
-
-                    return;
+                    video = Find(period, "en", MediaType.Video) ??
+                        Find(period, "und", MediaType.Video);
                 }
             }
+
+            if (video != null)
+            {
+                Tizen.Log.Info("JuvoPlayer", "Video: " + video);
+                videoPipeline.Start(video);
+            }
+
+            if (audio != null)
+            {
+                Tizen.Log.Info("JuvoPlayer", "Audio: " + audio);
+                audioPipeline.Start(audio);
+            }            
         }
 
         private static Media Find(MpdParser.Period p, string language, MediaType type, MediaRole role = MediaRole.Main)
