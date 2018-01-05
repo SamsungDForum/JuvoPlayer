@@ -73,38 +73,33 @@ namespace JuvoPlayer.Dash
         public void Start()
         {
             Tizen.Log.Info("JuvoPlayer", "Dash start.");
-
-            Media audio = null;
-            Media video = null;
             
             foreach (var period in manifest.Document.Periods)
             {
                 Tizen.Log.Info("JuvoPlayer", period.ToString());
 
-                if (audio == null)
-                {
-                    audio = Find(period, "en", MediaType.Audio) ??
+                Media audio = Find(period, "en", MediaType.Audio) ??
                         Find(period, "und", MediaType.Audio);
 
-                }
-                if (video == null)
-                {
-                    video = Find(period, "en", MediaType.Video) ??
+                Media video = Find(period, "en", MediaType.Video) ??
                         Find(period, "und", MediaType.Video);
+
+                // TODO(p.galiszewsk): is it possible to have period without audio/video?
+                if (audio != null && video != null)
+                {
+                    Tizen.Log.Info("JuvoPlayer", "Video: " + video);
+                    videoPipeline.Start(video);
+
+                    Tizen.Log.Info("JuvoPlayer", "Audio: " + audio);
+                    audioPipeline.Start(audio);
+
+                    // TODO(p.galiszewsk): unify time management
+                    if (period.Duration.HasValue)
+                        ClipDurationChanged?.Invoke(period.Duration.Value.TotalSeconds);
+
+                    return;
                 }
-            }
-
-            if (video != null)
-            {
-                Tizen.Log.Info("JuvoPlayer", "Video: " + video);
-                videoPipeline.Start(video);
-            }
-
-            if (audio != null)
-            {
-                Tizen.Log.Info("JuvoPlayer", "Audio: " + audio);
-                audioPipeline.Start(audio);
-            }            
+            }           
         }
 
         private static Media Find(MpdParser.Period p, string language, MediaType type, MediaRole role = MediaRole.Main)
