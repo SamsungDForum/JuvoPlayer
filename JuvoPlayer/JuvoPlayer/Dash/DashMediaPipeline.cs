@@ -11,6 +11,7 @@ namespace JuvoPlayer.Dash
     {
         public event StreamConfigReady StreamConfigReady;
         public event StreamPacketReady StreamPacketReady;
+        public event DRMDataFound DRMDataFound;
 
         private IDashClient dashClient;
         private IDemuxer demuxer;
@@ -22,12 +23,13 @@ namespace JuvoPlayer.Dash
             this.demuxer = demuxer ?? throw new ArgumentNullException(nameof(dashClient), "demuxer cannot be null");
             this.streamType = streamType;
 
+            demuxer.DRMDataFound += OnDrmDataFound;
             demuxer.StreamConfigReady += OnStreamConfigReady;
             demuxer.StreamPacketReady += OnStreamPacketReady;
         }
 
         public void Start(Media newMedia)
-        {   
+        {
             if (newMedia == null)
                 throw new ArgumentNullException(nameof(newMedia), "newMedia cannot be null");
 
@@ -41,6 +43,12 @@ namespace JuvoPlayer.Dash
         public void OnTimeUpdated(double time)
         {
             dashClient.OnTimeUpdated(time);
+        }
+
+        private void OnDrmDataFound(DRMData drmData)
+        {
+            drmData.streamType = streamType;
+            DRMDataFound?.Invoke(drmData);
         }
 
         private void OnStreamPacketReady(StreamPacket packet)

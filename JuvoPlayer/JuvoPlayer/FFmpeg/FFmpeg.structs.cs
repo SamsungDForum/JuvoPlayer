@@ -278,6 +278,21 @@ namespace JuvoPlayer.FFmpeg
         public System.Int64 @convergence_duration;
     }
 
+    public unsafe struct AVEncBytes
+    {
+        public uint @bytes_of_clear_data;
+        public uint @bytes_of_enc_data;
+    }
+
+    public unsafe struct AVEncInfo
+    {
+        public byte @iv_size;
+        public byte_array16 @iv;
+        public byte_array16 @kid;
+        public byte @subsample_count;
+        public AVEncBytes* @subsamples;
+    }
+
     public unsafe struct AVCodecContext
     {
         public AVClass* @av_class;
@@ -860,6 +875,13 @@ namespace JuvoPlayer.FFmpeg
         public AVOutputFormat_check_bitstream_func @check_bitstream;
     }
 
+    public unsafe struct AVProtectionSystemSpecificData
+    {
+        public byte_array16 @system_id;
+        public byte* @pssh_box;
+        public uint @pssh_box_size;
+    }
+
     public unsafe struct AVFormatContext
     {
         public AVClass* @av_class;
@@ -934,6 +956,8 @@ namespace JuvoPlayer.FFmpeg
         public AVFormatContext_io_close_func @io_close;
         public byte* @protocol_blacklist;
         public int @max_streams;
+        public AVProtectionSystemSpecificData* @protection_system_data;
+        public uint @protection_system_data_count;
     }
 
     public unsafe struct AVInputFormat

@@ -15,5 +15,8 @@ namespace JuvoPlayer.Common
 {
     public class DRMData
     {
+        public byte[] initData = null;
+        public byte[] systemId = null;
+        public StreamType streamType { get; set; }
     }
 }

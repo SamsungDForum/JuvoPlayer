@@ -20,8 +20,10 @@ namespace JuvoPlayer.Dash
             this.audioPipeline = audioPipeline ?? throw new ArgumentNullException(nameof(audioPipeline), "audioPipeline cannot be null");
             this.videoPipeline = videoPipeline ?? throw new ArgumentNullException(nameof(videoPipeline), "videoPipeline cannot be null");
 
+            audioPipeline.DRMDataFound += OnDRMDataFound;
             audioPipeline.StreamConfigReady += OnStreamConfigReady;
             audioPipeline.StreamPacketReady += OnStreamPacketReady;
+            videoPipeline.DRMDataFound += OnDRMDataFound;
             videoPipeline.StreamConfigReady += OnStreamConfigReady;
             videoPipeline.StreamPacketReady += OnStreamPacketReady;
         }
@@ -31,6 +33,11 @@ namespace JuvoPlayer.Dash
         public event StreamConfigReady StreamConfigReady;
         public event StreamPacketReady StreamPacketReady;
         public event StreamsFound StreamsFound;
+
+        private void OnDRMDataFound(DRMData drmData)
+        {
+            DRMDataFound?.Invoke(drmData);
+        }
 
         private void OnStreamConfigReady(StreamConfig config)
         {
@@ -97,7 +104,7 @@ namespace JuvoPlayer.Dash
             {
                 Tizen.Log.Info("JuvoPlayer", "Audio: " + audio);
                 audioPipeline.Start(audio);
-            }
+            }            
         }
 
         private static Media Find(MpdParser.Period p, string language, MediaType type, MediaRole role = MediaRole.Main)
