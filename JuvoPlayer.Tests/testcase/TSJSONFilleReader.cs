@@ -17,7 +17,17 @@ namespace JuvoPlayer.Tests
             ""url"": ""http://yt-dash-mse-test.commondatastorage.googleapis.com/media/oops_cenc-20121114-signedlicenseurl-manifest.mpd"",
             ""type"": ""dash"",
             ""poster"": ""front/img/oops.jpg"",
-            ""description"": ""This is clip with DASH content with DRM. User can choose desired video/audio representation""
+            ""description"": ""This is clip with DASH content with DRM. User can choose desired video/audio representation"",
+            ""drmDatas"": [
+              {
+                ""scheme"": ""playready"",
+                ""licenceUrl"": ""http://drm-playready-licensing.axtest.net/AcquireLicense"",
+                ""keyRequestProperties"": {
+                   ""Content-Type"": ""text/xml; charset=utf-8"",
+                   ""X-AxDRM-Message"": ""eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ2ZXJzaW9uIjoxLCJjb21fa2V5X2lkIjoiNjllNTQwODgtZTllMC00NTMwLThjMWEtMWViNmRjZDBkMTRlIiwibWVzc2FnZSI6eyJ0eXBlIjoiZW50aXRsZW1lbnRfbWVzc2FnZSIsImtleXMiOlt7ImlkIjoiMTUzMGQzYTAtNjkwNC00NDZhLTkxYTEtMzNhMTE1YWE4YzQxIn0seyJpZCI6ImM4M2ViNjM5LWU2NjQtNDNmOC1hZTk4LTQwMzliMGMxM2IyZCJ9LHsiaWQiOiIzZDhjYzc2Mi0yN2FjLTQwMGYtOTg5Zi04YWI1ZGM3ZDc3NzUifSx7ImlkIjoiYmQ4ZGFkNTgtMDMyZC00YzI1LTg5ZmEtYzdiNzEwZTgyYWMyIn1dfX0.9t18lFmZFVHMzpoZxYDyqOS0Bk_evGhTBw_F2JnAK2k"",
+                },
+              }
+            ]
           },
           {
             ""title"": ""Big Buck Bunny mp4"",
@@ -96,6 +106,12 @@ namespace JuvoPlayer.Tests
             Assert.AreEqual(clips[0].Type, "dash");
             Assert.AreEqual(clips[0].Poster, "front/img/oops.jpg");
             Assert.AreEqual(clips[0].Description, "This is clip with DASH content with DRM. User can choose desired video/audio representation");
+            Assert.IsNotNull(clips[0].DRMDatas);
+            Assert.AreEqual(clips[0].DRMDatas.Count, 1, "wrong drm data count");
+            Assert.AreEqual(clips[0].DRMDatas[0].Scheme, "playready");
+            Assert.AreEqual(clips[0].DRMDatas[0].LicenceUrl, "http://drm-playready-licensing.axtest.net/AcquireLicense");
+            Assert.IsNotNull(clips[0].DRMDatas[0].KeyRequestProperties);
+            Assert.AreEqual(clips[0].DRMDatas[0].KeyRequestProperties.Count, 2, "wrong drm key properties count");
             Assert.IsNull(clips[0].Subtitles);
 
             Assert.IsNotNull(clips[1]);
@@ -104,6 +120,7 @@ namespace JuvoPlayer.Tests
             Assert.AreEqual(clips[1].Type, "url");
             Assert.AreEqual(clips[1].Poster, "front/img/bunny.jpg");
             Assert.AreEqual(clips[1].Description, "This is clip played directly from URL");
+            Assert.IsNull(clips[0].DRMDatas);
             Assert.IsNotNull(clips[1].Subtitles);
             Assert.AreEqual(clips[1].Subtitles.Count, 2, "wrong subtitles count");
             Assert.IsNotNull(clips[1].Subtitles[0]);
