@@ -65,6 +65,13 @@ namespace MpdParser.Xml
         }
     };
 
+    public class InnerXml : System.Attribute
+    {
+        public InnerXml()
+        {
+        }
+    }
+
     public class InnerText : System.Attribute
     {
         public InnerText()
@@ -321,6 +328,11 @@ namespace MpdParser.Xml
                     else if (attr is InnerText)
                     {
                         Node.Internal.SetValue(prop, result, InnerText(reader));
+                        return;
+                    }
+                    else if (attr is InnerXml)
+                    {
+                        Node.Internal.SetValue(prop, result, reader.ReadInnerXml().Trim());
                         return;
                     }
                 }
