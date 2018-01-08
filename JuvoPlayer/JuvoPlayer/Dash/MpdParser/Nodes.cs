@@ -166,6 +166,14 @@ namespace MpdParser.Node
         [Xml.Element] public Descriptor[] Viewpoints { get; internal set; }
     }
 
+    public class ContentProtection
+    {
+        [Xml.Attribute("cenc:default_KID")] public string CencDefaultKID { get; internal set; }
+        [Xml.Attribute] public string SchemeIdUri { get; internal set; }
+        [Xml.Attribute] public string Value { get; internal set; }
+        [Xml.InnerXml] public string Data { get; internal set; }
+    }
+
     public class RepresentationBase
     {
         [Xml.Attribute] public string Profile { get; internal set; }
@@ -184,7 +192,7 @@ namespace MpdParser.Node
         [Xml.Attribute] public string ScanType { get; internal set; }
         [Xml.Element] public Descriptor[] FramePackings { get; internal set; }
         [Xml.Element] public Descriptor[] AudioChannelConfigurations { get; internal set; }
-        [Xml.Element] public Descriptor[] ContentProtections { get; internal set; }
+        [Xml.Element] public ContentProtection[] ContentProtections { get; internal set; }
         [Xml.Element] public Descriptor[] EssentialProperties { get; internal set; }
         [Xml.Element] public Descriptor[] SupplementalProperties { get; internal set; }
         [Xml.Element] public Descriptor[] InbandEventStreams { get; internal set; }

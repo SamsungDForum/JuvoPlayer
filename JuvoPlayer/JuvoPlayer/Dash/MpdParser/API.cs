@@ -238,12 +238,29 @@ namespace MpdParser
         }
     }
 
+    public class ContentProtection
+    {
+        public string CencDefaultKID { get; }
+        public string SchemeIdUri { get; }
+        public string Value { get; }
+        public string Data { get; }
+
+        public ContentProtection(Node.ContentProtection node)
+        {
+            CencDefaultKID = node.CencDefaultKID;
+            Data = node.Data;
+            SchemeIdUri = node.SchemeIdUri;
+            Value = node.Value;
+        }
+    }
+
     // a.k.a. AdaptationSet
     public class Media
     {
         public uint? Id { get; }
         public uint? Group { get; }
         public string Lang { get; }
+        public ContentProtection[] ContentProtections { get; }
         public MimeType Type { get; }
         public Role[] Roles { get; }
         public Representation[] Representations { get; }
@@ -253,6 +270,10 @@ namespace MpdParser
             Id = set.Id;
             Group = set.Group;
             Lang = set.GetLang() ?? "und";
+
+            ContentProtections = new ContentProtection[set.ContentProtections.Length];
+            for (int i = 0; i < ContentProtections.Length; ++i)
+                ContentProtections[i] = new ContentProtection(set.ContentProtections[i]); 
 
             Roles = new Role[set.Roles.Length];
             for (int i = 0; i < Roles.Length; ++i)
