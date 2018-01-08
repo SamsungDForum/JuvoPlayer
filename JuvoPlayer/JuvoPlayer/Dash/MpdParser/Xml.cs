@@ -332,7 +332,7 @@ namespace MpdParser.Xml
                     }
                     else if (attr is InnerXml)
                     {
-                        Node.Internal.SetValue(prop, result, string.Format("<xml>{0}</xml>", reader.ReadInnerXml()));
+                        Node.Internal.SetValue(prop, result, reader.ReadInnerXml().Trim());
                         return;
                     }
                 }
