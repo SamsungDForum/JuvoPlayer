@@ -99,7 +99,7 @@ namespace JuvoPlayer.Dash
 
                     return;
                 }
-            }           
+            }
         }
 
         private static Media Find(MpdParser.Period p, string language, MediaType type, MediaRole role = MediaRole.Main)
