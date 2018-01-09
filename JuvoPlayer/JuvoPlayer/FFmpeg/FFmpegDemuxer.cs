@@ -26,7 +26,7 @@ namespace JuvoPlayer.FFmpeg
     public class FFmpegDemuxer : IDemuxer
     {
         public event Common.ClipDurationChanged ClipDuration;
-        public event Common.DRMDataFound DRMDataFound;
+        public event Common.DRMInitDataFound DRMInitDataFound;
         public event Common.StreamConfigReady StreamConfigReady;
         public event Common.StreamPacketReady StreamPacketReady;
 
@@ -346,15 +346,15 @@ namespace JuvoPlayer.FFmpeg
                 AVProtectionSystemSpecificData systemData = formatContext->protection_system_data[i];
                 if (systemData.pssh_box_size > 0)
                 {
-                    var drmData = new DRMData
+                    var drmData = new DRMInitData
                     {
-                        systemId = systemData.system_id.ToArray(),
-                        initData = new byte[systemData.pssh_box_size]
+                        SystemId = systemData.system_id.ToArray(),
+                        InitData = new byte[systemData.pssh_box_size]
                     };
 
-                    Marshal.Copy((IntPtr)systemData.pssh_box, drmData.initData, 0, (int)systemData.pssh_box_size);
+                    Marshal.Copy((IntPtr)systemData.pssh_box, drmData.InitData, 0, (int)systemData.pssh_box_size);
 
-                    DRMDataFound?.Invoke(drmData);
+                    DRMInitDataFound?.Invoke(drmData);
                 }
             }
         }
