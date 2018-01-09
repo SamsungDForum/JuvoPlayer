@@ -40,7 +40,8 @@ namespace JuvoPlayer.RTSP
         }
 
         public event ClipDurationChanged ClipDurationChanged;
-        public event DRMDataFound DRMDataFound;
+        public event DRMInitDataFound DRMInitDataFound;
+        public event SetDrmConfiguration SetDrmConfiguration;
         public event StreamConfigReady StreamConfigReady;
         public event StreamPacketReady StreamPacketReady;
         public event StreamsFound StreamsFound;

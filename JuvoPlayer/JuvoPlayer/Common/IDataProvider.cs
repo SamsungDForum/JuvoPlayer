@@ -15,11 +15,12 @@ using System.Collections.Generic;
 
 namespace JuvoPlayer.Common
 {
-    public delegate void DRMDataFound(DRMData data);
+    public delegate void ClipDurationChanged(double clipDuration);
+    public delegate void DRMInitDataFound(DRMInitData data);
+    public delegate void SetDrmConfiguration(DRMDescription description);
     public delegate void StreamConfigReady(StreamConfig config);
     public delegate void StreamPacketReady(StreamPacket packet);
     public delegate void StreamsFound(List<StreamDefinition> streams);
-    public delegate void ClipDurationChanged(double clipDuration);
 
     public interface IDataProvider
     {
@@ -33,7 +34,8 @@ namespace JuvoPlayer.Common
         void Start();
 
         event ClipDurationChanged ClipDurationChanged;
-        event DRMDataFound DRMDataFound;
+        event DRMInitDataFound DRMInitDataFound;
+        event SetDrmConfiguration SetDrmConfiguration;
         event StreamConfigReady StreamConfigReady;
         event StreamPacketReady StreamPacketReady;
         event StreamsFound StreamsFound;

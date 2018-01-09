@@ -38,7 +38,8 @@ namespace JuvoPlayer.Player
 
         #region data_provider_slots
         void OnClipDurationChanged(double duration);
-        void OnDrmDataFound(DRMData data);
+        void OnDRMInitDataFound(DRMInitData data);
+        void OnSetDrmConfiguration(DRMDescription description);
         void OnStreamConfigReady(StreamConfig config);
         void OnStreamPacketReady(StreamPacket packet);
         void OnStreamsFound(List<StreamDefinition> streams);

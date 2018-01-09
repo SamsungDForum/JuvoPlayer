@@ -13,10 +13,10 @@
 
 namespace JuvoPlayer.Common
 {
-    public class DRMData
+    public class DRMInitData
     {
-        public byte[] initData = null;
-        public byte[] systemId = null;
-        public StreamType streamType { get; set; }
+        public byte[] InitData = null;
+        public byte[] SystemId = null;
+        public StreamType StreamType { get; set; }
     }
 }
