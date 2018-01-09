@@ -12,6 +12,7 @@
 // this software or its derivatives.
 
 using JuvoPlayer.Common;
+using JuvoPlayer.DRM;
 
 namespace JuvoPlayer.Player
 {
@@ -19,6 +20,6 @@ namespace JuvoPlayer.Player
     {
         void OnAppendPacket(StreamPacket packet);
         void OnClearStream();
-        void OnDRMFound(DRMData data);
+        void OnDRMFound(DRMInitData data);
     }
 }

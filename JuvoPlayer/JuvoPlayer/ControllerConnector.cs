@@ -18,7 +18,8 @@ namespace JuvoPlayer
                 return;
 
             newDataProvider.ClipDurationChanged += controller.OnClipDurationChanged;
-            newDataProvider.DRMDataFound += controller.OnDrmDataFound;
+            newDataProvider.DRMInitDataFound += controller.OnDRMInitDataFound;
+            newDataProvider.SetDrmConfiguration += controller.OnSetDrmConfiguration;
             newDataProvider.StreamConfigReady += controller.OnStreamConfigReady;
             newDataProvider.StreamPacketReady += controller.OnStreamPacketReady;
             newDataProvider.StreamsFound += controller.OnStreamsFound;
@@ -41,7 +42,8 @@ namespace JuvoPlayer
                 return;
 
             oldDataProvider.ClipDurationChanged -= controller.OnClipDurationChanged;
-            oldDataProvider.DRMDataFound -= controller.OnDrmDataFound;
+            oldDataProvider.DRMInitDataFound -= controller.OnDRMInitDataFound;
+            oldDataProvider.SetDrmConfiguration -= controller.OnSetDrmConfiguration;
             oldDataProvider.StreamConfigReady -= controller.OnStreamConfigReady;
             oldDataProvider.StreamPacketReady -= controller.OnStreamPacketReady;
             oldDataProvider.StreamsFound -= controller.OnStreamsFound;

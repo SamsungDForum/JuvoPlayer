@@ -12,18 +12,22 @@
 // this software or its derivatives.
 
 using JuvoPlayer.Common;
+using JuvoPlayer.DRM;
 using System;
 
 namespace JuvoPlayer.Player
 {
     public class VideoPacketStream : IPacketStream
     {
+        private IDRMManager drmManager;
+        private IDRMSession drmSession;
         private IPlayerAdapter playerAdapter;
         private StreamConfig config;
 
-        public VideoPacketStream(IPlayerAdapter player, StreamConfig config)
+        public VideoPacketStream(IPlayerAdapter player, IDRMManager drmManager, StreamConfig config)
         {
-            playerAdapter = player ?? throw new ArgumentNullException("player cannot be null");
+            this.drmManager = drmManager ?? throw new ArgumentNullException("drmManager cannot be null");
+            this.playerAdapter = player ?? throw new ArgumentNullException("player cannot be null");
             this.config = config ?? throw new ArgumentNullException("config cannot be null");
 
             if (!(config is VideoStreamConfig))
@@ -37,6 +41,9 @@ namespace JuvoPlayer.Player
             if (packet.StreamType != StreamType.Video)
                 throw new ArgumentException("packet should be video");
 
+            if (drmSession != null)
+                packet = drmSession.DecryptPacket(packet);
+
             playerAdapter.AppendPacket(packet);
         }
 
@@ -45,9 +52,15 @@ namespace JuvoPlayer.Player
 
         }
 
-        public void OnDRMFound(DRMData data)
+        public void OnDRMFound(DRMInitData data)
         {
+            if (drmSession == null)
+                drmSession = drmManager.CreateDRMSession(data);
+            else
+                drmSession.UpdateSession(data);
 
+            if (drmSession == null)
+                Tizen.Log.Info("JuvoPlayer", "unknown drm");
         }
     }
 }

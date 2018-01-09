@@ -11,11 +11,12 @@ namespace JuvoPlayer.Tests
     {
         private class FakeDataProvider : IDataProvider
         {
-            public event DRMDataFound DRMDataFound;
+            public event ClipDurationChanged ClipDurationChanged;
+            public event DRMInitDataFound DRMInitDataFound;
+            public event SetDrmConfiguration SetDrmConfiguration;
             public event StreamConfigReady StreamConfigReady;
             public event StreamPacketReady StreamPacketReady;
             public event StreamsFound StreamsFound;
-            public event ClipDurationChanged ClipDurationChanged;
 
             public void OnChangeRepresentation(int representationId)
             {
