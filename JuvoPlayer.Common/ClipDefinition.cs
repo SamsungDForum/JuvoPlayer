@@ -25,8 +25,9 @@ namespace JuvoPlayer.Common
 
     }
 
-    public class DRMData
+    public class DRMDescription
     {
+        public string InitData { get; set; }
         public string Scheme { get; set; }
         public string LicenceUrl { get; set; }
         public Dictionary<string, string> KeyRequestProperties { get; set; }
@@ -40,6 +41,6 @@ namespace JuvoPlayer.Common
         public List<SubtitleInfo> Subtitles { get; set; }
         public string Poster { get; set; }
         public string Description { get; set; }
-        public List<DRMData> DRMDatas { get; set; }
+        public List<DRMDescription> DRMDatas { get; set; }
     }
 }

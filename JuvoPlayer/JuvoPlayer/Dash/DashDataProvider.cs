@@ -20,23 +20,31 @@ namespace JuvoPlayer.Dash
             this.audioPipeline = audioPipeline ?? throw new ArgumentNullException(nameof(audioPipeline), "audioPipeline cannot be null");
             this.videoPipeline = videoPipeline ?? throw new ArgumentNullException(nameof(videoPipeline), "videoPipeline cannot be null");
 
-            audioPipeline.DRMDataFound += OnDRMDataFound;
+            audioPipeline.DRMInitDataFound += OnDRMInitDataFound;
+            audioPipeline.SetDrmConfiguration += OnSetDrmConfiguration;
             audioPipeline.StreamConfigReady += OnStreamConfigReady;
             audioPipeline.StreamPacketReady += OnStreamPacketReady;
-            videoPipeline.DRMDataFound += OnDRMDataFound;
+            videoPipeline.DRMInitDataFound += OnDRMInitDataFound;
+            videoPipeline.SetDrmConfiguration += OnSetDrmConfiguration;
             videoPipeline.StreamConfigReady += OnStreamConfigReady;
             videoPipeline.StreamPacketReady += OnStreamPacketReady;
         }
 
         public event ClipDurationChanged ClipDurationChanged;
-        public event DRMDataFound DRMDataFound;
+        public event DRMInitDataFound DRMInitDataFound;
+        public event SetDrmConfiguration SetDrmConfiguration;
         public event StreamConfigReady StreamConfigReady;
         public event StreamPacketReady StreamPacketReady;
         public event StreamsFound StreamsFound;
 
-        private void OnDRMDataFound(DRMData drmData)
+        private void OnDRMInitDataFound(DRMInitData drmData)
         {
-            DRMDataFound?.Invoke(drmData);
+            DRMInitDataFound?.Invoke(drmData);
+        }
+
+        private void OnSetDrmConfiguration(DRMDescription description)
+        {
+            SetDrmConfiguration?.Invoke(description);
         }
 
         private void OnStreamConfigReady(StreamConfig config)
