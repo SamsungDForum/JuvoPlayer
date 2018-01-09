@@ -13,6 +13,7 @@
 
 using JuvoPlayer.Common;
 using JuvoPlayer.Common.Delegates;
+using JuvoPlayer.DRM;
 using System;
 using System.Collections.Generic;
 using Tizen;
@@ -35,6 +36,7 @@ namespace JuvoPlayer.Player
         private double currentTime;
         private double duration;
 
+        private IDRMManager drmManager;
         private IPlayerAdapter playerAdapter;
         private Dictionary<StreamType, IPacketStream> Streams = new Dictionary<StreamType, IPacketStream>();
 
@@ -49,9 +51,10 @@ namespace JuvoPlayer.Player
         public event ShowSubtitile ShowSubtitle;
         public event TimeUpdated TimeUpdated;
 
-        public PlayerController(IPlayerAdapter player)
+        public PlayerController(IPlayerAdapter player, IDRMManager drmManager)
         {
-            playerAdapter = player ?? throw new ArgumentNullException("player cannot be null");
+            this.drmManager = drmManager ?? throw new ArgumentNullException("drmManager cannot be null");
+            this.playerAdapter = player ?? throw new ArgumentNullException("player cannot be null");
 
             playerAdapter.PlaybackCompleted += OnPlaybackCompleted;
             playerAdapter.PlaybackError += OnPlaybackError;
@@ -101,8 +104,17 @@ namespace JuvoPlayer.Player
             this.duration = duration;
         }
 
-        public void OnDrmDataFound(DRMData data)
+        public void OnDRMInitDataFound(DRMInitData data)
         {
+            if (!Streams.ContainsKey(data.StreamType))
+                return;
+
+            Streams[data.StreamType].OnDRMFound(data);
+        }
+
+        public void OnSetDrmConfiguration(DRMDescription description)
+        {
+            drmManager?.UpdateDrmConfiguration(description);
         }
 
         public void OnPause()
@@ -179,9 +191,9 @@ namespace JuvoPlayer.Player
             switch (config.StreamType())
             {
                 case StreamType.Audio:
-                    return new AudioPacketStream(playerAdapter, config);
+                    return new AudioPacketStream(playerAdapter, drmManager, config);
                 case StreamType.Video:
-                    return new VideoPacketStream(playerAdapter, config);
+                    return new VideoPacketStream(playerAdapter, drmManager, config);
                 default:
                     {
                         Log.Info("JuvoPlayer", "unknown config type");

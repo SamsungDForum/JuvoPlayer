@@ -12,6 +12,7 @@
 // this software or its derivatives.
 
 using JuvoPlayer.Common;
+using JuvoPlayer.DRM;
 using System;
 using System.Collections.Generic;
 using Tizen;
@@ -20,14 +21,17 @@ namespace JuvoPlayer.Player
 {
     public class AudioPacketStream : IPacketStream
     {
+        private IDRMManager drmManager;
+        private IDRMSession drmSession;
         private IPlayerAdapter playerAdapter;
         private StreamConfig config;
 
-        public AudioPacketStream(IPlayerAdapter player, StreamConfig config)
+        public AudioPacketStream(IPlayerAdapter player, IDRMManager drmManager, StreamConfig config)
         {
             Log.Info("JuvoPlayer", "AudioPacketStream");
 
-            playerAdapter = player ?? throw new ArgumentNullException("player cannot be null");
+            this.drmManager = drmManager ?? throw new ArgumentNullException("drmManager cannot be null");
+            this.playerAdapter = player ?? throw new ArgumentNullException("player cannot be null");
             this.config = config ?? throw new ArgumentNullException("config cannot be null");
 
             if (!(config is AudioStreamConfig))
@@ -41,6 +45,9 @@ namespace JuvoPlayer.Player
             if (packet.StreamType != StreamType.Audio)
                 throw new ArgumentException("packet should be audio");
 
+            if (drmSession != null)
+                packet = drmSession.DecryptPacket(packet);
+
             playerAdapter.AppendPacket(packet);
         }
 
@@ -49,9 +56,15 @@ namespace JuvoPlayer.Player
 
         }
 
-        public void OnDRMFound(DRMData data)
+        public void OnDRMFound(DRMInitData data)
         {
+            if (drmSession == null)
+                drmSession = drmManager.CreateDRMSession(data);
+            else
+                drmSession.UpdateSession(data);
 
+            if (drmSession == null)
+                Tizen.Log.Info("JuvoPlayer", "unknown drm");
         }
     }
 }

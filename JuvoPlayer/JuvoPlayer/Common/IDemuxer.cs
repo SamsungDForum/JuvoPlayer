@@ -24,7 +24,7 @@ namespace JuvoPlayer.Common
         void Seek(double position);
 
         event ClipDurationChanged ClipDuration;
-        event Common.DRMDataFound DRMDataFound;
+        event Common.DRMInitDataFound DRMInitDataFound;
         event StreamConfigReady StreamConfigReady;
         event StreamPacketReady StreamPacketReady;
     }

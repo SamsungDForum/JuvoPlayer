@@ -1,17 +1,21 @@
 ﻿using JuvoPlayer.Common;
+using JuvoPlayer.DRM.Cenc;
 using MpdParser;
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Text;
+using System.Xml;
 
 namespace JuvoPlayer.Dash
 {
     class DashMediaPipeline
     {
+        public event DRMInitDataFound DRMInitDataFound;
+        public event SetDrmConfiguration SetDrmConfiguration;
         public event StreamConfigReady StreamConfigReady;
         public event StreamPacketReady StreamPacketReady;
-        public event DRMDataFound DRMDataFound;
 
         private IDashClient dashClient;
         private IDemuxer demuxer;
@@ -23,7 +27,7 @@ namespace JuvoPlayer.Dash
             this.demuxer = demuxer ?? throw new ArgumentNullException(nameof(dashClient), "demuxer cannot be null");
             this.streamType = streamType;
 
-            demuxer.DRMDataFound += OnDrmDataFound;
+            demuxer.DRMInitDataFound += OnDRMInitDataFound;
             demuxer.StreamConfigReady += OnStreamConfigReady;
             demuxer.StreamPacketReady += OnStreamPacketReady;
         }
@@ -36,6 +40,8 @@ namespace JuvoPlayer.Dash
             Tizen.Log.Info("JuvoPlayer", "Dash start.");
 
             dashClient.UpdateMedia(newMedia);
+            ParseDrms(newMedia);
+
             dashClient.Start();
             demuxer.StartForExternalSource();
         }
@@ -45,10 +51,67 @@ namespace JuvoPlayer.Dash
             dashClient.OnTimeUpdated(time);
         }
 
-        private void OnDrmDataFound(DRMData drmData)
+        private void ParseDrms(Media newMedia)
         {
-            drmData.streamType = streamType;
-            DRMDataFound?.Invoke(drmData);
+            // TODO(p.galiszewsk): make it extensible
+            foreach (var descriptor in newMedia.ContentProtections)
+            {
+                var schemeIdUri = descriptor.SchemeIdUri;
+                if (CencUtils.SupportsSchemeIdUri(schemeIdUri))
+                {
+                    XmlDocument doc = new XmlDocument();
+                    try
+                    {
+                        doc.LoadXml(descriptor.Data);
+                    }
+                    catch (Exception e)
+                    {
+                        continue;
+                    }
+
+                    // read first node inner text (should be psshbox or pro header)
+                    var initData = doc.FirstChild?.FirstChild?.InnerText;
+
+                    var drmDescriptor = new DRMDescription()
+                    {
+                        InitData = initData,
+                        Scheme = CencUtils.SchemeIdUriToType(schemeIdUri)
+                    };
+                    SetDrmConfiguration?.Invoke(drmDescriptor);
+                }
+                else if (string.Equals(schemeIdUri, "http://youtube.com/drm/2012/10/10", StringComparison.CurrentCultureIgnoreCase))
+                {
+                    XmlDocument doc = new XmlDocument();
+                    try
+                    {
+                        doc.LoadXml(descriptor.Data);
+                    }
+                    catch (Exception e)
+                    {
+                        continue;
+                    }
+
+                    foreach (XmlNode node in doc.FirstChild?.ChildNodes)
+                    {
+                        var type = node.Attributes?.GetNamedItem("type")?.Value;
+                        if (CencUtils.SupportsType(type))
+                        {
+                            var drmDescriptor = new DRMDescription()
+                            {
+                                LicenceUrl = node.InnerText,
+                                Scheme = type
+                            };
+                            SetDrmConfiguration?.Invoke(drmDescriptor);
+                        }
+                    }
+                }
+            }
+        }
+
+        private void OnDRMInitDataFound(DRMInitData drmData)
+        {
+            drmData.StreamType = streamType;
+            DRMInitDataFound?.Invoke(drmData);
         }
 
         private void OnStreamPacketReady(StreamPacket packet)

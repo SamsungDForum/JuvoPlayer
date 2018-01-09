@@ -2,6 +2,8 @@
 using JuvoPlayer.Common;
 using JuvoPlayer.Common.Delegates;
 using JuvoPlayer.Dash;
+using JuvoPlayer.DRM;
+using JuvoPlayer.DRM.Cenc;
 using JuvoPlayer.HLS;
 using JuvoPlayer.Player;
 using JuvoPlayer.RTSP;
@@ -49,8 +51,11 @@ namespace XamarinPlayer.Tizen.Services
             dataProviders.RegisterDataProviderFactory(new HLSDataProviderFactory());
             dataProviders.RegisterDataProviderFactory(new RTSPDataProviderFactory());
 
+            var drmManager = new DRMManager();
+            drmManager.RegisterDrmHandler(new CencHandler());
+
             var playerAdapter = new SMPlayerAdapter();
-            playerController = new PlayerController(playerAdapter);
+            playerController = new PlayerController(playerAdapter, drmManager);
             playerController.PlaybackCompleted += () =>
             {
                 PlaybackCompleted?.Invoke();
@@ -86,6 +91,13 @@ namespace XamarinPlayer.Tizen.Services
             ControllerConnector.DisconnectDataProvider(playerController, dataProvider);
 
             dataProvider = dataProviders.CreateDataProvider(clip);
+
+            // TODO(p.galiszewsk) rethink!
+            if (clip.DRMDatas != null)
+            {
+                foreach (var drm in clip.DRMDatas)
+                    playerController.OnSetDrmConfiguration(drm);
+            }
 
             ControllerConnector.ConnectDataProvider(playerController, dataProvider);
 

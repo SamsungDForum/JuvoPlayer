@@ -37,6 +37,7 @@
       <ExcludeAssets>Runtime</ExcludeAssets>
     </PackageReference>
     <PackageReference Include="Tizen.NET.Sdk" Version="1.0.0" />
+    <PackageReference Include="Tizen.TV.Security" Version="1.0.2" />
   </ItemGroup>
 
   <ItemGroup>
