@@ -337,7 +337,7 @@ namespace MpdParser.Node
         [Xml.Element] public SegmentTemplate[] SegmentTemplates { get; internal set; }
         [Xml.Element] public Descriptor[] AssetIdentifiers { get; internal set; }
         [Xml.Element] public EventStream[] EventStreams { get; internal set; }
-        [Xml.Element] public AdaptationSet[] AdaptationSets { get; internal set; }
+        [Xml.Element] public AdaptationSet[] AdaptationSet { get; internal set; }
         [Xml.Element] public Subset[] Subsets { get; internal set; }
 
         public DASH Document { get; }
