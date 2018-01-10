@@ -360,9 +360,9 @@ namespace MpdParser
         {
             Start = period.Start;
             Duration = period.Duration;
-            Sets = new Media[period.AdaptationSets.Length];
+            Sets = new Media[period.AdaptationSet.Length];
             for (int i = 0; i < Sets.Length; ++i)
-                Sets[i] = new Media(period.AdaptationSets[i]);
+                Sets[i] = new Media(period.AdaptationSet[i]);
         }
 
         public override string ToString()
