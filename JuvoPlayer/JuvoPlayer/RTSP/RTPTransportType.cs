@@ -11,12 +11,12 @@
 // damages suffered by licensee as a result of using, modifying or distributing
 // this software or its derivatives.
 
-namespace JuvoPlayer.Common
+namespace JuvoPlayer.RTSP
 {
-    public class DRMData
+    public enum RTPTransportType
     {
-        public byte[] initData = null;
-        public byte[] systemId = null;
-        public StreamType streamType { get; set; }
+        UDP,
+        TCP,
+        MULTICAST
     }
 }
