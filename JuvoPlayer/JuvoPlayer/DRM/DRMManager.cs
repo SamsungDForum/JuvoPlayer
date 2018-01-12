@@ -16,6 +16,8 @@ namespace JuvoPlayer.DRM
 
         public void UpdateDrmConfiguration(DRMDescription drmDescription)
         {
+            Tizen.Log.Info("JuvoPlayer", "UpdateDrmConfiguration");
+
             var currentDescription = clipDrmConfiguration.FirstOrDefault(o => SchemeEquals(o.Scheme, drmDescription.Scheme));
             if (currentDescription == null)
             {
@@ -23,8 +25,6 @@ namespace JuvoPlayer.DRM
                 return;
             }
 
-            if (drmDescription.InitData != null)
-                currentDescription.InitData = drmDescription.InitData;
             if (drmDescription.KeyRequestProperties != null)
                 currentDescription.KeyRequestProperties = drmDescription.KeyRequestProperties;
             if (drmDescription.LicenceUrl != null)
@@ -38,20 +38,23 @@ namespace JuvoPlayer.DRM
 
         public IDRMSession CreateDRMSession(DRMInitData data)
         {
+            Tizen.Log.Info("JuvoPlayer", "Create Drmsession");
             var handler = drmHandlers.FirstOrDefault(o => o.SupportsSystemId(data.SystemId));
             if (handler == null)
             {
                 Tizen.Log.Info("JuvoPlayer", "unknown drm init data");
-                throw new Exception("unknown drm init data");
+                return null;
             }
 
             var session = handler.CreateDRMSession(data);
             var drmConfiguration = clipDrmConfiguration.FirstOrDefault(o => SchemeEquals(o.Scheme, session.CurrentDrmScheme));
             if (drmConfiguration == null)
+            {
+                Tizen.Log.Info("JuvoPlayer", "drm not configured");
                 return null;
+            }
 
             session.SetDrmConfiguration(drmConfiguration);
-
             return session;
         }
 

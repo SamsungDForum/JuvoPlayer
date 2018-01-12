@@ -33,6 +33,8 @@
 
   <ItemGroup>
     <PackageReference Include="Newtonsoft.Json" Version="10.0.3" />
+    <PackageReference Include="Nito.AsyncEx.Context" Version="5.0.0-pre-05" />
+    <PackageReference Include="System.Text.Encoding.CodePages" Version="4.4.0" />
     <PackageReference Include="Tizen.NET" Version="4.0.0">
       <ExcludeAssets>Runtime</ExcludeAssets>
     </PackageReference>
