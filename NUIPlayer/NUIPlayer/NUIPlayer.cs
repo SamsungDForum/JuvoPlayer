@@ -1,5 +1,7 @@
 ﻿using JuvoPlayer;
 using JuvoPlayer.Common;
+using JuvoPlayer.DRM;
+using JuvoPlayer.DRM.Cenc;
 using JuvoPlayer.Player;
 using JuvoPlayer.RTSP;
 using Tizen;
@@ -63,8 +65,11 @@ namespace NUIPlayer
             dataProviders = new DataProviderFactoryManager();
             dataProviders.RegisterDataProviderFactory(new RTSPDataProviderFactory());
 
+            var drmManager = new DRMManager();
+            drmManager.RegisterDrmHandler(new CencHandler());
+
             var playerAdapter = new SMPlayerAdapter();
-            playerController = new PlayerController(playerAdapter);
+            playerController = new PlayerController(playerAdapter, drmManager);
             playerController.TimeUpdated += OnTimeUpdated;
             playerController.PlaybackCompleted += OnPlaybackCompleted;
             playerController.ShowSubtitle += OnRenderSubtitle;
