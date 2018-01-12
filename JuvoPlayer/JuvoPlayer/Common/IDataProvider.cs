@@ -11,11 +11,12 @@
 // damages suffered by licensee as a result of using, modifying or distributing
 // this software or its derivatives.
 
+using System;
 using System.Collections.Generic;
 
 namespace JuvoPlayer.Common
 {
-    public delegate void ClipDurationChanged(double clipDuration);
+    public delegate void ClipDurationChanged(TimeSpan clipDuration);
     public delegate void DRMInitDataFound(DRMInitData data);
     public delegate void SetDrmConfiguration(DRMDescription description);
     public delegate void StreamConfigReady(StreamConfig config);
@@ -27,9 +28,9 @@ namespace JuvoPlayer.Common
         void OnChangeRepresentation(int representationId);
         void OnPaused();
         void OnPlayed();
-        void OnSeek(double time);
+        void OnSeek(TimeSpan time);
         void OnStopped();
-        void OnTimeUpdated(double time);
+        void OnTimeUpdated(TimeSpan time);
 
         void Start();
 

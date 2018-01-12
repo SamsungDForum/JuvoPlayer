@@ -69,7 +69,7 @@ namespace JuvoPlayer.Dash
         {
         }
 
-        public void OnSeek(double time)
+        public void OnSeek(TimeSpan time)
         {
             throw new NotImplementedException();
         }
@@ -103,7 +103,7 @@ namespace JuvoPlayer.Dash
 
                     // TODO(p.galiszewsk): unify time management
                     if (period.Duration.HasValue)
-                        ClipDurationChanged?.Invoke(period.Duration.Value.TotalSeconds);
+                        ClipDurationChanged?.Invoke(period.Duration.Value);
 
                     return;
                 }
@@ -131,7 +131,7 @@ namespace JuvoPlayer.Dash
             return missingRole;
         }
 
-        public void OnTimeUpdated(double time)
+        public void OnTimeUpdated(TimeSpan time)
         {
             audioPipeline.OnTimeUpdated(time);
             videoPipeline.OnTimeUpdated(time);

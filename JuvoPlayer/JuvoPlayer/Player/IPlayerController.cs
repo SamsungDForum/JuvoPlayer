@@ -20,7 +20,7 @@ namespace JuvoPlayer.Player
 {
     public delegate void Pause();
     public delegate void Play();
-    public delegate void Seek(double time);
+    public delegate void Seek(TimeSpan time);
     public delegate void Stop();
 
     public interface IPlayerController : IDisposable
@@ -29,7 +29,7 @@ namespace JuvoPlayer.Player
         void ChangeRepresentation(int pid);
         void OnPause();
         void OnPlay();
-        void OnSeek(double time);
+        void OnSeek(TimeSpan time);
         void OnSetExternalSubtitles(string path);
         void OnSetPlaybackRate(float rate);
         void OnSetSubtitleDelay(int offset);
@@ -37,7 +37,7 @@ namespace JuvoPlayer.Player
         #endregion
 
         #region data_provider_slots
-        void OnClipDurationChanged(double duration);
+        void OnClipDurationChanged(TimeSpan duration);
         void OnDRMInitDataFound(DRMInitData data);
         void OnSetDrmConfiguration(DRMDescription description);
         void OnStreamConfigReady(StreamConfig config);
@@ -46,8 +46,8 @@ namespace JuvoPlayer.Player
         #endregion
 
         #region getters
-        double CurrentTime { get; }
-        double ClipDuration { get; }
+        TimeSpan CurrentTime { get; }
+        TimeSpan ClipDuration { get; }
         #endregion
 
         event Pause Paused;
