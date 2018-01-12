@@ -40,7 +40,7 @@ namespace JuvoPlayer.HLS
         public event StreamPacketReady StreamPacketReady;
         public event StreamsFound StreamsFound;
 
-        private void OnClipDurationChanged(double clipDuration)
+        private void OnClipDurationChanged(TimeSpan clipDuration)
         {
             ClipDurationChanged?.Invoke(clipDuration);
         }
@@ -78,7 +78,7 @@ namespace JuvoPlayer.HLS
             demuxer.Played();
         }
 
-        public void OnSeek(double time)
+        public void OnSeek(TimeSpan time)
         {
 
         }
@@ -92,7 +92,7 @@ namespace JuvoPlayer.HLS
             demuxer.StartForUrl(currentClip.Url);
         }
 
-        public void OnTimeUpdated(double time)
+        public void OnTimeUpdated(TimeSpan time)
         {
         }
     }

@@ -11,6 +11,8 @@
 // damages suffered by licensee as a result of using, modifying or distributing
 // this software or its derivatives.
 
+using System;
+
 namespace JuvoPlayer.Common
 {
     public interface IDemuxer
@@ -21,10 +23,10 @@ namespace JuvoPlayer.Common
         void Reset();
         void Paused();
         void Played();
-        void Seek(double position);
+        void Seek(TimeSpan position);
 
         event ClipDurationChanged ClipDuration;
-        event Common.DRMInitDataFound DRMInitDataFound;
+        event DRMInitDataFound DRMInitDataFound;
         event StreamConfigReady StreamConfigReady;
         event StreamPacketReady StreamPacketReady;
     }

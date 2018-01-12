@@ -173,10 +173,8 @@ namespace XamarinPlayer.Views
             }
         }
 
-        private string GetFormattedTime(int miliseconds)
+        private string GetFormattedTime(TimeSpan time)
         {
-            var time = TimeSpan.FromMilliseconds(miliseconds);
-
             if (time.TotalHours > 1)
                 return time.ToString(@"hh\:mm\:ss");
             else
@@ -214,8 +212,8 @@ namespace XamarinPlayer.Views
             CurrentTime.Text = GetFormattedTime(_playerService.CurrentPosition);
             TotalTime.Text = GetFormattedTime(_playerService.Duration);
 
-            if (_playerService.Duration > 0)
-                Progressbar.Progress = _playerService.CurrentPosition / (float)_playerService.Duration;
+            if (_playerService.Duration.TotalMilliseconds > 0)
+                Progressbar.Progress = _playerService.CurrentPosition.TotalMilliseconds / _playerService.Duration.TotalMilliseconds;
             else
                 Progressbar.Progress = 0;
         }

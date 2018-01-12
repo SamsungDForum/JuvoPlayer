@@ -30,9 +30,9 @@ namespace XamarinPlayer.Tizen.Services
         public event ShowSubtitile ShowSubtitle;
         
         //UI requires duration in ms:
-        public int Duration => playerController == null ? 0 : (int)(playerController.ClipDuration * 1000);
+        public TimeSpan Duration => playerController == null ? TimeSpan.FromSeconds(0) : playerController.ClipDuration ;
 
-        public int CurrentPosition => dataProvider == null ? 0 : (int)playerController.CurrentTime;
+        public TimeSpan CurrentPosition => dataProvider == null ? TimeSpan.FromSeconds(0) : playerController.CurrentTime;
 
         public PlayerState State
         {
@@ -81,7 +81,7 @@ namespace XamarinPlayer.Tizen.Services
             State = PlayerState.Paused;
         }
 
-        public void SeekTo(int to)
+        public void SeekTo(TimeSpan to)
         {
             playerController.OnSeek(to);
         }

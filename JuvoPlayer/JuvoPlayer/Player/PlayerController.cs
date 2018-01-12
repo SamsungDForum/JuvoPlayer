@@ -33,8 +33,8 @@ namespace JuvoPlayer.Player
         };
 
         private PlayerState state = PlayerState.Unitialized;
-        private double currentTime;
-        private double duration;
+        private TimeSpan currentTime;
+        private TimeSpan duration;
 
         private IDRMManager drmManager;
         private IPlayerAdapter playerAdapter;
@@ -89,7 +89,7 @@ namespace JuvoPlayer.Player
             ShowSubtitle?.Invoke(subtitle);
         }
 
-        private void OnTimeUpdated(double time)
+        private void OnTimeUpdated(TimeSpan time)
         {
             currentTime = time;
 
@@ -99,7 +99,7 @@ namespace JuvoPlayer.Player
         public void ChangeRepresentation(int pid)
         {
         }
-        public void OnClipDurationChanged(double duration)
+        public void OnClipDurationChanged(TimeSpan duration)
         {
             this.duration = duration;
         }
@@ -141,7 +141,7 @@ namespace JuvoPlayer.Player
             Played?.Invoke();
         }
 
-        public void OnSeek(double time)
+        public void OnSeek(TimeSpan time)
         {
             playerAdapter.Seek(time);
             Seek?.Invoke(time);
@@ -214,9 +214,9 @@ namespace JuvoPlayer.Player
         }
 
         #region getters
-        double IPlayerController.CurrentTime => currentTime;
+        TimeSpan IPlayerController.CurrentTime => currentTime;
 
-        double IPlayerController.ClipDuration => duration;
+        TimeSpan IPlayerController.ClipDuration => duration;
         #endregion
 
         public void Dispose()

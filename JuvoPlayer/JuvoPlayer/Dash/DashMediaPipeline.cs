@@ -46,7 +46,7 @@ namespace JuvoPlayer.Dash
             demuxer.StartForExternalSource();
         }
 
-        public void OnTimeUpdated(double time)
+        public void OnTimeUpdated(TimeSpan time)
         {
             dashClient.OnTimeUpdated(time);
         }

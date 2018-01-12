@@ -213,9 +213,9 @@ namespace JuvoPlayer.Player
             playCalled = true;
         }
 
-        public void Seek(double time) // TODO(g.skowinski): Make sure units are compatible.
+        public void Seek(TimeSpan time)
         {
-            playerInstance.Seek((int)(time * 1000000000));
+            playerInstance.Seek((int)(time.TotalMilliseconds * 1000000));
         }
 
         public void SetAudioStreamConfig(AudioStreamConfig config)
@@ -273,9 +273,10 @@ namespace JuvoPlayer.Player
             videoSet = true;
         }
 
-        public void SetDuration(double duration) // TODO(g.skowinski): Make sure units are compatible. SMPlayer/gstreamer needs nanoseconds, duration is given in seconds
+        public void SetDuration(TimeSpan duration)
         {
-            playerInstance.SetDuration((uint)(duration * 1000000000));
+            // player requires nanoseconds
+            playerInstance.SetDuration((uint)(duration.TotalMilliseconds * 1000000));
         }
 
         public void SetExternalSubtitles(string file)
@@ -392,7 +393,7 @@ namespace JuvoPlayer.Player
 
             currentTime = currTime;
 
-            TimeUpdated?.Invoke(currentTime);
+            TimeUpdated?.Invoke(TimeSpan.FromMilliseconds(currentTime));
         }
 
         #endregion

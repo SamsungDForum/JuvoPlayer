@@ -33,7 +33,7 @@ namespace JuvoPlayer.Tests
                 throw new NotImplementedException();
             }
 
-            public void OnSeek(double time)
+            public void OnSeek(TimeSpan time)
             {
                 throw new NotImplementedException();
             }
@@ -43,7 +43,7 @@ namespace JuvoPlayer.Tests
                 throw new NotImplementedException();
             }
 
-            public void OnTimeUpdated(double time)
+            public void OnTimeUpdated(TimeSpan time)
             {
                 throw new NotImplementedException();
             }
