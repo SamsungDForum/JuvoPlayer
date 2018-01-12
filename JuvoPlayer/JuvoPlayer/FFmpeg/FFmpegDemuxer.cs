@@ -150,6 +150,8 @@ namespace JuvoPlayer.FFmpeg
             int ret = -1;
             Log.Info("JuvoPlayer", "INIT");
 
+            FFmpeg.avformat_network_init();
+
             buffer = (byte*)FFmpeg.av_mallocz((ulong)bufferSize);
             formatContext = FFmpeg.avformat_alloc_context();
 
