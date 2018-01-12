@@ -203,9 +203,9 @@ namespace JuvoPlayer.FFmpeg
             try {
                 initAction(); // Finish more time-consuming init things
                 FindStreamsInfo();
-                UpdateContentProtectionConfig();
                 ReadAudioConfig();
                 ReadVideoConfig();
+                UpdateContentProtectionConfig();
             }
             catch (Exception e) {
                 Log.Error("JuvoPlayer", "An error occured: " + e.Message);

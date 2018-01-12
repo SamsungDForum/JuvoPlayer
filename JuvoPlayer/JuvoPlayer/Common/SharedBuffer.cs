@@ -157,14 +157,14 @@ namespace JuvoPlayer.Common {
         // It may return less data then requested if there is not enough data in the buffor, but the buffor is not empty.
         // Returns byte array of leading [size] bytes of data from the buffer; it should remove the leading [size] bytes of data from the buffer.
         public byte[] ReadData(int size) {
-            Log.Info("JuvoPlayer", "SharedBuffer::ReadData(" + size + ") IN");
+//            Log.Info("JuvoPlayer", "SharedBuffer::ReadData(" + size + ") IN");
             lock (_locker) {
                 while (true) {
                     if (buffer.Length > 0 || EndOfData == true) {
                         long dsize = Math.Min(buffer.Length, size);
                         byte[] temp = new byte[dsize]; // should be optimized later by removing excessive copying
                         buffer.Pop(temp, 0, (int)dsize);
-                        Log.Info("JuvoPlayer", "SharedBuffer::ReadData(" + size + ") OUT");
+//                        Log.Info("JuvoPlayer", "SharedBuffer::ReadData(" + size + ") OUT");
                         return temp;
                     }
                     Monitor.Wait(_locker); // lock is released while waiting

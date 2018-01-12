@@ -61,6 +61,9 @@ namespace JuvoPlayer.Player
             playerAdapter.PlayerInitialized += OnPlayerInitialized;
             playerAdapter.ShowSubtitle += OnShowSubtitle;
             playerAdapter.TimeUpdated += OnTimeUpdated;
+
+            Streams[StreamType.Audio] = new AudioPacketStream(playerAdapter, drmManager);
+            Streams[StreamType.Video] = new VideoPacketStream(playerAdapter, drmManager);
         }
 
         private void OnPlaybackCompleted()
@@ -144,6 +147,7 @@ namespace JuvoPlayer.Player
         public void OnSeek(TimeSpan time)
         {
             playerAdapter.Seek(time);
+
             Seek?.Invoke(time);
         }
 
@@ -158,20 +162,16 @@ namespace JuvoPlayer.Player
 
         public void OnStreamConfigReady(StreamConfig config)
         {
-            Log.Info("JuvoPlayer", "OnStreamConfigReady");
-            Streams[config.StreamType()] = CreatePacketStream(config);
+            if (!Streams.ContainsKey(config.StreamType()))
+                return;
+
+            Streams[config.StreamType()].OnStreamConfigChanged(config);
         }
 
         public void OnStreamPacketReady(StreamPacket packet)
         {
             if (!Streams.ContainsKey(packet.StreamType))
-            {
-                // Ignore unneeded fake eos
-                if (packet.IsEOS)
-                    return;
-
-                throw new Exception("Received packet for not configured stream");
-            }
+                return;
 
             Streams[packet.StreamType].OnAppendPacket(packet);
         }
@@ -184,23 +184,6 @@ namespace JuvoPlayer.Player
         public void OnSetExternalSubtitles(string path)
         {
             playerAdapter.SetExternalSubtitles(path);
-        }
-
-        private IPacketStream CreatePacketStream(StreamConfig config)
-        {
-            switch (config.StreamType())
-            {
-                case StreamType.Audio:
-                    return new AudioPacketStream(playerAdapter, drmManager, config);
-                case StreamType.Video:
-                    return new VideoPacketStream(playerAdapter, drmManager, config);
-                default:
-                    {
-                        Log.Info("JuvoPlayer", "unknown config type");
-
-                        throw new Exception("unknown config type");
-                    }
-            }
         }
 
         public void OnSetPlaybackRate(float rate)

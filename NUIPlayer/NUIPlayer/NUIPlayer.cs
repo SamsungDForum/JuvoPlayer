@@ -4,6 +4,7 @@ using JuvoPlayer.DRM;
 using JuvoPlayer.DRM.Cenc;
 using JuvoPlayer.Player;
 using JuvoPlayer.RTSP;
+using System;
 using Tizen;
 using Tizen.Applications;
 using Tizen.NUI;
@@ -95,7 +96,7 @@ namespace NUIPlayer
         {
         }
 
-        public void OnTimeUpdated(double time)
+        public void OnTimeUpdated(TimeSpan time)
         {
         }
 
@@ -112,11 +113,11 @@ namespace NUIPlayer
                 {
                     case "Left":
                     case "XF86AudioRewind":
-                        playerController.OnSeek(-10);
+//                        playerController.OnSeek();
                         return true;
                     case "Right":
                     case "XF86AudioNext":
-                        playerController.OnSeek(10);
+//                        playerController.OnSeek();
                         return true;
                     case "Up":
                     case "Down":

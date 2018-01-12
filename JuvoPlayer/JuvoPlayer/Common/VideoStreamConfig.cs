@@ -11,13 +11,45 @@
 // damages suffered by licensee as a result of using, modifying or distributing
 // this software or its derivatives.
 
+using System;
+using System.Collections.Generic;
+using Tizen.Multimedia;
+
 namespace JuvoPlayer.Common
 {
-    public class VideoStreamConfig : StreamConfig
+    public sealed class VideoStreamConfig : StreamConfig, IEquatable<VideoStreamConfig>
     {
         public override StreamType StreamType()
         {
             return Common.StreamType.Video;
+        }
+
+        public override bool Equals(object obj)
+        {
+            return Equals(obj as VideoStreamConfig);
+        }
+
+        public bool Equals(VideoStreamConfig other)
+        {
+            return other != null &&
+                   Codec == other.Codec &&
+                   CodecProfile == other.CodecProfile &&
+                   EqualityComparer<Size>.Default.Equals(Size, other.Size) &&
+                   FrameRateNum == other.FrameRateNum &&
+                   FrameRateDen == other.FrameRateDen &&
+                   BitRate == other.BitRate;
+        }
+
+        public override int GetHashCode()
+        {
+            var hashCode = -1742922824;
+            hashCode = hashCode * -1521134295 + Codec.GetHashCode();
+            hashCode = hashCode * -1521134295 + CodecProfile.GetHashCode();
+            hashCode = hashCode * -1521134295 + EqualityComparer<Size>.Default.GetHashCode(Size);
+            hashCode = hashCode * -1521134295 + FrameRateNum.GetHashCode();
+            hashCode = hashCode * -1521134295 + FrameRateDen.GetHashCode();
+            hashCode = hashCode * -1521134295 + BitRate.GetHashCode();
+            return hashCode;
         }
 
         public VideoCodec Codec { get; set; }

@@ -130,12 +130,12 @@ namespace JuvoPlayer.Player
                 { // but for first OnNeedData - we're sending both video and audio till first OnEnoughData
                     needDataInitMode = false;
 
-                    Log.Info("JuvoPlayer", "SubmittingPacketsTask: Feeding (" + i.ToString() + ").");
-                    Log.Info("JuvoPlayer", "SubmittingPacketsTask: AUDIO: " + audioBuffer.Count().ToString() + ", VIDEO: " + videoBuffer.Count().ToString());
+//                    Log.Info("JuvoPlayer", "SubmittingPacketsTask: Feeding (" + i.ToString() + ").");
+//                    Log.Info("JuvoPlayer", "SubmittingPacketsTask: AUDIO: " + audioBuffer.Count().ToString() + ", VIDEO: " + videoBuffer.Count().ToString());
 
                     StreamPacket packet = DequeuePacket();
 
-                    Log.Info("JuvoPlayer", "Peeked");
+//                    Log.Info("JuvoPlayer", "Peeked");
 
                     if (packet.IsEOS)
                         SubmitEOSPacket(packet);
@@ -182,7 +182,7 @@ namespace JuvoPlayer.Player
                 //byte[] managedArray2 = new byte[managedArray.Length];
                 //Marshal.Copy(pnt, managedArray2, 0, managedArray.Length);
                 var trackType = SMPlayerUtils.GetTrackType(packet);
-                Tizen.Log.Info("JuvoPlayer", string.Format("[HQ] send es data to SubmitPacket: {0} ( {1} )", packet.Pts, trackType));
+//                Tizen.Log.Info("JuvoPlayer", string.Format("[HQ] send es data to SubmitPacket: {0} ( {1} )", packet.Pts, trackType));
 
                 playerInstance.SubmitPacket(pnt, (uint)packet.Data.Length, packet.Pts, trackType, IntPtr.Zero);
             }
