@@ -230,7 +230,7 @@ namespace JuvoPlayer.Player
                 channels = (uint)config.ChannelLayout
             };
 
-            if (config.CodecExtraData.Length > 0)
+            if (config.CodecExtraData != null && config.CodecExtraData.Length > 0)
             {
                 int size = Marshal.SizeOf(config.CodecExtraData[0]) * config.CodecExtraData.Length;
                 audioStreamInfo.codec_extradata = Marshal.AllocHGlobal(size);
@@ -260,7 +260,7 @@ namespace JuvoPlayer.Player
                 max_height = (uint)config.Size.Height
             };
 
-            if (config.CodecExtraData.Length > 0)
+            if (config.CodecExtraData != null && config.CodecExtraData.Length > 0)
             {
                 int size = Marshal.SizeOf(config.CodecExtraData[0]) * config.CodecExtraData.Length;
                 videoStreamInfo.codec_extradata = Marshal.AllocHGlobal(size);
