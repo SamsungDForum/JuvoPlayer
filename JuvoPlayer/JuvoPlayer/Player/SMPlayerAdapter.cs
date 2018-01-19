@@ -220,7 +220,7 @@ namespace JuvoPlayer.Player
 
         public void SetAudioStreamConfig(AudioStreamConfig config)
         {
-            Log.Info("JuvoPlayer", "");n
+            Log.Info("JuvoPlayer", "");
 
             var audioStreamInfo = new AudioStreamInfo_Samsung
             {
