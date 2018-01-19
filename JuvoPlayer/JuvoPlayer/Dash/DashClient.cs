@@ -2,12 +2,315 @@
 using MpdParser;
 using MpdParser.Node;
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using System.Threading.Tasks;
 
 namespace JuvoPlayer.Dash
 {
+    public abstract class AtomBase
+    {
+        protected UInt32 AtomSize;
+
+        public abstract void ParseAtom(byte[] adata, ulong dataStart);
+
+        protected static T Read<T>(byte[] adata, ref int idx)
+        {
+            T res = default(T);
+
+            // sizeof(T) on template does not work
+            // SizeOf(T) (dynamic) apparently is not reliable - may return size of entire 
+            // container ther then storage size...
+            // ...Surely, there must be more more sensible way of doing this...
+            switch (Type.GetTypeCode(res.GetType()))
+            {
+                case TypeCode.UInt32:
+                    if (BitConverter.IsLittleEndian)
+                    {
+                        Array.Reverse(adata, idx, 4);
+                    }
+                    res = (T)Convert.ChangeType(BitConverter.ToUInt32(adata, idx), res.GetType());
+                    idx += 4;
+                    break;
+                case TypeCode.Int32:
+                    if (BitConverter.IsLittleEndian)
+                    {
+                        Array.Reverse(adata, idx, 4);
+                    }
+                    res = (T)Convert.ChangeType(BitConverter.ToInt32(adata, idx), res.GetType());
+                    idx += 4;
+                    break;
+                case TypeCode.UInt64:
+                    if (BitConverter.IsLittleEndian)
+                    {
+                        Array.Reverse(adata, idx, 8);
+                    }
+                    res = (T)Convert.ChangeType(BitConverter.ToUInt64(adata, idx), res.GetType());
+                    idx += 8;
+                    break;
+                case TypeCode.Int64:
+                    if (BitConverter.IsLittleEndian)
+                    {
+                        Array.Reverse(adata, idx, 8);
+                    }
+                    res = (T)Convert.ChangeType(BitConverter.ToInt64(adata, idx), res.GetType());
+                    idx += 8;
+                    break;
+                case TypeCode.UInt16:
+                    if (BitConverter.IsLittleEndian)
+                    {
+                        Array.Reverse(adata, idx, 2);
+                    }
+                    res = (T)Convert.ChangeType(BitConverter.ToUInt16(adata, idx), res.GetType());
+                    idx += 2;
+                    break;
+                case TypeCode.Int16:
+                    if (BitConverter.IsLittleEndian)
+                    {
+                        Array.Reverse(adata, idx, 2);
+                    }
+                    res = (T)Convert.ChangeType(BitConverter.ToInt16(adata, idx), res.GetType());
+                    idx += 2;
+                    break;
+                case TypeCode.Byte:
+                    res = (T)Convert.ChangeType(adata[idx++], res.GetType());
+                    break;
+                // fallthroghs are intentional here...
+                case TypeCode.Boolean:
+                case TypeCode.Char:
+                case TypeCode.DateTime:
+                case TypeCode.DBNull:
+                case TypeCode.Decimal:
+                case TypeCode.Double:
+                case TypeCode.Empty:
+                case TypeCode.Object:
+                case TypeCode.SByte:
+                case TypeCode.Single:
+                case TypeCode.String:
+                default:
+                    Tizen.Log.Info("AtomBase", string.Format("{0} Unsupported read type.", res.GetType().ToString()));
+                    break;
+            }
+
+
+
+            return res;
+        }
+
+        protected static bool CheckName(byte[] adata, ref int idx, byte[] name)
+        {
+            if ( (adata.Length - idx )< 4)
+            {
+                return false;
+            }
+
+            // Check signature.   
+            if (!(  name[0] == adata[idx++] &&
+                    name[1] == adata[idx++] &&
+                    name[2] == adata[idx++] &&
+                    name[3] == adata[idx++]))
+            {
+                return false;
+            }
+       
+            return true;
+        }
+
+        protected static double ToSeconds(UInt64 val, UInt32 scale)
+        {
+            return ((double)val / (double)scale);
+        }
+    }
+    public class SIDXAtom : AtomBase
+    {
+        public class SIDX_index_entry
+        {
+            public UInt32 RawRefsize { get; }
+            public UInt32 RawDuration { get; }
+
+            public UInt32 SAPData { get; }
+
+            public UInt64 Offset { get; }
+
+            public SIDX_index_entry(    UInt32 refsize, UInt32 duration, UInt32 sapdata, 
+                                        UInt64 offdata)
+            {
+                RawRefsize = refsize;
+                RawDuration = duration;
+                SAPData = sapdata;
+                Offset = offdata;
+            }
+        }
+
+        public class Movie_index_entry : SIDX_index_entry
+        {
+
+            public TimeSpan SegmentDuration { get; }
+            public TimeSpan TimeIndex { get; }
+
+            public Movie_index_entry(   UInt32 raw_refsize, UInt32 raw_duration, UInt32 sap, 
+                                        UInt64 offdata, TimeSpan segment_duration, TimeSpan time_index) 
+                                        : base(raw_refsize, raw_duration, sap, offdata)
+            {
+                SegmentDuration = segment_duration;
+                TimeIndex = time_index;
+            }
+        }
+
+        
+        public List<Movie_index_entry> Movieidx { get; }
+        public List<SIDX_index_entry> Sidxidx { get; }
+
+        protected static byte[] AtomName = { (byte)'s', (byte)'i', (byte)'d', (byte)'x' };
+        protected byte Version;
+        protected byte[] Flags = new byte[3];
+        public UInt32 ReferenceID { get; set; }
+        public UInt32 Timescale { get; set; }
+        public UInt64 RawPts { get; set; }
+        public UInt64 RawOffset { get; set; }
+        public TimeSpan AverageSegmentDuration { get; set; }
+
+        protected UInt16 Reserved;
+
+        public SIDXAtom()
+        {
+            Movieidx = new List<Movie_index_entry>();
+            Sidxidx = new List<SIDX_index_entry>();
+        }
+
+        public (UInt64, UInt64, TimeSpan ) GetRangeDuration(TimeSpan curr)
+        {
+            Movie_index_entry i = Movieidx.Find(x => 
+                (x.TimeIndex >= curr && (curr < x.TimeIndex + x.SegmentDuration) ) );
+            UInt64 rl;
+            UInt64 rh;
+            TimeSpan ts;
+
+            if(i != null)
+            {
+                rl = i.Offset;
+                rh = rl+i.RawRefsize;
+                ts = i.SegmentDuration;
+            }
+            else
+            {
+                rl = 0;
+                rh = 0;
+                ts = default(TimeSpan);
+            }
+
+            return (rl, rh, ts);
+        }
+
+        public void DumpMovieIndex(TimeSpan curr=default(TimeSpan) )
+        {
+            Tizen.Log.Debug("SIDXAtom", string.Format("SIDX DB dump {0} entries:", Movieidx.Count));
+            foreach (Movie_index_entry mie in Movieidx)
+            {
+                Tizen.Log.Debug("SIDXAtom", string.Format("Requested Time={0} Index Start Time={1} Index Duration={2} Total={3}",
+                    curr, mie.TimeIndex, mie.SegmentDuration, mie.TimeIndex+mie.SegmentDuration));
+            }
+        }
+        public override void ParseAtom(byte[] adata, ulong dataStart)
+        {
+            int idx = 0;
+            AtomSize = Read<UInt32>(adata, ref idx);
+
+            //Sanity Check
+            if (AtomSize > adata.Length)
+            {
+                Tizen.Log.Info("SIDXAtom", string.Format("SIDX buffer shorter then indicated atom size."));
+                return;
+            }
+
+            // Check signature
+            if (CheckName(adata, ref idx, AtomName) == false)
+            {
+                Tizen.Log.Info("SIDXAtom", string.Format("Missing SIDX atom header."));
+                return;
+            }
+
+            Version = Read<byte>(adata, ref idx);
+
+            //Flags are only 3 bytes. Do byte at a time
+            //as read will swap bytes around...
+            Flags[0] = Read<byte>(adata, ref idx);
+            Flags[1] = Read<byte>(adata, ref idx);
+            Flags[2] = Read<byte>(adata, ref idx);
+
+
+            ReferenceID = Read<UInt32>(adata, ref idx);
+            Timescale = Read<UInt32>(adata, ref idx);
+
+            UInt64 pts = 0;
+            UInt64 offset = dataStart;
+
+            if (Version == 0)
+            {
+                RawPts = Read<UInt32>(adata, ref idx);
+                RawOffset = Read<UInt32>(adata, ref idx);
+            }
+            else
+            {
+                RawPts = Read<UInt64>(adata, ref idx);
+                RawOffset = Read<UInt64>(adata, ref idx);
+            }
+
+            pts += RawPts;
+            offset += RawOffset;
+
+            Reserved = Read<UInt16>(adata, ref idx);
+
+            UInt16 reference_count = Read<UInt16>(adata, ref idx);
+
+            double AvgSegDur = 0.0;
+            int i = 1;
+            while (reference_count-- > 0)
+            {
+
+                UInt32 ref_size = Read<UInt32>(adata, ref idx);
+
+                //C#, Why U no cast?!
+                bool typeset = ((ref_size & 0x80000000) > 0) ? true : false;
+
+                ref_size &= 0x7FFFFFF;
+
+                UInt32 sseg_duration = Read<UInt32>(adata, ref idx);
+                UInt32 SAPdata = Read<UInt32>(adata, ref idx);
+
+                double currdurr = ToSeconds(sseg_duration, Timescale);
+                double currttimeidx = ToSeconds(pts, Timescale);
+
+                AvgSegDur = (currdurr - AvgSegDur) / i;
+                i++;
+
+                if (typeset)
+                {
+                    Sidxidx.Add(
+                        new SIDX_index_entry(ref_size, sseg_duration, SAPdata, offset)
+                                );
+                }
+                else
+                {
+                    Movieidx.Add(
+                        new Movie_index_entry(  ref_size, sseg_duration, SAPdata, offset,
+                                                TimeSpan.FromSeconds(currdurr),
+                                                TimeSpan.FromSeconds( ToSeconds(pts, Timescale) ) 
+                                             )
+                                );
+                       
+                }
+
+                pts += sseg_duration;
+                offset += ref_size;
+            }
+
+            AverageSegmentDuration = TimeSpan.FromSeconds(AvgSegDur);
+
+        }
+    }
+
     internal class DashClient : IDashClient
     {
         private const string Tag = "JuvoPlayer";
@@ -20,10 +323,16 @@ namespace JuvoPlayer.Dash
         private bool playback;
         private IRepresentationStream currentStreams;
 
+        // Instance of DashClient is per media type (Separate for A and V)
+        // thus index info will be private per media type.
+        private List<SIDXAtom> sidxs;
+
+
         public DashClient(ISharedBuffer sharedBuffer, StreamType streamType)
         {
             this.sharedBuffer = sharedBuffer ?? throw new ArgumentNullException(nameof(sharedBuffer), "sharedBuffer cannot be null");
             this.streamType = streamType;
+            sidxs = new List<SIDXAtom>();
         }
 
         public void Seek(int position)
@@ -66,10 +375,34 @@ namespace JuvoPlayer.Dash
             currentTime = time;
         }
 
+        private (UInt64, UInt64, TimeSpan)GetRangeDuration(TimeSpan curr)
+        {
+            UInt64 lb =0;
+            UInt64 hb =0;
+            TimeSpan durr = default(TimeSpan);
+
+            foreach(SIDXAtom sidx in sidxs)
+            {
+                (lb, hb, durr) = sidx.GetRangeDuration(curr);
+                if (lb != hb) break;
+            }
+
+            if(lb == hb )
+            {
+                Tizen.Log.Warn(Tag, string.Format("{0} Time Index {1} not found in indexing data", streamType, curr));
+                foreach(SIDXAtom sidx in sidxs)
+                {
+                    sidx.DumpMovieIndex(curr);
+                }
+
+            }
+            return (lb, hb, durr);
+        }
         private void DownloadThread()
         {
             DownloadInitSegment(currentStreams);
-
+            DownloadIndexSegment(currentStreams);
+            
             while (playback)
             {
                 var currentTime = this.currentTime;
@@ -81,9 +414,24 @@ namespace JuvoPlayer.Dash
                         var currentSegmentId = currentStreams.MediaSegmentAtTime(bufferTime);
                         var stream = currentStreams.MediaSegmentAtPos(currentSegmentId.Value);
 
-                        byte[] streamBytes = DownloadSegment(stream);
+                        
+                        UInt64 lb;
+                        UInt64 hb;
+                        TimeSpan ts;
 
-                        bufferTime += stream.Period.Duration;
+                        (lb, hb, ts) = GetRangeDuration(bufferTime);
+
+
+                        byte[] streamBytes = DownloadSegment(stream,lb,hb);
+
+                        if (lb != hb)
+                        {
+                            bufferTime += ts;
+                        }
+                        else
+                        {
+                            bufferTime += stream.Period.Duration;
+                        }
 
                         sharedBuffer.WriteData(streamBytes);
                     }
@@ -95,7 +443,7 @@ namespace JuvoPlayer.Dash
             }
         }
 
-        private byte[] DownloadSegment(MpdParser.Node.Dynamic.Segment stream)
+        private byte[] DownloadSegment(MpdParser.Node.Dynamic.Segment stream, UInt64 lowB=0, UInt64 highB=0)
         {
             Tizen.Log.Info("JuvoPlayer", string.Format("{0} Downloading segment {1} : {2}", streamType, stream.Period.Start, stream.Period.Start + stream.Period.Duration));
             Tizen.Log.Info("JuvoPlayer", string.Format("{0} Downloading segment: {1}", streamType, stream.Url));
@@ -112,8 +460,16 @@ namespace JuvoPlayer.Dash
             }
             else
             {
-                startByte = 0;
-                endByte = (long)client.GetBytes(url);
+                if (lowB != highB)
+                {
+                    startByte = (long)lowB;
+                    endByte = (long)highB;
+                }
+                else
+                {
+                    startByte = 0;
+                    endByte = (long)client.GetBytes(url);
+                }
             }
 
             if (startByte != endByte)
@@ -149,6 +505,49 @@ namespace JuvoPlayer.Dash
             sharedBuffer.WriteData(streamBytes);
 
             Tizen.Log.Info("JuvoPlayer", string.Format("{0} Init segment downloaded.", streamType));
+        }
+
+        private void DownloadIndexSegment( IRepresentationStream streamSegments )
+        {
+            var indexSegment = streamSegments.IndexSegment;
+            if( indexSegment == null )
+            {
+                Tizen.Log.Info("JuvoPlayer", string.Format("No SegmentBase indexRange for: {0}", streamType));
+                return;
+            }
+
+            Tizen.Log.Info("JuvoPlayer", string.Format("{0} Downloading SegmentBase indexRange segment: {1}", streamType, indexSegment.Url));
+
+            var client = new WebClientEx();
+            ulong rh=0;
+            if (indexSegment.ByteRange != null)
+            {
+                var range = new ByteRange(indexSegment.ByteRange);
+                client.SetRange(range.Low, range.High);
+                rh = (ulong)range.High;
+            }
+            var streamBytes = client.DownloadData(indexSegment.Url);
+            SIDXAtom sidx = new SIDXAtom();
+            sidx.ParseAtom(streamBytes, rh+1);
+
+            sidxs.Add(sidx);
+
+            //TODO:
+            //SIDXAtom.SIDX_index_entry should contain a list of other sidx atoms containing
+            //with index information. They could be loaded by updating range info in current
+            //streamSegment and recursively calling DownloadIndexSegment - but about that we can worry later...
+            //TO REMEMBER:
+            //List of final sidxs should be "sorted" from low to high. In case of one it is not an issue,
+            //it may be in case of N index boxes in hierarchy order (daisy chain should be ok too I think...)
+            //so just do sanity check if we have such chunks
+            if(sidx.Sidxidx.Count > 0 )
+            {
+                throw new NotImplementedException("Daisy chained / Hierarchical chunks not implemented...");
+            }
+            
+
+            Tizen.Log.Info("JuvoPlayer", string.Format("{0} SegmentBase indexRange downloaded.", streamType));
+
         }
     }
     internal class ByteRange
@@ -209,4 +608,5 @@ namespace JuvoPlayer.Dash
             return request;
         }
     }
+
 }

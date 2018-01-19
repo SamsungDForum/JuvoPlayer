@@ -225,6 +225,9 @@ namespace MpdParser.Node
             Dynamic.SegmentBase seg = SegmentBase();
             URL init_url = GetFirst(seg.Initializations);
 
+            string index_range = seg.IndexRange;
+
+
             URI media_uri = CalcURL();
             URI init_uri = null;
 
@@ -243,8 +246,8 @@ namespace MpdParser.Node
 
                 return new Dynamic.BaseRepresentationStream(
                     null,
-                    new Dynamic.Segment(media_uri.Uri, null, periodRange)
-                    );
+                    new Dynamic.Segment(media_uri.Uri, null, periodRange),
+                    index_range.Length !=0? new Dynamic.Segment(init_uri.Uri, index_range):null);
             }
 
             if (media_uri == null)
@@ -252,8 +255,8 @@ namespace MpdParser.Node
 
             return new Dynamic.BaseRepresentationStream(
                 new Dynamic.Segment(init_uri.Uri, init_url?.Range),
-                new Dynamic.Segment(media_uri.Uri, null, periodRange)
-                );
+                new Dynamic.Segment(media_uri.Uri, null, periodRange),
+                index_range.Length !=0? new Dynamic.Segment(init_uri.Uri, index_range):null);
         }
 
         private IRepresentationStream CreateBaseURLRepresentationStream()
