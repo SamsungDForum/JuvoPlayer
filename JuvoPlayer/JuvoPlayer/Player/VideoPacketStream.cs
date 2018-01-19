@@ -22,18 +22,14 @@ namespace JuvoPlayer.Player
         private IDRMManager drmManager;
         private IDRMSession drmSession;
         private IPlayerAdapter playerAdapter;
-        private StreamConfig config;
+        private VideoStreamConfig config;
 
-        public VideoPacketStream(IPlayerAdapter player, IDRMManager drmManager, StreamConfig config)
+        private bool forceDrmChange;
+
+        public VideoPacketStream(IPlayerAdapter player, IDRMManager drmManager)
         {
             this.drmManager = drmManager ?? throw new ArgumentNullException("drmManager cannot be null");
             this.playerAdapter = player ?? throw new ArgumentNullException("player cannot be null");
-            this.config = config ?? throw new ArgumentNullException("config cannot be null");
-
-            if (!(config is VideoStreamConfig))
-                throw new ArgumentException("config should be videoconfig");
-
-            playerAdapter.SetVideoStreamConfig(config as VideoStreamConfig);
         }
 
         public void OnAppendPacket(StreamPacket packet)
@@ -41,26 +37,40 @@ namespace JuvoPlayer.Player
             if (packet.StreamType != StreamType.Video)
                 throw new ArgumentException("packet should be video");
 
-            if (drmSession != null)
+            if (packet.IsEOS && config == null)
+                return;
+
+            if (drmSession != null && packet is EncryptedStreamPacket)
                 packet = drmSession.DecryptPacket(packet);
 
             playerAdapter.AppendPacket(packet);
         }
 
+        public void OnStreamConfigChanged(StreamConfig config)
+        {
+            if (!(config is VideoStreamConfig))
+                throw new ArgumentException("config should be videoconfig");
+
+            forceDrmChange = this.config != null && !this.config.Equals(config);
+
+            this.config = config as VideoStreamConfig ?? throw new ArgumentNullException("config cannot be null");
+
+            playerAdapter.SetVideoStreamConfig(this.config);
+        }
+
         public void OnClearStream()
         {
-
+            drmSession = null;
         }
 
         public void OnDRMFound(DRMInitData data)
         {
-            if (drmSession == null)
-                drmSession = drmManager.CreateDRMSession(data);
-            else
-                drmSession.UpdateSession(data);
+            if (!forceDrmChange && drmSession != null)
+                return;
 
-            if (drmSession == null)
-                Tizen.Log.Info("JuvoPlayer", "unknown drm");
+            forceDrmChange = false;
+            drmSession = drmManager.CreateDRMSession(data);
+            drmSession?.Start();
         }
     }
 }

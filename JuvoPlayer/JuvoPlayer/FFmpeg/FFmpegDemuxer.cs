@@ -150,10 +150,12 @@ namespace JuvoPlayer.FFmpeg
             int ret = -1;
             Log.Info("JuvoPlayer", "INIT");
 
+            FFmpeg.avformat_network_init();
+
             buffer = (byte*)FFmpeg.av_mallocz((ulong)bufferSize);
             formatContext = FFmpeg.avformat_alloc_context();
 
-            formatContext->probesize = bufferSize;
+            formatContext->probesize = 128 * 1024;
             formatContext->max_analyze_duration = 10 * 1000000;
 
             if (formatContext == null)
@@ -183,7 +185,7 @@ namespace JuvoPlayer.FFmpeg
             }
 
             if (formatContext->duration > 0)
-                ClipDuration?.Invoke(formatContext->duration * kOneMicrosecond);
+                ClipDuration?.Invoke(TimeSpan.FromMilliseconds(formatContext->duration) / 1000);
 
             audio_idx = FFmpeg.av_find_best_stream(formatContext, AVMediaType.AVMEDIA_TYPE_AUDIO, -1, -1, null, 0);
             video_idx = FFmpeg.av_find_best_stream(formatContext, AVMediaType.AVMEDIA_TYPE_VIDEO, -1, -1, null, 0);
@@ -204,6 +206,7 @@ namespace JuvoPlayer.FFmpeg
                 UpdateContentProtectionConfig();
                 ReadAudioConfig();
                 ReadVideoConfig();
+                UpdateContentProtectionConfig();
             }
             catch (Exception e) {
                 Log.Error("JuvoPlayer", "An error occured: " + e.Message);
@@ -337,7 +340,7 @@ namespace JuvoPlayer.FFmpeg
         }
 
         unsafe private void UpdateContentProtectionConfig()
-        {            
+        {
             if (formatContext->protection_system_data_count <= 0)
                 return;
 
@@ -535,7 +538,7 @@ namespace JuvoPlayer.FFmpeg
             FFmpeg.av_read_play(formatContext);
         }
 
-        public void Seek(double position)
+        public void Seek(TimeSpan position)
         {
             // TODO(g.skowinski): Implement.
         }

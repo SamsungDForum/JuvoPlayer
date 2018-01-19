@@ -11,13 +11,41 @@
 // damages suffered by licensee as a result of using, modifying or distributing
 // this software or its derivatives.
 
+using System;
+
 namespace JuvoPlayer.Common
 {
-    public class AudioStreamConfig : StreamConfig
+    public sealed class AudioStreamConfig : StreamConfig, IEquatable<AudioStreamConfig>
     {
         public override StreamType StreamType()
         {
             return Common.StreamType.Audio;
+        }
+
+        public override bool Equals(object obj)
+        {
+            return Equals(obj as AudioStreamConfig);
+        }
+
+        public bool Equals(AudioStreamConfig other)
+        {
+            return other != null &&
+                   Codec == other.Codec &&
+                   ChannelLayout == other.ChannelLayout &&
+                   SampleRate == other.SampleRate &&
+                   BitsPerChannel == other.BitsPerChannel &&
+                   BitRate == other.BitRate;
+        }
+
+        public override int GetHashCode()
+        {
+            var hashCode = 1182625657;
+            hashCode = hashCode * -1521134295 + Codec.GetHashCode();
+            hashCode = hashCode * -1521134295 + ChannelLayout.GetHashCode();
+            hashCode = hashCode * -1521134295 + SampleRate.GetHashCode();
+            hashCode = hashCode * -1521134295 + BitsPerChannel.GetHashCode();
+            hashCode = hashCode * -1521134295 + BitRate.GetHashCode();
+            return hashCode;
         }
 
         public AudioCodec Codec { get; set; }

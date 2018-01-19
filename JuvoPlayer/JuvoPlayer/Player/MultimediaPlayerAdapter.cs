@@ -145,7 +145,7 @@ namespace JuvoPlayer.Player
 
         }
 
-        public void Seek(double time)
+        public void Seek(TimeSpan time)
         {
             if (source == null)
             {
@@ -153,7 +153,7 @@ namespace JuvoPlayer.Player
                 return;
             }
 
-            player.SetPlayPositionAsync((int)time, false);
+            player.SetPlayPositionAsync((int)time.TotalMilliseconds, false);
         }
 
         public void SetAudioStreamConfig(AudioStreamConfig config)
@@ -202,7 +202,7 @@ namespace JuvoPlayer.Player
             return new MediaFormatAudioMimeType();
         }
 
-        public void SetDuration(double duration)
+        public void SetDuration(TimeSpan duration)
         {
         }
 

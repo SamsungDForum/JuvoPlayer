@@ -10,7 +10,7 @@ namespace JuvoPlayer.DRM
     {
         string CurrentDrmScheme { get; }
         StreamPacket DecryptPacket(StreamPacket packet);
-        void UpdateSession(DRMInitData drmInitData);
         void SetDrmConfiguration(DRMDescription drmDescription);
+        void Start();
     }
 }

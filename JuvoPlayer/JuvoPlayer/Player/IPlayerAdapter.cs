@@ -13,6 +13,7 @@
 
 using JuvoPlayer.Common;
 using JuvoPlayer.Common.Delegates;
+using System;
 
 namespace JuvoPlayer.Player
 {
@@ -26,8 +27,8 @@ namespace JuvoPlayer.Player
 
         void Pause();
         void Play();
-        void Seek(double time);
-        void SetDuration(double duration);
+        void Seek(TimeSpan time);
+        void SetDuration(TimeSpan duration);
         void SetExternalSubtitles(string file);
         void SetPlaybackRate(float rate);
         void SetSubtitleDelay(int offset);

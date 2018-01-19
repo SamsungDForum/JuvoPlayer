@@ -130,12 +130,12 @@ namespace JuvoPlayer.Player
                 { // but for first OnNeedData - we're sending both video and audio till first OnEnoughData
                     needDataInitMode = false;
 
-                    Log.Info("JuvoPlayer", "SubmittingPacketsTask: Feeding (" + i.ToString() + ").");
-                    Log.Info("JuvoPlayer", "SubmittingPacketsTask: AUDIO: " + audioBuffer.Count().ToString() + ", VIDEO: " + videoBuffer.Count().ToString());
+//                    Log.Info("JuvoPlayer", "SubmittingPacketsTask: Feeding (" + i.ToString() + ").");
+//                    Log.Info("JuvoPlayer", "SubmittingPacketsTask: AUDIO: " + audioBuffer.Count().ToString() + ", VIDEO: " + videoBuffer.Count().ToString());
 
                     StreamPacket packet = DequeuePacket();
 
-                    Log.Info("JuvoPlayer", "Peeked");
+//                    Log.Info("JuvoPlayer", "Peeked");
 
                     if (packet.IsEOS)
                         SubmitEOSPacket(packet);
@@ -182,7 +182,7 @@ namespace JuvoPlayer.Player
                 //byte[] managedArray2 = new byte[managedArray.Length];
                 //Marshal.Copy(pnt, managedArray2, 0, managedArray.Length);
                 var trackType = SMPlayerUtils.GetTrackType(packet);
-                Tizen.Log.Info("JuvoPlayer", string.Format("[HQ] send es data to SubmitPacket: {0} ( {1} )", packet.Pts, trackType));
+//                Tizen.Log.Info("JuvoPlayer", string.Format("[HQ] send es data to SubmitPacket: {0} ( {1} )", packet.Pts, trackType));
 
                 playerInstance.SubmitPacket(pnt, (uint)packet.Data.Length, packet.Pts, trackType, IntPtr.Zero);
             }
@@ -213,9 +213,9 @@ namespace JuvoPlayer.Player
             playCalled = true;
         }
 
-        public void Seek(double time) // TODO(g.skowinski): Make sure units are compatible.
+        public void Seek(TimeSpan time)
         {
-            playerInstance.Seek((int)(time * 1000000000));
+            playerInstance.Seek((int)(time.TotalMilliseconds * 1000000));
         }
 
         public void SetAudioStreamConfig(AudioStreamConfig config)
@@ -230,7 +230,7 @@ namespace JuvoPlayer.Player
                 channels = (uint)config.ChannelLayout
             };
 
-            if (config.CodecExtraData.Length > 0)
+            if (config.CodecExtraData != null && config.CodecExtraData.Length > 0)
             {
                 int size = Marshal.SizeOf(config.CodecExtraData[0]) * config.CodecExtraData.Length;
                 audioStreamInfo.codec_extradata = Marshal.AllocHGlobal(size);
@@ -260,7 +260,7 @@ namespace JuvoPlayer.Player
                 max_height = (uint)config.Size.Height
             };
 
-            if (config.CodecExtraData.Length > 0)
+            if (config.CodecExtraData != null && config.CodecExtraData.Length > 0)
             {
                 int size = Marshal.SizeOf(config.CodecExtraData[0]) * config.CodecExtraData.Length;
                 videoStreamInfo.codec_extradata = Marshal.AllocHGlobal(size);
@@ -273,9 +273,10 @@ namespace JuvoPlayer.Player
             videoSet = true;
         }
 
-        public void SetDuration(double duration) // TODO(g.skowinski): Make sure units are compatible. SMPlayer/gstreamer needs nanoseconds, duration is given in seconds
+        public void SetDuration(TimeSpan duration)
         {
-            playerInstance.SetDuration((uint)(duration * 1000000000));
+            // player requires nanoseconds
+            playerInstance.SetDuration((uint)(duration.TotalMilliseconds * 1000000));
         }
 
         public void SetExternalSubtitles(string file)
@@ -392,7 +393,7 @@ namespace JuvoPlayer.Player
 
             currentTime = currTime;
 
-            TimeUpdated?.Invoke(currentTime);
+            TimeUpdated?.Invoke(TimeSpan.FromMilliseconds(currentTime));
         }
 
         #endregion

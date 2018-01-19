@@ -27,7 +27,6 @@ namespace JuvoPlayer.Common
 
     public class DRMDescription
     {
-        public string InitData { get; set; }
         public string Scheme { get; set; }
         public string LicenceUrl { get; set; }
         public Dictionary<string, string> KeyRequestProperties { get; set; }

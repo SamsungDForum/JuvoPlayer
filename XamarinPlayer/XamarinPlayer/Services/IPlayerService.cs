@@ -14,9 +14,9 @@ namespace XamarinPlayer.Services
         event PlaybackCompleted PlaybackCompleted;
         event ShowSubtitile ShowSubtitle;
 
-        int Duration { get; }
+        TimeSpan Duration { get; }
 
-        int CurrentPosition { get; }
+        TimeSpan CurrentPosition { get; }
 
         PlayerState State { get; }
 
@@ -28,6 +28,6 @@ namespace XamarinPlayer.Services
 
         void Pause();
 
-        void SeekTo(int positionMs);
+        void SeekTo(TimeSpan position);
     }
 }
