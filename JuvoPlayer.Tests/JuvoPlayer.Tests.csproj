@@ -22,9 +22,9 @@
     <PackageReference Include="Tizen.NET" Version="4.0.0">
       <ExcludeAssets>Runtime</ExcludeAssets>
     </PackageReference>
-    <PackageReference Include="NUnit" Version="3.8.1" />
-    <PackageReference Include="NUnitLite" Version="3.8.1" />
-    <PackageReference Include="Tizen.NET.Sdk" Version="1.0.0" />
+    <PackageReference Include="NUnit" Version="3.9.0" />
+    <PackageReference Include="NUnitLite" Version="3.9.0" />
+    <PackageReference Include="Tizen.NET.Sdk" Version="1.0.1" />
   </ItemGroup>
 
   <ItemGroup>

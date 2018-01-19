@@ -46,7 +46,7 @@ namespace JuvoPlayer.Dash
             demuxer.StartForExternalSource();
         }
 
-        public void OnTimeUpdated(double time)
+        public void OnTimeUpdated(TimeSpan time)
         {
             dashClient.OnTimeUpdated(time);
         }
@@ -72,12 +72,13 @@ namespace JuvoPlayer.Dash
                     // read first node inner text (should be psshbox or pro header)
                     var initData = doc.FirstChild?.FirstChild?.InnerText;
 
-                    var drmDescriptor = new DRMDescription()
+                    var drmInitData = new DRMInitData()
                     {
-                        InitData = initData,
-                        Scheme = CencUtils.SchemeIdUriToType(schemeIdUri)
+                        InitData = System.Text.Encoding.ASCII.GetBytes(initData),
+                        SystemId = CencUtils.SchemeIdUriToSystemId(schemeIdUri),
+                        StreamType = streamType
                     };
-                    SetDrmConfiguration?.Invoke(drmDescriptor);
+                    DRMInitDataFound?.Invoke(drmInitData);
                 }
                 else if (string.Equals(schemeIdUri, "http://youtube.com/drm/2012/10/10", StringComparison.CurrentCultureIgnoreCase))
                 {

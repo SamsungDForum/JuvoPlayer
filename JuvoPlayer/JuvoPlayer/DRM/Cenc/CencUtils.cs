@@ -17,13 +17,14 @@ namespace JuvoPlayer.DRM.Cenc
         public static readonly byte[] WidevineSystemId = {0xed, 0xef, 0x8b, 0xa9, 0x79, 0xd6, 0x4a, 0xce,
                                                           0xa3, 0xc8, 0x27, 0xdc, 0xd5, 0x1d, 0x21, 0xed, };
 
-        public static string SchemeIdUriToType(string schemeIdUri)
+
+        public static byte[] SchemeIdUriToSystemId(string schemeIdUri)
         {
             if (string.Equals(schemeIdUri, PlayReadySchemeIdUri, StringComparison.CurrentCultureIgnoreCase))
-                return PlayReadyType;
+                return PlayReadySystemId;
 
             if (string.Equals(schemeIdUri, WidevineSchemeIdUri, StringComparison.CurrentCultureIgnoreCase))
-                return WidevineType;
+                return WidevineSystemId;
 
             return null;
         }
@@ -31,19 +32,19 @@ namespace JuvoPlayer.DRM.Cenc
         public static bool SupportsSchemeIdUri(string uri)
         {
             return string.Equals(uri, PlayReadySchemeIdUri, StringComparison.CurrentCultureIgnoreCase)
-                || string.Equals(uri, WidevineSchemeIdUri, StringComparison.CurrentCultureIgnoreCase);
+                /*|| string.Equals(uri, WidevineSchemeIdUri, StringComparison.CurrentCultureIgnoreCase)*/;
         }
 
         public static bool SupportsSystemId(byte[] uuid)
         {
             return uuid.SequenceEqual(PlayReadySystemId)
-                || uuid.SequenceEqual(WidevineSystemId);
+               /* || uuid.SequenceEqual(WidevineSystemId)*/;
         }
 
         public static bool SupportsType(string type)
         {
             return string.Equals(type, PlayReadyType, StringComparison.CurrentCultureIgnoreCase)
-                || string.Equals(type, WidevineType, StringComparison.CurrentCultureIgnoreCase);
+                /*|| string.Equals(type, WidevineType, StringComparison.CurrentCultureIgnoreCase)*/;
         }
     }
 }

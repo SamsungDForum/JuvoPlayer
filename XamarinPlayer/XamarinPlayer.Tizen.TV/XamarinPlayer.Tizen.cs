@@ -17,7 +17,7 @@ namespace XamarinPlayer.Tizen
                 // Send key event to the portable project using MessagingCenter
                 Xamarin.Forms.MessagingCenter.Send<IKeyEventSender, string>(this, "KeyDown", e.KeyName);
             };
-
+            
             LoadApplication(new App());
         }
 

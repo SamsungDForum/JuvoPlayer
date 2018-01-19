@@ -79,7 +79,7 @@ namespace JuvoPlayer.RTSP
             rtpClient?.Play();
         }
 
-        public void OnSeek(double time)
+        public void OnSeek(TimeSpan time)
         {
 
         }
@@ -96,7 +96,7 @@ namespace JuvoPlayer.RTSP
         {
         }
 
-        public void OnTimeUpdated(double time)
+        public void OnTimeUpdated(TimeSpan time)
         {
         }
     }

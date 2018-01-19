@@ -314,11 +314,13 @@ namespace JuvoPlayer.Dash
     internal class DashClient : IDashClient
     {
         private const string Tag = "JuvoPlayer";
+        private static TimeSpan magicBufferTime = TimeSpan.FromSeconds(7);
+
         private ISharedBuffer sharedBuffer;
         private Media media;
         private StreamType streamType;
 
-        private double currentTime;
+        private TimeSpan currentTime;
         private TimeSpan bufferTime;
         private bool playback;
         private IRepresentationStream currentStreams;
@@ -335,7 +337,7 @@ namespace JuvoPlayer.Dash
             sidxs = new List<SIDXAtom>();
         }
 
-        public void Seek(int position)
+        public void Seek(TimeSpan position)
         {
             throw new NotImplementedException();
         }
@@ -370,7 +372,7 @@ namespace JuvoPlayer.Dash
             return true;
         }
 
-        public void OnTimeUpdated(double time)
+        public void OnTimeUpdated(TimeSpan time)
         {
             currentTime = time;
         }
@@ -406,8 +408,7 @@ namespace JuvoPlayer.Dash
             while (playback)
             {
                 var currentTime = this.currentTime;
-                const double magicBufferTime = 7000.0; // miliseconds
-                while (bufferTime.TotalMilliseconds - currentTime <= magicBufferTime)
+                while (bufferTime - currentTime <= magicBufferTime)
                 {
                     try
                     {

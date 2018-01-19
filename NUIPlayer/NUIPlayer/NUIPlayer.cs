@@ -1,7 +1,10 @@
 ﻿using JuvoPlayer;
 using JuvoPlayer.Common;
+using JuvoPlayer.DRM;
+using JuvoPlayer.DRM.Cenc;
 using JuvoPlayer.Player;
 using JuvoPlayer.RTSP;
+using System;
 using Tizen;
 using Tizen.Applications;
 using Tizen.NUI;
@@ -63,8 +66,11 @@ namespace NUIPlayer
             dataProviders = new DataProviderFactoryManager();
             dataProviders.RegisterDataProviderFactory(new RTSPDataProviderFactory());
 
+            var drmManager = new DRMManager();
+            drmManager.RegisterDrmHandler(new CencHandler());
+
             var playerAdapter = new SMPlayerAdapter();
-            playerController = new PlayerController(playerAdapter);
+            playerController = new PlayerController(playerAdapter, drmManager);
             playerController.TimeUpdated += OnTimeUpdated;
             playerController.PlaybackCompleted += OnPlaybackCompleted;
             playerController.ShowSubtitle += OnRenderSubtitle;
@@ -90,7 +96,7 @@ namespace NUIPlayer
         {
         }
 
-        public void OnTimeUpdated(double time)
+        public void OnTimeUpdated(TimeSpan time)
         {
         }
 
@@ -107,11 +113,11 @@ namespace NUIPlayer
                 {
                     case "Left":
                     case "XF86AudioRewind":
-                        playerController.OnSeek(-10);
+//                        playerController.OnSeek();
                         return true;
                     case "Right":
                     case "XF86AudioNext":
-                        playerController.OnSeek(10);
+//                        playerController.OnSeek();
                         return true;
                     case "Up":
                     case "Down":
