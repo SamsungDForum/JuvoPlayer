@@ -1,4 +1,5 @@
 using System;
+using System.Collections;
 using System.Collections.Generic;
 
 namespace MpdParser.Node.Dynamic
@@ -327,20 +328,23 @@ namespace MpdParser.Node.Dynamic
         }
     }
 
+   
     public class BaseRepresentationStream : IRepresentationStream
     {
-        public BaseRepresentationStream(Segment init, Segment media)
+        public BaseRepresentationStream(Segment init, Segment media, Segment index=null)
         {
             media_ = media;
             InitSegment = init;
+            IndexSegment = index;
             Count = media == null ? 0u : 1u;
             Duration = media?.Period?.Duration;
         }
 
         private Segment media_;
-
+                
         public TimeSpan? Duration { get; }
         public Segment InitSegment { get; }
+        public Segment IndexSegment { get; }
         public uint Count { get; }
 
         public Segment MediaSegmentAtPos(uint pos)
@@ -515,6 +519,7 @@ namespace MpdParser.Node.Dynamic
 
         public TimeSpan? Duration { get; }
         public Segment InitSegment { get; }
+        public Segment IndexSegment { get; }
         public uint Count { get; }
 
         public Segment MediaSegmentAtPos(uint pos)
@@ -551,6 +556,11 @@ namespace MpdParser.Node.Dynamic
                 for (uint repeat = 0; repeat <= item.Repeats; ++repeat)
                     yield return MakeSegment(item, repeat);
             }
+        }
+
+        public void SetIndexData(byte[] rawData)
+        {
+            throw new NotImplementedException();
         }
     }
 
@@ -646,6 +656,7 @@ namespace MpdParser.Node.Dynamic
 
         public TimeSpan? Duration { get; }
         public Segment InitSegment { get; }
+        public Segment IndexSegment { get; }
         public uint Count { get; }
 
         public Segment MediaSegmentAtPos(uint pos)

@@ -78,6 +78,7 @@ namespace JuvoPlayer.Dash
         {
         }
 
+
         public void Start()
         {
             Tizen.Log.Info("JuvoPlayer", "Dash start.");
@@ -98,6 +99,7 @@ namespace JuvoPlayer.Dash
                     Tizen.Log.Info("JuvoPlayer", "Video: " + video);
                     videoPipeline.Start(video);
 
+                    
                     Tizen.Log.Info("JuvoPlayer", "Audio: " + audio);
                     audioPipeline.Start(audio);
 
