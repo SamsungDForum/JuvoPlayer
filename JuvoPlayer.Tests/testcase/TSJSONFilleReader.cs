@@ -120,7 +120,7 @@ namespace JuvoPlayer.Tests.testcase
             Assert.AreEqual(clips[1].Type, "url");
             Assert.AreEqual(clips[1].Poster, "front/img/bunny.jpg");
             Assert.AreEqual(clips[1].Description, "This is clip played directly from URL");
-            Assert.IsNull(clips[0].DRMDatas);
+            Assert.IsNull(clips[1].DRMDatas);
             Assert.IsNotNull(clips[1].Subtitles);
             Assert.AreEqual(clips[1].Subtitles.Count, 2, "wrong subtitles count");
             Assert.IsNotNull(clips[1].Subtitles[0]);
