@@ -12,4 +12,8 @@
     <PackageReference Include="Microsoft.NET.Test.Sdk" Version="15.5.0" />
   </ItemGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\JuvoPlayer.Common\JuvoPlayer.Common.csproj" />
+  </ItemGroup>
+
 </Project>

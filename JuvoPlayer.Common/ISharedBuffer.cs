@@ -12,8 +12,6 @@
 // this software or its derivatives.
 
 
-using System.Threading;
-
 namespace JuvoPlayer.Common
 {
     public interface ISharedBuffer
