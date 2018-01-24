@@ -11,10 +11,8 @@
 // damages suffered by licensee as a result of using, modifying or distributing
 // this software or its derivatives.
 
-using System;
 using System.Collections.Generic;
 using System.Threading;
-using Tizen;
 
 namespace JuvoPlayer.Common {
     public class PacketBuffer {

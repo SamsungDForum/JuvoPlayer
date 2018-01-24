@@ -1,9 +1,8 @@
-﻿using NUnit.Framework;
-using System;
-using System.Collections.Generic;
-using JuvoPlayer.Common;
-using System.Threading.Tasks;
+﻿using System;
 using System.Threading;
+using System.Threading.Tasks;
+using JuvoPlayer.Common;
+using NUnit.Framework;
 
 namespace JuvoPlayer.Tests
 {
@@ -209,7 +208,7 @@ namespace JuvoPlayer.Tests
                 lock (lockPQ) // we need to read whole chunk-number packets at once, because allowing writer task to write in between reads would mess up ordering check
                 {
                     chunk = Math.Min(size - written, rnd.Next(0, averageChunkSize * 2)); // we're syncing with write method through lock, so we can't let the buffer wait for more data - it would cause a deadlock
-                    chunk = Math.Min(chunk, buffer.Count());
+                    chunk = Math.Min(chunk, (int) buffer.Count());
                     ulong lastOne =
                     (ordering == PacketBuffer.Ordering.DtsAsc || ordering == PacketBuffer.Ordering.PtsAsc
                         ? ulong.MinValue
