@@ -12,6 +12,9 @@
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>None</DebugType>
   </PropertyGroup>
+  <ItemGroup>
+    <Compile Include="..\JuvoPlayer.Tests\testcase\*.cs" Link="testcase\%(Filename).cs" />
+  </ItemGroup>
 
   <ItemGroup>
     <Folder Include="lib\" />
