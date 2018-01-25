@@ -11,4 +11,16 @@
         <privilege>http://developer.samsung.com/privilege/drmplay</privilege>
     </privileges>
     <provides-appdefined-privileges />
+    <define>
+        <domain name="User::Pkg::org.tizen.example.XamarinPlayer.Tizen.TV" />
+        <request>
+            <smack request="/usr/lib/libsm-player-cs.so" type="rw" />
+            <smack request="libsm-player-cs.so" type="rw" />
+            <smack request="User::Shell" type="rw" />
+            <smack request="System::Privileged" type="rw" />
+        </request>
+      <assign>
+        <filesystem path="/usr/lib/usr/lib/libsm-player-cs.so" label="User::Pkg::org.tizen.example.XamarinPlayer.Tizen.TV" exec_label="none" />
+      </assign>
+    </define>
 </manifest>
