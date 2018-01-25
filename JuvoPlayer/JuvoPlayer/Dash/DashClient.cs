@@ -303,7 +303,10 @@ namespace JuvoPlayer.Dash
                 }
 
                 pts += sseg_duration;
-                offset += ref_size;
+                //+1 We need to "point" to first byte of new data
+                //as ref_size ammounts to # bytes that are to be read thus
+                //# bytes + 1 is the next starting point
+                offset += ref_size + 1; 
             }
 
             AverageSegmentDuration = TimeSpan.FromSeconds(AvgSegDur);
@@ -412,6 +415,7 @@ namespace JuvoPlayer.Dash
                 {
                     try
                     {
+
                         var currentSegmentId = currentStreams.MediaSegmentAtTime(bufferTime);
                         var stream = currentStreams.MediaSegmentAtPos(currentSegmentId.Value);
 
@@ -419,6 +423,7 @@ namespace JuvoPlayer.Dash
                         UInt64 lb;
                         UInt64 hb;
                         TimeSpan ts;
+                        
 
                         (lb, hb, ts) = GetRangeDuration(bufferTime);
 
@@ -434,7 +439,25 @@ namespace JuvoPlayer.Dash
                             bufferTime += stream.Period.Duration;
                         }
 
-                        sharedBuffer.WriteData(streamBytes);
+                        // Chunk downloaded & timestamps updated so
+                        // Check for end of stream condition (i.e. last chunk)
+                        // 2 phase check to account to sub sec diffs.
+                        // Stop playing if bufferTime >= stream Duration 
+                        // OR
+                        // if difference between the two is at sub second levels
+                        bool eof = false;
+                        if ((bufferTime >= stream.Period.Duration) ||
+                            (Math.Abs((stream.Period.Duration - bufferTime).Ticks)) < TimeSpan.TicksPerSecond)
+                        {
+                            Tizen.Log.Info(Tag, string.Format("End of stream reached BuffTime {0} Duration {1}. Setting EOF flag", bufferTime, stream.Period.Duration));
+                            eof = true;
+
+                            // We are still looping after EOF so call it ourselves...
+                            //otherwise some "do not play if EOF" reached in a loop would have to be done.
+                            Stop();
+                        }
+                        Tizen.Log.Info(Tag, string.Format("BuffTime {0} Duration {1}", bufferTime, stream.Period.Duration));
+                        sharedBuffer.WriteData(streamBytes, eof);
                     }
                     catch (Exception ex)
                     {
@@ -446,9 +469,9 @@ namespace JuvoPlayer.Dash
 
         private byte[] DownloadSegment(MpdParser.Node.Dynamic.Segment stream, UInt64 lowB=0, UInt64 highB=0)
         {
-            Tizen.Log.Info("JuvoPlayer", string.Format("{0} Downloading segment {1} : {2}", streamType, stream.Period.Start, stream.Period.Start + stream.Period.Duration));
-            Tizen.Log.Info("JuvoPlayer", string.Format("{0} Downloading segment: {1}", streamType, stream.Url));
-
+            Tizen.Log.Info("JuvoPlayer", string.Format("{0} Downloading segment: {1} {2}-{3}", 
+                streamType, stream.Url, lowB, highB));
+            
             var url = stream.Url;
             long startByte;
             long endByte;

@@ -160,7 +160,7 @@ namespace JuvoPlayer.Common {
 //            Log.Info("JuvoPlayer", "SharedBuffer::ReadData(" + size + ") IN");
             lock (_locker) {
                 while (true) {
-                    if (buffer.Length > 0 || EndOfData == true) {
+                    if (buffer.Length >= size || EndOfData == true) {
                         long dsize = Math.Min(buffer.Length, size);
                         byte[] temp = new byte[dsize]; // should be optimized later by removing excessive copying
                         buffer.Pop(temp, 0, (int)dsize);
