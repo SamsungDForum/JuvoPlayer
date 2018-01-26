@@ -1,61 +1,34 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
+using System.Reflection;
 using JuvoPlayer.Common;
 using NUnit.Framework;
 
-namespace JuvoPlayer.Tests.testcase
+namespace JuvoPlayer.Tests
 {
     [TestFixture]
     [Description("")]
     class JSONFileReaderTests
     {
-        //TODO(p.galiszewsk): move it to resource: http://www.cauldwell.net/patrick/blog/PermaLink,guid,e9a1451b-108c-4da7-8be9-2b6c2316f7b1.aspx
-        static string jsonText = @"
-         [
-          { 
-            ""title"": ""Google DASH encrypted"",
-            ""url"": ""http://yt-dash-mse-test.commondatastorage.googleapis.com/media/oops_cenc-20121114-signedlicenseurl-manifest.mpd"",
-            ""type"": ""dash"",
-            ""poster"": ""front/img/oops.jpg"",
-            ""description"": ""This is clip with DASH content with DRM. User can choose desired video/audio representation"",
-            ""drmDatas"": [
-              {
-                ""scheme"": ""playready"",
-                ""licenceUrl"": ""http://drm-playready-licensing.axtest.net/AcquireLicense"",
-                ""keyRequestProperties"": {
-                   ""Content-Type"": ""text/xml; charset=utf-8"",
-                   ""X-AxDRM-Message"": ""eyJ0eXAiOiJKV1QiLCJhbGciOiJIUzI1NiJ9.eyJ2ZXJzaW9uIjoxLCJjb21fa2V5X2lkIjoiNjllNTQwODgtZTllMC00NTMwLThjMWEtMWViNmRjZDBkMTRlIiwibWVzc2FnZSI6eyJ0eXBlIjoiZW50aXRsZW1lbnRfbWVzc2FnZSIsImtleXMiOlt7ImlkIjoiMTUzMGQzYTAtNjkwNC00NDZhLTkxYTEtMzNhMTE1YWE4YzQxIn0seyJpZCI6ImM4M2ViNjM5LWU2NjQtNDNmOC1hZTk4LTQwMzliMGMxM2IyZCJ9LHsiaWQiOiIzZDhjYzc2Mi0yN2FjLTQwMGYtOTg5Zi04YWI1ZGM3ZDc3NzUifSx7ImlkIjoiYmQ4ZGFkNTgtMDMyZC00YzI1LTg5ZmEtYzdiNzEwZTgyYWMyIn1dfX0.9t18lFmZFVHMzpoZxYDyqOS0Bk_evGhTBw_F2JnAK2k"",
-                },
-              }
-            ]
-          },
-          {
-            ""title"": ""Big Buck Bunny mp4"",
-            ""url"": ""http://distribution.bbb3d.renderfarming.net/video/mp4/bbb_sunflower_1080p_30fps_normal.mp4"",
-            ""subtitles"": [
-              {
-                ""subtitle"": ""./subs/sample_cyrilic.srt"",
-                ""encoding"": ""windows-1251"",
-                ""language"": ""en (external)"",
-                ""isActive"": true,
-                ""id"": ""11""
-              },
-              {
-                ""subtitle"": ""./subs/sample_cyrilic_utf8.srt"",
-                ""language"": ""ko (external)"",
-                ""id"": ""10"",
-                ""encoding"": ""windows-1251"",
-              }
-            ],
-            ""type"": ""url"",
-            ""poster"": ""front/img/bunny.jpg"",
-            ""description"": ""This is clip played directly from URL""
-          },
-         ]";
+        private static string jsonText;
 
         [SetUp]
         public static void Init()
         {
+            Assembly assembly = Assembly.GetExecutingAssembly();
+            string[] names = assembly.GetManifestResourceNames();
+            foreach (var name in names)
+            {
+                if (!name.Contains("videoclips.json")) continue;
+                var stream = assembly.GetManifestResourceStream(name);
+                var reader = new StreamReader(stream);
+                jsonText = reader.ReadToEnd();
+                reader.Close();
+                return;
+            }
+
+            Assert.Fail("Cannot find required embedded resource - videoclips.json");
         }
 
         [TearDown]
