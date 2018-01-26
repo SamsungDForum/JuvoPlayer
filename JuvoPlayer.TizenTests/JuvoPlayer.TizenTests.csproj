@@ -17,6 +17,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <EmbeddedResource Include="..\JuvoPlayer.Tests\testcase\videoclips.json" Link="testcase\videoclips.json" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Folder Include="lib\" />
     <Folder Include="res\" />
   </ItemGroup>
