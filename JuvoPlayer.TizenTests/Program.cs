@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Reflection;
 using System.IO;
 using System.Runtime.InteropServices;
@@ -9,6 +9,7 @@ using System.Text;
 using Tizen;
 using NUnitLite;
 using NUnit.Common;
+using Tizen.Applications;
 
 namespace JuvoPlayer.Tests
 {
@@ -60,9 +61,24 @@ namespace JuvoPlayer.Tests
             t.Start();
         }
 
+        static void UnhandledException(object sender, UnhandledExceptionEventArgs evt)
+        {
+            if (evt.ExceptionObject is Exception e)
+            {
+                Log.Error(Tag, e.Message);
+                Log.Error(Tag, e.StackTrace);
+            }
+            else
+            {
+                Log.Error(Tag, "Got unhandled exception event: " + evt);
+            }
+        }
+
         public static void Main(string[] args)
         {
             Log.Info(Tag, "==================== Main ====================");
+            AppDomain.CurrentDomain.UnhandledException += UnhandledException;
+
             string dllName = typeof(Program).GetTypeInfo().Assembly.ManifestModule.ToString();
             List<string> argList = new List<string>();
             argList.Add("--result=/tmp/" + Path.GetFileNameWithoutExtension(dllName) + ".xml");
