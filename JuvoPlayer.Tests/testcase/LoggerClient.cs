@@ -10,12 +10,12 @@ namespace JuvoPlayer.Tests
     // Test cases assume that each logging statement is done in fixed lline.
     //
     // Please modify correspoding test cases if you would like to modify this file.
-    class LoggerClient
+    public class LoggerClient
     {
         public ILogger Logger { get; }
         public static readonly string LogMessage = "message";
         public static readonly string FileName = "LoggerClient.cs";
-        public static readonly int Func1FirstLine = 27;
+        public static readonly int FuncFirstLineNumber = 27;
 
         public LoggerClient(ILogger logger)
         {
