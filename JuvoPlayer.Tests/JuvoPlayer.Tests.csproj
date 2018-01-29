@@ -7,10 +7,14 @@
   </PropertyGroup>
 
   <ItemGroup>
+    <None Remove="testcase\logging_invalid.config" />
+    <None Remove="testcase\logging_valid.config" />
     <None Remove="testcase\videoclips.json" />
   </ItemGroup>
 
   <ItemGroup>
+    <EmbeddedResource Include="testcase\logging_invalid.config" />
+    <EmbeddedResource Include="testcase\logging_valid.config" />
     <EmbeddedResource Include="testcase\videoclips.json" />
   </ItemGroup>
 
