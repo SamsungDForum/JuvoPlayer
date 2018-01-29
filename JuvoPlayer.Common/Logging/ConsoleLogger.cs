@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Text;
 
 namespace JuvoPlayer.Common.Logging
@@ -12,7 +13,8 @@ namespace JuvoPlayer.Common.Logging
 
         protected override void PrintLog(LogLevel level, string message, string file, string method, int line)
         {
-            Console.WriteLine(String.Format("[{0}] {1}: {2}:{3} > {4}", level, file, method, line, message));
+            var uri = new Uri("file://" + file);
+            Console.WriteLine(String.Format("[{0}] {1}: {2}:{3} > {4}", level, Path.GetFileName(uri.AbsolutePath), method, line, message));
         }
     }
 }

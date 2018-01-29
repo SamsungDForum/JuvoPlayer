@@ -56,14 +56,16 @@ namespace JuvoPlayer.Tests
 
                 foreach (var log in logger.Logs)
                 {
-                    Assert.That(log.File, Is.EqualTo(LoggerClient.FileName));
+                    // LoggerBase returns full path and subclasses must resolve file name manually.
+                    // This is needed because TizenLogger requires full path.
+                    Assert.That(log.File, Does.EndWith(LoggerClient.FileName));
                     Assert.That(log.Method, Is.EqualTo(nameof(loggerClient.Func)));
                     Assert.That(log.Message, Is.EqualTo(LoggerClient.LogMessage));
                 }
 
                 for (var index = 0; index < expectedLogsCount; ++index)
                 {
-                    var lineNumber = LoggerClient.Func1FirstLine + index;
+                    var lineNumber = LoggerClient.FuncFirstLineNumber + index;
                     Assert.That(logger.Logs[index].Line, Is.EqualTo(lineNumber));
                 }
             }

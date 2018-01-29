@@ -50,8 +50,7 @@ namespace JuvoPlayer.Common.Logging
         private void PrintLogIfEnabled(LogLevel level, string message, string file, string method, int line)
         {
             if (!IsLevelEnabled(level)) return;
-            var uri = new Uri("file://" + file);
-            PrintLog(level, message, Path.GetFileName(uri.AbsolutePath), method, line);
+            PrintLog(level, message, file, method, line);
         }
 
         protected abstract void PrintLog(LogLevel level, string message, string file, string method, int line);
