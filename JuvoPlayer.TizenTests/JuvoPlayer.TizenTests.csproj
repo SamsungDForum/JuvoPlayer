@@ -21,6 +21,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <EmbeddedResource Include="..\JuvoPlayer.Tests\testcase\*.config" Link="testcase\%(Filename).config" />
+  </ItemGroup>
+
+  <ItemGroup>
     <Folder Include="lib\" />
     <Folder Include="res\" />
   </ItemGroup>
