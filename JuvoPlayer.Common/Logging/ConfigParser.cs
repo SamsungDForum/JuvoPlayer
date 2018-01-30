@@ -11,6 +11,9 @@ namespace JuvoPlayer.Common.Logging
 
         public ConfigParser(string contents)
         {
+            if (contents == null)
+                throw new ArgumentNullException();
+
             LoggingLevels = new Dictionary<string, LogLevel>();
 
             using (var reader = new StringReader(contents))

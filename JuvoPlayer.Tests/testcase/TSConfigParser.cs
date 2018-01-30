@@ -60,5 +60,11 @@ namespace JuvoPlayer.Tests
             var parser = new ConfigParser(contents);
             Assert.That(parser.LoggingLevels, Is.Empty);
         }
+
+        [Test]
+        public void TestConstructorWithNull()
+        {
+            Assert.Throws<ArgumentNullException>(() => new ConfigParser(null));
+        }
     }
 }

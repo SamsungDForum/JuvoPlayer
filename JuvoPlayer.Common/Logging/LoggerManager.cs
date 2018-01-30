@@ -28,15 +28,20 @@ namespace JuvoPlayer.Common.Logging
 
         public static void Configure(CreateLoggerFunc createLoggerFunc)
         {
+            if (createLoggerFunc == null)
+                throw new ArgumentNullException();
             if (_instance != null)
-                return;
+                throw new InvalidOperationException("LoggerManager is already configured");
+
             _instance = new LoggerManager(new Dictionary<string, LogLevel>(), createLoggerFunc);
         }
 
         public static void Configure(string configData, CreateLoggerFunc createLoggerFunc)
         {
+            if (configData == null || createLoggerFunc == null)
+                throw new ArgumentNullException();
             if (_instance != null)
-                return;
+                throw new InvalidOperationException("LoggerManager is already configured");
 
             var configParser = new ConfigParser(configData);
             _instance = new LoggerManager(configParser.LoggingLevels, createLoggerFunc);
@@ -44,8 +49,10 @@ namespace JuvoPlayer.Common.Logging
 
         public static void Configure(Stream configStream, CreateLoggerFunc createLoggerFunc)
         {
+            if (configStream == null || createLoggerFunc == null)
+                throw new ArgumentNullException();
             if (_instance != null)
-                return;
+                throw new InvalidOperationException("LoggerManager is already configured");
 
             var configData = string.Empty;
             using (var reader = new StreamReader(configStream))

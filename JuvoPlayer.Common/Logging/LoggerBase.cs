@@ -13,8 +13,8 @@ namespace JuvoPlayer.Common.Logging
 
         protected LoggerBase(string channel, LogLevel level)
         {
-            Channel = channel;
-            _level = level;
+            Channel = channel ?? throw new ArgumentNullException();
+            _level = Enum.IsDefined(typeof(LogLevel), level) ? level : throw new ArgumentOutOfRangeException();
         }
 
         public void Verbose(string message, string file = "", string method = "", int line = 0)
