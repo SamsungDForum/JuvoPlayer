@@ -173,6 +173,8 @@ namespace JuvoPlayer.Player
             if (!Streams.ContainsKey(packet.StreamType))
                 return;
 
+            while (((packet.Pts / 1000000) - currentTime.TotalMilliseconds) > 3000) { }
+
             Streams[packet.StreamType].OnAppendPacket(packet);
         }
 

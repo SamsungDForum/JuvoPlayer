@@ -82,6 +82,8 @@ namespace JuvoPlayer.Dash
                         var currentSegmentId = currentStreams.MediaSegmentAtTime(bufferTime);
                         var stream = currentStreams.MediaSegmentAtPos(currentSegmentId.Value);
 
+                        Tizen.Log.Error(Tag, string.Format("Downloading Segment {0}  {1}", streamType, stream.Url));
+
                         byte[] streamBytes = DownloadSegment(stream);
 
                         bufferTime += stream.Period.Duration;
