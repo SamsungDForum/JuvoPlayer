@@ -8,7 +8,7 @@ namespace JuvoPlayer.Common.Logging
 {
     public abstract class LoggerBase : ILogger
     {
-        protected string Channel;
+        public string Channel { get; }
         private readonly LogLevel _level;
 
         protected LoggerBase(string channel, LogLevel level)
