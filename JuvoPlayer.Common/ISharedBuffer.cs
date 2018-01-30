@@ -11,16 +11,18 @@
 // damages suffered by licensee as a result of using, modifying or distributing
 // this software or its derivatives.
 
+
 namespace JuvoPlayer.Common
 {
-    public abstract class StreamDefinition
+    public interface ISharedBuffer
     {
-        public StreamDefinition()
-        {
-        }
+        void ClearData();
 
-        public int Id { get; set; }
+        // SharedBuffer::ReadData(int size) is blocking - it will block until it has enough data or return less data if EOF is reached.
+        // Returns byte array of leading [size] bytes of data from the buffer; it should remove the leading [size] bytes of data from the buffer.
+        byte[] ReadData(int size);
+        
+        void WriteData(byte[] data, bool endOfData = false);
 
-        public abstract StreamType StreamType();
     }
 }

@@ -1,4 +1,4 @@
-﻿using JuvoPlayer;
+using JuvoPlayer;
 using JuvoPlayer.Common;
 using JuvoPlayer.DRM;
 using JuvoPlayer.DRM.Cenc;
@@ -209,8 +209,23 @@ namespace NUIPlayer
             base.OnLocaleChanged(e);
         }
 
+        static void UnhandledException(object sender, UnhandledExceptionEventArgs evt)
+        {
+            if (evt.ExceptionObject is Exception e)
+            {
+                Log.Error("JuvoPlayer", e.Message);
+                Log.Error("JuvoPlayer", e.StackTrace);
+            }
+            else
+            {
+                Log.Error("JuvoPlayer", "Got unhandled exception event: " + evt);
+            }
+        }
+
         private static void Main(string[] args)
         {
+            AppDomain.CurrentDomain.UnhandledException += UnhandledException;
+
             //Create an Application
             Program myProgram = new Program();
             myProgram.Run(args);
