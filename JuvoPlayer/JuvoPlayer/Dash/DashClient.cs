@@ -92,101 +92,47 @@ namespace JuvoPlayer.Dash
                 var currentTime = this.currentTime;
                 while (bufferTime - currentTime <= magicBufferTime)
                 {
+
                     try
                     {
 
                         var currentSegmentId = currentStreams.MediaSegmentAtTime(bufferTime);
-                        //var stream = currentStreams.MediaSegmentAtPos(currentSegmentId.Value);
-
-                        //byte[] streamBytes = DownloadSegment(stream);
-
-                        //bufferTime += stream.Period.Duration;
-                        /*
-                        UInt64 lb;
-                        UInt64 hb;
-                        TimeSpan ts;
-                        
-
-                        (lb, hb, ts) = GetRangeDuration(bufferTime);
-
+                        var stream = currentStreams.MediaSegmentAtPos(currentSegmentId.Value);
 
                         byte[] streamBytes = DownloadSegment(stream);
 
-                        if (lb != hb)
-                        {
-                            bufferTime += ts;
-                        }
-                        else
-                        {
-                            bufferTime += stream.Period.Duration;
-                        }
-
-                        // Chunk downloaded & timestamps updated so
-                        // Check for end of stream condition (i.e. last chunk)
-                        // 2 phase check to account to sub sec diffs.
-                        // Stop playing if bufferTime >= stream Duration 
-                        // OR
-                        // if difference between the two is at sub second levels
-                        bool eof = false;
-                        if ((bufferTime >= stream.Period.Duration) ||
-                            (Math.Abs((stream.Period.Duration - bufferTime).Ticks)) < TimeSpan.TicksPerSecond)
-                        {
-                            Tizen.Log.Info(Tag, string.Format("End of stream reached BuffTime {0} Duration {1}. Setting EOF flag", bufferTime, stream.Period.Duration));
-                            eof = true;
-
-                            // We are still looping after EOF so call it ourselves...
-                            //otherwise some "do not play if EOF" reached in a loop would have to be done.
-                            Stop();
-                        }
-                        */
-                        //Tizen.Log.Info(Tag, string.Format("BuffTime {0} Duration {1}", bufferTime, stream.Period.Duration));
-                        //sharedBuffer.WriteData(streamBytes);
+                        bufferTime += stream.Period.Duration;
+    
+                       sharedBuffer.WriteData(streamBytes);
                     }
                     catch (Exception ex)
                     {
-                        Tizen.Log.Error(Tag, string.Format("{0} Cannot download segment file. Error: {1}", streamType, ex.Message));
-                        return;
+                        if (ex is WebException)
+                        {
+                            Tizen.Log.Error(Tag, string.Format("{0} Cannot download segment file. Error: {1} {2}", streamType, ex.Message, ex.ToString()));
+                        }
+                        else
+                        {
+                            Tizen.Log.Error(Tag, string.Format("Error: {0} {1} {2}", ex.Message, ex.TargetSite, ex.StackTrace));
+                        }
+                       
                     }
                 }
             }
         }
 
-        private byte[] DownloadSegment(MpdParser.Node.Dynamic.Segment stream, UInt64 lowB=0, UInt64 highB=0)
+        private byte[] DownloadSegment(MpdParser.Node.Dynamic.Segment stream)
         {
-            Tizen.Log.Info("JuvoPlayer", string.Format("{0} Downloading segment: {1} {2}-{3}", 
-                streamType, stream.Url, lowB, highB));
+            Tizen.Log.Info("JuvoPlayer", string.Format("{0} Downloading segment: {1} {2}", 
+                streamType, stream.Url, stream.ByteRange));
             
             var url = stream.Url;
-            long startByte;
-            long endByte;
+
             var client = new WebClientEx();
             if (stream.ByteRange != null)
             {
                 var range = new ByteRange(stream.ByteRange);
-                startByte = range.Low;
-                endByte = range.High;
-            }
-            else
-            {
-                if (lowB != highB)
-                {
-                    startByte = (long)lowB;
-                    endByte = (long)highB;
-                }
-                else
-                {
-                    startByte = 0;
-                    endByte = (long)client.GetBytes(url);
-                }
-            }
-
-            if (startByte != endByte)
-            {
-                client.SetRange(startByte, endByte);
-            }
-            else
-            {
-                client.ClearRange();
+                client.SetRange(range.Low, range.High);
             }
 
             var streamBytes = client.DownloadData(url);
@@ -233,6 +179,12 @@ namespace JuvoPlayer.Dash
             {
                 Low = long.Parse(ranges[0]);
                 High = long.Parse(ranges[1]);
+
+                if(Low > High )
+                {
+                    throw new ArgumentException("Range Low param cannot be higher then High param");
+                }
+
             }
             catch (Exception ex)
             {
