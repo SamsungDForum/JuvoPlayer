@@ -1,7 +1,6 @@
-﻿using NUnit.Framework;
-using JuvoPlayer;
 using System;
 using JuvoPlayer.Common;
+using NUnit.Framework;
 
 namespace JuvoPlayer.Tests
 {

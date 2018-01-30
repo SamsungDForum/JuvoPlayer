@@ -13,7 +13,6 @@
 
 using System;
 using System.Threading;
-using Tizen;
 
 namespace JuvoPlayer.Common {
 
