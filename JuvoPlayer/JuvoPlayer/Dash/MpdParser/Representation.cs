@@ -83,7 +83,7 @@ namespace MpdParser.Node.Dynamic
 
             //Index Download could be changed to "lazy loading"
             //done before first actual use (calls to IRepresentationStream defined API)
-            DownloadIndex(true);
+            DownloadIndex(false);
         }
 
         private AutoResetEvent DownloadWait = null;
@@ -238,7 +238,7 @@ namespace MpdParser.Node.Dynamic
             }
 
             DownloadWait?.WaitOne();
-            Tizen.Log.Info(Tag, string.Format("MediaSegmentAtPos... {0}", pos));
+            
             if (sidxs == null)
             {
                 Tizen.Log.Info(Tag, string.Format("No index data for {0}", media_.Url.ToString()));
@@ -268,14 +268,16 @@ namespace MpdParser.Node.Dynamic
                     }
 
 
-                    res = new Segment(media_.Url, (lb.ToString() + "-" + hb.ToString()),
+                    string rng = lb.ToString() + "-" + hb.ToString();
+
+                    res = new Segment(media_.Url, rng,
                                         new TimeRange(starttime,duration),
                                          lastsegment);
-
-                    Tizen.Log.Info(Tag, string.Format("Range set {0}-{1} POS={2} StartTime={3} Duration={4} IsLast={5} {6}",
-                                    lb, hb, pos, 
-                                    starttime.ToString("HH:mm:ss"),
-                                    duration.ToString("HH:mm:ss"),
+                    
+                    Tizen.Log.Info(Tag, string.Format("Range {0}-{1} set {2} POS={3} StartTime={4} Duration={5} IsLast={6} {7}",
+                                    lb, hb, rng, pos, 
+                                    starttime,
+                                    duration,
                                     lastsegment, media_.Url.ToString()));
                     break;
                 }
@@ -286,7 +288,7 @@ namespace MpdParser.Node.Dynamic
 
         public uint? MediaSegmentAtTime(TimeSpan duration)
         {
-            Tizen.Log.Info(Tag, string.Format("MediaSegmentAtTime {0}", duration.ToString("HH:mm:ss")));
+            Tizen.Log.Info(Tag, string.Format("MediaSegmentAtTime {0}", duration));
             if (media_ == null) return null;
             if (media_.Contains(duration) <= TimeRelation.EARLIER) return null;
             
@@ -303,7 +305,7 @@ namespace MpdParser.Node.Dynamic
 
         protected uint? GetRangeIndex(TimeSpan curr)
         {
-            Tizen.Log.Info(Tag, string.Format("GetRangeIndex {0}", curr.ToString("HH:mm:ss")));
+            Tizen.Log.Info(Tag, string.Format("GetRangeIndex {0}", curr));
             uint skipcount = 0;
             uint? idx =null;
 

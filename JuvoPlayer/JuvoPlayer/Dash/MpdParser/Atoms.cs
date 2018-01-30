@@ -252,7 +252,7 @@ namespace MpdParser.Node.Atom
             if ( idx < MovieIndexCount)
             {
                 rl = Movieidx[(int)idx].Offset;
-                rh = Movieidx[(int)idx].RawRefsize;
+                rh = rl+Movieidx[(int)idx].RawRefsize;
                 starttime = Movieidx[(int)idx].TimeIndex;
                 duration = Movieidx[(int)idx].SegmentDuration;
             }
@@ -269,11 +269,11 @@ namespace MpdParser.Node.Atom
 
             if (i != null)
             {
-                Tizen.Log.Debug(tag, string.Format("Index entry ID: {0} for time {1}",i.ID,curr.ToString("HH:mm:ss")));
+                Tizen.Log.Debug(tag, string.Format("Index entry ID: {0} for time {1}",i.ID,curr));
                 return i.ID;
             }
 
-            Tizen.Log.Debug(tag, string.Format("Index entry for time: {0} not found", curr.ToString("HH:mm:ss")));
+            Tizen.Log.Debug(tag, string.Format("Index entry for time: {0} not found", curr));
             return null;
         }
 
