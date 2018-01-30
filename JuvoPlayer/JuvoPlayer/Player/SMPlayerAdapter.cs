@@ -141,10 +141,12 @@ namespace JuvoPlayer.Player
 
                     StreamPacket packet = DequeuePacket();
 
-//                    Log.Info("JuvoPlayer", "Peeked");
+                    //                    Log.Info("JuvoPlayer", "Peeked");
 
                     if (packet.IsEOS)
                         SubmitEOSPacket(packet);
+                    else if (packet is DecryptedEMEPacket)
+                        SubmitEMEPacket(packet as DecryptedEMEPacket);
                     else
                         SubmitPacket(packet);
                 }
@@ -219,14 +221,14 @@ namespace JuvoPlayer.Player
                 //byte[] managedArray2 = new byte[managedArray.Length];
                 //Marshal.Copy(pnt, managedArray2, 0, managedArray.Length);
                 var trackType = SMPlayerUtils.GetTrackType(packet);
-//                Tizen.Log.Info("JuvoPlayer", string.Format("[HQ] send es data to SubmitPacket: {0} ( {1} )", packet.Pts, trackType));
+                Tizen.Log.Info("JuvoPlayer", string.Format("[HQ] send es data to SubmitPacket: {0} ( {1} )", packet.Pts, trackType));
 
                 playerInstance.SubmitPacket(pnt, (uint)packet.Data.Length, packet.Pts, trackType, IntPtr.Zero);
             }
             finally
             {
                 // Free the unmanaged memory. It need to check, no need to clear here, in Amazon es play case, the es data memory is cleared by decoder or sink element after it is used and played
-                //  Marshal.FreeHGlobal(pnt);
+                  //Marshal.FreeHGlobal(pnt);
             }
         }
 

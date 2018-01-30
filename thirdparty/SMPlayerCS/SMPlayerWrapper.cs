@@ -89,7 +89,7 @@ namespace CSPlayer
         public void OnCurrentPos(System.UInt32 lCurrTime, IntPtr user_param)
         {
             string msg = "Current PlaybackTime: " + lCurrTime.ToString();
-            NativeSMPlayer.testCallbackprint(msg);
+//            NativeSMPlayer.testCallbackprint(msg);
             SMPlayerEventListener.OnCurrentPosition(lCurrTime);
             //please implement your code here , lCurrTime is current playback time
         }

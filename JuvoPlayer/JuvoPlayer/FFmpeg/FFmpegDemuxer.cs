@@ -58,20 +58,20 @@ namespace JuvoPlayer.FFmpeg
                 FFmpeg.Initialize(libPath);
                 FFmpeg.av_register_all(); // TODO(g.skowinski): Is registering multiple times unwanted or doesn't it matter?
 
-                FFmpeg.av_log_set_level(40);
-                av_log_set_callback_callback logCallback = (p0, level, format, vl) =>
-                {
-                    if (level > FFmpeg.av_log_get_level()) return;
+                //FFmpeg.av_log_set_level(40);
+                //av_log_set_callback_callback logCallback = (p0, level, format, vl) =>
+                //{
+                //    if (level > FFmpeg.av_log_get_level()) return;
 
-                    var lineSize = 1024;
-                    var lineBuffer = stackalloc byte[lineSize];
-                    var printPrefix = 1;
-                    FFmpeg.av_log_format_line(p0, level, format, vl, lineBuffer, lineSize, &printPrefix);
-                    var line = Marshal.PtrToStringAnsi((IntPtr)lineBuffer);
+                //    var lineSize = 1024;
+                //    var lineBuffer = stackalloc byte[lineSize];
+                //    var printPrefix = 1;
+                //    FFmpeg.av_log_format_line(p0, level, format, vl, lineBuffer, lineSize, &printPrefix);
+                //    var line = Marshal.PtrToStringAnsi((IntPtr)lineBuffer);
 
-                    Log.Info("JuvoPlayer", line);
-                };
-                FFmpeg.av_log_set_callback(logCallback);
+                //    Log.Info("JuvoPlayer", line);
+                //};
+                //FFmpeg.av_log_set_callback(logCallback);
             }
             catch (Exception) {
                 Log.Info("JuvoPlayer", "Could not load and register FFmpeg library!");

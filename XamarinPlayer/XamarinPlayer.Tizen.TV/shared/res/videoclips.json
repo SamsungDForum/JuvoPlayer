@@ -29,6 +29,22 @@
         "description": "This is clip with DASH content with DRM. User can choose desired video/audio representation"
     },
     {
+        "title": "Tears of Steel (Playready)",
+        "url": "http://profficialsite.origin.mediaservices.windows.net/c51358ea-9a5e-4322-8951-897d640fdfd7/tearsofsteel_4k.ism/manifest(format=mpd-time-csf)",
+        "type": "dash",
+        "describe": "Tears of Steel (Playready)",
+        "poster": "tos-poster.jpg",
+        "drmDatas": [
+            {
+                "scheme": "playready",
+                "drm_license_url": "http://playready-testserver.azurewebsites.net/rightsmanager.asmx?PlayRight=1&UseSimpleNonPersistentLicense=1",
+                "drm_key_request_properties": {
+                    "Content-Type": "text/xml; charset=utf-8"
+                }
+            }
+        ]
+    },
+    {
         "title": "MP4: Big Buck Bunny",
         "url": "http://distribution.bbb3d.renderfarming.net/video/mp4/bbb_sunflower_1080p_30fps_normal.mp4",
         "subtitles": [
