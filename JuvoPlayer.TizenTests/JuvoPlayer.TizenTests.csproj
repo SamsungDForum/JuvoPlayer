@@ -26,7 +26,6 @@
 
   <ItemGroup>
     <Folder Include="lib\" />
-    <Folder Include="res\" />
   </ItemGroup>
 
   <ItemGroup>

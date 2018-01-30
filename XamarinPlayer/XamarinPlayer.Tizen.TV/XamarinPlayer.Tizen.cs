@@ -1,5 +1,6 @@
 using System;
 using ElmSharp;
+using JuvoPlayer.Logging;
 using Tizen;
 using XamarinPlayer.Services;
 
@@ -40,6 +41,7 @@ namespace XamarinPlayer.Tizen
 
         static void Main(string[] args)
         {
+            TizenLoggerManager.Configure();
             AppDomain.CurrentDomain.UnhandledException += UnhandledException;
 
             var app = new Program();
