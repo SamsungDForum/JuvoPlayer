@@ -91,6 +91,29 @@ namespace CSPlayer
         public int data_len;
 
     };
+
+    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi, Pack = 1)]
+    public struct EsPlayerDrmInfo
+    {
+        public uint drm_type;                     //drm type
+        public uint algorithm;      /**<algorithm parameter*/
+        public uint format;             /**<media format*/
+        public uint phase;              /**<cipher phase*/
+
+        // In GBytes data size will be written before the data.
+        public IntPtr pKID;                     /**< KID*/
+        public uint uKIDLen;                    /**<KID lenght*/
+        public IntPtr pIV;                      /**<initializetion vector*/
+        public uint uIVLen;                     /**<initializetion vector length*/
+        public IntPtr pKey;                     //for clearkey
+        public uint uKeyLen;                    // key len
+
+        //SubData Size insert for pSubData in GBytes structure
+        public IntPtr pSubData;
+        public uint drm_handle;
+        public uint tz_handle;
+    };
+
     public interface IPlayerAdapter
     {
         // Player preparing

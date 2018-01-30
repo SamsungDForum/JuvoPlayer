@@ -48,6 +48,8 @@ namespace JuvoPlayer.Player
         {
             try
             {
+                Tizen.Log.Info("JuvoPlayer", "SMPlayer init");
+
                 playerInstance = new SMPlayerWrapper();
                 playerInstance.RegisterPlayerEventListener(this);
 
@@ -95,6 +97,10 @@ namespace JuvoPlayer.Player
 
         unsafe public void AppendPacket(StreamPacket packet)
         {
+            // todo
+            if (packet == null)
+                return;
+
             PrepareES();
 
             if (packet.StreamType == StreamType.Video)
@@ -168,7 +174,38 @@ namespace JuvoPlayer.Player
             return packet;
         }
 
-        unsafe public void SubmitPacket(StreamPacket packet) // TODO(g.skowinski): Implement it properly.
+        unsafe private void SubmitEMEPacket(DecryptedEMEPacket packet)
+        {
+            var trackType = SMPlayerUtils.GetTrackType(packet);
+
+            EsPlayerDrmInfo drmInfo = new EsPlayerDrmInfo
+            {
+                drm_type = 15,
+                tz_handle = packet.HandleSize.handle
+            };
+
+            IntPtr pnt = Marshal.AllocHGlobal(Marshal.SizeOf(drmInfo));
+            try
+            {
+                Marshal.StructureToPtr(drmInfo, pnt, false);
+
+                Tizen.Log.Info("JuvoPlayer", string.Format("[HQ] send es data to SubmitPacket: {0} {1} ( {2} )", packet.Pts, drmInfo.tz_handle, trackType));
+
+                if (!playerInstance.SubmitPacket(IntPtr.Zero, packet.HandleSize.size, packet.Pts, trackType, pnt))
+                {
+                    packet.CleanHandle();
+                    Tizen.Log.Info("JuvoPlayer", "Submiting encrypted packet failed");
+                }
+            }
+            finally
+            {
+                // Free the unmanaged memory.
+                Marshal.FreeHGlobal(pnt);
+            }
+        }
+
+
+        unsafe private void SubmitPacket(StreamPacket packet) // TODO(g.skowinski): Implement it properly.
         {
             // Initialize unmanaged memory to hold the array.
             int size = Marshal.SizeOf(packet.Data[0]) * packet.Data.Length;
@@ -226,20 +263,33 @@ namespace JuvoPlayer.Player
             {
                 mime = Marshal.StringToHGlobalAnsi(SMPlayerUtils.GetCodecMimeType(config.Codec)),
                 version = SMPlayerUtils.GetCodecVersion(config.Codec),
+                drm_type = 15,  // 0 for no DRM, 15 for EME
                 sample_rate = (uint)config.SampleRate,
-                channels = (uint)config.ChannelLayout
+                channels = (uint)config.ChannelLayout,
+                property_type = IntPtr.Zero,                   /**< video stream info: drminfo property_type */
+                type_len = 0,                           /**< video stream info: drminfo property_type length */
+                property_data = IntPtr.Zero,                   /**< video stream info: drminfo property_data */
+                data_len = 0,
+
             };
 
-            if (config.CodecExtraData != null && config.CodecExtraData.Length > 0)
+            try
             {
-                int size = Marshal.SizeOf(config.CodecExtraData[0]) * config.CodecExtraData.Length;
-                audioStreamInfo.codec_extradata = Marshal.AllocHGlobal(size);
-                audioStreamInfo.extradata_size = (uint)config.CodecExtraData.Length;
-                Marshal.Copy(config.CodecExtraData, 0, audioStreamInfo.codec_extradata, config.CodecExtraData.Length);
+                if (config.CodecExtraData != null && config.CodecExtraData.Length > 0)
+                {
+                    int size = Marshal.SizeOf(config.CodecExtraData[0]) * config.CodecExtraData.Length;
+                    audioStreamInfo.codec_extradata = Marshal.AllocHGlobal(size);
+                    audioStreamInfo.extradata_size = (uint)config.CodecExtraData.Length;
+                    Marshal.Copy(config.CodecExtraData, 0, audioStreamInfo.codec_extradata, config.CodecExtraData.Length);
+                }
+
+                playerInstance.SetAudioStreamInfo(audioStreamInfo);
             }
-
-            playerInstance.SetAudioStreamInfo(audioStreamInfo);
-
+            finally
+            {
+                if (audioStreamInfo.codec_extradata != IntPtr.Zero)
+                    Marshal.FreeHGlobal(audioStreamInfo.codec_extradata);
+            }
             audioSet = true;
         }
 
@@ -251,25 +301,36 @@ namespace JuvoPlayer.Player
             {
                 mime = Marshal.StringToHGlobalAnsi(SMPlayerUtils.GetCodecMimeType(config.Codec)),
                 version = SMPlayerUtils.GetCodecVersion(config.Codec),
-                drm_type = 0,  // 0 for no DRM
+                drm_type = 15,  // 0 for no DRM, 15 for EME
                 framerate_num = (uint)config.FrameRateNum,
                 framerate_den = (uint)config.FrameRateDen,
                 width = (uint)config.Size.Width,
                 max_width = (uint)config.Size.Width,
                 height = (uint)config.Size.Height,
-                max_height = (uint)config.Size.Height
+                max_height = (uint)config.Size.Height,
+                property_type = IntPtr.Zero,                   /**< video stream info: drminfo property_type */
+                type_len = 0,                           /**< video stream info: drminfo property_type length */
+                property_data = IntPtr.Zero,                   /**< video stream info: drminfo property_data */
+                data_len = 0,
             };
 
-            if (config.CodecExtraData != null && config.CodecExtraData.Length > 0)
+            try
             {
-                int size = Marshal.SizeOf(config.CodecExtraData[0]) * config.CodecExtraData.Length;
-                videoStreamInfo.codec_extradata = Marshal.AllocHGlobal(size);
-                videoStreamInfo.extradata_size = (uint)config.CodecExtraData.Length;
-                Marshal.Copy(config.CodecExtraData, 0, videoStreamInfo.codec_extradata, config.CodecExtraData.Length);
+                if (config.CodecExtraData != null && config.CodecExtraData.Length > 0)
+                {
+                    int size = Marshal.SizeOf(config.CodecExtraData[0]) * config.CodecExtraData.Length;
+                    videoStreamInfo.codec_extradata = Marshal.AllocHGlobal(size);
+                    videoStreamInfo.extradata_size = (uint)config.CodecExtraData.Length;
+                    Marshal.Copy(config.CodecExtraData, 0, videoStreamInfo.codec_extradata, config.CodecExtraData.Length);
+                }
+
+                playerInstance.SetVideoStreamInfo(videoStreamInfo);
             }
-
-            playerInstance.SetVideoStreamInfo(videoStreamInfo);
-
+            finally
+            {
+                if (videoStreamInfo.codec_extradata != IntPtr.Zero)
+                    Marshal.FreeHGlobal(videoStreamInfo.codec_extradata);
+            }
             videoSet = true;
         }
 
@@ -390,6 +451,8 @@ namespace JuvoPlayer.Player
                 return;
 
             Log.Info("JuvoPlayer", "OnCurrentPosition = " + currTime);
+
+            GC.Collect();
 
             currentTime = currTime;
 

@@ -212,44 +212,93 @@ namespace JuvoPlayer.FFmpeg
             }
 
 
-            AVPacket pkt;
             bool parse = true;
 
             while (parse) {
+                AVPacket pkt = new AVPacket();
                 FFmpeg.av_init_packet(&pkt);
                 pkt.data = null;
                 pkt.size = 0;
                 int ret = FFmpeg.av_read_frame(formatContext, &pkt);
-                if (ret >= 0) {
-                    if (pkt.stream_index != audio_idx && pkt.stream_index != video_idx)
-                        continue;
-                    AVStream* s = formatContext->streams[pkt.stream_index];
-                    var data = pkt.data;
-                    var dataSize = pkt.size;
-                    var pts = FFmpeg.av_rescale_q(pkt.pts, s->time_base, kMicrosBase) * kOneMicrosecond;
-                    var dts = FFmpeg.av_rescale_q(pkt.dts, s->time_base, kMicrosBase) * kOneMicrosecond;
-                    var duration = FFmpeg.av_rescale_q(pkt.duration, s->time_base, kMicrosBase) * kOneMicrosecond;
-                    var streamPacket = new StreamPacket {
-                        StreamType = pkt.stream_index != audio_idx ? StreamType.Video : StreamType.Audio,
-                        Pts = pts >= 0 ? (System.UInt64)(pts * 1000000000) : 0, // gstreamer needs nanoseconds, value cannot be negative
-                        Dts = dts >= 0 ? (System.UInt64)(dts * 1000000000) : 0, // gstreamer needs nanoseconds, value cannot be negative
-                        Data = new byte[dataSize],
-                        IsKeyFrame = (pkt.flags == 1)
-                    };
-//                    Log.Info("JuvoPlayer", "DEMUXER (" + (streamPacket.StreamType == StreamType.Audio ? "A" : "V") + "): data size: " + dataSize.ToString() + "; pts: " + pts.ToString() + "; dts: " + dts.ToString() + "; duration:" + duration + "; ret: " + ret.ToString());
-                    CopyPacketData(data, 0, dataSize, streamPacket, true); //Marshal.Copy((IntPtr)data, streamPacket.Data, 0, dataSize);
-                    StreamPacketReady(streamPacket);
-                }
-                else {
-                    if (ret == -541478725) {
-                        // null means EOF
-                        StreamPacketReady(null);
+                try
+                {
+                    if (ret >= 0)
+                    {
+                        if (pkt.stream_index != audio_idx && pkt.stream_index != video_idx)
+                        {
+                            continue;
+                        }
+
+                        AVStream* s = formatContext->streams[pkt.stream_index];
+                        var data = pkt.data;
+                        var dataSize = pkt.size;
+                        var pts = FFmpeg.av_rescale_q(pkt.pts, s->time_base, kMicrosBase) * kOneMicrosecond;
+                        var dts = FFmpeg.av_rescale_q(pkt.dts, s->time_base, kMicrosBase) * kOneMicrosecond;
+                        var duration = FFmpeg.av_rescale_q(pkt.duration, s->time_base, kMicrosBase) * kOneMicrosecond;
+
+                        var sideData = FFmpeg.av_packet_get_side_data(&pkt, AVPacketSideDataType.@AV_PKT_DATA_ENCRYPT_INFO, null);
+
+                        StreamPacket streamPacket = null;
+                        if (sideData != null)
+                            streamPacket = CreateEncryptedPacket(sideData);
+                        else
+                            streamPacket = new StreamPacket();
+
+                        streamPacket.StreamType = pkt.stream_index != audio_idx ? StreamType.Video : StreamType.Audio;
+                        streamPacket.Pts = pts >= 0 ? (System.UInt64)(pts * 1000000000) : 0; // gstreamer needs nanoseconds, value cannot be negative
+                        streamPacket.Dts = dts >= 0 ? (System.UInt64)(dts * 1000000000) : 0; // gstreamer needs nanoseconds, value cannot be negative
+                        streamPacket.Data = new byte[dataSize];
+                        streamPacket.IsKeyFrame = (pkt.flags == 1);
+
+                        //                                        Log.Info("JuvoPlayer", "DEMUXER (" + (streamPacket.StreamType == StreamType.Audio ? "A" : "V") + "): data size: " + dataSize.ToString() + "; pts: " + pts.ToString() + "; dts: " + dts.ToString() + "; duration:" + duration + "; ret: " + ret.ToString());
+                        CopyPacketData(data, 0, dataSize, streamPacket, sideData == null);
+                        StreamPacketReady(streamPacket);
                     }
-                    Log.Info("JuvoPlayer", "DEMUXER: ----DEMUXING----AV_READ_FRAME----ERROR---- av_read_frame()=" + ret.ToString() + " (" + GetErrorText(ret) + ")");
-                    parse = false;
+                    else
+                    {
+                        if (ret == -541478725)
+                        {
+                            // null means EOF
+                            StreamPacketReady(null);
+                        }
+                        Log.Info("JuvoPlayer", "DEMUXER: ----DEMUXING----AV_READ_FRAME----ERROR---- av_read_frame()=" + ret.ToString() + " (" + GetErrorText(ret) + ")");
+                        parse = false;
+                    }
                 }
-                FFmpeg.av_packet_unref(&pkt);
+                finally
+                {
+                    FFmpeg.av_packet_unref(&pkt);
+                }
             }
+        }
+
+        private static unsafe StreamPacket CreateEncryptedPacket(byte* sideData)
+        {
+            AVEncInfo* encInfo = (AVEncInfo*)sideData;
+
+            int subsampleCount = encInfo->subsample_count;
+            byte[] keyId = encInfo->kid.ToArray();
+            byte[] iv = new byte[encInfo->iv_size];
+            Buffer.BlockCopy(encInfo->iv.ToArray(), 0, iv, 0, encInfo->iv_size);
+
+            var packet = new EncryptedStreamPacket()
+            {
+                KeyId = keyId,
+                Iv = iv,
+            };
+
+            if (subsampleCount > 0)
+            {
+//                Log.Info("JuvoPlayer", "subsampleCount: " + subsampleCount);
+                packet.Subsamples = new EncryptedStreamPacket.Subsample[subsampleCount];
+                for (int i = 0; i < subsampleCount; ++i)
+                {
+//                    packet.Subsamples[i].ClearData = encInfo->subsamples[i].bytes_of_clear_data;
+//                    packet.Subsamples[i].EncData = encInfo->subsamples[i].bytes_of_enc_data;
+                }
+            }
+
+            return packet;
         }
 
         unsafe private static int CopyPacketData(byte* source, int offset, int size, StreamPacket packet, bool removeSuffixPES = true)
@@ -293,14 +342,6 @@ namespace JuvoPlayer.FFmpeg
                 return "";
             }
             return System.Text.Encoding.UTF8.GetString(errorBuffer);
-        }
-
-        // NOTE(g.skowinski): DEBUG HELPER METHOD
-        private void dLog(string log, int level = 0)
-        {
-            if (level > 0) {
-                Log.Info("JuvoDemuxer", log);
-            }
         }
 
         // NOTE(g.skowinski): DEBUG HELPER METHOD
