@@ -515,7 +515,7 @@ namespace MpdParser.Node
         private TimeSpan? GuessFromRepresentations(Period curr)
         {
             TimeSpan? result = null;
-            foreach (AdaptationSet set in curr.AdaptationSet)
+            foreach (AdaptationSet set in curr.AdaptationSets)
             {
                 TimeSpan? longest = GuessFromRepresentations(set);
                 if (result == null)
