@@ -48,6 +48,39 @@ namespace JuvoPlayer.Tests
             Assert.That(juvoPlayerCommonLogger.IsLevelEnabled(LogLevel.Debug), Is.False);
         }
 
+        [Test]
+        public void TestConfigureWithNull()
+        {
+            Assert.Throws<ArgumentNullException>(() => LoggerManager.Configure(null));
+
+            Assert.Throws<ArgumentNullException>(() => LoggerManager.Configure((string) null, null));
+            Assert.Throws<ArgumentNullException>(() => LoggerManager.Configure((string) null, CreateLogger));
+            Assert.Throws<ArgumentNullException>(() => LoggerManager.Configure(string.Empty, null));
+
+            Assert.Throws<ArgumentNullException>(() => LoggerManager.Configure((Stream) null, null));
+            Assert.Throws<ArgumentNullException>(() => LoggerManager.Configure((Stream) null, CreateLogger));
+
+            Assert.Throws<InvalidOperationException>(() => LoggerManager.GetInstance());
+        }
+
+        [Test]
+        public void TestConfigureMultipleTimes()
+        {
+            var contents = LoadConfig("logging_valid.config");
+            LoggerManager.Configure(contents, CreateLogger);
+
+            Assert.That(LoggerManager.GetInstance(), Is.Not.Null);
+
+            Assert.Throws<InvalidOperationException>(() => LoggerManager.Configure(contents, CreateLogger));
+            Assert.Throws<InvalidOperationException>(() => LoggerManager.Configure(CreateLogger));
+        }
+
+        [Test]
+        public void TestGetInstanceBeforeConfigure()
+        {
+            Assert.Throws<InvalidOperationException>(() => LoggerManager.GetInstance());
+        }
+
         private static string LoadConfig(string filename)
         {
             var assembly = Assembly.GetExecutingAssembly();

@@ -47,5 +47,18 @@ namespace JuvoPlayer.Tests
             var loggerClient = new LoggerClient(logger);
             loggerClient.Func();
         }
+
+        [Test]
+        public void TestConstructorWithNull()
+        {
+            Assert.Throws<ArgumentNullException>(() => new DummyLogger(null, LogLevel.Fatal));
+        }
+
+        [Test]
+        public void TestInvalidLogLevel()
+        {
+            Assert.Throws<ArgumentOutOfRangeException>(() => new DummyLogger("channel", (LogLevel) int.MinValue));
+            Assert.Throws<ArgumentOutOfRangeException>(() => new DummyLogger("channel", (LogLevel) int.MaxValue));
+        }
     }
 }
