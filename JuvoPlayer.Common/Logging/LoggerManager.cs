@@ -15,7 +15,7 @@ namespace JuvoPlayer.Common.Logging
 
         public delegate LoggerBase CreateLoggerFunc(string channel, LogLevel level);
 
-        private LoggerManager(Dictionary<string, LogLevel> loggingLevels, CreateLoggerFunc createLoggerFunc)
+        protected LoggerManager(Dictionary<string, LogLevel> loggingLevels, CreateLoggerFunc createLoggerFunc)
         {
             _loggingLevels = loggingLevels;
             _createLoggerFunc = createLoggerFunc;
