@@ -84,7 +84,7 @@ namespace JuvoPlayer.Dash
             }
             catch(Exception ex)
             {
-                Tizen.Log.Error(Tag, string.Format("{0} Cannot download init segment file. Error: {1}", streamType, ex.Message));
+                Tizen.Log.Error(Tag, string.Format("{0} Cannot download init segment file. Error: {1} {2}", streamType, ex.Message, ex.ToString()));
             }
 
             while (playback)
@@ -103,7 +103,12 @@ namespace JuvoPlayer.Dash
 
                         bufferTime += stream.Period.Duration;
     
-                       sharedBuffer.WriteData(streamBytes);
+                        sharedBuffer.WriteData(streamBytes);
+
+                        if(stream.EndSegment)
+                        {
+                            Stop();
+                        }
                     }
                     catch (Exception ex)
                     {
