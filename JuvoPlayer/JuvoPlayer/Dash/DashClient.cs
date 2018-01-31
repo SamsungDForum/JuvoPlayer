@@ -2,12 +2,14 @@
 using MpdParser;
 using MpdParser.Node;
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using System.Threading.Tasks;
 
 namespace JuvoPlayer.Dash
 {
+
     internal class DashClient : IDashClient
     {
         private const string Tag = "JuvoPlayer";
@@ -22,10 +24,14 @@ namespace JuvoPlayer.Dash
         private bool playback;
         private IRepresentationStream currentStreams;
 
+
+
+
         public DashClient(ISharedBuffer sharedBuffer, StreamType streamType)
         {
             this.sharedBuffer = sharedBuffer ?? throw new ArgumentNullException(nameof(sharedBuffer), "sharedBuffer cannot be null");
             this.streamType = streamType;
+            
         }
 
         public void Seek(TimeSpan position)
@@ -68,17 +74,28 @@ namespace JuvoPlayer.Dash
             currentTime = time;
         }
 
+        
         private void DownloadThread()
         {
-            DownloadInitSegment(currentStreams);
+
+            try
+            {
+                DownloadInitSegment(currentStreams);
+            }
+            catch(Exception ex)
+            {
+                Tizen.Log.Error(Tag, string.Format("{0} Cannot download init segment file. Error: {1} {2}", streamType, ex.Message, ex.ToString()));
+            }
 
             while (playback)
             {
                 var currentTime = this.currentTime;
                 while (bufferTime - currentTime <= magicBufferTime)
                 {
+
                     try
                     {
+
                         var currentSegmentId = currentStreams.MediaSegmentAtTime(bufferTime);
                         var stream = currentStreams.MediaSegmentAtPos(currentSegmentId.Value);
 
@@ -87,12 +104,25 @@ namespace JuvoPlayer.Dash
                         byte[] streamBytes = DownloadSegment(stream);
 
                         bufferTime += stream.Period.Duration;
-
+    
                         sharedBuffer.WriteData(streamBytes);
+
+                        if(stream.EndSegment)
+                        {
+                            Stop();
+                        }
                     }
                     catch (Exception ex)
                     {
-                        Tizen.Log.Error(Tag, string.Format("{0} Cannot download segment file. Error: {1}", streamType, ex.Message));
+                        if (ex is WebException)
+                        {
+                            Tizen.Log.Error(Tag, string.Format("{0} Cannot download segment file. Error: {1} {2}", streamType, ex.Message, ex.ToString()));
+                        }
+                        else
+                        {
+                            Tizen.Log.Error(Tag, string.Format("Error: {0} {1} {2}", ex.Message, ex.TargetSite, ex.StackTrace));
+                        }
+                       
                     }
                 }
             }
@@ -100,32 +130,16 @@ namespace JuvoPlayer.Dash
 
         private byte[] DownloadSegment(MpdParser.Node.Dynamic.Segment stream)
         {
-            Tizen.Log.Info("JuvoPlayer", string.Format("{0} Downloading segment {1} : {2}", streamType, stream.Period.Start, stream.Period.Start + stream.Period.Duration));
-            Tizen.Log.Info("JuvoPlayer", string.Format("{0} Downloading segment: {1}", streamType, stream.Url));
-
+            Tizen.Log.Info("JuvoPlayer", string.Format("{0} Downloading segment: {1} {2}", 
+                streamType, stream.Url, stream.ByteRange));
+            
             var url = stream.Url;
-            long startByte;
-            long endByte;
+
             var client = new WebClientEx();
             if (stream.ByteRange != null)
             {
                 var range = new ByteRange(stream.ByteRange);
-                startByte = range.Low;
-                endByte = range.High;
-            }
-            else
-            {
-                startByte = 0;
-                endByte = (long)client.GetBytes(url);
-            }
-
-            if (startByte != endByte)
-            {
-                client.SetRange(startByte, endByte);
-            }
-            else
-            {
-                client.ClearRange();
+                client.SetRange(range.Low, range.High);
             }
 
             var streamBytes = client.DownloadData(url);
@@ -140,7 +154,8 @@ namespace JuvoPlayer.Dash
         {
             var initSegment = streamSegments.InitSegment;
 
-            Tizen.Log.Info("JuvoPlayer", string.Format("{0} Downloading segment: {1}", streamType, initSegment.Url));
+            Tizen.Log.Info("JuvoPlayer", string.Format("{0} Downloading Init segment: {1} {2}", 
+                streamType, initSegment.ByteRange, initSegment.Url));
 
             var client = new WebClientEx();
             if (initSegment.ByteRange != null)
@@ -171,6 +186,12 @@ namespace JuvoPlayer.Dash
             {
                 Low = long.Parse(ranges[0]);
                 High = long.Parse(ranges[1]);
+
+                if(Low > High )
+                {
+                    throw new ArgumentException("Range Low param cannot be higher then High param");
+                }
+
             }
             catch (Exception ex)
             {
@@ -212,4 +233,5 @@ namespace JuvoPlayer.Dash
             return request;
         }
     }
+
 }
