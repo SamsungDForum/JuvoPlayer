@@ -83,10 +83,10 @@ namespace MpdParser.Node.Dynamic
 
             //Index Download could be changed to "lazy loading"
             //done before first actual use (calls to IRepresentationStream defined API)
-            DownloadIndex(false);
+            DownloadIndex(true);
         }
 
-        private AutoResetEvent DownloadWait = null;
+        private ManualResetEvent DownloadWait = null;
 
         //Instance of a downloader is kept here for sole purpose
         //of doing async download cancelation if object will be destroyed before 
@@ -118,52 +118,65 @@ namespace MpdParser.Node.Dynamic
             if(IndexSegment == null) return;
               
             ByteRange rng = new ByteRange(IndexSegment.ByteRange);
-            
 
-            if (async)
+            try
             {
-
-                Tizen.Log.Info(Tag, string.Format("Index Segment present. Attempting ASYNC download"));
-                DownloadWait = new AutoResetEvent(false);
-                
-                //NetClient could be moved to a singleton servicing
-                //all internal instances as long as it can internally multitask
-                //which is not fully clear from docs (states it is threaded but no
-                //info as to how many threads are supported, etc.)
-                Downloader = new NetClient();
-                Downloader.SetRange(rng.Low, rng.High);
-                Downloader.DownloadDataCompleted += new DownloadDataCompletedEventHandler(DownloadCompleted);
-                Tizen.Log.Info(Tag, string.Format("Downloading Index Segment {0} {1}-{2}", IndexSegment.Url, rng.Low, rng.High));
-                Downloader.DownloadDataAsync(IndexSegment.Url, (UInt64)rng.High);
-            }
-            else
-            {
-                Tizen.Log.Info(Tag, string.Format("Index Segment present. Attempting SYNC download"));
-
-                using (NetClient DataSucker = new NetClient())
+                if (async)
                 {
-                    try
+
+                    Tizen.Log.Info(Tag, string.Format("Index Segment present. Attempting ASYNC download"));
+                    DownloadWait = new ManualResetEvent(false);
+
+                    //NetClient could be moved to a singleton servicing
+                    //all internal instances as long as it can internally multitask
+                    //which is not fully clear from docs (states it is threaded but no
+                    //info as to how many threads are supported, etc.)
+                    Downloader = new NetClient();
+                    Downloader.SetRange(rng.Low, rng.High);
+                    Downloader.DownloadDataCompleted += new DownloadDataCompletedEventHandler(DownloadCompleted);
+                    Tizen.Log.Info(Tag, string.Format("Downloading Index Segment {0} {1}-{2}", IndexSegment.Url, rng.Low, rng.High));
+                    Downloader.DownloadDataAsync(IndexSegment.Url, (UInt64)rng.High);
+
+                }
+                else
+                {
+                    Tizen.Log.Info(Tag, string.Format("Index Segment present. Attempting SYNC download"));
+
+                    using (NetClient DataSucker = new NetClient())
                     {
+
                         DataSucker.SetRange(rng.Low, rng.High);
                         byte[] data = DataSucker.DownloadData(IndexSegment.Url);
                         ProcessIndexData(data, (UInt64)rng.High);
                     }
-                    catch(Exception ex)
-                    {
-                        Tizen.Log.Warn(Tag, string.Format("Index dwonload failed {0} {1}", ex.GetType(), IndexSegment.Url));
-                        if (ex is WebException)
-                        {
-                            Tizen.Log.Warn(Tag, string.Format("Error Code {0} {1} {2}", ((WebException)ex).Message,
-                                ((WebException)ex).Response,
-                                IndexSegment.Url ));
-                        }
-                    }
+
+                }
+            }
+            catch (Exception ex)
+            {
+                Tizen.Log.Warn(Tag, string.Format("Index dwonload failed {0} {1}", ex.GetType(), IndexSegment.Url));
+                if (ex is WebException)
+                {
+                    Tizen.Log.Warn(Tag, string.Format("Error Code {0} {1} {2}", ((WebException)ex).Message,
+                        ((WebException)ex).Response,
+                        IndexSegment.Url));
                 }
 
+                if (async)
+                {
+                    // In case of async load failure, release semaphores
+                    DownloadWait.Set();
+                    DownloadWait.Dispose();
+                    DownloadWait = null;
+
+                    Downloader.Dispose();
+                    Downloader = null;
+                }
 
             }
-
             
+
+
         }
         private void DownloadCompleted(object sender, DownloadDataCompletedEventArgs e)
         {
@@ -174,6 +187,8 @@ namespace MpdParser.Node.Dynamic
                 // an exception, display the resource.
                 if (!e.Cancelled && e.Error == null)
                 {
+                    Tizen.Log.Info(Tag, string.Format("Index Segment Downloaded {0}", IndexSegment.Url));
+
                     UInt64 datastart = (UInt64)e.UserState;
                     byte[] rawData = e.Result;
 
@@ -193,11 +208,14 @@ namespace MpdParser.Node.Dynamic
             finally
             {
                 // Let the main application thread resume.
-                DownloadWait.Set();
+                Tizen.Log.Info(Tag, string.Format("Unblocking access to index data {0}", IndexSegment.Url));
 
-                //downloader not needed anymore, kill it.
-                //Downloader.Dispose();
-                //Downloader = null; 
+                DownloadWait.Set();
+                DownloadWait.Dispose();
+                DownloadWait = null;
+
+                Downloader.Dispose();
+                Downloader = null;
 
             }
         }
