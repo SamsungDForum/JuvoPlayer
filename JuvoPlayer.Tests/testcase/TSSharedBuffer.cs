@@ -1,4 +1,4 @@
-﻿using NUnit.Framework;
+using NUnit.Framework;
 using System;
 using System.Threading;
 using System.Threading.Tasks;
@@ -26,6 +26,7 @@ namespace JuvoPlayer.Tests
 
         [Test]
         [Description("Test SharedBuffer singlethreaded usage (write everything, then read everything; nondeterministic).")]
+        [Ignore("This test hangs sometimes")]
         public static void TestSharedBuffer()
         {
             Assert.NotNull(buffer);
