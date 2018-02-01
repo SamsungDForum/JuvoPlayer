@@ -21,6 +21,8 @@ using MpdParser.Node.Atom;
 using System.Net;
 using System.Threading;
 
+using JuvoPlayer.Common.Logging;
+
 namespace MpdParser.Node.Dynamic
 {
     public struct ListItem
@@ -79,12 +81,15 @@ namespace MpdParser.Node.Dynamic
             IndexSegment = index;
             Count = media == null ? 0u : 1u;
             Duration = media?.Period?.Duration;
-            Tag = "JuvoPlayer";
+            
 
             //Index Download could be changed to "lazy loading"
             //done before first actual use (calls to IRepresentationStream defined API)
             DownloadIndex(true);
         }
+
+        protected static LoggerManager LogManager = LoggerManager.GetInstance();
+        protected static ILogger Logger = LoggerManager.GetInstance().GetLogger(MpdParser.LogTag);
 
         private ManualResetEvent DownloadWait = null;
 
@@ -94,8 +99,6 @@ namespace MpdParser.Node.Dynamic
         private NetClient Downloader = null;
 
         private Segment media_;
-
-        static protected String Tag;
 
         private List<SIDXAtom> sidxs = null;
 
@@ -124,7 +127,7 @@ namespace MpdParser.Node.Dynamic
                 if (async)
                 {
 
-                    Tizen.Log.Info(Tag, string.Format("Index Segment present. Attempting ASYNC download"));
+                    Logger.Info( string.Format("Index Segment present. Attempting ASYNC download"));
                     DownloadWait = new ManualResetEvent(false);
 
                     //NetClient could be moved to a singleton servicing
@@ -134,13 +137,13 @@ namespace MpdParser.Node.Dynamic
                     Downloader = new NetClient();
                     Downloader.SetRange(rng.Low, rng.High);
                     Downloader.DownloadDataCompleted += new DownloadDataCompletedEventHandler(DownloadCompleted);
-                    Tizen.Log.Info(Tag, string.Format("Downloading Index Segment {0} {1}-{2}", IndexSegment.Url, rng.Low, rng.High));
+                    Logger.Info(string.Format("Downloading Index Segment {0} {1}-{2}", IndexSegment.Url, rng.Low, rng.High));
                     Downloader.DownloadDataAsync(IndexSegment.Url, (UInt64)rng.High);
 
                 }
                 else
                 {
-                    Tizen.Log.Info(Tag, string.Format("Index Segment present. Attempting SYNC download"));
+                    Logger.Info(string.Format("Index Segment present. Attempting SYNC download"));
 
                     using (NetClient DataSucker = new NetClient())
                     {
@@ -154,10 +157,10 @@ namespace MpdParser.Node.Dynamic
             }
             catch (Exception ex)
             {
-                Tizen.Log.Warn(Tag, string.Format("Index dwonload failed {0} {1}", ex.GetType(), IndexSegment.Url));
+                Logger.Warn(string.Format("Index dwonload failed {0} {1}", ex.GetType(), IndexSegment.Url));
                 if (ex is WebException)
                 {
-                    Tizen.Log.Warn(Tag, string.Format("Error Code {0} {1} {2}", ((WebException)ex).Message,
+                    Logger.Warn(string.Format("Error Code {0} {1} {2}", ((WebException)ex).Message,
                         ((WebException)ex).Response,
                         IndexSegment.Url));
                 }
@@ -187,7 +190,7 @@ namespace MpdParser.Node.Dynamic
                 // an exception, display the resource.
                 if (!e.Cancelled && e.Error == null)
                 {
-                    Tizen.Log.Info(Tag, string.Format("Index Segment Downloaded {0}", IndexSegment.Url));
+                    Logger.Info(string.Format("Index Segment Downloaded {0}", IndexSegment.Url));
 
                     UInt64 datastart = (UInt64)e.UserState;
                     byte[] rawData = e.Result;
@@ -198,17 +201,17 @@ namespace MpdParser.Node.Dynamic
                 {
                     //How to handle failure of download?
                     //Wipe segment from existance? Pretend there is no index data and play along?
-                    Tizen.Log.Info(Tag, string.Format("Downloading Index Segment FAILED {0}", IndexSegment.Url));
+                    Logger.Info(string.Format("Downloading Index Segment FAILED {0}", IndexSegment.Url));
                 }
             }
             catch(Exception ex)
             {
-                Tizen.Log.Warn(Tag, string.Format("Error {0}", ex.Message));
+                Logger.Warn(string.Format("Error {0}", ex.Message));
             }
             finally
             {
                 // Let the main application thread resume.
-                Tizen.Log.Info(Tag, string.Format("Unblocking access to index data {0}", IndexSegment.Url));
+                Logger.Info(string.Format("Unblocking access to index data {0}", IndexSegment.Url));
 
                 DownloadWait.Set();
                 DownloadWait.Dispose();
@@ -246,7 +249,7 @@ namespace MpdParser.Node.Dynamic
         }
         public Segment MediaSegmentAtPos(uint pos)
         {
-            Tizen.Log.Info(Tag, string.Format("MediaSegmentAtPos {0}", pos));
+            Logger.Info(string.Format("MediaSegmentAtPos {0}", pos));
 
             Segment res = null;
 
@@ -259,7 +262,7 @@ namespace MpdParser.Node.Dynamic
             
             if (sidxs == null)
             {
-                Tizen.Log.Info(Tag, string.Format("No index data for {0}", media_.Url.ToString()));
+                Logger.Info(string.Format("No index data for {0}", media_.Url.ToString()));
                 return media_;
             }
 
@@ -291,8 +294,8 @@ namespace MpdParser.Node.Dynamic
                     res = new Segment(media_.Url, rng,
                                         new TimeRange(starttime,duration),
                                          lastsegment);
-                    
-                    Tizen.Log.Info(Tag, string.Format("Range {0}-{1} set {2} POS={3} StartTime={4} Duration={5} IsLast={6} {7}",
+
+                    Logger.Info(string.Format("Range {0}-{1} set {2} POS={3} StartTime={4} Duration={5} IsLast={6} {7}",
                                     lb, hb, rng, pos, 
                                     starttime,
                                     duration,
@@ -306,7 +309,7 @@ namespace MpdParser.Node.Dynamic
 
         public uint? MediaSegmentAtTime(TimeSpan duration)
         {
-            Tizen.Log.Info(Tag, string.Format("MediaSegmentAtTime {0}", duration));
+            Logger.Info(string.Format("MediaSegmentAtTime {0}", duration));
             if (media_ == null) return null;
             if (media_.Contains(duration) <= TimeRelation.EARLIER) return null;
             
@@ -323,7 +326,7 @@ namespace MpdParser.Node.Dynamic
 
         protected uint? GetRangeIndex(TimeSpan curr)
         {
-            Tizen.Log.Info(Tag, string.Format("GetRangeIndex {0}", curr));
+            Logger.Info(string.Format("GetRangeIndex {0}", curr));
             uint skipcount = 0;
             uint? idx =null;
 
@@ -367,7 +370,7 @@ namespace MpdParser.Node.Dynamic
 
             if (lb == hb)
             {
-                Tizen.Log.Warn(Tag, string.Format("Time Index {0} not found in indexing data", curr));
+                Logger.Warn(string.Format("Time Index {0} not found in indexing data", curr));
                 foreach (SIDXAtom sidx in sidxs)
                 {
                     sidx.DumpMovieIndex(curr);
