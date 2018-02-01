@@ -11,10 +11,6 @@ namespace JuvoPlayer.Logging
 {
     public class TizenLoggerManager : LoggerManager
     {
-        protected TizenLoggerManager(Dictionary<string, LogLevel> loggingLevels, CreateLoggerFunc createLoggerFunc) : base(loggingLevels, createLoggerFunc)
-        {
-        }
-
         private static LoggerBase CreateLogger(string channel, LogLevel level) => new TizenLogger(channel, level);
 
         public static void Configure(Stream stream)

@@ -14,7 +14,7 @@ namespace JuvoPlayer.Logging
         {
         }
 
-        protected override void PrintLog(LogLevel level, string message, string file, string method, int line)
+        public override void PrintLog(LogLevel level, string message, string file, string method, int line)
         {
             LogMethod tizenLog;
             switch (level)
