@@ -30,7 +30,7 @@ namespace JuvoPlayer.Tests
         {
         }
 
-        protected override void PrintLog(LogLevel level, string message, string file, string method, int line)
+        public override void PrintLog(LogLevel level, string message, string file, string method, int line)
         {
             Logs.Add(new LoggingData(level, message, file, method, line));
         }

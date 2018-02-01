@@ -11,11 +11,17 @@ namespace JuvoPlayer.TizenTests
     [TestFixture]
     class TSTizenLoggerManager
     {
+        private LoggerManager savedInstance;
 
-        [TearDown]
-        public void Reset()
+        [SetUp]
+        public void SetUp()
         {
-            LoggerManager.ResetForTests();
+            savedInstance = LoggerManager.ResetForTests();
+        }
+        [TearDown]
+        public void TearDown()
+        {
+            LoggerManager.RestoreForTests(savedInstance);
         }
 
         [Test]
