@@ -6,6 +6,8 @@ using System.Threading;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using JuvoPlayer.Common.Logging;
+using JuvoPlayer.Logging;
 using Tizen;
 using NUnitLite;
 using NUnit.Common;
@@ -16,6 +18,7 @@ namespace JuvoPlayer.Tests
     public class Program
     {
         private const string Tag = "UT";
+        private static ILogger Logger = LoggerManager.GetInstance().GetLogger(Tag); 
         private static string[] globalArgs;
 
         public delegate void ecore_idle_callback(IntPtr data);
@@ -51,7 +54,7 @@ namespace JuvoPlayer.Tests
                 new AutoRun(typeof(Program).GetTypeInfo().Assembly).Execute(globalArgs, writer, Console.In);
             }
 
-            Log.Info(Tag, sb.ToString());
+            Logger.Info(sb.ToString());
             needExitMainLoop = true;
         }
 
@@ -65,18 +68,19 @@ namespace JuvoPlayer.Tests
         {
             if (evt.ExceptionObject is Exception e)
             {
-                Log.Error(Tag, e.Message);
-                Log.Error(Tag, e.StackTrace);
+                Logger.Error(e.Message);
+                Logger.Error(e.StackTrace);
             }
             else
             {
-                Log.Error(Tag, "Got unhandled exception event: " + evt);
+                Logger.Error("Got unhandled exception event: " + evt);
             }
         }
 
         public static void Main(string[] args)
         {
-            Log.Info(Tag, "==================== Main ====================");
+            TizenLoggerManager.Configure();
+            Logger.Info("==================== Main ====================");
             AppDomain.CurrentDomain.UnhandledException += UnhandledException;
 
             string dllName = typeof(Program).GetTypeInfo().Assembly.ManifestModule.ToString();
@@ -97,7 +101,7 @@ namespace JuvoPlayer.Tests
 
             ecore_idler_add((value) =>
             {
-                Log.Info(Tag, "==================== App Start ====================");
+                Logger.Info("==================== App Start ====================");
                 MainEntry();
             }, IntPtr.Zero);
 
@@ -105,7 +109,7 @@ namespace JuvoPlayer.Tests
 
             ecore_shutdown();
 
-            Log.Info(Tag, "==================== App Terminated ====================");
+            Logger.Info("==================== App Terminated ====================");
         }
     }
 }

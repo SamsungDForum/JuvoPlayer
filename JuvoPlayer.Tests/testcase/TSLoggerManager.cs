@@ -11,12 +11,19 @@ namespace JuvoPlayer.Tests
     [TestFixture]
     class TSLoggerManager
     {
+        private LoggerManager savedInstance;
         LoggerBase CreateLogger(string channel, LogLevel level) => new DummyLogger(channel, level);
 
-        [TearDown]
-        public void Reset()
+        [SetUp]
+        public void SetUp()
         {
-            LoggerManager.ResetForTests();
+            savedInstance = LoggerManager.ResetForTests();
+        }
+
+        [TearDown]
+        public void TearDown()
+        {
+            LoggerManager.RestoreForTests(savedInstance);
         }
 
         [Test]
@@ -51,16 +58,18 @@ namespace JuvoPlayer.Tests
         [Test]
         public void TestConfigureWithNull()
         {
-            Assert.Throws<ArgumentNullException>(() => LoggerManager.Configure(null));
-
+            // configData cannot be null
+            Assert.Throws<ArgumentNullException>(() => LoggerManager.Configure((string) null, null));
             Assert.Throws<ArgumentNullException>(() => LoggerManager.Configure((string) null, null));
             Assert.Throws<ArgumentNullException>(() => LoggerManager.Configure((string) null, CreateLogger));
-            Assert.Throws<ArgumentNullException>(() => LoggerManager.Configure(string.Empty, null));
 
+            // configStream cannot be null
             Assert.Throws<ArgumentNullException>(() => LoggerManager.Configure((Stream) null, null));
             Assert.Throws<ArgumentNullException>(() => LoggerManager.Configure((Stream) null, CreateLogger));
 
-            Assert.Throws<InvalidOperationException>(() => LoggerManager.GetInstance());
+            Assert.DoesNotThrow(() => LoggerManager.Configure(null));
+            Assert.DoesNotThrow(() => LoggerManager.Configure(string.Empty, null));
+            Assert.DoesNotThrow(() => LoggerManager.GetInstance());
         }
 
         [Test]
@@ -68,17 +77,25 @@ namespace JuvoPlayer.Tests
         {
             var contents = LoadConfig("logging_valid.config");
             LoggerManager.Configure(contents, CreateLogger);
-
             Assert.That(LoggerManager.GetInstance(), Is.Not.Null);
 
-            Assert.Throws<InvalidOperationException>(() => LoggerManager.Configure(contents, CreateLogger));
-            Assert.Throws<InvalidOperationException>(() => LoggerManager.Configure(CreateLogger));
+            var channelName = "JuvoPlayer.Common";
+
+            ILogger logger = LoggerManager.GetInstance().GetLogger(channelName);
+            Assert.That(logger.IsLevelEnabled(LogLevel.Warn), Is.True);
+            Assert.That(logger.IsLevelEnabled(LogLevel.Info), Is.False);
+
+            LoggerManager.Configure(null);
+
+            ILogger reconfiguredLogger = LoggerManager.GetInstance().GetLogger(channelName);
+            Assert.That(reconfiguredLogger, Is.SameAs(logger));
+            Assert.That(logger.IsLevelEnabled(LogLevel.Debug), Is.True);
         }
 
         [Test]
         public void TestGetInstanceBeforeConfigure()
         {
-            Assert.Throws<InvalidOperationException>(() => LoggerManager.GetInstance());
+            Assert.DoesNotThrow(() => LoggerManager.GetInstance());
         }
 
         private static string LoadConfig(string filename)

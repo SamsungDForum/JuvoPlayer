@@ -9,12 +9,19 @@ namespace JuvoPlayer.Common.Logging
     public abstract class LoggerBase : ILogger
     {
         public string Channel { get; }
-        private readonly LogLevel _level;
+
+        private LogLevel level;
+
+        protected LogLevel Level
+        {
+            get => level;
+            set => level = Enum.IsDefined(typeof(LogLevel), value) ? value : throw new ArgumentOutOfRangeException();
+        }
 
         protected LoggerBase(string channel, LogLevel level)
         {
             Channel = channel ?? throw new ArgumentNullException();
-            _level = Enum.IsDefined(typeof(LogLevel), level) ? level : throw new ArgumentOutOfRangeException();
+            this.Level = level;
         }
 
         public void Verbose(string message, string file = "", string method = "", int line = 0)
@@ -53,11 +60,11 @@ namespace JuvoPlayer.Common.Logging
             PrintLog(level, message, file, method, line);
         }
 
-        protected abstract void PrintLog(LogLevel level, string message, string file, string method, int line);
+        public abstract void PrintLog(LogLevel level, string message, string file, string method, int line);
 
         public bool IsLevelEnabled(LogLevel level)
         {
-            return level <= _level;
+            return level <= this.Level;
         }
     }
 }
