@@ -11,12 +11,19 @@ namespace JuvoPlayer.Tests
     [TestFixture]
     class TSLoggerManager
     {
+        private LoggerManager instance;
         LoggerBase CreateLogger(string channel, LogLevel level) => new DummyLogger(channel, level);
+
+        [SetUp]
+        public void SetUp()
+        {
+            instance = LoggerManager.ResetForTests();
+        }
 
         [TearDown]
         public void Reset()
         {
-            LoggerManager.ResetForTests();
+            LoggerManager.RestoreForTests(instance);
         }
 
         [Test]

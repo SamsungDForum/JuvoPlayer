@@ -6,7 +6,7 @@ using NUnit.Framework;
 namespace JuvoPlayer.Tests
 {
     [TestFixture]
-    partial class TSLoggerBase
+    class TSLoggerBase
     {
         [Test]
         public void TestLoggerBase()
