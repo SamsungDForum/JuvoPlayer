@@ -108,8 +108,8 @@ namespace JuvoPlayer.Player
                 Log.Info("JuvoPlayer", "Append packet " + packet.StreamType.ToString());
 
                 var mediaPacket = MediaPacket.Create(format);
-                mediaPacket.Dts = packet.Dts;
-                mediaPacket.Pts = packet.Pts;
+                mediaPacket.Dts = (ulong)(packet.Dts.TotalMilliseconds * 1000);
+                mediaPacket.Pts = (ulong)(packet.Pts.TotalMilliseconds * 1000);
                 if (packet.IsKeyFrame)
                     mediaPacket.BufferFlags = MediaPacketBufferFlags.SyncFrame;
 

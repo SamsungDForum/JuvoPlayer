@@ -232,9 +232,8 @@ namespace JuvoPlayer.FFmpeg
                         AVStream* s = formatContext->streams[pkt.stream_index];
                         var data = pkt.data;
                         var dataSize = pkt.size;
-                        var pts = FFmpeg.av_rescale_q(pkt.pts, s->time_base, kMicrosBase) * kOneMicrosecond;
-                        var dts = FFmpeg.av_rescale_q(pkt.dts, s->time_base, kMicrosBase) * kOneMicrosecond;
-                        var duration = FFmpeg.av_rescale_q(pkt.duration, s->time_base, kMicrosBase) * kOneMicrosecond;
+                        var pts = FFmpeg.av_rescale_q(pkt.pts, s->time_base, kMicrosBase) / 1000;
+                        var dts = FFmpeg.av_rescale_q(pkt.dts, s->time_base, kMicrosBase) / 1000;
 
                         var sideData = FFmpeg.av_packet_get_side_data(&pkt, AVPacketSideDataType.@AV_PKT_DATA_ENCRYPT_INFO, null);
 
@@ -245,21 +244,21 @@ namespace JuvoPlayer.FFmpeg
                             streamPacket = new StreamPacket();
 
                         streamPacket.StreamType = pkt.stream_index != audio_idx ? StreamType.Video : StreamType.Audio;
-                        streamPacket.Pts = pts >= 0 ? (System.UInt64)(pts * 1000000000) : 0; // gstreamer needs nanoseconds, value cannot be negative
-                        streamPacket.Dts = dts >= 0 ? (System.UInt64)(dts * 1000000000) : 0; // gstreamer needs nanoseconds, value cannot be negative
+                        streamPacket.Pts = TimeSpan.FromMilliseconds(pts >= 0 ? pts : 0);
+                        streamPacket.Dts = TimeSpan.FromMilliseconds(dts >= 0 ? dts : 0);
                         streamPacket.Data = new byte[dataSize];
                         streamPacket.IsKeyFrame = (pkt.flags == 1);
 
                         //                                        Log.Info("JuvoPlayer", "DEMUXER (" + (streamPacket.StreamType == StreamType.Audio ? "A" : "V") + "): data size: " + dataSize.ToString() + "; pts: " + pts.ToString() + "; dts: " + dts.ToString() + "; duration:" + duration + "; ret: " + ret.ToString());
                         CopyPacketData(data, 0, dataSize, streamPacket, sideData == null);
-                        StreamPacketReady(streamPacket);
+                        StreamPacketReady?.Invoke(streamPacket);
                     }
                     else
                     {
                         if (ret == -541478725)
                         {
                             // null means EOF
-                            StreamPacketReady(null);
+                            StreamPacketReady?.Invoke(null);
                         }
                         Log.Info("JuvoPlayer", "DEMUXER: ----DEMUXING----AV_READ_FRAME----ERROR---- av_read_frame()=" + ret.ToString() + " (" + GetErrorText(ret) + ")");
                         parse = false;

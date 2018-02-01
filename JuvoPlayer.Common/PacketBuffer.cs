@@ -135,13 +135,13 @@ namespace JuvoPlayer.Common {
         private long Compare(StreamPacket a, StreamPacket b) {
             switch (QueueOrdering) {
                 case Ordering.DtsAsc:
-                    return (long)(a.Dts - b.Dts); // in order of increasing dts
+                    return a.Dts.CompareTo(b.Dts); // in order of increasing dts
                 case Ordering.DtsDesc:
-                    return (long)(b.Dts - a.Dts); // in order of decreasing dts
+                    return b.Dts.CompareTo(a.Dts); // in order of decreasing dts
                 case Ordering.PtsAsc:
-                    return (long)(a.Pts - b.Pts); // in order of increasing pts
+                    return a.Pts.CompareTo(b.Pts); // in order of increasing pts
                 case Ordering.PtsDesc:
-                    return (long)(b.Pts - a.Pts); // in order of decreasing pts
+                    return b.Pts.CompareTo(a.Pts); // in order of decreasing pts
                 case Ordering.Fifo:
                 default:
                     return 0; // fifo
@@ -155,13 +155,13 @@ namespace JuvoPlayer.Common {
                         switch (QueueOrdering) {
                             case Ordering.DtsAsc:
                             case Ordering.DtsDesc:
-                                return data[0].Dts;
+                                return (ulong)data[0].Dts.TotalMilliseconds;
                             case Ordering.PtsAsc:
                             case Ordering.PtsDesc:
-                                return data[0].Pts;
+                                return (ulong)data[0].Pts.TotalMilliseconds;
                             case Ordering.Fifo:
                             default:
-                                return data[0].Pts; // fifo, comparison outside by pts
+                                return (ulong)data[0].Pts.TotalMilliseconds; // fifo, comparison outside by pts
                         }
                     }
                 }
