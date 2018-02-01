@@ -21,9 +21,16 @@ namespace JuvoPlayer.Common.Logging
             _createLoggerFunc = createLoggerFunc;
         }
 
-        public static void ResetForTests()
+        public static LoggerManager ResetForTests()
         {
+            LoggerManager instance = _instance;
             _instance = null;
+            return instance;
+        }
+
+        public static void RestoreForTests(LoggerManager instance)
+        {
+            _instance = instance;
         }
 
         public static void Configure(CreateLoggerFunc createLoggerFunc)
