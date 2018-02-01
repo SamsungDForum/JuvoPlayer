@@ -13,19 +13,23 @@
 
 using System;
 using System.Net;
+using JuvoPlayer.Common.Logging;
 
 //Yes.. inheriting from WebClient is a simpler approach then raping the queen of Web/HttpRequests
 namespace MpdParser.Network
 {
     internal class ByteRange
     {
+        protected static LoggerManager LogManager = LoggerManager.GetInstance();
+        protected static ILogger Logger = LoggerManager.GetInstance().GetLogger(MpdParser.LogTag);
+
         public long Low { get; }
         public long High { get; }
         public ByteRange(string range)
         {
             Low = 0;
             High = 0;
-            var ranges = range.Split("-");
+            var ranges = range.Split('-');
             if (ranges.Length != 2)
             {
                 throw new ArgumentException("Range cannot be parsed.");
@@ -37,7 +41,7 @@ namespace MpdParser.Network
             }
             catch (Exception ex)
             {
-                Tizen.Log.Error(GetType().Name, ex + " Cannot parse range.");
+                Logger.Error(GetType().Name, ex.ToString() + " Cannot parse range.");
             }
         }
     }
