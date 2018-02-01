@@ -13,14 +13,15 @@
 
 using System;
 using System.Collections.Generic;
+using JuvoPlayer.Common.Logging;
 
 namespace MpdParser.Node.Atom
 {
-    public abstract class AtomBase
+    public abstract class AtomBase 
     {
-        static protected string tag = "JuvoPlayer";
-
         protected UInt32 AtomSize;
+        protected static LoggerManager LogManager = LoggerManager.GetInstance();
+        protected static ILogger Logger = LoggerManager.GetInstance().GetLogger(MpdParser.LogTag);
 
         public abstract void ParseAtom(byte[] adata, ulong dataStart);
 
@@ -98,7 +99,7 @@ namespace MpdParser.Node.Atom
                 case TypeCode.Single:
                 case TypeCode.String:
                 default:
-                    Tizen.Log.Info(tag, string.Format("{0} Unsupported read type.", res.GetType().ToString()));
+                    Logger.Info(string.Format("{0} Unsupported read type.", res.GetType().ToString()));
                     break;
             }
 
@@ -269,20 +270,20 @@ namespace MpdParser.Node.Atom
 
             if (i != null)
             {
-                Tizen.Log.Debug(tag, string.Format("Index entry ID: {0} for time {1}",i.ID,curr));
+                Logger.Info(string.Format("Index entry ID: {0} for time {1}",i.ID,curr));
                 return i.ID;
             }
 
-            Tizen.Log.Debug(tag, string.Format("Index entry for time: {0} not found", curr));
+            Logger.Info(string.Format("Index entry for time: {0} not found", curr));
             return null;
         }
 
         public void DumpMovieIndex(TimeSpan curr = default(TimeSpan))
         {
-            Tizen.Log.Debug(tag, string.Format("SIDX DB dump {0} entries:", Movieidx.Count));
+            Logger.Debug(string.Format("SIDX DB dump {0} entries:", Movieidx.Count));
             foreach (Movie_index_entry mie in Movieidx)
             {
-                Tizen.Log.Debug(tag, string.Format("Requested Time={0} Index Start Time={1} Index Duration={2} Total={3}",
+                Logger.Debug(string.Format("Requested Time={0} Index Start Time={1} Index Duration={2} Total={3}",
                     curr, mie.TimeIndex, mie.SegmentDuration, mie.TimeIndex + mie.SegmentDuration));
             }
         }
@@ -295,14 +296,14 @@ namespace MpdParser.Node.Atom
             //Sanity Check
             if (AtomSize > adata.Length)
             {
-                Tizen.Log.Info(tag, string.Format("SIDX buffer shorter then indicated by atom size."));
+                Logger.Warn(string.Format("SIDX buffer shorter then indicated by atom size."));
                 return;
             }
 
             // Check signature
             if (CheckName(adata, ref idx, AtomName) == false)
             {
-                Tizen.Log.Info(tag, string.Format("Missing SIDX atom header."));
+                Logger.Warn(string.Format("Missing SIDX atom header."));
                 return;
             }
 
