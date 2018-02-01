@@ -11,14 +11,16 @@
 // damages suffered by licensee as a result of using, modifying or distributing
 // this software or its derivatives.
 
+using System;
+
 namespace JuvoPlayer.Common
 {
     public class StreamPacket
     {
         public byte[] Data = null;
         public StreamType StreamType { get; set; }
-        public ulong Dts { get; set; }
-        public ulong Pts { get; set; }
+        public TimeSpan Dts { get; set; }
+        public TimeSpan Pts { get; set; }
         public bool IsEOS { get; set; }
         public bool IsKeyFrame { get; set; }
 
@@ -27,8 +29,8 @@ namespace JuvoPlayer.Common
             return new StreamPacket
             {
                 StreamType = streamType,
-                Dts = ulong.MaxValue,
-                Pts = ulong.MaxValue,
+                Dts = TimeSpan.MaxValue,
+                Pts = TimeSpan.MaxValue,
                 IsEOS = true
             };
         }

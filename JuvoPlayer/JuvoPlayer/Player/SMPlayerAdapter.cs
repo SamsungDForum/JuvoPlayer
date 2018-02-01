@@ -22,24 +22,33 @@ using Tizen;
 
 namespace JuvoPlayer.Player
 {
-     unsafe public class SMPlayerAdapter : IPlayerAdapter, IPlayerEventListener
-     {
+    public static class TimeSpanExtensions
+    {
+        public static ulong TotalNanoseconds(this TimeSpan time)
+        {
+            return (ulong) (time.TotalMilliseconds * 1000000);
+        }
+    }
+
+    unsafe public class SMPlayerAdapter : IPlayerAdapter, IPlayerEventListener
+    {
         public event PlaybackCompleted PlaybackCompleted;
         public event PlaybackError PlaybackError;
         public event PlayerInitialized PlayerInitialized;
         public event ShowSubtitile ShowSubtitle;
         public event TimeUpdated TimeUpdated;
 
-        private SMPlayerWrapper playerInstance;
+        private readonly SMPlayerWrapper playerInstance;
 
         private bool audioSet, videoSet, isPlayerInitialized, playCalled;
 
-        private PacketBuffer audioBuffer, videoBuffer;
+        private readonly PacketBuffer audioBuffer;
+        private readonly PacketBuffer videoBuffer;
 
         private bool needDataVideo, needDataAudio;
         private bool needDataInitMode = true;
 
-        private AutoResetEvent needDataEvent = new AutoResetEvent(false);
+        private readonly AutoResetEvent needDataEvent = new AutoResetEvent(false);
         private object needDataLock = new object();
 
         private System.UInt32 currentTime;
@@ -193,7 +202,7 @@ namespace JuvoPlayer.Player
 
                 Tizen.Log.Info("JuvoPlayer", string.Format("[HQ] send es data to SubmitPacket: {0} {1} ( {2} )", packet.Pts, drmInfo.tz_handle, trackType));
 
-                if (!playerInstance.SubmitPacket(IntPtr.Zero, packet.HandleSize.size, packet.Pts, trackType, pnt))
+                if (!playerInstance.SubmitPacket(IntPtr.Zero, packet.HandleSize.size, packet.Pts.TotalNanoseconds(), trackType, pnt))
                 {
                     packet.CleanHandle();
                     Tizen.Log.Info("JuvoPlayer", "Submiting encrypted packet failed");
@@ -223,7 +232,7 @@ namespace JuvoPlayer.Player
                 var trackType = SMPlayerUtils.GetTrackType(packet);
                 Tizen.Log.Info("JuvoPlayer", string.Format("[HQ] send es data to SubmitPacket: {0} ( {1} )", packet.Pts, trackType));
 
-                playerInstance.SubmitPacket(pnt, (uint)packet.Data.Length, packet.Pts, trackType, IntPtr.Zero);
+                playerInstance.SubmitPacket(pnt, (uint)packet.Data.Length, packet.Pts.TotalNanoseconds(), trackType, IntPtr.Zero);
             }
             finally
             {
@@ -254,7 +263,7 @@ namespace JuvoPlayer.Player
 
         public void Seek(TimeSpan time)
         {
-            playerInstance.Seek((int)(time.TotalMilliseconds * 1000000));
+            playerInstance.Seek((int)time.TotalMilliseconds);
         }
 
         public void SetAudioStreamConfig(AudioStreamConfig config)
@@ -338,8 +347,7 @@ namespace JuvoPlayer.Player
 
         public void SetDuration(TimeSpan duration)
         {
-            // player requires nanoseconds
-            playerInstance.SetDuration((uint)(duration.TotalMilliseconds * 1000000));
+            playerInstance.SetDuration((uint)duration.TotalMilliseconds);
         }
 
         public void SetExternalSubtitles(string file)
