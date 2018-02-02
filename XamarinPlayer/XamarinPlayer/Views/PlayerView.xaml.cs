@@ -11,6 +11,7 @@ namespace XamarinPlayer.Views
     {
         private readonly int DefaultTimeout = 5000;
         private readonly TimeSpan UpdateInterval = new TimeSpan(0, 0, 0, 0, 100);
+        private readonly TimeSpan DefaultSeekTime = new TimeSpan(0, 0, 0, 10, 0);
 
         private IPlayerService _playerService;
         private int _hideTime;
@@ -41,6 +42,28 @@ namespace XamarinPlayer.Views
                     _playerService.Pause();
                 else
                     _playerService.Start();
+            };
+
+            Back.Clicked += (s, e) =>
+            {
+                if (_playerService.State != PlayerState.Playing)
+                    return;
+
+                if (_playerService.CurrentPosition < DefaultSeekTime)
+                    _playerService.SeekTo(TimeSpan.Zero);
+                else
+                    _playerService.SeekTo(_playerService.CurrentPosition - DefaultSeekTime);
+            };
+
+            Forward.Clicked += (s, e) =>
+            {
+                if (_playerService.State != PlayerState.Playing)
+                    return;
+
+                if (_playerService.Duration - _playerService.CurrentPosition < DefaultSeekTime)
+                    _playerService.SeekTo(_playerService.Duration);
+                else
+                    _playerService.SeekTo(_playerService.CurrentPosition + DefaultSeekTime);
             };
 
             PropertyChanged += PlayerViewPropertyChanged;
@@ -167,10 +190,14 @@ namespace XamarinPlayer.Views
         {
             if (e.State == PlayerState.Error)
             {
+                Back.IsEnabled = false;
+                Forward.IsEnabled = false;
                 Play.IsEnabled = false;
             }
             else if (e.State == PlayerState.Prepared)
             {
+                Back.IsEnabled = true;
+                Forward.IsEnabled = true;
                 Play.IsEnabled = true;
                 Play.Focus();
 

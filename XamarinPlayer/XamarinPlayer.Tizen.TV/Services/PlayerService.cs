@@ -33,7 +33,7 @@ namespace XamarinPlayer.Tizen.Services
 
         public PlayerState State
         {
-            get { return playerState; }
+            get => playerState;
             private set
             {
                 playerState = value;
