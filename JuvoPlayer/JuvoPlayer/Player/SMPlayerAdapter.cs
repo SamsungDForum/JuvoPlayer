@@ -237,7 +237,7 @@ namespace JuvoPlayer.Player
             finally
             {
                 // Free the unmanaged memory. It need to check, no need to clear here, in Amazon es play case, the es data memory is cleared by decoder or sink element after it is used and played
-                  //Marshal.FreeHGlobal(pnt);
+                  Marshal.FreeHGlobal(pnt);
             }
         }
 
