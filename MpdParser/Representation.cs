@@ -79,6 +79,18 @@ namespace MpdParser.Node.Dynamic
             media_ = media;
             InitSegment = init;
             IndexSegment = index;
+            /*
+            if (media_ == null)
+            {
+                Count = 0u;
+            }
+            else
+            {
+                Count = 1u;
+            }
+            */
+            // Why this line is throwing TypeInitializationException..
+            // beats me...
             Count = media == null ? 0u : 1u;
             Duration = media?.Period?.Duration;
             
