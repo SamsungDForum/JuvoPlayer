@@ -13,19 +13,16 @@ namespace JuvoPlayer.Dash
     internal class DashClient : IDashClient
     {
         private const string Tag = "JuvoPlayer";
-        private static TimeSpan magicBufferTime = TimeSpan.FromSeconds(7);
+        private static readonly TimeSpan MagicBufferTime = TimeSpan.FromSeconds(7);
 
-        private ISharedBuffer sharedBuffer;
+        private readonly ISharedBuffer sharedBuffer;
         private Media media;
-        private StreamType streamType;
+        private readonly StreamType streamType;
 
         private TimeSpan currentTime;
         private TimeSpan bufferTime;
         private bool playback;
         private IRepresentationStream currentStreams;
-
-
-
 
         public DashClient(ISharedBuffer sharedBuffer, StreamType streamType)
         {
@@ -59,6 +56,7 @@ namespace JuvoPlayer.Dash
         public void Stop()
         {
             playback = false;
+            sharedBuffer?.WriteData(null, true);
         }
 
         public bool UpdateMedia(Media newMedia)
@@ -90,13 +88,17 @@ namespace JuvoPlayer.Dash
             while (playback)
             {
                 var currentTime = this.currentTime;
-                while (bufferTime - currentTime <= magicBufferTime)
+                while (bufferTime - currentTime <= MagicBufferTime)
                 {
-
                     try
                     {
-
                         var currentSegmentId = currentStreams.MediaSegmentAtTime(bufferTime);
+                        if (!currentSegmentId.HasValue)
+                        {
+                            Stop();
+                            break;
+                        }
+
                         var stream = currentStreams.MediaSegmentAtPos(currentSegmentId.Value);
 
                         Tizen.Log.Error(Tag, string.Format("Downloading Segment {0}  {1}", streamType, stream.Url));
@@ -107,7 +109,7 @@ namespace JuvoPlayer.Dash
     
                         sharedBuffer.WriteData(streamBytes);
 
-                        if(stream.EndSegment)
+                        if (stream.EndSegment)
                         {
                             Stop();
                         }

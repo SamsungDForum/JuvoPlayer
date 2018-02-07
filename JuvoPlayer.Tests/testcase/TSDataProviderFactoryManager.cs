@@ -51,6 +51,10 @@ namespace JuvoPlayer.Tests
             {
                 throw new NotImplementedException();
             }
+
+            public void Dispose()
+            {
+            }
         }
 
         private class FakeDataProviderFactory : IDataProviderFactory

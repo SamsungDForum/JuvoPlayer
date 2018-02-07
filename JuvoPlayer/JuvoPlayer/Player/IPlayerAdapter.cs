@@ -17,7 +17,7 @@ using System;
 
 namespace JuvoPlayer.Player
 {
-    public interface IPlayerAdapter
+    public interface IPlayerAdapter : IDisposable
     {
         event PlaybackCompleted PlaybackCompleted;
         event PlaybackError PlaybackError;
