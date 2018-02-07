@@ -15,7 +15,7 @@ using System;
 
 namespace JuvoPlayer.Common
 {
-    public interface IDemuxer
+    public interface IDemuxer : IDisposable
     {
         void StartForExternalSource();
         void StartForUrl(string url);

@@ -36,6 +36,9 @@ namespace JuvoPlayer.FFmpeg
         private unsafe AVIOContext* ioContext = null;
         private int audioIdx = -1;
         private int videoIdx = -1;
+        private bool parse = true;
+
+        private Task demuxTask;
 
         private const int MicrosecondsPerSecond = 1000000;
         private readonly AVRational microsBase = new AVRational
@@ -88,7 +91,7 @@ namespace JuvoPlayer.FFmpeg
             Log.Info("JuvoPlayer", "StartDemuxer!");
 
             // Potentially time-consuming part of initialization and demuxation loop will be executed on a detached thread.
-            Task.Run(() => DemuxTask(InitES)); 
+            demuxTask = Task.Run(() => DemuxTask(InitES)); 
         }
 
         public void StartForUrl(string url)
@@ -96,7 +99,7 @@ namespace JuvoPlayer.FFmpeg
             Log.Info("JuvoPlayer", "StartDemuxer!");
 
             // Potentially time-consuming part of initialization and demuxation loop will be executed on a detached thread.
-            Task.Run(() => DemuxTask(() => InitURL(url))); 
+            demuxTask = Task.Run(() => DemuxTask(() => InitURL(url))); 
         }
 
         private unsafe void InitES()
@@ -210,9 +213,6 @@ namespace JuvoPlayer.FFmpeg
                 Log.Error("JuvoPlayer", "An error occured: " + e.Message);
             }
 
-
-            bool parse = true;
-
             while (parse) {
                 AVPacket pkt = new AVPacket();
                 FFmpeg.av_init_packet(&pkt);
@@ -253,7 +253,7 @@ namespace JuvoPlayer.FFmpeg
                     }
                     else
                     {
-                        if (ret == -541478725)
+                        if (ret == -541478725 && parse)
                         {
                             // null means EOF
                             StreamPacketReady?.Invoke(null);
@@ -373,11 +373,6 @@ namespace JuvoPlayer.FFmpeg
                 //FFmpeg.FFmpeg.av_free(buffer); // TODO(g.skowinski): causes segfault - investigate
                 buffer = null;
             }
-        }
-
-        unsafe ~FFmpegDemuxer()
-        {
-            DeallocFFmpeg();
         }
 
         private unsafe void UpdateContentProtectionConfig()
@@ -609,11 +604,14 @@ namespace JuvoPlayer.FFmpeg
             }
             // SharedBuffer::ReadData(int size) is blocking - it will block until it has data or return 0 if EOF is reached
             byte[] data = sharedBuffer.ReadData(bufSize);
-            Marshal.Copy(data, 0, (IntPtr)buf, data.Length);
-            return data.Length;
+            if (data.Length > 0)
+                Marshal.Copy(data, 0, (IntPtr)buf, data.Length);
+
+            // in case of length 0 return EOF
+            return data.Length > 0 ? data.Length : -541478725;
         }
 
-        private static unsafe int WritePacket(void* @opaque, byte* @buf, int @buf_size)
+        private static unsafe int WritePacket(void* @opaque, byte* @buf, int bufSize)
         {
             // TODO(g.skowinski): Implement.
             return 0;
@@ -623,6 +621,20 @@ namespace JuvoPlayer.FFmpeg
         {
             // TODO(g.skowinski): Implement.
             return 0;
+        }
+
+        private void ReleaseUnmanagedResources()
+        {
+            DeallocFFmpeg();
+        }
+
+        public void Dispose()
+        {
+            parse = false;
+            demuxTask?.Wait();
+
+            ReleaseUnmanagedResources();
+            GC.SuppressFinalize(this);
         }
     }
 }

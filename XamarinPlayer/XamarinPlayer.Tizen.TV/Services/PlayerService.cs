@@ -17,11 +17,11 @@ using XamarinPlayer.Tizen.Services;
 [assembly: Dependency(typeof(PlayerService))]
 namespace XamarinPlayer.Tizen.Services
 {
-    class PlayerService : IPlayerService, IDisposable
+    class PlayerService : IPlayerService
     {
         private IDataProvider dataProvider;
-        private IPlayerController playerController;
-        private DataProviderFactoryManager dataProviders;
+        private readonly IPlayerController playerController;
+        private readonly DataProviderFactoryManager dataProviders;
         private PlayerState playerState = PlayerState.Idle;
 
         public event PlayerStateChangedEventHandler StateChanged;
@@ -29,8 +29,7 @@ namespace XamarinPlayer.Tizen.Services
         public event PlaybackCompleted PlaybackCompleted;
         public event ShowSubtitile ShowSubtitle;
         
-        //UI requires duration in ms:
-        public TimeSpan Duration => playerController == null ? TimeSpan.FromSeconds(0) : playerController.ClipDuration ;
+        public TimeSpan Duration => playerController?.ClipDuration ?? TimeSpan.FromSeconds(0) ;
 
         public TimeSpan CurrentPosition => dataProvider == null ? TimeSpan.FromSeconds(0) : playerController.CurrentTime;
 
@@ -127,7 +126,9 @@ namespace XamarinPlayer.Tizen.Services
         {
             if (disposing)
             {
-                playerController.Dispose();
+                ControllerConnector.DisconnectDataProvider(playerController, dataProvider);
+                playerController?.Dispose();
+                dataProvider?.Dispose();
             }
         }
     }

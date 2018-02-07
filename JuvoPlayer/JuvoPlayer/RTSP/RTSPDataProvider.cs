@@ -21,22 +21,17 @@ namespace JuvoPlayer.RTSP
 {
     public class RTSPDataProvider : IDataProvider
     {
-        private IDemuxer demuxer;
-        private IRTSPClient rtpClient;
-        private ClipDefinition currentClip;
+        private readonly IDemuxer demuxer;
+        private readonly IRTSPClient rtpClient;
+        private readonly ClipDefinition currentClip;
         public RTSPDataProvider(IDemuxer demuxer, IRTSPClient rtpClient, ClipDefinition currentClip)
         {
-            this.demuxer = demuxer ?? throw new ArgumentNullException("demuxer cannot be null");
-            this.rtpClient = rtpClient ?? throw new ArgumentNullException("rtpClient cannot be null");
-            this.currentClip = currentClip ?? throw new ArgumentNullException("clip cannot be null");
+            this.demuxer = demuxer ?? throw new ArgumentNullException(nameof(demuxer), "demuxer cannot be null");
+            this.rtpClient = rtpClient ?? throw new ArgumentNullException(nameof(rtpClient), "rtpClient cannot be null");
+            this.currentClip = currentClip ?? throw new ArgumentNullException(nameof(currentClip), "clip cannot be null");
 
             this.demuxer.StreamConfigReady += OnStreamConfigReady;
             this.demuxer.StreamPacketReady += OnStreamPacketReady;
-        }
-
-        ~RTSPDataProvider()
-        {
-            rtpClient?.Stop();
         }
 
         public event ClipDurationChanged ClipDurationChanged;
@@ -98,6 +93,12 @@ namespace JuvoPlayer.RTSP
 
         public void OnTimeUpdated(TimeSpan time)
         {
+        }
+
+        public void Dispose()
+        {
+            rtpClient?.Stop();
+            demuxer.Dispose();
         }
     }
 }

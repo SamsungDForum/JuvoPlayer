@@ -12,7 +12,7 @@ namespace JuvoPlayer
         public static void ConnectDataProvider(IPlayerController controller, IDataProvider newDataProvider)
         {
             if (controller == null)
-                throw new ArgumentNullException("Player controller cannot be null");
+                throw new ArgumentNullException(nameof(controller), "Player controller cannot be null");
 
             if (newDataProvider == null)
                 return;
@@ -36,7 +36,7 @@ namespace JuvoPlayer
         public static void DisconnectDataProvider(IPlayerController controller, IDataProvider oldDataProvider)
         {
             if (controller == null)
-                throw new ArgumentNullException("Player controller cannot be null");
+                throw new ArgumentNullException(nameof(controller), "Player controller cannot be null");
 
             if (oldDataProvider == null)
                 return;

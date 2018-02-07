@@ -23,7 +23,7 @@ namespace JuvoPlayer.Common
     public delegate void StreamPacketReady(StreamPacket packet);
     public delegate void StreamsFound(List<StreamDefinition> streams);
 
-    public interface IDataProvider
+    public interface IDataProvider : IDisposable
     {
         void OnChangeRepresentation(int representationId);
         void OnPaused();

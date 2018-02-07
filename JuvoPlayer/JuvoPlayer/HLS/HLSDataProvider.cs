@@ -22,11 +22,11 @@ namespace JuvoPlayer.HLS
     public class HLSDataProvider : IDataProvider
     {
         private IDemuxer demuxer;
-        private ClipDefinition currentClip;
+        private readonly ClipDefinition currentClip;
         public HLSDataProvider(IDemuxer demuxer, ClipDefinition currentClip)
         {
-            this.demuxer = demuxer ?? throw new ArgumentNullException("demuxer cannot be null");
-            this.currentClip = currentClip ?? throw new ArgumentNullException("clip cannot be null");
+            this.demuxer = demuxer ?? throw new ArgumentNullException(nameof(demuxer), "demuxer cannot be null");
+            this.currentClip = currentClip ?? throw new ArgumentNullException(nameof(currentClip), "clip cannot be null");
 
             this.demuxer.ClipDuration += OnClipDurationChanged;
             this.demuxer.StreamConfigReady += OnStreamConfigReady;
@@ -94,6 +94,11 @@ namespace JuvoPlayer.HLS
 
         public void OnTimeUpdated(TimeSpan time)
         {
+        }
+
+        public void Dispose()
+        {
+            demuxer.Dispose();
         }
     }
 }
