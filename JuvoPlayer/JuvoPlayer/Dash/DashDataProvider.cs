@@ -76,6 +76,8 @@ namespace JuvoPlayer.Dash
 
         public void OnStopped()
         {
+            audioPipeline.Stop();
+            videoPipeline.Stop();
         }
 
 
@@ -143,6 +145,11 @@ namespace JuvoPlayer.Dash
         {
             audioPipeline.OnTimeUpdated(time);
             videoPipeline.OnTimeUpdated(time);
+        }
+
+        public void Dispose()
+        {
+            OnStopped();
         }
     }
 }

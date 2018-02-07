@@ -291,16 +291,9 @@ namespace JuvoPlayer.Player
             player.Pause();
         }
 
-        // TODO(g.skowinski): Remove
-        public void PlayerNeedsData(StreamType streamType)
+        public void Dispose()
         {
-            throw new NotImplementedException();
-        }
-
-        // TODO(g.skowinski): Remove
-        public void PlayerDoesntNeedData(StreamType streamType)
-        {
-            throw new NotImplementedException();
+            player?.Dispose();
         }
     }
 }

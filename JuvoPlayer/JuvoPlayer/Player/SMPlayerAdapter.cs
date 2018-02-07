@@ -30,7 +30,7 @@ namespace JuvoPlayer.Player
         }
     }
 
-    unsafe public class SMPlayerAdapter : IPlayerAdapter, IPlayerEventListener
+    public unsafe class SMPlayerAdapter : IPlayerAdapter, IPlayerEventListener
     {
         public event PlaybackCompleted PlaybackCompleted;
         public event PlaybackError PlaybackError;
@@ -53,7 +53,7 @@ namespace JuvoPlayer.Player
 
         private System.UInt32 currentTime;
 
-        unsafe public SMPlayerAdapter()
+        public unsafe SMPlayerAdapter()
         {
             try
             {
@@ -99,12 +99,7 @@ namespace JuvoPlayer.Player
             Task.Run(() => SubmittingPacketsTask());
         }
 
-        ~SMPlayerAdapter()
-        {
-            playerInstance.DestroyHandler();
-        }
-
-        unsafe public void AppendPacket(StreamPacket packet)
+        public unsafe void AppendPacket(StreamPacket packet)
         {
             // todo
             if (packet == null)
@@ -136,7 +131,7 @@ namespace JuvoPlayer.Player
             }
         }
 
-        unsafe public void SubmittingPacketsTask()
+        public unsafe void SubmittingPacketsTask()
         {
             for (int i = 0; true; ++i)
             {
@@ -185,7 +180,7 @@ namespace JuvoPlayer.Player
             return packet;
         }
 
-        unsafe private void SubmitEMEPacket(DecryptedEMEPacket packet)
+        private unsafe void SubmitEMEPacket(DecryptedEMEPacket packet)
         {
             var trackType = SMPlayerUtils.GetTrackType(packet);
 
@@ -216,7 +211,7 @@ namespace JuvoPlayer.Player
         }
 
 
-        unsafe private void SubmitPacket(StreamPacket packet) // TODO(g.skowinski): Implement it properly.
+        private unsafe void SubmitPacket(StreamPacket packet) // TODO(g.skowinski): Implement it properly.
         {
             // Initialize unmanaged memory to hold the array.
             int size = Marshal.SizeOf(packet.Data[0]) * packet.Data.Length;
@@ -241,7 +236,7 @@ namespace JuvoPlayer.Player
             }
         }
 
-        unsafe private void SubmitEOSPacket(StreamPacket packet)
+        private unsafe void SubmitEOSPacket(StreamPacket packet)
         {
             var trackType = SMPlayerUtils.GetTrackType(packet);
 
@@ -470,5 +465,25 @@ namespace JuvoPlayer.Player
         }
 
         #endregion
+
+        private void ReleaseUnmanagedResources()
+        {
+            playerInstance.Reset();
+        }
+
+        private void Dispose(bool disposing)
+        {
+            ReleaseUnmanagedResources();
+            if (disposing)
+            {
+                needDataEvent?.Dispose();
+            }
+        }
+
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
     }
 }

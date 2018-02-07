@@ -17,9 +17,9 @@ namespace JuvoPlayer.Dash
         public event StreamConfigReady StreamConfigReady;
         public event StreamPacketReady StreamPacketReady;
 
-        private IDashClient dashClient;
-        private IDemuxer demuxer;
-        private StreamType streamType;
+        private readonly IDashClient dashClient;
+        private readonly IDemuxer demuxer;
+        private readonly StreamType streamType;
 
         public DashMediaPipeline(IDashClient dashClient, IDemuxer demuxer, StreamType streamType)
         {
@@ -44,6 +44,11 @@ namespace JuvoPlayer.Dash
 
             dashClient.Start();
             demuxer.StartForExternalSource();
+        }
+        public void Stop()
+        {
+            dashClient.Stop();
+            demuxer.Dispose();
         }
 
         public void OnTimeUpdated(TimeSpan time)

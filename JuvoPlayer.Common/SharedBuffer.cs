@@ -146,7 +146,9 @@ namespace JuvoPlayer.Common {
 
         public void WriteData(byte[] data, bool endOfData = false) { // endOfData=true should be atomic with writing last bit of data
             lock (_locker) {
-                buffer.Push(data, 0, data.Length);
+                if (data != null)
+                    buffer.Push(data, 0, data.Length);
+
                 EndOfData = endOfData;
                 Monitor.PulseAll(_locker);
             }
@@ -162,7 +164,8 @@ namespace JuvoPlayer.Common {
                     if (buffer.Length > 0 || EndOfData == true) {
                         long dsize = Math.Min(buffer.Length, size);
                         byte[] temp = new byte[dsize]; // should be optimized later by removing excessive copying
-                        buffer.Pop(temp, 0, (int)dsize);
+                        if (temp.Length > 0)
+                            buffer.Pop(temp, 0, (int)dsize);
 //                        Log.Info("JuvoPlayer", "SharedBuffer::ReadData(" + size + ") OUT");
                         return temp;
                     }
