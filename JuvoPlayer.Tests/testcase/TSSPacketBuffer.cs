@@ -120,15 +120,17 @@ namespace JuvoPlayer.Tests
             int testCount = 1024;
             for (int i = 0; i < testCount; ++i)
             {
-                StreamPacket packet = new StreamPacket();
-                packet.Pts = (ulong) (i + testCount);
-                packet.Dts = (ulong) (i + 2 * testCount);
-                packet.Data = null;
+                StreamPacket packet = new StreamPacket
+                {
+                    Pts = TimeSpan.FromMilliseconds(i + testCount),
+                    Dts = TimeSpan.FromMilliseconds(i + 2 * testCount),
+                    Data = null
+                };
                 buffer.Enqueue(packet);
             }
             Assert.AreEqual(buffer.Count(), testCount);
             Assert.AreEqual(buffer.AvailablePacketsCount(), testCount);
-            Assert.AreEqual(buffer.Peek().Pts, testCount); // first element in PtsAsc priority queue
+            Assert.AreEqual(buffer.Peek().Pts.TotalMilliseconds, testCount); // first element in PtsAsc priority queue
             Assert.AreEqual(buffer.PeekSortingValue(), testCount); // first element's pts
 
             // Test after some packets are dequeued
@@ -137,7 +139,7 @@ namespace JuvoPlayer.Tests
                 buffer.Dequeue();
             Assert.AreEqual(buffer.Count(), testCount - secondTestCount);
             Assert.AreEqual(buffer.AvailablePacketsCount(), testCount - secondTestCount);
-            Assert.AreEqual(buffer.Peek().Pts, testCount + secondTestCount); // first element in PtsAsc priority queue
+            Assert.AreEqual(buffer.Peek().Pts.TotalMilliseconds, testCount + secondTestCount); // first element in PtsAsc priority queue
             Assert.AreEqual(buffer.PeekSortingValue(), testCount + secondTestCount); // first element's pts
 
             // Test cleared buffer
@@ -187,10 +189,13 @@ namespace JuvoPlayer.Tests
                     chunk = Math.Min(size - written, rnd.Next(0, averageChunkSize * 2));
                     for (int i = 0; i < chunk; ++i)
                     {
-                        StreamPacket packet = new StreamPacket();
-                        packet.Pts = (ulong) rnd.Next(0, int.MaxValue);
-                        packet.Dts = (ulong) rnd.Next(0, int.MaxValue);
-                        packet.Data = new byte[0];
+                        StreamPacket packet =
+                            new StreamPacket
+                            {
+                                Pts = TimeSpan.FromMilliseconds(rnd.Next(0, int.MaxValue)),
+                                Dts = TimeSpan.FromMilliseconds(rnd.Next(0, int.MaxValue)),
+                                Data = new byte[0]
+                            };
                         Assert.DoesNotThrow(() => buffer.Enqueue(packet));
                     }
                 }
@@ -209,10 +214,10 @@ namespace JuvoPlayer.Tests
                 {
                     chunk = Math.Min(size - written, rnd.Next(0, averageChunkSize * 2)); // we're syncing with write method through lock, so we can't let the buffer wait for more data - it would cause a deadlock
                     chunk = Math.Min(chunk, (int) buffer.Count());
-                    ulong lastOne =
+                    TimeSpan lastOne =
                     (ordering == PacketBuffer.Ordering.DtsAsc || ordering == PacketBuffer.Ordering.PtsAsc
-                        ? ulong.MinValue
-                        : ulong.MaxValue);
+                        ? TimeSpan.MinValue
+                        : TimeSpan.MaxValue);
                     for (int i = 0; i < chunk; ++i)
                     {
                         StreamPacket packet = new StreamPacket();
@@ -289,10 +294,12 @@ namespace JuvoPlayer.Tests
         {
             for (int i = 0; i < numberOfValues; ++i)
             {
-                StreamPacket packet = new StreamPacket();
-                packet.Data = new byte[0];
-                packet.Pts = (ulong) (startingValue + i);
-                packet.Dts = (ulong) (startingValue + i);
+                StreamPacket packet = new StreamPacket
+                {
+                    Data = new byte[0],
+                    Pts = TimeSpan.FromMilliseconds(startingValue + i),
+                    Dts = TimeSpan.FromMilliseconds(startingValue + i)
+                };
                 Assert.DoesNotThrow(() => buffer.Enqueue(packet));
             }
             return true;
@@ -305,7 +312,7 @@ namespace JuvoPlayer.Tests
             {
                 StreamPacket packet = new StreamPacket();
                 Assert.DoesNotThrow(() => packet = buffer.Dequeue());
-                if (packet.Pts != (ulong) (startingValue + i) || packet.Dts != (ulong) (startingValue + i))
+                if (packet.Pts.TotalMilliseconds != startingValue + i || packet.Dts.TotalMilliseconds != startingValue + i)
                     return false;
             }
             return true;
