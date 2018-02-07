@@ -195,12 +195,12 @@ namespace JuvoPlayer.Player
             {
                 Marshal.StructureToPtr(drmInfo, pnt, false);
 
-                Tizen.Log.Info("JuvoPlayer", string.Format("[HQ] send es data to SubmitPacket: {0} {1} ( {2} )", packet.Pts, drmInfo.tz_handle, trackType));
+//                Tizen.Log.Info("JuvoPlayer", string.Format("[HQ] send es data to SubmitPacket: {0} {1} ( {2} )", packet.Pts, drmInfo.tz_handle, trackType));
 
                 if (!playerInstance.SubmitPacket(IntPtr.Zero, packet.HandleSize.size, packet.Pts.TotalNanoseconds(), trackType, pnt))
                 {
                     packet.CleanHandle();
-                    Tizen.Log.Info("JuvoPlayer", "Submiting encrypted packet failed");
+                    Tizen.Log.Error("JuvoPlayer", "Submiting encrypted packet failed");
                 }
             }
             finally
@@ -225,7 +225,7 @@ namespace JuvoPlayer.Player
                 //byte[] managedArray2 = new byte[managedArray.Length];
                 //Marshal.Copy(pnt, managedArray2, 0, managedArray.Length);
                 var trackType = SMPlayerUtils.GetTrackType(packet);
-                Tizen.Log.Info("JuvoPlayer", string.Format("[HQ] send es data to SubmitPacket: {0} ( {1} )", packet.Pts, trackType));
+//                Tizen.Log.Info("JuvoPlayer", string.Format("[HQ] send es data to SubmitPacket: {0} ( {1} )", packet.Pts, trackType));
 
                 playerInstance.SubmitPacket(pnt, (uint)packet.Data.Length, packet.Pts.TotalNanoseconds(), trackType, IntPtr.Zero);
             }
