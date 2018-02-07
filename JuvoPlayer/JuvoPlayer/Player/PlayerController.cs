@@ -36,9 +36,9 @@ namespace JuvoPlayer.Player
         private TimeSpan currentTime;
         private TimeSpan duration;
 
-        private IDRMManager drmManager;
-        private IPlayerAdapter playerAdapter;
-        private Dictionary<StreamType, IPacketStream> Streams = new Dictionary<StreamType, IPacketStream>();
+        private readonly IDRMManager drmManager;
+        private readonly IPlayerAdapter playerAdapter;
+        private readonly Dictionary<StreamType, IPacketStream> Streams = new Dictionary<StreamType, IPacketStream>();
 
         public event Pause Paused;
         public event Play Played;
@@ -53,8 +53,8 @@ namespace JuvoPlayer.Player
 
         public PlayerController(IPlayerAdapter player, IDRMManager drmManager)
         {
-            this.drmManager = drmManager ?? throw new ArgumentNullException("drmManager cannot be null");
-            this.playerAdapter = player ?? throw new ArgumentNullException("player cannot be null");
+            this.drmManager = drmManager ?? throw new ArgumentNullException(nameof(drmManager), "drmManager cannot be null");
+            this.playerAdapter = player ?? throw new ArgumentNullException(nameof(player), "player cannot be null");
 
             playerAdapter.PlaybackCompleted += OnPlaybackCompleted;
             playerAdapter.PlaybackError += OnPlaybackError;
@@ -204,6 +204,7 @@ namespace JuvoPlayer.Player
 
         public void Dispose()
         {
+            playerAdapter?.Dispose();
         }
     }
 }
