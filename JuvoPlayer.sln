@@ -1,6 +1,6 @@
 Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
-VisualStudioVersion = 15.0.27130.2020
+VisualStudioVersion = 15.0.27130.2010
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "JuvoPlayer", "JuvoPlayer\JuvoPlayer\JuvoPlayer.csproj", "{EBB6F3F3-6F9F-4075-AC21-FFF75B1A450D}"
 EndProject
@@ -20,7 +20,7 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "XamarinPlayer.Tizen.TV", "X
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "JuvoPlayer.Tests", "JuvoPlayer.Tests\JuvoPlayer.Tests.csproj", "{7BC5F16C-3B51-4B72-A044-D7FD48227EE8}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MpdParser", "MpdParser\MpdParser.csproj", "{545C3645-60CB-43AA-B1FD-E0E15568C67C}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MpdParser", "MpdParser\MpdParser.csproj", "{545C3645-60CB-43AA-B1FD-E0E15568C67C}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
