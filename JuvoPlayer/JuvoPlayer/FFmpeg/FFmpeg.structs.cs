@@ -284,13 +284,14 @@ namespace JuvoPlayer.FFmpeg
         public uint @bytes_of_enc_data;
     }
 
+    [StructLayout(LayoutKind.Sequential)]
     public unsafe struct AVEncInfo
     {
         public byte @iv_size;
         public byte_array16 @iv;
         public byte_array16 @kid;
         public byte @subsample_count;
-        public AVEncBytes* @subsamples;
+        public AVEncBytes @subsamples;
     }
 
     public unsafe struct AVCodecContext

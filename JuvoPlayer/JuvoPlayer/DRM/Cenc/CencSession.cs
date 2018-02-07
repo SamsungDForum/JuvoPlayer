@@ -97,7 +97,7 @@ namespace JuvoPlayer.DRM.Cenc
 
         public void Start()
         {
-            DispatchOnIEMEThread(() => StartOnIemeThread());
+            DispatchOnIEMEThread(StartOnIemeThread);
         }
 
         private void StartOnIemeThread()
@@ -150,45 +150,55 @@ namespace JuvoPlayer.DRM.Cenc
                 param[0].pkid = pkid;
                 param[0].ukidlen = (uint)data.KeyId.Length;
 
-                MSD_FMP4_DATA pSubData = new MSD_FMP4_DATA
+                var subsamplePointer = IntPtr.Zero; ;
+
+                MSD_FMP4_DATA subData;
+                if (data.Subsamples != null)
                 {
-                    uSubSampleCount = 0,
-                    pSubSampleInfo = IntPtr.Zero
-                };
+                    var subsamples = data.Subsamples.Select(o =>
+                            new MSD_SUBSAMPLE_INFO {uBytesOfClearData = o.ClearData, uBytesOfEncryptedData = o.EncData})
+                        .ToArray();
 
-                IntPtr pIntPtrSubData = Marshal.AllocHGlobal(Marshal.SizeOf(pSubData));
-                Marshal.StructureToPtr(pSubData, pIntPtrSubData, false);
-                param[0].psubdata = pIntPtrSubData;
+                    subsamplePointer = MarshalSubsampleArray(subsamples);
+
+                    subData = new MSD_FMP4_DATA
+                    {
+                        uSubSampleCount = (uint)data.Subsamples.Length,
+                        pSubSampleInfo = subsamplePointer
+                    };
+                }
+                else
+                {
+                    subData = new MSD_FMP4_DATA
+                    {
+                        uSubSampleCount = 0,
+                        pSubSampleInfo = IntPtr.Zero
+                    };
+                }
+
+                var subdataPointer = Marshal.AllocHGlobal(Marshal.SizeOf(subData));
+                Marshal.StructureToPtr(subData, subdataPointer, false);
+                param[0].psubdata = subdataPointer;
                 param[0].psplitoffsets = IntPtr.Zero;
-
-                //                Tizen.Log.Info("JuvoPlayer", Thread.CurrentThread.ManagedThreadId + " Start Decryption");
 
                 try
                 {
-//                    lock (locker)
+                    var ret = API.EmeDecryptarray((eCDMReturnType)CDMInstance.getDecryptor(), ref param, numofparam, IntPtr.Zero, 0, ref pHandleArray);
+                    if (ret == eCDMReturnType.E_SUCCESS)
                     {
-                        var ret = API.EmeDecryptarray((eCDMReturnType)CDMInstance.getDecryptor(), ref param, numofparam, IntPtr.Zero, 0, ref pHandleArray);
-                        if (ret == eCDMReturnType.E_SUCCESS)
+                        return new DecryptedEMEPacket(thread)
                         {
-                                                    Tizen.Log.Info("JuvoPlayer", "Decryption success: " + packet.StreamType);
-
-                            return new DecryptedEMEPacket(thread)
-                            {
-                                Dts = packet.Dts,
-                                Pts = packet.Pts,
-                                StreamType = packet.StreamType,
-                                IsEOS = packet.IsEOS,
-                                IsKeyFrame = packet.IsKeyFrame,
-                                HandleSize = pHandleArray[0]
-                            };
-                        }
-                        else
-                        {
-                            if (data.Subsamples != null/* data.Subsamples.Any()*/)
-                                Tizen.Log.Error("JuvoPlayer", "has subsamples");
-
-                            Tizen.Log.Error("JuvoPlayer", "Decryption failed: " + packet.StreamType + " - " + ret);
-                        }
+                            Dts = packet.Dts,
+                            Pts = packet.Pts,
+                            StreamType = packet.StreamType,
+                            IsEOS = packet.IsEOS,
+                            IsKeyFrame = packet.IsKeyFrame,
+                            HandleSize = pHandleArray[0]
+                        };
+                    }
+                    else
+                    {
+                        Tizen.Log.Error("JuvoPlayer", "Decryption failed: " + packet.StreamType + " - " + ret);
                     }
                 }
                 catch (Exception e)
@@ -197,12 +207,31 @@ namespace JuvoPlayer.DRM.Cenc
                 }
                 finally
                 {
-                    Marshal.FreeHGlobal(pIntPtrSubData);
+                    if (subsamplePointer != IntPtr.Zero)
+                        Marshal.FreeHGlobal(subsamplePointer);
+
+                    Marshal.FreeHGlobal(subdataPointer);
                 }
             }
 
             return null;
-        }   
+        }
+
+        private static unsafe IntPtr MarshalSubsampleArray(MSD_SUBSAMPLE_INFO[] subsamples)
+        {
+            int sizeOfSubsample = Marshal.SizeOf(typeof(MSD_SUBSAMPLE_INFO));
+            int totalSize = sizeOfSubsample * subsamples.Length;
+            var resultPointer = Marshal.AllocHGlobal(totalSize);
+            byte* subsamplePointer = (byte*) (resultPointer.ToPointer());
+
+            for (var i = 0; i < subsamples.Length; i++, subsamplePointer += (sizeOfSubsample))
+            {
+                IntPtr subsamplePointerIntPtr = new IntPtr(subsamplePointer);
+                Marshal.StructureToPtr(subsamples[i], subsamplePointerIntPtr, false);
+            }
+
+            return resultPointer;
+        }
 
         public void SetDrmConfiguration(DRMDescription drmDescription)
         {

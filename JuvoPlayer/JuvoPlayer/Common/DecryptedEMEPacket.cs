@@ -9,11 +9,11 @@ namespace JuvoPlayer.Common
 {
     public unsafe class DecryptedEMEPacket : StreamPacket
     {
-        private AsyncContextThread releaseThread;
+        private readonly AsyncContextThread releaseThread;
         public HandleSize HandleSize { get; set; }
         public DecryptedEMEPacket(AsyncContextThread releaseThread)
         {
-            this.releaseThread = releaseThread ?? throw new ArgumentNullException("releaseThread cannot be null");
+            this.releaseThread = releaseThread ?? throw new ArgumentNullException(nameof(releaseThread), "releaseThread cannot be null");
         }
 
         public void CleanHandle()
