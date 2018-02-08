@@ -14,6 +14,7 @@
 using JuvoPlayer.Common;
 using System;
 using System.IO;
+using System.Threading;
 using Tizen;
 using Tizen.Applications;
 
@@ -21,8 +22,14 @@ namespace JuvoPlayer.HLS
 {
     public class HLSDataProvider : IDataProvider
     {
-        private IDemuxer demuxer;
+        private static readonly TimeSpan MagicBufferTime = TimeSpan.FromSeconds(10);
+
+        private readonly IDemuxer demuxer;
         private readonly ClipDefinition currentClip;
+        private readonly ManualResetEvent appendPacketEvent = new ManualResetEvent(false);
+
+        private TimeSpan currentTime;
+
         public HLSDataProvider(IDemuxer demuxer, ClipDefinition currentClip)
         {
             this.demuxer = demuxer ?? throw new ArgumentNullException(nameof(demuxer), "demuxer cannot be null");
@@ -54,9 +61,13 @@ namespace JuvoPlayer.HLS
         {
             if (packet != null)
             {
+                while (packet.Pts - currentTime > MagicBufferTime && !appendPacketEvent.SafeWaitHandle.IsClosed)
+                    appendPacketEvent.WaitOne();
+
                 StreamPacketReady?.Invoke(packet);
                 return;
             }
+
             // found empty packet which means EOS. We need to send two fake 
             // eos packets, one for audio and one for video
             StreamPacketReady?.Invoke(StreamPacket.CreateEOS(StreamType.Audio));
@@ -80,7 +91,6 @@ namespace JuvoPlayer.HLS
 
         public void OnSeek(TimeSpan time)
         {
-
         }
 
         public void OnStopped()
@@ -94,10 +104,13 @@ namespace JuvoPlayer.HLS
 
         public void OnTimeUpdated(TimeSpan time)
         {
+            currentTime = time;
+            appendPacketEvent.Set();
         }
 
         public void Dispose()
         {
+            appendPacketEvent?.Dispose();
             demuxer.Dispose();
         }
     }
