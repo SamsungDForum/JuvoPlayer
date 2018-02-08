@@ -118,15 +118,8 @@ namespace JuvoPlayer.Dash
             Media missingRole = null;
             foreach (var set in p.Sets)
             {
-                if (set.Type.Value != type)
-                {
+                if (set.Type.Value != type || set.Lang != language)
                     continue;
-                }
-
-                if (language != "und" && set.Lang != language)
-                {
-                    continue;
-                }
 
                 if (set.HasRole(role))
                 {
