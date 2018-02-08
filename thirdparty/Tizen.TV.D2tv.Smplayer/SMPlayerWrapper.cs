@@ -1,7 +1,7 @@
 ﻿using System;
 using static Interop;
 
-namespace CSPlayer
+namespace Tizen.TV.Smplayer
 {
     public class SMPlayerWrapper : IPlayerAdapter
     {
@@ -22,90 +22,90 @@ namespace CSPlayer
         public enum SmpMsgType
         {
             /**< COMMON */
-            SMP_MESSAGE_UNKNOWN = 0x00,            /**< Unknown message type */
-            SMP_MESSAGE_INIT_COMPLETE = 0X20,      /**< Init completed */
-            SMP_MESSAGE_PAUSE_COMPLETE,            /**< Pause completed */
-            SMP_MESSAGE_RESUME_COMPLETE,           /**< Resume completed */
-            SMP_MESSAGE_SEEK_COMPLETED,            /**< Seek completed */
-            SMP_MESSAGE_STOP_SUCCESS,              /**< Stop completed */
-            SMP_MESSAGE_RM_STOP_START,             /**< RM stop start */
-            SMP_MESSAGE_RM_STOP_SUCCESS,           /**< RM stop success */
-            SMP_MESSAGE_SEEK_DONE,                 /**< Seek operation done */
+            Unknown = 0x00,            /**< Unknown message type */
+            InitComplete = 0X20,      /**< Init completed */
+            PauseComplete,            /**< Pause completed */
+            ResumeComplete,           /**< Resume completed */
+            SeekCompleted,            /**< Seek completed */
+            StopSuccess,              /**< Stop completed */
+            RmStopStart,             /**< RM stop start */
+            RmStopSuccess,           /**< RM stop success */
+            SeekDone,                 /**< Seek operation done */
 
-            SMP_MESSAGE_INIT_FAILED = 0X40,        /**< Init failed */
-            SMP_MESSAGE_PLAY_FAILED,               /**< Play failed */
-            SMP_MESSAGE_PAUSE_FAILED,              /**< Pause failed */
-            SMP_MESSAGE_RESUME_FAILED,             /**< Resume failed */
-            SMP_MESSAGE_SEEK_FAILED,               /**< Seek failed */
-            SMP_MESSAGE_TRICK_FAILED,              /**< Trick failed */
-            SMP_MESSAGE_SET_SPEED_FAILED,          /**< SetSpeed failed */
-            SMP_MESSAGE_STOP_FAILED,               /**< Stop failed */
+            InitFailed = 0X40,        /**< Init failed */
+            PlayFailed,               /**< Play failed */
+            PauseFailed,              /**< Pause failed */
+            ResumeFailed,             /**< Resume failed */
+            SeekFailed,               /**< Seek failed */
+            TrickFailed,              /**< Trick failed */
+            SetSpeedFailed,          /**< SetSpeed failed */
+            StopFailed,               /**< Stop failed */
 
-            SMP_MESSAGE_BEGIN_OF_STREAM = 0X60,    /**< Begin of stream message type */
-            SMP_MESSAGE_END_OF_STREAM,             /**< End of stream message type */
-            SMP_MESSAGE_ERROR,                     /**< Error message type */
-            SMP_MESSAGE_WARNING,                   /**< Warning message type */
-            SMP_MESSAGE_STATE_CHANGED,             /**< State change message type */
-            SMP_MESSAGE_STATE_INTERRUPTED,         /**< State change by interrupt */
-            SMP_MESSAGE_READY_TO_RESUME,           /**< Ready to resume message type */
+            BeginOfStream = 0X60,    /**< Begin of stream message type */
+            EndOfStream,             /**< End of stream message type */
+            Error,                     /**< Error message type */
+            Warning,                   /**< Warning message type */
+            StateChanged,             /**< State change message type */
+            StateInterrupted,         /**< State change by interrupt */
+            ReadyToResume,           /**< Ready to resume message type */
 
             /**< PLAYER */
-            SMP_MESSAGE_CONNECTING = 0X80,         /**< Connecting message type */
-            SMP_MESSAGE_CONNECTED,                 /**< Rtspsrc has successed to connecting to server */
-            SMP_MESSAGE_CONNECTION_TIMEOUT,        /**< Connection timeout message type */
-            SMP_MESSAGE_BUFFERING,                 /**< Buffering message type */
-            SMP_MESSAGE_UPDATE_SUBTITLE,           /**< Update subtitle type */
-            SMP_MESSAGE_FILE_NOT_SUPPORTED,        /**< Not supported file */
-            SMP_MESSAGE_FILE_NOT_FOUND,            /**< Not founded file */
-            SMP_MESSAGE_SUBTITLE_TEXT,             /**< Subtite Text message */
-            SMP_MESSAGE_DURATION,                  /**< Content duration */
-            SMP_MESSAGE_CURRENT_POSITION,          /**< Current position of playback */
-            SMP_MESSAGE_NETWORK_DOWN,              /**< Network down */
-            SMP_MESSAGE_TRICK_DOWN,                /**< Trick play down */
-            SMP_MESSAGE_CLOSED_CAPTION,            /**< Closed caption */
-            SMP_MESSAGE_BUFFER_DROPPED,            /**< Warning: buffer dropped */
-            SMP_MESSAGE_HDR_VIDEO,                 /**< Content is HDR content */
+            Connecting = 0X80,         /**< Connecting message type */
+            Connected,                 /**< Rtspsrc has successed to connecting to server */
+            ConnectionTimeOut,        /**< Connection timeout message type */
+            Buffering,                 /**< Buffering message type */
+            UpdateSubtitle,           /**< Update subtitle type */
+            FileNotSupported,        /**< Not supported file */
+            FileNotFound,            /**< Not founded file */
+            SubtitleText,             /**< Subtite Text message */
+            Duration,                  /**< Content duration */
+            CurrentPosition,          /**< Current position of playback */
+            NetworkDown,              /**< Network down */
+            TrickDown,                /**< Trick play down */
+            ClosedCaption,            /**< Closed caption */
+            BufferDrop,            /**< Warning: buffer dropped */
+            HdrVideo,                 /**< Content is HDR content */
 
             /**< New bus message for resource conflict*/
-            SMP_MESSAGE_RENDER_DONE = 0XB0,        /**< code addded for render done event */
-            SMP_MESSAGE_BITRATE_CHANGED,           /**< code addded for bitrate change event*/
-            SMP_MESSAGE_FRAGMENT_DOWNLOAD,         /**< This event would be generated by adaptive source element and senf fragment info.*/
-            SMP_MESSAGE_SPARSE_TRACK_DETECT,
-            SMP_MESSAGE_STREAMING_EVENT,
+            RenderDone = 0XB0,        /**< code addded for render done event */
+            BitrateChanged,           /**< code addded for bitrate change event*/
+            FragmentDownload,         /**< This event would be generated by adaptive source element and senf fragment info.*/
+            SparseTrackDetect,
+            StreamingEvent,
 
             /**< Canal+ message*/
-            SMP_MESSAGE_DRM_CHALLENGE_DATA = 0XC0,        /**< Drm chanllenge data */
-            SMP_MESSAGE_UNSUPPORTED_CONTAINER,     /**< Unsupported container */
-            SMP_MESSAGE_UNSUPPORTED_VIDEO_CODEC,   /**< Unsupported video codec */
-            SMP_MESSAGE_UNSUPPORTED_AUDIO_CODEC,   /**< Unsupported audio codec */
-            SMP_MESSAGE_RESOLUTION_CHANGED,        /**< Video resolution changed */
-            SMP_MESSAGE_CONNECTION_FAILED,         /**< Connection failed */
-            SMP_MESSAGE_UNAUTHORIZED,              /**< Unauthorized */
-            SMP_MESSAGE_UPDATE_PSSH_DATA,          /**< pssh box update */
+            DrmChallengeData = 0XC0,        /**< Drm chanllenge data */
+            UnsupportedContainer,     /**< Unsupported container */
+            UnsupportedVideoCodec,   /**< Unsupported video codec */
+            UnsupportedAudioCodec,   /**< Unsupported audio codec */
+            ResolutionChanged,        /**< Video resolution changed */
+            ConnectionFailed,         /**< Connection failed */
+            Unauthorized,              /**< Unauthorized */
+            UpdatePsshData,          /**< pssh box update */
 
-            SMP_MESSAGE_NUM,					   /**< The number of the messages */
+            MessageNum,					   /**< The number of the messages */
         };
 
-        public void OnCurrentPos(System.UInt32 lCurrTime, IntPtr user_param)
+        public void OnCurrentPos(System.UInt32 currTime, IntPtr userParam)
         {
-            string msg = "Current PlaybackTime: " + lCurrTime.ToString();
+            string msg = "Current PlaybackTime: " + currTime;
 //            NativeSMPlayer.testCallbackprint(msg);
-            SMPlayerEventListener.OnCurrentPosition(lCurrTime);
-            //please implement your code here , lCurrTime is current playback time
+            SMPlayerEventListener.OnCurrentPosition(currTime);
+            //please implement your code here , currTime is current playback time
         }
 
-        public int OnMessage(int iID, IntPtr pParam, IntPtr pUserParam)
+        public int OnMessage(int id, IntPtr param, IntPtr userParam)
         {
-            string msg = "Receive MsgId: " + iID.ToString();
+            string msg = "Receive MsgId: " + id;
             NativeSMPlayer.testCallbackprint(msg);
 
-            SmpMsgType msgType = (SmpMsgType)iID;
+            SmpMsgType msgType = (SmpMsgType)id;
             switch (msgType)
             {
                 /* General: */
-                case SmpMsgType.SMP_MESSAGE_BEGIN_OF_STREAM:
+                case SmpMsgType.BeginOfStream:
                     break;
-                case SmpMsgType.SMP_MESSAGE_END_OF_STREAM:
+                case SmpMsgType.EndOfStream:
                     if (isPlaying)
                     {
                         isPlaying = false;
@@ -113,76 +113,76 @@ namespace CSPlayer
                     }
                     break;
 
-                case SmpMsgType.SMP_MESSAGE_BUFFERING:
+                case SmpMsgType.Buffering:
                     // SMPlayer does not generate buffering callbacks
                     break;
 
                 /* Complete notifications: */
-                case SmpMsgType.SMP_MESSAGE_SEEK_COMPLETED:
-                    // SMP_MESSAGE_SEEK_COMPLETED is send by SMPlayer when playback is
+                case SmpMsgType.SeekCompleted:
+                    // SeekCompleted is send by SMPlayer when playback is
                     // in new place runing.
                     SMPlayerEventListener.OnSeekCompleted();
                     break;
-                case SmpMsgType.SMP_MESSAGE_SEEK_DONE:
-                    // SMP_MESSAGE_SEEK_DONE is send by SMPlayer when seek called on
+                case SmpMsgType.SeekDone:
+                    // SeekDone is send by SMPlayer when seek called on
                     // Gstreamer.
                     // For seek to actualy happen new packets must be buffered.
                     SMPlayerEventListener.OnSeekStartedBuffering();
                     break;
-                case SmpMsgType.SMP_MESSAGE_INIT_COMPLETE:
+                case SmpMsgType.InitComplete:
                     SMPlayerEventListener.OnInitComplete();
                     break;
-                case SmpMsgType.SMP_MESSAGE_PAUSE_COMPLETE:
+                case SmpMsgType.PauseComplete:
                     break;
-                case SmpMsgType.SMP_MESSAGE_RESUME_COMPLETE:
+                case SmpMsgType.ResumeComplete:
                     break;
-                case SmpMsgType.SMP_MESSAGE_STOP_SUCCESS:
+                case SmpMsgType.StopSuccess:
                     break;
 
                 /* Subtitles: */
-                case SmpMsgType.SMP_MESSAGE_UPDATE_SUBTITLE:
+                case SmpMsgType.UpdateSubtitle:
                     //OnShowSubtitle(param);              //subtitle need to confirm with CP
                     break;
-                case SmpMsgType.SMP_MESSAGE_SUBTITLE_TEXT:
+                case SmpMsgType.SubtitleText:
                     // Deprecated. Subtitles are sent now with UPDATE_SUBTITLE message
                     break;
 
                 /* Errors: */
-                case SmpMsgType.SMP_MESSAGE_INIT_FAILED:
+                case SmpMsgType.InitFailed:
                     SMPlayerEventListener.OnInitFailed();
                     break;
-                case SmpMsgType.SMP_MESSAGE_PLAY_FAILED:
-                    SMPlayerEventListener.OnError(PlayerErrorType_Samsung.PLAYERERROR_UNKNOWN, "Play failed.");
+                case SmpMsgType.PlayFailed:
+                    SMPlayerEventListener.OnError(PlayerErrorType.Unknown, "Play failed.");
                     break;
-                case SmpMsgType.SMP_MESSAGE_PAUSE_FAILED:
-                    SMPlayerEventListener.OnError(PlayerErrorType_Samsung.PLAYERERROR_UNKNOWN, "Pause failed.");
+                case SmpMsgType.PauseFailed:
+                    SMPlayerEventListener.OnError(PlayerErrorType.Unknown, "Pause failed.");
                     break;
-                case SmpMsgType.SMP_MESSAGE_RESUME_FAILED:
-                    SMPlayerEventListener.OnError(PlayerErrorType_Samsung.PLAYERERROR_UNKNOWN, "Resume Failed.");
+                case SmpMsgType.ResumeFailed:
+                    SMPlayerEventListener.OnError(PlayerErrorType.Unknown, "Resume Failed.");
                     break;
-                case SmpMsgType.SMP_MESSAGE_SEEK_FAILED:
-                    SMPlayerEventListener.OnError(PlayerErrorType_Samsung.PLAYERERROR_UNKNOWN, "Seek failed.");
+                case SmpMsgType.SeekFailed:
+                    SMPlayerEventListener.OnError(PlayerErrorType.Unknown, "Seek failed.");
                     break;
-                case SmpMsgType.SMP_MESSAGE_STOP_FAILED:
-                    SMPlayerEventListener.OnError(PlayerErrorType_Samsung.PLAYERERROR_UNKNOWN, "Stop failed.");
+                case SmpMsgType.StopFailed:
+                    SMPlayerEventListener.OnError(PlayerErrorType.Unknown, "Stop failed.");
                     break;
-                case SmpMsgType.SMP_MESSAGE_UNSUPPORTED_CONTAINER:
-                    SMPlayerEventListener.OnError(PlayerErrorType_Samsung.PLAYERERROR_UNSUPPORTED_CONTAINER,
+                case SmpMsgType.UnsupportedContainer:
+                    SMPlayerEventListener.OnError(PlayerErrorType.UnsupportedContainer,
                             "Unsupported container.");
                     break;
-                case SmpMsgType.SMP_MESSAGE_UNSUPPORTED_VIDEO_CODEC:
-                    SMPlayerEventListener.OnError(PlayerErrorType_Samsung.PLAYERERROR_UNSUPPORTED_CODEC,
+                case SmpMsgType.UnsupportedVideoCodec:
+                    SMPlayerEventListener.OnError(PlayerErrorType.UnsupportedCodec,
                             "Unsupported video codec.");
                     break;
-                case SmpMsgType.SMP_MESSAGE_UNSUPPORTED_AUDIO_CODEC:
-                    SMPlayerEventListener.OnError(PlayerErrorType_Samsung.PLAYERERROR_UNSUPPORTED_CODEC,
+                case SmpMsgType.UnsupportedAudioCodec:
+                    SMPlayerEventListener.OnError(PlayerErrorType.UnsupportedCodec,
                             "Unsupported audio codec.");
                     break;
-                case SmpMsgType.SMP_MESSAGE_CONNECTION_FAILED:
-                    SMPlayerEventListener.OnError(PlayerErrorType_Samsung.PLAYERERROR_NETWORK, "Connection failed.");
+                case SmpMsgType.ConnectionFailed:
+                    SMPlayerEventListener.OnError(PlayerErrorType.Network, "Connection failed.");
                     break;
-                case SmpMsgType.SMP_MESSAGE_UNAUTHORIZED:
-                    SMPlayerEventListener.OnError(PlayerErrorType_Samsung.PLAYERERROR_UNKNOWN, "Unauthorized.");
+                case SmpMsgType.Unauthorized:
+                    SMPlayerEventListener.OnError(PlayerErrorType.Unknown, "Unauthorized.");
                     break;
 
                 default:
@@ -194,35 +194,35 @@ namespace CSPlayer
 
         public bool AudioSeekCB(System.UInt64 offset, IntPtr user_param)
         {
-            SMPlayerEventListener.OnSeekData(StreamType_Samsung.STREAM_TYPE_SAMSUNG_AUDIO, offset);
+            SMPlayerEventListener.OnSeekData(StreamType.Audio, offset);
             return true;
         }
 
         public bool VideoSeekCB(System.UInt64 offset, IntPtr user_param)
         {
-            SMPlayerEventListener.OnSeekData(StreamType_Samsung.STREAM_TYPE_SAMSUNG_VIDEO, offset);
+            SMPlayerEventListener.OnSeekData(StreamType.Video, offset);
             return true;
         }
 
         public void AudioNeedDataCB(System.UInt32 size, IntPtr user_param)
         {
-            SMPlayerEventListener.OnNeedData(StreamType_Samsung.STREAM_TYPE_SAMSUNG_AUDIO, size);
+            SMPlayerEventListener.OnNeedData(StreamType.Audio, size);
         }
 
         public void VideoNeedDataCB(System.UInt32 size, IntPtr user_param)
         {
-            SMPlayerEventListener.OnNeedData(StreamType_Samsung.STREAM_TYPE_SAMSUNG_VIDEO, size);
+            SMPlayerEventListener.OnNeedData(StreamType.Video, size);
         }
 
 
         public void AudioDataEnoughCB(IntPtr user_param)
         {
-            SMPlayerEventListener.OnEnoughData(StreamType_Samsung.STREAM_TYPE_SAMSUNG_AUDIO);
+            SMPlayerEventListener.OnEnoughData(StreamType.Audio);
         }
 
         public void VideoDataEnoughCB(IntPtr user_param)
         {
-            SMPlayerEventListener.OnEnoughData(StreamType_Samsung.STREAM_TYPE_SAMSUNG_VIDEO);
+            SMPlayerEventListener.OnEnoughData(StreamType.Video);
         }
 
         public void SmpSubtitleDataCB(IntPtr param, IntPtr msg)     //SmpMessageParamType* I use IntPtr need to check if OK
@@ -356,12 +356,12 @@ namespace CSPlayer
             return result;
         }
 
-        public bool Seek(int iAbsoluteTimeinMS)
+        public bool Seek(int absoluteTimeinMS)
         {
-            bool result = NativeSMPlayer.Seek(iAbsoluteTimeinMS);
+            bool result = NativeSMPlayer.Seek(absoluteTimeinMS);
             if (result)
             {
-                currentPosition = (uint)(iAbsoluteTimeinMS / 1000);
+                currentPosition = (uint)(absoluteTimeinMS / 1000);
             }
             return result;
         }
@@ -372,15 +372,15 @@ namespace CSPlayer
             return result;
         }
 
-        public bool SubmitEOSPacket(TrackType_Samsung track_type)
+        public bool SubmitEOSPacket(TrackType trackType)
         {
-            bool result = NativeSMPlayer.SubmitEOSPacket(track_type);
+            bool result = NativeSMPlayer.SubmitEOSPacket(trackType);
             return result;
         }
 
-        public bool SubmitPacket(IntPtr pBuf, uint iSize, System.UInt64 iPTS, TrackType_Samsung eStreamType, IntPtr drm_info)
+        public bool SubmitPacket(IntPtr buf, uint size, System.UInt64 PTS, TrackType streamType, IntPtr drmInfo)
         {
-            bool result = NativeSMPlayer.SubmitPacket(pBuf, iSize, iPTS, eStreamType, drm_info);
+            bool result = NativeSMPlayer.SubmitPacket(buf, size, PTS, streamType, drmInfo);
             return result;
         }
 
@@ -400,53 +400,53 @@ namespace CSPlayer
             return result;
         }
 
-        public bool SetApplicationID(string application_id)
+        public bool SetApplicationID(string applicationId)
         {
             string desktop_id = "";
-            string app_id = application_id;
+            string app_id = applicationId;
             string widget_id = "";
             bool result = NativeSMPlayer.SetAppInfo(desktop_id, app_id, widget_id);
             return result;
         }
 
-        public bool SetDuration(System.UInt32 iDuration)
+        public bool SetDuration(System.UInt32 duration)
         {
-            bool result = NativeSMPlayer.SetAppSrcDuration(iDuration);
+            bool result = NativeSMPlayer.SetAppSrcDuration(duration);
             return result;
         }
 
-        public bool SetAudioStreamInfo(AudioStreamInfo_Samsung pAudioStreamInfo)
+        public bool SetAudioStreamInfo(AudioStreamInfo audioStreamInfo)
         {
-            bool result = NativeSMPlayer.SetAudioStreamInfo(pAudioStreamInfo);
+            bool result = NativeSMPlayer.SetAudioStreamInfo(audioStreamInfo);
             return result;
         }
 
-        public bool SetVideoStreamInfo(VideoStreamInfo_Samsung pVideoStreamInfo)
+        public bool SetVideoStreamInfo(VideoStreamInfo videoStreamInfo)
         {
-            bool result = NativeSMPlayer.SetVideoStreamInfo(pVideoStreamInfo);
+            bool result = NativeSMPlayer.SetVideoStreamInfo(videoStreamInfo);
             return result;
         }
 
-        public bool SetDisplay(PlayerDisplayType_Samsung type, IntPtr display)
+        public bool SetDisplay(PlayerDisplayType type, IntPtr display)
         {
             //bool result = NativeSMPlayer.SetDisplayWin(winId, x, y, width, height);
             bool result = NativeSMPlayer.SetDisplay(type, display);
             return result;
         }
 
-        public bool SetExternalSubtitlesPath(string file_path, string encoding)
+        public bool SetExternalSubtitlesPath(string filePath, string encoding)
         {
-            bool result = NativeSMPlayer.StartSubtitle(file_path, SmpSubtitleDataCB);                          //hq CHECK
+            bool result = NativeSMPlayer.StartSubtitle(filePath, SmpSubtitleDataCB);                          //hq CHECK
             return result;
         }
 
-        public bool SetSubtitlesDelay(int iMilliSec)
+        public bool SetSubtitlesDelay(int milliSec)
         {
-            bool result = NativeSMPlayer.SetSubtitleSync(iMilliSec);
+            bool result = NativeSMPlayer.SetSubtitleSync(milliSec);
             return result;
         }
 
-        public uint GetCurrentTrack(TrackType_Samsung stream_type)
+        public uint GetCurrentTrack(TrackType streamType)
         {
             //to be implement
             return 0;
@@ -458,7 +458,7 @@ namespace CSPlayer
             return 0;
         }
 
-        public PlayerState_Samsung GetPlayerState()
+        public PlayerState GetPlayerState()
         {
             //to be implement
             return 0;
@@ -476,7 +476,7 @@ namespace CSPlayer
             return true;
         }
 
-        public void printLog(string log)
+        public void PrintLog(string log)
         {
             NativeSMPlayer.testCallbackprint(log);
         }
