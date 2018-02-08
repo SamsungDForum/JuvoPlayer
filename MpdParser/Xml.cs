@@ -312,28 +312,7 @@ namespace MpdParser.Xml
             }
         }
 
-        //
-        /// <summary>
-        /// Method parses all subchildred at given note.
-        /// Entry point (reader state). If must be @beginning of non end node with
-        /// all attributes processed.
-        /// </summary>
-        /// <param name="reader">System.Xml.XmlReader processing current document</param>
-        /// <param name="result">Template object which will collected parsed data</param>
-        /// <param name="parent">String containing name of the parent object. Return to higher 
-        /// will only be performed for a given node if </current node> tag is found</param>
-        /// <returns>
-        /// bool 
-        /// true -  rescan at same level as current operation gobbled up
-        ///         all end tags.
-        /// false - continue on current level looking for matching </end tag>
-        /// </returns>
-        /// <remarks>
-        /// Return value is a "hack" to work around internal behaviour of certain
-        /// XMLReader methods which gobble up end tags.  
-        /// </remarks>
-        /// 
-        private static bool Children<T>(System.Xml.XmlReader reader, T result, string parent=null)
+        private static void Children<T>(System.Xml.XmlReader reader, T result)
         {
             Dictionary<string, Property> elems = new Dictionary<string, Property>();
 
@@ -348,31 +327,17 @@ namespace MpdParser.Xml
                     }
                     else if (attr is InnerText)
                     {
-                        // Note:
-                        // Behaviour of exit (false/true) may require adjusting, 
-                        // depending where reader will be after InnerText() exits.
-                        // 
                         Node.Internal.SetValue(prop, result, InnerText(reader));
-                        return false;
+                        return;
                     }
                     else if (attr is InnerXml)
                     {
-                        // Read inner XML gobbles up all </> token up to next
-                        // element. As such, inform caller about this so continuation
-                        // on current level is performed
-                        //
                         Node.Internal.SetValue(prop, result, string.Format("<xml>{0}</xml>", reader.ReadInnerXml()));
-                        return true;
+                        return;
                     }
                 }
             }
 
-            //
-            // We will never be here. Children are not processed
-            // if parent was single lined entry
-            // i.e. <element ..... />
-            //
-            /*
             if (reader.IsEmptyElement)
             {
                 reader.Read();
@@ -380,69 +345,33 @@ namespace MpdParser.Xml
                     pair.Value.Store(result);
                 return;
             }
-            */
 
             bool gotOut = false;
-            bool rescan = false;
-            while (!gotOut )
+            while (!gotOut && reader.Read())
             {
-                if(rescan == false)
-                {
-                    if(reader.Read() == false)
-                    {
-                        gotOut = true;
-                        continue;
-                    }
-                }
-                else
-                {
-                    //Reset rescan flag. It is only needed "once"
-                    rescan = false;
-                }
-
                 switch (reader.NodeType)
                 {
                     case System.Xml.XmlNodeType.Element:
                         if (!elems.ContainsKey(reader.Name))
                         {
+                            Ignore(reader);
                             continue;
                         }
                         string name = reader.Name;
                         Property prop = elems[name];
-                        object o;
-                        
-                        (o,rescan) = CreateAndRead(prop.type, reader, result, name);
-                        elems[name].Add(o);
-                        if(rescan)
-                        {
-                            break; 
-                        }
-                        if (reader.NodeType == System.Xml.XmlNodeType.EndElement)
-                        { 
-                            goto case System.Xml.XmlNodeType.EndElement;
-                        }
-                        break;
+                        elems[name].Add(CreateAndRead(prop.type, reader, result));
+                        if (!reader.IsEmptyElement)
+                            break;
+                        goto case System.Xml.XmlNodeType.EndElement;
 
                     case System.Xml.XmlNodeType.EndElement:
-                        //
-                        // Exit to an upper level ONLY if end element 
-                        // is a "matching" one.
-                        // i.e. When processing node <X>, end element is </X>
-                        // otherwise keep on processing all stuff inside current 
-                        // node without bailing up.
-                        //
-                        if (parent == reader.Name)
-                        {
-                            gotOut = true;
-                        }
+                        gotOut = true;
                         break;
                 }
             }
 
             foreach (KeyValuePair<string, Property> pair in elems)
                 pair.Value.Store(result);
-
-            return false;
         }
 
         private static object Create<T>(Type type, T parent)
@@ -454,26 +383,15 @@ namespace MpdParser.Xml
             return Activator.CreateInstance(type);
         }
 
-        private static (object,bool) CreateAndRead<T>(Type type, System.Xml.XmlReader reader, T parent, string name=null)
+        private static object CreateAndRead<T>(Type type, System.Xml.XmlReader reader, T parent)
         {
-            object o;
-            bool rescan_level = false;
             if (type.Equals(typeof(string)))
-            {
-                o = InnerText(reader);
-            }
-            else
-            {
-                o = Create(type, parent);
-                
-                Attributes(reader, o);
-                if (!reader.IsEmptyElement)
-                {
+                return InnerText(reader);
 
-                    rescan_level = Children(reader, o, name);
-                }
-            }
-            return (o, rescan_level);
+            object o = Create(type, parent);
+            Attributes(reader, o);
+            Children(reader, o);
+            return o;
         }
 
         public static void Parse<T>(TextReader io, T result, string name)
@@ -490,10 +408,7 @@ namespace MpdParser.Xml
                             break;
                         }
                         Attributes(reader, result);
-                        if (!reader.IsEmptyElement)
-                        {
-                            Children(reader, result, name);
-                        }
+                        Children(reader, result);
                         return;
                 }
             }

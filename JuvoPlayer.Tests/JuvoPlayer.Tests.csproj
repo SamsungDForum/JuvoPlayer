@@ -4,8 +4,6 @@
     <TargetFramework>netcoreapp2.0</TargetFramework>
 
     <IsPackable>false</IsPackable>
-
-    <StartupObject></StartupObject>
   </PropertyGroup>
 
   <ItemGroup>
@@ -28,7 +26,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\JuvoPlayer.Common\JuvoPlayer.Common.csproj" />
-    <ProjectReference Include="..\MpdParser\MpdParser.csproj" />
   </ItemGroup>
 
 </Project>
