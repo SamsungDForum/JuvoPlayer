@@ -1,25 +1,26 @@
-﻿using CSPlayer;
+﻿using Tizen.TV.Smplayer;
 using JuvoPlayer.Common;
 using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using StreamType = JuvoPlayer.Common.StreamType;
 
 namespace JuvoPlayer.Player
 {
     static class SMPlayerUtils
     {
-        public static TrackType_Samsung GetTrackType(StreamPacket packet)
+        public static TrackType GetTrackType(StreamPacket packet)
         {
-            TrackType_Samsung trackType;
+            TrackType trackType;
             if (packet.StreamType == StreamType.Video)
-                trackType = TrackType_Samsung.TRACK_TYPE_VIDEO;
+                trackType = TrackType.Video;
             else if (packet.StreamType == StreamType.Audio)
-                trackType = TrackType_Samsung.TRACK_TYPE_AUDIO;
+                trackType = TrackType.Audio;
             else if (packet.StreamType == StreamType.Subtitle)
-                trackType = TrackType_Samsung.TRACK_TYPE_SUBTITLE;
+                trackType = TrackType.Subtitle;
             else
-                trackType = TrackType_Samsung.TRACK_TYPE_MAX;
+                trackType = TrackType.Max;
             return trackType;
         }
 
