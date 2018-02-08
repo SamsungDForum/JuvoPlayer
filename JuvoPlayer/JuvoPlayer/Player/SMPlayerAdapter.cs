@@ -11,7 +11,7 @@
 // damages suffered by licensee as a result of using, modifying or distributing
 // this software or its derivatives.
 
-using CSPlayer;
+using Tizen.TV.Smplayer;
 using JuvoPlayer.Common;
 using JuvoPlayer.Common.Delegates;
 using System;
@@ -19,6 +19,7 @@ using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Tizen;
+using StreamType = Tizen.TV.Smplayer.StreamType;
 
 namespace JuvoPlayer.Player
 {
@@ -72,7 +73,7 @@ namespace JuvoPlayer.Player
 
                 var playerContainer = new ElmSharp.Window("player");
                 playerContainer.Geometry = new ElmSharp.Rect(0, 0, 1920, 1080);
-                result = playerInstance.SetDisplay(PlayerDisplayType_Samsung.PLAYER_DISPLAY_TYPE_OVERLAY, playerContainer);
+                result = playerInstance.SetDisplay(PlayerDisplayType.Overlay, playerContainer);
                 if (!result)
                 {
                     Tizen.Log.Info("JuvoPlayer", " playerInstance.SetDisplay Failed !!!!!!!");
@@ -107,9 +108,9 @@ namespace JuvoPlayer.Player
 
             PrepareES();
 
-            if (packet.StreamType == StreamType.Video)
+            if (packet.StreamType == Common.StreamType.Video)
                 videoBuffer.Enqueue(packet);
-            else if (packet.StreamType == StreamType.Audio)
+            else if (packet.StreamType == Common.StreamType.Audio)
                 audioBuffer.Enqueue(packet);
         }
 
@@ -186,8 +187,8 @@ namespace JuvoPlayer.Player
 
             EsPlayerDrmInfo drmInfo = new EsPlayerDrmInfo
             {
-                drm_type = 15,
-                tz_handle = packet.HandleSize.handle
+                drmType = 15,
+                tzHandle = packet.HandleSize.handle
             };
 
             IntPtr pnt = Marshal.AllocHGlobal(Marshal.SizeOf(drmInfo));
@@ -195,7 +196,7 @@ namespace JuvoPlayer.Player
             {
                 Marshal.StructureToPtr(drmInfo, pnt, false);
 
-//                Tizen.Log.Info("JuvoPlayer", string.Format("[HQ] send es data to SubmitPacket: {0} {1} ( {2} )", packet.Pts, drmInfo.tz_handle, trackType));
+//                Tizen.Log.Info("JuvoPlayer", string.Format("[HQ] send es data to SubmitPacket: {0} {1} ( {2} )", packet.Pts, drmInfo.tzHandle, trackType));
 
                 if (!playerInstance.SubmitPacket(IntPtr.Zero, packet.HandleSize.size, packet.Pts.TotalNanoseconds(), trackType, pnt))
                 {
@@ -265,17 +266,17 @@ namespace JuvoPlayer.Player
         {
             Log.Info("JuvoPlayer", "");
 
-            var audioStreamInfo = new AudioStreamInfo_Samsung
+            var audioStreamInfo = new AudioStreamInfo
             {
                 mime = Marshal.StringToHGlobalAnsi(SMPlayerUtils.GetCodecMimeType(config.Codec)),
                 version = SMPlayerUtils.GetCodecVersion(config.Codec),
-                drm_type = 15,  // 0 for no DRM, 15 for EME
-                sample_rate = (uint)config.SampleRate,
+                drmType = 15,  // 0 for no DRM, 15 for EME
+                sampleRate = (uint)config.SampleRate,
                 channels = (uint)config.ChannelLayout,
-                property_type = IntPtr.Zero,                   /**< video stream info: drminfo property_type */
-                type_len = 0,                           /**< video stream info: drminfo property_type length */
-                property_data = IntPtr.Zero,                   /**< video stream info: drminfo property_data */
-                data_len = 0,
+                propertyType = IntPtr.Zero,                   /**< video stream info: drminfo propertyType */
+                typeLen = 0,                           /**< video stream info: drminfo propertyType length */
+                propertyData = IntPtr.Zero,                   /**< video stream info: drminfo propertyData */
+                dataLen = 0,
 
             };
 
@@ -284,17 +285,17 @@ namespace JuvoPlayer.Player
                 if (config.CodecExtraData != null && config.CodecExtraData.Length > 0)
                 {
                     int size = Marshal.SizeOf(config.CodecExtraData[0]) * config.CodecExtraData.Length;
-                    audioStreamInfo.codec_extradata = Marshal.AllocHGlobal(size);
-                    audioStreamInfo.extradata_size = (uint)config.CodecExtraData.Length;
-                    Marshal.Copy(config.CodecExtraData, 0, audioStreamInfo.codec_extradata, config.CodecExtraData.Length);
+                    audioStreamInfo.codecExtraAata = Marshal.AllocHGlobal(size);
+                    audioStreamInfo.extraDataSize = (uint)config.CodecExtraData.Length;
+                    Marshal.Copy(config.CodecExtraData, 0, audioStreamInfo.codecExtraAata, config.CodecExtraData.Length);
                 }
 
                 playerInstance.SetAudioStreamInfo(audioStreamInfo);
             }
             finally
             {
-                if (audioStreamInfo.codec_extradata != IntPtr.Zero)
-                    Marshal.FreeHGlobal(audioStreamInfo.codec_extradata);
+                if (audioStreamInfo.codecExtraAata != IntPtr.Zero)
+                    Marshal.FreeHGlobal(audioStreamInfo.codecExtraAata);
             }
             audioSet = true;
         }
@@ -303,21 +304,21 @@ namespace JuvoPlayer.Player
         {
             Log.Info("JuvoPlayer", "");
 
-            var videoStreamInfo = new VideoStreamInfo_Samsung
+            var videoStreamInfo = new VideoStreamInfo
             {
                 mime = Marshal.StringToHGlobalAnsi(SMPlayerUtils.GetCodecMimeType(config.Codec)),
                 version = SMPlayerUtils.GetCodecVersion(config.Codec),
-                drm_type = 15,  // 0 for no DRM, 15 for EME
-                framerate_num = (uint)config.FrameRateNum,
-                framerate_den = (uint)config.FrameRateDen,
+                drmType = 15,  // 0 for no DRM, 15 for EME
+                framerateNum = (uint)config.FrameRateNum,
+                framerateDen = (uint)config.FrameRateDen,
                 width = (uint)config.Size.Width,
-                max_width = (uint)config.Size.Width,
+                maxWidth = (uint)config.Size.Width,
                 height = (uint)config.Size.Height,
-                max_height = (uint)config.Size.Height,
-                property_type = IntPtr.Zero,                   /**< video stream info: drminfo property_type */
-                type_len = 0,                           /**< video stream info: drminfo property_type length */
-                property_data = IntPtr.Zero,                   /**< video stream info: drminfo property_data */
-                data_len = 0,
+                maxHeight = (uint)config.Size.Height,
+                propertyType = IntPtr.Zero,                   /**< video stream info: drminfo propertyType */
+                typeLen = 0,                           /**< video stream info: drminfo propertyType length */
+                propertyData = IntPtr.Zero,                   /**< video stream info: drminfo propertyData */
+                dataLen = 0,
             };
 
             try
@@ -325,17 +326,17 @@ namespace JuvoPlayer.Player
                 if (config.CodecExtraData != null && config.CodecExtraData.Length > 0)
                 {
                     int size = Marshal.SizeOf(config.CodecExtraData[0]) * config.CodecExtraData.Length;
-                    videoStreamInfo.codec_extradata = Marshal.AllocHGlobal(size);
-                    videoStreamInfo.extradata_size = (uint)config.CodecExtraData.Length;
-                    Marshal.Copy(config.CodecExtraData, 0, videoStreamInfo.codec_extradata, config.CodecExtraData.Length);
+                    videoStreamInfo.codecExtraData = Marshal.AllocHGlobal(size);
+                    videoStreamInfo.extraDataSize = (uint)config.CodecExtraData.Length;
+                    Marshal.Copy(config.CodecExtraData, 0, videoStreamInfo.codecExtraData, config.CodecExtraData.Length);
                 }
 
                 playerInstance.SetVideoStreamInfo(videoStreamInfo);
             }
             finally
             {
-                if (videoStreamInfo.codec_extradata != IntPtr.Zero)
-                    Marshal.FreeHGlobal(videoStreamInfo.codec_extradata);
+                if (videoStreamInfo.codecExtraData != IntPtr.Zero)
+                    Marshal.FreeHGlobal(videoStreamInfo.codecExtraData);
             }
             videoSet = true;
         }
@@ -374,13 +375,13 @@ namespace JuvoPlayer.Player
         }
 
         #region IPlayerEventListener
-        public void OnEnoughData(StreamType_Samsung streamType)
+        public void OnEnoughData(StreamType streamType)
         {
-            Log.Info("JuvoPlayer", "Received OnEnoughData: " + streamType.ToString());
+            Log.Info("JuvoPlayer", "Received OnEnoughData: " + streamType);
 
-            if (streamType == StreamType_Samsung.STREAM_TYPE_SAMSUNG_AUDIO)
+            if (streamType == StreamType.Audio)
                 needDataAudio = false;
-            else if (streamType == StreamType_Samsung.STREAM_TYPE_SAMSUNG_VIDEO)
+            else if (streamType == StreamType.Video)
                 needDataVideo = false;
             else
                 return;
@@ -388,13 +389,13 @@ namespace JuvoPlayer.Player
             needDataInitMode = false;
         }
 
-        public void OnNeedData(StreamType_Samsung streamType, uint size)
+        public void OnNeedData(StreamType streamType, uint size)
         {
-            Log.Info("JuvoPlayer", "Received OnNeedData: " + streamType.ToString());
+            Log.Info("JuvoPlayer", "Received OnNeedData: " + streamType);
 
-            if (streamType == StreamType_Samsung.STREAM_TYPE_SAMSUNG_AUDIO)
+            if (streamType == StreamType.Audio)
                 needDataAudio = true;
-            else if (streamType == StreamType_Samsung.STREAM_TYPE_SAMSUNG_VIDEO)
+            else if (streamType == StreamType.Video)
                 needDataVideo = true;
             else
                 return;
@@ -402,21 +403,21 @@ namespace JuvoPlayer.Player
             needDataEvent.Set();
         }
 
-        public void OnSeekData(StreamType_Samsung streamType, System.UInt64 offset)
+        public void OnSeekData(StreamType streamType, System.UInt64 offset)
         {
             Log.Info("JuvoPlayer", string.Format("Received OnSeekData: {0} offset: {1}", streamType, offset));
         }
 
-        public void OnError(PlayerErrorType_Samsung errorType, string msg)
+        public void OnError(PlayerErrorType errorType, string msg)
         {
             Log.Info("JuvoPlayer", string.Format("Type: {0} msg: {1}", errorType, msg));
 
             PlaybackError?.Invoke(msg);
         }
 
-        public void OnMessage(PlayerMsgType_Samsung msgType)
+        public void OnMessage(PlayerMsgType msgType)
         {
-            Log.Info("JuvoPlayer", "Type" + msgType.ToString());
+            Log.Info("JuvoPlayer", "Type" + msgType);
         }
 
         public void OnInitComplete()

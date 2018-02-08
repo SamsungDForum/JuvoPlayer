@@ -16,7 +16,7 @@
 
 internal static partial class Interop
 {
-    internal static partial class Libraries
+    internal static class Libraries
     {
         public const string SMPlayer = "/usr/lib/libsm-player-cs.so";
     }
