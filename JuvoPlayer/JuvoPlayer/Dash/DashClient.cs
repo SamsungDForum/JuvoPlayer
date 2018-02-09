@@ -2,7 +2,6 @@
 using MpdParser;
 using MpdParser.Node;
 using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Net;
 using System.Threading.Tasks;
@@ -20,7 +19,8 @@ namespace JuvoPlayer.Dash
         private readonly StreamType streamType;
 
         private TimeSpan currentTime;
-        private TimeSpan bufferTime;
+        private uint currentSegmentId;
+
         private bool playback;
         private IRepresentationStream currentStreams;
 
@@ -33,7 +33,9 @@ namespace JuvoPlayer.Dash
 
         public void Seek(TimeSpan position)
         {
-            throw new NotImplementedException();
+            var segmentId = currentStreams?.MediaSegmentAtTime(position);
+            if (segmentId != null)
+                currentSegmentId = segmentId.Value;
         }
 
         public void Start()
@@ -75,7 +77,6 @@ namespace JuvoPlayer.Dash
         
         private void DownloadThread()
         {
-
             try
             {
                 DownloadInitSegment(currentStreams);
@@ -85,47 +86,44 @@ namespace JuvoPlayer.Dash
                 Tizen.Log.Error(Tag, string.Format("{0} Cannot download init segment file. Error: {1} {2}", streamType, ex.Message, ex.ToString()));
             }
 
+            var bufferTime = TimeSpan.Zero;
+            currentSegmentId = 0;
             while (playback)
             {
-                var currentTime = this.currentTime;
-                while (bufferTime - currentTime <= MagicBufferTime)
+                if (bufferTime - currentTime > MagicBufferTime)
+                    continue;
+
+                try
                 {
-                    try
+                    var stream = currentStreams.MediaSegmentAtPos(currentSegmentId);
+                    if (stream != null)
                     {
-                        var currentSegmentId = currentStreams.MediaSegmentAtTime(bufferTime);
-                        if (!currentSegmentId.HasValue)
-                        {
-                            Stop();
-                            break;
-                        }
-
-                        var stream = currentStreams.MediaSegmentAtPos(currentSegmentId.Value);
-
-                        Tizen.Log.Error(Tag, string.Format("Downloading Segment {0}  {1}", streamType, stream.Url));
-
-                        byte[] streamBytes = DownloadSegment(stream);
+                        var streamBytes = DownloadSegment(stream);
 
                         bufferTime += stream.Period.Duration;
-    
+
                         sharedBuffer.WriteData(streamBytes);
 
-                        if (stream.EndSegment)
-                        {
-                            Stop();
+                        if (!stream.EndSegment)
+                        { 
+                            ++currentSegmentId;
+                            continue;
                         }
                     }
-                    catch (Exception ex)
+
+                    Stop();
+                }
+                catch (Exception ex)
+                {
+                    if (ex is WebException)
                     {
-                        if (ex is WebException)
-                        {
-                            Tizen.Log.Error(Tag, string.Format("{0} Cannot download segment file. Error: {1} {2}", streamType, ex.Message, ex.ToString()));
-                        }
-                        else
-                        {
-                            Tizen.Log.Error(Tag, string.Format("Error: {0} {1} {2}", ex.Message, ex.TargetSite, ex.StackTrace));
-                        }
-                       
+                        Tizen.Log.Error(Tag, string.Format("{0} Cannot download segment file. Error: {1} {2}", streamType, ex.Message, ex.ToString()));
                     }
+                    else
+                    {
+                        Tizen.Log.Error(Tag, string.Format("Error: {0} {1} {2}", ex.Message, ex.TargetSite, ex.StackTrace));
+                    }
+                       
                 }
             }
         }
