@@ -246,10 +246,13 @@ namespace MpdParser.Node
                 if (media_uri == null)
                     return null;
 
+                Dynamic.Segment media = new Dynamic.Segment(media_uri.Uri, null, periodRange);
+                Dynamic.Segment index = index_range.Length != 0 ? new Dynamic.Segment(media_uri.Uri, index_range) : null;
                 return new Dynamic.BaseRepresentationStream(
                     null,
-                    new Dynamic.Segment(media_uri.Uri, null, periodRange),
-                    index_range.Length !=0? new Dynamic.Segment(init_uri.Uri, index_range):null);
+                    media,
+                    index
+                   );
             }
 
             if (media_uri == null)
