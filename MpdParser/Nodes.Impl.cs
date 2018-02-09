@@ -53,6 +53,8 @@ namespace MpdParser.Node
 
         public static URI FromBaseURLs(BaseURL[] urls)
         {
+            if (urls == null) return null;
+
             foreach (BaseURL url in urls)
             {
                 if (!string.IsNullOrEmpty(url.BaseUrlValue))
@@ -371,28 +373,31 @@ namespace MpdParser.Node
             // that is SegmentTemplate first, then SegmentList and
             // finally SegmentBase (see AdaptationSetStream::DetermineRepresentationStreamType)
 
+            // With corrections to MPD XML Parser, we now get parsed elements in correct
+            // places. So representation may not have segment templates (Adaptation set may)
+
             // REPRESENTATION:
-            if (SegmentTemplates.Length > 0)
+            if (SegmentTemplates?.Length > 0)
                 return SegmentType.Template;
-            if (SegmentLists.Length > 0)
+            if (SegmentLists?.Length > 0)
                 return SegmentType.List;
-            if (SegmentBases.Length > 0)
+            if (SegmentBases?.Length > 0)
                 return SegmentType.Base;
 
             // ADAPTATION SET:
-            if (AdaptationSet.SegmentTemplates.Length > 0)
+            if (AdaptationSet?.SegmentTemplates?.Length > 0)
                 return SegmentType.Template;
-            if (AdaptationSet.SegmentLists.Length > 0)
+            if (AdaptationSet?.SegmentLists?.Length > 0)
                 return SegmentType.List;
-            if (AdaptationSet.SegmentBases.Length > 0)
+            if (AdaptationSet?.SegmentBases?.Length > 0)
                 return SegmentType.Base;
 
             // PERIOD:
-            if (Period.SegmentTemplates.Length > 0)
+            if (Period?.SegmentTemplates?.Length > 0)
                 return SegmentType.Template;
-            if (Period.SegmentLists.Length > 0)
+            if (Period?.SegmentLists?.Length > 0)
                 return SegmentType.List;
-            if (Period.SegmentBases.Length > 0)
+            if (Period?.SegmentBases?.Length > 0)
                 return SegmentType.Base;
 
             return SegmentType.None;

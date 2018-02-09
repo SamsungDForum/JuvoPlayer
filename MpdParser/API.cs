@@ -37,7 +37,9 @@ namespace MpdParser
 
             Segments = repr.SegmentsStream();
 
-            if (NumChannels == null)
+            // Check if repr. is valid - Entries without representation 
+            // specification are valid too.
+            if (NumChannels == null && repr.AudioChannelConfigurations != null)
             {
                 string channels = null;
                 foreach (Node.Descriptor d in repr.AudioChannelConfigurations)
@@ -48,6 +50,9 @@ namespace MpdParser
                         break;
                     }
                 }
+                
+                /* Looks like a repeated loop. Any reason?
+                 * 
                 if (channels == null)
                 {
                     foreach (Node.Descriptor d in repr.AudioChannelConfigurations)
@@ -59,6 +64,7 @@ namespace MpdParser
                         }
                     }
                 }
+                */
                 if (channels != null)
                     NumChannels = System.Xml.XmlConvert.ToUInt32(channels);
             }
