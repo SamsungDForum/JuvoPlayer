@@ -24,12 +24,6 @@
     </Content>
   </ItemGroup>
 
-  <ItemGroup>
-    <Folder Include="lib\">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Folder>
-  </ItemGroup>
-
   
   <!-- If solution already has PCL project, will reference -->
   
