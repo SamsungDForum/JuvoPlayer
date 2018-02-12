@@ -37,8 +37,8 @@
         "drmDatas": [
             {
                 "scheme": "playready",
-                "drm_license_url": "http://playready-testserver.azurewebsites.net/rightsmanager.asmx?PlayRight=1&UseSimpleNonPersistentLicense=1",
-                "drm_key_request_properties": {
+                "licenceUrl": "http://playready-testserver.azurewebsites.net/rightsmanager.asmx?PlayRight=1&UseSimpleNonPersistentLicense=1",
+                "keyRequestProperties": {
                     "Content-Type": "text/xml; charset=utf-8"
                 }
             }
