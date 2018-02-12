@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
@@ -78,7 +79,7 @@ namespace JuvoPlayer.DRM.Cenc
             currentSessionId = sessionId;
             initDataString = EncodeInitData(initData);
 
-            Tizen.Log.Info("JuvoPlayer", "Created session: " + currentSessionId);
+            Tizen.Log.Info("JuvoPlayer", "Created session: " + currentSessionId); 
         }
 
         private static string EncodeInitData(byte[] initData)
@@ -240,20 +241,35 @@ namespace JuvoPlayer.DRM.Cenc
 
         private void RequestLicenceOnIemeThread(string message)
         {
+            if (string.IsNullOrEmpty(drmConfiguration?.LicenceUrl))
+            {
+                Tizen.Log.Error("JuvoPlayer", "Not configured drm");
+                return;
+            }
+
             HttpClient client = new HttpClient();
             var licenceUrl = new Uri(drmConfiguration.LicenceUrl);
+
             client.BaseAddress = licenceUrl;
+            var contentType =
+                drmConfiguration.KeyRequestProperties?.FirstOrDefault(o =>
+                    o.Key.ToLowerInvariant().Equals("content-type"));
+
             if (drmConfiguration.KeyRequestProperties != null)
             {
                 foreach (var property in drmConfiguration.KeyRequestProperties)
                 {
-                    client.DefaultRequestHeaders.Add(property.Key, property.Value);
+                    if (!property.Key.ToLowerInvariant().Equals("content-type"))
+                        client.DefaultRequestHeaders.Add(property.Key, property.Value);
                 }
             }
 
             var requestData = Encoding.GetEncoding(437).GetBytes(message);
             HttpContent content = new ByteArrayContent(requestData);
             content.Headers.ContentLength = requestData.Length;
+
+            if (contentType.HasValue && MediaTypeHeaderValue.TryParse(contentType.Value.Value, out var mediaType))
+                content.Headers.ContentType = mediaType;
 
             Tizen.Log.Info("JuvoPlayer", licenceUrl.AbsoluteUri);
 
@@ -263,8 +279,8 @@ namespace JuvoPlayer.DRM.Cenc
             var receiveStream = responseTask.Content.ReadAsStreamAsync();
             StreamReader readStream = new StreamReader(receiveStream.Result, Encoding.GetEncoding(437));
             var responseText = readStream.ReadToEnd();
-            if (responseText.IndexOf("<?xml") > 0)
-                responseText = responseText.Substring(responseText.IndexOf("<?xml"));
+            if (responseText.IndexOf("<?xml", StringComparison.Ordinal) > 0)
+                responseText = responseText.Substring(responseText.IndexOf("<?xml", StringComparison.Ordinal));
 
             var status = CDMInstance.session_update(currentSessionId, responseText);
             if (status != Status.kSuccess)

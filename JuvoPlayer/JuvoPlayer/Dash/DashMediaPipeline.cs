@@ -79,7 +79,7 @@ namespace JuvoPlayer.Dash
 
                     var drmInitData = new DRMInitData()
                     {
-                        InitData = System.Text.Encoding.ASCII.GetBytes(initData),
+                        InitData = Convert.FromBase64String(initData),
                         SystemId = CencUtils.SchemeIdUriToSystemId(schemeIdUri),
                         StreamType = streamType
                     };
