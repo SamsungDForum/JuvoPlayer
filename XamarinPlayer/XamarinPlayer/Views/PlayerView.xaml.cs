@@ -53,7 +53,6 @@ namespace XamarinPlayer.Views
                         _playerService.State == PlayerState.Playing && !Controller.IsVisible)
                     {
                         Navigation.RemovePage(this);
-                        return;
                     }
                     else
                     {
@@ -158,6 +157,9 @@ namespace XamarinPlayer.Views
             {
                 Play.IsEnabled = true;
                 Play.Focus();
+
+                _playerService.Start();
+                Show();
             }
             else if (e.State == PlayerState.Playing)
             {

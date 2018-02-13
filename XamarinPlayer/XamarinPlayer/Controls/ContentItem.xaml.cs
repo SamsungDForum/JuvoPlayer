@@ -10,7 +10,7 @@ namespace XamarinPlayer.Controls
     public partial class ContentItem : AbsoluteLayout
     {
         public static readonly BindableProperty ContentImgProperty = BindableProperty.Create("ContentImg", typeof(string), typeof(ContentItem), default(ICollection<string>));
-        public String ContentImg
+        public string ContentImg
         {
             set { SetValue(ContentImgProperty, value); }
             get { return (string)GetValue(ContentImgProperty); }
@@ -117,21 +117,14 @@ namespace XamarinPlayer.Controls
 
         private void OnItemClicked(object sender, EventArgs e)
         {
-            if (State == ItemState.Selected)
-            {
-                OnContentSelect(this);
-            }
-            else
-            {
-                ContentFocusedCommand?.Execute(this);
-
-                SetItemState(ItemState.Selected);
-            }
+            OnContentSelect(this);
         }
 
         private void OnItemFocused(object sender, FocusEventArgs e)
         {
-            SetItemState(ItemState.Focused);
+            ContentFocusedCommand?.Execute(this);
+
+            SetItemState(ItemState.Selected);
         }
 
         private void OnItemUnfocused(object sender, FocusEventArgs e)
