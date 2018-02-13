@@ -251,9 +251,11 @@ namespace JuvoPlayer.DRM.Cenc
             var licenceUrl = new Uri(drmConfiguration.LicenceUrl);
 
             client.BaseAddress = licenceUrl;
-            var contentType =
-                drmConfiguration.KeyRequestProperties?.FirstOrDefault(o =>
-                    o.Key.ToLowerInvariant().Equals("content-type"));
+            Tizen.Log.Info("JuvoPlayer", licenceUrl.AbsoluteUri);
+
+            var requestData = Encoding.GetEncoding(437).GetBytes(message);
+            HttpContent content = new ByteArrayContent(requestData);
+            content.Headers.ContentLength = requestData.Length;
 
             if (drmConfiguration.KeyRequestProperties != null)
             {
@@ -261,23 +263,16 @@ namespace JuvoPlayer.DRM.Cenc
                 {
                     if (!property.Key.ToLowerInvariant().Equals("content-type"))
                         client.DefaultRequestHeaders.Add(property.Key, property.Value);
+                    else if (MediaTypeHeaderValue.TryParse(property.Value, out var mediaType))
+                        content.Headers.ContentType = mediaType;
                 }
             }
-
-            var requestData = Encoding.GetEncoding(437).GetBytes(message);
-            HttpContent content = new ByteArrayContent(requestData);
-            content.Headers.ContentLength = requestData.Length;
-
-            if (contentType.HasValue && MediaTypeHeaderValue.TryParse(contentType.Value.Value, out var mediaType))
-                content.Headers.ContentType = mediaType;
-
-            Tizen.Log.Info("JuvoPlayer", licenceUrl.AbsoluteUri);
 
             var responseTask = client.PostAsync(licenceUrl, content).Result;
 
             Tizen.Log.Info("JuvoPlayer", "Response: " + responseTask);
             var receiveStream = responseTask.Content.ReadAsStreamAsync();
-            StreamReader readStream = new StreamReader(receiveStream.Result, Encoding.GetEncoding(437));
+            var readStream = new StreamReader(receiveStream.Result, Encoding.GetEncoding(437));
             var responseText = readStream.ReadToEnd();
             if (responseText.IndexOf("<?xml", StringComparison.Ordinal) > 0)
                 responseText = responseText.Substring(responseText.IndexOf("<?xml", StringComparison.Ordinal));
