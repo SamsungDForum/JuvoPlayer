@@ -1,8 +1,8 @@
-using NUnit.Framework;
 using System;
 using System.Threading;
 using System.Threading.Tasks;
 using JuvoPlayer.Common;
+using NUnit.Framework;
 
 namespace JuvoPlayer.Tests
 {

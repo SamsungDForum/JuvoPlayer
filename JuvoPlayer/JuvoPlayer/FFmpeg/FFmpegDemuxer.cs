@@ -11,20 +11,19 @@
 // damages suffered by licensee as a result of using, modifying or distributing
 // this software or its derivatives.
 
-using JuvoPlayer.Common;
 using System;
 using System.IO;
 using System.Runtime.InteropServices;
-using System.Text;
-using System.Threading;
 using System.Threading.Tasks;
-using Tizen;
-using Tizen.Applications;
+using JuvoPlayer.Common;
+using JuvoPlayer.Common.Logging;
 
 namespace JuvoPlayer.FFmpeg
 {
     public class FFmpegDemuxer : IDemuxer
     {
+        private static readonly ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
+
         public event Common.ClipDurationChanged ClipDuration;
         public event Common.DRMInitDataFound DRMInitDataFound;
         public event Common.StreamConfigReady StreamConfigReady;
@@ -71,12 +70,12 @@ namespace JuvoPlayer.FFmpeg
                     FFmpeg.av_log_format_line(p0, level, format, vl, lineBuffer, lineSize, &printPrefix);
                     var line = Marshal.PtrToStringAnsi((IntPtr)lineBuffer);
 
-                    Log.Info("JuvoPlayer", line);
+                    Logger.Info(line);
                 };
                 FFmpeg.av_log_set_callback(logCallback);
             }
             catch (Exception) {
-                Log.Info("JuvoPlayer", "Could not load and register FFmpeg library!");
+                Logger.Info("Could not load and register FFmpeg library!");
                 throw;
             }
 
@@ -88,7 +87,7 @@ namespace JuvoPlayer.FFmpeg
 
         public void StartForExternalSource()
         {
-            Log.Info("JuvoPlayer", "StartDemuxer!");
+            Logger.Info("StartDemuxer!");
 
             // Potentially time-consuming part of initialization and demuxation loop will be executed on a detached thread.
             demuxTask = Task.Run(() => DemuxTask(InitES)); 
@@ -96,7 +95,7 @@ namespace JuvoPlayer.FFmpeg
 
         public void StartForUrl(string url)
         {
-            Log.Info("JuvoPlayer", "StartDemuxer!");
+            Logger.Info("StartDemuxer!");
 
             // Potentially time-consuming part of initialization and demuxation loop will be executed on a detached thread.
             demuxTask = Task.Run(() => DemuxTask(() => InitURL(url))); 
@@ -104,7 +103,7 @@ namespace JuvoPlayer.FFmpeg
 
         private unsafe void InitES()
         {
-            Log.Info("JuvoPlayer", "INIT");
+            Logger.Info("INIT");
 
             buffer = (byte*)FFmpeg.av_mallocz((ulong)BufferSize); // let's try AllocHGlobal later on
             var readFunction = new avio_alloc_context_read_packet_func { Pointer = Marshal.GetFunctionPointerForDelegate(readFunctionDelegate) };
@@ -129,7 +128,7 @@ namespace JuvoPlayer.FFmpeg
 
             if (ioContext == null || formatContext == null) {
                 DeallocFFmpeg();
-                Log.Info("JuvoPlayer", "Could not create FFmpeg context.!");
+                Logger.Info("Could not create FFmpeg context.!");
 
                 throw new Exception("Could not create FFmpeg context.");
             }
@@ -140,7 +139,7 @@ namespace JuvoPlayer.FFmpeg
                 ret = FFmpeg.avformat_open_input(formatContextPointer, null, null, null);
             }
             if (ret != 0) {
-                Log.Info("JuvoPlayer", "Could not parse input data: " + GetErrorText(ret));
+                Logger.Info("Could not parse input data: " + GetErrorText(ret));
 
                 DeallocFFmpeg();
                 //FFmpeg.av_free(buffer); // should be freed by avformat_open_input if i recall correctly
@@ -150,7 +149,7 @@ namespace JuvoPlayer.FFmpeg
 
         private unsafe void InitURL(string url)
         {
-            Log.Info("JuvoPlayer", "INIT");
+            Logger.Info("INIT");
 
             FFmpeg.avformat_network_init();
 
@@ -162,7 +161,7 @@ namespace JuvoPlayer.FFmpeg
 
             if (formatContext == null)
             {
-                Log.Info("JuvoPlayer", "Could not create FFmpeg context!");
+                Logger.Info("Could not create FFmpeg context!");
 
                 DeallocFFmpeg();
                 throw new Exception("Could not create FFmpeg context.");
@@ -171,7 +170,7 @@ namespace JuvoPlayer.FFmpeg
             fixed (AVFormatContext** formatContextPointer = &formatContext)
             {
                 var ret = FFmpeg.avformat_open_input(formatContextPointer, url, null, null);
-                Log.Info("JuvoPlayer", "avformat_open_input(" + url + ") = " + (ret == 0 ? "ok" : ret + " (" + GetErrorText(ret) + ")"));
+                Logger.Info("avformat_open_input(" + url + ") = " + (ret == 0 ? "ok" : ret + " (" + GetErrorText(ret) + ")"));
             }
         }
 
@@ -180,7 +179,7 @@ namespace JuvoPlayer.FFmpeg
             int ret = FFmpeg.avformat_find_stream_info(formatContext, null);
             if (ret < 0)
             {
-                Log.Info("JuvoPlayer", "Could not find stream info (error code: " + ret + ")!");
+                Logger.Info("Could not find stream info (error code: " + ret + ")!");
 
                 DeallocFFmpeg();
                 throw new Exception("Could not find stream info (error code: " + ret + ")!");
@@ -193,7 +192,7 @@ namespace JuvoPlayer.FFmpeg
             videoIdx = FFmpeg.av_find_best_stream(formatContext, AVMediaType.AVMEDIA_TYPE_VIDEO, -1, -1, null, 0);
             if (audioIdx < 0 && videoIdx < 0)
             {
-                Log.Fatal("JuvoPlayer", "Could not find video or audio stream: " + audioIdx + "      " + videoIdx);
+                Logger.Fatal("Could not find video or audio stream: " + audioIdx + "      " + videoIdx);
 
                 DeallocFFmpeg();
                 throw new Exception("Could not find video or audio stream!");
@@ -210,7 +209,7 @@ namespace JuvoPlayer.FFmpeg
                 UpdateContentProtectionConfig();
             }
             catch (Exception e) {
-                Log.Error("JuvoPlayer", "An error occured: " + e.Message);
+                Logger.Error("An error occured: " + e.Message);
             }
 
             while (parse) {
@@ -258,7 +257,7 @@ namespace JuvoPlayer.FFmpeg
                             // null means EOF
                             StreamPacketReady?.Invoke(null);
                         }
-                        Log.Info("JuvoPlayer", "DEMUXER: ----DEMUXING----AV_READ_FRAME----ERROR---- av_read_frame()=" + ret + " (" + GetErrorText(ret) + ")");
+                        Logger.Info("DEMUXER: ----DEMUXING----AV_READ_FRAME----ERROR---- av_read_frame()=" + ret + " (" + GetErrorText(ret) + ")");
                         parse = false;
                     }
                 }
@@ -401,7 +400,7 @@ namespace JuvoPlayer.FFmpeg
         private unsafe void ReadAudioConfig()
         {
             if (audioIdx < 0 || audioIdx >= formatContext->nb_streams) {
-                Log.Info("JuvoPlayer", "Wrong audio stream index! nb_streams = " + formatContext->nb_streams + ", audio_idx = " + audioIdx);
+                Logger.Info("Wrong audio stream index! nb_streams = " + formatContext->nb_streams + ", audio_idx = " + audioIdx);
                 return;
             }
             AVStream* s = formatContext->streams[audioIdx];
@@ -434,12 +433,12 @@ namespace JuvoPlayer.FFmpeg
             // s->time_base.den
             // s->time_base.num
 
-            Log.Info("JuvoPlayer", "Setting audio stream to " + audioIdx + "/" + formatContext->nb_streams);
-            Log.Info("JuvoPlayer", "  Codec = " + config.Codec);
-            Log.Info("JuvoPlayer", "  BitsPerChannel = " + config.BitsPerChannel);
-            Log.Info("JuvoPlayer", "  ChannelLayout = " + config.ChannelLayout);
-            Log.Info("JuvoPlayer", "  SampleRate = " + config.SampleRate);
-            Log.Info("JuvoPlayer", "");
+            Logger.Info("Setting audio stream to " + audioIdx + "/" + formatContext->nb_streams);
+            Logger.Info("  Codec = " + config.Codec);
+            Logger.Info("  BitsPerChannel = " + config.BitsPerChannel);
+            Logger.Info("  ChannelLayout = " + config.ChannelLayout);
+            Logger.Info("  SampleRate = " + config.SampleRate);
+            Logger.Info("");
 
             StreamConfigReady?.Invoke(config);
         }
@@ -447,7 +446,7 @@ namespace JuvoPlayer.FFmpeg
         private unsafe void ReadVideoConfig()
         {
             if (videoIdx < 0 || videoIdx >= formatContext->nb_streams) {
-                Log.Info("JuvoPlayer", "Wrong video stream index! nb_streams = " + formatContext->nb_streams + ", video_idx = " + videoIdx);
+                Logger.Info("Wrong video stream index! nb_streams = " + formatContext->nb_streams + ", video_idx = " + videoIdx);
                 return;
             }
             AVStream* s = formatContext->streams[videoIdx];
@@ -470,10 +469,10 @@ namespace JuvoPlayer.FFmpeg
             // s->time_base.den
             // s->time_base.num
 
-            Log.Info("JuvoPlayer", "Setting video stream to " + videoIdx + "/" + formatContext->nb_streams);
-            Log.Info("JuvoPlayer", "  Codec = " + config.Codec);
-            Log.Info("JuvoPlayer", "  Size = " + config.Size);
-            Log.Info("JuvoPlayer", "  FrameRate = (" + config.FrameRateNum + "/" + config.FrameRateDen + ")");
+            Logger.Info("Setting video stream to " + videoIdx + "/" + formatContext->nb_streams);
+            Logger.Info("  Codec = " + config.Codec);
+            Logger.Info("  Size = " + config.Size);
+            Logger.Info("  FrameRate = (" + config.FrameRateNum + "/" + config.FrameRateDen + ")");
 
             StreamConfigReady?.Invoke(config);
         }
@@ -587,7 +586,7 @@ namespace JuvoPlayer.FFmpeg
                 sharedBuffer = (ISharedBuffer)handle.Target;
             }
             catch (Exception) {
-                Log.Info("JuvoPlayer", "Retrieveing SharedBuffer reference failed!");
+                Logger.Info("Retrieveing SharedBuffer reference failed!");
                 throw;
             }
             return sharedBuffer;

@@ -12,15 +12,16 @@
 // this software or its derivatives.
 
 using System;
-using System.Runtime.InteropServices;
 using System.IO;
-using Tizen;
-using Tizen.Applications;
+using System.Runtime.InteropServices;
+using JuvoPlayer.Common.Logging;
 
 namespace JuvoPlayer.FFmpeg
 {
     public unsafe class FFmpeg
     {
+        private static readonly ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
+
         #region filenames
         const string libavcodecFilename = @"libavcodec.so.57";
         const string libavdeviceFilename = @"";
@@ -1575,7 +1576,7 @@ namespace JuvoPlayer.FFmpeg
             }
             catch (Exception e)
             {
-                Log.Info("Tag", e.ToString());
+                Logger.Info(e.ToString());
                 throw;
             }
             Initialized = true;

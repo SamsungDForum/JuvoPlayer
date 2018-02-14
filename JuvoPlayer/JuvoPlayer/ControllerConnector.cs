@@ -1,9 +1,6 @@
-﻿using JuvoPlayer.Common;
+﻿using System;
+using JuvoPlayer.Common;
 using JuvoPlayer.Player;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 
 namespace JuvoPlayer
 {

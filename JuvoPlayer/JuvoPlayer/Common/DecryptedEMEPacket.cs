@@ -1,14 +1,13 @@
-﻿using Nito.AsyncEx;
 using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
+using JuvoPlayer.Common.Logging;
+using Nito.AsyncEx;
 using Tizen.TV.Security.DrmDecrypt;
 
 namespace JuvoPlayer.Common
 {
     public unsafe class DecryptedEMEPacket : StreamPacket
     {
+        private readonly ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
         private readonly AsyncContextThread releaseThread;
         public HandleSize HandleSize { get; set; }
         public DecryptedEMEPacket(AsyncContextThread releaseThread)
@@ -28,7 +27,7 @@ namespace JuvoPlayer.Common
                     }
                     catch (Exception e)
                     {
-                        Tizen.Log.Error("JuvoPlayer", "Error: " + e.Message);
+                        Logger.Error("Error: " + e.Message);
                     }
                 });
             }

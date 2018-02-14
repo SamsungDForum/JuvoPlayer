@@ -11,18 +11,19 @@
 // damages suffered by licensee as a result of using, modifying or distributing
 // this software or its derivatives.
 
+using System;
+using System.Threading.Tasks;
 using JuvoPlayer.Common;
 using JuvoPlayer.Common.Delegates;
-using System;
-using System.Threading;
-using System.Threading.Tasks;
-using Tizen;
+using JuvoPlayer.Common.Logging;
 using Tizen.Multimedia;
 
 namespace JuvoPlayer.Player
 {
     public class MultimediaPlayerAdapter : IPlayerAdapter
     {
+        private readonly ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
+
         private ElmSharp.Window playerContainer;
 
         private Tizen.Multimedia.Player player;
@@ -55,7 +56,7 @@ namespace JuvoPlayer.Player
 
         private void OnSubtitleUpdated(object sender, SubtitleUpdatedEventArgs e)
         {
-            Log.Info("JuvoPlayer", "OnSubtitleUpdated");
+            Logger.Info("OnSubtitleUpdated");
             Subtitle subtitle = new Subtitle
             {
                 Duration = e.Duration,
@@ -67,24 +68,24 @@ namespace JuvoPlayer.Player
 
         private void OnBufferingProgressChanged(object sender, BufferingProgressChangedEventArgs e)
         {
-            Log.Info("JuvoPlayer", "OnBufferingProgressChanged: " + e.Percent);
+            Logger.Info("OnBufferingProgressChanged: " + e.Percent);
         }
 
         private void OnPlaybackInterrupted(object sender, PlaybackInterruptedEventArgs e)
         {
-            Log.Info("JuvoPlayer", "OnPlaybackInterrupted: " + e.Reason);
+            Logger.Info("OnPlaybackInterrupted: " + e.Reason);
         }
 
         private void OnPlaybackCompleted(object sender, EventArgs e)
         {
-            Log.Info("JuvoPlayer", "OnPlaybackCompleted");
+            Logger.Info("OnPlaybackCompleted");
 
             PlaybackCompleted();
         }
 
         private void OnErrorOccured(object sender, PlayerErrorOccurredEventArgs e)
         {
-            Log.Info("JuvoPlayer", "OnErrorOccured: " + e.Error.ToString());
+            Logger.Info("OnErrorOccured: " + e.Error.ToString());
         }
 
         public void AppendPacket(StreamPacket packet)
@@ -99,13 +100,13 @@ namespace JuvoPlayer.Player
         {
             if (source == null)
             {
-                Log.Info("JuvoPlayer", "stream has not been properly configured");
+                Logger.Info("stream has not been properly configured");
                 return;
             }
 
             try
             {
-                Log.Info("JuvoPlayer", "Append packet " + packet.StreamType.ToString());
+                Logger.Info("Append packet " + packet.StreamType.ToString());
 
                 var mediaPacket = MediaPacket.Create(format);
                 mediaPacket.Dts = (ulong)(packet.Dts.TotalMilliseconds * 1000);
@@ -120,7 +121,7 @@ namespace JuvoPlayer.Player
             }
             catch (Exception e)
             {
-                Log.Error("JuvoPlayer", "error on append packet: " + e.GetType().ToString() + " " + e.Message);
+                Logger.Error("error on append packet: " + e.GetType().ToString() + " " + e.Message);
             }
         }
 
@@ -128,11 +129,11 @@ namespace JuvoPlayer.Player
         {
             if (source == null)
             {
-                Log.Info("JuvoPlayer", "stream has not been properly configured");
+                Logger.Info("stream has not been properly configured");
                 return;
             }
 
-            Log.Info("JuvoPlayer", "Play");
+            Logger.Info("Play");
 
             try
             {
@@ -140,7 +141,7 @@ namespace JuvoPlayer.Player
             }
             catch (Exception e)
             {
-                Log.Info("JuvoPlayer", "Play exception: " + e.Message);
+                Logger.Info("Play exception: " + e.Message);
             }
 
         }
@@ -149,7 +150,7 @@ namespace JuvoPlayer.Player
         {
             if (source == null)
             {
-                Log.Info("JuvoPlayer", "stream has not been properly configured");
+                Logger.Info("stream has not been properly configured");
                 return;
             }
 
@@ -260,7 +261,7 @@ namespace JuvoPlayer.Player
 
         private void StreamInitialized()
         {
-            Log.Info("JuvoPlayer", "Stream initialized");
+            Logger.Info("Stream initialized");
 
             if (audioFormat == null || videoFormat == null)
                 return;
@@ -272,9 +273,9 @@ namespace JuvoPlayer.Player
             task.Wait();
             if (task.IsFaulted)
             {
-                Log.Info("JuvoPlayer", task.Exception.Flatten().InnerException.Message);
+                Logger.Info(task.Exception.Flatten().InnerException.Message);
             }
-            Log.Info("JuvoPlayer", "Stream initialized 222");
+            Logger.Info("Stream initialized 222");
         }
 
         public void OnTimeUpdated(double time)

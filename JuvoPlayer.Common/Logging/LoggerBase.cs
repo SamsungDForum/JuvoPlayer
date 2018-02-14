@@ -1,8 +1,4 @@
 using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Text;
-using static JuvoPlayer.Common.Logging.LogLevel;
 
 namespace JuvoPlayer.Common.Logging
 {

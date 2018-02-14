@@ -1,5 +1,4 @@
 using System;
-using System.Text;
 using JuvoPlayer.Common.Logging;
 using NUnit.Framework;
 

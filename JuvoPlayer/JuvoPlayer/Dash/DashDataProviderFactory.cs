@@ -1,16 +1,20 @@
-﻿using JuvoPlayer.Common;
-using JuvoPlayer.FFmpeg;
 using System;
 using System.IO;
+using JuvoPlayer.Common;
+using JuvoPlayer.Common.Logging;
+using JuvoPlayer.FFmpeg;
 using Tizen.Applications;
 
 namespace JuvoPlayer.Dash
 {
     public class DashDataProviderFactory : IDataProviderFactory
     {
+        private const string Tag = "JuvoPlayer";
+        private readonly ILogger Logger = LoggerManager.GetInstance().GetLogger(Tag);
+
         public IDataProvider Create(ClipDefinition clip)
         {
-            Tizen.Log.Info("JuvoPlayer", "Create.");
+            Logger.Info("Create.");
             if (clip == null)
             {
                 throw new ArgumentNullException(nameof(clip), "Clip cannot be null.");
@@ -31,8 +35,7 @@ namespace JuvoPlayer.Dash
             }
             catch (NullReferenceException)
             {
-                Tizen.Log.Error(
-                    "JuvoPlayer",
+                Logger.Error(
                     "Cannot find application executable path.");
             }
 
