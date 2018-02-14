@@ -11,14 +11,14 @@
 // damages suffered by licensee as a result of using, modifying or distributing
 // this software or its derivatives.
 
-using Tizen.TV.Smplayer;
-using JuvoPlayer.Common;
-using JuvoPlayer.Common.Delegates;
 using System;
 using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
-using Tizen;
+using JuvoPlayer.Common;
+using JuvoPlayer.Common.Delegates;
+using JuvoPlayer.Common.Logging;
+using Tizen.TV.Smplayer;
 using StreamType = Tizen.TV.Smplayer.StreamType;
 
 namespace JuvoPlayer.Player
@@ -33,6 +33,8 @@ namespace JuvoPlayer.Player
 
     public unsafe class SMPlayerAdapter : IPlayerAdapter, IPlayerEventListener
     {
+        private readonly ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
+
         public event PlaybackCompleted PlaybackCompleted;
         public event PlaybackError PlaybackError;
         public event PlayerInitialized PlayerInitialized;
@@ -58,7 +60,7 @@ namespace JuvoPlayer.Player
         {
             try
             {
-                Tizen.Log.Info("JuvoPlayer", "SMPlayer init");
+                Logger.Info("SMPlayer init");
 
                 playerInstance = new SMPlayerWrapper();
                 playerInstance.RegisterPlayerEventListener(this);
@@ -66,20 +68,20 @@ namespace JuvoPlayer.Player
                 bool result = playerInstance.Initialize();
                 if (!result)
                 {
-                    Tizen.Log.Info("JuvoPlayer", " playerInstance.Initialize() Failed !!!!!!!");
+                    Logger.Info(" playerInstance.Initialize() Failed !!!!!!!");
                     return;
                 }
-                Tizen.Log.Info("JuvoPlayer", " playerInstance.Initialize() Success !!!!!!!");
+                Logger.Info(" playerInstance.Initialize() Success !!!!!!!");
 
                 var playerContainer = new ElmSharp.Window("player");
                 playerContainer.Geometry = new ElmSharp.Rect(0, 0, 1920, 1080);
                 result = playerInstance.SetDisplay(PlayerDisplayType.Overlay, playerContainer);
                 if (!result)
                 {
-                    Tizen.Log.Info("JuvoPlayer", " playerInstance.SetDisplay Failed !!!!!!!");
+                    Logger.Info(" playerInstance.SetDisplay Failed !!!!!!!");
                     return;
                 }
-                Tizen.Log.Info("JuvoPlayer", " playerInstance.SetDisplay Success !!!!!!!");
+                Logger.Info(" playerInstance.SetDisplay Success !!!!!!!");
 
                 //The next steps of init player is as following sequences:
                 //PrepareES() and Play() should be called after SetVideoStreamInfo() and SetAudioStreamInfo() success.
@@ -87,7 +89,7 @@ namespace JuvoPlayer.Player
             }
             catch (Exception e)
             {
-                Tizen.Log.Info("JuvoPlayer", "got exception: " + e.Message);
+                Logger.Info("got exception: " + e.Message);
             }
 
             // -----------------------------------------------------------------------------------------------------------
@@ -124,10 +126,10 @@ namespace JuvoPlayer.Player
                 bool result = playerInstance.PrepareES();
                 if (result != true)
                 {
-                    Tizen.Log.Info("JuvoPlayer", "playerInstance.PrepareES() Failed!!!!!!!!");
+                    Logger.Info("playerInstance.PrepareES() Failed!!!!!!!!");
                     return;
                 }
-                Tizen.Log.Info("JuvoPlayer", "playerInstance.PrepareES() Done!!!!!!!!");
+                Logger.Info("playerInstance.PrepareES() Done!!!!!!!!");
                 isPlayerInitialized = true;
             }
         }
@@ -141,12 +143,12 @@ namespace JuvoPlayer.Player
                 { // but for first OnNeedData - we're sending both video and audio till first OnEnoughData
                     needDataInitMode = false;
 
-//                    Log.Info("JuvoPlayer", "SubmittingPacketsTask: Feeding (" + i.ToString() + ").");
-//                    Log.Info("JuvoPlayer", "SubmittingPacketsTask: AUDIO: " + audioBuffer.Count().ToString() + ", VIDEO: " + videoBuffer.Count().ToString());
+//                    Logger.Info("SubmittingPacketsTask: Feeding (" + i.ToString() + ").");
+//                    Logger.Info("SubmittingPacketsTask: AUDIO: " + audioBuffer.Count().ToString() + ", VIDEO: " + videoBuffer.Count().ToString());
 
                     StreamPacket packet = DequeuePacket();
 
-                    //                    Log.Info("JuvoPlayer", "Peeked");
+                    //                    Logger.Info("Peeked");
 
                     if (packet.IsEOS)
                         SubmitEOSPacket(packet);
@@ -157,7 +159,7 @@ namespace JuvoPlayer.Player
                 }
                 else
                 {
-//                    Log.Info("JuvoPlayer", "SubmittingPacketsTask: Need to wait one.");
+                    // Logger.Info("SubmittingPacketsTask: Need to wait one.");
                     needDataEvent.WaitOne();
                 }
             }
@@ -196,12 +198,12 @@ namespace JuvoPlayer.Player
             {
                 Marshal.StructureToPtr(drmInfo, pnt, false);
 
-//                Tizen.Log.Info("JuvoPlayer", string.Format("[HQ] send es data to SubmitPacket: {0} {1} ( {2} )", packet.Pts, drmInfo.tzHandle, trackType));
+//                Logger.Info(string.Format("[HQ] send es data to SubmitPacket: {0} {1} ( {2} )", packet.Pts, drmInfo.tzHandle, trackType));
 
                 if (!playerInstance.SubmitPacket(IntPtr.Zero, packet.HandleSize.size, packet.Pts.TotalNanoseconds(), trackType, pnt))
                 {
                     packet.CleanHandle();
-                    Tizen.Log.Error("JuvoPlayer", "Submiting encrypted packet failed");
+                    Logger.Error("Submiting encrypted packet failed");
                 }
             }
             finally
@@ -226,7 +228,7 @@ namespace JuvoPlayer.Player
                 //byte[] managedArray2 = new byte[managedArray.Length];
                 //Marshal.Copy(pnt, managedArray2, 0, managedArray.Length);
                 var trackType = SMPlayerUtils.GetTrackType(packet);
-//                Tizen.Log.Info("JuvoPlayer", string.Format("[HQ] send es data to SubmitPacket: {0} ( {1} )", packet.Pts, trackType));
+//                Logger.Info(string.Format("[HQ] send es data to SubmitPacket: {0} ( {1} )", packet.Pts, trackType));
 
                 playerInstance.SubmitPacket(pnt, (uint)packet.Data.Length, packet.Pts.TotalNanoseconds(), trackType, IntPtr.Zero);
             }
@@ -241,7 +243,7 @@ namespace JuvoPlayer.Player
         {
             var trackType = SMPlayerUtils.GetTrackType(packet);
 
-            Tizen.Log.Info("JuvoPlayer", string.Format("[HQ] send EOS packet: {0} ( {1} )", packet.Pts, trackType));
+            Logger.Info(string.Format("[HQ] send EOS packet: {0} ( {1} )", packet.Pts, trackType));
 
             playerInstance.SubmitEOSPacket(trackType);
         }
@@ -264,7 +266,7 @@ namespace JuvoPlayer.Player
 
         public void SetAudioStreamConfig(AudioStreamConfig config)
         {
-            Log.Info("JuvoPlayer", "");
+            Logger.Info("");
 
             var audioStreamInfo = new AudioStreamInfo
             {
@@ -302,7 +304,7 @@ namespace JuvoPlayer.Player
 
         public void SetVideoStreamConfig(VideoStreamConfig config)
         {
-            Log.Info("JuvoPlayer", "");
+            Logger.Info("");
 
             var videoStreamInfo = new VideoStreamInfo
             {
@@ -377,7 +379,7 @@ namespace JuvoPlayer.Player
         #region IPlayerEventListener
         public void OnEnoughData(StreamType streamType)
         {
-//            Log.Info("JuvoPlayer", "Received OnEnoughData: " + streamType);
+            // Logger.Info("Received OnEnoughData: " + streamType);
 
             if (streamType == StreamType.Audio)
                 needDataAudio = false;
@@ -391,7 +393,7 @@ namespace JuvoPlayer.Player
 
         public void OnNeedData(StreamType streamType, uint size)
         {
-//            Log.Info("JuvoPlayer", "Received OnNeedData: " + streamType);
+            // Logger.Info("Received OnNeedData: " + streamType);
 
             if (streamType == StreamType.Audio)
                 needDataAudio = true;
@@ -405,50 +407,50 @@ namespace JuvoPlayer.Player
 
         public void OnSeekData(StreamType streamType, System.UInt64 offset)
         {
-            Log.Info("JuvoPlayer", string.Format("Received OnSeekData: {0} offset: {1}", streamType, offset));
+            Logger.Info(string.Format("Received OnSeekData: {0} offset: {1}", streamType, offset));
         }
 
         public void OnError(PlayerErrorType errorType, string msg)
         {
-            Log.Info("JuvoPlayer", string.Format("Type: {0} msg: {1}", errorType, msg));
+            Logger.Info(string.Format("Type: {0} msg: {1}", errorType, msg));
 
             PlaybackError?.Invoke(msg);
         }
 
         public void OnMessage(PlayerMsgType msgType)
         {
-            Log.Info("JuvoPlayer", "Type" + msgType);
+            Logger.Info("Type" + msgType);
         }
 
         public void OnInitComplete()
         {
-            Log.Info("JuvoPlayer", "");
+            Logger.Info("");
 
             PlayerInitialized?.Invoke();
         }
 
         public void OnInitFailed()
         {
-            Log.Info("JuvoPlayer", "");
+            Logger.Info("");
 
             PlaybackError?.Invoke("Initialization error.");
         }
 
         public void OnEndOfStream()
         {
-            Log.Info("JuvoPlayer", "");
+            Logger.Info("");
 
             PlaybackCompleted?.Invoke();
         }
 
         public void OnSeekCompleted()
         {
-            Log.Info("JuvoPlayer", "");
+            Logger.Info("");
         }
 
         public void OnSeekStartedBuffering()
         {
-            Log.Info("JuvoPlayer", "");
+            Logger.Info("");
         }
 
         public void OnCurrentPosition(System.UInt32 currTime)
@@ -456,7 +458,7 @@ namespace JuvoPlayer.Player
             if (currentTime == currTime)
                 return;
 
-            Log.Info("JuvoPlayer", "OnCurrentPosition = " + currTime);
+            Logger.Info("OnCurrentPosition = " + currTime);
 
             GC.Collect();
 

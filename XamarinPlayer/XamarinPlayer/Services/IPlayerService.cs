@@ -1,7 +1,6 @@
-﻿using JuvoPlayer.Common;
+﻿using System;
+using JuvoPlayer.Common;
 using JuvoPlayer.Common.Delegates;
-using System;
-using System.Threading.Tasks;
 
 namespace XamarinPlayer.Services
 {

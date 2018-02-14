@@ -1,8 +1,4 @@
-using System;
-using System.Collections.Generic;
-using System.Text;
-using NUnit.Framework.Internal;
-using ILogger = JuvoPlayer.Common.Logging.ILogger;
+using JuvoPlayer.Common.Logging;
 
 namespace JuvoPlayer.Tests
 {
@@ -15,7 +11,7 @@ namespace JuvoPlayer.Tests
         public ILogger Logger { get; }
         public static readonly string LogMessage = "message";
         public static readonly string FileName = "LoggerClient.cs";
-        public static readonly int FuncFirstLineNumber = 27;
+        public static readonly int FuncFirstLineNumber = 23;
 
         public LoggerClient(ILogger logger)
         {

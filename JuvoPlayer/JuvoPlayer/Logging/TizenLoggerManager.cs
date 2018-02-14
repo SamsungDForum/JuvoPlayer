@@ -1,11 +1,6 @@
-using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Linq;
 using System.Reflection;
-using System.Text;
 using JuvoPlayer.Common.Logging;
-using Tizen.Applications;
 
 namespace JuvoPlayer.Logging
 {

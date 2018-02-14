@@ -1,7 +1,3 @@
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
 using JuvoPlayer.Common.Logging;
 using JuvoPlayer.Logging;
 using NUnit.Framework;

@@ -1,17 +1,15 @@
 using System;
-using System.Reflection;
-using System.IO;
-using System.Runtime.InteropServices;
-using System.Threading;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
+using System.Reflection;
+using System.Runtime.InteropServices;
 using System.Text;
+using System.Threading;
 using JuvoPlayer.Common.Logging;
 using JuvoPlayer.Logging;
-using Tizen;
-using NUnitLite;
 using NUnit.Common;
-using Tizen.Applications;
+using NUnitLite;
 
 namespace JuvoPlayer.Tests
 {

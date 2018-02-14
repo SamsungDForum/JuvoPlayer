@@ -1,17 +1,13 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.ComponentModel;
-using System.Runtime.CompilerServices;
-using System.Text;
-using System.Windows.Input;
-
-using Xamarin.Forms;
-
-using XamarinPlayer.Models;
-using XamarinPlayer.Controls;
-using JuvoPlayer.Common;
-using System.Linq;
 using System.IO;
+using System.Linq;
+using System.Runtime.CompilerServices;
+using System.Windows.Input;
+using JuvoPlayer.Common;
+using Xamarin.Forms;
+using XamarinPlayer.Controls;
+using XamarinPlayer.Models;
 using XamarinPlayer.Services;
 
 namespace XamarinPlayer.ViewModels

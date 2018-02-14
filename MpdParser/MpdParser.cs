@@ -1,7 +1,4 @@
-﻿using System;
-using JuvoPlayer.Common.Logging;
-
-namespace MpdParser
+﻿namespace MpdParser
 {
     public class MpdParser
     {

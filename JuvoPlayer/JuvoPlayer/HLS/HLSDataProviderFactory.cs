@@ -11,10 +11,10 @@
 // damages suffered by licensee as a result of using, modifying or distributing
 // this software or its derivatives.
 
-using JuvoPlayer.Common;
-using JuvoPlayer.FFmpeg;
 using System;
 using System.IO;
+using JuvoPlayer.Common;
+using JuvoPlayer.FFmpeg;
 using Tizen.Applications;
 
 namespace JuvoPlayer.HLS
