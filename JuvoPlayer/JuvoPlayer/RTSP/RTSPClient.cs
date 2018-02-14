@@ -33,8 +33,6 @@ namespace JuvoPlayer.RTSP
         string session = "";             // RTSP Session
         int videoDataChannel = -1;     // RTP Channel Number used for the video stream or the UDP port number
         int videoRTCPChannel = -1;     // RTP Channel Number used for the rtcp status report messages OR the UDP port number
-        List<byte[]> temporary_rtp_payloads = new List<byte[]>(); // used to assemble the RTP packets that form one RTP frame
-        MemoryStream fragmentedNAL = new MemoryStream(); // used to concatenate fragmented H264 NALs where NALs are split over RTP packets
 
         ISharedBuffer buffer;
 
@@ -48,7 +46,7 @@ namespace JuvoPlayer.RTSP
 
         public RTSPClient(ISharedBuffer buffer)
         {
-            this.buffer = buffer ?? throw new ArgumentNullException("buffer cannot be null");
+            this.buffer = buffer ?? throw new ArgumentNullException(nameof(buffer), "buffer cannot be null");
         }
 
         public void Pause()
@@ -81,7 +79,7 @@ namespace JuvoPlayer.RTSP
         public void Start(ClipDefinition clip)
         {
             if (clip == null)
-                throw new ArgumentNullException("clip cannot be null");
+                throw new ArgumentNullException(nameof(clip), "clip cannot be null");
 
             if (clip.Url.Length  < 7)
                 throw new ArgumentException("clip url cannot be empty");

@@ -52,9 +52,9 @@ namespace JuvoPlayer.FFmpeg
         private readonly avio_alloc_context_seek seekFunctionDelegate;
 
         private readonly ISharedBuffer dataBuffer;
-        public unsafe FFmpegDemuxer(ISharedBuffer dataBuffer, string libPath)
+        public unsafe FFmpegDemuxer(string libPath, ISharedBuffer dataBuffer = null)
         {
-            this.dataBuffer = dataBuffer ?? throw new ArgumentNullException(nameof(dataBuffer), "dataBuffer cannot be null");
+            this.dataBuffer = dataBuffer;
             try {
                 FFmpeg.Initialize(libPath);
                 FFmpeg.av_register_all(); // TODO(g.skowinski): Is registering multiple times unwanted or doesn't it matter?
@@ -88,6 +88,8 @@ namespace JuvoPlayer.FFmpeg
         public void StartForExternalSource()
         {
             Logger.Info("StartDemuxer!");
+            if (dataBuffer == null)
+                throw new InvalidOperationException("dataBuffer cannot be null");
 
             // Potentially time-consuming part of initialization and demuxation loop will be executed on a detached thread.
             demuxTask = Task.Run(() => DemuxTask(InitES)); 
@@ -586,7 +588,7 @@ namespace JuvoPlayer.FFmpeg
                 sharedBuffer = (ISharedBuffer)handle.Target;
             }
             catch (Exception) {
-                Logger.Info("Retrieveing SharedBuffer reference failed!");
+                Logger.Info("Retrieveing ISharedBuffer reference failed!");
                 throw;
             }
             return sharedBuffer;
@@ -601,13 +603,14 @@ namespace JuvoPlayer.FFmpeg
             catch (Exception) {
                 return 0;
             }
-            // SharedBuffer::ReadData(int size) is blocking - it will block until it has data or return 0 if EOF is reached
-            byte[] data = sharedBuffer.ReadData(bufSize);
-            if (data.Length > 0)
-                Marshal.Copy(data, 0, (IntPtr)buf, data.Length);
+            // ISharedBuffer::ReadData(int size) is blocking - it will block until it has data or return 0 if EOF is reached
+            var data = sharedBuffer.ReadData(bufSize);
+            if (data.HasValue)
+                Marshal.Copy(data.Value.Array, data.Value.Offset, (IntPtr)buf, data.Value.Count);
 
             // in case of length 0 return EOF
-            return data.Length > 0 ? data.Length : -541478725;
+            return data?.Count ?? -541478725;
+
         }
 
         private static unsafe int WritePacket(void* @opaque, byte* @buf, int bufSize)

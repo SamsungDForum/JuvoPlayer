@@ -19,17 +19,17 @@ namespace JuvoPlayer.Player
 {
     public class AudioPacketStream : IPacketStream
     {
-        private IDRMManager drmManager;
+        private readonly IDRMManager drmManager;
+        private readonly IPlayerAdapter playerAdapter;
         private IDRMSession drmSession;
-        private IPlayerAdapter playerAdapter;
         private AudioStreamConfig config;
 
         private bool forceDrmChange;
 
         public AudioPacketStream(IPlayerAdapter player, IDRMManager drmManager)
         {
-            this.drmManager = drmManager ?? throw new ArgumentNullException("drmManager cannot be null");
-            this.playerAdapter = player ?? throw new ArgumentNullException("player cannot be null");
+            this.drmManager = drmManager ?? throw new ArgumentNullException(nameof(drmManager), "drmManager cannot be null");
+            this.playerAdapter = player ?? throw new ArgumentNullException(nameof(player), "player cannot be null");
         }
 
         public void OnAppendPacket(StreamPacket packet)
