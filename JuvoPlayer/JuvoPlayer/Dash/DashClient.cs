@@ -52,11 +52,11 @@ namespace JuvoPlayer.Dash
 
             Logger.Info(string.Format("{0} Media: {1}", streamType, media));
             // get first element of sorted array 
-            var representation = media.Representations.First();
+            var representation = media.Representations.OrderByDescending(o => o.Bandwidth).First();
             Logger.Info(representation.ToString());
             currentStreams = representation.Segments;
 
-            Task.Run(() => DownloadThread());
+            Task.Run(() => DownloadThread()); 
         }
 
         public void Stop()
