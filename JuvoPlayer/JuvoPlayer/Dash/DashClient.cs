@@ -4,6 +4,7 @@ using MpdParser.Node;
 using System;
 using System.Linq;
 using System.Net;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace JuvoPlayer.Dash
@@ -12,12 +13,13 @@ namespace JuvoPlayer.Dash
     internal class DashClient : IDashClient
     {
         private const string Tag = "JuvoPlayer";
-        private static readonly TimeSpan MagicBufferTime = TimeSpan.FromSeconds(7);
+        private static readonly TimeSpan MagicBufferTime = TimeSpan.FromSeconds(10);
 
         private readonly ISharedBuffer sharedBuffer;
-        private Media media;
         private readonly StreamType streamType;
+        private readonly ManualResetEvent timeUpdatedEvent = new ManualResetEvent(false);
 
+        private Media media;
         private TimeSpan currentTime;
         private uint currentSegmentId;
 
@@ -72,9 +74,10 @@ namespace JuvoPlayer.Dash
         public void OnTimeUpdated(TimeSpan time)
         {
             currentTime = time;
+            timeUpdatedEvent.Set();
         }
 
-        
+
         private void DownloadThread()
         {
             try
@@ -90,8 +93,8 @@ namespace JuvoPlayer.Dash
             currentSegmentId = 0;
             while (playback)
             {
-                if (bufferTime - currentTime > MagicBufferTime)
-                    continue;
+                while (bufferTime - currentTime > MagicBufferTime)
+                    timeUpdatedEvent.WaitOne();
 
                 try
                 {
