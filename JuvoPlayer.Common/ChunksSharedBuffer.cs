@@ -35,7 +35,10 @@ namespace JuvoPlayer.Common
 
         public ulong Length()
         {
-            return (ulong)buffer.Sum(o => o.Length);
+            lock (locker)
+            {
+                return (ulong) buffer.Sum(o => o.Length);
+            }
         }
 
         public void ClearData()
@@ -61,8 +64,8 @@ namespace JuvoPlayer.Common
             }
         }
 
-        // FramesSharedBuffer::ReadData(int size) is blocking - it will block until buffor is not empty or if EOF is reached.
-        // It may return less data then requested if there is not enough data in the buffor.
+        // ChunksSharedBuffer::ReadData(int size) is blocking - it will block until buffer is not empty or if EOF is reached.
+        // size is the maximum amount of data that can be returned from buffer.
         public ArraySegment<byte>? ReadData(int size)
         {
             lock (locker)

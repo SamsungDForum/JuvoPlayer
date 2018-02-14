@@ -15,31 +15,37 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 
-namespace JuvoPlayer.Common {
-
-    public class FramesSharedBuffer : ISharedBuffer {
-
-        private class ByteArrayQueue {
+namespace JuvoPlayer.Common
+{
+    public class FramesSharedBuffer : ISharedBuffer
+    {
+        private class ByteArrayQueue
+        {
             private byte[] buffer;
             private int head;
             private int tail;
             private readonly int initialBufferSize;
-            private int Size {
-                get {
+            private int Size
+            {
+                get
+                {
                     return head <= tail ? tail - head : (buffer.Length - head) + tail;
                 }
             }
-            static readonly object Locker = new object();
+            private readonly object locker = new object();
 
-            public ByteArrayQueue(int initialBufferSize = 2048) {
+            public ByteArrayQueue(int initialBufferSize = 2048)
+            {
                 this.initialBufferSize = initialBufferSize;
                 buffer = new byte[this.initialBufferSize];
                 head = 0;
                 tail = 0;
             }
 
-            public void Clear() {
-                lock (Locker) {
+            public void Clear()
+            {
+                lock (locker)
+                {
                     head = 0;
                     tail = 0;
                     Resize(initialBufferSize);
@@ -48,17 +54,22 @@ namespace JuvoPlayer.Common {
 
             public int Length => Size;
 
-            private void Resize(int newSize) {
-                if (buffer.Length == newSize) {
+            private void Resize(int newSize)
+            {
+                if (buffer.Length == newSize)
+                {
                     return;
                 }
                 byte[] newBuffer = new byte[newSize];
                 int oldSize = Size;
-                if (oldSize > 0) {
-                    if (head < tail) {
+                if (oldSize > 0)
+                {
+                    if (head < tail)
+                    {
                         Buffer.BlockCopy(buffer, head, newBuffer, 0, oldSize);
                     }
-                    else {
+                    else
+                    {
                         Buffer.BlockCopy(buffer, head, newBuffer, 0, buffer.Length - head);
                         Buffer.BlockCopy(buffer, 0, newBuffer, buffer.Length - head, tail);
                     }
@@ -68,50 +79,65 @@ namespace JuvoPlayer.Common {
                 buffer = newBuffer;
             }
 
-            public void Push(byte[] buffer, int offset, int size) {
-                lock (Locker) {
-                    if ((Size + size) >= this.buffer.Length) {
+            public void Push(byte[] buffer, int offset, int size)
+            {
+                lock (locker)
+                {
+                    if ((Size + size) >= this.buffer.Length)
+                    {
                         Resize(1 << ((int)Math.Ceiling(Math.Log(Size + size, 2)) + 1)); // resize to double the lowest power of 2 that is higher than required size
                     }
-                    if (head < tail) {
+                    if (head < tail)
+                    {
                         int length = this.buffer.Length - tail;
-                        if (length >= size) {
+                        if (length >= size)
+                        {
                             Buffer.BlockCopy(buffer, offset, this.buffer, tail, size);
                         }
-                        else {
+                        else
+                        {
                             Buffer.BlockCopy(buffer, offset, this.buffer, tail, length);
                             Buffer.BlockCopy(buffer, offset + length, this.buffer, 0, size - length);
                         }
                     }
-                    else {
+                    else
+                    {
                         Buffer.BlockCopy(buffer, offset, this.buffer, tail, size);
                     }
                     tail = (tail + size) % this.buffer.Length;
                 }
             }
 
-            public int Pop(byte[] buffer, int offset, int size) {
-                lock (Locker) {
+            public int Pop(byte[] buffer, int offset, int size)
+            {
+                lock (locker)
+                {
                     size = Math.Min(size, Size);
-                    if (head < tail) {
+                    if (head < tail)
+                    {
                         Buffer.BlockCopy(this.buffer, head, buffer, offset, size);
                     }
-                    else {
+                    else
+                    {
                         int length = this.buffer.Length - head;
-                        if (length >= size) {
+                        if (length >= size)
+                        {
                             Buffer.BlockCopy(this.buffer, head, buffer, offset, size);
                         }
-                        else {
+                        else
+                        {
                             Buffer.BlockCopy(this.buffer, head, buffer, offset, length);
                             Buffer.BlockCopy(this.buffer, 0, buffer, offset + length, size - length);
                         }
                     }
                     head = (head + size) % this.buffer.Length;
-                    if (Size == 0) {
+                    if (Size == 0)
+                    {
                         head = 0;
                         tail = 0;
                     }
-                    if (this.buffer.Length > Size * 2 && Size * 2 > initialBufferSize) {
+                    if (this.buffer.Length > Size * 2 && Size * 2 > initialBufferSize)
+                    {
                         Resize(this.buffer.Length / 2);
                     }
                     return size;
@@ -131,18 +157,25 @@ namespace JuvoPlayer.Common {
 
         public ulong Length()
         {
-            return (ulong) buffer.Length;
+            lock (locker)
+            {
+                return (ulong)buffer.Length;
+            }
         }
 
-        public void ClearData() {
-            lock (locker) {
+        public void ClearData()
+        {
+            lock (locker)
+            {
                 buffer.Clear();
                 EndOfData = false;
             }
         }
 
-        public void WriteData(byte[] data, bool endOfData = false) { // endOfData=true should be atomic with writing last bit of data
-            lock (locker) {
+        public void WriteData(byte[] data, bool endOfData = false)
+        { // endOfData=true should be atomic with writing last bit of data
+            lock (locker)
+            {
                 if (data != null)
                 {
                     buffer.Push(data, 0, data.Length);

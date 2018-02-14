@@ -20,7 +20,7 @@ namespace JuvoPlayer.Common
     {
         void ClearData();
 
-        // FramesSharedBuffer::ReadData(int size) is blocking - it will block until it has enough data or return less data if EOF is reached.
+        // ISharedBuffer::ReadData(int size) is blocking - it will block until it has enough data or return less data if EOF is reached.
         // Returns byte array of leading [size] bytes of data from the buffer; it should remove the leading [size] bytes of data from the buffer.
         ArraySegment<byte>? ReadData(int size);
 

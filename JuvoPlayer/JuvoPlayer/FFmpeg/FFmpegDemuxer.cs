@@ -590,7 +590,7 @@ namespace JuvoPlayer.FFmpeg
                 sharedBuffer = (ISharedBuffer)handle.Target;
             }
             catch (Exception) {
-                Log.Info("JuvoPlayer", "Retrieveing FramesSharedBuffer reference failed!");
+                Log.Info("JuvoPlayer", "Retrieveing ISharedBuffer reference failed!");
                 throw;
             }
             return sharedBuffer;
@@ -605,7 +605,7 @@ namespace JuvoPlayer.FFmpeg
             catch (Exception) {
                 return 0;
             }
-            // FramesSharedBuffer::ReadData(int size) is blocking - it will block until it has data or return 0 if EOF is reached
+            // ISharedBuffer::ReadData(int size) is blocking - it will block until it has data or return 0 if EOF is reached
             var data = sharedBuffer.ReadData(bufSize);
             if (data.HasValue)
                 Marshal.Copy(data.Value.Array, data.Value.Offset, (IntPtr)buf, data.Value.Count);
