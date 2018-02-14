@@ -30,7 +30,7 @@ namespace JuvoPlayer.RTSP
         {
             if (clip == null)
             {
-                throw new ArgumentNullException("clip cannot be null");
+                throw new ArgumentNullException(nameof(clip), "clip cannot be null");
             }
 
             if (!SupportsClip(clip))
@@ -38,11 +38,11 @@ namespace JuvoPlayer.RTSP
                 throw new ArgumentException("unsupported clip type");
             }
 
-            var sharedBuffer = new SharedBuffer();
+            var sharedBuffer = new FramesSharedBuffer();
             var rtspClient = new RTSPClient(sharedBuffer);
 
             var libPath = Path.Combine(Path.GetDirectoryName(Path.GetDirectoryName(Application.Current.ApplicationInfo.ExecutablePath)), "lib");
-            var demuxer = new FFmpegDemuxer(sharedBuffer, libPath);
+            var demuxer = new FFmpegDemuxer(libPath, sharedBuffer);
 
             return new RTSPDataProvider(demuxer, rtspClient, clip);
         }
@@ -51,7 +51,7 @@ namespace JuvoPlayer.RTSP
         {
             if (clip == null)
             {
-                throw new ArgumentNullException("clip cannot be null");
+                throw new ArgumentNullException(nameof(clip), "clip cannot be null");
             }
 
             return string.Equals(clip.Type, "Rtp", StringComparison.CurrentCultureIgnoreCase)

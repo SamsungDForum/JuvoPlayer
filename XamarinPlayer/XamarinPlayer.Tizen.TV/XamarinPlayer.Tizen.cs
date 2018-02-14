@@ -10,7 +10,7 @@ namespace XamarinPlayer.Tizen
     {
         EcoreEvent<EcoreKeyEventArgs> _keyDown;
 
-        public static readonly string Tag = "XamarinPlayer.Tizen";
+        public static readonly string Tag = "JuvoPlayer";
 
         protected override void OnCreate()
         {
