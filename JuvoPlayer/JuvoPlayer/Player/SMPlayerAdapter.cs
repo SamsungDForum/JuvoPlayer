@@ -102,6 +102,11 @@ namespace JuvoPlayer.Player
             Task.Run(() => SubmittingPacketsTask());
         }
 
+        ~SMPlayerAdapter()
+        {
+            ReleaseUnmanagedResources();
+        }
+
         public unsafe void AppendPacket(StreamPacket packet)
         {
             // todo
