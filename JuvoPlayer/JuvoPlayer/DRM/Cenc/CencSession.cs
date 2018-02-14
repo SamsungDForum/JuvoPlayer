@@ -54,6 +54,7 @@ namespace JuvoPlayer.DRM.Cenc
         {
             if (CDMInstance != null)
                 IEME.destroy(CDMInstance);
+            CDMInstance = null;
         }
 
         public override void Dispose()
