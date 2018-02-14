@@ -11,9 +11,9 @@
 // damages suffered by licensee as a result of using, modifying or distributing
 // this software or its derivatives.
 
+using System;
 using JuvoPlayer.Common;
 using JuvoPlayer.Common.Delegates;
-using System;
 
 namespace JuvoPlayer.Player
 {

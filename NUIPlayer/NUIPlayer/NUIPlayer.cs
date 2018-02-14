@@ -1,20 +1,21 @@
+using System;
 using JuvoPlayer;
 using JuvoPlayer.Common;
+using JuvoPlayer.Common.Logging;
 using JuvoPlayer.DRM;
 using JuvoPlayer.DRM.Cenc;
 using JuvoPlayer.Player;
 using JuvoPlayer.RTSP;
-using System;
-using Tizen;
 using Tizen.Applications;
 using Tizen.NUI;
 using Tizen.NUI.BaseComponents;
-using Tizen.TV.NUI;
 
 namespace NUIPlayer
 {
     internal class Program : TVUIApplication
     {
+        private static readonly ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
+
         private DataProviderFactoryManager dataProviders;
 
         private IDataProvider dataProvider;
@@ -107,7 +108,7 @@ namespace NUIPlayer
 
             if (e.Key.State == Key.StateType.Down)
             {
-                Log.Info("JuvoPlayer", e.Key.KeyPressedName);
+                Logger.Info(e.Key.KeyPressedName);
 
                 switch (e.Key.KeyPressedName)
                 {
@@ -213,12 +214,12 @@ namespace NUIPlayer
         {
             if (evt.ExceptionObject is Exception e)
             {
-                Log.Error("JuvoPlayer", e.Message);
-                Log.Error("JuvoPlayer", e.StackTrace);
+                Logger.Error(e.Message);
+                Logger.Error(e.StackTrace);
             }
             else
             {
-                Log.Error("JuvoPlayer", "Got unhandled exception event: " + evt);
+                Logger.Error("Got unhandled exception event: " + evt);
             }
         }
 

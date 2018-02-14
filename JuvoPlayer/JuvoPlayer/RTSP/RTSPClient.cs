@@ -11,19 +11,22 @@
 // damages suffered by licensee as a result of using, modifying or distributing
 // this software or its derivatives.
 
-using JuvoPlayer.Common;
-using Rtsp.Messages;
 using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
+using JuvoPlayer.Common;
+using JuvoPlayer.Common.Logging;
+using Rtsp.Messages;
 
 namespace JuvoPlayer.RTSP
 {
     public class RTSPClient : IRTSPClient
     {
+        private static readonly ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
+
         RTPTransportType rtpTransportType = RTPTransportType.TCP; // Mode, either RTP over UDP or RTP over TCP using the RTSP socket
         UDPSocketPair udpPair = null;       // Pair of UDP ports used in RTP over UDP mode or in MULTICAST mode
         String url = "";                 // RTSP URL
@@ -95,7 +98,7 @@ namespace JuvoPlayer.RTSP
                 rtspSocket = new Rtsp.RtspTcpTransport(tcpClient);
                 if (rtspSocket.Connected == false)
                 {
-                    Tizen.Log.Info("JuvoPlayer", "Error - did not connect");
+                    Logger.Info("Error - did not connect");
                     return;
                 }
 
@@ -116,7 +119,7 @@ namespace JuvoPlayer.RTSP
             }
             catch (Exception e)
             {
-                Tizen.Log.Info("JuvoPlayer", "Error - did not connect: " + e.Message);
+                Logger.Info("Error - did not connect: " + e.Message);
                 return;
             }
         }
@@ -152,7 +155,7 @@ namespace JuvoPlayer.RTSP
             // In the future would also check the Audio Channel and Audio Control Channel
             if (rtpData.Channel == videoRTCPChannel)
             {
-                Tizen.Log.Info("JuvoPlayer", "Received a RTCP message on channel " + rtpData.Channel);
+                Logger.Info("Received a RTCP message on channel " + rtpData.Channel);
                 return;
             }
 
@@ -194,7 +197,7 @@ namespace JuvoPlayer.RTSP
                 rtpPayloadStart += 4 + (int)rtpExtensionSize;  // extension header and extension payload
             }
 
-            //Tizen.Log.Info("JuvoPlayer", "RTP Data"
+            //Logger.Info("RTP Data"
             //                   + " V=" + rtpVersion
             //                   + " P=" + rtpPadding
             //                   + " X=" + rtpRxtension
@@ -209,7 +212,7 @@ namespace JuvoPlayer.RTSP
             // Check the payload type in the RTP packet matches the Payload Type value from the SDP
             if (videoPayloadType > 0 && rtpPayloadType != videoPayloadType)
             {
-                Tizen.Log.Info("JuvoPlayer", "Ignoring this RTP payload: " + rtpPayloadType);
+                Logger.Info("Ignoring this RTP payload: " + rtpPayloadType);
                 return; // ignore this data
             }
 
@@ -225,7 +228,7 @@ namespace JuvoPlayer.RTSP
             if (message.OriginalRequest == null)
                 return;
 
-            Tizen.Log.Info("JuvoPlayer", "Received " + message.OriginalRequest.ToString());
+            Logger.Info("Received " + message.OriginalRequest.ToString());
 
             if (message.OriginalRequest is RtspRequestOptions)
             {
@@ -248,7 +251,7 @@ namespace JuvoPlayer.RTSP
         private static void ProcessPlayRequest(RtspResponse message)
         {
             // If we get a reply to PLAY (which was our fourth command), then we should have video being received
-            Tizen.Log.Info("JuvoPlayer", "Got reply from Play  " + message.Command);
+            Logger.Info("Got reply from Play  " + message.Command);
         }
 
         private void ProcessSetupRequest(RtspResponse message)
@@ -256,7 +259,7 @@ namespace JuvoPlayer.RTSP
             // If we get a reply to SETUP (which was our third command), then process then send PLAY
 
             // Got Reply to SETUP
-            Tizen.Log.Info("JuvoPlayer", "Got reply from Setup. Session is " + message.Session);
+            Logger.Info("Got reply from Setup. Session is " + message.Session);
 
             session = message.Session; // Session value used with Play, Pause, Teardown
 
@@ -291,7 +294,7 @@ namespace JuvoPlayer.RTSP
         {
             // Got a reply for DESCRIBE
             // Examine the SDP
-            Tizen.Log.Info("JuvoPlayer", System.Text.Encoding.UTF8.GetString(message.Data));
+            Logger.Info(System.Text.Encoding.UTF8.GetString(message.Data));
 
             Rtsp.Sdp.SdpFile sdpData;
             using (StreamReader sdpStream = new StreamReader(new MemoryStream(message.Data)))

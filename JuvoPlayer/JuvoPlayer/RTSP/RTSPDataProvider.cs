@@ -11,11 +11,8 @@
 // damages suffered by licensee as a result of using, modifying or distributing
 // this software or its derivatives.
 
-using JuvoPlayer.Common;
 using System;
-using System.IO;
-using Tizen;
-using Tizen.Applications;
+using JuvoPlayer.Common;
 
 namespace JuvoPlayer.RTSP
 {

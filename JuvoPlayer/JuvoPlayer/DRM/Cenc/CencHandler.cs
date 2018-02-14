@@ -1,14 +1,15 @@
-﻿using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 using JuvoPlayer.Common;
+using JuvoPlayer.Common.Logging;
 using Tizen.TV.Security.DrmDecrypt.emeCDM;
 
 namespace JuvoPlayer.DRM.Cenc
 {
     public class CencHandler : IDRMHandler
     {
+        private readonly ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
+
         public CencHandler()
         {
             Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
@@ -19,7 +20,7 @@ namespace JuvoPlayer.DRM.Cenc
             var iemeKeySystemName = GetKeySystemName(initData.SystemId);
             if (IEME.isKeySystemSupported(iemeKeySystemName) != Status.kSupported)
             {
-                Tizen.Log.Info("JuvoPlayer", string.Format("Key System: {0} is not supported", iemeKeySystemName));
+                Logger.Info(string.Format("Key System: {0} is not supported", iemeKeySystemName));
                 return null;
             }
             return CencSession.Create(iemeKeySystemName, GetScheme(initData.SystemId), initData);

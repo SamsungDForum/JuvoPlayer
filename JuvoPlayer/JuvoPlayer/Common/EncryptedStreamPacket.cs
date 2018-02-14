@@ -1,9 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-
-namespace JuvoPlayer.Common
+﻿namespace JuvoPlayer.Common
 {
     class EncryptedStreamPacket : StreamPacket
     {

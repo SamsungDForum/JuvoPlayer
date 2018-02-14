@@ -1,16 +1,16 @@
-﻿using System;
+using System;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading;
-
-using Tizen;
-
+using JuvoPlayer.Common.Logging;
 using Rtsp;
 
 namespace JuvoPlayer.RTSP
 {
     public class UDPSocketPair
     {
+        private readonly ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
+
         private UdpClient dataSocket = null;
         private UdpClient controlSocket = null;
 
@@ -182,7 +182,7 @@ namespace JuvoPlayer.RTSP
 
                     // We have an RTP frame.
                     // Fire the DataReceived event with 'frame'
-                    Tizen.Log.Info("JuvoPlayer", "Received RTP data on port " + dataPort);
+                    Logger.Info("Received RTP data on port " + dataPort);
 
                     var currentMessage = new Rtsp.Messages.RtspData
                     {

@@ -1,12 +1,15 @@
-﻿using System;
-using System.Collections.Generic;
+using System;
 using JuvoPlayer.Common;
+using JuvoPlayer.Common.Logging;
 using MpdParser;
 
 namespace JuvoPlayer.Dash
 {
     internal class DashDataProvider : IDataProvider
     {
+        private const string Tag = "JuvoPlayer";
+        private readonly ILogger Logger = LoggerManager.GetInstance().GetLogger(Tag);
+
         private readonly DashManifest manifest;
         private readonly DashMediaPipeline audioPipeline;
         private readonly DashMediaPipeline videoPipeline;
@@ -83,11 +86,11 @@ namespace JuvoPlayer.Dash
 
         public void Start()
         {
-            Tizen.Log.Info("JuvoPlayer", "Dash start.");
+            Logger.Info("Dash start.");
             
             foreach (var period in manifest.Document.Periods)
             {
-                Tizen.Log.Info("JuvoPlayer", period.ToString());
+                Logger.Info(period.ToString());
 
                 Media audio = Find(period, "en", MediaType.Audio) ??
                         Find(period, "und", MediaType.Audio);
@@ -98,10 +101,10 @@ namespace JuvoPlayer.Dash
                 // TODO(p.galiszewsk): is it possible to have period without audio/video?
                 if (audio != null && video != null)
                 {
-                    Tizen.Log.Info("JuvoPlayer", "Video: " + video);
+                    Logger.Info("Video: " + video);
                     videoPipeline.Start(video);
 
-                    Tizen.Log.Info("JuvoPlayer", "Audio: " + audio);
+                    Logger.Info("Audio: " + audio);
                     audioPipeline.Start(audio);
 
                     // TODO(p.galiszewsk): unify time management

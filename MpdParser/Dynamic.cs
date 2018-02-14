@@ -1,12 +1,4 @@
 using System;
-using System.Collections;
-using System.Collections.Generic;
-
-using MpdParser;
-using MpdParser.Network;
-using MpdParser.Node.Atom;
-using System.Net;
-using System.Threading.Tasks;
 
 namespace MpdParser.Node.Dynamic
 {

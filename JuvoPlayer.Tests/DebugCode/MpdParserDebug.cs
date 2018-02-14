@@ -1,9 +1,8 @@
 ﻿using System;
-using JuvoPlayer.Common.Logging;
-using NUnit.Framework;
-using MpdParser;
 using System.Net;
-
+using JuvoPlayer.Common.Logging;
+using MpdParser;
+using NUnit.Framework;
 
 namespace JuvoPlayer.Tests
 {

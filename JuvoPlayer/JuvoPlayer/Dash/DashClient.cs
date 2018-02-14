@@ -1,10 +1,11 @@
-﻿using JuvoPlayer.Common;
-using MpdParser;
-using MpdParser.Node;
 using System;
 using System.Linq;
 using System.Net;
 using System.Threading.Tasks;
+using JuvoPlayer.Common;
+using JuvoPlayer.Common.Logging;
+using MpdParser;
+using MpdParser.Node;
 
 namespace JuvoPlayer.Dash
 {
@@ -12,6 +13,7 @@ namespace JuvoPlayer.Dash
     internal class DashClient : IDashClient
     {
         private const string Tag = "JuvoPlayer";
+        private readonly ILogger Logger = LoggerManager.GetInstance().GetLogger(Tag);
         private static readonly TimeSpan MagicBufferTime = TimeSpan.FromSeconds(7);
 
         private readonly ISharedBuffer sharedBuffer;
@@ -43,13 +45,13 @@ namespace JuvoPlayer.Dash
             if (media == null)
                 throw new Exception("media has not been set");
 
-            Tizen.Log.Info(Tag, string.Format("{0} DashClient start.", streamType));
+            Logger.Info(string.Format("{0} DashClient start.", streamType));
             playback = true;
 
-            Tizen.Log.Info(Tag, string.Format("{0} Media: {1}", streamType, media));
+            Logger.Info(string.Format("{0} Media: {1}", streamType, media));
             // get first element of sorted array 
             var representation = media.Representations.First();
-            Tizen.Log.Info(Tag, representation.ToString());
+            Logger.Info(representation.ToString());
             currentStreams = representation.Segments;
 
             Task.Run(() => DownloadThread());
@@ -74,7 +76,6 @@ namespace JuvoPlayer.Dash
             currentTime = time;
         }
 
-        
         private void DownloadThread()
         {
             try
@@ -83,7 +84,7 @@ namespace JuvoPlayer.Dash
             }
             catch(Exception ex)
             {
-                Tizen.Log.Error(Tag, string.Format("{0} Cannot download init segment file. Error: {1} {2}", streamType, ex.Message, ex.ToString()));
+                Logger.Error(string.Format("{0} Cannot download init segment file. Error: {1} {2}", streamType, ex.Message, ex.ToString()));
             }
 
             var bufferTime = TimeSpan.Zero;
@@ -117,11 +118,11 @@ namespace JuvoPlayer.Dash
                 {
                     if (ex is WebException)
                     {
-                        Tizen.Log.Error(Tag, string.Format("{0} Cannot download segment file. Error: {1} {2}", streamType, ex.Message, ex.ToString()));
+                        Logger.Error(string.Format("{0} Cannot download segment file. Error: {1} {2}", streamType, ex.Message, ex.ToString()));
                     }
                     else
                     {
-                        Tizen.Log.Error(Tag, string.Format("Error: {0} {1} {2}", ex.Message, ex.TargetSite, ex.StackTrace));
+                        Logger.Error(string.Format("Error: {0} {1} {2}", ex.Message, ex.TargetSite, ex.StackTrace));
                     }
                        
                 }
@@ -130,7 +131,7 @@ namespace JuvoPlayer.Dash
 
         private byte[] DownloadSegment(MpdParser.Node.Dynamic.Segment stream)
         {
-            Tizen.Log.Info("JuvoPlayer", string.Format("{0} Downloading segment: {1} {2}", 
+            Logger.Info(string.Format("{0} Downloading segment: {1} {2}", 
                 streamType, stream.Url, stream.ByteRange));
             
             var url = stream.Url;
@@ -144,7 +145,7 @@ namespace JuvoPlayer.Dash
 
             var streamBytes = client.DownloadData(url);
 
-            Tizen.Log.Info("JuvoPlayer", string.Format("{0} Segment downloaded.", streamType));
+            Logger.Info(string.Format("{0} Segment downloaded.", streamType));
 
             return streamBytes;
         }
@@ -154,7 +155,7 @@ namespace JuvoPlayer.Dash
         {
             var initSegment = streamSegments.InitSegment;
 
-            Tizen.Log.Info("JuvoPlayer", string.Format("{0} Downloading Init segment: {1} {2}", 
+            Logger.Info(string.Format("{0} Downloading Init segment: {1} {2}", 
                 streamType, initSegment.ByteRange, initSegment.Url));
 
             var client = new WebClientEx();
@@ -166,11 +167,13 @@ namespace JuvoPlayer.Dash
             var streamBytes = client.DownloadData(initSegment.Url);
             sharedBuffer.WriteData(streamBytes);
 
-            Tizen.Log.Info("JuvoPlayer", string.Format("{0} Init segment downloaded.", streamType));
+            Logger.Info(string.Format("{0} Init segment downloaded.", streamType));
         }
     }
     internal class ByteRange
     {
+        private const string Tag = "JuvoPlayer";
+        private readonly ILogger Logger = LoggerManager.GetInstance().GetLogger(Tag);
         public long Low { get; }
         public long High { get; }
         public ByteRange(string range)
@@ -195,7 +198,7 @@ namespace JuvoPlayer.Dash
             }
             catch (Exception ex)
             {
-                Tizen.Log.Error("JuvoPlayer", ex + " Cannot parse range.");
+                Logger.Error(ex + " Cannot parse range.");
             }
         }
     }

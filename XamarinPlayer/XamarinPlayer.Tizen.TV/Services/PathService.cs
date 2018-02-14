@@ -1,10 +1,7 @@
 ﻿using System;
 using System.IO;
-using System.Threading.Tasks;
 using Xamarin.Forms;
-using Xamarin.Forms.Platform.Tizen;
 using XamarinPlayer.Services;
-using XamarinPlayer.Tizen.Services;
 using XamarinPlayer.Tizen.TV.Services;
 
 [assembly: Dependency(typeof(PathService))]

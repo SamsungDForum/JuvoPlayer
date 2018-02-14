@@ -1,11 +1,15 @@
-﻿using System;
+using System;
 using System.Net.Http;
+using JuvoPlayer.Common.Logging;
 using MpdParser;
 
 namespace JuvoPlayer.Dash
 {
     public class DashManifest
     {
+        private const string Tag = "JuvoPlayer";
+        private readonly ILogger Logger = LoggerManager.GetInstance().GetLogger(Tag);
+
         public Uri Uri { get; set; }
         public string XmlManifest { get; set; }
         public Document Document { get; set; }
@@ -38,8 +42,7 @@ namespace JuvoPlayer.Dash
             }
             catch (Exception ex)
             {
-                Tizen.Log.Error(
-                    "JuvoPlayer",
+                Logger.Error(
                     "Cannot download manifest file. Error: " + ex.Message);
                 return null;
             }
@@ -56,8 +59,7 @@ namespace JuvoPlayer.Dash
             }
             catch (Exception ex)
             {
-                Tizen.Log.Error(
-                    "JuvoPlayer",
+                Logger.Error(
                     "Cannot parse manifest file. Error: " + ex.Message);
                 return null;
             }
