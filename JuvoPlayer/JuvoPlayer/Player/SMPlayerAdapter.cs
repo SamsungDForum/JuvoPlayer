@@ -205,11 +205,14 @@ namespace JuvoPlayer.Player
 
 //                Logger.Info(string.Format("[HQ] send es data to SubmitPacket: {0} {1} ( {2} )", packet.Pts, drmInfo.tzHandle, trackType));
 
-                if (!playerInstance.SubmitPacket(IntPtr.Zero, packet.HandleSize.size, packet.Pts.TotalNanoseconds(), trackType, pnt))
-                {
-                    packet.CleanHandle();
+                if (!playerInstance.SubmitPacket(IntPtr.Zero, packet.HandleSize.size, packet.Pts.TotalNanoseconds(),
+                    trackType, pnt))
+                {                    
                     Logger.Error("Submiting encrypted packet failed");
+                    return;
                 }
+
+                packet.CleanHandle();
             }
             finally
             {
