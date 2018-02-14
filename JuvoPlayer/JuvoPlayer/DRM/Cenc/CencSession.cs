@@ -23,12 +23,9 @@ namespace JuvoPlayer.DRM.Cenc
         private string initDataString;
 
         private DRMDescription drmConfiguration;
-        private AsyncContextThread thread;
-
-        private readonly object locker = new object();
-
-        private readonly object InitializationLocker = new object();
-        bool IsInitialized = false;
+        private readonly AsyncContextThread thread;
+        private readonly object initializationLocker = new object();
+        private bool isInitialized = false;
 
         public string CurrentDrmScheme { get; }
 
@@ -53,12 +50,24 @@ namespace JuvoPlayer.DRM.Cenc
             CDMInstance = IEME.create(this, keySystemName, false, CDM_MODEL.E_CDM_MODEL_DEFAULT);
         }
 
-        ~CencSession()
+        private void ReleaseUnmanagedResources()
         {
             if (CDMInstance != null)
                 IEME.destroy(CDMInstance);
+        }
 
+        public override void Dispose()
+        {
+            ReleaseUnmanagedResources();
+            base.Dispose();
             thread.Dispose();
+
+            GC.SuppressFinalize(this);
+        }
+
+        ~CencSession()
+        {
+            ReleaseUnmanagedResources();
         }
 
         private bool Initialize(byte[] initData)
@@ -108,7 +117,7 @@ namespace JuvoPlayer.DRM.Cenc
             var status = CDMInstance.session_generateRequest(currentSessionId, InitDataType.kCenc, initDataString);
             if (status != Status.kSuccess)
             {
-                Logger.Info(Thread.CurrentThread.ManagedThreadId + " Could not generate request: " + status.ToString());
+                Logger.Info("Could not generate request: " + status.ToString());
             }
         }
 
@@ -119,10 +128,10 @@ namespace JuvoPlayer.DRM.Cenc
                 return packet;
             }
 
-            lock (InitializationLocker)
+            lock (initializationLocker)
             {
-                if (!IsInitialized)
-                    Monitor.Wait(InitializationLocker);
+                if (!isInitialized)
+                    Monitor.Wait(initializationLocker);
             }
 
             var decryptedPacket = thread.Factory.Run(() => DecryptPacketOnIemeThread(packet)).Result;
@@ -286,13 +295,13 @@ namespace JuvoPlayer.DRM.Cenc
                 return;
             }
 
-            lock (InitializationLocker)
+            lock (initializationLocker)
             {
                 Logger.Info("Licence installed");
 
-                IsInitialized = true;
+                isInitialized = true;
                 Thread.Sleep(1000);
-                Monitor.PulseAll(InitializationLocker);
+                Monitor.PulseAll(initializationLocker);
             }
         }
 
