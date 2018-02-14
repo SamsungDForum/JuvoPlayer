@@ -159,7 +159,7 @@ namespace JuvoPlayer.Player
                 }
                 else
                 {
-                    Logger.Info("SubmittingPacketsTask: Need to wait one.");
+                    // Logger.Info("SubmittingPacketsTask: Need to wait one.");
                     needDataEvent.WaitOne();
                 }
             }
@@ -379,7 +379,7 @@ namespace JuvoPlayer.Player
         #region IPlayerEventListener
         public void OnEnoughData(StreamType streamType)
         {
-            Logger.Info("Received OnEnoughData: " + streamType);
+            // Logger.Info("Received OnEnoughData: " + streamType);
 
             if (streamType == StreamType.Audio)
                 needDataAudio = false;
@@ -393,7 +393,7 @@ namespace JuvoPlayer.Player
 
         public void OnNeedData(StreamType streamType, uint size)
         {
-            Logger.Info("Received OnNeedData: " + streamType);
+            // Logger.Info("Received OnNeedData: " + streamType);
 
             if (streamType == StreamType.Audio)
                 needDataAudio = true;
