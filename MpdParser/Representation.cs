@@ -437,7 +437,7 @@ namespace MpdParser.Node.Dynamic
         private Segment MakeSegment(TimelineItem item, uint repeat)
         {
             ulong start = item.Time + item.Duration * repeat;
-            string uri = media_.Get(bandwidth_, reprId_, item.Number + repeat, (uint)start);
+            string uri = media_.Get(bandwidth_, reprId_, item.Number + repeat, start);
             return MakeSegment(uri, new TimeRange(Scaled(start), Scaled(item.Duration)));
         }
 

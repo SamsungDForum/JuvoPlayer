@@ -29,7 +29,7 @@ namespace JuvoPlayer.HLS
         {
             if (clip == null)
             {
-                throw new ArgumentNullException("clip cannot be null");
+                throw new ArgumentNullException(nameof(clip), "clip cannot be null");
             }
 
             if (!SupportsClip(clip))
@@ -37,10 +37,8 @@ namespace JuvoPlayer.HLS
                 throw new ArgumentException("unsupported clip type");
             }
 
-            var sharedBuffer = new SharedBuffer();
-
             var libPath = Path.Combine(Path.GetDirectoryName(Path.GetDirectoryName(Application.Current.ApplicationInfo.ExecutablePath)), "lib");
-            var demuxer = new FFmpegDemuxer(sharedBuffer, libPath);
+            var demuxer = new FFmpegDemuxer(libPath);
 
             return new HLSDataProvider(demuxer, clip);
         }
@@ -49,7 +47,7 @@ namespace JuvoPlayer.HLS
         {
             if (clip == null)
             {
-                throw new ArgumentNullException("clip cannot be null");
+                throw new ArgumentNullException(nameof(clip), "clip cannot be null");
             }
 
             return string.Equals(clip.Type, "Hls", StringComparison.CurrentCultureIgnoreCase) ||

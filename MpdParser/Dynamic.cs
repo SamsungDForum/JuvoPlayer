@@ -298,7 +298,7 @@ namespace MpdParser.Node.Dynamic
 
     public struct TimelineItem
     {
-        public uint Number;
+        public ulong Number;
         public ulong Time;
         public ulong Duration;
         public int Repeats;
@@ -318,14 +318,14 @@ namespace MpdParser.Node.Dynamic
 
     public class Timeline
     {
-        public static TimelineItem[] FromDuration(uint startNumber, TimeSpan start, TimeSpan duration, uint segDuration, uint timescale)
+        public static TimelineItem[] FromDuration(uint startNumber, TimeSpan start, TimeSpan duration, ulong segDuration, ulong timescale)
         {
-            uint totalDuration = (uint)Math.Ceiling(duration.TotalSeconds * timescale);
-            uint totalStart = (uint)Math.Ceiling(start.TotalSeconds * timescale);
+            ulong totalDuration = (ulong)Math.Ceiling(duration.TotalSeconds * timescale);
+            ulong totalStart = (ulong)Math.Ceiling(start.TotalSeconds * timescale);
             TimeSpan scaledDuration = TimeSpan.FromSeconds((double)segDuration / timescale);
 
-            uint count = totalDuration / segDuration;
-            uint end = count * segDuration;
+            ulong count = totalDuration / segDuration;
+            ulong end = count * segDuration;
 
             TimelineItem[] result = new TimelineItem[totalDuration == end ? 1 : 2];
             result[0].Number = startNumber;
