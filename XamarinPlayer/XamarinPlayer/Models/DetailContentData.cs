@@ -1,6 +1,5 @@
-﻿using JuvoPlayer.Common;
-using System.Collections.Generic;
-using System.Windows.Input;
+﻿using System.Windows.Input;
+using JuvoPlayer.Common;
 
 namespace XamarinPlayer.Models
 {

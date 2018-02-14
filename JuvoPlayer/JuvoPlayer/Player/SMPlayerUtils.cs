@@ -1,9 +1,5 @@
-﻿using Tizen.TV.Smplayer;
-using JuvoPlayer.Common;
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
+﻿using JuvoPlayer.Common;
+using Tizen.TV.Smplayer;
 using StreamType = JuvoPlayer.Common.StreamType;
 
 namespace JuvoPlayer.Player

@@ -1,5 +1,4 @@
-﻿using System;
-using System.Collections.Generic;
+using System;
 using System.IO;
 using System.Linq;
 using System.Net.Http;
@@ -8,6 +7,7 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
 using JuvoPlayer.Common;
+using JuvoPlayer.Common.Logging;
 using Nito.AsyncEx;
 using Tizen.TV.Security.DrmDecrypt;
 using Tizen.TV.Security.DrmDecrypt.emeCDM;
@@ -16,6 +16,8 @@ namespace JuvoPlayer.DRM.Cenc
 {
     class CencSession : IEventListener, IDRMSession
     {
+        private readonly ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
+
         private IEME CDMInstance;
         private string currentSessionId;
         private string initDataString;
@@ -32,7 +34,7 @@ namespace JuvoPlayer.DRM.Cenc
 
         private CencSession(string keySystemName, string scheme)
         {
-            Tizen.Log.Info("JuvoPlayer", scheme);
+            Logger.Info(scheme);
 
             CurrentDrmScheme = scheme;
 
@@ -68,18 +70,18 @@ namespace JuvoPlayer.DRM.Cenc
 
         private void InitializeOnIemeThread(byte[] initData)
         {
-            Tizen.Log.Info("JuvoPlayer", "Initialize DRM");
+            Logger.Info("Initialize DRM");
 
             string sessionId = "";
             var status = CDMInstance.session_create(SessionType.kTemporary, ref sessionId);
             if (status != Status.kSuccess)
             {
-                Tizen.Log.Info("JuvoPlayer", "Could not create IEME session");
+                Logger.Info("Could not create IEME session");
             }
             currentSessionId = sessionId;
             initDataString = EncodeInitData(initData);
 
-            Tizen.Log.Info("JuvoPlayer", "Created session: " + currentSessionId); 
+            Logger.Info("Created session: " + currentSessionId); 
         }
 
         private static string EncodeInitData(byte[] initData)
@@ -106,7 +108,7 @@ namespace JuvoPlayer.DRM.Cenc
             var status = CDMInstance.session_generateRequest(currentSessionId, InitDataType.kCenc, initDataString);
             if (status != Status.kSuccess)
             {
-                Tizen.Log.Info("JuvoPlayer", Thread.CurrentThread.ManagedThreadId + " Could not generate request: " + status.ToString());
+                Logger.Info(Thread.CurrentThread.ManagedThreadId + " Could not generate request: " + status.ToString());
             }
         }
 
@@ -199,12 +201,12 @@ namespace JuvoPlayer.DRM.Cenc
                     }
                     else
                     {
-                        Tizen.Log.Error("JuvoPlayer", "Decryption failed: " + packet.StreamType + " - " + ret);
+                        Logger.Error("Decryption failed: " + packet.StreamType + " - " + ret);
                     }
                 }
                 catch (Exception e)
                 {
-                    Tizen.Log.Error("JuvoPlayer", "exception: " + e.Message);
+                    Logger.Error("exception: " + e.Message);
                 }
                 finally
                 {
@@ -243,7 +245,7 @@ namespace JuvoPlayer.DRM.Cenc
         {
             if (string.IsNullOrEmpty(drmConfiguration?.LicenceUrl))
             {
-                Tizen.Log.Error("JuvoPlayer", "Not configured drm");
+                Logger.Error("Not configured drm");
                 return;
             }
 
@@ -251,7 +253,7 @@ namespace JuvoPlayer.DRM.Cenc
             var licenceUrl = new Uri(drmConfiguration.LicenceUrl);
 
             client.BaseAddress = licenceUrl;
-            Tizen.Log.Info("JuvoPlayer", licenceUrl.AbsoluteUri);
+            Logger.Info(licenceUrl.AbsoluteUri);
 
             var requestData = Encoding.GetEncoding(437).GetBytes(message);
             HttpContent content = new ByteArrayContent(requestData);
@@ -270,7 +272,7 @@ namespace JuvoPlayer.DRM.Cenc
 
             var responseTask = client.PostAsync(licenceUrl, content).Result;
 
-            Tizen.Log.Info("JuvoPlayer", "Response: " + responseTask);
+            Logger.Info("Response: " + responseTask);
             var receiveStream = responseTask.Content.ReadAsStreamAsync();
             var readStream = new StreamReader(receiveStream.Result, Encoding.GetEncoding(437));
             var responseText = readStream.ReadToEnd();
@@ -280,13 +282,13 @@ namespace JuvoPlayer.DRM.Cenc
             var status = CDMInstance.session_update(currentSessionId, responseText);
             if (status != Status.kSuccess)
             {
-                Tizen.Log.Info("JuvoPlayer", "Install licence error: " + status);
+                Logger.Info("Install licence error: " + status);
                 return;
             }
 
             lock (InitializationLocker)
             {
-                Tizen.Log.Info("JuvoPlayer", "Licence installed");
+                Logger.Info("Licence installed");
 
                 IsInitialized = true;
                 Thread.Sleep(1000);
@@ -296,7 +298,7 @@ namespace JuvoPlayer.DRM.Cenc
 
         public override void onMessage(string sessionId, MessageType messageType, string message)
         {
-            Tizen.Log.Info("JuvoPlayer", "Got Ieme message: " + sessionId);
+            Logger.Info("Got Ieme message: " + sessionId);
 
             if (!sessionId.Equals(currentSessionId))
                 return;
@@ -310,7 +312,7 @@ namespace JuvoPlayer.DRM.Cenc
                         break;
                     }
                 default:
-                    Tizen.Log.Info("JuvoPlayer", "unknown message");
+                    Logger.Info("unknown message");
                     break;
             }
         }

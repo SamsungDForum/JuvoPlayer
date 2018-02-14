@@ -1,13 +1,10 @@
 ﻿using System.ComponentModel;
-
 using Xamarin.Forms;
 using Xamarin.Forms.Xaml;
-
-using XamarinPlayer.ViewModels;
-using XamarinPlayer.Models;
 using XamarinPlayer.Controls;
+using XamarinPlayer.Models;
 using XamarinPlayer.Services;
-using JuvoPlayer.Common;
+using XamarinPlayer.ViewModels;
 
 namespace XamarinPlayer.Views
 {

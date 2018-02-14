@@ -11,10 +11,10 @@
 // damages suffered by licensee as a result of using, modifying or distributing
 // this software or its derivatives.
 
-using JuvoPlayer.Common;
-using JuvoPlayer.Common.Delegates;
 using System;
 using System.Collections.Generic;
+using JuvoPlayer.Common;
+using JuvoPlayer.Common.Delegates;
 
 namespace JuvoPlayer.Player
 {

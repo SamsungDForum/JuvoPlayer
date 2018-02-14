@@ -1,6 +1,3 @@
-using System;
-using System.Runtime.InteropServices;
-
 namespace JuvoPlayer.FFmpeg
 {
     public unsafe struct AVAudioFifo

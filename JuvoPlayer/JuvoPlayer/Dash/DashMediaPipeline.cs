@@ -1,17 +1,15 @@
-﻿using JuvoPlayer.Common;
+using System;
+using System.Xml;
+using JuvoPlayer.Common;
+using JuvoPlayer.Common.Logging;
 using JuvoPlayer.DRM.Cenc;
 using MpdParser;
-using System;
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using System.Text;
-using System.Xml;
 
 namespace JuvoPlayer.Dash
 {
     class DashMediaPipeline
     {
+        private readonly ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
         public event DRMInitDataFound DRMInitDataFound;
         public event SetDrmConfiguration SetDrmConfiguration;
         public event StreamConfigReady StreamConfigReady;
@@ -37,7 +35,7 @@ namespace JuvoPlayer.Dash
             if (newMedia == null)
                 throw new ArgumentNullException(nameof(newMedia), "newMedia cannot be null");
 
-            Tizen.Log.Info("JuvoPlayer", "Dash start.");
+            Logger.Info("Dash start.");
 
             dashClient.UpdateMedia(newMedia);
             ParseDrms(newMedia);

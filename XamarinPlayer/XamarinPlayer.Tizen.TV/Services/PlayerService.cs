@@ -1,4 +1,5 @@
-﻿using JuvoPlayer;
+﻿using System;
+using JuvoPlayer;
 using JuvoPlayer.Common;
 using JuvoPlayer.Common.Delegates;
 using JuvoPlayer.Dash;
@@ -7,10 +8,7 @@ using JuvoPlayer.DRM.Cenc;
 using JuvoPlayer.HLS;
 using JuvoPlayer.Player;
 using JuvoPlayer.RTSP;
-using System;
-using System.Threading.Tasks;
 using Xamarin.Forms;
-using Xamarin.Forms.Platform.Tizen;
 using XamarinPlayer.Services;
 using XamarinPlayer.Tizen.Services;
 

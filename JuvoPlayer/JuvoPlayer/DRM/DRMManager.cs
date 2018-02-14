@@ -1,13 +1,15 @@
-﻿using JuvoPlayer.Common;
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
+using JuvoPlayer.Common;
+using JuvoPlayer.Common.Logging;
 
 namespace JuvoPlayer.DRM
 {
     public class DRMManager : IDRMManager
     {
+        private readonly ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
+
         private List<IDRMHandler> drmHandlers = new List<IDRMHandler>();
         private List<DRMDescription> clipDrmConfiguration = new List<DRMDescription>();
         public DRMManager()
@@ -16,7 +18,7 @@ namespace JuvoPlayer.DRM
 
         public void UpdateDrmConfiguration(DRMDescription drmDescription)
         {
-            Tizen.Log.Info("JuvoPlayer", "UpdateDrmConfiguration");
+            Logger.Info("UpdateDrmConfiguration");
 
             var currentDescription = clipDrmConfiguration.FirstOrDefault(o => SchemeEquals(o.Scheme, drmDescription.Scheme));
             if (currentDescription == null)
@@ -38,11 +40,11 @@ namespace JuvoPlayer.DRM
 
         public IDRMSession CreateDRMSession(DRMInitData data)
         {
-            Tizen.Log.Info("JuvoPlayer", "Create Drmsession");
+            Logger.Info("Create Drmsession");
             var handler = drmHandlers.FirstOrDefault(o => o.SupportsSystemId(data.SystemId));
             if (handler == null)
             {
-                Tizen.Log.Info("JuvoPlayer", "unknown drm init data");
+                Logger.Info("unknown drm init data");
                 return null;
             }
 
@@ -50,7 +52,7 @@ namespace JuvoPlayer.DRM
             var drmConfiguration = clipDrmConfiguration.FirstOrDefault(o => SchemeEquals(o.Scheme, session.CurrentDrmScheme));
             if (drmConfiguration == null)
             {
-                Tizen.Log.Info("JuvoPlayer", "drm not configured");
+                Logger.Info("drm not configured");
                 return null;
             }
 

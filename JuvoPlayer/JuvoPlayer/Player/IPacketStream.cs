@@ -12,7 +12,6 @@
 // this software or its derivatives.
 
 using JuvoPlayer.Common;
-using JuvoPlayer.DRM;
 
 namespace JuvoPlayer.Player
 {
