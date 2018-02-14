@@ -1,0 +1,17 @@
+stages:
+  - build
+  - test
+
+before_script:
+  - dotnet sln remove NUIPlayer/NUIPlayer/NUIPlayer.csproj
+  - mono ~/bin/nuget.exe restore
+
+build:
+  stage: build
+  script:
+    - msbuild
+
+test:
+  stage: test
+  script:
+    - dotnet test JuvoPlayer.Tests/JuvoPlayer.Tests.csproj
