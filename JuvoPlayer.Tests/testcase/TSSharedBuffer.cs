@@ -10,12 +10,12 @@ namespace JuvoPlayer.Tests
     [Description("Tests for SharedBuffer class - cyclic, expandable byte array buffer.")]
     class SharedBufferTests
     {
-        private static SharedBuffer buffer;
+        private static FramesSharedBuffer buffer;
 
         [SetUp]
         public static void Init()
         {
-            buffer = new SharedBuffer();
+            buffer = new FramesSharedBuffer();
         }
 
         [TearDown]
@@ -76,7 +76,7 @@ namespace JuvoPlayer.Tests
             Assert.AreEqual(buffer.Length(), 0);
         }
 
-        private static void WritingTask(SharedBuffer buffer, ref bool success, int size, int averageChunkSize, int averageSleepTime)
+        private static void WritingTask(FramesSharedBuffer buffer, ref bool success, int size, int averageChunkSize, int averageSleepTime)
         {
             Random rnd = new Random();
             for (int written = 0, chunk = 0; written < size; written += chunk)
@@ -89,7 +89,7 @@ namespace JuvoPlayer.Tests
             success = true;
         }
 
-        private static void ReadingTask(SharedBuffer buffer, ref bool success, int size, int averageChunkSize, int averageSleepTime)
+        private static void ReadingTask(FramesSharedBuffer buffer, ref bool success, int size, int averageChunkSize, int averageSleepTime)
         {
             Random rnd = new Random();
             for (int read = 0, chunk = 0; read < size; read += chunk)
@@ -102,7 +102,7 @@ namespace JuvoPlayer.Tests
             success = true;
         }
 
-        private static bool WriteConsecutiveValues(SharedBuffer buffer, int startingValue, int numberOfValues)
+        private static bool WriteConsecutiveValues(FramesSharedBuffer buffer, int startingValue, int numberOfValues)
         {
             byte[] data = new byte[numberOfValues];
             for (int i = 0; i < numberOfValues; ++i)
@@ -112,14 +112,15 @@ namespace JuvoPlayer.Tests
         }
 
 
-        private static bool ReadConsecutiveValues(SharedBuffer buffer, int startingValue, ref int numberOfValues)
+        private static bool ReadConsecutiveValues(FramesSharedBuffer buffer, int startingValue, ref int numberOfValues)
         {
-            byte[] data = new byte[0];
+            ArraySegment<byte>? data = null;
             int size = numberOfValues;
             Assert.DoesNotThrow(() => data = buffer.ReadData(size), "SharedBuffer reading data failed.");
-            numberOfValues = data.Length;
+            Assert.NotNull(data);
+            numberOfValues = data.Value.Count;
             for(int i = 0; i < numberOfValues; ++i)
-                if (data[i] != (byte) ((startingValue + i) % byte.MaxValue))
+                if (data.Value.Array[i] != (byte) ((startingValue + i) % byte.MaxValue))
                     return false;
             return true;
         }

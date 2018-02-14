@@ -45,9 +45,9 @@ namespace JuvoPlayer.Dash
 
         private static DashMediaPipeline CreateMediaPipeline(StreamType streamType, string libPath)
         {
-            var sharedBuffer = new SharedBuffer();
+            var sharedBuffer = new ChunksSharedBuffer();
             IDashClient dashClient = new DashClient(sharedBuffer, streamType);
-            IDemuxer demuxer = new FFmpegDemuxer(sharedBuffer, libPath);
+            IDemuxer demuxer = new FFmpegDemuxer(libPath, sharedBuffer);
 
             return new DashMediaPipeline(dashClient, demuxer, streamType);
         }

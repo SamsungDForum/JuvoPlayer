@@ -12,17 +12,18 @@
 // this software or its derivatives.
 
 
+using System;
+
 namespace JuvoPlayer.Common
 {
     public interface ISharedBuffer
     {
         void ClearData();
 
-        // SharedBuffer::ReadData(int size) is blocking - it will block until it has enough data or return less data if EOF is reached.
+        // ISharedBuffer::ReadData(int size) is blocking - it will block until it has enough data or return less data if EOF is reached.
         // Returns byte array of leading [size] bytes of data from the buffer; it should remove the leading [size] bytes of data from the buffer.
-        byte[] ReadData(int size);
-        
-        void WriteData(byte[] data, bool endOfData = false);
+        ArraySegment<byte>? ReadData(int size);
 
+        void WriteData(byte[] data, bool endOfData = false);
     }
 }

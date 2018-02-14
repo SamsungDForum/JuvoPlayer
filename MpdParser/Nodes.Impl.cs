@@ -147,7 +147,7 @@ namespace MpdParser.Node
             return Get(dict);
         }
 
-        public string Get(uint? bandwidth, string reprId, uint number, uint time)
+        public string Get(uint? bandwidth, string reprId, ulong number, ulong time)
         {
             Dictionary<string, object> dict = new Dictionary<string, object>()
             {
