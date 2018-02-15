@@ -50,6 +50,7 @@ namespace JuvoPlayer.Player
 
         private bool needDataVideo, needDataAudio;
         private bool needDataInitMode = true;
+        private bool stopped;
 
         private readonly AutoResetEvent needDataEvent = new AutoResetEvent(false);
         private object needDataLock = new object();
@@ -141,14 +142,16 @@ namespace JuvoPlayer.Player
 
         public unsafe void SubmittingPacketsTask()
         {
-            for (int i = 0; true; ++i)
+            while (true)
             {
-                if ((needDataAudio == true && needDataVideo == true) // both must be needed, so we can choose the one with lower pts
-                    || (needDataInitMode == true && (needDataAudio == true || needDataVideo == true)))
+                if (stopped)
+                    return;
+
+                if ((needDataAudio && needDataVideo) // both must be needed, so we can choose the one with lower pts
+                    || (needDataInitMode && (needDataAudio || needDataVideo)))
                 { // but for first OnNeedData - we're sending both video and audio till first OnEnoughData
                     needDataInitMode = false;
 
-//                    Logger.Info("SubmittingPacketsTask: Feeding (" + i.ToString() + ").");
 //                    Logger.Info("SubmittingPacketsTask: AUDIO: " + audioBuffer.Count().ToString() + ", VIDEO: " + videoBuffer.Count().ToString());
 
                     StreamPacket packet = DequeuePacket();
@@ -165,6 +168,7 @@ namespace JuvoPlayer.Player
                 else
                 {
                     // Logger.Info("SubmittingPacketsTask: Need to wait one.");
+
                     needDataEvent.WaitOne();
                 }
             }
@@ -374,6 +378,11 @@ namespace JuvoPlayer.Player
 
         public void Stop() // TODO(g.skowinski): Handle asynchronicity.
         {
+            stopped = true;
+
+            audioBuffer.Clear();
+            videoBuffer.Clear();
+
             playerInstance.Stop(); // This is async method - wait for D2TV_MESSAGE_STOP_SUCCESS message before doing anything else with the player.
 
             playCalled = false;
@@ -410,7 +419,14 @@ namespace JuvoPlayer.Player
             else
                 return;
 
-            needDataEvent.Set();
+            try
+            {
+                needDataEvent.Set();
+            }
+            catch (Exception)
+            {
+                // ignored
+            }
         }
 
         public void OnSeekData(StreamType streamType, System.UInt64 offset)
@@ -484,11 +500,16 @@ namespace JuvoPlayer.Player
 
         private void Dispose(bool disposing)
         {
-            ReleaseUnmanagedResources();
             if (disposing)
             {
+                stopped = true;
+                audioBuffer.Clear();
+                videoBuffer.Clear();
+
+                needDataEvent?.Set();
                 needDataEvent?.Dispose();
             }
+            ReleaseUnmanagedResources();
         }
 
         public void Dispose()
