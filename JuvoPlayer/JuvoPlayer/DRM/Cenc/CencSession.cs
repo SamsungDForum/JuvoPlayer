@@ -37,10 +37,10 @@ namespace JuvoPlayer.DRM.Cenc
 
             thread = new AsyncContextThread();
 
-            DispatchOnIEMEThread(() => CreateIemeOnIemeThread(keySystemName));
+            DispatchOnIemeThread(() => CreateIemeOnIemeThread(keySystemName));
         }
 
-        private void DispatchOnIEMEThread(Action action)
+        private void DispatchOnIemeThread(Action action)
         {
             thread.Factory.Run(action);
         }
@@ -53,7 +53,7 @@ namespace JuvoPlayer.DRM.Cenc
         private void ReleaseUnmanagedResources()
         {
             if (CDMInstance != null)
-                IEME.destroy(CDMInstance);
+                DispatchOnIemeThread(() => IEME.destroy(CDMInstance));
             CDMInstance = null;
         }
 
@@ -73,7 +73,7 @@ namespace JuvoPlayer.DRM.Cenc
 
         private bool Initialize(byte[] initData)
         {
-            DispatchOnIEMEThread(() => InitializeOnIemeThread(initData));
+            DispatchOnIemeThread(() => InitializeOnIemeThread(initData));
 
             return true;
         }
@@ -110,7 +110,7 @@ namespace JuvoPlayer.DRM.Cenc
 
         public void Start()
         {
-            DispatchOnIEMEThread(StartOnIemeThread);
+            DispatchOnIemeThread(StartOnIemeThread);
         }
 
         private void StartOnIemeThread()
@@ -163,7 +163,7 @@ namespace JuvoPlayer.DRM.Cenc
                 param[0].pkid = pkid;
                 param[0].ukidlen = (uint)data.KeyId.Length;
 
-                var subsamplePointer = IntPtr.Zero; ;
+                var subsamplePointer = IntPtr.Zero;
 
                 MSD_FMP4_DATA subData;
                 if (data.Subsamples != null)
@@ -316,7 +316,7 @@ namespace JuvoPlayer.DRM.Cenc
                 case MessageType.kLicenseRequest:
                 case MessageType.kIndividualizationRequest:
                     {
-                        DispatchOnIEMEThread(() => RequestLicenceOnIemeThread(message));
+                        DispatchOnIemeThread(() => RequestLicenceOnIemeThread(message));
                         break;
                     }
                 default:
