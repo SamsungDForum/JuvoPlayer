@@ -80,6 +80,7 @@ namespace JuvoPlayer.Dash
             currentTime = time;
             try
             {
+                //this can throw when event is received after Dispose() was called
                 timeUpdatedEvent.Set();
 
             }

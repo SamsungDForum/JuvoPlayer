@@ -29,6 +29,7 @@ namespace JuvoPlayer.Common
                     try
                     {
                         API.ReleaseHandle(HandleSize);
+                        CleanHandle();
                     }
                     catch (Exception e)
                     {
