@@ -299,9 +299,7 @@ namespace JuvoPlayer.DRM.Cenc
             lock (initializationLocker)
             {
                 Logger.Info("Licence installed");
-
                 isInitialized = true;
-                Thread.Sleep(1000);
                 Monitor.PulseAll(initializationLocker);
             }
         }
