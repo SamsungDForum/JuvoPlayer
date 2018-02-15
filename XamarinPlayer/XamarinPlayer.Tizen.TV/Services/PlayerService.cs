@@ -126,7 +126,10 @@ namespace XamarinPlayer.Tizen.Services
             {
                 ControllerConnector.DisconnectDataProvider(playerController, dataProvider);
                 playerController?.Dispose();
+                playerController = null;
                 dataProvider?.Dispose();
+                dataProvider = null;
+                GC.Collect();
             }
         }
     }

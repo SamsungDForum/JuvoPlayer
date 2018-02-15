@@ -11,8 +11,8 @@ namespace JuvoPlayer.Dash
         private readonly ILogger Logger = LoggerManager.GetInstance().GetLogger(Tag);
 
         private readonly DashManifest manifest;
-        private readonly DashMediaPipeline audioPipeline;
-        private readonly DashMediaPipeline videoPipeline;
+        private DashMediaPipeline audioPipeline;
+        private DashMediaPipeline videoPipeline;
 
         public DashDataProvider(
             DashManifest manifest,
@@ -153,6 +153,9 @@ namespace JuvoPlayer.Dash
         public void Dispose()
         {
             OnStopped();
+
+            audioPipeline = null;
+            videoPipeline = null;
         }
     }
 }
