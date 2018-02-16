@@ -39,14 +39,12 @@ namespace MpdParser.Node.Dynamic
         public readonly Uri Url;
         public readonly string ByteRange;
         public readonly TimeRange Period;
-        public readonly bool EndSegment;
 
-        public Segment(Uri url, string range, TimeRange period = null, bool eof = false)
+        public Segment(Uri url, string range, TimeRange period = null)
         {
             Url = url;
             ByteRange = range;
             Period = period;
-            EndSegment = eof;
         }
 
         internal TimeRelation Contains(TimeSpan time_point)
