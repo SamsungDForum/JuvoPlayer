@@ -22,14 +22,14 @@ namespace JuvoPlayer.Player
         private readonly IDRMManager drmManager;
         private readonly IPlayerAdapter playerAdapter;
         private IDRMSession drmSession;
-        private AudioStreamConfig config;
+        private AudioStreamConfig audioConfig;
 
         private bool forceDrmChange;
 
         public AudioPacketStream(IPlayerAdapter player, IDRMManager drmManager)
         {
             this.drmManager = drmManager ?? throw new ArgumentNullException(nameof(drmManager), "drmManager cannot be null");
-            this.playerAdapter = player ?? throw new ArgumentNullException(nameof(player), "player cannot be null");
+            playerAdapter = player ?? throw new ArgumentNullException(nameof(player), "player cannot be null");
         }
 
         public void OnAppendPacket(StreamPacket packet)
@@ -37,7 +37,7 @@ namespace JuvoPlayer.Player
             if (packet.StreamType != StreamType.Audio)
                 throw new ArgumentException("packet should be audio");
 
-            if (packet.IsEOS && config == null)
+            if (packet.IsEOS && audioConfig == null)
                 return;
 
             if (drmSession != null && packet is EncryptedStreamPacket)
@@ -54,11 +54,11 @@ namespace JuvoPlayer.Player
             if (!(config is AudioStreamConfig))
                 throw new ArgumentException("config should be audioconfig");
 
-            forceDrmChange = this.config != null && !this.config.Equals(config);
+            forceDrmChange = audioConfig != null && !audioConfig.Equals(config);
 
-            this.config = (AudioStreamConfig) config;
+            audioConfig = (AudioStreamConfig) config;
 
-            playerAdapter.SetAudioStreamConfig(this.config);
+            playerAdapter.SetAudioStreamConfig(audioConfig);
         }
 
         public void OnClearStream()
