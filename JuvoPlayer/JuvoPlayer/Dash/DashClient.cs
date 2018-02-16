@@ -182,6 +182,8 @@ namespace JuvoPlayer.Dash
             IRepresentationStream streamSegments)
         {
             var initSegment = streamSegments.InitSegment;
+            if (initSegment == null)
+                return;
 
             Logger.Info(string.Format("{0} Downloading Init segment: {1} {2}", 
                 streamType, initSegment.ByteRange, initSegment.Url));
