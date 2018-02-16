@@ -101,8 +101,24 @@ namespace XamarinPlayer.Views
 
         private void OnPlaybackCompleted()
         {
-            UpdatePlayTime();
-            Show();
+            if (_playerService.State != PlayerState.Error)
+            {
+                // Schedule closing the page on the next event loop. Give application time to finish
+                // playbackCompleted event handling
+                Device.StartTimer(TimeSpan.FromMilliseconds(0), () =>
+                {
+                    Navigation.RemovePage(this);
+
+                    return false;
+                });
+                
+            }
+            else
+            {
+                // TODO: display an error
+                UpdatePlayTime();
+                Show();
+            }
         }
 
         private void OnShowSubtitle(Subtitle subtitle)
