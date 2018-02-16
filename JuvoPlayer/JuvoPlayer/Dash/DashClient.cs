@@ -62,6 +62,8 @@ namespace JuvoPlayer.Dash
         public void Stop()
         {
             playback = false;
+            timeUpdatedEvent.Set();
+
             sharedBuffer?.WriteData(null, true);
         }
 
@@ -76,7 +78,16 @@ namespace JuvoPlayer.Dash
         public void OnTimeUpdated(TimeSpan time)
         {
             currentTime = time;
-            timeUpdatedEvent.Set();
+            try
+            {
+                //this can throw when event is received after Dispose() was called
+                timeUpdatedEvent.Set();
+
+            }
+            catch (Exception e)
+            {
+                // ignored
+            }
         }
 
         private void DownloadThread()
@@ -92,10 +103,13 @@ namespace JuvoPlayer.Dash
 
             var bufferTime = TimeSpan.Zero;
             currentSegmentId = 0;
-            while (playback)
+            while (true) 
             {
-                while (bufferTime - currentTime > MagicBufferTime)
+                while (bufferTime - currentTime > MagicBufferTime && playback)
                     timeUpdatedEvent.WaitOne();
+
+                if (!playback)
+                    return;
 
                 try
                 {
@@ -208,19 +222,19 @@ namespace JuvoPlayer.Dash
 
     public class WebClientEx : WebClient
     {
-        private long? _from;
-        private long? _to;
+        private long? from;
+        private long? to;
 
         public void SetRange(long from, long to)
         {
-            _from = from;
-            _to = to;
+            this.from = from;
+            this.to = to;
         }
 
         public void ClearRange()
         {
-            _from = null;
-            _to = null;
+            from = null;
+            to = null;
         }
 
         public ulong GetBytes(Uri address)
@@ -232,9 +246,9 @@ namespace JuvoPlayer.Dash
         protected override WebRequest GetWebRequest(Uri address)
         {
             var request = (HttpWebRequest)base.GetWebRequest(address);
-            if (_to != null && _from != null)
+            if (to != null && from != null)
             {
-                request?.AddRange((int)_from, (int)_to);
+                request?.AddRange((int)from, (int)to);
             }
             return request;
         }

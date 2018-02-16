@@ -204,6 +204,8 @@ namespace JuvoPlayer.Player
         public void Dispose()
         {
             playerAdapter?.Dispose();
+            foreach (var stream in Streams.Values)
+                stream.Dispose();
         }
     }
 }
