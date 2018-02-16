@@ -95,6 +95,9 @@ namespace JuvoPlayer.Dash
                         continue;
                     }
 
+                    if (doc.FirstChild?.ChildNodes == null)
+                        continue;
+
                     foreach (XmlNode node in doc.FirstChild?.ChildNodes)
                     {
                         var type = node.Attributes?.GetNamedItem("type")?.Value;

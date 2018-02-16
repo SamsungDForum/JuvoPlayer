@@ -11,17 +11,17 @@ namespace JuvoPlayer.RTSP
     {
         private readonly ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
 
-        private UdpClient dataSocket = null;
-        private UdpClient controlSocket = null;
+        private readonly UdpClient dataSocket = null;
+        private readonly UdpClient controlSocket = null;
 
         private Thread dataReadThread = null;
         private Thread controlReadThread = null;
 
-        public int dataPort = 50000;
-        public int controlPort = 50001;
+        public int DataPort;
+        public int ControlPort;
 
-        IPAddress dataMulticastAddr;
-        IPAddress controlMulticastAddr;
+        readonly IPAddress dataMulticastAddr;
+        readonly IPAddress controlMulticastAddr;
 
         public bool IsMulticast { get; private set; }
 
@@ -34,30 +34,28 @@ namespace JuvoPlayer.RTSP
             IsMulticast = false;
 
             // open a pair of UDP sockets - one for data (video or audio) and one for the status channel (RTCP messages)
-            dataPort = startPort;
-            controlPort = startPort + 1;
+            DataPort = startPort;
+            ControlPort = startPort + 1;
 
             bool ok = false;
-            while (ok == false && (controlPort < endPort))
+            while (ok == false && (ControlPort < endPort))
             {
                 // Video/Audio port must be odd and command even (next one)
                 try
                 {
-                    dataSocket = new UdpClient(dataPort);
-                    controlSocket = new UdpClient(controlPort);
+                    dataSocket = new UdpClient(DataPort);
+                    controlSocket = new UdpClient(ControlPort);
                     ok = true;
                 }
                 catch (SocketException)
                 {
                     // Fail to allocate port, try again
-                    if (dataSocket != null)
-                        dataSocket.Dispose();
-                    if (controlSocket != null)
-                        controlSocket.Dispose();
+                    dataSocket?.Dispose();
+                    controlSocket?.Dispose();
 
                     // try next data or control port
-                    dataPort += 2;
-                    controlPort += 2;
+                    DataPort += 2;
+                    ControlPort += 2;
                 }
             }
 
@@ -76,13 +74,13 @@ namespace JuvoPlayer.RTSP
             IsMulticast = true;
 
             // open a pair of UDP sockets - one for data (video or audio) and one for the status channel (RTCP messages)
-            this.dataPort = dataMulticastPort;
-            this.controlPort = controlMulticastPort;
+            this.DataPort = dataMulticastPort;
+            this.ControlPort = controlMulticastPort;
 
             try
             {
-                IPEndPoint dataEndPoint = new IPEndPoint(IPAddress.Any, dataPort);
-                IPEndPoint controlEndPoint = new IPEndPoint(IPAddress.Any, controlPort);
+                IPEndPoint dataEndPoint = new IPEndPoint(IPAddress.Any, DataPort);
+                IPEndPoint controlEndPoint = new IPEndPoint(IPAddress.Any, ControlPort);
 
                 dataMulticastAddr = IPAddress.Parse(dataMulticastAddress);
                 controlMulticastAddr = IPAddress.Parse(controlMulticastAddress);
@@ -103,10 +101,8 @@ namespace JuvoPlayer.RTSP
             catch (SocketException)
             {
                 // Fail to allocate port, try again
-                if (dataSocket != null)
-                    dataSocket.Dispose();
-                if (controlSocket != null)
-                    controlSocket.Dispose();
+                dataSocket?.Dispose();
+                controlSocket?.Dispose();
 
                 return;
             }
@@ -127,12 +123,12 @@ namespace JuvoPlayer.RTSP
                 throw new InvalidOperationException("Forwarder was stopped, can't restart it");
             }
 
-            dataReadThread = new Thread(() => DoWorkerJob(dataSocket, dataPort));
-            dataReadThread.Name = "DataPort " + dataPort;
+            dataReadThread = new Thread(() => DoWorkerJob(dataSocket, DataPort));
+            dataReadThread.Name = "DataPort " + DataPort;
             dataReadThread.Start();
 
-            controlReadThread = new Thread(() => DoWorkerJob(controlSocket, controlPort));
-            controlReadThread.Name = "ControlPort " + controlPort;
+            controlReadThread = new Thread(() => DoWorkerJob(controlSocket, ControlPort));
+            controlReadThread.Name = "ControlPort " + ControlPort;
             controlReadThread.Start();
         }
 

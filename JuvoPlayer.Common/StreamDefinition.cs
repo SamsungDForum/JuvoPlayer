@@ -15,10 +15,6 @@ namespace JuvoPlayer.Common
 {
     public abstract class StreamDefinition
     {
-        public StreamDefinition()
-        {
-        }
-
         public int Id { get; set; }
 
         public abstract StreamType StreamType();

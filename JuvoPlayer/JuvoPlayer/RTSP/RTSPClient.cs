@@ -34,7 +34,7 @@ namespace JuvoPlayer.RTSP
         int videoDataChannel = -1;     // RTP Channel Number used for the video stream or the UDP port number
         int videoRTCPChannel = -1;     // RTP Channel Number used for the rtcp status report messages OR the UDP port number
 
-        ISharedBuffer buffer;
+        readonly ISharedBuffer buffer;
 
         Timer timer = null;
         AutoResetEvent timerResetEvent = null;
@@ -133,12 +133,10 @@ namespace JuvoPlayer.RTSP
             rtspListener.SendMessage(teardownMessage);
 
             // clear up any UDP sockets
-            if (udpPair != null)
-                udpPair.Stop();
+            udpPair?.Stop();
 
             // Stop the keepalive timer
-            if (timer != null)
-                timer.Dispose();
+            timer?.Dispose();
 
             // Drop the RTSP session
             rtspListener.Stop();
@@ -357,8 +355,8 @@ namespace JuvoPlayer.RTSP
                 {
                     // Server sends the RTP packets to a Pair of UDP Ports (one for data, one for rtcp control messages)
                     // Example for UDP mode                   Transport: RTP/AVP;unicast;client_port=8000-8001
-                    videoDataChannel = udpPair.dataPort;     // Used in DataReceived event handler
-                    videoRTCPChannel = udpPair.controlPort;  // Used in DataReceived event handler
+                    videoDataChannel = udpPair.DataPort;     // Used in DataReceived event handler
+                    videoRTCPChannel = udpPair.ControlPort;  // Used in DataReceived event handler
                     return new RtspTransport()
                     {
                         LowerTransport = RtspTransport.LowerTransportType.UDP,

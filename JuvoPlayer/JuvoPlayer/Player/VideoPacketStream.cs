@@ -19,17 +19,18 @@ namespace JuvoPlayer.Player
 {
     public class VideoPacketStream : IPacketStream
     {
-        private IDRMManager drmManager;
+
+        private readonly IDRMManager drmManager;
+        private readonly IPlayerAdapter playerAdapter;
         private IDRMSession drmSession;
-        private IPlayerAdapter playerAdapter;
-        private VideoStreamConfig config;
+        private VideoStreamConfig videoConfig;
 
         private bool forceDrmChange;
 
         public VideoPacketStream(IPlayerAdapter player, IDRMManager drmManager)
         {
-            this.drmManager = drmManager ?? throw new ArgumentNullException("drmManager cannot be null");
-            this.playerAdapter = player ?? throw new ArgumentNullException("player cannot be null");
+            this.drmManager = drmManager ?? throw new ArgumentNullException(nameof(drmManager), "drmManager cannot be null");
+            playerAdapter = player ?? throw new ArgumentNullException(nameof(drmManager), "player cannot be null");
         }
 
         public void OnAppendPacket(StreamPacket packet)
@@ -37,7 +38,7 @@ namespace JuvoPlayer.Player
             if (packet.StreamType != StreamType.Video)
                 throw new ArgumentException("packet should be video");
 
-            if (packet.IsEOS && config == null)
+            if (packet.IsEOS && videoConfig == null)
                 return;
 
             if (drmSession != null && packet is EncryptedStreamPacket)
@@ -54,11 +55,11 @@ namespace JuvoPlayer.Player
             if (!(config is VideoStreamConfig))
                 throw new ArgumentException("config should be videoconfig");
 
-            forceDrmChange = this.config != null && !this.config.Equals(config);
+            forceDrmChange = videoConfig != null && !videoConfig.Equals(config);
 
-            this.config = (VideoStreamConfig) config;
+            videoConfig = (VideoStreamConfig) config;
 
-            playerAdapter.SetVideoStreamConfig(this.config);
+            playerAdapter.SetVideoStreamConfig(videoConfig);
         }
 
         public void OnClearStream()

@@ -26,7 +26,7 @@ namespace JuvoPlayer.Player
 
         private ElmSharp.Window playerContainer;
 
-        private Tizen.Multimedia.Player player;
+        private readonly Tizen.Multimedia.Player player;
         private MediaStreamSource source = null;
         private AudioMediaFormat audioFormat = null;
         private VideoMediaFormat videoFormat = null;
@@ -80,7 +80,7 @@ namespace JuvoPlayer.Player
         {
             Logger.Info("OnPlaybackCompleted");
 
-            PlaybackCompleted();
+            PlaybackCompleted?.Invoke();
         }
 
         private void OnErrorOccured(object sender, PlayerErrorOccurredEventArgs e)
@@ -160,7 +160,7 @@ namespace JuvoPlayer.Player
         public void SetAudioStreamConfig(AudioStreamConfig config)
         {
             if (config == null)
-                throw new ArgumentNullException("config cannot be null");
+                throw new ArgumentNullException(nameof(config), "config cannot be null");
 
             audioFormat = new AudioMediaFormat(CastAudioCodedToAudioMimeType(config.Codec), config.ChannelLayout, config.SampleRate, config.BitsPerChannel, config.BitRate);
 
@@ -220,7 +220,7 @@ namespace JuvoPlayer.Player
         public void SetVideoStreamConfig(VideoStreamConfig config)
         {
             if (config == null)
-                throw new ArgumentNullException("config cannot be null");
+                throw new ArgumentNullException(nameof(config), "config cannot be null");
 
             videoFormat = new VideoMediaFormat(CastVideoCodedToAudioMimeType(config.Codec), config.Size, config.FrameRateNum/config.FrameRateDen, config.BitRate);
 
