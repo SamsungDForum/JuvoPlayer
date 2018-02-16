@@ -235,6 +235,8 @@ namespace JuvoPlayer.Dash
 
     public class WebClientEx : WebClient
     {
+        private static readonly TimeSpan WebRequestTimeout = TimeSpan.FromSeconds(10);
+
         private long? from;
         private long? to;
 
@@ -259,9 +261,13 @@ namespace JuvoPlayer.Dash
         protected override WebRequest GetWebRequest(Uri address)
         {
             var request = (HttpWebRequest)base.GetWebRequest(address);
-            if (to != null && from != null)
+            if (request != null)
             {
-                request?.AddRange((int)from, (int)to);
+                request.Timeout = (int)WebRequestTimeout.TotalMilliseconds;
+                if (to != null && from != null)
+                {
+                    request.AddRange((int)from, (int) to);
+                }
             }
             return request;
         }
