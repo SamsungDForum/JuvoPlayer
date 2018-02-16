@@ -421,6 +421,7 @@ namespace JuvoPlayer.Player
 
             try
             {
+                // this can throw when event is received after Dispose() was called
                 needDataEvent.Set();
             }
             catch (Exception)
