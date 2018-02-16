@@ -294,24 +294,16 @@ namespace MpdParser.Node.Dynamic
                 (lb,hb, starttime, duration) = sidx.GetRangeData(pos);
                 if (lb != hb)
                 {
-                    bool lastsegment = false;
-                    if (pos == sidx.MovieIndexCount - 1)
-                    {
-                        lastsegment = true;
-                    }
-
-
                     string rng = lb.ToString() + "-" + hb.ToString();
 
                     res = new Segment(media_.Url, rng,
-                                        new TimeRange(starttime,duration),
-                                         lastsegment);
+                                        new TimeRange(starttime,duration));
 
-                    Logger.Info(string.Format("Range {0}-{1} set {2} POS={3} StartTime={4} Duration={5} IsLast={6} {7}",
+                    Logger.Info(string.Format("Range {0}-{1} set {2} POS={3} StartTime={4} Duration={5} {6}",
                                     lb, hb, rng, pos, 
                                     starttime,
                                     duration,
-                                    lastsegment, media_.Url.ToString()));
+                                    media_.Url.ToString()));
                     break;
                 }
             }
