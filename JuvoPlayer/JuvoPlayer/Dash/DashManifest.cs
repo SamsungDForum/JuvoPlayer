@@ -17,7 +17,7 @@ namespace JuvoPlayer.Dash
         {
             Uri = new Uri(
                 url ?? throw new ArgumentNullException(
-                    "Dash manifest url is empty."));
+                    nameof(url), "Dash manifest url is empty."));
             XmlManifest = DownloadManifest();
             Document = ParseManifest();
 
@@ -52,7 +52,7 @@ namespace JuvoPlayer.Dash
             try
             {
                 var document = Document.FromText(
-                    XmlManifest ?? throw new ArgumentNullException(
+                    XmlManifest ?? throw new InvalidOperationException(
                         "Xml manifest is empty."),
                     Uri.ToString());
                 return document;

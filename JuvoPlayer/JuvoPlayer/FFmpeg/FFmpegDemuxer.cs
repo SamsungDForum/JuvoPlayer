@@ -458,12 +458,14 @@ namespace JuvoPlayer.FFmpeg
                 return;
             }
             AVStream* s = formatContext->streams[videoIdx];
-            VideoStreamConfig config = new VideoStreamConfig();
-            config.Codec = ConvertVideoCodec(s->codecpar->codec_id);
-            config.CodecProfile = s->codecpar->profile;
-            config.Size = new Tizen.Multimedia.Size(s->codecpar->width, s->codecpar->height);
-            config.FrameRateNum = s->r_frame_rate.num;
-            config.FrameRateDen = s->r_frame_rate.den;
+            var config = new VideoStreamConfig
+            {
+                Codec = ConvertVideoCodec(s->codecpar->codec_id),
+                CodecProfile = s->codecpar->profile,
+                Size = new Tizen.Multimedia.Size(s->codecpar->width, s->codecpar->height),
+                FrameRateNum = s->r_frame_rate.num,
+                FrameRateDen = s->r_frame_rate.den
+            };
 
             if (s->codecpar->extradata_size > 0)
             {
