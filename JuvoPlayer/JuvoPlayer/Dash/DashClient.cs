@@ -28,6 +28,7 @@ namespace JuvoPlayer.Dash
 
         private bool playback;
         private IRepresentationStream currentStreams;
+        private Task downloadTask;
 
         public DashClient(ISharedBuffer sharedBuffer, StreamType streamType)
         {
@@ -38,9 +39,16 @@ namespace JuvoPlayer.Dash
 
         public void Seek(TimeSpan position)
         {
+            Logger.Info("seek: " + position);
+
             var segmentId = currentStreams?.MediaSegmentAtTime(position);
             if (segmentId != null)
+            {
+                DownloadInitSegment(currentStreams);
+
+                currentTime = position;
                 currentSegmentId = segmentId.Value;
+            }
         }
 
         public void Start()
@@ -57,15 +65,22 @@ namespace JuvoPlayer.Dash
             Logger.Info(representation.ToString());
             currentStreams = representation.Segments;
 
-            Task.Run(() => DownloadThread()); 
+            downloadTask = Task.Run(() => DownloadThread()); 
         }
 
         public void Stop()
         {
+            // playback has been already stopped
+            if (!playback)
+                return;
+
             playback = false;
             timeUpdatedEvent.Set();
 
             sharedBuffer?.WriteData(null, true);
+            downloadTask.Wait();
+            Logger.Info("Data downloader stopped");
+
         }
 
         public bool UpdateMedia(Media newMedia)

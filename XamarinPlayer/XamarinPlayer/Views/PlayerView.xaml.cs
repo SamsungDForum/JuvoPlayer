@@ -11,7 +11,7 @@ namespace XamarinPlayer.Views
     {
         private readonly int DefaultTimeout = 5000;
         private readonly TimeSpan UpdateInterval = new TimeSpan(0, 0, 0, 0, 100);
-        private readonly TimeSpan DefaultSeekTime = new TimeSpan(0, 0, 0, 10, 0);
+        private readonly TimeSpan DefaultSeekTime = new TimeSpan(0, 0, 0, 20, 0);
 
         private IPlayerService _playerService;
         private int _hideTime;

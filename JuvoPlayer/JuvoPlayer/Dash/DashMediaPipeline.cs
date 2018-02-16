@@ -54,6 +54,15 @@ namespace JuvoPlayer.Dash
             dashClient.OnTimeUpdated(time);
         }
 
+        public void Seek(TimeSpan time)
+        {
+            dashClient.Stop();
+            demuxer.Reset();
+            demuxer.Seek(time);
+            dashClient.Seek(time);
+            dashClient.Start();
+        }
+
         private void ParseDrms(Media newMedia)
         {
             // TODO(p.galiszewsk): make it extensible

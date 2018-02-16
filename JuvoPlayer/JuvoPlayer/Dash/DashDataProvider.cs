@@ -74,7 +74,8 @@ namespace JuvoPlayer.Dash
 
         public void OnSeek(TimeSpan time)
         {
-            throw new NotImplementedException();
+            audioPipeline.Seek(time);
+            videoPipeline.Seek(time);
         }
 
         public void OnStopped()
