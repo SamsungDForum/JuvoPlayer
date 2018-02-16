@@ -52,6 +52,12 @@ namespace JuvoPlayer.FFmpeg
         private readonly avio_alloc_context_seek seekFunctionDelegate;
 
         private readonly ISharedBuffer dataBuffer;
+
+        ~FFmpegDemuxer()
+        {
+            ReleaseUnmanagedResources();
+        }
+
         public unsafe FFmpegDemuxer(string libPath, ISharedBuffer dataBuffer = null)
         {
             this.dataBuffer = dataBuffer;

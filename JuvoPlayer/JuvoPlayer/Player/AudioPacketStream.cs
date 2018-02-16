@@ -48,18 +48,22 @@ namespace JuvoPlayer.Player
 
         public void OnStreamConfigChanged(StreamConfig config)
         {
+            if (config == null)
+                throw new ArgumentNullException(nameof(config), "config cannot be null");
+
             if (!(config is AudioStreamConfig))
                 throw new ArgumentException("config should be audioconfig");
 
             forceDrmChange = this.config != null && !this.config.Equals(config);
 
-            this.config = config as AudioStreamConfig ?? throw new ArgumentNullException("config cannot be null");
+            this.config = (AudioStreamConfig) config;
 
             playerAdapter.SetAudioStreamConfig(this.config);
         }
 
         public void OnClearStream()
         {
+            drmSession?.Dispose();
             drmSession = null;
         }
 
@@ -69,8 +73,14 @@ namespace JuvoPlayer.Player
                 return;
 
             forceDrmChange = false;
+            drmSession?.Dispose();
             drmSession = drmManager.CreateDRMSession(data);
             drmSession?.Start();
+        }
+
+        public void Dispose()
+        {
+            OnClearStream();
         }
     }
 }

@@ -18,7 +18,7 @@ namespace XamarinPlayer.Tizen.Services
     class PlayerService : IPlayerService
     {
         private IDataProvider dataProvider;
-        private readonly IPlayerController playerController;
+        private IPlayerController playerController;
         private readonly DataProviderFactoryManager dataProviders;
         private PlayerState playerState = PlayerState.Idle;
 
@@ -126,7 +126,10 @@ namespace XamarinPlayer.Tizen.Services
             {
                 ControllerConnector.DisconnectDataProvider(playerController, dataProvider);
                 playerController?.Dispose();
+                playerController = null;
                 dataProvider?.Dispose();
+                dataProvider = null;
+                GC.Collect();
             }
         }
     }

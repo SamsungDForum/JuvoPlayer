@@ -5,7 +5,7 @@ using Tizen.TV.Security.DrmDecrypt;
 
 namespace JuvoPlayer.Common
 {
-    public unsafe class DecryptedEMEPacket : StreamPacket
+    public unsafe class DecryptedEMEPacket : StreamPacket, IDisposable
     {
         private readonly ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
         private readonly AsyncContextThread releaseThread;
@@ -17,6 +17,11 @@ namespace JuvoPlayer.Common
 
         public void CleanHandle()
         {
+            HandleSize = new HandleSize();
+        }
+
+        private void ReleaseUnmanagedResources()
+        {
             if (HandleSize.handle != 0)
             {
                 releaseThread.Factory.Run(() =>
@@ -24,6 +29,7 @@ namespace JuvoPlayer.Common
                     try
                     {
                         API.ReleaseHandle(HandleSize);
+                        CleanHandle();
                     }
                     catch (Exception e)
                     {
@@ -31,6 +37,17 @@ namespace JuvoPlayer.Common
                     }
                 });
             }
+        }
+
+        public void Dispose()
+        {
+            ReleaseUnmanagedResources();
+            GC.SuppressFinalize(this);
+        }
+
+        ~DecryptedEMEPacket()
+        {
+            ReleaseUnmanagedResources();
         }
     }
 }

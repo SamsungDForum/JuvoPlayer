@@ -11,11 +11,12 @@
 // damages suffered by licensee as a result of using, modifying or distributing
 // this software or its derivatives.
 
+using System;
 using JuvoPlayer.Common;
 
 namespace JuvoPlayer.Player
 {
-    public interface IPacketStream
+    public interface IPacketStream : IDisposable
     {
         void OnAppendPacket(StreamPacket packet);
         void OnClearStream();

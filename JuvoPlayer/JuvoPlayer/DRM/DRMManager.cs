@@ -10,8 +10,8 @@ namespace JuvoPlayer.DRM
     {
         private readonly ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
 
-        private List<IDRMHandler> drmHandlers = new List<IDRMHandler>();
-        private List<DRMDescription> clipDrmConfiguration = new List<DRMDescription>();
+        private readonly List<IDRMHandler> drmHandlers = new List<IDRMHandler>();
+        private readonly List<DRMDescription> clipDrmConfiguration = new List<DRMDescription>();
         public DRMManager()
         {
         }
