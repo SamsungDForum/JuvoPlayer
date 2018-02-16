@@ -14,30 +14,28 @@ using Tizen.TV.Security.DrmDecrypt.emeCDM;
 
 namespace JuvoPlayer.DRM.Cenc
 {
-    class CencSession : IEventListener, IDRMSession
+    public class CencSession : IEventListener, IDRMSession
     {
         private readonly ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
 
         private IEME CDMInstance;
+        private readonly DRMInitData initData;
         private string currentSessionId;
-        private string initDataString;
 
         private DRMDescription drmConfiguration;
         private readonly AsyncContextThread thread;
         private readonly object initializationLocker = new object();
         private bool isInitialized = false;
 
-        public string CurrentDrmScheme { get; }
+        public string CurrentDrmScheme => CencUtils.GetScheme(initData.SystemId);
 
-        private CencSession(string keySystemName, string scheme)
+        private CencSession(DRMInitData initData)
         {
-            Logger.Info(scheme);
-
-            CurrentDrmScheme = scheme;
-
+            Logger.Info(CencUtils.GetKeySystemName(initData.SystemId));
+            this.initData = initData;
             thread = new AsyncContextThread();
 
-            DispatchOnIemeThread(() => CreateIemeOnIemeThread(keySystemName));
+            DispatchOnIemeThread(CreateIemeOnIemeThread);
         }
 
         private void DispatchOnIemeThread(Action action)
@@ -45,9 +43,10 @@ namespace JuvoPlayer.DRM.Cenc
             thread.Factory.Run(action);
         }
 
-        private void CreateIemeOnIemeThread(string keySystemName)
+        private void CreateIemeOnIemeThread()
         {
-            CDMInstance = IEME.create(this, keySystemName, false, CDM_MODEL.E_CDM_MODEL_DEFAULT);
+            var keySystem = CencUtils.GetKeySystemName(initData.SystemId);
+            CDMInstance = IEME.create(this, keySystem, false, CDM_MODEL.E_CDM_MODEL_DEFAULT);
         }
 
         private void ReleaseUnmanagedResources()
@@ -71,14 +70,14 @@ namespace JuvoPlayer.DRM.Cenc
             ReleaseUnmanagedResources();
         }
 
-        private bool Initialize(byte[] initData)
+        private bool Initialize()
         {
-            DispatchOnIemeThread(() => InitializeOnIemeThread(initData));
+            DispatchOnIemeThread(InitializeOnIemeThread);
 
             return true;
         }
 
-        private void InitializeOnIemeThread(byte[] initData)
+        private void InitializeOnIemeThread()
         {
             Logger.Info("Initialize DRM");
 
@@ -89,7 +88,6 @@ namespace JuvoPlayer.DRM.Cenc
                 Logger.Info("Could not create IEME session");
             }
             currentSessionId = sessionId;
-            initDataString = EncodeInitData(initData);
 
             Logger.Info("Created session: " + currentSessionId); 
         }
@@ -99,13 +97,10 @@ namespace JuvoPlayer.DRM.Cenc
             return Encoding.GetEncoding(437).GetString(initData);
         }
 
-        public static CencSession Create(string keySystemName, string scheme, DRMInitData initData)
+        public static CencSession Create(DRMInitData initData)
         {
-            var session = new CencSession(keySystemName, scheme);
-            if (!session.Initialize(initData.InitData))
-                return null;
-
-            return session;
+            var session = new CencSession(initData);
+            return session.Initialize() ? session : null;
         }
 
         public void Start()
@@ -115,7 +110,7 @@ namespace JuvoPlayer.DRM.Cenc
 
         private void StartOnIemeThread()
         {
-            var status = CDMInstance.session_generateRequest(currentSessionId, InitDataType.kCenc, initDataString);
+            var status = CDMInstance.session_generateRequest(currentSessionId, InitDataType.kCenc, EncodeInitData(initData.InitData));
             if (status != Status.kSuccess)
             {
                 Logger.Info("Could not generate request: " + status.ToString());

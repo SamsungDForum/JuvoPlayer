@@ -17,13 +17,13 @@ namespace JuvoPlayer.DRM.Cenc
 
         public IDRMSession CreateDRMSession(DRMInitData initData)
         {
-            var iemeKeySystemName = GetKeySystemName(initData.SystemId);
+            var iemeKeySystemName = CencUtils.GetKeySystemName(initData.SystemId);
             if (IEME.isKeySystemSupported(iemeKeySystemName) != Status.kSupported)
             {
                 Logger.Info(string.Format("Key System: {0} is not supported", iemeKeySystemName));
                 return null;
             }
-            return CencSession.Create(iemeKeySystemName, GetScheme(initData.SystemId), initData);
+            return CencSession.Create(initData);
         }
 
         public bool SupportsSchemeIdUri(string uri)
@@ -36,33 +36,13 @@ namespace JuvoPlayer.DRM.Cenc
             if (!CencUtils.SupportsSystemId(uuid))
                 return false;
 
-            var iemeKeySystemName = GetKeySystemName(uuid);
+            var iemeKeySystemName = CencUtils.GetKeySystemName(uuid);
             return IEME.isKeySystemSupported(iemeKeySystemName) == Status.kSupported;
         }
 
         public bool SupportsType(string type)
         {
             return CencUtils.SupportsType(type);
-        }
-
-        private string GetKeySystemName(byte[] systemId)
-        {
-            if (systemId.SequenceEqual(CencUtils.PlayReadySystemId))
-                return "com.microsoft.playready";
-            if (systemId.SequenceEqual(CencUtils.WidevineSystemId))
-                return "com.widevine.alpha";
-
-            return null;
-        }
-
-        private string GetScheme(byte[] systemId)
-        {
-            if (systemId.SequenceEqual(CencUtils.PlayReadySystemId))
-                return "playready";
-            if (systemId.SequenceEqual(CencUtils.WidevineSystemId))
-                return "widevine";
-
-            return null;
         }
     }
 }
