@@ -101,6 +101,7 @@ namespace JuvoPlayer.Dash
                 Logger.Error(string.Format("{0} Cannot download init segment file. Error: {1} {2}", streamType, ex.Message, ex.ToString()));
             }
 
+            var duration = currentStreams.Duration;
             var bufferTime = TimeSpan.Zero;
             currentSegmentId = 0;
             while (true) 
@@ -122,7 +123,7 @@ namespace JuvoPlayer.Dash
 
                         sharedBuffer.WriteData(streamBytes);
 
-                        if (!stream.EndSegment)
+                        if (bufferTime < duration)
                         { 
                             ++currentSegmentId;
                             continue;
