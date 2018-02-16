@@ -15,10 +15,6 @@ namespace JuvoPlayer.Common
 {
     public abstract class StreamConfig
     {
-        public StreamConfig()
-        {
-        }
-
         public byte[] CodecExtraData = null;
 
         public abstract StreamType StreamType();

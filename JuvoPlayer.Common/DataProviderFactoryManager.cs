@@ -19,7 +19,7 @@ namespace JuvoPlayer.Common
 {
     public class DataProviderFactoryManager
     {
-        private List<IDataProviderFactory> dataProviders = new List<IDataProviderFactory>();
+        private readonly List<IDataProviderFactory> dataProviders = new List<IDataProviderFactory>();
 
         public DataProviderFactoryManager()
         {

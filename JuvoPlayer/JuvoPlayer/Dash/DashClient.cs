@@ -16,6 +16,7 @@ namespace JuvoPlayer.Dash
         private const string Tag = "JuvoPlayer";
         private readonly ILogger Logger = LoggerManager.GetInstance().GetLogger(Tag);
         private static readonly TimeSpan MagicBufferTime = TimeSpan.FromSeconds(10);
+        private static readonly int MaxRetryCount = 3;
 
         private readonly ISharedBuffer sharedBuffer;
         private readonly StreamType streamType;
@@ -101,6 +102,8 @@ namespace JuvoPlayer.Dash
                 Logger.Error(string.Format("{0} Cannot download init segment file. Error: {1} {2}", streamType, ex.Message, ex.ToString()));
             }
 
+            var duration = currentStreams.Duration;
+            var downloadErrorCount = 0;
             var bufferTime = TimeSpan.Zero;
             currentSegmentId = 0;
             while (true) 
@@ -117,12 +120,13 @@ namespace JuvoPlayer.Dash
                     if (stream != null)
                     {
                         var streamBytes = DownloadSegment(stream);
+                        downloadErrorCount = 0;
 
                         bufferTime += stream.Period.Duration;
 
                         sharedBuffer.WriteData(streamBytes);
 
-                        if (!stream.EndSegment)
+                        if (bufferTime < duration)
                         { 
                             ++currentSegmentId;
                             continue;
@@ -135,7 +139,14 @@ namespace JuvoPlayer.Dash
                 {
                     if (ex is WebException)
                     {
-                        Logger.Error(string.Format("{0} Cannot download segment file. Error: {1} {2}", streamType, ex.Message, ex.ToString()));
+                        if (++downloadErrorCount >= MaxRetryCount)
+                        {
+                            Logger.Error(string.Format("{0} Cannot download segment file. Stop playback. Error: {1} {2}", streamType, ex.Message, ex.ToString()));
+
+                            Stop();
+                            return;
+                        }
+                        Logger.Warn(string.Format("{0} Cannot download segment file. Will retry. Error: {1} {2}", streamType, ex.Message, ex.ToString()));
                     }
                     else
                     {
@@ -171,6 +182,8 @@ namespace JuvoPlayer.Dash
             IRepresentationStream streamSegments)
         {
             var initSegment = streamSegments.InitSegment;
+            if (initSegment == null)
+                return;
 
             Logger.Info(string.Format("{0} Downloading Init segment: {1} {2}", 
                 streamType, initSegment.ByteRange, initSegment.Url));
