@@ -146,9 +146,9 @@ namespace JuvoPlayer.Player
 
         public void OnSeek(TimeSpan time)
         {
-            Seek?.Invoke(time);
-
             playerAdapter.Seek(time);
+
+            Seek?.Invoke(time);
         }
 
         public void OnStop()

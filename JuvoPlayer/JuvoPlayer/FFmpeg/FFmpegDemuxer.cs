@@ -36,6 +36,7 @@ namespace JuvoPlayer.FFmpeg
         private int audioIdx = -1;
         private int videoIdx = -1;
         private bool parse = true;
+        private bool reseting;
 
         private Task demuxTask;
 
@@ -228,6 +229,9 @@ namespace JuvoPlayer.FFmpeg
                 int ret = FFmpeg.av_read_frame(formatContext, &pkt);
                 try
                 {
+                    if (reseting)
+                        return;
+
                     if (ret >= 0)
                     {
                         if (pkt.stream_index != audioIdx && pkt.stream_index != videoIdx)
@@ -570,7 +574,13 @@ namespace JuvoPlayer.FFmpeg
 
         public void Reset()
         {
-            // TODO(g.skowinski): Implement.
+            reseting = true;
+            dataBuffer.ClearData();
+            dataBuffer.WriteData(null, true);
+            demuxTask?.Wait();
+
+            Logger.Info("Demuxer resetted");
+            reseting = false;
         }
 
         public unsafe void Paused()
@@ -585,7 +595,8 @@ namespace JuvoPlayer.FFmpeg
 
         public void Seek(TimeSpan position)
         {
-            // TODO(g.skowinski): Implement.
+            dataBuffer.ClearData();
+            demuxTask = Task.Run(() => DemuxTask(InitES));
         }
 
         private static unsafe ISharedBuffer RetrieveSharedBufferReference(void* @opaque)

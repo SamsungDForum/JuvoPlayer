@@ -56,6 +56,8 @@ namespace JuvoPlayer.Player
         private object needDataLock = new object();
 
         private System.UInt32 currentTime;
+        private TimeSpan seekTime;
+        private bool seeking;
 
         public unsafe SMPlayerAdapter()
         {
@@ -110,11 +112,14 @@ namespace JuvoPlayer.Player
 
         public unsafe void AppendPacket(StreamPacket packet)
         {
-            // todo
             if (packet == null)
                 return;
 
             PrepareES();
+
+            // TODO:
+            if (packet.Pts < seekTime)
+                return;
 
             if (packet.StreamType == Common.StreamType.Video)
                 videoBuffer.Enqueue(packet);
@@ -147,7 +152,7 @@ namespace JuvoPlayer.Player
                 if (stopped)
                     return;
 
-                if ((needDataAudio && needDataVideo) // both must be needed, so we can choose the one with lower pts
+                if (!seeking && (needDataAudio && needDataVideo) // both must be needed, so we can choose the one with lower pts
                     || (needDataInitMode && (needDataAudio || needDataVideo)))
                 { // but for first OnNeedData - we're sending both video and audio till first OnEnoughData
                     needDataInitMode = false;
@@ -240,7 +245,7 @@ namespace JuvoPlayer.Player
                 //byte[] managedArray2 = new byte[managedArray.Length];
                 //Marshal.Copy(pnt, managedArray2, 0, managedArray.Length);
                 var trackType = SMPlayerUtils.GetTrackType(packet);
-//                Logger.Info(string.Format("[HQ] send es data to SubmitPacket: {0} ( {1} )", packet.Pts, trackType));
+                Logger.Info(string.Format("[HQ] send es data to SubmitPacket: {0} ( {1} )", packet.Pts, trackType));
 
                 playerInstance.SubmitPacket(pnt, (uint)packet.Data.Length, packet.Pts.TotalNanoseconds(), trackType, IntPtr.Zero);
             }
@@ -273,6 +278,12 @@ namespace JuvoPlayer.Player
 
         public void Seek(TimeSpan time)
         {
+            Logger.Info("seek " + time);
+            seekTime = time;
+            seeking = true;
+            audioBuffer.Clear();
+            videoBuffer.Clear();
+
             playerInstance.Seek((int)time.TotalMilliseconds);
         }
 
@@ -475,6 +486,10 @@ namespace JuvoPlayer.Player
 
         public void OnSeekStartedBuffering()
         {
+            seeking = false;
+            needDataAudio = true;
+            needDataVideo = true;
+            needDataEvent.Set();
             Logger.Info("");
         }
 

@@ -24,6 +24,7 @@ namespace JuvoPlayer
             controller.TimeUpdated += newDataProvider.OnTimeUpdated;
             controller.Paused += newDataProvider.OnPaused;
             controller.Played += newDataProvider.OnPlayed;
+            controller.Seek += newDataProvider.OnSeek;
             controller.Stopped += newDataProvider.OnPlayed;
         }
 
@@ -45,6 +46,7 @@ namespace JuvoPlayer
             controller.TimeUpdated -= oldDataProvider.OnTimeUpdated;
             controller.Paused -= oldDataProvider.OnPaused;
             controller.Played -= oldDataProvider.OnPlayed;
+            controller.Seek -= oldDataProvider.OnSeek;
             controller.Stopped -= oldDataProvider.OnPlayed;
         }
     }
