@@ -15,7 +15,7 @@ namespace JuvoPlayer.DRM.Cenc
             Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
         }
 
-        public IDRMSession CreateDRMSession(DRMInitData initData)
+        public IDRMSession CreateDRMSession(DRMInitData initData, DRMDescription drmDescription)
         {
             var iemeKeySystemName = CencUtils.GetKeySystemName(initData.SystemId);
             if (IEME.isKeySystemSupported(iemeKeySystemName) != Status.kSupported)
@@ -23,7 +23,7 @@ namespace JuvoPlayer.DRM.Cenc
                 Logger.Info(string.Format("Key System: {0} is not supported", iemeKeySystemName));
                 return null;
             }
-            return CencSession.Create(initData);
+            return CencSession.Create(initData, drmDescription);
         }
 
         public bool SupportsSchemeIdUri(string uri)
@@ -43,6 +43,11 @@ namespace JuvoPlayer.DRM.Cenc
         public bool SupportsType(string type)
         {
             return CencUtils.SupportsType(type);
+        }
+
+        public string GetScheme(byte[] uuid)
+        {
+            return CencUtils.GetScheme(uuid);
         }
     }
 }

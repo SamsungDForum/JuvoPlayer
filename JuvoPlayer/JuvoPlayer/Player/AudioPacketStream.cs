@@ -12,6 +12,7 @@
 // this software or its derivatives.
 
 using System;
+using System.Threading.Tasks;
 using JuvoPlayer.Common;
 using JuvoPlayer.DRM;
 
@@ -25,6 +26,7 @@ namespace JuvoPlayer.Player
         private AudioStreamConfig audioConfig;
 
         private bool forceDrmChange;
+        private Task<ErrorCode> licenceChallengeTask;
 
         public AudioPacketStream(IPlayerAdapter player, IDRMManager drmManager)
         {
@@ -39,6 +41,13 @@ namespace JuvoPlayer.Player
 
             if (packet.IsEOS && audioConfig == null)
                 return;
+
+            if (licenceChallengeTask != null)
+            {
+                if (licenceChallengeTask.Result != ErrorCode.Success)
+                    throw new InvalidOperationException("Licence challenge failed, reason: " + licenceChallengeTask.Result.ToString());
+                licenceChallengeTask = null;
+            }
 
             if (drmSession != null && packet is EncryptedStreamPacket)
                 packet = drmSession.DecryptPacket(packet);
@@ -75,7 +84,7 @@ namespace JuvoPlayer.Player
             forceDrmChange = false;
             drmSession?.Dispose();
             drmSession = drmManager.CreateDRMSession(data);
-            drmSession?.Start();
+            licenceChallengeTask = drmSession?.StartLicenceChallenge();
         }
 
         public void Dispose()

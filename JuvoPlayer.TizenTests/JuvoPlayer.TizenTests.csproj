@@ -18,10 +18,15 @@
 
   <ItemGroup>
     <EmbeddedResource Include="..\JuvoPlayer.Tests\testcase\videoclips.json" Link="testcase\videoclips.json" />
+    <EmbeddedResource Include="res\drm\init_data" />
   </ItemGroup>
 
   <ItemGroup>
     <EmbeddedResource Include="..\JuvoPlayer.Tests\testcase\*.config" Link="testcase\%(Filename).config" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Remove="res\drm\init_data" />
   </ItemGroup>
 
   <ItemGroup>

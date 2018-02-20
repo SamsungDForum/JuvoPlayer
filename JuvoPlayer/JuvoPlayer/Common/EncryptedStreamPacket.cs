@@ -1,5 +1,8 @@
-﻿namespace JuvoPlayer.Common
+using System;
+
+namespace JuvoPlayer.Common
 {
+    [Serializable]
     class EncryptedStreamPacket : StreamPacket
     {
         public struct Subsample

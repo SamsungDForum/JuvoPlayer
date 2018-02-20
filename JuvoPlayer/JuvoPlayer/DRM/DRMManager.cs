@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using JuvoPlayer.Common;
 using JuvoPlayer.Common.Logging;
+using JuvoPlayer.DRM.Cenc;
 
 namespace JuvoPlayer.DRM
 {
@@ -48,15 +49,15 @@ namespace JuvoPlayer.DRM
                 return null;
             }
 
-            var session = handler.CreateDRMSession(data);
-            var drmConfiguration = clipDrmConfiguration.FirstOrDefault(o => SchemeEquals(o.Scheme, session.CurrentDrmScheme));
+            var scheme = handler.GetScheme(data.SystemId);
+            var drmConfiguration = clipDrmConfiguration.FirstOrDefault(o => SchemeEquals(o.Scheme, scheme));
             if (drmConfiguration == null)
             {
                 Logger.Info("drm not configured");
                 return null;
             }
 
-            session.SetDrmConfiguration(drmConfiguration);
+            var session = handler.CreateDRMSession(data, drmConfiguration);
             return session;
         }
 

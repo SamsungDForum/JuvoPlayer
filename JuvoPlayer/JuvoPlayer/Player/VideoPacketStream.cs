@@ -12,6 +12,7 @@
 // this software or its derivatives.
 
 using System;
+using System.Threading.Tasks;
 using JuvoPlayer.Common;
 using JuvoPlayer.DRM;
 
@@ -24,6 +25,7 @@ namespace JuvoPlayer.Player
         private readonly IPlayerAdapter playerAdapter;
         private IDRMSession drmSession;
         private VideoStreamConfig videoConfig;
+        private Task<ErrorCode> licenceChallengeTask;
 
         private bool forceDrmChange;
 
@@ -41,6 +43,14 @@ namespace JuvoPlayer.Player
             if (packet.IsEOS && videoConfig == null)
                 return;
 
+            if (licenceChallengeTask != null)
+            {
+                if (licenceChallengeTask.Result != ErrorCode.Success)
+                    throw new InvalidOperationException("Licence challenge failed, reason: " + licenceChallengeTask.Result.ToString());
+                licenceChallengeTask = null;
+            }
+
+            // Shall we throw when we cannot decrypt packet, because session is null?
             if (drmSession != null && packet is EncryptedStreamPacket)
                 packet = drmSession.DecryptPacket(packet);
 
@@ -76,7 +86,7 @@ namespace JuvoPlayer.Player
             forceDrmChange = false;
             drmSession?.Dispose();
             drmSession = drmManager.CreateDRMSession(data);
-            drmSession?.Start();
+            licenceChallengeTask = drmSession?.StartLicenceChallenge();
         }
 
         public void Dispose()
