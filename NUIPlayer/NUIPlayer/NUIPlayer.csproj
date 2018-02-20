@@ -23,6 +23,7 @@
     <PackageReference Include="Tizen.NET" Version="4.0.0">
       <ExcludeAssets>Runtime</ExcludeAssets>
     </PackageReference>
+    <PackageReference Include="Tizen.NET.TV" Version="4.4.0.1341" />
     <PackageReference Include="Tizen.TV.NUI" Version="1.0.57">
       <ExcludeAssets>Runtime</ExcludeAssets>
     </PackageReference>
