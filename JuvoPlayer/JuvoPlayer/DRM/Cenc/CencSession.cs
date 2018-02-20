@@ -6,6 +6,7 @@ using System.Net.Http.Headers;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
+using System.Threading.Tasks;
 using JuvoPlayer.Common;
 using JuvoPlayer.Common.Logging;
 using Nito.AsyncEx;
@@ -21,38 +22,22 @@ namespace JuvoPlayer.DRM.Cenc
         private IEME CDMInstance;
         private readonly DRMInitData initData;
         private string currentSessionId;
+        private byte[] requestData;
 
-        private DRMDescription drmConfiguration;
+        private readonly DRMDescription drmDescription;
         private readonly AsyncContextThread thread;
-        private readonly object initializationLocker = new object();
-        private bool isInitialized = false;
 
-        public string CurrentDrmScheme => CencUtils.GetScheme(initData.SystemId);
-
-        private CencSession(DRMInitData initData)
+        private CencSession(DRMInitData initData, DRMDescription drmDescription)
         {
-            Logger.Info(CencUtils.GetKeySystemName(initData.SystemId));
             this.initData = initData;
+            this.drmDescription = drmDescription;
             thread = new AsyncContextThread();
-
-            DispatchOnIemeThread(CreateIemeOnIemeThread);
-        }
-
-        private void DispatchOnIemeThread(Action action)
-        {
-            thread.Factory.Run(action);
-        }
-
-        private void CreateIemeOnIemeThread()
-        {
-            var keySystem = CencUtils.GetKeySystemName(initData.SystemId);
-            CDMInstance = IEME.create(this, keySystem, false, CDM_MODEL.E_CDM_MODEL_DEFAULT);
         }
 
         private void ReleaseUnmanagedResources()
         {
             if (CDMInstance != null)
-                DispatchOnIemeThread(() => IEME.destroy(CDMInstance));
+                thread.Factory.Run(() => IEME.destroy(CDMInstance));
             CDMInstance = null;
         }
 
@@ -70,51 +55,14 @@ namespace JuvoPlayer.DRM.Cenc
             ReleaseUnmanagedResources();
         }
 
-        private bool Initialize()
-        {
-            DispatchOnIemeThread(InitializeOnIemeThread);
-
-            return true;
-        }
-
-        private void InitializeOnIemeThread()
-        {
-            Logger.Info("Initialize DRM");
-
-            string sessionId = "";
-            var status = CDMInstance.session_create(SessionType.kTemporary, ref sessionId);
-            if (status != Status.kSuccess)
-            {
-                Logger.Info("Could not create IEME session");
-            }
-            currentSessionId = sessionId;
-
-            Logger.Info("Created session: " + currentSessionId); 
-        }
-
-        private static string EncodeInitData(byte[] initData)
+        private static string Encode(byte[] initData)
         {
             return Encoding.GetEncoding(437).GetString(initData);
         }
 
-        public static CencSession Create(DRMInitData initData)
+        public static CencSession Create(DRMInitData initData, DRMDescription drmDescription)
         {
-            var session = new CencSession(initData);
-            return session.Initialize() ? session : null;
-        }
-
-        public void Start()
-        {
-            DispatchOnIemeThread(StartOnIemeThread);
-        }
-
-        private void StartOnIemeThread()
-        {
-            var status = CDMInstance.session_generateRequest(currentSessionId, InitDataType.kCenc, EncodeInitData(initData.InitData));
-            if (status != Status.kSuccess)
-            {
-                Logger.Info("Could not generate request: " + status.ToString());
-            }
+            return new CencSession(initData, drmDescription);
         }
 
         public unsafe StreamPacket DecryptPacket(StreamPacket packet)
@@ -122,12 +70,6 @@ namespace JuvoPlayer.DRM.Cenc
             if (!(packet is EncryptedStreamPacket))
             {
                 return packet;
-            }
-
-            lock (initializationLocker)
-            {
-                if (!isInitialized)
-                    Monitor.Wait(initializationLocker);
             }
 
             var decryptedPacket = thread.Factory.Run(() => DecryptPacketOnIemeThread(packet)).Result;
@@ -241,64 +183,6 @@ namespace JuvoPlayer.DRM.Cenc
             return resultPointer;
         }
 
-        public void SetDrmConfiguration(DRMDescription drmDescription)
-        {
-            drmConfiguration = drmDescription;
-        }
-
-        private void RequestLicenceOnIemeThread(string message)
-        {
-            if (string.IsNullOrEmpty(drmConfiguration?.LicenceUrl))
-            {
-                Logger.Error("Not configured drm");
-                return;
-            }
-
-            HttpClient client = new HttpClient();
-            var licenceUrl = new Uri(drmConfiguration.LicenceUrl);
-
-            client.BaseAddress = licenceUrl;
-            Logger.Info(licenceUrl.AbsoluteUri);
-
-            var requestData = Encoding.GetEncoding(437).GetBytes(message);
-            HttpContent content = new ByteArrayContent(requestData);
-            content.Headers.ContentLength = requestData.Length;
-
-            if (drmConfiguration.KeyRequestProperties != null)
-            {
-                foreach (var property in drmConfiguration.KeyRequestProperties)
-                {
-                    if (!property.Key.ToLowerInvariant().Equals("content-type"))
-                        client.DefaultRequestHeaders.Add(property.Key, property.Value);
-                    else if (MediaTypeHeaderValue.TryParse(property.Value, out var mediaType))
-                        content.Headers.ContentType = mediaType;
-                }
-            }
-
-            var responseTask = client.PostAsync(licenceUrl, content).Result;
-
-            Logger.Info("Response: " + responseTask);
-            var receiveStream = responseTask.Content.ReadAsStreamAsync();
-            var readStream = new StreamReader(receiveStream.Result, Encoding.GetEncoding(437));
-            var responseText = readStream.ReadToEnd();
-            if (responseText.IndexOf("<?xml", StringComparison.Ordinal) > 0)
-                responseText = responseText.Substring(responseText.IndexOf("<?xml", StringComparison.Ordinal));
-
-            var status = CDMInstance.session_update(currentSessionId, responseText);
-            if (status != Status.kSuccess)
-            {
-                Logger.Info("Install licence error: " + status);
-                return;
-            }
-
-            lock (initializationLocker)
-            {
-                Logger.Info("Licence installed");
-                isInitialized = true;
-                Monitor.PulseAll(initializationLocker);
-            }
-        }
-
         public override void onMessage(string sessionId, MessageType messageType, string message)
         {
             Logger.Info("Got Ieme message: " + sessionId);
@@ -310,10 +194,10 @@ namespace JuvoPlayer.DRM.Cenc
             {
                 case MessageType.kLicenseRequest:
                 case MessageType.kIndividualizationRequest:
-                    {
-                        DispatchOnIemeThread(() => RequestLicenceOnIemeThread(message));
-                        break;
-                    }
+                {
+                    requestData = Encoding.GetEncoding(437).GetBytes(message);
+                    break;
+                }
                 default:
                     Logger.Info("unknown message");
                     break;
@@ -328,6 +212,113 @@ namespace JuvoPlayer.DRM.Cenc
         // A remove() operation has been completed.
         public override void onRemoveComplete(string session_id)
         {
+        }
+
+        public Task<ErrorCode> StartLicenceChallenge()
+        {
+            return thread.Factory.Run(() => StartLicenceChallengeOnIemeThread());
+        }
+
+        private ErrorCode StartLicenceChallengeOnIemeThread()
+        {
+            var errorCode = CreateIeme();
+            if (errorCode != ErrorCode.Success) return errorCode;
+
+            errorCode = CreateSession(ref currentSessionId);
+            if (errorCode != ErrorCode.Success)
+            {
+                Logger.Error("Could not create IEME session");
+                return errorCode;
+            }
+
+            Logger.Info("Created session: " + currentSessionId);
+
+            errorCode = GenerateRequest();
+            if (errorCode != ErrorCode.Success) return errorCode;
+
+            errorCode = AcquireLicenceFromServer(out var responseText);
+            if (errorCode != ErrorCode.Success) return errorCode;
+
+            errorCode = InstallLicense(responseText, out var status);
+            if (errorCode != ErrorCode.Success)
+            {
+                Logger.Error("Install licence error: " + errorCode);
+                return errorCode;
+            }
+            return ErrorCode.Success;
+        }
+
+        private ErrorCode CreateIeme()
+        {
+            var keySystem = CencUtils.GetKeySystemName(initData.SystemId);
+            CDMInstance = IEME.create(this, keySystem, false, CDM_MODEL.E_CDM_MODEL_DEFAULT);
+            return CDMInstance != null ? ErrorCode.Success : ErrorCode.Generic;
+        }
+
+        private ErrorCode CreateSession(ref string sessionId)
+        {
+            var status = CDMInstance.session_create(SessionType.kTemporary, ref sessionId);
+            return EmeStatusConverter.Convert(status);
+        }
+
+        private ErrorCode GenerateRequest()
+        {
+            if (initData.InitData == null)
+                return ErrorCode.InvalidArgument;
+            var status = CDMInstance.session_generateRequest(currentSessionId, InitDataType.kCenc, Encode(initData.InitData));
+            if (status != Status.kSuccess)
+            {
+                Logger.Error("Could not generate request: " + status.ToString());
+                return EmeStatusConverter.Convert(status);
+            }
+            // During session_generateRequest, we should got called back synchronously via onMessage and we should receive
+            // requestData.
+            return requestData != null ? ErrorCode.Success : ErrorCode.Generic;
+        }
+
+        private ErrorCode AcquireLicenceFromServer(out string responseText)
+        {
+            if (string.IsNullOrEmpty(drmDescription?.LicenceUrl))
+            {
+                Logger.Error("Not configured drm");
+                responseText = null;
+                return ErrorCode.InvalidArgument;
+            }
+
+            HttpClient client = new HttpClient();
+            var licenceUrl = new Uri(drmDescription.LicenceUrl);
+
+            client.BaseAddress = licenceUrl;
+            Logger.Info(licenceUrl.AbsoluteUri);
+            HttpContent content = new ByteArrayContent(requestData);
+            content.Headers.ContentLength = requestData.Length;
+
+            if (drmDescription.KeyRequestProperties != null)
+            {
+                foreach (var property in drmDescription.KeyRequestProperties)
+                {
+                    if (!property.Key.ToLowerInvariant().Equals("content-type"))
+                        client.DefaultRequestHeaders.Add(property.Key, property.Value);
+                    else if (MediaTypeHeaderValue.TryParse(property.Value, out var mediaType))
+                        content.Headers.ContentType = mediaType;
+                }
+            }
+
+            var responseTask = client.PostAsync(licenceUrl, content).Result;
+
+            Logger.Info("Response: " + responseTask);
+            var receiveStream = responseTask.Content.ReadAsStreamAsync();
+            var readStream = new StreamReader(receiveStream.Result, Encoding.GetEncoding(437));
+            responseText = readStream.ReadToEnd();
+            if (responseText.IndexOf("<?xml", StringComparison.Ordinal) > 0)
+                responseText = responseText.Substring(responseText.IndexOf("<?xml", StringComparison.Ordinal));
+            return ErrorCode.Success;
+        }
+
+        private ErrorCode InstallLicense(string responseText, out Status status)
+        {
+            status = CDMInstance.session_update(currentSessionId, responseText);
+            return EmeStatusConverter.Convert(status);
         }
     }
 }
