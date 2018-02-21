@@ -18,7 +18,7 @@
     "url": "http://yt-dash-mse-test.commondatastorage.googleapis.com/media/oops_cenc-20121114-signedlicenseurl-manifest.mpd",
     "type": "dash",
     "poster": "oops.jpg",
-    "description": "Reslution 1920x1080 Codecs: H264 - MPEG4 AVC, MPEG AAC. Google Nexus Q video. Origin http://dash-mse-test.appspot.com/media.html"
+    "description": "Resolution 1920x1080 Codecs: H264 - MPEG4 AVC, MPEG AAC. Google Nexus Q video. Origin http://dash-mse-test.appspot.com/media.html"
   },
   {
     "title": "Encrypted 4K MPEG DASH",
@@ -70,14 +70,14 @@
     "url": "http://download.tsi.telecom-paristech.fr/gpac/dataset/dash/uhd/dashevc-live-2s/dashevc-live-2s-4k.mpd",
     "type": "dash",
     "poster": "sacrecoeur.jpg",
-    "description": "Resolution 2160p content at 60 hz, with bitrates ranging from 4 Mbps to 8 Mbps, in Main profile (8 bpp). Origing http://download.tsi.telecom-paristech.fr/gpac/dataset/dash/uhd/ UHD DASH Sequences."
+    "description": "Resolution 3840x2160 with bitrates ranging from 4 Mbps to 8 Mbps, in Main profile (8 bpp). Origin http://download.tsi.telecom-paristech.fr/gpac/dataset/dash/uhd/ UHD DASH Sequences."
   },
   {
-    "title": "RTSP - H264 + AAC",
+    "title": "RTSP multicast",
     "url": "rtsp://192.168.137.200/video_aac.ts",
     "type": "rtsp",
-    "poster": "tos-poster.jpg",
-    "describe": "http://testassets.dashif.org/#testvector/list",
+    "poster": "default_bg.jpg",
+    "describe": "Common IPTV multicast protocol H264 + AAC http://testassets.dashif.org/#testvector/list",
     "description": "RTSP streaming, H264 + AAC codecs"
   }
 ]
