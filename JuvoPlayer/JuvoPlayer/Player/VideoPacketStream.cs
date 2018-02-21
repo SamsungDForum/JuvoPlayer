@@ -43,7 +43,7 @@ namespace JuvoPlayer.Player
             if (packet.IsEOS && videoConfig == null)
                 return;
 
-            if (licenceChallengeTask != null)
+            if (licenceChallengeTask != null && packet is EncryptedStreamPacket)
             {
                 if (licenceChallengeTask.Result != ErrorCode.Success)
                     throw new InvalidOperationException("Licence challenge failed, reason: " + licenceChallengeTask.Result.ToString());

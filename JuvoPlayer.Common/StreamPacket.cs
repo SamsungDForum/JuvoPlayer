@@ -15,6 +15,7 @@ using System;
 
 namespace JuvoPlayer.Common
 {
+    [Serializable]
     public class StreamPacket
     {
         public byte[] Data = null;
