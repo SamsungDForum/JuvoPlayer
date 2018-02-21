@@ -5,6 +5,7 @@ namespace JuvoPlayer.Common
     [Serializable]
     class EncryptedStreamPacket : StreamPacket
     {
+        [Serializable]
         public struct Subsample
         {
             public uint ClearData;
