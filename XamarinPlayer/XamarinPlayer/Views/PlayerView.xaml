@@ -59,7 +59,7 @@
                                    HorizontalOptions="Center"
                                    VerticalOptions="Center"                                    
                                    AbsoluteLayout.LayoutBounds="0,0,1,1" AbsoluteLayout.LayoutFlags="All"/>
-                            <Button x:Name="Back"
+                            <Button x:Name="BackButton"
                                     Opacity="0.1"
                                     AbsoluteLayout.LayoutBounds="0,0,1,1" AbsoluteLayout.LayoutFlags="All"
                                     HorizontalOptions="Fill"
@@ -73,7 +73,7 @@
                                     HorizontalOptions="Center"
                                     VerticalOptions="Center"                                    
                                     AbsoluteLayout.LayoutBounds="0,0,1,1" AbsoluteLayout.LayoutFlags="All"/>
-                            <Button x:Name="Play"
+                            <Button x:Name="PlayButton"
                                     Opacity="0.1"
                                     AbsoluteLayout.LayoutBounds="0,0,1,1" AbsoluteLayout.LayoutFlags="All"
                                     HorizontalOptions="Fill"
@@ -87,7 +87,7 @@
                                    HorizontalOptions="Center"
                                    VerticalOptions="Center"                                    
                                    AbsoluteLayout.LayoutBounds="0,0,1,1" AbsoluteLayout.LayoutFlags="All"/>
-                            <Button x:Name="Forward"
+                            <Button x:Name="ForwardButton"
                                     Opacity="0.1"
                                     AbsoluteLayout.LayoutBounds="0,0,1,1" AbsoluteLayout.LayoutFlags="All"
                                     HorizontalOptions="Fill"
