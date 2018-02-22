@@ -13,7 +13,7 @@
     <DebugType>None</DebugType>
   </PropertyGroup>
   <ItemGroup>
-    <PackageReference Include="Newtonsoft.Json" Version="10.0.3" />
+    <PackageReference Include="Newtonsoft.Json" Version="11.0.1" />
   </ItemGroup>
 
   <!-- Include Nuget Package for Tizen Project building -->
