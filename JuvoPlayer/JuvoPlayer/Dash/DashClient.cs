@@ -28,24 +28,22 @@ namespace JuvoPlayer.Dash
 
         private bool playback;
         private IRepresentationStream currentStreams;
+        private byte[] initStreamBytes;
         private Task downloadTask;
 
         public DashClient(ISharedBuffer sharedBuffer, StreamType streamType)
         {
             this.sharedBuffer = sharedBuffer ?? throw new ArgumentNullException(nameof(sharedBuffer), "sharedBuffer cannot be null");
-            this.streamType = streamType;
-            
+            this.streamType = streamType;            
         }
 
         public void Seek(TimeSpan position)
         {
-            Logger.Info("seek: " + position);
+            Logger.Info(string.Format("{0} Seek to: {1} ", streamType, position));
 
             var segmentId = currentStreams?.MediaSegmentAtTime(position);
             if (segmentId != null)
             {
-                DownloadInitSegment(currentStreams);
-
                 currentTime = position;
                 currentSegmentId = segmentId.Value;
             }
@@ -79,8 +77,8 @@ namespace JuvoPlayer.Dash
 
             sharedBuffer?.WriteData(null, true);
             downloadTask.Wait();
-            Logger.Info("Data downloader stopped");
 
+            Logger.Info(string.Format("{0} Data downloader stopped", streamType));
         }
 
         public bool UpdateMedia(Media newMedia)
@@ -94,11 +92,11 @@ namespace JuvoPlayer.Dash
         public void OnTimeUpdated(TimeSpan time)
         {
             currentTime = time;
+
             try
             {
                 //this can throw when event is received after Dispose() was called
                 timeUpdatedEvent.Set();
-
             }
             catch (Exception e)
             {
@@ -108,19 +106,24 @@ namespace JuvoPlayer.Dash
 
         private void DownloadThread()
         {
+            // clear garbage before appending new data
+            sharedBuffer?.ClearData();
             try
             {
-                DownloadInitSegment(currentStreams);
+                if (initStreamBytes == null)
+                    initStreamBytes = DownloadInitSegment(currentStreams);
+
+                if (initStreamBytes != null)
+                    sharedBuffer.WriteData(initStreamBytes);
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 Logger.Error(string.Format("{0} Cannot download init segment file. Error: {1} {2}", streamType, ex.Message, ex.ToString()));
             }
 
             var duration = currentStreams.Duration;
             var downloadErrorCount = 0;
-            var bufferTime = TimeSpan.Zero;
-            currentSegmentId = 0;
+            var bufferTime = currentTime;
             while (true) 
             {
                 while (bufferTime - currentTime > MagicBufferTime && playback)
@@ -193,12 +196,12 @@ namespace JuvoPlayer.Dash
             return streamBytes;
         }
 
-        private void DownloadInitSegment(
+        private byte[] DownloadInitSegment(
             IRepresentationStream streamSegments)
         {
             var initSegment = streamSegments.InitSegment;
             if (initSegment == null)
-                return;
+                return null;
 
             Logger.Info(string.Format("{0} Downloading Init segment: {1} {2}", 
                 streamType, initSegment.ByteRange, initSegment.Url));
@@ -209,10 +212,10 @@ namespace JuvoPlayer.Dash
                 var range = new ByteRange(initSegment.ByteRange);
                 client.SetRange(range.Low, range.High);
             }
-            var streamBytes = client.DownloadData(initSegment.Url);
-            sharedBuffer.WriteData(streamBytes);
+            var bytes = client.DownloadData(initSegment.Url);
 
             Logger.Info(string.Format("{0} Init segment downloaded.", streamType));
+            return bytes;
         }
     }
     internal class ByteRange

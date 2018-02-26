@@ -23,7 +23,6 @@ namespace JuvoPlayer.Common
         void Reset();
         void Paused();
         void Played();
-        void Seek(TimeSpan position);
 
         event ClipDurationChanged ClipDuration;
         event DRMInitDataFound DRMInitDataFound;

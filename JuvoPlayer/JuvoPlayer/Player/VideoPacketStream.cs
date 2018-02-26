@@ -55,7 +55,10 @@ namespace JuvoPlayer.Player
             if (!(config is VideoStreamConfig))
                 throw new ArgumentException("config should be videoconfig");
 
-            forceDrmChange = videoConfig != null && !videoConfig.Equals(config);
+            if (videoConfig != null && videoConfig.Equals(config))
+                return;
+
+            forceDrmChange = videoConfig != null;
 
             videoConfig = (VideoStreamConfig) config;
 

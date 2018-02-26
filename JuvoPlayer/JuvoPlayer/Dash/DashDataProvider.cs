@@ -84,7 +84,6 @@ namespace JuvoPlayer.Dash
             videoPipeline.Stop();
         }
 
-
         public void Start()
         {
             Logger.Info("Dash start.");

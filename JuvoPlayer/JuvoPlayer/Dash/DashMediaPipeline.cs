@@ -56,11 +56,17 @@ namespace JuvoPlayer.Dash
 
         public void Seek(TimeSpan time)
         {
-            dashClient.Stop();
+            // Stop demuxer and dashclient
+            // Stop demuxer first so old incoming data will ignored
             demuxer.Reset();
-            demuxer.Seek(time);
+            dashClient.Stop();
+
+            // Set new times 
             dashClient.Seek(time);
+
+            // Start downloading and parsing new data
             dashClient.Start();
+            demuxer.StartForExternalSource();
         }
 
         private void ParseDrms(Media newMedia)
