@@ -11,12 +11,33 @@
   <ItemGroup>
     <None Remove="testcase\logging_invalid.config" />
     <None Remove="testcase\logging_valid.config" />
+    <None Remove="testcase\MPD Parser Data\1.TOS_OnDemand_HEVC_MultiRate.mpd" />
+    <None Remove="testcase\MPD Parser Data\2.TOS_OnDemand_HEVC_MultiRes.mpd" />
+    <None Remove="testcase\MPD Parser Data\car-20120827-manifest.mpd" />
+    <None Remove="testcase\MPD Parser Data\manifest%28format=mpd-time-csf%29" />
+    <None Remove="testcase\MPD Parser Data\Manifest.mpd" />
+    <None Remove="testcase\MPD Parser Data\oops_cenc-20121114-signedlicenseurl-manifest.mpd" />
+    <None Remove="testcase\MPD Parser Data\TOS_OnDemand_HEVC_MultiRate.mpd" />
+    <None Remove="testcase\MPD Parser Data\TOS_OnDemand_HEVC_MultiRes.mpd" />
+    <None Remove="testcase\MPD Parser Data\xlink.xsd" />
+    <None Remove="testcase\mpddata.json" />
     <None Remove="testcase\videoclips.json" />
   </ItemGroup>
 
   <ItemGroup>
     <EmbeddedResource Include="testcase\logging_invalid.config" />
     <EmbeddedResource Include="testcase\logging_valid.config" />
+    <EmbeddedResource Include="testcase\MPD Parser Data\car-20120827-manifest.mpd" />
+    <EmbeddedResource Include="DASH-MPD.xsd">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </EmbeddedResource>
+    <EmbeddedResource Include="testcase\MPD Parser Data\manifest(format=mpd-time-csf)" />
+    <EmbeddedResource Include="testcase\MPD Parser Data\Manifest.mpd" />
+    <EmbeddedResource Include="testcase\MPD Parser Data\mpddata.json" />
+    <EmbeddedResource Include="testcase\MPD Parser Data\oops_cenc-20121114-signedlicenseurl-manifest.mpd" />
+    <EmbeddedResource Include="testcase\MPD Parser Data\TOS_OnDemand_HEVC_MultiRate.mpd" />
+    <EmbeddedResource Include="testcase\MPD Parser Data\TOS_OnDemand_HEVC_MultiRes.mpd" />
+    <EmbeddedResource Include="testcase\MPD Parser Data\xlink.xsd" />
     <EmbeddedResource Include="testcase\videoclips.json" />
   </ItemGroup>
 
@@ -29,6 +50,12 @@
   <ItemGroup>
     <ProjectReference Include="..\JuvoPlayer.Common\JuvoPlayer.Common.csproj" />
     <ProjectReference Include="..\MpdParser\MpdParser.csproj" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="testcase\MPD Parser Data\DASH-MPD.xsd">
+      <CopyToOutputDirectory>Never</CopyToOutputDirectory>
+    </None>
   </ItemGroup>
 
 </Project>
