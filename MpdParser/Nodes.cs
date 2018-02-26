@@ -381,4 +381,5 @@ namespace MpdParser.Node
         [Xml.Element] public Period[] Periods { get; internal set; }
         [Xml.Element] public Metrics[] Metrics { get; internal set; }
     }
+
 }

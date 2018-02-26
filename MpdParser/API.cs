@@ -480,11 +480,18 @@ namespace MpdParser
 
         public static Document FromText(string manifestText, string manifestUrl)
         {
+            Node.DASH dash = FromTextInternal( manifestText,  manifestUrl);
+            dash.PeriodFixup();
+            
+            return new Document(dash);
+        }
+
+        public static Node.DASH FromTextInternal(string manifestText, string manifestUrl)
+        {
             Node.DASH dash = new Node.DASH(manifestUrl);
             System.IO.StringReader reader = new System.IO.StringReader(manifestText);
             Xml.Parser.Parse(reader, dash, "MPD");
-            dash.PeriodFixup();
-            return new Document(dash);
+            return dash;
         }
 
         public override string ToString()
