@@ -210,7 +210,8 @@ namespace JuvoPlayer.FFmpeg
 
         private unsafe void DemuxTask(Action initAction)
         {
-            try {
+            try
+            {
                 initAction(); // Finish more time-consuming init things
                 FindStreamsInfo();
                 ReadAudioConfig();
@@ -415,6 +416,7 @@ namespace JuvoPlayer.FFmpeg
                 Logger.Info("Wrong audio stream index! nb_streams = " + formatContext->nb_streams + ", audio_idx = " + audioIdx);
                 return;
             }
+
             AVStream* s = formatContext->streams[audioIdx];
             AudioStreamConfig config = new AudioStreamConfig();
 
@@ -461,6 +463,7 @@ namespace JuvoPlayer.FFmpeg
                 Logger.Info("Wrong video stream index! nb_streams = " + formatContext->nb_streams + ", video_idx = " + videoIdx);
                 return;
             }
+
             AVStream* s = formatContext->streams[videoIdx];
             var config = new VideoStreamConfig
             {
@@ -575,11 +578,13 @@ namespace JuvoPlayer.FFmpeg
         public void Reset()
         {
             reseting = true;
+
             dataBuffer.ClearData();
             dataBuffer.WriteData(null, true);
             demuxTask?.Wait();
 
-            Logger.Info("Demuxer resetted");
+            DeallocFFmpeg();
+
             reseting = false;
         }
 
@@ -591,12 +596,6 @@ namespace JuvoPlayer.FFmpeg
         public unsafe void Played()
         {
             FFmpeg.av_read_play(formatContext);
-        }
-
-        public void Seek(TimeSpan position)
-        {
-            dataBuffer.ClearData();
-            demuxTask = Task.Run(() => DemuxTask(InitES));
         }
 
         private static unsafe ISharedBuffer RetrieveSharedBufferReference(void* @opaque)
@@ -622,6 +621,7 @@ namespace JuvoPlayer.FFmpeg
             catch (Exception) {
                 return 0;
             }
+
             // ISharedBuffer::ReadData(int size) is blocking - it will block until it has data or return 0 if EOF is reached
             var data = sharedBuffer.ReadData(bufSize);
             if (data.HasValue)

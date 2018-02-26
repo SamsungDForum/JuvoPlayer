@@ -54,7 +54,10 @@ namespace JuvoPlayer.Player
             if (!(config is AudioStreamConfig))
                 throw new ArgumentException("config should be audioconfig");
 
-            forceDrmChange = audioConfig != null && !audioConfig.Equals(config);
+            if (audioConfig != null && audioConfig.Equals(config))
+                return;
+
+            forceDrmChange = audioConfig != null;
 
             audioConfig = (AudioStreamConfig) config;
 
