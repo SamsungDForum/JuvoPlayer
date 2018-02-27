@@ -93,10 +93,12 @@ namespace JuvoPlayer.Dash
                 Logger.Info(period.ToString());
 
                 Media audio = Find(period, "en", MediaType.Audio) ??
-                        Find(period, "und", MediaType.Audio);
+                        Find(period, "und", MediaType.Audio)??
+                        Find(period, null, MediaType.Audio);
 
                 Media video = Find(period, "en", MediaType.Video) ??
-                        Find(period, "und", MediaType.Video);
+                        Find(period, "und", MediaType.Video)??
+                        Find(period, null, MediaType.Video);
 
                 // TODO(p.galiszewsk): is it possible to have period without audio/video?
                 if (audio != null && video != null)
@@ -118,30 +120,36 @@ namespace JuvoPlayer.Dash
 
         private static Media Find(MpdParser.Period p, string language, MediaType type, MediaRole role = MediaRole.Main)
         {
-            Media missingRole = null;
-            foreach (var set in p.Sets)
+            Media res = null;
+            for(int i=0;i<p.Sets.Length;i++)
             {
-                if (set.Type.Value != type)
+                if (p.Sets[i].Type.Value != type)
                 {
                     continue;
                 }
 
-                if (language != "und" && set.Lang != language)
+                if (language != null)
                 {
-                    continue;
+                    if (p.Sets[i].Lang != language)
+                    {
+                        continue;
+                    }
                 }
 
-                if (set.HasRole(role))
+                if (p.Sets[i].HasRole(role))
                 {
-                    return set;
+                    res = p.Sets[i];
+                    break;
                 }
 
-                if (set.Roles.Length == 0)
+                if (p.Sets[i].Roles.Length == 0)
                 {
-                    missingRole = set;
+                    res =  p.Sets[i];
+                    break;
                 }
             }
-            return missingRole;
+
+            return res;
         }
 
         public void OnTimeUpdated(TimeSpan time)
