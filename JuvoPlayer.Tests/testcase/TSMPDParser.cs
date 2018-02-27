@@ -86,30 +86,36 @@ namespace JuvoPlayer.Tests.testcase.MPD_Parse
         }
         private static Media Find(MpdParser.Period p, string language, MediaType type, MediaRole role = MediaRole.Main)
         {
-            Media missingRole = null;
-            foreach (var set in p.Sets)
+            Media res = null;
+            for (int i = 0; i < p.Sets.Length; i++)
             {
-                if (set.Type.Value != type)
+                if (p.Sets[i].Type.Value != type)
                 {
                     continue;
                 }
 
-                if (language != "und" && set.Lang != language)
+                if (language != null)
                 {
-                    continue;
+                    if (p.Sets[i].Lang != language)
+                    {
+                        continue;
+                    }
                 }
 
-                if (set.HasRole(role))
+                if (p.Sets[i].HasRole(role))
                 {
-                    return set;
+                    res = p.Sets[i];
+                    break;
                 }
 
-                if (set.Roles.Length == 0)
+                if (p.Sets[i].Roles.Length == 0)
                 {
-                    missingRole = set;
+                    res = p.Sets[i];
+                    break;
                 }
             }
-            return missingRole;
+
+            return res;
         }
 
         [Test]
@@ -161,13 +167,19 @@ namespace JuvoPlayer.Tests.testcase.MPD_Parse
                 foreach (var period in item.parsedmpd.Periods)
                 {
                     Assert.DoesNotThrow(() =>
-                        item.videoMedia = Find(period, "en", MediaType.Video) ??
-                        Find(period, "und", MediaType.Video)
+                    {
+                        item.videoMedia = Find(period, "en", MediaType.Audio) ??
+                        Find(period, "und", MediaType.Audio) ??
+                        Find(period, null, MediaType.Audio);
+                    }
                         );
 
                     Assert.DoesNotThrow(() =>
-                        item.audioMedia = Find(period, "en", MediaType.Audio) ??
-                        Find(period, "und", MediaType.Audio)
+                    {
+                        item.audioMedia = Find(period, "en", MediaType.Video) ??
+                        Find(period, "und", MediaType.Video) ??
+                        Find(period, null, MediaType.Video);
+                    }
                         );
 
                     Assert.IsNotNull(item.videoMedia);
@@ -255,6 +267,9 @@ namespace JuvoPlayer.Tests.testcase.MPD_Parse
                     tmpxml = tmpxml.Replace(tmpxml.Substring(idx, schema.Length), schema);
                 }
 
+                // ok... so we are "re-parsing" internal xml here...
+                // but do it from original data (not schema replaced one)
+                MpdParser.Node.DASH IntMPD = Document.FromTextInternal(item.rawXML, item.url);
 
                 XmlSerializer serializer = new XmlSerializer(typeof(MPDtype));
                 System.IO.StringReader reader = new System.IO.StringReader(tmpxml);
@@ -264,17 +279,22 @@ namespace JuvoPlayer.Tests.testcase.MPD_Parse
                 // Call the Deserialize method to restore the object's state.
                 MPDtype ExtMPD = null;
 
-                Assert.DoesNotThrow(() =>
+                try
                 {
                     ExtMPD = (MPDtype)serializer.Deserialize(XReader);
-                });
+                }
+                catch(Exception e)
+                {
+                    System.Diagnostics.Debug.WriteLine($"Unparsable MPD (System Parser): {item.url}");
+                    System.Diagnostics.Debug.WriteLine($"Exception: {e.Message} {e.Source}");
+                    System.Diagnostics.Debug.WriteLine($"Exception: {e.InnerException}");
+                    System.Diagnostics.Debug.WriteLine($"Unparsable MPD will NOT influence final result as comparison is not possible");
+                    
+                    continue;
+                }
 
                 MpdParser.Node.DASH IntfromExtMPD = DASHConverter.Convert(ExtMPD,item.url);
                 
-                // ok... so we are "re-parsing" internal xml here...
-                // but do it from original data (not schema replaced one)
-                MpdParser.Node.DASH IntMPD = Document.FromTextInternal(item.rawXML, item.url);
-
                 System.Diagnostics.Debug.WriteLine($"Checking URL: {item.url} ...");
                 bool res = DASHConverter.Same(IntfromExtMPD, "Sys Parser", IntMPD, "App Parser");
                 if (item.ignore_mpd_comparison)

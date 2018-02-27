@@ -14,6 +14,7 @@
     <None Remove="testcase\MPD Parser Data\1.TOS_OnDemand_HEVC_MultiRate.mpd" />
     <None Remove="testcase\MPD Parser Data\2.TOS_OnDemand_HEVC_MultiRes.mpd" />
     <None Remove="testcase\MPD Parser Data\car-20120827-manifest.mpd" />
+    <None Remove="testcase\MPD Parser Data\dashevc-main-2s.mpd" />
     <None Remove="testcase\MPD Parser Data\manifest%28format=mpd-time-csf%29" />
     <None Remove="testcase\MPD Parser Data\Manifest.mpd" />
     <None Remove="testcase\MPD Parser Data\oops_cenc-20121114-signedlicenseurl-manifest.mpd" />
@@ -31,6 +32,7 @@
     <EmbeddedResource Include="DASH-MPD.xsd">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </EmbeddedResource>
+    <EmbeddedResource Include="testcase\MPD Parser Data\dashevc-main-2s.mpd" />
     <EmbeddedResource Include="testcase\MPD Parser Data\manifest(format=mpd-time-csf)" />
     <EmbeddedResource Include="testcase\MPD Parser Data\Manifest.mpd" />
     <EmbeddedResource Include="testcase\MPD Parser Data\mpddata.json" />
