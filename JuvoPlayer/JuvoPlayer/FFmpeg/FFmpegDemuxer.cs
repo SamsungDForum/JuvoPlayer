@@ -194,7 +194,7 @@ namespace JuvoPlayer.FFmpeg
             }
 
             if (formatContext->duration > 0)
-                ClipDuration?.Invoke(TimeSpan.FromMilliseconds(formatContext->duration) / 1000);
+                ClipDuration?.Invoke(TimeSpan.FromMilliseconds(formatContext->duration / 1000));
 
             audioIdx = FFmpeg.av_find_best_stream(formatContext, AVMediaType.AVMEDIA_TYPE_AUDIO, -1, -1, null, 0);
             videoIdx = FFmpeg.av_find_best_stream(formatContext, AVMediaType.AVMEDIA_TYPE_VIDEO, -1, -1, null, 0);
