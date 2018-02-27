@@ -210,7 +210,7 @@ namespace JuvoPlayer.Dash
         {
             Low = 0;
             High = 0;
-            var ranges = range.Split("-");
+            var ranges = range.Split('-');
             if (ranges.Length != 2)
             {
                 throw new ArgumentException("Range cannot be parsed.");
