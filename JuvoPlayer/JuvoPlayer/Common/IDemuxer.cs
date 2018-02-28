@@ -15,9 +15,15 @@ using System;
 
 namespace JuvoPlayer.Common
 {
+    public enum InitializationMode
+    {
+        Minimal,
+        Full
+    };
+
     public interface IDemuxer : IDisposable
     {
-        void StartForExternalSource();
+        void StartForExternalSource(InitializationMode initMode);
         void StartForUrl(string url);
         void ChangePID(int pid);
         void Reset();
