@@ -16,7 +16,7 @@ using System;
 namespace JuvoPlayer.Common
 {
     [Serializable]
-    public class StreamPacket
+    public class StreamPacket : IDisposable
     {
         public byte[] Data = null;
         public StreamType StreamType { get; set; }
@@ -34,6 +34,10 @@ namespace JuvoPlayer.Common
                 Pts = TimeSpan.MaxValue,
                 IsEOS = true
             };
+        }
+
+        public virtual void Dispose()
+        {
         }
     }
 }

@@ -52,7 +52,7 @@ namespace JuvoPlayer.Player
 
             // Shall we throw when we cannot decrypt packet, because session is null?
             if (drmSession != null && packet is EncryptedStreamPacket)
-                packet = drmSession.DecryptPacket(packet);
+                packet = drmSession.DecryptPacket(packet as EncryptedStreamPacket).Result;
 
             playerAdapter.AppendPacket(packet);
         }
