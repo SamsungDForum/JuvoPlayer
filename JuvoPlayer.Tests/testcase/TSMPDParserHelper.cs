@@ -974,7 +974,7 @@ namespace JuvoPlayer.Tests.testcase.MPD_Parse
                 item.InbandEventStreams = Array.ConvertAll(input.InbandEventStream,
                     new Converter<EventStreamType, Descriptor>(ConvertInbandEvent));
 
-            item.Profile = input.profiles;
+            item.Profiles = input.profiles;
 
             if (input.widthSpecified)
                 item.Width = input.width;

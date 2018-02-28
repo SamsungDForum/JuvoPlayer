@@ -143,7 +143,7 @@ namespace MpdParser.Node.Writers
     }
     public class RepresentationBaseWriter : RepresentationBase
     {
-        [Xml.Attribute] public new string Profile { get => base.Profile; set => base.Profile = value; }
+        [Xml.Attribute] public new string Profiles { get => base.Profiles; set => base.Profiles = value; }
         [Xml.Attribute] public new uint? Width { get => base.Width; set => base.Width = value; }
         [Xml.Attribute] public new uint? Height { get => base.Height; set => base.Height = value; }
         [Xml.Attribute] public new string Sar { get => base.Sar; set => base.Sar = value; }
@@ -262,8 +262,8 @@ namespace MpdParser.Node.Writers
         [Xml.Attribute] public new string Type { get => base.Type;  set => base.Type = value;  }
         [Xml.Attribute] public new string Profiles { get => base.Profiles;  set => base.Profiles = value;  }
         [Xml.Attribute] public new DateTime? AvailabilityStartTime { get => base.AvailabilityStartTime; set => base.AvailabilityStartTime = value; }
-        [Xml.Attribute] public new DateTime? AvailabilityEndTime { get => base.AvailabilityStartTime; set => base.AvailabilityStartTime = value; }
-        [Xml.Attribute] public new DateTime? PublishTime { get => base.AvailabilityStartTime; set => base.AvailabilityStartTime = value; }
+        [Xml.Attribute] public new DateTime? AvailabilityEndTime { get => base.AvailabilityEndTime; set => base.AvailabilityEndTime = value; }
+        [Xml.Attribute] public new DateTime? PublishTime { get => base.PublishTime; set => base.PublishTime = value; }
         [Xml.Attribute] public new TimeSpan? MediaPresentationDuration { get => base.MediaPresentationDuration; set => base.MediaPresentationDuration = value; }
         [Xml.Attribute] public new TimeSpan? MinimumUpdatePeriod { get => base.MinimumUpdatePeriod; set => base.MinimumUpdatePeriod = value; }
         [Xml.Attribute] public new TimeSpan? MinBufferTime { get => base.MinBufferTime; set => base.MinBufferTime = value; }
