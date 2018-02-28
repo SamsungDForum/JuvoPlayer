@@ -6,7 +6,7 @@ namespace JuvoPlayer.DRM
 {
     public interface IDRMSession : IDisposable
     {
-        StreamPacket DecryptPacket(StreamPacket packet);
+        Task<StreamPacket> DecryptPacket(EncryptedStreamPacket packet);
         Task<ErrorCode> StartLicenceChallenge();
     }
 }

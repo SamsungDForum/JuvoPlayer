@@ -23,6 +23,7 @@ namespace JuvoPlayer.DRM.Cenc
         private readonly DRMInitData initData;
         private string currentSessionId;
         private byte[] requestData;
+        private bool licenceInstalled = false;
 
         private readonly DRMDescription drmDescription;
         private readonly AsyncContextThread thread;
@@ -65,20 +66,15 @@ namespace JuvoPlayer.DRM.Cenc
             return new CencSession(initData, drmDescription);
         }
 
-        public unsafe StreamPacket DecryptPacket(StreamPacket packet)
+        public Task<StreamPacket> DecryptPacket(EncryptedStreamPacket packet)
         {
-            if (!(packet is EncryptedStreamPacket))
-            {
-                return packet;
-            }
-
-            var decryptedPacket = thread.Factory.Run(() => DecryptPacketOnIemeThread(packet)).Result;
-            return decryptedPacket;
+            return thread.Factory.Run(() => DecryptPacketOnIemeThread(packet));
         }
 
-        private unsafe DecryptedEMEPacket DecryptPacketOnIemeThread(StreamPacket packet)
+        private unsafe StreamPacket DecryptPacketOnIemeThread(EncryptedStreamPacket packet)
         {
-            var data = packet as EncryptedStreamPacket;
+            if (licenceInstalled == false)
+                return null;
 
             HandleSize[] pHandleArray = new HandleSize[1];
             var numofparam = 1;
@@ -89,23 +85,23 @@ namespace JuvoPlayer.DRM.Cenc
             param[0].phase = eMsdCipherPhase.MSD_PHASE_NONE;
             param[0].buseoutbuf = false;
 
-            fixed (byte* pdata = data.Data, piv = data.Iv, pkid = data.KeyId)
+            fixed (byte* pdata = packet.Data, piv = packet.Iv, pkid = packet.KeyId)
             {
                 param[0].pdata = pdata;
-                param[0].udatalen = (uint)data.Data.Length;
+                param[0].udatalen = (uint)packet.Data.Length;
                 param[0].poutbuf = null;
                 param[0].uoutbuflen = 0;
                 param[0].piv = piv;
-                param[0].uivlen = (uint)data.Iv.Length;
+                param[0].uivlen = (uint)packet.Iv.Length;
                 param[0].pkid = pkid;
-                param[0].ukidlen = (uint)data.KeyId.Length;
+                param[0].ukidlen = (uint)packet.KeyId.Length;
 
                 var subsamplePointer = IntPtr.Zero;
 
                 MSD_FMP4_DATA subData;
-                if (data.Subsamples != null)
+                if (packet.Subsamples != null)
                 {
-                    var subsamples = data.Subsamples.Select(o =>
+                    var subsamples = packet.Subsamples.Select(o =>
                             new MSD_SUBSAMPLE_INFO {uBytesOfClearData = o.ClearData, uBytesOfEncryptedData = o.EncData})
                         .ToArray();
 
@@ -113,7 +109,7 @@ namespace JuvoPlayer.DRM.Cenc
 
                     subData = new MSD_FMP4_DATA
                     {
-                        uSubSampleCount = (uint)data.Subsamples.Length,
+                        uSubSampleCount = (uint)packet.Subsamples.Length,
                         pSubSampleInfo = subsamplePointer
                     };
                 }
@@ -245,6 +241,8 @@ namespace JuvoPlayer.DRM.Cenc
                 Logger.Error("Install licence error: " + errorCode);
                 return errorCode;
             }
+
+            licenceInstalled = true;
             return ErrorCode.Success;
         }
 

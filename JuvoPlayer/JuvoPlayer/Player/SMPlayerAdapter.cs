@@ -211,7 +211,7 @@ namespace JuvoPlayer.Player
 
                 if (!playerInstance.SubmitPacket(IntPtr.Zero, packet.HandleSize.size, packet.Pts.TotalNanoseconds(),
                     trackType, pnt))
-                {                    
+                {
                     Logger.Error("Submiting encrypted packet failed");
                     return;
                 }

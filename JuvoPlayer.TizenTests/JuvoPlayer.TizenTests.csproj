@@ -18,6 +18,7 @@
 
   <ItemGroup>
     <EmbeddedResource Include="..\JuvoPlayer.Tests\testcase\videoclips.json" Link="testcase\videoclips.json" />
+    <EmbeddedResource Include="res\drm\encrypted_packets_list.bin" />
     <EmbeddedResource Include="res\drm\init_data" />
   </ItemGroup>
 
@@ -26,6 +27,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <None Remove="res\drm\encrypted_packets_list.bin" />
     <None Remove="res\drm\init_data" />
   </ItemGroup>
 

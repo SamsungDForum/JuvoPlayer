@@ -50,7 +50,7 @@ namespace JuvoPlayer.Player
             }
 
             if (drmSession != null && packet is EncryptedStreamPacket)
-                packet = drmSession.DecryptPacket(packet);
+                packet = drmSession.DecryptPacket(packet as EncryptedStreamPacket).Result;
 
             playerAdapter.AppendPacket(packet);
         }
