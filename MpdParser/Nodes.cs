@@ -176,7 +176,7 @@ namespace MpdParser.Node
 
     public class RepresentationBase
     {
-        [Xml.Attribute] public string Profile { get; internal set; }
+        [Xml.Attribute] public string Profiles { get; internal set; }
         [Xml.Attribute] public uint? Width { get; internal set; }
         [Xml.Attribute] public uint? Height { get; internal set; }
         [Xml.Attribute] public string Sar { get; internal set; }

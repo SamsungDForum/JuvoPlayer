@@ -121,7 +121,7 @@ namespace JuvoPlayer.Tests.testcase.MPD_Parse
         [Test]
         [Description("FromText returns a parsed mpd (Document) OK")]
         [Property("SPEC", "MpdParser.Document.FromText M")]
-        public static void FromText_EstaBien()
+        public static void AppParser_OK()
         {
             foreach(var tc in mpds)
             {
@@ -155,11 +155,11 @@ namespace JuvoPlayer.Tests.testcase.MPD_Parse
         [Test]
         [Description("Audio & Video Media extractable from mpd (Document) OK")]
         [Property("SPEC", "MpdParser.Document.Periods M")]
-        public static void HasAVMedia_EstaBien()
+        public static void HasAVMedia_OK()
         {
             if(parsedmpds.Count == 0 )
             {
-                FromText_EstaBien();
+                AppParser_OK();
             }
 
             foreach (var item in parsedmpds)
@@ -194,11 +194,11 @@ namespace JuvoPlayer.Tests.testcase.MPD_Parse
         [Test]
         [Description("Audio & Video Streams extractable from mpd (Document) OK")]
         [Property("SPEC", "MpdParser.Media.Representation M")]
-        public static void HasRepresentation_EstaBien()
+        public static void HasRepresentation_OK()
         {
             if (parsedmpds.Count == 0)
             {
-                HasAVMedia_EstaBien();
+                HasAVMedia_OK();
             }
 
             foreach (var item in parsedmpds)
@@ -237,11 +237,11 @@ namespace JuvoPlayer.Tests.testcase.MPD_Parse
         [Test]
         [Description("Compares 2 DASH Documents, application parsed and system parsed.")]
         [Property("SPEC", "MpdParser.DASH M")]
-        public static void XMLData_EstaBien()
+        public static void XMLData_AppParserSysParser_same_OK()
         {
             if (parsedmpds.Count == 0)
             {
-                HasRepresentation_EstaBien();
+                HasRepresentation_OK();
             }
 
             bool alltestresult = true;
