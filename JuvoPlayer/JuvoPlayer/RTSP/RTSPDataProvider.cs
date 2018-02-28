@@ -82,7 +82,7 @@ namespace JuvoPlayer.RTSP
                 return;
 
             rtpClient.Start(currentClip);
-            demuxer.StartForExternalSource();
+            demuxer.StartForExternalSource(InitializationMode.Full);
         }
         public void OnStopped()
         {

@@ -41,7 +41,7 @@ namespace JuvoPlayer.Dash
             ParseDrms(newMedia);
 
             dashClient.Start();
-            demuxer.StartForExternalSource();
+            demuxer.StartForExternalSource(InitializationMode.Full);
         }
         public void Stop()
         {
@@ -66,7 +66,7 @@ namespace JuvoPlayer.Dash
 
             // Start downloading and parsing new data
             dashClient.Start();
-            demuxer.StartForExternalSource();
+            demuxer.StartForExternalSource(InitializationMode.Minimal);
         }
 
         private void ParseDrms(Media newMedia)

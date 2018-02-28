@@ -92,14 +92,14 @@ namespace JuvoPlayer.FFmpeg
             seekFunctionDelegate = new avio_alloc_context_seek(Seek);
         }
 
-        public void StartForExternalSource()
+        public void StartForExternalSource(InitializationMode initMode)
         {
             Logger.Info("StartDemuxer!");
             if (dataBuffer == null)
                 throw new InvalidOperationException("dataBuffer cannot be null");
 
             // Potentially time-consuming part of initialization and demuxation loop will be executed on a detached thread.
-            demuxTask = Task.Run(() => DemuxTask(InitES)); 
+            demuxTask = Task.Run(() => DemuxTask(InitES, initMode)); 
         }
 
         public void StartForUrl(string url)
@@ -107,7 +107,7 @@ namespace JuvoPlayer.FFmpeg
             Logger.Info("StartDemuxer!");
 
             // Potentially time-consuming part of initialization and demuxation loop will be executed on a detached thread.
-            demuxTask = Task.Run(() => DemuxTask(() => InitURL(url))); 
+            demuxTask = Task.Run(() => DemuxTask(() => InitURL(url), InitializationMode.Full)); 
         }
 
         private unsafe void InitES()
@@ -208,15 +208,20 @@ namespace JuvoPlayer.FFmpeg
             }
         }
 
-        private unsafe void DemuxTask(Action initAction)
+        private unsafe void DemuxTask(Action initAction, InitializationMode initMode)
         {
             try
             {
                 initAction(); // Finish more time-consuming init things
-                FindStreamsInfo();
-                ReadAudioConfig();
-                ReadVideoConfig();
-                UpdateContentProtectionConfig();
+
+                // Do some time consuming operation only when it is needed
+                if (initMode == InitializationMode.Full)
+                {
+                    FindStreamsInfo();
+                    ReadAudioConfig();
+                    ReadVideoConfig();
+                    UpdateContentProtectionConfig();
+                }
             }
             catch (Exception e) {
                 Logger.Error("An error occured: " + e.Message);
