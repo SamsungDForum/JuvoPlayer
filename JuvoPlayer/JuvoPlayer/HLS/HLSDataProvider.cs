@@ -94,6 +94,11 @@ namespace JuvoPlayer.HLS
         {
         }
 
+        public bool IsSeeekingSupported()
+        {
+            return false;
+        }
+
         public void Start()
         {
             demuxer.StartForUrl(currentClip.Url);

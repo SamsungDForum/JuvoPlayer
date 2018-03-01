@@ -94,7 +94,7 @@ namespace XamarinPlayer.Views
 
         private void Forward()
         {
-            if (_playerService.State != PlayerState.Playing)
+            if (!_playerService.IsSeekingSupported || _playerService.State != PlayerState.Playing)
                 return;
 
             if (_playerService.Duration - _playerService.CurrentPosition < DefaultSeekTime)
@@ -105,7 +105,7 @@ namespace XamarinPlayer.Views
 
         private void Rewind()
         {
-            if (_playerService.State != PlayerState.Playing)
+            if (!_playerService.IsSeekingSupported || _playerService.State != PlayerState.Playing)
                 return;
 
             if (_playerService.CurrentPosition < DefaultSeekTime)
@@ -221,8 +221,12 @@ namespace XamarinPlayer.Views
             }
             else if (e.State == PlayerState.Prepared)
             {
-                BackButton.IsEnabled = true;
-                ForwardButton.IsEnabled = true;
+                if (_playerService.IsSeekingSupported)
+                {
+                    BackButton.IsEnabled = true;
+                    ForwardButton.IsEnabled = true;
+                }
+
                 PlayButton.IsEnabled = true;
                 PlayButton.Focus();
 

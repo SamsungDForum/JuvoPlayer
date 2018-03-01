@@ -1,12 +1,11 @@
 using System;
-using System.Linq;
 using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
 using JuvoPlayer.Common;
 using JuvoPlayer.Common.Logging;
-using MpdParser;
 using MpdParser.Node;
+using Representation = MpdParser.Representation;
 
 namespace JuvoPlayer.Dash
 {
@@ -22,7 +21,7 @@ namespace JuvoPlayer.Dash
         private readonly StreamType streamType;
         private readonly ManualResetEvent timeUpdatedEvent = new ManualResetEvent(false);
 
-        private Media media;
+        private Representation currentRepresentation;
         private TimeSpan currentTime;
         private uint currentSegmentId;
 
@@ -51,17 +50,13 @@ namespace JuvoPlayer.Dash
 
         public void Start()
         {
-            if (media == null)
-                throw new Exception("media has not been set");
+            if (currentRepresentation == null)
+                throw new Exception("currentRepresentation has not been set");
 
             Logger.Info(string.Format("{0} DashClient start.", streamType));
             playback = true;
 
-            Logger.Info(string.Format("{0} Media: {1}", streamType, media));
-            // get first element of sorted array 
-            var representation = media.Representations.OrderByDescending(o => o.Bandwidth).First();
-            Logger.Info(representation.ToString());
-            currentStreams = representation.Segments;
+            currentStreams = currentRepresentation.Segments;
 
             downloadTask = Task.Run(() => DownloadThread()); 
         }
@@ -81,12 +76,13 @@ namespace JuvoPlayer.Dash
             Logger.Info(string.Format("{0} Data downloader stopped", streamType));
         }
 
-        public bool UpdateMedia(Media newMedia)
+        public void SetDashStream(Representation representation)
         {
-            if (newMedia == null)
-                return false;
-            media = newMedia;
-            return true;
+            // representation has changes, so reset initstreambytes
+            if (currentRepresentation != null)
+                initStreamBytes = null;
+
+            currentRepresentation = representation;
         }
 
         public void OnTimeUpdated(TimeSpan time)
