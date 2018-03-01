@@ -94,7 +94,7 @@ namespace JuvoPlayer.HLS
         {
         }
 
-        public bool IsSeeekingSupported()
+        public bool IsSeekingSupported()
         {
             return false;
         }

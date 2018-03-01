@@ -32,7 +32,7 @@ namespace JuvoPlayer.Common
         void OnStopped();
         void OnTimeUpdated(TimeSpan time);
 
-        bool IsSeeekingSupported();
+        bool IsSeekingSupported();
         void Start();
 
         event ClipDurationChanged ClipDurationChanged;
