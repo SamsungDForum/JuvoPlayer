@@ -12,15 +12,16 @@
 // this software or its derivatives.
 
 using System;
+using MpdParser;
 
 namespace JuvoPlayer.Dash
 {
     public interface IDashClient
     {
         void Seek(TimeSpan position);
+        void SetDashStream(Representation representation);
         void Start();
         void Stop();
-        bool UpdateMedia(MpdParser.Media newMedia);
         void OnTimeUpdated(TimeSpan time);
     }
 }

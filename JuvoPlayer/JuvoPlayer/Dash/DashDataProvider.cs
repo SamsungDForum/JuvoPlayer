@@ -74,6 +74,9 @@ namespace JuvoPlayer.Dash
 
         public void OnSeek(TimeSpan time)
         {
+            if (!IsSeeekingSupported())
+                return;
+
             audioPipeline.Seek(time);
             videoPipeline.Seek(time);
         }
@@ -82,6 +85,12 @@ namespace JuvoPlayer.Dash
         {
             audioPipeline.Stop();
             videoPipeline.Stop();
+        }
+
+        public bool IsSeeekingSupported()
+        {
+            // check for live content
+            return audioPipeline.IsSeeekingSupported() && videoPipeline.IsSeeekingSupported();
         }
 
         public void Start()

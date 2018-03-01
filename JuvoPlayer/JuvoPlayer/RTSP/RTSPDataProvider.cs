@@ -73,7 +73,11 @@ namespace JuvoPlayer.RTSP
 
         public void OnSeek(TimeSpan time)
         {
+        }
 
+        public bool IsSeeekingSupported()
+        {
+            return false;
         }
 
         public void Start()
