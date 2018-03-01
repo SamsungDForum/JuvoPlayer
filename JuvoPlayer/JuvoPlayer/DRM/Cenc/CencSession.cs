@@ -210,7 +210,7 @@ namespace JuvoPlayer.DRM.Cenc
         {
         }
 
-        public Task<ErrorCode> StartLicenceChallenge()
+        public Task<ErrorCode> Initialize()
         {
             return thread.Factory.Run(() => StartLicenceChallengeOnIemeThread());
         }

@@ -26,7 +26,7 @@ namespace JuvoPlayer.Player
         private AudioStreamConfig audioConfig;
 
         private bool forceDrmChange;
-        private Task<ErrorCode> licenceChallengeTask;
+        private Task<ErrorCode> drmSessionInitializeTask;
 
         public AudioPacketStream(IPlayerAdapter player, IDRMManager drmManager)
         {
@@ -42,11 +42,11 @@ namespace JuvoPlayer.Player
             if (packet.IsEOS && audioConfig == null)
                 return;
 
-            if (licenceChallengeTask != null && packet is EncryptedStreamPacket)
+            if (drmSessionInitializeTask != null && packet is EncryptedStreamPacket)
             {
-                if (licenceChallengeTask.Result != ErrorCode.Success)
-                    throw new InvalidOperationException("Licence challenge failed, reason: " + licenceChallengeTask.Result.ToString());
-                licenceChallengeTask = null;
+                if (drmSessionInitializeTask.Result != ErrorCode.Success)
+                    throw new InvalidOperationException("DRM session initialization failed, reason: " + drmSessionInitializeTask.Result.ToString());
+                drmSessionInitializeTask = null;
             }
 
             if (drmSession != null && packet is EncryptedStreamPacket)
@@ -84,7 +84,7 @@ namespace JuvoPlayer.Player
             forceDrmChange = false;
             drmSession?.Dispose();
             drmSession = drmManager.CreateDRMSession(data);
-            licenceChallengeTask = drmSession?.StartLicenceChallenge();
+            drmSessionInitializeTask = drmSession?.Initialize();
         }
 
         public void Dispose()
