@@ -29,6 +29,7 @@ namespace MpdParser.Node.Dynamic
     {
         public string Media;
         public string Range;
+        public string IndexRange;
         public ulong Time;
         public ulong Duration;
 
@@ -41,14 +42,25 @@ namespace MpdParser.Node.Dynamic
             return TimeRelation.SPOTON;
         }
 
-        public static ListItem[] FromXml(uint startNumber, TimeSpan startPoint, uint timescale, ulong duration, SegmentURL[] urls)
+        public static ListItem[] FromXml(uint startNumber, TimeSpan startPoint, uint timescale, ulong duration, SegmentURL[] urls, string baseURL)
         {
             ulong start = (ulong)Math.Ceiling(startPoint.TotalSeconds * timescale);
             int size = 0;
             for (int i = 0; i < urls.Length; ++i)
             {
                 if (string.IsNullOrEmpty(urls[i].Media))
-                    continue;
+                {
+                    // ISO IEC 23009-1 2014 section 5.3.9.3.2 missing media states:
+                    // "If not present, then any BaseURL element is mapped to the @media attribute 
+                    // and the range attribute shall be present"
+                    // Thus, if there is no MediaRange, skip this entry. Otherwise glue on 
+                    // BaseURL
+                    if (string.IsNullOrEmpty(urls[i].MediaRange))
+                        continue;
+
+                    urls[i].Media = baseURL;
+                }
+                    
                 ++size;
             }
             ListItem[] result = new ListItem[size];
@@ -61,6 +73,7 @@ namespace MpdParser.Node.Dynamic
 
                 result[pos].Media = urls[i].Media;
                 result[pos].Range = urls[i].MediaRange;
+                result[pos].IndexRange = urls[i].IndexRange;
                 result[pos].Time = start;
                 result[pos].Duration = duration;
                 ++pos;

@@ -3,9 +3,8 @@
   <!-- Property Group for Tizen40 Project -->
   <PropertyGroup>
     <OutputType>Library</OutputType>
-    <TargetFramework>tizen40</TargetFramework>
-    <StartupObject></StartupObject>
-    <ApplicationIcon />
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <TizenCreateTpkOnBuild>false</TizenCreateTpkOnBuild>
   </PropertyGroup>
 
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
@@ -32,13 +31,11 @@
   </ItemGroup>
 
   <ItemGroup>
-    <PackageReference Include="Newtonsoft.Json" Version="10.0.3" />
     <PackageReference Include="Nito.AsyncEx.Context" Version="5.0.0-pre-05" />
     <PackageReference Include="System.Text.Encoding.CodePages" Version="4.4.0" />
-    <PackageReference Include="Tizen.NET" Version="4.0.0">
-      <ExcludeAssets>Runtime</ExcludeAssets>
-    </PackageReference>
+    <PackageReference Include="Tizen.NET" Version="4.0.0" />
     <PackageReference Include="Tizen.NET.Sdk" Version="1.0.1" />
+    <PackageReference Include="Tizen.NET.TV" Version="4.4.0.1341" />
     <PackageReference Include="Tizen.TV.Security" Version="1.0.2" />
   </ItemGroup>
 
