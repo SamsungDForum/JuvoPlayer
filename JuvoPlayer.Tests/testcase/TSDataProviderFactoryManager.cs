@@ -47,7 +47,7 @@ namespace JuvoPlayer.Tests
                 throw new NotImplementedException();
             }
 
-            public bool IsSeeekingSupported()
+            public bool IsSeekingSupported()
             {
                 throw new NotImplementedException();
             }

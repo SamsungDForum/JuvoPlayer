@@ -81,7 +81,7 @@ namespace JuvoPlayer.Dash
             demuxer.StartForExternalSource(InitializationMode.Minimal);
         }
 
-        public bool IsSeeekingSupported()
+        public bool IsSeekingSupported()
         {
             return supportsSeeking;
         }

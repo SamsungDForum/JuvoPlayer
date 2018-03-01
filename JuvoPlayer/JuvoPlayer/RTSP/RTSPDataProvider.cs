@@ -75,7 +75,7 @@ namespace JuvoPlayer.RTSP
         {
         }
 
-        public bool IsSeeekingSupported()
+        public bool IsSeekingSupported()
         {
             return false;
         }
