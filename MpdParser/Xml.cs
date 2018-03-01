@@ -361,7 +361,19 @@ namespace MpdParser.Xml
                         // element. As such, inform caller about this so continuation
                         // on current level is performed
                         //
-                        Node.Internal.SetValue(prop, result, string.Format("<xml>{0}</xml>", reader.ReadInnerXml()));
+                  
+                        // "cleanup" of retrieved data is necessary in order to comapre 
+                        // content protection data. ReadInnerXML() will read data with any white chars
+                        // in between, while system reader (used in unit tests for comparison purposes)
+                        // cleans internal data (due to different internal representation)
+                        string[] tmpdata = reader.ReadInnerXml().Split(new char[] { '\n', '\r', '\t' });
+                        
+                        for(int i =0; i < tmpdata.Length; i++)
+                        { 
+                            tmpdata[i] = tmpdata[i].Trim(new char[] { '\n', '\r', '\t', ' ' });
+                        }
+                        string tmp = String.Join("", tmpdata);
+                        Node.Internal.SetValue(prop, result, $"<xml>{tmp}</xml>");
                         return true;
                     }
                 }

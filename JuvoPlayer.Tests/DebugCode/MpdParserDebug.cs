@@ -43,18 +43,21 @@ namespace JuvoPlayer.Tests
             LoggerBase CreateLogger(string channel, LogLevel level) => new DummyLogger(channel, level);
             LoggerManager.Configure(CreateLogger);
             //string url = "http://profficialsite.origin.mediaservices.windows.net/c51358ea-9a5e-4322-8951-897d640fdfd7/tearsofsteel_4k.ism/manifest(format=mpd-time-csf)";
-            string url = "http://yt-dash-mse-test.commondatastorage.googleapis.com/media/car-20120827-manifest.mpd";
+            //string url = "http://dash.edgesuite.net/envivio/dashpr/clear/Manifest.mpd";
+            string url = null;
             WebClient wc = new WebClient();
             String xml;
             Document doc;
+
+            // To ignore this TC (internally) keep url=null :)
+
+            if (url == null) return;
 
             try
             {
                 xml = wc.DownloadString(url);
 
                 doc = Document.FromText(xml, url);
-
-                xml = xml;
 
                 foreach (var period in doc.Periods)
                 {

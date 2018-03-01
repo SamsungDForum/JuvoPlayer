@@ -291,14 +291,22 @@ namespace MpdParser.Node
             if (init_url?.SourceURL != null)
                 init_uri = AdaptationSet.CalcURL()?.With(init_url.SourceURL);
 
+            // If we still have no init URI, construct one based on BaseURL
+            // for that purpose, index range from URL is required. Don't even try without it
+            if (init_uri == null && init_url?.Range != null)
+            {
+                init_uri = new URI(this.BaseURL);
+            }
+
             Dynamic.Segment init = init_uri == null ? null : new Dynamic.Segment(init_uri.Uri, init_url?.Range);
 
             Dynamic.ListItem[] items = Dynamic.ListItem.FromXml(
                 seg.StartNumber ?? 1,
-                Period.Start ?? TimeSpan.Zero,
+                Period.Start ?? new TimeSpan(0),
                 seg.Timescale ?? 1,
                 seg.Duration ?? 0,
-                seg.SegmentURLs);
+                seg.SegmentURLs,
+                this.BaseURL);
             return new Dynamic.ListRepresentationStream(CalcURL().Uri,
                 init, seg.Timescale ?? 1, items);
         }

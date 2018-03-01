@@ -6,7 +6,7 @@ namespace MpdParser
     public class Representation 
     {
         // REPR or ADAPTATION SET:
-        public string Profile { get; }
+        public string Profiles { get; }
         public uint? Width { get; }
         public uint? Height { get; }
         public string FrameRate { get; }
@@ -23,7 +23,7 @@ namespace MpdParser
 
         public Representation(Node.Representation repr)
         {
-            Profile = repr.Profile ?? repr.AdaptationSet.Profile;
+            Profiles = repr.Profiles ?? repr.AdaptationSet.Profiles;
             Width = repr.Width ?? repr.AdaptationSet.Width;
             Height = repr.Height ?? repr.AdaptationSet.Height;
             FrameRate = repr.FrameRate ?? repr.AdaptationSet.FrameRate;
@@ -132,8 +132,8 @@ namespace MpdParser
         public override string ToString()
         {
             string result = (Bandwidth?.ToString() ?? "-");
-            if (Profile != null)
-                result += " / " + Profile.ToString();
+            if (Profiles != null)
+                result += " / " + Profiles.ToString();
             result += " / " + (GetMimeType(MimeType, Codecs) ?? "-");
 
             string size = Size(Width, Height);
@@ -480,11 +480,18 @@ namespace MpdParser
 
         public static Document FromText(string manifestText, string manifestUrl)
         {
+            Node.DASH dash = FromTextInternal( manifestText,  manifestUrl);
+            dash.PeriodFixup();
+            
+            return new Document(dash);
+        }
+
+        public static Node.DASH FromTextInternal(string manifestText, string manifestUrl)
+        {
             Node.DASH dash = new Node.DASH(manifestUrl);
             System.IO.StringReader reader = new System.IO.StringReader(manifestText);
             Xml.Parser.Parse(reader, dash, "MPD");
-            dash.PeriodFixup();
-            return new Document(dash);
+            return dash;
         }
 
         public override string ToString()
