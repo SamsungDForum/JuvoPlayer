@@ -25,7 +25,7 @@ namespace JuvoPlayer.Player
         private readonly IPlayerAdapter playerAdapter;
         private IDRMSession drmSession;
         private VideoStreamConfig videoConfig;
-        private Task<ErrorCode> licenceChallengeTask;
+        private Task<ErrorCode> drmSessionInitializeTask;
 
         private bool forceDrmChange;
 
@@ -43,11 +43,11 @@ namespace JuvoPlayer.Player
             if (packet.IsEOS && videoConfig == null)
                 return;
 
-            if (licenceChallengeTask != null && packet is EncryptedStreamPacket)
+            if (drmSessionInitializeTask != null && packet is EncryptedStreamPacket)
             {
-                if (licenceChallengeTask.Result != ErrorCode.Success)
-                    throw new InvalidOperationException("Licence challenge failed, reason: " + licenceChallengeTask.Result.ToString());
-                licenceChallengeTask = null;
+                if (drmSessionInitializeTask.Result != ErrorCode.Success)
+                    throw new InvalidOperationException("DRM session initialization failed, reason: " + drmSessionInitializeTask.Result.ToString());
+                drmSessionInitializeTask = null;
             }
 
             // Shall we throw when we cannot decrypt packet, because session is null?
@@ -86,7 +86,7 @@ namespace JuvoPlayer.Player
             forceDrmChange = false;
             drmSession?.Dispose();
             drmSession = drmManager.CreateDRMSession(data);
-            licenceChallengeTask = drmSession?.StartLicenceChallenge();
+            drmSessionInitializeTask = drmSession?.Initialize();
         }
 
         public void Dispose()

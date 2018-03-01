@@ -25,6 +25,7 @@
 
   <ItemGroup>
     <EmbeddedResource Include="..\JuvoPlayer.Tests\testcase\*.config" Link="testcase\%(Filename).config" />
+    <EmbeddedResource Include="..\JuvoPlayer.Tests\testcase\MPD Parser Data\*" Link="testcase\MPD Parser Data\%(Filename)%(Extension)" />
   </ItemGroup>
 
   <ItemGroup>

@@ -86,34 +86,34 @@ namespace JuvoPlayer.TizenTests
         }
 
         [Test]
-        public async Task StartLicenceChallenge_WhenLicenceUrlIsNull_ReturnsInvalidArgument()
+        public async Task Initialize_WhenLicenceUrlIsNull_ReturnsInvalidArgument()
         {
             var drmInitData = CreateDrmInitData();
             var configuration = CreateDrmDescription();
             configuration.LicenceUrl = null;
             using (var drmSession = CencSession.Create(drmInitData, configuration))
             {
-                var result = await drmSession.StartLicenceChallenge();
+                var result = await drmSession.Initialize();
                 Assert.That(result, Is.EqualTo(ErrorCode.InvalidArgument));
             }
         }
 
         [Test]
-        public async Task StartLicenceChallenge_WhenInitDataIsInvalid_ReturnsError()
+        public async Task Initialize_WhenInitDataIsInvalid_ReturnsError()
         {
             var drmInitData = CreateDrmInitData();
             var configuration = CreateDrmDescription();
             drmInitData.InitData = null;
             using (var drmSession = CencSession.Create(drmInitData, configuration))
             {
-                var result = await drmSession.StartLicenceChallenge();
+                var result = await drmSession.Initialize();
                 Assert.That(result, Is.Not.EqualTo(ErrorCode.Success));
             }
 
             drmInitData.InitData = initData.Take(initData.Length / 2).ToArray();
             using (var drmSession = CencSession.Create(drmInitData, configuration))
             {
-                var result = await drmSession.StartLicenceChallenge();
+                var result = await drmSession.Initialize();
                 Assert.That(result, Is.Not.EqualTo(ErrorCode.Success));
             }
         }
@@ -126,7 +126,7 @@ namespace JuvoPlayer.TizenTests
 
             using (var drmSession = CencSession.Create(drmInitData, configuration))
             {
-                var result = await drmSession.StartLicenceChallenge();
+                var result = await drmSession.Initialize();
                 Assert.That(result, Is.EqualTo(ErrorCode.Success));
 
                 foreach (var encrypted in packets)
