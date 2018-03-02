@@ -36,7 +36,7 @@ namespace JuvoPlayer.FFmpeg
         private int audioIdx = -1;
         private int videoIdx = -1;
         private bool parse = true;
-        private bool reseting;
+        private bool resetting;
 
         private Task demuxTask;
 
@@ -235,7 +235,7 @@ namespace JuvoPlayer.FFmpeg
                 int ret = FFmpeg.av_read_frame(formatContext, &pkt);
                 try
                 {
-                    if (reseting)
+                    if (resetting)
                         return;
 
                     if (ret >= 0)
@@ -582,7 +582,7 @@ namespace JuvoPlayer.FFmpeg
 
         public void Reset()
         {
-            reseting = true;
+            resetting = true;
 
             dataBuffer.ClearData();
             dataBuffer.WriteData(null, true);
@@ -590,7 +590,7 @@ namespace JuvoPlayer.FFmpeg
 
             DeallocFFmpeg();
 
-            reseting = false;
+            resetting = false;
         }
 
         public unsafe void Paused()

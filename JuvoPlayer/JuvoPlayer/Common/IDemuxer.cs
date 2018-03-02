@@ -17,7 +17,9 @@ namespace JuvoPlayer.Common
 {
     public enum InitializationMode
     {
+        // Stream has been already initialized so preparinf StreamConfig is not needed 
         Minimal,
+        // Stream needs full initialization
         Full
     };
 

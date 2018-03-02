@@ -56,8 +56,10 @@ namespace JuvoPlayer.Player
         private object needDataLock = new object();
 
         private System.UInt32 currentTime;
-        private TimeSpan seekTime;
-        private bool seeking;
+        // while SMPlayer is reconfigured after calling Seek we cant upload any packets
+        // We need to wait for the first OnSeekData event what means that player is ready
+        // to get packets
+        private bool smplayerSeekReconfiguration;
 
         public unsafe SMPlayerAdapter()
         {
@@ -146,7 +148,7 @@ namespace JuvoPlayer.Player
                 if (stopped)
                     return;
 
-                if (!seeking && (needDataAudio && needDataVideo) // both must be needed, so we can choose the one with lower pts
+                if (!smplayerSeekReconfiguration && (needDataAudio && needDataVideo) // both must be needed, so we can choose the one with lower pts
                     || (needDataInitMode && (needDataAudio || needDataVideo)))
                 { // but for first OnNeedData - we're sending both video and audio till first OnEnoughData
                     needDataInitMode = false;
@@ -273,8 +275,8 @@ namespace JuvoPlayer.Player
         {
             Logger.Debug("");
 
-            seekTime = time;
-            seeking = true;
+            // Stop appending packests.
+            smplayerSeekReconfiguration = true;
 
             playerInstance.Pause();
 
@@ -461,7 +463,8 @@ namespace JuvoPlayer.Player
             else
                 return;
 
-            seeking = false;
+            // We can start appending packets
+            smplayerSeekReconfiguration = false;
 
             needDataEvent.Set();
         }
@@ -503,8 +506,6 @@ namespace JuvoPlayer.Player
         {
             Logger.Info("");
 
-            seekTime = TimeSpan.Zero;
-
             playerInstance.Resume();
         }
 
@@ -516,9 +517,6 @@ namespace JuvoPlayer.Player
         public void OnCurrentPosition(System.UInt32 currTime)
         {
             if (currentTime == currTime)
-                return;
-
-            if (seekTime > TimeSpan.Zero)
                 return;
 
             Logger.Info("OnCurrentPosition = " + currTime);
