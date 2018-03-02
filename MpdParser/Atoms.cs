@@ -367,17 +367,22 @@ namespace MpdParser.Node.Atom
                 AvgSegDur = (currdurr - AvgSegDur) / i;
                 i++;
 
+                // When storing sizes (ref_size), we need to store value -1 byte,
+                // as ref size is offset to the first byte of next reference material.
+                // ISO_IEC_14496-12_2015.pdf Section 8.16.3.3
+                // Since we are using it for range info (which is inclusive) we need
+                // to stop a byte before next reference content.
                 if (typeset)
                 {
                     Sidxidx.Add(
-                        new SIDX_index_entry(ref_size, sseg_duration, SAPdata, offset)
+                        new SIDX_index_entry(ref_size-1, sseg_duration, SAPdata, offset)
                                 );
                    
                 }
                 else
                 {
                     Movieidx.Add(
-                        new Movie_index_entry(ref_size, sseg_duration, SAPdata, offset,
+                        new Movie_index_entry(ref_size-1, sseg_duration, SAPdata, offset,
                                                 TimeSpan.FromSeconds(currdurr),
                                                 TimeSpan.FromSeconds(ToSeconds(pts, Timescale)),
                                                 MovieIndexCount++
@@ -386,10 +391,8 @@ namespace MpdParser.Node.Atom
                 }
 
                 pts += sseg_duration;
-                //+1 We need to "point" to first byte of new data
-                //as ref_size ammounts to # bytes that are to be read thus
-                //# bytes + 1 is the next starting point
-                offset += ref_size + 1;
+
+                offset += ref_size;
 
                 //Assign max time contained within this particular SIDX Atom.
                 //This is the last entry in SIDX box + its duration
