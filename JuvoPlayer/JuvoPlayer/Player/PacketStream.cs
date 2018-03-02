@@ -14,7 +14,7 @@ namespace JuvoPlayer.Player
         private IDRMSession drmSession;
         private StreamConfig config;
         private bool forceDrmChange;
-        private Task<ErrorCode> drmSessionInitializeTask;
+        private Task drmSessionInitializeTask;
         private readonly StreamType streamType;
 
         public PacketStream(StreamType streamType, IPlayerAdapter player, IDRMManager drmManager)
@@ -28,15 +28,14 @@ namespace JuvoPlayer.Player
         public void OnAppendPacket(StreamPacket packet)
         {
             if (packet.StreamType != streamType)
-                throw new ArgumentException("packet should be audio");
+                throw new ArgumentException("packet type doesn't match");
 
             if (packet.IsEOS && config == null)
                 return;
 
             if (drmSessionInitializeTask != null && packet is EncryptedStreamPacket)
             {
-                if (drmSessionInitializeTask.Result != ErrorCode.Success)
-                    throw new InvalidOperationException("DRM session initialization failed, reason: " + drmSessionInitializeTask.Result.ToString());
+                drmSessionInitializeTask.Wait();
                 drmSessionInitializeTask = null;
             }
 

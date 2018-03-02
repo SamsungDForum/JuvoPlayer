@@ -20,7 +20,8 @@ namespace JuvoPlayer.Player
 {
     public class AudioPacketStream : PacketStream
     {
-        public AudioPacketStream(IPlayerAdapter player, IDRMManager drmManager) : base(StreamType.Audio, player, drmManager)
+        public AudioPacketStream(IPlayerAdapter player, IDRMManager drmManager) : base(StreamType.Audio, player,
+            drmManager)
         {
         }
     }
