@@ -206,6 +206,13 @@ namespace JuvoPlayer.FFmpeg
                 DeallocFFmpeg();
                 throw new Exception("Could not find video or audio stream!");
             }
+
+            // disable not used streams
+            for (int i = 0; i < formatContext->nb_streams; ++i)
+            {
+                var enabled = i == audioIdx || i == videoIdx;
+                formatContext->streams[i]->discard = enabled ? AVDiscard.AVDISCARD_DEFAULT : AVDiscard.AVDISCARD_ALL;
+            }
         }
 
         private unsafe int FindBestStream(AVMediaType mediaType)
