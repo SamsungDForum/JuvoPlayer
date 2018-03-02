@@ -20,8 +20,6 @@ namespace JuvoPlayer.Dash
         private readonly IDemuxer demuxer;
         private readonly StreamType streamType;
 
-        private bool supportsSeeking;
-
         public DashMediaPipeline(IDashClient dashClient, IDemuxer demuxer, StreamType streamType)
         {
             this.dashClient = dashClient ?? throw new ArgumentNullException(nameof(dashClient), "dashClient cannot be null");
@@ -45,9 +43,6 @@ namespace JuvoPlayer.Dash
             // get first element of sorted array 
             var representation = newMedia.Representations.OrderByDescending(o => o.Bandwidth).First();
             Logger.Info(representation.ToString());
-
-            // TODO: remove when seeking with baseurls starts to work
-            supportsSeeking = !(representation.Segments is MpdParser.Node.Dynamic.BaseRepresentationStream);
 
             dashClient.SetRepresentation(representation);
             ParseDrms(newMedia);
@@ -79,11 +74,6 @@ namespace JuvoPlayer.Dash
             // Start downloading and parsing new data
             dashClient.Start();
             demuxer.StartForExternalSource(InitializationMode.Minimal);
-        }
-
-        public bool IsSeekingSupported()
-        {
-            return supportsSeeking;
         }
 
         private void ParseDrms(Media newMedia)

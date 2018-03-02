@@ -89,8 +89,8 @@ namespace JuvoPlayer.Dash
 
         public bool IsSeekingSupported()
         {
-            // check for live content
-            return audioPipeline.IsSeekingSupported() && videoPipeline.IsSeekingSupported();
+            // TODO(p.galiszewsk): check for live content
+            return true;
         }
 
         public void Start()
