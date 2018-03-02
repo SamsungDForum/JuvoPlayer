@@ -18,78 +18,10 @@ using JuvoPlayer.DRM;
 
 namespace JuvoPlayer.Player
 {
-    public class AudioPacketStream : IPacketStream
+    public class AudioPacketStream : PacketStream
     {
-        private readonly IDRMManager drmManager;
-        private readonly IPlayerAdapter playerAdapter;
-        private IDRMSession drmSession;
-        private AudioStreamConfig audioConfig;
-
-        private bool forceDrmChange;
-        private Task<ErrorCode> drmSessionInitializeTask;
-
-        public AudioPacketStream(IPlayerAdapter player, IDRMManager drmManager)
+        public AudioPacketStream(IPlayerAdapter player, IDRMManager drmManager) : base(StreamType.Audio, player, drmManager)
         {
-            this.drmManager = drmManager ?? throw new ArgumentNullException(nameof(drmManager), "drmManager cannot be null");
-            playerAdapter = player ?? throw new ArgumentNullException(nameof(player), "player cannot be null");
-        }
-
-        public void OnAppendPacket(StreamPacket packet)
-        {
-            if (packet.StreamType != StreamType.Audio)
-                throw new ArgumentException("packet should be audio");
-
-            if (packet.IsEOS && audioConfig == null)
-                return;
-
-            if (drmSessionInitializeTask != null && packet is EncryptedStreamPacket)
-            {
-                if (drmSessionInitializeTask.Result != ErrorCode.Success)
-                    throw new InvalidOperationException("DRM session initialization failed, reason: " + drmSessionInitializeTask.Result.ToString());
-                drmSessionInitializeTask = null;
-            }
-
-            if (drmSession != null && packet is EncryptedStreamPacket)
-                packet = drmSession.DecryptPacket(packet as EncryptedStreamPacket).Result;
-
-            playerAdapter.AppendPacket(packet);
-        }
-
-        public void OnStreamConfigChanged(StreamConfig config)
-        {
-            if (config == null)
-                throw new ArgumentNullException(nameof(config), "config cannot be null");
-
-            if (!(config is AudioStreamConfig))
-                throw new ArgumentException("config should be audioconfig");
-
-            forceDrmChange = audioConfig != null && !audioConfig.Equals(config);
-
-            audioConfig = (AudioStreamConfig) config;
-
-            playerAdapter.SetAudioStreamConfig(audioConfig);
-        }
-
-        public void OnClearStream()
-        {
-            drmSession?.Dispose();
-            drmSession = null;
-        }
-
-        public void OnDRMFound(DRMInitData data)
-        {
-            if (!forceDrmChange && drmSession != null)
-                return;
-
-            forceDrmChange = false;
-            drmSession?.Dispose();
-            drmSession = drmManager.CreateDRMSession(data);
-            drmSessionInitializeTask = drmSession?.Initialize();
-        }
-
-        public void Dispose()
-        {
-            OnClearStream();
         }
     }
 }
