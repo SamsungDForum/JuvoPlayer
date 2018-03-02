@@ -43,7 +43,7 @@ namespace JuvoPlayer.Player
 
         private readonly SMPlayerWrapper playerInstance;
 
-        private bool audioSet, videoSet, isPlayerInitialized, playCalled;
+        private bool audioSet, videoSet, isPlayerInitialized;
 
         private readonly PacketBuffer audioBuffer;
         private readonly PacketBuffer videoBuffer;
@@ -51,9 +51,9 @@ namespace JuvoPlayer.Player
         private bool needDataVideo, needDataAudio;
         private bool needDataInitMode = true;
         private bool stopped;
+        private bool isPaused;
 
         private readonly AutoResetEvent needDataEvent = new AutoResetEvent(false);
-        private object needDataLock = new object();
 
         private System.UInt32 currentTime;
         // while SMPlayer is reconfigured after calling Seek we cant upload any packets
@@ -262,13 +262,12 @@ namespace JuvoPlayer.Player
         {
             Logger.Debug("");
 
-            //TODO(p.galiszewsk) HACK
-            if (playCalled)
+            if (isPaused)
                 playerInstance.Resume();
             else
                 playerInstance.Play();
 
-            playCalled = true;
+            isPaused = false;
         }
 
         public void Seek(TimeSpan time)
@@ -394,7 +393,7 @@ namespace JuvoPlayer.Player
             playerInstance.SetSubtitlesDelay(offset);
         }
 
-        public void Stop() // TODO(g.skowinski): Handle asynchronicity.
+        public void Stop()
         {
             Logger.Debug("");
 
@@ -403,16 +402,15 @@ namespace JuvoPlayer.Player
             audioBuffer.Clear();
             videoBuffer.Clear();
 
-            playerInstance.Stop(); // This is async method - wait for D2TV_MESSAGE_STOP_SUCCESS message before doing anything else with the player.
-
-            playCalled = false;
+            playerInstance.Stop();
         }
 
-        public void Pause() // TODO(g.skowinski): Handle asynchronicity (like in Stop() method?).
+        public void Pause()
         {
             Logger.Debug("");
 
             playerInstance.Pause();
+            isPaused = true;
         }
 
         #region IPlayerEventListener
@@ -506,7 +504,10 @@ namespace JuvoPlayer.Player
         {
             Logger.Info("");
 
-            playerInstance.Resume();
+            if (!isPaused)
+                playerInstance.Resume();
+
+            TimeUpdated?.Invoke(TimeSpan.FromMilliseconds(playerInstance.currentPosition * 1000));
         }
 
         public void OnSeekStartedBuffering()

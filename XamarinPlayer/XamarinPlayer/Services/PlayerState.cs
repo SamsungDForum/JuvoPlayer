@@ -2,12 +2,12 @@
 {
     public enum PlayerState
     {
+        Error = -1,
         Idle,
         Preparing,
         Prepared,
         Stopped,
-        Paused,
         Playing,
-        Error
+        Paused
     }
 }

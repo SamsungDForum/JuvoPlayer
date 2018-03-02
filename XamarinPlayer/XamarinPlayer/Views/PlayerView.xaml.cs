@@ -59,8 +59,8 @@ namespace XamarinPlayer.Views
         {
             if (e.Contains("Back"))
             {
-                if (_playerService.State != PlayerState.Playing ||
-                    _playerService.State == PlayerState.Playing && !Controller.IsVisible)
+                if (_playerService.State < PlayerState.Playing ||
+                    _playerService.State >= PlayerState.Playing && !Controller.IsVisible)
                 {
                     Navigation.RemovePage(this);
                 }
@@ -98,7 +98,7 @@ namespace XamarinPlayer.Views
 
         private void Forward()
         {
-            if (!_playerService.IsSeekingSupported || _playerService.State != PlayerState.Playing)
+            if (!_playerService.IsSeekingSupported || _playerService.State < PlayerState.Playing)
                 return;
 
             if (_playerService.Duration - _playerService.CurrentPosition < DefaultSeekTime)
@@ -109,7 +109,7 @@ namespace XamarinPlayer.Views
 
         private void Rewind()
         {
-            if (!_playerService.IsSeekingSupported || _playerService.State != PlayerState.Playing)
+            if (!_playerService.IsSeekingSupported || _playerService.State < PlayerState.Playing)
                 return;
 
             if (_playerService.CurrentPosition < DefaultSeekTime)
@@ -265,7 +265,7 @@ namespace XamarinPlayer.Views
                 return false;
 
             Device.BeginInvokeOnMainThread(() => {
-                if (_playerService.State != PlayerState.Playing)
+                if (_playerService.State < PlayerState.Playing)
                 {
                     return;
                 }
