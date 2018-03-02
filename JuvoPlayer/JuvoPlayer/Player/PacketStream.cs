@@ -30,8 +30,8 @@ namespace JuvoPlayer.Player
             if (packet.StreamType != streamType)
                 throw new ArgumentException("packet type doesn't match");
 
-            if (packet.IsEOS && config == null)
-                return;
+            if (config == null)
+                throw new InvalidOperationException("Packet stream is not configured");
 
             if (drmSessionInitializeTask != null && packet is EncryptedStreamPacket)
             {
