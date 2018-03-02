@@ -89,8 +89,7 @@ namespace JuvoPlayer.Dash
 
         public bool IsSeekingSupported()
         {
-            // TODO(p.galiszewsk): check for live content
-            return true;
+            return manifest.Document.Type != DocumentType.Dynamic;
         }
 
         public void Start()
