@@ -19,7 +19,6 @@ namespace JuvoPlayer.Player
     public interface IPacketStream : IDisposable
     {
         void OnAppendPacket(StreamPacket packet);
-        void OnClearStream();
         void OnDRMFound(DRMInitData data);
         void OnStreamConfigChanged(StreamConfig config);
     }
