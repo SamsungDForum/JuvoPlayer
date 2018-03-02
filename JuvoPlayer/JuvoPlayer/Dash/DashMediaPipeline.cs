@@ -49,7 +49,7 @@ namespace JuvoPlayer.Dash
             // TODO: remove when seeking with baseurls starts to work
             supportsSeeking = !(representation.Segments is MpdParser.Node.Dynamic.BaseRepresentationStream);
 
-            dashClient.SetDashStream(representation);
+            dashClient.SetRepresentation(representation);
             ParseDrms(newMedia);
 
             dashClient.Start();

@@ -76,9 +76,9 @@ namespace JuvoPlayer.Dash
             Logger.Info(string.Format("{0} Data downloader stopped", streamType));
         }
 
-        public void SetDashStream(Representation representation)
+        public void SetRepresentation(Representation representation)
         {
-            // representation has changes, so reset initstreambytes
+            // representation has changed, so reset initstreambytes
             if (currentRepresentation != null)
                 initStreamBytes = null;
 
