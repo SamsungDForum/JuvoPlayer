@@ -8,37 +8,36 @@ namespace JuvoPlayer.DRM.Cenc
 {
     class EmeStatusConverter
     {
-
-        public static JuvoPlayer.DRM.ErrorCode Convert(Status status)
+        public static string Convert(Status status)
         {
             switch (status)
             {
                 case Status.kSuccess:
-                    return ErrorCode.Success;
+                    return ErrorMessage.Success;
                 case Status.kNeedsDeviceCertificate:
-                    return ErrorCode.NeedsDeviceCertificate;
+                    return ErrorMessage.NeedsDeviceCertificate;
                 case Status.kSessionNotFound:
-                    return ErrorCode.SessionNotFound;
+                    return ErrorMessage.SessionNotFound;
                 case Status.kDecryptError:
-                    return ErrorCode.DecryptError;
+                    return ErrorMessage.DecryptError;
                 case Status.kNoKey:
-                    return ErrorCode.NoKey;
+                    return ErrorMessage.NoKey;
                 case Status.kTypeError:
-                    return ErrorCode.TypeError;
+                    return ErrorMessage.TypeError;
                 case Status.kNotSupported:
-                    return ErrorCode.NotSupported;
+                    return ErrorMessage.NotSupported;
                 case Status.kInvalidState:
-                    return ErrorCode.InvalidState;
+                    return ErrorMessage.InvalidState;
                 case Status.kQuotaExceeded:
-                    return ErrorCode.QuotaExceeded;
+                    return ErrorMessage.QuotaExceeded;
                 case Status.kInvalidHandle:
-                    return ErrorCode.InvalidHandle;
+                    return ErrorMessage.InvalidHandle;
                 case Status.kRangeError:
-                    return ErrorCode.RangeError;
+                    return ErrorMessage.RangeError;
                 case Status.kSupported:
-                    return ErrorCode.Generic;
+                    return ErrorMessage.Generic;
                 case Status.kUnexpectedError:
-                    return ErrorCode.Generic;
+                    return ErrorMessage.Generic;
                 default:
                     throw new ArgumentOutOfRangeException(nameof(status), status, null);
             }

@@ -25,7 +25,7 @@ namespace JuvoPlayer.Player
         private readonly IPlayerAdapter playerAdapter;
         private IDRMSession drmSession;
         private VideoStreamConfig videoConfig;
-        private Task<ErrorCode> drmSessionInitializeTask;
+        private Task drmSessionInitializeTask;
 
         private bool forceDrmChange;
 
@@ -45,8 +45,7 @@ namespace JuvoPlayer.Player
 
             if (drmSessionInitializeTask != null && packet is EncryptedStreamPacket)
             {
-                if (drmSessionInitializeTask.Result != ErrorCode.Success)
-                    throw new InvalidOperationException("DRM session initialization failed, reason: " + drmSessionInitializeTask.Result.ToString());
+                drmSessionInitializeTask.Wait();
                 drmSessionInitializeTask = null;
             }
 

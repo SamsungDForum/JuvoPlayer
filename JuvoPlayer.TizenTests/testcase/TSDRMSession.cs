@@ -41,11 +41,8 @@ namespace JuvoPlayer.TizenTests
             Assert.That(initData, Is.Not.Null);
 
             var encryptedPacketsStream = assembly.GetManifestResourceStream("JuvoPlayer.TizenTests.res.drm.encrypted_packets_list.bin");
-            using (var reader = new BinaryReader(encryptedPacketsStream))
-            {
-                BinaryFormatter formatter = new BinaryFormatter();
-                packets = (List<EncryptedStreamPacket>)formatter.Deserialize(encryptedPacketsStream);
-            }
+            BinaryFormatter formatter = new BinaryFormatter();
+            packets = (List<EncryptedStreamPacket>) formatter.Deserialize(encryptedPacketsStream);
 
             Assert.That(packets, Is.Not.Null);
             Assert.That(packets.Count, Is.GreaterThan(0));
@@ -86,36 +83,33 @@ namespace JuvoPlayer.TizenTests
         }
 
         [Test]
-        public async Task Initialize_WhenLicenceUrlIsNull_ReturnsInvalidArgument()
+        public void Constructor_WhenLicenceUrlIsNull_ThrowsNullReferenceException()
         {
             var drmInitData = CreateDrmInitData();
             var configuration = CreateDrmDescription();
             configuration.LicenceUrl = null;
-            using (var drmSession = CencSession.Create(drmInitData, configuration))
-            {
-                var result = await drmSession.Initialize();
-                Assert.That(result, Is.EqualTo(ErrorCode.InvalidArgument));
-            }
+
+            Assert.Throws<NullReferenceException>(() => CencSession.Create(drmInitData, configuration));
         }
 
         [Test]
-        public async Task Initialize_WhenInitDataIsInvalid_ReturnsError()
+        public void Initialize_WhenInitDataIsInvalid_ThrowsDRMException()
         {
             var drmInitData = CreateDrmInitData();
             var configuration = CreateDrmDescription();
             drmInitData.InitData = null;
-            using (var drmSession = CencSession.Create(drmInitData, configuration))
+            Assert.ThrowsAsync<DRMException>(async () =>
             {
-                var result = await drmSession.Initialize();
-                Assert.That(result, Is.Not.EqualTo(ErrorCode.Success));
-            }
+                using (var drmSession = CencSession.Create(drmInitData, configuration))
+                    await drmSession.Initialize();
+            });
 
             drmInitData.InitData = initData.Take(initData.Length / 2).ToArray();
-            using (var drmSession = CencSession.Create(drmInitData, configuration))
+            Assert.ThrowsAsync<DRMException>(async () =>
             {
-                var result = await drmSession.Initialize();
-                Assert.That(result, Is.Not.EqualTo(ErrorCode.Success));
-            }
+                using (var drmSession = CencSession.Create(drmInitData, configuration))
+                    await drmSession.Initialize();
+            });
         }
 
         [Test]
@@ -126,8 +120,7 @@ namespace JuvoPlayer.TizenTests
 
             using (var drmSession = CencSession.Create(drmInitData, configuration))
             {
-                var result = await drmSession.Initialize();
-                Assert.That(result, Is.EqualTo(ErrorCode.Success));
+                await drmSession.Initialize();
 
                 foreach (var encrypted in packets)
                 {
