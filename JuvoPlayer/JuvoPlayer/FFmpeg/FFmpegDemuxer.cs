@@ -196,8 +196,9 @@ namespace JuvoPlayer.FFmpeg
             if (formatContext->duration > 0)
                 ClipDuration?.Invoke(TimeSpan.FromMilliseconds(formatContext->duration / 1000));
 
-            audioIdx = FFmpeg.av_find_best_stream(formatContext, AVMediaType.AVMEDIA_TYPE_AUDIO, -1, -1, null, 0);
-            videoIdx = FFmpeg.av_find_best_stream(formatContext, AVMediaType.AVMEDIA_TYPE_VIDEO, -1, -1, null, 0);
+            audioIdx = FindBestStream(AVMediaType.AVMEDIA_TYPE_AUDIO);
+            videoIdx = FindBestStream(AVMediaType.AVMEDIA_TYPE_VIDEO);
+
             if (audioIdx < 0 && videoIdx < 0)
             {
                 Logger.Fatal("Could not find video or audio stream: " + audioIdx + "      " + videoIdx);
@@ -205,6 +206,43 @@ namespace JuvoPlayer.FFmpeg
                 DeallocFFmpeg();
                 throw new Exception("Could not find video or audio stream!");
             }
+        }
+
+        private unsafe int FindBestStream(AVMediaType mediaType)
+        {
+            var streamId = FindBestBandwidthStream(mediaType);
+
+            if (streamId >= 0)
+                return streamId;
+
+            return FFmpeg.av_find_best_stream(formatContext, mediaType, -1, -1, null, 0);
+        }
+
+        private unsafe int FindBestBandwidthStream(AVMediaType mediaType)
+        {
+            ulong bandwidth = 0;
+            var streamId = -1;
+            for (var i = 0; i < formatContext->nb_streams; ++i)
+            {
+                if (formatContext->streams[i]->codecpar->codec_type != mediaType)
+                    continue;
+
+                var dict = FFmpeg.av_dict_get(formatContext->streams[i]->metadata, "variant_bitrate", null, 0);
+                if (dict == null)
+                    return -1;
+
+                var stringValue = Marshal.PtrToStringAnsi((IntPtr) dict->value);
+                if (!ulong.TryParse(stringValue, out var value))
+                    return -1;
+
+                if (bandwidth < value)
+                {
+                    streamId = i;
+                    bandwidth = value;
+                }
+            }
+
+            return streamId;
         }
 
         private unsafe void DemuxTask(Action initAction)
