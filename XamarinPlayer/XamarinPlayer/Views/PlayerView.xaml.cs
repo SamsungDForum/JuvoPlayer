@@ -73,9 +73,13 @@ namespace XamarinPlayer.Views
             {
                 Show();
 
-                if (e.Contains("Play") || e.Contains("Pause"))
+                if (e.Contains("Play") && _playerService.State == PlayerState.Paused)
                 {
-                    Play();
+                    _playerService.Start();
+                }
+                else if (e.Contains("Pause") && _playerService.State == PlayerState.Playing)
+                {
+                    _playerService.Pause();
                 }
                 else if (e.Contains("Stop"))
                 {
