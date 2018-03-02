@@ -23,16 +23,20 @@ namespace JuvoPlayer.DRM.Cenc
         private readonly DRMInitData initData;
         private string currentSessionId;
         private byte[] requestData;
-        private bool licenceInstalled = false;
+        private bool licenceInstalled;
 
         private readonly DRMDescription drmDescription;
-        private readonly AsyncContextThread thread;
+        private readonly AsyncContextThread thread = new AsyncContextThread();
 
         private CencSession(DRMInitData initData, DRMDescription drmDescription)
         {
+            if (string.IsNullOrEmpty(drmDescription?.LicenceUrl))
+            {
+                throw new NullReferenceException("Licence url is null");
+            }
+
             this.initData = initData;
             this.drmDescription = drmDescription;
-            thread = new AsyncContextThread();
         }
 
         private void ReleaseUnmanagedResources()
@@ -46,7 +50,7 @@ namespace JuvoPlayer.DRM.Cenc
         {
             ReleaseUnmanagedResources();
             base.Dispose();
-            thread.Dispose();
+            thread?.Dispose();
 
             GC.SuppressFinalize(this);
         }
@@ -210,79 +214,54 @@ namespace JuvoPlayer.DRM.Cenc
         {
         }
 
-        public Task<ErrorCode> Initialize()
+        public Task Initialize()
         {
             return thread.Factory.Run(() => StartLicenceChallengeOnIemeThread());
         }
 
-        private ErrorCode StartLicenceChallengeOnIemeThread()
+        private void StartLicenceChallengeOnIemeThread()
         {
-            var errorCode = CreateIeme();
-            if (errorCode != ErrorCode.Success) return errorCode;
-
-            errorCode = CreateSession(ref currentSessionId);
-            if (errorCode != ErrorCode.Success)
-            {
-                Logger.Error("Could not create IEME session");
-                return errorCode;
-            }
-
+            CreateIeme();
+            currentSessionId = CreateSession();
             Logger.Info("Created session: " + currentSessionId);
-
-            errorCode = GenerateRequest();
-            if (errorCode != ErrorCode.Success) return errorCode;
-
-            errorCode = AcquireLicenceFromServer(out var responseText);
-            if (errorCode != ErrorCode.Success) return errorCode;
-
-            errorCode = InstallLicense(responseText, out var status);
-            if (errorCode != ErrorCode.Success)
-            {
-                Logger.Error("Install licence error: " + errorCode);
-                return errorCode;
-            }
-
+            GenerateRequest();
+            var responseText = AcquireLicenceFromServer();
+            InstallLicence(responseText);
             licenceInstalled = true;
-            return ErrorCode.Success;
         }
 
-        private ErrorCode CreateIeme()
+        private void CreateIeme()
         {
             var keySystem = CencUtils.GetKeySystemName(initData.SystemId);
             CDMInstance = IEME.create(this, keySystem, false, CDM_MODEL.E_CDM_MODEL_DEFAULT);
-            return CDMInstance != null ? ErrorCode.Success : ErrorCode.Generic;
+            if (CDMInstance == null)
+                throw new DRMException(ErrorMessage.Generic);
         }
 
-        private ErrorCode CreateSession(ref string sessionId)
+        private string CreateSession()
         {
+            string sessionId = null;
             var status = CDMInstance.session_create(SessionType.kTemporary, ref sessionId);
-            return EmeStatusConverter.Convert(status);
+            if (status != Status.kSuccess)
+                throw new DRMException(EmeStatusConverter.Convert(status));
+            return sessionId;
         }
 
-        private ErrorCode GenerateRequest()
+        private void GenerateRequest()
         {
             if (initData.InitData == null)
-                return ErrorCode.InvalidArgument;
+                throw new DRMException(ErrorMessage.InvalidArgument);
             var status = CDMInstance.session_generateRequest(currentSessionId, InitDataType.kCenc, Encode(initData.InitData));
             if (status != Status.kSuccess)
-            {
-                Logger.Error("Could not generate request: " + status.ToString());
-                return EmeStatusConverter.Convert(status);
-            }
+                throw new DRMException(EmeStatusConverter.Convert(status));
             // During session_generateRequest, we should got called back synchronously via onMessage and we should receive
             // requestData.
-            return requestData != null ? ErrorCode.Success : ErrorCode.Generic;
+            if (requestData == null)
+                throw new NotImplementedException("requestData is null. It will be probably delivered asynchronously. Implement this case.");
         }
 
-        private ErrorCode AcquireLicenceFromServer(out string responseText)
+        private string AcquireLicenceFromServer()
         {
-            if (string.IsNullOrEmpty(drmDescription?.LicenceUrl))
-            {
-                Logger.Error("Not configured drm");
-                responseText = null;
-                return ErrorCode.InvalidArgument;
-            }
-
             HttpClient client = new HttpClient();
             var licenceUrl = new Uri(drmDescription.LicenceUrl);
 
@@ -307,16 +286,17 @@ namespace JuvoPlayer.DRM.Cenc
             Logger.Info("Response: " + responseTask);
             var receiveStream = responseTask.Content.ReadAsStreamAsync();
             var readStream = new StreamReader(receiveStream.Result, Encoding.GetEncoding(437));
-            responseText = readStream.ReadToEnd();
+            var responseText = readStream.ReadToEnd();
             if (responseText.IndexOf("<?xml", StringComparison.Ordinal) > 0)
                 responseText = responseText.Substring(responseText.IndexOf("<?xml", StringComparison.Ordinal));
-            return ErrorCode.Success;
+            return responseText;
         }
 
-        private ErrorCode InstallLicense(string responseText, out Status status)
+        private void InstallLicence(string responseText)
         {
-            status = CDMInstance.session_update(currentSessionId, responseText);
-            return EmeStatusConverter.Convert(status);
+            var status = CDMInstance.session_update(currentSessionId, responseText);
+            if (status != Status.kSuccess)
+                throw new DRMException(EmeStatusConverter.Convert(status));
         }
     }
 }
