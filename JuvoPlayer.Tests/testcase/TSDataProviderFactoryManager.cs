@@ -14,7 +14,7 @@ namespace JuvoPlayer.Tests
             public event DRMInitDataFound DRMInitDataFound;
             public event SetDrmConfiguration SetDrmConfiguration;
             public event StreamConfigReady StreamConfigReady;
-            public event StreamPacketReady StreamPacketReady;
+            public event PacketReady PacketReady;
             public event StreamsFound StreamsFound;
 
             public void OnChangeRepresentation(int representationId)

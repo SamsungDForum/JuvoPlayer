@@ -32,7 +32,7 @@ namespace JuvoPlayer.Tests
         {
             using (var stream = CreatePacketStream(StreamType.Audio))
             {
-                var packet = new StreamPacket();
+                var packet = new Packet();
                 Assert.Throws<InvalidOperationException>(() => stream.OnAppendPacket(packet));
             }
         }
@@ -42,7 +42,7 @@ namespace JuvoPlayer.Tests
         {
             using (var stream = CreatePacketStream(StreamType.Audio))
             {
-                var packet = new StreamPacket {StreamType = StreamType.Video};
+                var packet = new Packet { StreamType = StreamType.Video};
                 Assert.Throws<ArgumentException>(() => stream.OnAppendPacket(packet));
             }
         }
@@ -55,13 +55,13 @@ namespace JuvoPlayer.Tests
 
             using (var stream = CreatePacketStream(StreamType.Audio, playerMock, drmManagerStub))
             {
-                var packet = new StreamPacket {StreamType = StreamType.Audio};
+                var packet = new Packet { StreamType = StreamType.Audio};
                 var config = new AudioStreamConfig();
 
                 stream.OnStreamConfigChanged(config);
                 stream.OnAppendPacket(packet);
 
-                playerMock.Received().AppendPacket(Arg.Any<StreamPacket>());
+                playerMock.Received().AppendPacket(Arg.Any<Packet>());
             }
         }
 
@@ -76,7 +76,7 @@ namespace JuvoPlayer.Tests
 
             using (var stream = CreatePacketStream(StreamType.Audio, playerMock, drmManagerStub))
             {
-                var packet = new EncryptedStreamPacket() {StreamType = StreamType.Audio};
+                var packet = new EncryptedPacket() {StreamType = StreamType.Audio};
                 var config = new AudioStreamConfig();
                 var drmInitData = new DRMInitData();
 
@@ -84,7 +84,7 @@ namespace JuvoPlayer.Tests
                 stream.OnDRMFound(drmInitData);
                 stream.OnAppendPacket(packet);
 
-                playerMock.Received().AppendPacket(Arg.Any<StreamPacket>());
+                playerMock.Received().AppendPacket(Arg.Any<Packet>());
             }
         }
 
@@ -99,7 +99,7 @@ namespace JuvoPlayer.Tests
 
             using (var stream = CreatePacketStream(StreamType.Audio, playerStub, drmManagerStub))
             {
-                var packet = new EncryptedStreamPacket() { StreamType = StreamType.Audio };
+                var packet = new EncryptedPacket() { StreamType = StreamType.Audio };
                 var config = new AudioStreamConfig();
                 var drmInitData = new DRMInitData();
 
@@ -107,7 +107,7 @@ namespace JuvoPlayer.Tests
                 stream.OnDRMFound(drmInitData);
                 stream.OnAppendPacket(packet);
 
-                drmSessionMock.Received().DecryptPacket(Arg.Any<EncryptedStreamPacket>());
+                drmSessionMock.Received().DecryptPacket(Arg.Any<EncryptedPacket>());
             }
         }
 
@@ -141,7 +141,7 @@ namespace JuvoPlayer.Tests
         {
             var drmSessionFake = Substitute.For<IDRMSession>();
             drmSessionFake.Initialize().Returns(Task.CompletedTask);
-            drmSessionFake.DecryptPacket(Arg.Any<EncryptedStreamPacket>()).Returns(Task.FromResult(new StreamPacket()));
+            drmSessionFake.DecryptPacket(Arg.Any<EncryptedPacket>()).Returns(Task.FromResult(new Packet()));
             return drmSessionFake;
         }
     }

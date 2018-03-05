@@ -3,7 +3,7 @@ using System;
 namespace JuvoPlayer.Common
 {
     [Serializable]
-    public class EncryptedStreamPacket : StreamPacket
+    public class EncryptedPacket : Packet
     {
         [Serializable]
         public struct Subsample

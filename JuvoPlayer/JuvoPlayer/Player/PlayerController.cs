@@ -168,7 +168,7 @@ namespace JuvoPlayer.Player
             streams[config.StreamType()].OnStreamConfigChanged(config);
         }
 
-        public void OnStreamPacketReady(StreamPacket packet)
+        public void OnPacketReady(Packet packet)
         {
             if (!streams.ContainsKey(packet.StreamType))
                 return;
