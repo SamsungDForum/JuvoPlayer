@@ -1,4 +1,5 @@
 using System;
+using System.Linq;
 using System.Xml;
 using JuvoPlayer.Common;
 using JuvoPlayer.Common.Logging;
@@ -37,11 +38,17 @@ namespace JuvoPlayer.Dash
 
             Logger.Info("Dash start.");
 
-            dashClient.UpdateMedia(newMedia);
+            Logger.Info(string.Format("{0} Media: {1}", streamType, newMedia));
+
+            // get first element of sorted array 
+            var representation = newMedia.Representations.OrderByDescending(o => o.Bandwidth).First();
+            Logger.Info(representation.ToString());
+
+            dashClient.SetRepresentation(representation);
             ParseDrms(newMedia);
 
             dashClient.Start();
-            demuxer.StartForExternalSource();
+            demuxer.StartForExternalSource(InitializationMode.Full);
         }
         public void Stop()
         {
@@ -52,6 +59,21 @@ namespace JuvoPlayer.Dash
         public void OnTimeUpdated(TimeSpan time)
         {
             dashClient.OnTimeUpdated(time);
+        }
+
+        public void Seek(TimeSpan time)
+        {
+            // Stop demuxer and dashclient
+            // Stop demuxer first so old incoming data will ignored
+            demuxer.Reset();
+            dashClient.Stop();
+
+            // Set new times 
+            dashClient.Seek(time);
+
+            // Start downloading and parsing new data
+            dashClient.Start();
+            demuxer.StartForExternalSource(InitializationMode.Minimal);
         }
 
         private void ParseDrms(Media newMedia)

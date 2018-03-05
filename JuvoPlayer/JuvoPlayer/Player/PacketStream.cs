@@ -53,7 +53,10 @@ namespace JuvoPlayer.Player
             if (config.StreamType() != streamType)
                 throw new ArgumentException("config type doesn't match");
 
-            forceDrmChange = this.config != null && !this.config.Equals(config);
+            if (this.config != null && this.config.Equals(config))
+                return;
+
+            forceDrmChange = true;
 
             this.config = config;
 

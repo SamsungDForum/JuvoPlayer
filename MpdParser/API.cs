@@ -444,6 +444,13 @@ namespace MpdParser
         }
     }
 
+    public enum DocumentType
+    {
+        Unknown,
+        Static,
+        Dynamic
+    };
+
     public class Document
     {
         public string Title { get; }
@@ -452,11 +459,15 @@ namespace MpdParser
         public string[] Profiles { get; }
         public Period[] Periods { get; }
 
+        public DocumentType Type { get; set; }
+
         private Document(Node.DASH dash)
         {
             MediaPresentationDuration = dash.MediaPresentationDuration;
             MinBufferTime = dash.MinBufferTime;
             Profiles = Xml.Conv.A2s(dash.Profiles);
+
+            Type = ParseDashType(dash);
 
             foreach (Node.ProgramInformation info in dash.ProgramInformations)
             {
@@ -476,6 +487,19 @@ namespace MpdParser
             for (int i = 0; i < Periods.Length; ++i)
                 Periods[i] = new Period(dash.Periods[i]);
             Array.Sort(Periods);
+        }
+
+        private static DocumentType ParseDashType(Node.DASH dash)
+        {
+            switch (dash.Type.ToLowerInvariant())
+            {
+                case "dynamic":
+                    return DocumentType.Dynamic;
+                case "static":
+                    return DocumentType.Static;
+                default:
+                    return DocumentType.Unknown;
+            }
         }
 
         public static Document FromText(string manifestText, string manifestUrl)
