@@ -31,9 +31,11 @@ namespace XamarinPlayer.Tizen.Services
 
         public TimeSpan CurrentPosition => dataProvider == null ? TimeSpan.FromSeconds(0) : playerController.CurrentTime;
 
+        public bool IsSeekingSupported => dataProvider?.IsSeekingSupported() ?? false;
+
         public PlayerState State
         {
-            get { return playerState; }
+            get => playerState;
             private set
             {
                 playerState = value;

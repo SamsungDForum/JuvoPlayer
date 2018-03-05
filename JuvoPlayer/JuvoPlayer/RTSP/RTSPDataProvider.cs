@@ -73,7 +73,11 @@ namespace JuvoPlayer.RTSP
 
         public void OnSeek(TimeSpan time)
         {
+        }
 
+        public bool IsSeekingSupported()
+        {
+            return false;
         }
 
         public void Start()
@@ -82,7 +86,7 @@ namespace JuvoPlayer.RTSP
                 return;
 
             rtpClient.Start(currentClip);
-            demuxer.StartForExternalSource();
+            demuxer.StartForExternalSource(InitializationMode.Full);
         }
         public void OnStopped()
         {

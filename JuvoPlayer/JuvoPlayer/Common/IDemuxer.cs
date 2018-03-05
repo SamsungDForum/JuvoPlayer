@@ -15,15 +15,22 @@ using System;
 
 namespace JuvoPlayer.Common
 {
+    public enum InitializationMode
+    {
+        // Stream has been already initialized so preparinf StreamConfig is not needed 
+        Minimal,
+        // Stream needs full initialization
+        Full
+    };
+
     public interface IDemuxer : IDisposable
     {
-        void StartForExternalSource();
+        void StartForExternalSource(InitializationMode initMode);
         void StartForUrl(string url);
         void ChangePID(int pid);
         void Reset();
         void Paused();
         void Played();
-        void Seek(TimeSpan position);
 
         event ClipDurationChanged ClipDuration;
         event DRMInitDataFound DRMInitDataFound;
