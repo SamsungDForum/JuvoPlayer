@@ -12,6 +12,7 @@
 // this software or its derivatives.
 
 using System;
+using System.Threading.Tasks;
 using JuvoPlayer.Common;
 using JuvoPlayer.DRM;
 
@@ -25,6 +26,7 @@ namespace JuvoPlayer.Player
         private AudioStreamConfig audioConfig;
 
         private bool forceDrmChange;
+        private Task drmSessionInitializeTask;
 
         public AudioPacketStream(IPlayerAdapter player, IDRMManager drmManager)
         {
@@ -40,8 +42,16 @@ namespace JuvoPlayer.Player
             if (packet.IsEOS && audioConfig == null)
                 return;
 
+            if (drmSessionInitializeTask != null && packet is EncryptedStreamPacket)
+            {
+                drmSessionInitializeTask.Wait();
+                drmSessionInitializeTask = null;
+            }
+
             if (drmSession != null && packet is EncryptedStreamPacket)
-                packet = drmSession.DecryptPacket(packet);
+            {
+                packet = drmSession.DecryptPacket(packet as EncryptedStreamPacket).Result;
+            }
 
             playerAdapter.AppendPacket(packet);
         }
@@ -75,7 +85,7 @@ namespace JuvoPlayer.Player
             forceDrmChange = false;
             drmSession?.Dispose();
             drmSession = drmManager.CreateDRMSession(data);
-            drmSession?.Start();
+            drmSessionInitializeTask = drmSession?.Initialize();
         }
 
         public void Dispose()
