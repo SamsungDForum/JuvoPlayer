@@ -37,7 +37,8 @@ namespace JuvoPlayer.Player
 
         private readonly IDRMManager drmManager;
         private readonly IPlayerAdapter playerAdapter;
-        private readonly Dictionary<StreamType, IPacketStream> Streams = new Dictionary<StreamType, IPacketStream>();
+        private readonly Dictionary<StreamType, IPacketStream> streams = new Dictionary<StreamType, IPacketStream>();
+
 
         public event Pause Paused;
         public event Play Played;
@@ -61,8 +62,8 @@ namespace JuvoPlayer.Player
             playerAdapter.ShowSubtitle += OnShowSubtitle;
             playerAdapter.TimeUpdated += OnTimeUpdated;
 
-            Streams[StreamType.Audio] = new AudioPacketStream(playerAdapter, drmManager);
-            Streams[StreamType.Video] = new VideoPacketStream(playerAdapter, drmManager);
+            streams[StreamType.Audio] = new AudioPacketStream(playerAdapter, drmManager);
+            streams[StreamType.Video] = new VideoPacketStream(playerAdapter, drmManager);
         }
 
         private void OnPlaybackCompleted()
@@ -108,10 +109,10 @@ namespace JuvoPlayer.Player
 
         public void OnDRMInitDataFound(DRMInitData data)
         {
-            if (!Streams.ContainsKey(data.StreamType))
+            if (!streams.ContainsKey(data.StreamType))
                 return;
 
-            Streams[data.StreamType].OnDRMFound(data);
+            streams[data.StreamType].OnDRMFound(data);
         }
 
         public void OnSetDrmConfiguration(DRMDescription description)
@@ -161,18 +162,18 @@ namespace JuvoPlayer.Player
 
         public void OnStreamConfigReady(StreamConfig config)
         {
-            if (!Streams.ContainsKey(config.StreamType()))
+            if (!streams.ContainsKey(config.StreamType()))
                 return;
 
-            Streams[config.StreamType()].OnStreamConfigChanged(config);
+            streams[config.StreamType()].OnStreamConfigChanged(config);
         }
 
         public void OnStreamPacketReady(StreamPacket packet)
         {
-            if (!Streams.ContainsKey(packet.StreamType))
+            if (!streams.ContainsKey(packet.StreamType))
                 return;
 
-            Streams[packet.StreamType].OnAppendPacket(packet);
+            streams[packet.StreamType].OnAppendPacket(packet);
         }
 
         public void OnStreamsFound(List<StreamDefinition> streams)
@@ -204,7 +205,7 @@ namespace JuvoPlayer.Player
         public void Dispose()
         {
             playerAdapter?.Dispose();
-            foreach (var stream in Streams.Values)
+            foreach (var stream in streams.Values)
                 stream.Dispose();
         }
     }

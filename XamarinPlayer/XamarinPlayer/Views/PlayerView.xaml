@@ -52,14 +52,42 @@
                                TextColor="White"
                                FontSize="Small"/>
                     </StackLayout>
-                    <StackLayout Orientation="Horizontal" HorizontalOptions="CenterAndExpand">
-                        <AbsoluteLayout>
+                    <StackLayout Orientation="Horizontal" HorizontalOptions="Fill">
+                        <AbsoluteLayout HorizontalOptions="StartAndExpand">
+                            <Image x:Name="BackImage"
+                                   Source="btn_viewer_control_back_normal.png"
+                                   HorizontalOptions="Center"
+                                   VerticalOptions="Center"                                    
+                                   AbsoluteLayout.LayoutBounds="0,0,1,1" AbsoluteLayout.LayoutFlags="All"/>
+                            <Button x:Name="BackButton"
+                                    Opacity="0.1"
+                                    AbsoluteLayout.LayoutBounds="0,0,1,1" AbsoluteLayout.LayoutFlags="All"
+                                    HorizontalOptions="Fill"
+                                    VerticalOptions="Fill"
+                                    WidthRequest="100"
+                                    IsEnabled="False"/>
+                        </AbsoluteLayout>
+                        <AbsoluteLayout HorizontalOptions="Center">
                             <Image x:Name="PlayImage"
                                     Source="btn_viewer_control_play_normal.png"
                                     HorizontalOptions="Center"
                                     VerticalOptions="Center"                                    
                                     AbsoluteLayout.LayoutBounds="0,0,1,1" AbsoluteLayout.LayoutFlags="All"/>
-                            <Button x:Name="Play"
+                            <Button x:Name="PlayButton"
+                                    Opacity="0.1"
+                                    AbsoluteLayout.LayoutBounds="0,0,1,1" AbsoluteLayout.LayoutFlags="All"
+                                    HorizontalOptions="Fill"
+                                    VerticalOptions="Fill"
+                                    WidthRequest="100"
+                                    IsEnabled="False"/>
+                        </AbsoluteLayout>
+                        <AbsoluteLayout HorizontalOptions="EndAndExpand">
+                            <Image x:Name="ForwardImage"
+                                   Source="btn_viewer_control_forward_normal.png"
+                                   HorizontalOptions="Center"
+                                   VerticalOptions="Center"                                    
+                                   AbsoluteLayout.LayoutBounds="0,0,1,1" AbsoluteLayout.LayoutFlags="All"/>
+                            <Button x:Name="ForwardButton"
                                     Opacity="0.1"
                                     AbsoluteLayout.LayoutBounds="0,0,1,1" AbsoluteLayout.LayoutFlags="All"
                                     HorizontalOptions="Fill"
