@@ -12,10 +12,10 @@ namespace JuvoPlayer.DRM
         /// <exception cref="T:JuvoPlayer.DRM.DRMException">Session couldn't be initialized.</exception>
         Task Initialize();
 
-        /// <summary>Asynchronously decrypts a single <see cref="T:JuvoPlayer.Common.EncryptedStreamPacket"></see>.</summary>
+        /// <summary>Asynchronously decrypts a single <see cref="T:JuvoPlayer.Common.EncryptedPacket"></see>.</summary>
         /// <param name="packet">Packet to decrypt.</param>
-        /// <returns>A task, which will produce decrypted <see cref="T:JuvoPlayer.Common.StreamPacket"></see>.</returns>
+        /// <returns>A task, which will produce decrypted <see cref="T:JuvoPlayer.Common.Packet"></see>.</returns>
         /// <exception cref="T:JuvoPlayer.DRM.DRMException">Session is not initialized or packet couldn't be decrypted.</exception>
-        Task<StreamPacket> DecryptPacket(EncryptedStreamPacket packet);
+        Task<Packet> DecryptPacket(EncryptedPacket packet);
     }
 }

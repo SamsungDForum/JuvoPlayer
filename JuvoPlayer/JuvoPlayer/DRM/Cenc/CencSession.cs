@@ -70,12 +70,12 @@ namespace JuvoPlayer.DRM.Cenc
             return new CencSession(initData, drmDescription);
         }
 
-        public Task<StreamPacket> DecryptPacket(EncryptedStreamPacket packet)
+        public Task<Packet> DecryptPacket(EncryptedPacket packet)
         {
             return thread.Factory.Run(() => DecryptPacketOnIemeThread(packet));
         }
 
-        private unsafe StreamPacket DecryptPacketOnIemeThread(EncryptedStreamPacket packet)
+        private unsafe Packet DecryptPacketOnIemeThread(EncryptedPacket packet)
         {
             if (licenceInstalled == false)
                 return null;

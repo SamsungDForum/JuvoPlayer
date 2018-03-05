@@ -20,7 +20,7 @@ namespace JuvoPlayer.TizenTests
     {
         private byte[] initData;
 
-        private List<EncryptedStreamPacket> packets = new List<EncryptedStreamPacket>();
+        private List<EncryptedPacket> packets = new List<EncryptedPacket>();
 
         private LoggerManager savedLoggerManager;
         private static byte[] PlayreadySystemId = new byte[] { 0x9a, 0x04, 0xf0, 0x79, 0x98, 0x40, 0x42, 0x86, 0xab, 0x92, 0xe6, 0x5b, 0xe0, 0x88, 0x5f, 0x95 };
@@ -42,7 +42,7 @@ namespace JuvoPlayer.TizenTests
 
             var encryptedPacketsStream = assembly.GetManifestResourceStream("JuvoPlayer.TizenTests.res.drm.encrypted_packets_list.bin");
             BinaryFormatter formatter = new BinaryFormatter();
-            packets = (List<EncryptedStreamPacket>) formatter.Deserialize(encryptedPacketsStream);
+            packets = (List<EncryptedPacket>) formatter.Deserialize(encryptedPacketsStream);
 
             Assert.That(packets, Is.Not.Null);
             Assert.That(packets.Count, Is.GreaterThan(0));

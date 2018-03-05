@@ -6,7 +6,7 @@ namespace JuvoPlayer.Player
 {
     static class SMPlayerUtils
     {
-        public static TrackType GetTrackType(StreamPacket packet)
+        public static TrackType GetTrackType(Packet packet)
         {
             TrackType trackType;
             if (packet.StreamType == StreamType.Video)

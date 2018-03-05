@@ -110,7 +110,7 @@ namespace JuvoPlayer.Player
             ReleaseUnmanagedResources();
         }
 
-        public unsafe void AppendPacket(StreamPacket packet)
+        public unsafe void AppendPacket(Packet packet)
         {
             if (packet == null)
                 return;
@@ -155,7 +155,7 @@ namespace JuvoPlayer.Player
 
                     Logger.Debug("SubmittingPacketsTask: AUDIO: " + audioBuffer.Count() + ", VIDEO: " + videoBuffer.Count());
 
-                    StreamPacket packet = DequeuePacket();
+                    Packet packet = DequeuePacket();
                     if (packet.IsEOS)
                         SubmitEOSPacket(packet);
                     else if (packet is DecryptedEMEPacket)
@@ -172,9 +172,9 @@ namespace JuvoPlayer.Player
             }
         }
 
-        private StreamPacket DequeuePacket()
+        private Packet DequeuePacket()
         {
-            StreamPacket packet;
+            Packet packet;
             if (audioBuffer.Count() > 0 && videoBuffer.Count() > 0)
             {
                 if (audioBuffer.PeekSortingValue() <= videoBuffer.PeekSortingValue())
@@ -224,7 +224,7 @@ namespace JuvoPlayer.Player
         }
 
 
-        private unsafe void SubmitPacket(StreamPacket packet) // TODO(g.skowinski): Implement it properly.
+        private unsafe void SubmitPacket(Packet packet) // TODO(g.skowinski): Implement it properly.
         {
             // Initialize unmanaged memory to hold the array.
             int size = Marshal.SizeOf(packet.Data[0]) * packet.Data.Length;
@@ -249,7 +249,7 @@ namespace JuvoPlayer.Player
             }
         }
 
-        private unsafe void SubmitEOSPacket(StreamPacket packet)
+        private unsafe void SubmitEOSPacket(Packet packet)
         {
             var trackType = SMPlayerUtils.GetTrackType(packet);
 

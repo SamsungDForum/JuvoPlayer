@@ -16,7 +16,7 @@ using System;
 namespace JuvoPlayer.Common
 {
     [Serializable]
-    public class StreamPacket : IDisposable
+    public class Packet : IDisposable
     {
         public byte[] Data = null;
         public StreamType StreamType { get; set; }
@@ -25,9 +25,9 @@ namespace JuvoPlayer.Common
         public bool IsEOS { get; set; }
         public bool IsKeyFrame { get; set; }
 
-        public static StreamPacket CreateEOS(StreamType streamType)
+        public static Packet CreateEOS(StreamType streamType)
         {
-            return new StreamPacket
+            return new Packet
             {
                 StreamType = streamType,
                 Dts = TimeSpan.MaxValue,

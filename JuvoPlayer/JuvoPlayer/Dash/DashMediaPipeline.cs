@@ -14,7 +14,7 @@ namespace JuvoPlayer.Dash
         public event DRMInitDataFound DRMInitDataFound;
         public event SetDrmConfiguration SetDrmConfiguration;
         public event StreamConfigReady StreamConfigReady;
-        public event StreamPacketReady StreamPacketReady;
+        public event PacketReady PacketReady;
 
         private readonly IDashClient dashClient;
         private readonly IDemuxer demuxer;
@@ -28,7 +28,7 @@ namespace JuvoPlayer.Dash
 
             demuxer.DRMInitDataFound += OnDRMInitDataFound;
             demuxer.StreamConfigReady += OnStreamConfigReady;
-            demuxer.StreamPacketReady += OnStreamPacketReady;
+            demuxer.PacketReady += OnPacketReady;
         }
 
         public void Start(Media newMedia)
@@ -143,15 +143,15 @@ namespace JuvoPlayer.Dash
             DRMInitDataFound?.Invoke(drmData);
         }
 
-        private void OnStreamPacketReady(StreamPacket packet)
+        private void OnPacketReady(Packet packet)
         {
             if (packet != null)
             {
-                StreamPacketReady?.Invoke(packet);
+                PacketReady?.Invoke(packet);
                 return;
             }
 
-            StreamPacketReady?.Invoke(StreamPacket.CreateEOS(streamType));
+            PacketReady?.Invoke(Packet.CreateEOS(streamType));
         }
 
         private void OnStreamConfigReady(StreamConfig config)

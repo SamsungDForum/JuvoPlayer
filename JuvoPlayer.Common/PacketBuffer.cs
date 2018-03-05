@@ -17,7 +17,7 @@ using System.Threading;
 namespace JuvoPlayer.Common {
     public class PacketBuffer {
 
-        private List<StreamPacket> data;
+        private List<Packet> data;
 
         public enum Ordering {
             PtsAsc,
@@ -34,7 +34,7 @@ namespace JuvoPlayer.Common {
         private readonly AutoResetEvent bufferFull, bufferEmpty, bufferPeek;
 
         public PacketBuffer(Ordering queueOrdering = Ordering.Fifo, int minimumSizeThreshold = 0, int maximumSizeThreshold = int.MaxValue) {
-            data = new List<StreamPacket>();
+            data = new List<Packet>();
             MinimumSizeThreshold = minimumSizeThreshold;
             MaximumSizeThreshold = maximumSizeThreshold;
             bufferFull = new AutoResetEvent(true);
@@ -43,7 +43,7 @@ namespace JuvoPlayer.Common {
             QueueOrdering = queueOrdering;
         }
 
-        public void Enqueue(StreamPacket packet) {
+        public void Enqueue(Packet packet) {
             for (bool done = false; !done; bufferFull.WaitOne()) {
                 lock (data) {
                     if (data.Count < MaximumSizeThreshold) {
@@ -67,11 +67,11 @@ namespace JuvoPlayer.Common {
             }
         }
 
-        public StreamPacket Dequeue() {
+        public Packet Dequeue() {
             for (; true; bufferEmpty.WaitOne()) {
                 lock (data) {
                     if (data.Count - MinimumSizeThreshold > 0) {
-                        StreamPacket headPacket = data[0];
+                        Packet headPacket = data[0];
                         if (QueueOrdering == Ordering.Fifo) {
                             data.RemoveAt(0);
                         }
@@ -101,7 +101,7 @@ namespace JuvoPlayer.Common {
             }
         }
 
-        public StreamPacket Peek() {
+        public Packet Peek() {
             lock (data) {
                 return data[0]; // throws exception if data is empty!
             }
@@ -115,7 +115,7 @@ namespace JuvoPlayer.Common {
 
         public void Clear() {
             lock (data) {
-                data = new List<StreamPacket>();
+                data = new List<Packet>();
             }
         }
 
@@ -127,12 +127,12 @@ namespace JuvoPlayer.Common {
         }
 
         private void SwapIndices(int a, int b) {
-            StreamPacket tmp = data[a];
+            Packet tmp = data[a];
             data[a] = data[b];
             data[b] = tmp;
         }
 
-        private long Compare(StreamPacket a, StreamPacket b) {
+        private long Compare(Packet a, Packet b) {
             switch (QueueOrdering) {
                 case Ordering.DtsAsc:
                     return a.Dts.CompareTo(b.Dts); // in order of increasing dts

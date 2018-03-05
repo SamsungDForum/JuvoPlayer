@@ -7,7 +7,7 @@ using NUnit.Framework;
 namespace JuvoPlayer.Tests
 {
     [TestFixture]
-    [Description("Tests for PacketBuffer class - buffer for StreamPacket objects that can act as a FIFO or a Prority Queue (sorted by Dts/Pts, Asc/Desc).")]
+    [Description("Tests for PacketBuffer class - buffer for Packet objects that can act as a FIFO or a Prority Queue (sorted by Dts/Pts, Asc/Desc).")]
     class PacketBufferTests
     {
         private static PacketBuffer buffer;
@@ -120,7 +120,7 @@ namespace JuvoPlayer.Tests
             int testCount = 1024;
             for (int i = 0; i < testCount; ++i)
             {
-                StreamPacket packet = new StreamPacket
+                Packet packet = new Packet
                 {
                     Pts = TimeSpan.FromMilliseconds(i + testCount),
                     Dts = TimeSpan.FromMilliseconds(i + 2 * testCount),
@@ -189,8 +189,8 @@ namespace JuvoPlayer.Tests
                     chunk = Math.Min(size - written, rnd.Next(0, averageChunkSize * 2));
                     for (int i = 0; i < chunk; ++i)
                     {
-                        StreamPacket packet =
-                            new StreamPacket
+                        Packet packet =
+                            new Packet
                             {
                                 Pts = TimeSpan.FromMilliseconds(rnd.Next(0, int.MaxValue)),
                                 Dts = TimeSpan.FromMilliseconds(rnd.Next(0, int.MaxValue)),
@@ -220,7 +220,7 @@ namespace JuvoPlayer.Tests
                         : TimeSpan.MaxValue);
                     for (int i = 0; i < chunk; ++i)
                     {
-                        StreamPacket packet = new StreamPacket();
+                        Packet packet = new Packet();
                         Assert.DoesNotThrow(() => packet = buffer.Dequeue());
                         switch (ordering)
                         {
@@ -294,7 +294,7 @@ namespace JuvoPlayer.Tests
         {
             for (int i = 0; i < numberOfValues; ++i)
             {
-                StreamPacket packet = new StreamPacket
+                Packet packet = new Packet
                 {
                     Data = new byte[0],
                     Pts = TimeSpan.FromMilliseconds(startingValue + i),
@@ -310,7 +310,7 @@ namespace JuvoPlayer.Tests
         {
             for (int i = 0; i < numberOfValues; ++i)
             {
-                StreamPacket packet = new StreamPacket();
+                Packet packet = new Packet();
                 Assert.DoesNotThrow(() => packet = buffer.Dequeue());
                 if (packet.Pts.TotalMilliseconds != startingValue + i || packet.Dts.TotalMilliseconds != startingValue + i)
                     return false;
