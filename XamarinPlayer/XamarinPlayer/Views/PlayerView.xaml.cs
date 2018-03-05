@@ -10,7 +10,8 @@ namespace XamarinPlayer.Views
     public partial class PlayerView : ContentPage
     {
         private readonly int DefaultTimeout = 5000;
-        private readonly TimeSpan UpdateInterval = new TimeSpan(0, 0, 0, 0, 100);
+        private readonly TimeSpan UpdateInterval = TimeSpan.FromMilliseconds(100);
+        private readonly TimeSpan DefaultSeekTime = TimeSpan.FromSeconds(20);
 
         private IPlayerService _playerService;
         private int _hideTime;
@@ -35,35 +36,86 @@ namespace XamarinPlayer.Views
             _playerService.PlaybackCompleted += OnPlaybackCompleted;
             _playerService.ShowSubtitle += OnShowSubtitle;
 
-            Play.Clicked += (s, e) =>
-            {
-                if (_playerService.State == PlayerState.Playing)
-                    _playerService.Pause();
-                else
-                    _playerService.Start();
-            };
+            PlayButton.Clicked += (s, e) => { Play(); };
+
+            BackButton.Clicked += (s, e) => { Rewind(); };
+
+            ForwardButton.Clicked += (s, e) => { Forward(); };
 
             PropertyChanged += PlayerViewPropertyChanged;
             
-            MessagingCenter.Subscribe<IKeyEventSender, string>(this, "KeyDown", (s, e) =>
+            MessagingCenter.Subscribe<IKeyEventSender, string>(this, "KeyDown", (s, e) => { KeyEventHandler(e); });
+        }
+
+        private void Play()
+        {
+            if (_playerService.State == PlayerState.Playing)
+                _playerService.Pause();
+            else
+                _playerService.Start();
+        }
+
+        private void KeyEventHandler(string e)
+        {
+            if (e.Contains("Back"))
             {
-                if (e.Contains("Back"))
-                { 
-                    if (_playerService.State != PlayerState.Playing || 
-                        _playerService.State == PlayerState.Playing && !Controller.IsVisible)
-                    {
-                        Navigation.RemovePage(this);
-                    }
-                    else
-                    {
-                        Hide();
-                    }
-                } 
-                else if (e.Contains("Enter") || e.Contains("Return"))
+                if (_playerService.State < PlayerState.Playing ||
+                    _playerService.State >= PlayerState.Playing && !Controller.IsVisible)
                 {
-                    Show();
+                    Navigation.RemovePage(this);
                 }
-            });
+                else
+                {
+                    Hide();
+                }
+            }
+            else
+            {
+                Show();
+
+                if (e.Contains("Play") && _playerService.State == PlayerState.Paused)
+                {
+                    _playerService.Start();
+                }
+                else if (e.Contains("Pause") && _playerService.State == PlayerState.Playing)
+                {
+                    _playerService.Pause();
+                }
+                else if (e.Contains("Stop"))
+                {
+                    Navigation.RemovePage(this);
+                }
+                else if (e.Contains("Next"))
+                {
+                    Forward();
+                }
+                else if (e.Contains("Rewind"))
+                {
+                    Rewind();
+                }
+            }
+        }
+
+        private void Forward()
+        {
+            if (!_playerService.IsSeekingSupported || _playerService.State < PlayerState.Playing)
+                return;
+
+            if (_playerService.Duration - _playerService.CurrentPosition < DefaultSeekTime)
+                _playerService.SeekTo(_playerService.Duration);
+            else
+                _playerService.SeekTo(_playerService.CurrentPosition + DefaultSeekTime);
+        }
+
+        private void Rewind()
+        {
+            if (!_playerService.IsSeekingSupported || _playerService.State < PlayerState.Playing)
+                return;
+
+            if (_playerService.CurrentPosition < DefaultSeekTime)
+                _playerService.SeekTo(TimeSpan.Zero);
+            else
+                _playerService.SeekTo(_playerService.CurrentPosition - DefaultSeekTime);
         }
 
         public void Show()
@@ -75,7 +127,7 @@ namespace XamarinPlayer.Views
         {
             if (!_isShowing)
             {
-                Play.Focus();
+                PlayButton.Focus();
                 _isShowing = true;
             }
             Controller.IsVisible = true;
@@ -129,7 +181,7 @@ namespace XamarinPlayer.Views
         {
             base.OnAppearing();
 
-            Play.Focus();
+            PlayButton.Focus();
             Device.StartTimer(UpdateInterval, UpdatePlayerControl);
         }
 
@@ -167,12 +219,20 @@ namespace XamarinPlayer.Views
         {
             if (e.State == PlayerState.Error)
             {
-                Play.IsEnabled = false;
+                BackButton.IsEnabled = false;
+                ForwardButton.IsEnabled = false;
+                PlayButton.IsEnabled = false;
             }
             else if (e.State == PlayerState.Prepared)
             {
-                Play.IsEnabled = true;
-                Play.Focus();
+                if (_playerService.IsSeekingSupported)
+                {
+                    BackButton.IsEnabled = true;
+                    ForwardButton.IsEnabled = true;
+                }
+
+                PlayButton.IsEnabled = true;
+                PlayButton.Focus();
 
                 _playerService.Start();
                 Show();
@@ -205,7 +265,7 @@ namespace XamarinPlayer.Views
                 return false;
 
             Device.BeginInvokeOnMainThread(() => {
-                if (_playerService.State != PlayerState.Playing)
+                if (_playerService.State < PlayerState.Playing)
                 {
                     return;
                 }

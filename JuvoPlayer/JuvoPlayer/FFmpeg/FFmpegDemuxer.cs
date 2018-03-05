@@ -36,6 +36,7 @@ namespace JuvoPlayer.FFmpeg
         private int audioIdx = -1;
         private int videoIdx = -1;
         private bool parse = true;
+        private bool resetting;
 
         private Task demuxTask;
 
@@ -91,14 +92,14 @@ namespace JuvoPlayer.FFmpeg
             seekFunctionDelegate = new avio_alloc_context_seek(Seek);
         }
 
-        public void StartForExternalSource()
+        public void StartForExternalSource(InitializationMode initMode)
         {
             Logger.Info("StartDemuxer!");
             if (dataBuffer == null)
                 throw new InvalidOperationException("dataBuffer cannot be null");
 
             // Potentially time-consuming part of initialization and demuxation loop will be executed on a detached thread.
-            demuxTask = Task.Run(() => DemuxTask(InitES)); 
+            demuxTask = Task.Run(() => DemuxTask(InitES, initMode)); 
         }
 
         public void StartForUrl(string url)
@@ -106,7 +107,7 @@ namespace JuvoPlayer.FFmpeg
             Logger.Info("StartDemuxer!");
 
             // Potentially time-consuming part of initialization and demuxation loop will be executed on a detached thread.
-            demuxTask = Task.Run(() => DemuxTask(() => InitURL(url))); 
+            demuxTask = Task.Run(() => DemuxTask(() => InitURL(url), InitializationMode.Full)); 
         }
 
         private unsafe void InitES()
@@ -252,14 +253,20 @@ namespace JuvoPlayer.FFmpeg
             return streamId;
         }
 
-        private unsafe void DemuxTask(Action initAction)
+        private unsafe void DemuxTask(Action initAction, InitializationMode initMode)
         {
-            try {
+            try
+            {
                 initAction(); // Finish more time-consuming init things
-                FindStreamsInfo();
-                ReadAudioConfig();
-                ReadVideoConfig();
-                UpdateContentProtectionConfig();
+
+                // Do some time consuming operation only when it is needed
+                if (initMode == InitializationMode.Full)
+                {
+                    FindStreamsInfo();
+                    ReadAudioConfig();
+                    ReadVideoConfig();
+                    UpdateContentProtectionConfig();
+                }
             }
             catch (Exception e) {
                 Logger.Error("An error occured: " + e.Message);
@@ -273,6 +280,9 @@ namespace JuvoPlayer.FFmpeg
                 int ret = FFmpeg.av_read_frame(formatContext, &pkt);
                 try
                 {
+                    if (resetting)
+                        return;
+
                     if (ret >= 0)
                     {
                         if (pkt.stream_index != audioIdx && pkt.stream_index != videoIdx)
@@ -456,6 +466,7 @@ namespace JuvoPlayer.FFmpeg
                 Logger.Info("Wrong audio stream index! nb_streams = " + formatContext->nb_streams + ", audio_idx = " + audioIdx);
                 return;
             }
+
             AVStream* s = formatContext->streams[audioIdx];
             AudioStreamConfig config = new AudioStreamConfig();
 
@@ -502,6 +513,7 @@ namespace JuvoPlayer.FFmpeg
                 Logger.Info("Wrong video stream index! nb_streams = " + formatContext->nb_streams + ", video_idx = " + videoIdx);
                 return;
             }
+
             AVStream* s = formatContext->streams[videoIdx];
             var config = new VideoStreamConfig
             {
@@ -615,7 +627,15 @@ namespace JuvoPlayer.FFmpeg
 
         public void Reset()
         {
-            // TODO(g.skowinski): Implement.
+            resetting = true;
+
+            dataBuffer.ClearData();
+            dataBuffer.WriteData(null, true);
+            demuxTask?.Wait();
+
+            DeallocFFmpeg();
+
+            resetting = false;
         }
 
         public unsafe void Paused()
@@ -626,11 +646,6 @@ namespace JuvoPlayer.FFmpeg
         public unsafe void Played()
         {
             FFmpeg.av_read_play(formatContext);
-        }
-
-        public void Seek(TimeSpan position)
-        {
-            // TODO(g.skowinski): Implement.
         }
 
         private static unsafe ISharedBuffer RetrieveSharedBufferReference(void* @opaque)
@@ -656,6 +671,7 @@ namespace JuvoPlayer.FFmpeg
             catch (Exception) {
                 return 0;
             }
+
             // ISharedBuffer::ReadData(int size) is blocking - it will block until it has data or return 0 if EOF is reached
             var data = sharedBuffer.ReadData(bufSize);
             if (data.HasValue)

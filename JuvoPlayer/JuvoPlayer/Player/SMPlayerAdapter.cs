@@ -43,7 +43,7 @@ namespace JuvoPlayer.Player
 
         private readonly SMPlayerWrapper playerInstance;
 
-        private bool audioSet, videoSet, isPlayerInitialized, playCalled;
+        private bool audioSet, videoSet, isPlayerInitialized;
 
         private readonly PacketBuffer audioBuffer;
         private readonly PacketBuffer videoBuffer;
@@ -51,11 +51,15 @@ namespace JuvoPlayer.Player
         private bool needDataVideo, needDataAudio;
         private bool needDataInitMode = true;
         private bool stopped;
+        private bool isPaused;
 
         private readonly AutoResetEvent needDataEvent = new AutoResetEvent(false);
-        private object needDataLock = new object();
 
         private System.UInt32 currentTime;
+        // while SMPlayer is reconfigured after calling Seek we cant upload any packets
+        // We need to wait for the first OnSeekData event what means that player is ready
+        // to get packets
+        private bool smplayerSeekReconfiguration;
 
         public unsafe SMPlayerAdapter()
         {
@@ -69,28 +73,26 @@ namespace JuvoPlayer.Player
                 bool result = playerInstance.Initialize();
                 if (!result)
                 {
-                    Logger.Info(" playerInstance.Initialize() Failed !!!!!!!");
+                    Logger.Error("playerInstance.Initialize() Failed!!!!!!!");
                     return;
                 }
-                Logger.Info(" playerInstance.Initialize() Success !!!!!!!");
+                Logger.Info("playerInstance.Initialize() Success !!!!!!!");
 
                 var playerContainer = new ElmSharp.Window("player");
                 playerContainer.Geometry = new ElmSharp.Rect(0, 0, 1920, 1080);
                 result = playerInstance.SetDisplay(PlayerDisplayType.Overlay, playerContainer);
                 if (!result)
                 {
-                    Logger.Info(" playerInstance.SetDisplay Failed !!!!!!!");
+                    Logger.Error("playerInstance.SetDisplay Failed !!!!!!!");
                     return;
                 }
-                Logger.Info(" playerInstance.SetDisplay Success !!!!!!!");
 
-                //The next steps of init player is as following sequences:
-                //PrepareES() and Play() should be called after SetVideoStreamInfo() and SetAudioStreamInfo() success.
-                //And SetVideoStreamInfo() and SetAudioStreamInfo() should be called after playerInstance.Initialize().
+                Logger.Info("playerInstance.SetDisplay Success !!!!!!!");
             }
             catch (Exception e)
             {
-                Logger.Info("got exception: " + e.Message);
+                Logger.Error("got exception: " + e.Message);
+                throw;
             }
 
             // -----------------------------------------------------------------------------------------------------------
@@ -110,7 +112,6 @@ namespace JuvoPlayer.Player
 
         public unsafe void AppendPacket(StreamPacket packet)
         {
-            // todo
             if (packet == null)
                 return;
 
@@ -147,17 +148,14 @@ namespace JuvoPlayer.Player
                 if (stopped)
                     return;
 
-                if ((needDataAudio && needDataVideo) // both must be needed, so we can choose the one with lower pts
+                if (!smplayerSeekReconfiguration && (needDataAudio && needDataVideo) // both must be needed, so we can choose the one with lower pts
                     || (needDataInitMode && (needDataAudio || needDataVideo)))
                 { // but for first OnNeedData - we're sending both video and audio till first OnEnoughData
                     needDataInitMode = false;
 
-//                    Logger.Info("SubmittingPacketsTask: AUDIO: " + audioBuffer.Count().ToString() + ", VIDEO: " + videoBuffer.Count().ToString());
+                    Logger.Debug("SubmittingPacketsTask: AUDIO: " + audioBuffer.Count() + ", VIDEO: " + videoBuffer.Count());
 
                     StreamPacket packet = DequeuePacket();
-
-                    //                    Logger.Info("Peeked");
-
                     if (packet.IsEOS)
                         SubmitEOSPacket(packet);
                     else if (packet is DecryptedEMEPacket)
@@ -167,7 +165,7 @@ namespace JuvoPlayer.Player
                 }
                 else
                 {
-                    // Logger.Info("SubmittingPacketsTask: Need to wait one.");
+                    Logger.Debug("SubmittingPacketsTask: Need to wait one.");
 
                     needDataEvent.WaitOne();
                 }
@@ -207,7 +205,7 @@ namespace JuvoPlayer.Player
             {
                 Marshal.StructureToPtr(drmInfo, pnt, false);
 
-//                Logger.Info(string.Format("[HQ] send es data to SubmitPacket: {0} {1} ( {2} )", packet.Pts, drmInfo.tzHandle, trackType));
+                Logger.Debug(string.Format("[HQ] send es data to SubmitPacket: {0} {1} ( {2} )", packet.Pts, drmInfo.tzHandle, trackType));
 
                 if (!playerInstance.SubmitPacket(IntPtr.Zero, packet.HandleSize.size, packet.Pts.TotalNanoseconds(),
                     trackType, pnt))
@@ -240,7 +238,7 @@ namespace JuvoPlayer.Player
                 //byte[] managedArray2 = new byte[managedArray.Length];
                 //Marshal.Copy(pnt, managedArray2, 0, managedArray.Length);
                 var trackType = SMPlayerUtils.GetTrackType(packet);
-//                Logger.Info(string.Format("[HQ] send es data to SubmitPacket: {0} ( {1} )", packet.Pts, trackType));
+                Logger.Debug(string.Format("[HQ] send es data to SubmitPacket: {0} ( {1} )", packet.Pts, trackType));
 
                 playerInstance.SubmitPacket(pnt, (uint)packet.Data.Length, packet.Pts.TotalNanoseconds(), trackType, IntPtr.Zero);
             }
@@ -255,30 +253,41 @@ namespace JuvoPlayer.Player
         {
             var trackType = SMPlayerUtils.GetTrackType(packet);
 
-            Logger.Info(string.Format("[HQ] send EOS packet: {0} ( {1} )", packet.Pts, trackType));
+            Logger.Debug(string.Format("[HQ] send EOS packet: {0} ( {1} )", packet.Pts, trackType));
 
             playerInstance.SubmitEOSPacket(trackType);
         }
 
         public void Play() // TODO(g.skowinski): Handle asynchronicity (like in Stop() method?)
         {
-            //TODO(p.galiszewsk) HACK
-            if (playCalled)
+            Logger.Debug("");
+
+            if (isPaused)
                 playerInstance.Resume();
             else
                 playerInstance.Play();
 
-            playCalled = true;
+            isPaused = false;
         }
 
         public void Seek(TimeSpan time)
         {
+            Logger.Debug("");
+
+            // Stop appending packests.
+            smplayerSeekReconfiguration = true;
+
+            playerInstance.Pause();
+
+            audioBuffer.Clear();
+            videoBuffer.Clear();
+
             playerInstance.Seek((int)time.TotalMilliseconds);
         }
 
         public void SetAudioStreamConfig(AudioStreamConfig config)
         {
-            Logger.Info("");
+            Logger.Debug("");
 
             var audioStreamInfo = new AudioStreamInfo
             {
@@ -316,7 +325,7 @@ namespace JuvoPlayer.Player
 
         public void SetVideoStreamConfig(VideoStreamConfig config)
         {
-            Logger.Info("");
+            Logger.Debug("");
 
             var videoStreamInfo = new VideoStreamInfo
             {
@@ -357,46 +366,57 @@ namespace JuvoPlayer.Player
 
         public void SetDuration(TimeSpan duration)
         {
+            Logger.Debug("");
+
             playerInstance.SetDuration((uint)duration.TotalMilliseconds);
         }
 
         public void SetExternalSubtitles(string file)
         {
+            Logger.Debug("");
+
             playerInstance.SetExternalSubtitlesPath(file, string.Empty);
         }
 
         public void SetPlaybackRate(float rate)
         {
+            Logger.Debug("");
+
             playerInstance.SetPlaybackRate(rate);
         }
 
         public void SetSubtitleDelay(int offset)
         {
+            Logger.Debug("");
+
             //TODO(p.galiszewsk): check time format
             playerInstance.SetSubtitlesDelay(offset);
         }
 
-        public void Stop() // TODO(g.skowinski): Handle asynchronicity.
+        public void Stop()
         {
+            Logger.Debug("");
+
             stopped = true;
 
             audioBuffer.Clear();
             videoBuffer.Clear();
 
-            playerInstance.Stop(); // This is async method - wait for D2TV_MESSAGE_STOP_SUCCESS message before doing anything else with the player.
-
-            playCalled = false;
+            playerInstance.Stop();
         }
 
-        public void Pause() // TODO(g.skowinski): Handle asynchronicity (like in Stop() method?).
+        public void Pause()
         {
+            Logger.Debug("");
+
             playerInstance.Pause();
+            isPaused = true;
         }
 
         #region IPlayerEventListener
         public void OnEnoughData(StreamType streamType)
         {
-            // Logger.Info("Received OnEnoughData: " + streamType);
+            Logger.Debug("Received OnEnoughData: " + streamType);
 
             if (streamType == StreamType.Audio)
                 needDataAudio = false;
@@ -410,7 +430,7 @@ namespace JuvoPlayer.Player
 
         public void OnNeedData(StreamType streamType, uint size)
         {
-            // Logger.Info("Received OnNeedData: " + streamType);
+            Logger.Debug("Received OnNeedData: " + streamType);
 
             if (streamType == StreamType.Audio)
                 needDataAudio = true;
@@ -432,7 +452,19 @@ namespace JuvoPlayer.Player
 
         public void OnSeekData(StreamType streamType, System.UInt64 offset)
         {
-            Logger.Info(string.Format("Received OnSeekData: {0} offset: {1}", streamType, offset));
+            Logger.Debug(string.Format("Received OnSeekData: {0} offset: {1}", streamType, offset));
+
+            if (streamType == StreamType.Audio)
+                needDataAudio = true;
+            else if (streamType == StreamType.Video)
+                needDataVideo = true;
+            else
+                return;
+
+            // We can start appending packets
+            smplayerSeekReconfiguration = false;
+
+            needDataEvent.Set();
         }
 
         public void OnError(PlayerErrorType errorType, string msg)
@@ -471,6 +503,11 @@ namespace JuvoPlayer.Player
         public void OnSeekCompleted()
         {
             Logger.Info("");
+
+            if (!isPaused)
+                playerInstance.Resume();
+
+            TimeUpdated?.Invoke(TimeSpan.FromMilliseconds(playerInstance.currentPosition * 1000));
         }
 
         public void OnSeekStartedBuffering()

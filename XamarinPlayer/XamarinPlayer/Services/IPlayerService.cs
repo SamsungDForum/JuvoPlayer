@@ -17,6 +17,8 @@ namespace XamarinPlayer.Services
 
         TimeSpan CurrentPosition { get; }
 
+        bool IsSeekingSupported { get; }
+
         PlayerState State { get; }
 
         void SetSource(ClipDefinition clip);
