@@ -35,6 +35,6 @@ namespace JuvoPlayer.Common
         event ClipDurationChanged ClipDuration;
         event DRMInitDataFound DRMInitDataFound;
         event StreamConfigReady StreamConfigReady;
-        event StreamPacketReady StreamPacketReady;
+        event PacketReady PacketReady;
     }
 }

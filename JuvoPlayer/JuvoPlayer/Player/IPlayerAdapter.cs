@@ -36,6 +36,6 @@ namespace JuvoPlayer.Player
 
         void SetAudioStreamConfig(AudioStreamConfig config);
         void SetVideoStreamConfig(VideoStreamConfig config);
-        void AppendPacket(StreamPacket packet);
+        void AppendPacket(Packet packet);
     }
 }

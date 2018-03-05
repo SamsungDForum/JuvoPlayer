@@ -62,8 +62,8 @@ namespace JuvoPlayer.Player
             playerAdapter.ShowSubtitle += OnShowSubtitle;
             playerAdapter.TimeUpdated += OnTimeUpdated;
 
-            streams[StreamType.Audio] = new AudioPacketStream(playerAdapter, drmManager);
-            streams[StreamType.Video] = new VideoPacketStream(playerAdapter, drmManager);
+            streams[StreamType.Audio] = new PacketStream(StreamType.Audio, playerAdapter, drmManager);
+            streams[StreamType.Video] = new PacketStream(StreamType.Video, playerAdapter, drmManager);
         }
 
         private void OnPlaybackCompleted()
@@ -168,7 +168,7 @@ namespace JuvoPlayer.Player
             streams[config.StreamType()].OnStreamConfigChanged(config);
         }
 
-        public void OnStreamPacketReady(StreamPacket packet)
+        public void OnPacketReady(Packet packet)
         {
             if (!streams.ContainsKey(packet.StreamType))
                 return;

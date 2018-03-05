@@ -26,18 +26,18 @@ namespace JuvoPlayer.Dash
             audioPipeline.DRMInitDataFound += OnDRMInitDataFound;
             audioPipeline.SetDrmConfiguration += OnSetDrmConfiguration;
             audioPipeline.StreamConfigReady += OnStreamConfigReady;
-            audioPipeline.StreamPacketReady += OnStreamPacketReady;
+            audioPipeline.PacketReady += OnPacketReady;
             videoPipeline.DRMInitDataFound += OnDRMInitDataFound;
             videoPipeline.SetDrmConfiguration += OnSetDrmConfiguration;
             videoPipeline.StreamConfigReady += OnStreamConfigReady;
-            videoPipeline.StreamPacketReady += OnStreamPacketReady;
+            videoPipeline.PacketReady += OnPacketReady;
         }
 
         public event ClipDurationChanged ClipDurationChanged;
         public event DRMInitDataFound DRMInitDataFound;
         public event SetDrmConfiguration SetDrmConfiguration;
         public event StreamConfigReady StreamConfigReady;
-        public event StreamPacketReady StreamPacketReady;
+        public event PacketReady PacketReady;
         public event StreamsFound StreamsFound;
 
         private void OnDRMInitDataFound(DRMInitData drmData)
@@ -55,9 +55,9 @@ namespace JuvoPlayer.Dash
             StreamConfigReady?.Invoke(config);
         }
 
-        private void OnStreamPacketReady(StreamPacket packet)
+        private void OnPacketReady(Packet packet)
         {
-            StreamPacketReady?.Invoke(packet);
+            PacketReady?.Invoke(packet);
         }
 
         public void OnChangeRepresentation(int representationId)

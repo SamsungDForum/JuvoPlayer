@@ -27,7 +27,7 @@ namespace JuvoPlayer.FFmpeg
         public event Common.ClipDurationChanged ClipDuration;
         public event Common.DRMInitDataFound DRMInitDataFound;
         public event Common.StreamConfigReady StreamConfigReady;
-        public event Common.StreamPacketReady StreamPacketReady;
+        public event Common.PacketReady PacketReady;
 
         private const int BufferSize = 128 * 1024;
         private unsafe byte* buffer = null;
@@ -298,27 +298,27 @@ namespace JuvoPlayer.FFmpeg
 
                         var sideData = FFmpeg.av_packet_get_side_data(&pkt, AVPacketSideDataType.@AV_PKT_DATA_ENCRYPT_INFO, null);
 
-                        StreamPacket streamPacket = null;
+                        Packet packet = null;
                         if (sideData != null)
-                            streamPacket = CreateEncryptedPacket(sideData);
+                            packet = CreateEncryptedPacket(sideData);
                         else
-                            streamPacket = new StreamPacket();
+                            packet = new Packet();
 
-                        streamPacket.StreamType = pkt.stream_index != audioIdx ? StreamType.Video : StreamType.Audio;
-                        streamPacket.Pts = TimeSpan.FromMilliseconds(pts >= 0 ? pts : 0);
-                        streamPacket.Dts = TimeSpan.FromMilliseconds(dts >= 0 ? dts : 0);
-                        streamPacket.Data = new byte[dataSize];
-                        streamPacket.IsKeyFrame = (pkt.flags == 1);
+                        packet.StreamType = pkt.stream_index != audioIdx ? StreamType.Video : StreamType.Audio;
+                        packet.Pts = TimeSpan.FromMilliseconds(pts >= 0 ? pts : 0);
+                        packet.Dts = TimeSpan.FromMilliseconds(dts >= 0 ? dts : 0);
+                        packet.Data = new byte[dataSize];
+                        packet.IsKeyFrame = (pkt.flags == 1);
 
-                        CopyPacketData(data, dataSize, streamPacket, sideData == null);
-                        StreamPacketReady?.Invoke(streamPacket);
+                        CopyPacketData(data, dataSize, packet, sideData == null);
+                        PacketReady?.Invoke(packet);
                     }
                     else
                     {
                         if (ret == -541478725 && parse)
                         {
                             // null means EOF
-                            StreamPacketReady?.Invoke(null);
+                            PacketReady?.Invoke(null);
                         }
                         Logger.Info("DEMUXER: ----DEMUXING----AV_READ_FRAME----ERROR---- av_read_frame()=" + ret + " (" + GetErrorText(ret) + ")");
                         parse = false;
@@ -331,7 +331,7 @@ namespace JuvoPlayer.FFmpeg
             }
         }
 
-        private static unsafe StreamPacket CreateEncryptedPacket(byte* sideData)
+        private static unsafe Packet CreateEncryptedPacket(byte* sideData)
         {
             AVEncInfo* encInfo = (AVEncInfo*)sideData;
 
@@ -340,7 +340,7 @@ namespace JuvoPlayer.FFmpeg
             byte[] iv = new byte[encInfo->iv_size];
             Buffer.BlockCopy(encInfo->iv.ToArray(), 0, iv, 0, encInfo->iv_size);
 
-            var packet = new EncryptedStreamPacket()
+            var packet = new EncryptedPacket()
             {
                 KeyId = keyId,
                 Iv = iv,
@@ -349,7 +349,7 @@ namespace JuvoPlayer.FFmpeg
             if (subsampleCount <= 0)
                 return packet;
 
-            packet.Subsamples = new EncryptedStreamPacket.Subsample[subsampleCount];
+            packet.Subsamples = new EncryptedPacket.Subsample[subsampleCount];
 
             // structure has sequential layout and the last element is an array
             // due to marshalling error we need to define this as single element
@@ -364,7 +364,7 @@ namespace JuvoPlayer.FFmpeg
             return packet;
         }
 
-        private static unsafe int CopyPacketData(byte* source, int size, StreamPacket packet, bool removeSuffixPES = true)
+        private static unsafe int CopyPacketData(byte* source, int size, Packet packet, bool removeSuffixPES = true)
         {
             byte[] suffixPES = // NOTE(g.skowinski): It seems like ffmpeg leaves PES headers as suffixes to some packets and SMPlayer can't handle data with such suffixes
                 (packet.StreamType == StreamType.Audio) ?
@@ -408,7 +408,7 @@ namespace JuvoPlayer.FFmpeg
         }
 
         // NOTE(g.skowinski): DEBUG HELPER METHOD
-        private static void DumpPacketToFile(StreamPacket packet, string filename)
+        private static void DumpPacketToFile(Packet packet, string filename)
         {
             AppendAllBytes(filename, packet.Data);
             AppendAllBytes(filename, new byte[] { 0xde, 0xad, 0xbe, 0xef, 0xde, 0xad, 0xbe, 0xef, 0xde, 0xad, 0xbe, 0xef, 0xde, 0xad, 0xbe, 0xef });
