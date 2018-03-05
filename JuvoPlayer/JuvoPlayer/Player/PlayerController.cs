@@ -61,8 +61,8 @@ namespace JuvoPlayer.Player
             playerAdapter.ShowSubtitle += OnShowSubtitle;
             playerAdapter.TimeUpdated += OnTimeUpdated;
 
-            Streams[StreamType.Audio] = new AudioPacketStream(playerAdapter, drmManager);
-            Streams[StreamType.Video] = new VideoPacketStream(playerAdapter, drmManager);
+            Streams[StreamType.Audio] = new PacketStream(StreamType.Audio, playerAdapter, drmManager);
+            Streams[StreamType.Video] = new PacketStream(StreamType.Video, playerAdapter, drmManager);
         }
 
         private void OnPlaybackCompleted()
