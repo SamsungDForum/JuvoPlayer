@@ -15,15 +15,15 @@ namespace JuvoPlayer.DRM.Cenc
             Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
         }
 
-        public IDRMSession CreateDRMSession(DRMInitData initData)
+        public IDRMSession CreateDRMSession(DRMInitData initData, DRMDescription drmDescription)
         {
-            var iemeKeySystemName = GetKeySystemName(initData.SystemId);
+            var iemeKeySystemName = CencUtils.GetKeySystemName(initData.SystemId);
             if (IEME.isKeySystemSupported(iemeKeySystemName) != Status.kSupported)
             {
                 Logger.Info(string.Format("Key System: {0} is not supported", iemeKeySystemName));
                 return null;
             }
-            return CencSession.Create(iemeKeySystemName, GetScheme(initData.SystemId), initData);
+            return CencSession.Create(initData, drmDescription);
         }
 
         public bool SupportsSchemeIdUri(string uri)
@@ -36,7 +36,7 @@ namespace JuvoPlayer.DRM.Cenc
             if (!CencUtils.SupportsSystemId(uuid))
                 return false;
 
-            var iemeKeySystemName = GetKeySystemName(uuid);
+            var iemeKeySystemName = CencUtils.GetKeySystemName(uuid);
             return IEME.isKeySystemSupported(iemeKeySystemName) == Status.kSupported;
         }
 
@@ -45,24 +45,9 @@ namespace JuvoPlayer.DRM.Cenc
             return CencUtils.SupportsType(type);
         }
 
-        private string GetKeySystemName(byte[] systemId)
+        public string GetScheme(byte[] uuid)
         {
-            if (systemId.SequenceEqual(CencUtils.PlayReadySystemId))
-                return "com.microsoft.playready";
-            if (systemId.SequenceEqual(CencUtils.WidevineSystemId))
-                return "com.widevine.alpha";
-
-            return null;
-        }
-
-        private string GetScheme(byte[] systemId)
-        {
-            if (systemId.SequenceEqual(CencUtils.PlayReadySystemId))
-                return "playready";
-            if (systemId.SequenceEqual(CencUtils.WidevineSystemId))
-                return "widevine";
-
-            return null;
+            return CencUtils.GetScheme(uuid);
         }
     }
 }

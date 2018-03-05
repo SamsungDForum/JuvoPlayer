@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Linq;
 
 namespace JuvoPlayer.DRM.Cenc
@@ -43,6 +43,26 @@ namespace JuvoPlayer.DRM.Cenc
         {
             return string.Equals(type, PlayReadyType, StringComparison.CurrentCultureIgnoreCase)
                 /*|| string.Equals(type, WidevineType, StringComparison.CurrentCultureIgnoreCase)*/;
+        }
+
+        public static string GetKeySystemName(byte[] systemId)
+        {
+            if (systemId.SequenceEqual(PlayReadySystemId))
+                return "com.microsoft.playready";
+            if (systemId.SequenceEqual(WidevineSystemId))
+                return "com.widevine.alpha";
+
+            return null;
+        }
+
+        public static string GetScheme(byte[] systemId)
+        {
+            if (systemId.SequenceEqual(PlayReadySystemId))
+                return "playready";
+            if (systemId.SequenceEqual(WidevineSystemId))
+                return "widevine";
+
+            return null;
         }
     }
 }
