@@ -88,7 +88,7 @@ namespace JuvoPlayer.Player
             Logger.Info("OnErrorOccured: " + e.Error.ToString());
         }
 
-        public void AppendPacket(StreamPacket packet)
+        public void AppendPacket(Packet packet)
         {
             if (packet.StreamType == StreamType.Audio)
                 AppendPacket(audioFormat, packet);
@@ -96,7 +96,7 @@ namespace JuvoPlayer.Player
                 AppendPacket(videoFormat, packet);
         }
 
-        private void AppendPacket(MediaFormat format, StreamPacket packet)
+        private void AppendPacket(MediaFormat format, Packet packet)
         {
             if (source == null)
             {

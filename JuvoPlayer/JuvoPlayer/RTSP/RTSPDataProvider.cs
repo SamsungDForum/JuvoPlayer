@@ -28,14 +28,14 @@ namespace JuvoPlayer.RTSP
             this.currentClip = currentClip ?? throw new ArgumentNullException(nameof(currentClip), "clip cannot be null");
 
             this.demuxer.StreamConfigReady += OnStreamConfigReady;
-            this.demuxer.StreamPacketReady += OnStreamPacketReady;
+            this.demuxer.PacketReady += OnPacketReady;
         }
 
         public event ClipDurationChanged ClipDurationChanged;
         public event DRMInitDataFound DRMInitDataFound;
         public event SetDrmConfiguration SetDrmConfiguration;
         public event StreamConfigReady StreamConfigReady;
-        public event StreamPacketReady StreamPacketReady;
+        public event PacketReady PacketReady;
         public event StreamsFound StreamsFound;
 
         private void OnStreamConfigReady(StreamConfig config)
@@ -43,17 +43,17 @@ namespace JuvoPlayer.RTSP
             StreamConfigReady?.Invoke(config);
         }
 
-        private void OnStreamPacketReady(StreamPacket packet)
+        private void OnPacketReady(Packet packet)
         {
             if (packet != null)
             {
-                StreamPacketReady?.Invoke(packet);
+                PacketReady?.Invoke(packet);
                 return;
             }
             // found empty packet which means EOS. We need to send two fake 
             // eos packets, one for audio and one for video
-            StreamPacketReady?.Invoke(StreamPacket.CreateEOS(StreamType.Audio));
-            StreamPacketReady?.Invoke(StreamPacket.CreateEOS(StreamType.Video));
+            PacketReady?.Invoke(Packet.CreateEOS(StreamType.Audio));
+            PacketReady?.Invoke(Packet.CreateEOS(StreamType.Video));
         }
 
         public void OnChangeRepresentation(int representationId)

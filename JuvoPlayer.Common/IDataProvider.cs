@@ -20,7 +20,7 @@ namespace JuvoPlayer.Common
     public delegate void DRMInitDataFound(DRMInitData data);
     public delegate void SetDrmConfiguration(DRMDescription description);
     public delegate void StreamConfigReady(StreamConfig config);
-    public delegate void StreamPacketReady(StreamPacket packet);
+    public delegate void PacketReady(Packet packet);
     public delegate void StreamsFound(List<StreamDefinition> streams);
 
     public interface IDataProvider : IDisposable
@@ -39,7 +39,7 @@ namespace JuvoPlayer.Common
         event DRMInitDataFound DRMInitDataFound;
         event SetDrmConfiguration SetDrmConfiguration;
         event StreamConfigReady StreamConfigReady;
-        event StreamPacketReady StreamPacketReady;
+        event PacketReady PacketReady;
         event StreamsFound StreamsFound;
     }
 }

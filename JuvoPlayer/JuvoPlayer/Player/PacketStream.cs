@@ -25,7 +25,7 @@ namespace JuvoPlayer.Player
             playerAdapter = player ?? throw new ArgumentNullException(nameof(player), "player cannot be null");
         }
 
-        public void OnAppendPacket(StreamPacket packet)
+        public void OnAppendPacket(Packet packet)
         {
             if (packet.StreamType != streamType)
                 throw new ArgumentException("packet type doesn't match");
@@ -33,14 +33,14 @@ namespace JuvoPlayer.Player
             if (config == null)
                 throw new InvalidOperationException("Packet stream is not configured");
 
-            if (drmSessionInitializeTask != null && packet is EncryptedStreamPacket)
+            if (drmSessionInitializeTask != null && packet is EncryptedPacket)
             {
                 drmSessionInitializeTask.Wait();
                 drmSessionInitializeTask = null;
             }
 
-            if (drmSession != null && packet is EncryptedStreamPacket)
-                packet = drmSession.DecryptPacket(packet as EncryptedStreamPacket).Result;
+            if (drmSession != null && packet is EncryptedPacket)
+                packet = drmSession.DecryptPacket(packet as EncryptedPacket).Result;
 
             playerAdapter.AppendPacket(packet);
         }

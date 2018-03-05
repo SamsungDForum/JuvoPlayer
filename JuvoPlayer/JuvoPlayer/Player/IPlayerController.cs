@@ -41,7 +41,7 @@ namespace JuvoPlayer.Player
         void OnDRMInitDataFound(DRMInitData data);
         void OnSetDrmConfiguration(DRMDescription description);
         void OnStreamConfigReady(StreamConfig config);
-        void OnStreamPacketReady(StreamPacket packet);
+        void OnPacketReady(Packet packet);
         void OnStreamsFound(List<StreamDefinition> streams);
         #endregion
 
