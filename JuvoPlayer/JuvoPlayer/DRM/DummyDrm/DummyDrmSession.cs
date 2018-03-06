@@ -35,6 +35,7 @@ namespace JuvoPlayer.DRM.DummyDrm
 
         public void Dispose()
         {
+            //Should be uncommented after Tizen.Net 4.0.1 release
             //inputSharedMemory?.Dispose();
             //session?.Dispose();
             context?.Dispose();
