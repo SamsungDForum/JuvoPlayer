@@ -58,7 +58,6 @@ namespace JuvoPlayer.Player
         private SMPlayerState internalState = SMPlayerState.Uninitialized;
 
         private bool audioSet, videoSet;
-
         private bool needDataVideo, needDataAudio;
 
         private readonly AutoResetEvent needDataEvent = new AutoResetEvent(false);
@@ -124,8 +123,6 @@ namespace JuvoPlayer.Player
             if (packet == null)
                 return;
 
-            PrepareES();
-
             if (packet.StreamType == Common.StreamType.Video)
                 videoBuffer.Enqueue(packet);
             else if (packet.StreamType == Common.StreamType.Audio)
@@ -137,8 +134,8 @@ namespace JuvoPlayer.Player
             if (internalState != SMPlayerState.Uninitialized)
                 return;
 
-            while (audioSet != true || videoSet != true)
-                continue;
+            if (!audioSet || !videoSet)
+                return;
 
             bool result = playerInstance.PrepareES();
             if (result != true)
@@ -263,7 +260,7 @@ namespace JuvoPlayer.Player
             playerInstance.SubmitEOSPacket(trackType);
         }
 
-        public void Play() // TODO(g.skowinski): Handle asynchronicity (like in Stop() method?)
+        public void Play()
         {
             Logger.Debug("");
 
@@ -321,6 +318,8 @@ namespace JuvoPlayer.Player
                     Marshal.FreeHGlobal(audioStreamInfo.codecExtraAata);
             }
             audioSet = true;
+
+            PrepareES();
         }
 
         public void SetVideoStreamConfig(VideoStreamConfig config)
@@ -358,6 +357,8 @@ namespace JuvoPlayer.Player
                     Marshal.FreeHGlobal(videoStreamInfo.codecExtraData);
             }
             videoSet = true;
+
+            PrepareES();
         }
 
         public void SetDuration(TimeSpan duration)
