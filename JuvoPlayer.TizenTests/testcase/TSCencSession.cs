@@ -113,7 +113,7 @@ namespace JuvoPlayer.TizenTests
         }
 
         [Test]
-        public async Task SubmitEncryptedPacket_WhenPacketIsValid_DecryptsSuccessfully()
+        public async Task DecryptPacket_WhenPacketIsValid_DecryptsSuccessfully()
         {
             var drmInitData = CreateDrmInitData();
             var configuration = CreateDrmDescription();
@@ -127,12 +127,18 @@ namespace JuvoPlayer.TizenTests
                     using (var decrypted = await drmSession.DecryptPacket(encrypted))
                     {
                         Assert.That(decrypted, Is.Not.Null);
+                        Assert.That(decrypted, Is.InstanceOf<DecryptedEMEPacket>());
 
-                        Assert.That(decrypted.Dts, Is.EqualTo(encrypted.Dts));
-                        Assert.That(decrypted.Pts, Is.EqualTo(encrypted.Pts));
-                        Assert.That(decrypted.IsEOS, Is.EqualTo(encrypted.IsEOS));
-                        Assert.That(decrypted.IsKeyFrame, Is.EqualTo(encrypted.IsKeyFrame));
-                        Assert.That(decrypted.StreamType, Is.EqualTo(encrypted.StreamType));
+                        var decryptedEme = decrypted as DecryptedEMEPacket;
+
+                        Assert.That(decryptedEme.Dts, Is.EqualTo(encrypted.Dts));
+                        Assert.That(decryptedEme.Pts, Is.EqualTo(encrypted.Pts));
+                        Assert.That(decryptedEme.IsEOS, Is.EqualTo(encrypted.IsEOS));
+                        Assert.That(decryptedEme.IsKeyFrame, Is.EqualTo(encrypted.IsKeyFrame));
+                        Assert.That(decryptedEme.StreamType, Is.EqualTo(encrypted.StreamType));
+                        Assert.That(decryptedEme.HandleSize, Is.Not.Null);
+                        Assert.That(decryptedEme.HandleSize.handle, Is.GreaterThan(0));
+                        Assert.That(decryptedEme.HandleSize.size, Is.EqualTo(encrypted.Data.Length));
                     }
                 }
             }
