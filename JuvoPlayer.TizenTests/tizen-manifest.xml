@@ -1,13 +1,14 @@
 <?xml version="1.0" encoding="utf-8"?>
 <manifest package="org.tizen.example.JuvoPlayer.TizenTests" version="1.0.0" api-version="3.0" xmlns="http://tizen.org/ns/packages">
     <profile name="tv" />
-    <ui-application appid="org.tizen.example.JuvoPlayer.TizenTests" exec="JuvoPlayer.TizenTests.dll" multiple="false" nodisplay="false" taskmanage="true" splash-screen-display="true" type="dotnet" launch_mode="single">
+    <ui-application appid="org.tizen.example.JuvoPlayer.TizenTests" exec="JuvoPlayer.TizenTests.dll" multiple="false" nodisplay="false" taskmanage="true" splash-screen-display="true" type="dotnet-inhouse" launch_mode="single">
         <icon>JuvoPlayer.TizenTests.png</icon>
         <label>JuvoPlayer.TizenTests</label>
     </ui-application>
     <provides-appdefined-privileges />
     <privileges>
         <privilege>http://tizen.org/privilege/internet</privilege>
-        <privilege>http://developer.samsung.com/privilege/drmplay</privilege>
+		<privilege>http://tizen.org/privilege/tee.client</privilege>
+		<privilege>http://developer.samsung.com/privilege/drmplay</privilege>
     </privileges>
 </manifest>
