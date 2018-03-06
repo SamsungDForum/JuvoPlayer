@@ -16,7 +16,7 @@ using NUnit.Framework;
 namespace JuvoPlayer.TizenTests
 {
     [TestFixture]
-    public class TSDRMSession
+    public class TSCencSession
     {
         private byte[] initData;
 
