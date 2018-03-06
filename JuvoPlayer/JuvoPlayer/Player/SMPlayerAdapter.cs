@@ -264,12 +264,16 @@ namespace JuvoPlayer.Player
         {
             Logger.Debug("");
 
+            bool ret;
             if (internalState == SMPlayerState.Paused)
-                playerInstance.Resume();
+                ret = playerInstance.Resume();
             else
-                playerInstance.Play();
+                ret = playerInstance.Play();
 
-            internalState = SMPlayerState.Playing;
+            if (ret)
+                internalState = SMPlayerState.Playing;
+            else
+                Logger.Error("Play failed.");
         }
 
         public void Seek(TimeSpan time)
@@ -406,8 +410,10 @@ namespace JuvoPlayer.Player
         {
             Logger.Debug("");
 
-            playerInstance.Pause();
-            internalState = SMPlayerState.Paused;
+            if (playerInstance.Pause())
+                internalState = SMPlayerState.Paused;
+            else
+                Logger.Error("Pause failed.");
         }
 
         #region IPlayerEventListener
