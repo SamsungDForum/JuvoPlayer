@@ -41,6 +41,8 @@ namespace JuvoPlayer.Common.Utils
         /// <returns>string containing hex dump of input</returns>
         public static string HexDumpLastN(this byte[] bytes, int length, bool doTextDump = true, int bytesPerLine = 16)
         {
+            if (bytes == null) return "<null>";
+
             int idx = bytes.Length-1-length;
             int dlen = length;
             if(idx < 0)
@@ -111,18 +113,18 @@ namespace JuvoPlayer.Common.Utils
 
             for (int i = startindex; i < bytesLength;)
             {
-                int btd = (bytesPerLine <= (bytesLength - i)) ? bytesPerLine : (bytesLength - i);
-                int fill = bytesPerLine - btd;
+                int bytesToDo = (bytesPerLine <= (bytesLength - i)) ? bytesPerLine : (bytesLength - i);
+                int fill = bytesPerLine - bytesToDo;
 
                 // Convert a line of data into hex, replace "-" (as BitConverter generates)  with a space ' ' and pad
                 // if data to be dumped is shorter then # of bytes per line.
-                string hex = BitConverter.ToString(bytes, i, btd).Replace("-", " ").PadRight((bytesPerLine * 3) - 1);
+                string hex = BitConverter.ToString(bytes, i, bytesToDo).Replace("-", " ").PadRight((bytesPerLine * 3) - 1);
 
                 if (doTextDump)
                 {
                     string text = "";
 
-                    for (int j = i; j < btd + i; j++)
+                    for (int j = i; j < bytesToDo + i; j++)
                     {
                         // Dump only "printable" characters. Range 0x20 to 0x7E inclusive 
                         // All else is replaced with a '.'
@@ -144,7 +146,7 @@ namespace JuvoPlayer.Common.Utils
                     results[idx++] = i.ToString("X6") + ": " + hex;
                 }
 
-                i += btd;
+                i += bytesToDo;
             }
 
             return String.Join("\n", results);
