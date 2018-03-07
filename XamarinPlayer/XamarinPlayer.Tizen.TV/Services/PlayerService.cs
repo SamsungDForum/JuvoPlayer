@@ -24,8 +24,7 @@ namespace XamarinPlayer.Tizen.Services
         private PlayerState playerState = PlayerState.Idle;
 
         public event PlayerStateChangedEventHandler StateChanged;
-
-        public event ShowSubtitile ShowSubtitle;
+        public event ShowSubtitleEventHandler ShowSubtitle;
         
         public TimeSpan Duration => playerController?.ClipDuration ?? TimeSpan.FromSeconds(0) ;
 
@@ -62,7 +61,12 @@ namespace XamarinPlayer.Tizen.Services
             };
             playerController.ShowSubtitle += (subtitle) =>
             {
-                ShowSubtitle?.Invoke(subtitle);
+                var sub = new XamarinPlayer.Services.Subtitle
+                {
+                    Duration = subtitle.Duration,
+                    Text = subtitle.Text
+                };
+                ShowSubtitle?.Invoke(this, new ShowSubtitleEventArgs(sub));
             };
             playerController.PlayerInitialized += () =>
             {

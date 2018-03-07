@@ -1,16 +1,15 @@
 ﻿using System;
 using JuvoPlayer.Common;
-using JuvoPlayer.Common.Delegates;
 
 namespace XamarinPlayer.Services
 {
     public delegate void PlayerStateChangedEventHandler(object sender, PlayerStateChangedEventArgs e);
+    public delegate void ShowSubtitleEventHandler(object sender, ShowSubtitleEventArgs e);
 
     public interface IPlayerService : IDisposable
     {
         event PlayerStateChangedEventHandler StateChanged;
-
-        event ShowSubtitile ShowSubtitle;
+        event ShowSubtitleEventHandler ShowSubtitle;
 
         TimeSpan Duration { get; }
 
