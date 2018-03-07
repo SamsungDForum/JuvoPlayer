@@ -8,6 +8,7 @@
         Prepared,
         Stopped,
         Playing,
-        Paused
+        Paused,
+        Completed
     }
 }

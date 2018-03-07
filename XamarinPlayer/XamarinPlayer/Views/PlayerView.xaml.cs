@@ -17,6 +17,7 @@ namespace XamarinPlayer.Views
         private int _hideTime;
         private bool _isPageDisappeared = false;
         private bool _isShowing = false;
+        private bool _errorOccured = false;
 
         public static readonly BindableProperty ContentSourceProperty = BindableProperty.Create("ContentSource", typeof(ClipDefinition), typeof(PlayerView), default(ClipDefinition));
         public ClipDefinition ContentSource
@@ -33,7 +34,6 @@ namespace XamarinPlayer.Views
 
             _playerService = DependencyService.Get<IPlayerService>(DependencyFetchTarget.NewInstance);
             _playerService.StateChanged += OnPlayerStateChanged;
-            _playerService.PlaybackCompleted += OnPlaybackCompleted;
             _playerService.ShowSubtitle += OnShowSubtitle;
 
             PlayButton.Clicked += (s, e) => { Play(); };
@@ -153,7 +153,7 @@ namespace XamarinPlayer.Views
 
         private void OnPlaybackCompleted()
         {
-            if (_playerService.State != PlayerState.Error)
+            if (!_errorOccured)
             {
                 // Schedule closing the page on the next event loop. Give application time to finish
                 // playbackCompleted event handling
@@ -217,11 +217,17 @@ namespace XamarinPlayer.Views
 
         private void OnPlayerStateChanged(object sender, Services.PlayerStateChangedEventArgs e)
         {
-            if (e.State == PlayerState.Error)
+            if (e.State == PlayerState.Completed)
+            {
+                OnPlaybackCompleted();
+            }
+            else if (e.State == PlayerState.Error)
             {
                 BackButton.IsEnabled = false;
                 ForwardButton.IsEnabled = false;
                 PlayButton.IsEnabled = false;
+
+                _errorOccured = true;
             }
             else if (e.State == PlayerState.Prepared)
             {
