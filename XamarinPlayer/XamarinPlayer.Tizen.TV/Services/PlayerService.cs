@@ -25,7 +25,6 @@ namespace XamarinPlayer.Tizen.Services
 
         public event PlayerStateChangedEventHandler StateChanged;
 
-        public event PlaybackCompleted PlaybackCompleted;
         public event ShowSubtitile ShowSubtitle;
         
         public TimeSpan Duration => playerController?.ClipDuration ?? TimeSpan.FromSeconds(0) ;
@@ -59,8 +58,7 @@ namespace XamarinPlayer.Tizen.Services
             playerController = new PlayerController(playerAdapter, drmManager);
             playerController.PlaybackCompleted += () =>
             {
-                PlaybackCompleted?.Invoke();
-                State = PlayerState.Stopped;
+                State = PlayerState.Completed;
             };
             playerController.ShowSubtitle += (subtitle) =>
             {

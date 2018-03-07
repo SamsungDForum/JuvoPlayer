@@ -10,7 +10,6 @@ namespace XamarinPlayer.Services
     {
         event PlayerStateChangedEventHandler StateChanged;
 
-        event PlaybackCompleted PlaybackCompleted;
         event ShowSubtitile ShowSubtitle;
 
         TimeSpan Duration { get; }
