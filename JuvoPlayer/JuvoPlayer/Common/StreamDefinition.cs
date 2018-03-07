@@ -13,11 +13,10 @@
 
 namespace JuvoPlayer.Common
 {
-    public enum StreamType
+    public abstract class StreamDefinition
     {
-        Audio,
-        Video,
-        Subtitle,
-        Teletext
+        public int Id { get; set; }
+
+        public abstract StreamType StreamType();
     }
 }
