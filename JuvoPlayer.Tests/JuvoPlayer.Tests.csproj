@@ -51,7 +51,6 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\JuvoPlayer.Common\JuvoPlayer.Common.csproj" />
     <ProjectReference Include="..\JuvoPlayer\JuvoPlayer\JuvoPlayer.csproj" />
     <ProjectReference Include="..\MpdParser\MpdParser.csproj" />
   </ItemGroup>

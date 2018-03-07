@@ -9,6 +9,7 @@ using JuvoPlayer.RTSP;
 using Tizen.Applications;
 using Tizen.NUI;
 using Tizen.NUI.BaseComponents;
+using Tizen.TV.NUI;
 
 namespace NUIPlayer
 {

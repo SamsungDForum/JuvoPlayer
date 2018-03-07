@@ -1,5 +1,4 @@
 ﻿using System;
-using JuvoPlayer.Common;
 
 namespace XamarinPlayer.Services
 {

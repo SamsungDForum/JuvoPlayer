@@ -1,5 +1,4 @@
 ﻿using System.Windows.Input;
-using JuvoPlayer.Common;
 
 namespace XamarinPlayer.Models
 {
