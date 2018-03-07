@@ -89,8 +89,12 @@ namespace XamarinPlayer.Tizen.Services
             playerController.OnSeek(to);
         }
 
-        public void SetSource(ClipDefinition clip)
+        public void SetSource(object o)
         {
+            if (!(o is ClipDefinition))
+                return;
+            var clip = o as ClipDefinition;
+
             ControllerConnector.DisconnectDataProvider(playerController, dataProvider);
 
             dataProvider = dataProviders.CreateDataProvider(clip);
