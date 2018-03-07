@@ -10,8 +10,6 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "JuvoPlayer.TizenTests", "Ju
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "NUIPlayer", "NUIPlayer\NUIPlayer\NUIPlayer.csproj", "{4D7CF89D-65FA-4FEE-94CA-8E68AC7D8A77}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "JuvoPlayer.Common", "JuvoPlayer.Common\JuvoPlayer.Common.csproj", "{2031849B-4F72-4D3A-B970-DA72C720C6E6}"
-EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "XamarinPlayer", "XamarinPlayer\XamarinPlayer\XamarinPlayer.csproj", "{36BC28B7-C4F2-4227-93A4-F521E95D967D}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "XamarinPlayer.Tizen.TV", "XamarinPlayer\XamarinPlayer.Tizen.TV\XamarinPlayer.Tizen.TV.csproj", "{9388FB85-93F0-4FD5-A787-E702AA1581A3}"
@@ -22,9 +20,9 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MpdParser", "MpdParser\MpdP
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Tizen.TV.D2tv.Smplayer", "thirdparty\Tizen.TV.D2tv.Smplayer\Tizen.TV.D2tv.Smplayer.csproj", "{423C4553-E0A3-4A3D-8414-FEE2C149DEBE}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "JuvoLogger", "JuvoLogger\JuvoLogger.csproj", "{3B12A628-9EB3-477C-8C06-58E15A2E4BC2}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "JuvoLogger", "JuvoLogger\JuvoLogger.csproj", "{3B12A628-9EB3-477C-8C06-58E15A2E4BC2}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "JuvoLogger.Tizen", "JuvoLogger.Tizen\JuvoLogger.Tizen.csproj", "{9B3F0A66-2F65-46CB-B827-2C7CDE7ED29F}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "JuvoLogger.Tizen", "JuvoLogger.Tizen\JuvoLogger.Tizen.csproj", "{9B3F0A66-2F65-46CB-B827-2C7CDE7ED29F}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -81,18 +79,6 @@ Global
 		{4D7CF89D-65FA-4FEE-94CA-8E68AC7D8A77}.Release|x64.Build.0 = Debug|Any CPU
 		{4D7CF89D-65FA-4FEE-94CA-8E68AC7D8A77}.Release|x86.ActiveCfg = Debug|Any CPU
 		{4D7CF89D-65FA-4FEE-94CA-8E68AC7D8A77}.Release|x86.Build.0 = Debug|Any CPU
-		{2031849B-4F72-4D3A-B970-DA72C720C6E6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{2031849B-4F72-4D3A-B970-DA72C720C6E6}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{2031849B-4F72-4D3A-B970-DA72C720C6E6}.Debug|x64.ActiveCfg = Debug|Any CPU
-		{2031849B-4F72-4D3A-B970-DA72C720C6E6}.Debug|x64.Build.0 = Debug|Any CPU
-		{2031849B-4F72-4D3A-B970-DA72C720C6E6}.Debug|x86.ActiveCfg = Debug|Any CPU
-		{2031849B-4F72-4D3A-B970-DA72C720C6E6}.Debug|x86.Build.0 = Debug|Any CPU
-		{2031849B-4F72-4D3A-B970-DA72C720C6E6}.Release|Any CPU.ActiveCfg = Debug|Any CPU
-		{2031849B-4F72-4D3A-B970-DA72C720C6E6}.Release|Any CPU.Build.0 = Debug|Any CPU
-		{2031849B-4F72-4D3A-B970-DA72C720C6E6}.Release|x64.ActiveCfg = Debug|Any CPU
-		{2031849B-4F72-4D3A-B970-DA72C720C6E6}.Release|x64.Build.0 = Debug|Any CPU
-		{2031849B-4F72-4D3A-B970-DA72C720C6E6}.Release|x86.ActiveCfg = Debug|Any CPU
-		{2031849B-4F72-4D3A-B970-DA72C720C6E6}.Release|x86.Build.0 = Debug|Any CPU
 		{36BC28B7-C4F2-4227-93A4-F521E95D967D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{36BC28B7-C4F2-4227-93A4-F521E95D967D}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{36BC28B7-C4F2-4227-93A4-F521E95D967D}.Debug|x64.ActiveCfg = Debug|Any CPU

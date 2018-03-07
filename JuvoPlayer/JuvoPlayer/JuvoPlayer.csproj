@@ -41,7 +41,6 @@
 
   <ItemGroup>
     <ProjectReference Include="..\..\JuvoLogger.Tizen\JuvoLogger.Tizen.csproj" />
-    <ProjectReference Include="..\..\JuvoPlayer.Common\JuvoPlayer.Common.csproj" />
     <ProjectReference Include="..\..\MpdParser\MpdParser.csproj" />
     <ProjectReference Include="..\..\thirdparty\RTSP\RTSP.csproj" />
     <ProjectReference Include="..\..\thirdparty\Tizen.TV.D2tv.Smplayer\Tizen.TV.D2tv.Smplayer.csproj" />

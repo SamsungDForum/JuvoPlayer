@@ -1,5 +1,4 @@
 ﻿using System;
-using JuvoPlayer.Common;
 using Xamarin.Forms;
 using Xamarin.Forms.Xaml;
 using XamarinPlayer.Services;
