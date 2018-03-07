@@ -4,6 +4,7 @@ using System;
 using System.IO;
 using System.Reflection;
 using System.Text;
+using System.Threading;
 using JuvoPlayer.Common.Logging;
 using JuvoPlayer.Logging;
 using Tizen.Applications;
@@ -19,6 +20,7 @@ namespace JuvoPlayer.TizenTests
             base.OnCreate();
             StringBuilder sb = new StringBuilder();
             string dllName = typeof(Program).GetTypeInfo().Assembly.ManifestModule.ToString();
+            SynchronizationContext.SetSynchronizationContext(new SynchronizationContext());
 
             using (ExtendedTextWrapper writer = new ExtendedTextWrapper(new StringWriter(sb)))
             {
