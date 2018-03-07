@@ -19,7 +19,7 @@ namespace XamarinPlayer.Services
 
         PlayerState State { get; }
 
-        void SetSource(ClipDefinition clip);
+        void SetSource(object clip);
 
         void Start();
 

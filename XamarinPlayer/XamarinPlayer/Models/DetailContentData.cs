@@ -5,40 +5,12 @@ namespace XamarinPlayer.Models
 {
     class DetailContentData
     {
-        public string Image
-        {
-            get { return Clip.Poster; }
-            set { Clip.Poster = value; }
-        }
-
-        public string Bg
-        {
-            get { return Clip.Poster; }
-            set { Clip.Poster = value; }
-        }
-        public string Source
-        {
-            get { return Clip.Url; }
-            set { Clip.Url = value; }
-        }
-        public string Title
-        {
-            get { return Clip.Title; }
-            set { Clip.Title = value; }
-        }
-        public string Description
-        {
-            get { return Clip.Description; }
-            set { Clip.Description = value; }
-        }
-
+        public string Image { get; set; }
+        public string Bg { get; set; }
+        public string Source { get; set; }
+        public string Title { get; set; }
+        public string Description { get; set; }
         public ICommand ContentFocusedCommand { get; set; }
-        public ClipDefinition Clip { get; set; }
-
-        public DetailContentData(ClipDefinition clip, ICommand focusedCommand)
-        {
-            this.Clip = clip;
-            this.ContentFocusedCommand = focusedCommand;
-        }
+        public object Clip { get; set; }
     }
 }

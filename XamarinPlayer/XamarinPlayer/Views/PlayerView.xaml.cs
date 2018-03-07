@@ -19,11 +19,11 @@ namespace XamarinPlayer.Views
         private bool _isShowing = false;
         private bool _errorOccured = false;
 
-        public static readonly BindableProperty ContentSourceProperty = BindableProperty.Create("ContentSource", typeof(ClipDefinition), typeof(PlayerView), default(ClipDefinition));
-        public ClipDefinition ContentSource
+        public static readonly BindableProperty ContentSourceProperty = BindableProperty.Create("ContentSource", typeof(object), typeof(PlayerView), null);
+        public object ContentSource
         {
             set { SetValue(ContentSourceProperty, value); }
-            get { return (ClipDefinition)GetValue(ContentSourceProperty); }
+            get { return (object)GetValue(ContentSourceProperty); }
         }
 
         public PlayerView()
