@@ -1,4 +1,5 @@
-﻿using JuvoPlayer.Common;
+﻿using JuvoPlayer;
+using JuvoPlayer.Common;
 using System;
 using System.Collections.Generic;
 using System.IO;

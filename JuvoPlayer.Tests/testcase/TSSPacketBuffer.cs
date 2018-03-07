@@ -2,6 +2,7 @@
 using System.Threading;
 using System.Threading.Tasks;
 using JuvoPlayer.Common;
+using JuvoPlayer.Player;
 using NUnit.Framework;
 
 namespace JuvoPlayer.Tests
