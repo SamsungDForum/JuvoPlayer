@@ -26,11 +26,6 @@ namespace JuvoPlayer.DRM.Cenc
             return CencSession.Create(initData, drmDescription);
         }
 
-        public bool SupportsSchemeIdUri(string uri)
-        {
-            return CencUtils.SupportsSchemeIdUri(uri);
-        }
-
         public bool SupportsSystemId(byte[] uuid)
         {
             if (!CencUtils.SupportsSystemId(uuid))

@@ -429,7 +429,6 @@ namespace Tizen.TV.Smplayer
 
         public bool SetDisplay(PlayerDisplayType type, IntPtr display)
         {
-            //bool result = NativeSMPlayer.SetDisplayWin(winId, x, y, width, height);
             bool result = NativeSMPlayer.SetDisplay(type, display);
             return result;
         }

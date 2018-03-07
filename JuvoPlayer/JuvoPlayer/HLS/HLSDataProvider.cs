@@ -78,12 +78,12 @@ namespace JuvoPlayer.HLS
 
         public void OnPaused()
         {
-            demuxer.Paused();
+            demuxer?.Paused();
         }
 
         public void OnPlayed()
         {
-            demuxer.Played();
+            demuxer?.Played();
         }
 
         public void OnSeek(TimeSpan time)
@@ -101,7 +101,7 @@ namespace JuvoPlayer.HLS
 
         public void Start()
         {
-            demuxer.StartForUrl(currentClip.Url);
+            demuxer?.StartForUrl(currentClip.Url);
         }
 
         public void OnTimeUpdated(TimeSpan time)
@@ -113,7 +113,7 @@ namespace JuvoPlayer.HLS
         public void Dispose()
         {
             appendPacketEvent?.Dispose();
-            demuxer.Dispose();
+            demuxer?.Dispose();
         }
     }
 }

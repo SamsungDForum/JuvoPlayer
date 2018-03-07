@@ -33,6 +33,15 @@ namespace JuvoPlayer.Player
 
     public unsafe class SMPlayerAdapter : IPlayerAdapter, IPlayerEventListener
     {
+        private enum SMPlayerState
+        {
+            Uninitialized,
+            Ready,
+            Playing,
+            Paused,
+            Stopped
+        };
+
         private readonly ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
 
         public event PlaybackCompleted PlaybackCompleted;
@@ -43,19 +52,18 @@ namespace JuvoPlayer.Player
 
         private readonly SMPlayerWrapper playerInstance;
 
-        private bool audioSet, videoSet, isPlayerInitialized;
-
         private readonly PacketBuffer audioBuffer;
         private readonly PacketBuffer videoBuffer;
 
+        private SMPlayerState internalState = SMPlayerState.Uninitialized;
+
+        private bool audioSet, videoSet;
         private bool needDataVideo, needDataAudio;
-        private bool needDataInitMode = true;
-        private bool stopped;
-        private bool isPaused;
 
         private readonly AutoResetEvent needDataEvent = new AutoResetEvent(false);
 
         private System.UInt32 currentTime;
+
         // while SMPlayer is reconfigured after calling Seek we cant upload any packets
         // We need to wait for the first OnSeekData event what means that player is ready
         // to get packets
@@ -115,8 +123,6 @@ namespace JuvoPlayer.Player
             if (packet == null)
                 return;
 
-            PrepareES();
-
             if (packet.StreamType == Common.StreamType.Video)
                 videoBuffer.Enqueue(packet);
             else if (packet.StreamType == Common.StreamType.Audio)
@@ -125,34 +131,30 @@ namespace JuvoPlayer.Player
 
         public void PrepareES()
         {
-            while (audioSet != true || videoSet != true)
-                continue;
+            if (internalState != SMPlayerState.Uninitialized)
+                return;
 
-            if (isPlayerInitialized != true)
+            if (!audioSet || !videoSet)
+                return;
+
+            bool result = playerInstance.PrepareES();
+            if (result != true)
             {
-                bool result = playerInstance.PrepareES();
-                if (result != true)
-                {
-                    Logger.Info("playerInstance.PrepareES() Failed!!!!!!!!");
-                    return;
-                }
-                Logger.Info("playerInstance.PrepareES() Done!!!!!!!!");
-                isPlayerInitialized = true;
+                Logger.Error("playerInstance.PrepareES() Failed");
+                return;
             }
+            Logger.Info("playerInstance.PrepareES() Done");
+
+            internalState = SMPlayerState.Ready;
         }
 
         public unsafe void SubmittingPacketsTask()
         {
-            while (true)
+            while (internalState != SMPlayerState.Stopped)
             {
-                if (stopped)
-                    return;
-
-                if (!smplayerSeekReconfiguration && (needDataAudio && needDataVideo) // both must be needed, so we can choose the one with lower pts
-                    || (needDataInitMode && (needDataAudio || needDataVideo)))
-                { // but for first OnNeedData - we're sending both video and audio till first OnEnoughData
-                    needDataInitMode = false;
-
+                // both must be needed, so we can choose the one with lower pts
+                if (!smplayerSeekReconfiguration && needDataAudio && needDataVideo)
+                { 
                     Logger.Debug("SubmittingPacketsTask: AUDIO: " + audioBuffer.Count() + ", VIDEO: " + videoBuffer.Count());
 
                     Packet packet = DequeuePacket();
@@ -258,16 +260,20 @@ namespace JuvoPlayer.Player
             playerInstance.SubmitEOSPacket(trackType);
         }
 
-        public void Play() // TODO(g.skowinski): Handle asynchronicity (like in Stop() method?)
+        public void Play()
         {
             Logger.Debug("");
 
-            if (isPaused)
-                playerInstance.Resume();
+            bool ret;
+            if (internalState == SMPlayerState.Paused)
+                ret = playerInstance.Resume();
             else
-                playerInstance.Play();
+                ret = playerInstance.Play();
 
-            isPaused = false;
+            if (ret)
+                internalState = SMPlayerState.Playing;
+            else
+                Logger.Error("Play failed.");
         }
 
         public void Seek(TimeSpan time)
@@ -296,11 +302,6 @@ namespace JuvoPlayer.Player
                 drmType = 15,  // 0 for no DRM, 15 for EME
                 sampleRate = (uint)config.SampleRate,
                 channels = (uint)config.ChannelLayout,
-                propertyType = IntPtr.Zero,                   /**< video stream info: drminfo propertyType */
-                typeLen = 0,                           /**< video stream info: drminfo propertyType length */
-                propertyData = IntPtr.Zero,                   /**< video stream info: drminfo propertyData */
-                dataLen = 0,
-
             };
 
             try
@@ -321,6 +322,8 @@ namespace JuvoPlayer.Player
                     Marshal.FreeHGlobal(audioStreamInfo.codecExtraAata);
             }
             audioSet = true;
+
+            PrepareES();
         }
 
         public void SetVideoStreamConfig(VideoStreamConfig config)
@@ -338,10 +341,6 @@ namespace JuvoPlayer.Player
                 maxWidth = (uint)config.Size.Width,
                 height = (uint)config.Size.Height,
                 maxHeight = (uint)config.Size.Height,
-                propertyType = IntPtr.Zero,                   /**< video stream info: drminfo propertyType */
-                typeLen = 0,                           /**< video stream info: drminfo propertyType length */
-                propertyData = IntPtr.Zero,                   /**< video stream info: drminfo propertyData */
-                dataLen = 0,
             };
 
             try
@@ -362,6 +361,8 @@ namespace JuvoPlayer.Player
                     Marshal.FreeHGlobal(videoStreamInfo.codecExtraData);
             }
             videoSet = true;
+
+            PrepareES();
         }
 
         public void SetDuration(TimeSpan duration)
@@ -397,7 +398,7 @@ namespace JuvoPlayer.Player
         {
             Logger.Debug("");
 
-            stopped = true;
+            internalState = SMPlayerState.Stopped;
 
             audioBuffer.Clear();
             videoBuffer.Clear();
@@ -409,8 +410,10 @@ namespace JuvoPlayer.Player
         {
             Logger.Debug("");
 
-            playerInstance.Pause();
-            isPaused = true;
+            if (playerInstance.Pause())
+                internalState = SMPlayerState.Paused;
+            else
+                Logger.Error("Pause failed.");
         }
 
         #region IPlayerEventListener
@@ -424,8 +427,6 @@ namespace JuvoPlayer.Player
                 needDataVideo = false;
             else
                 return;
-
-            needDataInitMode = false;
         }
 
         public void OnNeedData(StreamType streamType, uint size)
@@ -504,7 +505,7 @@ namespace JuvoPlayer.Player
         {
             Logger.Info("");
 
-            if (!isPaused)
+            if (internalState == SMPlayerState.Playing)
                 playerInstance.Resume();
 
             TimeUpdated?.Invoke(TimeSpan.FromMilliseconds(playerInstance.currentPosition * 1000));
@@ -540,7 +541,8 @@ namespace JuvoPlayer.Player
         {
             if (disposing)
             {
-                stopped = true;
+                internalState = SMPlayerState.Stopped;
+
                 audioBuffer.Clear();
                 videoBuffer.Clear();
 
