@@ -173,7 +173,7 @@ namespace XamarinPlayer.Views
             }
         }
 
-        private void OnShowSubtitle(Subtitle subtitle)
+        private void OnShowSubtitle(object sender, ShowSubtitleEventArgs e)
         {
         }
 
@@ -215,7 +215,7 @@ namespace XamarinPlayer.Views
             return true;
         }
 
-        private void OnPlayerStateChanged(object sender, Services.PlayerStateChangedEventArgs e)
+        private void OnPlayerStateChanged(object sender, PlayerStateChangedEventArgs e)
         {
             if (e.State == PlayerState.Completed)
             {
