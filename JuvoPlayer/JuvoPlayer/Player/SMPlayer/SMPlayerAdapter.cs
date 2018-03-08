@@ -20,7 +20,7 @@ using JuvoPlayer.Common.Logging;
 using Tizen.TV.Smplayer;
 using StreamType = Tizen.TV.Smplayer.StreamType;
 
-namespace JuvoPlayer.Player
+namespace JuvoPlayer.Player.SMPlayer
 {
     public static class TimeSpanExtensions
     {

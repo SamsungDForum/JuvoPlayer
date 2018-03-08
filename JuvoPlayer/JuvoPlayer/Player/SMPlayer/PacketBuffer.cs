@@ -15,7 +15,7 @@ using JuvoPlayer.Common;
 using System.Collections.Generic;
 using System.Threading;
 
-namespace JuvoPlayer.Player {
+namespace JuvoPlayer.Player.SMPlayer {
     public class PacketBuffer {
 
         private List<Packet> data;

@@ -17,7 +17,7 @@ using JuvoPlayer.Common;
 using JuvoPlayer.Common.Logging;
 using Tizen.Multimedia;
 
-namespace JuvoPlayer.Player
+namespace JuvoPlayer.Player.MMPlayer
 {
     public class MultimediaPlayerAdapter : IPlayerAdapter
     {
