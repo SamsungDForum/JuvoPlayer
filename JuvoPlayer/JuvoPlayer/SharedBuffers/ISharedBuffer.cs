@@ -14,7 +14,7 @@
 
 using System;
 
-namespace JuvoPlayer.Common
+namespace JuvoPlayer.SharedBuffers
 {
     public interface ISharedBuffer
     {

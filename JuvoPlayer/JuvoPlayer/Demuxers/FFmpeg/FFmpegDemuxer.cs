@@ -18,6 +18,7 @@ using System.Threading.Tasks;
 using JuvoPlayer.Common;
 using JuvoPlayer.Common.Logging;
 using JuvoPlayer.Demuxers.FFmpeg.Interop;
+using JuvoPlayer.SharedBuffers;
 
 namespace JuvoPlayer.Demuxers.FFmpeg
 {
