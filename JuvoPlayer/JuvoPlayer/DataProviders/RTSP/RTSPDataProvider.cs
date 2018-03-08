@@ -15,7 +15,7 @@ using System;
 using JuvoPlayer.Common;
 using JuvoPlayer.DataProviders;
 
-namespace JuvoPlayer.RTSP
+namespace JuvoPlayer.DataProviders.RTSP
 {
     public class RTSPDataProvider : IDataProvider
     {

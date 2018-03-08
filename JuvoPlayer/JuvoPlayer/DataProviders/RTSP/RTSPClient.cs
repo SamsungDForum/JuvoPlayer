@@ -21,7 +21,7 @@ using JuvoPlayer.Common;
 using JuvoPlayer.Common.Logging;
 using Rtsp.Messages;
 
-namespace JuvoPlayer.RTSP
+namespace JuvoPlayer.DataProviders.RTSP
 {
     public class RTSPClient : IRTSPClient
     {
