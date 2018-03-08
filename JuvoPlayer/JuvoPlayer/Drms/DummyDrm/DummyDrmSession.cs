@@ -8,7 +8,7 @@ using Tizen.TV.Security.DrmDecrypt;
 
 namespace JuvoPlayer.Drms.DummyDrm
 {
-    public class DummyDrmSession : IDRMSession
+    public class DummyDrmSession : IDrmSession
     {
         private enum DummyDrmCommands : uint
         {

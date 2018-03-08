@@ -15,7 +15,7 @@ using Tizen.TV.Security.DrmDecrypt.emeCDM;
 
 namespace JuvoPlayer.Drms.Cenc
 {
-    public class CencSession : IEventListener, IDRMSession
+    public class CencSession : IEventListener, IDrmSession
     {
         private readonly ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
 
@@ -235,7 +235,7 @@ namespace JuvoPlayer.Drms.Cenc
             var keySystem = CencUtils.GetKeySystemName(initData.SystemId);
             CDMInstance = IEME.create(this, keySystem, false, CDM_MODEL.E_CDM_MODEL_DEFAULT);
             if (CDMInstance == null)
-                throw new DRMException(ErrorMessage.Generic);
+                throw new DrmException(ErrorMessage.Generic);
         }
 
         private string CreateSession()
@@ -243,17 +243,17 @@ namespace JuvoPlayer.Drms.Cenc
             string sessionId = null;
             var status = CDMInstance.session_create(SessionType.kTemporary, ref sessionId);
             if (status != Status.kSuccess)
-                throw new DRMException(EmeStatusConverter.Convert(status));
+                throw new DrmException(EmeStatusConverter.Convert(status));
             return sessionId;
         }
 
         private void GenerateRequest()
         {
             if (initData.InitData == null)
-                throw new DRMException(ErrorMessage.InvalidArgument);
+                throw new DrmException(ErrorMessage.InvalidArgument);
             var status = CDMInstance.session_generateRequest(currentSessionId, InitDataType.kCenc, Encode(initData.InitData));
             if (status != Status.kSuccess)
-                throw new DRMException(EmeStatusConverter.Convert(status));
+                throw new DrmException(EmeStatusConverter.Convert(status));
             // During session_generateRequest, we should got called back synchronously via onMessage and we should receive
             // requestData.
             if (requestData == null)
@@ -296,7 +296,7 @@ namespace JuvoPlayer.Drms.Cenc
         {
             var status = CDMInstance.session_update(currentSessionId, responseText);
             if (status != Status.kSuccess)
-                throw new DRMException(EmeStatusConverter.Convert(status));
+                throw new DrmException(EmeStatusConverter.Convert(status));
         }
     }
 }

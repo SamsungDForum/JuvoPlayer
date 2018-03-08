@@ -18,11 +18,11 @@ namespace JuvoPlayer.Tests
         protected virtual IPacketStream CreatePacketStream(StreamType streamType)
         {
             var playerStub = Substitute.For<IPlayer>();
-            var drmManagerStub = Substitute.For<IDRMManager>();
+            var drmManagerStub = Substitute.For<IDrmManager>();
             return CreatePacketStream(streamType, playerStub, drmManagerStub);
         }
 
-        protected virtual IPacketStream CreatePacketStream(StreamType streamType, IPlayer player, IDRMManager drmManager)
+        protected virtual IPacketStream CreatePacketStream(StreamType streamType, IPlayer player, IDrmManager drmManager)
         {
             return new PacketStream(streamType, player, drmManager);
         }
@@ -50,7 +50,7 @@ namespace JuvoPlayer.Tests
         [Test]
         public void OnAppendPacket_WhenConfigured_CallsPlayerAdapter()
         {
-            var drmManagerStub = Substitute.For<IDRMManager>();
+            var drmManagerStub = Substitute.For<IDrmManager>();
             var playerMock = Substitute.For<IPlayer>();
 
             using (var stream = CreatePacketStream(StreamType.Audio, playerMock, drmManagerStub))
@@ -130,16 +130,16 @@ namespace JuvoPlayer.Tests
             }
         }
 
-        private static IDRMManager CreateDrmManagerFake(IDRMSession drmSessionStub)
+        private static IDrmManager CreateDrmManagerFake(IDrmSession drmSessionStub)
         {
-            var drmManagerStub = Substitute.For<IDRMManager>();
+            var drmManagerStub = Substitute.For<IDrmManager>();
             drmManagerStub.CreateDRMSession(Arg.Any<DRMInitData>()).Returns(drmSessionStub);
             return drmManagerStub;
         }
 
-        private static IDRMSession CreateDrmSessionFake()
+        private static IDrmSession CreateDrmSessionFake()
         {
-            var drmSessionFake = Substitute.For<IDRMSession>();
+            var drmSessionFake = Substitute.For<IDrmSession>();
             drmSessionFake.Initialize().Returns(Task.CompletedTask);
             drmSessionFake.DecryptPacket(Arg.Any<EncryptedPacket>()).Returns(Task.FromResult(new Packet()));
             return drmSessionFake;

@@ -2,11 +2,11 @@
 
 namespace JuvoPlayer.Drms
 {
-    public interface IDRMManager
+    public interface IDrmManager
     {
-        void RegisterDrmHandler(IDRMHandler handler);
+        void RegisterDrmHandler(IDrmHandler handler);
         void UpdateDrmConfiguration(DRMDescription drmDescription);
 
-        IDRMSession CreateDRMSession(DRMInitData data);
+        IDrmSession CreateDRMSession(DRMInitData data);
     }
 }

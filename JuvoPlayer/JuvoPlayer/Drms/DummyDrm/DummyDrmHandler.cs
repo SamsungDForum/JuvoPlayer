@@ -5,7 +5,7 @@ using System.Linq;
 
 namespace JuvoPlayer.Drms.DummyDrm
 {
-    public class DummyDrmHandler : IDRMHandler
+    public class DummyDrmHandler : IDrmHandler
     {
         private readonly ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
         public static readonly byte[] DummySystemId = {0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0, 0x0,
@@ -16,7 +16,7 @@ namespace JuvoPlayer.Drms.DummyDrm
         {
         }
 
-        public IDRMSession CreateDRMSession(DRMInitData initData, DRMDescription drmDescription)
+        public IDrmSession CreateDRMSession(DRMInitData initData, DRMDescription drmDescription)
         {
             return DummyDrmSession.Create();
         }
