@@ -15,7 +15,7 @@ using System;
 using System.IO;
 using Newtonsoft.Json;
 
-namespace JuvoPlayer
+namespace JuvoPlayer.Utils
 {
     public class JSONFileReader
     {
