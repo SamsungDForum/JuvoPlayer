@@ -18,7 +18,7 @@ using JuvoPlayer.Demuxers;
 
 namespace JuvoPlayer.DataProviders.RTSP
 {
-    public class RTSPDataProvider : IDataProvider
+    internal class RTSPDataProvider : IDataProvider
     {
         private readonly IDemuxer demuxer;
         private readonly IRTSPClient rtpClient;

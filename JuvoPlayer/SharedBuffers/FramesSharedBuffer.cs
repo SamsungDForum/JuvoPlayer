@@ -17,7 +17,7 @@ using System.Threading;
 
 namespace JuvoPlayer.SharedBuffers
 {
-    public class FramesSharedBuffer : ISharedBuffer
+    internal class FramesSharedBuffer : ISharedBuffer
     {
         private class ByteArrayQueue
         {

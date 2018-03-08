@@ -7,7 +7,7 @@ using JuvoPlayer.Drms;
 
 namespace JuvoPlayer.Player
 {
-    public class PacketStream : IPacketStream
+    internal class PacketStream : IPacketStream
     {
         protected IDrmManager drmManager;
         protected IPlayer player;

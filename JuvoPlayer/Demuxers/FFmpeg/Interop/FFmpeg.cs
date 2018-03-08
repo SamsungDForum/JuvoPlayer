@@ -18,7 +18,7 @@ using JuvoLogger;
 
 namespace JuvoPlayer.Demuxers.FFmpeg.Interop
 {
-    public unsafe class FFmpeg
+    internal unsafe class FFmpeg
     {
         private static readonly ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
 

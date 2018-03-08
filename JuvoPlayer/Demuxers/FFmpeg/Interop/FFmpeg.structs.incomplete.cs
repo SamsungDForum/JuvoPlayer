@@ -1,102 +1,102 @@
 namespace JuvoPlayer.Demuxers.FFmpeg.Interop
 {
-    public unsafe struct AVAudioFifo
+    internal unsafe struct AVAudioFifo
     {
     }
 
-    public unsafe struct AVBPrint
+    internal unsafe struct AVBPrint
     {
     }
 
-    public unsafe struct AVBuffer
+    internal unsafe struct AVBuffer
     {
     }
 
-    public unsafe struct AVBufferPool
+    internal unsafe struct AVBufferPool
     {
     }
 
-    public unsafe struct AVDictionary
+    internal unsafe struct AVDictionary
     {
     }
 
-    public unsafe struct SwrContext
+    internal unsafe struct SwrContext
     {
     }
 
-    public unsafe struct SwsContext
+    internal unsafe struct SwsContext
     {
     }
 
-    public unsafe struct AVCodecDefault
+    internal unsafe struct AVCodecDefault
     {
     }
 
-    public unsafe struct AVCodecInternal
+    internal unsafe struct AVCodecInternal
     {
     }
 
-    public unsafe struct MpegEncContext
+    internal unsafe struct MpegEncContext
     {
     }
 
-    public unsafe struct ReSampleContext
+    internal unsafe struct ReSampleContext
     {
     }
 
-    public unsafe struct AVBSFInternal
+    internal unsafe struct AVBSFInternal
     {
     }
 
-    public unsafe struct AVBSFList
+    internal unsafe struct AVBSFList
     {
     }
 
-    public unsafe struct AVResampleContext
+    internal unsafe struct AVResampleContext
     {
     }
 
-    public unsafe struct AVStreamInternal
+    internal unsafe struct AVStreamInternal
     {
     }
 
-    public unsafe struct FFFrac
+    internal unsafe struct FFFrac
     {
     }
 
-    public unsafe struct AVFormatInternal
+    internal unsafe struct AVFormatInternal
     {
     }
 
-    public unsafe struct AVCodecTag
+    internal unsafe struct AVCodecTag
     {
     }
 
-    public unsafe struct URLContext
+    internal unsafe struct URLContext
     {
     }
 
-    public unsafe struct AVFilterPad
+    internal unsafe struct AVFilterPad
     {
     }
 
-    public unsafe struct AVFilterFormats
+    internal unsafe struct AVFilterFormats
     {
     }
 
-    public unsafe struct AVFilterChannelLayouts
+    internal unsafe struct AVFilterChannelLayouts
     {
     }
 
-    public unsafe struct AVFilterGraphInternal
+    internal unsafe struct AVFilterGraphInternal
     {
     }
 
-    public unsafe struct AVFilterInternal
+    internal unsafe struct AVFilterInternal
     {
     }
 
-    public unsafe struct AVFilterCommand
+    internal unsafe struct AVFilterCommand
     {
     }
 

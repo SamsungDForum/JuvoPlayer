@@ -1,6 +1,6 @@
 namespace JuvoPlayer.Demuxers.FFmpeg.Interop
 {
-    public unsafe static partial class FFmpegMacros
+    internal unsafe static partial class FFmpegMacros
     {
         // public static  attribute_deprecated = __declspec(deprecated);
         // public static  av_always_inline = __forceinline;

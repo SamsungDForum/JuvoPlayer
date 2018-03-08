@@ -16,7 +16,7 @@ using MpdParser;
 
 namespace JuvoPlayer.DataProviders.Dash
 {
-    public interface IDashClient
+    internal interface IDashClient
     {
         void Seek(TimeSpan position);
         void SetRepresentation(Representation representation);

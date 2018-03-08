@@ -15,7 +15,7 @@ using JuvoPlayer.Common;
 
 namespace JuvoPlayer.DataProviders.RTSP
 {
-    public interface IRTSPClient
+    internal interface IRTSPClient
     {
         void Pause();
         void Play();

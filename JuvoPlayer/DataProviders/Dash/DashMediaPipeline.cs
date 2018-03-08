@@ -9,7 +9,7 @@ using MpdParser;
 
 namespace JuvoPlayer.DataProviders.Dash
 {
-    class DashMediaPipeline
+    internal class DashMediaPipeline
     {
         private readonly ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
         public event DRMInitDataFound DRMInitDataFound;

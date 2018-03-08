@@ -3,7 +3,7 @@ using System.Linq;
 
 namespace JuvoPlayer.Drms.Cenc
 {
-    public static class CencUtils
+    internal static class CencUtils
     {
         public static readonly string PlayReadyType = "playready";
         public static readonly string PlayReadySchemeIdUri = "urn:uuid:9a04f079-9840-4286-ab92-e65be0885f95";

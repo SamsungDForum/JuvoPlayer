@@ -2,18 +2,18 @@ using System.Runtime.InteropServices;
 
 namespace JuvoPlayer.Demuxers.FFmpeg.Interop
 {
-    public unsafe struct _iobuf
+    internal unsafe struct _iobuf
     {
         public void* @_Placeholder;
     }
 
-    public unsafe struct AVRational
+    internal unsafe struct AVRational
     {
         public int @num;
         public int @den;
     }
 
-    public unsafe struct AVClass
+    internal unsafe struct AVClass
     {
         public byte* @class_name;
         public AVClass_item_name_func @item_name;
@@ -28,7 +28,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg.Interop
         public AVClass_query_ranges_func @query_ranges;
     }
 
-    public unsafe struct AVOption
+    internal unsafe struct AVOption
     {
         public byte* @name;
         public byte* @help;
@@ -41,14 +41,14 @@ namespace JuvoPlayer.Demuxers.FFmpeg.Interop
         public byte* @unit;
     }
 
-    public unsafe struct AVOptionRanges
+    internal unsafe struct AVOptionRanges
     {
         public AVOptionRange** @range;
         public int @nb_ranges;
         public int @nb_components;
     }
 
-    public unsafe struct AVFifoBuffer
+    internal unsafe struct AVFifoBuffer
     {
         public byte* @buffer;
         public byte* @rptr;
@@ -58,20 +58,20 @@ namespace JuvoPlayer.Demuxers.FFmpeg.Interop
         public uint @wndx;
     }
 
-    public unsafe struct AVBufferRef
+    internal unsafe struct AVBufferRef
     {
         public AVBuffer* @buffer;
         public byte* @data;
         public int @size;
     }
 
-    public unsafe struct AVDictionaryEntry
+    internal unsafe struct AVDictionaryEntry
     {
         public byte* @key;
         public byte* @value;
     }
 
-    public unsafe struct AVFrameSideData
+    internal unsafe struct AVFrameSideData
     {
         public AVFrameSideDataType @type;
         public byte* @data;
@@ -80,7 +80,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg.Interop
         public AVBufferRef* @buf;
     }
 
-    public unsafe struct AVFrame
+    internal unsafe struct AVFrame
     {
         public byte_ptrArray8 @data;
         public int_array8 @linesize;
@@ -133,7 +133,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg.Interop
         public AVBufferRef* @opaque_ref;
     }
 
-    public unsafe struct AVOption_default_val
+    internal unsafe struct AVOption_default_val
     {
         public long @i64;
         public double @dbl;
@@ -141,7 +141,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg.Interop
         public AVRational @q;
     }
 
-    public unsafe struct AVOptionRange
+    internal unsafe struct AVOptionRange
     {
         public byte* @str;
         public double @value_min;
@@ -151,7 +151,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg.Interop
         public int @is_range;
     }
 
-    public unsafe struct AVComponentDescriptor
+    internal unsafe struct AVComponentDescriptor
     {
         public int @plane;
         public int @step;
@@ -163,7 +163,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg.Interop
         public int @offset_plus1;
     }
 
-    public unsafe struct AVPixFmtDescriptor
+    internal unsafe struct AVPixFmtDescriptor
     {
         public byte* @name;
         public byte @nb_components;
@@ -174,7 +174,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg.Interop
         public byte* @alias;
     }
 
-    public unsafe struct AVTimecode
+    internal unsafe struct AVTimecode
     {
         public int @start;
         public uint @flags;
@@ -182,13 +182,13 @@ namespace JuvoPlayer.Demuxers.FFmpeg.Interop
         public uint @fps;
     }
 
-    public unsafe struct SwsVector
+    internal unsafe struct SwsVector
     {
         public double* @coeff;
         public int @length;
     }
 
-    public unsafe struct SwsFilter
+    internal unsafe struct SwsFilter
     {
         public SwsVector* @lumH;
         public SwsVector* @lumV;
@@ -196,7 +196,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg.Interop
         public SwsVector* @chrV;
     }
 
-    public unsafe struct AVCodecDescriptor
+    internal unsafe struct AVCodecDescriptor
     {
         public AVCodecID @id;
         public AVMediaType @type;
@@ -207,13 +207,13 @@ namespace JuvoPlayer.Demuxers.FFmpeg.Interop
         public AVProfile* @profiles;
     }
 
-    public unsafe struct AVProfile
+    internal unsafe struct AVProfile
     {
         public int @profile;
         public byte* @name;
     }
 
-    public unsafe struct RcOverride
+    internal unsafe struct RcOverride
     {
         public int @start_frame;
         public int @end_frame;
@@ -221,7 +221,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg.Interop
         public float @quality_factor;
     }
 
-    public unsafe struct AVPanScan
+    internal unsafe struct AVPanScan
     {
         public int @id;
         public int @width;
@@ -229,7 +229,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg.Interop
         public short_arrayOfArray6 @position;
     }
 
-    public unsafe struct AVCPBProperties
+    internal unsafe struct AVCPBProperties
     {
         public int @max_bitrate;
         public int @min_bitrate;
@@ -238,14 +238,14 @@ namespace JuvoPlayer.Demuxers.FFmpeg.Interop
         public ulong @vbv_delay;
     }
 
-    public unsafe struct AVPacketSideData
+    internal unsafe struct AVPacketSideData
     {
         public byte* @data;
         public int @size;
         public AVPacketSideDataType @type;
     }
 
-    /*public unsafe struct AVPacket
+    /*internal unsafe struct AVPacket
     {
         public AVBufferRef* @buf;
         public long @pts;
@@ -261,7 +261,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg.Interop
         public long @convergence_duration;
     }*/
 
-    public unsafe struct AVPacket
+    internal unsafe struct AVPacket
     {
         public AVBufferRef* @buf;
         public System.Int64 @pts;
@@ -277,14 +277,14 @@ namespace JuvoPlayer.Demuxers.FFmpeg.Interop
         public System.Int64 @convergence_duration;
     }
 
-    public unsafe struct AVEncBytes
+    internal unsafe struct AVEncBytes
     {
         public uint @bytes_of_clear_data;
         public uint @bytes_of_enc_data;
     }
 
     [StructLayout(LayoutKind.Sequential)]
-    public unsafe struct AVEncInfo
+    internal unsafe struct AVEncInfo
     {
         public byte @iv_size;
         public byte_array16 @iv;
@@ -293,7 +293,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg.Interop
         public AVEncBytes @subsamples;
     }
 
-    public unsafe struct AVCodecContext
+    internal unsafe struct AVCodecContext
     {
         public AVClass* @av_class;
         public int @log_level_offset;
@@ -506,7 +506,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg.Interop
         public int @hwaccel_flags;
     }
 
-    public unsafe struct AVCodec
+    internal unsafe struct AVCodec
     {
         public byte* @name;
         public byte* @long_name;
@@ -540,7 +540,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg.Interop
         public int @caps_internal;
     }
 
-    public unsafe struct AVSubtitle
+    internal unsafe struct AVSubtitle
     {
         public ushort @format;
         public uint @start_display_time;
@@ -550,7 +550,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg.Interop
         public long @pts;
     }
 
-    public unsafe struct AVSubtitleRect
+    internal unsafe struct AVSubtitleRect
     {
         public int @x;
         public int @y;
@@ -566,13 +566,13 @@ namespace JuvoPlayer.Demuxers.FFmpeg.Interop
         public int @flags;
     }
 
-    public unsafe struct AVPicture
+    internal unsafe struct AVPicture
     {
         public byte_ptrArray8 @data;
         public int_array8 @linesize;
     }
 
-    public unsafe struct AVHWAccel
+    internal unsafe struct AVHWAccel
     {
         public byte* @name;
         public AVMediaType @type;
@@ -592,7 +592,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg.Interop
         public int @caps_internal;
     }
 
-    public unsafe struct AVCodecParameters
+    internal unsafe struct AVCodecParameters
     {
         public AVMediaType @codec_type;
         public AVCodecID @codec_id;
@@ -625,7 +625,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg.Interop
         public int @seek_preroll;
     }
 
-    public unsafe struct AVCodecParserContext
+    internal unsafe struct AVCodecParserContext
     {
         public void* @priv_data;
         public AVCodecParser* @parser;
@@ -665,7 +665,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg.Interop
         public int @format;
     }
 
-    public unsafe struct AVCodecParser
+    internal unsafe struct AVCodecParser
     {
         public int_array5 @codec_ids;
         public int @priv_data_size;
@@ -676,7 +676,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg.Interop
         public AVCodecParser* @next;
     }
 
-    public unsafe struct AVBSFContext
+    internal unsafe struct AVBSFContext
     {
         public AVClass* @av_class;
         public AVBitStreamFilter* @filter;
@@ -688,7 +688,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg.Interop
         public AVRational @time_base_out;
     }
 
-    public unsafe struct AVBitStreamFilter
+    internal unsafe struct AVBitStreamFilter
     {
         public byte* @name;
         public AVCodecID* @codec_ids;
@@ -699,7 +699,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg.Interop
         public AVBitStreamFilter_close_func @close;
     }
 
-    public unsafe struct AVBitStreamFilterContext
+    internal unsafe struct AVBitStreamFilterContext
     {
         public void* @priv_data;
         public AVBitStreamFilter* @filter;
@@ -708,7 +708,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg.Interop
         public byte* @args;
     }
 
-    public unsafe struct AVProbeData
+    internal unsafe struct AVProbeData
     {
         public byte* @filename;
         public byte* @buf;
@@ -716,7 +716,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg.Interop
         public byte* @mime_type;
     }
 
-    public unsafe struct AVIndexEntry
+    internal unsafe struct AVIndexEntry
     {
         public long @pos;
         public long @timestamp;
@@ -724,7 +724,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg.Interop
         public int @min_distance;
     }
 
-    public unsafe struct AVStream
+    internal unsafe struct AVStream
     {
         public int @index;
         public int @id;
@@ -788,14 +788,14 @@ namespace JuvoPlayer.Demuxers.FFmpeg.Interop
         public AVCodecParameters* @codecpar;
     }
 
-    public unsafe struct AVFrac
+    internal unsafe struct AVFrac
     {
         public long @val;
         public long @num;
         public long @den;
     }
 
-    public unsafe struct AVStream_info
+    internal unsafe struct AVStream_info
     {
         public long @last_dts;
         public long @duration_gcd;
@@ -812,13 +812,13 @@ namespace JuvoPlayer.Demuxers.FFmpeg.Interop
         public int @fps_last_dts_idx;
     }
 
-    public unsafe struct AVPacketList
+    internal unsafe struct AVPacketList
     {
         public AVPacket @pkt;
         public AVPacketList* @next;
     }
 
-    public unsafe struct AVProgram
+    internal unsafe struct AVProgram
     {
         public int @id;
         public int @flags;
@@ -835,7 +835,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg.Interop
         public int @pts_wrap_behavior;
     }
 
-    public unsafe struct AVChapter
+    internal unsafe struct AVChapter
     {
         public int @id;
         public AVRational @time_base;
@@ -844,7 +844,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg.Interop
         public AVDictionary* @metadata;
     }
 
-    public unsafe struct AVOutputFormat
+    internal unsafe struct AVOutputFormat
     {
         public byte* @name;
         public byte* @long_name;
@@ -875,14 +875,14 @@ namespace JuvoPlayer.Demuxers.FFmpeg.Interop
         public AVOutputFormat_check_bitstream_func @check_bitstream;
     }
 
-    public unsafe struct AVProtectionSystemSpecificData
+    internal unsafe struct AVProtectionSystemSpecificData
     {
         public byte_array16 @system_id;
         public byte* @pssh_box;
         public uint @pssh_box_size;
     }
 
-    public unsafe struct AVFormatContext
+    internal unsafe struct AVFormatContext
     {
         public AVClass* @av_class;
         public AVInputFormat* @iformat;
@@ -960,7 +960,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg.Interop
         public uint @protection_system_data_count;
     }
 
-    public unsafe struct AVInputFormat
+    internal unsafe struct AVInputFormat
     {
         public byte* @name;
         public byte* @long_name;
@@ -986,14 +986,14 @@ namespace JuvoPlayer.Demuxers.FFmpeg.Interop
         public AVInputFormat_free_device_capabilities_func @free_device_capabilities;
     }
 
-    public unsafe struct AVDeviceInfoList
+    internal unsafe struct AVDeviceInfoList
     {
         public AVDeviceInfo** @devices;
         public int @nb_devices;
         public int @default_device;
     }
 
-    public unsafe struct AVDeviceCapabilitiesQuery
+    internal unsafe struct AVDeviceCapabilitiesQuery
     {
         public AVClass* @av_class;
         public AVFormatContext* @device_context;
@@ -1010,7 +1010,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg.Interop
         public AVRational @fps;
     }
 
-    public unsafe struct AVIOContext
+    internal unsafe struct AVIOContext
     {
         public AVClass* @av_class;
         public byte* @buffer;
@@ -1049,13 +1049,13 @@ namespace JuvoPlayer.Demuxers.FFmpeg.Interop
         public AVIOContext_short_seek_get_func @short_seek_get;
     }
 
-    public unsafe struct AVIOInterruptCB
+    internal unsafe struct AVIOInterruptCB
     {
         public AVIOInterruptCB_callback_func @callback;
         public void* @opaque;
     }
 
-    public unsafe struct AVIODirEntry
+    internal unsafe struct AVIODirEntry
     {
         public byte* @name;
         public int @type;
@@ -1069,12 +1069,12 @@ namespace JuvoPlayer.Demuxers.FFmpeg.Interop
         public long @filemode;
     }
 
-    public unsafe struct AVIODirContext
+    internal unsafe struct AVIODirContext
     {
         public URLContext* @url_context;
     }
 
-    public unsafe struct AVFilterContext
+    internal unsafe struct AVFilterContext
     {
         public AVClass* @av_class;
         public AVFilter* @filter;
@@ -1099,7 +1099,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg.Interop
         public uint @ready;
     }
 
-    public unsafe struct AVFilter
+    internal unsafe struct AVFilter
     {
         public byte* @name;
         public byte* @description;
@@ -1119,7 +1119,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg.Interop
         public AVFilter_activate_func @activate;
     }
 
-    public unsafe struct AVFilterLink
+    internal unsafe struct AVFilterLink
     {
         public AVFilterContext* @src;
         public AVFilterPad* @srcpad;
@@ -1160,7 +1160,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg.Interop
         public byte_array61440 @reserved;
     }
 
-    public unsafe struct AVFilterGraph
+    internal unsafe struct AVFilterGraph
     {
         public AVClass* @av_class;
         public AVFilterContext** @filters;
@@ -1178,7 +1178,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg.Interop
         public uint @disable_auto_convert;
     }
 
-    public unsafe struct AVFilterInOut
+    internal unsafe struct AVFilterInOut
     {
         public byte* @name;
         public AVFilterContext* @filter_ctx;
@@ -1186,7 +1186,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg.Interop
         public AVFilterInOut* @next;
     }
 
-    public unsafe struct AVBufferSrcParameters
+    internal unsafe struct AVBufferSrcParameters
     {
         public int @format;
         public AVRational @time_base;
@@ -1199,12 +1199,12 @@ namespace JuvoPlayer.Demuxers.FFmpeg.Interop
         public ulong @channel_layout;
     }
 
-    public unsafe struct AVBufferSinkParams
+    internal unsafe struct AVBufferSinkParams
     {
         public AVPixelFormat* @pixel_fmts;
     }
 
-    public unsafe struct AVABufferSinkParams
+    internal unsafe struct AVABufferSinkParams
     {
         public AVSampleFormat* @sample_fmts;
         public long* @channel_layouts;
@@ -1213,13 +1213,13 @@ namespace JuvoPlayer.Demuxers.FFmpeg.Interop
         public int* @sample_rates;
     }
 
-    public unsafe struct AVDeviceInfo
+    internal unsafe struct AVDeviceInfo
     {
         public byte* @device_name;
         public byte* @device_description;
     }
 
-    public unsafe struct AVDeviceRect
+    internal unsafe struct AVDeviceRect
     {
         public int @x;
         public int @y;

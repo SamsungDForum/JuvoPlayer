@@ -22,7 +22,7 @@ using JuvoPlayer.SharedBuffers;
 
 namespace JuvoPlayer.Demuxers.FFmpeg
 {
-    public class FFmpegDemuxer : IDemuxer
+    internal class FFmpegDemuxer : IDemuxer
     {
         private static readonly ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
 

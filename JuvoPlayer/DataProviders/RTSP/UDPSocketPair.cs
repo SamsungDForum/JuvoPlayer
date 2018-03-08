@@ -7,7 +7,7 @@ using Rtsp;
 
 namespace JuvoPlayer.DataProviders.RTSP
 {
-    public class UDPSocketPair
+    internal class UDPSocketPair
     {
         private readonly ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
 
