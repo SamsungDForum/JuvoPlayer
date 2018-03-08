@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
 using JuvoPlayer.Common;
+using JuvoPlayer.Utils;
 using NUnit.Framework;
 
 namespace JuvoPlayer.Tests

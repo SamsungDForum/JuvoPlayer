@@ -1,11 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
-using JuvoPlayer.Common.Logging;
 using NUnit.Framework;
 using MpdParser;
 using System.Net;
-using JuvoPlayer.Common;
 using System.Reflection;
 using System.IO;
 using System.Linq;
@@ -13,8 +11,7 @@ using System.Xml.Linq;
 using System.Xml;
 using System.Xml.Serialization;
 using System.Runtime.Serialization;
-
-
+using JuvoPlayer.Utils;
 
 namespace JuvoPlayer.Tests.testcase.MPD_Parse
 {
