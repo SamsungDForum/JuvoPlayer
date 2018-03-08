@@ -1,5 +1,4 @@
 ﻿using System;
-using JuvoPlayer;
 using JuvoPlayer.Common;
 using JuvoPlayer.DataProviders;
 using JuvoPlayer.DataProviders.Dash;
@@ -95,7 +94,7 @@ namespace XamarinPlayer.Tizen.Services
                 return;
             var clip = o as ClipDefinition;
 
-            ControllerConnector.DisconnectDataProvider(playerController, dataProvider);
+            DataProviderConnector.Disconnect(playerController, dataProvider);
 
             dataProvider = dataProviders.CreateDataProvider(clip);
 
@@ -106,7 +105,7 @@ namespace XamarinPlayer.Tizen.Services
                     playerController.OnSetDrmConfiguration(drm);
             }
 
-            ControllerConnector.ConnectDataProvider(playerController, dataProvider);
+            DataProviderConnector.Connect(playerController, dataProvider);
 
             dataProvider.Start();
         }
@@ -134,7 +133,7 @@ namespace XamarinPlayer.Tizen.Services
         {
             if (disposing)
             {
-                ControllerConnector.DisconnectDataProvider(playerController, dataProvider);
+                DataProviderConnector.Disconnect(playerController, dataProvider);
                 playerController?.Dispose();
                 playerController = null;
                 dataProvider?.Dispose();
