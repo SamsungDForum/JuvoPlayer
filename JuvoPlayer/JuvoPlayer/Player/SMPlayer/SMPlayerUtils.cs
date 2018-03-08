@@ -2,7 +2,7 @@
 using Tizen.TV.Smplayer;
 using StreamType = JuvoPlayer.Common.StreamType;
 
-namespace JuvoPlayer.Player
+namespace JuvoPlayer.Player.SMPlayer
 {
     static class SMPlayerUtils
     {

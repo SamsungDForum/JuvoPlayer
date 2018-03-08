@@ -6,6 +6,7 @@ using JuvoPlayer.DataProviders.RTSP;
 using JuvoPlayer.Drms;
 using JuvoPlayer.Drms.Cenc;
 using JuvoPlayer.Player;
+using JuvoPlayer.Player.SMPlayer;
 using Tizen.Applications;
 using Tizen.NUI;
 using Tizen.NUI.BaseComponents;
