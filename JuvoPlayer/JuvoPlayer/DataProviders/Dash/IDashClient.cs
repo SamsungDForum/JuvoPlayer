@@ -14,7 +14,7 @@
 using System;
 using MpdParser;
 
-namespace JuvoPlayer.Dash
+namespace JuvoPlayer.DataProviders.Dash
 {
     public interface IDashClient
     {

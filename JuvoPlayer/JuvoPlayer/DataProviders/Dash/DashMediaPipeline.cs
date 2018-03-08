@@ -3,11 +3,10 @@ using System.Linq;
 using System.Xml;
 using JuvoPlayer.Common;
 using JuvoPlayer.Common.Logging;
-using JuvoPlayer.DataProviders;
 using JuvoPlayer.DRM.Cenc;
 using MpdParser;
 
-namespace JuvoPlayer.Dash
+namespace JuvoPlayer.DataProviders.Dash
 {
     class DashMediaPipeline
     {

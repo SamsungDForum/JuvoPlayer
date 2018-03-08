@@ -2,11 +2,10 @@ using System;
 using System.IO;
 using JuvoPlayer.Common;
 using JuvoPlayer.Common.Logging;
-using JuvoPlayer.DataProviders;
 using JuvoPlayer.FFmpeg;
 using Tizen.Applications;
 
-namespace JuvoPlayer.Dash
+namespace JuvoPlayer.DataProviders.Dash
 {
     public class DashDataProviderFactory : IDataProviderFactory
     {
