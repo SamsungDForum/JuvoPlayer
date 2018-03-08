@@ -5,7 +5,7 @@ using JuvoPlayer.Common;
 namespace JuvoPlayer.Drms
 {
     /// <summary>Represents a single DRM Session.</summary>
-    public interface IDRMSession : IDisposable
+    public interface IDrmSession : IDisposable
     {
         /// <summary>Initializes a new instance of the <see cref="T:JuvoPlayer.Drms.IDRMSession"></see> class.</summary>
         /// <returns>A task, which will complete when Session initialization finishes.</returns>

@@ -6,13 +6,13 @@ using JuvoPlayer.Common.Logging;
 
 namespace JuvoPlayer.Drms
 {
-    public class DRMManager : IDRMManager
+    public class DrmManager : IDrmManager
     {
         private readonly ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
 
-        private readonly List<IDRMHandler> drmHandlers = new List<IDRMHandler>();
+        private readonly List<IDrmHandler> drmHandlers = new List<IDrmHandler>();
         private readonly List<DRMDescription> clipDrmConfiguration = new List<DRMDescription>();
-        public DRMManager()
+        public DrmManager()
         {
         }
 
@@ -33,12 +33,12 @@ namespace JuvoPlayer.Drms
                 currentDescription.LicenceUrl = drmDescription.LicenceUrl;
         }
 
-        public void RegisterDrmHandler(IDRMHandler handler)
+        public void RegisterDrmHandler(IDrmHandler handler)
         {
             drmHandlers.Add(handler);
         }
 
-        public IDRMSession CreateDRMSession(DRMInitData data)
+        public IDrmSession CreateDRMSession(DRMInitData data)
         {
             Logger.Info("Create Drmsession");
             var handler = drmHandlers.FirstOrDefault(o => o.SupportsSystemId(data.SystemId));

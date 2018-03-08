@@ -69,7 +69,7 @@ namespace NUIPlayer
             dataProviders = new DataProviderFactoryManager();
             dataProviders.RegisterDataProviderFactory(new RTSPDataProviderFactory());
 
-            var drmManager = new DRMManager();
+            var drmManager = new DrmManager();
             drmManager.RegisterDrmHandler(new CencHandler());
 
             var playerAdapter = new SMPlayer();

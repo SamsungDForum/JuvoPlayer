@@ -49,7 +49,7 @@ namespace XamarinPlayer.Tizen.Services
             dataProviders.RegisterDataProviderFactory(new HLSDataProviderFactory());
             dataProviders.RegisterDataProviderFactory(new RTSPDataProviderFactory());
 
-            var drmManager = new DRMManager();
+            var drmManager = new DrmManager();
             drmManager.RegisterDrmHandler(new CencHandler());
             drmManager.RegisterDrmHandler(new DummyDrmHandler());
 

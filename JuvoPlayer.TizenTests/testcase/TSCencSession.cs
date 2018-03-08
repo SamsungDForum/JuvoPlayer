@@ -98,14 +98,14 @@ namespace JuvoPlayer.TizenTests
             var drmInitData = CreateDrmInitData();
             var configuration = CreateDrmDescription();
             drmInitData.InitData = null;
-            Assert.ThrowsAsync<DRMException>(async () =>
+            Assert.ThrowsAsync<DrmException>(async () =>
             {
                 using (var drmSession = CencSession.Create(drmInitData, configuration))
                     await drmSession.Initialize();
             });
 
             drmInitData.InitData = initData.Take(initData.Length / 2).ToArray();
-            Assert.ThrowsAsync<DRMException>(async () =>
+            Assert.ThrowsAsync<DrmException>(async () =>
             {
                 using (var drmSession = CencSession.Create(drmInitData, configuration))
                     await drmSession.Initialize();

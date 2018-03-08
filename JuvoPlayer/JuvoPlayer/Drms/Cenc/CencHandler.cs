@@ -6,7 +6,7 @@ using Tizen.TV.Security.DrmDecrypt.emeCDM;
 
 namespace JuvoPlayer.Drms.Cenc
 {
-    public class CencHandler : IDRMHandler
+    public class CencHandler : IDrmHandler
     {
         private readonly ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
 
@@ -15,7 +15,7 @@ namespace JuvoPlayer.Drms.Cenc
             Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
         }
 
-        public IDRMSession CreateDRMSession(DRMInitData initData, DRMDescription drmDescription)
+        public IDrmSession CreateDRMSession(DRMInitData initData, DRMDescription drmDescription)
         {
             var iemeKeySystemName = CencUtils.GetKeySystemName(initData.SystemId);
             if (IEME.isKeySystemSupported(iemeKeySystemName) != Status.kSupported)
