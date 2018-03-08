@@ -40,10 +40,10 @@
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\..\JuvoLogger\JuvoLogger.csproj" />
-    <ProjectReference Include="..\..\MpdParser\MpdParser.csproj" />
-    <ProjectReference Include="..\..\thirdparty\RTSP\RTSP.csproj" />
-    <ProjectReference Include="..\..\thirdparty\Tizen.TV.D2tv.Smplayer\Tizen.TV.D2tv.Smplayer.csproj" />
+    <ProjectReference Include="..\JuvoLogger\JuvoLogger.csproj" />
+    <ProjectReference Include="..\MpdParser\MpdParser.csproj" />
+    <ProjectReference Include="..\thirdparty\RTSP\RTSP.csproj" />
+    <ProjectReference Include="..\thirdparty\Tizen.TV.D2tv.Smplayer\Tizen.TV.D2tv.Smplayer.csproj" />
   </ItemGroup>
 
   <ItemGroup>

@@ -39,7 +39,7 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\JuvoLogger.Tizen\JuvoLogger.Tizen.csproj" />
-    <ProjectReference Include="..\..\JuvoPlayer\JuvoPlayer\JuvoPlayer.csproj" />
+    <ProjectReference Include="..\..\JuvoPlayer\JuvoPlayer.csproj" />
     <ProjectReference Include="..\XamarinPlayer\XamarinPlayer.csproj" />
   </ItemGroup>
 
