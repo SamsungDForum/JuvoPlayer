@@ -2,7 +2,7 @@ using System;
 
 #pragma warning disable 0169 // disable "never used" warnings
 
-namespace JuvoPlayer.FFmpeg
+namespace JuvoPlayer.Demuxers.FFmpeg.Interop
 {
     public unsafe struct short_array2
     {

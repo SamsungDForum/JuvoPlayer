@@ -2,7 +2,7 @@ using System;
 using System.IO;
 using JuvoPlayer.Common;
 using JuvoPlayer.Common.Logging;
-using JuvoPlayer.FFmpeg;
+using JuvoPlayer.Demuxers.FFmpeg;
 using Tizen.Applications;
 
 namespace JuvoPlayer.DataProviders.Dash
@@ -49,8 +49,8 @@ namespace JuvoPlayer.DataProviders.Dash
         private static DashMediaPipeline CreateMediaPipeline(StreamType streamType, string libPath)
         {
             var sharedBuffer = new ChunksSharedBuffer();
-            IDashClient dashClient = new DashClient(sharedBuffer, streamType);
-            IDemuxer demuxer = new FFmpegDemuxer(libPath, sharedBuffer);
+            var dashClient = new DashClient(sharedBuffer, streamType);
+            var demuxer = new FFmpegDemuxer(libPath, sharedBuffer);
 
             return new DashMediaPipeline(dashClient, demuxer, streamType);
         }

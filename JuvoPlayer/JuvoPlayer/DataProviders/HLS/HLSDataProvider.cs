@@ -14,6 +14,7 @@
 using System;
 using System.Threading;
 using JuvoPlayer.Common;
+using JuvoPlayer.Demuxers;
 
 namespace JuvoPlayer.DataProviders.HLS
 {

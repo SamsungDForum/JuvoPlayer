@@ -1,4 +1,4 @@
-namespace JuvoPlayer.FFmpeg
+namespace JuvoPlayer.Demuxers.FFmpeg.Interop
 {
     public unsafe static partial class FFmpegMacros
     {
