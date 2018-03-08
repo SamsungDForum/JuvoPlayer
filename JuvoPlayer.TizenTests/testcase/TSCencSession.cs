@@ -7,10 +7,9 @@ using System.Runtime.Serialization.Formatters.Binary;
 using System.Text;
 using System.Threading.Tasks;
 using JuvoPlayer.Common;
-using JuvoPlayer.Common.Logging;
+using JuvoLogger;
 using JuvoPlayer.Drms;
 using JuvoPlayer.Drms.Cenc;
-using JuvoPlayer.Logging;
 using NUnit.Framework;
 
 namespace JuvoPlayer.TizenTests

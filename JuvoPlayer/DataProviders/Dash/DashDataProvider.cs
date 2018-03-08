@@ -1,6 +1,6 @@
 using System;
 using JuvoPlayer.Common;
-using JuvoPlayer.Common.Logging;
+using JuvoLogger;
 using MpdParser;
 
 namespace JuvoPlayer.DataProviders.Dash

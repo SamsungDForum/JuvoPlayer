@@ -2,7 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using JuvoPlayer.Common;
-using JuvoPlayer.Common.Logging;
+using JuvoLogger;
 
 namespace JuvoPlayer.Drms
 {

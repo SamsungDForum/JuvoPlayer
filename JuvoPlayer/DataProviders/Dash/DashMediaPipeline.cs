@@ -2,7 +2,7 @@ using System;
 using System.Linq;
 using System.Xml;
 using JuvoPlayer.Common;
-using JuvoPlayer.Common.Logging;
+using JuvoLogger;
 using JuvoPlayer.Demuxers;
 using JuvoPlayer.Drms.Cenc;
 using MpdParser;

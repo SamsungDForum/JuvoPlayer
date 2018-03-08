@@ -3,7 +3,7 @@ using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
 using JuvoPlayer.Common;
-using JuvoPlayer.Common.Logging;
+using JuvoLogger;
 using JuvoPlayer.SharedBuffers;
 using MpdParser.Node;
 using Representation = MpdParser.Representation;

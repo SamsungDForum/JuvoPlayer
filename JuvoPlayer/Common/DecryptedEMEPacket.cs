@@ -1,5 +1,5 @@
 using System;
-using JuvoPlayer.Common.Logging;
+using JuvoLogger;
 using Nito.AsyncEx;
 using Tizen.TV.Security.DrmDecrypt;
 

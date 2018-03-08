@@ -1,4 +1,4 @@
-using JuvoPlayer.Common.Logging;
+using JuvoLogger;
 
 namespace JuvoPlayer.Tests
 {

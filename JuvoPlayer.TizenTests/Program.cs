@@ -5,8 +5,8 @@ using System.IO;
 using System.Reflection;
 using System.Text;
 using System.Threading;
-using JuvoPlayer.Common.Logging;
-using JuvoPlayer.Logging;
+using JuvoLogger;
+using JuvoLogger.Tizen;
 using Tizen.Applications;
 
 namespace JuvoPlayer.TizenTests

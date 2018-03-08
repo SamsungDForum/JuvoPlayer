@@ -1,6 +1,6 @@
 using System;
+using JuvoLogger;
 using JuvoPlayer.Common;
-using JuvoPlayer.Common.Logging;
 using JuvoPlayer.DataProviders;
 using JuvoPlayer.DataProviders.RTSP;
 using JuvoPlayer.Drms;

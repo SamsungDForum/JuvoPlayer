@@ -1,7 +1,7 @@
 using System;
 using System.IO;
 
-namespace JuvoPlayer.Common.Logging
+namespace JuvoLogger
 {
     public class ConsoleLogger : LoggerBase
     {

@@ -1,4 +1,4 @@
-namespace JuvoPlayer.Common.Logging
+namespace JuvoLogger
 {
     public enum LogLevel
     {

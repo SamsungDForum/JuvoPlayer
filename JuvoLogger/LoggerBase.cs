@@ -1,6 +1,6 @@
 using System;
 
-namespace JuvoPlayer.Common.Logging
+namespace JuvoLogger
 {
     public abstract class LoggerBase : ILogger
     {
