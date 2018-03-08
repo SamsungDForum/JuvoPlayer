@@ -19,7 +19,7 @@ using Tizen.Multimedia;
 
 namespace JuvoPlayer.Player.MMPlayer
 {
-    public class MultimediaPlayerAdapter : IPlayerAdapter
+    public class MultimediaPlayer : IPlayer
     {
         private readonly ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
 
@@ -36,7 +36,7 @@ namespace JuvoPlayer.Player.MMPlayer
         public event ShowSubtitile ShowSubtitle;
         public event TimeUpdated TimeUpdated;
 
-        public MultimediaPlayerAdapter()
+        public MultimediaPlayer()
         {
             player = new Tizen.Multimedia.Player();
             player.BufferingProgressChanged += OnBufferingProgressChanged;

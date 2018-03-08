@@ -35,7 +35,7 @@ namespace JuvoPlayer.Player
         private TimeSpan duration;
 
         private readonly IDRMManager drmManager;
-        private readonly IPlayerAdapter playerAdapter;
+        private readonly IPlayer playerAdapter;
         private readonly Dictionary<StreamType, IPacketStream> streams = new Dictionary<StreamType, IPacketStream>();
 
 
@@ -50,7 +50,7 @@ namespace JuvoPlayer.Player
         public event ShowSubtitile ShowSubtitle;
         public event TimeUpdated TimeUpdated;
 
-        public PlayerController(IPlayerAdapter player, IDRMManager drmManager)
+        public PlayerController(IPlayer player, IDRMManager drmManager)
         {
             this.drmManager = drmManager ?? throw new ArgumentNullException(nameof(drmManager), "drmManager cannot be null");
             this.playerAdapter = player ?? throw new ArgumentNullException(nameof(player), "player cannot be null");

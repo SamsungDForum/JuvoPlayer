@@ -17,12 +17,12 @@ namespace JuvoPlayer.Tests
 
         protected virtual IPacketStream CreatePacketStream(StreamType streamType)
         {
-            var playerStub = Substitute.For<IPlayerAdapter>();
+            var playerStub = Substitute.For<IPlayer>();
             var drmManagerStub = Substitute.For<IDRMManager>();
             return CreatePacketStream(streamType, playerStub, drmManagerStub);
         }
 
-        protected virtual IPacketStream CreatePacketStream(StreamType streamType, IPlayerAdapter player, IDRMManager drmManager)
+        protected virtual IPacketStream CreatePacketStream(StreamType streamType, IPlayer player, IDRMManager drmManager)
         {
             return new PacketStream(streamType, player, drmManager);
         }
@@ -51,7 +51,7 @@ namespace JuvoPlayer.Tests
         public void OnAppendPacket_WhenConfigured_CallsPlayerAdapter()
         {
             var drmManagerStub = Substitute.For<IDRMManager>();
-            var playerMock = Substitute.For<IPlayerAdapter>();
+            var playerMock = Substitute.For<IPlayer>();
 
             using (var stream = CreatePacketStream(StreamType.Audio, playerMock, drmManagerStub))
             {
@@ -72,7 +72,7 @@ namespace JuvoPlayer.Tests
 
             var drmManagerStub = CreateDrmManagerFake(drmSessionStub);
 
-            var playerMock = Substitute.For<IPlayerAdapter>();
+            var playerMock = Substitute.For<IPlayer>();
 
             using (var stream = CreatePacketStream(StreamType.Audio, playerMock, drmManagerStub))
             {
@@ -95,7 +95,7 @@ namespace JuvoPlayer.Tests
 
             var drmManagerStub = CreateDrmManagerFake(drmSessionMock);
 
-            var playerStub = Substitute.For<IPlayerAdapter>();
+            var playerStub = Substitute.For<IPlayer>();
 
             using (var stream = CreatePacketStream(StreamType.Audio, playerStub, drmManagerStub))
             {

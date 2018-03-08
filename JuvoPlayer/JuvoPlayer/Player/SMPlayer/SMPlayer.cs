@@ -30,7 +30,7 @@ namespace JuvoPlayer.Player.SMPlayer
         }
     }
 
-    public unsafe class SMPlayerAdapter : IPlayerAdapter, IPlayerEventListener
+    public unsafe class SMPlayer : IPlayer, IPlayerEventListener
     {
         private enum SMPlayerState
         {
@@ -68,7 +68,7 @@ namespace JuvoPlayer.Player.SMPlayer
         // to get packets
         private bool smplayerSeekReconfiguration;
 
-        public unsafe SMPlayerAdapter()
+        public unsafe SMPlayer()
         {
             try
             {
@@ -112,7 +112,7 @@ namespace JuvoPlayer.Player.SMPlayer
             Task.Run(() => SubmittingPacketsTask());
         }
 
-        ~SMPlayerAdapter()
+        ~SMPlayer()
         {
             ReleaseUnmanagedResources();
         }
