@@ -13,7 +13,7 @@
 
 using System;
 using System.Collections.Generic;
-using JuvoPlayer.Common.Logging;
+using JuvoLogger;
 
 namespace MpdParser.Node.Atom
 {

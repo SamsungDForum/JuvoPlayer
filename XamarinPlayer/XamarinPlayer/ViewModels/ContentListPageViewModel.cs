@@ -4,7 +4,6 @@ using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Windows.Input;
-using JuvoPlayer.Common;
 using Xamarin.Forms;
 using XamarinPlayer.Controls;
 using XamarinPlayer.Models;
@@ -30,7 +29,18 @@ namespace XamarinPlayer.ViewModels
 
             var applicationPath = DependencyService.Get<IPathService>(DependencyFetchTarget.NewInstance).ApplicationPath;
             var clipsPath = Path.Combine(applicationPath, "shared", "res", "videoclips.json");
-            ContentList = JSONFileReader.DeserializeJsonFile<List<ClipDefinition>>(clipsPath).Select(o => new DetailContentData(o , CreateFocusedCommand())).ToList();
+            var clips = DependencyService.Get<IClipReaderService>(DependencyFetchTarget.NewInstance).ReadClips(clipsPath);
+
+            ContentList = clips.Select(o => new DetailContentData()
+            {
+                Bg = o.Image,
+                Clip = o.ClipDetailsHandle,
+                ContentFocusedCommand = CreateFocusedCommand(),
+                Description = o.Description,
+                Image = o.Image,
+                Source = o.Source,
+                Title = o.Title,
+            }).ToList();
         }
 
         protected ICommand CreateFocusedCommand()
