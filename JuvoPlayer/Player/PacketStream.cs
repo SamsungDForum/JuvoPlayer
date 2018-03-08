@@ -56,7 +56,7 @@ namespace JuvoPlayer.Player
             if (this.config != null && this.config.Equals(config))
                 return;
 
-            forceDrmChange = true;
+            forceDrmChange = this.config != null;
 
             this.config = config;
 
