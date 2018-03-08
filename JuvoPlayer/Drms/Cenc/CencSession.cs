@@ -42,7 +42,8 @@ namespace JuvoPlayer.Drms.Cenc
         private void ReleaseUnmanagedResources()
         {
             if (CDMInstance != null)
-                thread.Factory.Run(() => IEME.destroy(CDMInstance));
+                thread.Factory.Run(() => IEME.destroy(CDMInstance)).Wait();
+
             CDMInstance = null;
         }
 
