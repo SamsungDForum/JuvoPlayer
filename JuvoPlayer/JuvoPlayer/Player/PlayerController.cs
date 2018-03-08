@@ -35,7 +35,7 @@ namespace JuvoPlayer.Player
         private TimeSpan duration;
 
         private readonly IDrmManager drmManager;
-        private readonly IPlayer playerAdapter;
+        private readonly IPlayer player;
         private readonly Dictionary<StreamType, IPacketStream> streams = new Dictionary<StreamType, IPacketStream>();
 
 
@@ -53,16 +53,16 @@ namespace JuvoPlayer.Player
         public PlayerController(IPlayer player, IDrmManager drmManager)
         {
             this.drmManager = drmManager ?? throw new ArgumentNullException(nameof(drmManager), "drmManager cannot be null");
-            this.playerAdapter = player ?? throw new ArgumentNullException(nameof(player), "player cannot be null");
+            this.player = player ?? throw new ArgumentNullException(nameof(player), "player cannot be null");
 
-            playerAdapter.PlaybackCompleted += OnPlaybackCompleted;
-            playerAdapter.PlaybackError += OnPlaybackError;
-            playerAdapter.PlayerInitialized += OnPlayerInitialized;
-            playerAdapter.ShowSubtitle += OnShowSubtitle;
-            playerAdapter.TimeUpdated += OnTimeUpdated;
+            this.player.PlaybackCompleted += OnPlaybackCompleted;
+            this.player.PlaybackError += OnPlaybackError;
+            this.player.PlayerInitialized += OnPlayerInitialized;
+            this.player.ShowSubtitle += OnShowSubtitle;
+            this.player.TimeUpdated += OnTimeUpdated;
 
-            streams[StreamType.Audio] = new PacketStream(StreamType.Audio, playerAdapter, drmManager);
-            streams[StreamType.Video] = new PacketStream(StreamType.Video, playerAdapter, drmManager);
+            streams[StreamType.Audio] = new PacketStream(StreamType.Audio, this.player, drmManager);
+            streams[StreamType.Video] = new PacketStream(StreamType.Video, this.player, drmManager);
         }
 
         private void OnPlaybackCompleted()
@@ -124,7 +124,7 @@ namespace JuvoPlayer.Player
             if (state != PlayerState.Playing)
                 return;
 
-            playerAdapter.Pause();
+            player.Pause();
 
             state = PlayerState.Paused;
 
@@ -136,7 +136,7 @@ namespace JuvoPlayer.Player
             if (state < PlayerState.Ready)
                 return;
 
-            playerAdapter.Play();
+            player.Play();
 
             state = PlayerState.Playing;
 
@@ -145,14 +145,14 @@ namespace JuvoPlayer.Player
 
         public void OnSeek(TimeSpan time)
         {
-            playerAdapter.Seek(time);
+            player.Seek(time);
 
             Seek?.Invoke(time);
         }
 
         public void OnStop()
         {
-            playerAdapter.Stop();
+            player.Stop();
 
             state = PlayerState.Finished;
 
@@ -182,17 +182,17 @@ namespace JuvoPlayer.Player
 
         public void OnSetExternalSubtitles(string path)
         {
-            playerAdapter.SetExternalSubtitles(path);
+            player.SetExternalSubtitles(path);
         }
 
         public void OnSetPlaybackRate(float rate)
         {
-            playerAdapter.SetPlaybackRate(rate);
+            player.SetPlaybackRate(rate);
         }
 
         public void OnSetSubtitleDelay(int offset)
         {
-            playerAdapter.SetSubtitleDelay(offset);
+            player.SetSubtitleDelay(offset);
         }
 
         #region getters
@@ -203,7 +203,7 @@ namespace JuvoPlayer.Player
 
         public void Dispose()
         {
-            playerAdapter?.Dispose();
+            player?.Dispose();
             foreach (var stream in streams.Values)
                 stream.Dispose();
         }
