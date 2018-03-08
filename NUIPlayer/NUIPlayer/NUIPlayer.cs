@@ -1,5 +1,4 @@
 using System;
-using JuvoPlayer;
 using JuvoPlayer.Common;
 using JuvoPlayer.Common.Logging;
 using JuvoPlayer.DataProviders;
@@ -82,11 +81,11 @@ namespace NUIPlayer
         // method executed when clip is selected
         private void ShowClip(ClipDefinition clip)
         {
-            ControllerConnector.DisconnectDataProvider(playerController, dataProvider);
+            DataProviderConnector.Disconnect(playerController, dataProvider);
 
             dataProvider = dataProviders.CreateDataProvider(clip);
 
-            ControllerConnector.ConnectDataProvider(playerController, dataProvider);
+            DataProviderConnector.Connect(playerController, dataProvider);
 
             dataProvider.Start();
         }

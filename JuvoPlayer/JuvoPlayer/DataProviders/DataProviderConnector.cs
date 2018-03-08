@@ -1,13 +1,11 @@
 ﻿using System;
-using JuvoPlayer.Common;
-using JuvoPlayer.DataProviders;
 using JuvoPlayer.Player;
 
-namespace JuvoPlayer
+namespace JuvoPlayer.DataProviders
 {
-    public static class ControllerConnector
+    public static class DataProviderConnector
     {
-        public static void ConnectDataProvider(IPlayerController controller, IDataProvider newDataProvider)
+        public static void Connect(IPlayerController controller, IDataProvider newDataProvider)
         {
             if (controller == null)
                 throw new ArgumentNullException(nameof(controller), "Player controller cannot be null");
@@ -29,7 +27,7 @@ namespace JuvoPlayer
             controller.Stopped += newDataProvider.OnPlayed;
         }
 
-        public static void DisconnectDataProvider(IPlayerController controller, IDataProvider oldDataProvider)
+        public static void Disconnect(IPlayerController controller, IDataProvider oldDataProvider)
         {
             if (controller == null)
                 throw new ArgumentNullException(nameof(controller), "Player controller cannot be null");
