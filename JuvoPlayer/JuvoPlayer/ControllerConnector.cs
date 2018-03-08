@@ -1,5 +1,6 @@
 ﻿using System;
 using JuvoPlayer.Common;
+using JuvoPlayer.DataProviders;
 using JuvoPlayer.Player;
 
 namespace JuvoPlayer

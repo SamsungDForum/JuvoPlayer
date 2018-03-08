@@ -11,16 +11,13 @@
 // damages suffered by licensee as a result of using, modifying or distributing
 // this software or its derivatives.
 
+using JuvoPlayer.Common;
 using System;
 using System.Collections.Generic;
 
-namespace JuvoPlayer.Common
+namespace JuvoPlayer.DataProviders
 {
-    public delegate void ClipDurationChanged(TimeSpan clipDuration);
-    public delegate void DRMInitDataFound(DRMInitData data);
     public delegate void SetDrmConfiguration(DRMDescription description);
-    public delegate void StreamConfigReady(StreamConfig config);
-    public delegate void PacketReady(Packet packet);
     public delegate void StreamsFound(List<StreamDefinition> streams);
 
     public interface IDataProvider : IDisposable

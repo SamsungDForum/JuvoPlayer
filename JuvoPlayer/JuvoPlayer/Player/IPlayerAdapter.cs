@@ -13,7 +13,6 @@
 
 using System;
 using JuvoPlayer.Common;
-using JuvoPlayer.Common.Delegates;
 
 namespace JuvoPlayer.Player
 {

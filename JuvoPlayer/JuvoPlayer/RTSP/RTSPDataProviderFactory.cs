@@ -14,6 +14,7 @@
 using System;
 using System.IO;
 using JuvoPlayer.Common;
+using JuvoPlayer.DataProviders;
 using JuvoPlayer.FFmpeg;
 using Tizen.Applications;
 
