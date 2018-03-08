@@ -1,4 +1,4 @@
-﻿namespace JuvoPlayer.DRM
+﻿namespace JuvoPlayer.Drms.Cenc
 {
     public class ErrorMessage
     {

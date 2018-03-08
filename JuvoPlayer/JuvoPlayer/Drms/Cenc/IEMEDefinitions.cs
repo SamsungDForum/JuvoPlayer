@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Runtime.InteropServices;
 
-namespace JuvoPlayer.DRM.Cenc
+namespace JuvoPlayer.Drms.Cenc
 {
     public unsafe struct DecryptionData
     {

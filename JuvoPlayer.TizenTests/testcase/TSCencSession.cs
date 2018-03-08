@@ -8,8 +8,8 @@ using System.Text;
 using System.Threading.Tasks;
 using JuvoPlayer.Common;
 using JuvoPlayer.Common.Logging;
-using JuvoPlayer.DRM;
-using JuvoPlayer.DRM.Cenc;
+using JuvoPlayer.Drms;
+using JuvoPlayer.Drms.Cenc;
 using JuvoPlayer.Logging;
 using NUnit.Framework;
 

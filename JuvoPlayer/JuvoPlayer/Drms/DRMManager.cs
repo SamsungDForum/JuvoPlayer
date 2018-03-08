@@ -3,9 +3,8 @@ using System.Collections.Generic;
 using System.Linq;
 using JuvoPlayer.Common;
 using JuvoPlayer.Common.Logging;
-using JuvoPlayer.DRM.Cenc;
 
-namespace JuvoPlayer.DRM
+namespace JuvoPlayer.Drms
 {
     public class DRMManager : IDRMManager
     {

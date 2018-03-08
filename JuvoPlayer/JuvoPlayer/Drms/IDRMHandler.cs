@@ -1,6 +1,6 @@
 using JuvoPlayer.Common;
 
-namespace JuvoPlayer.DRM
+namespace JuvoPlayer.Drms
 {
     public interface IDRMHandler
     {

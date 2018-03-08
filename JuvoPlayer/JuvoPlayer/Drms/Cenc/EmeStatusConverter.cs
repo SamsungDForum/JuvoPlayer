@@ -4,7 +4,7 @@ using System.Linq;
 using System.Text;
 using Tizen.TV.Security.DrmDecrypt.emeCDM;
 
-namespace JuvoPlayer.DRM.Cenc
+namespace JuvoPlayer.Drms.Cenc
 {
     class EmeStatusConverter
     {
