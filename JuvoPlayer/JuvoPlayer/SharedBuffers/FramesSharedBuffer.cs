@@ -15,7 +15,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 
-namespace JuvoPlayer.Common
+namespace JuvoPlayer.SharedBuffers
 {
     public class FramesSharedBuffer : ISharedBuffer
     {

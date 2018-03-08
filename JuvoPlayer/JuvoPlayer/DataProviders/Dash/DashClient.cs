@@ -4,6 +4,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using JuvoPlayer.Common;
 using JuvoPlayer.Common.Logging;
+using JuvoPlayer.SharedBuffers;
 using MpdParser.Node;
 using Representation = MpdParser.Representation;
 

@@ -16,7 +16,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 
-namespace JuvoPlayer.Common
+namespace JuvoPlayer.SharedBuffers
 {
     public class ChunksSharedBuffer : ISharedBuffer
     {

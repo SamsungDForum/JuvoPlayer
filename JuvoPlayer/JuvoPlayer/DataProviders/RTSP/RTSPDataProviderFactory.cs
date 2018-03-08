@@ -15,6 +15,7 @@ using System;
 using System.IO;
 using JuvoPlayer.Common;
 using JuvoPlayer.Demuxers.FFmpeg;
+using JuvoPlayer.SharedBuffers;
 using Tizen.Applications;
 
 namespace JuvoPlayer.DataProviders.RTSP
