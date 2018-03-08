@@ -3,7 +3,7 @@ stages:
   - test
 
 before_script:
-  - dotnet sln remove NUIPlayer/NUIPlayer/NUIPlayer.csproj
+  - dotnet sln remove NUIPlayer/NUIPlayer.csproj
   - mono ~/bin/nuget.exe restore
 
 build:
