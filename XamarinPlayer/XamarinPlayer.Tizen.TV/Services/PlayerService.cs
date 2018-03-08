@@ -1,8 +1,8 @@
 ﻿using System;
 using JuvoPlayer;
 using JuvoPlayer.Common;
-using JuvoPlayer.Dash;
 using JuvoPlayer.DataProviders;
+using JuvoPlayer.DataProviders.Dash;
 using JuvoPlayer.DataProviders.HLS;
 using JuvoPlayer.DataProviders.RTSP;
 using JuvoPlayer.DRM;

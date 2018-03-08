@@ -3,7 +3,7 @@ using System.Net.Http;
 using JuvoPlayer.Common.Logging;
 using MpdParser;
 
-namespace JuvoPlayer.Dash
+namespace JuvoPlayer.DataProviders.Dash
 {
     public class DashManifest
     {

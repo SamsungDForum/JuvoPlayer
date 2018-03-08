@@ -7,7 +7,7 @@ using JuvoPlayer.Common.Logging;
 using MpdParser.Node;
 using Representation = MpdParser.Representation;
 
-namespace JuvoPlayer.Dash
+namespace JuvoPlayer.DataProviders.Dash
 {
 
     internal class DashClient : IDashClient
