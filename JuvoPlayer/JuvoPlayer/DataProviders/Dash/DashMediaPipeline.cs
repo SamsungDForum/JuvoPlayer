@@ -3,7 +3,7 @@ using System.Linq;
 using System.Xml;
 using JuvoPlayer.Common;
 using JuvoPlayer.Common.Logging;
-using JuvoPlayer.DRM.Cenc;
+using JuvoPlayer.Drms.Cenc;
 using MpdParser;
 
 namespace JuvoPlayer.DataProviders.Dash

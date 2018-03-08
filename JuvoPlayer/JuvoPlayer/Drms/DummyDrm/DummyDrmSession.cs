@@ -6,7 +6,7 @@ using Nito.AsyncEx;
 using Tizen.Security.TEEC;
 using Tizen.TV.Security.DrmDecrypt;
 
-namespace JuvoPlayer.DRM.DummyDrm
+namespace JuvoPlayer.Drms.DummyDrm
 {
     public class DummyDrmSession : IDRMSession
     {

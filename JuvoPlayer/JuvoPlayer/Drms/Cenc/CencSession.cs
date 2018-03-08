@@ -13,7 +13,7 @@ using Nito.AsyncEx;
 using Tizen.TV.Security.DrmDecrypt;
 using Tizen.TV.Security.DrmDecrypt.emeCDM;
 
-namespace JuvoPlayer.DRM.Cenc
+namespace JuvoPlayer.Drms.Cenc
 {
     public class CencSession : IEventListener, IDRMSession
     {

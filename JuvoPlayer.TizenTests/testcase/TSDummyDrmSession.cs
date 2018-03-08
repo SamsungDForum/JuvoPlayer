@@ -1,6 +1,6 @@
 ﻿using JuvoPlayer.Common;
 using JuvoPlayer.Common.Logging;
-using JuvoPlayer.DRM.DummyDrm;
+using JuvoPlayer.Drms.DummyDrm;
 using NUnit.Framework;
 using System;
 using System.Collections.Generic;

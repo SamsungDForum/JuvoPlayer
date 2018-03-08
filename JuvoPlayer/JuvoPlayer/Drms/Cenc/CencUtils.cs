@@ -1,7 +1,7 @@
 using System;
 using System.Linq;
 
-namespace JuvoPlayer.DRM.Cenc
+namespace JuvoPlayer.Drms.Cenc
 {
     public static class CencUtils
     {

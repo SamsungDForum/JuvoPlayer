@@ -4,7 +4,7 @@ using JuvoPlayer.Common;
 using JuvoPlayer.Common.Logging;
 using Tizen.TV.Security.DrmDecrypt.emeCDM;
 
-namespace JuvoPlayer.DRM.Cenc
+namespace JuvoPlayer.Drms.Cenc
 {
     public class CencHandler : IDRMHandler
     {

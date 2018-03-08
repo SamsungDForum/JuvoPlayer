@@ -2,7 +2,7 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace JuvoPlayer.DRM
+namespace JuvoPlayer.Drms
 {
     public class DRMException : Exception
     {

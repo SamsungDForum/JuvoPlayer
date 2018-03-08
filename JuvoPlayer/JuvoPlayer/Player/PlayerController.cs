@@ -14,7 +14,7 @@
 using System;
 using System.Collections.Generic;
 using JuvoPlayer.Common;
-using JuvoPlayer.DRM;
+using JuvoPlayer.Drms;
 
 namespace JuvoPlayer.Player
 {

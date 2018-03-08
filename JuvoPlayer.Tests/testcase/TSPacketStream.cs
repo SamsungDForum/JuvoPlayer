@@ -3,7 +3,7 @@ using System.Collections.Generic;
 using System.Text;
 using System.Threading.Tasks;
 using JuvoPlayer.Common;
-using JuvoPlayer.DRM;
+using JuvoPlayer.Drms;
 using JuvoPlayer.Player;
 using NSubstitute;
 using NSubstitute.Core;

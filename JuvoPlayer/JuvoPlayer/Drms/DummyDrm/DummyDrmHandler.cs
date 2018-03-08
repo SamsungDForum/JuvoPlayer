@@ -3,7 +3,7 @@ using JuvoPlayer.Common.Logging;
 using System;
 using System.Linq;
 
-namespace JuvoPlayer.DRM.DummyDrm
+namespace JuvoPlayer.Drms.DummyDrm
 {
     public class DummyDrmHandler : IDRMHandler
     {
