@@ -17,8 +17,9 @@ using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using JuvoPlayer.Common;
 using JuvoPlayer.Common.Logging;
+using JuvoPlayer.Demuxers.FFmpeg.Interop;
 
-namespace JuvoPlayer.FFmpeg
+namespace JuvoPlayer.Demuxers.FFmpeg
 {
     public class FFmpegDemuxer : IDemuxer
     {
@@ -63,23 +64,23 @@ namespace JuvoPlayer.FFmpeg
         {
             this.dataBuffer = dataBuffer;
             try {
-                FFmpeg.Initialize(libPath);
-                FFmpeg.av_register_all(); // TODO(g.skowinski): Is registering multiple times unwanted or doesn't it matter?
+                Interop.FFmpeg.Initialize(libPath);
+                Interop.FFmpeg.av_register_all(); // TODO(g.skowinski): Is registering multiple times unwanted or doesn't it matter?
 
-                FFmpeg.av_log_set_level(FFmpegMacros.AV_LOG_WARNING);
+                Interop.FFmpeg.av_log_set_level(FFmpegMacros.AV_LOG_WARNING);
                 av_log_set_callback_callback logCallback = (p0, level, format, vl) =>
                 {
-                    if (level > FFmpeg.av_log_get_level()) return;
+                    if (level > Interop.FFmpeg.av_log_get_level()) return;
 
                     const int lineSize = 1024;
                     var lineBuffer = stackalloc byte[lineSize];
                     var printPrefix = 1;
-                    FFmpeg.av_log_format_line(p0, level, format, vl, lineBuffer, lineSize, &printPrefix);
+                    Interop.FFmpeg.av_log_format_line(p0, level, format, vl, lineBuffer, lineSize, &printPrefix);
                     var line = Marshal.PtrToStringAnsi((IntPtr)lineBuffer);
 
                     Logger.Info(line);
                 };
-                FFmpeg.av_log_set_callback(logCallback);
+                Interop.FFmpeg.av_log_set_callback(logCallback);
             }
             catch (Exception) {
                 Logger.Info("Could not load and register FFmpeg library!");
@@ -114,19 +115,19 @@ namespace JuvoPlayer.FFmpeg
         {
             Logger.Info("INIT");
 
-            buffer = (byte*)FFmpeg.av_mallocz((ulong)BufferSize); // let's try AllocHGlobal later on
+            buffer = (byte*)Interop.FFmpeg.av_mallocz((ulong)BufferSize); // let's try AllocHGlobal later on
             var readFunction = new avio_alloc_context_read_packet_func { Pointer = Marshal.GetFunctionPointerForDelegate(readFunctionDelegate) };
             var writeFunction = new avio_alloc_context_write_packet_func { Pointer = IntPtr.Zero };
             var seekFunction = new avio_alloc_context_seek_func { Pointer = IntPtr.Zero };
 
-            ioContext = FFmpeg.avio_alloc_context(buffer,
+            ioContext = Interop.FFmpeg.avio_alloc_context(buffer,
                                                  BufferSize,
                                                  0,
                                                  (void*)GCHandle.ToIntPtr(GCHandle.Alloc(dataBuffer)), // TODO(g.skowinski): Check if allocating memory used by ffmpeg with Marshal.AllocHGlobal helps!
                                                  readFunction,
                                                  writeFunction,
                                                  seekFunction);
-            formatContext = FFmpeg.avformat_alloc_context(); // it was before avio_alloc_context before, but I'm changing ordering so it's like in LiveTVApp
+            formatContext = Interop.FFmpeg.avformat_alloc_context(); // it was before avio_alloc_context before, but I'm changing ordering so it's like in LiveTVApp
             ioContext->seekable = 0;
             ioContext->write_flag = 0;
 
@@ -145,7 +146,7 @@ namespace JuvoPlayer.FFmpeg
             int ret = -1;
             fixed (AVFormatContext** formatContextPointer = &formatContext)
             {
-                ret = FFmpeg.avformat_open_input(formatContextPointer, null, null, null);
+                ret = Interop.FFmpeg.avformat_open_input(formatContextPointer, null, null, null);
             }
             if (ret != 0) {
                 Logger.Info("Could not parse input data: " + GetErrorText(ret));
@@ -160,10 +161,10 @@ namespace JuvoPlayer.FFmpeg
         {
             Logger.Info("INIT");
 
-            FFmpeg.avformat_network_init();
+            Interop.FFmpeg.avformat_network_init();
 
-            buffer = (byte*)FFmpeg.av_mallocz((ulong)BufferSize);
-            formatContext = FFmpeg.avformat_alloc_context();
+            buffer = (byte*)Interop.FFmpeg.av_mallocz((ulong)BufferSize);
+            formatContext = Interop.FFmpeg.avformat_alloc_context();
 
             formatContext->probesize = 128 * 1024;
             formatContext->max_analyze_duration = 10 * 1000000;
@@ -178,14 +179,14 @@ namespace JuvoPlayer.FFmpeg
 
             fixed (AVFormatContext** formatContextPointer = &formatContext)
             {
-                var ret = FFmpeg.avformat_open_input(formatContextPointer, url, null, null);
+                var ret = Interop.FFmpeg.avformat_open_input(formatContextPointer, url, null, null);
                 Logger.Info("avformat_open_input(" + url + ") = " + (ret == 0 ? "ok" : ret + " (" + GetErrorText(ret) + ")"));
             }
         }
 
         private unsafe void FindStreamsInfo()
         {
-            int ret = FFmpeg.avformat_find_stream_info(formatContext, null);
+            int ret = Interop.FFmpeg.avformat_find_stream_info(formatContext, null);
             if (ret < 0)
             {
                 Logger.Info("Could not find stream info (error code: " + ret + ")!");
@@ -223,7 +224,7 @@ namespace JuvoPlayer.FFmpeg
             if (streamId >= 0)
                 return streamId;
 
-            return FFmpeg.av_find_best_stream(formatContext, mediaType, -1, -1, null, 0);
+            return Interop.FFmpeg.av_find_best_stream(formatContext, mediaType, -1, -1, null, 0);
         }
 
         private unsafe int FindBestBandwidthStream(AVMediaType mediaType)
@@ -235,7 +236,7 @@ namespace JuvoPlayer.FFmpeg
                 if (formatContext->streams[i]->codecpar->codec_type != mediaType)
                     continue;
 
-                var dict = FFmpeg.av_dict_get(formatContext->streams[i]->metadata, "variant_bitrate", null, 0);
+                var dict = Interop.FFmpeg.av_dict_get(formatContext->streams[i]->metadata, "variant_bitrate", null, 0);
                 if (dict == null)
                     return -1;
 
@@ -274,10 +275,10 @@ namespace JuvoPlayer.FFmpeg
 
             while (parse) {
                 AVPacket pkt = new AVPacket();
-                FFmpeg.av_init_packet(&pkt);
+                Interop.FFmpeg.av_init_packet(&pkt);
                 pkt.data = null;
                 pkt.size = 0;
-                int ret = FFmpeg.av_read_frame(formatContext, &pkt);
+                int ret = Interop.FFmpeg.av_read_frame(formatContext, &pkt);
                 try
                 {
                     if (resetting)
@@ -293,10 +294,10 @@ namespace JuvoPlayer.FFmpeg
                         AVStream* s = formatContext->streams[pkt.stream_index];
                         var data = pkt.data;
                         var dataSize = pkt.size;
-                        var pts = FFmpeg.av_rescale_q(pkt.pts, s->time_base, microsBase) / 1000;
-                        var dts = FFmpeg.av_rescale_q(pkt.dts, s->time_base, microsBase) / 1000;
+                        var pts = Interop.FFmpeg.av_rescale_q(pkt.pts, s->time_base, microsBase) / 1000;
+                        var dts = Interop.FFmpeg.av_rescale_q(pkt.dts, s->time_base, microsBase) / 1000;
 
-                        var sideData = FFmpeg.av_packet_get_side_data(&pkt, AVPacketSideDataType.@AV_PKT_DATA_ENCRYPT_INFO, null);
+                        var sideData = Interop.FFmpeg.av_packet_get_side_data(&pkt, AVPacketSideDataType.@AV_PKT_DATA_ENCRYPT_INFO, null);
 
                         Packet packet = null;
                         if (sideData != null)
@@ -326,7 +327,7 @@ namespace JuvoPlayer.FFmpeg
                 }
                 finally
                 {
-                    FFmpeg.av_packet_unref(&pkt);
+                    Interop.FFmpeg.av_packet_unref(&pkt);
                 }
             }
         }
@@ -398,7 +399,7 @@ namespace JuvoPlayer.FFmpeg
             byte[] errorBuffer = new byte[errorBufferSize];
             try {
                 fixed (byte* errbuf = errorBuffer) {
-                    FFmpeg.av_strerror(returnCode, errbuf, errorBufferSize);
+                    Interop.FFmpeg.av_strerror(returnCode, errbuf, errorBufferSize);
                 }
             }
             catch (Exception) {
@@ -426,9 +427,9 @@ namespace JuvoPlayer.FFmpeg
         {
             if (formatContext != null) {
                 fixed (AVFormatContext** formatContextPointer = &formatContext) {
-                    FFmpeg.avformat_close_input(formatContextPointer);
+                    Interop.FFmpeg.avformat_close_input(formatContextPointer);
                 }
-                FFmpeg.avformat_free_context(formatContext);
+                Interop.FFmpeg.avformat_free_context(formatContext);
                 formatContext = null;
             }
             if (buffer != null) {
@@ -477,7 +478,7 @@ namespace JuvoPlayer.FFmpeg
                 config.BitsPerChannel = s->codecpar->bits_per_coded_sample; // per channel? not per sample? o_O
             }
             else {
-                config.BitsPerChannel = FFmpeg.av_get_bytes_per_sample(sampleFormat) * 8;
+                config.BitsPerChannel = Interop.FFmpeg.av_get_bytes_per_sample(sampleFormat) * 8;
                 config.BitsPerChannel /= s->codecpar->channels;
             }
             config.ChannelLayout = s->codecpar->channels;
@@ -640,12 +641,12 @@ namespace JuvoPlayer.FFmpeg
 
         public unsafe void Paused()
         {
-            FFmpeg.av_read_pause(formatContext);
+            Interop.FFmpeg.av_read_pause(formatContext);
         }
 
         public unsafe void Played()
         {
-            FFmpeg.av_read_play(formatContext);
+            Interop.FFmpeg.av_read_play(formatContext);
         }
 
         private static unsafe ISharedBuffer RetrieveSharedBufferReference(void* @opaque)

@@ -16,7 +16,7 @@ using System.IO;
 using System.Runtime.InteropServices;
 using JuvoPlayer.Common.Logging;
 
-namespace JuvoPlayer.FFmpeg
+namespace JuvoPlayer.Demuxers.FFmpeg.Interop
 {
     public unsafe class FFmpeg
     {

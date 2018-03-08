@@ -1,6 +1,6 @@
 using System.Runtime.InteropServices;
 
-namespace JuvoPlayer.FFmpeg
+namespace JuvoPlayer.Demuxers.FFmpeg.Interop
 {
     public unsafe struct _iobuf
     {
