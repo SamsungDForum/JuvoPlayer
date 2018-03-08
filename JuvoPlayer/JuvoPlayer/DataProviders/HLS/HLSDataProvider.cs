@@ -16,7 +16,7 @@ using System.Threading;
 using JuvoPlayer.Common;
 using JuvoPlayer.DataProviders;
 
-namespace JuvoPlayer.HLS
+namespace JuvoPlayer.DataProviders.HLS
 {
     public class HLSDataProvider : IDataProvider
     {
