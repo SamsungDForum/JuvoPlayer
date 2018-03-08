@@ -14,11 +14,10 @@
 using System;
 using System.IO;
 using JuvoPlayer.Common;
-using JuvoPlayer.DataProviders;
 using JuvoPlayer.FFmpeg;
 using Tizen.Applications;
 
-namespace JuvoPlayer.HLS
+namespace JuvoPlayer.DataProviders.HLS
 {
     public class HLSDataProviderFactory : IDataProviderFactory
     {
