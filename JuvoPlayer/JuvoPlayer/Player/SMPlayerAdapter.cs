@@ -16,7 +16,6 @@ using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 using JuvoPlayer.Common;
-using JuvoPlayer.Common.Delegates;
 using JuvoPlayer.Common.Logging;
 using Tizen.TV.Smplayer;
 using StreamType = Tizen.TV.Smplayer.StreamType;

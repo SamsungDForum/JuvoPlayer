@@ -14,7 +14,6 @@
 using System;
 using System.Threading.Tasks;
 using JuvoPlayer.Common;
-using JuvoPlayer.Common.Delegates;
 using JuvoPlayer.Common.Logging;
 using Tizen.Multimedia;
 
