@@ -10,7 +10,7 @@ namespace JuvoPlayer.Player
     public class PacketStream : IPacketStream
     {
         protected IDrmManager drmManager;
-        protected IPlayer playerAdapter;
+        protected IPlayer player;
         private IDrmSession drmSession;
         private StreamConfig config;
         private bool forceDrmChange;
@@ -22,7 +22,7 @@ namespace JuvoPlayer.Player
             this.streamType = streamType;
             this.drmManager = drmManager ??
                               throw new ArgumentNullException(nameof(drmManager), "drmManager cannot be null");
-            playerAdapter = player ?? throw new ArgumentNullException(nameof(player), "player cannot be null");
+            this.player = player ?? throw new ArgumentNullException(nameof(player), "player cannot be null");
         }
 
         public void OnAppendPacket(Packet packet)
@@ -42,7 +42,7 @@ namespace JuvoPlayer.Player
             if (drmSession != null && packet is EncryptedPacket)
                 packet = drmSession.DecryptPacket(packet as EncryptedPacket).Result;
 
-            playerAdapter.AppendPacket(packet);
+            player.AppendPacket(packet);
         }
 
         public void OnStreamConfigChanged(StreamConfig config)
@@ -63,10 +63,10 @@ namespace JuvoPlayer.Player
             switch (this.config.StreamType())
             {
                 case StreamType.Audio:
-                    playerAdapter.SetAudioStreamConfig(this.config as AudioStreamConfig);
+                    player.SetAudioStreamConfig(this.config as AudioStreamConfig);
                     break;
                 case StreamType.Video:
-                    playerAdapter.SetVideoStreamConfig(this.config as VideoStreamConfig);
+                    player.SetVideoStreamConfig(this.config as VideoStreamConfig);
                     break;
                 case StreamType.Subtitle:
                 case StreamType.Teletext:

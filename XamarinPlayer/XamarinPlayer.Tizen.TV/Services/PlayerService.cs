@@ -53,8 +53,8 @@ namespace XamarinPlayer.Tizen.Services
             drmManager.RegisterDrmHandler(new CencHandler());
             drmManager.RegisterDrmHandler(new DummyDrmHandler());
 
-            var playerAdapter = new SMPlayer();
-            playerController = new PlayerController(playerAdapter, drmManager);
+            var player = new SMPlayer();
+            playerController = new PlayerController(player, drmManager);
             playerController.PlaybackCompleted += () =>
             {
                 State = PlayerState.Completed;
