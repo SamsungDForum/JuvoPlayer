@@ -14,11 +14,10 @@
 using System;
 using System.IO;
 using JuvoPlayer.Common;
-using JuvoPlayer.DataProviders;
 using JuvoPlayer.FFmpeg;
 using Tizen.Applications;
 
-namespace JuvoPlayer.RTSP
+namespace JuvoPlayer.DataProviders.RTSP
 {
     public class RTSPDataProviderFactory : IDataProviderFactory
     {

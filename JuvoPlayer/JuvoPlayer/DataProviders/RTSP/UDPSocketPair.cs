@@ -5,7 +5,7 @@ using System.Threading;
 using JuvoPlayer.Common.Logging;
 using Rtsp;
 
-namespace JuvoPlayer.RTSP
+namespace JuvoPlayer.DataProviders.RTSP
 {
     public class UDPSocketPair
     {

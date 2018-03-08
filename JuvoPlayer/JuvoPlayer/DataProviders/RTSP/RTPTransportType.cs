@@ -1,4 +1,4 @@
-// Copyright (c) 2017 Samsung Electronics Co., Ltd All Rights Reserved
+﻿// Copyright (c) 2017 Samsung Electronics Co., Ltd All Rights Reserved
 // PROPRIETARY/CONFIDENTIAL 
 // This software is the confidential and proprietary
 // information of SAMSUNG ELECTRONICS ("Confidential Information"). You shall
@@ -11,16 +11,12 @@
 // damages suffered by licensee as a result of using, modifying or distributing
 // this software or its derivatives.
 
-using JuvoPlayer.Common;
-
-namespace JuvoPlayer.RTSP
+namespace JuvoPlayer.DataProviders.RTSP
 {
-    public interface IRTSPClient
+    public enum RTPTransportType
     {
-        void Pause();
-        void Play();
-        void Seek(int position);
-        void Start(ClipDefinition clip);
-        void Stop();
+        UDP,
+        TCP,
+        MULTICAST
     }
 }
