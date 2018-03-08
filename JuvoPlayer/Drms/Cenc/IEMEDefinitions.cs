@@ -3,7 +3,7 @@ using System.Runtime.InteropServices;
 
 namespace JuvoPlayer.Drms.Cenc
 {
-    public unsafe struct DecryptionData
+    internal unsafe struct DecryptionData
     {
         public bool IsEncrypted;
         public bool IsSecure;
@@ -12,9 +12,8 @@ namespace JuvoPlayer.Drms.Cenc
         public byte[] Iv;
     };
 
-
     [StructLayout(LayoutKind.Sequential, Pack = 8)]
-    public struct MSD_SUBSAMPLE_INFO
+    internal struct MSD_SUBSAMPLE_INFO
     {
         public uint uBytesOfClearData;
         public uint uBytesOfEncryptedData;
@@ -22,7 +21,7 @@ namespace JuvoPlayer.Drms.Cenc
 
 
     [StructLayout(LayoutKind.Sequential, Pack = 8)]
-    public struct MSD_FMP4_DATA
+    internal struct MSD_FMP4_DATA
     {
         public uint uSubSampleCount;
         public IntPtr pSubSampleInfo;

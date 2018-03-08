@@ -6,7 +6,7 @@ using Tizen.TV.Security.DrmDecrypt.emeCDM;
 
 namespace JuvoPlayer.Drms.Cenc
 {
-    class EmeStatusConverter
+    internal class EmeStatusConverter
     {
         public static string Convert(Status status)
         {

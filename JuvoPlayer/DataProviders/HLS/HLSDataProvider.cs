@@ -18,7 +18,7 @@ using JuvoPlayer.Demuxers;
 
 namespace JuvoPlayer.DataProviders.HLS
 {
-    public class HLSDataProvider : IDataProvider
+    internal class HLSDataProvider : IDataProvider
     {
         private static readonly TimeSpan MagicBufferTime = TimeSpan.FromSeconds(10);
 

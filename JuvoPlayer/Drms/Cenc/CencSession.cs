@@ -15,7 +15,7 @@ using Tizen.TV.Security.DrmDecrypt.emeCDM;
 
 namespace JuvoPlayer.Drms.Cenc
 {
-    public class CencSession : IEventListener, IDrmSession
+    internal class CencSession : IEventListener, IDrmSession
     {
         private readonly ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
 

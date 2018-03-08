@@ -13,7 +13,7 @@
 
 namespace JuvoPlayer.DataProviders.RTSP
 {
-    public enum RTPTransportType
+    internal enum RTPTransportType
     {
         UDP,
         TCP,

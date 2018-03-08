@@ -24,7 +24,7 @@ using Rtsp.Messages;
 
 namespace JuvoPlayer.DataProviders.RTSP
 {
-    public class RTSPClient : IRTSPClient
+    internal class RTSPClient : IRTSPClient
     {
         private static readonly ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
 

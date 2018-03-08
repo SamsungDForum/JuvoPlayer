@@ -5,7 +5,7 @@ using MpdParser;
 
 namespace JuvoPlayer.DataProviders.Dash
 {
-    public class DashManifest
+    internal class DashManifest
     {
         private const string Tag = "JuvoPlayer";
         private readonly ILogger Logger = LoggerManager.GetInstance().GetLogger(Tag);

@@ -13,7 +13,7 @@
 
 namespace JuvoPlayer.Common
 {
-    public class AudioStreamDefinition : StreamDefinition
+    internal class AudioStreamDefinition : StreamDefinition
     {
         public AudioStreamDefinition()
         {

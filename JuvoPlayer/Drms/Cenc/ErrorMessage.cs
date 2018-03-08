@@ -1,6 +1,6 @@
 ﻿namespace JuvoPlayer.Drms.Cenc
 {
-    public class ErrorMessage
+    internal static class ErrorMessage
     {
         public static readonly string Success = "Success";
         public static readonly string NeedsDeviceCertificate = "Needs device certificate";

@@ -4,7 +4,7 @@ using StreamType = JuvoPlayer.Common.StreamType;
 
 namespace JuvoPlayer.Player.SMPlayer
 {
-    static class SMPlayerUtils
+    internal static class SMPlayerUtils
     {
         public static TrackType GetTrackType(Packet packet)
         {

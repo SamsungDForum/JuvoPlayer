@@ -15,12 +15,14 @@ using JuvoPlayer.Common;
 using System.Collections.Generic;
 using System.Threading;
 
-namespace JuvoPlayer.Player.SMPlayer {
-    public class PacketBuffer {
-
+namespace JuvoPlayer.Player.SMPlayer
+{
+    internal class PacketBuffer
+    {
         private List<Packet> data;
 
-        public enum Ordering {
+        public enum Ordering
+        {
             PtsAsc,
             DtsAsc,
             PtsDesc,
@@ -34,7 +36,8 @@ namespace JuvoPlayer.Player.SMPlayer {
 
         private readonly AutoResetEvent bufferFull, bufferEmpty, bufferPeek;
 
-        public PacketBuffer(Ordering queueOrdering = Ordering.Fifo, int minimumSizeThreshold = 0, int maximumSizeThreshold = int.MaxValue) {
+        public PacketBuffer(Ordering queueOrdering = Ordering.Fifo, int minimumSizeThreshold = 0, int maximumSizeThreshold = int.MaxValue)
+        {
             data = new List<Packet>();
             MinimumSizeThreshold = minimumSizeThreshold;
             MaximumSizeThreshold = maximumSizeThreshold;
@@ -44,15 +47,21 @@ namespace JuvoPlayer.Player.SMPlayer {
             QueueOrdering = queueOrdering;
         }
 
-        public void Enqueue(Packet packet) {
-            for (bool done = false; !done; bufferFull.WaitOne()) {
-                lock (data) {
-                    if (data.Count < MaximumSizeThreshold) {
+        public void Enqueue(Packet packet)
+        {
+            for (bool done = false; !done; bufferFull.WaitOne())
+            {
+                lock (data)
+                {
+                    if (data.Count < MaximumSizeThreshold)
+                    {
                         done = true;
                         data.Add(packet);
-                        if (QueueOrdering != Ordering.Fifo) {
+                        if (QueueOrdering != Ordering.Fifo)
+                        {
                             int childIndex = data.Count - 1;
-                            while (childIndex > 0) {
+                            while (childIndex > 0)
+                            {
                                 int parentIndex = (childIndex - 1) / 2;
                                 if (Compare(data[childIndex], data[parentIndex]) >= 0)
                                     break;
@@ -68,21 +77,28 @@ namespace JuvoPlayer.Player.SMPlayer {
             }
         }
 
-        public Packet Dequeue() {
-            for (; true; bufferEmpty.WaitOne()) {
-                lock (data) {
-                    if (data.Count - MinimumSizeThreshold > 0) {
+        public Packet Dequeue()
+        {
+            for (; true; bufferEmpty.WaitOne())
+            {
+                lock (data)
+                {
+                    if (data.Count - MinimumSizeThreshold > 0)
+                    {
                         Packet headPacket = data[0];
-                        if (QueueOrdering == Ordering.Fifo) {
+                        if (QueueOrdering == Ordering.Fifo)
+                        {
                             data.RemoveAt(0);
                         }
-                        else {
+                        else
+                        {
                             int lastIndex = data.Count - 1;
                             data[0] = data[lastIndex];
                             data.RemoveAt(lastIndex);
                             --lastIndex;
                             int parentIndex = 0;
-                            while (true) {
+                            while (true)
+                            {
                                 int childIndex = parentIndex * 2 + 1;
                                 if (childIndex > lastIndex)
                                     break;
@@ -102,39 +118,50 @@ namespace JuvoPlayer.Player.SMPlayer {
             }
         }
 
-        public Packet Peek() {
-            lock (data) {
+        public Packet Peek()
+        {
+            lock (data)
+            {
                 return data[0]; // throws exception if data is empty!
             }
         }
 
-        public int Count() {
-            lock (data) {
+        public int Count()
+        {
+            lock (data)
+            {
                 return data.Count;
             }
         }
 
-        public void Clear() {
-            lock (data) {
+        public void Clear()
+        {
+            lock (data)
+            {
                 data = new List<Packet>();
             }
         }
 
-        public int AvailablePacketsCount() { // It locks on data! Don't call it from another method that locks on data like Enqueue() or Dequeue()!
-            lock (data) {
+        public int AvailablePacketsCount()
+        { // It locks on data! Don't call it from another method that locks on data like Enqueue() or Dequeue()!
+            lock (data)
+            {
                 int available = data.Count - MinimumSizeThreshold;
                 return available > 0 ? available : 0;
             }
         }
 
-        private void SwapIndices(int a, int b) {
+        private void SwapIndices(int a, int b)
+        {
             Packet tmp = data[a];
             data[a] = data[b];
             data[b] = tmp;
         }
 
-        private long Compare(Packet a, Packet b) {
-            switch (QueueOrdering) {
+        private long Compare(Packet a, Packet b)
+        {
+            switch (QueueOrdering)
+            {
                 case Ordering.DtsAsc:
                     return a.Dts.CompareTo(b.Dts); // in order of increasing dts
                 case Ordering.DtsDesc:
@@ -149,11 +176,16 @@ namespace JuvoPlayer.Player.SMPlayer {
             }
         }
 
-        public ulong PeekSortingValue() { // blocks if buffer is empty!
-            for (; true; bufferPeek.WaitOne()) {
-                lock (data) {
-                    if (data.Count - MinimumSizeThreshold > 0) {
-                        switch (QueueOrdering) {
+        public ulong PeekSortingValue()
+        { // blocks if buffer is empty!
+            for (; true; bufferPeek.WaitOne())
+            {
+                lock (data)
+                {
+                    if (data.Count - MinimumSizeThreshold > 0)
+                    {
+                        switch (QueueOrdering)
+                        {
                             case Ordering.DtsAsc:
                             case Ordering.DtsDesc:
                                 return (ulong)data[0].Dts.TotalMilliseconds;

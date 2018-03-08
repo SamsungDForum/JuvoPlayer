@@ -18,7 +18,7 @@ using System.Threading;
 
 namespace JuvoPlayer.SharedBuffers
 {
-    public class ChunksSharedBuffer : ISharedBuffer
+    internal class ChunksSharedBuffer : ISharedBuffer
     {
         private readonly object locker = new object();
         private readonly LinkedList<byte[]> buffer = new LinkedList<byte[]>();

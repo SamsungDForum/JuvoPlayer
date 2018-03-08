@@ -23,7 +23,7 @@ namespace JuvoPlayer.Common.Utils
     // https://www.codeproject.com/Articles/36747/Quick-and-Dirty-HexDump-of-a-Byte-Array
     // https://blogs.msdn.microsoft.com/ericwhite/2010/03/12/hex-dump-using-linq-in-7-lines-of-code/
 
-    public static partial class HexDumper
+    public static class HexDumper
     {
         /// <summary>
         /// Dumps last N bytes from byte array in human readable format.

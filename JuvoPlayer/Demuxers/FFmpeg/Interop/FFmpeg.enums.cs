@@ -1,6 +1,6 @@
 namespace JuvoPlayer.Demuxers.FFmpeg.Interop
 {
-    public enum AVActiveFormatDescription : int
+    internal enum AVActiveFormatDescription : int
     {
         @AV_AFD_SAME = 8,
         @AV_AFD_4_3 = 9,
@@ -11,7 +11,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg.Interop
         @AV_AFD_SP_4_3 = 15,
     }
 
-    public enum AVAppToDevMessageType : int
+    internal enum AVAppToDevMessageType : int
     {
         @AV_APP_TO_DEV_NONE = 1313820229,
         @AV_APP_TO_DEV_WINDOW_SIZE = 1195724621,
@@ -27,7 +27,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg.Interop
         @AV_APP_TO_DEV_GET_MUTE = 1196250452,
     }
 
-    public enum AVAudioServiceType : int
+    internal enum AVAudioServiceType : int
     {
         @AV_AUDIO_SERVICE_TYPE_MAIN = 0,
         @AV_AUDIO_SERVICE_TYPE_EFFECTS = 1,
@@ -41,7 +41,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg.Interop
         @AV_AUDIO_SERVICE_TYPE_NB = 9,
     }
 
-    public enum AVChromaLocation : int
+    internal enum AVChromaLocation : int
     {
         @AVCHROMA_LOC_UNSPECIFIED = 0,
         @AVCHROMA_LOC_LEFT = 1,
@@ -53,7 +53,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg.Interop
         @AVCHROMA_LOC_NB = 7,
     }
 
-    public enum AVClassCategory : int
+    internal enum AVClassCategory : int
     {
         @AV_CLASS_CATEGORY_NA = 0,
         @AV_CLASS_CATEGORY_INPUT = 1,
@@ -75,7 +75,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg.Interop
         @AV_CLASS_CATEGORY_NB = 46,
     }
 
-    public enum AVCodecID : int
+    internal enum AVCodecID : int
     {
         @AV_CODEC_ID_NONE = 0,
         @AV_CODEC_ID_MPEG1VIDEO = 1,
@@ -514,7 +514,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg.Interop
         @AV_CODEC_ID_WRAPPED_AVFRAME = 135169,
     }
 
-    public enum AVColorPrimaries : int
+    internal enum AVColorPrimaries : int
     {
         @AVCOL_PRI_RESERVED0 = 0,
         @AVCOL_PRI_BT709 = 1,
@@ -534,7 +534,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg.Interop
         @AVCOL_PRI_NB = 23,
     }
 
-    public enum AVColorRange : int
+    internal enum AVColorRange : int
     {
         @AVCOL_RANGE_UNSPECIFIED = 0,
         @AVCOL_RANGE_MPEG = 1,
@@ -542,7 +542,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg.Interop
         @AVCOL_RANGE_NB = 3,
     }
 
-    public enum AVColorSpace : int
+    internal enum AVColorSpace : int
     {
         @AVCOL_SPC_RGB = 0,
         @AVCOL_SPC_BT709 = 1,
@@ -560,7 +560,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg.Interop
         @AVCOL_SPC_NB = 12,
     }
 
-    public enum AVColorTransferCharacteristic : int
+    internal enum AVColorTransferCharacteristic : int
     {
         @AVCOL_TRC_RESERVED0 = 0,
         @AVCOL_TRC_BT709 = 1,
@@ -586,7 +586,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg.Interop
         @AVCOL_TRC_NB = 19,
     }
 
-    public enum AVDevToAppMessageType : int
+    internal enum AVDevToAppMessageType : int
     {
         @AV_DEV_TO_APP_NONE = 1313820229,
         @AV_DEV_TO_APP_CREATE_WINDOW_BUFFER = 1111708229,
@@ -601,7 +601,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg.Interop
         @AV_DEV_TO_APP_VOLUME_LEVEL_CHANGED = 1129729868,
     }
 
-    public enum AVDiscard : int
+    internal enum AVDiscard : int
     {
         @AVDISCARD_NONE = -16,
         @AVDISCARD_DEFAULT = 0,
@@ -612,14 +612,14 @@ namespace JuvoPlayer.Demuxers.FFmpeg.Interop
         @AVDISCARD_ALL = 48,
     }
 
-    public enum AVDurationEstimationMethod : int
+    internal enum AVDurationEstimationMethod : int
     {
         @AVFMT_DURATION_FROM_PTS = 0,
         @AVFMT_DURATION_FROM_STREAM = 1,
         @AVFMT_DURATION_FROM_BITRATE = 2,
     }
 
-    public enum AVFieldOrder : int
+    internal enum AVFieldOrder : int
     {
         @AV_FIELD_UNKNOWN = 0,
         @AV_FIELD_PROGRESSIVE = 1,
@@ -629,14 +629,14 @@ namespace JuvoPlayer.Demuxers.FFmpeg.Interop
         @AV_FIELD_BT = 5,
     }
 
-    public enum AVFilterLink_init_state : int
+    internal enum AVFilterLink_init_state : int
     {
         @AVLINK_UNINIT = 0,
         @AVLINK_STARTINIT = 1,
         @AVLINK_INIT = 2,
     }
 
-    public enum AVFrameSideDataType : int
+    internal enum AVFrameSideDataType : int
     {
         @AV_FRAME_DATA_PANSCAN = 0,
         @AV_FRAME_DATA_A53_CC = 1,
@@ -654,7 +654,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg.Interop
         @AV_FRAME_DATA_SPHERICAL = 13,
     }
 
-    public enum AVIODataMarkerType : int
+    internal enum AVIODataMarkerType : int
     {
         @AVIO_DATA_MARKER_HEADER = 0,
         @AVIO_DATA_MARKER_SYNC_POINT = 1,
@@ -663,7 +663,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg.Interop
         @AVIO_DATA_MARKER_TRAILER = 4,
     }
 
-    public enum AVIODirEntryType : int
+    internal enum AVIODirEntryType : int
     {
         @AVIO_ENTRY_UNKNOWN = 0,
         @AVIO_ENTRY_BLOCK_DEVICE = 1,
@@ -678,7 +678,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg.Interop
         @AVIO_ENTRY_WORKGROUP = 10,
     }
 
-    public enum AVLockOp : int
+    internal enum AVLockOp : int
     {
         @AV_LOCK_CREATE = 0,
         @AV_LOCK_OBTAIN = 1,
@@ -686,7 +686,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg.Interop
         @AV_LOCK_DESTROY = 3,
     }
 
-    public enum AVMatrixEncoding : int
+    internal enum AVMatrixEncoding : int
     {
         @AV_MATRIX_ENCODING_NONE = 0,
         @AV_MATRIX_ENCODING_DOLBY = 1,
@@ -698,7 +698,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg.Interop
         @AV_MATRIX_ENCODING_NB = 7,
     }
 
-    public enum AVMediaType : int
+    internal enum AVMediaType : int
     {
         @AVMEDIA_TYPE_UNKNOWN = -1,
         @AVMEDIA_TYPE_VIDEO = 0,
@@ -709,7 +709,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg.Interop
         @AVMEDIA_TYPE_NB = 5,
     }
 
-    public enum AVOptionType : int
+    internal enum AVOptionType : int
     {
         @AV_OPT_TYPE_FLAGS = 0,
         @AV_OPT_TYPE_INT = 1,
@@ -732,7 +732,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg.Interop
         @AV_OPT_TYPE_BOOL = 1112493900,
     }
 
-    public enum AVPacketSideDataType : int
+    internal enum AVPacketSideDataType : int
     {
         @AV_PKT_DATA_PALETTE = 0,
         @AV_PKT_DATA_NEW_EXTRADATA = 1,
@@ -762,7 +762,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg.Interop
         @AV_PKT_DATA_NB = 84,
     }
 
-    public enum AVPictureStructure : int
+    internal enum AVPictureStructure : int
     {
         @AV_PICTURE_STRUCTURE_UNKNOWN = 0,
         @AV_PICTURE_STRUCTURE_TOP_FIELD = 1,
@@ -770,7 +770,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg.Interop
         @AV_PICTURE_STRUCTURE_FRAME = 3,
     }
 
-    public enum AVPictureType : int
+    internal enum AVPictureType : int
     {
         @AV_PICTURE_TYPE_NONE = 0,
         @AV_PICTURE_TYPE_I = 1,
@@ -782,7 +782,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg.Interop
         @AV_PICTURE_TYPE_BI = 7,
     }
 
-    public enum AVPixelFormat : int
+    internal enum AVPixelFormat : int
     {
         @AV_PIX_FMT_NONE = -1,
         @AV_PIX_FMT_YUV420P = 0,
@@ -976,7 +976,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg.Interop
         @AV_PIX_FMT_NB = 348,
     }
 
-    public enum AVRounding : int
+    internal enum AVRounding : int
     {
         @AV_ROUND_ZERO = 0,
         @AV_ROUND_INF = 1,
@@ -986,7 +986,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg.Interop
         @AV_ROUND_PASS_MINMAX = 8192,
     }
 
-    public enum AVSampleFormat : int
+    internal enum AVSampleFormat : int
     {
         @AV_SAMPLE_FMT_NONE = -1,
         @AV_SAMPLE_FMT_U8 = 0,
@@ -1004,7 +1004,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg.Interop
         @AV_SAMPLE_FMT_NB = 12,
     }
 
-    public enum AVSideDataParamChangeFlags : int
+    internal enum AVSideDataParamChangeFlags : int
     {
         @AV_SIDE_DATA_PARAM_CHANGE_CHANNEL_COUNT = 1,
         @AV_SIDE_DATA_PARAM_CHANGE_CHANNEL_LAYOUT = 2,
@@ -1012,7 +1012,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg.Interop
         @AV_SIDE_DATA_PARAM_CHANGE_DIMENSIONS = 8,
     }
 
-    public enum AVStreamParseType : int
+    internal enum AVStreamParseType : int
     {
         @AVSTREAM_PARSE_NONE = 0,
         @AVSTREAM_PARSE_FULL = 1,
@@ -1022,7 +1022,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg.Interop
         @AVSTREAM_PARSE_FULL_RAW = 1463898624,
     }
 
-    public enum AVSubtitleType : int
+    internal enum AVSubtitleType : int
     {
         @SUBTITLE_NONE = 0,
         @SUBTITLE_BITMAP = 1,
@@ -1030,7 +1030,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg.Interop
         @SUBTITLE_ASS = 3,
     }
 
-    public enum AVTimebaseSource : int
+    internal enum AVTimebaseSource : int
     {
         @AVFMT_TBCF_AUTO = -1,
         @AVFMT_TBCF_DECODER = 0,
@@ -1038,14 +1038,14 @@ namespace JuvoPlayer.Demuxers.FFmpeg.Interop
         @AVFMT_TBCF_R_FRAMERATE = 2,
     }
 
-    public enum AVTimecodeFlag : int
+    internal enum AVTimecodeFlag : int
     {
         @AV_TIMECODE_FLAG_DROPFRAME = 1,
         @AV_TIMECODE_FLAG_24HOURSMAX = 2,
         @AV_TIMECODE_FLAG_ALLOWNEGATIVE = 4,
     }
 
-    public enum Motion_Est_ID : int
+    internal enum Motion_Est_ID : int
     {
         @ME_ZERO = 1,
         @ME_FULL = 2,
@@ -1059,7 +1059,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg.Interop
         @ME_ITER = 50,
     }
 
-    public enum SwrDitherType : int
+    internal enum SwrDitherType : int
     {
         @SWR_DITHER_NONE = 0,
         @SWR_DITHER_RECTANGULAR = 1,
@@ -1076,14 +1076,14 @@ namespace JuvoPlayer.Demuxers.FFmpeg.Interop
         @SWR_DITHER_NB = 72,
     }
 
-    public enum SwrEngine : int
+    internal enum SwrEngine : int
     {
         @SWR_ENGINE_SWR = 0,
         @SWR_ENGINE_SOXR = 1,
         @SWR_ENGINE_NB = 2,
     }
 
-    public enum SwrFilterType : int
+    internal enum SwrFilterType : int
     {
         @SWR_FILTER_TYPE_CUBIC = 0,
         @SWR_FILTER_TYPE_BLACKMAN_NUTTALL = 1,
