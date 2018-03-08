@@ -10,14 +10,14 @@ namespace JuvoPlayer.Player
     public class PacketStream : IPacketStream
     {
         protected IDRMManager drmManager;
-        protected IPlayerAdapter playerAdapter;
+        protected IPlayer playerAdapter;
         private IDRMSession drmSession;
         private StreamConfig config;
         private bool forceDrmChange;
         private Task drmSessionInitializeTask;
         private readonly StreamType streamType;
 
-        public PacketStream(StreamType streamType, IPlayerAdapter player, IDRMManager drmManager)
+        public PacketStream(StreamType streamType, IPlayer player, IDRMManager drmManager)
         {
             this.streamType = streamType;
             this.drmManager = drmManager ??

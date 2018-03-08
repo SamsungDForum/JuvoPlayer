@@ -72,7 +72,7 @@ namespace NUIPlayer
             var drmManager = new DRMManager();
             drmManager.RegisterDrmHandler(new CencHandler());
 
-            var playerAdapter = new SMPlayerAdapter();
+            var playerAdapter = new SMPlayer();
             playerController = new PlayerController(playerAdapter, drmManager);
             playerController.TimeUpdated += OnTimeUpdated;
             playerController.PlaybackCompleted += OnPlaybackCompleted;
