@@ -1,5 +1,5 @@
-using JuvoPlayer.Common.Logging;
-using JuvoPlayer.Logging;
+using JuvoLogger;
+using JuvoLogger.Tizen;
 using NUnit.Framework;
 
 namespace JuvoPlayer.TizenTests

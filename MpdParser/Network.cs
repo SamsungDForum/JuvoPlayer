@@ -13,7 +13,7 @@
 
 using System;
 using System.Net;
-using JuvoPlayer.Common.Logging;
+using JuvoLogger;
 
 //Yes.. inheriting from WebClient is a simpler approach then raping the queen of Web/HttpRequests
 namespace MpdParser.Network

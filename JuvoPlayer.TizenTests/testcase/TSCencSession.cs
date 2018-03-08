@@ -7,10 +7,9 @@ using System.Runtime.Serialization.Formatters.Binary;
 using System.Text;
 using System.Threading.Tasks;
 using JuvoPlayer.Common;
-using JuvoPlayer.Common.Logging;
-using JuvoPlayer.DRM;
-using JuvoPlayer.DRM.Cenc;
-using JuvoPlayer.Logging;
+using JuvoLogger;
+using JuvoPlayer.Drms;
+using JuvoPlayer.Drms.Cenc;
 using NUnit.Framework;
 
 namespace JuvoPlayer.TizenTests
@@ -98,14 +97,14 @@ namespace JuvoPlayer.TizenTests
             var drmInitData = CreateDrmInitData();
             var configuration = CreateDrmDescription();
             drmInitData.InitData = null;
-            Assert.ThrowsAsync<DRMException>(async () =>
+            Assert.ThrowsAsync<DrmException>(async () =>
             {
                 using (var drmSession = CencSession.Create(drmInitData, configuration))
                     await drmSession.Initialize();
             });
 
             drmInitData.InitData = initData.Take(initData.Length / 2).ToArray();
-            Assert.ThrowsAsync<DRMException>(async () =>
+            Assert.ThrowsAsync<DrmException>(async () =>
             {
                 using (var drmSession = CencSession.Create(drmInitData, configuration))
                     await drmSession.Initialize();

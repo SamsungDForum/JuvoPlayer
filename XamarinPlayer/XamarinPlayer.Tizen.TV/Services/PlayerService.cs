@@ -1,14 +1,14 @@
 ﻿using System;
-using JuvoPlayer;
 using JuvoPlayer.Common;
-using JuvoPlayer.Common.Delegates;
-using JuvoPlayer.Dash;
-using JuvoPlayer.DRM;
-using JuvoPlayer.DRM.Cenc;
-using JuvoPlayer.DRM.DummyDrm;
-using JuvoPlayer.HLS;
+using JuvoPlayer.DataProviders;
+using JuvoPlayer.DataProviders.Dash;
+using JuvoPlayer.DataProviders.HLS;
+using JuvoPlayer.DataProviders.RTSP;
+using JuvoPlayer.Drms;
+using JuvoPlayer.Drms.Cenc;
+using JuvoPlayer.Drms.DummyDrm;
 using JuvoPlayer.Player;
-using JuvoPlayer.RTSP;
+using JuvoPlayer.Player.SMPlayer;
 using Xamarin.Forms;
 using XamarinPlayer.Services;
 using XamarinPlayer.Tizen.Services;
@@ -24,9 +24,7 @@ namespace XamarinPlayer.Tizen.Services
         private PlayerState playerState = PlayerState.Idle;
 
         public event PlayerStateChangedEventHandler StateChanged;
-
-        public event PlaybackCompleted PlaybackCompleted;
-        public event ShowSubtitile ShowSubtitle;
+        public event ShowSubtitleEventHandler ShowSubtitle;
         
         public TimeSpan Duration => playerController?.ClipDuration ?? TimeSpan.FromSeconds(0) ;
 
@@ -51,20 +49,24 @@ namespace XamarinPlayer.Tizen.Services
             dataProviders.RegisterDataProviderFactory(new HLSDataProviderFactory());
             dataProviders.RegisterDataProviderFactory(new RTSPDataProviderFactory());
 
-            var drmManager = new DRMManager();
+            var drmManager = new DrmManager();
             drmManager.RegisterDrmHandler(new CencHandler());
             drmManager.RegisterDrmHandler(new DummyDrmHandler());
 
-            var playerAdapter = new SMPlayerAdapter();
-            playerController = new PlayerController(playerAdapter, drmManager);
+            var player = new SMPlayer();
+            playerController = new PlayerController(player, drmManager);
             playerController.PlaybackCompleted += () =>
             {
-                PlaybackCompleted?.Invoke();
-                State = PlayerState.Stopped;
+                State = PlayerState.Completed;
             };
             playerController.ShowSubtitle += (subtitle) =>
             {
-                ShowSubtitle?.Invoke(subtitle);
+                var sub = new XamarinPlayer.Services.Subtitle
+                {
+                    Duration = subtitle.Duration,
+                    Text = subtitle.Text
+                };
+                ShowSubtitle?.Invoke(this, new ShowSubtitleEventArgs(sub));
             };
             playerController.PlayerInitialized += () =>
             {
@@ -87,9 +89,13 @@ namespace XamarinPlayer.Tizen.Services
             playerController.OnSeek(to);
         }
 
-        public void SetSource(ClipDefinition clip)
+        public void SetSource(object o)
         {
-            ControllerConnector.DisconnectDataProvider(playerController, dataProvider);
+            if (!(o is ClipDefinition))
+                return;
+            var clip = o as ClipDefinition;
+
+            DataProviderConnector.Disconnect(playerController, dataProvider);
 
             dataProvider = dataProviders.CreateDataProvider(clip);
 
@@ -100,7 +106,7 @@ namespace XamarinPlayer.Tizen.Services
                     playerController.OnSetDrmConfiguration(drm);
             }
 
-            ControllerConnector.ConnectDataProvider(playerController, dataProvider);
+            DataProviderConnector.Connect(playerController, dataProvider);
 
             dataProvider.Start();
         }
@@ -128,7 +134,7 @@ namespace XamarinPlayer.Tizen.Services
         {
             if (disposing)
             {
-                ControllerConnector.DisconnectDataProvider(playerController, dataProvider);
+                DataProviderConnector.Disconnect(playerController, dataProvider);
                 playerController?.Dispose();
                 playerController = null;
                 dataProvider?.Dispose();

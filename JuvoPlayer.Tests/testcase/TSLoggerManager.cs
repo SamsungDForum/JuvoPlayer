@@ -1,7 +1,7 @@
 using System;
 using System.IO;
 using System.Reflection;
-using JuvoPlayer.Common.Logging;
+using JuvoLogger;
 using NUnit.Framework;
 
 namespace JuvoPlayer.Tests

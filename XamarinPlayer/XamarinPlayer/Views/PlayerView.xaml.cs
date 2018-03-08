@@ -1,5 +1,4 @@
 ﻿using System;
-using JuvoPlayer.Common;
 using Xamarin.Forms;
 using Xamarin.Forms.Xaml;
 using XamarinPlayer.Services;
@@ -17,12 +16,13 @@ namespace XamarinPlayer.Views
         private int _hideTime;
         private bool _isPageDisappeared = false;
         private bool _isShowing = false;
+        private bool _errorOccured = false;
 
-        public static readonly BindableProperty ContentSourceProperty = BindableProperty.Create("ContentSource", typeof(ClipDefinition), typeof(PlayerView), default(ClipDefinition));
-        public ClipDefinition ContentSource
+        public static readonly BindableProperty ContentSourceProperty = BindableProperty.Create("ContentSource", typeof(object), typeof(PlayerView), null);
+        public object ContentSource
         {
             set { SetValue(ContentSourceProperty, value); }
-            get { return (ClipDefinition)GetValue(ContentSourceProperty); }
+            get { return (object)GetValue(ContentSourceProperty); }
         }
 
         public PlayerView()
@@ -33,7 +33,6 @@ namespace XamarinPlayer.Views
 
             _playerService = DependencyService.Get<IPlayerService>(DependencyFetchTarget.NewInstance);
             _playerService.StateChanged += OnPlayerStateChanged;
-            _playerService.PlaybackCompleted += OnPlaybackCompleted;
             _playerService.ShowSubtitle += OnShowSubtitle;
 
             PlayButton.Clicked += (s, e) => { Play(); };
@@ -153,7 +152,7 @@ namespace XamarinPlayer.Views
 
         private void OnPlaybackCompleted()
         {
-            if (_playerService.State != PlayerState.Error)
+            if (!_errorOccured)
             {
                 // Schedule closing the page on the next event loop. Give application time to finish
                 // playbackCompleted event handling
@@ -173,7 +172,7 @@ namespace XamarinPlayer.Views
             }
         }
 
-        private void OnShowSubtitle(Subtitle subtitle)
+        private void OnShowSubtitle(object sender, ShowSubtitleEventArgs e)
         {
         }
 
@@ -215,13 +214,19 @@ namespace XamarinPlayer.Views
             return true;
         }
 
-        private void OnPlayerStateChanged(object sender, Services.PlayerStateChangedEventArgs e)
+        private void OnPlayerStateChanged(object sender, PlayerStateChangedEventArgs e)
         {
-            if (e.State == PlayerState.Error)
+            if (e.State == PlayerState.Completed)
+            {
+                OnPlaybackCompleted();
+            }
+            else if (e.State == PlayerState.Error)
             {
                 BackButton.IsEnabled = false;
                 ForwardButton.IsEnabled = false;
                 PlayButton.IsEnabled = false;
+
+                _errorOccured = true;
             }
             else if (e.State == PlayerState.Prepared)
             {

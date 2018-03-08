@@ -2,15 +2,13 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
 VisualStudioVersion = 15.0.27130.2036
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "JuvoPlayer", "JuvoPlayer\JuvoPlayer\JuvoPlayer.csproj", "{EBB6F3F3-6F9F-4075-AC21-FFF75B1A450D}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "JuvoPlayer", "JuvoPlayer\JuvoPlayer.csproj", "{EBB6F3F3-6F9F-4075-AC21-FFF75B1A450D}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "RTSP", "thirdparty\RTSP\RTSP.csproj", "{1AC958D3-6FDF-4D80-8155-1A4F17C2C008}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "JuvoPlayer.TizenTests", "JuvoPlayer.TizenTests\JuvoPlayer.TizenTests.csproj", "{38617D04-C61E-4707-8497-2EAF96521525}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "NUIPlayer", "NUIPlayer\NUIPlayer\NUIPlayer.csproj", "{4D7CF89D-65FA-4FEE-94CA-8E68AC7D8A77}"
-EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "JuvoPlayer.Common", "JuvoPlayer.Common\JuvoPlayer.Common.csproj", "{2031849B-4F72-4D3A-B970-DA72C720C6E6}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "NUIPlayer", "NUIPlayer\NUIPlayer.csproj", "{4D7CF89D-65FA-4FEE-94CA-8E68AC7D8A77}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "XamarinPlayer", "XamarinPlayer\XamarinPlayer\XamarinPlayer.csproj", "{36BC28B7-C4F2-4227-93A4-F521E95D967D}"
 EndProject
@@ -21,6 +19,10 @@ EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "MpdParser", "MpdParser\MpdParser.csproj", "{545C3645-60CB-43AA-B1FD-E0E15568C67C}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Tizen.TV.D2tv.Smplayer", "thirdparty\Tizen.TV.D2tv.Smplayer\Tizen.TV.D2tv.Smplayer.csproj", "{423C4553-E0A3-4A3D-8414-FEE2C149DEBE}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "JuvoLogger", "JuvoLogger\JuvoLogger.csproj", "{3B12A628-9EB3-477C-8C06-58E15A2E4BC2}"
+EndProject
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "JuvoLogger.Tizen", "JuvoLogger.Tizen\JuvoLogger.Tizen.csproj", "{9B3F0A66-2F65-46CB-B827-2C7CDE7ED29F}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -77,18 +79,6 @@ Global
 		{4D7CF89D-65FA-4FEE-94CA-8E68AC7D8A77}.Release|x64.Build.0 = Debug|Any CPU
 		{4D7CF89D-65FA-4FEE-94CA-8E68AC7D8A77}.Release|x86.ActiveCfg = Debug|Any CPU
 		{4D7CF89D-65FA-4FEE-94CA-8E68AC7D8A77}.Release|x86.Build.0 = Debug|Any CPU
-		{2031849B-4F72-4D3A-B970-DA72C720C6E6}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{2031849B-4F72-4D3A-B970-DA72C720C6E6}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{2031849B-4F72-4D3A-B970-DA72C720C6E6}.Debug|x64.ActiveCfg = Debug|Any CPU
-		{2031849B-4F72-4D3A-B970-DA72C720C6E6}.Debug|x64.Build.0 = Debug|Any CPU
-		{2031849B-4F72-4D3A-B970-DA72C720C6E6}.Debug|x86.ActiveCfg = Debug|Any CPU
-		{2031849B-4F72-4D3A-B970-DA72C720C6E6}.Debug|x86.Build.0 = Debug|Any CPU
-		{2031849B-4F72-4D3A-B970-DA72C720C6E6}.Release|Any CPU.ActiveCfg = Debug|Any CPU
-		{2031849B-4F72-4D3A-B970-DA72C720C6E6}.Release|Any CPU.Build.0 = Debug|Any CPU
-		{2031849B-4F72-4D3A-B970-DA72C720C6E6}.Release|x64.ActiveCfg = Debug|Any CPU
-		{2031849B-4F72-4D3A-B970-DA72C720C6E6}.Release|x64.Build.0 = Debug|Any CPU
-		{2031849B-4F72-4D3A-B970-DA72C720C6E6}.Release|x86.ActiveCfg = Debug|Any CPU
-		{2031849B-4F72-4D3A-B970-DA72C720C6E6}.Release|x86.Build.0 = Debug|Any CPU
 		{36BC28B7-C4F2-4227-93A4-F521E95D967D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{36BC28B7-C4F2-4227-93A4-F521E95D967D}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{36BC28B7-C4F2-4227-93A4-F521E95D967D}.Debug|x64.ActiveCfg = Debug|Any CPU
@@ -149,6 +139,30 @@ Global
 		{423C4553-E0A3-4A3D-8414-FEE2C149DEBE}.Release|x64.Build.0 = Release|Any CPU
 		{423C4553-E0A3-4A3D-8414-FEE2C149DEBE}.Release|x86.ActiveCfg = Release|Any CPU
 		{423C4553-E0A3-4A3D-8414-FEE2C149DEBE}.Release|x86.Build.0 = Release|Any CPU
+		{3B12A628-9EB3-477C-8C06-58E15A2E4BC2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{3B12A628-9EB3-477C-8C06-58E15A2E4BC2}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{3B12A628-9EB3-477C-8C06-58E15A2E4BC2}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{3B12A628-9EB3-477C-8C06-58E15A2E4BC2}.Debug|x64.Build.0 = Debug|Any CPU
+		{3B12A628-9EB3-477C-8C06-58E15A2E4BC2}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{3B12A628-9EB3-477C-8C06-58E15A2E4BC2}.Debug|x86.Build.0 = Debug|Any CPU
+		{3B12A628-9EB3-477C-8C06-58E15A2E4BC2}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{3B12A628-9EB3-477C-8C06-58E15A2E4BC2}.Release|Any CPU.Build.0 = Release|Any CPU
+		{3B12A628-9EB3-477C-8C06-58E15A2E4BC2}.Release|x64.ActiveCfg = Release|Any CPU
+		{3B12A628-9EB3-477C-8C06-58E15A2E4BC2}.Release|x64.Build.0 = Release|Any CPU
+		{3B12A628-9EB3-477C-8C06-58E15A2E4BC2}.Release|x86.ActiveCfg = Release|Any CPU
+		{3B12A628-9EB3-477C-8C06-58E15A2E4BC2}.Release|x86.Build.0 = Release|Any CPU
+		{9B3F0A66-2F65-46CB-B827-2C7CDE7ED29F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{9B3F0A66-2F65-46CB-B827-2C7CDE7ED29F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{9B3F0A66-2F65-46CB-B827-2C7CDE7ED29F}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{9B3F0A66-2F65-46CB-B827-2C7CDE7ED29F}.Debug|x64.Build.0 = Debug|Any CPU
+		{9B3F0A66-2F65-46CB-B827-2C7CDE7ED29F}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{9B3F0A66-2F65-46CB-B827-2C7CDE7ED29F}.Debug|x86.Build.0 = Debug|Any CPU
+		{9B3F0A66-2F65-46CB-B827-2C7CDE7ED29F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{9B3F0A66-2F65-46CB-B827-2C7CDE7ED29F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{9B3F0A66-2F65-46CB-B827-2C7CDE7ED29F}.Release|x64.ActiveCfg = Release|Any CPU
+		{9B3F0A66-2F65-46CB-B827-2C7CDE7ED29F}.Release|x64.Build.0 = Release|Any CPU
+		{9B3F0A66-2F65-46CB-B827-2C7CDE7ED29F}.Release|x86.ActiveCfg = Release|Any CPU
+		{9B3F0A66-2F65-46CB-B827-2C7CDE7ED29F}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
