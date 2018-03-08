@@ -14,7 +14,7 @@
 using System;
 using System.Threading.Tasks;
 using JuvoPlayer.Common;
-using JuvoPlayer.Common.Logging;
+using JuvoLogger;
 using Tizen.Multimedia;
 
 namespace JuvoPlayer.Player.MMPlayer

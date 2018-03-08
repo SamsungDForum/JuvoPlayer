@@ -1,8 +1,7 @@
 using System.IO;
 using System.Reflection;
-using JuvoPlayer.Common.Logging;
 
-namespace JuvoPlayer.Logging
+namespace JuvoLogger.Tizen
 {
     public class TizenLoggerManager : LoggerManager
     {

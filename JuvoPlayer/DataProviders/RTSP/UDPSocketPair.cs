@@ -2,7 +2,7 @@ using System;
 using System.Net;
 using System.Net.Sockets;
 using System.Threading;
-using JuvoPlayer.Common.Logging;
+using JuvoLogger;
 using Rtsp;
 
 namespace JuvoPlayer.DataProviders.RTSP

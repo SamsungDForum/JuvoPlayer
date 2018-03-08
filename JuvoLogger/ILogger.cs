@@ -1,6 +1,6 @@
 using System.Runtime.CompilerServices;
 
-namespace JuvoPlayer.Common.Logging
+namespace JuvoLogger
 {
     public interface ILogger
     {

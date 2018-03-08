@@ -1,5 +1,5 @@
 using JuvoPlayer.Common;
-using JuvoPlayer.Common.Logging;
+using JuvoLogger;
 using System;
 using System.Linq;
 

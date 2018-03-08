@@ -21,7 +21,7 @@ using MpdParser.Node.Atom;
 using System.Net;
 using System.Threading;
 
-using JuvoPlayer.Common.Logging;
+using JuvoLogger;
 
 namespace MpdParser.Node.Dynamic
 {

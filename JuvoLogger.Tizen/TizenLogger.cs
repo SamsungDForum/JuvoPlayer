@@ -1,6 +1,4 @@
-using JuvoPlayer.Common.Logging;
-
-namespace JuvoPlayer.Logging
+namespace JuvoLogger.Tizen
 {
     public class TizenLogger : LoggerBase
     {
@@ -16,25 +14,25 @@ namespace JuvoPlayer.Logging
             switch (level)
             {
                 case LogLevel.Verbose:
-                    tizenLog = Tizen.Log.Verbose;
+                    tizenLog = global::Tizen.Log.Verbose;
                     break;
                 case LogLevel.Debug:
-                    tizenLog = Tizen.Log.Debug;
+                    tizenLog = global::Tizen.Log.Debug;
                     break;
                 case LogLevel.Info:
-                    tizenLog = Tizen.Log.Info;
+                    tizenLog = global::Tizen.Log.Info;
                     break;
                 case LogLevel.Warn:
-                    tizenLog = Tizen.Log.Warn;
+                    tizenLog = global::Tizen.Log.Warn;
                     break;
                 case LogLevel.Error:
-                    tizenLog = Tizen.Log.Error;
+                    tizenLog = global::Tizen.Log.Error;
                     break;
                 case LogLevel.Fatal:
-                    tizenLog = Tizen.Log.Fatal;
+                    tizenLog = global::Tizen.Log.Fatal;
                     break;
                 default:
-                    tizenLog = Tizen.Log.Error;
+                    tizenLog = global::Tizen.Log.Error;
                     break;
             }
 

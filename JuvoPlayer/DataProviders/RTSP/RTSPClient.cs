@@ -18,7 +18,7 @@ using System.Net.Sockets;
 using System.Threading;
 using System.Threading.Tasks;
 using JuvoPlayer.Common;
-using JuvoPlayer.Common.Logging;
+using JuvoLogger;
 using JuvoPlayer.SharedBuffers;
 using Rtsp.Messages;
 

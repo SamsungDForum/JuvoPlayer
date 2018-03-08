@@ -14,7 +14,7 @@
 using System;
 using System.IO;
 using System.Runtime.InteropServices;
-using JuvoPlayer.Common.Logging;
+using JuvoLogger;
 
 namespace JuvoPlayer.Demuxers.FFmpeg.Interop
 {

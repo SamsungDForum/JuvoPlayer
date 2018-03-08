@@ -1,5 +1,5 @@
 using System;
-using JuvoPlayer.Common.Logging;
+using JuvoLogger;
 using NUnit.Framework;
 
 namespace JuvoPlayer.Tests

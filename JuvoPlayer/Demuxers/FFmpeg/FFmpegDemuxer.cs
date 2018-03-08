@@ -16,7 +16,7 @@ using System.IO;
 using System.Runtime.InteropServices;
 using System.Threading.Tasks;
 using JuvoPlayer.Common;
-using JuvoPlayer.Common.Logging;
+using JuvoLogger;
 using JuvoPlayer.Demuxers.FFmpeg.Interop;
 using JuvoPlayer.SharedBuffers;
 

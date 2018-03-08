@@ -1,6 +1,6 @@
 using System;
 using ElmSharp;
-using JuvoPlayer.Logging;
+using JuvoLogger.Tizen;
 using Tizen;
 using XamarinPlayer.Services;
 

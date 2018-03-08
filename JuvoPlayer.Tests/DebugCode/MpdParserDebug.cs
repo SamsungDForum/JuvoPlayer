@@ -1,6 +1,6 @@
 ﻿using System;
 using System.Net;
-using JuvoPlayer.Common.Logging;
+using JuvoLogger;
 using MpdParser;
 using NUnit.Framework;
 

@@ -1,7 +1,7 @@
 using System.Linq;
 using System.Text;
 using JuvoPlayer.Common;
-using JuvoPlayer.Common.Logging;
+using JuvoLogger;
 using Tizen.TV.Security.DrmDecrypt.emeCDM;
 
 namespace JuvoPlayer.Drms.Cenc
