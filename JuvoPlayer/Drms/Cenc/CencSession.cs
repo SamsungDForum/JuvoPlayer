@@ -27,6 +27,8 @@ namespace JuvoPlayer.Drms.Cenc
 
         private readonly DRMDescription drmDescription;
         private readonly AsyncContextThread thread = new AsyncContextThread();
+        private Task initializationTask;
+        private bool isDisposing;
 
         private CencSession(DRMInitData initData, DRMDescription drmDescription)
         {
@@ -34,31 +36,39 @@ namespace JuvoPlayer.Drms.Cenc
             {
                 throw new NullReferenceException("Licence url is null");
             }
-
             this.initData = initData;
             this.drmDescription = drmDescription;
         }
 
-        private void ReleaseUnmanagedResources()
+        private void DestroyCDM()
         {
-            if (CDMInstance != null)
-                thread.Factory.Run(() => IEME.destroy(CDMInstance)).Wait();
+            if (CDMInstance == null)
+                return;
 
+            IEME.destroy(CDMInstance);
             CDMInstance = null;
         }
 
         public override void Dispose()
         {
-            ReleaseUnmanagedResources();
-            base.Dispose();
-            thread?.Dispose();
+            isDisposing = true;
 
             GC.SuppressFinalize(this);
+
+            if (initializationTask?.Status == TaskStatus.Running)
+                initializationTask?.Wait();
+
+            thread.Factory.Run(() => DestroyCDM());
+
+            base.Dispose();
+
+            thread?.Join();
+            thread?.Dispose();
         }
 
         ~CencSession()
         {
-            ReleaseUnmanagedResources();
+            DestroyCDM();
         }
 
         private static string Encode(byte[] initData)
@@ -215,24 +225,44 @@ namespace JuvoPlayer.Drms.Cenc
         {
         }
 
+        private void CheckDisposing()
+        {
+            if (isDisposing)
+                throw new TaskCanceledException();
+        }
+
         public Task Initialize()
         {
-            return thread.Factory.Run(() => StartLicenceChallengeOnIemeThread());
+            initializationTask = thread.Factory.Run(() => StartLicenceChallengeOnIemeThread());
+            return initializationTask;
         }
 
         private void StartLicenceChallengeOnIemeThread()
         {
-            CreateIeme();
-            currentSessionId = CreateSession();
-            Logger.Info("Created session: " + currentSessionId);
-            GenerateRequest();
-            var responseText = AcquireLicenceFromServer();
-            InstallLicence(responseText);
-            licenceInstalled = true;
+            try
+            {
+                CreateIeme();
+                currentSessionId = CreateSession();
+                Logger.Info("Created session: " + currentSessionId);
+                GenerateRequest();
+
+                var responseText = AcquireLicenceFromServer();
+                InstallLicence(responseText);
+                licenceInstalled = true;
+            }
+            catch (TaskCanceledException)
+            {
+            }
+            catch (Exception)
+            {
+                throw;
+            }
         }
 
         private void CreateIeme()
         {
+            CheckDisposing();
+
             var keySystem = CencUtils.GetKeySystemName(initData.SystemId);
             CDMInstance = IEME.create(this, keySystem, false, CDM_MODEL.E_CDM_MODEL_DEFAULT);
             if (CDMInstance == null)
@@ -241,20 +271,26 @@ namespace JuvoPlayer.Drms.Cenc
 
         private string CreateSession()
         {
+            CheckDisposing();
+
             string sessionId = null;
             var status = CDMInstance.session_create(SessionType.kTemporary, ref sessionId);
             if (status != Status.kSuccess)
                 throw new DrmException(EmeStatusConverter.Convert(status));
             return sessionId;
         }
-
+         
         private void GenerateRequest()
         {
+            CheckDisposing();
+
             if (initData.InitData == null)
                 throw new DrmException(ErrorMessage.InvalidArgument);
+
             var status = CDMInstance.session_generateRequest(currentSessionId, InitDataType.kCenc, Encode(initData.InitData));
             if (status != Status.kSuccess)
                 throw new DrmException(EmeStatusConverter.Convert(status));
+
             // During session_generateRequest, we should got called back synchronously via onMessage and we should receive
             // requestData.
             if (requestData == null)
@@ -263,6 +299,8 @@ namespace JuvoPlayer.Drms.Cenc
 
         private string AcquireLicenceFromServer()
         {
+            CheckDisposing();
+
             HttpClient client = new HttpClient();
             var licenceUrl = new Uri(drmDescription.LicenceUrl);
 
@@ -295,6 +333,8 @@ namespace JuvoPlayer.Drms.Cenc
 
         private void InstallLicence(string responseText)
         {
+            CheckDisposing();
+
             var status = CDMInstance.session_update(currentSessionId, responseText);
             if (status != Status.kSuccess)
                 throw new DrmException(EmeStatusConverter.Convert(status));
