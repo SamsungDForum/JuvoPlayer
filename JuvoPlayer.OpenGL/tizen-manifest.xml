@@ -1,0 +1,10 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<manifest package="Tizen.TV.NUI.GLApplication.JuvoPlayer.OpenGL" version="1.0.0" api-version="4" xmlns="http://tizen.org/ns/packages">
+    <profile name="tv" />
+    <ui-application appid="Tizen.TV.NUI.GLApplication.JuvoPlayer.OpenGL" exec="JuvoPlayer.OpenGL.dll" multiple="false" nodisplay="false" taskmanage="true" splash-screen-display="true" type="dotnet-inhouse" launch_mode="single">
+        <icon>Tizen.TV.NUI.GLApplication.JuvoPlayer.OpenGL.png</icon>
+        <label>Tizen.TV.NUI.GLApplication.JuvoPlayer.OpenGL</label>
+    </ui-application>
+    <shortcut-list />
+    <provides-appdefined-privileges />
+</manifest>
