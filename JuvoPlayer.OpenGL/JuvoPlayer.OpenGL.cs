@@ -11,6 +11,8 @@ using Tizen.Applications;
 
 using JuvoPlayer.OpenGL.Services;
 using JuvoPlayer.Common;
+using System.Linq;
+using System.Windows.Input;
 
 namespace Tizen.TV.NUI.GLApplication.JuvoPlayer.OpenGL
 {
@@ -201,8 +203,29 @@ namespace Tizen.TV.NUI.GLApplication.JuvoPlayer.OpenGL
         private int playerTimeDuration = 0;
         private int playerState = 0;
 
+        private List<DetailContentData> contentList { get; set; }
+        private List<Clip> clips;
+
+        protected ICommand CreateFocusedCommand() {
+            return null;
+        }
+
         private void InitMenu()
         {
+            var clipsPath = global::System.IO.Path.Combine(global::System.IO.Path.GetDirectoryName(global::System.IO.Path.GetDirectoryName(Current.ApplicationInfo.ExecutablePath)), "shared", "res", "videoclips.json");
+            clips = ClipReaderService.ReadClips(clipsPath);
+
+            contentList = clips.Select(o => new DetailContentData() {
+                Bg = o.Image,
+                Clip = o.ClipDetailsHandle,
+                ContentFocusedCommand = CreateFocusedCommand(),
+                Description = o.Description,
+                Image = o.Image,
+                Source = o.Source,
+                Title = o.Title,
+            }).ToList();
+
+
             string path = global::System.IO.Path.Combine(global::System.IO.Path.GetDirectoryName(global::System.IO.Path.GetDirectoryName(Current.ApplicationInfo.ExecutablePath)), "res/");
             string home = "/home/owner/JuvoGL/";
             home = path;
@@ -210,9 +233,19 @@ namespace Tizen.TV.NUI.GLApplication.JuvoPlayer.OpenGL
             LoadFont(home + "fonts/akashi.ttf");
             loadedTiles = new Queue<Tile>();
             loadedIcons = new Queue<Icon>();
-            for (int i = 0; i < tiles.Length; ++i) {
+            /*for (int i = 0; i < tiles.Length; ++i) {
                 tiles[i].imgPath = home + "tiles/" + tiles[i].imgPath;
                 LoadTile(tiles[i]);
+            }*/
+            tilesNumberTarget = contentList.Count;
+            for (int i = 0; i < contentList.Count; ++i) {
+                Tile tile = new Tile {
+                    imgPath = home + "tiles/" + tiles[i % tiles.Length].imgPath,
+                    description = contentList[i].Description ?? "",
+                    name = contentList[i].Title ?? ""
+                };
+                Log.Info("JuvoGL", "Loading Tile " + tile.name + " (" + tile.description + "), " + tile.imgPath);
+                LoadTile(tile);
             }
             for(int i = 0; i < icons.Length; ++i) {
                 icons[i].imgPath = home + "icons/" + icons[i].imgPath;
@@ -221,7 +254,8 @@ namespace Tizen.TV.NUI.GLApplication.JuvoPlayer.OpenGL
             SelectTile(selectedTile);
             selectedTile = 0;
             menuShown = 1;
-            ShowLoader(1, 0); //ShowMenu(menuShown); // loader takes care of it
+            ShowLoader(1, 0);
+            // ShowMenu(menuShown); // loader takes care of it
         }
 
         protected override void OnCreate()
@@ -410,14 +444,12 @@ namespace Tizen.TV.NUI.GLApplication.JuvoPlayer.OpenGL
                 case "0":
                     menuShown = (menuShown + 1) % 2;
                     ShowMenu(menuShown);
-                    /*progressBarShown = (menuShown + 1) % 2;
-                    fixed (byte* name = GetBytes(tiles[selectedTile].name)) {
-                        UpdatePlaybackControls(progressBarShown, 0, playerTimeCurrentPosition, playerTimeDuration, name, tiles[selectedTile].name.Length);
-                    }*/
                     Log.Info("JuvoGL", "0");
                     break;
                 case "Return":
-                    ClipDefinition clip = new ClipDefinition() {
+                    if (selectedTile >= contentList.Count)
+                        return;
+                    /*ClipDefinition clip = new ClipDefinition() {
                         Title = "HLS",
                         Type = "hls",
                         Url = "http://multiplatform-f.akamaihd.net/i/multi/april11/sintel/sintel-hd_,512x288_450_b,640x360_700_b,768x432_1000_b,1024x576_1400_m,.mp4.csmil/master.m3u8",
@@ -425,30 +457,24 @@ namespace Tizen.TV.NUI.GLApplication.JuvoPlayer.OpenGL
                         Poster = "",
                         Description = "",
                         DRMDatas = new List<DRMDescription>()
-                    };
+                    };*/
 
                     if(player == null)
-                        player = new PlayerService(); // FREEZES HERE !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
-                    player.SetSource(clip);
+                        player = new PlayerService();
+
+                    Log.Info("JuvoGL", "Playing " + contentList[selectedTile].Title + " (" + contentList[selectedTile].Source + ")");
+                    player.SetSource(contentList[selectedTile].Clip);
 
                     if (menuShown == 0)
                         break;
                     menuShown = 0;
                     ShowMenu(menuShown);
-                    /*progressBarShown = (menuShown + 1) % 2;
-                    fixed (byte* name = GetBytes(tiles[selectedTile].name)) {
-                        UpdatePlaybackControls(progressBarShown, 0, playerTimeCurrentPosition, playerTimeDuration, name, tiles[selectedTile].name.Length);
-                    }*/
                     break;
                 case "XF86Back":
                     if (menuShown == 1)
                         break;
                     menuShown = 1;
                     ShowMenu(menuShown);
-                    /*progressBarShown = (menuShown + 1) % 2;
-                    fixed (byte* name = GetBytes(tiles[selectedTile].name)) {
-                        UpdatePlaybackControls(progressBarShown, 0, playerTimeCurrentPosition, playerTimeDuration, name, tiles[selectedTile].name.Length);
-                    }*/
                     break;
                 case "XF86Exit":
                     Exit();
@@ -480,9 +506,6 @@ namespace Tizen.TV.NUI.GLApplication.JuvoPlayer.OpenGL
                     break;
             }
             progressBarShown = (menuShown + 1) % 2;
-            /*fixed (byte* name = GetBytes(tiles[selectedTile].name)) {
-                UpdatePlaybackControls(progressBarShown, playerState, playerTimeCurrentPosition, playerTimeDuration, name, tiles[selectedTile].name.Length);
-            }*/
         }
 
         private void UpdateUI() {
@@ -521,8 +544,8 @@ namespace Tizen.TV.NUI.GLApplication.JuvoPlayer.OpenGL
                 progressBarShown = 0;
                 Log.Info("JuvoGL", "Hiding progress bar (" + (DateTime.Now - lastAction).TotalMilliseconds + " >= " + prograssBarFadeout.TotalMilliseconds + ").");
             }
-            fixed (byte* name = GetBytes(tiles[selectedTile].name)) {
-                UpdatePlaybackControls(progressBarShown, playerState, playerTimeCurrentPosition, playerTimeDuration, name, tiles[selectedTile].name.Length);
+            fixed (byte* name = GetBytes(/*tiles[selectedTile].name*/ contentList[selectedTile].Title)) {
+                UpdatePlaybackControls(progressBarShown, playerState, playerTimeCurrentPosition, playerTimeDuration, name, /*tiles[selectedTile].name.Length*/ contentList[selectedTile].Title.Length);
             }
         }
 
