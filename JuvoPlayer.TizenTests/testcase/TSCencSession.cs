@@ -3,9 +3,9 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
-using System.Runtime.Serialization.Formatters.Binary;
 using System.Text;
 using System.Threading.Tasks;
+using System.Xml.Serialization;
 using JuvoPlayer.Common;
 using JuvoLogger;
 using JuvoPlayer.Drms;
@@ -19,10 +19,29 @@ namespace JuvoPlayer.TizenTests
     {
         private byte[] initData;
 
-        private List<EncryptedPacket> packets = new List<EncryptedPacket>();
+        // This test needs one, arbitrary, video encrypted packet from Google Dash OOPS Cenc content.
+        // To dump one encrypted packet add following code to JuvoPlayer.Player.PacketStream class:
+        // private bool serialized;
+        // ...
+        // public void OnAppendPacket(Packet packet) {
+        //  ...
+        //  if (packet is EncryptedPacket && packet.StreamType == StreamType.Video && serialized == false)
+        //  {
+        //     EncryptedPacket encryptedPacket = (EncryptedPacket) packet;
+        //     using (var stream = File.Create("/tmp/encrypted_packet.xml"))
+        //     {
+        //         new XmlSerializer(encryptedPacket.GetType()).Serialize(stream, encryptedPacket);
+        //     }
+        //     serialized = true;
+        //  }
+        //  ...
+        // }
+        private EncryptedPacket encryptedPacket;
 
         private LoggerManager savedLoggerManager;
-        private static byte[] PlayreadySystemId = new byte[] { 0x9a, 0x04, 0xf0, 0x79, 0x98, 0x40, 0x42, 0x86, 0xab, 0x92, 0xe6, 0x5b, 0xe0, 0x88, 0x5f, 0x95 };
+
+        private static byte[] PlayreadySystemId = new byte[]
+            {0x9a, 0x04, 0xf0, 0x79, 0x98, 0x40, 0x42, 0x86, 0xab, 0x92, 0xe6, 0x5b, 0xe0, 0x88, 0x5f, 0x95};
 
         [OneTimeSetUp]
         public void OneTimeSetUp()
@@ -32,19 +51,21 @@ namespace JuvoPlayer.TizenTests
             LoggerManager.Configure("JuvoPlayer=Verbose", CreateLoggerFunc);
 
             var assembly = Assembly.GetExecutingAssembly();
-            var drmInitDataStream = assembly.GetManifestResourceStream("JuvoPlayer.TizenTests.res.drm.init_data");
+            var drmInitDataStream = assembly.GetManifestResourceStream("JuvoPlayer.TizenTests.res.drm.google_dash_encrypted_init_data");
             using (var reader = new BinaryReader(drmInitDataStream))
             {
-                initData = reader.ReadBytes((int)drmInitDataStream.Length);
+                initData = reader.ReadBytes((int) drmInitDataStream.Length);
             }
+
             Assert.That(initData, Is.Not.Null);
 
-            var encryptedPacketsStream = assembly.GetManifestResourceStream("JuvoPlayer.TizenTests.res.drm.encrypted_packets_list.bin");
-            BinaryFormatter formatter = new BinaryFormatter();
-            packets = (List<EncryptedPacket>) formatter.Deserialize(encryptedPacketsStream);
-
-            Assert.That(packets, Is.Not.Null);
-            Assert.That(packets.Count, Is.GreaterThan(0));
+            var encryptedPacketStream =
+                assembly.GetManifestResourceStream(
+                    "JuvoPlayer.TizenTests.res.drm.google_dash_encrypted_video_packet_pts_10_01.xml");
+            XmlSerializer serializer = new XmlSerializer(typeof(EncryptedPacket));
+            encryptedPacket = (EncryptedPacket) serializer.Deserialize(encryptedPacketStream);
+            
+            Assert.That(encryptedPacket, Is.Not.Null);
         }
 
         private static LoggerBase CreateLoggerFunc(string channel, LogLevel level)
@@ -60,7 +81,8 @@ namespace JuvoPlayer.TizenTests
 
         private static DRMDescription CreateDrmDescription()
         {
-            var licenceUrl = "http://dash-mse-test.appspot.com/api/drm/playready?drm_system=playready&source=YOUTUBE&video_id=03681262dc412c06&ip=0.0.0.0&ipbits=0&expire=19000000000&sparams=ip,ipbits,expire,drm_system,source,video_id&signature=3BB038322E72D0B027F7233A733CD67D518AF675.2B7C39053DA46498D23F3BCB87596EF8FD8B1669&key=test_key1";
+            var licenceUrl =
+                "http://dash-mse-test.appspot.com/api/drm/playready?drm_system=playready&source=YOUTUBE&video_id=03681262dc412c06&ip=0.0.0.0&ipbits=0&expire=19000000000&sparams=ip,ipbits,expire,drm_system,source,video_id&signature=3BB038322E72D0B027F7233A733CD67D518AF675.2B7C39053DA46498D23F3BCB87596EF8FD8B1669&key=test_key1";
             var configuration = new DRMDescription()
             {
                 Scheme = CencUtils.GetScheme(PlayreadySystemId),
@@ -133,25 +155,21 @@ namespace JuvoPlayer.TizenTests
             using (var drmSession = CencSession.Create(drmInitData, configuration))
             {
                 await drmSession.Initialize();
-
-                foreach (var encrypted in packets)
+                using (var decrypted = await drmSession.DecryptPacket(encryptedPacket))
                 {
-                    using (var decrypted = await drmSession.DecryptPacket(encrypted))
-                    {
-                        Assert.That(decrypted, Is.Not.Null);
-                        Assert.That(decrypted, Is.InstanceOf<DecryptedEMEPacket>());
+                    Assert.That(decrypted, Is.Not.Null);
+                    Assert.That(decrypted, Is.InstanceOf<DecryptedEMEPacket>());
 
-                        var decryptedEme = decrypted as DecryptedEMEPacket;
+                    var decryptedEme = decrypted as DecryptedEMEPacket;
 
-                        Assert.That(decryptedEme.Dts, Is.EqualTo(encrypted.Dts));
-                        Assert.That(decryptedEme.Pts, Is.EqualTo(encrypted.Pts));
-                        Assert.That(decryptedEme.IsEOS, Is.EqualTo(encrypted.IsEOS));
-                        Assert.That(decryptedEme.IsKeyFrame, Is.EqualTo(encrypted.IsKeyFrame));
-                        Assert.That(decryptedEme.StreamType, Is.EqualTo(encrypted.StreamType));
-                        Assert.That(decryptedEme.HandleSize, Is.Not.Null);
-                        Assert.That(decryptedEme.HandleSize.handle, Is.GreaterThan(0));
-                        Assert.That(decryptedEme.HandleSize.size, Is.EqualTo(encrypted.Data.Length));
-                    }
+                    Assert.That(decryptedEme.Dts, Is.EqualTo(encryptedPacket.Dts));
+                    Assert.That(decryptedEme.Pts, Is.EqualTo(encryptedPacket.Pts));
+                    Assert.That(decryptedEme.IsEOS, Is.EqualTo(encryptedPacket.IsEOS));
+                    Assert.That(decryptedEme.IsKeyFrame, Is.EqualTo(encryptedPacket.IsKeyFrame));
+                    Assert.That(decryptedEme.StreamType, Is.EqualTo(encryptedPacket.StreamType));
+                    Assert.That(decryptedEme.HandleSize, Is.Not.Null);
+                    Assert.That(decryptedEme.HandleSize.handle, Is.GreaterThan(0));
+                    Assert.That(decryptedEme.HandleSize.size, Is.EqualTo(encryptedPacket.Data.Length));
                 }
             }
         }
