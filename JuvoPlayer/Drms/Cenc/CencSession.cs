@@ -51,19 +51,16 @@ namespace JuvoPlayer.Drms.Cenc
 
         public override void Dispose()
         {
-            isDisposing = true;
-
             GC.SuppressFinalize(this);
+
+            isDisposing = true;
 
             if (initializationTask?.Status == TaskStatus.Running)
                 initializationTask?.Wait();
 
-            thread.Factory.Run(() => DestroyCDM());
+            thread.Factory.Run(() => DestroyCDM()).Wait();
 
             base.Dispose();
-
-            thread?.Join();
-            thread?.Dispose();
         }
 
         ~CencSession()
@@ -225,7 +222,7 @@ namespace JuvoPlayer.Drms.Cenc
         {
         }
 
-        private void CheckDisposing()
+        private void CancelIfDisposing()
         {
             if (isDisposing)
                 throw new TaskCanceledException();
@@ -261,7 +258,7 @@ namespace JuvoPlayer.Drms.Cenc
 
         private void CreateIeme()
         {
-            CheckDisposing();
+            CancelIfDisposing();
 
             var keySystem = CencUtils.GetKeySystemName(initData.SystemId);
             CDMInstance = IEME.create(this, keySystem, false, CDM_MODEL.E_CDM_MODEL_DEFAULT);
@@ -271,7 +268,7 @@ namespace JuvoPlayer.Drms.Cenc
 
         private string CreateSession()
         {
-            CheckDisposing();
+            CancelIfDisposing();
 
             string sessionId = null;
             var status = CDMInstance.session_create(SessionType.kTemporary, ref sessionId);
@@ -282,7 +279,7 @@ namespace JuvoPlayer.Drms.Cenc
          
         private void GenerateRequest()
         {
-            CheckDisposing();
+            CancelIfDisposing();
 
             if (initData.InitData == null)
                 throw new DrmException(ErrorMessage.InvalidArgument);
@@ -299,7 +296,7 @@ namespace JuvoPlayer.Drms.Cenc
 
         private string AcquireLicenceFromServer()
         {
-            CheckDisposing();
+            CancelIfDisposing();
 
             HttpClient client = new HttpClient();
             var licenceUrl = new Uri(drmDescription.LicenceUrl);
@@ -333,7 +330,7 @@ namespace JuvoPlayer.Drms.Cenc
 
         private void InstallLicence(string responseText)
         {
-            CheckDisposing();
+            CancelIfDisposing();
 
             var status = CDMInstance.session_update(currentSessionId, responseText);
             if (status != Status.kSuccess)
