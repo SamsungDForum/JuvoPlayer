@@ -112,6 +112,19 @@ namespace JuvoPlayer.TizenTests
         }
 
         [Test]
+        public void Dispose_WhenInitializationInProgress_DoesNotThrow()
+        {
+            var drmInitData = CreateDrmInitData();
+            var configuration = CreateDrmDescription();
+            Assert.DoesNotThrow(() =>
+            {
+                var drmSession = CencSession.Create(drmInitData, configuration);
+                drmSession.Initialize();
+                drmSession.Dispose();
+            });
+        }
+
+        [Test]
         public async Task DecryptPacket_WhenPacketIsValid_DecryptsSuccessfully()
         {
             var drmInitData = CreateDrmInitData();
