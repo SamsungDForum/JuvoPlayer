@@ -19,8 +19,8 @@
 
   <ItemGroup>
     <EmbeddedResource Include="..\JuvoPlayer.Tests\testcase\videoclips.json" Link="testcase\videoclips.json" />
-    <EmbeddedResource Include="res\drm\encrypted_packets_list.bin" />
-    <EmbeddedResource Include="res\drm\init_data" />
+    <EmbeddedResource Include="res\drm\google_dash_encrypted_video_packet_pts_10_01.xml" />
+    <EmbeddedResource Include="res\drm\google_dash_encrypted_init_data" />
   </ItemGroup>
 
   <ItemGroup>
@@ -29,8 +29,8 @@
   </ItemGroup>
 
   <ItemGroup>
-    <None Remove="res\drm\encrypted_packets_list.bin" />
-    <None Remove="res\drm\init_data" />
+    <None Remove="res\drm\google_dash_encrypted_init_data" />
+    <None Remove="res\drm\google_dash_encrypted_video_packet_pts_10_01.xml" />
   </ItemGroup>
 
   <ItemGroup>
