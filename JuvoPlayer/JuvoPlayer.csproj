@@ -101,9 +101,6 @@
     <None Update="lib\libswscale.so.4.7.103">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
-    <None Update="shared\res\videoclips.json">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
   </ItemGroup>
 
 </Project>
