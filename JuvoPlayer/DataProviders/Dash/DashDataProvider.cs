@@ -67,6 +67,21 @@ namespace JuvoPlayer.DataProviders.Dash
 
         public void OnChangeRepresentation(StreamDefinition stream)
         {
+            switch (stream.StreamType)
+            {
+                case StreamType.Audio:
+                    if (audios == null || audios.Count() <= stream.Id)
+                        break;
+                    audioPipeline.ChangeMedia(audios[stream.Id]);
+                    break;
+                case StreamType.Video:
+                    if (videos == null || videos.Count() <= stream.Id)
+                        break;
+                    videoPipeline.ChangeMedia(videos[stream.Id]);
+                    break;
+                default:
+                    break;
+            }
         }
 
         public void OnPaused()
