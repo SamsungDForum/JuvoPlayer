@@ -45,6 +45,12 @@ namespace JuvoPlayer.Drms.Cenc
             if (CDMInstance == null)
                 return;
 
+            if (currentSessionId != null)
+            {
+                CDMInstance.session_close(currentSessionId);
+                currentSessionId = null;
+            }
+
             IEME.destroy(CDMInstance);
             CDMInstance = null;
         }
