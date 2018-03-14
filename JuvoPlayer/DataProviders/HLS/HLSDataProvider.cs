@@ -24,6 +24,8 @@ namespace JuvoPlayer.DataProviders.HLS
 
         private readonly IDemuxer demuxer;
         private readonly ClipDefinition currentClip;
+
+        private readonly object appendPacketEventLock = new object();
         private readonly ManualResetEvent appendPacketEvent = new ManualResetEvent(false);
 
         private TimeSpan currentTime;
@@ -59,9 +61,16 @@ namespace JuvoPlayer.DataProviders.HLS
         {
             if (packet != null)
             {
-                while (packet.Pts - currentTime > MagicBufferTime && !appendPacketEvent.SafeWaitHandle.IsClosed)
+                while (packet.Pts - currentTime > MagicBufferTime)
+                {
+                    lock (appendPacketEventLock)
+                    {
+                        if (appendPacketEvent.SafeWaitHandle.IsClosed)
+                            return;
+                    }
+                    // Wait has to be outside the lock!
                     appendPacketEvent.WaitOne();
-
+                }
                 PacketReady?.Invoke(packet);
                 return;
             }
@@ -79,12 +88,12 @@ namespace JuvoPlayer.DataProviders.HLS
 
         public void OnPaused()
         {
-            demuxer?.Paused();
+            demuxer.Paused();
         }
 
         public void OnPlayed()
         {
-            demuxer?.Played();
+            demuxer.Played();
         }
 
         public void OnSeek(TimeSpan time)
@@ -102,7 +111,7 @@ namespace JuvoPlayer.DataProviders.HLS
 
         public void Start()
         {
-            demuxer?.StartForUrl(currentClip.Url);
+            demuxer.StartForUrl(currentClip.Url);
         }
 
         public void OnTimeUpdated(TimeSpan time)
@@ -113,8 +122,14 @@ namespace JuvoPlayer.DataProviders.HLS
 
         public void Dispose()
         {
-            appendPacketEvent?.Dispose();
-            demuxer?.Dispose();
+            // Make sure that Set and Dispose are atomic for appendPacketEvent
+            lock (appendPacketEventLock)
+            {
+                appendPacketEvent.Set();
+                appendPacketEvent.Dispose();
+            }
+
+            demuxer.Dispose();
         }
     }
 }
