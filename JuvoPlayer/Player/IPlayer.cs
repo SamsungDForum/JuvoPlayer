@@ -33,8 +33,7 @@ namespace JuvoPlayer.Player
         void SetSubtitleDelay(int offset);
         void Stop();
 
-        void SetAudioStreamConfig(AudioStreamConfig config);
-        void SetVideoStreamConfig(VideoStreamConfig config);
+        void SetStreamConfig(StreamConfig config);
         void AppendPacket(Packet packet);
     }
 }
