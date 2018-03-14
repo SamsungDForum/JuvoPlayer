@@ -30,6 +30,9 @@ namespace XamarinPlayer.Tizen
         {
             if (evt.ExceptionObject is Exception e)
             {
+                if (e.InnerException != null)
+                    e = e.InnerException;
+
                 Log.Error(Tag, e.Message);
                 Log.Error(Tag, e.StackTrace);
             }
