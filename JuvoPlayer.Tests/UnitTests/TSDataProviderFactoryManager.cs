@@ -18,7 +18,7 @@ namespace JuvoPlayer.Tests.UnitTests
             public event PacketReady PacketReady;
             public event StreamsFound StreamsFound;
 
-            public void OnChangeRepresentation(int representationId)
+            public void OnChangeRepresentation(StreamDefinition stream)
             {
                 throw new NotImplementedException();
             }

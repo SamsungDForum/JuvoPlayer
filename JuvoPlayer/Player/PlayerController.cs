@@ -98,7 +98,7 @@ namespace JuvoPlayer.Player
             TimeUpdated?.Invoke(time);
         }
 
-        public void ChangeRepresentation(int pid)
+        public void ChangeRepresentation(StreamDefinition stream)
         {
         }
         public void OnClipDurationChanged(TimeSpan duration)

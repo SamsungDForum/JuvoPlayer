@@ -22,7 +22,7 @@ namespace JuvoPlayer.DataProviders
 
     public interface IDataProvider : IDisposable
     {
-        void OnChangeRepresentation(int representationId);
+        void OnChangeRepresentation(StreamDefinition stream);
         void OnPaused();
         void OnPlayed();
         void OnSeek(TimeSpan time);
