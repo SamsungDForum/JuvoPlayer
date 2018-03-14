@@ -81,9 +81,8 @@ namespace JuvoPlayer.DataProviders.HLS
             PacketReady?.Invoke(Packet.CreateEOS(StreamType.Video));
         }
 
-        public void OnChangeRepresentation(int representationId)
+        public void OnChangeRepresentation(StreamDefinition stream)
         {
-
         }
 
         public void OnPaused()

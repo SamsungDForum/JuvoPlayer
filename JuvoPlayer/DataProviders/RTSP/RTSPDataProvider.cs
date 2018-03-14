@@ -58,7 +58,7 @@ namespace JuvoPlayer.DataProviders.RTSP
             PacketReady?.Invoke(Packet.CreateEOS(StreamType.Video));
         }
 
-        public void OnChangeRepresentation(int representationId)
+        public void OnChangeRepresentation(StreamDefinition stream)
         {
 
         }

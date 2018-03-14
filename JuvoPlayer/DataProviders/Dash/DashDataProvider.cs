@@ -62,7 +62,7 @@ namespace JuvoPlayer.DataProviders.Dash
             PacketReady?.Invoke(packet);
         }
 
-        public void OnChangeRepresentation(int representationId)
+        public void OnChangeRepresentation(StreamDefinition stream)
         {
         }
 

@@ -25,7 +25,7 @@ namespace JuvoPlayer.Player
     public interface IPlayerController : IDisposable
     {
         #region ui_slots
-        void ChangeRepresentation(int pid);
+        void ChangeRepresentation(StreamDefinition stream);
         void OnPause();
         void OnPlay();
         void OnSeek(TimeSpan time);
