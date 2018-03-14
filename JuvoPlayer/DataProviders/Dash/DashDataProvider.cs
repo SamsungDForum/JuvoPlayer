@@ -2,6 +2,8 @@ using System;
 using JuvoPlayer.Common;
 using JuvoLogger;
 using MpdParser;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace JuvoPlayer.DataProviders.Dash
 {
@@ -100,15 +102,12 @@ namespace JuvoPlayer.DataProviders.Dash
             {
                 Logger.Info(period.ToString());
 
-                Media audio = Find(period, "en", MediaType.Audio) ??
-                        Find(period, "und", MediaType.Audio)??
-                        Find(period, null, MediaType.Audio);
+                var audios = period.Sets.Where(o => o.Type.Value == MediaType.Audio).ToList();
+                var audio = GetDefaultMedia(audios);
 
-                Media video = Find(period, "en", MediaType.Video) ??
-                        Find(period, "und", MediaType.Video)??
-                        Find(period, null, MediaType.Video);
+                var videos = period.Sets.Where(o => o.Type.Value == MediaType.Video).ToList();
+                var video = GetDefaultMedia(videos);
 
-                // TODO(p.galiszewsk): is it possible to have period without audio/video?
                 if (audio != null && video != null)
                 {
                     Logger.Info("Video: " + video);
@@ -117,7 +116,6 @@ namespace JuvoPlayer.DataProviders.Dash
                     Logger.Info("Audio: " + audio);
                     audioPipeline.Start(audio);
 
-                    // TODO(p.galiszewsk): unify time management
                     if (period.Duration.HasValue)
                         ClipDurationChanged?.Invoke(period.Duration.Value);
 
@@ -126,38 +124,18 @@ namespace JuvoPlayer.DataProviders.Dash
             }
         }
 
-        private static Media Find(MpdParser.Period p, string language, MediaType type, MediaRole role = MediaRole.Main)
+        private static Media GetDefaultMedia(IEnumerable<Media> medias)
         {
-            Media res = null;
-            for(int i=0;i<p.Sets.Length;i++)
-            {
-                if (p.Sets[i].Type.Value != type)
-                {
-                    continue;
-                }
-
-                if (language != null)
-                {
-                    if (p.Sets[i].Lang != language)
-                    {
-                        continue;
-                    }
-                }
-
-                if (p.Sets[i].HasRole(role))
-                {
-                    res = p.Sets[i];
-                    break;
-                }
-
-                if (p.Sets[i].Roles.Length == 0)
-                {
-                    res =  p.Sets[i];
-                    break;
-                }
-            }
-
-            return res;
+            Media media = null;
+            if (medias.Count() == 1)
+                media = medias.First();
+            if (media == null)
+                media = medias.FirstOrDefault(o => o.HasRole(MediaRole.Main));
+            if (media == null)
+                media = medias.FirstOrDefault(o => o.Lang == "en");
+            if (media == null)
+                media = medias.FirstOrDefault();
+            return media;
         }
 
         public void OnTimeUpdated(TimeSpan time)
