@@ -16,6 +16,9 @@ namespace JuvoPlayer.DataProviders.Dash
         private DashMediaPipeline audioPipeline;
         private DashMediaPipeline videoPipeline;
 
+        private List<Media> videos;
+        private List<Media> audios;
+
         public DashDataProvider(
             DashManifest manifest,
             DashMediaPipeline audioPipeline,
@@ -102,14 +105,17 @@ namespace JuvoPlayer.DataProviders.Dash
             {
                 Logger.Info(period.ToString());
 
-                var audios = period.Sets.Where(o => o.Type.Value == MediaType.Audio).ToList();
+                audios = period.Sets.Where(o => o.Type.Value == MediaType.Audio).ToList();
                 var audio = GetDefaultMedia(audios);
 
-                var videos = period.Sets.Where(o => o.Type.Value == MediaType.Video).ToList();
+                videos = period.Sets.Where(o => o.Type.Value == MediaType.Video).ToList();
                 var video = GetDefaultMedia(videos);
 
                 if (audio != null && video != null)
                 {
+                    StreamsFound?.Invoke(audios.Select((o, i) => new StreamDefinition() { Id = i + 1, Lang = o.Lang, StreamType = StreamType.Audio }).ToList());
+                    StreamsFound?.Invoke(videos.Select((o, i) => new StreamDefinition() { Id = i + 1, Lang = o.Lang, StreamType = StreamType.Video }).ToList());
+
                     Logger.Info("Video: " + video);
                     videoPipeline.Start(video);
 
