@@ -25,7 +25,6 @@ namespace JuvoPlayer.Player
     public interface IPlayerController : IDisposable
     {
         #region ui_slots
-        void ChangeRepresentation(StreamDefinition stream);
         void OnPause();
         void OnPlay();
         void OnSeek(TimeSpan time);
@@ -41,7 +40,6 @@ namespace JuvoPlayer.Player
         void OnSetDrmConfiguration(DRMDescription description);
         void OnStreamConfigReady(StreamConfig config);
         void OnPacketReady(Packet packet);
-        void OnStreamsFound(List<StreamDefinition> streams);
         #endregion
 
         #region getters

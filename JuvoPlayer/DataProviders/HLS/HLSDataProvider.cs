@@ -12,6 +12,7 @@
 // this software or its derivatives.
 
 using System;
+using System.Collections.Generic;
 using System.Threading;
 using JuvoPlayer.Common;
 using JuvoPlayer.Demuxers;
@@ -129,6 +130,11 @@ namespace JuvoPlayer.DataProviders.HLS
             }
 
             demuxer.Dispose();
+        }
+
+        public List<StreamDefinition> GetStreams(StreamType streamType)
+        {
+            return new List<StreamDefinition>();
         }
     }
 }

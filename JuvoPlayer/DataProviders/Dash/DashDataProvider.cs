@@ -112,6 +112,16 @@ namespace JuvoPlayer.DataProviders.Dash
             return manifest.Document.Type != DocumentType.Dynamic;
         }
 
+        public List<StreamDefinition> GetStreams(StreamType streamType)
+        {
+            if (streamType == StreamType.Audio)
+                return audios.Select((o, i) => new StreamDefinition() { Id = i, Lang = o.Lang, StreamType = StreamType.Audio }).ToList();
+            if (streamType == StreamType.Video)
+                return videos.Select((o, i) => new StreamDefinition() { Id = i, Lang = o.Lang, StreamType = StreamType.Video }).ToList();
+
+            return new List<StreamDefinition>();
+        }
+
         public void Start()
         {
             Logger.Info("Dash start.");
@@ -128,9 +138,6 @@ namespace JuvoPlayer.DataProviders.Dash
 
                 if (audio != null && video != null)
                 {
-                    StreamsFound?.Invoke(audios.Select((o, i) => new StreamDefinition() { Id = i + 1, Lang = o.Lang, StreamType = StreamType.Audio }).ToList());
-                    StreamsFound?.Invoke(videos.Select((o, i) => new StreamDefinition() { Id = i + 1, Lang = o.Lang, StreamType = StreamType.Video }).ToList());
-
                     Logger.Info("Video: " + video);
                     videoPipeline.Start(video);
 

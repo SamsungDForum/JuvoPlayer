@@ -12,6 +12,7 @@
 // this software or its derivatives.
 
 using System;
+using System.Collections.Generic;
 using JuvoPlayer.Common;
 using JuvoPlayer.DataProviders;
 using JuvoPlayer.Demuxers;
@@ -102,6 +103,11 @@ namespace JuvoPlayer.DataProviders.RTSP
         {
             rtpClient?.Stop();
             demuxer.Dispose();
+        }
+
+        public List<StreamDefinition> GetStreams(StreamType streamType)
+        {
+            return new List<StreamDefinition>();
         }
     }
 }
