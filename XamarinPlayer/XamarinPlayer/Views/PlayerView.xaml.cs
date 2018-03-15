@@ -92,6 +92,10 @@ namespace XamarinPlayer.Views
                 {
                     Rewind();
                 }
+                else if (e.Contains("Blue"))
+                {
+                    Options.IsVisible = !Options.IsVisible;
+                }
             }
         }
 
@@ -276,6 +280,9 @@ namespace XamarinPlayer.Views
                 }
 
                 UpdatePlayTime();
+
+                if (Options.IsVisible)
+                    return;
 
                 if (_hideTime > 0)
                 {
