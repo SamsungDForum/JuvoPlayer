@@ -1,8 +1,10 @@
 using JuvoLogger;
 using JuvoLogger.Tizen;
+using JuvoPlayer.Tests;
+using JuvoPlayer.Tests.UnitTests;
 using NUnit.Framework;
 
-namespace JuvoPlayer.Tests
+namespace JuvoPlayer.TizenTests.IntegrationTests
 {
     [TestFixture]
     public class TSTizenLogger

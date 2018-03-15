@@ -1,15 +1,12 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Text;
 using System.Threading.Tasks;
 using JuvoPlayer.Common;
 using JuvoPlayer.Drms;
 using JuvoPlayer.Player;
 using NSubstitute;
-using NSubstitute.Core;
 using NUnit.Framework;
 
-namespace JuvoPlayer.Tests
+namespace JuvoPlayer.Tests.UnitTests
 {
     [TestFixture]
     public class TSPacketStream

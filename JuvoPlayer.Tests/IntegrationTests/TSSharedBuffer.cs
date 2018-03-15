@@ -4,7 +4,7 @@ using System.Threading.Tasks;
 using JuvoPlayer.SharedBuffers;
 using NUnit.Framework;
 
-namespace JuvoPlayer.Tests
+namespace JuvoPlayer.Tests.IntegrationTests
 {
     [TestFixture]
     [Description("Tests for SharedBuffer class - cyclic, expandable byte array buffer.")]
