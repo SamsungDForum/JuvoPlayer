@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Linq;
 using JuvoPlayer.Common;
 using JuvoPlayer.DataProviders;
 using JuvoPlayer.DataProviders.Dash;
@@ -87,6 +89,54 @@ namespace XamarinPlayer.Tizen.Services
         public void SeekTo(TimeSpan to)
         {
             playerController.OnSeek(to);
+        }
+
+        public void ChangeStream(Stream stream)
+        {
+            var streamDefinition = new StreamDefinition()
+            {
+                Id = stream.Id,
+                Lang = stream.Lang,
+                StreamType = ToJuvoStreamType(stream.Type)
+            };
+
+            dataProvider.OnChangeRepresentation(streamDefinition);
+        }
+
+        public List<Stream> GetStreams(Stream.StreamType streamType)
+        {
+            var streams = dataProvider.GetStreams(ToJuvoStreamType(streamType));
+            return streams.Select(o => new Stream() { Id = o.Id, Lang = o.Lang, Type = ToStreamType(o.StreamType) }).ToList();
+        }
+
+        private StreamType ToJuvoStreamType(Stream.StreamType streamType)
+        {
+            switch (streamType)
+            {
+                case Stream.StreamType.Audio:
+                    return StreamType.Audio;
+                case Stream.StreamType.Video:
+                    return StreamType.Video;
+                case Stream.StreamType.Subtitle:
+                    return StreamType.Subtitle;
+                default:
+                    throw new IndexOutOfRangeException();
+            }
+        }
+
+        private Stream.StreamType ToStreamType(StreamType streamType)
+        {
+            switch (streamType)
+            {
+                case StreamType.Audio:
+                    return Stream.StreamType.Audio;
+                case StreamType.Video:
+                    return Stream.StreamType.Video;
+                case StreamType.Subtitle:
+                    return Stream.StreamType.Subtitle;
+                default:
+                    throw new IndexOutOfRangeException();
+            }
         }
 
         public void SetSource(object o)
