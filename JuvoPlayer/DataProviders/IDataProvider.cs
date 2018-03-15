@@ -31,6 +31,7 @@ namespace JuvoPlayer.DataProviders
 
         bool IsSeekingSupported();
         void Start();
+        List<StreamDefinition> GetStreams(StreamType streamType);
 
         event ClipDurationChanged ClipDurationChanged;
         event DRMInitDataFound DRMInitDataFound;

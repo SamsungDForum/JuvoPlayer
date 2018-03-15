@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using JuvoPlayer.Common;
 using JuvoPlayer.DataProviders;
 using NUnit.Framework;
@@ -60,6 +61,11 @@ namespace JuvoPlayer.Tests.UnitTests
 
             public void Dispose()
             {
+            }
+
+            public List<StreamDefinition> GetStreams(StreamType streamType)
+            {
+                throw new NotImplementedException();
             }
         }
 
