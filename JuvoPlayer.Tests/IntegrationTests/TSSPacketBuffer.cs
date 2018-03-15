@@ -2,11 +2,10 @@
 using System.Threading;
 using System.Threading.Tasks;
 using JuvoPlayer.Common;
-using JuvoPlayer.Player;
 using JuvoPlayer.Player.SMPlayer;
 using NUnit.Framework;
 
-namespace JuvoPlayer.Tests
+namespace JuvoPlayer.Tests.IntegrationTests
 {
     [TestFixture]
     [Description("Tests for PacketBuffer class - buffer for Packet objects that can act as a FIFO or a Prority Queue (sorted by Dts/Pts, Asc/Desc).")]

@@ -1,14 +1,12 @@
-﻿using JuvoPlayer.Common;
-using JuvoLogger;
-using JuvoPlayer.Drms.DummyDrm;
-using NUnit.Framework;
-using System;
-using System.Collections.Generic;
-using System.Linq;
+﻿using System;
 using System.Text;
 using System.Threading.Tasks;
+using JuvoLogger;
+using JuvoPlayer.Common;
+using JuvoPlayer.Drms.DummyDrm;
+using NUnit.Framework;
 
-namespace JuvoPlayer.TizenTests.testcase
+namespace JuvoPlayer.TizenTests.IntegrationTests
 {
     [TestFixture]
     public class TSDummyDrmSession

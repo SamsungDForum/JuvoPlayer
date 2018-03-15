@@ -6,7 +6,7 @@ using JuvoPlayer.Common;
 using JuvoPlayer.Utils;
 using NUnit.Framework;
 
-namespace JuvoPlayer.Tests
+namespace JuvoPlayer.Tests.IntegrationTests
 {
     [TestFixture]
     [Description("")]

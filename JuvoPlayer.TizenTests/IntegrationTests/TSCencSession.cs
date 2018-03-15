@@ -6,13 +6,13 @@ using System.Reflection;
 using System.Text;
 using System.Threading.Tasks;
 using System.Xml.Serialization;
-using JuvoPlayer.Common;
 using JuvoLogger;
+using JuvoPlayer.Common;
 using JuvoPlayer.Drms;
 using JuvoPlayer.Drms.Cenc;
 using NUnit.Framework;
 
-namespace JuvoPlayer.TizenTests
+namespace JuvoPlayer.TizenTests.IntegrationTests
 {
     [TestFixture]
     public class TSCencSession

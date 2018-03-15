@@ -1,6 +1,6 @@
 using JuvoLogger;
 
-namespace JuvoPlayer.Tests
+namespace JuvoPlayer.Tests.UnitTests
 {
     // This class is used to check logging properties, like function names and line numbers.
     // Test cases assume that each logging statement is done in fixed lline.
