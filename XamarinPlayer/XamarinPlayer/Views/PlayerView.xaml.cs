@@ -41,6 +41,8 @@ namespace XamarinPlayer.Views
 
             ForwardButton.Clicked += (s, e) => { Forward(); };
 
+            SettingsButton.Clicked += (s, e) => { HandleOptions(); };
+
             PropertyChanged += PlayerViewPropertyChanged;
             
             MessagingCenter.Subscribe<IKeyEventSender, string>(this, "KeyDown", (s, e) => { KeyEventHandler(e); });
@@ -256,6 +258,7 @@ namespace XamarinPlayer.Views
                 BackButton.IsEnabled = false;
                 ForwardButton.IsEnabled = false;
                 PlayButton.IsEnabled = false;
+                SettingsButton.IsEnabled = false;
 
                 _errorOccured = true;
             }
@@ -268,6 +271,7 @@ namespace XamarinPlayer.Views
                 }
 
                 PlayButton.IsEnabled = true;
+                SettingsButton.IsEnabled = true;
                 PlayButton.Focus();
 
                 _playerService.Start();
