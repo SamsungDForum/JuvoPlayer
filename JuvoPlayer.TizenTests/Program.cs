@@ -1,6 +1,7 @@
 using NUnitLite;
 using NUnit.Common;
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -15,36 +16,59 @@ namespace JuvoPlayer.TizenTests
     class Program : ServiceApplication
     {
         private static ILogger Logger = LoggerManager.GetInstance().GetLogger("UT");
+        private ReceivedAppControl receivedAppControl;
+        private string[] nunitArgs;
 
-        Assembly GetAssemblyByName(string name)
+        private static Assembly GetAssemblyByName(string name)
         {
             return AppDomain.CurrentDomain.GetAssemblies().
                 SingleOrDefault(assembly => assembly.GetName().Name == name);
         }
 
-        protected override void OnCreate()
+        private void ExtractNunitArgs()
         {
-            base.OnCreate();
-            SynchronizationContext.SetSynchronizationContext(new SynchronizationContext());
-
-            RunTests(typeof(Program).GetTypeInfo().Assembly);
-            RunTests(GetAssemblyByName("JuvoPlayer.Tests"));
-
-            global::System.Environment.Exit(0);
+            nunitArgs = new string[0];
+            if (receivedAppControl.ExtraData.TryGet("--nunit-args", out string unparsed))
+            {
+                nunitArgs = unparsed.Split(":");
+            }
         }
 
-        private static void RunTests(Assembly assembly)
+        private void RunTests(Assembly assembly)
         {
             StringBuilder sb = new StringBuilder();
             string dllName = assembly.ManifestModule.ToString();
 
             using (ExtendedTextWrapper writer = new ExtendedTextWrapper(new StringWriter(sb)))
             {
-                new AutoRun(assembly).Execute(
-                    new string[] {"--result=/tmp/" + Path.GetFileNameWithoutExtension(dllName) + ".xml"}, writer, Console.In);
+                string[] finalNunitArgs = nunitArgs.Concat(new string[] { "--result=/tmp/" + Path.GetFileNameWithoutExtension(dllName) + ".xml" }).ToArray();
+                new AutoRun(assembly).Execute(finalNunitArgs, writer, Console.In);
             }
 
             Logger.Info(sb.ToString());
+        }
+
+        private void RunJuvoPlayerTizenTests()
+        {
+            RunTests(typeof(Program).GetTypeInfo().Assembly);
+        }
+
+        private void RunJuvoPlayerTests()
+        {
+            Assembly.Load("JuvoPlayer.Tests");
+            RunTests(GetAssemblyByName("JuvoPlayer.Tests"));
+        }
+
+        protected override void OnAppControlReceived(AppControlReceivedEventArgs e)
+        {
+            receivedAppControl = e.ReceivedAppControl;
+            ExtractNunitArgs();
+            SynchronizationContext.SetSynchronizationContext(new SynchronizationContext());
+            RunJuvoPlayerTizenTests();
+            RunJuvoPlayerTests();
+
+            base.OnAppControlReceived(e);
+            global::System.Environment.Exit(0);
         }
 
         static void Main(string[] args)
