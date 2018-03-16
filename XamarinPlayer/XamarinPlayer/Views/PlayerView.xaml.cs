@@ -65,7 +65,10 @@ namespace XamarinPlayer.Views
                 }
                 else
                 {
-                    Hide();
+                    if (Options.IsVisible)
+                        Options.IsVisible = false;
+                    else
+                        Hide();
                 }
             }
             else
@@ -94,27 +97,32 @@ namespace XamarinPlayer.Views
                 }
                 else if (e.Contains("Blue"))
                 {
-                    Options.IsVisible = !Options.IsVisible;
-                    if (Options.IsVisible)
-                    {
-                        if (AudioTrack.ItemsSource == null)
-                        {
-                            AudioTrack.ItemsSource = _playerService.GetStreams(Stream.StreamType.Audio);
-                            AudioTrack.ItemDisplayBinding = new Binding("Lang");
-                            AudioTrack.SelectedIndex = 0;
-                            AudioTrack.SelectedIndexChanged += (sender, args) =>
-                            {
-                                if (AudioTrack.SelectedIndex != -1)
-                                {
-                                    var stream = (Stream)AudioTrack.ItemsSource[AudioTrack.SelectedIndex];
-
-                                    _playerService.ChangeStream(stream);
-                                }
-                            };
-                        }
-                        AudioTrack.Focus();                         
-                    }
+                    HandleOptions();
                 }
+            }
+        }
+
+        private void HandleOptions()
+        {
+            Options.IsVisible = !Options.IsVisible;
+            if (Options.IsVisible)
+            {
+                if (AudioTrack.ItemsSource == null)
+                {
+                    AudioTrack.ItemsSource = _playerService.GetStreams(Stream.StreamType.Audio);
+                    AudioTrack.ItemDisplayBinding = new Binding("Lang");
+                    AudioTrack.SelectedIndex = 0;
+                    AudioTrack.SelectedIndexChanged += (sender, args) =>
+                    {
+                        if (AudioTrack.SelectedIndex != -1)
+                        {
+                            var stream = (Stream)AudioTrack.ItemsSource[AudioTrack.SelectedIndex];
+
+                            _playerService.ChangeStream(stream);
+                        }
+                    };
+                }
+                AudioTrack.Focus();
             }
         }
 
