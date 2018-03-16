@@ -133,6 +133,20 @@
                                     WidthRequest="100"
                                     IsEnabled="False"/>
                         </AbsoluteLayout>
+                        <AbsoluteLayout HorizontalOptions="End">
+                            <Image x:Name="SettingsImage"
+                                   Source="btn_viewer_control_settings_normal.png"
+                                   HorizontalOptions="Center"
+                                   VerticalOptions="Center"
+                                   AbsoluteLayout.LayoutBounds="0,0,1,1" AbsoluteLayout.LayoutFlags="All"/>
+                            <Button x:Name="SettingsButton"
+                                    Opacity="0.1"
+                                    AbsoluteLayout.LayoutBounds="0,0,1,1" AbsoluteLayout.LayoutFlags="All"
+                                    HorizontalOptions="Fill"
+                                    VerticalOptions="Fill"
+                                    WidthRequest="80"
+                                    IsEnabled="False"/>
+                        </AbsoluteLayout>
                     </StackLayout>
                 </StackLayout>
             </StackLayout>
