@@ -23,14 +23,14 @@ namespace JuvoPlayer.Demuxers.FFmpeg.Interop
         private static readonly ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
 
         #region filenames
-        const string libavcodecFilename = @"libavcodec.so.57";
+        const string libavcodecFilename = @"libavcodec-juvo.so.57";
         const string libavdeviceFilename = @"";
-        const string libavfilterFilename = @"libavfilter.so.6";
-        const string libavformatFilename = @"libavformat.so.57";
-        const string libavutilFilename = @"libavutil.so.55";
+        const string libavfilterFilename = @"libavfilter-juvo.so.6";
+        const string libavformatFilename = @"libavformat-juvo.so.57";
+        const string libavutilFilename = @"libavutil-juvo.so.55";
         const string libpostprocFilename = @"";
-        const string libswresampleFilename = @"libswresample.so.2";
-        const string libswscaleFilename = @"libswscale.so.4";
+        const string libswresampleFilename = @"libswresample-juvo.so.2";
+        const string libswscaleFilename = @"libswscale-juvo.so.4";
         #endregion
 
         #region libidl
