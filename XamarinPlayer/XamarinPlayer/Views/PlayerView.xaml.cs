@@ -41,7 +41,7 @@ namespace XamarinPlayer.Views
 
             ForwardButton.Clicked += (s, e) => { Forward(); };
 
-            SettingsButton.Clicked += (s, e) => { HandleOptions(); };
+            SettingsButton.Clicked += (s, e) => { HandleSettings(); };
 
             PropertyChanged += PlayerViewPropertyChanged;
             
@@ -67,8 +67,8 @@ namespace XamarinPlayer.Views
                 }
                 else
                 {
-                    if (Options.IsVisible)
-                        Options.IsVisible = false;
+                    if (Settings.IsVisible)
+                        Settings.IsVisible = false;
                     else
                         Hide();
                 }
@@ -99,15 +99,15 @@ namespace XamarinPlayer.Views
                 }
                 else if (e.Contains("Blue"))
                 {
-                    HandleOptions();
+                    HandleSettings();
                 }
             }
         }
 
-        private void HandleOptions()
+        private void HandleSettings()
         {
-            Options.IsVisible = !Options.IsVisible;
-            if (Options.IsVisible)
+            Settings.IsVisible = !Settings.IsVisible;
+            if (Settings.IsVisible)
             {
                 if (AudioTrack.ItemsSource == null)
                 {
@@ -312,7 +312,7 @@ namespace XamarinPlayer.Views
 
                 UpdatePlayTime();
 
-                if (Options.IsVisible)
+                if (Settings.IsVisible)
                     return;
 
                 if (_hideTime > 0)

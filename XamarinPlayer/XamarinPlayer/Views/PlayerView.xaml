@@ -29,7 +29,7 @@
                                 Tapped="OnTapGestureRecognizerControllerTapped"/>
                         </BoxView.GestureRecognizers>
                     </BoxView>
-                    <AbsoluteLayout x:Name="Options" IsVisible="false" BackgroundColor="#B0101010" HorizontalOptions="Center">
+                    <AbsoluteLayout x:Name="Settings" IsVisible="false" BackgroundColor="#B0101010" HorizontalOptions="Center">
                         <StackLayout Padding="20, 10">
                             <StackLayout Orientation="Horizontal">
                                 <Label Text="Video quality" TextColor="White" HorizontalOptions="Start" VerticalOptions="Center" WidthRequest="200" />
