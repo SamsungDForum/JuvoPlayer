@@ -2,7 +2,7 @@ using System;
 using JuvoLogger;
 using NUnit.Framework;
 
-namespace JuvoPlayer.Tests
+namespace JuvoPlayer.Tests.UnitTests
 {
     [TestFixture]
     class TSLoggerBase

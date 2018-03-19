@@ -3,7 +3,7 @@ using JuvoPlayer.Common;
 using JuvoPlayer.DataProviders;
 using NUnit.Framework;
 
-namespace JuvoPlayer.Tests
+namespace JuvoPlayer.Tests.UnitTests
 {
     [TestFixture]
     [Description("")]

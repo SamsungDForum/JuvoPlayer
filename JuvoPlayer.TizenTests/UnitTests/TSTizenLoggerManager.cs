@@ -2,7 +2,7 @@ using JuvoLogger;
 using JuvoLogger.Tizen;
 using NUnit.Framework;
 
-namespace JuvoPlayer.TizenTests
+namespace JuvoPlayer.TizenTests.UnitTests
 {
     [TestFixture]
     class TSTizenLoggerManager
