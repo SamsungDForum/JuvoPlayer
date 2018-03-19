@@ -41,6 +41,8 @@ namespace XamarinPlayer.Views
 
             ForwardButton.Clicked += (s, e) => { Forward(); };
 
+            SettingsButton.Clicked += (s, e) => { HandleSettings(); };
+
             PropertyChanged += PlayerViewPropertyChanged;
             
             MessagingCenter.Subscribe<IKeyEventSender, string>(this, "KeyDown", (s, e) => { KeyEventHandler(e); });
@@ -65,7 +67,10 @@ namespace XamarinPlayer.Views
                 }
                 else
                 {
-                    Hide();
+                    if (Settings.IsVisible)
+                        Settings.IsVisible = false;
+                    else
+                        Hide();
                 }
             }
             else
@@ -92,6 +97,34 @@ namespace XamarinPlayer.Views
                 {
                     Rewind();
                 }
+                else if (e.Contains("Blue"))
+                {
+                    HandleSettings();
+                }
+            }
+        }
+
+        private void HandleSettings()
+        {
+            Settings.IsVisible = !Settings.IsVisible;
+            if (Settings.IsVisible)
+            {
+                if (AudioTrack.ItemsSource == null)
+                {
+                    AudioTrack.ItemsSource = _playerService.GetStreamsDescription(StreamDescription.StreamType.Audio);
+                    AudioTrack.ItemDisplayBinding = new Binding("Description");
+                    AudioTrack.SelectedIndex = 0;
+                    AudioTrack.SelectedIndexChanged += (sender, args) =>
+                    {
+                        if (AudioTrack.SelectedIndex != -1)
+                        {
+                            var stream = (StreamDescription)AudioTrack.ItemsSource[AudioTrack.SelectedIndex];
+
+                            _playerService.ChangeActiveStream(stream);
+                        }
+                    };
+                }
+                AudioTrack.Focus();
             }
         }
 
@@ -225,6 +258,7 @@ namespace XamarinPlayer.Views
                 BackButton.IsEnabled = false;
                 ForwardButton.IsEnabled = false;
                 PlayButton.IsEnabled = false;
+                SettingsButton.IsEnabled = false;
 
                 _errorOccured = true;
             }
@@ -237,6 +271,7 @@ namespace XamarinPlayer.Views
                 }
 
                 PlayButton.IsEnabled = true;
+                SettingsButton.IsEnabled = true;
                 PlayButton.Focus();
 
                 _playerService.Start();
@@ -276,6 +311,9 @@ namespace XamarinPlayer.Views
                 }
 
                 UpdatePlayTime();
+
+                if (Settings.IsVisible)
+                    return;
 
                 if (_hideTime > 0)
                 {

@@ -60,20 +60,7 @@ namespace JuvoPlayer.Player
 
             this.config = config;
 
-            switch (this.config.StreamType())
-            {
-                case StreamType.Audio:
-                    player.SetAudioStreamConfig(this.config as AudioStreamConfig);
-                    break;
-                case StreamType.Video:
-                    player.SetVideoStreamConfig(this.config as VideoStreamConfig);
-                    break;
-                case StreamType.Subtitle:
-                case StreamType.Teletext:
-                    throw new NotImplementedException();
-                default:
-                    throw new ArgumentOutOfRangeException();
-            }
+            player.SetStreamConfig(this.config);
         }
 
         public void OnClearStream()
