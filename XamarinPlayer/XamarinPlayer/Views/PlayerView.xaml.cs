@@ -112,7 +112,7 @@ namespace XamarinPlayer.Views
                 if (AudioTrack.ItemsSource == null)
                 {
                     AudioTrack.ItemsSource = _playerService.GetStreamsDescription(StreamDescription.StreamType.Audio);
-                    AudioTrack.ItemDisplayBinding = new Binding("Lang");
+                    AudioTrack.ItemDisplayBinding = new Binding("Description");
                     AudioTrack.SelectedIndex = 0;
                     AudioTrack.SelectedIndexChanged += (sender, args) =>
                     {
