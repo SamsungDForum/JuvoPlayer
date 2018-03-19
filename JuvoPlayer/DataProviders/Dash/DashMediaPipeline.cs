@@ -6,6 +6,7 @@ using JuvoLogger;
 using JuvoPlayer.Demuxers;
 using JuvoPlayer.Drms.Cenc;
 using MpdParser;
+using System.Collections.Generic;
 
 namespace JuvoPlayer.DataProviders.Dash
 {
@@ -22,6 +23,7 @@ namespace JuvoPlayer.DataProviders.Dash
         private readonly StreamType streamType;
 
         private Media currentMedia;
+        private List<Media> availableMedia = new List<Media>();
 
         public DashMediaPipeline(IDashClient dashClient, IDemuxer demuxer, StreamType streamType)
         {
@@ -34,9 +36,18 @@ namespace JuvoPlayer.DataProviders.Dash
             demuxer.PacketReady += OnPacketReady;
         }
 
-        public void Start(Media newMedia)
+        public void Start(IEnumerable<Media> media)
         {
-            currentMedia = newMedia ?? throw new ArgumentNullException(nameof(newMedia), "newMedia cannot be null");
+            availableMedia = media?.ToList() ?? throw new ArgumentNullException(nameof(media), "media cannot be null");
+            if (availableMedia.Any(o => o.Type.Value != ToMediaTypa(streamType)))
+                throw new ArgumentException("Not compatible media found");
+
+            StartPipeline(GetDefaultMedia(availableMedia));
+        }
+
+        private void StartPipeline(Media newMedia)
+        {
+            currentMedia = GetDefaultMedia(availableMedia);
 
             Logger.Info("Dash start.");
 
@@ -52,6 +63,36 @@ namespace JuvoPlayer.DataProviders.Dash
             dashClient.Start();
             demuxer.StartForExternalSource(InitializationMode.Full);
         }
+
+        private static Media GetDefaultMedia(IEnumerable<Media> medias)
+        {
+            Media media = null;
+            if (medias.Count() == 1)
+                media = medias.First();
+            if (media == null)
+                media = medias.FirstOrDefault(o => o.HasRole(MediaRole.Main));
+            if (media == null)
+                media = medias.FirstOrDefault(o => o.Lang == "en");
+            if (media == null)
+                media = medias.FirstOrDefault();
+            return media;
+        }
+
+        private MediaType ToMediaTypa(StreamType streamType)
+        {
+            switch (streamType)
+            {
+                case StreamType.Audio:
+                    return MediaType.Audio;
+                case StreamType.Video:
+                    return MediaType.Video;
+                case StreamType.Subtitle:
+                    return MediaType.Text;
+                default:
+                    throw new ArgumentOutOfRangeException();
+            }
+        }
+
         public void Stop()
         {
             dashClient.Stop();
@@ -78,10 +119,15 @@ namespace JuvoPlayer.DataProviders.Dash
             demuxer.StartForExternalSource(InitializationMode.Minimal);
         }
 
-        public void ChangeMedia(Media newMedia)
+        public void ChangeStream(StreamDescription stream)
         {
-            if (newMedia == null)
-                throw new ArgumentNullException(nameof(newMedia), "newMedia cannot be null");
+            if (stream == null)
+                throw new ArgumentNullException(nameof(stream), "stream cannot be null");
+
+            if (availableMedia.Count() <= stream.Id)
+                throw new ArgumentOutOfRangeException();
+
+            var newMedia = availableMedia[stream.Id];
 
             if (currentMedia.Type.Value != newMedia.Type.Value)
                 throw new ArgumentException("wrong media type");
@@ -91,7 +137,20 @@ namespace JuvoPlayer.DataProviders.Dash
             demuxer.Reset();
             dashClient.Stop();
 
-            Start(newMedia);
+            StartPipeline(newMedia);
+        }
+
+        public List<StreamDescription> GetStreamsDescription()
+        {
+            return availableMedia.Select((o, i) => new StreamDescription() { Id = i, Description = CreateStreamDescription(o), StreamType = streamType }).ToList();
+        }
+
+        private string CreateStreamDescription(Media media)
+        {
+            if (!string.IsNullOrEmpty(media.Lang))
+                return media.Lang;
+
+            return "";
         }
 
         private void ParseDrms(Media newMedia)
@@ -107,7 +166,7 @@ namespace JuvoPlayer.DataProviders.Dash
                     {
                         doc.LoadXml(descriptor.Data);
                     }
-                    catch (Exception e)
+                    catch (Exception)
                     {
                         continue;
                     }
@@ -130,7 +189,7 @@ namespace JuvoPlayer.DataProviders.Dash
                     {
                         doc.LoadXml(descriptor.Data);
                     }
-                    catch (Exception e)
+                    catch (Exception)
                     {
                         continue;
                     }
