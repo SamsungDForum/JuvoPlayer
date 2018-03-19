@@ -19,7 +19,7 @@ namespace JuvoPlayer.Tests.UnitTests
             public event PacketReady PacketReady;
             public event StreamsFound StreamsFound;
 
-            public void OnChangeRepresentation(StreamDefinition stream)
+            public void OnChangeActiveStream(StreamDescription stream)
             {
                 throw new NotImplementedException();
             }
@@ -63,7 +63,7 @@ namespace JuvoPlayer.Tests.UnitTests
             {
             }
 
-            public List<StreamDefinition> GetStreams(StreamType streamType)
+            public List<StreamDescription> GetStreamsDescription(StreamType streamType)
             {
                 throw new NotImplementedException();
             }

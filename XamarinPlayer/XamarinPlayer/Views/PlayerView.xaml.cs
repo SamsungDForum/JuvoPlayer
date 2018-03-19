@@ -111,16 +111,16 @@ namespace XamarinPlayer.Views
             {
                 if (AudioTrack.ItemsSource == null)
                 {
-                    AudioTrack.ItemsSource = _playerService.GetStreams(Stream.StreamType.Audio);
+                    AudioTrack.ItemsSource = _playerService.GetStreamsDescription(StreamDescription.StreamType.Audio);
                     AudioTrack.ItemDisplayBinding = new Binding("Lang");
                     AudioTrack.SelectedIndex = 0;
                     AudioTrack.SelectedIndexChanged += (sender, args) =>
                     {
                         if (AudioTrack.SelectedIndex != -1)
                         {
-                            var stream = (Stream)AudioTrack.ItemsSource[AudioTrack.SelectedIndex];
+                            var stream = (StreamDescription)AudioTrack.ItemsSource[AudioTrack.SelectedIndex];
 
-                            _playerService.ChangeStream(stream);
+                            _playerService.ChangeActiveStream(stream);
                         }
                     };
                 }

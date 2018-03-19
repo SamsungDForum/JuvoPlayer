@@ -65,7 +65,7 @@ namespace JuvoPlayer.DataProviders.Dash
             PacketReady?.Invoke(packet);
         }
 
-        public void OnChangeRepresentation(StreamDefinition stream)
+        public void OnChangeActiveStream(StreamDescription stream)
         {
             switch (stream.StreamType)
             {
@@ -112,14 +112,14 @@ namespace JuvoPlayer.DataProviders.Dash
             return manifest.Document.Type != DocumentType.Dynamic;
         }
 
-        public List<StreamDefinition> GetStreams(StreamType streamType)
+        public List<StreamDescription> GetStreamsDescription(StreamType streamType)
         {
             if (streamType == StreamType.Audio)
-                return audios.Select((o, i) => new StreamDefinition() { Id = i, Lang = o.Lang, StreamType = StreamType.Audio }).ToList();
+                return audios.Select((o, i) => new StreamDescription() { Id = i, Lang = o.Lang, StreamType = StreamType.Audio }).ToList();
             if (streamType == StreamType.Video)
-                return videos.Select((o, i) => new StreamDefinition() { Id = i, Lang = o.Lang, StreamType = StreamType.Video }).ToList();
+                return videos.Select((o, i) => new StreamDescription() { Id = i, Lang = o.Lang, StreamType = StreamType.Video }).ToList();
 
-            return new List<StreamDefinition>();
+            return new List<StreamDescription>();
         }
 
         public void Start()
