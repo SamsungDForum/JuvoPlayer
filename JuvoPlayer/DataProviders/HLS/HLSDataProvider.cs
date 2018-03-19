@@ -82,7 +82,7 @@ namespace JuvoPlayer.DataProviders.HLS
             PacketReady?.Invoke(Packet.CreateEOS(StreamType.Video));
         }
 
-        public void OnChangeRepresentation(StreamDefinition stream)
+        public void OnChangeActiveStream(StreamDescription stream)
         {
         }
 
@@ -132,9 +132,9 @@ namespace JuvoPlayer.DataProviders.HLS
             demuxer.Dispose();
         }
 
-        public List<StreamDefinition> GetStreams(StreamType streamType)
+        public List<StreamDescription> GetStreamsDescription(StreamType streamType)
         {
-            return new List<StreamDefinition>();
+            return new List<StreamDescription>();
         }
     }
 }

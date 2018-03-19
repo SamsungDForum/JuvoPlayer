@@ -15,6 +15,9 @@ using Xamarin.Forms;
 using XamarinPlayer.Services;
 using XamarinPlayer.Tizen.Services;
 
+using StreamDefinition = XamarinPlayer.Services.StreamDescription;
+using StreamType = XamarinPlayer.Services.StreamDescription.StreamType;
+
 [assembly: Dependency(typeof(PlayerService))]
 namespace XamarinPlayer.Tizen.Services
 {
@@ -91,49 +94,49 @@ namespace XamarinPlayer.Tizen.Services
             playerController.OnSeek(to);
         }
 
-        public void ChangeStream(Stream stream)
+        public void ChangeActiveStream(StreamDefinition stream)
         {
-            var streamDefinition = new StreamDefinition()
+            var streamDescription = new JuvoPlayer.Common.StreamDescription()
             {
                 Id = stream.Id,
                 Lang = stream.Lang,
                 StreamType = ToJuvoStreamType(stream.Type)
             };
 
-            dataProvider.OnChangeRepresentation(streamDefinition);
+            dataProvider.OnChangeActiveStream(streamDescription);
         }
 
-        public List<Stream> GetStreams(Stream.StreamType streamType)
+        public List<StreamDefinition> GetStreamsDescription(StreamType streamType)
         {
-            var streams = dataProvider.GetStreams(ToJuvoStreamType(streamType));
-            return streams.Select(o => new Stream() { Id = o.Id, Lang = o.Lang, Type = ToStreamType(o.StreamType) }).ToList();
+            var streams = dataProvider.GetStreamsDescription(ToJuvoStreamType(streamType));
+            return streams.Select(o => new StreamDefinition() { Id = o.Id, Lang = o.Lang, Type = ToStreamType(o.StreamType) }).ToList();
         }
 
-        private StreamType ToJuvoStreamType(Stream.StreamType streamType)
+        private JuvoPlayer.Common.StreamType ToJuvoStreamType(StreamType streamType)
         {
             switch (streamType)
             {
-                case Stream.StreamType.Audio:
-                    return StreamType.Audio;
-                case Stream.StreamType.Video:
-                    return StreamType.Video;
-                case Stream.StreamType.Subtitle:
-                    return StreamType.Subtitle;
+                case StreamType.Audio:
+                    return JuvoPlayer.Common.StreamType.Audio;
+                case StreamType.Video:
+                    return JuvoPlayer.Common.StreamType.Video;
+                case StreamType.Subtitle:
+                    return JuvoPlayer.Common.StreamType.Subtitle;
                 default:
                     throw new IndexOutOfRangeException();
             }
         }
 
-        private Stream.StreamType ToStreamType(StreamType streamType)
+        private StreamType ToStreamType(JuvoPlayer.Common.StreamType streamType)
         {
             switch (streamType)
             {
-                case StreamType.Audio:
-                    return Stream.StreamType.Audio;
-                case StreamType.Video:
-                    return Stream.StreamType.Video;
-                case StreamType.Subtitle:
-                    return Stream.StreamType.Subtitle;
+                case JuvoPlayer.Common.StreamType.Audio:
+                    return StreamType.Audio;
+                case JuvoPlayer.Common.StreamType.Video:
+                    return StreamType.Video;
+                case JuvoPlayer.Common.StreamType.Subtitle:
+                    return StreamType.Subtitle;
                 default:
                     throw new IndexOutOfRangeException();
             }

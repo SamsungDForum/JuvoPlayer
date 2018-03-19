@@ -18,11 +18,11 @@ using System.Collections.Generic;
 namespace JuvoPlayer.DataProviders
 {
     public delegate void SetDrmConfiguration(DRMDescription description);
-    public delegate void StreamsFound(List<StreamDefinition> streams);
+    public delegate void StreamsFound(List<StreamDescription> streams);
 
     public interface IDataProvider : IDisposable
     {
-        void OnChangeRepresentation(StreamDefinition stream);
+        void OnChangeActiveStream(StreamDescription stream);
         void OnPaused();
         void OnPlayed();
         void OnSeek(TimeSpan time);
@@ -31,7 +31,7 @@ namespace JuvoPlayer.DataProviders
 
         bool IsSeekingSupported();
         void Start();
-        List<StreamDefinition> GetStreams(StreamType streamType);
+        List<StreamDescription> GetStreamsDescription(StreamType streamType);
 
         event ClipDurationChanged ClipDurationChanged;
         event DRMInitDataFound DRMInitDataFound;

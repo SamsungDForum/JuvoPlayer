@@ -29,7 +29,7 @@ namespace XamarinPlayer.Services
 
         void SeekTo(TimeSpan position);
 
-        List<Stream> GetStreams(Stream.StreamType streamType);
-        void ChangeStream(Stream stream);
+        List<StreamDescription> GetStreamsDescription(StreamDescription.StreamType streamType);
+        void ChangeActiveStream(StreamDescription stream);
     }
 }

@@ -174,11 +174,6 @@ namespace JuvoPlayer.Player
             streams[packet.StreamType].OnAppendPacket(packet);
         }
 
-        public void OnStreamsFound(List<StreamDefinition> streams)
-        {
-
-        }
-
         public void OnSetExternalSubtitles(string path)
         {
             player.SetExternalSubtitles(path);

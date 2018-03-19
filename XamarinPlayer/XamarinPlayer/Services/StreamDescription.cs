@@ -1,10 +1,6 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
-
-namespace XamarinPlayer.Services
+﻿namespace XamarinPlayer.Services
 {
-    public class Stream
+    public class StreamDescription
     {
         public enum StreamType
         {
