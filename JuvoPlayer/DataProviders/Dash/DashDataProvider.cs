@@ -16,9 +16,6 @@ namespace JuvoPlayer.DataProviders.Dash
         private DashMediaPipeline audioPipeline;
         private DashMediaPipeline videoPipeline;
 
-        private List<Media> videos;
-        private List<Media> audios;
-
         public DashDataProvider(
             DashManifest manifest,
             DashMediaPipeline audioPipeline,
@@ -70,14 +67,10 @@ namespace JuvoPlayer.DataProviders.Dash
             switch (stream.StreamType)
             {
                 case StreamType.Audio:
-                    if (audios == null || audios.Count() <= stream.Id)
-                        break;
-                    audioPipeline.ChangeMedia(audios[stream.Id]);
+                    audioPipeline.ChangeStream(stream);
                     break;
                 case StreamType.Video:
-                    if (videos == null || videos.Count() <= stream.Id)
-                        break;
-                    videoPipeline.ChangeMedia(videos[stream.Id]);
+                    videoPipeline.ChangeStream(stream);
                     break;
                 default:
                     break;
@@ -114,12 +107,15 @@ namespace JuvoPlayer.DataProviders.Dash
 
         public List<StreamDescription> GetStreamsDescription(StreamType streamType)
         {
-            if (streamType == StreamType.Audio)
-                return audios.Select((o, i) => new StreamDescription() { Id = i, Description = o.Lang, StreamType = StreamType.Audio }).ToList();
-            if (streamType == StreamType.Video)
-                return videos.Select((o, i) => new StreamDescription() { Id = i, Description = o.Lang, StreamType = StreamType.Video }).ToList();
-
-            return new List<StreamDescription>();
+            switch (streamType)
+            {
+                case StreamType.Audio:
+                    return audioPipeline.GetStreamsDescription();
+                case StreamType.Video:
+                    return videoPipeline.GetStreamsDescription();
+                default:
+                    return new List<StreamDescription>();
+            }
         }
 
         public void Start()
@@ -130,40 +126,20 @@ namespace JuvoPlayer.DataProviders.Dash
             {
                 Logger.Info(period.ToString());
 
-                audios = period.Sets.Where(o => o.Type.Value == MediaType.Audio).ToList();
-                var audio = GetDefaultMedia(audios);
+                var audios = period.Sets.Where(o => o.Type.Value == MediaType.Audio);
+                var videos = period.Sets.Where(o => o.Type.Value == MediaType.Video);
 
-                videos = period.Sets.Where(o => o.Type.Value == MediaType.Video).ToList();
-                var video = GetDefaultMedia(videos);
-
-                if (audio != null && video != null)
+                if (audios.Count() > 0 && videos.Count() > 0)
                 {
-                    Logger.Info("Video: " + video);
-                    videoPipeline.Start(video);
-
-                    Logger.Info("Audio: " + audio);
-                    audioPipeline.Start(audio);
-
                     if (period.Duration.HasValue)
                         ClipDurationChanged?.Invoke(period.Duration.Value);
+
+                    videoPipeline.Start(videos);
+                    audioPipeline.Start(audios);
 
                     return;
                 }
             }
-        }
-
-        private static Media GetDefaultMedia(IEnumerable<Media> medias)
-        {
-            Media media = null;
-            if (medias.Count() == 1)
-                media = medias.First();
-            if (media == null)
-                media = medias.FirstOrDefault(o => o.HasRole(MediaRole.Main));
-            if (media == null)
-                media = medias.FirstOrDefault(o => o.Lang == "en");
-            if (media == null)
-                media = medias.FirstOrDefault();
-            return media;
         }
 
         public void OnTimeUpdated(TimeSpan time)
