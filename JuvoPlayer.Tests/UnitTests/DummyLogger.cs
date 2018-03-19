@@ -1,7 +1,7 @@
 using System.Collections.Generic;
 using JuvoLogger;
 
-namespace JuvoPlayer.Tests
+namespace JuvoPlayer.Tests.UnitTests
 {
 
     internal class DummyLogger : LoggerBase

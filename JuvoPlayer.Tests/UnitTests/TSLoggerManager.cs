@@ -4,7 +4,7 @@ using System.Reflection;
 using JuvoLogger;
 using NUnit.Framework;
 
-namespace JuvoPlayer.Tests
+namespace JuvoPlayer.Tests.UnitTests
 {
     [TestFixture]
     class TSLoggerManager

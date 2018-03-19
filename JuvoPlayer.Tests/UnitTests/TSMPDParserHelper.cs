@@ -12,7 +12,7 @@ using MpdParser.Node;
 using MpdParser.Node.Writers;
 using NUnit.Framework;
 
-namespace JuvoPlayer.Tests.testcase.MPD_Parse
+namespace JuvoPlayer.Tests.UnitTests
 {
     public static class DASHConverterHelper
     {
