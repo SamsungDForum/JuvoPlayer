@@ -18,7 +18,6 @@ namespace JuvoPlayer.DataProviders
             newDataProvider.SetDrmConfiguration += controller.OnSetDrmConfiguration;
             newDataProvider.StreamConfigReady += controller.OnStreamConfigReady;
             newDataProvider.PacketReady += controller.OnPacketReady;
-            newDataProvider.StreamsFound += controller.OnStreamsFound;
 
             controller.TimeUpdated += newDataProvider.OnTimeUpdated;
             controller.Paused += newDataProvider.OnPaused;
@@ -40,7 +39,6 @@ namespace JuvoPlayer.DataProviders
             oldDataProvider.SetDrmConfiguration -= controller.OnSetDrmConfiguration;
             oldDataProvider.StreamConfigReady -= controller.OnStreamConfigReady;
             oldDataProvider.PacketReady -= controller.OnPacketReady;
-            oldDataProvider.StreamsFound -= controller.OnStreamsFound;
 
             controller.TimeUpdated -= oldDataProvider.OnTimeUpdated;
             controller.Paused -= oldDataProvider.OnPaused;

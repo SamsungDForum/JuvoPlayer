@@ -132,7 +132,7 @@ namespace JuvoPlayer.Tests.IntegrationTests
             Assert.AreEqual(buffer.Count(), testCount);
             Assert.AreEqual(buffer.AvailablePacketsCount(), testCount);
             Assert.AreEqual(buffer.Peek().Pts.TotalMilliseconds, testCount); // first element in PtsAsc priority queue
-            Assert.AreEqual(buffer.PeekSortingValue(), testCount); // first element's pts
+            Assert.AreEqual(buffer.PeekSortingValue().TotalMilliseconds, testCount); // first element's pts
 
             // Test after some packets are dequeued
             int secondTestCount = 123;
@@ -141,7 +141,7 @@ namespace JuvoPlayer.Tests.IntegrationTests
             Assert.AreEqual(buffer.Count(), testCount - secondTestCount);
             Assert.AreEqual(buffer.AvailablePacketsCount(), testCount - secondTestCount);
             Assert.AreEqual(buffer.Peek().Pts.TotalMilliseconds, testCount + secondTestCount); // first element in PtsAsc priority queue
-            Assert.AreEqual(buffer.PeekSortingValue(), testCount + secondTestCount); // first element's pts
+            Assert.AreEqual(buffer.PeekSortingValue().TotalMilliseconds, testCount + secondTestCount); // first element's pts
 
             // Test cleared buffer
             buffer.Clear();

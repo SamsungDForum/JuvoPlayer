@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections.Generic;
 
 namespace XamarinPlayer.Services
 {
@@ -27,5 +28,8 @@ namespace XamarinPlayer.Services
         void Pause();
 
         void SeekTo(TimeSpan position);
+
+        List<StreamDescription> GetStreamsDescription(StreamDescription.StreamType streamType);
+        void ChangeActiveStream(StreamDescription stream);
     }
 }

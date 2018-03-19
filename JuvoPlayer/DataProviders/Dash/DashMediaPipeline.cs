@@ -21,6 +21,8 @@ namespace JuvoPlayer.DataProviders.Dash
         private readonly IDemuxer demuxer;
         private readonly StreamType streamType;
 
+        private Media currentMedia;
+
         public DashMediaPipeline(IDashClient dashClient, IDemuxer demuxer, StreamType streamType)
         {
             this.dashClient = dashClient ?? throw new ArgumentNullException(nameof(dashClient), "dashClient cannot be null");
@@ -34,8 +36,7 @@ namespace JuvoPlayer.DataProviders.Dash
 
         public void Start(Media newMedia)
         {
-            if (newMedia == null)
-                throw new ArgumentNullException(nameof(newMedia), "newMedia cannot be null");
+            currentMedia = newMedia ?? throw new ArgumentNullException(nameof(newMedia), "newMedia cannot be null");
 
             Logger.Info("Dash start.");
 
@@ -75,6 +76,22 @@ namespace JuvoPlayer.DataProviders.Dash
             // Start downloading and parsing new data
             dashClient.Start();
             demuxer.StartForExternalSource(InitializationMode.Minimal);
+        }
+
+        public void ChangeMedia(Media newMedia)
+        {
+            if (newMedia == null)
+                throw new ArgumentNullException(nameof(newMedia), "newMedia cannot be null");
+
+            if (currentMedia.Type.Value != newMedia.Type.Value)
+                throw new ArgumentException("wrong media type");
+
+            // Stop demuxer and dashclient
+            // Stop demuxer first so old incoming data will ignored
+            demuxer.Reset();
+            dashClient.Stop();
+
+            Start(newMedia);
         }
 
         private void ParseDrms(Media newMedia)

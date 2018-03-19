@@ -22,12 +22,50 @@
                            HorizontalOptions="CenterAndExpand"
                            VerticalOptions="Fill"/>
                 </StackLayout>
-                <BoxView VerticalOptions="FillAndExpand">
-                    <BoxView.GestureRecognizers>
-                        <TapGestureRecognizer
-                            Tapped="OnTapGestureRecognizerControllerTapped"/>
-                    </BoxView.GestureRecognizers>
-                </BoxView>
+                <StackLayout VerticalOptions="FillAndExpand">
+                    <BoxView VerticalOptions="FillAndExpand">
+                        <BoxView.GestureRecognizers>
+                            <TapGestureRecognizer
+                                Tapped="OnTapGestureRecognizerControllerTapped"/>
+                        </BoxView.GestureRecognizers>
+                    </BoxView>
+                    <AbsoluteLayout x:Name="Settings" IsVisible="false" BackgroundColor="#B0101010" HorizontalOptions="Center">
+                        <StackLayout Padding="20, 10">
+                            <StackLayout Orientation="Horizontal">
+                                <Label Text="Video quality" TextColor="White" HorizontalOptions="Start" VerticalOptions="Center" WidthRequest="200" />
+                                <Picker x:Name="VideoQuality" WidthRequest="300" >
+                                    <Picker.Items>
+                                        <x:String>auto</x:String>
+                                    </Picker.Items>
+                                    <Picker.SelectedIndex>0</Picker.SelectedIndex>
+                                </Picker>
+                            </StackLayout>
+                            <StackLayout Orientation="Horizontal">
+                                <Label Text="Audio track" TextColor="White" HorizontalOptions="Start" VerticalOptions="Center" WidthRequest="200" />
+                                <Picker x:Name="AudioTrack" WidthRequest="300">
+                                </Picker>
+                            </StackLayout>
+                            <StackLayout Orientation="Horizontal">
+                                <Label Text="Video speed" TextColor="White" HorizontalOptions="Start" VerticalOptions="Center" WidthRequest="200" />
+                                <Picker x:Name="VideoSpeed" WidthRequest="300" >
+                                    <Picker.Items>
+                                        <x:String>normal</x:String>
+                                    </Picker.Items>
+                                    <Picker.SelectedIndex>0</Picker.SelectedIndex>
+                                </Picker>
+                            </StackLayout>
+                            <StackLayout Orientation="Horizontal" >
+                                <Label Text="Subtitles" TextColor="White" HorizontalOptions="Start" VerticalOptions="Center" WidthRequest="200" />
+                                <Picker x:Name="Subtitles" WidthRequest="300" >
+                                    <Picker.Items>
+                                        <x:String>off</x:String>
+                                    </Picker.Items>
+                                    <Picker.SelectedIndex>0</Picker.SelectedIndex>
+                                </Picker>
+                            </StackLayout>
+                        </StackLayout>
+                    </AbsoluteLayout>
+                </StackLayout>
                 <StackLayout BackgroundColor="#B0101010"
                              Padding="20, 10">
                     <RelativeLayout>
@@ -93,6 +131,20 @@
                                     HorizontalOptions="Fill"
                                     VerticalOptions="Fill"
                                     WidthRequest="100"
+                                    IsEnabled="False"/>
+                        </AbsoluteLayout>
+                        <AbsoluteLayout HorizontalOptions="End">
+                            <Image x:Name="SettingsImage"
+                                   Source="btn_viewer_control_settings_normal.png"
+                                   HorizontalOptions="Center"
+                                   VerticalOptions="Center"
+                                   AbsoluteLayout.LayoutBounds="0,0,1,1" AbsoluteLayout.LayoutFlags="All"/>
+                            <Button x:Name="SettingsButton"
+                                    Opacity="0.1"
+                                    AbsoluteLayout.LayoutBounds="0,0,1,1" AbsoluteLayout.LayoutFlags="All"
+                                    HorizontalOptions="Fill"
+                                    VerticalOptions="Fill"
+                                    WidthRequest="80"
                                     IsEnabled="False"/>
                         </AbsoluteLayout>
                     </StackLayout>

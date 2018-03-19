@@ -12,6 +12,7 @@
 // this software or its derivatives.
 
 using System;
+using System.Collections.Generic;
 using System.Threading;
 using JuvoPlayer.Common;
 using JuvoPlayer.Demuxers;
@@ -81,9 +82,8 @@ namespace JuvoPlayer.DataProviders.HLS
             PacketReady?.Invoke(Packet.CreateEOS(StreamType.Video));
         }
 
-        public void OnChangeRepresentation(int representationId)
+        public void OnChangeActiveStream(StreamDescription stream)
         {
-
         }
 
         public void OnPaused()
@@ -130,6 +130,11 @@ namespace JuvoPlayer.DataProviders.HLS
             }
 
             demuxer.Dispose();
+        }
+
+        public List<StreamDescription> GetStreamsDescription(StreamType streamType)
+        {
+            return new List<StreamDescription>();
         }
     }
 }

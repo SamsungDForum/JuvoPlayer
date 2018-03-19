@@ -13,16 +13,10 @@
 
 namespace JuvoPlayer.Common
 {
-    internal class AudioStreamDefinition : StreamDefinition
+    public class StreamDescription
     {
-        public AudioStreamDefinition()
-        {
-
-        }
-
-        public override StreamType StreamType()
-        {
-            return Common.StreamType.Audio;
-        }
+        public int Id { get; set; }
+        public string Description { get; set; }
+        public StreamType StreamType { get; set; }
     }
 }

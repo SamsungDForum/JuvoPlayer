@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using JuvoPlayer.Common;
 using JuvoPlayer.DataProviders;
 using NUnit.Framework;
@@ -18,7 +19,7 @@ namespace JuvoPlayer.Tests.UnitTests
             public event PacketReady PacketReady;
             public event StreamsFound StreamsFound;
 
-            public void OnChangeRepresentation(int representationId)
+            public void OnChangeActiveStream(StreamDescription stream)
             {
                 throw new NotImplementedException();
             }
@@ -60,6 +61,11 @@ namespace JuvoPlayer.Tests.UnitTests
 
             public void Dispose()
             {
+            }
+
+            public List<StreamDescription> GetStreamsDescription(StreamType streamType)
+            {
+                throw new NotImplementedException();
             }
         }
 

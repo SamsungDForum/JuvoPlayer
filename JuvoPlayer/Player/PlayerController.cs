@@ -98,11 +98,10 @@ namespace JuvoPlayer.Player
             TimeUpdated?.Invoke(time);
         }
 
-        public void ChangeRepresentation(int pid)
-        {
-        }
         public void OnClipDurationChanged(TimeSpan duration)
         {
+            player.SetDuration(duration);
+
             this.duration = duration;
         }
 
@@ -173,11 +172,6 @@ namespace JuvoPlayer.Player
                 return;
 
             streams[packet.StreamType].OnAppendPacket(packet);
-        }
-
-        public void OnStreamsFound(List<StreamDefinition> streams)
-        {
-
         }
 
         public void OnSetExternalSubtitles(string path)
