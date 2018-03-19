@@ -115,9 +115,9 @@ namespace JuvoPlayer.DataProviders.Dash
         public List<StreamDescription> GetStreamsDescription(StreamType streamType)
         {
             if (streamType == StreamType.Audio)
-                return audios.Select((o, i) => new StreamDescription() { Id = i, Lang = o.Lang, StreamType = StreamType.Audio }).ToList();
+                return audios.Select((o, i) => new StreamDescription() { Id = i, Description = o.Lang, StreamType = StreamType.Audio }).ToList();
             if (streamType == StreamType.Video)
-                return videos.Select((o, i) => new StreamDescription() { Id = i, Lang = o.Lang, StreamType = StreamType.Video }).ToList();
+                return videos.Select((o, i) => new StreamDescription() { Id = i, Description = o.Lang, StreamType = StreamType.Video }).ToList();
 
             return new List<StreamDescription>();
         }

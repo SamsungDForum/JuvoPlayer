@@ -99,7 +99,7 @@ namespace XamarinPlayer.Tizen.Services
             var streamDescription = new JuvoPlayer.Common.StreamDescription()
             {
                 Id = stream.Id,
-                Lang = stream.Lang,
+                Description = stream.Description,
                 StreamType = ToJuvoStreamType(stream.Type)
             };
 
@@ -109,7 +109,7 @@ namespace XamarinPlayer.Tizen.Services
         public List<StreamDefinition> GetStreamsDescription(StreamType streamType)
         {
             var streams = dataProvider.GetStreamsDescription(ToJuvoStreamType(streamType));
-            return streams.Select(o => new StreamDefinition() { Id = o.Id, Lang = o.Lang, Type = ToStreamType(o.StreamType) }).ToList();
+            return streams.Select(o => new StreamDefinition() { Id = o.Id, Description = o.Description, Type = ToStreamType(o.StreamType) }).ToList();
         }
 
         private JuvoPlayer.Common.StreamType ToJuvoStreamType(StreamType streamType)
