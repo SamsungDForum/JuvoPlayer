@@ -188,10 +188,15 @@ namespace JuvoPlayer.DataProviders.Dash
 
         private string CreateStreamDescription(DashStream stream)
         {
+            string description = "";
             if (!string.IsNullOrEmpty(stream.Media.Lang))
-                return stream.Media.Lang;
+                description += stream.Media.Lang;
+            if (stream.Representation.Height.HasValue && stream.Representation.Width.HasValue)
+                description += string.Format(" ( {0}x{1} )", stream.Representation.Width, stream.Representation.Height);
+            if (stream.Representation.NumChannels.HasValue)
+                description += string.Format(" ( {0} ch )", stream.Representation.NumChannels);
 
-            return "";
+            return description;
         }
 
         private void ParseDrms(Media newMedia)
