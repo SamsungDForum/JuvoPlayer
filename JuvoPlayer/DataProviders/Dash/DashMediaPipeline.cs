@@ -12,7 +12,7 @@ namespace JuvoPlayer.DataProviders.Dash
 {
     internal class DashMediaPipeline
     {
-        private struct DashStream
+        private struct DashStream : IEquatable<DashStream>
         {
             public DashStream(Media media, Representation representation)
             {
@@ -21,6 +21,26 @@ namespace JuvoPlayer.DataProviders.Dash
             }
             public Media Media { get; private set; }
             public Representation Representation { get; private set; }
+
+            public override bool Equals(object obj)
+            {
+                return obj is DashStream && Equals((DashStream)obj);
+            }
+
+            public bool Equals(DashStream other)
+            {
+                return EqualityComparer<Media>.Default.Equals(Media, other.Media) &&
+                       EqualityComparer<Representation>.Default.Equals(Representation, other.Representation);
+            }
+
+            public override int GetHashCode()
+            {
+                var hashCode = 1768762187;
+                hashCode = hashCode * -1521134295 + base.GetHashCode();
+                hashCode = hashCode * -1521134295 + EqualityComparer<Media>.Default.GetHashCode(Media);
+                hashCode = hashCode * -1521134295 + EqualityComparer<Representation>.Default.GetHashCode(Representation);
+                return hashCode;
+            }
         }
 
         private readonly ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
@@ -33,7 +53,7 @@ namespace JuvoPlayer.DataProviders.Dash
         private readonly IDemuxer demuxer;
         private readonly StreamType streamType;
 
-        private Media currentMedia;
+        private DashStream currentStream;
         private List<DashStream> availableStreams = new List<DashStream>();
 
         public DashMediaPipeline(IDashClient dashClient, IDemuxer demuxer, StreamType streamType)
@@ -58,9 +78,15 @@ namespace JuvoPlayer.DataProviders.Dash
             var defaultMedia = GetDefaultMedia(media);
             // get first element of sorted array 
             var representation = defaultMedia.Representations.OrderByDescending(o => o.Bandwidth).First();
+            var defaultStream = new DashStream(defaultMedia, representation);
 
-            StartPipeline(defaultMedia, representation);
+            StartPipeline(defaultStream);
 
+            GetAvailableStreams(media, defaultMedia);
+        }
+
+        private void GetAvailableStreams(IEnumerable<Media> media, Media defaultMedia)
+        {
             // Not perfect algorithm.
             // check if default media has many representations. if yes, return as available streams
             // list of default media representation + representations from any media from the same group
@@ -86,18 +112,18 @@ namespace JuvoPlayer.DataProviders.Dash
             }
         }
 
-        private void StartPipeline(Media newMedia, Representation representation)
+        private void StartPipeline(DashStream newStream)
         {
-            currentMedia = newMedia;
+            currentStream = newStream;
 
             Logger.Info("Dash start.");
 
-            Logger.Info(string.Format("{0} Media: {1}", streamType, newMedia));
+            Logger.Info(string.Format("{0} Media: {1}", streamType, newStream.Media));
 
-            Logger.Info(representation.ToString());
+            Logger.Info(newStream.Representation.ToString());
 
-            dashClient.SetRepresentation(representation);
-            ParseDrms(newMedia);
+            dashClient.SetRepresentation(newStream.Representation);
+            ParseDrms(newStream.Media);
 
             dashClient.Start();
             demuxer.StartForExternalSource(InitializationMode.Full);
@@ -169,8 +195,9 @@ namespace JuvoPlayer.DataProviders.Dash
 
             var newMedia = availableStreams[stream.Id].Media;
             var newRepresentation = availableStreams[stream.Id].Representation;
+            var newStream = new DashStream(newMedia, newRepresentation);
 
-            if (currentMedia.Type.Value != newMedia.Type.Value)
+            if (currentStream.Media.Type.Value != newMedia.Type.Value)
                 throw new ArgumentException("wrong media type");
 
             // Stop demuxer and dashclient
@@ -178,12 +205,19 @@ namespace JuvoPlayer.DataProviders.Dash
             demuxer.Reset();
             dashClient.Stop();
 
-            StartPipeline(newMedia, newRepresentation);
+            StartPipeline(newStream);
         }
 
         public List<StreamDescription> GetStreamsDescription()
         {
-            return availableStreams.Select((o, i) => new StreamDescription() { Id = i, Description = CreateStreamDescription(o), StreamType = streamType }).ToList();
+            return availableStreams.Select((o, i) => 
+                new StreamDescription()
+                {
+                    Id = i,
+                    Description = CreateStreamDescription(o),
+                    StreamType = streamType,
+                    Default = currentStream.Equals(o)
+                }).ToList();
         }
 
         private string CreateStreamDescription(DashStream stream)

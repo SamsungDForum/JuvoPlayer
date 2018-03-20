@@ -120,9 +120,20 @@ namespace XamarinPlayer.Views
 
         private void BindStreamPicker(Picker picker, StreamDescription.StreamType streamType)
         {
-            picker.ItemsSource = _playerService.GetStreamsDescription(streamType);
+            var streams = _playerService.GetStreamsDescription(streamType);
+            picker.ItemsSource = streams;
             picker.ItemDisplayBinding = new Binding("Description");
             picker.SelectedIndex = 0;
+
+            for (var i = 0; i < streams.Count; ++i)
+            {
+                if (streams[i].Default)
+                {
+                    picker.SelectedIndex = i;
+                    break;
+                }
+            }
+
             picker.SelectedIndexChanged += (sender, args) =>
             {
                 if (picker.SelectedIndex != -1)

@@ -18,5 +18,6 @@ namespace JuvoPlayer.Common
         public int Id { get; set; }
         public string Description { get; set; }
         public StreamType StreamType { get; set; }
+        public bool Default { get; set; }
     }
 }
