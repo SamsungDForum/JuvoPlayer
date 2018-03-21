@@ -69,12 +69,214 @@ namespace JuvoPlayer.Player
                     break;
             }
         }
+
+        // In case of H264 as VideoCodecConfig::extraData we will have avcC box, which
+        // according to ISO/IEC 14496-15 chapter 5.3.3.1.2 has following structure:
+        //
+        // aligned(8) class AVCDecoderConfigurationRecord {
+        //   unsigned int(8) configurationVersion = 1;
+        //   unsigned int(8) AVCProfileIndication;
+        //   unsigned int(8) profile_compatibility;
+        //   unsigned int(8) AVCLevelIndication;
+        //   bit(6) reserved = '111111'b;
+        //   unsigned int(2) lengthSizeMinusOne;
+        //   bit(3) reserved = '111'b;
+        //   unsigned int(5) numOfSequenceParameterSets;
+        //   for (i=0; i< numOfSequenceParameterSets; i++) {
+        //     unsigned int(16) sequenceParameterSetLength ;
+        //     bit(8*sequenceParameterSetLength) sequenceParameterSetNALUnit;
+        //   }
+        //   unsigned int(8) numOfPictureParameterSets;
+        //   for (i=0; i< numOfPictureParameterSets; i++) {
+        //     unsigned int(16) pictureParameterSetLength;
+        //     bit(8*pictureParameterSetLength) pictureParameterSetNALUnit;
+        //   }
+        //   if( profile_idc == 100 || profile_idc == 110 ||
+        //       profile_idc == 122 || profile_idc == 144 )
+        //   {
+        //     bit(6) reserved = '111111'b;
+        //     unsigned int(2) chroma_format;
+        //     bit(5) reserved = '11111'b;
+        //     unsigned int(3) bit_depth_luma_minus8;
+        //     bit(5) reserved = '11111'b;
+        //     unsigned int(3) bit_depth_chroma_minus8;
+        //     unsigned int(8) numOfSequenceParameterSetExt;
+        //     for (i=0; i< numOfSequenceParameterSetExt; i++) {
+        //       unsigned int(16) sequenceParameterSetExtLength;
+        //       bit(8*sequenceParameterSetExtLength) sequenceParameterSetExtNALUnit;
+        //     }
+        //   }
+        // }
+        //
+        // If we want to change representations with different codec extra
+        // configuration in adaptive streaming scenarios, then we have to modify each
+        // packet data by inserting before video samples SPSes and PPSes in the
+        // following way:
+        //   for each SPS:
+        //     write length of SPS on lengthSizeMinusOne + 1 bytes in MSB format
+        //       (BigEndian)
+        //     write SPS NAL data (without any modifications)
+        //   for each PPS: (do similar operation as for PPS)
+        //     write length of PPS on lengthSizeMinusOne + 1 bytes in MSB format
+        //     (BigEndian)
+        //     write PPS NAL data (without any modifications)
+        //   append video packet data
+        //
+        // For example:
+        // - VideoCodecConfig::extra_data_:
+        //       01 4D 40 20 FF E1 00 0C
+        //       67 4D 40 20 96 52 80 A0 0B 76 02 05
+        //       01 00 04 68 EF 38 80
+        // - length_size: 4
+        // - SPS count 1, SPS data: 67 4D 40 20 96 52 80 A0 0B 76 02 05
+        // - PPS count 1, PPS data: 68 EF 38 80
+        // - modified packet structure (in hex):
+        //   00 00 00 0C 67 4D 40 20 96 52 80 A0 0B 76 02 05 00 00 00 04 68 EF 38 80
+        //  |           |                                   |           |
+        //  |           |                                   |           |
+        //  |           |                                   |           | PPS NAL
+        //  |           |                                   |
+        //  |           |                                   | PPS length (4 bytes)
+        //  |           |
+        //  |           | SPS NAL
+        //  |
+        //  | SPS length (4 bytes)
+        //  after that header original ES packet bytes are appended
         private void ExtractH264ExtraData(VideoStreamConfig videoConfig)
         {
+            if (videoConfig.CodecExtraData.Length < 6)
+            {  // Min first 5 byte + num_sps
+                Logger.Error("extra_data is too short to pass valid SPS/PPS header");
+                return;
+            }
+
+            var extraData = new byte[videoConfig.CodecExtraData.Length];
+            Buffer.BlockCopy(videoConfig.CodecExtraData, 0, extraData, 0, videoConfig.CodecExtraData.Length);
+
+            int idx = 0;
+            var version = ReadByte(extraData, ref idx);
+            var profileIndication = ReadByte(extraData, ref idx);
+            var profileCompatibility = ReadByte(extraData, ref idx);
+            var avcLevel = ReadByte(extraData, ref idx);
+
+            uint lengthSize = ReadByte(extraData, ref idx);
+            if ((lengthSize & 0xFCu) != 0xFCu)
+            {
+                // Be liberal in what you accept..., so just log error
+                Logger.Warn("Not all reserved bits in length size filed are set to 1");
+            }
+            lengthSize = (byte)((lengthSize & 0x3u) + 1);
+
+            uint numSps = ReadByte(extraData, ref idx);
+            if ((numSps & 0xE0u) != 0xE0u)
+            {
+                // Be liberal in what you accept..., so just log error
+                Logger.Warn("Wrong SPS count format.");
+            }
+            numSps &= 0x1Fu;
+
+            var spses = ReadH264ParameterSets(extraData, numSps, ref idx);
+            if (spses == null)
+            {
+                Logger.Error("extra data too short");
+                return;
+            }
+
+            if (extraData.Length <= idx)
+            {
+                Logger.Error("extra data too short");
+                return;
+            }
+
+            uint numPps = ReadByte(extraData, ref idx);
+
+            var ppses = ReadH264ParameterSets(extraData, numPps, ref idx);
+            if (ppses == null)
+            {
+                Logger.Error("extra data too short");
+                return;
+            }
+
+            var size = spses.Sum(o => lengthSize + o.Length)
+                + ppses.Sum(o => lengthSize + o.Length);
+
+            parsedExtraData = new byte[size];
+            var offset = 0;
+
+            CopySet(lengthSize, spses, ref offset);
+            CopySet(lengthSize, ppses, ref offset);
         }
+
+        private List<byte[]> ReadH264ParameterSets(byte[] extraData, uint count, ref int idx)
+        {
+            var sets = new List<byte[]>();
+            for (int i = 0; i < count; i++)
+            {
+                if (extraData.Length < idx + 2)
+                {
+                    Logger.Error("extra data too short");
+                    return null;
+                }
+
+                uint length = ReadUInt16(extraData, ref idx);
+                if (extraData.Length < idx + length)
+                {
+                    Logger.Error("extra data too short");
+                    return null;
+                }
+
+                var elem = new byte[length];
+                Buffer.BlockCopy(extraData, idx, elem, 0, (int)length);
+                sets.Add(elem);
+                idx += (int)length;
+            }
+            return sets;
+        }
+
+        private void CopySet(uint lengthSize, List<byte[]> nals, ref int offset)
+        {
+            foreach (var pps in nals)
+            {
+                var len = AsBytesMSB((uint)pps.Length, lengthSize);
+                Buffer.BlockCopy(len, 0, parsedExtraData, offset, len.Length);
+                offset += len.Length;
+                Buffer.BlockCopy(pps, 0, parsedExtraData, offset, pps.Length);
+                offset += pps.Length;
+            }
+        }
+
         private void ExtractH265ExtraData(VideoStreamConfig videoConfig)
         {
         }
 
+        private byte ReadByte(byte[] adata, ref int idx)
+        {
+            return adata[idx++];
+        }
+
+        private UInt16 ReadUInt16(byte[] adata, ref int idx)
+        {
+            UInt16 res = 0;
+            for (var i = 0; i < 2; ++i)
+            {
+                res <<= 8;
+                res |= adata[idx + i];
+            }
+            idx += 2;
+            return res;
+        }
+
+        private byte[] AsBytesMSB(uint val, uint maxBytes)
+        {
+            var ret = new byte[maxBytes];
+
+            for (--maxBytes; maxBytes >= 0 && val > 0; --maxBytes)
+            {
+                ret[maxBytes] = (byte)(val & 0xFFu);
+                val >>= 8;
+            }
+
+            return ret;
+        }
     }
 }
