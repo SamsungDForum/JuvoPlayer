@@ -5,7 +5,7 @@ using System.Text;
 
 namespace JuvoPlayer.Player
 {
-    internal interface ICodecExtraDataHandler
+    public interface ICodecExtraDataHandler
     {
         void OnAppendPacket(Packet packet);
         void OnStreamConfigChanged(StreamConfig config);
