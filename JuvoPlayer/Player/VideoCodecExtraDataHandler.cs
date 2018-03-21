@@ -245,8 +245,112 @@ namespace JuvoPlayer.Player
             }
         }
 
+        // In case of H265 as VideoCodecConfig::extraData we will have box, which
+        // according to ISO/IES 14496-15 chapter 8.3.3.1.2 has following structure:
+        //
+        // aligned(8) class HEVCDecoderConfigurationRecord {
+        //   unsigned int(8) configurationVersion = 1;
+        //   unsigned int(2) general_profile_space;
+        //   unsigned int(1) general_tier_flag;
+        //   unsigned int(5) general_profile_idc;
+        //   unsigned int(32) general_profile_compatibility_flags;
+        //   unsigned int(48) general_constraint_indicator_flags;
+        //   unsigned int(8) general_level_idc;
+        //   bit(4) reserved = ‘1111’b;
+        //   unsigned int(12) min_spatial_segmentation_idc;
+        //   bit(6) reserved = ‘111111’b;
+        //   unsigned int(2) parallelismType;
+        //   bit(6) reserved = ‘111111’b;
+        //   unsigned int(2) chromaFormat;
+        //   bit(5) reserved = ‘11111’b;
+        //   unsigned int(3) bitDepthLumaMinus8;
+        //   bit(5) reserved = ‘11111’b;
+        //   unsigned int(3) bitDepthChromaMinus8;
+        //   bit(16) avgFrameRate;
+        //   bit(2) constantFrameRate;
+        //   bit(3) numTemporalLayers;
+        //   bit(1) temporalIdNested;
+        //   unsigned int(2) lengthSizeMinusOne;
+        //   unsigned int(8) numOfArrays;
+        //   for (j=0; j < numOfArrays; j++) {
+        //     bit(1) array_completeness;
+        //     unsigned int(1) reserved = 0;
+        //     unsigned int(6) NAL_unit_type;
+        //     unsigned int(16) numNalus;
+        //       for (i=0; i< numNalus; i++) {
+        //         unsigned int(16) nalUnitLength;
+        //         bit(8*nalUnitLength) nalUnit;
+        //       }
+        //     }
+        //   }
+        //
+        // "NAL_unit_type indicates the type of the NAL units in the following array
+        // (which must be all of that type); it takes a value as defined
+        // in ISO/IEC 23008‐2; it is restricted to take one of the
+        // values indicating a VPS, SPS, PPS, or SEI NAL unit;"
+        // (from ISO/IES 14496-15 chapter 8.3.3.1.2)
+        //
+        // If we want to change representations with different codec extra
+        // configuration in adaptive streaming scenarios, then we have to modify each
+        // packet data by inserting before video samples extracted NALs in the
+        // following way:
+        //   for each nalUnit:
+        //     write nalUnitLength on lengthSizeMinusOne + 1 bytes in MSB format
+        //       (BigEndian)
+        //     write nalUnit (without any modifications)
+        //   append video packet data
         private void ExtractH265ExtraData(VideoStreamConfig videoConfig)
         {
+            if (videoConfig.CodecExtraData.Length < 21)
+            {  // Min first 5 byte + num_sps
+                Logger.Error("extra_data is too short to pass valid SPS/PPS header");
+                return;
+            }
+
+            var extraData = new byte[videoConfig.CodecExtraData.Length];
+            Buffer.BlockCopy(videoConfig.CodecExtraData, 0, extraData, 0, videoConfig.CodecExtraData.Length);
+
+            int idx = 21;
+            var lengthSize = (ReadByte(extraData, ref idx) & 0x3u) + 1;
+            var numOfArrays = ReadByte(extraData, ref idx);
+
+            var nals = new List<byte[]>();
+            for (var j = 0; j < numOfArrays; ++j)
+            {
+                if (extraData.Length < idx + 3)
+                {
+                    Logger.Error("extra data too short");
+                    return;
+                }
+
+                var nalUnitType = (ReadByte(extraData, ref idx) & 0x3Fu);
+                UInt16 numNalus = ReadUInt16(extraData, ref idx);
+                for (var i = 0; i < numNalus; ++i)
+                {
+                    if (extraData.Length < idx + 2)
+                    {
+                        Logger.Error("extra data too short");
+                        return;
+                    }
+                    UInt16 nalUnitLength = ReadUInt16(extraData, ref idx);
+                    if (extraData.Length < idx + nalUnitLength)
+                    {
+                        Logger.Error("extra data too short");
+                        return;
+                    }
+
+                    var elem = new byte[nalUnitLength];
+                    Buffer.BlockCopy(extraData, idx, elem, 0, nalUnitLength);
+                    nals.Add(elem);
+                    idx += nalUnitLength;
+                }
+            }
+            var size = nals.Sum(o => lengthSize + o.Length);
+
+            parsedExtraData = new byte[size];
+
+            var offset = 0;
+            CopySet(lengthSize, nals, ref offset);
         }
 
         private byte ReadByte(byte[] adata, ref int idx)
