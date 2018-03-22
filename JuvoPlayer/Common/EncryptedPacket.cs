@@ -1,3 +1,4 @@
+using JuvoPlayer.Drms;
 using System;
 
 namespace JuvoPlayer.Common
@@ -15,5 +16,6 @@ namespace JuvoPlayer.Common
         public byte[] KeyId;
         public byte[] Iv;
         public Subsample[] Subsamples;
+        public IDrmSession DrmSession;
     }
 }

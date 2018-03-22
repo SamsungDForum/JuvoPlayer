@@ -177,8 +177,8 @@ namespace JuvoPlayer.Player.SMPlayer
                     Packet packet = DequeuePacket();
                     if (packet.IsEOS)
                         SubmitEOSPacket(packet);
-                    else if (packet is DecryptedEMEPacket)
-                        SubmitEMEPacket(packet as DecryptedEMEPacket);
+                    else if (packet is EncryptedPacket)
+                        SubmitEncryptedPacket(packet as EncryptedPacket);
                     else if (packet is BufferConfiguration)
                         SubmitStreamConfiguration(packet as BufferConfiguration);
                     else
@@ -211,7 +211,23 @@ namespace JuvoPlayer.Player.SMPlayer
             return packet;
         }
 
-        private unsafe void SubmitEMEPacket(DecryptedEMEPacket packet)
+        private unsafe void SubmitEncryptedPacket(EncryptedPacket packet)
+        {
+            if (packet.DrmSession == null)
+            {
+                SubmitPacket(packet);
+                return;
+            }
+
+            var decryptedPacket = packet.DrmSession.DecryptPacket(packet).Result;
+            if (decryptedPacket == null)
+                throw new Exception("An error occured while decrypting encrypted packet!");
+
+            if (decryptedPacket is DecryptedEMEPacket)
+                SubmitDecryptedEmePacket(decryptedPacket as DecryptedEMEPacket);
+        }
+
+        private void SubmitDecryptedEmePacket(DecryptedEMEPacket packet)
         {
             var trackType = SMPlayerUtils.GetTrackType(packet);
 
