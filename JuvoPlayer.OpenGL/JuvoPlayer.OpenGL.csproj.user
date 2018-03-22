@@ -4,6 +4,6 @@
     <DebuggerFlavor>ProjectDebugger</DebuggerFlavor>
   </PropertyGroup>
   <PropertyGroup>
-    <ActiveDebugProfile>192.168.137.2:26101#6e1f156e-c68b-4ea2-a524-a12040e9effe</ActiveDebugProfile>
+    <ActiveDebugProfile>JuvoPlayer.OpenGL</ActiveDebugProfile>
   </PropertyGroup>
 </Project>

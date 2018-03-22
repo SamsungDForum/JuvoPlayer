@@ -16,21 +16,6 @@
     <None Remove="shared\res\videoclips.json" />
   </ItemGroup>
   <ItemGroup>
-    <Content Include="..\XamarinPlayer\XamarinPlayer.Tizen.TV\res\bolid.jpg" Link="res\tiles\bolid.jpg" />
-    <Content Include="..\XamarinPlayer\XamarinPlayer.Tizen.TV\res\btn_viewer_control_back_normal.png" Link="res\icons\btn_viewer_control_back_normal.png" />
-    <Content Include="..\XamarinPlayer\XamarinPlayer.Tizen.TV\res\btn_viewer_control_forward_normal.png" Link="res\icons\btn_viewer_control_forward_normal.png" />
-    <Content Include="..\XamarinPlayer\XamarinPlayer.Tizen.TV\res\btn_viewer_control_next_normal.png" Link="res\icons\btn_viewer_control_next_normal.png" />
-    <Content Include="..\XamarinPlayer\XamarinPlayer.Tizen.TV\res\btn_viewer_control_pause_normal.png" Link="res\icons\btn_viewer_control_pause_normal.png" />
-    <Content Include="..\XamarinPlayer\XamarinPlayer.Tizen.TV\res\btn_viewer_control_play_normal.png" Link="res\icons\btn_viewer_control_play_normal.png" />
-    <Content Include="..\XamarinPlayer\XamarinPlayer.Tizen.TV\res\btn_viewer_control_previous_normal.png" Link="res\icons\btn_viewer_control_previous_normal.png" />
-    <Content Include="..\XamarinPlayer\XamarinPlayer.Tizen.TV\res\bunny.jpg" Link="res\tiles\bunny.jpg" />
-    <Content Include="..\XamarinPlayer\XamarinPlayer.Tizen.TV\res\car.jpg" Link="res\tiles\car.jpg" />
-    <Content Include="..\XamarinPlayer\XamarinPlayer.Tizen.TV\res\content_list_bg.png" Link="res\tiles\content_list_bg.png" />
-    <Content Include="..\XamarinPlayer\XamarinPlayer.Tizen.TV\res\default_bg.png" Link="res\tiles\default_bg.png" />
-    <Content Include="..\XamarinPlayer\XamarinPlayer.Tizen.TV\res\oops.jpg" Link="res\tiles\oops.jpg" />
-    <Content Include="..\XamarinPlayer\XamarinPlayer.Tizen.TV\res\sacrecoeur.jpg" Link="res\tiles\sacrecoeur.jpg" />
-    <Content Include="..\XamarinPlayer\XamarinPlayer.Tizen.TV\res\sintel.jpg" Link="res\tiles\sintel.jpg" />
-    <Content Include="..\XamarinPlayer\XamarinPlayer.Tizen.TV\res\tos-poster.jpg" Link="res\tiles\tos-poster.jpg" />
     <Content Include="shared\res\videoclips.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
@@ -41,7 +26,6 @@
     <Folder Include="res\fonts\" />
     <Folder Include="res\backgrounds\" />
     <Folder Include="res\icons\" />
-    <Folder Include="res\tiles\" />
   </ItemGroup>
 
   <ItemGroup>
