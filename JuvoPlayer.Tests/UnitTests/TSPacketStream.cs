@@ -86,29 +86,6 @@ namespace JuvoPlayer.Tests.UnitTests
         }
 
         [Test]
-        public void OnAppendPacket_WhenDrmSessionIsConfigured_CallsDrmSession()
-        {
-            var drmSessionMock = CreateDrmSessionFake();
-
-            var drmManagerStub = CreateDrmManagerFake(drmSessionMock);
-
-            var playerStub = Substitute.For<IPlayer>();
-
-            using (var stream = CreatePacketStream(StreamType.Audio, playerStub, drmManagerStub))
-            {
-                var packet = new EncryptedPacket() { StreamType = StreamType.Audio };
-                var config = new AudioStreamConfig();
-                var drmInitData = new DRMInitData();
-
-                stream.OnStreamConfigChanged(config);
-                stream.OnDRMFound(drmInitData);
-                stream.OnAppendPacket(packet);
-
-                drmSessionMock.Received().DecryptPacket(Arg.Any<EncryptedPacket>());
-            }
-        }
-
-        [Test]
         public void OnStreamConfigChanged_WhenStreamConfigIsUnsupported_ThrowsArgumentException()
         {
             using (var stream = CreatePacketStream(StreamType.Audio))
