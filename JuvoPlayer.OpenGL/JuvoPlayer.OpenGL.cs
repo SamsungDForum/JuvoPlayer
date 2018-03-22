@@ -240,11 +240,12 @@ namespace Tizen.TV.NUI.GLApplication.JuvoPlayer.OpenGL
             tilesNumberTarget = contentList.Count;
             for (int i = 0; i < contentList.Count; ++i) {
                 Tile tile = new Tile {
-                    imgPath = home + "tiles/" + tiles[i % tiles.Length].imgPath,
+                    //imgPath = home + "tiles/" + tiles[i % tiles.Length].imgPath,
+                    imgPath = home + "tiles/" + contentList[i].Image,
                     description = contentList[i].Description ?? "",
                     name = contentList[i].Title ?? ""
                 };
-                Log.Info("JuvoGL", "Loading Tile " + tile.name + " (" + tile.description + "), " + tile.imgPath);
+                //Log.Info("JuvoGL", "Loading Tile " + tile.name + " (" + tile.description + "), " + tile.imgPath);
                 LoadTile(tile);
             }
             for(int i = 0; i < icons.Length; ++i) {
@@ -475,6 +476,11 @@ namespace Tizen.TV.NUI.GLApplication.JuvoPlayer.OpenGL
                         break;
                     menuShown = 1;
                     ShowMenu(menuShown);
+                    progressBarShown = 0; // it's overriden after switch...
+                    if (player != null) {
+                        player.Dispose();
+                        player = null;
+                    }
                     break;
                 case "XF86Exit":
                     Exit();
@@ -509,37 +515,36 @@ namespace Tizen.TV.NUI.GLApplication.JuvoPlayer.OpenGL
         }
 
         private void UpdateUI() {
-            if (player == null || tiles.Length <= selectedTile)
-                return;
-            playerTimeCurrentPosition = (int)player.CurrentPosition.TotalMilliseconds;
-            playerTimeDuration = (int)player.Duration.TotalMilliseconds;
+            if (player != null && tiles.Length > selectedTile) {
+                playerTimeCurrentPosition = (int)player.CurrentPosition.TotalMilliseconds;
+                playerTimeDuration = (int)player.Duration.TotalMilliseconds;
 
-            switch(player.State) {
-                case PlayerState.Idle:
-                    playerState = 0;
-                    break;
-                case PlayerState.Preparing:
-                    playerState = 1;
-                    break;
-                case PlayerState.Prepared:
-                    playerState = 2;
-                    if (player != null)
-                        player.Start();
-                    break;
-                case PlayerState.Stopped:
-                    playerState = 3;
-                    break;
-                case PlayerState.Paused:
-                    playerState = 4;
-                    break;
-                case PlayerState.Playing:
-                    playerState = 5;
-                    break;
-                case PlayerState.Error:
-                    playerState = 6;
-                    break;
+                switch (player.State) {
+                    case PlayerState.Idle:
+                        playerState = 0;
+                        break;
+                    case PlayerState.Preparing:
+                        playerState = 1;
+                        break;
+                    case PlayerState.Prepared:
+                        playerState = 2;
+                        if (player != null)
+                            player.Start();
+                        break;
+                    case PlayerState.Stopped:
+                        playerState = 3;
+                        break;
+                    case PlayerState.Paused:
+                        playerState = 4;
+                        break;
+                    case PlayerState.Playing:
+                        playerState = 5;
+                        break;
+                    case PlayerState.Error:
+                        playerState = 6;
+                        break;
+                }
             }
-
             if (progressBarShown != 0 && playerState == (int)PlayerState.Playing && (DateTime.Now - lastAction).TotalMilliseconds >= prograssBarFadeout.TotalMilliseconds) {
                 progressBarShown = 0;
                 Log.Info("JuvoGL", "Hiding progress bar (" + (DateTime.Now - lastAction).TotalMilliseconds + " >= " + prograssBarFadeout.TotalMilliseconds + ").");
