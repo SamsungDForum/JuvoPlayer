@@ -16,7 +16,7 @@ namespace JuvoPlayer.Drms.DummyDrm
             DeInit,
             Decrypt,
             Release
-        };        
+        };
 
         private readonly ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
 
@@ -27,7 +27,7 @@ namespace JuvoPlayer.Drms.DummyDrm
 
         private Context context;
         private Session session;
-        private SharedMemory inputMemory; 
+        private SharedMemory inputMemory;
 
         private DummyDrmSession()
         {          
