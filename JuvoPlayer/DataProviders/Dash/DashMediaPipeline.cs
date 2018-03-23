@@ -56,6 +56,8 @@ namespace JuvoPlayer.DataProviders.Dash
         private DashStream currentStream;
         private List<DashStream> availableStreams = new List<DashStream>();
 
+        private TimeSpan demuxerTimeStamp = TimeSpan.Zero;
+
         public DashMediaPipeline(IDashClient dashClient, IDemuxer demuxer, StreamType streamType)
         {
             this.dashClient = dashClient ?? throw new ArgumentNullException(nameof(dashClient), "dashClient cannot be null");
@@ -177,8 +179,8 @@ namespace JuvoPlayer.DataProviders.Dash
             demuxer.Reset();
             dashClient.Stop();
 
-            // Set new times 
-            dashClient.Seek(time);
+            // Set new time
+            demuxerTimeStamp = dashClient.Seek(time);
 
             // Start downloading and parsing new data
             dashClient.Start();
@@ -304,6 +306,12 @@ namespace JuvoPlayer.DataProviders.Dash
         {
             if (packet != null)
             {
+                // Sometimes we can receive invalid timestamp from demuxer
+                // eg during encrypted content seek or live video.
+                // Adjust timestamps to avoid playback problems
+                packet.Dts += demuxerTimeStamp;
+                packet.Pts += demuxerTimeStamp;
+
                 PacketReady?.Invoke(packet);
                 return;
             }
