@@ -219,7 +219,7 @@ namespace JuvoPlayer.Player.SMPlayer
                 return;
             }
 
-            var decryptedPacket = packet.DrmSession.DecryptPacket(packet).Result;
+            var decryptedPacket = packet.Decrypt();
             if (decryptedPacket == null)
                 throw new Exception("An error occured while decrypting encrypted packet!");
 
