@@ -43,7 +43,10 @@ namespace JuvoPlayer.Player
             }
 
             if (drmSession != null && packet is EncryptedPacket)
-                packet = drmSession.DecryptPacket(packet as EncryptedPacket).Result;
+            {
+                var encryptedPacket = (EncryptedPacket)packet;
+                encryptedPacket.DrmSession = drmSession;
+            }
 
             codecExtraDataHandler.OnAppendPacket(packet);
 
