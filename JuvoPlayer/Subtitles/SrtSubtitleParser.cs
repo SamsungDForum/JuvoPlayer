@@ -8,7 +8,7 @@ using System.Text.RegularExpressions;
 
 namespace JuvoPlayer.Subtitles
 {
-    internal class SRTSubtitleParser
+    internal class SrtSubtitleParser : ISubtitleParser
     {
         public IEnumerable<Cue> Parse(Stream stream)
         {

@@ -10,23 +10,6 @@ namespace JuvoPlayer.Subtitles
 
         public int Count => cues.Count;
 
-        public int Rank(TimeSpan key, int lo, int hi)
-        {
-            if (hi < lo) return lo;
-            int mid = lo + (hi - lo) / 2;
-            int cmp = cues[mid].Compare(key);
-            if (cmp < 0)
-                return Rank(key, lo, mid - 1);
-            if (cmp > 0)
-                return Rank(key, mid + 1, hi);
-            return mid;
-        }
-
-        public int Rank(TimeSpan key)
-        {
-            return Rank(key, 0, cues.Count - 1);
-        }
-
         public void Put(Cue cue)
         {
             int i = Rank(cue.Begin);
@@ -46,6 +29,23 @@ namespace JuvoPlayer.Subtitles
             if (i < Count && cues[i].Compare(key) == 0)
                 return cues[i];
             return null;
+        }
+
+        private int Rank(TimeSpan key)
+        {
+            return Rank(key, 0, cues.Count - 1);
+        }
+
+        private int Rank(TimeSpan key, int lo, int hi)
+        {
+            if (hi < lo) return lo;
+            int mid = lo + (hi - lo) / 2;
+            int cmp = cues[mid].Compare(key);
+            if (cmp < 0)
+                return Rank(key, lo, mid - 1);
+            if (cmp > 0)
+                return Rank(key, mid + 1, hi);
+            return mid;
         }
     }
 }

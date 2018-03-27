@@ -14,7 +14,6 @@
 using System;
 using System.Collections.Generic;
 using JuvoPlayer.Common;
-using JuvoPlayer.DataProviders;
 using JuvoPlayer.Demuxers;
 
 namespace JuvoPlayer.DataProviders.RTSP
@@ -32,6 +31,11 @@ namespace JuvoPlayer.DataProviders.RTSP
 
             this.demuxer.StreamConfigReady += OnStreamConfigReady;
             this.demuxer.PacketReady += OnPacketReady;
+        }
+
+        public string GetCurrentCueText()
+        {
+            return null;
         }
 
         public event ClipDurationChanged ClipDurationChanged;

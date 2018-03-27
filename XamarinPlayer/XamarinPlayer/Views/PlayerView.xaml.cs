@@ -33,7 +33,6 @@ namespace XamarinPlayer.Views
 
             _playerService = DependencyService.Get<IPlayerService>(DependencyFetchTarget.NewInstance);
             _playerService.StateChanged += OnPlayerStateChanged;
-            _playerService.ShowSubtitle += OnShowSubtitle;
 
             PlayButton.Clicked += (s, e) => { Play(); };
 
@@ -205,10 +204,6 @@ namespace XamarinPlayer.Views
             }
         }
 
-        private void OnShowSubtitle(object sender, ShowSubtitleEventArgs e)
-        {
-        }
-
         protected override void OnAppearing()
         {
             base.OnAppearing();
@@ -311,6 +306,7 @@ namespace XamarinPlayer.Views
                 }
 
                 UpdatePlayTime();
+                UpdateSubtitles();
 
                 if (Settings.IsVisible)
                     return;
@@ -337,6 +333,11 @@ namespace XamarinPlayer.Views
                 Progressbar.Progress = _playerService.CurrentPosition.TotalMilliseconds / _playerService.Duration.TotalMilliseconds;
             else
                 Progressbar.Progress = 0;
+        }
+
+        private void UpdateSubtitles()
+        {
+            // FIXME: implement
         }
     }
 }

@@ -4,12 +4,10 @@ using System.Collections.Generic;
 namespace XamarinPlayer.Services
 {
     public delegate void PlayerStateChangedEventHandler(object sender, PlayerStateChangedEventArgs e);
-    public delegate void ShowSubtitleEventHandler(object sender, ShowSubtitleEventArgs e);
 
     public interface IPlayerService : IDisposable
     {
         event PlayerStateChangedEventHandler StateChanged;
-        event ShowSubtitleEventHandler ShowSubtitle;
 
         TimeSpan Duration { get; }
 
@@ -18,6 +16,8 @@ namespace XamarinPlayer.Services
         bool IsSeekingSupported { get; }
 
         PlayerState State { get; }
+
+        string CurrentCueText { get; }
 
         void SetSource(object clip);
 
