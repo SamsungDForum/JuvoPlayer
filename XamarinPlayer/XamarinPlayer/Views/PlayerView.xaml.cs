@@ -109,22 +109,39 @@ namespace XamarinPlayer.Views
             if (Settings.IsVisible)
             {
                 if (AudioTrack.ItemsSource == null)
-                {
-                    AudioTrack.ItemsSource = _playerService.GetStreamsDescription(StreamDescription.StreamType.Audio);
-                    AudioTrack.ItemDisplayBinding = new Binding("Description");
-                    AudioTrack.SelectedIndex = 0;
-                    AudioTrack.SelectedIndexChanged += (sender, args) =>
-                    {
-                        if (AudioTrack.SelectedIndex != -1)
-                        {
-                            var stream = (StreamDescription)AudioTrack.ItemsSource[AudioTrack.SelectedIndex];
+                    BindStreamPicker(AudioTrack, StreamDescription.StreamType.Audio);
+                if (VideoQuality.ItemsSource == null)
+                    BindStreamPicker(VideoQuality, StreamDescription.StreamType.Video);
 
-                            _playerService.ChangeActiveStream(stream);
-                        }
-                    };
-                }
                 AudioTrack.Focus();
             }
+        }
+
+        private void BindStreamPicker(Picker picker, StreamDescription.StreamType streamType)
+        {
+            var streams = _playerService.GetStreamsDescription(streamType);
+            picker.ItemsSource = streams;
+            picker.ItemDisplayBinding = new Binding("Description");
+            picker.SelectedIndex = 0;
+
+            for (var i = 0; i < streams.Count; ++i)
+            {
+                if (streams[i].Default)
+                {
+                    picker.SelectedIndex = i;
+                    break;
+                }
+            }
+
+            picker.SelectedIndexChanged += (sender, args) =>
+            {
+                if (picker.SelectedIndex != -1)
+                {
+                    var stream = (StreamDescription)picker.ItemsSource[picker.SelectedIndex];
+
+                    _playerService.ChangeActiveStream(stream);
+                }
+            };
         }
 
         private void Forward()

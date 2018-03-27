@@ -100,8 +100,8 @@ namespace JuvoPlayer.Tests.IntegrationTests
             Assert.IsNotNull(clips[1].Subtitles[0]);
             Assert.AreEqual(clips[1].Subtitles[0].Path, "./subs/sample_cyrilic.srt");
             Assert.AreEqual(clips[1].Subtitles[0].Encoding, "windows-1251");
-            Assert.AreEqual(clips[1].Subtitles[0].Language, "en (external)");
-            Assert.AreEqual(clips[1].Subtitles[0].Id, "11");
+            Assert.AreEqual(clips[1].Subtitles[0].Language, "en");
+            Assert.AreEqual(clips[1].Subtitles[0].Id, 11);
         }
 
         [Test]

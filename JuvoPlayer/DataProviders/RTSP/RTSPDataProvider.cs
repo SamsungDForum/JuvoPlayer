@@ -95,6 +95,9 @@ namespace JuvoPlayer.DataProviders.RTSP
             rtpClient.Start(currentClip);
             demuxer.StartForExternalSource(InitializationMode.Full);
         }
+
+        public string CurrentCueText { get; }
+
         public void OnStopped()
         {
         }

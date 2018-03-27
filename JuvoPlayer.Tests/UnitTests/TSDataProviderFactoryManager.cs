@@ -59,6 +59,8 @@ namespace JuvoPlayer.Tests.UnitTests
                 throw new NotImplementedException();
             }
 
+            public string CurrentCueText { get; }
+
             public void Dispose()
             {
             }

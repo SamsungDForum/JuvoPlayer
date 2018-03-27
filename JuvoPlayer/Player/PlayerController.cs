@@ -61,8 +61,11 @@ namespace JuvoPlayer.Player
             this.player.ShowSubtitle += OnShowSubtitle;
             this.player.TimeUpdated += OnTimeUpdated;
 
-            streams[StreamType.Audio] = new PacketStream(StreamType.Audio, this.player, drmManager);
-            streams[StreamType.Video] = new PacketStream(StreamType.Video, this.player, drmManager);
+            var audioCodecExtraDataHandler = new AudioCodecExtraDataHandler(player);
+            var vidoeCodecExtraDataHandler = new VideoCodecExtraDataHandler(player);
+
+            streams[StreamType.Audio] = new PacketStream(StreamType.Audio, this.player, drmManager, audioCodecExtraDataHandler);
+            streams[StreamType.Video] = new PacketStream(StreamType.Video, this.player, drmManager, vidoeCodecExtraDataHandler);
         }
 
         private void OnPlaybackCompleted()

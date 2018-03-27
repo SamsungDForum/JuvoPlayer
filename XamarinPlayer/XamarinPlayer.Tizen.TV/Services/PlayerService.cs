@@ -46,7 +46,7 @@ namespace XamarinPlayer.Tizen.Services
             }
         }
 
-        public string CurrentCueText => dataProvider?.GetCurrentCueText();
+        public string CurrentCueText => dataProvider?.CurrentCueText;
 
         public PlayerService()
         {
@@ -101,7 +101,14 @@ namespace XamarinPlayer.Tizen.Services
         public List<StreamDefinition> GetStreamsDescription(StreamType streamType)
         {
             var streams = dataProvider.GetStreamsDescription(ToJuvoStreamType(streamType));
-            return streams.Select(o => new StreamDefinition() { Id = o.Id, Description = o.Description, Type = ToStreamType(o.StreamType) }).ToList();
+            return streams.Select(o => 
+                new StreamDefinition()
+                {
+                    Id = o.Id,
+                    Description = o.Description,
+                    Default = o.Default,
+                    Type = ToStreamType(o.StreamType)
+                }).ToList();
         }
 
         private JuvoPlayer.Common.StreamType ToJuvoStreamType(StreamType streamType)
