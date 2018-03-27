@@ -1,11 +1,14 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Text;
 
 namespace JuvoPlayer.Subtitles
 {
-    class ISubtitleParser
+    internal interface ISubtitleParser
     {
+        IEnumerable<Cue> Parse(StreamReader reader);
 
+        IEnumerable<Cue> Parse(Stream stream);
     }
 }

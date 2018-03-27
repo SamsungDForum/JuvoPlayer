@@ -10,7 +10,7 @@ using NUnit.Framework;
 namespace JuvoPlayer.Tests.IntegrationTests
 {
     [TestFixture]
-    class TSSRTSubtitleParser
+    class TSSrtSubtitleParser
     {
         public Stream GetResourceStream(string name)
         {
@@ -32,8 +32,8 @@ namespace JuvoPlayer.Tests.IntegrationTests
         [TestCase("JuvoPlayer.Tests.res.subtitles.media_player_subs_utf8.srt", "utf-8", "[UTF-8] 3.0: 고양이. Чч Щщ Ъъ. Óó Śś Źź. Ýý Ţţ Ł €. 猫.")]
         public void Parse_DifferentEncodings_ParsesSuccessfully(string resourceName, string encodingName, string expectedCue)
         {
-            Encoding.RegisterProvider(System.Text.CodePagesEncodingProvider.Instance);
-            var parser = new SRTSubtitleParser();
+            Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
+            var parser = new SrtSubtitleParser();
             var subtitleStream = GetResourceStream(resourceName);
 
             using (var reader = new StreamReader(subtitleStream, Encoding.GetEncoding(encodingName)))

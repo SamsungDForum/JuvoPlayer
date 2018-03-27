@@ -38,6 +38,11 @@ namespace JuvoPlayer.DataProviders.Dash
             videoPipeline.PacketReady += OnPacketReady;
         }
 
+        public string GetCurrentCueText()
+        {
+            return null;
+        }
+
         public event ClipDurationChanged ClipDurationChanged;
         public event DRMInitDataFound DRMInitDataFound;
         public event SetDrmConfiguration SetDrmConfiguration;
@@ -114,12 +119,19 @@ namespace JuvoPlayer.DataProviders.Dash
 
         public List<StreamDescription> GetStreamsDescription(StreamType streamType)
         {
-            if (streamType == StreamType.Audio)
-                return audios.Select((o, i) => new StreamDescription() { Id = i, Description = o.Lang, StreamType = StreamType.Audio }).ToList();
-            if (streamType == StreamType.Video)
-                return videos.Select((o, i) => new StreamDescription() { Id = i, Description = o.Lang, StreamType = StreamType.Video }).ToList();
-
-            return new List<StreamDescription>();
+            List<Media> medias;
+            switch (streamType)
+            {
+                case StreamType.Audio:
+                    medias = audios;
+                    break;
+                case StreamType.Video:
+                    medias = videos;
+                    break;
+                default:
+                    return new List<StreamDescription>();
+            }
+            return medias.Select((o, i) => new StreamDescription() { Id = i, Description = o.Lang, StreamType = streamType }).ToList();
         }
 
         public void Start()

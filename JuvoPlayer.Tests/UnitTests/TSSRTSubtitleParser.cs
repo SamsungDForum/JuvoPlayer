@@ -8,12 +8,12 @@ using NUnit.Framework;
 namespace JuvoPlayer.Tests.UnitTests
 {
     [TestFixture]
-    class TSSRTSubtitleParser
+    class TSSrtSubtitleParser
     {
         [Test]
         public void ParseTime_WhenTimeIsValid_ParsesSuccessfully()
         {
-            var parser = CreateSRTParser();
+            var parser = CreateSrtParser();
 
             var parsed = parser.ParseTime("00:02:17,440");
 
@@ -23,7 +23,7 @@ namespace JuvoPlayer.Tests.UnitTests
         [Test]
         public void ParseTime_WhenTimeExceedesADay_ParsesSuccessfully()
         {
-            var parser = CreateSRTParser();
+            var parser = CreateSrtParser();
 
             var parsed = parser.ParseTime("25:02:17,440");
 
@@ -33,7 +33,7 @@ namespace JuvoPlayer.Tests.UnitTests
         [Test]
         public void ParseTime_WhenTimeFormatIsInvalid_ThrowsFormatException()
         {
-            var parser = CreateSRTParser();
+            var parser = CreateSrtParser();
 
             Assert.Throws<FormatException>(() =>
             {
@@ -44,7 +44,7 @@ namespace JuvoPlayer.Tests.UnitTests
         [Test]
         public void ParseTimeLine_WhenTimeIsValid_ReturnsExpectedBeginAndEnd()
         {
-            var parser = CreateSRTParser();
+            var parser = CreateSrtParser();
 
             (var begin, var end) = parser.ParseTimeLine("00:02:17,440 --> 00:02:20,375");
 
@@ -55,7 +55,7 @@ namespace JuvoPlayer.Tests.UnitTests
         [Test]
         public void ParseTimeLine_WhenLineDoesntContainSeparator_ThrowsFormatException()
         {
-            var parser = CreateSRTParser();
+            var parser = CreateSrtParser();
 
             Assert.Throws<FormatException>(() => { parser.ParseTimeLine("00:02:17,440 - 00:02:20,375"); });
         }
@@ -70,7 +70,7 @@ namespace JuvoPlayer.Tests.UnitTests
                 writer.Flush();
                 memoryStream.Position = 0;
 
-                var parser = CreateSRTParser();
+                var parser = CreateSrtParser();
                 var text = parser.ParseText(new StreamReader(memoryStream));
                 Assert.That(text, Is.EqualTo("- How did he do that?"));
             }
@@ -87,7 +87,7 @@ namespace JuvoPlayer.Tests.UnitTests
                 writer.Flush();
                 memoryStream.Position = 0;
 
-                var parser = CreateSRTParser();
+                var parser = CreateSrtParser();
                 var text = parser.ParseText(new StreamReader(memoryStream));
 
                 using (var reader = new StringReader(text))
@@ -98,9 +98,9 @@ namespace JuvoPlayer.Tests.UnitTests
             }
         }
 
-        private static SRTSubtitleParser CreateSRTParser()
+        private static SrtSubtitleParser CreateSrtParser()
         {
-            return new SRTSubtitleParser();
+            return new SrtSubtitleParser();
         }
     }
 }

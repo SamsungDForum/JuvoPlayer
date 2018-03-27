@@ -23,13 +23,12 @@
 			{
 				"subtitle": "./subs/sample_cyrilic.srt",
 				"encoding": "windows-1251",
-				"language": "en (external)",
-				"isActive": "true",
+				"language": "en",
 				"id": "11"
 			},
 			{
 				"subtitle": "./subs/sample_cyrilic_utf8.srt",
-				"language": "ko (external)",
+				"language": "ko",
 				"id": "10",
 				"encoding": "windows-1251"
 			}

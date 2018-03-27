@@ -42,5 +42,8 @@
     <ProjectReference Include="..\..\JuvoPlayer\JuvoPlayer.csproj" />
     <ProjectReference Include="..\XamarinPlayer\XamarinPlayer.csproj" />
   </ItemGroup>
+  <ItemGroup>
+    <Folder Include="res\subs\" />
+  </ItemGroup>
 
 </Project>
