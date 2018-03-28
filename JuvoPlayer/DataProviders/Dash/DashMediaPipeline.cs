@@ -330,7 +330,7 @@ namespace JuvoPlayer.DataProviders.Dash
 
             if (packet.Pts.TotalSeconds + SegmentEps < laskSeek.TotalSeconds)
             {
-                Logger.Info("Adjust timestamp");
+                Logger.Debug("Got badly timestamped packet. Adding timestamp to packets");
                 demuxerTimeStamp = laskSeek;
             }
 
