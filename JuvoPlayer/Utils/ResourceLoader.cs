@@ -19,7 +19,7 @@ namespace JuvoPlayer.Utils
 
         public virtual Stream Load(string path)
         {
-            if (path.StartsWith("http") || path.EndsWith("https"))
+            if (path.StartsWith("http://") || path.StartsWith("https://"))
             {
                 return LoadAsNetworkResource(new Uri(path));
             }
