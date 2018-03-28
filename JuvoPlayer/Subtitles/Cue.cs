@@ -48,7 +48,7 @@ namespace JuvoPlayer.Subtitles
         public int Compare(TimeSpan time)
         {
             if (time < Begin) return -1;
-            if (time > End) return 1;
+            if (time >= End) return 1;
             return 0;
         }
 
