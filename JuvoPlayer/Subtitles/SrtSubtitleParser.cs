@@ -1,8 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Globalization;
 using System.IO;
-using System.Linq;
 using System.Text;
 using System.Text.RegularExpressions;
 
@@ -10,9 +8,13 @@ namespace JuvoPlayer.Subtitles
 {
     internal class SrtSubtitleParser : ISubtitleParser
     {
+        // According to Wikipedia, windows-1252 is default SubRip's text encoding.
+        // See https://en.wikipedia.org/wiki/SubRip
+        private static string DefaultEncoding = "windows-1252";
+
         public IEnumerable<Cue> Parse(Stream stream)
         {
-            return Parse(new StreamReader(stream, Encoding.GetEncoding("windows-1252")));
+            return Parse(new StreamReader(stream, Encoding.GetEncoding(DefaultEncoding)));
         }
 
         public IEnumerable<Cue> Parse(StreamReader reader)
