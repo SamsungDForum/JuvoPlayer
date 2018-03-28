@@ -45,11 +45,6 @@ namespace JuvoPlayer.DataProviders.HLS
             this.demuxer.PacketReady += OnPacketReady;
         }
 
-        public List<SubtitleInfo> GetSubtitleInfos()
-        {
-            return currentClip.Subtitles;
-        }
-
         public event ClipDurationChanged ClipDurationChanged;
         public event DRMInitDataFound DRMInitDataFound;
         public event SetDrmConfiguration SetDrmConfiguration;
