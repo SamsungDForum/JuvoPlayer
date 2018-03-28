@@ -56,7 +56,7 @@ namespace JuvoPlayer.DataProviders.Dash
         private DashStream currentStream;
         private List<DashStream> availableStreams = new List<DashStream>();
 
-        private const double SegmentEps = 0.5;
+        private static readonly TimeSpan SegmentEps = TimeSpan.FromSeconds(0.5);
         private TimeSpan laskSeek = TimeSpan.Zero;
         private TimeSpan demuxerTimeStamp = TimeSpan.Zero;
 
@@ -308,7 +308,7 @@ namespace JuvoPlayer.DataProviders.Dash
         {
             if (packet != null)
             {
-                CheckTimeStamp(packet);
+                AdjustDemuxerTimeStampIfNeeded(packet);
 
                 // Sometimes we can receive invalid timestamp from demuxer
                 // eg during encrypted content seek or live video.
@@ -323,12 +323,12 @@ namespace JuvoPlayer.DataProviders.Dash
             PacketReady?.Invoke(Packet.CreateEOS(streamType));
         }
 
-        private void CheckTimeStamp(Packet packet)
+        private void AdjustDemuxerTimeStampIfNeeded(Packet packet)
         {
             if (laskSeek == TimeSpan.Zero)
                 return;
 
-            if (packet.Pts.TotalSeconds + SegmentEps < laskSeek.TotalSeconds)
+            if (packet.Pts + SegmentEps < laskSeek)
             {
                 Logger.Debug("Got badly timestamped packet. Adding timestamp to packets");
                 demuxerTimeStamp = laskSeek;
