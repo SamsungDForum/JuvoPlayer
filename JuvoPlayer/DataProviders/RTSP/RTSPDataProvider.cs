@@ -33,11 +33,6 @@ namespace JuvoPlayer.DataProviders.RTSP
             this.demuxer.PacketReady += OnPacketReady;
         }
 
-        public string GetCurrentCueText()
-        {
-            return null;
-        }
-
         public event ClipDurationChanged ClipDurationChanged;
         public event DRMInitDataFound DRMInitDataFound;
         public event SetDrmConfiguration SetDrmConfiguration;
