@@ -14,7 +14,7 @@ namespace JuvoPlayer.Utils
         public ResourceLoader()
         {
             HttpClient = new HttpClient();
-            Assembly = Assembly.GetExecutingAssembly();
+            Assembly = Assembly.GetEntryAssembly();
         }
 
         public virtual Stream Load(string path)
@@ -34,7 +34,7 @@ namespace JuvoPlayer.Utils
 
         public virtual Stream LoadAsEmbeddedResource(string resourceName)
         {
-            var manifestResourceName = Assembly.GetManifestResourceNames().First(name => name.Contains(resourceName));
+            var manifestResourceName = Assembly.GetManifestResourceNames().FirstOrDefault(name => name.Contains(resourceName));
             return manifestResourceName == null ? null : Assembly.GetManifestResourceStream(manifestResourceName);
         }
     }
