@@ -88,5 +88,55 @@ namespace JuvoPlayer.Tests.UnitTests
             Assert.That(received.Begin, Is.EqualTo(TimeSpan.FromSeconds(30)));
             Assert.That(received.End, Is.EqualTo(TimeSpan.FromSeconds(40)));
         }
+
+        [Test]
+        public void Get_TwoAdjacentCuesAndGetForFirst_ReturnsFirstOne()
+        {
+            var map = CreateCuesMap();
+
+            Cue first = new Cue()
+            {
+                Begin = TimeSpan.FromSeconds(10),
+                End = TimeSpan.FromSeconds(20)
+            };
+            map.Put(first);
+
+            Cue second = new Cue()
+            {
+                Begin = TimeSpan.FromSeconds(20),
+                End = TimeSpan.FromSeconds(30)
+            };
+            map.Put(second);
+
+            var received = map.Get(TimeSpan.FromSeconds(15));
+
+            Assert.That(received.Begin, Is.EqualTo(TimeSpan.FromSeconds(10)));
+            Assert.That(received.End, Is.EqualTo(TimeSpan.FromSeconds(20)));
+        }
+
+        [Test]
+        public void Get_TwoAdjacentCuesAndGetInBetween_ReturnsSecondOne()
+        {
+            var map = CreateCuesMap();
+
+            Cue first = new Cue()
+            {
+                Begin = TimeSpan.FromSeconds(10),
+                End = TimeSpan.FromSeconds(20)
+            };
+            map.Put(first);
+
+            Cue second = new Cue()
+            {
+                Begin = TimeSpan.FromSeconds(20),
+                End = TimeSpan.FromSeconds(30)
+            };
+            map.Put(second);
+
+            var received = map.Get(TimeSpan.FromSeconds(20));
+
+            Assert.That(received.Begin, Is.EqualTo(TimeSpan.FromSeconds(20)));
+            Assert.That(received.End, Is.EqualTo(TimeSpan.FromSeconds(30)));
+        }
     }
 }
