@@ -35,11 +35,6 @@ namespace JuvoPlayer.DataProviders.Dash
             videoPipeline.PacketReady += OnPacketReady;
         }
 
-        public string GetCurrentCueText()
-        {
-            return null;
-        }
-
         public event ClipDurationChanged ClipDurationChanged;
         public event DRMInitDataFound DRMInitDataFound;
         public event SetDrmConfiguration SetDrmConfiguration;
