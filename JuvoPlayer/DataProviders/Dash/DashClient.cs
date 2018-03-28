@@ -37,7 +37,7 @@ namespace JuvoPlayer.DataProviders.Dash
             this.streamType = streamType;            
         }
 
-        public void Seek(TimeSpan position)
+        public TimeSpan Seek(TimeSpan position)
         {
             Logger.Info(string.Format("{0} Seek to: {1} ", streamType, position));
 
@@ -46,7 +46,11 @@ namespace JuvoPlayer.DataProviders.Dash
             {
                 currentTime = position;
                 currentSegmentId = segmentId.Value;
+
+                return currentStreams.MediaSegmentAtPos(currentSegmentId).Period.Start;
             }
+
+            return TimeSpan.Zero;
         }
 
         public void Start()
