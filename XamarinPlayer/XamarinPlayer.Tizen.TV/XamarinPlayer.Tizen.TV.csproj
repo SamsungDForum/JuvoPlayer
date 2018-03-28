@@ -16,12 +16,18 @@
     <DebugType>None</DebugType>
   </PropertyGroup>
   <ItemGroup>
+    <None Remove="res\subs\media_player_subs_windows-1250.srt" />
+    <None Remove="res\subs\media_player_subs_windows-1252.srt" />
     <None Remove="shared\res\videoclips.json" />
   </ItemGroup>
   <ItemGroup>
     <Content Include="shared\res\videoclips.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="res\subs\media_player_subs_windows-1250.srt" />
+    <EmbeddedResource Include="res\subs\media_player_subs_windows-1252.srt" />
   </ItemGroup>
 
   
@@ -41,9 +47,6 @@
     <ProjectReference Include="..\..\JuvoLogger.Tizen\JuvoLogger.Tizen.csproj" />
     <ProjectReference Include="..\..\JuvoPlayer\JuvoPlayer.csproj" />
     <ProjectReference Include="..\XamarinPlayer\XamarinPlayer.csproj" />
-  </ItemGroup>
-  <ItemGroup>
-    <Folder Include="res\subs\" />
   </ItemGroup>
 
 </Project>
