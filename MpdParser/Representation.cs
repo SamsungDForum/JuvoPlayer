@@ -85,23 +85,12 @@ namespace MpdParser.Node.Dynamic
     }
 
     public class BaseRepresentationStream : IRepresentationStream
-    {
-        
+    {        
         public BaseRepresentationStream(Segment init, Segment media, Segment index = null)
         {
             media_ = media;
             InitSegment = init;
             IndexSegment = index;
-            /*
-            if (media_ == null)
-            {
-                Count = 0u;
-            }
-            else
-            {
-                Count = 1u;
-            }
-            */
             // Why this line is throwing TypeInitializationException..
             // beats me...
             Count = media == null ? 0u : 1u;
@@ -125,25 +114,27 @@ namespace MpdParser.Node.Dynamic
 
         private Segment media_;
 
-        private List<SIDXAtom> sidxs = null;
-
         public TimeSpan? Duration { get; }
         public Segment InitSegment { get; }
         public Segment IndexSegment { get; }
+
         public uint Count { get; }
+        private List<Segment> segments_ = new List<Segment>();
 
         ~BaseRepresentationStream()
         {
             //Cancel any pending request (i.e. Donwloader non null)
-            if( Downloader != null )
+            if (Downloader != null)
             {
                 Downloader.CancelAsync();
             }
         }
+
         private void DownloadIndex(bool async)
         {
             //Create index storage only if index segment is provided
-            if(IndexSegment == null) return;
+            if (IndexSegment == null)
+                return;
               
             ByteRange rng = new ByteRange(IndexSegment.ByteRange);
 
@@ -151,7 +142,6 @@ namespace MpdParser.Node.Dynamic
             {
                 if (async)
                 {
-
                     Logger.Info( string.Format("Index Segment present. Attempting ASYNC download"));
                     DownloadWait = new ManualResetEvent(false);
 
@@ -172,7 +162,6 @@ namespace MpdParser.Node.Dynamic
 
                     using (NetClient DataSucker = new NetClient())
                     {
-
                         DataSucker.SetRange(rng.Low, rng.High);
                         byte[] data = DataSucker.DownloadData(IndexSegment.Url);
                         ProcessIndexData(data, (UInt64)rng.High);
@@ -200,15 +189,11 @@ namespace MpdParser.Node.Dynamic
                     Downloader.Dispose();
                     Downloader = null;
                 }
-
             }
-            
-
-
         }
+
         private void DownloadCompleted(object sender, DownloadDataCompletedEventArgs e)
-        {
-       
+        {       
             try
             {
                 // If the request was not canceled and did not throw
@@ -229,7 +214,7 @@ namespace MpdParser.Node.Dynamic
                     Logger.Info(string.Format("Downloading Index Segment FAILED {0}", IndexSegment.Url));
                 }
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 Logger.Warn(string.Format("Error {0}", ex.Message));
             }
@@ -244,20 +229,13 @@ namespace MpdParser.Node.Dynamic
 
                 Downloader.Dispose();
                 Downloader = null;
-
             }
         }
-        
+
         private void ProcessIndexData(byte[] data, ulong dataStart)
         {
-            if (sidxs == null)
-            {
-                sidxs = new List<SIDXAtom>();
-            }
-
-            SIDXAtom atm = new SIDXAtom();
-            atm.ParseAtom(data, dataStart + 1);
-            sidxs.Add(atm);
+            var sidx = new SIDXAtom();
+            sidx.ParseAtom(data, dataStart + 1);
 
             //TODO:
             //SIDXAtom.SIDX_index_entry should contain a list of other sidx atoms containing
@@ -267,136 +245,72 @@ namespace MpdParser.Node.Dynamic
             //List of final sidxs should be "sorted" from low to high. In case of one it is not an issue,
             //it may be in case of N index boxes in hierarchy order (daisy chain should be ok too I think...)
             //so just do sanity check if we have such chunks
-            if (atm.SIDXIndexCount > 0)
+            if (sidx.SIDXIndexCount > 0)
             {
                 throw new NotImplementedException("Daisy chained / Hierarchical chunks not implemented...");
             }
-        }
-        public Segment MediaSegmentAtPos(uint pos)
-        {
-            Logger.Info(string.Format("MediaSegmentAtPos {0}", pos));
 
-            Segment res = null;
-
-            if(media_ == null)
+            for (uint i = 0; i < sidx.MovieIndexCount; ++i)
             {
-                return null;
-            }
-
-            DownloadWait?.WaitOne();
-            
-            if (sidxs == null)
-            {
-                Logger.Info(string.Format("No index data for {0}", media_.Url.ToString()));
-                return media_;
-            }
-
-            foreach (SIDXAtom sidx in sidxs)
-            {
-                if(pos >= sidx.MovieIndexCount)
-                {
-                    pos -= sidx.MovieIndexCount;
-                    continue;
-                }
-
                 UInt64 lb;
                 UInt64 hb;
                 TimeSpan starttime;
                 TimeSpan duration;
 
-                (lb,hb, starttime, duration) = sidx.GetRangeData(pos);
+                (lb, hb, starttime, duration) = sidx.GetRangeData(i);
                 if (lb != hb)
                 {
                     string rng = lb.ToString() + "-" + hb.ToString();
 
-                    res = new Segment(media_.Url, rng,
-                                        new TimeRange(starttime,duration));
-
-                    Logger.Info(string.Format("Range {0}-{1} set {2} POS={3} StartTime={4} Duration={5} {6}",
-                                    lb, hb, rng, pos, 
-                                    starttime,
-                                    duration,
-                                    media_.Url.ToString()));
-                    break;
+                    segments_.Add(new Segment(media_.Url, rng, new TimeRange(starttime, duration)));
                 }
             }
+        }
 
-            return res;
+        public Segment MediaSegmentAtPos(uint pos)
+        {
+            Logger.Info(string.Format("MediaSegmentAtPos {0}", pos));
+
+            if (media_ == null)
+                return null;
+
+            DownloadWait?.WaitOne();
+            
+            if (segments_.Count == 0)
+            {
+                Logger.Info(string.Format("No index data for {0}", media_.Url.ToString()));
+                return media_;
+            }
+
+            if (pos >= segments_.Count)
+                return null;
+
+            return segments_[(int)pos];
         }
 
         public uint? MediaSegmentAtTime(TimeSpan duration)
         {
             Logger.Info(string.Format("MediaSegmentAtTime {0}", duration));
-            if (media_ == null) return null;
-            if (media_.Contains(duration) <= TimeRelation.EARLIER) return null;
+            if (media_ == null)
+                return null;
+
+            if (media_.Contains(duration) <= TimeRelation.EARLIER)
+                return null;
             
             DownloadWait?.WaitOne();
-      
-            return GetRangeIndex(duration);
+
+            for (int i = 0; i < segments_.Count; ++i)
+            {
+                if (segments_[i].Period.Start + segments_[i].Period.Duration >= duration)
+                    return (uint)i;
+            }
+            return null;
         }
 
         public IEnumerable<Segment> MediaSegments()
         {
-            if (media_ != null)
-                yield return media_;
+            return segments_;
         }
-
-        protected uint? GetRangeIndex(TimeSpan curr)
-        {
-            Logger.Info(string.Format("GetRangeIndex {0}", curr));
-            uint skipcount = 0;
-            uint? idx =null;
-
-            if (sidxs != null)
-            {
-                foreach (SIDXAtom sidx in sidxs)
-                {
-                    if (curr < sidx.MaxIndexTime)
-                    {
-                        idx = sidx.GetRangeDurationIndex(curr);
-
-                        // GetRangeDurationIndex may return NULL if ID is not found.
-                        // adding a value to null variable should result in null
-                        // (expected bahviour) - indication that index entry is not found
-                        idx += (uint)skipcount;
-                        break;
-                    }
-                    else
-                    {
-                        skipcount += sidx.MovieIndexCount;
-                    }
-                }
-            }
-            if( idx == null)
-            {
-                idx = 0;
-            }
-            return idx;
-        }
-        protected (UInt64, UInt64, TimeSpan) GetRangeDuration(TimeSpan curr)
-        {
-            UInt64 lb = 0;
-            UInt64 hb = 0;
-            TimeSpan durr = default(TimeSpan);
-
-            foreach (SIDXAtom sidx in sidxs)
-            {
-                (lb, hb, durr) = sidx.GetRangeDuration(curr);
-                if (lb != hb) break;
-            }
-
-            if (lb == hb)
-            {
-                Logger.Warn(string.Format("Time Index {0} not found in indexing data", curr));
-                foreach (SIDXAtom sidx in sidxs)
-                {
-                    sidx.DumpMovieIndex(curr);
-                }
-
-            }
-            return (lb, hb, durr);
-        }
-
     }
 
     public class TemplateRepresentationStream : IRepresentationStream
