@@ -19,6 +19,18 @@ namespace JuvoPlayer.Subtitles
 
         public IEnumerable<Cue> Parse(StreamReader reader)
         {
+            try
+            {
+                return ParseLoop(reader);
+            }
+            catch (FormatException ex)
+            {
+                throw new SubtitleParserException("Cannot parse subtitle file", ex);
+            }
+        }
+
+        private IEnumerable<Cue> ParseLoop(StreamReader reader)
+        {
             while (!reader.EndOfStream)
             {
                 var line = MoveToFirstNonEmptyLine(reader);
@@ -31,7 +43,7 @@ namespace JuvoPlayer.Subtitles
 
                 var text = ParseText(reader);
 
-                yield return new Cue() { Text = text, Begin = begin, End = end};
+                yield return new Cue() {Text = text, Begin = begin, End = end};
             }
         }
 

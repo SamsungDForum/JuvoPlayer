@@ -1,5 +1,4 @@
 ﻿using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Text;
 using JuvoPlayer.Common;
@@ -24,8 +23,8 @@ namespace JuvoPlayer.Subtitles
             if (format == SubtitleFormat.Invalid)
                 throw new ArgumentException("Unsupported subtitle format");
 
-            var  factory = new SubtitleParserFactory();
-            var  parser = factory.CreateParser(format);
+            var factory = new SubtitleParserFactory();
+            var parser = factory.CreateParser(format);
             if (parser == null)
                 throw new ArgumentException("Unsupported subtitle format");
             return parser;
@@ -45,7 +44,7 @@ namespace JuvoPlayer.Subtitles
             var cuesMap = new CuesMap();
             using (var reader = new StreamReader(stream, Encoding.GetEncoding(encoding)))
             {
-                foreach (var cue in parser.Parse(new StreamReader(stream, Encoding.GetEncoding(encoding))))
+                foreach (var cue in parser.Parse(reader))
                 {
                     cuesMap.Put(cue);
                 }
