@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using JuvoLogger;
 using Xamarin.Forms;
 using Xamarin.Forms.Xaml;
 using XamarinPlayer.Services;
@@ -9,6 +10,7 @@ namespace XamarinPlayer.Views
     [XamlCompilation(XamlCompilationOptions.Compile)]
     public partial class PlayerView : ContentPage
     {
+        private static ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
         private readonly int DefaultTimeout = 5000;
         private readonly TimeSpan UpdateInterval = TimeSpan.FromMilliseconds(100);
         private readonly TimeSpan DefaultSeekTime = TimeSpan.FromSeconds(20);
@@ -153,12 +155,18 @@ namespace XamarinPlayer.Views
 
             Subtitles.SelectedIndexChanged += (sender, args) =>
             {
-                if (Subtitles.SelectedIndex == -1)
+                if (Subtitles.SelectedIndex == -1 || Subtitles.SelectedIndex == 0)
                     return;
-                if (Subtitles.SelectedIndex > 0)
+
+                var stream = (StreamDescription)Subtitles.ItemsSource[Subtitles.SelectedIndex];
+                try
                 {
-                    var stream = (StreamDescription)Subtitles.ItemsSource[Subtitles.SelectedIndex];
                     _playerService.ChangeActiveStream(stream);
+                }
+                catch (Exception ex)
+                {
+                    Logger.Error(ex.Message);
+                    Subtitles.SelectedIndex = 0;
                 }
             };
         }
