@@ -1,4 +1,5 @@
 using System;
+using System.Text;
 using ElmSharp;
 using JuvoLogger.Tizen;
 using Tizen;
@@ -15,6 +16,8 @@ namespace XamarinPlayer.Tizen
         protected override void OnCreate()
         {
             base.OnCreate();
+
+            Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
 
             _keyDown = new EcoreEvent<EcoreKeyEventArgs>(EcoreEventType.KeyDown, EcoreKeyEventArgs.Create);
             _keyDown.On += (s, e) =>

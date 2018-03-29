@@ -21,16 +21,15 @@
 		"url": "http://distribution.bbb3d.renderfarming.net/video/mp4/bbb_sunflower_1080p_30fps_normal.mp4",
 		"subtitles": [
 			{
-				"subtitle": "./subs/sample_cyrilic.srt",
+				"path": "./subs/sample_cyrilic.srt",
 				"encoding": "windows-1251",
-				"language": "en (external)",
-				"isActive": "true",
-				"id": "11"
+				"language": "en",
+				"id": 11
 			},
 			{
-				"subtitle": "./subs/sample_cyrilic_utf8.srt",
-				"language": "ko (external)",
-				"id": "10",
+				"path": "./subs/sample_cyrilic_utf8.srt",
+				"language": "ko",
+				"id": 10,
 				"encoding": "windows-1251"
 			}
 		],
