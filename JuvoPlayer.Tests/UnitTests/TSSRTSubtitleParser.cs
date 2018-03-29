@@ -30,14 +30,18 @@ namespace JuvoPlayer.Tests.UnitTests
             Assert.That(parsed, Is.EqualTo(new TimeSpan(0, 25, 2, 17, 440)));
         }
 
-        [Test]
-        public void ParseTime_WhenTimeFormatIsInvalid_ThrowsFormatException()
+        [TestCase(null, Description = "Null time")]
+        [TestCase("", Description = "Empty time")]
+        [TestCase("25.02.17.440", Description = "Invalid separators")]
+        [TestCase("25:02:17", Description = "Missing milliseconds")]
+        [TestCase("a.b.c.d", Description = "Letters instead of numbers")]
+        public void ParseTime_WhenTimeFormatIsInvalid_ThrowsFormatException(string invalidTimeToParse)
         {
             var parser = CreateSrtParser();
 
             Assert.Throws<FormatException>(() =>
             {
-                parser.ParseTime("25.02.17.440");
+                parser.ParseTime(invalidTimeToParse);
             });
         }
 
@@ -52,12 +56,16 @@ namespace JuvoPlayer.Tests.UnitTests
             Assert.That(end, Is.EqualTo(new TimeSpan(0, 0, 2, 20, 375)));
         }
 
-        [Test]
-        public void ParseTimeLine_WhenLineDoesntContainSeparator_ThrowsFormatException()
+        [TestCase(null, Description = "Null time line")]
+        [TestCase("", Description = "Empty time line")]
+        [TestCase("00:02:17,440 - 00:02:20,375", Description="Invalid separator")]
+        [TestCase("00:02:17,440 -->", Description = "Only begin time")]
+        [TestCase("-->  00:02:17,440", Description = "Only end time")]
+        public void ParseTimeLine_WhenLineIsInvalid_ThrowsFormatException(string invalidTimeLineToParse)
         {
             var parser = CreateSrtParser();
 
-            Assert.Throws<FormatException>(() => { parser.ParseTimeLine("00:02:17,440 - 00:02:20,375"); });
+            Assert.Throws<FormatException>(() => { parser.ParseTimeLine(invalidTimeLineToParse); });
         }
 
         [Test]

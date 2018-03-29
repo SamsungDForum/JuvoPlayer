@@ -73,10 +73,12 @@ namespace JuvoPlayer.Subtitles
 
         internal (TimeSpan, TimeSpan) ParseTimeLine(string line)
         {
+            if (line == null)
+                throw new FormatException("Line cannot be null");
             const string timeSeparator = "-->";
             if (!line.Contains(timeSeparator))
                 throw new FormatException("Missing separator");
-            string[] parts = line.Split(new string[] { timeSeparator }, StringSplitOptions.None);
+            string[] parts = line.Split(new[] { timeSeparator }, StringSplitOptions.None);
             var beginString = parts[0];
             var endString = parts[1];
             return (ParseTime(beginString), ParseTime(endString));
@@ -84,8 +86,14 @@ namespace JuvoPlayer.Subtitles
 
         internal TimeSpan ParseTime(string timeString)
         {
+            if (string.IsNullOrEmpty(timeString))
+                throw new FormatException("Invalid time format");
+
             timeString = timeString.Trim().Replace(',', ':');
             string[] parts = timeString.Split(':');
+
+            if (parts.Length != 4)
+                throw new FormatException("Invalid time format");
             int days = 0;
             int hours = Int32.Parse(parts[0]);
             int minutes = Int32.Parse(parts[1]);
