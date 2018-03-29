@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Collections.Generic;
+using JuvoLogger;
 using Xamarin.Forms;
 using Xamarin.Forms.Xaml;
 using XamarinPlayer.Services;
@@ -8,6 +10,7 @@ namespace XamarinPlayer.Views
     [XamlCompilation(XamlCompilationOptions.Compile)]
     public partial class PlayerView : ContentPage
     {
+        private static ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
         private readonly int DefaultTimeout = 5000;
         private readonly TimeSpan UpdateInterval = TimeSpan.FromMilliseconds(100);
         private readonly TimeSpan DefaultSeekTime = TimeSpan.FromSeconds(20);
@@ -19,6 +22,7 @@ namespace XamarinPlayer.Views
         private bool _errorOccured = false;
 
         public static readonly BindableProperty ContentSourceProperty = BindableProperty.Create("ContentSource", typeof(object), typeof(PlayerView), null);
+
         public object ContentSource
         {
             set { SetValue(ContentSourceProperty, value); }
@@ -33,7 +37,6 @@ namespace XamarinPlayer.Views
 
             _playerService = DependencyService.Get<IPlayerService>(DependencyFetchTarget.NewInstance);
             _playerService.StateChanged += OnPlayerStateChanged;
-            _playerService.ShowSubtitle += OnShowSubtitle;
 
             PlayButton.Clicked += (s, e) => { Play(); };
 
@@ -61,7 +64,7 @@ namespace XamarinPlayer.Views
             if (e.Contains("Back"))
             {
                 if (_playerService.State < PlayerState.Playing ||
-                    _playerService.State >= PlayerState.Playing && !Controller.IsVisible)
+                    _playerService.State >= PlayerState.Playing && !_isShowing)
                 {
                     Navigation.RemovePage(this);
                 }
@@ -113,6 +116,8 @@ namespace XamarinPlayer.Views
                     BindStreamPicker(AudioTrack, StreamDescription.StreamType.Audio);
                 if (VideoQuality.ItemsSource == null)
                     BindStreamPicker(VideoQuality, StreamDescription.StreamType.Video);
+                if (Subtitles.ItemsSource == null)
+                    BindSubtitleStreamPicker();
 
                 AudioTrack.Focus();
             }
@@ -121,24 +126,77 @@ namespace XamarinPlayer.Views
         private void BindStreamPicker(Picker picker, StreamDescription.StreamType streamType)
         {
             var streams = _playerService.GetStreamsDescription(streamType);
+
+            InitializePicker(picker, streams);
+
+            SelectDefaultStreamForPicker(picker, streams);
+
+            RegisterSelectedIndexChangeEventForPicker(picker);
+        }
+
+        private void BindSubtitleStreamPicker()
+        {
+            var streams = new List<StreamDescription>
+            {
+                new StreamDescription()
+                {
+                    Default = true,
+                    Description = "off",
+                    Id = 0,
+                    Type = StreamDescription.StreamType.Subtitle
+                }
+            };
+
+            streams.AddRange(_playerService.GetStreamsDescription(StreamDescription.StreamType.Subtitle));
+
+            InitializePicker(Subtitles, streams);
+
+            SelectDefaultStreamForPicker(Subtitles, streams);
+
+            Subtitles.SelectedIndexChanged += (sender, args) =>
+            {
+                if (Subtitles.SelectedIndex == -1 || Subtitles.SelectedIndex == 0)
+                    return;
+
+                var stream = (StreamDescription)Subtitles.ItemsSource[Subtitles.SelectedIndex];
+                try
+                {
+                    _playerService.ChangeActiveStream(stream);
+                }
+                catch (Exception ex)
+                {
+                    Logger.Error(ex.Message);
+                    Subtitles.SelectedIndex = 0;
+                }
+            };
+        }
+
+        private static void InitializePicker(Picker picker, List<StreamDescription> streams)
+        {
             picker.ItemsSource = streams;
             picker.ItemDisplayBinding = new Binding("Description");
             picker.SelectedIndex = 0;
+        }
 
+        private static void SelectDefaultStreamForPicker(Picker picker, List<StreamDescription> streams)
+        {
             for (var i = 0; i < streams.Count; ++i)
             {
                 if (streams[i].Default)
                 {
                     picker.SelectedIndex = i;
-                    break;
+                    return;
                 }
             }
+        }
 
+        private void RegisterSelectedIndexChangeEventForPicker(Picker picker)
+        {
             picker.SelectedIndexChanged += (sender, args) =>
             {
                 if (picker.SelectedIndex != -1)
                 {
-                    var stream = (StreamDescription)picker.ItemsSource[picker.SelectedIndex];
+                    var stream = (StreamDescription) picker.ItemsSource[picker.SelectedIndex];
 
                     _playerService.ChangeActiveStream(stream);
                 }
@@ -179,13 +237,15 @@ namespace XamarinPlayer.Views
                 PlayButton.Focus();
                 _isShowing = true;
             }
-            Controller.IsVisible = true;
+            TopBar.IsVisible = true;
+            BottomBar.IsVisible = true;
             _hideTime = timeout;
         }
 
         public void Hide()
         {
-            Controller.IsVisible = false;
+            TopBar.IsVisible = false;
+            BottomBar.IsVisible = false;
             _isShowing = false;
         }
 
@@ -220,10 +280,6 @@ namespace XamarinPlayer.Views
                 UpdatePlayTime();
                 Show();
             }
-        }
-
-        private void OnShowSubtitle(object sender, ShowSubtitleEventArgs e)
-        {
         }
 
         protected override void OnAppearing()
@@ -328,6 +384,7 @@ namespace XamarinPlayer.Views
                 }
 
                 UpdatePlayTime();
+                UpdateCueTextLabel();
 
                 if (Settings.IsVisible)
                     return;
@@ -354,6 +411,24 @@ namespace XamarinPlayer.Views
                 Progressbar.Progress = _playerService.CurrentPosition.TotalMilliseconds / _playerService.Duration.TotalMilliseconds;
             else
                 Progressbar.Progress = 0;
+        }
+
+        private void UpdateCueTextLabel()
+        {
+            if (Subtitles.SelectedIndex == 0)
+            {
+                if (CueTextLabel.IsVisible) CueTextLabel.IsVisible = false;
+                return;
+            }
+
+            var cueText = _playerService.CurrentCueText ?? string.Empty;
+            if (string.IsNullOrEmpty(cueText))
+            {
+                CueTextLabel.IsVisible = false;
+                return;
+            }
+            CueTextLabel.Text = cueText;
+            CueTextLabel.IsVisible = true;
         }
     }
 }
