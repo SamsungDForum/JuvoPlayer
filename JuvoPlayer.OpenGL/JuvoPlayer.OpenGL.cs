@@ -26,9 +26,6 @@ namespace Tizen.TV.NUI.GLApplication.JuvoPlayer.OpenGL
         [DllImport(glDemoLib, EntryPoint = "Draw")]
         public static extern void Draw(IntPtr eglDisplay, IntPtr eglSurface);
 
-        [DllImport(glDemoLib, EntryPoint = "AddBackground")]
-        public static extern int AddBackground(byte* pixels, int w, int h);
-
         [DllImport(glDemoLib, EntryPoint = "AddTile")]
         public static extern int AddTile();
 
@@ -61,6 +58,12 @@ namespace Tizen.TV.NUI.GLApplication.JuvoPlayer.OpenGL
 
         [DllImport(glDemoLib, EntryPoint = "SetVersion")]
         public static extern void SetVersion(byte* ver, int verLen);
+
+        [DllImport(glDemoLib, EntryPoint = "SwitchTextRenderingMode")]
+        public static extern void SwitchTextRenderingMode();
+
+        [DllImport(glDemoLib, EntryPoint = "SwitchFPSCounterVisibility")]
+        public static extern void SwitchFPSCounterVisibility();
 
         private struct Tile {
             public int id;
@@ -233,19 +236,13 @@ namespace Tizen.TV.NUI.GLApplication.JuvoPlayer.OpenGL
             LoadFont(home + "fonts/akashi.ttf");
             loadedTiles = new Queue<Tile>();
             loadedIcons = new Queue<Icon>();
-            /*for (int i = 0; i < tiles.Length; ++i) {
-                tiles[i].imgPath = home + "tiles/" + tiles[i].imgPath;
-                LoadTile(tiles[i]);
-            }*/
             tilesNumberTarget = contentList.Count;
             for (int i = 0; i < contentList.Count; ++i) {
                 Tile tile = new Tile {
-                    //imgPath = home + "tiles/" + tiles[i % tiles.Length].imgPath,
                     imgPath = home + "tiles/" + contentList[i].Image,
                     description = contentList[i].Description ?? "",
                     name = contentList[i].Title ?? ""
                 };
-                //Log.Info("JuvoGL", "Loading Tile " + tile.name + " (" + tile.description + "), " + tile.imgPath);
                 LoadTile(tile);
             }
             for(int i = 0; i < icons.Length; ++i) {
@@ -447,6 +444,12 @@ namespace Tizen.TV.NUI.GLApplication.JuvoPlayer.OpenGL
                     ShowMenu(menuShown);
                     Log.Info("JuvoGL", "0");
                     break;
+                case "1":
+                    SwitchTextRenderingMode();
+                    break;
+                case "2":
+                    SwitchFPSCounterVisibility();
+                    break;
                 case "Return":
                     if (selectedTile >= contentList.Count)
                         return;
@@ -476,7 +479,6 @@ namespace Tizen.TV.NUI.GLApplication.JuvoPlayer.OpenGL
                         break;
                     menuShown = 1;
                     ShowMenu(menuShown);
-                    progressBarShown = 0; // it's overriden after switch...
                     if (player != null) {
                         player.Dispose();
                         player = null;
