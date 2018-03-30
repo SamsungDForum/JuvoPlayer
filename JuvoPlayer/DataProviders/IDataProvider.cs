@@ -31,6 +31,7 @@ namespace JuvoPlayer.DataProviders
 
         bool IsSeekingSupported();
         void Start();
+        string CurrentCueText { get; }
         List<StreamDescription> GetStreamsDescription(StreamType streamType);
 
         event ClipDurationChanged ClipDurationChanged;

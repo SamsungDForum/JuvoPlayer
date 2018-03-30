@@ -10,6 +10,7 @@ namespace JuvoPlayer.Tests.UnitTests
     [Description("")]
     class DataProviderFactoryManagerTests
     {
+
         private static DataProviderFactoryManager manager;
         [SetUp]
         public static void Init()

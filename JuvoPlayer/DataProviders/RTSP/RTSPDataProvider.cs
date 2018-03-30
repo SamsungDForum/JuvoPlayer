@@ -14,7 +14,6 @@
 using System;
 using System.Collections.Generic;
 using JuvoPlayer.Common;
-using JuvoPlayer.DataProviders;
 using JuvoPlayer.Demuxers;
 
 namespace JuvoPlayer.DataProviders.RTSP
@@ -91,6 +90,9 @@ namespace JuvoPlayer.DataProviders.RTSP
             rtpClient.Start(currentClip);
             demuxer.StartForExternalSource(InitializationMode.Full);
         }
+
+        public string CurrentCueText { get; }
+
         public void OnStopped()
         {
         }

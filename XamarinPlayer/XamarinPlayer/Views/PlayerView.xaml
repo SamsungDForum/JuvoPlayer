@@ -14,7 +14,8 @@
                          VerticalOptions="FillAndExpand"
                          x:Name="Controller">
                 <StackLayout BackgroundColor="#B0101010"
-                             Padding="0, 20">
+                             Padding="0, 20"
+                             x:Name="TopBar">
                     <Label x:Name="VideoTitle"
                            Text="{Binding Title}"
                            TextColor="White"
@@ -29,6 +30,9 @@
                                 Tapped="OnTapGestureRecognizerControllerTapped"/>
                         </BoxView.GestureRecognizers>
                     </BoxView>
+                    <ContentView Padding="30, 30" HorizontalOptions="CenterAndExpand">
+                        <Label BackgroundColor="#B0101010" IsVisible="false" FontSize="Medium" TextColor="White" x:Name="CueTextLabel" HorizontalOptions="CenterAndExpand" WidthRequest="800" HorizontalTextAlignment="Center"/>
+                    </ContentView>
                     <AbsoluteLayout x:Name="Settings" IsVisible="false" BackgroundColor="#B0101010" HorizontalOptions="Center">
                         <StackLayout Padding="20, 10">
                             <StackLayout Orientation="Horizontal">
@@ -67,7 +71,8 @@
                     </AbsoluteLayout>
                 </StackLayout>
                 <StackLayout BackgroundColor="#B0101010"
-                             Padding="20, 10">
+                             Padding="20, 10"
+                             x:Name="BottomBar">
                     <RelativeLayout>
                         <BoxView Color="#20303030"
                                  HeightRequest="4"
