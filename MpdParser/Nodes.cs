@@ -68,7 +68,8 @@ namespace MpdParser.Node
         [Xml.Attribute] public bool IndexRangeExact { get; internal set; }
         [Xml.Attribute] public ulong? PresentationTimeOffset { get; internal set; }
         [Xml.Attribute] public double? AvailabilityTimeOffset { get; internal set; }
-        [Xml.Attribute] public bool AvailabilityTimeComplete { get; internal set; }
+        [Xml.Attribute] public bool? AvailabilityTimeComplete { get; internal set; }
+        [Xml.Attribute] public TimeSpan? TimeShiftBufferDepth { get; internal set; }
         [Xml.Element] public URL[] Initializations { get; internal set; }
         [Xml.Element] public URL[] RepresentationIndexes { get; internal set; }
     }
@@ -186,7 +187,7 @@ namespace MpdParser.Node
         [Xml.Attribute] public string SegmentProfiles { get; internal set; }
         [Xml.Attribute] public string Codecs { get; internal set; }
         [Xml.Attribute] public double? MaximumSAPPeriod { get; internal set; }
-        [Xml.Attribute] public int? StartWithSAP { get; internal set; }
+        [Xml.Attribute] public uint? StartWithSAP { get; internal set; }
         [Xml.Attribute] public double? MaxPlayoutRate { get; internal set; }
         [Xml.Attribute] public bool CodingDependency { get; internal set; }
         [Xml.Attribute] public string ScanType { get; internal set; }
@@ -203,11 +204,20 @@ namespace MpdParser.Node
         TimeSpan? Duration { get; }
         Segment InitSegment { get; }
         Segment IndexSegment { get; }
+        ulong PresentationTimeOffset { get; }
+        TimeSpan? TimeShiftBufferDepth { get; }
+        TimeSpan AvaliabilityTimeOffset { get; }
+        bool? AvaliabilityTimeComplete { get; }
         uint Count { get; }
         IEnumerable<Segment> MediaSegments();
         Segment MediaSegmentAtPos(uint pos);
         uint? MediaSegmentAtTime(TimeSpan duration);
-  
+        ulong? GetLiveStartNumber(TimeSpan durationSpan);
+        uint? NextMediaSegmentInTime(uint currentPos, TimeRange lastRequested);
+        ManifestParameters Parameters { get; set; }
+
+
+
     }
 
     public enum SegmentType

@@ -82,7 +82,8 @@ namespace MpdParser.Node.Writers
         [Xml.Attribute] public new bool IndexRangeExact { get => base.IndexRangeExact; set => base.IndexRangeExact = value; }
         [Xml.Attribute] public new ulong? PresentationTimeOffset { get => base.PresentationTimeOffset; set => base.PresentationTimeOffset = value; }
         [Xml.Attribute] public new double? AvailabilityTimeOffset { get => base.AvailabilityTimeOffset; set => base.AvailabilityTimeOffset = value; }
-        [Xml.Attribute] public new bool AvailabilityTimeComplete { get => base.AvailabilityTimeComplete; set => base.AvailabilityTimeComplete = value; }
+        [Xml.Attribute] public new bool? AvailabilityTimeComplete { get => base.AvailabilityTimeComplete; set => base.AvailabilityTimeComplete = value; }
+        [Xml.Attribute] public new TimeSpan? TimeShiftBufferDepth { get => base.TimeShiftBufferDepth; set => base.TimeShiftBufferDepth = value; }
         [Xml.Element] public new URL[] Initializations { get => base.Initializations; set => base.Initializations = value; }
         [Xml.Element] public new URL[] RepresentationIndexes { get => base.RepresentationIndexes; set => base.RepresentationIndexes = value; }
     }
@@ -153,7 +154,7 @@ namespace MpdParser.Node.Writers
         [Xml.Attribute] public new string SegmentProfiles { get => base.SegmentProfiles; set => base.SegmentProfiles = value; }
         [Xml.Attribute] public new string Codecs { get => base.Codecs; set => base.Codecs = value; }
         [Xml.Attribute] public new double? MaximumSAPPeriod { get => base.MaximumSAPPeriod; set => base.MaximumSAPPeriod = value; }
-        [Xml.Attribute] public new int? StartWithSAP { get => base.StartWithSAP; set => base.StartWithSAP = value; }
+        [Xml.Attribute] public new uint? StartWithSAP { get => base.StartWithSAP; set => base.StartWithSAP = value; }
         [Xml.Attribute] public new double? MaxPlayoutRate { get => base.MaxPlayoutRate; set => base.MaxPlayoutRate = value; }
         [Xml.Attribute] public new bool CodingDependency { get => base.CodingDependency; set => base.CodingDependency = value; }
         [Xml.Attribute] public new string ScanType { get => base.ScanType; set => base.ScanType = value; }
