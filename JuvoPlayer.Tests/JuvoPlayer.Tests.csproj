@@ -19,6 +19,20 @@
     <None Remove="res\MPD Parser Data\TOS_OnDemand_HEVC_MultiRate.mpd" />
     <None Remove="res\MPD Parser Data\TOS_OnDemand_HEVC_MultiRes.mpd" />
     <None Remove="res\MPD Parser Data\xlink.xsd" />
+    <None Remove="res\subtitles\media_player_subs_big5.srt" />
+    <None Remove="res\subtitles\media_player_subs_cp-949.srt" />
+    <None Remove="res\subtitles\media_player_subs_gb2312.srt" />
+    <None Remove="res\subtitles\media_player_subs_utf8.srt" />
+    <None Remove="res\subtitles\media_player_subs_windows-1250.srt" />
+    <None Remove="res\subtitles\media_player_subs_windows-1251.srt" />
+    <None Remove="res\subtitles\media_player_subs_windows-1252.srt" />
+    <None Remove="res\subtitles\media_player_subs_windows-1253.srt" />
+    <None Remove="res\subtitles\media_player_subs_windows-1254.srt" />
+    <None Remove="res\subtitles\media_player_subs_windows-1255.srt" />
+    <None Remove="res\subtitles\media_player_subs_windows-1256.srt" />
+    <None Remove="res\subtitles\media_player_subs_windows-1257.srt" />
+    <None Remove="res\subtitles\media_player_subs_windows-1258.srt" />
+    <None Remove="res\subtitles\media_player_subs_windows-874.srt" />
   </ItemGroup>
 
   <ItemGroup>
@@ -36,6 +50,20 @@
     <EmbeddedResource Include="res\MPD Parser Data\TOS_OnDemand_HEVC_MultiRate.mpd" />
     <EmbeddedResource Include="res\MPD Parser Data\TOS_OnDemand_HEVC_MultiRes.mpd" />
     <EmbeddedResource Include="res\MPD Parser Data\xlink.xsd" />
+    <EmbeddedResource Include="res\subtitles\media_player_subs_big5.srt" />
+    <EmbeddedResource Include="res\subtitles\media_player_subs_cp-949.srt" />
+    <EmbeddedResource Include="res\subtitles\media_player_subs_gb2312.srt" />
+    <EmbeddedResource Include="res\subtitles\media_player_subs_utf8.srt" />
+    <EmbeddedResource Include="res\subtitles\media_player_subs_windows-1250.srt" />
+    <EmbeddedResource Include="res\subtitles\media_player_subs_windows-1251.srt" />
+    <EmbeddedResource Include="res\subtitles\media_player_subs_windows-1252.srt" />
+    <EmbeddedResource Include="res\subtitles\media_player_subs_windows-1253.srt" />
+    <EmbeddedResource Include="res\subtitles\media_player_subs_windows-1254.srt" />
+    <EmbeddedResource Include="res\subtitles\media_player_subs_windows-1255.srt" />
+    <EmbeddedResource Include="res\subtitles\media_player_subs_windows-1256.srt" />
+    <EmbeddedResource Include="res\subtitles\media_player_subs_windows-1257.srt" />
+    <EmbeddedResource Include="res\subtitles\media_player_subs_windows-1258.srt" />
+    <EmbeddedResource Include="res\subtitles\media_player_subs_windows-874.srt" />
     <EmbeddedResource Include="res\videoclips.json" />
   </ItemGroup>
 

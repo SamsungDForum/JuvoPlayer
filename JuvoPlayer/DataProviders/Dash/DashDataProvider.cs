@@ -142,6 +142,8 @@ namespace JuvoPlayer.DataProviders.Dash
             }
         }
 
+        public string CurrentCueText { get; }
+
         public void OnTimeUpdated(TimeSpan time)
         {
             audioPipeline.OnTimeUpdated(time);

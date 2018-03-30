@@ -17,11 +17,20 @@ namespace JuvoPlayer.Common
 {
     public class SubtitleInfo
     {
-        public string Id { get; set; }
-        public string Subtitle { get; set; }
+        public int Id { get; set; }
+        public string Path { get; set; }
         public string Language { get; set; }
         public string Encoding { get; set; }
-        public bool IsActive { get; set; }
+
+        public StreamDescription ToStreamDefinition()
+        {
+            return new StreamDescription()
+            {
+                Description = Language,
+                Id = Id,
+                StreamType = StreamType.Subtitle
+            };
+        }
 
     }
 

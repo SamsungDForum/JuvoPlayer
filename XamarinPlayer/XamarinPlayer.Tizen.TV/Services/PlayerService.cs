@@ -29,7 +29,6 @@ namespace XamarinPlayer.Tizen.Services
         private PlayerState playerState = PlayerState.Idle;
 
         public event PlayerStateChangedEventHandler StateChanged;
-        public event ShowSubtitleEventHandler ShowSubtitle;
         
         public TimeSpan Duration => playerController?.ClipDuration ?? TimeSpan.FromSeconds(0) ;
 
@@ -47,6 +46,8 @@ namespace XamarinPlayer.Tizen.Services
             }
         }
 
+        public string CurrentCueText => dataProvider?.CurrentCueText;
+
         public PlayerService()
         {
             dataProviders = new DataProviderFactoryManager();
@@ -63,15 +64,6 @@ namespace XamarinPlayer.Tizen.Services
             playerController.PlaybackCompleted += () =>
             {
                 State = PlayerState.Completed;
-            };
-            playerController.ShowSubtitle += (subtitle) =>
-            {
-                var sub = new XamarinPlayer.Services.Subtitle
-                {
-                    Duration = subtitle.Duration,
-                    Text = subtitle.Text
-                };
-                ShowSubtitle?.Invoke(this, new ShowSubtitleEventArgs(sub));
             };
             playerController.PlayerInitialized += () =>
             {
