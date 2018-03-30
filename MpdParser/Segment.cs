@@ -25,15 +25,77 @@ namespace MpdParser.Node.Dynamic
             Start = start;
             Duration = duration;
         }
-    }
 
-    enum TimeRelation
+        /// <summary>
+        /// Clones TimeRange Object with Start/Duration TimeSpan preservation.
+        /// </summary>
+        /// <returns>TimeRange. A Cloned TimeRange object</returns>
+        public TimeRange Copy()
+        {
+            return (TimeRange)this.MemberwiseClone();
+        }
+
+        public override string ToString()
+        {
+            return $"({Start})-({Duration})";
+        }
+
+    }
+    public enum TimeRelation
     {
-        UNKNOWN = -2,
+        UNKNOWN = -3,
+        OVERLAP,
         EARLIER,
         SPOTON,
         LATER
     }
+    public static class TimeRangeExt
+    {
+        /// <summary>
+        /// Time range relation finder. Find a relation between two time ranges.
+        /// Method can be used as an extension or a two parameter call
+        /// </summary>
+        /// <param name="self">Time range being compared</param>
+        /// <param name="compareTo">Time range being compared with</param>
+        /// <returns>TimeRelation enum. 
+        /// UNKNOWN - relation cannot be determined.
+        /// OVERLAP - CompareTo falls within self time range. Does not have to 
+        /// end within self timerange.
+        /// EARLIER - Self is earlier then CompareTo
+        /// SPOTON - Ranges are same.
+        /// LATER - Self is after ComnpareTo
+        /// </returns>
+        public static TimeRelation Contains(this TimeRange self, TimeRange compareTo)
+        {
+            if (self == null || compareTo == null)
+                return TimeRelation.UNKNOWN;
+
+            TimeSpan CompareToEndTime = compareTo.Start + compareTo.Duration;
+
+            if (self.Start >= CompareToEndTime)
+                return TimeRelation.LATER;
+
+
+            TimeSpan selfEndTime = self.Start + self.Duration;
+
+            if (self.Start >= compareTo.Start &&
+                compareTo.Start <= selfEndTime)
+            {
+                return TimeRelation.OVERLAP;
+            }
+
+            if (compareTo.Start >= selfEndTime)
+                return TimeRelation.EARLIER;
+
+            if (self.Start == compareTo.Start &&
+                self.Duration == compareTo.Duration)
+                return TimeRelation.SPOTON;
+
+            // This should never happen...
+            return TimeRelation.UNKNOWN;
+        }
+    }
+
     public class Segment
     {
         public readonly Uri Url;
@@ -49,7 +111,7 @@ namespace MpdParser.Node.Dynamic
 
         internal TimeRelation Contains(TimeSpan time_point)
         {
-            if (Period == null)
+            if (Period == null || time_point == null)
                 return TimeRelation.UNKNOWN;
             if (time_point < Period.Start)
                 return TimeRelation.LATER;

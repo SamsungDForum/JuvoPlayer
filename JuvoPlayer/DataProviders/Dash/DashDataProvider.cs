@@ -1,10 +1,13 @@
 using System;
+using System.Collections.Generic;
 using JuvoPlayer.Common;
 using JuvoLogger;
 using MpdParser;
 using System.Collections.Generic;
 using System.Linq;
 using JuvoPlayer.Subtitles;
+using System.Threading;
+using System.Threading.Tasks;
 
 namespace JuvoPlayer.DataProviders.Dash
 {
@@ -14,11 +17,20 @@ namespace JuvoPlayer.DataProviders.Dash
         private readonly ILogger Logger = LoggerManager.GetInstance().GetLogger(Tag);
 
         private readonly DashManifest manifest;
+        private Document currentDocument = null;
+        private Period currentPeriod = null;
         private DashMediaPipeline audioPipeline;
         private DashMediaPipeline videoPipeline;
         private readonly List<SubtitleInfo> subtitleInfos;
         private CuesMap cuesMap;
-        private TimeSpan currentTime;
+        
+        private TimeSpan currentTimeStamp = TimeSpan.Zero;
+        private DateTime lastReloadTime = DateTime.MinValue;
+        private Object locker = new Object();
+        private TimeSpan minimumReloadPeriod = TimeSpan.Zero;
+
+        private Task manifestLoader = null;
+
 
         public DashDataProvider(
             DashManifest manifest,
@@ -30,6 +42,8 @@ namespace JuvoPlayer.DataProviders.Dash
             this.videoPipeline = videoPipeline ?? throw new ArgumentNullException(nameof(videoPipeline), "videoPipeline cannot be null");
             this.subtitleInfos = new List<SubtitleInfo>();
 
+
+            manifest.ManifestChanged += OnManifestChanged;
             audioPipeline.DRMInitDataFound += OnDRMInitDataFound;
             audioPipeline.SetDrmConfiguration += OnSetDrmConfiguration;
             audioPipeline.StreamConfigReady += OnStreamConfigReady;
@@ -46,6 +60,82 @@ namespace JuvoPlayer.DataProviders.Dash
         public event StreamConfigReady StreamConfigReady;
         public event PacketReady PacketReady;
         public event StreamsFound StreamsFound;
+
+        /// <summary>
+        /// MPD Downloader task. Its role is to download MPD till pipeline is started
+        /// and time data is recieved. There are possible cases where pipeline will not start
+        /// i.e. no valid segments found, etc. In such scenarios, no timing information will be recieved.
+        /// therefore this task provides a fail back mechanisms. Will be stopped when first timestamps
+        /// from pipeline are recieved. After that, MPD reloads will be scheduled from time event.
+        /// </summary>
+        /// <returns></returns>
+        private async Task ManifestLoader()
+        {
+            // Detach from caller and allow to continue in any context.
+            await Task.Delay(1).ConfigureAwait(false);
+
+            // Run this loader for as long as no reload has arrived.
+            // Will be marked by lastRealoadTime.
+            while (currentTimeStamp == TimeSpan.Zero)
+            {
+                manifest.ReloadManifest(DateTime.UtcNow);
+                await Task.Delay(10000).ConfigureAwait(false);
+
+                // Check if Document / Period has been obtanied. If so
+                // and document type is static, exit loop.
+                if (currentPeriod != null && currentDocument?.IsDynamic == false)
+                    break;
+            }
+
+            Logger.Info($"Auto Manifest downloader disabled. TimeStamp={currentTimeStamp} Manifest={currentDocument != null} Period={currentPeriod != null}");
+
+            // This is odd. No log messages are printed at task exit if there is not delay/action after
+            // log message...
+            await Task.Delay(500).ConfigureAwait(false);
+        }
+        /// <summary>
+        /// Manifest Change Callback incoked by DashManifest class when new manifest is downloaded.
+        /// </summary>
+        /// <param name="newDocument">IDocument containing an updated document version</param>
+        private void OnManifestChanged(IDocument newDocument)
+        {
+            Logger.Info($"OnManifestChanged. Processing MPD");
+
+            // Mark time of "last" document update
+            lastReloadTime = DateTime.UtcNow;
+
+            // Temps are used at this point, we do not need to lock down this entire
+            // section if current* instance variables would be used.
+            var tmpDocument = newDocument as Document;
+            var tmpPeriod = FindPeriod(tmpDocument, LiveClockTime(currentTimeStamp, tmpDocument));
+
+            if (tmpPeriod == null)
+            {
+                manifest.ReloadManifest(DateTime.UtcNow.AddSeconds(5));
+                return;
+            }
+            // No update period? Static content, set timeout to max
+            minimumReloadPeriod = tmpDocument.MinimumUpdatePeriod ?? TimeSpan.MaxValue;
+
+            //EarlyAvailable periods are not utilized now
+            if (tmpDocument.IsDynamic == true && tmpPeriod.Type == Period.Types.EarlyAvailable)
+            {
+                Logger.Info($"EarlyAvailable MPD are not utilized. {tmpDocument.ToString()}. Scheduling reload in {minimumReloadPeriod}ms");
+                return;
+            }
+
+            // Prevent other any other Manifest change events from being pushed down 
+            // the pipeline while current event is propagated down the pipeline
+            lock (locker)
+            {
+                // Update document/period and start player
+                currentDocument = tmpDocument;
+                currentPeriod = tmpPeriod;
+
+                StartInternal();
+
+            }
+        }
 
         private void OnDRMInitDataFound(DRMInitData drmData)
         {
@@ -134,7 +224,18 @@ namespace JuvoPlayer.DataProviders.Dash
 
         public bool IsSeekingSupported()
         {
-            return manifest.Document.Type != DocumentType.Dynamic;
+            bool isDynamic;
+
+            lock (locker)
+            {
+                isDynamic = currentDocument?.IsDynamic ?? false;
+            }
+
+            // NOTE: Are we sure seeking is illegal on Dynamic MPDs?
+            // Imho no. There is a "time window" in which content is available
+            // but leave that for now...
+            return (isDynamic == false);
+
         }
 
         public List<StreamDescription> GetStreamsDescription(StreamType streamType)
@@ -154,31 +255,66 @@ namespace JuvoPlayer.DataProviders.Dash
 
         public void Start()
         {
-            Logger.Info("Dash start.");
-            
-            foreach (var period in manifest.Document.Periods)
-            {
-                Logger.Info(period.ToString());
+                       Logger.Info("Dash start. Starting auto Manifest downloader");
+            manifestLoader = ManifestLoader();
 
-                var audios = period.Sets.Where(o => o.Type.Value == MediaType.Audio);
-                var videos = period.Sets.Where(o => o.Type.Value == MediaType.Video);
+            // Synchronous start can be implemented by calling:
+            //
+            // manifestLoader.Wait();
+            // StartInternal();
+        }
+private void StartInternal()
+        {
+            lock (locker)
+            {
+
+                if (currentDocument == null || currentPeriod == null)
+                {
+                    Logger.Info("Dash start delayed. No Manifest/Period available.");
+                    return;
+                }
+
+                // TODO:? In case of updates - should we check if A/V is any different from
+                // anything we passed down before? Should offload client...
+                ManifestParameters manifestParams;
+                manifestParams = new ManifestParameters(currentDocument, currentPeriod);
+                manifestParams.PlayClock = LiveClockTime(currentTimeStamp);
+
+
+
+                Logger.Info(currentPeriod.ToString());
+
+                var audios = currentPeriod.Sets.Where(o => o.Type.Value == MediaType.Audio);
+                var videos = currentPeriod.Sets.Where(o => o.Type.Value == MediaType.Video);
 
                 if (audios.Count() > 0 && videos.Count() > 0)
                 {
-                    BuildSubtitleInfos(period);
+		    BuildSubtitleInfos(currentPeriod);
 
-                    if (period.Duration.HasValue)
-                        ClipDurationChanged?.Invoke(period.Duration.Value);
+                    if (currentPeriod.Duration.HasValue)
+                        ClipDurationChanged?.Invoke(currentPeriod.Duration.Value);
+
+                    foreach (var v in videos)
+                    {
+                        v.Parameters = manifestParams;
+                    }
+
+                    foreach (var a in audios)
+                    {
+                        a.Parameters = manifestParams;
+                    }
+
 
                     videoPipeline.Start(videos);
                     audioPipeline.Start(audios);
 
                     return;
                 }
+
             }
         }
 
-        private void BuildSubtitleInfos(Period period)
+private void BuildSubtitleInfos(Period period)
         {
             subtitleInfos.Clear();
 
@@ -206,13 +342,17 @@ namespace JuvoPlayer.DataProviders.Dash
             }
         }
 
-        public Cue CurrentCue => cuesMap?.Get(currentTime);
+        public string CurrentCueText { get; }
 
         public void OnTimeUpdated(TimeSpan time)
         {
-            currentTime = time;
+            currentTimeStamp = time;
+
             audioPipeline.OnTimeUpdated(time);
             videoPipeline.OnTimeUpdated(time);
+
+            // Check if MPD needs reload.
+            ScheduleManifestReload();
         }
 
         public void Dispose()
