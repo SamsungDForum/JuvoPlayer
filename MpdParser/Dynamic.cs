@@ -78,6 +78,17 @@ namespace MpdParser.Node.Dynamic
             }
         }
 
+        public TimeSpan? TimeShiftBufferDepth
+        {
+            get
+            {
+                return
+                    repr_?.TimeShiftBufferDepth ??
+                    set_?.TimeShiftBufferDepth ??
+                    period_?.TimeShiftBufferDepth;
+            }
+        }
+
         public URL[] Initializations
         {
             get
