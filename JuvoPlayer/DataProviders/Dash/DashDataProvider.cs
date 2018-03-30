@@ -156,6 +156,21 @@ namespace JuvoPlayer.DataProviders.Dash
             }
         }
 
+        public void OnDeactivateStream(StreamType streamType)
+        {
+            if (streamType == StreamType.Subtitle)
+            {
+                OnDeactivateSubtitleStream();
+                return;
+            }
+            throw new NotImplementedException();
+        }
+
+        private void OnDeactivateSubtitleStream()
+        {
+            cuesMap = null;
+        }
+
         private void OnChangeActiveSubtitleStream(StreamDescription description)
         {
             if (description.Id >= subtitleInfos.Count)
@@ -307,6 +322,8 @@ namespace JuvoPlayer.DataProviders.Dash
             return null;
         }
 
+        public string CurrentCueText => cuesMap?.Get(currentTime)?.Text;
+       
         /// <summary>
         /// Gets LiveClock for provided Time Span. Returned clock will be "live" only
         /// for dynamic content. Otherwise provided time will not be changed.
@@ -363,7 +380,7 @@ namespace JuvoPlayer.DataProviders.Dash
             }
         }
 
-                private void BuildSubtitleInfos(Period period)
+        private void BuildSubtitleInfos(Period period)
         {
             subtitleInfos.Clear();
 
@@ -391,7 +408,8 @@ namespace JuvoPlayer.DataProviders.Dash
             }
         }
 
-        public Cue CurrentCue => cuesMap?.Get(currentTime);
+
+        public string CurrentCueText => cuesMap?.Get(currentTime)?.Text;
 
         public void OnTimeUpdated(TimeSpan time)
         {
@@ -407,7 +425,9 @@ namespace JuvoPlayer.DataProviders.Dash
         {
             OnStopped();
 
+            audioPipeline?.Dispose();
             audioPipeline = null;
+            videoPipeline?.Dispose();
             videoPipeline = null;
         }
     }
