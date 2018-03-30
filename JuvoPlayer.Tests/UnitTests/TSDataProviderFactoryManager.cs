@@ -1,7 +1,7 @@
 using System;
-using System.Collections.Generic;
 using JuvoPlayer.Common;
 using JuvoPlayer.DataProviders;
+using NSubstitute;
 using NUnit.Framework;
 
 namespace JuvoPlayer.Tests.UnitTests
@@ -10,79 +10,6 @@ namespace JuvoPlayer.Tests.UnitTests
     [Description("")]
     class DataProviderFactoryManagerTests
     {
-        private class FakeDataProvider : IDataProvider
-        {
-            public event ClipDurationChanged ClipDurationChanged;
-            public event DRMInitDataFound DRMInitDataFound;
-            public event SetDrmConfiguration SetDrmConfiguration;
-            public event StreamConfigReady StreamConfigReady;
-            public event PacketReady PacketReady;
-            public event StreamsFound StreamsFound;
-
-            public void OnChangeActiveStream(StreamDescription stream)
-            {
-                throw new NotImplementedException();
-            }
-
-            public void OnPaused()
-            {
-                throw new NotImplementedException();
-            }
-
-            public void OnPlayed()
-            {
-                throw new NotImplementedException();
-            }
-
-            public void OnSeek(TimeSpan time)
-            {
-                throw new NotImplementedException();
-            }
-
-            public void OnStopped()
-            {
-                throw new NotImplementedException();
-            }
-
-            public void OnTimeUpdated(TimeSpan time)
-            {
-                throw new NotImplementedException();
-            }
-
-            public bool IsSeekingSupported()
-            {
-                throw new NotImplementedException();
-            }
-
-            public void Start()
-            {
-                throw new NotImplementedException();
-            }
-
-            public string CurrentCueText { get; }
-
-            public void Dispose()
-            {
-            }
-
-            public List<StreamDescription> GetStreamsDescription(StreamType streamType)
-            {
-                throw new NotImplementedException();
-            }
-        }
-
-        private class FakeDataProviderFactory : IDataProviderFactory
-        {
-            public IDataProvider Create(ClipDefinition clip)
-            {
-                return new FakeDataProvider();
-            }
-
-            public bool SupportsClip(ClipDefinition clip)
-            {
-                return clip.Type == "TEST";
-            }
-        }
 
         private static DataProviderFactoryManager manager;
         [SetUp]
@@ -112,7 +39,8 @@ namespace JuvoPlayer.Tests.UnitTests
         //[Property("COVPARAM", " ")]
         public static void RegisterDataProviderFactory_OK()
         {
-            Assert.DoesNotThrow(() => manager.RegisterDataProviderFactory(new FakeDataProviderFactory()));
+            var factory = Substitute.For<IDataProviderFactory>();
+            Assert.DoesNotThrow(() => manager.RegisterDataProviderFactory(factory));
         }
 
         [Test]
@@ -121,7 +49,7 @@ namespace JuvoPlayer.Tests.UnitTests
         //[Property("COVPARAM", " ")]
         public static void RegisterDataProviderFactory_Unsupported()
         {
-            var factory = new FakeDataProviderFactory();
+            var factory = Substitute.For<IDataProviderFactory>();
             Assert.DoesNotThrow(() => manager.RegisterDataProviderFactory(factory));
             Assert.Throws<ArgumentException>(() => manager.RegisterDataProviderFactory(factory));
         }
@@ -141,7 +69,7 @@ namespace JuvoPlayer.Tests.UnitTests
         //[Property("COVPARAM", " ")]
         public static void CreateDataProvider_NotSupported()
         {
-            var factory = new FakeDataProviderFactory();
+            var factory = Substitute.For<IDataProviderFactory>();
             var clip = new ClipDefinition
             {
                 Type = "FAKE"
@@ -157,15 +85,18 @@ namespace JuvoPlayer.Tests.UnitTests
         //[Property("COVPARAM", " ")]
         public static void CreateDataProvider_OK()
         {
-            var factory = new FakeDataProviderFactory();
+            var factory = Substitute.For<IDataProviderFactory>();
+            var provider = Substitute.For<IDataProvider>();
             var clip = new ClipDefinition
             {
                 Type = "TEST"
             };
+            factory.SupportsClip(Arg.Is(clip)).Returns(true);
+            factory.Create(Arg.Is(clip)).Returns(provider);
 
             Assert.DoesNotThrow(() => manager.RegisterDataProviderFactory(factory));
-            Assert.IsNotNull(manager.CreateDataProvider(clip));
-            Assert.IsInstanceOf<FakeDataProvider>(manager.CreateDataProvider(clip));
+            var receivedProvider = manager.CreateDataProvider(clip);
+            Assert.That(receivedProvider, Is.EqualTo(provider));
         }
     }
 }
