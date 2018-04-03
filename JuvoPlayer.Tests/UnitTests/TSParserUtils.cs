@@ -17,7 +17,7 @@ namespace JuvoPlayer.Tests.UnitTests
                 memoryStream.Position = 0;
 
                 var utils = CreateParserUtils();
-                var text = ParserUtils.ParseText(new StreamReader(memoryStream));
+                var text = utils.ParseText(new StreamReader(memoryStream));
                 Assert.That(text, Is.EqualTo("- How did he do that?"));
             }
         }
@@ -34,7 +34,7 @@ namespace JuvoPlayer.Tests.UnitTests
                 memoryStream.Position = 0;
 
                 var utils = CreateParserUtils();
-                var text = ParserUtils.ParseText(new StreamReader(memoryStream));
+                var text = utils.ParseText(new StreamReader(memoryStream));
 
                 using (var reader = new StringReader(text))
                 {
