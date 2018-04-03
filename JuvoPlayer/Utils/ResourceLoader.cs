@@ -9,12 +9,10 @@ namespace JuvoPlayer.Utils
     internal class ResourceLoader
     {
         internal HttpClient HttpClient { get; set; }
-        internal Assembly Assembly { get; set; }
 
         public ResourceLoader()
         {
             HttpClient = new HttpClient();
-            Assembly = Assembly.GetEntryAssembly();
         }
 
         public virtual Stream Load(string path)
@@ -34,8 +32,14 @@ namespace JuvoPlayer.Utils
 
         public virtual Stream LoadAsEmbeddedResource(string resourceName)
         {
-            var manifestResourceName = Assembly.GetManifestResourceNames().FirstOrDefault(name => name.Contains(resourceName));
-            return manifestResourceName == null ? null : Assembly.GetManifestResourceStream(manifestResourceName);
+            var assembly = FindAssembly(resourceName);
+            return assembly.GetManifestResourceStream(resourceName);
+        }
+
+        internal virtual Assembly FindAssembly(string resourceName)
+        {
+            var assemblies = AppDomain.CurrentDomain.GetAssemblies();
+            return assemblies.FirstOrDefault(assembly => assembly.GetManifestResourceStream(resourceName) != null);
         }
     }
 }

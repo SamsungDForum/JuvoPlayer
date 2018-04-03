@@ -16,7 +16,7 @@ namespace JuvoPlayer.Tests.UnitTests
         {
             var httpMessageHandlerStub = Substitute.ForPartsOf<FakeHttpMessageHandler>();
             httpMessageHandlerStub.Send(Arg.Any<HttpRequestMessage>()).Returns(new HttpResponseMessage() { StatusCode = HttpStatusCode.OK, Content = new StringContent("Response")});
-            var resourceLoader = CreateResourceLoader(null, new HttpClient(httpMessageHandlerStub));
+            var resourceLoader = CreateResourceLoader(new HttpClient(httpMessageHandlerStub));
 
             var receivedStream = resourceLoader.LoadAsNetworkResource(new Uri("http://valid_uri"));
             using (var reader = new StreamReader(receivedStream))
@@ -37,7 +37,8 @@ namespace JuvoPlayer.Tests.UnitTests
             using (var memoryStream = CreateMemoryStream(resourceContents))
             {
                 assemblyStub.GetManifestResourceStream(Arg.Is(resourceName)).Returns(memoryStream);
-                var resourceLoader = CreateResourceLoader(assemblyStub, null);
+                var resourceLoader = Substitute.ForPartsOf<ResourceLoader>();
+                resourceLoader.FindAssembly(Arg.Is(resourceName)).Returns(assemblyStub);
 
                 var receivedStream = resourceLoader.LoadAsEmbeddedResource(resourceName);
 
@@ -70,11 +71,9 @@ namespace JuvoPlayer.Tests.UnitTests
             Assert.That(receivedStream, Is.EqualTo(memoryStream));
         }
 
-        private static ResourceLoader CreateResourceLoader(System.Reflection.Assembly assembly, HttpClient client)
+        private static ResourceLoader CreateResourceLoader(HttpClient client)
         {
             var resourceLoader = new ResourceLoader();
-            if (assembly != null)
-                resourceLoader.Assembly = assembly;
             if (client != null)
                 resourceLoader.HttpClient = client;
             return resourceLoader;

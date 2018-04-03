@@ -14,7 +14,7 @@ namespace JuvoPlayer.Subtitles
                 case SubtitleFormat.Subrip:
                     return new SrtSubtitleParser();
                 case SubtitleFormat.WebVtt:
-                    break;
+                    return new WebVttSubtitleParser();
                 default:
                     throw new ArgumentOutOfRangeException(nameof(format), format, null);
             }
