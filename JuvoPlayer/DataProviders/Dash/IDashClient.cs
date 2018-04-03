@@ -18,7 +18,7 @@ namespace JuvoPlayer.DataProviders.Dash
 {
     internal interface IDashClient
     {
-        void Seek(TimeSpan position);
+        TimeSpan Seek(TimeSpan position);
         void SetRepresentation(Representation representation);
         void Start();
         void Stop();
