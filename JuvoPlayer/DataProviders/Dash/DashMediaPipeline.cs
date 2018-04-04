@@ -53,15 +53,16 @@ namespace JuvoPlayer.DataProviders.Dash
         /// Stores information on which handler is being currently used, so it can be easly removed
         /// from demuxer.
         /// </summary>
-        event PacketReady PacketReadyHandlerUsed = null;
+        private event PacketReady PacketReadyHandlerUsed = null;
 
         /// <summary>
         /// Storage holders for initial packets PTS/DTS values.
         /// Used in Trimming Packet Handler to truncate down PTS/DTS values.
         /// First packet seen acts as flip switch. Fill initial values or not.
         /// </summary>
-        TimeSpan firstPTS = TimeSpan.Zero;
-        TimeSpan firstDTS = TimeSpan.Zero;
+        private bool haveFirstPTSDTS = false;
+        private TimeSpan firstPTS = TimeSpan.Zero;
+        private TimeSpan firstDTS = TimeSpan.Zero;
 
         private readonly IDashClient dashClient;
         private readonly IDemuxer demuxer;
@@ -84,7 +85,6 @@ namespace JuvoPlayer.DataProviders.Dash
 
             demuxer.DRMInitDataFound += OnDRMInitDataFound;
             demuxer.StreamConfigReady += OnStreamConfigReady;
-            //demuxer.PacketReady += OnPacketReady;
         }
 
         
@@ -161,10 +161,10 @@ namespace JuvoPlayer.DataProviders.Dash
             //
             if(newStream.Media.Parameters.Document.IsDynamic == true)
             {
-                // There are two event handlers for this task.
-                // One which obtains initial PTS/DTS values, other for doing
-                // just truncation. Obtainer swaps handler after getting initial PTS/DTS
-                PacketReadyHandlerUsed = OnPacketReadyTrimPtsDtsGetFirstValues;
+                // Live content uses "trimming" packet handler
+                // which takes first PTS/DTS and subtracts it from all others, effectivety
+                // counting PTS/DTS from zero.
+                PacketReadyHandlerUsed = OnPacketReadyTrimPtsDts;
             }
             else
             {
@@ -185,7 +185,7 @@ namespace JuvoPlayer.DataProviders.Dash
         {
             currentStream = newStream;
 
-            Logger.Info($"{streamType}: Dash pipeline start.");
+            Logger.Info($"{streamType}: Dash pipeline update.");
             Logger.Info($"{streamType}: Media: {newStream.Media}");
             Logger.Info($"{streamType}: {newStream.Representation.ToString()}");
 
@@ -228,6 +228,7 @@ namespace JuvoPlayer.DataProviders.Dash
             dashClient.Stop();
 
             demuxer.PacketReady -= PacketReadyHandlerUsed;
+            haveFirstPTSDTS = false;
 
             demuxer.Dispose();
             demuxerFullyInitialized = false;
@@ -392,7 +393,7 @@ namespace JuvoPlayer.DataProviders.Dash
         /// it obtains start PTS/DTS, then replaces a handler with one that only trims.
         /// </summary>
         /// <param name="packet">Packet to process</param>
-        private void OnPacketReadyTrimPtsDtsGetFirstValues(Packet packet)
+        private void OnPacketReadyTrimPtsDts(Packet packet)
         {
             if (packet != null)
             {
@@ -404,55 +405,25 @@ namespace JuvoPlayer.DataProviders.Dash
                 packet.Pts += demuxerTimeStamp;
 
                 //Get very first PTS/DTS
-                firstPTS = packet.Dts;
-                firstDTS = packet.Pts;
- 
+                if (haveFirstPTSDTS == false)
+                {
+                    firstPTS = packet.Dts;
+                    firstDTS = packet.Pts;
+                    haveFirstPTSDTS = true;
+                }
+                
                 // Trim PTS/DTS
                 packet.Pts -= firstPTS;
                 packet.Dts -= firstDTS;
 
                 PacketReady?.Invoke(packet);
-
-                // Replace this handler which obtained first PTS/DTS values
-                // with Trimming one, which just does subtractions.
-                //
-                demuxer.PacketReady -= PacketReadyHandlerUsed;
-                PacketReadyHandlerUsed = OnPacketReadyTrimPtsDts;
-                demuxer.PacketReady += PacketReadyHandlerUsed;
-
                 return;
             }
 
             PacketReady?.Invoke(Packet.CreateEOS(streamType));
         }
 
-        /// <summary>
-        /// OnPacketReady trimming event handler. Second handler used for trimming purposes.
-        /// This handler only does subtraction of PTS/DTS values. In order to obtain first values,
-        /// OnPacketReadyTrimPtsDtsGetFirstValues needs to be used first.
-        /// </summary>
-        /// <param name="packet"></param>
-        private void OnPacketReadyTrimPtsDts(Packet packet)
-        {
-            if (packet != null)
-            {
-               
-                // Sometimes we can receive invalid timestamp from demuxer
-                // eg during encrypted content seek or live video.
-                // Adjust timestamps to avoid playback problems
-                packet.Dts += demuxerTimeStamp;
-                packet.Pts += demuxerTimeStamp;
-
-                //Trim PTS/DTS
-                packet.Pts -= firstPTS;
-                packet.Dts -= firstDTS;
-
-                PacketReady?.Invoke(packet);
-                return;
-            }
-
-            PacketReady?.Invoke(Packet.CreateEOS(streamType));
-        }
+        
 
         private void AdjustDemuxerTimeStampIfNeeded(Packet packet)
         {

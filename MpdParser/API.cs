@@ -64,20 +64,6 @@ namespace MpdParser
                     }
                 }
                 
-                /* Looks like a repeated loop. Any reason?
-                 * 
-                if (channels == null)
-                {
-                    foreach (Node.Descriptor d in repr.AudioChannelConfigurations)
-                    {
-                        if (!string.IsNullOrEmpty(d.Value))
-                        {
-                            channels = d.Value;
-                            break;
-                        }
-                    }
-                }
-                */
                 if (channels != null)
                     NumChannels = System.Xml.XmlConvert.ToUInt32(channels);
             }
@@ -514,10 +500,10 @@ namespace MpdParser
                 // If period is missing, but it is static and first in file, create StartTime=0.
                 // should this imply type = regular? Local DASH experts:
                 // k.kluczek@samsung.com j.wasikowski@samsung.com j.gabryel@samsung.com
-                // say yes
+                // state that all periods are "regular" by default, unless 
+                // period[n].start=null && period[n-1].duration == null
                 //
-                //if (periods[0].Start != null)
-                    periods[0].Type = Types.Regular;
+                periods[0].Type = Types.Regular;
 
                 // If (i) @start attribute is absent, 
                 // and(ii) the Period element is the first in the MPD, 
