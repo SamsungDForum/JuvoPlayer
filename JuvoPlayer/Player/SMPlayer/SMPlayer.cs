@@ -41,6 +41,24 @@ namespace JuvoPlayer.Player.SMPlayer
             Stopped
         };
 
+        private class BufferConfiguration : Packet
+        {
+            private BufferConfiguration() { }
+            public static BufferConfiguration Create(StreamConfig config)
+            {
+                var result = new BufferConfiguration()
+                {
+                    Config = config,
+                    StreamType = config.StreamType(),
+                    Pts = TimeSpan.MinValue
+                };
+
+                return result;
+            }
+
+            public StreamConfig Config { get; private set; }
+        };
+
         private readonly ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
 
         public event PlaybackCompleted PlaybackCompleted;
@@ -162,8 +180,10 @@ namespace JuvoPlayer.Player.SMPlayer
                     Packet packet = DequeuePacket();
                     if (packet.IsEOS)
                         SubmitEOSPacket(packet);
-                    else if (packet is DecryptedEMEPacket)
-                        SubmitEMEPacket(packet as DecryptedEMEPacket);
+                    else if (packet is EncryptedPacket)
+                        SubmitEncryptedPacket(packet as EncryptedPacket);
+                    else if (packet is BufferConfiguration)
+                        SubmitStreamConfiguration(packet as BufferConfiguration);
                     else
                         SubmitPacket(packet);
                 }
@@ -194,7 +214,23 @@ namespace JuvoPlayer.Player.SMPlayer
             return packet;
         }
 
-        private unsafe void SubmitEMEPacket(DecryptedEMEPacket packet)
+        private unsafe void SubmitEncryptedPacket(EncryptedPacket packet)
+        {
+            if (packet.DrmSession == null)
+            {
+                SubmitPacket(packet);
+                return;
+            }
+
+            var decryptedPacket = packet.Decrypt();
+            if (decryptedPacket == null)
+                throw new Exception("An error occured while decrypting encrypted packet!");
+
+            if (decryptedPacket is DecryptedEMEPacket)
+                SubmitDecryptedEmePacket(decryptedPacket as DecryptedEMEPacket);
+        }
+
+        private void SubmitDecryptedEmePacket(DecryptedEMEPacket packet)
         {
             var trackType = SMPlayerUtils.GetTrackType(packet);
 
@@ -262,6 +298,14 @@ namespace JuvoPlayer.Player.SMPlayer
             playerInstance.SubmitEOSPacket(trackType);
         }
 
+        private void SubmitStreamConfiguration(BufferConfiguration config)
+        {
+            if (config.StreamType == Common.StreamType.Video)
+                SetVideoStreamConfig(config.Config as VideoStreamConfig);
+            else if (config.StreamType == Common.StreamType.Audio)
+                SetAudioStreamConfig(config.Config as AudioStreamConfig);
+        }
+
         public void Play()
         {
             Logger.Debug("");
@@ -291,6 +335,30 @@ namespace JuvoPlayer.Player.SMPlayer
             videoBuffer.Clear();
 
             playerInstance.Seek((int)time.TotalMilliseconds);
+        }
+
+        public void SetStreamConfig(StreamConfig config)
+        {
+            switch (config.StreamType())
+            {
+                case Common.StreamType.Audio:
+                    if (audioBuffer.Count() > 0)
+                        audioBuffer.Enqueue(BufferConfiguration.Create(config));
+                    else
+                        SetAudioStreamConfig(config as AudioStreamConfig);
+                    break;
+                case Common.StreamType.Video:
+                    if (videoBuffer.Count() > 0)
+                        videoBuffer.Enqueue(BufferConfiguration.Create(config));
+                    else
+                        SetVideoStreamConfig(config as VideoStreamConfig);
+                    break;
+                case Common.StreamType.Subtitle:
+                case Common.StreamType.Teletext:
+                    throw new NotImplementedException();
+                default:
+                    throw new ArgumentOutOfRangeException();
+            }
         }
 
         public void SetAudioStreamConfig(AudioStreamConfig config)

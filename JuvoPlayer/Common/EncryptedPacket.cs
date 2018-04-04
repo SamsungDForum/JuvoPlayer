@@ -1,4 +1,6 @@
+using JuvoPlayer.Drms;
 using System;
+using System.Xml.Serialization;
 
 namespace JuvoPlayer.Common
 {
@@ -15,5 +17,15 @@ namespace JuvoPlayer.Common
         public byte[] KeyId;
         public byte[] Iv;
         public Subsample[] Subsamples;
+        [XmlIgnore]
+        public IDrmSession DrmSession;
+
+        public Packet Decrypt()
+        {
+            if (DrmSession == null)
+                throw new InvalidOperationException("Decrypt called without DrmSession");
+
+            return DrmSession.DecryptPacket(this).Result;
+        }
     }
 }

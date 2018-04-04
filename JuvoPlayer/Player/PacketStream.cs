@@ -9,6 +9,7 @@ namespace JuvoPlayer.Player
 {
     internal class PacketStream : IPacketStream
     {
+        protected ICodecExtraDataHandler codecExtraDataHandler;
         protected IDrmManager drmManager;
         protected IPlayer player;
         private IDrmSession drmSession;
@@ -17,12 +18,14 @@ namespace JuvoPlayer.Player
         private Task drmSessionInitializeTask;
         private readonly StreamType streamType;
 
-        public PacketStream(StreamType streamType, IPlayer player, IDrmManager drmManager)
+        public PacketStream(StreamType streamType, IPlayer player, IDrmManager drmManager, ICodecExtraDataHandler codecExtraDataHandler)
         {
             this.streamType = streamType;
             this.drmManager = drmManager ??
                               throw new ArgumentNullException(nameof(drmManager), "drmManager cannot be null");
             this.player = player ?? throw new ArgumentNullException(nameof(player), "player cannot be null");
+            this.codecExtraDataHandler = codecExtraDataHandler ??
+                              throw new ArgumentNullException(nameof(codecExtraDataHandler), "codecExtraDataHandler cannot be null");
         }
 
         public void OnAppendPacket(Packet packet)
@@ -40,7 +43,12 @@ namespace JuvoPlayer.Player
             }
 
             if (drmSession != null && packet is EncryptedPacket)
-                packet = drmSession.DecryptPacket(packet as EncryptedPacket).Result;
+            {
+                var encryptedPacket = (EncryptedPacket)packet;
+                encryptedPacket.DrmSession = drmSession;
+            }
+
+            codecExtraDataHandler.OnAppendPacket(packet);
 
             player.AppendPacket(packet);
         }
@@ -56,24 +64,13 @@ namespace JuvoPlayer.Player
             if (this.config != null && this.config.Equals(config))
                 return;
 
-            forceDrmChange = true;
+            forceDrmChange = this.config != null;
 
             this.config = config;
 
-            switch (this.config.StreamType())
-            {
-                case StreamType.Audio:
-                    player.SetAudioStreamConfig(this.config as AudioStreamConfig);
-                    break;
-                case StreamType.Video:
-                    player.SetVideoStreamConfig(this.config as VideoStreamConfig);
-                    break;
-                case StreamType.Subtitle:
-                case StreamType.Teletext:
-                    throw new NotImplementedException();
-                default:
-                    throw new ArgumentOutOfRangeException();
-            }
+            codecExtraDataHandler.OnStreamConfigChanged(config);
+
+            player.SetStreamConfig(this.config);
         }
 
         public void OnClearStream()

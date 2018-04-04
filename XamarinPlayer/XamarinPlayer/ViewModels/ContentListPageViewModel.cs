@@ -25,8 +25,6 @@ namespace XamarinPlayer.ViewModels
 
         public ContentListPageViewModel()
         {
-            ICommand ContentFocusedCommand = CreateFocusedCommand();
-
             var applicationPath = DependencyService.Get<IPathService>(DependencyFetchTarget.NewInstance).ApplicationPath;
             var clipsPath = Path.Combine(applicationPath, "shared", "res", "videoclips.json");
             var clips = DependencyService.Get<IClipReaderService>(DependencyFetchTarget.NewInstance).ReadClips(clipsPath);

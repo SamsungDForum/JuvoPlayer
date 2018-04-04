@@ -61,8 +61,11 @@ namespace JuvoPlayer.Player
             this.player.ShowSubtitle += OnShowSubtitle;
             this.player.TimeUpdated += OnTimeUpdated;
 
-            streams[StreamType.Audio] = new PacketStream(StreamType.Audio, this.player, drmManager);
-            streams[StreamType.Video] = new PacketStream(StreamType.Video, this.player, drmManager);
+            var audioCodecExtraDataHandler = new AudioCodecExtraDataHandler(player);
+            var vidoeCodecExtraDataHandler = new VideoCodecExtraDataHandler(player);
+
+            streams[StreamType.Audio] = new PacketStream(StreamType.Audio, this.player, drmManager, audioCodecExtraDataHandler);
+            streams[StreamType.Video] = new PacketStream(StreamType.Video, this.player, drmManager, vidoeCodecExtraDataHandler);
         }
 
         private void OnPlaybackCompleted()
@@ -98,11 +101,10 @@ namespace JuvoPlayer.Player
             TimeUpdated?.Invoke(time);
         }
 
-        public void ChangeRepresentation(int pid)
-        {
-        }
         public void OnClipDurationChanged(TimeSpan duration)
         {
+            player.SetDuration(duration);
+
             this.duration = duration;
         }
 
@@ -173,11 +175,6 @@ namespace JuvoPlayer.Player
                 return;
 
             streams[packet.StreamType].OnAppendPacket(packet);
-        }
-
-        public void OnStreamsFound(List<StreamDefinition> streams)
-        {
-
         }
 
         public void OnSetExternalSubtitles(string path)

@@ -2,6 +2,8 @@ using System;
 using JuvoPlayer.Common;
 using JuvoLogger;
 using MpdParser;
+using System.Collections.Generic;
+using System.Linq;
 
 namespace JuvoPlayer.DataProviders.Dash
 {
@@ -60,8 +62,19 @@ namespace JuvoPlayer.DataProviders.Dash
             PacketReady?.Invoke(packet);
         }
 
-        public void OnChangeRepresentation(int representationId)
+        public void OnChangeActiveStream(StreamDescription stream)
         {
+            switch (stream.StreamType)
+            {
+                case StreamType.Audio:
+                    audioPipeline.ChangeStream(stream);
+                    break;
+                case StreamType.Video:
+                    videoPipeline.ChangeStream(stream);
+                    break;
+                default:
+                    break;
+            }
         }
 
         public void OnPaused()
@@ -92,6 +105,19 @@ namespace JuvoPlayer.DataProviders.Dash
             return manifest.Document.Type != DocumentType.Dynamic;
         }
 
+        public List<StreamDescription> GetStreamsDescription(StreamType streamType)
+        {
+            switch (streamType)
+            {
+                case StreamType.Audio:
+                    return audioPipeline.GetStreamsDescription();
+                case StreamType.Video:
+                    return videoPipeline.GetStreamsDescription();
+                default:
+                    return new List<StreamDescription>();
+            }
+        }
+
         public void Start()
         {
             Logger.Info("Dash start.");
@@ -100,65 +126,23 @@ namespace JuvoPlayer.DataProviders.Dash
             {
                 Logger.Info(period.ToString());
 
-                Media audio = Find(period, "en", MediaType.Audio) ??
-                        Find(period, "und", MediaType.Audio)??
-                        Find(period, null, MediaType.Audio);
+                var audios = period.Sets.Where(o => o.Type.Value == MediaType.Audio);
+                var videos = period.Sets.Where(o => o.Type.Value == MediaType.Video);
 
-                Media video = Find(period, "en", MediaType.Video) ??
-                        Find(period, "und", MediaType.Video)??
-                        Find(period, null, MediaType.Video);
-
-                // TODO(p.galiszewsk): is it possible to have period without audio/video?
-                if (audio != null && video != null)
+                if (audios.Count() > 0 && videos.Count() > 0)
                 {
-                    Logger.Info("Video: " + video);
-                    videoPipeline.Start(video);
-
-                    Logger.Info("Audio: " + audio);
-                    audioPipeline.Start(audio);
-
-                    // TODO(p.galiszewsk): unify time management
                     if (period.Duration.HasValue)
                         ClipDurationChanged?.Invoke(period.Duration.Value);
+
+                    videoPipeline.Start(videos);
+                    audioPipeline.Start(audios);
 
                     return;
                 }
             }
         }
 
-        private static Media Find(MpdParser.Period p, string language, MediaType type, MediaRole role = MediaRole.Main)
-        {
-            Media res = null;
-            for(int i=0;i<p.Sets.Length;i++)
-            {
-                if (p.Sets[i].Type.Value != type)
-                {
-                    continue;
-                }
-
-                if (language != null)
-                {
-                    if (p.Sets[i].Lang != language)
-                    {
-                        continue;
-                    }
-                }
-
-                if (p.Sets[i].HasRole(role))
-                {
-                    res = p.Sets[i];
-                    break;
-                }
-
-                if (p.Sets[i].Roles.Length == 0)
-                {
-                    res =  p.Sets[i];
-                    break;
-                }
-            }
-
-            return res;
-        }
+        public string CurrentCueText { get; }
 
         public void OnTimeUpdated(TimeSpan time)
         {

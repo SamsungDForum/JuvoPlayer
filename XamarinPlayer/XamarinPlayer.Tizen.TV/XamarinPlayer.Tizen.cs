@@ -1,4 +1,5 @@
 using System;
+using System.Text;
 using ElmSharp;
 using JuvoLogger.Tizen;
 using Tizen;
@@ -16,6 +17,8 @@ namespace XamarinPlayer.Tizen
         {
             base.OnCreate();
 
+            Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
+
             _keyDown = new EcoreEvent<EcoreKeyEventArgs>(EcoreEventType.KeyDown, EcoreKeyEventArgs.Create);
             _keyDown.On += (s, e) =>
             {
@@ -30,6 +33,9 @@ namespace XamarinPlayer.Tizen
         {
             if (evt.ExceptionObject is Exception e)
             {
+                if (e.InnerException != null)
+                    e = e.InnerException;
+
                 Log.Error(Tag, e.Message);
                 Log.Error(Tag, e.StackTrace);
             }

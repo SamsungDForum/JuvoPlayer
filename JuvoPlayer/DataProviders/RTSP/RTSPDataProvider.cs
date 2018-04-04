@@ -12,8 +12,8 @@
 // this software or its derivatives.
 
 using System;
+using System.Collections.Generic;
 using JuvoPlayer.Common;
-using JuvoPlayer.DataProviders;
 using JuvoPlayer.Demuxers;
 
 namespace JuvoPlayer.DataProviders.RTSP
@@ -58,7 +58,7 @@ namespace JuvoPlayer.DataProviders.RTSP
             PacketReady?.Invoke(Packet.CreateEOS(StreamType.Video));
         }
 
-        public void OnChangeRepresentation(int representationId)
+        public void OnChangeActiveStream(StreamDescription stream)
         {
 
         }
@@ -90,6 +90,9 @@ namespace JuvoPlayer.DataProviders.RTSP
             rtpClient.Start(currentClip);
             demuxer.StartForExternalSource(InitializationMode.Full);
         }
+
+        public string CurrentCueText { get; }
+
         public void OnStopped()
         {
         }
@@ -102,6 +105,11 @@ namespace JuvoPlayer.DataProviders.RTSP
         {
             rtpClient?.Stop();
             demuxer.Dispose();
+        }
+
+        public List<StreamDescription> GetStreamsDescription(StreamType streamType)
+        {
+            return new List<StreamDescription>();
         }
     }
 }
