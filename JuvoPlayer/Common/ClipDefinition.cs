@@ -21,8 +21,9 @@ namespace JuvoPlayer.Common
         public string Path { get; set; }
         public string Language { get; set; }
         public string Encoding { get; set; }
+        public string MimeType { get; set; }
 
-        public StreamDescription ToStreamDefinition()
+        public StreamDescription ToStreamDescription()
         {
             return new StreamDescription()
             {

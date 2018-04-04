@@ -149,7 +149,7 @@ namespace JuvoPlayer.DataProviders.HLS
 
         private List<StreamDescription> GetSubtitleStreamsDescription()
         {
-            return currentClip.Subtitles.Select(info => info.ToStreamDefinition()).ToList();
+            return currentClip.Subtitles.Select(info => info.ToStreamDescription()).ToList();
         }
 
         private void OnChangeActiveSubtitle(StreamDescription description)
