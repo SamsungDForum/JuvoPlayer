@@ -55,9 +55,6 @@ namespace JuvoPlayer.OpenGL.Services
                 PlaybackCompleted?.Invoke();
                 State = PlayerState.Stopped;
             };
-            playerController.ShowSubtitle += (subtitle) => {
-                ShowSubtitle?.Invoke(subtitle);
-            };
             playerController.PlayerInitialized += () => {
                 State = PlayerState.Prepared;
             };
