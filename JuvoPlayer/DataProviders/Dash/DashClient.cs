@@ -158,6 +158,17 @@ namespace JuvoPlayer.DataProviders.Dash
 
         public void Stop()
         {
+            StopPlayback();
+            timeUpdatedEvent.Set();
+
+            sharedBuffer?.WriteData(null, true);
+            downloadTask.Wait();
+
+            Logger.Info(string.Format("{0} Data downloader stopped", streamType));
+        }
+
+        private void StopPlayback()
+        {
             // playback has been already stopped
             if (!playback)
                 return;
