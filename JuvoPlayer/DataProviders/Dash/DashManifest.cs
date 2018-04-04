@@ -3,6 +3,7 @@ using System.Net.Http;
 using JuvoLogger;
 using MpdParser;
 using System.Threading.Tasks;
+using System.Threading;
 
 namespace JuvoPlayer.DataProviders.Dash
 {
@@ -10,7 +11,7 @@ namespace JuvoPlayer.DataProviders.Dash
     {
         private const string Tag = "JuvoPlayer";
         private readonly ILogger Logger = LoggerManager.GetInstance().GetLogger(Tag);
-        private bool reloadsRquired = true;
+        private bool reloadsRequired = true;
 
         /// <summary>
         /// Notification event. Will be called when MPD is updated.
@@ -39,23 +40,25 @@ namespace JuvoPlayer.DataProviders.Dash
         {
             Logger.Info($"Downloading Manifest {Uri}");
 
-            try
+            using (var client = new HttpClient())
             {
-                var client = new HttpClient();
-                DateTime st = DateTime.Now;
+                try
+                {
+                    var startTime = DateTime.Now;
 
-                HttpResponseMessage response = client.GetAsync(
-                    Uri,
-                    HttpCompletionOption.ResponseHeadersRead).Result;
-                response.EnsureSuccessStatusCode();
-                Logger.Info($"Downloading Manifest Done in {DateTime.Now - st} {Uri}");
-                return response.Content.ReadAsStringAsync().Result;
-            }
-            catch (Exception ex)
-            {
-                Logger.Error(
-                    "Cannot download manifest file. Error: " + ex.Message);
-                return null;
+                    HttpResponseMessage response = client.GetAsync(
+                        Uri,
+                        HttpCompletionOption.ResponseHeadersRead).Result;
+                    response.EnsureSuccessStatusCode();
+                    Logger.Info($"Downloading Manifest Done in {DateTime.Now - startTime} {Uri}");
+                    return response.Content.ReadAsStringAsync().Result;
+                }
+                catch (Exception ex)
+                {
+                    Logger.Error(
+                        "Cannot download manifest file. Error: " + ex.Message);
+                    return null;
+                }
             }
         }
         private Document ParseManifest()
@@ -63,13 +66,13 @@ namespace JuvoPlayer.DataProviders.Dash
             Logger.Info($"Parsing Manifest {Uri}");
             try
             {
-                DateTime st = DateTime.Now;
+                var startTime = DateTime.Now;
                 var document = Document.FromText(
                     XmlManifest ?? throw new InvalidOperationException(
                         "Xml manifest is empty."),
                     Uri.ToString());
 
-                Logger.Info($"Parsing Manifest Done in {DateTime.Now - st} {Uri}");
+                Logger.Info($"Parsing Manifest Done in {DateTime.Now - startTime} {Uri}");
                 return document;
             }
             catch (Exception ex)
@@ -83,12 +86,25 @@ namespace JuvoPlayer.DataProviders.Dash
         /// <summary>
         ///  Async method which works "as timer" for downloading MPD.
         /// </summary>
-        /// <param name="reloadDelay">delay which is to be before a download</param>
+        /// <param name="reloadSchedule">delay which is to be before a download</param>
         /// <returns></returns>
-        private async Task TimerEvent(Int32 reloadDelay=0)
+        private void TimerEvent(DateTime reloadSchedule)
         {
-            // Wait specified time & detach from caller context.
-            await Task.Delay(reloadDelay).ConfigureAwait(false);
+            // If reloadTime is "now" or behing "now", do immediate schedule,
+            // otherwise use provided value. Trigger is "delay from now" so get different from now to 
+            // requested time in ms. Let's just hope different classes do not run in different 
+            // time zones :D
+            var reloadDelay = reloadSchedule - DateTime.UtcNow;
+
+            //TaskScheduler.
+            Logger.Info($"Manifest {Uri} reload in {reloadDelay}");
+
+            if (reloadDelay < TimeSpan.Zero)
+                reloadDelay = TimeSpan.Zero;
+
+
+            // Wait specified time
+            Task.Delay(reloadDelay).Wait();
 
             var requestTime = DateTime.UtcNow;
             XmlManifest = DownloadManifest();
@@ -119,6 +135,7 @@ namespace JuvoPlayer.DataProviders.Dash
             // to block any manifest updates during this process
             reloadInfoPrinted = false;
 
+            reloadActivity = null;
 
         }
 
@@ -132,7 +149,7 @@ namespace JuvoPlayer.DataProviders.Dash
         public bool ReloadManifest(DateTime reloadTime)
         {
             
-            if( reloadsRquired == false)
+            if(reloadsRequired == false)
             {
                 if(reloadInfoPrinted == false )
                     Logger.Warn("Document Reload is disabled. Last Document loaded was static");
@@ -141,8 +158,10 @@ namespace JuvoPlayer.DataProviders.Dash
                 return false;
             }
 
-            //Reload activity will be null at very start
-            if (reloadActivity?.Status < TaskStatus.RanToCompletion)
+            // Reload activity will be null at very start / termination
+            // There is a tiny "hole" between this point and creation of reloadActivity.
+            // Problem? Should not be...
+            if (reloadActivity != null)
             {
                 if (reloadInfoPrinted == false)
                     Logger.Info("Document Reload already scheduled. Ignoring request");
@@ -151,24 +170,11 @@ namespace JuvoPlayer.DataProviders.Dash
                 return false;
             }
 
-            // If reloadTime is "now" or behing "now", do immediate schedule,
-            // otherwise use provided value. Trigger is "delay from now" so get different from now to 
-            // requested time in ms. Let's just hope different classes do not run in different 
-            // time zones :D
-            DateTime current = DateTime.UtcNow;
-            TimeSpan timediff = reloadTime - current;
-            Int32 reloadDelay = timediff.Milliseconds;
-
-            if (reloadDelay < 0)
-                reloadDelay = 0;
-
-            //TaskScheduler.
-            Logger.Info($"Manifest {Uri} reload in {reloadDelay}ms");
-
             // There is no expectation of a scenario where
             // timer event is fired & someone plays with ReloadManifest.
             // as such no protections for now...
-            reloadActivity = TimerEvent(reloadDelay);
+            reloadActivity = Task.Run(()=>TimerEvent(reloadTime));
+
             return true;
         }
 
