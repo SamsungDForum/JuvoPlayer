@@ -14,28 +14,14 @@
     <DebugType>None</DebugType>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Include="..\JuvoPlayer.Tests\testcase\*.cs" Link="testcase\%(Filename).cs" />
+    <None Remove="res\drm\google_dash_encrypted_init_data" />
+    <None Remove="res\drm\google_dash_encrypted_video_packet_pts_10_01.xml" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="res\drm\google_dash_encrypted_init_data" />
+    <EmbeddedResource Include="res\drm\google_dash_encrypted_video_packet_pts_10_01.xml" />
   </ItemGroup>
 
-  <ItemGroup>
-    <EmbeddedResource Include="..\JuvoPlayer.Tests\testcase\videoclips.json" Link="testcase\videoclips.json" />
-    <EmbeddedResource Include="res\drm\encrypted_packets_list.bin" />
-    <EmbeddedResource Include="res\drm\init_data" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <EmbeddedResource Include="..\JuvoPlayer.Tests\testcase\*.config" Link="testcase\%(Filename).config" />
-    <EmbeddedResource Include="..\JuvoPlayer.Tests\testcase\MPD Parser Data\*" Link="testcase\MPD Parser Data\%(Filename)%(Extension)" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <None Remove="res\drm\encrypted_packets_list.bin" />
-    <None Remove="res\drm\init_data" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <Folder Include="lib\" />
-  </ItemGroup>
 
   <ItemGroup>
     <PackageReference Include="NSubstitute" Version="3.1.0" />
@@ -49,6 +35,7 @@
 
   <ItemGroup>
     <ProjectReference Include="..\JuvoLogger.Tizen\JuvoLogger.Tizen.csproj" />
+    <ProjectReference Include="..\JuvoPlayer.Tests\JuvoPlayer.Tests.csproj" />
     <ProjectReference Include="..\JuvoPlayer\JuvoPlayer.csproj" />
   </ItemGroup>
 

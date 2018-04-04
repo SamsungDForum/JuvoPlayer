@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Linq;
 using JuvoPlayer.Common;
 using JuvoPlayer.DataProviders;
 using JuvoPlayer.DataProviders.Dash;
@@ -13,6 +15,9 @@ using Xamarin.Forms;
 using XamarinPlayer.Services;
 using XamarinPlayer.Tizen.Services;
 
+using StreamDefinition = XamarinPlayer.Services.StreamDescription;
+using StreamType = XamarinPlayer.Services.StreamDescription.StreamType;
+
 [assembly: Dependency(typeof(PlayerService))]
 namespace XamarinPlayer.Tizen.Services
 {
@@ -24,7 +29,6 @@ namespace XamarinPlayer.Tizen.Services
         private PlayerState playerState = PlayerState.Idle;
 
         public event PlayerStateChangedEventHandler StateChanged;
-        public event ShowSubtitleEventHandler ShowSubtitle;
         
         public TimeSpan Duration => playerController?.ClipDuration ?? TimeSpan.FromSeconds(0) ;
 
@@ -42,6 +46,8 @@ namespace XamarinPlayer.Tizen.Services
             }
         }
 
+        public string CurrentCueText => dataProvider?.CurrentCueText;
+
         public PlayerService()
         {
             dataProviders = new DataProviderFactoryManager();
@@ -58,15 +64,6 @@ namespace XamarinPlayer.Tizen.Services
             playerController.PlaybackCompleted += () =>
             {
                 State = PlayerState.Completed;
-            };
-            playerController.ShowSubtitle += (subtitle) =>
-            {
-                var sub = new XamarinPlayer.Services.Subtitle
-                {
-                    Duration = subtitle.Duration,
-                    Text = subtitle.Text
-                };
-                ShowSubtitle?.Invoke(this, new ShowSubtitleEventArgs(sub));
             };
             playerController.PlayerInitialized += () =>
             {
@@ -87,6 +84,61 @@ namespace XamarinPlayer.Tizen.Services
         public void SeekTo(TimeSpan to)
         {
             playerController.OnSeek(to);
+        }
+
+        public void ChangeActiveStream(StreamDefinition stream)
+        {
+            var streamDescription = new JuvoPlayer.Common.StreamDescription()
+            {
+                Id = stream.Id,
+                Description = stream.Description,
+                StreamType = ToJuvoStreamType(stream.Type)
+            };
+
+            dataProvider.OnChangeActiveStream(streamDescription);
+        }
+
+        public List<StreamDefinition> GetStreamsDescription(StreamType streamType)
+        {
+            var streams = dataProvider.GetStreamsDescription(ToJuvoStreamType(streamType));
+            return streams.Select(o => 
+                new StreamDefinition()
+                {
+                    Id = o.Id,
+                    Description = o.Description,
+                    Default = o.Default,
+                    Type = ToStreamType(o.StreamType)
+                }).ToList();
+        }
+
+        private JuvoPlayer.Common.StreamType ToJuvoStreamType(StreamType streamType)
+        {
+            switch (streamType)
+            {
+                case StreamType.Audio:
+                    return JuvoPlayer.Common.StreamType.Audio;
+                case StreamType.Video:
+                    return JuvoPlayer.Common.StreamType.Video;
+                case StreamType.Subtitle:
+                    return JuvoPlayer.Common.StreamType.Subtitle;
+                default:
+                    throw new IndexOutOfRangeException();
+            }
+        }
+
+        private StreamType ToStreamType(JuvoPlayer.Common.StreamType streamType)
+        {
+            switch (streamType)
+            {
+                case JuvoPlayer.Common.StreamType.Audio:
+                    return StreamType.Audio;
+                case JuvoPlayer.Common.StreamType.Video:
+                    return StreamType.Video;
+                case JuvoPlayer.Common.StreamType.Subtitle:
+                    return StreamType.Subtitle;
+                default:
+                    throw new IndexOutOfRangeException();
+            }
         }
 
         public void SetSource(object o)

@@ -1,10 +1,11 @@
 ﻿using System;
 using System.Net;
 using JuvoLogger;
+using JuvoPlayer.Tests.UnitTests;
 using MpdParser;
 using NUnit.Framework;
 
-namespace JuvoPlayer.Tests
+namespace JuvoPlayer.Tests.DebugCode
 {
     [TestFixture]
     public class MpdParserDebug

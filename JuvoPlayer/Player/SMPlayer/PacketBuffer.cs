@@ -176,7 +176,7 @@ namespace JuvoPlayer.Player.SMPlayer
             }
         }
 
-        public ulong PeekSortingValue()
+        public System.TimeSpan PeekSortingValue()
         { // blocks if buffer is empty!
             for (; true; bufferPeek.WaitOne())
             {
@@ -188,13 +188,13 @@ namespace JuvoPlayer.Player.SMPlayer
                         {
                             case Ordering.DtsAsc:
                             case Ordering.DtsDesc:
-                                return (ulong)data[0].Dts.TotalMilliseconds;
+                                return data[0].Dts;
                             case Ordering.PtsAsc:
                             case Ordering.PtsDesc:
-                                return (ulong)data[0].Pts.TotalMilliseconds;
+                                return data[0].Pts;
                             case Ordering.Fifo:
                             default:
-                                return (ulong)data[0].Pts.TotalMilliseconds; // fifo, comparison outside by pts
+                                return data[0].Pts; // fifo, comparison outside by pts
                         }
                     }
                 }

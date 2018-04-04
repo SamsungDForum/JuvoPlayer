@@ -156,7 +156,7 @@ namespace JuvoPlayer.Player.MMPlayer
             player.SetPlayPositionAsync((int)time.TotalMilliseconds, false);
         }
 
-        public void SetAudioStreamConfig(AudioStreamConfig config)
+        private void SetAudioStreamConfig(AudioStreamConfig config)
         {
             if (config == null)
                 throw new ArgumentNullException(nameof(config), "config cannot be null");
@@ -216,7 +216,7 @@ namespace JuvoPlayer.Player.MMPlayer
             player.SetPlaybackRate(rate);
         }
 
-        public void SetVideoStreamConfig(VideoStreamConfig config)
+        private void SetVideoStreamConfig(VideoStreamConfig config)
         {
             if (config == null)
                 throw new ArgumentNullException(nameof(config), "config cannot be null");
@@ -294,6 +294,21 @@ namespace JuvoPlayer.Player.MMPlayer
         public void Dispose()
         {
             player?.Dispose();
+        }
+
+        public void SetStreamConfig(StreamConfig config)
+        {
+            switch (config.StreamType())
+            {
+                case Common.StreamType.Audio:
+                    SetAudioStreamConfig(config as AudioStreamConfig);
+                    break;
+                case Common.StreamType.Video:
+                    SetVideoStreamConfig(config as VideoStreamConfig);
+                    break;
+                default:
+                    break;
+            }
         }
     }
 }
