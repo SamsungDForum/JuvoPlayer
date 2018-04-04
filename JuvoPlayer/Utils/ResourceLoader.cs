@@ -39,7 +39,7 @@ namespace JuvoPlayer.Utils
         internal virtual Assembly FindAssembly(string resourceName)
         {
             var assemblies = AppDomain.CurrentDomain.GetAssemblies();
-            return assemblies.FirstOrDefault(assembly => assembly.GetManifestResourceStream(resourceName) != null);
+            return assemblies.FirstOrDefault(assembly => !assembly.IsDynamic && assembly.GetManifestResourceStream(resourceName) != null);
         }
     }
 }
