@@ -1,134 +1,76 @@
 ﻿using System;
-using System.IO;
-using System.Runtime.InteropServices;
-using Tizen.NUI;
-using Tizen.NUI.BaseComponents;
-using ImageSharp;
-using Tizen.System;
-using System.Threading.Tasks;
 using System.Collections.Generic;
-using Tizen.Applications;
-
-using JuvoPlayer.OpenGL.Services;
-using JuvoPlayer.Common;
+using System.IO;
 using System.Linq;
-using System.Windows.Input;
+using System.Runtime.InteropServices;
+using System.Threading.Tasks;
+using ImageSharp;
+using JuvoPlayer.Common;
+using JuvoPlayer.OpenGL.Services;
+using Tizen;
+using Tizen.TV.NUI.GLApplication;
 
-namespace Tizen.TV.NUI.GLApplication.JuvoPlayer.OpenGL
-{
+namespace JuvoPlayer.OpenGL {
     internal unsafe class Program : TVGLApplication
     {
-        private const string glDemoLib = "libgles_sample.so";
+        private const string GlDemoLib = "libgles_sample.so";
 
-        [DllImport(glDemoLib, EntryPoint = "Create")]
+        [DllImport(GlDemoLib, EntryPoint = "Create")]
         public static extern void Create();
 
-        [DllImport(glDemoLib, EntryPoint = "Draw")]
+        [DllImport(GlDemoLib, EntryPoint = "Draw")]
         public static extern void Draw(IntPtr eglDisplay, IntPtr eglSurface);
 
-        [DllImport(glDemoLib, EntryPoint = "AddTile")]
+        [DllImport(GlDemoLib, EntryPoint = "AddTile")]
         public static extern int AddTile();
 
-        [DllImport(glDemoLib, EntryPoint = "SetTileData")]
+        [DllImport(GlDemoLib, EntryPoint = "SetTileData")]
         public static extern void SetTileData(int tileId, byte* pixels, int w, int h, byte *name, int nameLen, byte *desc, int descLen);
 
-        [DllImport(glDemoLib, EntryPoint = "AddEmptyTile")]
+        [DllImport(GlDemoLib, EntryPoint = "AddEmptyTile")]
         public static extern int AddEmptyTile();
 
-        [DllImport(glDemoLib, EntryPoint = "SetTileTexture")]
+        [DllImport(GlDemoLib, EntryPoint = "SetTileTexture")]
         public static extern int SetTileTexture(int tileNo, byte* pixels, int w, int h);
 
-        [DllImport(glDemoLib, EntryPoint = "SelectTile")]
+        [DllImport(GlDemoLib, EntryPoint = "SelectTile")]
         public static extern void SelectTile(int tileNo);
 
-        [DllImport(glDemoLib, EntryPoint = "ShowMenu")]
+        [DllImport(GlDemoLib, EntryPoint = "ShowMenu")]
         public static extern void ShowMenu(int enable);
 
-        [DllImport(glDemoLib, EntryPoint = "AddFont")]
+        [DllImport(GlDemoLib, EntryPoint = "AddFont")]
         public static extern int AddFont(byte* data, int size);
 
-        [DllImport(glDemoLib, EntryPoint = "ShowLoader")]
+        [DllImport(GlDemoLib, EntryPoint = "ShowLoader")]
         public static extern void ShowLoader(int enabled, int percent);
 
-        [DllImport(glDemoLib, EntryPoint = "UpdatePlaybackControls")]
+        [DllImport(GlDemoLib, EntryPoint = "UpdatePlaybackControls")]
         public static extern void UpdatePlaybackControls(int show, int state, int currentTime, int totalTime, byte* text, int textLen);
 
-        [DllImport(glDemoLib, EntryPoint = "SetIcon")]
+        [DllImport(GlDemoLib, EntryPoint = "SetIcon")]
         public static extern void SetIcon(int id, byte* pixels, int w, int h);
 
-        [DllImport(glDemoLib, EntryPoint = "SetVersion")]
+        [DllImport(GlDemoLib, EntryPoint = "SetVersion")]
         public static extern void SetVersion(byte* ver, int verLen);
 
-        [DllImport(glDemoLib, EntryPoint = "SwitchTextRenderingMode")]
+        [DllImport(GlDemoLib, EntryPoint = "SwitchTextRenderingMode")]
         public static extern void SwitchTextRenderingMode();
 
-        [DllImport(glDemoLib, EntryPoint = "SwitchFPSCounterVisibility")]
+        [DllImport(GlDemoLib, EntryPoint = "SwitchFPSCounterVisibility")]
         public static extern void SwitchFPSCounterVisibility();
 
         private struct Tile {
-            public int id;
-            public string imgPath;
-            public int imgWidth;
-            public int imgHeight;
-            public byte[] imgPixels;
-            public string name;
-            public string description;
+            public int Id;
+            public string ImgPath;
+            public int ImgWidth;
+            public int ImgHeight;
+            public byte[] ImgPixels;
+            public string Name;
+            public string Description;
         }
 
-        static private Tile[] tiles = {
-            new Tile {
-                name = "Blueprint",
-                description = "A blueprint from a scene with a blueprint.",
-                imgPath = "0.jpg"
-            },
-            new Tile {
-                name = "Bay City",
-                description = "Formerly known as San Francisco.\n\nRoses are FF0000\nViolets are 0000FF\nFont metrics handling sucks\nSo I deal with it with hacks",
-                imgPath = "1.jpg"
-            },
-            new Tile {
-                name = "Envoys",
-                description = "Two Envoys in an industrial setting.",
-                imgPath = "2.jpg"
-            },
-            new Tile {
-                name = "Takeshi Kovacs",
-                description = "The main character looking at Bay City.",
-                imgPath = "3.jpg"
-            },
-            new Tile {
-                name = "Neural Hologram",
-                description = "Heavy sci-fi stuff.",
-                imgPath = "4.jpg"
-            },
-            new Tile {
-                name = "Born Again",
-                description = "Takeshi Kovacs is being fit into new sleeve.",
-                imgPath = "5.jpg"
-            },
-            new Tile {
-                name = "Flashback",
-                description = "Kovacs having an usual Envoy-in-a-forest flashback.",
-                imgPath = "6.jpg"
-            },
-            new Tile {
-                name = "Drugs",
-                description = "Women and Rock&Roll in Bay City.",
-                imgPath = "7.jpg"
-            },
-            new Tile {
-                name = "Forest",
-                description = "Envoys' training scene.",
-                imgPath = "8.jpg"
-            },
-            new Tile {
-                name = "The Russian",
-                description = "Soon very dead Russian. Brother of another soon very dead Russian.",
-                imgPath = "9.jpg"
-            }
-        };
-
-        enum Icons {
+        private enum IconType {
             Play,
             Resume,
             Stop,
@@ -140,120 +82,112 @@ namespace Tizen.TV.NUI.GLApplication.JuvoPlayer.OpenGL
         };
 
         private struct Icon {
-            public Icons id;
-            public string imgPath;
-            public int imgWidth;
-            public int imgHeight;
-            public byte[] imgPixels;
+            public IconType Id;
+            public string ImgPath;
+            public int ImgWidth;
+            public int ImgHeight;
+            public byte[] ImgPixels;
         }
 
-        static private Icon[] icons = {
+        private static readonly Icon[] Icons = {
             new Icon {
-                id = Icons.Play,
-                imgPath = "play.png"
+                Id = IconType.Play,
+                ImgPath = "play.png"
             },
             new Icon {
-                id = Icons.Resume,
-                imgPath = "resume.png"
+                Id = IconType.Resume,
+                ImgPath = "resume.png"
             },
             new Icon {
-                id = Icons.Stop,
-                imgPath = "stop.png"
+                Id = IconType.Stop,
+                ImgPath = "stop.png"
             },
             new Icon {
-                id = Icons.Pause,
-                imgPath = "pause.png"
+                Id = IconType.Pause,
+                ImgPath = "pause.png"
             },
             new Icon {
-                id = Icons.FastForward,
-                imgPath = "fast-forward.png"
+                Id = IconType.FastForward,
+                ImgPath = "fast-forward.png"
             },
             new Icon {
-                id = Icons.Rewind,
-                imgPath = "rewind.png"
+                Id = IconType.Rewind,
+                ImgPath = "rewind.png"
             },
             new Icon {
-                id = Icons.SkipToEnd,
-                imgPath = "skip-to-end.png"
+                Id = IconType.SkipToEnd,
+                ImgPath = "skip-to-end.png"
             },
             new Icon {
-                id = Icons.SkipToStart,
-                imgPath = "skip-to-start.png"
+                Id = IconType.SkipToStart,
+                ImgPath = "skip-to-start.png"
             }
         };
 
-        private int tilesNumber = 0;
-        private int tilesNumberTarget = tiles.Length;
-        private Queue<Tile> loadedTiles;
+        private int _tilesNumber = 0;
+        private int _tilesNumberTarget = 0;
+        private Queue<Tile> _loadedTiles;
 
-        private int fontsNumber = 0;
-        private int fontsNumberTarget = 1;
-        private Queue<KeyValuePair<List<int>, byte[]>> loadedFonts;
+        private int _fontsNumber = 0;
+        private int _fontsNumberTarget = 1;
+        private Queue<KeyValuePair<List<int>, byte[]>> _loadedFonts;
 
-        private int iconsNumber = 0;
-        private int iconsNumberTarget = icons.Length;
-        private Queue<Icon> loadedIcons;
+        private int _iconsNumber = 0;
+        private int _iconsNumberTarget = Icons.Length;
+        private Queue<Icon> _loadedIcons;
 
-        private int selectedTile = 0;
-        private int menuShown = 1;
+        private int _selectedTile = 0;
+        private bool _menuShown = true;
 
-        private int progressBarShown = 0;
-        private DateTime lastAction = DateTime.Now;
-        private TimeSpan prograssBarFadeout = TimeSpan.FromMilliseconds(5 * 1000);
+        private bool _progressBarShown = false;
+        private DateTime _lastAction = DateTime.Now;
+        private TimeSpan _prograssBarFadeout = TimeSpan.FromMilliseconds(5 * 1000);
 
-        PlayerService player = null;
-        private int playerTimeCurrentPosition = 0;
-        private int playerTimeDuration = 0;
-        private int playerState = 0;
+        PlayerService _player = null;
+        private int _playerTimeCurrentPosition = 0;
+        private int _playerTimeDuration = 0;
+        private int _playerState = 0;
 
-        private List<DetailContentData> contentList { get; set; }
-        private List<Clip> clips;
-
-        protected ICommand CreateFocusedCommand() {
-            return null;
-        }
+        private List<DetailContentData> ContentList { get; set; }
+        private List<Clip> _clips;
 
         private void InitMenu()
         {
-            var clipsPath = global::System.IO.Path.Combine(global::System.IO.Path.GetDirectoryName(global::System.IO.Path.GetDirectoryName(Current.ApplicationInfo.ExecutablePath)), "shared", "res", "videoclips.json");
-            clips = ClipReaderService.ReadClips(clipsPath);
-
-            contentList = clips.Select(o => new DetailContentData() {
+            var clipsPath = Path.Combine(Path.GetDirectoryName(Path.GetDirectoryName(Current.ApplicationInfo.ExecutablePath)), "shared", "res", "videoclips.json");
+            _clips = ClipReaderService.ReadClips(clipsPath);
+            ContentList = _clips.Select(o => new DetailContentData() {
                 Bg = o.Image,
                 Clip = o.ClipDetailsHandle,
-                ContentFocusedCommand = CreateFocusedCommand(),
+                ContentFocusedCommand = null,
                 Description = o.Description,
                 Image = o.Image,
                 Source = o.Source,
                 Title = o.Title,
             }).ToList();
 
-
-            string path = global::System.IO.Path.Combine(global::System.IO.Path.GetDirectoryName(global::System.IO.Path.GetDirectoryName(Current.ApplicationInfo.ExecutablePath)), "res/");
-            string home = "/home/owner/JuvoGL/";
-            home = path;
-            loadedFonts = new Queue<KeyValuePair<List<int>, byte[]>>();
+            var home = Path.Combine(Path.GetDirectoryName(Path.GetDirectoryName(Current.ApplicationInfo.ExecutablePath)), "res/");
+            _loadedFonts = new Queue<KeyValuePair<List<int>, byte[]>>();
             LoadFont(home + "fonts/akashi.ttf");
-            loadedTiles = new Queue<Tile>();
-            loadedIcons = new Queue<Icon>();
-            tilesNumberTarget = contentList.Count;
-            for (int i = 0; i < contentList.Count; ++i) {
-                Tile tile = new Tile {
-                    imgPath = home + "tiles/" + contentList[i].Image,
-                    description = contentList[i].Description ?? "",
-                    name = contentList[i].Title ?? ""
+            _loadedTiles = new Queue<Tile>();
+            _loadedIcons = new Queue<Icon>();
+            _tilesNumberTarget = ContentList.Count;
+            foreach (var contentItem in ContentList)
+            {
+                var tile = new Tile {
+                    ImgPath = home + "tiles/" + contentItem.Image,
+                    Description = contentItem.Description ?? "",
+                    Name = contentItem.Title ?? ""
                 };
                 LoadTile(tile);
             }
-            for(int i = 0; i < icons.Length; ++i) {
-                icons[i].imgPath = home + "icons/" + icons[i].imgPath;
-                LoadIcon(icons[i]);
+            for(var i = 0; i < Icons.Length; ++i) {
+                Icons[i].ImgPath = home + "icons/" + Icons[i].ImgPath;
+                LoadIcon(Icons[i]);
             }
-            SelectTile(selectedTile);
-            selectedTile = 0;
-            menuShown = 1;
+            SelectTile(_selectedTile);
+            _selectedTile = 0;
+            _menuShown = true;
             ShowLoader(1, 0);
-            // ShowMenu(menuShown); // loader takes care of it
         }
 
         protected override void OnCreate()
@@ -274,175 +208,169 @@ namespace Tizen.TV.NUI.GLApplication.JuvoPlayer.OpenGL
             //throw new NotImplementedException();
         }
 
-        void LoadTile(Tile tile) {
-            tile.id = AddTile();
+        private void LoadTile(Tile tile) {
+            tile.Id = AddTile();
             Task.Run(() => {
                 try {
-                    using (FileStream stream = File.OpenRead(tile.imgPath)) {
-                        Image image = new Image(stream);
-                        byte[] pixels = new byte[image.Pixels.Length * 3];
-                        for (int i = 0; i < image.Pixels.Length; ++i) {
+                    using (var stream = File.OpenRead(tile.ImgPath)) {
+                        var image = new Image(stream);
+                        var pixels = new byte[image.Pixels.Length * 3];
+                        for (var i = 0; i < image.Pixels.Length; ++i) {
                             pixels[3 * i + 0] = image.Pixels[i].R;
                             pixels[3 * i + 1] = image.Pixels[i].G;
                             pixels[3 * i + 2] = image.Pixels[i].B;
                         }
-                        Log.Info("JuvoGL", tile.imgPath + ": " + image.Width + "x" + image.Height + " = " + image.Pixels.Length + (image.IsAnimated ? " (" + image.Frames.Count + " frames)" : ""));
-                        tile.imgWidth = image.Width;
-                        tile.imgHeight = image.Height;
-                        tile.imgPixels = pixels;
-                        lock (loadedTiles) {
-                            loadedTiles.Enqueue(tile);
+                        Log.Info("JuvoPlayer", tile.ImgPath + ": " + image.Width + "x" + image.Height + " = " + image.Pixels.Length + (image.IsAnimated ? " (" + image.Frames.Count + " frames)" : ""));
+                        tile.ImgWidth = image.Width;
+                        tile.ImgHeight = image.Height;
+                        tile.ImgPixels = pixels;
+                        lock (_loadedTiles) {
+                            _loadedTiles.Enqueue(tile);
                         }
                     }
                 }
                 catch (Exception e) {
-                    Log.Info("JuvoGL", e.ToString());
+                    Log.Info("JuvoPlayer", e.ToString());
                 }
             });
         }
 
-        void LoadFont(string file) {
+        private void LoadFont(string file) {
             Task.Run(() => {
                 try {
-                    using (FileStream stream = File.OpenRead(file)) {
-                        byte[] font = new byte[stream.Length];
+                    using (var stream = File.OpenRead(file)) {
+                        var font = new byte[stream.Length];
                         stream.Read(font, 0, (int)stream.Length);
-                        lock(loadedFonts) {
-                            loadedFonts.Enqueue(new KeyValuePair<List<int>, byte[]>(new List<int>(new int[] {}), font));
+                        lock(_loadedFonts) {
+                            _loadedFonts.Enqueue(new KeyValuePair<List<int>, byte[]>(new List<int>(new int[] {}), font));
                         }
                     }
                 }
                 catch (Exception e) {
-                    Log.Info("JuvoGL", e.ToString());
+                    Log.Info("JuvoPlayer", e.ToString());
                 }
             });
         }
 
-        void LoadIcon(Icon icon) {
+        private void LoadIcon(Icon icon) {
             Task.Run(() => {
                 try {
-                    using (FileStream stream = File.OpenRead(icon.imgPath)) {
-                        Image image = new Image(stream);
-                        byte[] pixels = new byte[image.Pixels.Length * 4];
-                        for (int i = 0; i < image.Pixels.Length; ++i) {
+                    using (var stream = File.OpenRead(icon.ImgPath)) {
+                        var image = new Image(stream);
+                        var pixels = new byte[image.Pixels.Length * 4];
+                        for (var i = 0; i < image.Pixels.Length; ++i) {
                             pixels[4 * i + 0] = image.Pixels[i].R;
                             pixels[4 * i + 1] = image.Pixels[i].G;
                             pixels[4 * i + 2] = image.Pixels[i].B;
                             pixels[4 * i + 3] = image.Pixels[i].A;
                         }
-                        Log.Info("JuvoGL", icon.imgPath + ": " + image.Width + "x" + image.Height + " = " + image.Pixels.Length + (image.IsAnimated ? " (" + image.Frames.Count + " frames)" : ""));
-                        icon.imgWidth = image.Width;
-                        icon.imgHeight = image.Height;
-                        icon.imgPixels = pixels;
-                        lock (loadedTiles) {
-                            loadedIcons.Enqueue(icon);
+                        Log.Info("JuvoPlayer", icon.ImgPath + ": " + image.Width + "x" + image.Height + " = " + image.Pixels.Length + (image.IsAnimated ? " (" + image.Frames.Count + " frames)" : ""));
+                        icon.ImgWidth = image.Width;
+                        icon.ImgHeight = image.Height;
+                        icon.ImgPixels = pixels;
+                        lock (_loadedTiles) {
+                            _loadedIcons.Enqueue(icon);
                         }
                     }
                 }
                 catch (Exception e) {
-                    Log.Info("JuvoGL", e.ToString());
+                    Log.Info("JuvoPlayer", e.ToString());
                 }
             });
         }
 
-        byte[] GetBytes(string str) {
-            byte[] a = new byte[str.Length];
-            for (int i = 0; i < str.Length; ++i)
+        private static byte[] GetBytes(string str) {
+            var a = new byte[str.Length];
+            for (var i = 0; i < str.Length; ++i)
                 a[i] = (byte)str[i];
             return a;
         }
 
-        void LoadResources() {
-            int resourcesTarget = tilesNumberTarget + fontsNumberTarget + iconsNumberTarget;
-            int resourcesLoaded = tilesNumber + fontsNumber + iconsNumber;
+        private void LoadResources() {
+            var resourcesTarget = _tilesNumberTarget + _fontsNumberTarget + _iconsNumberTarget;
+            var resourcesLoaded = _tilesNumber + _fontsNumber + _iconsNumber;
             if (resourcesLoaded >= resourcesTarget)
                 return;
-            lock (loadedTiles) {
-                while (loadedTiles.Count > 0) {
+            lock (_loadedTiles) {
+                while (_loadedTiles.Count > 0) {
                     try {
-                        Tile tile = loadedTiles.Dequeue();
-                        fixed (byte* p = tile.imgPixels) {
-                            fixed (byte* name = GetBytes(tile.name)) {
-                                fixed (byte* desc = GetBytes(tile.description)) {
-                                    SetTileData(tile.id, p, tile.imgWidth, tile.imgHeight, name, tile.name.Length, desc, tile.description.Length);
+                        var tile = _loadedTiles.Dequeue();
+                        fixed (byte* p = tile.ImgPixels) {
+                            fixed (byte* name = GetBytes(tile.Name)) {
+                                fixed (byte* desc = GetBytes(tile.Description)) {
+                                    SetTileData(tile.Id, p, tile.ImgWidth, tile.ImgHeight, name, tile.Name.Length, desc, tile.Description.Length);
                                 }
                             }
                         }
-                        ++tilesNumber;
+                        ++_tilesNumber;
                         UpdateLoader();
                     }
                     catch (Exception e) {
-                        Log.Info("JuvoGL", e.ToString());
+                        Log.Info("JuvoPlayer", e.ToString());
                     }
                 }
             }
-            lock(loadedFonts) {
-                while (loadedFonts.Count > 0) {
+            lock(_loadedFonts) {
+                while (_loadedFonts.Count > 0) {
                     try {
-                        KeyValuePair<List<int>, byte[]> font = loadedFonts.Dequeue();
+                        var font = _loadedFonts.Dequeue();
                         fixed (byte* p = font.Value) {
-                            int fid = AddFont(p, font.Value.Length);
-                            Log.Info("JuvoGL", "FontID=" + fid);
+                            AddFont(p, font.Value.Length);
                         }
-                        ++fontsNumber;
+                        ++_fontsNumber;
                         UpdateLoader();
                     }
                     catch (Exception e) {
-                        Log.Info("JuvoGL", e.ToString());
+                        Log.Info("JuvoPlayer", e.ToString());
                     }
                 }
             }
-            lock (loadedIcons) {
-                while (loadedIcons.Count > 0) {
+            lock (_loadedIcons) {
+                while (_loadedIcons.Count > 0) {
                     try {
-                        Icon icon = loadedIcons.Dequeue();
-                        fixed (byte* p = icon.imgPixels) {
-                            SetIcon((int)icon.id, p, icon.imgWidth, icon.imgHeight);
+                        var icon = _loadedIcons.Dequeue();
+                        fixed (byte* p = icon.ImgPixels) {
+                            SetIcon((int)icon.Id, p, icon.ImgWidth, icon.ImgHeight);
                         }
-                        ++iconsNumber;
+                        ++_iconsNumber;
                         UpdateLoader();
                     }
                     catch (Exception e) {
-                        Log.Info("JuvoGL", e.ToString());
+                        Log.Info("JuvoPlayer", e.ToString());
                     }
                 }
             }
         }
 
-        void UpdateLoader() {
-            int resourcesTarget = tilesNumberTarget + fontsNumberTarget + iconsNumberTarget;
-            int resourcesLoaded = tilesNumber + fontsNumber + iconsNumber;
-            ShowLoader(resourcesLoaded < resourcesTarget ? 1 : 0, 100 * resourcesLoaded / resourcesTarget);
+        private void UpdateLoader() {
+            var resourcesTarget = _tilesNumberTarget + _fontsNumberTarget + _iconsNumberTarget;
+            var resourcesLoaded = _tilesNumber + _fontsNumber + _iconsNumber;
+            ShowLoader(resourcesLoaded < resourcesTarget ? 1 : 0, resourcesTarget > 0 ? 100 * resourcesLoaded / resourcesTarget : 0);
         }
 
         protected override void OnKeyEvent(Key key) {
             if (key.State != Key.StateType.Down)
                 return;
-            lastAction = DateTime.Now;
+            _lastAction = DateTime.Now;
             switch (key.KeyPressedName) {
                 case "Right":
-                    if (menuShown == 0)
+                    if (!_menuShown)
                         break;
-                    if (selectedTile < tilesNumber - 1) {
-                        selectedTile = (selectedTile + 1) % tilesNumber;
-                    }
-                    SelectTile(selectedTile);
-                    Log.Info("JuvoGL", "->");
+                    if (_selectedTile < _tilesNumber - 1)
+                        _selectedTile = (_selectedTile + 1) % _tilesNumber;
+                    SelectTile(_selectedTile);
                     break;
                 case "Left":
-                    if (menuShown == 0)
+                    if (!_menuShown)
                         break;
-                    if (selectedTile > 0) {
-                        selectedTile = (selectedTile - 1 + tilesNumber) % tilesNumber;
-                    }
-                    SelectTile(selectedTile);
-                    Log.Info("JuvoGL", "<-");
+                    if (_selectedTile > 0)
+                        _selectedTile = (_selectedTile - 1 + _tilesNumber) % _tilesNumber;
+                    SelectTile(_selectedTile);
                     break;
                 case "space":
                 case "0":
-                    menuShown = (menuShown + 1) % 2;
-                    ShowMenu(menuShown);
-                    Log.Info("JuvoGL", "0");
+                    _menuShown = !_menuShown;
+                    ShowMenu(_menuShown ? 1 : 0);
                     break;
                 case "1":
                     SwitchTextRenderingMode();
@@ -451,37 +379,25 @@ namespace Tizen.TV.NUI.GLApplication.JuvoPlayer.OpenGL
                     SwitchFPSCounterVisibility();
                     break;
                 case "Return":
-                    if (selectedTile >= contentList.Count)
+                    if (_selectedTile >= ContentList.Count)
                         return;
-                    /*ClipDefinition clip = new ClipDefinition() {
-                        Title = "HLS",
-                        Type = "hls",
-                        Url = "http://multiplatform-f.akamaihd.net/i/multi/april11/sintel/sintel-hd_,512x288_450_b,640x360_700_b,768x432_1000_b,1024x576_1400_m,.mp4.csmil/master.m3u8",
-                        Subtitles = new List<SubtitleInfo>(),
-                        Poster = "",
-                        Description = "",
-                        DRMDatas = new List<DRMDescription>()
-                    };*/
-
-                    if(player == null)
-                        player = new PlayerService();
-
-                    Log.Info("JuvoGL", "Playing " + contentList[selectedTile].Title + " (" + contentList[selectedTile].Source + ")");
-                    player.SetSource(contentList[selectedTile].Clip);
-
-                    if (menuShown == 0)
+                    if(_player == null)
+                        _player = new PlayerService();
+                    Log.Info("JuvoPlayer", "Playing " + ContentList[_selectedTile].Title + " (" + ContentList[_selectedTile].Source + ")");
+                    _player.SetSource(ContentList[_selectedTile].Clip);
+                    if (!_menuShown)
                         break;
-                    menuShown = 0;
-                    ShowMenu(menuShown);
+                    _menuShown = false;
+                    ShowMenu(_menuShown ? 1 : 0);
                     break;
                 case "XF86Back":
-                    if (menuShown == 1)
+                    if (_menuShown)
                         break;
-                    menuShown = 1;
-                    ShowMenu(menuShown);
-                    if (player != null) {
-                        player.Dispose();
-                        player = null;
+                    _menuShown = true;
+                    ShowMenu(_menuShown ? 1 : 0);
+                    if (_player != null) {
+                        _player.Dispose(); // TODO: Check wheter it's the best way
+                        _player = null;
                     }
                     break;
                 case "XF86Exit":
@@ -489,17 +405,13 @@ namespace Tizen.TV.NUI.GLApplication.JuvoPlayer.OpenGL
                     break;
                 case "XF86AudioMute": // Mute
                 case "XF863XSpeed": // Play
-                    Log.Info("JuvoGL", "Play");
-                    if (player != null)
-                        player.Start();
+                    _player?.Start();
                     break;
                 case "XF86AudioPause": // Pause
-                    if (player != null)
-                        player.Pause();
+                    _player?.Pause();
                     break;
                 case "XF863D": // Stop
-                    if (player != null)
-                        player.Stop();
+                    _player?.Stop();
                     break;
                 case "XF86AudioRewind": // Seek forward
                 case "XF86AudioNext": // Seek backwards
@@ -510,50 +422,46 @@ namespace Tizen.TV.NUI.GLApplication.JuvoPlayer.OpenGL
                 case "XF86Blue": // D
                     break;
                 default:
-                    Log.Info("JuvoGL", "Unknown key pressed: " + key.KeyPressedName);
+                    Log.Info("JuvoPlayer", "Unknown key pressed: " + key.KeyPressedName);
                     break;
             }
-            progressBarShown = (menuShown + 1) % 2;
+            _progressBarShown = !_menuShown;
         }
 
         private void UpdateUI() {
-            if (player != null && tiles.Length > selectedTile) {
-                playerTimeCurrentPosition = (int)player.CurrentPosition.TotalMilliseconds;
-                playerTimeDuration = (int)player.Duration.TotalMilliseconds;
+            if (_player != null && _tilesNumber > _selectedTile) {
+                _playerTimeCurrentPosition = (int)_player.CurrentPosition.TotalMilliseconds;
+                _playerTimeDuration = (int)_player.Duration.TotalMilliseconds;
 
-                switch (player.State) {
+                switch (_player.State) {
                     case PlayerState.Idle:
-                        playerState = 0;
+                        _playerState = 0;
                         break;
                     case PlayerState.Preparing:
-                        playerState = 1;
+                        _playerState = 1;
                         break;
                     case PlayerState.Prepared:
-                        playerState = 2;
-                        if (player != null)
-                            player.Start();
+                        _playerState = 2;
+                        _player?.Start();
                         break;
                     case PlayerState.Stopped:
-                        playerState = 3;
+                        _playerState = 3;
                         break;
                     case PlayerState.Paused:
-                        playerState = 4;
+                        _playerState = 4;
                         break;
                     case PlayerState.Playing:
-                        playerState = 5;
+                        _playerState = 5;
                         break;
                     case PlayerState.Error:
-                        playerState = 6;
+                        _playerState = 6;
                         break;
                 }
             }
-            if (progressBarShown != 0 && playerState == (int)PlayerState.Playing && (DateTime.Now - lastAction).TotalMilliseconds >= prograssBarFadeout.TotalMilliseconds) {
-                progressBarShown = 0;
-                Log.Info("JuvoGL", "Hiding progress bar (" + (DateTime.Now - lastAction).TotalMilliseconds + " >= " + prograssBarFadeout.TotalMilliseconds + ").");
-            }
-            fixed (byte* name = GetBytes(/*tiles[selectedTile].name*/ contentList[selectedTile].Title)) {
-                UpdatePlaybackControls(progressBarShown, playerState, playerTimeCurrentPosition, playerTimeDuration, name, /*tiles[selectedTile].name.Length*/ contentList[selectedTile].Title.Length);
-            }
+            if (_progressBarShown && _playerState == (int)PlayerState.Playing && (DateTime.Now - _lastAction).TotalMilliseconds >= _prograssBarFadeout.TotalMilliseconds)
+                _progressBarShown = false;
+            fixed (byte* name = GetBytes(ContentList[_selectedTile].Title))
+                UpdatePlaybackControls(_progressBarShown ? 1 : 0, _playerState, _playerTimeCurrentPosition, _playerTimeDuration, name, ContentList[_selectedTile].Title.Length);
         }
 
         protected override void OnUpdate(IntPtr eglDisplay, IntPtr eglSurface)
@@ -565,7 +473,7 @@ namespace Tizen.TV.NUI.GLApplication.JuvoPlayer.OpenGL
 
         private static void Main(string[] args)
         {
-            Program myProgram = new Program();
+            var myProgram = new Program();
             myProgram.Run(args);
         }
     }
