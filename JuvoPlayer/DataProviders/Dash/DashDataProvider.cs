@@ -7,7 +7,6 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using JuvoPlayer.Subtitles;
 
 namespace JuvoPlayer.DataProviders.Dash
 {
@@ -17,19 +16,19 @@ namespace JuvoPlayer.DataProviders.Dash
         private readonly ILogger Logger = LoggerManager.GetInstance().GetLogger(Tag);
 
         private readonly DashManifest manifest;
-        private Document currentDocument;
-        private Period currentPeriod;
+        private Document currentDocument = null;
+        private Period currentPeriod = null;
         private DashMediaPipeline audioPipeline;
         private DashMediaPipeline videoPipeline;
-        private readonly List<SubtitleInfo> subtitleInfos;
-        private CuesMap cuesMap;
-        private TimeSpan currentTime = TimeSpan.Zero;
+        private TimeSpan currentTimeStamp = TimeSpan.Zero;
         private DateTime lastReloadTime = DateTime.MinValue;
         private TimeSpan minimumReloadPeriod = TimeSpan.Zero;
-        private static readonly TimeSpan manifestRequestDelay = TimeSpan.FromSeconds(3);
 
-        private Task manifestLoader;
-        private static readonly TimeSpan manifestReloadTimeout = TimeSpan.FromSeconds(10);
+        private Task manifestLoader = null;
+
+        private List<SubtitleInfo> subtitleInfos;
+        private CuesMap cuesMap;
+        private TimeSpan currentTime;
 
         public DashDataProvider(
             DashManifest manifest,
@@ -156,21 +155,6 @@ namespace JuvoPlayer.DataProviders.Dash
             }
         }
 
-        public void OnDeactivateStream(StreamType streamType)
-        {
-            if (streamType == StreamType.Subtitle)
-            {
-                OnDeactivateSubtitleStream();
-                return;
-            }
-            throw new NotImplementedException();
-        }
-
-        private void OnDeactivateSubtitleStream()
-        {
-            cuesMap = null;
-        }
-
         private void OnChangeActiveSubtitleStream(StreamDescription description)
         {
             if (description.Id >= subtitleInfos.Count)
@@ -179,7 +163,6 @@ namespace JuvoPlayer.DataProviders.Dash
             var subtitleInfo = subtitleInfos[description.Id];
             cuesMap = new SubtitleFacade().LoadSubtitles(subtitleInfo);
         }
-
 
         public void OnPaused()
         {
@@ -397,11 +380,11 @@ namespace JuvoPlayer.DataProviders.Dash
             }
         }
 
-        public Cue CurrentCue => cuesMap?.Get(currentTime);
+        public string CurrentCueText { get; }
 
         public void OnTimeUpdated(TimeSpan time)
         {
-            currentTime = time;
+            currentTimeStamp = time;
 
             audioPipeline.OnTimeUpdated(time);
             videoPipeline.OnTimeUpdated(time);
