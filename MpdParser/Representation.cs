@@ -300,19 +300,47 @@ namespace MpdParser.Node.Dynamic
             return segments_[(int)pos];
         }
 
-        public uint? NextMediaSegmentInTime(uint pos, TimeRange lastRequested)
+        public uint? RefreshMediaSegment(uint? pos, TimeRange lastRequested)
         {
-            throw new NotImplementedException("NextMediaSegmentInTime() API for live base representation not implemented...");
+            return pos;
         }
-        public ulong? GetLiveStartNumber(TimeSpan durationSpan)
+
+        private uint? GetStartSegmentDynamic(TimeSpan durationSpan)
         {
             var availStart = (Parameters.Document.AvailabilityStartTime ?? DateTime.MinValue);
             var liveTimeIndex = (availStart + durationSpan + Parameters.PlayClock) - availStart;
 
             return MediaSegmentAtTime(liveTimeIndex);
-
         }
 
+        private uint? GetStartSegmentStatic(TimeSpan durationSpan)
+        {
+            return 0;
+        }
+        public uint? GetStartSegment(TimeSpan durationSpan, TimeSpan bufferDepth)
+        {
+            //TODO: Take into account @startNumber if available
+            if (Parameters.Document.IsDynamic == true)
+                return GetStartSegmentDynamic(durationSpan);
+
+            return GetStartSegmentStatic(durationSpan);
+        }
+
+        private uint? MediaSegmentAtTimeStatic(TimeSpan duration)
+        {
+            for (int i = 0; i < segments_.Count; ++i)
+            {
+                if (segments_[i].Period.Start + segments_[i].Period.Duration >= duration)
+                    return (uint)i;
+            }
+
+            return null;
+        }
+
+        private uint? MediaSegmentAtTimeDynamic(TimeSpan duration)
+        {
+            throw new NotImplementedException("MediaSegmentAtTime for dynamic content needs implementation");
+        }
 
         public uint? MediaSegmentAtTime(TimeSpan duration)
         {
@@ -325,12 +353,10 @@ namespace MpdParser.Node.Dynamic
 
             DownloadWait?.WaitOne();
 
-            for (int i = 0; i < segments_.Count; ++i)
-            {
-                if (segments_[i].Period.Start + segments_[i].Period.Duration >= duration)
-                    return (uint)i;
-            }
-            return null;
+            if (Parameters.Document.IsDynamic == true)
+                return MediaSegmentAtTimeDynamic(duration);
+
+            return MediaSegmentAtTimeStatic(duration);
         }
 
         public IEnumerable<Segment> MediaSegments()
@@ -365,7 +391,9 @@ namespace MpdParser.Node.Dynamic
         public uint? TemplateDuration { get; }
 
         static readonly uint offsetFromEnd = 3;
-        static readonly uint liveAheadTime = 12;
+        static readonly uint liveAheadTime = 20;
+
+        public TimeSpan? AverageSegmentDuration { get; }
 
 
         protected static LoggerManager LogManager = LoggerManager.GetInstance();
@@ -393,17 +421,20 @@ namespace MpdParser.Node.Dynamic
 
             uint count = (uint)timeline.Length;
             ulong totalDuration = 0;
+            ulong justDurations = 0;
 
             foreach (TimelineItem item in timeline)
             {
                 count += (uint)item.Repeats;
-                ulong rightMost = item.Time + (1 + (ulong)item.Repeats) * item.Duration;
+                justDurations += (1 + (ulong)item.Repeats) * item.Duration;
+                ulong rightMost = item.Time + justDurations;
                 if (rightMost > totalDuration)
                     totalDuration = rightMost;
             }
 
             Count = count;
             Duration = Scaled(totalDuration - (timeline.Length > 0 ? timeline[0].Time : 0));
+            AverageSegmentDuration = Scaled(justDurations / Count);
             InitSegment = init == null ? null : MakeSegment(init.Get(bandwidth, reprId), null);
         }
 
@@ -428,6 +459,50 @@ namespace MpdParser.Node.Dynamic
             return MakeSegment(uri, new TimeRange(Scaled(start), Scaled(item.Duration)));
         }
 
+
+        private uint? RefreshMediaSegmentDynamic(uint? pos, TimeRange lastRequested)
+        {
+            uint index = 0;
+
+            var lastStart = (ulong)Math.Ceiling(lastRequested.Start.TotalSeconds * timescale_);
+            var lastDuration = (ulong)Math.Ceiling(lastRequested.Duration.TotalSeconds * timescale_);
+            var lastEndTime = lastStart + lastDuration - PresentationTimeOffset;
+
+            ulong timeShiftBufferDepth = Parameters.Document.TimeShiftBufferDepth.HasValue ?
+                   (ulong)Math.Ceiling(Parameters.Document.TimeShiftBufferDepth.Value.TotalSeconds * timescale_) : 0;
+
+
+            foreach (TimelineItem item in timeline_)
+            {
+
+                var RepeatsDone = 0U;
+                while (RepeatsDone <= item.Repeats)
+                {
+                    var currentStart = item.Time + (item.Duration * (RepeatsDone)) - PresentationTimeOffset;
+
+                    var availStart = currentStart;
+                    var availEnd = availStart + timeShiftBufferDepth + item.Duration;
+
+                    //Logger.Info($"I={index} lEnd={lastEndTime} aS={availStart} {currentStart >= availStart} aE={availEnd} {currentStart <= availEnd}");
+
+                    if (currentStart >= lastEndTime && 
+                       (currentStart >= availStart && currentStart <= availEnd) )
+                    {
+                        return (uint)index;
+                    }
+
+                    index++;
+                    RepeatsDone++;
+                }
+            }
+
+            return null;
+        }
+
+        private uint? RefreshMediaSegmentStatic(uint? pos, TimeRange lastRequested)
+        {
+            return pos;
+        }
         /// <summary>
         /// Gets the next segment, starting from provided segments which was not yet
         /// played based on provided timerange
@@ -436,56 +511,13 @@ namespace MpdParser.Node.Dynamic
         /// <param name="lastRequested">Timing information of last played segment.</param>
         /// <returns>Segment ID of next unplayed segment (specified by lastRequest) or null if 
         /// such segment cannot be found.</returns>
-        public uint? NextMediaSegmentInTime(uint pos, TimeRange lastRequested)
+        public uint? RefreshMediaSegment(uint? pos, TimeRange lastRequested)
         {
-            ulong index = pos;
-            ulong newIndex = 0;
-
-            ulong currentStart;
-
-            var lastStart = (ulong)Math.Ceiling(lastRequested.Start.TotalSeconds * timescale_);
-            var lastDuration = (ulong)Math.Ceiling(lastRequested.Duration.TotalSeconds * timescale_);
-            var lastEndTime = lastStart + lastDuration;
-
-
-            foreach (TimelineItem item in timeline_)
-            {
-                //Logger.Info($"pos={pos} index={index} repeats={item.Repeats} newIndex ={newIndex}");
-
-                if (index <= (ulong)item.Repeats)
-                {
-                    newIndex += index;
-                    currentStart = item.Time + (item.Duration * index);
-
-                    if (currentStart >= lastEndTime)
-                    {
-                        return (uint)newIndex;
-                    }
-
-                    while (index <= (ulong)item.Repeats)
-                    {
-                        index++;
-                        newIndex++;
-                        currentStart = item.Time + (item.Duration * index);
-
-                        if (currentStart >= lastEndTime)
-                        {
-                            return (uint)newIndex;
-                        }
-                    }
-
-                    return null;
-                }
-                else
-                {
-                    newIndex += (ulong)item.Repeats + 1;
-                    index -= (uint)item.Repeats;
-                    --index;
-                }
-
-            }
-
-            return null;
+            if(Parameters.Document.IsDynamic == true)
+                return RefreshMediaSegmentDynamic(pos, lastRequested);
+            
+            return RefreshMediaSegmentStatic(pos, lastRequested);
+            
         }
         public Segment MediaSegmentAtPos(uint pos)
         {
@@ -572,50 +604,32 @@ namespace MpdParser.Node.Dynamic
         /// </summary>
         /// <param name="durationSpan">Timestamp for which Start Segment number is to be retrieved.</param>
         /// <returns></returns>
-        public ulong? GetLiveStartNumber(TimeSpan durationSpan)
+        private uint? GetStartSegmentDynamic(TimeSpan durationSpan, TimeSpan bufferDepth)
         {
-            var bufferTime = (Parameters.Document.MinBufferTime ?? TimeSpan.Zero);
-            var bufferTimeRaw = (ulong)Math.Ceiling(bufferTime.TotalSeconds * timescale_);
-
-            // Currently not used, however, left here on purpose.
-            // If we are not hitting initial segments, it may be worth to consider delays associated with
-            // downlad & parsing of MPD. This may take up to 10sec.
-            /*
-            var startupDuration = Parameters.Document.ManifestParseCompleteTime - Parameters.Document.DownloadCompleteTime;
-            var downloadDuration = Parameters.Document.DownloadCompleteTime - Parameters.Document.DownloadRequestTime;
-            startupDuration += downloadDuration;
-            var startupOffset = (ulong)Math.Ceiling(startupDuration.TotalSeconds * timescale_);
-            */
-
+            var bufferTime = (Parameters.Document.MinBufferTime ?? TimeSpan.FromSeconds(10));
+            
             // Loosley based on VLC implementation...
 
             // Path when timeline was provided in MPD
             if (fromTimeline == true)
             {
-                var startElement = (uint)1;
-                var lastElemnent = Count;
+     
+                ulong? startSeg;
+                ulong? endSeg;
 
-                var endElement = lastElemnent - Math.Min(lastElemnent - startElement, offsetFromEnd);
+                (startSeg, endSeg) = GetFirstLastAvailableSegment(durationSpan);
+                Logger.Info($"FirstAvail={startSeg} LastAvail={endSeg}");
+                if (startSeg.HasValue == false)
+                    return null;
 
-                ulong endtime;
-                ulong duration;
+                if (endSeg.HasValue == false)
+                    return (uint?)startSeg;
 
-
-                (endtime, duration) = GetStartTimeDurationAtIndex((uint)endElement);
-                endtime -= PresentationTimeOffset;
-
-                if (endtime + duration <= bufferTimeRaw)
-                    return (uint)startElement;
-
-                var timeIndexValue = Scaled(endtime + duration - bufferTimeRaw);
-
-                var startByTime = MediaSegmentAtTime(timeIndexValue);
-                //Logger.Info($"StartIdx={startElement} LastIdx={lastElemnent} EndTime={endtime} Duration={duration} IDX={startByTime}");
-
-                if (startByTime.HasValue && (ulong)startByTime.Value < startElement)
-                    return startElement;
-
-                return startByTime;
+                
+                var bufferInSegmentUnits = ((ulong)bufferDepth.TotalSeconds) * 2 / (ulong)AverageSegmentDuration.Value.TotalSeconds;
+                //Logger.Info($"Buff={bufferTime} SegDur={AverageSegmentDuration} SegC={bufferInSegmentUnits}");
+                var startByTime = endSeg - Math.Min(endSeg.Value - startSeg.Value, bufferInSegmentUnits);
+                return (uint?)startByTime;
             }
             else //If timeline was build from duration.
             {
@@ -645,114 +659,150 @@ namespace MpdParser.Node.Dynamic
                 buffCount = (ulong)Math.Ceiling((double)buffCount * timescale_) + offsetFromEnd;
                 buffCount /= TemplateDuration ?? 1;
 
-                return (endSegment - start > buffCount) ? endSegment - buffCount : start;
+                return (endSegment - start > buffCount) ? (uint)(endSegment.Value - buffCount) : (uint)start;
 
             }
         }
+
+        private (uint?, uint?)GetFirstLastAvailableSegment(TimeSpan durationSpan)
+        {
+            // Timeshiftbufferdepth for dynamic content specifies duration of segment availability
+            ulong timeShiftBufferDepth = Parameters.Document.TimeShiftBufferDepth.HasValue ?
+               (ulong)Math.Ceiling(Parameters.Document.TimeShiftBufferDepth.Value.TotalSeconds * timescale_) : 0;
+
+            var offset = Parameters.Document.ManifestParseCompleteTime - Parameters.Document.AvailabilityStartTime??TimeSpan.Zero;
+            ulong current = (ulong)Math.Ceiling((durationSpan + offset).TotalSeconds * timescale_);
+
+            ulong availStart = 0;
+            ulong availEnd = 0;
+            uint pos = 0;
+
+            uint? firstAvail = null;
+            uint? lastAvail = null;
+            bool allDone = false;
+            long availDuration = (long)Math.Ceiling((double)liveAheadTime * timescale_);
+
+            foreach (var item in timeline_)
+            {
+                var rc = 0;
+
+                do
+                {
+                    // Get Start/End availability times for current timeline entry.
+                    // ISO IEC 23009-1:1014 A.3.4
+                    // Period Start is not used here - already in timeline data.
+                    // Availability Start Time is ignored intentionally - as we are working
+                    // with relative time here.
+                    availStart = item.Time + (item.Duration * (ulong)rc) - PresentationTimeOffset;
+                    availEnd = availStart + timeShiftBufferDepth + item.Duration;
+
+                    //Logger.Info($"{pos} FA={firstAvail} LA={lastAvail} AvailStart={availStart} {availStart <= current} AvailEnd={availEnd} {current <= availEnd} curr={current}");
+
+                    if (firstAvail.HasValue == false)
+                    {
+                        if ((availStart <= current && current <= availEnd) == true)
+                        {
+                            firstAvail = pos;
+                        }
+                    }
+                    else
+                    {
+                        availDuration -= (long)item.Duration;
+                        if ((availStart <= current && current <= availEnd) == false ||
+                            availDuration < 0)
+                        {
+                            lastAvail = pos;
+                            allDone = true;
+                            break;
+                        }
+                    }
+                    pos++;
+                    rc++;
+                } while (rc <= item.Repeats);
+
+                if (allDone == true)
+                    break;
+            }
+
+            return (firstAvail, lastAvail);
+          
+        }
+        private uint? GetStartSegmentStatic(TimeSpan durationSpan)
+        {
+            return segmentStartNumber??0;
+        }
+        public uint? GetStartSegment(TimeSpan durationSpan, TimeSpan bufferDepth)
+        {
+            if (Parameters.Document.IsDynamic == true)
+                return GetStartSegmentDynamic(durationSpan, bufferDepth);
+
+            return GetStartSegmentStatic(durationSpan);
+        }
+
+        private uint? MediaSegmentAtTimeDynamic(TimeSpan durationSpan, ulong duration)
+        {
+            uint index = 0;
+            uint? res = null;
+            var lastStart = (ulong)Math.Ceiling(durationSpan.TotalSeconds * timescale_);
+
+            ulong timeShiftBufferDepth = Parameters.Document.TimeShiftBufferDepth.HasValue ?
+                   (ulong)Math.Ceiling(Parameters.Document.TimeShiftBufferDepth.Value.TotalSeconds * timescale_) : 0;
+
+
+            foreach (TimelineItem item in timeline_)
+            {
+
+                var RepeatsDone = 0U;
+                while (RepeatsDone <= item.Repeats)
+                {
+                    var currentStart = item.Time + (item.Duration * (RepeatsDone)) - PresentationTimeOffset;
+
+                    var availStart = currentStart;
+                    var availEnd = availStart + timeShiftBufferDepth + item.Duration;
+
+                    //Logger.Info($"I={index} cS={currentStart} lS={lastStart} aS={availStart} {currentStart >= availStart} aE={availEnd} {currentStart <= availEnd}");
+
+                    if (currentStart >= lastStart &&
+                       (currentStart >= availStart && currentStart <= availEnd))
+                    {
+                        res = index;
+                        break;
+                    }
+
+                    index++;
+                    RepeatsDone++;
+                }
+            }
+
+            return res;
+        }
+
+        private uint? MediaSegmentAtTimeStatic(TimeSpan durationSpan, ulong duration)
+        {
+            uint pos = 0;
+
+            foreach (TimelineItem item in timeline_)
+            {
+                TimeRelation rel = item.RepeatFor(duration, out uint repeat);
+                if (rel > TimeRelation.EARLIER)
+                    return (pos + repeat);
+                pos += (uint)item.Repeats + 1;
+            }
+
+            return null;
+        }
         public uint? MediaSegmentAtTime(TimeSpan durationSpan)
         {
-            ulong duration = (ulong)Math.Ceiling(durationSpan.TotalSeconds * timescale_);
-
+            
             if (timeline_.Length == 0)
                 return null;
 
+            ulong duration = (ulong)Math.Ceiling(durationSpan.TotalSeconds * timescale_);
+
             if (Parameters.Document.IsDynamic == true)
-            {
-                // Compute earliest available start time.
-                ulong periodStart = Parameters.Period.Start.HasValue ?
-                      (ulong)Math.Ceiling(Parameters.Period.Start.Value.TotalSeconds * timescale_) : 0;
-
-                // Timeshiftbufferdepth for dynamic content specifies duration of segment availability
-                ulong timeShiftBufferDepth = Parameters.Document.TimeShiftBufferDepth.HasValue ?
-                   (ulong)Math.Ceiling(Parameters.Document.TimeShiftBufferDepth.Value.TotalSeconds * timescale_) : 0;
-
-                ulong availStart = 0;
-                ulong availEnd = 0;
-                uint pos = 0;
-
-                uint? firstAvail = null;
-                uint? lastAvail = null;
-                bool allDone = false;
-                long availDuration = (long)Math.Ceiling((double)liveAheadTime * timescale_);
-
-                foreach (var item in timeline_)
-                {
-                    var rc = 1;
-
-                    do
-                    {
-                        // Get Start/End availability times for current timeline entry.
-                        // ISO IEC 23009-1:1014 A.3.4
-                        // Period Start is not used here - already in timeline data.
-                        // Availability Start Time is ignored intentionally - as we are working
-                        // with relative time here.
-                        availStart = item.Time + (item.Duration * (ulong)rc) - PresentationTimeOffset;
-                        availEnd = availStart + timeShiftBufferDepth + item.Duration;
-
-                        //Logger.Info($"{pos} FA={firstAvail} LA={lastAvail} AvailStart={availStart} {availStart <= duration} AvailEnd={availEnd} {duration <= availEnd} curr={duration}");
-
-                        if (firstAvail.HasValue == false)
-                        {
-                            if ((availStart <= duration && duration <= availEnd) == true)
-                            {
-                                firstAvail = pos;
-                            }
-                        }
-                        else
-                        {
-                            availDuration -= (long)item.Duration;
-                            if ((availStart <= duration && duration <= availEnd) == false ||
-                                availDuration < 0)
-                            {
-                                lastAvail = pos - 1;
-                                allDone = true;
-                                break;
-                            }
-                        }
-                        pos++;
-                        rc++;
-                    } while (rc <= item.Repeats);
-
-                    if (allDone == true)
-                        break;
-                }
-
-                if (firstAvail.HasValue == false)
-                    return null;
-
-                if (lastAvail.HasValue == false)
-                    lastAvail = pos - 1;
-
-                uint? resIndex;
-                if (availDuration > 0)
-                {
-                    resIndex = firstAvail.Value + (lastAvail.Value - firstAvail.Value) / 2;
-                }
-                else
-                {
-                    resIndex = lastAvail;
-                }
-
-                //Logger.Info($"{pos} FA={firstAvail} LA={lastAvail} RES={resIndex}");
-                return resIndex;
-            }
-            else
-            {
-                uint pos = 0;
-
-
-                foreach (TimelineItem item in timeline_)
-                {
-                    TimeRelation rel = item.RepeatFor(duration, out uint repeat);
-                    if (rel > TimeRelation.EARLIER)
-                        return (pos + repeat);
-                    pos += (uint)item.Repeats + 1;
-                }
-
-            }
-
-
-            return null;
+                return MediaSegmentAtTimeDynamic(durationSpan, duration);
+            
+            return MediaSegmentAtTimeStatic(durationSpan, duration);
         }
 
         public IEnumerable<Segment> MediaSegments()
@@ -834,16 +884,31 @@ namespace MpdParser.Node.Dynamic
 
 
 
-        public ulong? GetLiveStartNumber(TimeSpan durationSpan)
+        private uint? GetStartSegmentDynamic(TimeSpan durationSpan)
         {
             var availStart = (Parameters.Document.AvailabilityStartTime ?? DateTime.MinValue);
             var liveTimeIndex = (availStart + durationSpan + Parameters.PlayClock) - availStart;
 
-            return MediaSegmentAtTime(liveTimeIndex);
+            return MediaSegmentAtTimeDynamic(liveTimeIndex);
         }
-        public uint? NextMediaSegmentInTime(uint pos, TimeRange lastRequested)
+
+        private uint? GetStartSegmentStatic(TimeSpan durationSpan)
         {
-            return null;
+            return 0;
+        }
+
+        public uint? GetStartSegment(TimeSpan durationSpan, TimeSpan bufferDepth)
+        {
+            //TODO: Take into account @startNumber if available
+            if (Parameters.Document.IsDynamic == true)
+                return GetStartSegmentDynamic(durationSpan);
+
+            return GetStartSegmentStatic(durationSpan);
+        }
+
+        public uint? RefreshMediaSegment(uint? pos, TimeRange lastRequested)
+        {
+            return pos;
         }
 
         public Segment MediaSegmentAtPos(uint pos)
@@ -853,7 +918,11 @@ namespace MpdParser.Node.Dynamic
             return null;
         }
 
-        public uint? MediaSegmentAtTime(TimeSpan durationSpan)
+        private uint? MediaSegmentAtTimeDynamic(TimeSpan durationSpan)
+        {
+            throw new NotImplementedException("MediaSegmentAtTime for dynamic content needs implementation");
+        }
+        private uint? MediaSegmentAtTimeStatic(TimeSpan durationSpan)
         {
             ulong duration = (ulong)Math.Ceiling(durationSpan.TotalSeconds * timescale_);
             for (uint pos = 0; pos < uris_.Length; ++pos)
@@ -862,6 +931,13 @@ namespace MpdParser.Node.Dynamic
                     return pos;
             }
             return null;
+        }
+        public uint? MediaSegmentAtTime(TimeSpan durationSpan)
+        {
+            if (Parameters.Document.IsDynamic)
+                return MediaSegmentAtTimeDynamic(durationSpan);
+
+            return MediaSegmentAtTimeStatic(durationSpan);
         }
 
         public IEnumerable<Segment> MediaSegments()
