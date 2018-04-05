@@ -16,7 +16,7 @@ namespace JuvoPlayer.DataProviders.Dash
         private readonly DashManifest manifest;
         private DashMediaPipeline audioPipeline;
         private DashMediaPipeline videoPipeline;
-        private List<SubtitleInfo> subtitleInfos;
+        private readonly List<SubtitleInfo> subtitleInfos;
         private CuesMap cuesMap;
         private TimeSpan currentTime;
 
@@ -28,6 +28,7 @@ namespace JuvoPlayer.DataProviders.Dash
             this.manifest = manifest ?? throw new ArgumentNullException(nameof(manifest), "manifest cannot be null");
             this.audioPipeline = audioPipeline ?? throw new ArgumentNullException(nameof(audioPipeline), "audioPipeline cannot be null");
             this.videoPipeline = videoPipeline ?? throw new ArgumentNullException(nameof(videoPipeline), "videoPipeline cannot be null");
+            this.subtitleInfos = new List<SubtitleInfo>();
 
             audioPipeline.DRMInitDataFound += OnDRMInitDataFound;
             audioPipeline.SetDrmConfiguration += OnSetDrmConfiguration;
@@ -164,7 +165,7 @@ namespace JuvoPlayer.DataProviders.Dash
 
         private void BuildSubtitleInfos(Period period)
         {
-            subtitleInfos = new List<SubtitleInfo>();
+            subtitleInfos.Clear();
 
             var textAdaptationSets = period.Sets.Where(o => o.Type.Value == MediaType.Text).ToList();
             foreach (var textAdaptationSet in textAdaptationSets)
