@@ -33,6 +33,10 @@
     <None Remove="res\subtitles\media_player_subs_windows-1257.srt" />
     <None Remove="res\subtitles\media_player_subs_windows-1258.srt" />
     <None Remove="res\subtitles\media_player_subs_windows-874.srt" />
+    <None Remove="res\subtitles\subtitles_de.vtt" />
+    <None Remove="res\subtitles\subtitles_en.vtt" />
+    <None Remove="res\subtitles\subtitles_es.vtt" />
+    <None Remove="res\subtitles\subtitles_fr.vtt" />
   </ItemGroup>
 
   <ItemGroup>
@@ -64,6 +68,10 @@
     <EmbeddedResource Include="res\subtitles\media_player_subs_windows-1257.srt" />
     <EmbeddedResource Include="res\subtitles\media_player_subs_windows-1258.srt" />
     <EmbeddedResource Include="res\subtitles\media_player_subs_windows-874.srt" />
+    <EmbeddedResource Include="res\subtitles\subtitles_de.vtt" />
+    <EmbeddedResource Include="res\subtitles\subtitles_en.vtt" />
+    <EmbeddedResource Include="res\subtitles\subtitles_es.vtt" />
+    <EmbeddedResource Include="res\subtitles\subtitles_fr.vtt" />
     <EmbeddedResource Include="res\videoclips.json" />
   </ItemGroup>
 

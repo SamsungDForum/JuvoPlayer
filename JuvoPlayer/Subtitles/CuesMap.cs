@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Text;
 
@@ -6,7 +7,7 @@ namespace JuvoPlayer.Subtitles
 {
     /// <summary>Maps a particular time offset to a corresponding cue.
     /// Implementation is based on Binary Search Symbol Table.</summary>
-    internal class CuesMap
+    internal class CuesMap : IEnumerable<Cue>
     {
         private List<Cue> cues = new List<Cue>();
 
@@ -62,6 +63,24 @@ namespace JuvoPlayer.Subtitles
             if (cmp > 0)
                 return Rank(key, mid + 1, hi);
             return mid;
+        }
+
+        /// <summary>
+        /// Returns an enumerator that iterates through the Cues map.
+        /// </summary>
+        /// <returns>An enumerator that iterates through the Cues map.</returns>
+        public IEnumerator<Cue> GetEnumerator()
+        {
+            return cues.GetEnumerator();
+        }
+
+        /// <summary>
+        /// Returns an enumerator that iterates through the Cues map.
+        /// </summary>
+        /// <returns>An enumerator that iterates through the Cues map.</returns>
+        IEnumerator IEnumerable.GetEnumerator()
+        {
+            return GetEnumerator();
         }
     }
 }

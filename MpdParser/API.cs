@@ -6,6 +6,7 @@ namespace MpdParser
     public class Representation 
     {
         // REPR or ADAPTATION SET:
+        public string Id { get; }
         public string Profiles { get; }
         public uint? Width { get; }
         public uint? Height { get; }
@@ -23,6 +24,7 @@ namespace MpdParser
 
         public Representation(Node.Representation repr)
         {
+            Id = repr.Id;
             Profiles = repr.Profiles ?? repr.AdaptationSet.Profiles;
             Width = repr.Width ?? repr.AdaptationSet.Width;
             Height = repr.Height ?? repr.AdaptationSet.Height;

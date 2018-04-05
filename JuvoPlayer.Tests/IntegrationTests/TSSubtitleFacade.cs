@@ -1,16 +1,15 @@
-﻿using System;
-using System.Collections.Generic;
-using System.IO;
+﻿using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Text;
+using JuvoPlayer.Common;
 using JuvoPlayer.Subtitles;
 using NUnit.Framework;
 
 namespace JuvoPlayer.Tests.IntegrationTests
 {
     [TestFixture]
-    class TSSrtSubtitleParser
+    class TSSubtitleFacade
     {
         public Stream GetResourceStream(string name)
         {
@@ -30,20 +29,29 @@ namespace JuvoPlayer.Tests.IntegrationTests
         [TestCase("JuvoPlayer.Tests.res.subtitles.media_player_subs_cp-949.srt", "euc-kr", "[Korean] 3.5: 그녀는 고양이가. 고양이 모피를 가지고")]
         [TestCase("JuvoPlayer.Tests.res.subtitles.media_player_subs_gb2312.srt", "gb2312", "[Chinese Simplified] 4.5: 她有一只猫.猫的皮毛有")]
         [TestCase("JuvoPlayer.Tests.res.subtitles.media_player_subs_utf8.srt", "utf-8", "[UTF-8] 3.0: 고양이. Чч Щщ Ъъ. Óó Śś Źź. Ýý Ţţ Ł €. 猫.")]
-        public void Parse_DifferentEncodings_ParsesSuccessfully(string resourceName, string encodingName, string expectedCue)
+        [TestCase("JuvoPlayer.Tests.res.subtitles.subtitles_de.vtt", "utf-8", "Stellen Sie beste Streaming Performance zur Verfügung,")]
+        [TestCase("JuvoPlayer.Tests.res.subtitles.subtitles_en.vtt", "utf-8", "A dangerous quest for a lone hunter.")]
+        [TestCase("JuvoPlayer.Tests.res.subtitles.subtitles_es.vtt", "utf-8", "Éstas son tierras de dragones, Sintel.")]
+        [TestCase("JuvoPlayer.Tests.res.subtitles.subtitles_fr.vtt", "utf-8", "C'est bientôt fini. Chut...")]
+        public void Parse_DifferentEncodings_ParsesSuccessfully(string resourceName, string encodingName, string expectedCueText)
         {
             Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
-            var parser = new SrtSubtitleParser();
-            var subtitleStream = GetResourceStream(resourceName);
+            var parser = new SubtitleFacade();
+            var subtitleInfo = CreateSubtitleInfo(resourceName, encodingName);
 
-            using (var reader = new StreamReader(subtitleStream, Encoding.GetEncoding(encodingName)))
+            var cues = parser.LoadSubtitles(subtitleInfo);
+
+            var found = cues.Any(cue => cue.Text.Equals(expectedCueText));
+            Assert.That(found, Is.True);
+        }
+
+        private SubtitleInfo CreateSubtitleInfo(string path, string encoding)
+        {
+            return new SubtitleInfo()
             {
-                var cuesList = parser.Parse(reader).ToList();
-                Assert.That(cuesList.Count, Is.EqualTo(9));
-
-                var foundCue = cuesList.First(cue => cue.Text == expectedCue);
-                Assert.That(foundCue, Is.Not.Null);
-            }
+                Path = path,
+                Encoding = encoding,
+            };
         }
     }
 }

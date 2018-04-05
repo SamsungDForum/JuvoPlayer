@@ -41,6 +41,11 @@ namespace JuvoPlayer.Subtitles
 
         private CuesMap FillCuesMap(ISubtitleParser parser, Stream stream, string encoding)
         {
+            if (string.IsNullOrEmpty(encoding))
+            {
+                encoding = parser.DefaultEncoding;
+            }
+
             var cuesMap = new CuesMap();
             using (var reader = new StreamReader(stream, Encoding.GetEncoding(encoding)))
             {
