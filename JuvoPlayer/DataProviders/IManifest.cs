@@ -28,7 +28,7 @@ namespace JuvoPlayer.DataProviders
     /// New items will be present at end of the list.
     /// </summary>
     /// <param name="newDocument"></param>
-    public delegate void ManifestChanged(IDocument newDocument);
+    public delegate void ManifestChanged(Object newDocument);
 
     public interface IManifest
     {
@@ -39,7 +39,7 @@ namespace JuvoPlayer.DataProviders
         /// <summary>
         /// Forces IManifest implementing class to reload Manifest with specified delay.
         /// </summary>
-        /// <param name="realodTime">DateTime specifying when new Playback document is to be 
+        /// <param name="reloadTime">DateTime specifying when new Playback document is to be 
         /// downloaded. Speficying DateTime.Now will schedule it immediately.</param>
         /// <returns>True - Request Scheduled. False - Request not scheduled.</returns>
         bool ReloadManifest(DateTime reloadTime);

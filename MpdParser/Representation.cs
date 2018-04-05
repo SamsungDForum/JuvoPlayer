@@ -111,8 +111,7 @@ namespace MpdParser.Node.Dynamic
             DownloadIndex(true);
         }
 
-        protected static LoggerManager LogManager = LoggerManager.GetInstance();
-        protected static ILogger Logger = LoggerManager.GetInstance().GetLogger(MpdParser.LogTag);
+        private static readonly ILogger Logger = LoggerManager.GetInstance().GetLogger(MpdParser.LogTag);
 
         private ManualResetEvent DownloadWait = null;
 
@@ -313,7 +312,7 @@ namespace MpdParser.Node.Dynamic
             return MediaSegmentAtTime(liveTimeIndex);
         }
 
-        private uint? GetStartSegmentStatic(TimeSpan durationSpan)
+        private uint GetStartSegmentStatic(TimeSpan durationSpan)
         {
             return 0;
         }
@@ -361,8 +360,6 @@ namespace MpdParser.Node.Dynamic
 
         public IEnumerable<Segment> MediaSegments()
         {
-            if (segments_.Count == 0 && media_ != null)
-                return new List<Segment>() {media_};
             return segments_;
         }
     }
@@ -391,13 +388,11 @@ namespace MpdParser.Node.Dynamic
         public uint? TemplateDuration { get; }
 
         static readonly uint offsetFromEnd = 3;
-        static readonly uint liveAheadTime = 20;
 
         public TimeSpan? AverageSegmentDuration { get; }
 
 
-        protected static LoggerManager LogManager = LoggerManager.GetInstance();
-        protected static ILogger Logger = LoggerManager.GetInstance().GetLogger(MpdParser.LogTag);
+        private static readonly ILogger Logger = LoggerManager.GetInstance().GetLogger(MpdParser.LogTag);
         public TemplateRepresentationStream(Uri baseURL, Template init, Template media, uint? bandwidth,
             string reprId, uint timescale, TimelineItem[] timeline,
             ulong presentationTimeOffset, TimeSpan? timeShiftBufferDepth,
@@ -583,7 +578,8 @@ namespace MpdParser.Node.Dynamic
                 Parameters.Document.AvailabilityStartTime.HasValue == false)
                 return start;
 
-            var duration = TemplateDuration ?? 3;
+
+            var duration = TemplateDuration.Value;
             var playbackTime = Parameters.Document.AvailabilityStartTime.Value + durationSpan;
             var streamStart = Parameters.Document.AvailabilityStartTime.Value +
                               (Parameters.Period.Start ?? TimeSpan.Zero);
@@ -593,7 +589,7 @@ namespace MpdParser.Node.Dynamic
                 return null;
 
             var elapsedTime = (ulong)Math.Ceiling((double)(playbackTime - streamStart).Seconds * timescale_);
-            start += elapsedTime / duration - 2;
+            start += elapsedTime / duration ;
 
             return start;
 
@@ -606,8 +602,7 @@ namespace MpdParser.Node.Dynamic
         /// <returns></returns>
         private uint? GetStartSegmentDynamic(TimeSpan durationSpan, TimeSpan bufferDepth)
         {
-            var bufferTime = (Parameters.Document.MinBufferTime ?? TimeSpan.FromSeconds(10));
-            
+                       
             // Loosley based on VLC implementation...
 
             // Path when timeline was provided in MPD
@@ -617,8 +612,11 @@ namespace MpdParser.Node.Dynamic
                 ulong? startSeg;
                 ulong? endSeg;
 
-                (startSeg, endSeg) = GetFirstLastAvailableSegment(durationSpan);
-                Logger.Info($"FirstAvail={startSeg} LastAvail={endSeg}");
+                // For purpose of searching avail segments, used twice value of what we 
+                // will actually buffer.
+                var doubleBuffer = bufferDepth +bufferDepth;
+                (startSeg, endSeg) = GetFirstAndLastAvailableSegment(durationSpan, doubleBuffer);
+                //Logger.Info($"FirstAvail={startSeg} LastAvail={endSeg}");
                 if (startSeg.HasValue == false)
                     return null;
 
@@ -626,7 +624,16 @@ namespace MpdParser.Node.Dynamic
                     return (uint?)startSeg;
 
                 
-                var bufferInSegmentUnits = ((ulong)bufferDepth.TotalSeconds) * 2 / (ulong)AverageSegmentDuration.Value.TotalSeconds;
+                // Start by Time is calculated as:
+                // End Segment - Offset where
+                // Offset = Available Segment Range - Buffer Size in Units of Segments. For this purpose
+                // use double buffer (twice the buffering time). This will effectively shift us closer to
+                // beginning of Live Content rather then to the bleeding edge.
+                // This is.... purely personal decision. Any approach is imho just as good. Be at start of content
+                // or at the very edge. 
+                // Rational - Is it better to watch "as much as possible" or what is currently "very live"?
+                // imho - watch as much as possible.
+                var bufferInSegmentUnits = ((ulong)doubleBuffer.TotalSeconds) / (ulong)AverageSegmentDuration.Value.TotalSeconds;
                 //Logger.Info($"Buff={bufferTime} SegDur={AverageSegmentDuration} SegC={bufferInSegmentUnits}");
                 var startByTime = endSeg - Math.Min(endSeg.Value - startSeg.Value, bufferInSegmentUnits);
                 return (uint?)startByTime;
@@ -639,8 +646,8 @@ namespace MpdParser.Node.Dynamic
                 if (delay == TimeSpan.Zero || delay > timeShiftBufferDepth)
                     delay = timeShiftBufferDepth;
 
-                if (delay < bufferTime)
-                    delay = bufferTime;
+                if (delay < bufferDepth)
+                    delay = bufferDepth;
 
                 var endSegment = GetCurrentLiveTemplateNumber(durationSpan);
 
@@ -664,11 +671,11 @@ namespace MpdParser.Node.Dynamic
             }
         }
 
-        private (uint?, uint?)GetFirstLastAvailableSegment(TimeSpan durationSpan)
+        private (uint?, uint?)GetFirstAndLastAvailableSegment(TimeSpan durationSpan, TimeSpan bufferDepth)
         {
             // Timeshiftbufferdepth for dynamic content specifies duration of segment availability
-            ulong timeShiftBufferDepth = Parameters.Document.TimeShiftBufferDepth.HasValue ?
-               (ulong)Math.Ceiling(Parameters.Document.TimeShiftBufferDepth.Value.TotalSeconds * timescale_) : 0;
+            ulong timeShiftBufferDepth = (ulong)Math.Ceiling(
+                (Parameters.Document.TimeShiftBufferDepth??TimeSpan.Zero).TotalSeconds * timescale_);
 
             var offset = Parameters.Document.ManifestParseCompleteTime - Parameters.Document.AvailabilityStartTime??TimeSpan.Zero;
             ulong current = (ulong)Math.Ceiling((durationSpan + offset).TotalSeconds * timescale_);
@@ -679,12 +686,11 @@ namespace MpdParser.Node.Dynamic
 
             uint? firstAvail = null;
             uint? lastAvail = null;
-            bool allDone = false;
-            long availDuration = (long)Math.Ceiling((double)liveAheadTime * timescale_);
+            long availDuration = (long)Math.Ceiling(bufferDepth.TotalSeconds * timescale_);
 
             foreach (var item in timeline_)
             {
-                var rc = 0;
+                var rc = 0U;
 
                 do
                 {
@@ -693,7 +699,7 @@ namespace MpdParser.Node.Dynamic
                     // Period Start is not used here - already in timeline data.
                     // Availability Start Time is ignored intentionally - as we are working
                     // with relative time here.
-                    availStart = item.Time + (item.Duration * (ulong)rc) - PresentationTimeOffset;
+                    availStart = item.Time + (item.Duration * rc) - PresentationTimeOffset;
                     availEnd = availStart + timeShiftBufferDepth + item.Duration;
 
                     //Logger.Info($"{pos} FA={firstAvail} LA={lastAvail} AvailStart={availStart} {availStart <= current} AvailEnd={availEnd} {current <= availEnd} curr={current}");
@@ -712,22 +718,19 @@ namespace MpdParser.Node.Dynamic
                             availDuration < 0)
                         {
                             lastAvail = pos;
-                            allDone = true;
-                            break;
+                            return (firstAvail, lastAvail);
                         }
                     }
                     pos++;
                     rc++;
                 } while (rc <= item.Repeats);
 
-                if (allDone == true)
-                    break;
             }
 
             return (firstAvail, lastAvail);
           
         }
-        private uint? GetStartSegmentStatic(TimeSpan durationSpan)
+        private uint GetStartSegmentStatic(TimeSpan durationSpan)
         {
             return segmentStartNumber??0;
         }
@@ -755,7 +758,7 @@ namespace MpdParser.Node.Dynamic
                 var RepeatsDone = 0U;
                 while (RepeatsDone <= item.Repeats)
                 {
-                    var currentStart = item.Time + (item.Duration * (RepeatsDone)) - PresentationTimeOffset;
+                    var currentStart = item.Time + (item.Duration * RepeatsDone) - PresentationTimeOffset;
 
                     var availStart = currentStart;
                     var availEnd = availStart + timeShiftBufferDepth + item.Duration;
@@ -887,12 +890,12 @@ namespace MpdParser.Node.Dynamic
         private uint? GetStartSegmentDynamic(TimeSpan durationSpan)
         {
             var availStart = (Parameters.Document.AvailabilityStartTime ?? DateTime.MinValue);
-            var liveTimeIndex = (availStart + durationSpan + Parameters.PlayClock) - availStart;
+            var liveTimeIndex = (durationSpan + Parameters.PlayClock);
 
             return MediaSegmentAtTimeDynamic(liveTimeIndex);
         }
 
-        private uint? GetStartSegmentStatic(TimeSpan durationSpan)
+        private uint GetStartSegmentStatic(TimeSpan durationSpan)
         {
             return 0;
         }
