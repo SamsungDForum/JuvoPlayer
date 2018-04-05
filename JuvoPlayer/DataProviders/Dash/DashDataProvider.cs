@@ -16,17 +16,16 @@ namespace JuvoPlayer.DataProviders.Dash
         private readonly ILogger Logger = LoggerManager.GetInstance().GetLogger(Tag);
 
         private readonly DashManifest manifest;
-        private Document currentDocument = null;
-        private Period currentPeriod = null;
+        private Document currentDocument;
+        private Period currentPeriod;
         private DashMediaPipeline audioPipeline;
         private DashMediaPipeline videoPipeline;
         private TimeSpan currentTimeStamp = TimeSpan.Zero;
         private DateTime lastReloadTime = DateTime.MinValue;
-        private Object locker = new Object();
         private TimeSpan minimumReloadPeriod = TimeSpan.Zero;
 
-        private Task manifestLoader = null;
-        private static readonly TimeSpan manifestreloadTimeout = new TimeSpan(0, 0, 10);
+        private Task manifestLoader;
+        private static readonly TimeSpan manifestReloadTimeout = TimeSpan.FromSeconds(10);
 
         public DashDataProvider(
             DashManifest manifest,
@@ -64,7 +63,7 @@ namespace JuvoPlayer.DataProviders.Dash
         /// from pipeline are recieved. After that, MPD reloads will be scheduled from time event.
         /// </summary>
         /// <returns></returns>
-        private void ManifestLoader()
+        private async Task ManifestLoader()
         {
             // Detach from caller and allow to continue in any context.
             await Task.Delay(1).ConfigureAwait(false);
@@ -73,10 +72,11 @@ namespace JuvoPlayer.DataProviders.Dash
             // Will be marked by lastRealoadTime.
             while (currentTimeStamp == TimeSpan.Zero)
             {
-                manifest.ReloadManifest(DateTime.UtcNow);
-                Task.Delay(manifestreloadTimeout).Wait();
 
-                // Check if Document / Period has been obtanied. If so
+                manifest.ReloadManifest(DateTime.UtcNow);
+                await Task.Delay(manifestReloadTimeout);
+
+                // Check if Document / Period has been obtained. If so
                 // and document type is static, exit loop.
                 if (currentPeriod != null && currentDocument?.IsDynamic == false)
                     break;
@@ -84,15 +84,12 @@ namespace JuvoPlayer.DataProviders.Dash
 
             Logger.Info($"Auto Manifest downloader disabled. TimeStamp={currentTimeStamp} Manifest={currentDocument != null} Period={currentPeriod != null}");
 
-            // This is odd. No log messages are printed at task exit if there is not delay/action after
-            // log message...
-            Task.Delay(500).Wait();
         }
         /// <summary>
         /// Manifest Change Callback incoked by DashManifest class when new manifest is downloaded.
         /// </summary>
-        /// <param name="newDocument">IDocument containing an updated document version</param>
-        private void OnManifestChanged(IDocument newDocument)
+        /// <param name="aDocument">IDocument containing an updated document version</param>
+        private void OnManifestChanged(Object newDocument)
         {
             Logger.Info($"OnManifestChanged. Processing MPD");
 
@@ -119,17 +116,12 @@ namespace JuvoPlayer.DataProviders.Dash
                 return;
             }
 
-            // Prevent other any other Manifest change events from being pushed down 
-            // the pipeline while current event is propagated down the pipeline
-            lock (locker)
-            {
-                // Update document/period and start player
-                currentDocument = tmpDocument;
-                currentPeriod = tmpPeriod;
+            // Update document/period and start player
+            currentDocument = tmpDocument;
+            currentPeriod = tmpPeriod;
 
-                StartInternal();
+            StartInternal();
 
-            }
         }
 
         private void OnDRMInitDataFound(DRMInitData drmData)
@@ -219,17 +211,10 @@ namespace JuvoPlayer.DataProviders.Dash
 
         public bool IsSeekingSupported()
         {
-            bool isDynamic;
-
-            lock (locker)
-            {
-                isDynamic = currentDocument?.IsDynamic ?? false;
-            }
-
             // NOTE: Are we sure seeking is illegal on Dynamic MPDs?
             // Imho no. There is a "time window" in which content is available
             // but leave that for now...
-            return (isDynamic == false);
+            return (currentDocument.IsDynamic == false);
 
         }
 
@@ -330,11 +315,11 @@ namespace JuvoPlayer.DataProviders.Dash
                 end = new TimeSpan(end.Ticks / TimeSpan.TicksPerSecond * TimeSpan.TicksPerSecond);
                 var ti = new TimeSpan(timeIndex.Ticks / TimeSpan.TicksPerSecond * TimeSpan.TicksPerSecond);
 
-                Logger.Info($"Searching: {start}-{end} {period.ToString()} for TimeIndex/Current: {ti}");
+                Logger.Debug($"Searching: {start}-{end} {period.ToString()} for TimeIndex/Current: {ti}");
 
                 if (ti >= start && ti <= end)
                 {
-                    Logger.Info($"Matching period found: {period.ToString()} for TimeIndex: {ti}");
+                    Logger.Debug($"Matching period found: {period.ToString()} for TimeIndex: {ti}");
                     return period;
                 }
 
@@ -355,16 +340,15 @@ namespace JuvoPlayer.DataProviders.Dash
         /// <returns>TimeSpan - Current Live Clock for dynamic mpd. It is expressed as ammount
         /// of time has passed since Document.AvailabilityStartTime
         /// For static content, time passed as argument is returned.</returns>
-        private TimeSpan LiveClockTime(TimeSpan time, IDocument newDoc = null)
+        private TimeSpan LiveClockTime(TimeSpan time, Document newDoc = null)
         {
             bool isDynamic;
 
             if (newDoc == null)
             {
-                lock (locker)
-                {
-                    isDynamic = currentDocument.IsDynamic;
-                }
+
+                isDynamic = currentDocument.IsDynamic;
+  
 
                 if (isDynamic == true)
                 {
@@ -394,18 +378,11 @@ namespace JuvoPlayer.DataProviders.Dash
         /// </summary>
         private void ScheduleManifestReload()
         {
-            bool isDynamic;
-
             // Only update if pipeline is running
             if (audioPipeline == null && videoPipeline == null)
                 return;
 
-            lock (locker)
-            {
-                isDynamic = currentDocument.IsDynamic;
-            }
-
-            if (isDynamic)
+            if (currentDocument.IsDynamic)
             {
                 // should we check playback time here or actual time?
                 if ((DateTime.UtcNow - lastReloadTime) >= minimumReloadPeriod)

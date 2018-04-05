@@ -7,26 +7,28 @@ using System.Threading;
 
 namespace JuvoPlayer.DataProviders.Dash
 {
+
     internal class DashManifest: IManifest
     {
         private const string Tag = "JuvoPlayer";
         private readonly ILogger Logger = LoggerManager.GetInstance().GetLogger(Tag);
         private bool reloadsRequired = true;
+        private bool reloadInfoPrinted = false;
 
         /// <summary>
         /// Notification event. Will be called when MPD is updated.
         /// </summary>
         public event ManifestChanged ManifestChanged;
         public Uri Uri { get; set; }
-        public string XmlManifest { get; set; }
-        private bool reloadInfoPrinted = false;
-        public Document Document { get; set; }
 
         /// <summary>
         /// Task as returned by TimerEvent responsible for 
         /// MPD download and parsing.
         /// </summary>
         private Task reloadActivity;
+        private static readonly int ReloadIdle=0;
+        private static readonly int ReloadRunning = 1;
+        private int reloadState = ReloadIdle;
 
         public DashManifest(string url)
         {
@@ -61,14 +63,14 @@ namespace JuvoPlayer.DataProviders.Dash
                 }
             }
         }
-        private Document ParseManifest()
+        private Document ParseManifest(string aManifest)
         {
             Logger.Info($"Parsing Manifest {Uri}");
             try
             {
                 var startTime = DateTime.Now;
                 var document = Document.FromText(
-                    XmlManifest ?? throw new InvalidOperationException(
+                    aManifest ?? throw new InvalidOperationException(
                         "Xml manifest is empty."),
                     Uri.ToString());
 
@@ -88,7 +90,7 @@ namespace JuvoPlayer.DataProviders.Dash
         /// </summary>
         /// <param name="reloadSchedule">delay which is to be before a download</param>
         /// <returns></returns>
-        private void TimerEvent(DateTime reloadSchedule)
+        private async Task TimerEvent(DateTime reloadSchedule)
         {
             // If reloadTime is "now" or behing "now", do immediate schedule,
             // otherwise use provided value. Trigger is "delay from now" so get different from now to 
@@ -104,10 +106,10 @@ namespace JuvoPlayer.DataProviders.Dash
 
 
             // Wait specified time
-            Task.Delay(reloadDelay).Wait();
+            await Task.Delay(reloadDelay);
 
             var requestTime = DateTime.UtcNow;
-            XmlManifest = DownloadManifest();
+            var XmlManifest = DownloadManifest();
             var downloadTime = DateTime.UtcNow;
 
             if (XmlManifest == null)
@@ -116,7 +118,7 @@ namespace JuvoPlayer.DataProviders.Dash
             }
                 
 
-            var newDoc = ParseManifest();
+            var newDoc = ParseManifest(XmlManifest);
             var parseTime = DateTime.UtcNow;
 
             // Should we reschedule in case of parse failure?
@@ -136,13 +138,14 @@ namespace JuvoPlayer.DataProviders.Dash
             reloadInfoPrinted = false;
 
             reloadActivity = null;
+            Interlocked.Exchange(ref reloadState, ReloadIdle);
 
         }
 
         /// <summary>
         /// Reloads manifest at provided DateTime in UTC form.
         /// Internally, method checks for a difference between UtcNow and provided 
-        /// reload time. Difference is used as a timer.
+        /// reload time. Difference is used as a timer. Caller HAS to assure
         /// </summary>
         /// <param name="reloadTime">Manifest Reload Time in UTC</param>
         /// <returns>True - reload request. False - reload not requested. Already Scheduled/Not dynamic</returns>
@@ -158,13 +161,11 @@ namespace JuvoPlayer.DataProviders.Dash
                 return false;
             }
 
-            // Reload activity will be null at very start / termination
-            // There is a tiny "hole" between this point and creation of reloadActivity.
-            // Problem? Should not be...
-            if (reloadActivity != null)
+            var reloaderState = Interlocked.CompareExchange(ref reloadState, ReloadRunning, ReloadIdle);
+            if (reloaderState != ReloadIdle)
             {
                 if (reloadInfoPrinted == false)
-                    Logger.Info("Document Reload already scheduled. Ignoring request");
+                    Logger.Info("Document Reload in progress. Ignoring request");
 
                 reloadInfoPrinted = true;
                 return false;
@@ -178,7 +179,7 @@ namespace JuvoPlayer.DataProviders.Dash
             return true;
         }
 
-        private void OnManifestChanged(IDocument newDoc)
+        private void OnManifestChanged(Object newDoc)
         {
             ManifestChanged?.Invoke(newDoc);
         }

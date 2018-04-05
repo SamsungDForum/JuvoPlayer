@@ -460,7 +460,7 @@ namespace MpdParser
         /// For dynamic content, periods will be trimmed if their availability time is out (beyond wallClock)
         /// </summary>
         /// <param name="periods"> Table of raw dash periods</param>
-        /// <param name="docType">Type of the document</param>
+        /// <param name="aDoc">DASH Document</param>
         /// <returns>Array of Periods (MpdParser.Perdiod[]) derived from periods argument</returns>
         public static Period[] BuildPeriods(Node.Period[] periods, Document aDoc)
         {
@@ -476,13 +476,12 @@ namespace MpdParser
 
             return res;
         }
-        
+
         /// <summary>
         /// Adjusts Period Start times and Types according to ISO IEC 23009-1 Section 5.3.2.1
         /// </summary>
         /// <param name="periods">List of MpdParser.Period for which adjustments are to be made</param>
-        /// <param name="docType">DASH Document Type as specified by DocumentType enum. Adjustment to
-        /// Start/Type are document type dependant</param>
+        /// <param name="aDoc">DASH Document </param>
         /// <returns>Period[] Adjusted list of periods</returns>
         private static Period[] AdjustStartAndType(Period[] periods, Document aDoc)
         {
@@ -523,7 +522,7 @@ namespace MpdParser
                 // (this will be described "after" this loop)
                 if (periods[i-1].Duration == null && periods[i].Start != null)
                 {
-                    periods[i - 1].Duration = periods[i].Start;
+                    periods[i - 1].Duration = periods[i].Start - periods[i-1].Start;
                 }
                 // If the @start attribute is absent, but the previous Period element contains 
                 // a @duration attribute then this new Period is also a regular Period. 
@@ -553,8 +552,9 @@ namespace MpdParser
             }
             else
             {
-                var v1 = DateTime.UtcNow.Add(aDoc.MinimumUpdatePeriod??TimeSpan.Zero);
-                var v2 = (aDoc.AvailabilityStartTime ?? DateTime.MinValue).Add(aDoc.MediaPresentationDuration ?? TimeSpan.Zero);
+                var v1 = DateTime.UtcNow + (aDoc.MinimumUpdatePeriod ?? TimeSpan.Zero);
+                var v2 = aDoc.AvailabilityStartTime ?? DateTime.MinValue;
+                v2 += aDoc.MediaPresentationDuration ?? TimeSpan.Zero;
 
                 periods[lastp].PeriodEnd = new DateTime(Math.Min(v1.Ticks, v2.Ticks));
             }
@@ -675,7 +675,7 @@ namespace MpdParser
         Dynamic
     };
 
-    public class Document : IDocument
+    public class Document
     {
         public string Title { get; }
         public TimeSpan? MediaPresentationDuration { get; }
