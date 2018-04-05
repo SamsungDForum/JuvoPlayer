@@ -7,13 +7,14 @@ using System.Linq;
 using System.Reflection;
 using System.Text;
 using System.Threading;
+using System.Threading.Tasks;
 using JuvoLogger;
 using JuvoLogger.Tizen;
 using Tizen.Applications;
 
 namespace JuvoPlayer.TizenTests
 {
-    class Program : ServiceApplication
+    class Program : CoreUIApplication
     {
         private static ILogger Logger = LoggerManager.GetInstance().GetLogger("UT");
         private ReceivedAppControl receivedAppControl;
@@ -41,7 +42,7 @@ namespace JuvoPlayer.TizenTests
 
             using (ExtendedTextWrapper writer = new ExtendedTextWrapper(new StringWriter(sb)))
             {
-                string[] finalNunitArgs = nunitArgs.Concat(new string[] { "--result=/tmp/" + Path.GetFileNameWithoutExtension(dllName) + ".xml" }).ToArray();
+                string[] finalNunitArgs = nunitArgs.Concat(new string[] { "--result=/tmp/" + Path.GetFileNameWithoutExtension(dllName) + ".xml", "--test=JuvoPlayer.TizenTests.IntegrationTests.TSPlayerService" }).ToArray();
                 new AutoRun(assembly).Execute(finalNunitArgs, writer, Console.In);
             }
 
@@ -64,11 +65,14 @@ namespace JuvoPlayer.TizenTests
             receivedAppControl = e.ReceivedAppControl;
             ExtractNunitArgs();
             SynchronizationContext.SetSynchronizationContext(new SynchronizationContext());
-            RunJuvoPlayerTizenTests();
-            RunJuvoPlayerTests();
+            Task.Run(() =>
+            {
+                RunJuvoPlayerTizenTests();
+                RunJuvoPlayerTests();
+                global::System.Environment.Exit(0);
+            });
 
             base.OnAppControlReceived(e);
-            global::System.Environment.Exit(0);
         }
 
         static void Main(string[] args)
