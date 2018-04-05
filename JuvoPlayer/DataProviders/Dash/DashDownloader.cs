@@ -1,4 +1,4 @@
-﻿// Copyright (c) 2017 Samsung Electronics Co., Ltd All Rights Reserved
+// Copyright (c) 2017 Samsung Electronics Co., Ltd All Rights Reserved
 // PROPRIETARY/CONFIDENTIAL 
 // This software is the confidential and proprietary
 // information of SAMSUNG ELECTRONICS ("Confidential Information"). You shall
@@ -365,3 +365,4 @@ namespace JuvoPlayer.DataProviders.Dash
 
     }
 }
+
