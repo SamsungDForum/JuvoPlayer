@@ -212,8 +212,8 @@ namespace MpdParser.Node
         IEnumerable<Segment> MediaSegments();
         Segment MediaSegmentAtPos(uint pos);
         uint? MediaSegmentAtTime(TimeSpan duration);
-        ulong? GetLiveStartNumber(TimeSpan durationSpan);
-        uint? NextMediaSegmentInTime(uint currentPos, TimeRange lastRequested);
+        uint? GetStartSegment(TimeSpan durationSpan, TimeSpan bufferDepth);
+        uint? RefreshMediaSegment(uint? currentPos, TimeRange lastRequested);
         ManifestParameters Parameters { get; set; }
 
 
