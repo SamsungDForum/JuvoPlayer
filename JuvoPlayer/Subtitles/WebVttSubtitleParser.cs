@@ -14,12 +14,6 @@ namespace JuvoPlayer.Subtitles
     internal class WebVttSubtitleParser : ISubtitleParser
     {
         private static readonly string TimeSeparator = "-->";
-        private readonly ParserUtils utils;
-
-        public WebVttSubtitleParser()
-        {
-            utils = new ParserUtils();
-        }
 
         public string DefaultEncoding { get; } = "utf-8";
 
@@ -105,7 +99,7 @@ namespace JuvoPlayer.Subtitles
 
         internal string ParseText(StreamReader reader)
         {
-            var parsed = utils.ParseText(reader);
+            var parsed = ParserUtils.ParseText(reader);
             return WebUtility.HtmlDecode(parsed);
         }
     }

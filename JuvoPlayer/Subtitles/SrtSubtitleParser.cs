@@ -8,13 +8,6 @@ namespace JuvoPlayer.Subtitles
 {
     internal class SrtSubtitleParser : ISubtitleParser
     {
-        private ParserUtils utils;
-
-        public SrtSubtitleParser()
-        {
-            this.utils = new ParserUtils();
-        }
-
         // According to Wikipedia, windows-1252 is default SubRip's text encoding.
         // See https://en.wikipedia.org/wiki/SubRip
         public string DefaultEncoding { get; } = "windows-1252";
@@ -43,7 +36,7 @@ namespace JuvoPlayer.Subtitles
                 var timeLine = reader.ReadLine();
                 (var begin, var end) = ParseTimeLine(timeLine);
 
-                var text = utils.ParseText(reader);
+                var text = ParserUtils.ParseText(reader);
 
                 yield return new Cue() {Text = text, Begin = begin, End = end};
             }
