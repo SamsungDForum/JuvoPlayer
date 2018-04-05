@@ -1,10 +1,10 @@
 using System;
-using System.Collections.Generic;
 using JuvoPlayer.Common;
 using JuvoLogger;
 using MpdParser;
 using System.Collections.Generic;
 using System.Linq;
+using JuvoPlayer.Subtitles;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -20,7 +20,7 @@ namespace JuvoPlayer.DataProviders.Dash
         private Period currentPeriod = null;
         private DashMediaPipeline audioPipeline;
         private DashMediaPipeline videoPipeline;
-        private TimeSpan currentTimeStamp = TimeSpan.Zero;
+
         private DateTime lastReloadTime = DateTime.MinValue;
         private TimeSpan minimumReloadPeriod = TimeSpan.Zero;
 
@@ -334,6 +334,8 @@ namespace JuvoPlayer.DataProviders.Dash
         /// </summary>
         private void ScheduleManifestReload()
         {
+            bool isDynamic;
+
             // Only update if pipeline is running
             if (audioPipeline == null && videoPipeline == null)
                 return;
@@ -350,9 +352,17 @@ namespace JuvoPlayer.DataProviders.Dash
                 manifest.ReloadManifest(DateTime.UtcNow);
             }
 
+            if (isDynamic)
+            {
+                // should we check playback time here or actual time?
+                if ((DateTime.UtcNow - lastReloadTime) >= minimumReloadPeriod)
+                {
+                    manifest.ReloadManifest(DateTime.UtcNow);
+                }
+            }
         }
 
-        private void BuildSubtitleInfos(Period period)
+                private void BuildSubtitleInfos(Period period)
         {
             subtitleInfos.Clear();
 
@@ -380,12 +390,11 @@ namespace JuvoPlayer.DataProviders.Dash
             }
         }
 
-        public string CurrentCueText { get; }
+        public Cue CurrentCue => cuesMap?.Get(currentTime);
 
         public void OnTimeUpdated(TimeSpan time)
         {
-            currentTimeStamp = time;
-
+            currentTime = time;
             audioPipeline.OnTimeUpdated(time);
             videoPipeline.OnTimeUpdated(time);
 
@@ -397,13 +406,8 @@ namespace JuvoPlayer.DataProviders.Dash
         {
             OnStopped();
 
-            audioPipeline?.Dispose();
             audioPipeline = null;
-            videoPipeline?.Dispose();
             videoPipeline = null;
-
-            waitForManifest?.Dispose();
-            waitForManifest = null;
         }
     }
 }
