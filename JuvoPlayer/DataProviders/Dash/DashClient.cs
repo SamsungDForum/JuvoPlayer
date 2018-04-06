@@ -23,7 +23,18 @@ namespace JuvoPlayer.DataProviders.Dash
 
         private readonly ISharedBuffer sharedBuffer;
         private readonly StreamType streamType;
-        private readonly AutoResetEvent timeUpdatedEvent = new AutoResetEvent(false);
+        private AutoResetEvent timeUpdatedEvent;
+
+        /// <summary>
+        /// Pool of awaitables. First N shall match number of concurrent downloaders.
+        /// anything extra can be used for other purposes in terms of "WaitForUpdate"
+        /// Currently this is used for timeUpdateEvent (3rd element)
+        /// </summary>
+        private readonly EventWaitHandle[] awaitablesPool = { new AutoResetEvent(false), new AutoResetEvent(false), new AutoResetEvent(false) };
+        private enum awaitableItems
+        {
+            timeUpdateEvent = maxSegmentDownloads
+        }
 
         private Representation currentRepresentation;
         private Representation newRepresentation;
@@ -44,16 +55,12 @@ namespace JuvoPlayer.DataProviders.Dash
         /// of the queue, processing is done from end of the queue. This assures in-request-order
         /// placement of recieved data to the player regardless of their arrival order.
         /// </summary>
-        private static readonly int maxSegmentDownloads = 2;
+        private const int maxSegmentDownloads = 2;
         private LinkedList<DownloadRequest> downloadRequestPool = new LinkedList<DownloadRequest>();
 
         /// <summary>
-        /// Internal objects used for "suspending" player. Caller will hang on a semaphore
-        /// untill player suspends. After that control is released to caller. 
-        /// Player will hang on the same sempahore untill resume is called.
+        /// Contains information about timing data for last requested segment
         /// </summary>
-        private SemaphoreSlim PlayerSuspend = new SemaphoreSlim(0, 1);
-        private bool Suspended = false;
         private TimeRange lastRequestedPeriod;
 
         /// <summary>
@@ -67,8 +74,7 @@ namespace JuvoPlayer.DataProviders.Dash
         private bool timeUpdated = false;
         private TimeSpan lastMessageTimeout = TimeSpan.Zero;
         private static readonly TimeSpan maxMessageTimeout = TimeSpan.FromSeconds(5);
-        private static readonly TimeSpan dataTimeout = TimeSpan.FromMilliseconds(250);
-        private static readonly TimeSpan clocktickTimeout = TimeSpan.FromMilliseconds(500);
+        private static readonly TimeSpan awaitTimeout = TimeSpan.FromMilliseconds(500);
 
         /// <summary>
         /// Buffer full accessor.
@@ -104,78 +110,23 @@ namespace JuvoPlayer.DataProviders.Dash
             }
         }
 
+        /// <summary>
+        /// A shorthand for retrieving currently played out document type
+        /// True - Content is dynamic
+        /// False - Content is static.
+        /// </summary>
+        private bool IsDynamic
+        {
+            get
+            {
+                return currentStreams.Parameters.Document.IsDynamic;
+            }
+        }
 
         public DashClient(ISharedBuffer sharedBuffer, StreamType streamType)
         {
             this.sharedBuffer = sharedBuffer ?? throw new ArgumentNullException(nameof(sharedBuffer), "sharedBuffer cannot be null");
             this.streamType = streamType;
-        }
-
-        ~DashClient()
-        {
-            downloadRequestPool.Clear();
-        }
-
-
-        /// <summary>
-        /// Suspend/Resume player API. Suspend, suspends player. 
-        /// Caller will be blocked until player is actually suspended. 
-        /// After suspension, control to caller
-        /// will be released.
-        /// </summary>
-        public void Suspend()
-        {
-            if (Suspended == false)
-            {
-                Logger.Info($"{streamType} Requesting Suspend. Suspended={Suspended}");
-                Suspended = true;
-                PlayerSuspend.Wait();
-                Logger.Info($"{streamType} Suspend Request Completed");
-            }
-            else
-            {
-                Logger.Warn($"{streamType} Already Suspended");
-            }
-        }
-
-        /// <summary>
-        /// Intarnal suspend method. Called by Dowload thread. If there 
-        /// is a pending suspend request, download thread will release caller
-        /// and suspend itself of a semaphore awaiting Resume() call which will release
-        /// download thread and allow it to continue
-        /// </summary>
-        /// <returns></returns>
-        private bool DoSuspend()
-        {
-            if (Suspended == true)
-            {
-                PlayerSuspend.Release();
-                Logger.Info($"{streamType} Suspended={Suspended}");
-                PlayerSuspend.Wait();
-                Logger.Info($"{streamType} Suspend Completed {Suspended}");
-                return true;
-            }
-
-            return false;
-        }
-
-        /// <summary>
-        /// Suspend/Resume Player API. Resumes player by signalling semaphore on which download
-        /// thread is waiting.
-        /// </summary>
-        public void Resume()
-        {
-            if (Suspended == true)
-            {
-                Logger.Info($"{streamType} Resumed Request. Suspended={Suspended}");
-                Suspended = false;
-                PlayerSuspend.Release();
-                Logger.Info($"{streamType} Resumed Request Completed");
-            }
-            else
-            {
-                Logger.Warn($"{streamType} Not Suspended");
-            }
         }
 
         public TimeSpan Seek(TimeSpan position)
@@ -214,6 +165,12 @@ namespace JuvoPlayer.DataProviders.Dash
             if (!playback)
                 return;
 
+            while (downloadRequestPool.Count > 0)
+            {
+                downloadRequestPool.Last.Value.Dispose();
+                downloadRequestPool.RemoveLast();
+            }
+
             playback = false;
             timeUpdatedEvent.Set();
 
@@ -237,7 +194,6 @@ namespace JuvoPlayer.DataProviders.Dash
         /// Updates representation based on Manifest Update
         /// </summary>
         /// <param name="representation"></param>
-
         public void UpdateRepresentation(Representation representation)
         {
             if (currentRepresentation.Parameters.Document.IsDynamic == false)
@@ -271,7 +227,7 @@ namespace JuvoPlayer.DataProviders.Dash
             uint? newSeg = null;
             if (lastRequestedPeriod != null)
             {
-                newSeg = currentStreams.RefreshMediaSegment(currentSegmentId, lastRequestedPeriod);
+                newSeg = currentStreams.MediaSegmentAtTime(lastRequestedPeriod.Start);
             }
             else
             {
@@ -283,7 +239,7 @@ namespace JuvoPlayer.DataProviders.Dash
                 Logger.Warn($"{streamType}: Segment: {currentSegmentId} failed to refresh.");
             }
 
-            currentSegmentId = newSeg;
+            currentSegmentId = newSeg + 1;
 
             Logger.Info($"{streamType}: Representations swapped.");
             return true;
@@ -321,51 +277,32 @@ namespace JuvoPlayer.DataProviders.Dash
             // Wait on Download Request (if in progress)
             // or timer event. 
 
-            // If all download slots are occupied & first issued download request
-            // is still running, wait on download task.
-            var firstPendingRequest = downloadRequestPool.Last?.Value.DownloadTask;
-            if (DownloadSlotsAvailable == false && firstPendingRequest?.Status < TaskStatus.RanToCompletion)
+            if (timeUpdated == false)
             {
-                if (timeUpdated == false)
-                {
-                    timeUpdated = true;
-                    lastMessageTimeout = TimeSpan.Zero;
-                    Logger.Info($"{streamType}: {waitReason} DataWait");
-                }
-
-                try
-                {
-                    firstPendingRequest?.Wait(dataTimeout);
-                }
-                catch (Exception) { timeUpdated = false; }   // Dummy catcher
-
-                lastMessageTimeout += dataTimeout;
-            }
-            // Otherwise, check if buffers are full & wait on time update.
-            else if (BufferFull == true)
-            {
-                if (timeUpdated == false)
-                {
-                    timeUpdated = true;
-                    lastMessageTimeout = TimeSpan.Zero;
-                    Logger.Info($"{streamType}: {waitReason} SyncWait {currentTime}");
-                }
-
-                try
-                {
-                    timeUpdatedEvent.WaitOne(clocktickTimeout);
-                }
-                catch (Exception) { }    //Dummy catrcher
-
-                lastMessageTimeout += clocktickTimeout;
+                timeUpdated = true;
+                lastMessageTimeout = TimeSpan.Zero;
+                Logger.Info($"{streamType}: {waitReason}");
             }
 
+            lastMessageTimeout += awaitTimeout;
             // 5sec. timeout on repeated messages.
             if (lastMessageTimeout >= maxMessageTimeout)
             {
                 lastMessageTimeout = TimeSpan.Zero;
                 timeUpdated = false;
             }
+
+            try
+            {
+                // Currently we await ANY awaitable. This includes a download request which 
+                // may not be for us. Odds are 2:1 in our favor. Being woken up by a request of no
+                // interest is of no consequence to handling of those requests. Simply a third chance
+                // we get woken up for nothing. Still, I believe it is cheaper to do it this way
+                // then dynamically build list of awaitables when number of concurrent downloaders
+                // is so small.
+                WaitHandle.WaitAny(awaitablesPool, awaitTimeout);
+            }
+            catch { }
 
         }
 
@@ -377,9 +314,8 @@ namespace JuvoPlayer.DataProviders.Dash
             var initSegment = currentStreams.InitSegment;
             if (initSegment != null)
             {
-                Logger.Info($"{streamType}: Requesting Init segment {initSegment.Url}");
-                var request = DownloadRequest(initSegment, false, streamType, null,
-                    InitSegmentDownloadOK, SegmentDownloadFailed);
+                //Logger.Info($"{streamType}: Requesting Init segment {initSegment.Url}");
+                var request = CreateDownloadRequest(initSegment, false, InitSegmentDownloadOK);
                 if (request == null)
                 {
                     Stop();
@@ -388,17 +324,16 @@ namespace JuvoPlayer.DataProviders.Dash
             }
             else
             {
-                WaitForUpdate($"{streamType}: No Init segment to request");
+                Logger.Info($"{streamType}: No Init segment to request");
             }
+
+            timeUpdatedEvent = awaitablesPool[(int)awaitableItems.timeUpdateEvent] as AutoResetEvent;
 
             if (currentSegmentId.HasValue == false)
                 currentSegmentId = currentStreams.GetStartSegment(currentTime, TimeBufferDepth);
 
             while (playback)
             {
-
-                // Check suspend request
-                DoSuspend();
 
                 // Process any pending downloads.
                 ProcessRequests();
@@ -434,7 +369,7 @@ namespace JuvoPlayer.DataProviders.Dash
                         WaitForUpdate($"Segment: {currentSegmentId} NULL stream.");
                         continue;
                     }
-                    
+
                     Logger.Warn($"{streamType}: Segment: {currentSegmentId} NULL stream. Stoping player.");
                     Stop();
                     return;
@@ -442,8 +377,7 @@ namespace JuvoPlayer.DataProviders.Dash
 
                 // Download new segment. NULL indicates there are no download slots left.
                 // this may occour if buffer is not full, but slots are (which is kind of odd)
-                var downloadRequest = DownloadRequest(stream, currentStreams.Parameters.Document.IsDynamic,
-                    streamType, currentSegmentId);
+                var downloadRequest = CreateDownloadRequest(stream, IsDynamic);
                 if (downloadRequest == null)
                 {
                     WaitForUpdate($"No download slots available. Max {maxSegmentDownloads}");
@@ -469,34 +403,35 @@ namespace JuvoPlayer.DataProviders.Dash
         private bool CheckEndOfContent()
         {
             var EndTime = (currentStreamDuration ?? TimeSpan.MaxValue);
-            if (currentTime < EndTime)
-                return false;
-
-            return true;
+            return (currentTime >= EndTime);
         }
         /// <summary>
         /// Downloads a segment by creating a download request and scheduling it for download
         /// </summary>
-        /// <param name="aStream">Stream which is to be downloaded</param>
-        /// <param name="aType">Optional. StreamType. Used for debug message purposes</param>
-        /// <param name="aSegmentID">Optional Segment ID. Used for debug message purposes</param>
-        /// <param name="downloadOK">Optional. Overrides DashClient's current Download Sucessfull handler</param>
-        /// <param name="downloadFAIL">Optional. Overrides DashClient's current Download Failed handler</param>
+        /// <param name="stream">Stream which is to be downloaded</param>
+        /// <param name="ignoreError"> True - download errors will be ignored. False - download errors will be retried.</param>
+        /// <param name="downloadOK">Optional. Overrides DashClient's current Download OK handler</param>
         /// <returns></returns>
-        private DownloadRequest DownloadRequest(MpdParser.Node.Dynamic.Segment aStream,
-            bool ignoreError, StreamType? aType = null, uint? aSegmentID = null,
-            Action<byte[], DownloadRequestData> downloadOK = null,
-            Action<Exception, DownloadRequestData, bool> downloadFAIL = null)
+        private DownloadRequest CreateDownloadRequest(MpdParser.Node.Dynamic.Segment stream,
+            bool ignoreError, Action<byte[], DownloadRequestData> downloadOK = null)
         {
             if (DownloadSlotsAvailable == false)
             {
                 return null;
             }
 
-            var request = new DownloadRequest(aStream, ignoreError, aType, aSegmentID);
+            var requestData = new DownloadRequestData();
+            requestData.DownloadSegment = stream;
+            requestData.SegmentID = currentSegmentId;
+            requestData.StreamType = streamType;
+
+
+            var request = new DownloadRequest(requestData, ignoreError);
             request.RanToCompletion = downloadOK ?? SegmentDownloadOK;
-            request.Faulted = downloadFAIL ?? SegmentDownloadFailed;
+            request.Faulted = SegmentDownloadFailed;
             request.RequestFailed = SegmentDownloadFailed;
+            request.CompletionNotifier = awaitablesPool[downloadRequestPool.Count];
+
             request = downloadRequestPool.AddFirst(request).Value;
 
             request.Download();
@@ -574,7 +509,7 @@ namespace JuvoPlayer.DataProviders.Dash
             }
             else
             {
-                Logger.Warn($"{requestParams.StreamType}: Segment: {requestParams.SegmentID} Error: {exw.Message}");
+                Logger.Warn($"{requestParams.StreamType}: Segment: {requestParams.SegmentID} NetError: {exw.Message}");
             }
 
             if (ignoreErrors == true)
