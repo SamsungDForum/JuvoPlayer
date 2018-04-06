@@ -55,7 +55,7 @@ namespace JuvoPlayer.DataProviders.Dash
         /// of the queue, processing is done from end of the queue. This assures in-request-order
         /// placement of recieved data to the player regardless of their arrival order.
         /// </summary>
-        private static readonly int maxSegmentDownloads = 2;
+        private const int maxSegmentDownloads = 2;
         private LinkedList<DownloadRequest> downloadRequestPool = new LinkedList<DownloadRequest>();
 
         /// <summary>
@@ -74,18 +74,7 @@ namespace JuvoPlayer.DataProviders.Dash
         private bool timeUpdated = false;
         private TimeSpan lastMessageTimeout = TimeSpan.Zero;
         private static readonly TimeSpan maxMessageTimeout = TimeSpan.FromSeconds(5);
-        private static readonly TimeSpan dataTimeout = TimeSpan.FromMilliseconds(250);
-        private static readonly TimeSpan clocktickTimeout = TimeSpan.FromMilliseconds(500);
-
-        // Action holders for processing download results.
-        private readonly Action<byte[], DownloadRequestData> ActionHolderInitSegmentDownloadOK = null;
-        private readonly Action<byte[], DownloadRequestData> ActionHolderSegmentDownloadOK = null;
-        private readonly Action<Exception, DownloadRequestData> ActionHolderStaticSegmentDownloadFailed = null;
-        private readonly Action<Exception, DownloadRequestData> ActionHolderDynamicSegmentDownloadFailed = null;
-
-        // Action users for OK/Fail. They will be changed based on dynamic flag.
-        // this will allow to have "less" if this then thats in client loop
-        private Action<Exception, DownloadRequestData> ActionSegmentDownloadFailed = null;
+        private static readonly TimeSpan awaitTimeout = TimeSpan.FromMilliseconds(500);
 
         /// <summary>
         /// Buffer full accessor.
@@ -121,8 +110,12 @@ namespace JuvoPlayer.DataProviders.Dash
             }
         }
 
-
-        public DashClient(ISharedBuffer sharedBuffer, StreamType streamType)
+        /// <summary>
+        /// A shorthand for retrieving currently played out document type
+        /// True - Content is dynamic
+        /// False - Content is static.
+        /// </summary>
+        private bool IsDynamic
         {
             get
             {
@@ -164,17 +157,6 @@ namespace JuvoPlayer.DataProviders.Dash
         }
 
         public void Stop()
-        {
-            StopPlayback();
-            timeUpdatedEvent.Set();
-
-            sharedBuffer?.WriteData(null, true);
-            downloadTask.Wait();
-
-            Logger.Info(string.Format("{0} Data downloader stopped", streamType));
-        }
-
-        private void StopPlayback()
         {
             // playback has been already stopped
             if (!playback)
@@ -594,5 +576,4 @@ namespace JuvoPlayer.DataProviders.Dash
         }
         #endregion
     }
-
 }
