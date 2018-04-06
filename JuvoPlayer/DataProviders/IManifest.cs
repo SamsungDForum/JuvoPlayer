@@ -14,6 +14,7 @@
 
 
 using System;
+using System.Threading.Tasks;
 using MpdParser;
 /// <summary>
 /// IManifest is a generic manifest interface for all non static manifest
@@ -36,13 +37,29 @@ namespace JuvoPlayer.DataProviders
         /// Notification when manifest document changes. 
         /// </summary>
         event ManifestChanged ManifestChanged;
+
         /// <summary>
         /// Forces IManifest implementing class to reload Manifest with specified delay.
+        /// Calling ReloadManifest while there is an existing reload in progress, may stall
+        /// caller. To avoid this, use IsReloadInProgress to get current running status.
+        /// 
         /// </summary>
         /// <param name="reloadTime">DateTime specifying when new Playback document is to be 
         /// downloaded. Speficying DateTime.Now will schedule it immediately.</param>
-        /// <returns>True - Request Scheduled. False - Request not scheduled.</returns>
+        /// <returns>True - scheduled. False - not scheduled</returns>
         bool ReloadManifest(DateTime reloadTime);
 
+        /// <summary>
+        /// Returns currently running Manifest reload activity. May be null if called
+        /// before calling ReloadManifest
+        /// </summary>
+        Task GetReloadManifestActivity { get; }
+
+        /// <summary>
+        /// Returns current reload status.
+        /// true - reload in progress.
+        /// false - no reloads in progress.
+        /// </summary>
+        bool IsReloadInProgress { get; }
     }
 }

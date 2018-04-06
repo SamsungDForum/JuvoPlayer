@@ -8,7 +8,7 @@ using System.Threading;
 namespace JuvoPlayer.DataProviders.Dash
 {
 
-    internal class DashManifest: IManifest
+    internal class DashManifest : IManifest
     {
         private const string Tag = "JuvoPlayer";
         private readonly ILogger Logger = LoggerManager.GetInstance().GetLogger(Tag);
@@ -24,18 +24,31 @@ namespace JuvoPlayer.DataProviders.Dash
         /// <summary>
         /// Task as returned by TimerEvent responsible for 
         /// MPD download and parsing.
+        /// Update activity is a Task responsible for calling update.
+        /// This is required - as update may call request for update so we need to "complete it"
         /// </summary>
-        private Task reloadActivity;
-        private static readonly int ReloadIdle=0;
+
+        public Task reloadActivity;
+        private Task updateActivity;
+        private static readonly int ReloadIdle = 0;
         private static readonly int ReloadRunning = 1;
         private int reloadState = ReloadIdle;
 
+        public Task GetReloadManifestActivity
+        {
+            get { return reloadActivity; }
+        }
+
+        public bool IsReloadInProgress
+        {
+            get { return (reloadActivity?.Status < TaskStatus.RanToCompletion || updateActivity?.Status < TaskStatus.RanToCompletion); }
+        }
         public DashManifest(string url)
         {
             Uri = new Uri(
                 url ?? throw new ArgumentNullException(
                     nameof(url), "Dash manifest url is empty."));
-            
+
         }
 
         private string DownloadManifest()
@@ -114,9 +127,11 @@ namespace JuvoPlayer.DataProviders.Dash
 
             if (XmlManifest == null)
             {
+                Logger.Info($"Manifest download failure {Uri}");
+                OnManifestChanged(null);
                 return;
             }
-                
+
 
             var newDoc = ParseManifest(XmlManifest);
             var parseTime = DateTime.UtcNow;
@@ -124,12 +139,21 @@ namespace JuvoPlayer.DataProviders.Dash
             // Should we reschedule in case of parse failure?
             if (newDoc == null)
             {
+                Logger.Info($"Manifest parse error {Uri}");
+                OnManifestChanged(null);
                 return;
             }
 
             newDoc.DownloadRequestTime = requestTime;
             newDoc.DownloadCompleteTime = downloadTime;
             newDoc.ParseCompleteTime = parseTime;
+            reloadsRequired = newDoc.IsDynamic;
+
+            if (updateActivity?.Status < TaskStatus.RanToCompletion)
+            {
+                Logger.Info($"Waiting for previous Manifest update to complete");
+                await updateActivity;
+            }
 
             OnManifestChanged(newDoc);
 
@@ -137,7 +161,6 @@ namespace JuvoPlayer.DataProviders.Dash
             // to block any manifest updates during this process
             reloadInfoPrinted = false;
 
-            reloadActivity = null;
             Interlocked.Exchange(ref reloadState, ReloadIdle);
 
         }
@@ -145,16 +168,17 @@ namespace JuvoPlayer.DataProviders.Dash
         /// <summary>
         /// Reloads manifest at provided DateTime in UTC form.
         /// Internally, method checks for a difference between UtcNow and provided 
-        /// reload time. Difference is used as a timer. Caller HAS to assure
+        /// reload time. Difference is used as a timer. Caller HAS to assure reloadTime is
+        /// provided in UTC.
         /// </summary>
         /// <param name="reloadTime">Manifest Reload Time in UTC</param>
-        /// <returns>True - reload request. False - reload not requested. Already Scheduled/Not dynamic</returns>
+        /// <returns>Task - Current awaitable reload task, NULL, update has been scheduled</returns>
         public bool ReloadManifest(DateTime reloadTime)
         {
-            
-            if(reloadsRequired == false)
+
+            if (reloadsRequired == false)
             {
-                if(reloadInfoPrinted == false )
+                if (reloadInfoPrinted == false)
                     Logger.Warn("Document Reload is disabled. Last Document loaded was static");
 
                 reloadInfoPrinted = true;
@@ -174,14 +198,22 @@ namespace JuvoPlayer.DataProviders.Dash
             // There is no expectation of a scenario where
             // timer event is fired & someone plays with ReloadManifest.
             // as such no protections for now...
-            reloadActivity = Task.Run(()=>TimerEvent(reloadTime));
+            reloadActivity = Task.Run(() => TimerEvent(reloadTime));
 
             return true;
         }
 
         private void OnManifestChanged(Object newDoc)
         {
-            ManifestChanged?.Invoke(newDoc);
+            // OnManifestChanged is called from TimerEvent.
+            // Handler may call ReloadManifest which in turn checks if update
+            // has completed. As such, handler has to run "separately"
+            // 
+            // Caller may retrieve reload activity task and wait for completion before
+            // calling ReloadManifest
+            //
+            if (ManifestChanged != null)
+                updateActivity = Task.Run(() => ManifestChanged.Invoke(newDoc));
         }
     }
 }

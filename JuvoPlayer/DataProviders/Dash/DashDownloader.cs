@@ -17,6 +17,7 @@ using System;
 using System.Collections.Generic;
 using System.Net;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace JuvoPlayer.DataProviders.Dash
@@ -104,16 +105,9 @@ namespace JuvoPlayer.DataProviders.Dash
     /// </summary>
     public class DownloadRequestData
     {
-        public MpdParser.Node.Dynamic.Segment DownloadSegment { get; internal set; }
-        public uint? SegmentID { get; internal set; }
-        public StreamType? StreamType { get; internal set; }
-
-        public DownloadRequestData(MpdParser.Node.Dynamic.Segment aSegment, StreamType? aType = null, uint? aSegmentID = null)
-        {
-            DownloadSegment = aSegment;
-            SegmentID = aSegmentID;
-            StreamType = aType;
-        }
+        public MpdParser.Node.Dynamic.Segment DownloadSegment { get; set; }
+        public uint? SegmentID { get; set; }
+        public StreamType StreamType { get; set; }
     }
 
     /// <summary>
@@ -151,8 +145,9 @@ namespace JuvoPlayer.DataProviders.Dash
         public Action<DownloadRequestData> WaitingForChildrenToComplete { get; set; }
         public Action<byte[], DownloadRequestData> RanToCompletion { get; set; }
         public Action<DownloadRequestData> Canceled { get; set; }
-        public Action<Exception, DownloadRequestData,bool> Faulted { get; set; }
-        public Action<Exception, DownloadRequestData,bool> RequestFailed { get; set; }
+        public Action<Exception, DownloadRequestData, bool> Faulted { get; set; }
+        public Action<Exception, DownloadRequestData, bool> RequestFailed { get; set; }
+        public EventWaitHandle CompletionNotifier { get; set; }
 
         /// <summary>
         /// Download error counter
@@ -167,19 +162,17 @@ namespace JuvoPlayer.DataProviders.Dash
         /// <summary>
         /// Creates a Download Request object
         /// </summary>
-        /// <param name="aStream">Stream to be downloaded</param>
-        /// <param name="aType">Optional. Stream type. Used for debug messages</param>
-        /// <param name="aSegmentID">Optional. StrweamID. Used for debug messages.</param>
-        public DownloadRequest(MpdParser.Node.Dynamic.Segment aSegment, bool aIgnoreError=false,
-            StreamType? aType = null, uint? aSegmentID = null)
+        /// <param name="downloadRequest">Download Request Object</param>
+        /// <param name="downloadErrorIgnore">Ignore/Process download errors</param>
+        public DownloadRequest(DownloadRequestData downloadRequest, bool downloadErrorIgnore)
         {
 
-            requestData = new DownloadRequestData(aSegment, aType, aSegmentID);
+            requestData = downloadRequest;
 
-            if (!String.IsNullOrEmpty(aSegment.ByteRange))
-                downloadRange = new ByteRange(aSegment.ByteRange);
+            if (!String.IsNullOrEmpty(requestData.DownloadSegment.ByteRange))
+                downloadRange = new ByteRange(requestData.DownloadSegment.ByteRange);
 
-            ignoreError = aIgnoreError;
+            ignoreError = downloadErrorIgnore;
 
         }
 
@@ -191,9 +184,12 @@ namespace JuvoPlayer.DataProviders.Dash
         {
             RequestTask = Task.Run(() => DownloadInternal());
         }
+
         private async Task DownloadInternal()
         {
             // I am opened to suggestions on WebClient reuse.
+            // Initail test show it to be... unreliable with tendency to randomly "crash"
+            // and refuse to service any further requests.
             //
             // TO CHECK: Do so only if download failes, in case of internal class failure
             // kill & creatre new?
@@ -205,36 +201,38 @@ namespace JuvoPlayer.DataProviders.Dash
                     dataDownloader.SetRange(downloadRange.Low, downloadRange.High);
                 }
 
+
+                // In case of download errors...
+                //
+                if (DownloadErrorCount != 0)
+                {
+                    // Exponential backoff
+                    // Sleep:
+                    // 0-100ms for 1st error (DownloadErrorCount = 1)
+                    // 100-300ms for 2nd error (DownloadErrorCount = 2)
+                    // 200-700ms for 3rd error (DownloadErrorCount = 3)
+                    // ... and so on
+                    var rnd = new Random();
+
+                    var sleepTime = rnd.Next(
+                    (DownloadErrorCount - 1) * 100,
+                    ((DownloadErrorCount * DownloadErrorCount) - (DownloadErrorCount - 1)) * 100);
+
+                    await Task.Delay(sleepTime);
+
+                    //Check for being disposed. If so, do not proceed.
+                    if (disposedValue == true)
+                    {
+                        Logger.Warn($"{requestData.StreamType}: Downloader Disposed. Segment: {requestData.SegmentID} Requested. URL: {requestData.DownloadSegment.Url}.");
+                        return;
+                    }
+                }
+
+                // In case of reloads, get rid off previous DownloadTask.
+                DownloadTask?.Dispose();
+
                 try
                 {
-                    // In case of download errors...
-                    //
-                    if (DownloadErrorCount != 0)
-                    {
-                        // Exponential backoff
-                        // Sleep:
-                        // 0-100ms for 1st error (DownloadErrorCount = 1)
-                        // 100-300ms for 2nd error (DownloadErrorCount = 2)
-                        // 200-700ms for 3rd error (DownloadErrorCount = 3)
-                        // ... and so on
-                        var rnd = new Random();
-
-                        var sleepTime = rnd.Next(
-                        (DownloadErrorCount - 1) * 100,
-                        ((DownloadErrorCount * DownloadErrorCount) - (DownloadErrorCount - 1)) * 100);
-
-                        await Task.Delay(sleepTime);
-
-                        //Check for being disposed. If so, do not proceed.
-                        if (disposedValue == true)
-                        {
-                            Logger.Warn($"{requestData.StreamType}: Downloader Disposed. Segment: {requestData.SegmentID} Requested. URL: {requestData.DownloadSegment.Url}.");
-                            return;
-                        }
-                    }
-
-                    // In case of reloads, get rid off previous DownloadTask.
-                    DownloadTask?.Dispose();
 
                     DownloadTask = dataDownloader.DownloadDataTaskAsync(requestData.DownloadSegment.Url);
 
@@ -242,11 +240,15 @@ namespace JuvoPlayer.DataProviders.Dash
 
                     await DownloadTask;
 
+
                 }
-                catch (Exception)
+                catch { } //Dummy catcher. Error handling is done during common Process of all awaiters
+                finally
                 {
-                    //Dummy catcher. Error handling is done during common Process of all awaiters
+                    //signall Completion Notifier that we're done.
+                    CompletionNotifier?.Set();
                 }
+
             }
         }
 

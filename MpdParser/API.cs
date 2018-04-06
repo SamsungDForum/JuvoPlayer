@@ -1,9 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Linq;
 
 namespace MpdParser
 {
-    public class Representation 
+    public class Representation
     {
         // REPR or ADAPTATION SET:
         public string Id { get; }
@@ -63,7 +64,7 @@ namespace MpdParser
                         break;
                     }
                 }
-                
+
                 if (channels != null)
                     NumChannels = System.Xml.XmlConvert.ToUInt32(channels);
             }
@@ -268,7 +269,7 @@ namespace MpdParser
         public ContentProtection[] ContentProtections { get; }
         public MimeType Type { get; }
         public Role[] Roles { get; }
-        public Representation[] Representations { get;  }
+        public Representation[] Representations { get; }
         private ManifestParameters Paramters_;
         public ManifestParameters Parameters
         {
@@ -279,7 +280,7 @@ namespace MpdParser
             set
             {
                 Paramters_ = value;
-                foreach(var rep in Representations)
+                foreach (var rep in Representations)
                 {
                     rep.Parameters = Paramters_;
                 }
@@ -294,7 +295,7 @@ namespace MpdParser
 
             ContentProtections = new ContentProtection[set.ContentProtections.Length];
             for (int i = 0; i < ContentProtections.Length; ++i)
-                ContentProtections[i] = new ContentProtection(set.ContentProtections[i]); 
+                ContentProtections[i] = new ContentProtection(set.ContentProtections[i]);
 
             Roles = new Role[set.Roles.Length];
             for (int i = 0; i < Roles.Length; ++i)
@@ -403,7 +404,7 @@ namespace MpdParser
         public PeriodParameters Period { get; }
 
         public TimeSpan PlayClock { get; set; }
-        
+
         public ManifestParameters(Document aDocument, Period aPeriod)
         {
             Document = new DocumentParameters(aDocument);
@@ -418,9 +419,9 @@ namespace MpdParser
     /// </summary>
     public class PeriodParameters
     {
-        public TimeSpan? Start { get;  }
+        public TimeSpan? Start { get; }
         public TimeSpan? Duration { get; }
-        public Period.Types Type { get;  }
+        public Period.Types Type { get; }
 
         public PeriodParameters(Period aPeriod)
         {
@@ -442,14 +443,14 @@ namespace MpdParser
             Unknown,
             Regular,
             EarlyAvailable
-            
+
         }
 
         public TimeSpan? Start { get; internal set; }
         public TimeSpan? Duration { get; internal set; }
         public Types Type { get; internal set; }
 
-        public Media[] Sets { get;  }
+        public Media[] Sets { get; }
 
         public DateTime? PeriodEnd;
 
@@ -464,12 +465,7 @@ namespace MpdParser
         /// <returns>Array of Periods (MpdParser.Perdiod[]) derived from periods argument</returns>
         public static Period[] BuildPeriods(Node.Period[] periods, Document aDoc)
         {
-            var res = new Period[periods.Length];
-            
-            for (int i = 0; i < res.Length; ++i)
-            {
-                res[i] = new Period(periods[i]);
-            }
+            var res = periods.Select(o => new Period(o)).ToArray();
 
             if (aDoc.Type != DocumentType.Unknown)
                 res = AdjustStartAndType(res, aDoc);
@@ -508,11 +504,11 @@ namespace MpdParser
                 // and(ii) the Period element is the first in the MPD, 
                 // and (iii) the MPD@type is 'static', then the PeriodStart time shall be set to 
                 // zero.
-                if (periods[0].Start == null && aDoc.Type == DocumentType.Static )
+                if (periods[0].Start == null && aDoc.Type == DocumentType.Static)
                     periods[0].Start = new TimeSpan(0);
-             
+
             }
-            for (int i = 1; i < periods.Length-1; i++)
+            for (int i = 1; i < periods.Length - 1; i++)
             {
                 // A.3.2 ISO ISEC 23009-1:2014
                 // the Period end time referred as PeriodEnd is determined as follows: 
@@ -520,9 +516,9 @@ namespace MpdParser
                 // obtained as the value of the PeriodStart of the next Period.
                 // For the last Period in the MPD:... 
                 // (this will be described "after" this loop)
-                if (periods[i-1].Duration == null && periods[i].Start != null)
+                if (periods[i - 1].Duration == null && periods[i].Start != null)
                 {
-                    periods[i - 1].Duration = periods[i].Start - periods[i-1].Start;
+                    periods[i - 1].Duration = periods[i].Start - periods[i - 1].Start;
                 }
                 // If the @start attribute is absent, but the previous Period element contains 
                 // a @duration attribute then this new Period is also a regular Period. 
@@ -541,12 +537,12 @@ namespace MpdParser
                 // Early Available Period
                 if (periods[i].Start == null && periods[i - 1].Duration == null &&
                     aDoc.Type == DocumentType.Dynamic)
-                        periods[i].Type = Types.EarlyAvailable;
+                    periods[i].Type = Types.EarlyAvailable;
             }
 
             //Last Period Fixup based on A.3.2 ISO ISEC 23009-1:2014
             var lastp = periods.Length - 1;
-            if(aDoc.MinimumUpdatePeriod.HasValue == false)
+            if (aDoc.MinimumUpdatePeriod.HasValue == false)
             {
                 periods[lastp].PeriodEnd = aDoc.AvailabilityStartTime + aDoc.MediaPresentationDuration;
             }
@@ -622,7 +618,7 @@ namespace MpdParser
         }
     }
 
-/// <summary>
+    /// <summary>
     /// DocumentParameters is a pass through information from Document.
     /// Intentionally, a separate class is used so all parameters from currently used
     /// Document / Period as COPIED rather then referenced to original doc as this
@@ -634,16 +630,16 @@ namespace MpdParser
 
         public TimeSpan? MediaPresentationDuration { get; }
         public TimeSpan? MinBufferTime { get; }
-        public TimeSpan? MinimumUpdatePeriod { get;  }
+        public TimeSpan? MinimumUpdatePeriod { get; }
         public DateTime? AvailabilityStartTime { get; }
-        public DateTime? PublishTime { get;  }
+        public DateTime? PublishTime { get; }
         public DateTime? AvailabilityEndTime { get; }
         public TimeSpan? TimeShiftBufferDepth { get; }
-        public DateTime DownloadRequestTime { get;  }
+        public DateTime DownloadRequestTime { get; }
         public DateTime DownloadCompleteTime { get; }
         public DateTime ManifestParseCompleteTime { get; }
         public TimeSpan? SuggestedPresentationDelay { get; }
-        
+
         public DocumentParameters(Document aDocument)
         {
             // Remember COPY all data. Do not "assign" by reference.
@@ -696,7 +692,7 @@ namespace MpdParser
         public DateTime DownloadCompleteTime { get; set; }
         public DateTime ParseCompleteTime { get; set; }
 
-        public bool IsDynamic { get { return (Type == DocumentType.Dynamic); }}
+        public bool IsDynamic { get { return (Type == DocumentType.Dynamic); } }
 
         private Document(Node.DASH dash)
         {
@@ -716,8 +712,8 @@ namespace MpdParser
             Type = ParseDashType(dash);
 
             if (Type == DocumentType.Dynamic)
-            {    
-                if( AvailabilityStartTime == null  || PublishTime ==null)
+            {
+                if (AvailabilityStartTime == null || PublishTime == null)
                 {
                     throw new ArgumentException("Malformed MPD. MPD.Type=Dynamic ISO IEC 23009-1 requires" +
                         $"AvailabilityStartTime is '{AvailabilityStartTime}'" +
@@ -740,7 +736,7 @@ namespace MpdParser
             }
 
             Periods = Period.BuildPeriods(dash.Periods, this);
-          
+
             Array.Sort(Periods);
         }
 
@@ -759,9 +755,9 @@ namespace MpdParser
 
         public static Document FromText(string manifestText, string manifestUrl)
         {
-            Node.DASH dash = FromTextInternal( manifestText,  manifestUrl);
+            Node.DASH dash = FromTextInternal(manifestText, manifestUrl);
             dash.PeriodFixup();
-            
+
             return new Document(dash);
         }
 
@@ -776,7 +772,7 @@ namespace MpdParser
         public override string ToString()
         {
             return $"Type: {Type} StartTime: ({AvailabilityStartTime}) EndTime: ({AvailabilityEndTime}) " +
-                $"Duration: ({MediaPresentationDuration}) PublishTime: ({PublishTime}) "+
+                $"Duration: ({MediaPresentationDuration}) PublishTime: ({PublishTime}) " +
                 $"MinBufferTime: ({MinBufferTime}) MinUpdatePeriod ({MinimumUpdatePeriod})";
         }
     }

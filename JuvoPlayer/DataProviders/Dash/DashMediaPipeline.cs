@@ -54,8 +54,8 @@ namespace JuvoPlayer.DataProviders.Dash
         /// Used in Trimming Packet Handler to truncate down PTS/DTS values.
         /// First packet seen acts as flip switch. Fill initial values or not.
         /// </summary>
-        private bool haveTrimmPTSDTS = false;
-        private TimeSpan trimmValuePTSDTS = TimeSpan.Zero;
+        private bool haveTrimPTSDTS = false;
+        private TimeSpan trimValuePTSDTS = TimeSpan.Zero;
 
         private readonly IDashClient dashClient;
         private readonly IDemuxer demuxer;
@@ -81,7 +81,7 @@ namespace JuvoPlayer.DataProviders.Dash
             demuxer.PacketReady += OnPacketReady;
         }
 
-        
+
 
         public void Start(IEnumerable<Media> media)
         {
@@ -160,7 +160,7 @@ namespace JuvoPlayer.DataProviders.Dash
             currentStream = newStream;
 
             Logger.Info($"{streamType}: Manifest update. {newStream.Media} {newStream.Representation.ToString()}");
-            
+
             dashClient.UpdateRepresentation(newStream.Representation);
 
         }
@@ -199,7 +199,7 @@ namespace JuvoPlayer.DataProviders.Dash
         {
             dashClient.Stop();
 
-            haveTrimmPTSDTS = false;
+            haveTrimPTSDTS = false;
 
             demuxer.Dispose();
             demuxerFullyInitialized = false;
@@ -364,11 +364,11 @@ namespace JuvoPlayer.DataProviders.Dash
             if (laskSeek == TimeSpan.Zero)
             {
                 //Get very first PTS/DTS
-                if (haveTrimmPTSDTS == false)
+                if (haveTrimPTSDTS == false)
                 {
                     // TimeSpan.Zero - Value is used rather then -Value for better "visibility"
                     demuxerTimeStamp = TimeSpan.Zero - TimeSpan.FromTicks(Math.Min(packet.Pts.Ticks, packet.Dts.Ticks));
-                    haveTrimmPTSDTS = true;
+                    haveTrimPTSDTS = true;
                 }
                 return;
             }
