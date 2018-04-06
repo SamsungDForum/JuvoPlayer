@@ -16,8 +16,8 @@ namespace JuvoPlayer.DataProviders.Dash
         private readonly ILogger Logger = LoggerManager.GetInstance().GetLogger(Tag);
 
         private readonly DashManifest manifest;
-        private Document currentDocument = null;
-        private Period currentPeriod = null;
+        private Document currentDocument;
+        private Period currentPeriod;
         private DashMediaPipeline audioPipeline;
         private DashMediaPipeline videoPipeline;
 
@@ -352,8 +352,6 @@ namespace JuvoPlayer.DataProviders.Dash
         /// </summary>
         private void ScheduleManifestReload()
         {
-            bool isDynamic;
-
             // Only update if pipeline is running
             if (audioPipeline == null && videoPipeline == null)
                 return;
@@ -370,42 +368,6 @@ namespace JuvoPlayer.DataProviders.Dash
                 manifest.ReloadManifest(DateTime.UtcNow);
             }
 
-            if (isDynamic)
-            {
-                // should we check playback time here or actual time?
-                if ((DateTime.UtcNow - lastReloadTime) >= minimumReloadPeriod)
-                {
-                    manifest.ReloadManifest(DateTime.UtcNow);
-                }
-            }
-        }
-
-        private void BuildSubtitleInfos(Period period)
-        {
-            subtitleInfos.Clear();
-
-            var textAdaptationSets = period.Sets.Where(o => o.Type.Value == MediaType.Text).ToList();
-            foreach (var textAdaptationSet in textAdaptationSets)
-            {
-                var lang = textAdaptationSet.Lang;
-                var mimeType = textAdaptationSet.Type;
-                foreach (var representation in textAdaptationSet.Representations)
-                {
-                    var mediaSegments = representation.Segments.MediaSegments().ToList();
-                    if (!mediaSegments.Any()) continue;
-
-                    var segment = mediaSegments.First();
-                    var streamDescription = new SubtitleInfo()
-                    {
-                        Id = subtitleInfos.Count,
-                        Language = lang,
-                        Path = segment.Url.ToString(),
-                        MimeType = mimeType?.Key
-                    };
-
-                    subtitleInfos.Add(streamDescription);
-                }
-            }
         }
 
 
