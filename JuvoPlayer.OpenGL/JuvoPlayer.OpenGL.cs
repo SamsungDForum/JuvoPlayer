@@ -60,6 +60,9 @@ namespace JuvoPlayer.OpenGL {
         [DllImport(GlDemoLib, EntryPoint = "SwitchFPSCounterVisibility")]
         public static extern void SwitchFPSCounterVisibility();
 
+        [DllImport(GlDemoLib, EntryPoint = "ShowSubtitle")]
+        public static extern void ShowSubtitle(int duration, byte* text, int textLen);
+
         private struct Tile {
             public int Id;
             public string ImgPath;
@@ -141,7 +144,11 @@ namespace JuvoPlayer.OpenGL {
 
         private bool _progressBarShown = false;
         private DateTime _lastAction = DateTime.Now;
-        private TimeSpan _prograssBarFadeout = TimeSpan.FromMilliseconds(5 * 1000);
+        private TimeSpan _prograssBarFadeout = TimeSpan.FromMilliseconds(7 * 1000);
+        private readonly TimeSpan _defaultSeekTime = TimeSpan.FromSeconds(10);
+        private readonly TimeSpan _defaultSeekAccumulateTime = TimeSpan.FromSeconds(2);
+        private TimeSpan _accumulatedSeekTime = TimeSpan.Zero;
+        private Task _seekTask = null;
 
         PlayerService _player = null;
         private int _playerTimeCurrentPosition = 0;
@@ -150,6 +157,7 @@ namespace JuvoPlayer.OpenGL {
 
         private List<DetailContentData> ContentList { get; set; }
         private List<Clip> _clips;
+
 
         private void InitMenu()
         {
@@ -383,6 +391,54 @@ namespace JuvoPlayer.OpenGL {
                         return;
                     if(_player == null)
                         _player = new PlayerService();
+                    _player.PlaybackCompleted += () =>
+                    {
+                        Log.Info("JuvoPlayer", "Playback completed. Returning to menu.");
+                        if (_menuShown)
+                            return;
+                        _progressBarShown = false;
+                        _menuShown = true;
+                        UpdatePlaybackControls(0, 0, 0, 0, null, 0);
+                        ShowMenu(_menuShown ? 1 : 0);
+                        if (_player != null) {
+                            _player.Dispose(); // TODO: Check wheter it's the best way
+                            _player = null;
+                        }
+                    };
+                    _player.StateChanged += (object sender, PlayerStateChangedEventArgs e) =>
+                    {
+                        Log.Info("JuvoPlayer", "Player state changed: " + _player.State);
+                        switch (_player.State) {
+                            case PlayerState.Idle:
+                                _playerState = 0;
+                                break;
+                            case PlayerState.Preparing:
+                                _playerState = 1;
+                                break;
+                            case PlayerState.Prepared:
+                                _playerState = 2;
+                                _player?.Start();
+                                break;
+                            case PlayerState.Stopped:
+                                _playerState = 3;
+                                break;
+                            case PlayerState.Paused:
+                                _playerState = 4;
+                                break;
+                            case PlayerState.Playing:
+                                _playerState = 5;
+                                break;
+                            case PlayerState.Error:
+                                _playerState = 6;
+                                break;
+                        }
+                    };
+                    _player.ShowSubtitle += (Subtitle subtitle) =>
+                    {
+                        Log.Info("JuvoPlayer", "Subtitle: " + subtitle.Text);
+                        fixed (byte* text = GetBytes(subtitle.Text))
+                            ShowSubtitle((int)subtitle.Duration, text, subtitle.Text.Length);
+                    };
                     Log.Info("JuvoPlayer", "Playing " + ContentList[_selectedTile].Title + " (" + ContentList[_selectedTile].Source + ")");
                     _player.SetSource(ContentList[_selectedTile].Clip);
                     if (!_menuShown)
@@ -393,6 +449,7 @@ namespace JuvoPlayer.OpenGL {
                 case "XF86Back":
                     if (_menuShown)
                         break;
+                    UpdatePlaybackControls(0, 0, 0, 0, null, 0);
                     _menuShown = true;
                     ShowMenu(_menuShown ? 1 : 0);
                     if (_player != null) {
@@ -413,8 +470,12 @@ namespace JuvoPlayer.OpenGL {
                 case "XF863D": // Stop
                     _player?.Stop();
                     break;
-                case "XF86AudioRewind": // Seek forward
-                case "XF86AudioNext": // Seek backwards
+                case "XF86AudioRewind": // Rewind
+                    Seek(-_defaultSeekTime);
+                    break;
+                case "XF86AudioNext": // Seek forward
+                    Seek(_defaultSeekTime);
+                    break;
                 case "XF86Info": // Info
                 case "XF86Red": // A
                 case "XF86Green": // B
@@ -429,39 +490,56 @@ namespace JuvoPlayer.OpenGL {
         }
 
         private void UpdateUI() {
-            if (_player != null && _tilesNumber > _selectedTile) {
-                _playerTimeCurrentPosition = (int)_player.CurrentPosition.TotalMilliseconds;
-                _playerTimeDuration = (int)_player.Duration.TotalMilliseconds;
-
-                switch (_player.State) {
-                    case PlayerState.Idle:
-                        _playerState = 0;
-                        break;
-                    case PlayerState.Preparing:
-                        _playerState = 1;
-                        break;
-                    case PlayerState.Prepared:
-                        _playerState = 2;
-                        _player?.Start();
-                        break;
-                    case PlayerState.Stopped:
-                        _playerState = 3;
-                        break;
-                    case PlayerState.Paused:
-                        _playerState = 4;
-                        break;
-                    case PlayerState.Playing:
-                        _playerState = 5;
-                        break;
-                    case PlayerState.Error:
-                        _playerState = 6;
-                        break;
-                }
-            }
+            _playerTimeCurrentPosition = (int)(_player != null ? _player.CurrentPosition.TotalMilliseconds : 0);
+            _playerTimeDuration = (int)(_player != null ? _player.Duration.TotalMilliseconds : 0);
             if (_progressBarShown && _playerState == (int)PlayerState.Playing && (DateTime.Now - _lastAction).TotalMilliseconds >= _prograssBarFadeout.TotalMilliseconds)
                 _progressBarShown = false;
             fixed (byte* name = GetBytes(ContentList[_selectedTile].Title))
                 UpdatePlaybackControls(_progressBarShown ? 1 : 0, _playerState, _playerTimeCurrentPosition, _playerTimeDuration, name, ContentList[_selectedTile].Title.Length);
+        }
+
+        private void Seek(TimeSpan seekTime)
+        {
+            if (_player != null) {
+                Log.Info("JuvoPlayer", "Accumulating seek time " + _accumulatedSeekTime + " + " + seekTime);
+                if (_seekTask == null)
+                {
+                    _accumulatedSeekTime = seekTime;
+                    _seekTask = Task.Delay(_defaultSeekAccumulateTime).ContinueWith(_ =>
+                    {
+                        Log.Info("JuvoPlayer", "Seeking " + _accumulatedSeekTime.ToString());
+                        _seekTask = null;
+                        if (_accumulatedSeekTime > TimeSpan.Zero)
+                            Forward(_accumulatedSeekTime);
+                        else
+                            Rewind(-_accumulatedSeekTime);
+                    });
+                }
+                else
+                {
+                    _accumulatedSeekTime += seekTime;
+                }
+            }
+        }
+
+        private void Forward(TimeSpan seekTime) {
+            if (!_player.IsSeekingSupported || _player.State < PlayerState.Playing)
+                return;
+
+            if (_player.Duration - _player.CurrentPosition < seekTime)
+                _player.SeekTo(_player.Duration);
+            else
+                _player.SeekTo(_player.CurrentPosition + seekTime);
+        }
+
+        private void Rewind(TimeSpan seekTime) {
+            if (!_player.IsSeekingSupported || _player.State < PlayerState.Playing)
+                return;
+
+            if (_player.CurrentPosition < seekTime)
+                _player.SeekTo(TimeSpan.Zero);
+            else
+                _player.SeekTo(_player.CurrentPosition - seekTime);
         }
 
         protected override void OnUpdate(IntPtr eglDisplay, IntPtr eglSurface)

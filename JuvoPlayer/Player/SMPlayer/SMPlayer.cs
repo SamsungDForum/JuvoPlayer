@@ -106,8 +106,6 @@ namespace JuvoPlayer.Player.SMPlayer
                 var playerContainer = new ElmSharp.Window("player");
                 playerContainer.Geometry = new ElmSharp.Rect(0, 0, 1920, 1080);
 
-                //playerContainer.Active();
-
                 result = playerInstance.SetDisplay(PlayerDisplayType.Overlay, playerContainer);
                 if (!result)
                 {
