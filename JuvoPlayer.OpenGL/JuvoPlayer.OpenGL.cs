@@ -51,8 +51,8 @@ namespace JuvoPlayer.OpenGL {
         [DllImport(GlDemoLib, EntryPoint = "SetIcon")]
         public static extern void SetIcon(int id, byte* pixels, int w, int h);
 
-        [DllImport(GlDemoLib, EntryPoint = "SetVersion")]
-        public static extern void SetVersion(byte* ver, int verLen);
+        [DllImport(GlDemoLib, EntryPoint = "SetFooter")]
+        public static extern void SetFooter(byte* footer, int footerLen);
 
         [DllImport(GlDemoLib, EntryPoint = "SwitchTextRenderingMode")]
         public static extern void SwitchTextRenderingMode();
@@ -62,6 +62,9 @@ namespace JuvoPlayer.OpenGL {
 
         [DllImport(GlDemoLib, EntryPoint = "ShowSubtitle")]
         public static extern void ShowSubtitle(int duration, byte* text, int textLen);
+
+        [DllImport(GlDemoLib, EntryPoint = "OpenGLLibVersion")]
+        public static extern int OpenGLLibVersion();
 
         private struct Tile {
             public int Id;
@@ -196,6 +199,9 @@ namespace JuvoPlayer.OpenGL {
             _selectedTile = 0;
             _menuShown = true;
             ShowLoader(1, 0);
+            string footer = "JuvoPlayer prealpha, OpenGL UI " + OpenGLLibVersion().ToString("x") + ", Samsung R&D Poland 2017-2018";
+            fixed (byte* f = GetBytes(footer))
+                SetFooter(f, footer.Length);
         }
 
         protected override void OnCreate()
