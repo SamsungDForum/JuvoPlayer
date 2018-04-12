@@ -181,8 +181,8 @@ namespace JuvoPlayer.Player.SMPlayer
 
                     if (needDataVideo && videoPacketsQueue.TryDequeue(out packet))
                     {
-                        didSubmitPacket = true;
                         SubmitPacket(packet);
+                        didSubmitPacket = true;
                     }
                 }
 
