@@ -25,5 +25,7 @@ namespace JuvoPlayer.SharedBuffers
         ArraySegment<byte>? ReadData(int size);
 
         void WriteData(byte[] data, bool endOfData = false);
+        bool EndOfData { get; }
+        ulong Length();
     }
 }
