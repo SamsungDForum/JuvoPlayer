@@ -4,6 +4,7 @@ using JuvoLogger;
 using MpdParser;
 using System.Collections.Generic;
 using System.Linq;
+using JuvoPlayer.Subtitles;
 
 namespace JuvoPlayer.DataProviders.Dash
 {
@@ -15,6 +16,9 @@ namespace JuvoPlayer.DataProviders.Dash
         private readonly DashManifest manifest;
         private DashMediaPipeline audioPipeline;
         private DashMediaPipeline videoPipeline;
+        private readonly List<SubtitleInfo> subtitleInfos;
+        private CuesMap cuesMap;
+        private TimeSpan currentTime;
 
         public DashDataProvider(
             DashManifest manifest,
@@ -24,6 +28,7 @@ namespace JuvoPlayer.DataProviders.Dash
             this.manifest = manifest ?? throw new ArgumentNullException(nameof(manifest), "manifest cannot be null");
             this.audioPipeline = audioPipeline ?? throw new ArgumentNullException(nameof(audioPipeline), "audioPipeline cannot be null");
             this.videoPipeline = videoPipeline ?? throw new ArgumentNullException(nameof(videoPipeline), "videoPipeline cannot be null");
+            this.subtitleInfos = new List<SubtitleInfo>();
 
             audioPipeline.DRMInitDataFound += OnDRMInitDataFound;
             audioPipeline.SetDrmConfiguration += OnSetDrmConfiguration;
@@ -72,9 +77,21 @@ namespace JuvoPlayer.DataProviders.Dash
                 case StreamType.Video:
                     videoPipeline.ChangeStream(stream);
                     break;
+                case StreamType.Subtitle:
+                    OnChangeActiveSubtitleStream(stream);
+                    break;
                 default:
                     break;
             }
+        }
+
+        private void OnChangeActiveSubtitleStream(StreamDescription description)
+        {
+            if (description.Id >= subtitleInfos.Count)
+                throw new ArgumentException("Invalid subtitle description");
+
+            var subtitleInfo = subtitleInfos[description.Id];
+            cuesMap = new SubtitleFacade().LoadSubtitles(subtitleInfo);
         }
 
         public void OnPaused()
@@ -113,6 +130,8 @@ namespace JuvoPlayer.DataProviders.Dash
                     return audioPipeline.GetStreamsDescription();
                 case StreamType.Video:
                     return videoPipeline.GetStreamsDescription();
+                case StreamType.Subtitle:
+                    return subtitleInfos.Select(info => info.ToStreamDescription()).ToList();
                 default:
                     return new List<StreamDescription>();
             }
@@ -131,6 +150,8 @@ namespace JuvoPlayer.DataProviders.Dash
 
                 if (audios.Count() > 0 && videos.Count() > 0)
                 {
+                    BuildSubtitleInfos(period);
+
                     if (period.Duration.HasValue)
                         ClipDurationChanged?.Invoke(period.Duration.Value);
 
@@ -142,10 +163,39 @@ namespace JuvoPlayer.DataProviders.Dash
             }
         }
 
-        public string CurrentCueText { get; }
+        private void BuildSubtitleInfos(Period period)
+        {
+            subtitleInfos.Clear();
+
+            var textAdaptationSets = period.Sets.Where(o => o.Type.Value == MediaType.Text).ToList();
+            foreach (var textAdaptationSet in textAdaptationSets)
+            {
+                var lang = textAdaptationSet.Lang;
+                var mimeType = textAdaptationSet.Type;
+                foreach (var representation in textAdaptationSet.Representations)
+                {
+                    var mediaSegments = representation.Segments.MediaSegments().ToList();
+                    if (!mediaSegments.Any()) continue;
+
+                    var segment = mediaSegments.First();
+                    var streamDescription = new SubtitleInfo()
+                    {
+                        Id = subtitleInfos.Count,
+                        Language = lang,
+                        Path = segment.Url.ToString(),
+                        MimeType = mimeType?.Key
+                    };
+
+                    subtitleInfos.Add(streamDescription);
+                }
+            }
+        }
+
+        public string CurrentCueText => cuesMap?.Get(currentTime)?.Text;
 
         public void OnTimeUpdated(TimeSpan time)
         {
+            currentTime = time;
             audioPipeline.OnTimeUpdated(time);
             videoPipeline.OnTimeUpdated(time);
         }

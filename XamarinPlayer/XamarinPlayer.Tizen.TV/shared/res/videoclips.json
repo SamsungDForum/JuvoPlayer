@@ -51,13 +51,13 @@
         "description": "Resolution 1920x1080. No adaptive streaming. Codecs: H264 - MPEG4 AVC, MPEG AAC. Big Buck Bunny over http. Origin http://distribution.bbb3d.renderfarming.net/video/mp4/",
         "subtitles": [
             {
-                "path": "res.subs.media_player_subs_windows-1250.srt",
+                "path": "XamarinPlayer.Tizen.TV.res.subs.media_player_subs_windows-1250.srt",
                 "encoding": "windows-1250",
                 "language": "ru",
                 "id": "11"
             },
             {
-                "path": "res.subs.media_player_subs_windows-1252.srt",
+                "path": "XamarinPlayer.Tizen.TV.res.subs.media_player_subs_windows-1252.srt",
                 "language": "we",
                 "id": "10",
                 "encoding": "windows-1252"

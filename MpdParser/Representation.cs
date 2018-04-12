@@ -309,6 +309,8 @@ namespace MpdParser.Node.Dynamic
 
         public IEnumerable<Segment> MediaSegments()
         {
+            if (segments_.Count == 0 && media_ != null)
+                return new List<Segment>() {media_};
             return segments_;
         }
     }
