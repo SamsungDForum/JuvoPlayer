@@ -12,6 +12,7 @@
 // this software or its derivatives.
 
 using System;
+using System.Collections.Concurrent;
 using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
@@ -30,7 +31,7 @@ namespace JuvoPlayer.Player.SMPlayer
         }
     }
 
-    public unsafe class SMPlayer : IPlayer, IPlayerEventListener
+    public class SMPlayer : IPlayer, IPlayerEventListener
     {
         private enum SMPlayerState
         {
@@ -69,15 +70,15 @@ namespace JuvoPlayer.Player.SMPlayer
 
         private readonly SMPlayerWrapper playerInstance;
 
-        private readonly PacketBuffer audioBuffer;
-        private readonly PacketBuffer videoBuffer;
+        private readonly ConcurrentQueue<Packet> audioPacketsQueue;
+        private readonly ConcurrentQueue<Packet> videoPacketsQueue;
 
         private SMPlayerState internalState = SMPlayerState.Uninitialized;
 
         private bool audioSet, videoSet;
         private bool needDataVideo, needDataAudio;
 
-        private readonly AutoResetEvent needDataEvent = new AutoResetEvent(false);
+        private readonly AutoResetEvent wakeUpEvent = new AutoResetEvent(false);
 
         private System.UInt32 currentTime;
 
@@ -85,8 +86,9 @@ namespace JuvoPlayer.Player.SMPlayer
         // We need to wait for the first OnSeekData event what means that player is ready
         // to get packets
         private bool smplayerSeekReconfiguration;
+        private readonly Task submitPacketTask;
 
-        public unsafe SMPlayer()
+        public SMPlayer()
         {
             try
             {
@@ -121,14 +123,10 @@ namespace JuvoPlayer.Player.SMPlayer
                 throw;
             }
 
-            // -----------------------------------------------------------------------------------------------------------
-            PacketBuffer.Ordering sortBy = PacketBuffer.Ordering.Fifo; // Change this enum if you want sort e.g. by PTS.
-            // -----------------------------------------------------------------------------------------------------------
+            audioPacketsQueue = new ConcurrentQueue<Packet>();
+            videoPacketsQueue = new ConcurrentQueue<Packet>();
 
-            audioBuffer = new PacketBuffer(sortBy);
-            videoBuffer = new PacketBuffer(sortBy);
-
-            Task.Run(() => SubmittingPacketsTask());
+            submitPacketTask = Task.Run(() => SubmittingPacketsTask());
         }
 
         ~SMPlayer()
@@ -136,15 +134,16 @@ namespace JuvoPlayer.Player.SMPlayer
             ReleaseUnmanagedResources();
         }
 
-        public unsafe void AppendPacket(Packet packet)
+        public void AppendPacket(Packet packet)
         {
             if (packet == null)
                 return;
 
             if (packet.StreamType == Common.StreamType.Video)
-                videoBuffer.Enqueue(packet);
+                videoPacketsQueue.Enqueue(packet);
             else if (packet.StreamType == Common.StreamType.Audio)
-                audioBuffer.Enqueue(packet);
+                audioPacketsQueue.Enqueue(packet);
+            WakeUpSubmitTask();
         }
 
         public void PrepareES()
@@ -166,57 +165,59 @@ namespace JuvoPlayer.Player.SMPlayer
             internalState = SMPlayerState.Ready;
         }
 
-        public unsafe void SubmittingPacketsTask()
+        internal void SubmittingPacketsTask()
         {
             while (internalState != SMPlayerState.Stopped)
             {
-                // both must be needed, so we can choose the one with lower pts
-                if (!smplayerSeekReconfiguration && needDataAudio && needDataVideo)
-                { 
-                    Logger.Debug("SubmittingPacketsTask: AUDIO: " + audioBuffer.Count() + ", VIDEO: " + videoBuffer.Count());
+                Logger.Debug("SubmittingPacketsTask: AUDIO: " + audioPacketsQueue.Count + ", VIDEO: " + videoPacketsQueue.Count);
+                var didSubmitPacket = false;
 
-                    Packet packet = DequeuePacket();
-                    if (packet.IsEOS)
-                        SubmitEOSPacket(packet);
-                    else if (packet is EncryptedPacket)
-                        SubmitEncryptedPacket(packet as EncryptedPacket);
-                    else if (packet is BufferConfiguration)
-                        SubmitStreamConfiguration(packet as BufferConfiguration);
-                    else
+                if (!smplayerSeekReconfiguration)
+                {
+                    if (needDataAudio && audioPacketsQueue.TryDequeue(out var packet))
+                    {
                         SubmitPacket(packet);
+                        didSubmitPacket = true;
+                    }
+
+                    if (needDataVideo && videoPacketsQueue.TryDequeue(out packet))
+                    {
+                        SubmitPacket(packet);
+                        didSubmitPacket = true;
+                    }
                 }
-                else
+
+                if (didSubmitPacket) continue;
+
+                try
                 {
                     Logger.Debug("SubmittingPacketsTask: Need to wait one.");
-
-                    needDataEvent.WaitOne();
+                    wakeUpEvent.WaitOne();
+                }
+                catch (ObjectDisposedException ex)
+                {
+                    Logger.Warn(ex.Message);
                 }
             }
         }
 
-        private Packet DequeuePacket()
+        private void SubmitPacket(Packet packet)
         {
-            Packet packet;
-            if (audioBuffer.Count() > 0 && videoBuffer.Count() > 0)
-            {
-                if (audioBuffer.PeekSortingValue() <= videoBuffer.PeekSortingValue())
-                    packet = audioBuffer.Dequeue();
-                else
-                    packet = videoBuffer.Dequeue();
-            }
-            else if (audioBuffer.Count() > 0)
-                packet = audioBuffer.Dequeue();
+            if (packet.IsEOS)
+                SubmitEOSPacket(packet);
+            else if (packet is EncryptedPacket)
+                SubmitEncryptedPacket(packet as EncryptedPacket);
+            else if (packet is BufferConfiguration)
+                SubmitStreamConfiguration(packet as BufferConfiguration);
             else
-                packet = videoBuffer.Dequeue();
-
-            return packet;
+                SubmitDataPacket(packet);
         }
 
-        private unsafe void SubmitEncryptedPacket(EncryptedPacket packet)
+        private void SubmitEncryptedPacket(EncryptedPacket packet)
         {
             if (packet.DrmSession == null)
             {
-                SubmitPacket(packet);
+                SubmitDataPacket(packet);
                 return;
             }
 
@@ -243,7 +244,7 @@ namespace JuvoPlayer.Player.SMPlayer
             {
                 Marshal.StructureToPtr(drmInfo, pnt, false);
 
-                Logger.Debug(string.Format("[HQ] send es data to SubmitPacket: {0} {1} ( {2} )", packet.Pts, drmInfo.tzHandle, trackType));
+                Logger.Debug(string.Format("[HQ] send es data to SubmitDecryptedEmePacket: {0} {1} ( {2} )", packet.Pts, drmInfo.tzHandle, trackType));
 
                 if (!playerInstance.SubmitPacket(IntPtr.Zero, packet.HandleSize.size, packet.Pts.TotalNanoseconds(),
                     trackType, pnt))
@@ -262,7 +263,7 @@ namespace JuvoPlayer.Player.SMPlayer
         }
 
 
-        private unsafe void SubmitPacket(Packet packet) // TODO(g.skowinski): Implement it properly.
+        private void SubmitDataPacket(Packet packet) // TODO(g.skowinski): Implement it properly.
         {
             // Initialize unmanaged memory to hold the array.
             int size = Marshal.SizeOf(packet.Data[0]) * packet.Data.Length;
@@ -276,7 +277,7 @@ namespace JuvoPlayer.Player.SMPlayer
                 //byte[] managedArray2 = new byte[managedArray.Length];
                 //Marshal.Copy(pnt, managedArray2, 0, managedArray.Length);
                 var trackType = SMPlayerUtils.GetTrackType(packet);
-                Logger.Debug(string.Format("[HQ] send es data to SubmitPacket: {0} ( {1} )", packet.Pts, trackType));
+                Logger.Debug(string.Format("[HQ] send es data to SubmitDataPacket: {0} ( {1} )", packet.Pts, trackType));
 
                 playerInstance.SubmitPacket(pnt, (uint)packet.Data.Length, packet.Pts.TotalNanoseconds(), trackType, IntPtr.Zero);
             }
@@ -287,7 +288,7 @@ namespace JuvoPlayer.Player.SMPlayer
             }
         }
 
-        private unsafe void SubmitEOSPacket(Packet packet)
+        private void SubmitEOSPacket(Packet packet)
         {
             var trackType = SMPlayerUtils.GetTrackType(packet);
 
@@ -329,10 +330,16 @@ namespace JuvoPlayer.Player.SMPlayer
 
             playerInstance.Pause();
 
-            audioBuffer.Clear();
-            videoBuffer.Clear();
+            Clear(audioPacketsQueue);
+            Clear(videoPacketsQueue);
 
             playerInstance.Seek((int)time.TotalMilliseconds);
+        }
+
+        private static void Clear(ConcurrentQueue<Packet> queue)
+        {
+            while (!queue.IsEmpty)
+                queue.TryDequeue(out var _);
         }
 
         public void SetStreamConfig(StreamConfig config)
@@ -340,14 +347,20 @@ namespace JuvoPlayer.Player.SMPlayer
             switch (config.StreamType())
             {
                 case Common.StreamType.Audio:
-                    if (audioBuffer.Count() > 0)
-                        audioBuffer.Enqueue(BufferConfiguration.Create(config));
+                    if (audioPacketsQueue.Count > 0)
+                    {
+                        audioPacketsQueue.Enqueue(BufferConfiguration.Create(config));
+                        WakeUpSubmitTask();
+                    }
                     else
                         SetAudioStreamConfig(config as AudioStreamConfig);
                     break;
                 case Common.StreamType.Video:
-                    if (videoBuffer.Count() > 0)
-                        videoBuffer.Enqueue(BufferConfiguration.Create(config));
+                    if (videoPacketsQueue.Count > 0)
+                    {
+                        videoPacketsQueue.Enqueue(BufferConfiguration.Create(config));
+                        WakeUpSubmitTask();
+                    }
                     else
                         SetVideoStreamConfig(config as VideoStreamConfig);
                     break;
@@ -356,6 +369,19 @@ namespace JuvoPlayer.Player.SMPlayer
                     throw new NotImplementedException();
                 default:
                     throw new ArgumentOutOfRangeException();
+            }
+        }
+
+        private void WakeUpSubmitTask()
+        {
+            try
+            {
+                // this can throw when event is received after Dispose() was called
+                wakeUpEvent.Set();
+            }
+            catch (ObjectDisposedException ex)
+            {
+                // ignored
             }
         }
 
@@ -465,11 +491,16 @@ namespace JuvoPlayer.Player.SMPlayer
         public void Stop()
         {
             Logger.Debug("");
+            if (internalState == SMPlayerState.Stopped)
+                return;
 
             internalState = SMPlayerState.Stopped;
 
-            audioBuffer.Clear();
-            videoBuffer.Clear();
+            Clear(audioPacketsQueue);
+            Clear(videoPacketsQueue);
+
+            WakeUpSubmitTask();
+            submitPacketTask.Wait();
 
             playerInstance.Stop();
         }
@@ -493,8 +524,6 @@ namespace JuvoPlayer.Player.SMPlayer
                 needDataAudio = false;
             else if (streamType == StreamType.Video)
                 needDataVideo = false;
-            else
-                return;
         }
 
         public void OnNeedData(StreamType streamType, uint size)
@@ -508,15 +537,7 @@ namespace JuvoPlayer.Player.SMPlayer
             else
                 return;
 
-            try
-            {
-                // this can throw when event is received after Dispose() was called
-                needDataEvent.Set();
-            }
-            catch (Exception)
-            {
-                // ignored
-            }
+            WakeUpSubmitTask();
         }
 
         public void OnSeekData(StreamType streamType, System.UInt64 offset)
@@ -533,7 +554,7 @@ namespace JuvoPlayer.Player.SMPlayer
             // We can start appending packets
             smplayerSeekReconfiguration = false;
 
-            needDataEvent.Set();
+            WakeUpSubmitTask();
         }
 
         public void OnError(PlayerErrorType errorType, string msg)
@@ -602,20 +623,15 @@ namespace JuvoPlayer.Player.SMPlayer
 
         private void ReleaseUnmanagedResources()
         {
-            playerInstance.Reset();
+            playerInstance.DestroyHandler();
         }
 
         private void Dispose(bool disposing)
         {
             if (disposing)
             {
-                internalState = SMPlayerState.Stopped;
-
-                audioBuffer.Clear();
-                videoBuffer.Clear();
-
-                needDataEvent?.Set();
-                needDataEvent?.Dispose();
+                Stop();
+                wakeUpEvent.Dispose();
             }
             ReleaseUnmanagedResources();
         }
