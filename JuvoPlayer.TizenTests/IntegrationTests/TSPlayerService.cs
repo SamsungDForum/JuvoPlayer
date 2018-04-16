@@ -13,12 +13,14 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
     class TSPlayerService
     {
         private LoggerManager savedLoggerManager;
+        private ILogger Logger;
 
         [OneTimeSetUp]
         public void OneTimeSetUp()
         {
             savedLoggerManager = LoggerManager.ResetForTests();
             LoggerManager.Configure("JuvoPlayer=Verbose", CreateLoggerFunc);
+            Logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
         }
 
         private LoggerBase CreateLoggerFunc(string channel, LogLevel level)
@@ -33,7 +35,8 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
         }
 
         [Test]
-        public async Task TestBasicPlayback()
+        [Repeat(25)]
+        public async Task CleanMP4OverHTTP_BasicPlayback_PreparesAndStarts()
         {
             using (var service = new PlayerService())
             {
@@ -44,19 +47,52 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
 
                 service.SetClipDefinition(mpegDashClip);
 
-                int retryCount = 0;
-                while (service.State != PlayerService.PlayerState.Prepared && retryCount < 10)
-                {
-                    await Task.Delay(TimeSpan.FromSeconds(1));
-                    Console.WriteLine(service.State);
-                    retryCount++;
-                }
-
-                Assert.That(service.State, Is.EqualTo(PlayerService.PlayerState.Prepared));
+                Assert.That(() => service.State, Is.EqualTo(PlayerService.PlayerState.Prepared).After(10).Seconds.PollEvery(100).MilliSeconds);
 
                 service.Start();
 
-                await Task.Delay(TimeSpan.FromSeconds(60));
+                await Task.Delay(TimeSpan.FromSeconds(5));
+            }
+        }
+
+        [Test]
+        [Repeat(25)]
+        public void CleanByteRangeMPEGDASH_BasicPlayback_PreparesAndStarts()
+        {
+            using (var service = new PlayerService())
+            {
+                var clips = service.ReadClips();
+                var mpegDashClip = clips.Find(clip => clip.Title.Equals("Clean byte range MPEG DASH"));
+
+                Assert.That(mpegDashClip, Is.Not.Null);
+
+                service.SetClipDefinition(mpegDashClip);
+
+                Assert.That(() => service.State, Is.EqualTo(PlayerService.PlayerState.Prepared).After(10).Seconds.PollEvery(100).MilliSeconds);
+
+                service.Start();
+            }
+        }
+
+        [Test]
+        public void CleanByteRangeMPEGDash_Seek_SeeksWithin500Milliseconds([Random(0, 180, 30)] int seekTimeInSeconds)
+        {
+            using (var service = new PlayerService())
+            {
+                var clips = service.ReadClips();
+                var mpegDashClip = clips.Find(clip => clip.Title.Equals("Clean byte range MPEG DASH"));
+
+                Assert.That(mpegDashClip, Is.Not.Null);
+
+                service.SetClipDefinition(mpegDashClip);
+
+                Assert.That(() => service.State, Is.EqualTo(PlayerService.PlayerState.Prepared).After(10).Seconds.PollEvery(100).MilliSeconds);
+
+                service.Start();
+
+                service.SeekTo(TimeSpan.FromSeconds(seekTimeInSeconds));
+
+                Assert.That(() => service.CurrentPosition, Is.EqualTo(TimeSpan.FromSeconds(seekTimeInSeconds)).Within(500).Milliseconds.After(10).Seconds.PollEvery(100).MilliSeconds);
             }
         }
     }
