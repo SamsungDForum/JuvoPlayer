@@ -10,7 +10,7 @@ using System.Collections.Generic;
 
 namespace JuvoPlayer.DataProviders.Dash
 {
-    internal class DashMediaPipeline
+    internal class DashMediaPipeline : IDisposable
     {
         private struct DashStream : IEquatable<DashStream>
         {
@@ -340,6 +340,11 @@ namespace JuvoPlayer.DataProviders.Dash
         private void OnStreamConfigReady(StreamConfig config)
         {
             StreamConfigReady?.Invoke(config);
+        }
+
+        public void Dispose()
+        {
+            demuxer?.Dispose();
         }
     }
 }

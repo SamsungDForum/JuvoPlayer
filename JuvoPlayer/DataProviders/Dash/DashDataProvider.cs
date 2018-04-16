@@ -204,7 +204,9 @@ namespace JuvoPlayer.DataProviders.Dash
         {
             OnStopped();
 
+            audioPipeline?.Dispose();
             audioPipeline = null;
+            videoPipeline?.Dispose();
             videoPipeline = null;
         }
     }
