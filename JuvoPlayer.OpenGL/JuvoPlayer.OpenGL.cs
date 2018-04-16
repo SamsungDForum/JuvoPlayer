@@ -157,6 +157,7 @@ namespace JuvoPlayer.OpenGL {
         private int _playerTimeCurrentPosition = 0;
         private int _playerTimeDuration = 0;
         private int _playerState = 0;
+        private bool _handlePlaybackCompleted = false;
 
         private List<DetailContentData> ContentList { get; set; }
         private List<Clip> _clips;
@@ -199,7 +200,7 @@ namespace JuvoPlayer.OpenGL {
             _selectedTile = 0;
             _menuShown = true;
             ShowLoader(1, 0);
-            string footer = "JuvoPlayer prealpha, OpenGL UI " + OpenGLLibVersion().ToString("x") + ", Samsung R&D Poland 2017-2018";
+            string footer = "JuvoPlayer prealpha, OpenGL UI #" + OpenGLLibVersion().ToString("x") + ", Samsung R&D Poland 2017-2018";
             fixed (byte* f = GetBytes(footer))
                 SetFooter(f, footer.Length);
         }
@@ -397,20 +398,7 @@ namespace JuvoPlayer.OpenGL {
                         return;
                     if(_player == null)
                         _player = new PlayerService();
-                    _player.PlaybackCompleted += () =>
-                    {
-                        Log.Info("JuvoPlayer", "Playback completed. Returning to menu.");
-                        if (_menuShown)
-                            return;
-                        _progressBarShown = false;
-                        _menuShown = true;
-                        UpdatePlaybackControls(0, 0, 0, 0, null, 0);
-                        ShowMenu(_menuShown ? 1 : 0);
-                        if (_player != null) {
-                            _player.Dispose(); // TODO: Check wheter it's the best way
-                            _player = null;
-                        }
-                    };
+                    _player.PlaybackCompleted += () => { _handlePlaybackCompleted = true; };
                     _player.StateChanged += (object sender, PlayerStateChangedEventArgs e) =>
                     {
                         Log.Info("JuvoPlayer", "Player state changed: " + _player.State);
@@ -438,6 +426,8 @@ namespace JuvoPlayer.OpenGL {
                                 _playerState = 6;
                                 break;
                         }
+
+                        //_playerState = (int)_player.State; // why doesn't it work?...
                     };
                     _player.ShowSubtitle += (Subtitle subtitle) =>
                     {
@@ -496,6 +486,22 @@ namespace JuvoPlayer.OpenGL {
         }
 
         private void UpdateUI() {
+            if (_handlePlaybackCompleted) // doesn't work from side thread
+            {
+                _handlePlaybackCompleted = false;
+                Log.Info("JuvoPlayer", "Playback completed. Returning to menu.");
+                if (_menuShown)
+                    return;
+                _progressBarShown = false;
+                _menuShown = true;
+                UpdatePlaybackControls(0, 0, 0, 0, null, 0);
+                ShowMenu(_menuShown ? 1 : 0);
+                if (_player != null) {
+                    _player.Dispose(); // TODO: Check wheter it's the best way
+                    _player = null;
+                }
+                _playerState = 0;
+            }
             _playerTimeCurrentPosition = (int)(_player != null ? _player.CurrentPosition.TotalMilliseconds : 0);
             _playerTimeDuration = (int)(_player != null ? _player.Duration.TotalMilliseconds : 0);
             if (_progressBarShown && _playerState == (int)PlayerState.Playing && (DateTime.Now - _lastAction).TotalMilliseconds >= _prograssBarFadeout.TotalMilliseconds)
