@@ -42,7 +42,7 @@ namespace JuvoPlayer.TizenTests
 
             using (ExtendedTextWrapper writer = new ExtendedTextWrapper(new StringWriter(sb)))
             {
-                string[] finalNunitArgs = nunitArgs.Concat(new string[] { "--result=/tmp/" + Path.GetFileNameWithoutExtension(dllName) + ".xml", "--test=JuvoPlayer.TizenTests.IntegrationTests.TSPlayerService.CleanByteRangeMPEGDash_MultipleSeek_SeeksWithin500Milliseconds" }).ToArray();
+                string[] finalNunitArgs = nunitArgs.Concat(new string[] { "--result=/tmp/" + Path.GetFileNameWithoutExtension(dllName) + ".xml", "--test=JuvoPlayer.TizenTests.IntegrationTests.TSPlayerService.CleanByteRangeMPEGDash_BackwardSeek_SeeksWithin500Milliseconds" }).ToArray();
                 new AutoRun(assembly).Execute(finalNunitArgs, writer, Console.In);
             }
 

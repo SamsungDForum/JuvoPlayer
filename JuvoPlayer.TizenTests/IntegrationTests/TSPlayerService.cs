@@ -6,6 +6,8 @@ using System.Threading.Tasks;
 using JuvoLogger;
 using JuvoLogger.Tizen;
 using NUnit.Framework;
+using Tizen.TV;
+using Environment = Tizen.TV.Environment;
 
 namespace JuvoPlayer.TizenTests.IntegrationTests
 {
@@ -121,6 +123,33 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
 
                     Assert.That(() => service.CurrentPosition,
                         Is.EqualTo(TimeSpan.FromSeconds(nextSeekTimeInSeconds)).Within(500).Milliseconds.After(10)
+                            .Seconds.PollEvery(100).MilliSeconds);
+                }
+            }
+        }
+
+        [Test]
+        public void CleanByteRangeMPEGDash_BackwardSeek_SeeksWithin500Milliseconds()
+        {
+            using (var service = new PlayerService())
+            {
+                var clips = service.ReadClips();
+                var mpegDashClip = clips.Find(clip => clip.Title.Equals("Clean byte range MPEG DASH"));
+
+                Assert.That(mpegDashClip, Is.Not.Null);
+
+                service.SetClipDefinition(mpegDashClip);
+
+                Assert.That(() => service.State, Is.EqualTo(PlayerService.PlayerState.Prepared).After(60).Seconds.PollEvery(100).MilliSeconds);
+
+                service.Start();
+
+                for (var nextSeekTime = TimeSpan.FromSeconds(170); nextSeekTime.Seconds > 0; nextSeekTime -= TimeSpan.FromSeconds(20))
+                {
+                    service.SeekTo(nextSeekTime);
+
+                    Assert.That(() => service.CurrentPosition,
+                        Is.EqualTo(nextSeekTime).Within(500).Milliseconds.After(50)
                             .Seconds.PollEvery(100).MilliSeconds);
                 }
             }
