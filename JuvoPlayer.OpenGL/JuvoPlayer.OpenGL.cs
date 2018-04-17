@@ -148,7 +148,7 @@ namespace JuvoPlayer.OpenGL {
         private bool _progressBarShown = false;
         private DateTime _lastAction = DateTime.Now;
         private TimeSpan _prograssBarFadeout = TimeSpan.FromMilliseconds(7 * 1000);
-        private readonly TimeSpan _defaultSeekTime = TimeSpan.FromSeconds(10);
+        private readonly TimeSpan _defaultSeekTime = TimeSpan.FromSeconds(30);
         private readonly TimeSpan _defaultSeekAccumulateTime = TimeSpan.FromSeconds(2);
         private TimeSpan _accumulatedSeekTime = TimeSpan.Zero;
         private Task _seekTask = null;
@@ -200,9 +200,10 @@ namespace JuvoPlayer.OpenGL {
             _selectedTile = 0;
             _menuShown = true;
             ShowLoader(1, 0);
-            string footer = "JuvoPlayer prealpha, OpenGL UI #" + OpenGLLibVersion().ToString("x") + ", Samsung R&D Poland 2017-2018";
+            string footer = "JuvoPlayer AprilPrealpha, OpenGL UI #" + OpenGLLibVersion().ToString("x") + ", Samsung R&D Poland 2017-2018";
             fixed (byte* f = GetBytes(footer))
                 SetFooter(f, footer.Length);
+            //SwitchFPSCounterVisibility();
         }
 
         protected override void OnCreate()
@@ -500,8 +501,9 @@ namespace JuvoPlayer.OpenGL {
                     _player.Dispose(); // TODO: Check wheter it's the best way
                     _player = null;
                 }
-                _playerState = 0;
             }
+            if(_player == null)
+                _playerState = 0;
             _playerTimeCurrentPosition = (int)(_player != null ? _player.CurrentPosition.TotalMilliseconds : 0);
             _playerTimeDuration = (int)(_player != null ? _player.Duration.TotalMilliseconds : 0);
             if (_progressBarShown && _playerState == (int)PlayerState.Playing && (DateTime.Now - _lastAction).TotalMilliseconds >= _prograssBarFadeout.TotalMilliseconds)
