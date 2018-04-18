@@ -1,163 +1,168 @@
-﻿/*
- * Copyright (c) 2016 Samsung Electronics Co., Ltd All Rights Reserved
- *
- * Licensed under the Apache License, Version 2.0 (the License);
- * you may not use this file except in compliance with the License.
- * You may obtain a copy of the License at
- *
- * http://www.apache.org/licenses/LICENSE-2.0
- *
- * Unless required by applicable law or agreed to in writing, software
- * distributed under the License is distributed on an AS IS BASIS,
- * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
- * See the License for the specific language governing permissions and
- * limitations under the License.
- */
+﻿/// @file Interop.Player.cs
+/// <published> N </published>
+/// <privlevel> partner </privlevel>
+/// <privilege> http://developer.samsung.com/privilege/drminfo </privilege>
+/// <privacy> N </privacy>
+/// <product> TV </product>
+/// <version> 5.5.0 </version>
+/// <SDK_Support> N </SDK_Support>
+/// Copyright (c) 2017 Samsung Electronics Co., Ltd All Rights Reserved  
+/// PROPRIETARY/CONFIDENTIAL  
+/// This software is the confidential and proprietary  
+/// information of SAMSUNG ELECTRONICS ("Confidential Information"). You shall  
+/// not disclose such Confidential Information and shall use it only in  
+/// accordance with the terms of the license agreement you entered into with  
+/// SAMSUNG ELECTRONICS. SAMSUNG make no representations or warranties about the  
+/// suitability of the software, either express or implied, including but not  
+/// limited to the implied warranties of merchantability, fitness for a  
+/// particular purpose, or non-infringement. SAMSUNG shall not be liable for any  
+/// damages suffered by licensee as a result of using, modifying or distributing  
+/// this software or its derivatives.
 
 using System;
 using System.Runtime.InteropServices;
-using Tizen.TV.Smplayer;
+using Tizen.TV.Multimedia.IPTV;
 
+/// <summary>
+/// Interop.NativeSmplayer is static class which dllimports the API method from dynamic libs and defines their C# style API. 
+/// </summary>
+/// <code>
+/// class Sample
+/// {
+///     public bool PrepareES()
+///     {
+///          bool result = NativeSmplayer.PrepareES();
+///          return result;
+///     }
+///     
+///     public bool PrepareURL(string url)
+///     {
+///          bool result = NativeSmplayer.PrepareURL(url);
+///          return result;
+///     }
+///     .....
+/// }
+/// </code>
 internal static partial class Interop
 {
-    internal static class NativeSMPlayer
+    internal static partial class NativeSmplayer
     {
 
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-        public delegate void SmpCurrentPositionCallback(System.UInt32 lCurrTime, IntPtr userParam);
+        public delegate void SmpCurrentPositionCallback(System.UInt32 currTime, IntPtr userParam);
 
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-        public delegate int SmPlayerMessageCallback(int id, IntPtr pParam, IntPtr pUserParam);
+        public delegate int SmplayerMessageCallback(int id, IntPtr param, IntPtr userParam);
 
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-        public delegate void SmPlayerAppSrcNeedDataCallback(System.UInt32 size, IntPtr userParam);
+        public delegate void SmplayerAppSrcNeedDataCallback(System.UInt32 size, IntPtr userParam);
 
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-        public delegate void SmPlayerAppSrcDataEnoughCallback(IntPtr userParam);
+        public delegate void SmplayerAppSrcDataEnoughCallback(IntPtr userParam);
 
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-        public delegate bool SmPlayerBufferSeekDataCallback(System.UInt64 offset, IntPtr userParam);
+        public delegate bool SmplayerBufferSeekDataCallback(System.UInt64 offset, IntPtr userParam);
 
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-        public delegate void SmpSubtitleDataCallback(IntPtr param, IntPtr msg);     //SmpMessageParamType* I use IntPtr need to check if OK
+        public delegate void SmpSubtitleDataCallback(IntPtr param, IntPtr msg);
 
 
-        [DllImport(Libraries.SMPlayer, EntryPoint = "Initialize", CallingConvention = CallingConvention.Cdecl)]
+        [DllImport(Libraries.Smplayer, EntryPoint = "Initialize", CallingConvention = CallingConvention.Cdecl)]
         public static extern bool Initialize();
 
-        [DllImport(Libraries.SMPlayer, EntryPoint = "PrepareURL", CallingConvention = CallingConvention.Cdecl)]
+        [DllImport(Libraries.Smplayer, EntryPoint = "PrepareURL", CallingConvention = CallingConvention.Cdecl)]
         public static extern bool PrepareURL(string url);
 
-        [DllImport(Libraries.SMPlayer, EntryPoint = "PrepareES", CallingConvention = CallingConvention.Cdecl)]
+        [DllImport(Libraries.Smplayer, EntryPoint = "PrepareES", CallingConvention = CallingConvention.Cdecl)]
         public static extern bool PrepareES();
 
-        [DllImport(Libraries.SMPlayer, EntryPoint = "Play", CallingConvention = CallingConvention.Cdecl)]
+        [DllImport(Libraries.Smplayer, EntryPoint = "Play", CallingConvention = CallingConvention.Cdecl)]
         public static extern bool Play(int timePos);
 
-        [DllImport(Libraries.SMPlayer, EntryPoint = "SetCurrentPositionCallback", CallingConvention = CallingConvention.Cdecl)]
+        [DllImport(Libraries.Smplayer, EntryPoint = "GetPlayerState", CallingConvention = CallingConvention.Cdecl)]
+        public static extern PlayerState GetPlayerState();
+
+        [DllImport(Libraries.Smplayer, EntryPoint = "SetCurrentPositionCallback", CallingConvention = CallingConvention.Cdecl)]
         public static extern bool SetCurrentPositionCallback(SmpCurrentPositionCallback cbFunction, IntPtr userParam);
 
-        [DllImport(Libraries.SMPlayer, EntryPoint = "SetMessageCallback", CallingConvention = CallingConvention.Cdecl)]
-        public static extern bool SetMessageCallback(SmPlayerMessageCallback cbFunction, IntPtr pUserParam);
+        [DllImport(Libraries.Smplayer, EntryPoint = "SetMessageCallback", CallingConvention = CallingConvention.Cdecl)]
+        public static extern bool SetMessageCallback(SmplayerMessageCallback cbFunction, IntPtr userParam);
 
-        [DllImport(Libraries.SMPlayer, EntryPoint = "SetAppSrcAudioSeekCallback", CallingConvention = CallingConvention.Cdecl)]
-        public static extern bool SetAppSrcAudioSeekCallback(SmPlayerBufferSeekDataCallback cbFunction, IntPtr pUserParam);
+        [DllImport(Libraries.Smplayer, EntryPoint = "SetAppSrcAudioSeekCallback", CallingConvention = CallingConvention.Cdecl)]
+        public static extern bool SetAppSrcAudioSeekCallback(SmplayerBufferSeekDataCallback cbFunction, IntPtr userParam);
 
-        [DllImport(Libraries.SMPlayer, EntryPoint = "SetAppSrcVideoSeekCallback", CallingConvention = CallingConvention.Cdecl)]
-        public static extern bool SetAppSrcVideoSeekCallback(SmPlayerBufferSeekDataCallback cbFunction, IntPtr pUserParam);
+        [DllImport(Libraries.Smplayer, EntryPoint = "SetAppSrcVideoSeekCallback", CallingConvention = CallingConvention.Cdecl)]
+        public static extern bool SetAppSrcVideoSeekCallback(SmplayerBufferSeekDataCallback cbFunction, IntPtr userParam);
 
-        [DllImport(Libraries.SMPlayer, EntryPoint = "SetAppSrcAudioNeedDataCallback", CallingConvention = CallingConvention.Cdecl)]
-        public static extern bool SetAppSrcAudioNeedDataCallback(SmPlayerAppSrcNeedDataCallback cbFunction, IntPtr userParam);
+        [DllImport(Libraries.Smplayer, EntryPoint = "SetAppSrcAudioNeedDataCallback", CallingConvention = CallingConvention.Cdecl)]
+        public static extern bool SetAppSrcAudioNeedDataCallback(SmplayerAppSrcNeedDataCallback cbFunction, IntPtr userParam);
 
-        [DllImport(Libraries.SMPlayer, EntryPoint = "SetAppSrcVideoNeedDataCallback", CallingConvention = CallingConvention.Cdecl)]
-        public static extern bool SetAppSrcVideoNeedDataCallback(SmPlayerAppSrcNeedDataCallback cbFunction, IntPtr userParam);
+        [DllImport(Libraries.Smplayer, EntryPoint = "SetAppSrcVideoNeedDataCallback", CallingConvention = CallingConvention.Cdecl)]
+        public static extern bool SetAppSrcVideoNeedDataCallback(SmplayerAppSrcNeedDataCallback cbFunction, IntPtr userParam);
 
-        [DllImport(Libraries.SMPlayer, EntryPoint = "SetAppSrcAudioDataEnoughCallback", CallingConvention = CallingConvention.Cdecl)]
-        public static extern bool SetAppSrcAudioDataEnoughCallback(SmPlayerAppSrcDataEnoughCallback cbFunction, IntPtr userParam);
+        [DllImport(Libraries.Smplayer, EntryPoint = "SetAppSrcAudioDataEnoughCallback", CallingConvention = CallingConvention.Cdecl)]
+        public static extern bool SetAppSrcAudioDataEnoughCallback(SmplayerAppSrcDataEnoughCallback cbFunction, IntPtr userParam);
 
-        [DllImport(Libraries.SMPlayer, EntryPoint = "SetAppSrcVideoDataEnoughCallback", CallingConvention = CallingConvention.Cdecl)]
-        public static extern bool SetAppSrcVideoDataEnoughCallback(SmPlayerAppSrcDataEnoughCallback cbFunction, IntPtr userParam);
+        [DllImport(Libraries.Smplayer, EntryPoint = "SetAppSrcVideoDataEnoughCallback", CallingConvention = CallingConvention.Cdecl)]
+        public static extern bool SetAppSrcVideoDataEnoughCallback(SmplayerAppSrcDataEnoughCallback cbFunction, IntPtr userParam);
 
-        [DllImport(Libraries.SMPlayer, EntryPoint = "SubmitEOSPacket", CallingConvention = CallingConvention.Cdecl)]
+        [DllImport(Libraries.Smplayer, EntryPoint = "SubmitEOSPacket", CallingConvention = CallingConvention.Cdecl)]
         public static extern bool SubmitEOSPacket(TrackType streamType);
 
-        [DllImport(Libraries.SMPlayer, EntryPoint = "SetAppSrcDuration", CallingConvention = CallingConvention.Cdecl)]
-        public static extern bool SetAppSrcDuration(System.UInt32 duration);      //API use unsigned long, need to check if this type System.UInt32 is OK
-
-        [DllImport(Libraries.SMPlayer, EntryPoint = "SetVideoStreamInfo", CallingConvention = CallingConvention.Cdecl)]
+        [DllImport(Libraries.Smplayer, EntryPoint = "SetVideoStreamInfo", CallingConvention = CallingConvention.Cdecl)]
         public static extern bool SetVideoStreamInfo(VideoStreamInfo videoStreamInfo);
 
-        [DllImport(Libraries.SMPlayer, EntryPoint = "SetAudioStreamInfo", CallingConvention = CallingConvention.Cdecl)]
+        [DllImport(Libraries.Smplayer, EntryPoint = "SetAudioStreamInfo", CallingConvention = CallingConvention.Cdecl)]
         public static extern bool SetAudioStreamInfo(AudioStreamInfo audioStreamInfo);
 
-        [DllImport(Libraries.SMPlayer, EntryPoint = "SubmitPacket", CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
-        public static extern bool SubmitPacket(IntPtr  buf, uint size, System.UInt64 PTS, TrackType streamType, IntPtr drmInfo);
-        //unsigned char *pBuf I use IntPtr need to check if OK
+        [DllImport(Libraries.Smplayer, EntryPoint = "SubmitPacket", CallingConvention = CallingConvention.Cdecl, CharSet = CharSet.Ansi)]
+        public static extern bool SubmitPacket(IntPtr buf, uint size, System.UInt64 pts, TrackType streamType, IntPtr drmInfo);
 
-        [DllImport(Libraries.SMPlayer, EntryPoint = "SetAppInfo", CallingConvention = CallingConvention.Cdecl)]
+        [DllImport(Libraries.Smplayer, EntryPoint = "SetAppInfo", CallingConvention = CallingConvention.Cdecl)]
         public static extern bool SetAppInfo(string desktopId, string appId, string widgetId);
 
-        [DllImport(Libraries.SMPlayer, EntryPoint = "Pause", CallingConvention = CallingConvention.Cdecl)]
+        [DllImport(Libraries.Smplayer, EntryPoint = "Pause", CallingConvention = CallingConvention.Cdecl)]
         public static extern bool Pause();
 
-        [DllImport(Libraries.SMPlayer, EntryPoint = "Resume", CallingConvention = CallingConvention.Cdecl)]
+        [DllImport(Libraries.Smplayer, EntryPoint = "Resume", CallingConvention = CallingConvention.Cdecl)]
         public static extern bool Resume();
 
-        [DllImport(Libraries.SMPlayer, EntryPoint = "JumpForward", CallingConvention = CallingConvention.Cdecl)]
+        [DllImport(Libraries.Smplayer, EntryPoint = "JumpForward", CallingConvention = CallingConvention.Cdecl)]
         public static extern bool JumpForward(uint offset);
 
-        [DllImport(Libraries.SMPlayer, EntryPoint = "JumpBackward", CallingConvention = CallingConvention.Cdecl)]
+        [DllImport(Libraries.Smplayer, EntryPoint = "JumpBackward", CallingConvention = CallingConvention.Cdecl)]
         public static extern bool JumpBackward(uint offset);
 
-        [DllImport(Libraries.SMPlayer, EntryPoint = "Seek", CallingConvention = CallingConvention.Cdecl)]
+        [DllImport(Libraries.Smplayer, EntryPoint = "Seek", CallingConvention = CallingConvention.Cdecl)]
         public static extern bool Seek(int absoluteTimeinMS);
 
-        [DllImport(Libraries.SMPlayer, EntryPoint = "SetPlaySpeed", CallingConvention = CallingConvention.Cdecl)]
+        [DllImport(Libraries.Smplayer, EntryPoint = "SetPlaySpeed", CallingConvention = CallingConvention.Cdecl)]
         public static extern bool SetPlaySpeed(float speed);
 
-        [DllImport(Libraries.SMPlayer, EntryPoint = "Stop", CallingConvention = CallingConvention.Cdecl)]
+        [DllImport(Libraries.Smplayer, EntryPoint = "Stop", CallingConvention = CallingConvention.Cdecl)]
         public static extern bool Stop();
 
-        [DllImport(Libraries.SMPlayer, EntryPoint = "DestroyHandler", CallingConvention = CallingConvention.Cdecl)]
+        [DllImport(Libraries.Smplayer, EntryPoint = "DestroyHandler", CallingConvention = CallingConvention.Cdecl)]
         public static extern bool DestroyHandler();
 
-        [DllImport(Libraries.SMPlayer, EntryPoint = "SetDisplayWin", CallingConvention = CallingConvention.Cdecl)]
+        [DllImport(Libraries.Smplayer, EntryPoint = "SetDisplayWin", CallingConvention = CallingConvention.Cdecl)]
         public static extern bool SetDisplayWin(int winId, int x, int y, int width, int height);
 
-        [DllImport(Libraries.SMPlayer, EntryPoint = "SetDisplay", CallingConvention = CallingConvention.Cdecl)]
+        [DllImport(Libraries.Smplayer, EntryPoint = "SetDisplay", CallingConvention = CallingConvention.Cdecl)]
         public static extern bool SetDisplay(PlayerDisplayType type, IntPtr display);
 
-        [DllImport(Libraries.SMPlayer, EntryPoint = "StartSubtitle", CallingConvention = CallingConvention.Cdecl)]
-        public static extern bool StartSubtitle(string filePath, SmpSubtitleDataCallback cbFunction);
+        [DllImport(Libraries.Smplayer, EntryPoint = "StartSubtitle", CallingConvention = CallingConvention.Cdecl)]
+        public static extern bool StartSubtitle(string filePath, string encoding);
 
-        [DllImport(Libraries.SMPlayer, EntryPoint = "SetSubtitleSync", CallingConvention = CallingConvention.Cdecl)]
-        public static extern bool SetSubtitleSync(int milliSec);
+        [DllImport(Libraries.Smplayer, EntryPoint = "SetSubtitlesDelay", CallingConvention = CallingConvention.Cdecl)]
+        public static extern bool SetSubtitlesDelay(int milliSec);
 
+        [DllImport(Libraries.Smplayer, EntryPoint = "SetAppSrcDuration", CallingConvention = CallingConvention.Cdecl)]
+        public static extern bool SetDuration(ulong iDuration);
 
-        [DllImport(Libraries.SMPlayer, EntryPoint = "testCallbackprint", CallingConvention = CallingConvention.Cdecl)]
-        public static extern void testCallbackprint(string msg);
+        [DllImport(Libraries.Smplayer, EntryPoint = "GetDuration", CallingConvention = CallingConvention.Cdecl)]
+        public static extern ulong GetDuration();
 
     }
-    /*
-    internal class SMPlayerHandle : SafeHandle
-    {
-        protected SMPlayerHandle() : base(IntPtr.Zero, true)
-        {
-        }
 
-        public override bool IsInvalid => handle == IntPtr.Zero;
-
-        protected override bool ReleaseHandle()
-        {
-            var ret = NativeSMPlayer.DestroyHandler();
-            if (ret != PlayerErrorCode.None)
-            {
-                Log.Debug(GetType().FullName, $"Failed to release native {GetType().Name}");
-                return false;
-            }
-
-            return true;
-        }
-    }
-    */
 }
