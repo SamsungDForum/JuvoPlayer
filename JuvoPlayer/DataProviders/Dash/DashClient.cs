@@ -396,6 +396,9 @@ namespace JuvoPlayer.DataProviders.Dash
                 Stop();
 
             }
+
+            sharedBuffer?.ClearData();
+            SendEOSEvent();
         }
 
         private bool CheckEndOfContent()
