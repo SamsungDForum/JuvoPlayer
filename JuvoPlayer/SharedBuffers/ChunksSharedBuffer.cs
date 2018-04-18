@@ -44,6 +44,7 @@ namespace JuvoPlayer.SharedBuffers
             lock (locker)
             {
                 buffer.Clear();
+                readPos = 0;
                 EndOfData = false;
             }
         }
@@ -74,6 +75,7 @@ namespace JuvoPlayer.SharedBuffers
                     {
                         var bytesLeft = buffer.First.Value.Length - readPos;
                         var read = Math.Min(bytesLeft, size);
+
                         var segment = new ArraySegment<byte>(buffer.First.Value, readPos, read);
                         readPos += read;
                         if (readPos >= buffer.First.Value.Length)
