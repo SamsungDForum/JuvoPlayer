@@ -1,217 +1,403 @@
-﻿using System;
+﻿/// @file IPlayerAdapter.cs
+/// <published> N </published>
+/// <privlevel> partner </privlevel>
+/// <privilege> http://developer.samsung.com/privilege/drminfo </privilege>
+/// <privacy> N </privacy>
+/// <product> TV </product>
+/// <version> 5.5.0 </version>
+/// <SDK_Support> N </SDK_Support>
+/// Copyright (c) 2017 Samsung Electronics Co., Ltd All Rights Reserved  
+/// PROPRIETARY/CONFIDENTIAL  
+/// This software is the confidential and proprietary  
+/// information of SAMSUNG ELECTRONICS ("Confidential Information"). You shall  
+/// not disclose such Confidential Information and shall use it only in  
+/// accordance with the terms of the license agreement you entered into with  
+/// SAMSUNG ELECTRONICS. SAMSUNG make no representations or warranties about the  
+/// suitability of the software, either express or implied, including but not  
+/// limited to the implied warranties of merchantability, fitness for a  
+/// particular purpose, or non-infringement. SAMSUNG shall not be liable for any  
+/// damages suffered by licensee as a result of using, modifying or distributing  
+/// this software or its derivatives.
+
+using System;
 using System.Runtime.InteropServices;
 
-namespace Tizen.TV.Smplayer
+namespace Tizen.TV.Multimedia.IPTV
 {
+    /// <summary>
+    /// type for setting player screen's display type
+    /// </summary> 
     public enum PlayerDisplayType
     {
-        Overlay = 0,    /**< Overlay surface display */
-        Evas,           /**< Evas image object surface display */
-        None,           /**< This disposes off buffers */
+        /// <summary> Overlay surface display </summary>
+        Overlay = 0,
+        /// <summary>  Evas image object surface display </summary>
+        Evas,
+        /// <summary> No display </summary>
+        None
     };
 
+    /// <summary>
+    /// type for checking stream's track type
+    /// </summary> 
     public enum TrackType
     {
-        Audio = 0,              /**< track type audio */
-        Video,                  /**< track type video */
-        Subtitle,               /**< track type subtitle */
-        Max                     /**< MAX tag */
+        /// <summary> track type audio </summary>
+        Audio = 0,
+        /// <summary> track type video </summary>
+        Video,
+        /// <summary> track type subtitle </summary>
+        Subtitle,
+        /// <summary> track type MAX tag </summary>
+        Max
     };
 
+    /// <summary>
+    /// type for checking player's state
+    /// </summary> 
     public enum PlayerState
     {
-        None,                  /**< Player is not created */
-        Null,                  /**< Player is created, not realize */
-        Idle,                  /**< Player is created, but not prepared */
-        Ready,                 /**< Player is ready to play media */
-        Paused,                /**< Player is paused while playing media */
-        Playing,               /**< Player is playing media */
-        Max                    /**< MAX tag */
+        /// <summary> Player is not created </summary>
+        None,
+        /// <summary> Player is created, not realize </summary>
+        Null,
+        /// <summary> Player is created, but not prepared </summary>
+        Idle,
+        /// <summary> Player is ready to play media </summary>
+        Ready,
+        /// <summary> Player is paused while playing media </summary>
+        Paused,
+        /// <summary> Player is playing media </summary>
+        Playing,
+        /// <summary> MAX status tag </summary>
+        Max
     };
 
+
+    /// <summary>
+    /// Struct of audio stream info used for external demux
+    /// </summary>
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi, Pack = 1)]
     public struct AudioStreamInfo
     {
-        public IntPtr mime;                      /**< audio stream info: mime type */             //const char *  I use IntPtr need to check if OK
-        public uint drmType;                 /**< audio stream info: drm type */
-        public uint channels;                 /**< audio stream info: channels */
-        public uint sampleRate;              /**< audio stream info: sample rate */
-        public uint bitRate;                 /**< audio stream info: bit rate */
-        public uint blockAlign;              /**< audio stream info: block align */
-        public IntPtr codecExtraAata;        /**< audio stream info: codec extra data */  //unsigned char * i use IntPtr need to check if OK
-        public uint extraDataSize;           /**< audio stream info: codec extra data length */
-        public uint version;                  /**< audio stream info: version */
-        public uint userInfo;                /**< audio stream info: user infomation */
-        public uint width;                    /**< audio stream info: width */
-        public uint depth;                    /**< audio stream info: depth */
-        public uint endianness;               /**< audio stream info: endianness */
-        public bool signedness;                       /**< audio stream info: signedness */
-        public uint bufferType;              /**< audio stream info: buffer type */
-        public bool isPreset;                        /**< audio stream info: whether use preset */
+        /// <summary> audio stream info: mime type </summary>
+        public IntPtr mime;
+        /// <summary> audio stream info: drm type </summary>
+        public uint drmType;
+        /// <summary> audio stream info: channels num </summary>
+        public uint channels;
+        /// <summary> audio stream info: sample rate </summary>
+        public uint sampleRate;
+        /// <summary> audio stream info: bit rate </summary>
+        public uint bitrate;
+        /// <summary> audio stream info: block align </summary>
+        public uint blockAlign;
+        /// <summary> audio stream info: codec extra data </summary>
+        public IntPtr codecExtraData;
+        /// <summary> audio stream info: codec extra data length </summary>
+        public uint extraDataSize;
+        /// <summary> audio stream info: version </summary>
+        public uint version;
+        /// <summary> audio stream info: user infomation </summary>
+        public uint userInfo;
+        /// <summary> audio stream info: width </summary>
+        public uint width;
+        /// <summary> audio stream info: depth </summary>
+        public uint depth;
+        /// <summary> audio stream info: endianness </summary>
+        public uint endianness;
+        /// <summary> audio stream info: signedness </summary>
+        public bool signedness;
+        /// <summary> audio stream info: buffer type </summary>
+        public uint bufferType;
+        /// <summary> audio stream info: whether use preset </summary>
+        public bool isPreset;
 
-        // DRM Info
-        public IntPtr propertyType;                   /**< video stream info: drminfo propertyType */
-        public int typeLen;                          /**< video stream info: drminfo propertyType length */
-        public IntPtr propertyData;                   /**< video stream info: drminfo propertyData */
-        public int dataLen;                          /**< video stream info: drminfo property_date length */
-    };
-
-    /**
-     * @brief struct of video stream info used for external demux
-     */
-    [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi, Pack = 1)]
-    public struct VideoStreamInfo
-    {
-        public IntPtr mime;                    /**< video stream info: mime type */
-        public uint drmType;                  /**< video stream info: drm type */
-        public uint framerateNum;         /**< video stream info: framerate num */
-        public uint framerateDen;         /**< video stream info: framerate den */
-        public uint width;                 /**< video stream info: width */
-        public uint height;                /**< video stream info: height */
-        public uint pixelAspectRatioX;     /**< video stream info: pixelAspectRatioX */
-        public uint pixelAspectRatioY;     /**< video stream info: pixelAspectRatioY */
-        public IntPtr codecExtraData;     /**< video stream info: codec extra data */
-        public uint extraDataSize;        /**< video stream info: codec extra data length */
-        public uint version;                   /**< video stream info: version */
-        public int format3D;                           /**< video stream info: 3D video format */
-        public uint colordepth;            /**< video stream info: color depth */
-        public uint maxWidth;             /**< video stream info: max width */
-        public uint maxHeight;            /**< video stream info: max height */
-        public uint bufferType;               /**< video stream info: buffer type */
-        public uint displayAspectRatioX;       /**< video stream info: displayAspectRatioX */
-        public uint displayAspectRatioY;       /**< video stream info: displayAspectRatioY */
-        public IntPtr matroskaColourInfo;    /**< video stream info: matroska colour info */
-        public bool isFramerateChanged;              /**< video stream info: frame changed */
-        public bool isPreset;                      /** < video stream info:whether use preset */
-
-        // DRM Info
-        public IntPtr propertyType;                   /**< video stream info: drminfo propertyType */
-        public int typeLen;                           /**< video stream info: drminfo propertyType length */
-        public IntPtr propertyData;                   /**< video stream info: drminfo propertyData */
+        /// <summary> audio stream info: drminfo propertyType </summary>
+        public IntPtr propertyType;
+        /// <summary> audio stream info: drminfo propertyType length </summary>
+        public int typeLen;
+        /// <summary> audio stream info: drminfo propertyData </summary>
+        public IntPtr propertyData;
+        /// <summary> audio stream info: drminfo property_date length </summary>
         public int dataLen;
     };
 
+    /// <summary>
+    /// Struct of video stream info used for external demux
+    /// </summary>
     [StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi, Pack = 1)]
+    public struct VideoStreamInfo
+    {
+        /// <summary> video stream info: mime type </summary>
+        public IntPtr mime;
+        /// <summary> video stream info: drm type </summary>
+        public uint drmType;
+        /// <summary> video stream info: framerate num </summary>
+        public uint framerateNum;
+        /// <summary> video stream info: framerate den </summary>
+        public uint framerateDen;
+        /// <summary> video stream info: width </summary>
+        public uint width;
+        /// <summary> video stream info: height </summary>
+        public uint height;
+        /// <summary> video stream info: pixelAspectRatioX </summary>
+        public uint pixelAspectRatioX;
+        /// <summary> video stream info: pixelAspectRatioY </summary>
+        public uint pixelAspectRatioY;
+        /// <summary> video stream info: codec extra data </summary>
+        public IntPtr codecExtraData;
+        /// <summary> video stream info: codec extra data length </summary>
+        public uint extraDataSize;
+        /// <summary> video stream info: version </summary>
+        public uint version;
+        /// <summary> video stream info: 3D video format </summary>
+        public int format3D;
+        /// <summary> video stream info: color depth </summary>
+        public uint colorDepth;
+        /// <summary> video stream info: max width </summary>
+        public uint maxWidth;
+        /// <summary> video stream info: max height </summary>
+        public uint maxHeight;
+        /// <summary> video stream info: buffer type </summary>
+        public uint bufferType;
+        /// <summary> video stream info: displayAspectRatioX </summary>
+        public uint displayAspectRatioX;
+        /// <summary> video stream info: displayAspectRatioY </summary>
+        public uint displayAspectRatioY;
+
+        /// <summary> video stream info: matroska colour info </summary>
+        public IntPtr matroskaColourInfo;
+        /// <summary> video stream info: frame changed </summary>
+        public bool isFramerateChanged;
+        /// <summary> video stream info:whether use preset </summary>
+        public bool isPreset;
+
+        /// <summary> video stream info: drminfo propertyType </summary>
+        public IntPtr propertyType;
+        /// <summary> video stream info: drminfo propertyType length </summary>
+        public int typeLen;
+        /// <summary> video stream info: drminfo propertyData </summary>
+        public IntPtr propertyData;
+        /// <summary> video stream info: drminfo property_date length </summary>
+        public int dataLen;
+
+    };
+	
+	/// <summary>
+    /// Struct of es data stream's drm info used for decoder
+    /// </summary>
+	[StructLayout(LayoutKind.Sequential, CharSet = CharSet.Ansi, Pack = 1)]
     public struct EsPlayerDrmInfo
     {
-        public uint drmType;                     //drm type
-        public uint algorithm;      /**<algorithm parameter*/
-        public uint format;             /**<media format*/
-        public uint phase;              /**<cipher phase*/
+	    /// <summary> es data stream's drm info : drm type </summary>
+        public uint drmType;
+		/// <summary> es data stream's drm info : algorithm paramete </summary>
+        public uint algorithm;
+		/// <summary> es data stream's drm info : media format </summary>
+        public uint format;
+		/// <summary> es data stream's drm info : cipher phase </summary>
+        public uint phase;
 
-        // In GBytes data size will be written before the data.
-        public IntPtr KID;                     /**< KID*/
-        public uint KIDLen;                    /**<KID lenght*/
-        public IntPtr IV;                      /**<initializetion vector*/
-        public uint IVLen;                     /**<initializetion vector length*/
-        public IntPtr key;                     //for clearkey
-        public uint keyLen;                    // key len
+        /// <summary> es data stream's drm info : KID </summary>
+        public IntPtr KID;
+		/// <summary> es data stream's drm info : KID length </summary>
+        public uint KIDLen;
+		/// <summary> es data stream's drm info : initializetion vector </summary>
+        public IntPtr IV;
+		/// <summary> es data stream's drm info : initializetion vector length </summary>
+        public uint IVLen;
+		/// <summary> es data stream's drm info : for clearkey </summary>
+        public IntPtr key; 
+		/// <summary> es data stream's drm info : key len </summary>
+        public uint keyLen;
 
-        //SubData Size insert for subData in GBytes structure
+        /// <summary> es data stream's drm info : subData's pointer </summary>
         public IntPtr subData;
+		/// <summary> es data stream's drm info : drm handle </summary>
         public uint drmHandle;
+		/// <summary> es data stream's drm info : trust zone handle </summary>
         public uint tzHandle;
     };
 
+    /// <summary>
+    /// Interface which should be implemented by all player wrappers
+    /// </summary>
     public interface IPlayerAdapter
     {
-        // Player preparing
-        bool Initialize();
+        /// <summary>
+        /// Method of initializing player,it will create player's instance and set corresponding callbacks.
+        /// </summary>
+        /// <param name="isEsPlay">if the initialization is for es play </param>
+        /// <returns>The result of initializing player </returns>
+        bool Initialize(bool isEsPlay);
 
+        /// <summary>
+        /// Method of resetting player, it will stop player and destroy its instance
+        /// </summary>
+        /// <returns>The result of resetting player </returns>
         bool Reset();
 
+        /// <summary>
+        /// Method of preparing player, it will prepare player for es play mode.
+        /// </summary>
+        /// <returns>The result of preparing player </returns>
         bool PrepareES();
 
+        /// <summary>
+        /// Method of preparing player, it will prepare player for url play mode.
+        /// </summary>
+        /// <param name="url">url for the movie which need to be played by player</param>
+        /// <returns>The result of preparing player </returns>
         bool PrepareURL(string url);
 
+        /// <summary>
+        /// Method of unpreparing player, it will stop the player.
+        /// </summary>
+        /// <returns>The result of unpreparing player </returns>
         bool Unprepare();
 
-
-        // Player controllers
+        /// <summary>
+        /// Player controller API, it will call the player to play.
+        /// </summary>
+        /// <returns>The result of calling player to play </returns>
         bool Play();
 
+        /// <summary>
+        /// Player controller API, it will call the player to pause.
+        /// </summary>
+        /// <returns>The result of calling player to pause </returns>
         bool Pause();
 
+        /// <summary>
+        /// Player controller API, it will call the player to resume.
+        /// </summary>
+        /// <returns>The result of calling player to resume </returns>
         bool Resume();
 
-        //For API Seek ,we need to check if need set seek_completed_cb for each seek operation Seek(int absoluteTimeinMS,cb_function seek_completed_cb)
-        bool Seek(int absoluteTimeinMS);   //10 seconds = 10 * 1000 
+        /// <summary>
+        /// Player controller API, it will call the player to seek forward.
+        /// </summary>
+        /// <param name="absoluteTimeinMS">jump forward position for playback in milliseconds </param>
+        /// <returns>The result of calling player to seek </returns>
+        bool Seek(int absoluteTimeinMS);
 
-        //bool SelectTrack(TrackType streamType, uint track_index);            //To be implement on Pepper, and we also need to confirm if we need such API
 
-        bool SetPlaybackRate(float rate);
+        /// <summary>
+        /// Player controller API, it will set the player's play speed.
+        /// </summary>
+        /// <param name="rate">play speed which is set to player </param>
+        /// <returns>The result of calling player to setting speed </returns>
+        bool SetPlaySpeed(float rate);
 
+        /// <summary>
+        /// Player controller API, it will set the contents duration for external feeder case.
+        /// </summary>
+        /// <param name="iDuration"> content duration </param>
+        /// <returns> Ture if succeed </returns>
+        bool SetDuration(ulong iDuration);
+
+        /// <summary>
+        /// Player controller API, it will notify player that corresponding stream is end of stream.
+        /// </summary>
+        /// <param name="trackType">Track Type, the type of stream </param>
+        /// <returns>The result of calling player that corresponding stream is end of stream </returns>
         bool SubmitEOSPacket(TrackType trackType);
 
-        bool SubmitPacket(IntPtr buf, uint size, System.UInt64 PTS, TrackType streamType, IntPtr drmInfo);
 
+        /// <summary>
+        /// Player controller API, it will send es data to player.
+        /// </summary>
+        /// <param name="buf">The pointer which point to the es data buffer </param>
+        /// <param name="size">The size of the es data </param>
+        /// <param name="pts">The pts of the es data </param>
+        /// <param name="streamType">The stream type of the es data </param>
+        /// <param name="drmInfo">The pointer which point to the drmInfo </param>
+        /// <returns>The result of sending es data to player </returns>
+        bool SubmitPacket(IntPtr buf, uint size, UInt64 pts, TrackType streamType, IntPtr drmInfo);
+
+        /// <summary>
+        /// Player controller API, it will set the player to stop.
+        /// </summary>
+        /// <returns>The result of calling player to stop </returns>
         bool Stop();
-        //void Stop(const base::Callback<void(int32_t)>&) override;  If stop need such callback
 
+        /// <summary>
+        /// Player controller API, it will destroy the player's instance.
+        /// </summary>
+        /// <returns>The result of calling player to destroy its instance </returns>
         bool DestroyHandler();
 
-        // Player setters
+
+        /// <summary>
+        /// Player's setter API, it will set the application id to player.
+        /// </summary>
+        /// <param name="applicationId">the application's id, format is string </param>
+        /// <returns>The result of setting the application id to player </returns>
         bool SetApplicationID(string applicationId);
 
-        bool SetDuration(System.UInt32 duration);      //C++ API use unsigned long, need to check if this type System.UInt32 is OK
-
+        /// <summary>
+        /// Player's setter API, it will set the movie's audio streamInfo to player.
+        /// </summary>
+        /// <param name="audioStreamInfo">the movie's audio streamInfo </param>
+        /// <returns>The result of setting the audio streamInfo to player </returns>
         bool SetAudioStreamInfo(AudioStreamInfo audioStreamInfo);
 
+        /// <summary>
+        /// Player's setter API, it will set the movie's video streamInfo to player.
+        /// </summary>
+        /// <param name="videoStreamInfo">the movie's video streamInfo </param>
+        /// <returns>The result of setting the video streamInfo to player </returns>
         bool SetVideoStreamInfo(VideoStreamInfo videoStreamInfo);
 
-
-        //bool SetDisplay(int winId, int x, int y, int width, int height);    //Need to confirm with cp side, this winId is wayland window id, need to create by App
-                                                                            //For Display below APIs need to confirm with cp / app side if they need
-                                                                            //int32_t SetDisplay(void* display, bool is_windowless) override;
-                                                                            //int32_t SetDisplayRect(const PP_Rect& display_rect,const PP_FloatRect& crop_ratio_rect) override;
-                                                                            //int32_t SetDisplayMode(PP_MediaPlayerDisplayMode display_mode) override;
-                                                                            //bool IsDisplayModeSupported(PP_MediaPlayerDisplayMode display_mode) override;
-        bool SetDisplay(PlayerDisplayType type, IntPtr display);              //New API, display should be a evas handler, its type should be elm_win.
-
+        /// <summary>
+        /// Player's setter API, it will set the movie's display options to player.
+        /// </summary>
+        /// <param name="type">the movie's display type </param>
+        /// <param name="display">the movie's display window handler </param>
+        /// <returns>The result of setting movie's display options to player </returns>
+        bool SetDisplay(PlayerDisplayType type, IntPtr display);
 
 
+        /// <summary>
+        /// Player's setter API, it will set the movie's external subtitles path to player.
+        /// </summary>
+        /// <param name="filePath">the movie's external subtitle's file path </param>
+        /// <param name="encoding">the movie's external subtitle's encoding </param>
+        /// <returns>The result of the movie's external subtitles path to player </returns>
         bool SetExternalSubtitlesPath(string filePath, string encoding);
 
+        /// <summary>
+        /// Player's setter API, it will set the movie's subtitles delay time to player.
+        /// </summary>
+        /// <param name="milliSec">the movie's subtitles delay time </param>
+        /// <returns>The result of setting movie's subtitles delay time to player </returns>
         bool SetSubtitlesDelay(int milliSec);
 
-        //The following two need to confirm which stream Property cp or app side need to set and get.
-        //int32_t SetStreamingProperty(PP_StreamingProperty property,const std::string& data) override;
-        //int32_t GetStreamingProperty(PP_StreamingProperty property, std::string* property_value) override;
-
-
-        // Player getters
-
-        //Need to confirm with cp & app side if they need below APIs, and vector can not be used on C#, so which data type they want to use.
-        //int32_t GetAudioTracksList(std::vector<PP_AudioTrackInfo>* track_list) override;
-        //int32_t GetTextTracksList(std::vector<PP_TextTrackInfo>* track_list) override;
-        //int32_t GetVideoTracksList(std::vector<PP_VideoTrackInfo>* track_list) override;
-        //string GetAvailableBitrates();
-
-        uint GetCurrentTrack(TrackType streamType);
-
-        System.UInt32 GetDuration();
-
+        /// <summary>
+        /// Player's getter API, it will get the player's current play state.
+        /// </summary>
+        /// <returns>The player state of current player </returns>
         PlayerState GetPlayerState();
 
+        /// <summary>
+        /// Player's getter API, it will get the duration of the playback.
+        /// </summary>
+        /// <returns> The duration of the movie which is played </returns>
+        ulong GetDuration();
 
+        /// <summary>
+        /// Player's API, it will register player's eventListener to player.
+        /// </summary>
+        /// <param name="eventListener">the player's eventListener </param>
+        /// <returns>The setting result of registering eventListener </returns>
         bool RegisterPlayerEventListener(IPlayerEventListener eventListener);
+
+        /// <summary>
+        /// Player's API, it will remove player's eventListener from player.
+        /// </summary>
+        /// <returns>The result of removing eventListener </returns>
         bool RemoverPlayerEventListener();
-
-        //Added by me to check if one PlayerEventListener is better than below APIs for each event
-        //int32_t SetErrorCallback(const base::Callback<void(PP_MediaPlayerError)>& callback) override;
-        //void RegisterMediaCallbacks(PP_ElementaryStream_Type_Samsung type) override;
-        // Listeners registering
-        //virtual void SetListener(
-        //  PP_ElementaryStream_Type_Samsung type,
-        // base::WeakPtr<ElementaryStreamListenerPrivate> listener) = 0;
-        //virtual void RemoveListener(PP_ElementaryStream_Type_Samsung type,
-        //      ElementaryStreamListenerPrivate* listener) = 0;
-        //virtual void SetMediaEventsListener(MediaEventsListenerPrivate* listener) = 0;
-        //virtual void SetSubtitleListener(SubtitleListenerPrivate* listener) = 0;
-        //virtual void SetBufferingListener(BufferingListenerPrivate* listener) = 0;
-
-        //Below PrintLog() is not API, just used by me for internal test
-        void PrintLog(string log);
 
     }
 }
