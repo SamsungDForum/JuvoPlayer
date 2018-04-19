@@ -112,14 +112,14 @@ namespace JuvoPlayer.DataProviders.Dash
         private void DownloadThread()
         {
             // clear garbage before appending new data
-            sharedBuffer?.ClearData();
+            sharedBuffer.ClearData();
             try
             {
                 if (initStreamBytes == null)
                     initStreamBytes = DownloadInitSegment(currentStreams);
 
                 if (initStreamBytes != null)
-                    sharedBuffer?.WriteData(initStreamBytes);
+                    sharedBuffer.WriteData(initStreamBytes);
             }
             catch (Exception ex)
             {
@@ -177,15 +177,14 @@ namespace JuvoPlayer.DataProviders.Dash
                     else
                     {
                         Logger.Error(string.Format("Error: {0} {1} {2}", ex.Message, ex.TargetSite, ex.StackTrace));
-                    }
-                       
+                    }  
                 }
             }
         }
 
         private void SendEOSEvent()
         {
-            sharedBuffer?.WriteData(null, true);
+            sharedBuffer.WriteData(null, true);
         }
 
         private byte[] DownloadSegment(MpdParser.Node.Dynamic.Segment stream)
