@@ -15,7 +15,6 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
         [TestCase("Sintel - Clean fMP4 MPEG DASH - multiple languages")]
         [TestCase("Encrypted MPEG DASH")]
         [TestCase("Encrypted 4K MPEG DASH")]
-        [TestCase("Clean MP4 over HTTP")]
         [TestCase("Clean HLS")]
         [TestCase("Clean HEVC 4k MPEG DASH")]
         public async Task Playback_Basic_PreparesAndStarts(string clipTitle)
@@ -30,7 +29,6 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
             }
         }
 
-        [TestCase("Clean MP4 over HTTP")]
         [TestCase("Clean byte range MPEG DASH")]
         [TestCase("Clean fMP4 MPEG DASH")]
         [TestCase("Sintel - Clean fMP4 MPEG DASH - multiple languages")]
@@ -45,7 +43,7 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
 
                 for (var i = 0; i < 10; ++i)
                 {
-                    var seekTime = TimeSpan.FromSeconds(rand.Next(service.Duration.Seconds));
+                    var seekTime = TimeSpan.FromSeconds(rand.Next((int) service.Duration.TotalSeconds));
 
                     service.SeekTo(seekTime);
 
@@ -58,7 +56,6 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
             }
         }
 
-        [TestCase("Clean MP4 over HTTP")]
         [TestCase("Clean byte range MPEG DASH")]
         [TestCase("Clean fMP4 MPEG DASH")]
         [TestCase("Sintel - Clean fMP4 MPEG DASH - multiple languages")]
