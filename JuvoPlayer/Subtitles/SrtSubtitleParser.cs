@@ -10,12 +10,7 @@ namespace JuvoPlayer.Subtitles
     {
         // According to Wikipedia, windows-1252 is default SubRip's text encoding.
         // See https://en.wikipedia.org/wiki/SubRip
-        private static string DefaultEncoding = "windows-1252";
-
-        public IEnumerable<Cue> Parse(Stream stream)
-        {
-            return Parse(new StreamReader(stream, Encoding.GetEncoding(DefaultEncoding)));
-        }
+        public string DefaultEncoding { get; } = "windows-1252";
 
         public IEnumerable<Cue> Parse(StreamReader reader)
         {
@@ -41,31 +36,10 @@ namespace JuvoPlayer.Subtitles
                 var timeLine = reader.ReadLine();
                 (var begin, var end) = ParseTimeLine(timeLine);
 
-                var text = ParseText(reader);
+                var text = ParserUtils.ParseText(reader);
 
                 yield return new Cue() {Text = text, Begin = begin, End = end};
             }
-        }
-
-        internal string ParseText(StreamReader reader)
-        {
-            var contentsBuilder = new StringBuilder();
-            for (var line = reader.ReadLine(); !string.IsNullOrEmpty(line); line = reader.ReadLine())
-            {
-                contentsBuilder.AppendLine(line);
-            }
-            var contents = TrimLastNewLine(contentsBuilder);
-            return contents;
-        }
-
-        private static string TrimLastNewLine(StringBuilder contentsBuilder)
-        {
-            var contents = contentsBuilder.ToString();
-            if (contents.EndsWith(Environment.NewLine))
-            {
-                contents = contents.TrimEnd(Environment.NewLine.ToCharArray());
-            }
-            return contents;
         }
 
         private string MoveToFirstNonEmptyLine(StreamReader reader)
