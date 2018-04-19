@@ -1,4 +1,6 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Linq;
 using JuvoPlayer.Common;
 using JuvoPlayer.DataProviders;
 using JuvoPlayer.DataProviders.Dash;
@@ -10,20 +12,19 @@ using JuvoPlayer.Drms.DummyDrm;
 using JuvoPlayer.Player;
 using JuvoPlayer.Player.SMPlayer;
 
+using StreamDefinition = JuvoPlayer.OpenGL.Services.StreamDescription;
+using StreamType = JuvoPlayer.OpenGL.Services.StreamDescription.StreamType;
+
 namespace JuvoPlayer.OpenGL.Services
 {
-    class PlayerService
-    {
+    class PlayerService : IPlayerService {
         private IDataProvider dataProvider;
         private IPlayerController playerController;
         private readonly DataProviderFactoryManager dataProviders;
         private PlayerState playerState = PlayerState.Idle;
 
-        public delegate void PlayerStateChangedEventHandler(object sender, PlayerStateChangedEventArgs e);
         public event PlayerStateChangedEventHandler StateChanged;
-
         public event PlaybackCompleted PlaybackCompleted;
-        public event ShowSubtitile ShowSubtitle;
 
         public TimeSpan Duration => playerController?.ClipDuration ?? TimeSpan.FromSeconds(0);
 
@@ -39,21 +40,23 @@ namespace JuvoPlayer.OpenGL.Services
             }
         }
 
+        public string CurrentCueText => dataProvider?.CurrentCueText;
+
         public PlayerService() {
             dataProviders = new DataProviderFactoryManager();
             dataProviders.RegisterDataProviderFactory(new DashDataProviderFactory());
             dataProviders.RegisterDataProviderFactory(new HLSDataProviderFactory());
             dataProviders.RegisterDataProviderFactory(new RTSPDataProviderFactory());
-            
+
             var drmManager = new DrmManager();
             drmManager.RegisterDrmHandler(new CencHandler());
             drmManager.RegisterDrmHandler(new DummyDrmHandler());
 
-            var playerAdapter = new SMPlayer();
-            playerController = new PlayerController(playerAdapter, drmManager);
+            var player = new SMPlayer();
+            playerController = new PlayerController(player, drmManager);
             playerController.PlaybackCompleted += () => {
+                State = PlayerState.Completed;
                 PlaybackCompleted?.Invoke();
-                State = PlayerState.Stopped;
             };
             playerController.PlayerInitialized += () => {
                 State = PlayerState.Prepared;
@@ -70,6 +73,53 @@ namespace JuvoPlayer.OpenGL.Services
 
         public void SeekTo(TimeSpan to) {
             playerController.OnSeek(to);
+        }
+
+        public void ChangeActiveStream(StreamDefinition stream) {
+            var streamDescription = new JuvoPlayer.Common.StreamDescription() {
+                Id = stream.Id,
+                Description = stream.Description,
+                StreamType = ToJuvoStreamType(stream.Type)
+            };
+
+            dataProvider.OnChangeActiveStream(streamDescription);
+        }
+
+        public List<StreamDefinition> GetStreamsDescription(StreamType streamType) {
+            var streams = dataProvider.GetStreamsDescription(ToJuvoStreamType(streamType));
+            return streams.Select(o =>
+                new StreamDefinition() {
+                    Id = o.Id,
+                    Description = o.Description,
+                    Default = o.Default,
+                    Type = ToStreamType(o.StreamType)
+                }).ToList();
+        }
+
+        private JuvoPlayer.Common.StreamType ToJuvoStreamType(StreamType streamType) {
+            switch (streamType) {
+                case StreamType.Audio:
+                    return JuvoPlayer.Common.StreamType.Audio;
+                case StreamType.Video:
+                    return JuvoPlayer.Common.StreamType.Video;
+                case StreamType.Subtitle:
+                    return JuvoPlayer.Common.StreamType.Subtitle;
+                default:
+                    throw new IndexOutOfRangeException();
+            }
+        }
+
+        private StreamType ToStreamType(JuvoPlayer.Common.StreamType streamType) {
+            switch (streamType) {
+                case JuvoPlayer.Common.StreamType.Audio:
+                    return StreamType.Audio;
+                case JuvoPlayer.Common.StreamType.Video:
+                    return StreamType.Video;
+                case JuvoPlayer.Common.StreamType.Subtitle:
+                    return StreamType.Subtitle;
+                default:
+                    throw new IndexOutOfRangeException();
+            }
         }
 
         public void SetSource(object o) {
