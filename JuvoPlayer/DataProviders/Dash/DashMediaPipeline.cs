@@ -214,8 +214,8 @@ namespace JuvoPlayer.DataProviders.Dash
         {
             // Stop demuxer and dashclient
             // Stop demuxer first so old incoming data will ignored
-            dashClient.Stop();
             demuxer.Reset();
+            dashClient.Stop();
 
             // Set new time
             laskSeek = dashClient.Seek(time);
