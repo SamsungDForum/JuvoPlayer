@@ -136,7 +136,6 @@ namespace JuvoPlayer.DataProviders.Dash
 
                 if (!playback)
                 {
-                    sharedBuffer.ClearData();
                     SendEOSEvent();
                     return;
                 }
@@ -169,7 +168,6 @@ namespace JuvoPlayer.DataProviders.Dash
                         if (++downloadErrorCount >= MaxRetryCount)
                         {
                             Logger.Error(string.Format("{0} Cannot download segment file. Sending EOS event. Error: {1} {2}", streamType, ex.Message, ex.ToString()));
-                            sharedBuffer.ClearData();
                             SendEOSEvent();
                             return;
                         }

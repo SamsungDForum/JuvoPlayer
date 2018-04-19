@@ -101,7 +101,6 @@ namespace JuvoPlayer.Demuxers.FFmpeg
                 throw new InvalidOperationException("dataBuffer cannot be null");
 
             // Potentially time-consuming part of initialization and demuxation loop will be executed on a detached thread.
-            parse = true;
             demuxTask = Task.Run(() => DemuxTask(InitES, initMode)); 
         }
 
@@ -110,7 +109,6 @@ namespace JuvoPlayer.Demuxers.FFmpeg
             Logger.Info("StartDemuxer!");
 
             // Potentially time-consuming part of initialization and demuxation loop will be executed on a detached thread.
-            parse = true;
             demuxTask = Task.Run(() => DemuxTask(() => InitURL(url), InitializationMode.Full)); 
         }
 
@@ -322,7 +320,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg
                         if (ret == -541478725 && parse)
                         {
                             // null means EOF
-                            // PacketReady?.Invoke(null);
+                            PacketReady?.Invoke(null);
                         }
                         Logger.Info("DEMUXER: ----DEMUXING----AV_READ_FRAME----ERROR---- av_read_frame()=" + ret + " (" + GetErrorText(ret) + ")");
                         parse = false;
@@ -633,6 +631,8 @@ namespace JuvoPlayer.Demuxers.FFmpeg
         {
             resetting = true;
 
+            dataBuffer.ClearData();
+            dataBuffer.WriteData(null, true);
             demuxTask?.Wait();
 
             DeallocFFmpeg();
