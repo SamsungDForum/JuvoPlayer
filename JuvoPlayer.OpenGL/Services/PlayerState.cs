@@ -1,12 +1,14 @@
-﻿namespace JuvoPlayer.OpenGL.Services {
+﻿namespace JuvoPlayer.OpenGL.Services
+{
     public enum PlayerState
     {
+        Error = -1,
         Idle = 0,
         Preparing = 1,
         Prepared = 2,
         Stopped = 3,
-        Paused = 4,
-        Playing = 5,
-        Error = 6
+        Playing = 4,
+        Paused = 5,
+        Completed = 6
     }
 }

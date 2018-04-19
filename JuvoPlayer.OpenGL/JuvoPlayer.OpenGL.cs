@@ -430,12 +430,12 @@ namespace JuvoPlayer.OpenGL {
 
                         //_playerState = (int)_player.State; // why doesn't it work?...
                     };
-                    _player.ShowSubtitle += (Subtitle subtitle) =>
+                    /*_player.ShowSubtitle += (Subtitle subtitle) =>
                     {
                         Log.Info("JuvoPlayer", "Subtitle: " + subtitle.Text);
                         fixed (byte* text = GetBytes(subtitle.Text))
                             ShowSubtitle((int)subtitle.Duration, text, subtitle.Text.Length);
-                    };
+                    };*/
                     Log.Info("JuvoPlayer", "Playing " + ContentList[_selectedTile].Title + " (" + ContentList[_selectedTile].Source + ")");
                     _player.SetSource(ContentList[_selectedTile].Clip);
                     if (!_menuShown)
