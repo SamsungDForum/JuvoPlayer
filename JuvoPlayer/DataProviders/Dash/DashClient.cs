@@ -119,7 +119,7 @@ namespace JuvoPlayer.DataProviders.Dash
                     initStreamBytes = DownloadInitSegment(currentStreams);
 
                 if (initStreamBytes != null)
-                    sharedBuffer?.WriteData(initStreamBytes);
+                    sharedBuffer.WriteData(initStreamBytes);
             }
             catch (Exception ex)
             {

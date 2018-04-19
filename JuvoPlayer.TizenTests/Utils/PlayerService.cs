@@ -14,7 +14,7 @@ using JuvoPlayer.Player;
 using JuvoPlayer.Player.SMPlayer;
 using JuvoPlayer.Utils;
 
-namespace JuvoPlayer.TizenTests.IntegrationTests
+namespace JuvoPlayer.TizenTests.Utils
 {
     class PlayerService : IDisposable
     {
@@ -22,7 +22,6 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
         {
             Error = -1,
             Idle,
-            Preparing,
             Prepared,
             Stopped,
             Playing,
