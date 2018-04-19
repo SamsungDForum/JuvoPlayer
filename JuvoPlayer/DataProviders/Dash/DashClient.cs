@@ -112,7 +112,7 @@ namespace JuvoPlayer.DataProviders.Dash
         private void DownloadThread()
         {
             // clear garbage before appending new data
-            sharedBuffer?.ClearData();
+            sharedBuffer.ClearData();
             try
             {
                 if (initStreamBytes == null)
@@ -136,7 +136,7 @@ namespace JuvoPlayer.DataProviders.Dash
 
                 if (!playback)
                 {
-                    sharedBuffer?.ClearData();
+                    sharedBuffer.ClearData();
                     SendEOSEvent();
                     return;
                 }
@@ -169,7 +169,7 @@ namespace JuvoPlayer.DataProviders.Dash
                         if (++downloadErrorCount >= MaxRetryCount)
                         {
                             Logger.Error(string.Format("{0} Cannot download segment file. Sending EOS event. Error: {1} {2}", streamType, ex.Message, ex.ToString()));
-                            sharedBuffer?.ClearData();
+                            sharedBuffer.ClearData();
                             SendEOSEvent();
                             return;
                         }
@@ -178,15 +178,14 @@ namespace JuvoPlayer.DataProviders.Dash
                     else
                     {
                         Logger.Error(string.Format("Error: {0} {1} {2}", ex.Message, ex.TargetSite, ex.StackTrace));
-                    }
-                       
+                    }  
                 }
             }
         }
 
         private void SendEOSEvent()
         {
-            sharedBuffer?.WriteData(null, true);
+            sharedBuffer.WriteData(null, true);
         }
 
         private byte[] DownloadSegment(MpdParser.Node.Dynamic.Segment stream)

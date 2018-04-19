@@ -70,8 +70,8 @@ namespace JuvoPlayer.Player.SMPlayer
 
         private readonly SMPlayerWrapper playerInstance;
 
-        private readonly ConcurrentQueue<Packet> audioPacketsQueue;
-        private readonly ConcurrentQueue<Packet> videoPacketsQueue;
+        private ConcurrentQueue<Packet> audioPacketsQueue;
+        private ConcurrentQueue<Packet> videoPacketsQueue;
 
         private SMPlayerState internalState = SMPlayerState.Uninitialized;
 
@@ -123,8 +123,7 @@ namespace JuvoPlayer.Player.SMPlayer
                 throw;
             }
 
-            audioPacketsQueue = new ConcurrentQueue<Packet>();
-            videoPacketsQueue = new ConcurrentQueue<Packet>();
+            ResetPacketsQueues();
 
             submitPacketTask = Task.Run(() => SubmittingPacketsTask());
         }
@@ -330,16 +329,15 @@ namespace JuvoPlayer.Player.SMPlayer
 
             playerInstance.Pause();
 
-            Clear(audioPacketsQueue);
-            Clear(videoPacketsQueue);
+            ResetPacketsQueues();
 
             playerInstance.Seek((int)time.TotalMilliseconds);
         }
 
-        private static void Clear(ConcurrentQueue<Packet> queue)
+        private void ResetPacketsQueues()
         {
-            while (!queue.IsEmpty)
-                queue.TryDequeue(out var _);
+            audioPacketsQueue = new ConcurrentQueue<Packet>();
+            videoPacketsQueue = new ConcurrentQueue<Packet>();
         }
 
         public void SetStreamConfig(StreamConfig config)
@@ -496,8 +494,7 @@ namespace JuvoPlayer.Player.SMPlayer
 
             internalState = SMPlayerState.Stopped;
 
-            Clear(audioPacketsQueue);
-            Clear(videoPacketsQueue);
+            ResetPacketsQueues();
 
             WakeUpSubmitTask();
             submitPacketTask.Wait();
