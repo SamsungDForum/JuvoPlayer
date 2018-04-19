@@ -10,7 +10,7 @@ using System.Collections.Generic;
 
 namespace JuvoPlayer.DataProviders.Dash
 {
-    internal class DashMediaPipeline
+    internal class DashMediaPipeline : IDisposable
     {
         private struct DashStream : IEquatable<DashStream>
         {
@@ -76,7 +76,7 @@ namespace JuvoPlayer.DataProviders.Dash
             if (media == null)
                 throw new ArgumentNullException(nameof(media), "media cannot be null");
 
-            if (media.Any(o => o.Type.Value != ToMediaTypa(streamType)))
+            if (media.Any(o => o.Type.Value != ToMediaType(streamType)))
                 throw new ArgumentException("Not compatible media found");
 
             var defaultMedia = GetDefaultMedia(media);
@@ -148,7 +148,7 @@ namespace JuvoPlayer.DataProviders.Dash
             return media;
         }
 
-        private MediaType ToMediaTypa(StreamType streamType)
+        private MediaType ToMediaType(StreamType streamType)
         {
             switch (streamType)
             {
@@ -340,6 +340,11 @@ namespace JuvoPlayer.DataProviders.Dash
         private void OnStreamConfigReady(StreamConfig config)
         {
             StreamConfigReady?.Invoke(config);
+        }
+
+        public void Dispose()
+        {
+            demuxer?.Dispose();
         }
     }
 }
