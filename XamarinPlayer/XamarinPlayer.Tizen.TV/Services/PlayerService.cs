@@ -46,7 +46,7 @@ namespace XamarinPlayer.Tizen.Services
             }
         }
 
-        public string CurrentCueText => dataProvider?.CurrentCueText;
+        public string CurrentCueText => dataProvider?.CurrentCue?.Text;
 
         public PlayerService()
         {
