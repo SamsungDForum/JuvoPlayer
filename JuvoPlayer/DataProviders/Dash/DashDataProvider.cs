@@ -27,6 +27,7 @@ namespace JuvoPlayer.DataProviders.Dash
         private Task manifestLoader = null;
 
         private List<SubtitleInfo> subtitleInfos;
+        private readonly List<SubtitleInfo> subtitleInfos;
         private CuesMap cuesMap;
         private TimeSpan currentTime;
 
