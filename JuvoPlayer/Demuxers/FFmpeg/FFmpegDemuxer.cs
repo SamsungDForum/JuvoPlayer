@@ -433,8 +433,23 @@ namespace JuvoPlayer.Demuxers.FFmpeg
                 Interop.FFmpeg.avformat_free_context(formatContext);
                 formatContext = null;
             }
-            if (buffer != null) {
-                //FFmpeg.FFmpeg.av_free(buffer); // TODO(g.skowinski): causes segfault - investigate
+            //note(m.rybinski): from the avio_alloc_context() docs:
+            //"It [buffer] may be freed and replaced with a new buffer by libavformat.
+            // AVIOContext.buffer holds the buffer currently in use,
+            // which must be later freed with av_free()."
+            if (ioContext != null)
+            {
+                Interop.FFmpeg.av_free((*ioContext).buffer);
+                fixed (AVIOContext** ioContextPtr = &ioContext)
+                {
+                    Interop.FFmpeg.avio_context_free(ioContextPtr); //also sets to null
+                }
+                buffer = null;
+            }
+            else if (buffer != null)
+            {
+                //note(m.rybinski): might be better to just use av_freep()
+                Interop.FFmpeg.av_free(buffer);
                 buffer = null;
             }
         }
