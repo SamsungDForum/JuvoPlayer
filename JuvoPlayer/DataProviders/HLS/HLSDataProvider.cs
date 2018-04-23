@@ -14,7 +14,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Threading;
 using JuvoPlayer.Common;
 using JuvoPlayer.Demuxers;
 using JuvoPlayer.Subtitles;
@@ -23,14 +22,12 @@ namespace JuvoPlayer.DataProviders.HLS
 {
     internal class HLSDataProvider : IDataProvider
     {
-        private static readonly TimeSpan MagicBufferTime = TimeSpan.FromSeconds(10);
+        private static readonly TimeSpan MaxBufferHealth = TimeSpan.FromSeconds(10);
 
         private readonly IDemuxer demuxer;
         private readonly ClipDefinition currentClip;
 
-        private readonly object appendPacketEventLock = new object();
-        private readonly ManualResetEvent appendPacketEvent = new ManualResetEvent(false);
-
+        private TimeSpan lastPts;
         private TimeSpan currentTime;
 
         private CuesMap cuesMap;
@@ -66,16 +63,11 @@ namespace JuvoPlayer.DataProviders.HLS
         {
             if (packet != null)
             {
-                while (packet.Pts - currentTime > MagicBufferTime)
-                {
-                    lock (appendPacketEventLock)
-                    {
-                        if (appendPacketEvent.SafeWaitHandle.IsClosed)
-                            return;
-                    }
-                    // Wait has to be outside the lock!
-                    appendPacketEvent.WaitOne();
-                }
+                lastPts = packet.Pts;
+
+                if (ShouldPauseDemuxer())
+                    demuxer.Pause();
+
                 PacketReady?.Invoke(packet);
                 return;
             }
@@ -86,6 +78,11 @@ namespace JuvoPlayer.DataProviders.HLS
             PacketReady?.Invoke(Packet.CreateEOS(StreamType.Video));
         }
 
+        private bool ShouldPauseDemuxer()
+        {
+            return lastPts - currentTime > MaxBufferHealth;
+        }
+
         public void OnChangeActiveStream(StreamDescription stream)
         {
             if (stream.StreamType == StreamType.Subtitle)
@@ -94,12 +91,12 @@ namespace JuvoPlayer.DataProviders.HLS
 
         public void OnPaused()
         {
-            demuxer.Paused();
+            demuxer.Pause();
         }
 
         public void OnPlayed()
         {
-            demuxer.Played();
+            demuxer.Resume();
         }
 
         public void OnSeek(TimeSpan time)
@@ -125,18 +122,19 @@ namespace JuvoPlayer.DataProviders.HLS
         public void OnTimeUpdated(TimeSpan time)
         {
             currentTime = time;
-            appendPacketEvent.Set();
+            ResumeDemuxerIfNecessary();
+        }
+
+        private void ResumeDemuxerIfNecessary()
+        {
+            if (demuxer.IsPaused && !ShouldPauseDemuxer())
+            {
+                demuxer.Resume();
+            }
         }
 
         public void Dispose()
         {
-            // Make sure that Set and Dispose are atomic for appendPacketEvent
-            lock (appendPacketEventLock)
-            {
-                appendPacketEvent.Set();
-                appendPacketEvent.Dispose();
-            }
-
             demuxer.Dispose();
         }
 
