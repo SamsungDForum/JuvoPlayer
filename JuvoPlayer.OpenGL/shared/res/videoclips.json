@@ -14,6 +14,13 @@
     "description": "Resolution 1280x720 Codecs: H264 - MPEG4 AVC, MPEG AAC, Formula 1 Racing Car video. Origin http://pederson3.rssing.com/chan-1060344/all_p42.html"
   },
   {
+    "title": "Sintel - Clean fMP4 MPEG DASH - multiple languages",
+    "url": "https://bitdash-a.akamaihd.net/content/sintel/sintel.mpd",
+    "type": "dash",
+    "poster": "sintel.jpg",
+    "description": "Resolution 1920x818 Codecs: H264 - MPEG4 AVC, MPEG AAC, The Blender Foundation - Sintel. Origin https://bitmovin.com/multi-language-multi-audio/"
+  },
+  {
     "title": "Encrypted MPEG DASH",
     "url": "http://yt-dash-mse-test.commondatastorage.googleapis.com/media/oops_cenc-20121114-signedlicenseurl-manifest.mpd",
     "type": "dash",
@@ -44,17 +51,16 @@
     "description": "Resolution 1920x1080. No adaptive streaming. Codecs: H264 - MPEG4 AVC, MPEG AAC. Big Buck Bunny over http. Origin http://distribution.bbb3d.renderfarming.net/video/mp4/",
     "subtitles": [
       {
-        "subtitle": "./subs/sample_cyrilic.srt",
-        "encoding": "windows-1251",
-        "language": "en (external)",
+        "path": "XamarinPlayer.Tizen.TV.res.subs.media_player_subs_windows-1250.srt",
+        "encoding": "windows-1250",
+        "language": "ru",
         "id": "11"
       },
       {
-        "subtitle": "./subs/sample_cyrilic_utf8.srt",
-        "language": "ko (external)",
+        "path": "XamarinPlayer.Tizen.TV.res.subs.media_player_subs_windows-1252.srt",
+        "language": "we",
         "id": "10",
-        "isActive": true,
-        "encoding": "windows-1251"
+        "encoding": "windows-1252"
       }
     ]
   },
