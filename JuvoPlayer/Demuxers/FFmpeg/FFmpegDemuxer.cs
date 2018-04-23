@@ -23,7 +23,7 @@ using JuvoPlayer.SharedBuffers;
 
 namespace JuvoPlayer.Demuxers.FFmpeg
 {
-    internal class FFmpegDemuxer : IDemuxer
+    internal sealed class FFmpegDemuxer : IDemuxer
     {
         private static readonly ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
 
@@ -59,11 +59,6 @@ namespace JuvoPlayer.Demuxers.FFmpeg
         public bool IsPaused { get; private set; }
         private readonly AutoResetEvent pausedEvent = new AutoResetEvent(false);
         private bool isDisposed;
-
-        ~FFmpegDemuxer()
-        {
-            ReleaseUnmanagedResources();
-        }
 
         public unsafe FFmpegDemuxer(string libPath, ISharedBuffer dataBuffer = null)
         {
@@ -757,7 +752,6 @@ namespace JuvoPlayer.Demuxers.FFmpeg
         {
             DeallocFFmpeg();
         }
-
         public void Dispose()
         {
             if (isDisposed)
@@ -781,6 +775,11 @@ namespace JuvoPlayer.Demuxers.FFmpeg
             GC.SuppressFinalize(this);
 
             isDisposed = true;
+        }
+
+        ~FFmpegDemuxer()
+        {
+            ReleaseUnmanagedResources();
         }
     }
 }

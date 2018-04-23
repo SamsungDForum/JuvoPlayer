@@ -67,7 +67,7 @@ namespace Rtsp
         /// </summary>
         public void Close()
         {
-            Dispose(true);
+            Dispose();
         }
 
         /// <summary>
@@ -97,22 +97,7 @@ namespace Rtsp
 
         public void Dispose()
         {
-            Dispose(true);
-            GC.SuppressFinalize(this);
-        }
-
-        protected virtual void Dispose(bool disposing)
-        {
-            if (disposing)
-            {
-                _RtspServerClient.Dispose();
-                /*   // free managed resources
-                   if (managedResource != null)
-                   {
-                       managedResource.Dispose();
-                       managedResource = null;
-                   }*/
-            }
+            _RtspServerClient.Dispose();
         }
     }
 }

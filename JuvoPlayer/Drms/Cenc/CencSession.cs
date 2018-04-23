@@ -15,7 +15,7 @@ using Tizen.TV.Security.DrmDecrypt.emeCDM;
 
 namespace JuvoPlayer.Drms.Cenc
 {
-    internal class CencSession : IEventListener, IDrmSession
+    internal sealed class CencSession : IEventListener, IDrmSession
     {
         private readonly ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
 
@@ -54,23 +54,22 @@ namespace JuvoPlayer.Drms.Cenc
             IEME.destroy(CDMInstance);
             CDMInstance = null;
         }
-
         public override void Dispose()
         {
-            GC.SuppressFinalize(this);
-
             isDisposing = true;
 
-            if (initializationTask?.Status == TaskStatus.Running)
-                initializationTask?.Wait();
-
+            initializationTask?.Wait();
             thread.Factory.Run(() => DestroyCDM()).Wait();
-
+            thread.Dispose();
             base.Dispose();
+
+            GC.SuppressFinalize(this);
         }
 
         ~CencSession()
         {
+            //Dispose() was never called, so we have no choice,
+            //but to try to destroy CDM on the finalizer thread
             DestroyCDM();
         }
 
