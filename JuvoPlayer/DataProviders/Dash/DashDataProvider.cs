@@ -191,7 +191,7 @@ namespace JuvoPlayer.DataProviders.Dash
             }
         }
 
-        public string CurrentCueText => cuesMap?.Get(currentTime)?.Text;
+        public Cue CurrentCue => cuesMap?.Get(currentTime);
 
         public void OnTimeUpdated(TimeSpan time)
         {
