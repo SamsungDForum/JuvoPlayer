@@ -48,7 +48,7 @@ namespace JuvoPlayer.TizenTests.Utils
 
         public PlayerState State { get; private set; } = PlayerState.Idle;
 
-        public string CurrentCueText => dataProvider?.CurrentCueText;
+        public string CurrentCueText => dataProvider?.CurrentCue?.Text;
 
         public PlayerService()
         {
