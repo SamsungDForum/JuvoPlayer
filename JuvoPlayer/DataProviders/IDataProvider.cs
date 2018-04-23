@@ -14,6 +14,7 @@
 using JuvoPlayer.Common;
 using System;
 using System.Collections.Generic;
+using JuvoPlayer.Subtitles;
 
 namespace JuvoPlayer.DataProviders
 {
@@ -31,7 +32,7 @@ namespace JuvoPlayer.DataProviders
 
         bool IsSeekingSupported();
         void Start();
-        string CurrentCueText { get; }
+        Cue CurrentCue { get; }
         List<StreamDescription> GetStreamsDescription(StreamType streamType);
 
         event ClipDurationChanged ClipDurationChanged;
