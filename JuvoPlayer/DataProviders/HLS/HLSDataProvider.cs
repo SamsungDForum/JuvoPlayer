@@ -117,7 +117,7 @@ namespace JuvoPlayer.DataProviders.HLS
             demuxer.StartForUrl(currentClip.Url);
         }
 
-        public string CurrentCueText => cuesMap?.Get(currentTime)?.Text;
+        public Cue CurrentCue => cuesMap?.Get(currentTime);
 
         public void OnTimeUpdated(TimeSpan time)
         {
