@@ -36,8 +36,6 @@ namespace JuvoPlayer.Common
             };
         }
 
-        public virtual void Dispose()
-        {
-        }
+        public virtual void Dispose() { }
     }
 }
