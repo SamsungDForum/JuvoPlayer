@@ -85,6 +85,21 @@ namespace JuvoPlayer.DataProviders.Dash
             }
         }
 
+        public void OnDeactivateStream(StreamType streamType)
+        {
+            if (streamType == StreamType.Subtitle)
+            {
+                OnDeactivateSubtitleStream();
+                return;
+            }
+            throw new NotImplementedException();
+        }
+
+        private void OnDeactivateSubtitleStream()
+        {
+            cuesMap = null;
+        }
+
         private void OnChangeActiveSubtitleStream(StreamDescription description)
         {
             if (description.Id >= subtitleInfos.Count)
