@@ -27,7 +27,7 @@ namespace JuvoPlayer.DataProviders.HLS
         private readonly IDemuxer demuxer;
         private readonly ClipDefinition currentClip;
 
-        private TimeSpan lastPts;
+        private TimeSpan lastReceivedPts;
         private TimeSpan currentTime;
 
         private CuesMap cuesMap;
@@ -63,7 +63,7 @@ namespace JuvoPlayer.DataProviders.HLS
         {
             if (packet != null)
             {
-                lastPts = packet.Pts;
+                lastReceivedPts = packet.Pts;
 
                 if (ShouldPauseDemuxer())
                     demuxer.Pause();
@@ -80,7 +80,7 @@ namespace JuvoPlayer.DataProviders.HLS
 
         private bool ShouldPauseDemuxer()
         {
-            return lastPts - currentTime > MaxBufferHealth;
+            return lastReceivedPts - currentTime > MaxBufferHealth;
         }
 
         public void OnChangeActiveStream(StreamDescription stream)
