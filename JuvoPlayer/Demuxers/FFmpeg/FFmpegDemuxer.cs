@@ -659,8 +659,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg
         {
             resetting = true;
 
-            IsPaused = false;
-            pausedEvent.Set();
+            Resume();
             dataBuffer.ClearData();
             dataBuffer.WriteData(null, true);
             demuxTask?.Wait();
@@ -735,8 +734,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg
         public void Dispose()
         {
             parse = false;
-            IsPaused = false;
-            pausedEvent.Set();
+            Resume();
             pausedEvent.Dispose();
             demuxTask?.Wait();
 
