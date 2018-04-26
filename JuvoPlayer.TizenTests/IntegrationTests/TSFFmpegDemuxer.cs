@@ -119,6 +119,16 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
             }
         }
 
+        [Test]
+        public void Dispose_CalledTwice_ShouldntThrow()
+        {
+            var demuxer = CreateFFmpegDemuxer();
+
+            demuxer.Dispose();
+
+            Assert.DoesNotThrow(() => { demuxer.Dispose(); });
+        }
+
         private static IDemuxer CreateFFmpegDemuxer(ISharedBuffer sharedBuffer = null)
         {
             return new FFmpegDemuxer(ResolveFFmpegLibDir(), sharedBuffer);
