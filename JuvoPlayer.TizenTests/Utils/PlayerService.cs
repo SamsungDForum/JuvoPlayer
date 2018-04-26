@@ -31,7 +31,7 @@ namespace JuvoPlayer.TizenTests.Utils
 
         public List<ClipDefinition> ReadClips()
         {
-            var applicationPath = Path.GetDirectoryName(Path.GetDirectoryName(Tizen.Applications.Application.Current.ApplicationInfo.ExecutablePath));
+            var applicationPath = Paths.ApplicationPath;
             var clipsPath = Path.Combine(applicationPath, "res", "videoclips.json");
             return JSONFileReader.DeserializeJsonFile<List<ClipDefinition>>(clipsPath).ToList();
         }

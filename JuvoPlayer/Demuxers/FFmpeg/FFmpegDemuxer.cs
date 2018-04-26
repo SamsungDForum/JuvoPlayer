@@ -14,6 +14,7 @@
 using System;
 using System.IO;
 using System.Runtime.InteropServices;
+using System.Threading;
 using System.Threading.Tasks;
 using JuvoPlayer.Common;
 using JuvoLogger;
@@ -55,6 +56,8 @@ namespace JuvoPlayer.Demuxers.FFmpeg
         private readonly avio_alloc_context_seek seekFunctionDelegate;
 
         private readonly ISharedBuffer dataBuffer;
+        public bool IsPaused { get; private set; }
+        private readonly AutoResetEvent pausedEvent = new AutoResetEvent(false);
 
         ~FFmpegDemuxer()
         {
@@ -83,9 +86,9 @@ namespace JuvoPlayer.Demuxers.FFmpeg
                 };
                 Interop.FFmpeg.av_log_set_callback(logCallback);
             }
-            catch (Exception) {
-                Logger.Info("Could not load and register FFmpeg library!");
-                throw;
+            catch (Exception e) {
+                Logger.Info("Could not load and register FFmpeg library");
+                throw new DemuxerException("Could not load and register FFmpeg library", e);
             }
 
             // we need to make sure that delegate lifetime is the same as our demuxer class
@@ -202,7 +205,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg
             audioIdx = FindBestStream(AVMediaType.AVMEDIA_TYPE_AUDIO);
             videoIdx = FindBestStream(AVMediaType.AVMEDIA_TYPE_VIDEO);
 
-            if (audioIdx < 0 && videoIdx < 0)
+            if (audioIdx < 0 || videoIdx < 0)
             {
                 Logger.Fatal("Could not find video or audio stream: " + audioIdx + "      " + videoIdx);
 
@@ -259,22 +262,19 @@ namespace JuvoPlayer.Demuxers.FFmpeg
         {
             try
             {
-                initAction(); // Finish more time-consuming init things
-
-                // Do some time consuming operation only when it is needed
-                if (initMode == InitializationMode.Full)
-                {
-                    FindStreamsInfo();
-                    ReadAudioConfig();
-                    ReadVideoConfig();
-                    UpdateContentProtectionConfig();
-                }
+                InitializeDemuxer(initAction, initMode);
             }
-            catch (Exception e) {
+            catch (Exception e)
+            {
                 Logger.Error("An error occured: " + e.Message);
+                throw new DemuxerException("Couldn't initialize demuxer", e);
             }
 
-            while (parse) {
+            while (parse)
+            {
+                while (IsPaused)
+                    pausedEvent.WaitOne();
+
                 AVPacket pkt = new AVPacket();
                 Interop.FFmpeg.av_init_packet(&pkt);
                 pkt.data = null;
@@ -300,7 +300,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg
 
                         var sideData = Interop.FFmpeg.av_packet_get_side_data(&pkt, AVPacketSideDataType.@AV_PKT_DATA_ENCRYPT_INFO, null);
 
-                        Packet packet = null;
+                        Packet packet;
                         if (sideData != null)
                             packet = CreateEncryptedPacket(sideData);
                         else
@@ -331,6 +331,19 @@ namespace JuvoPlayer.Demuxers.FFmpeg
                     Interop.FFmpeg.av_packet_unref(&pkt);
                 }
             }
+        }
+
+        private void InitializeDemuxer(Action initAction, InitializationMode initMode)
+        {
+            // Finish more time-consuming init things
+            initAction();
+
+            if (initMode != InitializationMode.Full) return;
+
+            FindStreamsInfo();
+            ReadAudioConfig();
+            ReadVideoConfig();
+            UpdateContentProtectionConfig();
         }
 
         private static unsafe Packet CreateEncryptedPacket(byte* sideData)
@@ -646,6 +659,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg
         {
             resetting = true;
 
+            Resume();
             dataBuffer.ClearData();
             dataBuffer.WriteData(null, true);
             demuxTask?.Wait();
@@ -655,14 +669,15 @@ namespace JuvoPlayer.Demuxers.FFmpeg
             resetting = false;
         }
 
-        public unsafe void Paused()
+        public void Pause()
         {
-            Interop.FFmpeg.av_read_pause(formatContext);
+            IsPaused = true;
         }
 
-        public unsafe void Played()
+        public void Resume()
         {
-            Interop.FFmpeg.av_read_play(formatContext);
+            IsPaused = false;
+            pausedEvent.Set();
         }
 
         private static unsafe ISharedBuffer RetrieveSharedBufferReference(void* @opaque)
@@ -719,6 +734,8 @@ namespace JuvoPlayer.Demuxers.FFmpeg
         public void Dispose()
         {
             parse = false;
+            Resume();
+            pausedEvent.Dispose();
             demuxTask?.Wait();
 
             ReleaseUnmanagedResources();

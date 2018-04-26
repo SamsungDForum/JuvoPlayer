@@ -30,8 +30,10 @@ namespace JuvoPlayer.Demuxers
         void StartForUrl(string url);
         void ChangePID(int pid);
         void Reset();
-        void Paused();
-        void Played();
+        void Pause();
+        void Resume();
+
+        bool IsPaused { get; }
 
         event ClipDurationChanged ClipDuration;
         event DRMInitDataFound DRMInitDataFound;
