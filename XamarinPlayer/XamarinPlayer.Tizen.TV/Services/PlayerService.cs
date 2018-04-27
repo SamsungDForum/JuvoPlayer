@@ -98,6 +98,11 @@ namespace XamarinPlayer.Tizen.Services
             dataProvider.OnChangeActiveStream(streamDescription);
         }
 
+        public void DeactivateStream(StreamType streamType)
+        {
+            dataProvider.OnDeactivateStream(ToJuvoStreamType(streamType));
+        }
+
         public List<StreamDefinition> GetStreamsDescription(StreamType streamType)
         {
             var streams = dataProvider.GetStreamsDescription(ToJuvoStreamType(streamType));

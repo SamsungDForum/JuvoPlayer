@@ -86,7 +86,27 @@ namespace JuvoPlayer.DataProviders.HLS
         public void OnChangeActiveStream(StreamDescription stream)
         {
             if (stream.StreamType == StreamType.Subtitle)
-                OnChangeActiveSubtitle(stream);
+            {
+                OnChangeActiveSubtitleStream(stream);
+                return;
+            }
+            throw new NotImplementedException();
+        }
+
+        public void OnDeactivateStream(StreamType streamType)
+        {
+            if (streamType == StreamType.Subtitle)
+            {
+                OnDeactivateSubtitleStream();
+                return;
+            }
+
+            throw new NotImplementedException();
+        }
+
+        private void OnDeactivateSubtitleStream()
+        {
+            cuesMap = null;
         }
 
         public void OnPaused()
@@ -150,7 +170,7 @@ namespace JuvoPlayer.DataProviders.HLS
             return currentClip.Subtitles.Select(info => info.ToStreamDescription()).ToList();
         }
 
-        private void OnChangeActiveSubtitle(StreamDescription description)
+        private void OnChangeActiveSubtitleStream(StreamDescription description)
         {
             var found = currentClip.Subtitles.First(info => info.Id == description.Id);
             if (found == null)

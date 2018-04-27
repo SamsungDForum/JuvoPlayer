@@ -61,7 +61,12 @@ namespace JuvoPlayer.DataProviders.RTSP
 
         public void OnChangeActiveStream(StreamDescription stream)
         {
+            throw new NotImplementedException();
+        }
 
+        public void OnDeactivateStream(StreamType streamType)
+        {
+            throw new NotImplementedException();
         }
 
         public void OnPaused()

@@ -155,8 +155,14 @@ namespace XamarinPlayer.Views
 
             Subtitles.SelectedIndexChanged += (sender, args) =>
             {
-                if (Subtitles.SelectedIndex == -1 || Subtitles.SelectedIndex == 0)
+                if (Subtitles.SelectedIndex == -1)
                     return;
+
+                if (Subtitles.SelectedIndex == 0)
+                {
+                    _playerService.DeactivateStream(StreamDescription.StreamType.Subtitle);
+                    return;
+                }
 
                 var stream = (StreamDescription)Subtitles.ItemsSource[Subtitles.SelectedIndex];
                 try
@@ -416,12 +422,6 @@ namespace XamarinPlayer.Views
 
         private void UpdateCueTextLabel()
         {
-            if (Subtitles.SelectedIndex == 0)
-            {
-                if (CueTextLabel.IsVisible) CueTextLabel.IsVisible = false;
-                return;
-            }
-
             var cueText = _playerService.CurrentCueText ?? string.Empty;
             if (string.IsNullOrEmpty(cueText))
             {
