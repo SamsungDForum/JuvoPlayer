@@ -58,6 +58,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg
         private readonly ISharedBuffer dataBuffer;
         public bool IsPaused { get; private set; }
         private readonly AutoResetEvent pausedEvent = new AutoResetEvent(false);
+        private bool isDisposed;
 
         ~FFmpegDemuxer()
         {
@@ -205,12 +206,12 @@ namespace JuvoPlayer.Demuxers.FFmpeg
             audioIdx = FindBestStream(AVMediaType.AVMEDIA_TYPE_AUDIO);
             videoIdx = FindBestStream(AVMediaType.AVMEDIA_TYPE_VIDEO);
 
-            if (audioIdx < 0 || videoIdx < 0)
+            if (audioIdx < 0 && videoIdx < 0)
             {
-                Logger.Fatal("Could not find video or audio stream: " + audioIdx + "      " + videoIdx);
+                Logger.Fatal($"Neither video ({videoIdx}) nor audio stream ({audioIdx}) found");
 
                 DeallocFFmpeg();
-                throw new Exception("Could not find video or audio stream!");
+                throw new Exception($"Neither video nor audio stream found");
             }
 
             // disable not used streams
@@ -733,6 +734,9 @@ namespace JuvoPlayer.Demuxers.FFmpeg
 
         public void Dispose()
         {
+            if (isDisposed)
+                return;
+
             parse = false;
             Resume();
             pausedEvent.Dispose();
@@ -740,6 +744,8 @@ namespace JuvoPlayer.Demuxers.FFmpeg
 
             ReleaseUnmanagedResources();
             GC.SuppressFinalize(this);
+
+            isDisposed = true;
         }
     }
 }
