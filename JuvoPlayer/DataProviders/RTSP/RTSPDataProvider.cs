@@ -15,6 +15,7 @@ using System;
 using System.Collections.Generic;
 using JuvoPlayer.Common;
 using JuvoPlayer.Demuxers;
+using JuvoPlayer.Subtitles;
 
 namespace JuvoPlayer.DataProviders.RTSP
 {
@@ -60,7 +61,12 @@ namespace JuvoPlayer.DataProviders.RTSP
 
         public void OnChangeActiveStream(StreamDescription stream)
         {
+            throw new NotImplementedException();
+        }
 
+        public void OnDeactivateStream(StreamType streamType)
+        {
+            throw new NotImplementedException();
         }
 
         public void OnPaused()
@@ -91,7 +97,7 @@ namespace JuvoPlayer.DataProviders.RTSP
             demuxer.StartForExternalSource(InitializationMode.Full);
         }
 
-        public string CurrentCueText { get; }
+        public Cue CurrentCue { get; }
 
         public void OnStopped()
         {

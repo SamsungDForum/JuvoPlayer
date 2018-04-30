@@ -31,5 +31,6 @@ namespace XamarinPlayer.Services
 
         List<StreamDescription> GetStreamsDescription(StreamDescription.StreamType streamType);
         void ChangeActiveStream(StreamDescription stream);
+        void DeactivateStream(StreamDescription.StreamType streamType);
     }
 }

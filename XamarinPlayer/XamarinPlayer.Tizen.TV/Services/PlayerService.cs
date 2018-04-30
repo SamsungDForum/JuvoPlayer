@@ -46,7 +46,7 @@ namespace XamarinPlayer.Tizen.Services
             }
         }
 
-        public string CurrentCueText => dataProvider?.CurrentCueText;
+        public string CurrentCueText => dataProvider?.CurrentCue?.Text;
 
         public PlayerService()
         {
@@ -96,6 +96,11 @@ namespace XamarinPlayer.Tizen.Services
             };
 
             dataProvider.OnChangeActiveStream(streamDescription);
+        }
+
+        public void DeactivateStream(StreamType streamType)
+        {
+            dataProvider.OnDeactivateStream(ToJuvoStreamType(streamType));
         }
 
         public List<StreamDefinition> GetStreamsDescription(StreamType streamType)

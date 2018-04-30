@@ -20,7 +20,7 @@ namespace JuvoPlayer.DataProviders.Dash
 
         private readonly ISharedBuffer sharedBuffer;
         private readonly StreamType streamType;
-        private readonly ManualResetEvent timeUpdatedEvent = new ManualResetEvent(false);
+        private readonly AutoResetEvent timeUpdatedEvent = new AutoResetEvent(false);
 
         private Representation currentRepresentation;
         private TimeSpan currentTime;
@@ -68,17 +68,21 @@ namespace JuvoPlayer.DataProviders.Dash
 
         public void Stop()
         {
+            StopPlayback();
+            timeUpdatedEvent.Set();
+
+            downloadTask.Wait();
+
+            Logger.Info(string.Format("{0} Data downloader stopped", streamType));
+        }
+
+        private void StopPlayback()
+        {
             // playback has been already stopped
             if (!playback)
                 return;
 
             playback = false;
-            timeUpdatedEvent.Set();
-
-            sharedBuffer?.WriteData(null, true);
-            downloadTask.Wait();
-
-            Logger.Info(string.Format("{0} Data downloader stopped", streamType));
         }
 
         public void SetRepresentation(Representation representation)
@@ -108,7 +112,7 @@ namespace JuvoPlayer.DataProviders.Dash
         private void DownloadThread()
         {
             // clear garbage before appending new data
-            sharedBuffer?.ClearData();
+            sharedBuffer.ClearData();
             try
             {
                 if (initStreamBytes == null)
@@ -125,13 +129,16 @@ namespace JuvoPlayer.DataProviders.Dash
             var duration = currentStreams.Duration;
             var downloadErrorCount = 0;
             var bufferTime = currentTime;
-            while (true) 
+            while (true)
             {
                 while (bufferTime - currentTime > MagicBufferTime && playback)
                     timeUpdatedEvent.WaitOne();
 
                 if (!playback)
+                {
+                    SendEOSEvent();
                     return;
+                }
 
                 try
                 {
@@ -152,7 +159,7 @@ namespace JuvoPlayer.DataProviders.Dash
                         }
                     }
 
-                    Stop();
+                    StopPlayback();
                 }
                 catch (Exception ex)
                 {
@@ -160,9 +167,8 @@ namespace JuvoPlayer.DataProviders.Dash
                     {
                         if (++downloadErrorCount >= MaxRetryCount)
                         {
-                            Logger.Error(string.Format("{0} Cannot download segment file. Stop playback. Error: {1} {2}", streamType, ex.Message, ex.ToString()));
-
-                            Stop();
+                            Logger.Error(string.Format("{0} Cannot download segment file. Sending EOS event. Error: {1} {2}", streamType, ex.Message, ex.ToString()));
+                            SendEOSEvent();
                             return;
                         }
                         Logger.Warn(string.Format("{0} Cannot download segment file. Will retry. Error: {1} {2}", streamType, ex.Message, ex.ToString()));
@@ -170,10 +176,14 @@ namespace JuvoPlayer.DataProviders.Dash
                     else
                     {
                         Logger.Error(string.Format("Error: {0} {1} {2}", ex.Message, ex.TargetSite, ex.StackTrace));
-                    }
-                       
+                    }  
                 }
             }
+        }
+
+        private void SendEOSEvent()
+        {
+            sharedBuffer.WriteData(null, true);
         }
 
         private byte[] DownloadSegment(MpdParser.Node.Dynamic.Segment stream)

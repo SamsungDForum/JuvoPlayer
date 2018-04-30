@@ -393,6 +393,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg.Interop
         unsafe public delegate int avformat_write_header_d(AVFormatContext* @s, AVDictionary** @options);
         unsafe public delegate int avio_accept_d(AVIOContext* @s, AVIOContext** @c);
         unsafe public delegate AVIOContext* avio_alloc_context_d(byte* @buffer, int @buffer_size, int @write_flag, void* @opaque, avio_alloc_context_read_packet_func @read_packet, avio_alloc_context_write_packet_func @write_packet, avio_alloc_context_seek_func @seek);
+        unsafe public delegate void avio_context_free_d(AVIOContext** @ptr);
         unsafe public delegate int avio_check_d([MarshalAs(UnmanagedType.LPStr)] string @url, int @flags);
         unsafe public delegate int avio_close_d(AVIOContext* @s);
         unsafe public delegate int avio_close_dir_d(AVIODirContext** @s);
@@ -1137,6 +1138,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg.Interop
         static public avformat_write_header_d avformat_write_header;
         static public avio_accept_d avio_accept;
         static public avio_alloc_context_d avio_alloc_context;
+        static public avio_context_free_d avio_context_free;
         static public avio_check_d avio_check;
         static public avio_close_d avio_close;
         static public avio_close_dir_d avio_close_dir;
@@ -2022,6 +2024,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg.Interop
             avformat_write_header = Marshal.GetDelegateForFunctionPointer<avformat_write_header_d>(dlsym(libavformatHandle, "avformat_write_header"));
             avio_accept = Marshal.GetDelegateForFunctionPointer<avio_accept_d>(dlsym(libavformatHandle, "avio_accept"));
             avio_alloc_context = Marshal.GetDelegateForFunctionPointer<avio_alloc_context_d>(dlsym(libavformatHandle, "avio_alloc_context"));
+            avio_context_free = Marshal.GetDelegateForFunctionPointer<avio_context_free_d>(dlsym(libavformatHandle, "avio_context_free"));
             avio_check = Marshal.GetDelegateForFunctionPointer<avio_check_d>(dlsym(libavformatHandle, "avio_check"));
             avio_close = Marshal.GetDelegateForFunctionPointer<avio_close_d>(dlsym(libavformatHandle, "avio_close"));
             avio_close_dir = Marshal.GetDelegateForFunctionPointer<avio_close_dir_d>(dlsym(libavformatHandle, "avio_close_dir"));
