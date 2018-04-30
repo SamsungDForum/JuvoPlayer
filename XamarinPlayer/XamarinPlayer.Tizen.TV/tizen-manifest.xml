@@ -1,7 +1,7 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <manifest package="org.tizen.example.XamarinPlayer.Tizen.TV" version="1.0.0" api-version="4" xmlns="http://tizen.org/ns/packages">
     <profile name="common" />
-    <ui-application appid="org.tizen.example.XamarinPlayer.Tizen.TV" exec="XamarinPlayer.Tizen.TV.dll" multiple="false" nodisplay="false" taskmanage="true" splash-screen-display="true" type="dotnet-inhouse" launch_mode="single">
+    <ui-application appid="org.tizen.example.XamarinPlayer.Tizen.TV" exec="XamarinPlayer.Tizen.TV.dll" multiple="false" nodisplay="false" taskmanage="true" splash-screen-display="true" type="dotnet" launch_mode="single">
         <label>XamarinPlayer.Tizen.TV</label>
         <icon>Icon.png</icon>
     </ui-application>
@@ -10,6 +10,7 @@
         <privilege>http://tizen.org/privilege/internet</privilege>
 		<privilege>http://tizen.org/privilege/tee.client</privilege>
 		<privilege>http://developer.samsung.com/privilege/drmplay</privilege>
+      <privilege>http://developer.samsung.com/privilege/drminfo</privilege>
     </privileges>
     <provides-appdefined-privileges />
 </manifest>
