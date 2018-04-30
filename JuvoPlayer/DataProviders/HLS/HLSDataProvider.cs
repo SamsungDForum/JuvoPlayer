@@ -14,7 +14,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Threading;
 using JuvoPlayer.Common;
 using JuvoPlayer.Demuxers;
 using JuvoPlayer.Subtitles;
@@ -23,14 +22,12 @@ namespace JuvoPlayer.DataProviders.HLS
 {
     internal class HLSDataProvider : IDataProvider
     {
-        private static readonly TimeSpan MagicBufferTime = TimeSpan.FromSeconds(10);
+        private static readonly TimeSpan MaxBufferHealth = TimeSpan.FromSeconds(10);
 
         private readonly IDemuxer demuxer;
         private readonly ClipDefinition currentClip;
 
-        private readonly object appendPacketEventLock = new object();
-        private readonly ManualResetEvent appendPacketEvent = new ManualResetEvent(false);
-
+        private TimeSpan lastReceivedPts;
         private TimeSpan currentTime;
 
         private CuesMap cuesMap;
@@ -66,16 +63,11 @@ namespace JuvoPlayer.DataProviders.HLS
         {
             if (packet != null)
             {
-                while (packet.Pts - currentTime > MagicBufferTime)
-                {
-                    lock (appendPacketEventLock)
-                    {
-                        if (appendPacketEvent.SafeWaitHandle.IsClosed)
-                            return;
-                    }
-                    // Wait has to be outside the lock!
-                    appendPacketEvent.WaitOne();
-                }
+                lastReceivedPts = packet.Pts;
+
+                if (ShouldPauseDemuxer())
+                    demuxer.Pause();
+
                 PacketReady?.Invoke(packet);
                 return;
             }
@@ -86,20 +78,45 @@ namespace JuvoPlayer.DataProviders.HLS
             PacketReady?.Invoke(Packet.CreateEOS(StreamType.Video));
         }
 
+        private bool ShouldPauseDemuxer()
+        {
+            return lastReceivedPts - currentTime > MaxBufferHealth;
+        }
+
         public void OnChangeActiveStream(StreamDescription stream)
         {
             if (stream.StreamType == StreamType.Subtitle)
-                OnChangeActiveSubtitle(stream);
+            {
+                OnChangeActiveSubtitleStream(stream);
+                return;
+            }
+            throw new NotImplementedException();
+        }
+
+        public void OnDeactivateStream(StreamType streamType)
+        {
+            if (streamType == StreamType.Subtitle)
+            {
+                OnDeactivateSubtitleStream();
+                return;
+            }
+
+            throw new NotImplementedException();
+        }
+
+        private void OnDeactivateSubtitleStream()
+        {
+            cuesMap = null;
         }
 
         public void OnPaused()
         {
-            demuxer.Paused();
+            demuxer.Pause();
         }
 
         public void OnPlayed()
         {
-            demuxer.Played();
+            demuxer.Resume();
         }
 
         public void OnSeek(TimeSpan time)
@@ -120,23 +137,24 @@ namespace JuvoPlayer.DataProviders.HLS
             demuxer.StartForUrl(currentClip.Url);
         }
 
-        public string CurrentCueText => cuesMap?.Get(currentTime)?.Text;
+        public Cue CurrentCue => cuesMap?.Get(currentTime);
 
         public void OnTimeUpdated(TimeSpan time)
         {
             currentTime = time;
-            appendPacketEvent.Set();
+            ResumeDemuxerIfNecessary();
+        }
+
+        private void ResumeDemuxerIfNecessary()
+        {
+            if (demuxer.IsPaused && !ShouldPauseDemuxer())
+            {
+                demuxer.Resume();
+            }
         }
 
         public void Dispose()
         {
-            // Make sure that Set and Dispose are atomic for appendPacketEvent
-            lock (appendPacketEventLock)
-            {
-                appendPacketEvent.Set();
-                appendPacketEvent.Dispose();
-            }
-
             demuxer.Dispose();
         }
 
@@ -152,7 +170,7 @@ namespace JuvoPlayer.DataProviders.HLS
             return currentClip.Subtitles.Select(info => info.ToStreamDescription()).ToList();
         }
 
-        private void OnChangeActiveSubtitle(StreamDescription description)
+        private void OnChangeActiveSubtitleStream(StreamDescription description)
         {
             var found = currentClip.Subtitles.First(info => info.Id == description.Id);
             if (found == null)
