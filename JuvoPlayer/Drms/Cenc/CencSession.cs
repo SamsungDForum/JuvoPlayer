@@ -337,10 +337,19 @@ namespace JuvoPlayer.Drms.Cenc
         private void InstallLicence(string responseText)
         {
             CancelIfDisposing();
-
-            var status = CDMInstance.session_update(currentSessionId, responseText);
-            if (status != Status.kSuccess)
-                throw new DrmException(EmeStatusConverter.Convert(status));
+            try
+            {
+                var status = CDMInstance.session_update(currentSessionId, responseText);
+                if (status != Status.kSuccess)
+                    throw new DrmException(EmeStatusConverter.Convert(status));
+            }
+            catch (Exception e)
+            {
+                //Something went wrong i.e. communication with the license server failed
+                //TODO Show to the user as 'DRM license session error!' on the screen.
+                throw new DrmException(EmeStatusConverter.Convert(Status.kUnexpectedError) + " - Exception message: " + e.Message );
+            }
+            
         }
     }
 }
