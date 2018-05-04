@@ -3,4 +3,5 @@
 bin
 obj
 *.lock.json
+*.user
 
