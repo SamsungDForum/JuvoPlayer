@@ -167,12 +167,13 @@ namespace JuvoPlayer.DataProviders.HLS
 
         private List<StreamDescription> GetSubtitleStreamsDescription()
         {
-            return currentClip.Subtitles.Select(info => info.ToStreamDescription()).ToList();
+            var subtitles = currentClip.Subtitles ?? new List<SubtitleInfo>();
+            return subtitles.Select(info => info.ToStreamDescription()).ToList();
         }
 
         private void OnChangeActiveSubtitleStream(StreamDescription description)
         {
-            var found = currentClip.Subtitles.First(info => info.Id == description.Id);
+            var found = currentClip.Subtitles?.First(info => info.Id == description.Id);
             if (found == null)
                 throw new ArgumentException();
             cuesMap = new SubtitleFacade().LoadSubtitles(found);
