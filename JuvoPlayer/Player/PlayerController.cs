@@ -200,9 +200,14 @@ namespace JuvoPlayer.Player
 
         public void Dispose()
         {
-            player?.Dispose();
+            // It is possible that streams waits for some events to complete
+            // eg. drm initialization, and after unblock they will call disposed
+            // player.
+            // Remember to firstly dispose streams and later player
             foreach (var stream in streams.Values)
                 stream.Dispose();
+
+            player?.Dispose();
         }
     }
 }
