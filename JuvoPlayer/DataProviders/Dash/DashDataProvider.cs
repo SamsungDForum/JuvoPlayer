@@ -7,6 +7,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using JuvoPlayer.Subtitles;
 
 namespace JuvoPlayer.DataProviders.Dash
 {
@@ -20,7 +21,9 @@ namespace JuvoPlayer.DataProviders.Dash
         private Period currentPeriod;
         private DashMediaPipeline audioPipeline;
         private DashMediaPipeline videoPipeline;
-        private TimeSpan currentTimeStamp = TimeSpan.Zero;
+        private readonly List<SubtitleInfo> subtitleInfos;
+        private CuesMap cuesMap;
+        private TimeSpan currentTime = TimeSpan.Zero;
         private DateTime lastReloadTime = DateTime.MinValue;
         private TimeSpan minimumReloadPeriod = TimeSpan.Zero;
         private static readonly TimeSpan manifestRequestDelay = TimeSpan.FromSeconds(3);
@@ -36,7 +39,7 @@ namespace JuvoPlayer.DataProviders.Dash
             this.manifest = manifest ?? throw new ArgumentNullException(nameof(manifest), "manifest cannot be null");
             this.audioPipeline = audioPipeline ?? throw new ArgumentNullException(nameof(audioPipeline), "audioPipeline cannot be null");
             this.videoPipeline = videoPipeline ?? throw new ArgumentNullException(nameof(videoPipeline), "videoPipeline cannot be null");
-
+            this.subtitleInfos = new List<SubtitleInfo>();
 
             manifest.ManifestChanged += OnManifestChanged;
             audioPipeline.DRMInitDataFound += OnDRMInitDataFound;
@@ -83,7 +86,7 @@ namespace JuvoPlayer.DataProviders.Dash
             // Temps are used at this point, we do not need to lock down this entire
             // section if current* instance variables would be used.
             var tmpDocument = newDocument as Document;
-            var tmpPeriod = FindPeriod(tmpDocument, LiveClockTime(currentTimeStamp, tmpDocument));
+            var tmpPeriod = FindPeriod(tmpDocument, LiveClockTime(currentTime, tmpDocument));
 
             if (tmpPeriod == null)
             {
@@ -177,6 +180,7 @@ namespace JuvoPlayer.DataProviders.Dash
             cuesMap = new SubtitleFacade().LoadSubtitles(subtitleInfo);
         }
 
+
         public void OnPaused()
         {
         }
@@ -246,7 +250,7 @@ namespace JuvoPlayer.DataProviders.Dash
             // anything we passed down before? Should offload client...
             ManifestParameters manifestParams;
             manifestParams = new ManifestParameters(currentDocument, currentPeriod);
-            manifestParams.PlayClock = LiveClockTime(currentTimeStamp);
+            manifestParams.PlayClock = LiveClockTime(currentTime);
 
             Logger.Info(currentPeriod.ToString());
 
@@ -256,7 +260,7 @@ namespace JuvoPlayer.DataProviders.Dash
             if (audios.Count() > 0 && videos.Count() > 0)
             {
 
-		BuildSubtitleInfos(currentPeriod);
+		        BuildSubtitleInfos(currentPeriod);
 
                 if (currentPeriod.Duration.HasValue)
                     ClipDurationChanged?.Invoke(currentPeriod.Duration.Value);
@@ -385,11 +389,39 @@ namespace JuvoPlayer.DataProviders.Dash
 
         }
 
-        public string CurrentCueText { get; }
+        private void BuildSubtitleInfos(Period period)
+        {
+            subtitleInfos.Clear();
+
+            var textAdaptationSets = period.Sets.Where(o => o.Type.Value == MediaType.Text).ToList();
+            foreach (var textAdaptationSet in textAdaptationSets)
+            {
+                var lang = textAdaptationSet.Lang;
+                var mimeType = textAdaptationSet.Type;
+                foreach (var representation in textAdaptationSet.Representations)
+                {
+                    var mediaSegments = representation.Segments.MediaSegments().ToList();
+                    if (!mediaSegments.Any()) continue;
+
+                    var segment = mediaSegments.First();
+                    var streamDescription = new SubtitleInfo()
+                    {
+                        Id = subtitleInfos.Count,
+                        Language = lang,
+                        Path = segment.Url.ToString(),
+                        MimeType = mimeType?.Key
+                    };
+
+                    subtitleInfos.Add(streamDescription);
+                }
+            }
+        }
+
+        public Cue CurrentCue => cuesMap?.Get(currentTime);
 
         public void OnTimeUpdated(TimeSpan time)
         {
-            currentTimeStamp = time;
+            currentTime = time;
 
             audioPipeline.OnTimeUpdated(time);
             videoPipeline.OnTimeUpdated(time);
