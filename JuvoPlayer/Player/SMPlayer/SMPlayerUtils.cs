@@ -1,5 +1,5 @@
 ﻿using JuvoPlayer.Common;
-using Tizen.TV.Smplayer;
+using Tizen.TV.Multimedia.IPTV;
 using StreamType = JuvoPlayer.Common.StreamType;
 
 namespace JuvoPlayer.Player.SMPlayer

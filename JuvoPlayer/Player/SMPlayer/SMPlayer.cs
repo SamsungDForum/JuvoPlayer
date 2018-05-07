@@ -18,8 +18,8 @@ using System.Threading;
 using System.Threading.Tasks;
 using JuvoPlayer.Common;
 using JuvoLogger;
-using Tizen.TV.Smplayer;
-using StreamType = Tizen.TV.Smplayer.StreamType;
+using Tizen.TV.Multimedia.IPTV;
+using StreamType = Tizen.TV.Multimedia.IPTV.StreamType;
 
 namespace JuvoPlayer.Player.SMPlayer
 {
@@ -68,7 +68,7 @@ namespace JuvoPlayer.Player.SMPlayer
         public event ShowSubtitile ShowSubtitle;
         public event TimeUpdated TimeUpdated;
 
-        private readonly SMPlayerWrapper playerInstance;
+        private readonly SmplayerWrapper playerInstance;
 
         private ConcurrentQueue<Packet> audioPacketsQueue;
         private ConcurrentQueue<Packet> videoPacketsQueue;
@@ -96,10 +96,10 @@ namespace JuvoPlayer.Player.SMPlayer
             {
                 Logger.Info("SMPlayer init");
 
-                playerInstance = new SMPlayerWrapper();
+                playerInstance = new SmplayerWrapper();
                 playerInstance.RegisterPlayerEventListener(this);
 
-                bool result = playerInstance.Initialize();
+                bool result = playerInstance.Initialize(true);
                 if (!result)
                 {
                     Logger.Error("playerInstance.Initialize() Failed!!!!!!!");
@@ -410,17 +410,17 @@ namespace JuvoPlayer.Player.SMPlayer
                 if (config.CodecExtraData != null && config.CodecExtraData.Length > 0)
                 {
                     int size = Marshal.SizeOf(config.CodecExtraData[0]) * config.CodecExtraData.Length;
-                    audioStreamInfo.codecExtraAata = Marshal.AllocHGlobal(size);
+                    audioStreamInfo.codecExtraData = Marshal.AllocHGlobal(size);
                     audioStreamInfo.extraDataSize = (uint)config.CodecExtraData.Length;
-                    Marshal.Copy(config.CodecExtraData, 0, audioStreamInfo.codecExtraAata, config.CodecExtraData.Length);
+                    Marshal.Copy(config.CodecExtraData, 0, audioStreamInfo.codecExtraData, config.CodecExtraData.Length);
                 }
 
                 playerInstance.SetAudioStreamInfo(audioStreamInfo);
             }
             finally
             {
-                if (audioStreamInfo.codecExtraAata != IntPtr.Zero)
-                    Marshal.FreeHGlobal(audioStreamInfo.codecExtraAata);
+                if (audioStreamInfo.codecExtraData != IntPtr.Zero)
+                    Marshal.FreeHGlobal(audioStreamInfo.codecExtraData);
             }
             audioSet = true;
 
@@ -488,7 +488,7 @@ namespace JuvoPlayer.Player.SMPlayer
             Logger.Debug("");
             ThrowIfDisposed();
 
-            playerInstance.SetPlaybackRate(rate);
+            playerInstance.SetPlaySpeed(rate);
         }
 
         public void SetSubtitleDelay(int offset)
