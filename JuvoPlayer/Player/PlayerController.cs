@@ -144,9 +144,10 @@ namespace JuvoPlayer.Player
             if (seeking)
                 return;
 
-            seeking = true;
-
             player.Seek(time);
+
+            // prevent simultaneously seeks
+            seeking = true;
 
             Seek?.Invoke(time);
         }
