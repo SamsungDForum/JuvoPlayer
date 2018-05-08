@@ -21,6 +21,7 @@ namespace JuvoPlayer.Player
         event PlaybackCompleted PlaybackCompleted;
         event PlaybackError PlaybackError;
         event PlayerInitialized PlayerInitialized;
+        event SeekCompleted SeekCompleted;
         event TimeUpdated TimeUpdated;
 
         void Pause();

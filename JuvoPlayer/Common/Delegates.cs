@@ -8,6 +8,7 @@ namespace JuvoPlayer.Common
     public delegate void PlaybackCompleted();
     public delegate void PlaybackError(string message);
     public delegate void PlayerInitialized();
+    public delegate void SeekCompleted();
     public delegate void StreamConfigReady(StreamConfig config);
     public delegate void TimeUpdated(TimeSpan time);
 }

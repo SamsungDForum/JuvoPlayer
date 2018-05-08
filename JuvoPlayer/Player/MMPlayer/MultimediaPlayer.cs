@@ -33,6 +33,7 @@ namespace JuvoPlayer.Player.MMPlayer
         public event PlaybackCompleted PlaybackCompleted;
         public event PlaybackError PlaybackError;
         public event PlayerInitialized PlayerInitialized;
+        public event SeekCompleted SeekCompleted;
         public event TimeUpdated TimeUpdated;
 
         public MultimediaPlayer()

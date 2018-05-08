@@ -30,6 +30,7 @@ namespace JuvoPlayer.Player
             Error = -1
         };
 
+        private bool seeking;
         private PlayerState state = PlayerState.Unitialized;
         private TimeSpan currentTime;
         private TimeSpan duration;
@@ -37,7 +38,6 @@ namespace JuvoPlayer.Player
         private readonly IDrmManager drmManager;
         private readonly IPlayer player;
         private readonly Dictionary<StreamType, IPacketStream> streams = new Dictionary<StreamType, IPacketStream>();
-
 
         public event Pause Paused;
         public event Play Played;
@@ -57,6 +57,7 @@ namespace JuvoPlayer.Player
             this.player.PlaybackCompleted += OnPlaybackCompleted;
             this.player.PlaybackError += OnPlaybackError;
             this.player.PlayerInitialized += OnPlayerInitialized;
+            this.player.SeekCompleted += OnSeekCompleted;
             this.player.TimeUpdated += OnTimeUpdated;
 
             var audioCodecExtraDataHandler = new AudioCodecExtraDataHandler(player);
@@ -140,9 +141,20 @@ namespace JuvoPlayer.Player
 
         public void OnSeek(TimeSpan time)
         {
+            if (seeking)
+                return;
+
             player.Seek(time);
 
+            // prevent simultaneously seeks
+            seeking = true;
+
             Seek?.Invoke(time);
+        }
+
+        public void OnSeekCompleted()
+        {
+            seeking = false;
         }
 
         public void OnStop()

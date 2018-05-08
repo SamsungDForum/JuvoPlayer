@@ -63,6 +63,9 @@ namespace JuvoPlayer.DataProviders.Dash
 
             currentStreams = currentRepresentation.Segments;
 
+            // clear garbage before appending new data
+            sharedBuffer.ClearData();
+
             downloadTask = Task.Run(() => DownloadThread()); 
         }
 
@@ -111,8 +114,6 @@ namespace JuvoPlayer.DataProviders.Dash
 
         private void DownloadThread()
         {
-            // clear garbage before appending new data
-            sharedBuffer.ClearData();
             try
             {
                 if (initStreamBytes == null)
