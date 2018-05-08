@@ -125,13 +125,16 @@ namespace JuvoPlayer.DataProviders.RTSP
 
         public void Stop()
         {
-            RtspRequest teardownMessage = new RtspRequestTeardown
+            if (rtspListener != null)
             {
-                RtspUri = new Uri(url),
-                Session = session
-            };
+                RtspRequest teardownMessage = new RtspRequestTeardown
+                {
+                    RtspUri = new Uri(url),
+                    Session = session
+                };
 
-            rtspListener.SendMessage(teardownMessage);
+                rtspListener.SendMessage(teardownMessage);
+            }
 
             // clear up any UDP sockets
             udpPair?.Stop();
@@ -140,7 +143,7 @@ namespace JuvoPlayer.DataProviders.RTSP
             timer?.Dispose();
 
             // Drop the RTSP session
-            rtspListener.Stop();
+            rtspListener?.Stop();
         }
 
         public void RtpDataReceived(object sender, Rtsp.RtspChunkEventArgs e)
