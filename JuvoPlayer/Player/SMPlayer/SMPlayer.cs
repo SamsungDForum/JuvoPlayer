@@ -12,11 +12,14 @@
 // this software or its derivatives.
 
 using System;
+using System.Linq;
 using System.Collections.Concurrent;
+using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Threading;
 using System.Threading.Tasks;
 using JuvoPlayer.Common;
+using JuvoPlayer.Drms;
 using JuvoLogger;
 using Tizen.TV.Multimedia.IPTV;
 using StreamType = Tizen.TV.Multimedia.IPTV.StreamType;
@@ -27,7 +30,7 @@ namespace JuvoPlayer.Player.SMPlayer
     {
         public static ulong TotalNanoseconds(this TimeSpan time)
         {
-            return (ulong) (time.TotalMilliseconds * 1000000);
+            return (ulong)(time.TotalMilliseconds * 1000000);
         }
     }
 
@@ -78,7 +81,7 @@ namespace JuvoPlayer.Player.SMPlayer
         private bool audioSet, videoSet;
         private bool needDataVideo, needDataAudio;
 
-        private readonly AutoResetEvent wakeUpEvent = new AutoResetEvent(false);
+        private readonly AutoResetEvent submitting = new AutoResetEvent(false);
 
         private System.UInt32 currentTime;
 
@@ -88,7 +91,7 @@ namespace JuvoPlayer.Player.SMPlayer
         // We need to wait for the first OnSeekData event what means that player is ready
         // to get packets
         private bool smplayerSeekReconfiguration;
-        private readonly Task submitPacketTask;
+        private Task submitPacketTask;
 
         public SMPlayer()
         {
@@ -125,8 +128,6 @@ namespace JuvoPlayer.Player.SMPlayer
             }
 
             ResetPacketsQueues();
-
-            submitPacketTask = Task.Run(() => SubmittingPacketsTask());
         }
 
         ~SMPlayer()
@@ -158,7 +159,7 @@ namespace JuvoPlayer.Player.SMPlayer
         {
             ThrowIfDisposed();
 
-            if (internalState != SMPlayerState.Uninitialized)
+            if (internalState != SMPlayerState.Uninitialized && internalState != SMPlayerState.Stopped)
                 return;
 
             if (!audioSet || !videoSet)
@@ -202,11 +203,11 @@ namespace JuvoPlayer.Player.SMPlayer
                 try
                 {
                     Logger.Debug("SubmittingPacketsTask: Need to wait one.");
-                    wakeUpEvent.WaitOne();
+                    submitting.WaitOne();
                 }
                 catch (ObjectDisposedException ex)
                 {
-                    Logger.Warn(ex.Message);
+                    Logger.Warn(ex.ToString());
                 }
             }
         }
@@ -301,7 +302,7 @@ namespace JuvoPlayer.Player.SMPlayer
             finally
             {
                 // Free the unmanaged memory. It need to check, no need to clear here, in Amazon es play case, the es data memory is cleared by decoder or sink element after it is used and played
-                  Marshal.FreeHGlobal(pnt);
+                Marshal.FreeHGlobal(pnt);
             }
         }
 
@@ -362,26 +363,32 @@ namespace JuvoPlayer.Player.SMPlayer
 
         public void SetStreamConfig(StreamConfig config)
         {
+            Logger.Debug($"{config.StreamType()}");
             ThrowIfDisposed();
+
             switch (config.StreamType())
             {
                 case Common.StreamType.Audio:
-                    if (audioPacketsQueue.Count > 0)
+                    if (audioPacketsQueue.Count > 0 && audioSet)
                     {
                         audioPacketsQueue.Enqueue(BufferConfiguration.Create(config));
                         WakeUpSubmitTask();
                     }
                     else
+                    {
                         SetAudioStreamConfig(config as AudioStreamConfig);
+                    }
                     break;
                 case Common.StreamType.Video:
-                    if (videoPacketsQueue.Count > 0)
+                    if (videoPacketsQueue.Count > 0 && videoSet)
                     {
                         videoPacketsQueue.Enqueue(BufferConfiguration.Create(config));
                         WakeUpSubmitTask();
                     }
                     else
+                    {
                         SetVideoStreamConfig(config as VideoStreamConfig);
+                    }
                     break;
                 case Common.StreamType.Subtitle:
                 case Common.StreamType.Teletext:
@@ -389,11 +396,29 @@ namespace JuvoPlayer.Player.SMPlayer
                 default:
                     throw new ArgumentOutOfRangeException();
             }
+
+
+            if (audioSet && videoSet
+                && (submitPacketTask == null
+                    || submitPacketTask.Status == TaskStatus.RanToCompletion
+                    || submitPacketTask.Status == TaskStatus.Canceled
+                    || submitPacketTask.Status == TaskStatus.Faulted)
+                )
+            {
+                //todo(m.rybinski): put the task to sleep instead of letting it die and then respawning it 
+                if (internalState == SMPlayerState.Stopped)
+                {
+                    internalState = SMPlayerState.Uninitialized;
+                }
+                Logger.Debug("Respawning submitter task");
+                submitPacketTask = Task.Factory.StartNew(SubmittingPacketsTask, TaskCreationOptions.LongRunning);
+            }
         }
 
-        private void WakeUpSubmitTask()
+        private void WakeUpSubmitTask([CallerFilePath] string file = "", [CallerMemberName] string func = "", [CallerLineNumber] int line = 0)
         {
-            wakeUpEvent.Set();
+            Logger.Debug($"called from {file.Split('/').Last()}:{line} - {func}()");
+            submitting.Set();
         }
 
         public void SetAudioStreamConfig(AudioStreamConfig config)
@@ -492,17 +517,42 @@ namespace JuvoPlayer.Player.SMPlayer
         {
             Logger.Debug("");
             ThrowIfDisposed();
-            if (internalState == SMPlayerState.Stopped)
-                return;
 
+            if (internalState == SMPlayerState.Stopped)
+            {
+                return;
+            }
+
+            needDataAudio = false;
+            needDataVideo = false;
+            audioSet = false;
+            videoSet = false;
             internalState = SMPlayerState.Stopped;
 
-            ResetPacketsQueues();
-
             WakeUpSubmitTask();
-            submitPacketTask.Wait();
+            try
+            {
+                submitPacketTask?.Wait();
+                ResetPacketsQueues();
+            }
+            catch (AggregateException ae)
+            {
+                ae.Flatten().Handle(e =>
+                {
+                    if (e is DrmException == false)
+                    {
+                        return false;
+                    }
 
-            playerInstance.Stop();
+                    Logger.Error($"{e}");
+                    //todo(m.rybinski): notify the user here (or preferably back up)
+                    return true;
+                });
+            }
+            finally
+            {
+                playerInstance.Stop();
+            }
         }
 
         public void Pause()
@@ -634,7 +684,7 @@ namespace JuvoPlayer.Player.SMPlayer
             if (disposing)
             {
                 Stop();
-                wakeUpEvent.Dispose();
+                submitting.Dispose();
             }
             ReleaseUnmanagedResources();
         }
