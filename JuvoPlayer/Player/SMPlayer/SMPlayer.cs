@@ -65,7 +65,6 @@ namespace JuvoPlayer.Player.SMPlayer
         public event PlaybackCompleted PlaybackCompleted;
         public event PlaybackError PlaybackError;
         public event PlayerInitialized PlayerInitialized;
-        public event ShowSubtitile ShowSubtitle;
         public event TimeUpdated TimeUpdated;
 
         private readonly SmplayerWrapper playerInstance;
@@ -475,29 +474,12 @@ namespace JuvoPlayer.Player.SMPlayer
             playerInstance.SetDuration((uint)duration.TotalMilliseconds);
         }
 
-        public void SetExternalSubtitles(string file)
-        {
-            Logger.Debug("");
-            ThrowIfDisposed();
-
-            playerInstance.SetExternalSubtitlesPath(file, string.Empty);
-        }
-
         public void SetPlaybackRate(float rate)
         {
             Logger.Debug("");
             ThrowIfDisposed();
 
             playerInstance.SetPlaySpeed(rate);
-        }
-
-        public void SetSubtitleDelay(int offset)
-        {
-            Logger.Debug("");
-            ThrowIfDisposed();
-
-            //TODO(p.galiszewsk): check time format
-            playerInstance.SetSubtitlesDelay(offset);
         }
 
         public void Stop()

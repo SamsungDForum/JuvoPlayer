@@ -28,9 +28,7 @@ namespace JuvoPlayer.Player
         void OnPause();
         void OnPlay();
         void OnSeek(TimeSpan time);
-        void OnSetExternalSubtitles(string path);
         void OnSetPlaybackRate(float rate);
-        void OnSetSubtitleDelay(int offset);
         void OnStop();
         #endregion
 

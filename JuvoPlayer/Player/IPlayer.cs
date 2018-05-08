@@ -21,16 +21,13 @@ namespace JuvoPlayer.Player
         event PlaybackCompleted PlaybackCompleted;
         event PlaybackError PlaybackError;
         event PlayerInitialized PlayerInitialized;
-        event ShowSubtitile ShowSubtitle;
         event TimeUpdated TimeUpdated;
 
         void Pause();
         void Play();
         void Seek(TimeSpan time);
         void SetDuration(TimeSpan duration);
-        void SetExternalSubtitles(string file);
         void SetPlaybackRate(float rate);
-        void SetSubtitleDelay(int offset);
         void Stop();
 
         void SetStreamConfig(StreamConfig config);
