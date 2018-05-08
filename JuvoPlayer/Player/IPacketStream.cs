@@ -21,5 +21,6 @@ namespace JuvoPlayer.Player
         void OnAppendPacket(Packet packet);
         void OnDRMFound(DRMInitData data);
         void OnStreamConfigChanged(StreamConfig config);
+        void OnClearStream();
     }
 }
