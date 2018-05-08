@@ -33,7 +33,6 @@ namespace JuvoPlayer.Player.MMPlayer
         public event PlaybackCompleted PlaybackCompleted;
         public event PlaybackError PlaybackError;
         public event PlayerInitialized PlayerInitialized;
-        public event ShowSubtitile ShowSubtitle;
         public event TimeUpdated TimeUpdated;
 
         public MultimediaPlayer()
@@ -43,7 +42,6 @@ namespace JuvoPlayer.Player.MMPlayer
             player.ErrorOccurred += OnErrorOccured;
             player.PlaybackCompleted += OnPlaybackCompleted;
             player.PlaybackInterrupted += OnPlaybackInterrupted;
-            player.SubtitleUpdated += OnSubtitleUpdated;
 
             playerContainer = new ElmSharp.Window("player");
             player.Display = new Display(playerContainer);
@@ -51,18 +49,6 @@ namespace JuvoPlayer.Player.MMPlayer
 
             playerContainer.Show();
             playerContainer.BringDown();
-        }
-
-        private void OnSubtitleUpdated(object sender, SubtitleUpdatedEventArgs e)
-        {
-            Logger.Info("OnSubtitleUpdated");
-            Subtitle subtitle = new Subtitle
-            {
-                Duration = e.Duration,
-                Text = e.Text
-            };
-
-            ShowSubtitle?.Invoke(subtitle);
         }
 
         private void OnBufferingProgressChanged(object sender, BufferingProgressChangedEventArgs e)
@@ -206,11 +192,6 @@ namespace JuvoPlayer.Player.MMPlayer
         {
         }
 
-        public void SetExternalSubtitles(string file)
-        {
-            player.SetSubtitle(file);
-        }
-
         public void SetPlaybackRate(float rate)
         {
             player.SetPlaybackRate(rate);
@@ -279,11 +260,6 @@ namespace JuvoPlayer.Player.MMPlayer
 
         public void OnTimeUpdated(double time)
         {
-        }
-
-        public void SetSubtitleDelay(int offset)
-        {
-            player.SetSubtitleOffset(offset);
         }
 
         public void Pause()
