@@ -81,10 +81,6 @@ namespace JuvoPlayer.DataProviders.Dash
 
         private void StopPlayback()
         {
-            // playback has been already stopped
-            if (!playback)
-                return;
-
             playback = false;
         }
 
@@ -136,10 +132,7 @@ namespace JuvoPlayer.DataProviders.Dash
                     timeUpdatedEvent.WaitOne();
 
                 if (!playback)
-                {
-                    SendEOSEvent();
                     return;
-                }
 
                 try
                 {
@@ -161,6 +154,7 @@ namespace JuvoPlayer.DataProviders.Dash
                     }
 
                     StopPlayback();
+                    SendEOSEvent();
                 }
                 catch (Exception ex)
                 {

@@ -738,6 +738,8 @@ namespace JuvoPlayer.Demuxers.FFmpeg
                 return;
 
             parse = false;
+
+            dataBuffer?.WriteData(null, true);
             Resume();
             pausedEvent.Dispose();
             demuxTask?.Wait();
