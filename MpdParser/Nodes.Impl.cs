@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Reflection;
 
@@ -207,9 +207,9 @@ namespace MpdParser.Node
             SegmentType best = FindBestStream();
             switch (best)
             {
-                case SegmentType.Base: return CreateBaseRepresentationStream();
-                case SegmentType.List: return CreateListRepresentationStream();
-                case SegmentType.Template: return CreateTemplateRepresentationStream();
+            case SegmentType.Base: return CreateBaseRepresentationStream();
+            case SegmentType.List: return CreateListRepresentationStream();
+            case SegmentType.Template: return CreateTemplateRepresentationStream();
             }
             // No "SegmentXyz" elements, but at least one BaseURL present
             // This setup could be in e.g. subtitles
@@ -261,7 +261,7 @@ namespace MpdParser.Node
             return new Dynamic.BaseRepresentationStream(
                 new Dynamic.Segment(init_uri.Uri, init_url?.Range),
                 new Dynamic.Segment(media_uri.Uri, null, periodRange),
-                index_range.Length !=0? new Dynamic.Segment(init_uri.Uri, index_range):null);
+                index_range.Length != 0 ? new Dynamic.Segment(init_uri.Uri, index_range) : null);
         }
 
         private IRepresentationStream CreateBaseURLRepresentationStream()
