@@ -47,7 +47,6 @@ namespace JuvoPlayer.Player
         public event PlaybackCompleted PlaybackCompleted;
         public event PlaybackError PlaybackError;
         public event PlayerInitialized PlayerInitialized;
-        public event ShowSubtitile ShowSubtitle;
         public event TimeUpdated TimeUpdated;
 
         public PlayerController(IPlayer player, IDrmManager drmManager)
@@ -58,7 +57,6 @@ namespace JuvoPlayer.Player
             this.player.PlaybackCompleted += OnPlaybackCompleted;
             this.player.PlaybackError += OnPlaybackError;
             this.player.PlayerInitialized += OnPlayerInitialized;
-            this.player.ShowSubtitle += OnShowSubtitle;
             this.player.TimeUpdated += OnTimeUpdated;
 
             var audioCodecExtraDataHandler = new AudioCodecExtraDataHandler(player);
@@ -87,11 +85,6 @@ namespace JuvoPlayer.Player
             state = PlayerState.Ready;
 
             PlayerInitialized?.Invoke();
-        }
-
-        private void OnShowSubtitle(Subtitle subtitle)
-        {
-            ShowSubtitle?.Invoke(subtitle);
         }
 
         private void OnTimeUpdated(TimeSpan time)
@@ -177,19 +170,9 @@ namespace JuvoPlayer.Player
             streams[packet.StreamType].OnAppendPacket(packet);
         }
 
-        public void OnSetExternalSubtitles(string path)
-        {
-            player.SetExternalSubtitles(path);
-        }
-
         public void OnSetPlaybackRate(float rate)
         {
             player.SetPlaybackRate(rate);
-        }
-
-        public void OnSetSubtitleDelay(int offset)
-        {
-            player.SetSubtitleDelay(offset);
         }
 
         #region getters
