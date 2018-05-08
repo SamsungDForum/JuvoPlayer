@@ -18,8 +18,8 @@ using System.Threading;
 using System.Threading.Tasks;
 using JuvoPlayer.Common;
 using JuvoLogger;
-using Tizen.TV.Smplayer;
-using StreamType = Tizen.TV.Smplayer.StreamType;
+using Tizen.TV.Multimedia.IPTV;
+using StreamType = Tizen.TV.Multimedia.IPTV.StreamType;
 
 namespace JuvoPlayer.Player.SMPlayer
 {
@@ -68,7 +68,7 @@ namespace JuvoPlayer.Player.SMPlayer
         public event ShowSubtitile ShowSubtitle;
         public event TimeUpdated TimeUpdated;
 
-        private readonly SMPlayerWrapper playerInstance;
+        private readonly SmplayerWrapper playerInstance;
 
         private ConcurrentQueue<Packet> audioPacketsQueue;
         private ConcurrentQueue<Packet> videoPacketsQueue;
@@ -82,6 +82,8 @@ namespace JuvoPlayer.Player.SMPlayer
 
         private System.UInt32 currentTime;
 
+        private bool isDisposed;
+
         // while SMPlayer is reconfigured after calling Seek we cant upload any packets
         // We need to wait for the first OnSeekData event what means that player is ready
         // to get packets
@@ -94,10 +96,10 @@ namespace JuvoPlayer.Player.SMPlayer
             {
                 Logger.Info("SMPlayer init");
 
-                playerInstance = new SMPlayerWrapper();
+                playerInstance = new SmplayerWrapper();
                 playerInstance.RegisterPlayerEventListener(this);
 
-                bool result = playerInstance.Initialize();
+                bool result = playerInstance.Initialize(true);
                 if (!result)
                 {
                     Logger.Error("playerInstance.Initialize() Failed!!!!!!!");
@@ -133,8 +135,16 @@ namespace JuvoPlayer.Player.SMPlayer
             ReleaseUnmanagedResources();
         }
 
+        private void ThrowIfDisposed()
+        {
+            if (isDisposed)
+                throw new ObjectDisposedException("SMPlayer object is already disposed");
+        }
+
         public void AppendPacket(Packet packet)
         {
+            ThrowIfDisposed();
+
             if (packet == null)
                 return;
 
@@ -147,6 +157,8 @@ namespace JuvoPlayer.Player.SMPlayer
 
         public void PrepareES()
         {
+            ThrowIfDisposed();
+
             if (internalState != SMPlayerState.Uninitialized)
                 return;
 
@@ -168,7 +180,7 @@ namespace JuvoPlayer.Player.SMPlayer
         {
             while (internalState != SMPlayerState.Stopped)
             {
-                Logger.Debug("SubmittingPacketsTask: AUDIO: " + audioPacketsQueue.Count + ", VIDEO: " + videoPacketsQueue.Count);
+                Logger.Debug("AUDIO: " + audioPacketsQueue.Count + ", VIDEO: " + videoPacketsQueue.Count);
                 var didSubmitPacket = false;
 
                 if (!smplayerSeekReconfiguration)
@@ -202,6 +214,8 @@ namespace JuvoPlayer.Player.SMPlayer
 
         private void SubmitPacket(Packet packet)
         {
+            ThrowIfDisposed();
+
             if (packet.IsEOS)
                 SubmitEOSPacket(packet);
             else if (packet is EncryptedPacket)
@@ -307,6 +321,7 @@ namespace JuvoPlayer.Player.SMPlayer
         public void Play()
         {
             Logger.Debug("");
+            ThrowIfDisposed();
 
             bool ret;
             if (internalState == SMPlayerState.Paused)
@@ -323,6 +338,7 @@ namespace JuvoPlayer.Player.SMPlayer
         public void Seek(TimeSpan time)
         {
             Logger.Debug("");
+            ThrowIfDisposed();
 
             // Stop appending packests.
             smplayerSeekReconfiguration = true;
@@ -342,6 +358,7 @@ namespace JuvoPlayer.Player.SMPlayer
 
         public void SetStreamConfig(StreamConfig config)
         {
+            ThrowIfDisposed();
             switch (config.StreamType())
             {
                 case Common.StreamType.Audio:
@@ -372,20 +389,13 @@ namespace JuvoPlayer.Player.SMPlayer
 
         private void WakeUpSubmitTask()
         {
-            try
-            {
-                // this can throw when event is received after Dispose() was called
-                wakeUpEvent.Set();
-            }
-            catch (ObjectDisposedException ex)
-            {
-                // ignored
-            }
+            wakeUpEvent.Set();
         }
 
         public void SetAudioStreamConfig(AudioStreamConfig config)
         {
             Logger.Debug("");
+            ThrowIfDisposed();
 
             var audioStreamInfo = new AudioStreamInfo
             {
@@ -401,17 +411,17 @@ namespace JuvoPlayer.Player.SMPlayer
                 if (config.CodecExtraData != null && config.CodecExtraData.Length > 0)
                 {
                     int size = Marshal.SizeOf(config.CodecExtraData[0]) * config.CodecExtraData.Length;
-                    audioStreamInfo.codecExtraAata = Marshal.AllocHGlobal(size);
+                    audioStreamInfo.codecExtraData = Marshal.AllocHGlobal(size);
                     audioStreamInfo.extraDataSize = (uint)config.CodecExtraData.Length;
-                    Marshal.Copy(config.CodecExtraData, 0, audioStreamInfo.codecExtraAata, config.CodecExtraData.Length);
+                    Marshal.Copy(config.CodecExtraData, 0, audioStreamInfo.codecExtraData, config.CodecExtraData.Length);
                 }
 
                 playerInstance.SetAudioStreamInfo(audioStreamInfo);
             }
             finally
             {
-                if (audioStreamInfo.codecExtraAata != IntPtr.Zero)
-                    Marshal.FreeHGlobal(audioStreamInfo.codecExtraAata);
+                if (audioStreamInfo.codecExtraData != IntPtr.Zero)
+                    Marshal.FreeHGlobal(audioStreamInfo.codecExtraData);
             }
             audioSet = true;
 
@@ -421,6 +431,7 @@ namespace JuvoPlayer.Player.SMPlayer
         public void SetVideoStreamConfig(VideoStreamConfig config)
         {
             Logger.Debug("");
+            ThrowIfDisposed();
 
             var videoStreamInfo = new VideoStreamInfo
             {
@@ -460,6 +471,7 @@ namespace JuvoPlayer.Player.SMPlayer
         public void SetDuration(TimeSpan duration)
         {
             Logger.Debug("");
+            ThrowIfDisposed();
 
             playerInstance.SetDuration((uint)duration.TotalMilliseconds);
         }
@@ -467,6 +479,7 @@ namespace JuvoPlayer.Player.SMPlayer
         public void SetExternalSubtitles(string file)
         {
             Logger.Debug("");
+            ThrowIfDisposed();
 
             playerInstance.SetExternalSubtitlesPath(file, string.Empty);
         }
@@ -474,13 +487,15 @@ namespace JuvoPlayer.Player.SMPlayer
         public void SetPlaybackRate(float rate)
         {
             Logger.Debug("");
+            ThrowIfDisposed();
 
-            playerInstance.SetPlaybackRate(rate);
+            playerInstance.SetPlaySpeed(rate);
         }
 
         public void SetSubtitleDelay(int offset)
         {
             Logger.Debug("");
+            ThrowIfDisposed();
 
             //TODO(p.galiszewsk): check time format
             playerInstance.SetSubtitlesDelay(offset);
@@ -489,6 +504,7 @@ namespace JuvoPlayer.Player.SMPlayer
         public void Stop()
         {
             Logger.Debug("");
+            ThrowIfDisposed();
             if (internalState == SMPlayerState.Stopped)
                 return;
 
@@ -505,6 +521,7 @@ namespace JuvoPlayer.Player.SMPlayer
         public void Pause()
         {
             Logger.Debug("");
+            ThrowIfDisposed();
 
             if (playerInstance.Pause())
                 internalState = SMPlayerState.Paused;
@@ -635,8 +652,13 @@ namespace JuvoPlayer.Player.SMPlayer
 
         public void Dispose()
         {
+            if (isDisposed)
+                return;
+
             Dispose(true);
             GC.SuppressFinalize(this);
+
+            isDisposed = true;
         }
     }
 }
