@@ -65,6 +65,7 @@ namespace JuvoPlayer.Player.SMPlayer
         public event PlaybackCompleted PlaybackCompleted;
         public event PlaybackError PlaybackError;
         public event PlayerInitialized PlayerInitialized;
+        public event SeekCompleted SeekCompleted;
         public event TimeUpdated TimeUpdated;
 
         private readonly SmplayerWrapper playerInstance;
@@ -591,6 +592,8 @@ namespace JuvoPlayer.Player.SMPlayer
 
             if (internalState == SMPlayerState.Playing)
                 playerInstance.Resume();
+
+            SeekCompleted?.Invoke();
 
             TimeUpdated?.Invoke(TimeSpan.FromMilliseconds(playerInstance.currentPosition * 1000));
         }
