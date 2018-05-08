@@ -233,12 +233,17 @@ namespace JuvoPlayer.Player.SMPlayer
                 return;
             }
 
-            var decryptedPacket = packet.Decrypt();
-            if (decryptedPacket == null)
-                throw new Exception("An error occured while decrypting encrypted packet!");
-
-            if (decryptedPacket is DecryptedEMEPacket)
+            try
+            {
+                var decryptedPacket = packet.Decrypt();
                 SubmitDecryptedEmePacket(decryptedPacket as DecryptedEMEPacket);
+            }
+            catch (Exception e)
+            {
+                //log immediately, since the exception will propagate from the task sometime later
+                Logger.Error($"{e}");
+                throw;
+            }
         }
 
         private void SubmitDecryptedEmePacket(DecryptedEMEPacket packet)
