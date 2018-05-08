@@ -153,6 +153,7 @@ namespace XamarinPlayer.Tizen.Services
             var clip = o as ClipDefinition;
 
             DataProviderConnector.Disconnect(playerController, dataProvider);
+            dataProvider?.Dispose();
 
             dataProvider = dataProviders.CreateDataProvider(clip);
 
