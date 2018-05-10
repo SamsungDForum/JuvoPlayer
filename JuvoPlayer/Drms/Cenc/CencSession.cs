@@ -54,12 +54,13 @@ namespace JuvoPlayer.Drms.Cenc
             IEME.destroy(CDMInstance);
             CDMInstance = null;
         }
+
         public override void Dispose()
         {
             isDisposing = true;
 
             initializationTask?.Wait();
-            thread.Factory.Run(() => DestroyCDM()).Wait();
+            thread.Factory.Run(() => DestroyCDM()).Wait(); //will do nothing on a disposed AsyncContextThread
             thread.Dispose();
             base.Dispose();
 
