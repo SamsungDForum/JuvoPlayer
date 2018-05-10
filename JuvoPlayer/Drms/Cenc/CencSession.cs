@@ -92,7 +92,9 @@ namespace JuvoPlayer.Drms.Cenc
         private unsafe Packet DecryptPacketOnIemeThread(EncryptedPacket packet)
         {
             if (licenceInstalled == false)
-                return null;
+            {
+                throw new DrmException("No licence installed");
+            }
 
             HandleSize[] pHandleArray = new HandleSize[1];
             var numofparam = 1;
@@ -120,7 +122,7 @@ namespace JuvoPlayer.Drms.Cenc
                 if (packet.Subsamples != null)
                 {
                     var subsamples = packet.Subsamples.Select(o =>
-                            new MSD_SUBSAMPLE_INFO {uBytesOfClearData = o.ClearData, uBytesOfEncryptedData = o.EncData})
+                            new MSD_SUBSAMPLE_INFO { uBytesOfClearData = o.ClearData, uBytesOfEncryptedData = o.EncData })
                         .ToArray();
 
                     subsamplePointer = MarshalSubsampleArray(subsamples);
@@ -162,12 +164,8 @@ namespace JuvoPlayer.Drms.Cenc
                     }
                     else
                     {
-                        Logger.Error("Decryption failed: " + packet.StreamType + " - " + ret);
+                        throw new DrmException($"Decryption failed: {packet.StreamType} - {ret}");
                     }
-                }
-                catch (Exception e)
-                {
-                    Logger.Error("exception: " + e.Message);
                 }
                 finally
                 {
@@ -177,8 +175,6 @@ namespace JuvoPlayer.Drms.Cenc
                     Marshal.FreeHGlobal(subdataPointer);
                 }
             }
-
-            return null;
         }
 
         private static unsafe IntPtr MarshalSubsampleArray(MSD_SUBSAMPLE_INFO[] subsamples)
@@ -186,7 +182,7 @@ namespace JuvoPlayer.Drms.Cenc
             int sizeOfSubsample = Marshal.SizeOf(typeof(MSD_SUBSAMPLE_INFO));
             int totalSize = sizeOfSubsample * subsamples.Length;
             var resultPointer = Marshal.AllocHGlobal(totalSize);
-            byte* subsamplePointer = (byte*) (resultPointer.ToPointer());
+            byte* subsamplePointer = (byte*)(resultPointer.ToPointer());
 
             for (var i = 0; i < subsamples.Length; i++, subsamplePointer += (sizeOfSubsample))
             {
@@ -253,13 +249,7 @@ namespace JuvoPlayer.Drms.Cenc
                 InstallLicence(responseText);
                 licenceInstalled = true;
             }
-            catch (TaskCanceledException)
-            {
-            }
-            catch (Exception)
-            {
-                throw;
-            }
+            catch (TaskCanceledException) { }
         }
 
         private void CreateIeme()

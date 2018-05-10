@@ -30,6 +30,7 @@ namespace JuvoPlayer.Player
             Error = -1
         };
 
+        private bool seeking;
         private PlayerState state = PlayerState.Unitialized;
         private TimeSpan currentTime;
         private TimeSpan duration;
@@ -37,7 +38,6 @@ namespace JuvoPlayer.Player
         private readonly IDrmManager drmManager;
         private readonly IPlayer player;
         private readonly Dictionary<StreamType, IPacketStream> streams = new Dictionary<StreamType, IPacketStream>();
-
 
         public event Pause Paused;
         public event Play Played;
@@ -47,7 +47,6 @@ namespace JuvoPlayer.Player
         public event PlaybackCompleted PlaybackCompleted;
         public event PlaybackError PlaybackError;
         public event PlayerInitialized PlayerInitialized;
-        public event ShowSubtitile ShowSubtitle;
         public event TimeUpdated TimeUpdated;
 
         public PlayerController(IPlayer player, IDrmManager drmManager)
@@ -58,7 +57,7 @@ namespace JuvoPlayer.Player
             this.player.PlaybackCompleted += OnPlaybackCompleted;
             this.player.PlaybackError += OnPlaybackError;
             this.player.PlayerInitialized += OnPlayerInitialized;
-            this.player.ShowSubtitle += OnShowSubtitle;
+            this.player.SeekCompleted += OnSeekCompleted;
             this.player.TimeUpdated += OnTimeUpdated;
 
             var audioCodecExtraDataHandler = new AudioCodecExtraDataHandler(player);
@@ -87,11 +86,6 @@ namespace JuvoPlayer.Player
             state = PlayerState.Ready;
 
             PlayerInitialized?.Invoke();
-        }
-
-        private void OnShowSubtitle(Subtitle subtitle)
-        {
-            ShowSubtitle?.Invoke(subtitle);
         }
 
         private void OnTimeUpdated(TimeSpan time)
@@ -147,13 +141,28 @@ namespace JuvoPlayer.Player
 
         public void OnSeek(TimeSpan time)
         {
+            if (seeking)
+                return;
+
             player.Seek(time);
+
+            // prevent simultaneously seeks
+            seeking = true;
 
             Seek?.Invoke(time);
         }
 
+        public void OnSeekCompleted()
+        {
+            seeking = false;
+        }
+
         public void OnStop()
         {
+            foreach (var stream in streams.Values)
+            {
+                stream.OnClearStream();
+            }
             player.Stop();
 
             state = PlayerState.Finished;
@@ -177,19 +186,9 @@ namespace JuvoPlayer.Player
             streams[packet.StreamType].OnAppendPacket(packet);
         }
 
-        public void OnSetExternalSubtitles(string path)
-        {
-            player.SetExternalSubtitles(path);
-        }
-
         public void OnSetPlaybackRate(float rate)
         {
             player.SetPlaybackRate(rate);
-        }
-
-        public void OnSetSubtitleDelay(int offset)
-        {
-            player.SetSubtitleDelay(offset);
         }
 
         #region getters
