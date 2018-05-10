@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using MpdParser.Node.Dynamic;
 
@@ -207,7 +207,6 @@ namespace MpdParser.Node
         IEnumerable<Segment> MediaSegments();
         Segment MediaSegmentAtPos(uint pos);
         uint? MediaSegmentAtTime(TimeSpan duration);
-  
     }
 
     public enum SegmentType
