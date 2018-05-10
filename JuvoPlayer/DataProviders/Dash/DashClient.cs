@@ -6,6 +6,7 @@ using JuvoPlayer.Common;
 using JuvoLogger;
 using JuvoPlayer.SharedBuffers;
 using MpdParser.Node;
+using MpdParser.Network;
 using Representation = MpdParser.Representation;
 
 namespace JuvoPlayer.DataProviders.Dash
@@ -34,7 +35,7 @@ namespace JuvoPlayer.DataProviders.Dash
         public DashClient(ISharedBuffer sharedBuffer, StreamType streamType)
         {
             this.sharedBuffer = sharedBuffer ?? throw new ArgumentNullException(nameof(sharedBuffer), "sharedBuffer cannot be null");
-            this.streamType = streamType;            
+            this.streamType = streamType;
         }
 
         public TimeSpan Seek(TimeSpan position)
@@ -66,15 +67,15 @@ namespace JuvoPlayer.DataProviders.Dash
             // clear garbage before appending new data
             sharedBuffer.ClearData();
 
-            downloadTask = Task.Run(() => DownloadThread()); 
+            downloadTask = Task.Factory.StartNew(DownloadThread, TaskCreationOptions.LongRunning);
         }
 
         public void Stop()
         {
             StopPlayback();
-            timeUpdatedEvent.Set();
 
-            downloadTask.Wait();
+            timeUpdatedEvent.Set();
+            downloadTask?.Wait();
 
             Logger.Info(string.Format("{0} Data downloader stopped", streamType));
         }
@@ -102,7 +103,7 @@ namespace JuvoPlayer.DataProviders.Dash
                 //this can throw when event is received after Dispose() was called
                 timeUpdatedEvent.Set();
             }
-            catch (Exception e)
+            catch (Exception)
             {
                 // ignored
             }
@@ -110,6 +111,7 @@ namespace JuvoPlayer.DataProviders.Dash
 
         private void DownloadThread()
         {
+
             try
             {
                 if (initStreamBytes == null)
@@ -129,7 +131,9 @@ namespace JuvoPlayer.DataProviders.Dash
             while (true)
             {
                 while (bufferTime - currentTime > MagicBufferTime && playback)
+                {
                     timeUpdatedEvent.WaitOne();
+                }
 
                 if (!playback)
                     return;
@@ -147,7 +151,7 @@ namespace JuvoPlayer.DataProviders.Dash
                         sharedBuffer.WriteData(streamBytes);
 
                         if (bufferTime < duration)
-                        { 
+                        {
                             ++currentSegmentId;
                             continue;
                         }
@@ -163,6 +167,7 @@ namespace JuvoPlayer.DataProviders.Dash
                         if (++downloadErrorCount >= MaxRetryCount)
                         {
                             Logger.Error(string.Format("{0} Cannot download segment file. Sending EOS event. Error: {1} {2}", streamType, ex.Message, ex.ToString()));
+
                             SendEOSEvent();
                             return;
                         }
@@ -171,7 +176,7 @@ namespace JuvoPlayer.DataProviders.Dash
                     else
                     {
                         Logger.Error(string.Format("Error: {0} {1} {2}", ex.Message, ex.TargetSite, ex.StackTrace));
-                    }  
+                    }
                 }
             }
         }
@@ -183,19 +188,11 @@ namespace JuvoPlayer.DataProviders.Dash
 
         private byte[] DownloadSegment(MpdParser.Node.Dynamic.Segment stream)
         {
-            Logger.Info(string.Format("{0} Downloading segment: {1} {2}", 
+            Logger.Info(string.Format("{0} Downloading segment: {1} {2}",
                 streamType, stream.Url, stream.ByteRange));
-            
-            var url = stream.Url;
 
-            var client = new WebClientEx();
-            if (stream.ByteRange != null)
-            {
-                var range = new ByteRange(stream.ByteRange);
-                client.SetRange(range.Low, range.High);
-            }
-
-            var streamBytes = client.DownloadData(url);
+            ByteRange range = ByteRange.FromString(stream.ByteRange);
+            var streamBytes = Downloader.DownloadData(stream.Url, range);
 
             Logger.Info(string.Format("{0} Segment downloaded.", streamType));
 
@@ -209,91 +206,14 @@ namespace JuvoPlayer.DataProviders.Dash
             if (initSegment == null)
                 return null;
 
-            Logger.Info(string.Format("{0} Downloading Init segment: {1} {2}", 
+            Logger.Info(string.Format("{0} Downloading Init segment: {1} {2}",
                 streamType, initSegment.ByteRange, initSegment.Url));
 
-            var client = new WebClientEx();
-            if (initSegment.ByteRange != null)
-            {
-                var range = new ByteRange(initSegment.ByteRange);
-                client.SetRange(range.Low, range.High);
-            }
-            var bytes = client.DownloadData(initSegment.Url);
+            var range = ByteRange.FromString(initSegment.ByteRange);
+            var bytes = Downloader.DownloadData(initSegment.Url, range);
 
             Logger.Info(string.Format("{0} Init segment downloaded.", streamType));
             return bytes;
-        }
-    }
-    internal class ByteRange
-    {
-        private const string Tag = "JuvoPlayer";
-        private readonly ILogger Logger = LoggerManager.GetInstance().GetLogger(Tag);
-        public long Low { get; }
-        public long High { get; }
-        public ByteRange(string range)
-        {
-            Low = 0;
-            High = 0;
-            var ranges = range.Split('-');
-            if (ranges.Length != 2)
-            {
-                throw new ArgumentException("Range cannot be parsed.");
-            }
-            try
-            {
-                Low = long.Parse(ranges[0]);
-                High = long.Parse(ranges[1]);
-
-                if(Low > High )
-                {
-                    throw new ArgumentException("Range Low param cannot be higher then High param");
-                }
-
-            }
-            catch (Exception ex)
-            {
-                Logger.Error(ex + " Cannot parse range.");
-            }
-        }
-    }
-
-    public class WebClientEx : WebClient
-    {
-        private static readonly TimeSpan WebRequestTimeout = TimeSpan.FromSeconds(10);
-
-        private long? from;
-        private long? to;
-
-        public void SetRange(long from, long to)
-        {
-            this.from = from;
-            this.to = to;
-        }
-
-        public void ClearRange()
-        {
-            from = null;
-            to = null;
-        }
-
-        public ulong GetBytes(Uri address)
-        {
-            OpenRead(address.ToString());
-            return Convert.ToUInt64(ResponseHeaders["Content-Length"]);
-        }
-
-        protected override WebRequest GetWebRequest(Uri address)
-        {
-            var request = (HttpWebRequest)base.GetWebRequest(address);
-            if (request != null)
-            {
-                request.Timeout = (int)WebRequestTimeout.TotalMilliseconds;
-                if (to != null && from != null)
-                {
-                    request.AddRange((int)from, (int) to);
-                }
-            }
-            return request;
         }
     }
 

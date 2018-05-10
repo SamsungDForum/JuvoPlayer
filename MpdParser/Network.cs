@@ -1,4 +1,4 @@
-﻿// Copyright (c) 2018 Samsung Electronics Co., Ltd All Rights Reserved
+// Copyright (c) 2018 Samsung Electronics Co., Ltd All Rights Reserved
 // PROPRIETARY/CONFIDENTIAL 
 // This software is the confidential and proprietary
 // information of SAMSUNG ELECTRONICS ("Confidential Information"). You shall
@@ -13,70 +13,83 @@
 
 using System;
 using System.Net;
+using System.IO;
 using JuvoLogger;
 
-//Yes.. inheriting from WebClient is a simpler approach then raping the queen of Web/HttpRequests
 namespace MpdParser.Network
 {
-    internal class ByteRange
+    public class ByteRange
     {
         protected static LoggerManager LogManager = LoggerManager.GetInstance();
         protected static ILogger Logger = LoggerManager.GetInstance().GetLogger(MpdParser.LogTag);
 
         public long Low { get; }
         public long High { get; }
+
         public ByteRange(string range)
         {
-            Low = 0;
-            High = 0;
             var ranges = range.Split('-');
             if (ranges.Length != 2)
             {
-                throw new ArgumentException("Range cannot be parsed.");
+                throw new ArgumentException("Invalid range");
             }
             try
             {
                 Low = long.Parse(ranges[0]);
                 High = long.Parse(ranges[1]);
+
+                if (Low > High)
+                {
+                    throw new ArgumentException("Range Low param cannot be higher than High param");
+                }
             }
             catch (Exception ex)
             {
-                Logger.Error(GetType().Name, ex.ToString() + " Cannot parse range.");
+                Logger.Error($"Cannot parse range \"{range}\": {ex}");
             }
         }
-    }
-    public class NetClient : WebClient
-    {
-        private long? _from;
-        private long? _to;
 
-
-        public void SetRange(long from, long to)
+        public static ByteRange FromString(string range)
         {
-            _from = from;
-            _to = to;
-        }
-
-        public void ClearRange()
-        {
-            _from = null;
-            _to = null;
-        }
-
-        public ulong GetBytes(Uri address)
-        {
-            OpenRead(address.ToString());
-            return Convert.ToUInt64(ResponseHeaders["Content-Length"]);
-        }
-
-        protected override WebRequest GetWebRequest(Uri address)
-        {
-            var request = (HttpWebRequest)base.GetWebRequest(address);
-            if (_to != null && _from != null)
+            if (range == null)
             {
-                request?.AddRange((int)_from, (int)_to);
+                return null;
             }
-            return request;
+            return new ByteRange(range);
         }
+
+        public override string ToString() { return $"{Low}-{High}"; }
+    }
+
+    public class Downloader
+    {
+        public static byte[] DownloadData(Uri address, ByteRange range = null)
+        {
+            var request = HttpWebRequest.CreateDefault(address) as HttpWebRequest;
+
+            request.AllowAutoRedirect = true;
+            request.Timeout = _timeoutMs;
+            if (range != null)
+            {
+                request.AddRange(range.Low, range.High);
+            }
+
+            var response = request.GetResponse() as HttpWebResponse;
+            if (response.StatusCode != HttpStatusCode.OK && response.StatusCode != HttpStatusCode.PartialContent)
+            {
+                throw new WebException($"{address} [{range}] returned HTTP {response.StatusCode}");
+            }
+
+            var len = Convert.ToInt32(response.Headers["Content-Length"]);
+            using (Stream stream = response.GetResponseStream(), mem = new MemoryStream(len != 0 ? len : avgDownloadSize))
+            {
+                stream.CopyTo(mem);
+                return (mem as MemoryStream).ToArray();
+            }
+        }
+
+        //seems like a good default that won't drop data on slow-ish connections, yet not frustrate the user with wait times
+        private static int _timeoutMs = (int)TimeSpan.FromSeconds(3).TotalMilliseconds;
+        private static Int32 avgDownloadSize = 1024;
     }
 }

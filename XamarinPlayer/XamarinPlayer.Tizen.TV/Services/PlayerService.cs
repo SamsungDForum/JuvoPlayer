@@ -29,8 +29,8 @@ namespace XamarinPlayer.Tizen.Services
         private PlayerState playerState = PlayerState.Idle;
 
         public event PlayerStateChangedEventHandler StateChanged;
-        
-        public TimeSpan Duration => playerController?.ClipDuration ?? TimeSpan.FromSeconds(0) ;
+
+        public TimeSpan Duration => playerController?.ClipDuration ?? TimeSpan.FromSeconds(0);
 
         public TimeSpan CurrentPosition => dataProvider == null ? TimeSpan.FromSeconds(0) : playerController.CurrentTime;
 
@@ -106,7 +106,7 @@ namespace XamarinPlayer.Tizen.Services
         public List<StreamDefinition> GetStreamsDescription(StreamType streamType)
         {
             var streams = dataProvider.GetStreamsDescription(ToJuvoStreamType(streamType));
-            return streams.Select(o => 
+            return streams.Select(o =>
                 new StreamDefinition()
                 {
                     Id = o.Id,
@@ -153,6 +153,10 @@ namespace XamarinPlayer.Tizen.Services
             var clip = o as ClipDefinition;
 
             DataProviderConnector.Disconnect(playerController, dataProvider);
+            dataProvider?.Dispose();
+
+            Stop();
+            State = PlayerState.Preparing;
 
             dataProvider = dataProviders.CreateDataProvider(clip);
 
@@ -179,7 +183,11 @@ namespace XamarinPlayer.Tizen.Services
         {
             playerController.OnStop();
 
-            State = PlayerState.Stopped;
+            //prevent the callback from firing multiple times
+            if (this.State != PlayerState.Stopped)
+            {
+                State = PlayerState.Stopped;
+            }
         }
 
         public void Dispose()
