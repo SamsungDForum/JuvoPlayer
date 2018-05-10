@@ -168,21 +168,6 @@ namespace JuvoPlayer.OpenGL
             Draw(eglDisplay, eglSurface);
         }
 
-        private void OnRenderSubtitle(Subtitle subtitle)
-        {
-            //throw new NotImplementedException();
-        }
-
-        private void OnPlaybackCompleted()
-        {
-            //throw new NotImplementedException();
-        }
-
-        private void OnTimeUpdated(TimeSpan time)
-        {
-            //throw new NotImplementedException();
-        }
-
         private static void Main(string[] args)
         {
             var myProgram = new Program();
