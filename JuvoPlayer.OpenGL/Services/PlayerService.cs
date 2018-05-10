@@ -11,38 +11,41 @@ using JuvoPlayer.Drms.Cenc;
 using JuvoPlayer.Drms.DummyDrm;
 using JuvoPlayer.Player;
 using JuvoPlayer.Player.SMPlayer;
-
 using StreamDefinition = JuvoPlayer.OpenGL.Services.StreamDescription;
 using StreamType = JuvoPlayer.OpenGL.Services.StreamDescription.StreamType;
 
 namespace JuvoPlayer.OpenGL.Services
 {
-    class PlayerService : IPlayerService {
+    class PlayerService : IPlayerService
+    {
         private IDataProvider dataProvider;
         private IPlayerController playerController;
         private readonly DataProviderFactoryManager dataProviders;
         private PlayerState playerState = PlayerState.Idle;
 
         public event PlayerStateChangedEventHandler StateChanged;
-        public event PlaybackCompleted PlaybackCompleted;
 
         public TimeSpan Duration => playerController?.ClipDuration ?? TimeSpan.FromSeconds(0);
 
-        public TimeSpan CurrentPosition => dataProvider == null ? TimeSpan.FromSeconds(0) : playerController.CurrentTime;
+        public TimeSpan CurrentPosition =>
+            dataProvider == null ? TimeSpan.FromSeconds(0) : playerController.CurrentTime;
 
         public bool IsSeekingSupported => dataProvider?.IsSeekingSupported() ?? false;
 
-        public PlayerState State {
+        public PlayerState State
+        {
             get => playerState;
-            private set {
+            private set
+            {
                 playerState = value;
                 StateChanged?.Invoke(this, new PlayerStateChangedEventArgs(playerState));
             }
         }
 
-        public string CurrentCueText => dataProvider?.CurrentCueText;
+        public string CurrentCueText => dataProvider?.CurrentCue?.Text;
 
-        public PlayerService() {
+        public PlayerService()
+        {
             dataProviders = new DataProviderFactoryManager();
             dataProviders.RegisterDataProviderFactory(new DashDataProviderFactory());
             dataProviders.RegisterDataProviderFactory(new HLSDataProviderFactory());
@@ -54,29 +57,26 @@ namespace JuvoPlayer.OpenGL.Services
 
             var player = new SMPlayer();
             playerController = new PlayerController(player, drmManager);
-            playerController.PlaybackCompleted += () => {
-                State = PlayerState.Completed;
-                PlaybackCompleted?.Invoke();
-            };
-            playerController.PlayerInitialized += () => {
-                State = PlayerState.Prepared;
-            };
-            playerController.PlaybackError += (message) => {
-                State = PlayerState.Error;
-            };
+            playerController.PlaybackCompleted += () => { State = PlayerState.Completed; };
+            playerController.PlayerInitialized += () => { State = PlayerState.Prepared; };
+            playerController.PlaybackError += (message) => { State = PlayerState.Error; };
         }
 
-        public void Pause() {
+        public void Pause()
+        {
             playerController.OnPause();
             State = PlayerState.Paused;
         }
 
-        public void SeekTo(TimeSpan to) {
+        public void SeekTo(TimeSpan to)
+        {
             playerController.OnSeek(to);
         }
 
-        public void ChangeActiveStream(StreamDefinition stream) {
-            var streamDescription = new JuvoPlayer.Common.StreamDescription() {
+        public void ChangeActiveStream(StreamDefinition stream)
+        {
+            var streamDescription = new JuvoPlayer.Common.StreamDescription()
+            {
                 Id = stream.Id,
                 Description = stream.Description,
                 StreamType = ToJuvoStreamType(stream.Type)
@@ -85,10 +85,17 @@ namespace JuvoPlayer.OpenGL.Services
             dataProvider.OnChangeActiveStream(streamDescription);
         }
 
-        public List<StreamDefinition> GetStreamsDescription(StreamType streamType) {
+        public void DeactivateStream(StreamType streamType)
+        {
+            dataProvider.OnDeactivateStream(ToJuvoStreamType(streamType));
+        }
+
+        public List<StreamDefinition> GetStreamsDescription(StreamType streamType)
+        {
             var streams = dataProvider.GetStreamsDescription(ToJuvoStreamType(streamType));
             return streams.Select(o =>
-                new StreamDefinition() {
+                new StreamDefinition()
+                {
                     Id = o.Id,
                     Description = o.Description,
                     Default = o.Default,
@@ -96,8 +103,10 @@ namespace JuvoPlayer.OpenGL.Services
                 }).ToList();
         }
 
-        private JuvoPlayer.Common.StreamType ToJuvoStreamType(StreamType streamType) {
-            switch (streamType) {
+        private JuvoPlayer.Common.StreamType ToJuvoStreamType(StreamType streamType)
+        {
+            switch (streamType)
+            {
                 case StreamType.Audio:
                     return JuvoPlayer.Common.StreamType.Audio;
                 case StreamType.Video:
@@ -109,8 +118,10 @@ namespace JuvoPlayer.OpenGL.Services
             }
         }
 
-        private StreamType ToStreamType(JuvoPlayer.Common.StreamType streamType) {
-            switch (streamType) {
+        private StreamType ToStreamType(JuvoPlayer.Common.StreamType streamType)
+        {
+            switch (streamType)
+            {
                 case JuvoPlayer.Common.StreamType.Audio:
                     return StreamType.Audio;
                 case JuvoPlayer.Common.StreamType.Video:
@@ -122,7 +133,8 @@ namespace JuvoPlayer.OpenGL.Services
             }
         }
 
-        public void SetSource(object o) {
+        public void SetSource(object o)
+        {
             if (!(o is ClipDefinition))
                 return;
             var clip = o as ClipDefinition;
@@ -132,7 +144,8 @@ namespace JuvoPlayer.OpenGL.Services
             dataProvider = dataProviders.CreateDataProvider(clip);
 
             // TODO(p.galiszewsk) rethink!
-            if (clip.DRMDatas != null) {
+            if (clip.DRMDatas != null)
+            {
                 foreach (var drm in clip.DRMDatas)
                     playerController.OnSetDrmConfiguration(drm);
             }
@@ -142,24 +155,29 @@ namespace JuvoPlayer.OpenGL.Services
             dataProvider.Start();
         }
 
-        public void Start() {
+        public void Start()
+        {
             playerController.OnPlay();
 
             State = PlayerState.Playing;
         }
 
-        public void Stop() {
+        public void Stop()
+        {
             playerController.OnStop();
 
             State = PlayerState.Stopped;
         }
 
-        public void Dispose() {
+        public void Dispose()
+        {
             Dispose(true);
         }
 
-        protected virtual void Dispose(bool disposing) {
-            if (disposing) {
+        protected virtual void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
                 DataProviderConnector.Disconnect(playerController, dataProvider);
                 playerController?.Dispose();
                 playerController = null;

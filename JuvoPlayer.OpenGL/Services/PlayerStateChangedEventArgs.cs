@@ -8,6 +8,7 @@ namespace JuvoPlayer.OpenGL.Services
         {
             State = state;
         }
+
         public PlayerState State { get; }
     }
 }

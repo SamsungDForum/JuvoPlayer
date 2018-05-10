@@ -4,7 +4,8 @@ namespace JuvoPlayer.OpenGL
 {
     internal unsafe partial class Program : TVGLApplication
     {
-        private struct Tile {
+        private struct Tile
+        {
             public int Id;
             public string ImgPath;
             public int ImgWidth;
@@ -14,7 +15,8 @@ namespace JuvoPlayer.OpenGL
             public string Description;
         }
 
-        private enum IconType {
+        private enum IconType
+        {
             Play,
             Resume,
             Stop,
@@ -25,7 +27,8 @@ namespace JuvoPlayer.OpenGL
             SkipToStart
         };
 
-        private struct Icon {
+        private struct Icon
+        {
             public IconType Id;
             public string ImgPath;
             public int ImgWidth;
