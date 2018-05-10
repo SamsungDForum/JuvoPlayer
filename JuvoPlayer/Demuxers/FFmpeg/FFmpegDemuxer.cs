@@ -68,7 +68,8 @@ namespace JuvoPlayer.Demuxers.FFmpeg
         public unsafe FFmpegDemuxer(string libPath, ISharedBuffer dataBuffer = null)
         {
             this.dataBuffer = dataBuffer;
-            try {
+            try
+            {
                 Interop.FFmpeg.Initialize(libPath);
                 Interop.FFmpeg.av_register_all(); // TODO(g.skowinski): Is registering multiple times unwanted or doesn't it matter?
 
@@ -87,7 +88,8 @@ namespace JuvoPlayer.Demuxers.FFmpeg
                 };
                 Interop.FFmpeg.av_log_set_callback(logCallback);
             }
-            catch (Exception e) {
+            catch (Exception e)
+            {
                 Logger.Info("Could not load and register FFmpeg library");
                 throw new DemuxerException("Could not load and register FFmpeg library", e);
             }
@@ -105,7 +107,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg
                 throw new InvalidOperationException("dataBuffer cannot be null");
 
             // Potentially time-consuming part of initialization and demuxation loop will be executed on a detached thread.
-            demuxTask = Task.Run(() => DemuxTask(InitES, initMode)); 
+            demuxTask = Task.Run(() => DemuxTask(InitES, initMode));
         }
 
         public void StartForUrl(string url)
@@ -113,7 +115,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg
             Logger.Info("StartDemuxer!");
 
             // Potentially time-consuming part of initialization and demuxation loop will be executed on a detached thread.
-            demuxTask = Task.Run(() => DemuxTask(() => InitURL(url), InitializationMode.Full)); 
+            demuxTask = Task.Run(() => DemuxTask(() => InitURL(url), InitializationMode.Full));
         }
 
         private unsafe void InitES()
@@ -133,6 +135,15 @@ namespace JuvoPlayer.Demuxers.FFmpeg
                                                  writeFunction,
                                                  seekFunction);
             formatContext = Interop.FFmpeg.avformat_alloc_context(); // it was before avio_alloc_context before, but I'm changing ordering so it's like in LiveTVApp
+
+            if (ioContext == null || formatContext == null)
+            {
+                DeallocFFmpeg();
+                Logger.Info("Could not create FFmpeg context.!");
+
+                throw new Exception("Could not create FFmpeg context.");
+            }
+
             ioContext->seekable = 0;
             ioContext->write_flag = 0;
 
@@ -141,19 +152,13 @@ namespace JuvoPlayer.Demuxers.FFmpeg
             formatContext->flags |= FFmpegMacros.AVFMT_FLAG_CUSTOM_IO;
             formatContext->pb = ioContext;
 
-            if (ioContext == null || formatContext == null) {
-                DeallocFFmpeg();
-                Logger.Info("Could not create FFmpeg context.!");
-
-                throw new Exception("Could not create FFmpeg context.");
-            }
-
             int ret = -1;
             fixed (AVFormatContext** formatContextPointer = &formatContext)
             {
                 ret = Interop.FFmpeg.avformat_open_input(formatContextPointer, null, null, null);
             }
-            if (ret != 0) {
+            if (ret != 0)
+            {
                 Logger.Info("Could not parse input data: " + GetErrorText(ret));
 
                 DeallocFFmpeg();
@@ -245,7 +250,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg
                 if (dict == null)
                     return -1;
 
-                var stringValue = Marshal.PtrToStringAnsi((IntPtr) dict->value);
+                var stringValue = Marshal.PtrToStringAnsi((IntPtr)dict->value);
                 if (!ulong.TryParse(stringValue, out var value))
                     return -1;
 
@@ -387,20 +392,25 @@ namespace JuvoPlayer.Demuxers.FFmpeg
                 new byte[] { 0xC0, 0x00, 0x00, 0x00, 0x01, 0xCE, 0x8C, 0x4D, 0x9D, 0x10, 0x8E, 0x25, 0xE9, 0xFE } :
                 new byte[] { 0xE0, 0x00, 0x00, 0x00, 0x01, 0xCE, 0x8C, 0x4D, 0x9D, 0x10, 0x8E, 0x25, 0xE9, 0xFE };
             bool suffixPresent = false;
-            if (removeSuffixPES && size >= suffixPES.Length) {
+            if (removeSuffixPES && size >= suffixPES.Length)
+            {
                 suffixPresent = true;
-                for (int i = 0, dataOffset = size - suffixPES.Length; i < suffixPES.Length && i + dataOffset < size; ++i) {
-                    if (source[i + dataOffset] != suffixPES[i]) {
+                for (int i = 0, dataOffset = size - suffixPES.Length; i < suffixPES.Length && i + dataOffset < size; ++i)
+                {
+                    if (source[i + dataOffset] != suffixPES[i])
+                    {
                         suffixPresent = false;
                         break;
                     }
                 }
             }
-            if (removeSuffixPES && suffixPresent) {
+            if (removeSuffixPES && suffixPresent)
+            {
                 packet.Data = new byte[size - suffixPES.Length];
                 Marshal.Copy((IntPtr)source, packet.Data, 0, size - suffixPES.Length);
             }
-            else {
+            else
+            {
                 //packet.Data = new byte[size]; // should be already initialized
                 Marshal.Copy((IntPtr)source, packet.Data, 0, size);
             }
@@ -412,12 +422,15 @@ namespace JuvoPlayer.Demuxers.FFmpeg
         {
             const int errorBufferSize = 1024;
             byte[] errorBuffer = new byte[errorBufferSize];
-            try {
-                fixed (byte* errbuf = errorBuffer) {
+            try
+            {
+                fixed (byte* errbuf = errorBuffer)
+                {
                     Interop.FFmpeg.av_strerror(returnCode, errbuf, errorBufferSize);
                 }
             }
-            catch (Exception) {
+            catch (Exception)
+            {
                 return "";
             }
             return System.Text.Encoding.UTF8.GetString(errorBuffer);
@@ -433,15 +446,18 @@ namespace JuvoPlayer.Demuxers.FFmpeg
         // NOTE(g.skowinski): DEBUG HELPER METHOD
         private static void AppendAllBytes(string path, byte[] bytes)
         {
-            using (var stream = new FileStream(path, FileMode.Append)) {
+            using (var stream = new FileStream(path, FileMode.Append))
+            {
                 stream.Write(bytes, 0, bytes.Length);
             }
         }
 
         private unsafe void DeallocFFmpeg()
         {
-            if (formatContext != null) {
-                fixed (AVFormatContext** formatContextPointer = &formatContext) {
+            if (formatContext != null)
+            {
+                fixed (AVFormatContext** formatContextPointer = &formatContext)
+                {
                     Interop.FFmpeg.avformat_close_input(formatContextPointer);
                 }
                 Interop.FFmpeg.avformat_free_context(formatContext);
@@ -493,7 +509,8 @@ namespace JuvoPlayer.Demuxers.FFmpeg
 
         private unsafe void ReadAudioConfig()
         {
-            if (audioIdx < 0 || audioIdx >= formatContext->nb_streams) {
+            if (audioIdx < 0 || audioIdx >= formatContext->nb_streams)
+            {
                 Logger.Info("Wrong audio stream index! nb_streams = " + formatContext->nb_streams + ", audio_idx = " + audioIdx);
                 return;
             }
@@ -504,10 +521,12 @@ namespace JuvoPlayer.Demuxers.FFmpeg
             AVSampleFormat sampleFormat = (AVSampleFormat)s->codecpar->format;
             config.Codec = ConvertAudioCodec(s->codecpar->codec_id);
             //config.sample_format = ConvertSampleFormat(sample_format);
-            if (s->codecpar->bits_per_coded_sample > 0) {
+            if (s->codecpar->bits_per_coded_sample > 0)
+            {
                 config.BitsPerChannel = s->codecpar->bits_per_coded_sample; // per channel? not per sample? o_O
             }
-            else {
+            else
+            {
                 config.BitsPerChannel = Interop.FFmpeg.av_get_bytes_per_sample(sampleFormat) * 8;
                 config.BitsPerChannel /= s->codecpar->channels;
             }
@@ -540,7 +559,8 @@ namespace JuvoPlayer.Demuxers.FFmpeg
 
         private unsafe void ReadVideoConfig()
         {
-            if (videoIdx < 0 || videoIdx >= formatContext->nb_streams) {
+            if (videoIdx < 0 || videoIdx >= formatContext->nb_streams)
+            {
                 Logger.Info("Wrong video stream index! nb_streams = " + formatContext->nb_streams + ", video_idx = " + videoIdx);
                 return;
             }
@@ -577,7 +597,8 @@ namespace JuvoPlayer.Demuxers.FFmpeg
 
         AudioCodec ConvertAudioCodec(AVCodecID codec)
         {
-            switch (codec) {
+            switch (codec)
+            {
                 case AVCodecID.AV_CODEC_ID_AAC:
                     return AudioCodec.AAC;
                 case AVCodecID.AV_CODEC_ID_MP2:
@@ -619,7 +640,8 @@ namespace JuvoPlayer.Demuxers.FFmpeg
 
         private static VideoCodec ConvertVideoCodec(AVCodecID codec)
         {
-            switch (codec) {
+            switch (codec)
+            {
                 case AVCodecID.AV_CODEC_ID_H264:
                     return VideoCodec.H264;
                 case AVCodecID.AV_CODEC_ID_HEVC:
@@ -684,11 +706,13 @@ namespace JuvoPlayer.Demuxers.FFmpeg
         private static unsafe ISharedBuffer RetrieveSharedBufferReference(void* @opaque)
         {
             ISharedBuffer sharedBuffer;
-            try {
+            try
+            {
                 var handle = GCHandle.FromIntPtr((IntPtr)opaque);
                 sharedBuffer = (ISharedBuffer)handle.Target;
             }
-            catch (Exception) {
+            catch (Exception)
+            {
                 Logger.Info("Retrieveing ISharedBuffer reference failed!");
                 throw;
             }
@@ -698,10 +722,12 @@ namespace JuvoPlayer.Demuxers.FFmpeg
         private unsafe int ReadPacket(void* @opaque, byte* @buf, int bufSize)
         {
             ISharedBuffer sharedBuffer;
-            try {
+            try
+            {
                 sharedBuffer = RetrieveSharedBufferReference(opaque);
             }
-            catch (Exception) {
+            catch (Exception)
+            {
                 return 0;
             }
 
@@ -738,9 +764,18 @@ namespace JuvoPlayer.Demuxers.FFmpeg
                 return;
 
             parse = false;
+
+            dataBuffer?.WriteData(null, true);
             Resume();
             pausedEvent.Dispose();
-            demuxTask?.Wait();
+            try
+            {
+                demuxTask?.Wait();
+            }
+            catch (Exception e)
+            {
+                Logger.Error($"Demux task faulted: {e}");
+            }
 
             ReleaseUnmanagedResources();
             GC.SuppressFinalize(this);
