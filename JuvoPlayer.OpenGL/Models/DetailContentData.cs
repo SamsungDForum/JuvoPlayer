@@ -1,6 +1,7 @@
 ﻿using System.Windows.Input;
 
-namespace JuvoPlayer.OpenGL.Services {
+namespace JuvoPlayer.OpenGL.Services
+{
     class DetailContentData
     {
         public string Image { get; set; }

@@ -77,5 +77,21 @@
     "type": "dash",
     "poster": "sacrecoeur.jpg",
     "description": "Resolution 3840x2160 with bitrates ranging from 4 Mbps to 8 Mbps, in Main profile (8 bpp). Origin http://download.tsi.telecom-paristech.fr/gpac/dataset/dash/uhd/ UHD DASH Sequences."
+  },
+  {
+    "title": "RTSP multicast",
+    "url": "rtsp://192.168.137.200/video_aac.ts",
+    "type": "rtsp",
+    "poster": "default_bg.png",
+    "describe": "Common IPTV multicast protocol H264 + AAC http://testassets.dashif.org/#testvector/list",
+    "description": "RTSP streaming, H264 + AAC codecs"
+  },
+  {
+    "title": "Aging test",
+    "url": "http://stream-srv.sprc.samsung.pl/pnacl/MediaFramework/content/DASH_streams/ToS-4k-1920p-20hrs/stream.mpd",
+    "type": "dash",
+    "poster": "tos-poster.jpg",
+    "describe": "20h 4k DASH ToS MPD",
+    "description": "20h 4k DASH ToS MPD"
   }
 ]

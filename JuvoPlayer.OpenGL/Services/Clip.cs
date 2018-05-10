@@ -2,7 +2,8 @@
 using System.Collections.Generic;
 using System.Text;
 
-namespace JuvoPlayer.OpenGL.Services {
+namespace JuvoPlayer.OpenGL.Services
+{
     public class Clip
     {
         public string Image { get; set; }
