@@ -1,17 +1,16 @@
 ﻿using System;
 using JuvoPlayer.OpenGL.Services;
-using Tizen.TV.NUI.GLApplication;
 
 namespace JuvoPlayer.OpenGL
 {
-    internal unsafe partial class Program : TVGLApplication
+    internal unsafe partial class Program
     {
         private void UpdateSubtitles()
         {
             if (_player?.CurrentCueText != null && _options.SubtitlesOn())
             {
-                fixed (byte* cueText = GetBytes(_player.CurrentCueText))
-                    ShowSubtitle(0, cueText, _player.CurrentCueText.Length); // 0ms duration - special value just for next frame
+                fixed (byte* cueText = ResourceLoader.GetBytes(_player.CurrentCueText))
+                    DllImports.ShowSubtitle(0, cueText, _player.CurrentCueText.Length); // 0ms duration - special value just for next frame
             }
         }
 
@@ -21,14 +20,14 @@ namespace JuvoPlayer.OpenGL
                 return;
 
             _handlePlaybackCompleted = false;
-            _logger?.Info("Playback completed. Returning to menu.");
+            Logger?.Info("Playback completed. Returning to menu.");
             if (_menuShown)
                 return;
             _progressBarShown = false;
             _options.Hide();
             _menuShown = true;
-            UpdatePlaybackControls(0, 0, 0, 0, null, 0);
-            ShowMenu(_menuShown ? 1 : 0);
+            DllImports.UpdatePlaybackControls(0, 0, 0, 0, null, 0);
+            DllImports.ShowMenu(_menuShown ? 1 : 0);
 
             if (_player != null)
             {
@@ -49,12 +48,12 @@ namespace JuvoPlayer.OpenGL
             {
                 _progressBarShown = false;
                 _options.Hide();
-                _logger?.Info((DateTime.Now - _lastAction).TotalMilliseconds + "ms of inactivity, hiding progress bar.");
+                Logger?.Info((DateTime.Now - _lastAction).TotalMilliseconds + "ms of inactivity, hiding progress bar.");
             }
 
-            fixed (byte* name = GetBytes(ContentList[_selectedTile].Title))
-                UpdatePlaybackControls(_progressBarShown ? 1 : 0, _playerState, _playerTimeCurrentPosition,
-                    _playerTimeDuration, name, ContentList[_selectedTile].Title.Length);
+            fixed (byte* name = ResourceLoader.GetBytes(_resourceLoader.ContentList[_selectedTile].Title))
+                DllImports.UpdatePlaybackControls(_progressBarShown ? 1 : 0, _playerState, _playerTimeCurrentPosition,
+                    _playerTimeDuration, name, _resourceLoader.ContentList[_selectedTile].Title.Length);
         }
 
         private void UpdateUI()
