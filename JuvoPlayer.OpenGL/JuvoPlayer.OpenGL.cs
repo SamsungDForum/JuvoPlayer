@@ -1,6 +1,6 @@
 ﻿using System;
+using System.IO;
 using JuvoLogger;
-using JuvoPlayer.Common;
 using JuvoPlayer.OpenGL.Services;
 using Tizen.TV.NUI.GLApplication;
 
@@ -30,19 +30,24 @@ namespace JuvoPlayer.OpenGL
         private int _playerState;
         private bool _handlePlaybackCompleted;
 
-        private ILogger _logger;
+        private ILogger Logger;
 
         private OptionsMenu _options;
+        private ResourceLoader _resourceLoader;
 
         protected override void OnCreate()
         {
-            Create();
+            DllImports.Create();
             InitMenu();
         }
 
         private void InitMenu()
         {
-            LoadResources();
+            _resourceLoader = new ResourceLoader
+            {
+                Logger = Logger
+            };
+            _resourceLoader.LoadResources(Path.GetDirectoryName(Path.GetDirectoryName(Current.ApplicationInfo.ExecutablePath)), LoadTestContentList);
             SetMenuFooter();
             SetupLogger();
             SetupOptionsMenu();
@@ -51,18 +56,18 @@ namespace JuvoPlayer.OpenGL
 
         private void SetMenuFooter()
         {
-            var footer = "JuvoPlayer Prealpha, OpenGL UI #" + OpenGLLibVersion().ToString("x") +
+            var footer = "JuvoPlayer Prealpha, OpenGL UI #" + DllImports.OpenGLLibVersion().ToString("x") +
                             ", Samsung R&D Poland 2017-2018";
-            fixed (byte* f = GetBytes(footer))
-                SetFooter(f, footer.Length);
+            fixed (byte* f = ResourceLoader.GetBytes(footer))
+                DllImports.SetFooter(f, footer.Length);
         }
 
         private void SetDefaultMenuState()
         {
-            SelectTile(_selectedTile);
+            DllImports.SelectTile(_selectedTile);
             _selectedTile = 0;
             _menuShown = true;
-            ShowLoader(1, 0);
+            DllImports.ShowLoader(1, 0);
 
             _lastAction = DateTime.Now;
             _accumulatedSeekTime = TimeSpan.Zero;
@@ -76,14 +81,14 @@ namespace JuvoPlayer.OpenGL
 
         private void SetupLogger()
         {
-            _logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
+            Logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
         }
 
         private void SetupOptionsMenu()
         {
             _options = new OptionsMenu
             {
-                Logger = _logger
+                Logger = Logger
             };
         }
 
@@ -131,22 +136,22 @@ namespace JuvoPlayer.OpenGL
                     HandleKeySeekForward();
                     break;
                 case "XF86Info":
-                    SwitchFPSCounterVisibility();
+                    DllImports.SwitchFPSCounterVisibility();
                     break;
                 case "XF86Red":
-                    SwitchFPSCounterVisibility();
+                    DllImports.SwitchFPSCounterVisibility();
                     break;
                 case "XF86Green":
                     _menuShown = !_menuShown;
-                    ShowMenu(_menuShown ? 1 : 0);
+                    DllImports.ShowMenu(_menuShown ? 1 : 0);
                     break;
                 case "XF86Yellow":
-                    SwitchTextRenderingMode();
+                    DllImports.SwitchTextRenderingMode();
                     break;
                 case "XF86Blue":
                     break;
                 default:
-                    _logger?.Info("Unknown key pressed: " + key.KeyPressedName);
+                    Logger?.Info("Unknown key pressed: " + key.KeyPressedName);
                     break;
             }
 
@@ -163,9 +168,9 @@ namespace JuvoPlayer.OpenGL
 
         protected override void OnUpdate(IntPtr eglDisplay, IntPtr eglSurface)
         {
-            LoadQueuedResources();
+            _resourceLoader.LoadQueuedResources();
             UpdateUI();
-            Draw(eglDisplay, eglSurface);
+            DllImports.Draw(eglDisplay, eglSurface);
         }
 
         private static void Main(string[] args)

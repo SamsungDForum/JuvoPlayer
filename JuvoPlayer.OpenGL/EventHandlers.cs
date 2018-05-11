@@ -2,11 +2,10 @@
 using System.Threading;
 using System.Threading.Tasks;
 using JuvoPlayer.OpenGL.Services;
-using Tizen.TV.NUI.GLApplication;
 
 namespace JuvoPlayer.OpenGL
 {
-    internal unsafe partial class Program : TVGLApplication
+    internal unsafe partial class Program
     {
         private TimeSpan _accumulatedSeekTime;
         private DateTime _lastSeekTime;
@@ -16,9 +15,9 @@ namespace JuvoPlayer.OpenGL
         {
             if (_menuShown)
             {
-                if (_selectedTile < _tilesNumber - 1)
-                    _selectedTile = (_selectedTile + 1) % _tilesNumber;
-                SelectTile(_selectedTile);
+                if (_selectedTile < _resourceLoader.TilesNumber - 1)
+                    _selectedTile = (_selectedTile + 1) % _resourceLoader.TilesNumber;
+                DllImports.SelectTile(_selectedTile);
             }
             else if (_options.IsShown())
             {
@@ -35,8 +34,8 @@ namespace JuvoPlayer.OpenGL
             if (_menuShown)
             {
                 if (_selectedTile > 0)
-                    _selectedTile = (_selectedTile - 1 + _tilesNumber) % _tilesNumber;
-                SelectTile(_selectedTile);
+                    _selectedTile = (_selectedTile - 1 + _resourceLoader.TilesNumber) % _resourceLoader.TilesNumber;
+                DllImports.SelectTile(_selectedTile);
             }
             else if (_options.IsShown())
             {
@@ -62,12 +61,12 @@ namespace JuvoPlayer.OpenGL
         {
             if (_menuShown)
             {
-                if (_selectedTile >= ContentList.Count)
+                if (_selectedTile >= _resourceLoader.ContentList.Count)
                     return;
                 if (_menuShown)
                 {
                     _menuShown = false;
-                    ShowMenu(_menuShown ? 1 : 0);
+                    DllImports.ShowMenu(_menuShown ? 1 : 0);
                 }
                 HandlePlaybackStart();
             }
@@ -87,15 +86,15 @@ namespace JuvoPlayer.OpenGL
                 _player = new PlayerService();
             _player.StateChanged += (object sender, PlayerStateChangedEventArgs e) =>
             {
-                _logger?.Info("Player state changed: " + _player.State);
+                Logger?.Info("Player state changed: " + _player.State);
                 _playerState = (int)_player.State;
                 if (_player.State == PlayerState.Prepared)
                     _player?.Start();
                 else if (_player.State == PlayerState.Completed)
                     _handlePlaybackCompleted = true;
             };
-            _logger?.Info("Playing " + ContentList[_selectedTile].Title + " (" + ContentList[_selectedTile].Source + ")");
-            _player.SetSource(ContentList[_selectedTile].Clip);
+            Logger?.Info("Playing " + _resourceLoader.ContentList[_selectedTile].Title + " (" + _resourceLoader.ContentList[_selectedTile].Source + ")");
+            _player.SetSource(_resourceLoader.ContentList[_selectedTile].Clip);
             _options.GetStreams(_player);
         }
 
@@ -103,9 +102,9 @@ namespace JuvoPlayer.OpenGL
         {
             if (!_menuShown && !_options.IsShown())
             {
-                UpdatePlaybackControls(0, 0, 0, 0, null, 0);
+                DllImports.UpdatePlaybackControls(0, 0, 0, 0, null, 0);
                 _menuShown = true;
-                ShowMenu(_menuShown ? 1 : 0);
+                DllImports.ShowMenu(_menuShown ? 1 : 0);
                 if (_player != null)
                 {
                     _player.Dispose(); // TODO(g.skowinski): Check wheter it's the best way
@@ -157,18 +156,18 @@ namespace JuvoPlayer.OpenGL
 
             if (_seekTask == null)
             {
-                _logger.Info("Seek buffering: Planning to seek " + _accumulatedSeekTime.ToString() + " in " + ((_lastSeekTime + _defaultSeekAccumulateTime) - DateTime.Now).Milliseconds + "ms (new seek task)");
+                Logger.Info("Seek buffering: Planning to seek " + _accumulatedSeekTime.ToString() + " in " + ((_lastSeekTime + _defaultSeekAccumulateTime) - DateTime.Now).Milliseconds + "ms (new seek task)");
                 _accumulatedSeekTime = seekTime;
                 _seekTask = Task.Delay(_defaultSeekAccumulateTime).ContinueWith(_ =>
                 {
                     while (_lastSeekTime + _defaultSeekAccumulateTime > DateTime.Now)
                     {
                         TimeSpan delay = (_lastSeekTime + _defaultSeekAccumulateTime) - DateTime.Now;
-                        _logger.Info("Seek buffering: waiting for another " + delay.Milliseconds + "ms to seek");
+                        Logger.Info("Seek buffering: waiting for another " + delay.Milliseconds + "ms to seek");
                         Thread.Sleep(delay);
                     }
 
-                    _logger.Info("Seek buffering: Seeking " + _accumulatedSeekTime.ToString());
+                    Logger.Info("Seek buffering: Seeking " + _accumulatedSeekTime.ToString());
                     if (_accumulatedSeekTime > TimeSpan.Zero)
                         Forward(_accumulatedSeekTime);
                     else
@@ -179,7 +178,7 @@ namespace JuvoPlayer.OpenGL
             else
             {
                 _accumulatedSeekTime += seekTime;
-                _logger.Info("Seek buffering: Planning to seek " + _accumulatedSeekTime.ToString() + " in " + ((_lastSeekTime + _defaultSeekAccumulateTime) - DateTime.Now).Milliseconds + "ms");
+                Logger.Info("Seek buffering: Planning to seek " + _accumulatedSeekTime.ToString() + " in " + ((_lastSeekTime + _defaultSeekAccumulateTime) - DateTime.Now).Milliseconds + "ms");
             }
             
             _playerTimeCurrentPosition += (int)seekTime.TotalMilliseconds; // seekTime.Milliseconds which would be more direct to use returns unfortunately 0...

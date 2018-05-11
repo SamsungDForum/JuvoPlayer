@@ -1,11 +1,10 @@
 ﻿using System.Collections.Generic;
 using JuvoLogger;
 using JuvoPlayer.OpenGL.Services;
-using Tizen.TV.NUI.GLApplication;
 
 namespace JuvoPlayer.OpenGL
 {
-    internal unsafe partial class Program : TVGLApplication
+    internal unsafe partial class Program
     {
         private class OptionsMenu
         {
@@ -27,7 +26,7 @@ namespace JuvoPlayer.OpenGL
 
             private List<Stream> _streams = new List<Stream>();
 
-            public ILogger Logger { get; set; }
+            public ILogger Logger { private get; set; }
 
             public void GetStreams(PlayerService player)
             {
@@ -65,8 +64,8 @@ namespace JuvoPlayer.OpenGL
 
                     stream.Descriptions.AddRange(player.GetStreamsDescription(streamType));
                     stream.Active = -1;
-                    fixed (byte* text = GetBytes(stream.Title))
-                        AddOption(stream.Id, text, stream.Title.Length);
+                    fixed (byte* text = ResourceLoader.GetBytes(stream.Title))
+                        DllImports.AddOption(stream.Id, text, stream.Title.Length);
                     for (int id = 0; id < stream.Descriptions.Count; ++id)
                     {
                         var s = stream.Descriptions[id];
@@ -78,8 +77,8 @@ namespace JuvoPlayer.OpenGL
                                 _subtitlesOn = true;
                         }
 
-                        fixed (byte* text = GetBytes(s.Description))
-                            AddSuboption(stream.Id, id, text, s.Description.Length);
+                        fixed (byte* text = ResourceLoader.GetBytes(s.Description))
+                            DllImports.AddSuboption(stream.Id, id, text, s.Description.Length);
                     }
 
                     _streams.Add(stream);
@@ -99,8 +98,7 @@ namespace JuvoPlayer.OpenGL
                 Logger?.Info("activeOption=" + _activeOption + ", activeSuboption=" + _activeSuboption + ", selectedOption=" + _selectedOption + ", selectedSuboption=" + _selectedSuboption);
                 if (_selectedOption >= 0 && _selectedOption < _streams.Count)
                     _activeSuboption = _streams[_selectedOption].Active;
-                UpdateSelection(_optionsShown ? 1 : 0, _activeOption, _activeSuboption, _selectedOption,
-                    _selectedSuboption);
+                DllImports.UpdateSelection(_optionsShown ? 1 : 0, _activeOption, _activeSuboption, _selectedOption, _selectedSuboption);
             }
 
             private void ClearOptionsMenu()
@@ -112,7 +110,7 @@ namespace JuvoPlayer.OpenGL
                 _optionsShown = false;
                 _subtitlesOn = false;
                 _streams = new List<Stream>();
-                ClearOptions();
+                DllImports.ClearOptions();
             }
 
             public void ControlLeft()
