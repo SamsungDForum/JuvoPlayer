@@ -4,11 +4,6 @@ using JuvoLogger;
 using JuvoPlayer.OpenGL.Services;
 using Tizen.TV.NUI.GLApplication;
 
-// TODO: Refactor (+reclass?)
-// TODO: Fix seek progress bar jump issue
-// TODO: Decide what to do with resource loading failures
-// TODO: Harden exception and error handling
-
 namespace JuvoPlayer.OpenGL
 {
     internal unsafe partial class Program : TVGLApplication

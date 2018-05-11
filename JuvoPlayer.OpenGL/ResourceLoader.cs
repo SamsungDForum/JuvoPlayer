@@ -11,7 +11,7 @@ namespace JuvoPlayer.OpenGL
 {
     internal unsafe partial class Program
     {
-        class ResourceLoader
+        class ResourceLoader // TODO(g.skowinski): With current logic the loading will never end if one element doesn't load. Leave it be or handle it?
         {
             public int TilesNumber = 0;
             private int _tilesNumberTarget = 0;
@@ -156,7 +156,7 @@ namespace JuvoPlayer.OpenGL
                     catch (Exception e)
                     {
                         Logger?.Info(e
-                            .ToString()); // TODO(g.skowinski): With current logic the loading will never end if one element doesn't load. Handle it?
+                            .ToString());
                     }
                 });
             }
@@ -195,7 +195,7 @@ namespace JuvoPlayer.OpenGL
                     catch (Exception e)
                     {
                         Logger?.Info(e
-                            .ToString()); // TODO(g.skowinski): With current logic the loading will never end if one element doesn't load. Handle it?
+                            .ToString());
                     }
                 });
             }
@@ -234,7 +234,7 @@ namespace JuvoPlayer.OpenGL
                     catch (Exception e)
                     {
                         Logger?.Info(e
-                            .ToString()); // TODO(g.skowinski): With current logic the loading will never end if one element doesn't load. Handle it?
+                            .ToString());
                     }
                 });
             }
@@ -279,7 +279,7 @@ namespace JuvoPlayer.OpenGL
                         catch (Exception e)
                         {
                             Logger?.Info(e
-                                .ToString()); // TODO(g.skowinski): With current logic the loading will never end if one element doesn't load. Handle it?
+                                .ToString());
                         }
                     }
                 }
@@ -302,7 +302,7 @@ namespace JuvoPlayer.OpenGL
                         catch (Exception e)
                         {
                             Logger?.Info(e
-                                .ToString()); // TODO(g.skowinski): With current logic the loading will never end if one element doesn't load. Handle it?
+                                .ToString());
                         }
                     }
                 }
@@ -325,7 +325,7 @@ namespace JuvoPlayer.OpenGL
                         catch (Exception e)
                         {
                             Logger?.Info(e
-                                .ToString()); // TODO(g.skowinski): With current logic the loading will never end if one element doesn't load. Handle it?
+                                .ToString());
                         }
                     }
                 }

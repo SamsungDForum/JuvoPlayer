@@ -5,7 +5,7 @@ namespace JuvoPlayer.OpenGL
 {
     internal static unsafe class DllImports
     {
-        private const string GlDemoLib = "libgles_sample.so";
+        private const string GlDemoLib = "libgles.so";
 
         [DllImport(GlDemoLib, EntryPoint = "Create")]
         public static extern void Create();
