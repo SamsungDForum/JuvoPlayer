@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using JuvoPlayer.Common;
@@ -21,20 +21,20 @@ using StreamType = XamarinPlayer.Services.StreamDescription.StreamType;
 [assembly: Dependency(typeof(PlayerService))]
 namespace XamarinPlayer.Tizen.Services
 {
-    class PlayerService : IPlayerService
+    sealed class PlayerService : IPlayerService
     {
         private IDataProvider dataProvider;
         private IPlayerController playerController;
-        private readonly DataProviderFactoryManager dataProviders;
+        private readonly DataProviderFactoryManager dataProviders = new DataProviderFactoryManager();
         private PlayerState playerState = PlayerState.Idle;
 
         public event PlayerStateChangedEventHandler StateChanged;
 
-        public TimeSpan Duration => playerController?.ClipDuration ?? TimeSpan.FromSeconds(0);
+        public TimeSpan Duration => playerController.ClipDuration;
 
-        public TimeSpan CurrentPosition => dataProvider == null ? TimeSpan.FromSeconds(0) : playerController.CurrentTime;
+        public TimeSpan CurrentPosition => playerController.CurrentTime;
 
-        public bool IsSeekingSupported => dataProvider?.IsSeekingSupported() ?? false;
+        public bool IsSeekingSupported => dataProvider.IsSeekingSupported();
 
         public PlayerState State
         {
@@ -46,11 +46,10 @@ namespace XamarinPlayer.Tizen.Services
             }
         }
 
-        public string CurrentCueText => dataProvider?.CurrentCue?.Text;
+        public string CurrentCueText => dataProvider.CurrentCue?.Text;
 
         public PlayerService()
         {
-            dataProviders = new DataProviderFactoryManager();
             dataProviders.RegisterDataProviderFactory(new DashDataProviderFactory());
             dataProviders.RegisterDataProviderFactory(new HLSDataProviderFactory());
             dataProviders.RegisterDataProviderFactory(new RTSPDataProviderFactory());
@@ -192,20 +191,14 @@ namespace XamarinPlayer.Tizen.Services
 
         public void Dispose()
         {
-            Dispose(true);
-        }
+            DataProviderConnector.Disconnect(playerController, dataProvider);
+            playerController.Dispose();
+            dataProvider.Dispose();
 
-        protected virtual void Dispose(bool disposing)
-        {
-            if (disposing)
-            {
-                DataProviderConnector.Disconnect(playerController, dataProvider);
-                playerController?.Dispose();
-                playerController = null;
-                dataProvider?.Dispose();
-                dataProvider = null;
-                GC.Collect();
-            }
+            Int32 gcMaxGeneration = Math.Max(GC.GetGeneration(playerController), GC.GetGeneration(dataProvider));
+            playerController = null;
+            dataProvider     = null;
+            GC.Collect(gcMaxGeneration, GCCollectionMode.Forced, false, true); //non-blocking (if possible), compacting
         }
     }
 }

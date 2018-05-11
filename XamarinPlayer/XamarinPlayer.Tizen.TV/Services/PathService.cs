@@ -7,7 +7,7 @@ using XamarinPlayer.Tizen.TV.Services;
 [assembly: Dependency(typeof(PathService))]
 namespace XamarinPlayer.Tizen.TV.Services
 {
-    class PathService : IPathService, IDisposable
+    class PathService : IPathService
     {
         public string ApplicationPath
         {
@@ -15,10 +15,6 @@ namespace XamarinPlayer.Tizen.TV.Services
             {
                 return Path.GetDirectoryName(Path.GetDirectoryName(global::Tizen.Applications.Application.Current.ApplicationInfo.ExecutablePath));
             }
-        }
-
-        public void Dispose()
-        {
         }
     }
 }
