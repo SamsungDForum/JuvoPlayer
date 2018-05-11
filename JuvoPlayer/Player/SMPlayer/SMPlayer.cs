@@ -662,8 +662,6 @@ namespace JuvoPlayer.Player.SMPlayer
 
             Logger.Info("OnCurrentPosition = " + currTime);
 
-            GC.Collect();
-
             currentTime = currTime;
 
             TimeUpdated?.Invoke(TimeSpan.FromMilliseconds(currentTime));

@@ -194,6 +194,11 @@ namespace XamarinPlayer.Tizen.Services
             DataProviderConnector.Disconnect(playerController, dataProvider);
             playerController.Dispose();
             dataProvider.Dispose();
+
+            Int32 gcMaxGeneration = Math.Max(GC.GetGeneration(playerController), GC.GetGeneration(dataProvider));
+            playerController = null;
+            dataProvider     = null;
+            GC.Collect(gcMaxGeneration, GCCollectionMode.Forced, false, true); //non-blocking (if possible), compacting
         }
     }
 }
