@@ -4,5 +4,3 @@ bin
 obj
 *.lock.json
 *.user
-*.csproj.user
-
