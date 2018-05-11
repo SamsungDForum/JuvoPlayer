@@ -105,16 +105,20 @@ namespace JuvoPlayer.OpenGL
                 DllImports.UpdatePlaybackControls(0, 0, 0, 0, null, 0);
                 _menuShown = true;
                 DllImports.ShowMenu(_menuShown ? 1 : 0);
-                if (_player != null)
-                {
-                    _player.Dispose(); // TODO(g.skowinski): Check wheter it's the best way
-                    _player = null;
-                }
+                ClosePlayer();
             }
             else if (_options.IsShown())
             {
                 _options.Hide();
             }
+        }
+
+        private void ClosePlayer()
+        {
+            if (_player == null)
+                return;
+            _player.Dispose(); // TODO(g.skowinski): Check wheter it's the best way
+            _player = null;
         }
 
         private void HandleKeyExit()
