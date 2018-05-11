@@ -752,6 +752,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg
         {
             DeallocFFmpeg();
         }
+
         public void Dispose()
         {
             if (isDisposed)
