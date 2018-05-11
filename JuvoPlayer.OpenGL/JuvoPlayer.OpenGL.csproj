@@ -13,6 +13,11 @@
     <DebugType>None</DebugType>
   </PropertyGroup>
   <ItemGroup>
+    <Compile Remove="res\backgrounds\**" />
+    <EmbeddedResource Remove="res\backgrounds\**" />
+    <None Remove="res\backgrounds\**" />
+  </ItemGroup>
+  <ItemGroup>
     <None Remove="shared\res\testvideoclips.json" />
     <None Remove="shared\res\videoclips.json" />
   </ItemGroup>
@@ -28,7 +33,6 @@
   <ItemGroup>
     <Folder Include="lib\" />
     <Folder Include="res\fonts\" />
-    <Folder Include="res\backgrounds\" />
     <Folder Include="res\icons\" />
   </ItemGroup>
 
