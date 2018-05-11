@@ -34,7 +34,7 @@ namespace JuvoPlayer.Player.SMPlayer
         }
     }
 
-    public class SMPlayer : IPlayer, IPlayerEventListener
+    public sealed class SMPlayer : IPlayer, IPlayerEventListener
     {
         private enum SMPlayerState
         {
@@ -128,11 +128,6 @@ namespace JuvoPlayer.Player.SMPlayer
             }
 
             ResetPacketsQueues();
-        }
-
-        ~SMPlayer()
-        {
-            ReleaseUnmanagedResources();
         }
 
         private void ThrowIfDisposed()
@@ -236,8 +231,10 @@ namespace JuvoPlayer.Player.SMPlayer
 
             try
             {
-                var decryptedPacket = packet.Decrypt();
-                SubmitDecryptedEmePacket(decryptedPacket as DecryptedEMEPacket);
+                using (var decryptedPacket = packet.Decrypt())
+                {
+                    SubmitDecryptedEmePacket(decryptedPacket as DecryptedEMEPacket);
+                }
             }
             catch (Exception e)
             {
@@ -665,28 +662,15 @@ namespace JuvoPlayer.Player.SMPlayer
 
             Logger.Info("OnCurrentPosition = " + currTime);
 
-            GC.Collect();
-
             currentTime = currTime;
 
             TimeUpdated?.Invoke(TimeSpan.FromMilliseconds(currentTime));
         }
 
         #endregion
-
         private void ReleaseUnmanagedResources()
         {
             playerInstance.DestroyHandler();
-        }
-
-        private void Dispose(bool disposing)
-        {
-            if (disposing)
-            {
-                Stop();
-                submitting.Dispose();
-            }
-            ReleaseUnmanagedResources();
         }
 
         public void Dispose()
@@ -694,10 +678,18 @@ namespace JuvoPlayer.Player.SMPlayer
             if (isDisposed)
                 return;
 
-            Dispose(true);
+            Stop();
+            submitting.Dispose();
+
+            ReleaseUnmanagedResources();
             GC.SuppressFinalize(this);
 
             isDisposed = true;
+        }
+
+        ~SMPlayer()
+        {
+            ReleaseUnmanagedResources();
         }
     }
 }

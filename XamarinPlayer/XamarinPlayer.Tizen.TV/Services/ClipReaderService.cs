@@ -22,9 +22,5 @@ namespace XamarinPlayer.Tizen.TV.Services
 
             return clips;
         }
-
-        public void Dispose()
-        {
-        }
     }
 }

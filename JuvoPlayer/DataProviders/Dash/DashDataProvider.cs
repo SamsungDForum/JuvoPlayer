@@ -218,11 +218,8 @@ namespace JuvoPlayer.DataProviders.Dash
         public void Dispose()
         {
             OnStopped();
-
             audioPipeline?.Dispose();
-            audioPipeline = null;
             videoPipeline?.Dispose();
-            videoPipeline = null;
         }
     }
 }

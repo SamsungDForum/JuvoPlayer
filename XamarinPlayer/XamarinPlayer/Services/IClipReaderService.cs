@@ -3,7 +3,7 @@ using System.Collections.Generic;
 
 namespace XamarinPlayer.Services
 {
-    public interface IClipReaderService : IDisposable
+    public interface IClipReaderService
     {
         List<Clip> ReadClips(string path);
     }

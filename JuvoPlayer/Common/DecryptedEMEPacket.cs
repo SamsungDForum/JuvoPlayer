@@ -5,7 +5,7 @@ using Tizen.TV.Security.DrmDecrypt;
 
 namespace JuvoPlayer.Common
 {
-    internal unsafe class DecryptedEMEPacket : Packet
+    internal unsafe sealed class DecryptedEMEPacket : Packet
     {
         private readonly ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
         private readonly AsyncContextThread releaseThread;
