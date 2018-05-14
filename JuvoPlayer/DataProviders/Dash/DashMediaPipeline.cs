@@ -390,6 +390,8 @@ namespace JuvoPlayer.DataProviders.Dash
         public void Dispose()
         {
             demuxer?.Dispose();
+
+            dashClient?.Dispose();
         }
     }
 }
