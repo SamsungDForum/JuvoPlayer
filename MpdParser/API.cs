@@ -23,15 +23,9 @@ namespace MpdParser
 
         public Node.IRepresentationStream Segments { get; }
 
-        private ManifestParameters Parameters_;
-        public ManifestParameters Parameters
+        public void SetDocumentParameters(ManifestParameters docParams)
         {
-            get { return Parameters_; }
-            set
-            {
-                Parameters_ = value;
-                Segments.Parameters = Parameters_;
-            }
+            Segments.SetDocumentParameters(docParams);
         }
 
         public Representation(Node.Representation repr)
@@ -270,20 +264,12 @@ namespace MpdParser
         public MimeType Type { get; }
         public Role[] Roles { get; }
         public Representation[] Representations { get; }
-        private ManifestParameters Paramters_;
-        public ManifestParameters Parameters
+        
+        public void SetDocumentParameters(ManifestParameters docParams)
         {
-            get
+            foreach (var rep in Representations)
             {
-                return Paramters_;
-            }
-            set
-            {
-                Paramters_ = value;
-                foreach (var rep in Representations)
-                {
-                    rep.Parameters = Paramters_;
-                }
+                rep.SetDocumentParameters(docParams);
             }
         }
 
@@ -308,7 +294,6 @@ namespace MpdParser
             for (int i = 0; i < Representations.Length; ++i)
             {
                 Representations[i] = new Representation(set.Representations[i]);
-                Representations[i].Parameters = Parameters;
             }
 
             Type = new MimeType(set.GetContentType() ??
@@ -411,6 +396,7 @@ namespace MpdParser
             Period = new PeriodParameters(aPeriod);
         }
     }
+
     /// <summary>
     /// DocumentParameters is a pass through information from Document.
     /// Intentionally, a separate class is used so all parameters from currently used
@@ -639,6 +625,7 @@ namespace MpdParser
         public DateTime DownloadCompleteTime { get; }
         public DateTime ManifestParseCompleteTime { get; }
         public TimeSpan? SuggestedPresentationDelay { get; }
+        public TimeSpan TimeOffset { get; }
 
         public DocumentParameters(Document aDocument)
         {
@@ -659,6 +646,15 @@ namespace MpdParser
             ManifestParseCompleteTime = aDocument.ParseCompleteTime;
 
             SuggestedPresentationDelay = aDocument.SuggestedPresentationDelay;
+
+            if(IsDynamic)
+            {
+                TimeOffset = ManifestParseCompleteTime - DownloadCompleteTime;
+            }
+            else
+            {
+                TimeOffset = TimeSpan.Zero;
+            }
 
         }
     }

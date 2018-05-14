@@ -267,12 +267,12 @@ namespace JuvoPlayer.DataProviders.Dash
 
                 foreach (var v in videos)
                 {
-                    v.Parameters = manifestParams;
+                    v.SetDocumentParameters(manifestParams);
                 }
 
                 foreach (var a in audios)
                 {
-                    a.Parameters = manifestParams;
+                    a.SetDocumentParameters(manifestParams);
                 }
 
 
@@ -297,11 +297,11 @@ namespace JuvoPlayer.DataProviders.Dash
             for (int p = aDoc.Periods.Length - 1; p >= 0; p--)
             {
                 var period = aDoc.Periods[p];
+
                 var availstart = aDoc.AvailabilityStartTime ?? DateTime.UtcNow;
-
-                var start = DateTime.UtcNow.Subtract(availstart);
+                var start = aDoc.IsDynamic == true ? DateTime.UtcNow.Subtract(availstart) : TimeSpan.Zero;
+                
                 start = start.Add(period.Start ?? TimeSpan.Zero);
-
                 var end = start.Add(period.Duration ?? TimeSpan.Zero);
 
                 start = new TimeSpan(start.Ticks / TimeSpan.TicksPerSecond * TimeSpan.TicksPerSecond);
@@ -335,33 +335,13 @@ namespace JuvoPlayer.DataProviders.Dash
         /// For static content, time passed as argument is returned.</returns>
         private TimeSpan LiveClockTime(TimeSpan time, Document newDoc = null)
         {
-            bool isDynamic;
+            Document document = newDoc ?? currentDocument;
 
-            if (newDoc == null)
-            {
-
-                isDynamic = currentDocument.IsDynamic;
-
-
-                if (isDynamic == true)
-                {
-                    time = DateTime.UtcNow.Subtract(currentDocument.AvailabilityStartTime ?? DateTime.MinValue);
-                }
-            }
-            else
-            {
-                var aDoc = newDoc as Document;
-                isDynamic = aDoc.IsDynamic;
-
-                if (isDynamic == true)
-                {
-                    time = DateTime.UtcNow.Subtract(aDoc.AvailabilityStartTime ?? DateTime.MinValue);
-                }
-            }
-
-
+            if (document.IsDynamic)
+                time = DateTime.UtcNow.Subtract(document.AvailabilityStartTime ?? DateTime.MinValue);
 
             return time;
+
         }
         /// <summary>
         /// Schedules a manifest reload for dynamic documents only.
@@ -438,6 +418,9 @@ namespace JuvoPlayer.DataProviders.Dash
             audioPipeline = null;
             videoPipeline?.Dispose();
             videoPipeline = null;
+
+            waitForManifest?.Dispose();
+            waitForManifest = null;
         }
     }
 }

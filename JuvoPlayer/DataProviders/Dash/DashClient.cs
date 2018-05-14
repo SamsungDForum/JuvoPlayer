@@ -61,7 +61,7 @@ namespace JuvoPlayer.DataProviders.Dash
         /// <summary>
         /// Contains information about timing data for last requested segment
         /// </summary>
-        private TimeRange lastRequestedPeriod;
+        private TimeRange lastRequestedPeriod = new TimeRange(TimeSpan.Zero,TimeSpan.Zero);
 
         /// <summary>
         /// Flags & timeouts used to limit number of messages displayed
@@ -119,7 +119,7 @@ namespace JuvoPlayer.DataProviders.Dash
         {
             get
             {
-                return currentStreams.Parameters.Document.IsDynamic;
+                return currentStreams.GetDocumentParameters().Document.IsDynamic;
             }
         }
 
@@ -153,9 +153,6 @@ namespace JuvoPlayer.DataProviders.Dash
             Logger.Info(string.Format("{0} DashClient start.", streamType));
             playback = true;
 
-            currentStreams = currentRepresentation.Segments;
-            TimeBufferDepth = currentStreams.Parameters.Document.MinBufferTime ?? TimeBufferDepthDefault;
-
             downloadTask = Task.Factory.StartNew(DownloadThread, TaskCreationOptions.LongRunning);
         }
 
@@ -188,6 +185,8 @@ namespace JuvoPlayer.DataProviders.Dash
                 initStreamBytes = null;
 
             currentRepresentation = representation;
+            currentStreams = currentRepresentation.Segments;
+            TimeBufferDepth = currentStreams.GetDocumentParameters().Document.MinBufferTime ?? TimeBufferDepthDefault;
         }
 
         /// <summary>
@@ -196,7 +195,7 @@ namespace JuvoPlayer.DataProviders.Dash
         /// <param name="representation"></param>
         public void UpdateRepresentation(Representation representation)
         {
-            if (currentRepresentation.Parameters.Document.IsDynamic == false)
+            if (IsDynamic == false)
                 return;
 
             Interlocked.Exchange<Representation>(ref newRepresentation, representation);
@@ -222,7 +221,7 @@ namespace JuvoPlayer.DataProviders.Dash
             currentRepresentation = newRep;
             currentStreams = currentRepresentation.Segments;
             currentStreamDuration = currentStreams.Duration;
-            TimeBufferDepth = currentStreams.Parameters.Document.MinBufferTime ?? TimeBufferDepthDefault;
+            TimeBufferDepth = currentStreams.GetDocumentParameters().Document.MinBufferTime ?? TimeBufferDepthDefault;
 
             uint? newSeg = null;
             if (lastRequestedPeriod != null)
@@ -310,11 +309,12 @@ namespace JuvoPlayer.DataProviders.Dash
         {
             // clear garbage before appending new data
             sharedBuffer?.ClearData();
+            timeUpdatedEvent = awaitablesPool[(int)awaitableItems.timeUpdateEvent] as AutoResetEvent;
 
             var initSegment = currentStreams.InitSegment;
             if (initSegment != null)
             {
-                //Logger.Info($"{streamType}: Requesting Init segment {initSegment.Url}");
+                Logger.Info($"{streamType}: Requesting Init segment {initSegment.Url}");
                 var request = CreateDownloadRequest(initSegment, false, InitSegmentDownloadOK);
                 if (request == null)
                 {
@@ -326,8 +326,6 @@ namespace JuvoPlayer.DataProviders.Dash
             {
                 Logger.Info($"{streamType}: No Init segment to request");
             }
-
-            timeUpdatedEvent = awaitablesPool[(int)awaitableItems.timeUpdateEvent] as AutoResetEvent;
 
             if (currentSegmentId.HasValue == false)
                 currentSegmentId = currentStreams.GetStartSegment(currentTime, TimeBufferDepth);
@@ -364,7 +362,7 @@ namespace JuvoPlayer.DataProviders.Dash
                 var stream = currentStreams.MediaSegmentAtPos(currentSegmentId.Value);
                 if (stream == null)
                 {
-                    if (currentRepresentation.Parameters.Document.IsDynamic == true)
+                    if (IsDynamic == true)
                     {
                         WaitForUpdate($"Segment: {currentSegmentId} NULL stream.");
                         continue;
@@ -405,6 +403,7 @@ namespace JuvoPlayer.DataProviders.Dash
             var EndTime = (currentStreamDuration ?? TimeSpan.MaxValue);
             return (currentTime >= EndTime);
         }
+
         /// <summary>
         /// Downloads a segment by creating a download request and scheduling it for download
         /// </summary>
@@ -532,5 +531,46 @@ namespace JuvoPlayer.DataProviders.Dash
 
             downloadRequestPool.Last.Value.Download();
         }
+
+        #region IDisposable Support
+        private bool disposedValue = false; // To detect redundant calls
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (!disposedValue)
+            {
+                if (disposing)
+                {
+                    try
+                    {
+                        while (downloadRequestPool.Count > 0)
+                        {
+                            downloadRequestPool.Last.Value.Dispose();
+                            downloadRequestPool.RemoveLast();
+                        }
+
+                        Array.ForEach(awaitablesPool, waitHandle => waitHandle.Dispose());
+
+                        timeUpdatedEvent.Dispose();
+                    }
+                    catch (Exception)
+                    {
+
+                    }
+                }
+         
+                disposedValue = true;
+            }
+        }
+
+        // This code added to correctly implement the disposable pattern.
+        public void Dispose()
+        {
+            // Do not change this code. Put cleanup code in Dispose(bool disposing) above.
+            Dispose(true);
+            // TODO: uncomment the following line if the finalizer is overridden above.
+            // GC.SuppressFinalize(this);
+        }
+        #endregion
     }
 }

@@ -86,8 +86,8 @@ namespace MpdParser.Node.Dynamic
 
     public class BaseRepresentationStream : IRepresentationStream
     {
-        public ManifestParameters Parameters { get; set; }
-
+        private ManifestParameters Parameters;
+        
         public BaseRepresentationStream(Segment init, Segment media,
             ulong presentationTimeOffset, TimeSpan? timeShiftBufferDepth,
             TimeSpan avaliabilityTimeOffset, bool? avaliabilityTimeComplete,
@@ -141,6 +141,15 @@ namespace MpdParser.Node.Dynamic
             }
         }
 
+        public void SetDocumentParameters(ManifestParameters docParams)
+        {
+            Parameters = docParams;
+        }
+
+        public ManifestParameters GetDocumentParameters()
+        {
+            return Parameters;
+        }
         private void DownloadIndex(bool async)
         {
             //Create index storage only if index segment is provided
@@ -361,8 +370,43 @@ namespace MpdParser.Node.Dynamic
 
     public class TemplateRepresentationStream : IRepresentationStream
     {
-        public ManifestParameters Parameters { get; set; }
+        /// <summary>
+        /// Internal representation of a TimeLineItem entry.
+        /// Internally relies on TimeLineItem structure used by majority of code
+        /// +internal helper information build at object creation
+        /// </summary>
+        internal struct TimelineItemRep
+        {
+            public TimelineItem Item;
+            public TimeSpan TimeScaled;
+            public TimeSpan DurationScaled;
+            public int StorageIndex;
+            public ulong Number
+            {
+                get { return Item.Number; }
+                set { Item.Number = value; }
+            }
+            public ulong Time
+            {
+                get { return Item.Time; }
+                set { Item.Time = value; }
+            }
+            public ulong Duration
+            {
+                get { return Item.Duration; }
+                set { Item.Duration = value; }
+            }
+            public int Repeats
+            {
+                get { return Item.Repeats; }
+                set { Item.Repeats = value; }
+            }
+        }
+
+        private ManifestParameters Parameters;
+
         public ulong PresentationTimeOffset { get; }
+        private TimeSpan PresentationTimeOffsetScaled;
         public TimeSpan? TimeShiftBufferDepth { get; }
         public TimeSpan AvaliabilityTimeOffset { get; }
         public bool? AvaliabilityTimeComplete { get; }
@@ -372,8 +416,52 @@ namespace MpdParser.Node.Dynamic
         private uint? bandwidth_;
         private string reprId_;
         private uint timescale_;
-        private TimelineItem[] timeline_;
+
+        /// <summary>
+        /// Holds all timeline data as defined in dash manifest in an unwinded form.
+        /// </summary>
+        private TimelineItemRep[] timelineAll_;
+
+        /// <summary>
+        /// Empty timeline placeholder. Used for "clearing" of timelineAvailable_ providing
+        /// "no segments" information.
+        /// </summary>
+        private readonly TimelineItemRep[] timelineEmpty_;
+
+        /// <summary>
+        /// Segment of timelineAll_ containing a range of segments available for playback
+        /// In case of static content, this containes entire definition of timelineAll.
+        /// For dynamic reloadable content, it will contain currently available segments.
+        /// </summary>
+        private ArraySegment<TimelineItemRep> timelineAvailable_;
+
+        /// <summary>
+        /// IList accessor for available content
+        /// </summary>
+        private IList<TimelineItemRep> timeline_;
+
+        /// <summary>
+        /// Indexer for segment search by time index. 
+        /// Maps playback start time to internal segment ID
+        /// </summary>
+        private SortedList<TimeSpan, ulong> timelineTimeIndex_;
+
+        /// <summary>
+        /// Indexer for segment search by internal segment ID. 
+        /// Maps internal segment ID to physical location in timelineAll_
+        /// </summary>
+        private SortedList<ulong, int> timelineNumberIndex_;
+
+        /// <summary>
+        /// Flag indicating how template was constructed.
+        /// true - build from timeline data
+        /// false - build from duration.
+        /// </summary>
         private bool fromTimeline;
+
+        /// <summary>
+        /// Contains Internal Segment start number as defined in dash manifest.
+        /// </summary>
         private uint? segmentStartNumber;
 
         private static readonly uint offsetFromEnd = 3;
@@ -382,14 +470,17 @@ namespace MpdParser.Node.Dynamic
         public TimeSpan? Duration { get; }
         public Segment InitSegment { get; }
         public Segment IndexSegment { get; }
-        public uint Count { get; }
-        public uint? TemplateDuration { get; }
 
+        /// <summary>
+        /// Returns number of time available for segments in representation
+        /// </summary>
+        public uint Count
+        {
+            get { return (uint)timeline_.Count; }
+        }
 
-
-        private ulong AverageSegmentDuration { get; }
-
-
+        private uint? TemplateDuration;
+        private ulong AverageSegmentDuration;
 
         private static readonly ILogger Logger = LoggerManager.GetInstance().GetLogger(MpdParser.LogTag);
         public TemplateRepresentationStream(Uri baseURL, Template init, Template media, uint? bandwidth,
@@ -398,6 +489,8 @@ namespace MpdParser.Node.Dynamic
             TimeSpan avaliabilityTimeOffset, bool? avaliabilityTimeComplete, bool aFromTimeline,
             uint startSegment, uint? aTemplateDuration)
         {
+
+            Logger.Info("TemplateRepresentationStream() Start");
             baseURL_ = baseURL;
             media_ = media;
             bandwidth_ = bandwidth;
@@ -409,49 +502,132 @@ namespace MpdParser.Node.Dynamic
             TemplateDuration = aTemplateDuration;
 
             PresentationTimeOffset = presentationTimeOffset;
+            PresentationTimeOffsetScaled = Scaled(PresentationTimeOffset);
             TimeShiftBufferDepth = timeShiftBufferDepth;
             AvaliabilityTimeOffset = avaliabilityTimeOffset;
             AvaliabilityTimeComplete = avaliabilityTimeComplete;
 
-            uint count = (uint)timeline.Length;
-            ulong totalDuration = 0;
+                
+            uint entryCount = (uint)timeline.Length;
             ulong justDurations = 0;
 
+            // Get the number of elements after unwinding all repeats.    
             foreach (TimelineItem item in timeline)
             {
-                count += (uint)item.Repeats;
-                justDurations += (1 + (ulong)item.Repeats) * item.Duration;
-                ulong rightMost = item.Time + justDurations;
-                if (rightMost > totalDuration)
-                    totalDuration = rightMost;
+                entryCount += (uint)item.Repeats;
             }
 
-            // Unwind timeline so there are no repeats. It's just a major pain in the butt
-            // to use it with those repeats...
-            // all code still "falls back" to repeat use, but it is here for future
-            // modifications which will be done to internal data structures.
-            timeline_ = new TimelineItem[count];
-            uint idx = 0;
+            // Unwind timeline so there are no repeats which are just a pain in the anus...
+            timelineAll_ = new TimelineItemRep[entryCount];
+            timelineEmpty_ = new TimelineItemRep[0];
+
+            // Indexes will never be longer then unwinded data count, so start them with initial
+            // size of entryCount so there will be no resizing later
+            timelineTimeIndex_ = new SortedList<TimeSpan, ulong>((Int32)entryCount);
+            timelineNumberIndex_ = new SortedList<ulong, int>((Int32)entryCount);
+            int idx = 0;
+
             foreach (TimelineItem item in timeline)
             {
                 uint repeatCount = 0;
                 do
                 {
-                    timeline_[idx].Number = item.Number + repeatCount;
-                    timeline_[idx].Time = item.Time + (item.Duration * repeatCount);
-                    timeline_[idx].Duration = item.Duration;
-                    timeline_[idx].Repeats = 0;
+                    timelineAll_[idx].Number = item.Number + repeatCount;
+                    timelineAll_[idx].Time = item.Time + (item.Duration * repeatCount);
+                    timelineAll_[idx].TimeScaled = Scaled(timelineAll_[idx].Time);
+                    timelineAll_[idx].Duration = item.Duration;
+                    timelineAll_[idx].DurationScaled = Scaled(timelineAll_[idx].Duration);
+                    timelineAll_[idx].Repeats = 0;
+                    timelineAll_[idx].StorageIndex = idx;
 
                     idx++;
                     repeatCount++;
                 } while (repeatCount <= item.Repeats);
             }
 
-            Count = count;
-            Duration = Scaled(totalDuration - (timeline.Length > 0 ? timeline[0].Time : 0));
-            AverageSegmentDuration = justDurations / Count;
+            // At this time we have no information about document type yet
+            // thus it is impossible to purge content so just create it as if it was
+            // static (all segments available)
+            // TODO: Review possibility of adding Document Type eariler in creation pipeline
+            // so we cold do just one indexing. Currently this will be performed twice, once now
+            // and once when document parameters are set (in case od dynamic content)
+            //
+            timelineAvailable_ = new ArraySegment<TimelineItemRep>(timelineAll_);
+            timeline_ = timelineAvailable_ as IList<TimelineItemRep>;
+
+            BuildIndexes();
+
+            // Compute average segment duration by taking start time of first segment
+            // and start + duration of last segment. Divison of this by number of elements
+            // gives an approximation of individual segment duration
+            if (Count > 0)
+            {
+                justDurations = timeline_[timeline_.Count - 1].Time + timeline_[timeline_.Count - 1].Duration - timeline_[0].Time;
+                Duration = Scaled(justDurations);
+                AverageSegmentDuration = justDurations / Count;
+            }
+            else
+            {
+                Duration = TimeSpan.Zero;
+                AverageSegmentDuration = 1;
+            }
+
             InitSegment = init == null ? null : MakeSegment(init.Get(bandwidth, reprId), null);
         }
+
+        public void SetDocumentParameters(ManifestParameters docParams)
+        {
+            Parameters = docParams;
+
+            if (Parameters.Document.IsDynamic == true)
+                PurgeUnavailableSegments();
+
+        }
+
+        public ManifestParameters GetDocumentParameters()
+        {
+            return Parameters;
+        }
+
+        public override string ToString()
+        {
+            string res;
+
+            res = $"All={timelineAll_.Length} Available={Count}\r";
+
+            res += "ALL:\r";
+            Array.ForEach(timelineAll_, item => { res += $"No={item.Number} Time={item.TimeScaled}/{item.Time} Duration={item.DurationScaled} R={item.Repeats}"; } );
+
+            res += "Time/SegmentID Index:\r";
+            foreach (var item in timelineTimeIndex_)
+            {
+                int idxValue;
+                TimeSpan timeScaled;
+                ulong time;
+                TimeSpan durationScaled;
+
+                res += $"Time={item.Key} SegID={item.Value} ";
+
+                if(timelineNumberIndex_.TryGetValue(item.Value, out idxValue))
+                {
+                    timeScaled = timelineAll_[idxValue].TimeScaled;
+                    time = timelineAll_[idxValue].Time;
+                    durationScaled = timelineAll_[item.Value].DurationScaled;
+                }
+                else
+                {
+                    idxValue = -1;
+                    timeScaled = TimeSpan.Zero;
+                    time = 0;
+                    durationScaled = TimeSpan.Zero;
+                }
+
+                res += $"Index={idxValue} Time={timeScaled}/{time} Dur.={durationScaled}\r";
+            }
+
+            return res;
+        }
+      
 
         private Segment MakeSegment(string url, TimeRange span)
         {
@@ -476,14 +652,14 @@ namespace MpdParser.Node.Dynamic
 
         public Segment MediaSegmentAtPos(uint pos)
         {
-            foreach (TimelineItem item in timeline_)
+            if (timelineNumberIndex_.TryGetValue(pos, out int item) == false)
             {
-                if (pos <= (uint)item.Repeats)
-                    return MakeSegment(item, pos);
-                pos -= (uint)item.Repeats;
-                --pos;
+                Logger.Debug($"Failed to find segment @pos. FA={timeline_[0].Number} Pos={pos} LA={timeline_[timeline_.Count - 1].Number}");
+                return null;
             }
-            return null;
+
+            return MakeSegment(timelineAll_[item].Item, 0);
+
         }
 
         /// <summary>
@@ -523,42 +699,29 @@ namespace MpdParser.Node.Dynamic
         /// <returns></returns>
         private uint? GetStartSegmentDynamic(TimeSpan durationSpan, TimeSpan bufferDepth)
         {
-
-            // Loosley based on VLC implementation...
-
             // Path when timeline was provided in MPD
             if (fromTimeline == true)
             {
-
-                ulong? startSeg;
-                ulong? endSeg;
-
-                // For purpose of searching avail segments, use availabilitySearchSpan
-                // will actually buffer. This provides us with large availability window.
-
-                (startSeg, endSeg) = GetFirstAndLastAvailableSegment(durationSpan, availabilitySearchSpan);
-
-                if (startSeg.HasValue == false)
+                var maxRange = timeline_.Count;
+                if (maxRange == 0)
                     return null;
 
-                if (endSeg.HasValue == false)
-                    return (uint?)startSeg;
-
+                maxRange -= 1;
                 // Start by Time is calculated as:
                 // End Segment - Offset where
                 // Offset = Available Segment Range - Buffer Size in Units of Segments. For this purpose
                 // use quad buffer (4x the buffering time). 
                 // This will effectively shift us closer to
                 // beginning of Live Content rather then to the bleeding edge within data returned by quad buffer size.
-                // This allows us to effectively ignore segments which are about to time out.
+                // 1/4 of all available segments is set as a lower limit so we do not play out segments about to
+                // time out.
                 // Such choice is.... purely personal decision. Any approach is imho just as good as long as we do not overshoot
                 // and start getting 404s on future content. 
 
                 var bufferInSegmentUnits = ((ulong)bufferDepth.TotalSeconds * 4 * timescale_) / AverageSegmentDuration;
-                var startByTime = endSeg - Math.Min(endSeg.Value - startSeg.Value, bufferInSegmentUnits);
-                return (uint?)startByTime;
-
-
+                var startByTime = maxRange - (int)Math.Min((ulong)((maxRange*3) / 4), bufferInSegmentUnits);
+            
+                return (uint?)timeline_[startByTime].Number;
             }
             else //If timeline was build from duration.
             {
@@ -593,153 +756,120 @@ namespace MpdParser.Node.Dynamic
             }
         }
 
-        private (uint?, uint?) GetFirstAndLastAvailableSegment(TimeSpan durationSpan, TimeSpan bufferDepth)
+        /// <summary>
+        /// Method rebuilds internal indexing data, time index and number index
+        /// </summary>
+        private void BuildIndexes()
         {
-            // Timeshiftbufferdepth for dynamic content specifies duration of segment availability
-            ulong timeShiftBufferDepth = (ulong)Math.Ceiling(
-                (Parameters.Document.TimeShiftBufferDepth ?? TimeSpan.Zero).TotalSeconds * timescale_);
-
-            var offset = Parameters.Document.ManifestParseCompleteTime - Parameters.Document.AvailabilityStartTime ?? TimeSpan.Zero;
-            ulong current = (ulong)Math.Ceiling(((durationSpan + offset).TotalMilliseconds * timescale_) / 1000);
-
-            ulong availStart = 0;
-            ulong availEnd = 0;
-            uint pos = 0;
-
-            uint? firstAvail = null;
-            uint? lastAvail = null;
-            long availDuration = (long)Math.Ceiling(bufferDepth.TotalSeconds * timescale_);
+            // Recreate index information
+            timelineTimeIndex_.Clear();
+            timelineNumberIndex_.Clear();
 
             foreach (var item in timeline_)
             {
-                var rc = 1U;
+                timelineTimeIndex_.Add(item.TimeScaled, item.Number);
+                timelineNumberIndex_.Add(item.Number, item.StorageIndex);
+            }
+        }
+        /// <summary>
+        /// Method computes available start and end segment.
+        /// This information is then used to make an array Segment with available content
+        /// and represent is IList for general use in form of timeline_
+        /// </summary>
+        /// <param name="current"></param>
+        private void PurgeUnavailableSegments()
+        {
+            TimeSpan current;
 
-                do
+            current = Parameters.Document.DownloadCompleteTime - Parameters.Document.AvailabilityStartTime.Value;
+            current += Parameters.Document.TimeOffset;
+        
+            int startIndex = -1;
+
+            // Data is sorted (timewise) in timelineAll_ As such it should be cheaper to run from start
+            // excluding timedout segments and once again from the back, excluding not yet available segments
+
+            // TODO: Those two loops could be done using "parallel" mechanisms in c# 
+            for (int i =0; i < timelineAll_.Length;i++)
+            { 
+                var availStart = timelineAll_[i].TimeScaled+ timelineAll_[i].DurationScaled - PresentationTimeOffsetScaled;
+                var availEnd = availStart + (Parameters.Document.TimeShiftBufferDepth ?? TimeSpan.Zero) + timelineAll_[i].DurationScaled;
+
+                if(availStart <= current && current < availEnd)
                 {
-                    // Get Start/End availability times for current timeline entry.
-                    // ISO IEC 23009-1:1014 A.3.4
-                    // Period Start is not used here - already in timeline data.
-                    // Availability Start Time is ignored intentionally - as we are working
-                    // with relative time here.
-                    availStart = item.Time + (item.Duration * rc) - PresentationTimeOffset;
-                    availEnd = availStart + timeShiftBufferDepth + item.Duration;
-
-                    if (firstAvail.HasValue == false)
-                    {
-                        if ((availStart <= current && current <= availEnd) == true)
-                        {
-                            firstAvail = pos;
-                        }
-                    }
-                    else
-                    {
-                        availDuration -= (long)item.Duration;
-                        if ((availStart <= current && current <= availEnd) == false ||
-                            availDuration < 0)
-                        {
-                            lastAvail = pos;
-                            return (firstAvail, lastAvail);
-                        }
-                    }
-                    pos++;
-                    rc++;
-                } while (rc <= item.Repeats);
-
+                    startIndex = i;
+                    break;
+                }
             }
 
-            return (firstAvail, lastAvail);
+            int endIndex = -1;
+
+            for (int i = timelineAll_.Length-1;i>=0;i--)
+            {
+                var availStart = timelineAll_[i].TimeScaled + timelineAll_[i].DurationScaled - PresentationTimeOffsetScaled;
+                var availEnd = availStart + (Parameters.Document.TimeShiftBufferDepth ?? TimeSpan.Zero) + timelineAll_[i].DurationScaled;
+
+                if (availStart <= current && current < availEnd)
+                {
+                    endIndex = i;
+                    break;
+                }
+            }
+            
+            if(startIndex == -1 || endIndex == -1)
+            {
+                timelineAvailable_ = new ArraySegment<TimelineItemRep>(timelineEmpty_);
+            }
+            else
+            {
+                timelineAvailable_ = new ArraySegment<TimelineItemRep>(timelineAll_,startIndex,endIndex-startIndex);
+            }
+
+            timeline_ = timelineAvailable_ as IList<TimelineItemRep>;
 
         }
+
         private uint GetStartSegmentStatic(TimeSpan durationSpan)
         {
-            return segmentStartNumber ?? 0;
+            return (uint)timelineAll_[0].Number;
         }
         public uint? GetStartSegment(TimeSpan durationSpan, TimeSpan bufferDepth)
         {
+            durationSpan += Parameters.Document.TimeOffset;
+
             if (Parameters.Document.IsDynamic == true)
                 return GetStartSegmentDynamic(durationSpan, bufferDepth);
 
             return GetStartSegmentStatic(durationSpan);
         }
 
-        private uint? MediaSegmentAtTimeDynamic(TimeSpan durationSpan, ulong duration)
-        {
-            uint index = 0;
-            uint? res = null;
-            var lastStart = (ulong)Math.Ceiling((durationSpan.TotalMilliseconds * timescale_) / 1000) - PresentationTimeOffset;
-
-            ulong timeShiftBufferDepth = Parameters.Document.TimeShiftBufferDepth.HasValue ?
-                   (ulong)Math.Ceiling(Parameters.Document.TimeShiftBufferDepth.Value.TotalSeconds * timescale_) : 0;
-
-
-            foreach (TimelineItem item in timeline_)
-            {
-
-                var RepeatsDone = 0U;
-
-                do
-                {
-                    var currentStart = item.Time + (item.Duration * RepeatsDone) - PresentationTimeOffset;
-
-                    var availStart = currentStart;
-                    var availEnd = availStart + timeShiftBufferDepth + item.Duration;
-
-                    if (currentStart >= lastStart &&
-                       (currentStart >= availStart && currentStart <= availEnd))
-                    {
-                        res = index;
-                        break;
-                    }
-
-                    index++;
-                    RepeatsDone++;
-                } while (RepeatsDone <= item.Repeats);
-            }
-
-            return res;
-        }
-
-        private uint? MediaSegmentAtTimeStatic(TimeSpan durationSpan, ulong duration)
-        {
-            uint pos = 0;
-
-            foreach (TimelineItem item in timeline_)
-            {
-                TimeRelation rel = item.RepeatFor(duration, out uint repeat);
-                if (rel > TimeRelation.EARLIER)
-                    return (pos + repeat);
-                pos += (uint)item.Repeats + 1;
-            }
-
-            return null;
-        }
         public uint? MediaSegmentAtTime(TimeSpan durationSpan)
         {
 
-            if (timeline_.Length == 0)
+            if (timelineTimeIndex_.Count == 0)
                 return null;
 
-            ulong duration = (ulong)Math.Ceiling(durationSpan.TotalSeconds * timescale_);
+            if (timelineTimeIndex_.TryGetValue(durationSpan, out ulong item) == false)
+            {
+                Logger.Debug($"Failed to find segment @time. FA={timeline_[0].Time}/{timeline_[0].TimeScaled} Req={durationSpan} LA={timeline_[timeline_.Count-1].Time}/{timeline_[timeline_.Count - 1].TimeScaled}");
+                return null;
+            }
 
-            if (Parameters.Document.IsDynamic == true)
-                return MediaSegmentAtTimeDynamic(durationSpan, duration);
-
-            return MediaSegmentAtTimeStatic(durationSpan, duration);
+            return (uint?)item;
         }
 
         public IEnumerable<Segment> MediaSegments()
         {
-            foreach (TimelineItem item in timeline_)
+            foreach (var item in timeline_)
             {
-                for (uint repeat = 0; repeat <= item.Repeats; ++repeat)
-                    yield return MakeSegment(item, repeat);
+                yield return MakeSegment(item.Item, 0);
             }
         }
     }
 
     public class ListRepresentationStream : IRepresentationStream
     {
-        public ManifestParameters Parameters { get; set; }
+        private ManifestParameters Parameters;
         public ulong PresentationTimeOffset { get; }
         public TimeSpan? TimeShiftBufferDepth { get; }
         public TimeSpan AvaliabilityTimeOffset { get; }
@@ -778,6 +908,16 @@ namespace MpdParser.Node.Dynamic
             TimeShiftBufferDepth = timeShiftBufferDepth;
             AvaliabilityTimeOffset = avaliabilityTimeOffset;
             AvaliabilityTimeComplete = avaliabilityTimeComplete;
+        }
+
+        public void SetDocumentParameters(ManifestParameters docParams)
+        {
+            Parameters = docParams;
+        }
+
+        public ManifestParameters GetDocumentParameters()
+        {
+            return Parameters;
         }
 
         private Segment MakeSegment(string media, string range, TimeRange span)

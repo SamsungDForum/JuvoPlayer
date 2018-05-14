@@ -213,10 +213,8 @@ namespace MpdParser.Node
         Segment MediaSegmentAtPos(uint pos);
         uint? MediaSegmentAtTime(TimeSpan duration);
         uint? GetStartSegment(TimeSpan durationSpan, TimeSpan bufferDepth);
-        ManifestParameters Parameters { get; set; }
-
-
-
+        void SetDocumentParameters(ManifestParameters docParams);
+        ManifestParameters GetDocumentParameters();
     }
 
     public enum SegmentType
