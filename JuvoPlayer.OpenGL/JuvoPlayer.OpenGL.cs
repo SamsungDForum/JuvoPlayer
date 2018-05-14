@@ -2,6 +2,7 @@
 using System.IO;
 using JuvoLogger;
 using JuvoPlayer.OpenGL.Services;
+using Tizen;
 using Tizen.TV.NUI.GLApplication;
 
 namespace JuvoPlayer.OpenGL
@@ -18,6 +19,7 @@ namespace JuvoPlayer.OpenGL
         private int _selectedTile;
         private bool _menuShown;
         private bool _progressBarShown;
+        private bool _metricsShown;
 
         private PlayerService _player;
         private int _playerTimeCurrentPosition;
@@ -72,6 +74,8 @@ namespace JuvoPlayer.OpenGL
             _playerTimeDuration = 0;
             _playerState = (int)PlayerState.Idle;
             _handlePlaybackCompleted = false;
+
+            _metricsShown = false;
         }
 
         private void SetupLogger()
@@ -131,10 +135,10 @@ namespace JuvoPlayer.OpenGL
                     HandleKeySeekForward();
                     break;
                 case "XF86Info":
-                    DllImports.SwitchFPSCounterVisibility();
                     break;
                 case "XF86Red":
-                    DllImports.SwitchFPSCounterVisibility();
+                    _metricsShown = !_metricsShown;
+                    DllImports.SetGraphVisibility(DllImports.fpsGraphId, _metricsShown ? 1 : 0);
                     break;
                 case "XF86Green":
                     _menuShown = !_menuShown;
