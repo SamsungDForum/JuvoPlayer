@@ -51,9 +51,6 @@ namespace JuvoPlayer.OpenGL
         [DllImport(GlDemoLib, EntryPoint = "SwitchTextRenderingMode")]
         public static extern void SwitchTextRenderingMode();
 
-        [DllImport(GlDemoLib, EntryPoint = "SwitchFPSCounterVisibility")]
-        public static extern void SwitchFPSCounterVisibility();
-
         [DllImport(GlDemoLib, EntryPoint = "ShowSubtitle")]
         public static extern void ShowSubtitle(int duration, byte* text, int textLen);
 
@@ -72,5 +69,19 @@ namespace JuvoPlayer.OpenGL
 
         [DllImport(GlDemoLib, EntryPoint = "ClearOptions")]
         public static extern void ClearOptions();
+
+        public const int fpsGraphId = 0; // computations handled by C lib
+
+        [DllImport(GlDemoLib, EntryPoint = "AddGraph")]
+        public static extern int AddGraph(byte* tag, int tagLen, int minVal, int maxVal, int valuesCount);
+
+        [DllImport(GlDemoLib, EntryPoint = "SetGraphVisibility")]
+        public static extern void SetGraphVisibility(int graphId, int visible);
+
+        [DllImport(GlDemoLib, EntryPoint = "UpdateGraphValues")]
+        public static extern void UpdateGraphValues(int graphId, int* values, int valuesCount);
+
+        [DllImport(GlDemoLib, EntryPoint = "AddGraphValue")]
+        public static extern void UpdateGraphValue(int graphId, int value);
     }
 }
