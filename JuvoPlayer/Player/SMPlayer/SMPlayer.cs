@@ -83,7 +83,7 @@ namespace JuvoPlayer.Player.SMPlayer
 
         private readonly AutoResetEvent submitting = new AutoResetEvent(false);
 
-        private uint currentTime;
+        private TimeSpan currentTime;
 
         private bool isDisposed;
 
@@ -363,7 +363,7 @@ namespace JuvoPlayer.Player.SMPlayer
 
         private void StartEsMode()
         {
-            // This should not happen. We check state in upper call
+            // This should not happen. We check state in SetStreamConfig method
             if (submitPacketTask != null && submitPacketTask.IsCompleted == false)
                 throw new Exception("Invalid state when starting player es mode");
 
@@ -397,7 +397,7 @@ namespace JuvoPlayer.Player.SMPlayer
 
         private void EnqueueStreamConfig(StreamConfig config)
         {
-            // This should not happen. We check state in upper call
+            // This should not happen. We check state in SetStreamConfig method
             if (!audioSet || !videoSet)
                 throw new Exception("Invalid state when enqueuing stream configuration");
 
@@ -408,7 +408,7 @@ namespace JuvoPlayer.Player.SMPlayer
                     audioPacketsQueue.Enqueue(bufferedConfig);
                     break;
                 case Common.StreamType.Video:
-                    audioPacketsQueue.Enqueue(bufferedConfig);
+                    videoPacketsQueue.Enqueue(bufferedConfig);
                     break;
             }
 
@@ -518,11 +518,6 @@ namespace JuvoPlayer.Player.SMPlayer
 
             internalState = SMPlayerState.Stopping;
 
-            needDataAudio = false;
-            needDataVideo = false;
-            audioSet = false;
-            videoSet = false;
-
             WakeUpSubmitTask();
             try
             {
@@ -545,8 +540,21 @@ namespace JuvoPlayer.Player.SMPlayer
             {
                 playerInstance.Stop();
 
-                internalState = SMPlayerState.Uninitialized;
+                ResetInternalState();
             }
+        }
+
+        private void ResetInternalState()
+        {
+            needDataAudio = false;
+            needDataVideo = false;
+            audioSet = false;
+            videoSet = false;
+            smplayerSeekReconfiguration = false;
+
+            currentTime = TimeSpan.Zero;
+
+            internalState = SMPlayerState.Uninitialized;
         }
 
         public void Pause()
@@ -652,16 +660,17 @@ namespace JuvoPlayer.Player.SMPlayer
             Logger.Info("");
         }
 
-        public void OnCurrentPosition(System.UInt32 currTime)
+        public void OnCurrentPosition(uint currTime)
         {
-            if (currentTime == currTime)
+            var currTimeSpan = TimeSpan.FromMilliseconds(currTime);
+            if (currentTime == currTimeSpan)
                 return;
 
-            Logger.Info("OnCurrentPosition = " + currTime);
+            Logger.Info("OnCurrentPosition = " + currTimeSpan);
 
-            currentTime = currTime;
+            currentTime = currTimeSpan;
 
-            TimeUpdated?.Invoke(TimeSpan.FromMilliseconds(currentTime));
+            TimeUpdated?.Invoke(currentTime);
         }
 
         #endregion
