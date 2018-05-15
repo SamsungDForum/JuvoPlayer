@@ -670,7 +670,7 @@ namespace JuvoPlayer.Player.SMPlayer
         #endregion
         private void ReleaseUnmanagedResources()
         {
-            playerInstance.DestroyHandler();
+            playerInstance?.DestroyHandler();
         }
 
         public void Dispose()
