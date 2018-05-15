@@ -676,7 +676,7 @@ namespace JuvoPlayer.Player.SMPlayer
 
         private void ReleaseUnmanagedResources()
         {
-            playerInstance.DestroyHandler();
+            playerInstance?.DestroyHandler();
         }
 
         private void Dispose(bool disposing)
