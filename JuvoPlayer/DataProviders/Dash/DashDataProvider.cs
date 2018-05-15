@@ -1,12 +1,13 @@
 using System;
+using System.Collections.Generic;
 using JuvoPlayer.Common;
 using JuvoLogger;
 using MpdParser;
 using System.Collections.Generic;
 using System.Linq;
-using JuvoPlayer.Subtitles;
 using System.Threading;
 using System.Threading.Tasks;
+using JuvoPlayer.Subtitles;
 
 namespace JuvoPlayer.DataProviders.Dash
 {
@@ -20,16 +21,14 @@ namespace JuvoPlayer.DataProviders.Dash
         private Period currentPeriod;
         private DashMediaPipeline audioPipeline;
         private DashMediaPipeline videoPipeline;
-
-        private DateTime lastReloadTime = DateTime.MinValue;
-        private TimeSpan minimumReloadPeriod = TimeSpan.Zero;
-
-        private Task manifestLoader = null;
-
-        private List<SubtitleInfo> subtitleInfos;
         private readonly List<SubtitleInfo> subtitleInfos;
         private CuesMap cuesMap;
-        private TimeSpan currentTime;
+        private TimeSpan currentTime = TimeSpan.Zero;
+        private DateTime lastReloadTime = DateTime.MinValue;
+        private TimeSpan minimumReloadPeriod = TimeSpan.Zero;
+        private static readonly TimeSpan manifestRequestDelay = TimeSpan.FromSeconds(3);
+
+        private static readonly TimeSpan manifestReloadTimeout = TimeSpan.FromSeconds(10);
 
         public DashDataProvider(
             DashManifest manifest,
@@ -180,6 +179,7 @@ namespace JuvoPlayer.DataProviders.Dash
             cuesMap = new SubtitleFacade().LoadSubtitles(subtitleInfo);
         }
 
+
         public void OnPaused()
         {
         }
@@ -259,7 +259,7 @@ namespace JuvoPlayer.DataProviders.Dash
             if (audios.Count() > 0 && videos.Count() > 0)
             {
 
-		        BuildSubtitleInfos(currentPeriod);
+                BuildSubtitleInfos(currentPeriod);
 
                 if (currentPeriod.Duration.HasValue)
                     ClipDurationChanged?.Invoke(currentPeriod.Duration.Value);
@@ -299,7 +299,7 @@ namespace JuvoPlayer.DataProviders.Dash
 
                 var availstart = aDoc.AvailabilityStartTime ?? DateTime.UtcNow;
                 var start = aDoc.IsDynamic == true ? DateTime.UtcNow.Subtract(availstart) : TimeSpan.Zero;
-                
+
                 start = start.Add(period.Start ?? TimeSpan.Zero);
                 var end = start.Add(period.Duration ?? TimeSpan.Zero);
 
@@ -322,8 +322,6 @@ namespace JuvoPlayer.DataProviders.Dash
             return null;
         }
 
-        public string CurrentCueText => cuesMap?.Get(currentTime)?.Text;
-       
         /// <summary>
         /// Gets LiveClock for provided Time Span. Returned clock will be "live" only
         /// for dynamic content. Otherwise provided time will not be changed.
@@ -370,12 +368,41 @@ namespace JuvoPlayer.DataProviders.Dash
 
         }
 
+        private void BuildSubtitleInfos(Period period)
+        {
+            subtitleInfos.Clear();
 
-        public string CurrentCueText => cuesMap?.Get(currentTime)?.Text;
+            var textAdaptationSets = period.Sets.Where(o => o.Type.Value == MediaType.Text).ToList();
+            foreach (var textAdaptationSet in textAdaptationSets)
+            {
+                var lang = textAdaptationSet.Lang;
+                var mimeType = textAdaptationSet.Type;
+                foreach (var representation in textAdaptationSet.Representations)
+                {
+                    var mediaSegments = representation.Segments.MediaSegments().ToList();
+                    if (!mediaSegments.Any()) continue;
+
+                    var segment = mediaSegments.First();
+                    var streamDescription = new SubtitleInfo()
+                    {
+                        Id = subtitleInfos.Count,
+                        Language = lang,
+                        Path = segment.Url.ToString(),
+                        MimeType = mimeType?.Key
+                    };
+
+                    subtitleInfos.Add(streamDescription);
+                }
+            }
+        }
+
+
+        public Cue CurrentCue => cuesMap?.Get(currentTime);
 
         public void OnTimeUpdated(TimeSpan time)
         {
             currentTime = time;
+
             audioPipeline.OnTimeUpdated(time);
             videoPipeline.OnTimeUpdated(time);
 
@@ -391,6 +418,9 @@ namespace JuvoPlayer.DataProviders.Dash
             audioPipeline = null;
             videoPipeline?.Dispose();
             videoPipeline = null;
+
+            waitForManifest?.Dispose();
+            waitForManifest = null;
         }
     }
 }

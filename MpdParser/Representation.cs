@@ -489,8 +489,6 @@ namespace MpdParser.Node.Dynamic
             TimeSpan avaliabilityTimeOffset, bool? avaliabilityTimeComplete, bool aFromTimeline,
             uint startSegment, uint? aTemplateDuration)
         {
-
-            Logger.Info("TemplateRepresentationStream() Start");
             baseURL_ = baseURL;
             media_ = media;
             bandwidth_ = bandwidth;

@@ -161,6 +161,7 @@ namespace JuvoPlayer.DataProviders.Dash
             // playback has been already stopped
             if (!playback)
                 return;
+            playback = false;
 
             while (downloadRequestPool.Count > 0)
             {
@@ -168,7 +169,7 @@ namespace JuvoPlayer.DataProviders.Dash
                 downloadRequestPool.RemoveLast();
             }
 
-            playback = false;
+            
             timeUpdatedEvent.Set();
 
             sharedBuffer?.WriteData(null, true);
@@ -177,7 +178,10 @@ namespace JuvoPlayer.DataProviders.Dash
             Logger.Info(string.Format("{0} Data downloader stopped", streamType));
         }
 
-
+        private void StopPlayback()
+        {
+            playback = false;
+        }
         public void SetRepresentation(Representation representation)
         {
             // representation has changed, so reset initstreambytes
@@ -185,6 +189,7 @@ namespace JuvoPlayer.DataProviders.Dash
                 initStreamBytes = null;
 
             currentRepresentation = representation;
+
             currentStreams = currentRepresentation.Segments;
             TimeBufferDepth = currentStreams.GetDocumentParameters().Document.MinBufferTime ?? TimeBufferDepthDefault;
         }
@@ -318,7 +323,8 @@ namespace JuvoPlayer.DataProviders.Dash
                 var request = CreateDownloadRequest(initSegment, false, InitSegmentDownloadOK);
                 if (request == null)
                 {
-                    Stop();
+                    StopPlayback();
+                    SendEOSEvent();
                     return;
                 }
             }
@@ -369,8 +375,8 @@ namespace JuvoPlayer.DataProviders.Dash
                     }
 
                     Logger.Warn($"{streamType}: Segment: {currentSegmentId} NULL stream. Stoping player.");
-                    Stop();
-                    return;
+                    StopPlayback();
+                    break;
                 }
 
                 // Download new segment. NULL indicates there are no download slots left.
@@ -393,9 +399,15 @@ namespace JuvoPlayer.DataProviders.Dash
         
                 // Before giving up, for dynamic content, re-check if there is a pending manifest update
                 Logger.Warn($"{streamType}: End of content. BuffTime {bufferTime} StreamDuration {currentStreamDuration}");
-                Stop();
-
+                StopPlayback();
+                break;
             }
+
+            SendEOSEvent();
+        }
+        private void SendEOSEvent()
+        {
+            sharedBuffer.WriteData(null, true);
         }
 
         private bool CheckEndOfContent()
