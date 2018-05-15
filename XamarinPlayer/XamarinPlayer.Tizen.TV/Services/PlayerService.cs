@@ -154,7 +154,7 @@ namespace XamarinPlayer.Tizen.Services
             DataProviderConnector.Disconnect(playerController, dataProvider);
             dataProvider?.Dispose();
 
-            if (State > PlayerState.Preparing)
+            if (State != PlayerState.Idle)
                 Stop();
 
             State = PlayerState.Preparing;
