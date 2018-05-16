@@ -272,12 +272,59 @@ namespace MpdParser.Node.Dynamic
 
     public class TemplateRepresentationStream : IRepresentationStream
     {
+        internal class TimelineSearch : IComparer
+        {
+            public enum Comparison { Start, StartDuration, Number };
+
+            public TimeSpan Start { get; }
+            public TimeSpan Duration { get; }
+            public ulong Number { get; }
+
+            public Comparison CompareType {get; }
+            public TimelineSearch(TimeSpan start)
+            {
+                CompareType = Comparison.Start;
+                Start = start;
+            }
+
+            public TimelineSearch(TimeSpan start, TimeSpan duration)
+            {
+                CompareType = Comparison.StartDuration;
+                Start = start;
+                Duration = duration;
+            }
+
+            public TimelineSearch(ulong number)
+            {
+                CompareType = Comparison.Number;
+                Number = number;
+            }
+            int IComparer.Compare(object x, object y)
+            {
+                if (x is TimelineItemRep)
+                {
+                    if (y is TimelineSearch)
+                    {
+                        var titem = x as TimelineItemRep?;
+                        var comp = y as TimelineSearch;
+                        return titem?.CompareTo(comp)??-1;
+                    }
+
+
+                    return -1;
+                }
+
+
+                return -1;
+    
+            }
+        }
         /// <summary>
         /// Internal representation of a TimeLineItem entry.
         /// Internally relies on TimeLineItem structure used by majority of code
         /// +internal helper information build at object creation
         /// </summary>
-        internal struct TimelineItemRep
+        internal struct TimelineItemRep : IComparable<TimelineSearch>
         {
             public TimelineItem Item;
             public TimeSpan TimeScaled;
@@ -303,6 +350,38 @@ namespace MpdParser.Node.Dynamic
                 get { return Item.Repeats; }
                 set { Item.Repeats = value; }
             }
+            #region IComparable<Car> Members
+            public int CompareTo(TimelineSearch lookFor)
+            {
+                int res=0;
+
+                switch (lookFor.CompareType)
+                {
+                    case TimelineSearch.Comparison.Start:
+                        if (this.TimeScaled < lookFor.Start)
+                            res = -1;
+                        else if (this.TimeScaled > lookFor.Start)
+                            res = 1;
+                        else
+                            res = 0;
+
+                        break;
+                    case TimelineSearch.Comparison.StartDuration:
+                        if (this.TimeScaled < lookFor.Start)
+                            res = -1;
+                        else if (this.TimeScaled + this.DurationScaled > lookFor.Start)
+                            res = 1;
+                        else
+                            res = 0;
+                        break;
+                    case TimelineSearch.Comparison.Number:
+                        res = (int)(this.Number - lookFor.Number);
+                        break;
+                }
+
+                return res;
+            }
+            #endregion
         }
 
         private ManifestParameters Parameters;
@@ -346,11 +425,17 @@ namespace MpdParser.Node.Dynamic
         /// Indexer for segment search by time index. 
         /// Maps playback start time to internal segment ID
         /// </summary>
-        private SortedList<TimeSpan, ulong> timelineTimeIndex_;
+        //private SortedList<Tuple<TimeSpan,TimeSpan>, ulong> timelineTimeIndex_;
 
         /// <summary>
         /// Indexer for segment search by internal segment ID. 
         /// Maps internal segment ID to physical location in timelineAll_
+        /// 
+        /// TODO:
+        /// Convert this into binary search.
+        /// timelineAll_ is already sorted by time & by number. As such, this data structure
+        /// could be used without any indexers to quickly search for information
+        /// without any additional helper structures.
         /// </summary>
         private SortedList<ulong, int> timelineNumberIndex_;
 
@@ -419,11 +504,10 @@ namespace MpdParser.Node.Dynamic
 
             // Unwind timeline so there are no repeats which are just a pain in the anus...
             timelineAll_ = new TimelineItemRep[entryCount];
-            timelineEmpty_ = new TimelineItemRep[0];
 
             // Indexes will never be longer then unwinded data count, so start them with initial
             // size of entryCount so there will be no resizing later
-            timelineTimeIndex_ = new SortedList<TimeSpan, ulong>((Int32)entryCount);
+            //timelineTimeIndex_ = new SortedList<Tuple<TimeSpan,TimeSpan>, ulong>((Int32)entryCount);
             timelineNumberIndex_ = new SortedList<ulong, int>((Int32)entryCount);
             int idx = 0;
 
@@ -493,38 +577,12 @@ namespace MpdParser.Node.Dynamic
         {
             string res;
 
-            res = $"All={timelineAll_.Length} Available={Count}\r";
+            res = $"All={timelineAll_.Length} Available={Count} {timelineAvailable_.Offset}-{timelineAvailable_.Offset+timelineAvailable_.Count}\r";
 
-            res += "ALL:\r";
+            res += "Data:\r";
             Array.ForEach(timelineAll_, item => { res += $"No={item.Number} Time={item.TimeScaled}/{item.Time} Duration={item.DurationScaled} R={item.Repeats}"; } );
 
-            res += "Time/SegmentID Index:\r";
-            foreach (var item in timelineTimeIndex_)
-            {
-                int idxValue;
-                TimeSpan timeScaled;
-                ulong time;
-                TimeSpan durationScaled;
-
-                res += $"Time={item.Key} SegID={item.Value} ";
-
-                if(timelineNumberIndex_.TryGetValue(item.Value, out idxValue))
-                {
-                    timeScaled = timelineAll_[idxValue].TimeScaled;
-                    time = timelineAll_[idxValue].Time;
-                    durationScaled = timelineAll_[item.Value].DurationScaled;
-                }
-                else
-                {
-                    idxValue = -1;
-                    timeScaled = TimeSpan.Zero;
-                    time = 0;
-                    durationScaled = TimeSpan.Zero;
-                }
-
-                res += $"Index={idxValue} Time={timeScaled}/{time} Dur.={durationScaled}\r";
-            }
-
+ 
             return res;
         }
       
@@ -662,12 +720,10 @@ namespace MpdParser.Node.Dynamic
         private void BuildIndexes()
         {
             // Recreate index information
-            timelineTimeIndex_.Clear();
             timelineNumberIndex_.Clear();
 
             foreach (var item in timeline_)
             {
-                timelineTimeIndex_.Add(item.TimeScaled, item.Number);
                 timelineNumberIndex_.Add(item.Number, item.StorageIndex);
             }
         }
@@ -718,7 +774,7 @@ namespace MpdParser.Node.Dynamic
             
             if(startIndex == -1 || endIndex == -1)
             {
-                timelineAvailable_ = new ArraySegment<TimelineItemRep>(timelineEmpty_);
+                timelineAvailable_ = new ArraySegment<TimelineItemRep>(Array.Empty<TimelineItemRep>());
             }
             else
             {
@@ -746,16 +802,22 @@ namespace MpdParser.Node.Dynamic
         public uint? MediaSegmentAtTime(TimeSpan durationSpan)
         {
 
-            if (timelineTimeIndex_.Count == 0)
+            if (timelineAvailable_.Count == 0)
                 return null;
 
-            if (timelineTimeIndex_.TryGetValue(durationSpan, out ulong item) == false)
+            var idx = Array.FindIndex<TimelineItemRep>(timelineAll_, timelineAvailable_.Offset,timelineAvailable_.Count,
+                 i => ( i.TimeScaled <= durationSpan && i.TimeScaled + i.DurationScaled > durationSpan));
+
+            //var idx2 = Array.BinarySearch(timelineAll_, timelineAvailable_.Offset, timelineAvailable_.Count,
+            //    new TimelineSearch(durationSpan, TimeSpan.Zero));
+
+            if (idx < 0)
             {
                 Logger.Debug($"Failed to find segment @time. FA={timeline_[0].Time}/{timeline_[0].TimeScaled} Req={durationSpan} LA={timeline_[timeline_.Count-1].Time}/{timeline_[timeline_.Count - 1].TimeScaled}");
                 return null;
             }
 
-            return (uint?)item;
+            return (uint?)timelineAll_[idx].Number;
         }
 
         public IEnumerable<Segment> MediaSegments()
