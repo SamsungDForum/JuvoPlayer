@@ -647,8 +647,7 @@ namespace MpdParser
 
             SuggestedPresentationDelay = aDocument.SuggestedPresentationDelay;
 
-	    TimeOffset = (IsDynamic == true) ?? (ManifestParseCompleteTime - DownloadCompleteTime) : TimeSpan.Zero;
-
+            TimeOffset = IsDynamic == true ? ManifestParseCompleteTime - DownloadCompleteTime : TimeSpan.Zero;
         }
     }
 
