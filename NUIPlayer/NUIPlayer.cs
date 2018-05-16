@@ -76,7 +76,6 @@ namespace NUIPlayer
             playerController = new PlayerController(player, drmManager);
             playerController.TimeUpdated += OnTimeUpdated;
             playerController.PlaybackCompleted += OnPlaybackCompleted;
-            playerController.ShowSubtitle += OnRenderSubtitle;
         }
 
         // method executed when clip is selected
@@ -92,10 +91,6 @@ namespace NUIPlayer
         }
 
         private void OnPlaybackCompleted()
-        {
-        }
-
-        private void OnRenderSubtitle(Subtitle subtitle)
         {
         }
 

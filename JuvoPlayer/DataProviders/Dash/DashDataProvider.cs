@@ -30,6 +30,17 @@ namespace JuvoPlayer.DataProviders.Dash
 
         private static readonly TimeSpan manifestReloadTimeout = TimeSpan.FromSeconds(10);
 
+        public event ClipDurationChanged ClipDurationChanged;
+        public event DRMInitDataFound DRMInitDataFound;
+        public event SetDrmConfiguration SetDrmConfiguration;
+        public event StreamConfigReady StreamConfigReady;
+        public event PacketReady PacketReady;
+        public event StreamsFound StreamsFound;
+
+        private ManualResetEventSlim waitForManifest = new ManualResetEventSlim(false);
+
+        private bool disposed = false;
+
         public DashDataProvider(
             DashManifest manifest,
             DashMediaPipeline audioPipeline,
@@ -51,14 +62,7 @@ namespace JuvoPlayer.DataProviders.Dash
             videoPipeline.PacketReady += OnPacketReady;
         }
 
-        public event ClipDurationChanged ClipDurationChanged;
-        public event DRMInitDataFound DRMInitDataFound;
-        public event SetDrmConfiguration SetDrmConfiguration;
-        public event StreamConfigReady StreamConfigReady;
-        public event PacketReady PacketReady;
-        public event StreamsFound StreamsFound;
 
-        private ManualResetEventSlim waitForManifest = new ManualResetEventSlim(false);
 
         /// <summary>
         /// Manifest Change Callback incoked by DashManifest class when new manifest is downloaded.
@@ -67,6 +71,11 @@ namespace JuvoPlayer.DataProviders.Dash
         /// NULL value indicates download/parse failure</param>
         private void OnManifestChanged(Object newDocument)
         {
+            if(disposed == true)
+            {
+                Logger.Warn("DashDataProvider already disposed. Ignoring Manifest change request.");
+                return;
+            }
             // Mark time of "last" document update
             lastReloadTime = DateTime.UtcNow;
 
@@ -412,6 +421,11 @@ namespace JuvoPlayer.DataProviders.Dash
 
         public void Dispose()
         {
+            if (disposed == true)
+                return;
+
+            disposed = true;
+
             OnStopped();
 
             audioPipeline?.Dispose();
