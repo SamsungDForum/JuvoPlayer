@@ -42,7 +42,7 @@ namespace JuvoPlayer.Player.SMPlayer
             Ready,
             Playing,
             Paused,
-            Stopped
+            Stopping
         };
 
         private class BufferConfiguration : Packet
@@ -83,7 +83,7 @@ namespace JuvoPlayer.Player.SMPlayer
 
         private readonly AutoResetEvent submitting = new AutoResetEvent(false);
 
-        private System.UInt32 currentTime;
+        private TimeSpan currentTime;
 
         private bool isDisposed;
 
@@ -150,30 +150,9 @@ namespace JuvoPlayer.Player.SMPlayer
             WakeUpSubmitTask();
         }
 
-        public void PrepareES()
-        {
-            ThrowIfDisposed();
-
-            if (internalState != SMPlayerState.Uninitialized && internalState != SMPlayerState.Stopped)
-                return;
-
-            if (!audioSet || !videoSet)
-                return;
-
-            bool result = playerInstance.PrepareES();
-            if (result != true)
-            {
-                Logger.Error("playerInstance.PrepareES() Failed");
-                return;
-            }
-            Logger.Info("playerInstance.PrepareES() Done");
-
-            internalState = SMPlayerState.Ready;
-        }
-
         internal void SubmittingPacketsTask()
         {
-            while (internalState != SMPlayerState.Stopped)
+            while (internalState != SMPlayerState.Stopping)
             {
                 Logger.Debug("AUDIO: " + audioPacketsQueue.Count + ", VIDEO: " + videoPacketsQueue.Count);
                 var didSubmitPacket = false;
@@ -363,53 +342,77 @@ namespace JuvoPlayer.Player.SMPlayer
             Logger.Debug($"{config.StreamType()}");
             ThrowIfDisposed();
 
+            if (config.StreamType() != Common.StreamType.Audio
+                && config.StreamType() != Common.StreamType.Video)
+                throw new NotImplementedException();
+
+            if (internalState != SMPlayerState.Uninitialized)
+            {
+                EnqueueStreamConfig(config);
+                return;
+            }
+
+            SetStreamConfigSync(config);
+
+            lock (this)
+            {
+                if (audioSet && videoSet && internalState == SMPlayerState.Uninitialized)
+                    StartEsMode();
+            }
+        }
+
+        private void StartEsMode()
+        {
+            // This should not happen. We check state in SetStreamConfig method
+            if (submitPacketTask != null && submitPacketTask.IsCompleted == false)
+                throw new Exception("Invalid state when starting player es mode");
+
+            if (!playerInstance.PrepareES())
+            {
+                Logger.Error("playerInstance.PrepareES() Failed");
+                throw new Exception("playerInstance.PrepareES() Failed");
+            }
+
+            internalState = SMPlayerState.Ready;
+
+            Logger.Debug("Spawning submitter task");
+
+            submitPacketTask = Task.Factory.StartNew(SubmittingPacketsTask, TaskCreationOptions.LongRunning);
+        }
+
+        private void SetStreamConfigSync(StreamConfig config)
+        {
             switch (config.StreamType())
             {
                 case Common.StreamType.Audio:
-                    if (audioPacketsQueue.Count > 0 && audioSet)
-                    {
-                        audioPacketsQueue.Enqueue(BufferConfiguration.Create(config));
-                        WakeUpSubmitTask();
-                    }
-                    else
-                    {
-                        SetAudioStreamConfig(config as AudioStreamConfig);
-                    }
+                    SetAudioStreamConfig(config as AudioStreamConfig);
+                    audioSet = true;
                     break;
                 case Common.StreamType.Video:
-                    if (videoPacketsQueue.Count > 0 && videoSet)
-                    {
-                        videoPacketsQueue.Enqueue(BufferConfiguration.Create(config));
-                        WakeUpSubmitTask();
-                    }
-                    else
-                    {
-                        SetVideoStreamConfig(config as VideoStreamConfig);
-                    }
+                    SetVideoStreamConfig(config as VideoStreamConfig);
+                    videoSet = true;
                     break;
-                case Common.StreamType.Subtitle:
-                case Common.StreamType.Teletext:
-                    throw new NotImplementedException();
-                default:
-                    throw new ArgumentOutOfRangeException();
             }
+        }
 
+        private void EnqueueStreamConfig(StreamConfig config)
+        {
+            // This should not happen. We check state in SetStreamConfig method
+            if (!audioSet || !videoSet)
+                throw new Exception("Invalid state when enqueuing stream configuration");
 
-            if (audioSet && videoSet
-                && (submitPacketTask == null
-                    || submitPacketTask.Status == TaskStatus.RanToCompletion
-                    || submitPacketTask.Status == TaskStatus.Canceled
-                    || submitPacketTask.Status == TaskStatus.Faulted)
-                )
+            var bufferedConfig = BufferConfiguration.Create(config);
+            switch (config.StreamType())
             {
-                //todo(m.rybinski): put the task to sleep instead of letting it die and then respawning it 
-                if (internalState == SMPlayerState.Stopped)
-                {
-                    internalState = SMPlayerState.Uninitialized;
-                }
-                Logger.Debug("Respawning submitter task");
-                submitPacketTask = Task.Factory.StartNew(SubmittingPacketsTask, TaskCreationOptions.LongRunning);
+                case Common.StreamType.Audio:
+                    audioPacketsQueue.Enqueue(bufferedConfig);
+                    break;
+                case Common.StreamType.Video:
+                    videoPacketsQueue.Enqueue(bufferedConfig);
+                    break;
             }
+
+            WakeUpSubmitTask();
         }
 
         private void WakeUpSubmitTask([CallerFilePath] string file = "", [CallerMemberName] string func = "", [CallerLineNumber] int line = 0)
@@ -449,9 +452,6 @@ namespace JuvoPlayer.Player.SMPlayer
                 if (audioStreamInfo.codecExtraData != IntPtr.Zero)
                     Marshal.FreeHGlobal(audioStreamInfo.codecExtraData);
             }
-            audioSet = true;
-
-            PrepareES();
         }
 
         public void SetVideoStreamConfig(VideoStreamConfig config)
@@ -489,9 +489,6 @@ namespace JuvoPlayer.Player.SMPlayer
                 if (videoStreamInfo.codecExtraData != IntPtr.Zero)
                     Marshal.FreeHGlobal(videoStreamInfo.codecExtraData);
             }
-            videoSet = true;
-
-            PrepareES();
         }
 
         public void SetDuration(TimeSpan duration)
@@ -512,19 +509,14 @@ namespace JuvoPlayer.Player.SMPlayer
 
         public void Stop()
         {
-            Logger.Debug("");
+            Logger.Info("");
             ThrowIfDisposed();
 
-            if (internalState == SMPlayerState.Stopped)
-            {
+            if (internalState == SMPlayerState.Uninitialized
+                || internalState == SMPlayerState.Stopping)
                 return;
-            }
 
-            needDataAudio = false;
-            needDataVideo = false;
-            audioSet = false;
-            videoSet = false;
-            internalState = SMPlayerState.Stopped;
+            internalState = SMPlayerState.Stopping;
 
             WakeUpSubmitTask();
             try
@@ -537,9 +529,7 @@ namespace JuvoPlayer.Player.SMPlayer
                 ae.Flatten().Handle(e =>
                 {
                     if (e is DrmException == false)
-                    {
                         return false;
-                    }
 
                     Logger.Error($"{e}");
                     //todo(m.rybinski): notify the user here (or preferably back up)
@@ -549,7 +539,22 @@ namespace JuvoPlayer.Player.SMPlayer
             finally
             {
                 playerInstance.Stop();
+
+                ResetInternalState();
             }
+        }
+
+        private void ResetInternalState()
+        {
+            needDataAudio = false;
+            needDataVideo = false;
+            audioSet = false;
+            videoSet = false;
+            smplayerSeekReconfiguration = false;
+
+            currentTime = TimeSpan.Zero;
+
+            internalState = SMPlayerState.Uninitialized;
         }
 
         public void Pause()
@@ -655,16 +660,17 @@ namespace JuvoPlayer.Player.SMPlayer
             Logger.Info("");
         }
 
-        public void OnCurrentPosition(System.UInt32 currTime)
+        public void OnCurrentPosition(uint currTime)
         {
-            if (currentTime == currTime)
+            var currTimeSpan = TimeSpan.FromMilliseconds(currTime);
+            if (currentTime == currTimeSpan)
                 return;
 
-            Logger.Info("OnCurrentPosition = " + currTime);
+            Logger.Info("OnCurrentPosition = " + currTimeSpan);
 
-            currentTime = currTime;
+            currentTime = currTimeSpan;
 
-            TimeUpdated?.Invoke(TimeSpan.FromMilliseconds(currentTime));
+            TimeUpdated?.Invoke(currentTime);
         }
 
         #endregion
