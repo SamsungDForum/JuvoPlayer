@@ -154,7 +154,9 @@ namespace XamarinPlayer.Tizen.Services
             DataProviderConnector.Disconnect(playerController, dataProvider);
             dataProvider?.Dispose();
 
-            Stop();
+            if (State != PlayerState.Idle)
+                Stop();
+
             State = PlayerState.Preparing;
 
             dataProvider = dataProviders.CreateDataProvider(clip);
@@ -183,10 +185,8 @@ namespace XamarinPlayer.Tizen.Services
             playerController.OnStop();
 
             //prevent the callback from firing multiple times
-            if (this.State != PlayerState.Stopped)
-            {
+            if (State != PlayerState.Stopped)
                 State = PlayerState.Stopped;
-            }
         }
 
         public void Dispose()
