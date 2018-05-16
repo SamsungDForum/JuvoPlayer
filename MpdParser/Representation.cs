@@ -86,12 +86,10 @@ namespace MpdParser.Node.Dynamic
 
     public class BaseRepresentationStream : IRepresentationStream
     {
-        private ManifestParameters Parameters;
-        
         public BaseRepresentationStream(Segment init, Segment media,
-            ulong presentationTimeOffset, TimeSpan? timeShiftBufferDepth,
-            TimeSpan avaliabilityTimeOffset, bool? avaliabilityTimeComplete,
-            Segment index = null)
+          ulong presentationTimeOffset, TimeSpan? timeShiftBufferDepth,
+          TimeSpan avaliabilityTimeOffset, bool? avaliabilityTimeComplete,
+          Segment index = null)
         {
             media_ = media;
             InitSegment = init;
@@ -104,42 +102,27 @@ namespace MpdParser.Node.Dynamic
 
             Count = media == null ? 0u : 1u;
             Duration = media?.Period?.Duration;
-
-
-            //Index Download could be changed to "lazy loading"
-            //done before first actual use (calls to IRepresentationStream defined API)
-            DownloadIndex(true);
         }
 
-        private static readonly ILogger Logger = LoggerManager.GetInstance().GetLogger(MpdParser.LogTag);
+        protected static LoggerManager LogManager = LoggerManager.GetInstance();
+        protected static ILogger Logger = LoggerManager.GetInstance().GetLogger(MpdParser.LogTag);
 
-        private ManualResetEvent DownloadWait = null;
+        private ManifestParameters Parameters;
 
-        //Instance of a downloader is kept here for sole purpose
-        //of doing async download cancelation if object will be destroyed before 
-        //download completes.
-        private NetClient Downloader = null;
-
+        private bool indexDownloaded;
         private Segment media_;
 
         public TimeSpan? Duration { get; }
         public Segment InitSegment { get; }
         public Segment IndexSegment { get; }
+
         public ulong PresentationTimeOffset { get; }
         public TimeSpan? TimeShiftBufferDepth { get; }
         public TimeSpan AvaliabilityTimeOffset { get; }
         public bool? AvaliabilityTimeComplete { get; }
+
         public uint Count { get; }
         private List<Segment> segments_ = new List<Segment>();
-
-        ~BaseRepresentationStream()
-        {
-            //Cancel any pending request (i.e. Donwloader non null)
-            if (Downloader != null)
-            {
-                Downloader.CancelAsync();
-            }
-        }
 
         public void SetDocumentParameters(ManifestParameters docParams)
         {
@@ -150,107 +133,32 @@ namespace MpdParser.Node.Dynamic
         {
             return Parameters;
         }
-        private void DownloadIndex(bool async)
+
+        private void DownloadIndexOnce()
         {
             //Create index storage only if index segment is provided
-            if (IndexSegment == null)
+            if (IndexSegment == null || this.indexDownloaded)
+            {
                 return;
+            }
 
-            ByteRange rng = new ByteRange(IndexSegment.ByteRange);
+            ByteRange range = new ByteRange(IndexSegment.ByteRange);
 
             try
             {
-                if (async)
-                {
-                    Logger.Info(string.Format("Index Segment present. Attempting ASYNC download"));
-                    DownloadWait = new ManualResetEvent(false);
-
-                    //NetClient could be moved to a singleton servicing
-                    //all internal instances as long as it can internally multitask
-                    //which is not fully clear from docs (states it is threaded but no
-                    //info as to how many threads are supported, etc.)
-                    Downloader = new NetClient();
-                    Downloader.SetRange(rng.Low, rng.High);
-                    Downloader.DownloadDataCompleted += new DownloadDataCompletedEventHandler(DownloadCompleted);
-                    Logger.Info(string.Format("Downloading Index Segment {0} {1}-{2}", IndexSegment.Url, rng.Low, rng.High));
-                    Downloader.DownloadDataAsync(IndexSegment.Url, (UInt64)rng.High);
-
-                }
-                else
-                {
-                    Logger.Info(string.Format("Index Segment present. Attempting SYNC download"));
-
-                    using (NetClient DataSucker = new NetClient())
-                    {
-                        DataSucker.SetRange(rng.Low, rng.High);
-                        byte[] data = DataSucker.DownloadData(IndexSegment.Url);
-                        ProcessIndexData(data, (UInt64)rng.High);
-                    }
-
-                }
+                Logger.Debug($"Downloading Index Segment {IndexSegment.Url} {range}");
+                byte[] data = Downloader.DownloadData(IndexSegment.Url, range);
+                Logger.Debug($"Downloaded successfully Index Segment {IndexSegment.Url} {range}");
+                ProcessIndexData(data, (UInt64)range.High);
+                indexDownloaded = true;
             }
-            catch (Exception ex)
+            catch (WebException e)
             {
-                Logger.Warn(string.Format("Index dwonload failed {0} {1}", ex.GetType(), IndexSegment.Url));
-                if (ex is WebException)
-                {
-                    Logger.Warn(string.Format("Error Code {0} {1} {2}", ((WebException)ex).Message,
-                        ((WebException)ex).Response,
-                        IndexSegment.Url));
-                }
-
-                if (async)
-                {
-                    // In case of async load failure, release semaphores
-                    DownloadWait.Set();
-                    DownloadWait.Dispose();
-                    DownloadWait = null;
-
-                    Downloader.Dispose();
-                    Downloader = null;
-                }
+                Logger.Error($"Downloading Index Segment FAILED {IndexSegment.Url} ({e.Status}):\n{e}");
+                //todo(m.rybinski): what now? Retry? How many times? Show an error to the user?
             }
         }
 
-        private void DownloadCompleted(object sender, DownloadDataCompletedEventArgs e)
-        {
-            try
-            {
-                // If the request was not canceled and did not throw
-                // an exception, display the resource.
-                if (!e.Cancelled && e.Error == null)
-                {
-                    Logger.Info(string.Format("Index Segment Downloaded {0}", IndexSegment.Url));
-
-                    UInt64 datastart = (UInt64)e.UserState;
-                    byte[] rawData = e.Result;
-
-                    ProcessIndexData(rawData, datastart);
-                }
-                else
-                {
-                    //How to handle failure of download?
-                    //Wipe segment from existance? Pretend there is no index data and play along?
-                    Logger.Info(string.Format("Downloading Index Segment FAILED {0}", IndexSegment.Url));
-                }
-            }
-            catch (Exception ex)
-            {
-                Logger.Warn(string.Format("Error {0}", ex.Message));
-            }
-            finally
-            {
-                // Let the main application thread resume.
-                Logger.Info(string.Format("Unblocking access to index data {0}", IndexSegment.Url));
-
-                DownloadWait.Set();
-                DownloadWait.Dispose();
-                DownloadWait = null;
-
-                Downloader.Dispose();
-                Downloader = null;
-            }
-        }
 
         private void ProcessIndexData(byte[] data, ulong dataStart)
         {
@@ -294,7 +202,7 @@ namespace MpdParser.Node.Dynamic
             if (media_ == null)
                 return null;
 
-            DownloadWait?.WaitOne();
+            DownloadIndexOnce();
 
             if (segments_.Count == 0)
             {
@@ -306,6 +214,25 @@ namespace MpdParser.Node.Dynamic
                 return null;
 
             return segments_[(int)pos];
+        }
+
+        public uint? MediaSegmentAtTime(TimeSpan duration)
+        {
+            Logger.Info(string.Format("MediaSegmentAtTime {0}", duration));
+            if (media_ == null)
+                return null;
+
+            if (media_.Contains(duration) <= TimeRelation.EARLIER)
+                return null;
+
+            DownloadIndexOnce();
+
+            for (int i = 0; i < segments_.Count; ++i)
+            {
+                if (segments_[i].Period.Start + segments_[i].Period.Duration >= duration)
+                    return (uint)i;
+            }
+            return null;
         }
 
         private uint? GetStartSegmentDynamic(TimeSpan durationSpan)
@@ -320,8 +247,14 @@ namespace MpdParser.Node.Dynamic
         {
             return 0;
         }
+
         public uint? GetStartSegment(TimeSpan durationSpan, TimeSpan bufferDepth)
         {
+            if (media_ == null)
+                return null;
+
+            DownloadIndexOnce();
+
             //TODO: Take into account @startNumber if available
             if (Parameters.Document.IsDynamic == true)
                 return GetStartSegmentDynamic(durationSpan);
@@ -329,41 +262,10 @@ namespace MpdParser.Node.Dynamic
             return GetStartSegmentStatic(durationSpan);
         }
 
-        private uint? MediaSegmentAtTimeStatic(TimeSpan duration)
-        {
-            for (int i = 0; i < segments_.Count; ++i)
-            {
-                if (segments_[i].Period.Start + segments_[i].Period.Duration >= duration)
-                    return (uint)i;
-            }
-
-            return null;
-        }
-
-        private uint? MediaSegmentAtTimeDynamic(TimeSpan duration)
-        {
-            throw new NotImplementedException("MediaSegmentAtTime for dynamic content needs implementation");
-        }
-
-        public uint? MediaSegmentAtTime(TimeSpan duration)
-        {
-            Logger.Info(string.Format("MediaSegmentAtTime {0}", duration));
-            if (media_ == null)
-                return null;
-
-            if (media_.Contains(duration) <= TimeRelation.EARLIER)
-                return null;
-
-            DownloadWait?.WaitOne();
-
-            if (Parameters.Document.IsDynamic == true)
-                return MediaSegmentAtTimeDynamic(duration);
-
-            return MediaSegmentAtTimeStatic(duration);
-        }
-
         public IEnumerable<Segment> MediaSegments()
         {
+            if (segments_.Count == 0 && media_ != null)
+                return new List<Segment>() { media_ };
             return segments_;
         }
     }

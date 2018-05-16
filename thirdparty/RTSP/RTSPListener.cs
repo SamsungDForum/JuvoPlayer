@@ -476,26 +476,11 @@
             _stream.Write(data, 0, data.Length);
         }
 
-
-        #region IDisposable Membres
-
         public void Dispose()
         {
-            Dispose(true);
+            Stop();
+            _stream?.Dispose();
             GC.SuppressFinalize(this);
         }
-
-        protected virtual void Dispose(bool disposing)
-        {
-            if (disposing)
-            {
-                Stop();
-                if (_stream != null)
-                    _stream.Dispose();
-
-            }
-        }
-
-        #endregion
     }
 }

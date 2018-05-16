@@ -7,6 +7,7 @@ using System.Linq;
 using System.Reflection;
 using System.Text;
 using System.Threading;
+using System.Threading.Tasks;
 using JuvoLogger;
 using JuvoLogger.Tizen;
 using Tizen.Applications;
@@ -64,9 +65,13 @@ namespace JuvoPlayer.TizenTests
             receivedAppControl = e.ReceivedAppControl;
             ExtractNunitArgs();
             SynchronizationContext.SetSynchronizationContext(new SynchronizationContext());
-            RunJuvoPlayerTizenTests();
-            RunJuvoPlayerTests();
-            global::System.Environment.Exit(0);
+
+            Task.Factory.StartNew(() =>
+            {
+                RunJuvoPlayerTizenTests();
+                RunJuvoPlayerTests();
+                global::System.Environment.Exit(0);
+            }, TaskCreationOptions.LongRunning);
         }
 
         static void Main(string[] args)

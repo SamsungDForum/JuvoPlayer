@@ -77,6 +77,7 @@ namespace JuvoPlayer.Player
         {
             drmSession?.Dispose();
             drmSession = null;
+            config = null;
         }
 
         public void OnDRMFound(DRMInitData data)

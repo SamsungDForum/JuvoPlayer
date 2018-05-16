@@ -2,7 +2,7 @@
 
 namespace XamarinPlayer.Services
 {
-    public interface IPathService : IDisposable
+    public interface IPathService
     {
         string ApplicationPath { get; }
     }
