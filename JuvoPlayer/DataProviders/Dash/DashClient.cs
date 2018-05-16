@@ -55,7 +55,7 @@ namespace JuvoPlayer.DataProviders.Dash
         /// of the queue, processing is done from end of the queue. This assures in-request-order
         /// placement of recieved data to the player regardless of their arrival order.
         /// </summary>
-        private const int maxSegmentDownloads = 2;
+        private static readonly int maxSegmentDownloads = 2;
         private LinkedList<DownloadRequest> downloadRequestPool = new LinkedList<DownloadRequest>();
 
         /// <summary>
@@ -586,3 +586,4 @@ namespace JuvoPlayer.DataProviders.Dash
         #endregion
     }
 }
+
