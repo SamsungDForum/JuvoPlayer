@@ -1,13 +1,11 @@
 using System;
 using System.Collections.Generic;
-using JuvoPlayer.Common;
-using JuvoLogger;
-using MpdParser;
-using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
-using System.Threading.Tasks;
+using JuvoLogger;
+using JuvoPlayer.Common;
 using JuvoPlayer.Subtitles;
+using MpdParser;
 
 namespace JuvoPlayer.DataProviders.Dash
 {
@@ -24,11 +22,10 @@ namespace JuvoPlayer.DataProviders.Dash
         private readonly List<SubtitleInfo> subtitleInfos;
         private CuesMap cuesMap;
         private TimeSpan currentTime = TimeSpan.Zero;
+
         private DateTime lastReloadTime = DateTime.MinValue;
         private TimeSpan minimumReloadPeriod = TimeSpan.Zero;
-        private static readonly TimeSpan manifestRequestDelay = TimeSpan.FromSeconds(3);
-
-        private static readonly TimeSpan manifestReloadTimeout = TimeSpan.FromSeconds(10);
+        private static readonly TimeSpan ManifestRequestDelay = TimeSpan.FromSeconds(3);
 
         public event ClipDurationChanged ClipDurationChanged;
         public event DRMInitDataFound DRMInitDataFound;
@@ -39,7 +36,7 @@ namespace JuvoPlayer.DataProviders.Dash
 
         private ManualResetEventSlim waitForManifest = new ManualResetEventSlim(false);
 
-        private bool disposed = false;
+        private bool disposed;
 
         public DashDataProvider(
             DashManifest manifest,
@@ -49,9 +46,10 @@ namespace JuvoPlayer.DataProviders.Dash
             this.manifest = manifest ?? throw new ArgumentNullException(nameof(manifest), "manifest cannot be null");
             this.audioPipeline = audioPipeline ?? throw new ArgumentNullException(nameof(audioPipeline), "audioPipeline cannot be null");
             this.videoPipeline = videoPipeline ?? throw new ArgumentNullException(nameof(videoPipeline), "videoPipeline cannot be null");
-            this.subtitleInfos = new List<SubtitleInfo>();
+            subtitleInfos = new List<SubtitleInfo>();
 
             manifest.ManifestChanged += OnManifestChanged;
+
             audioPipeline.DRMInitDataFound += OnDRMInitDataFound;
             audioPipeline.SetDrmConfiguration += OnSetDrmConfiguration;
             audioPipeline.StreamConfigReady += OnStreamConfigReady;
@@ -62,8 +60,6 @@ namespace JuvoPlayer.DataProviders.Dash
             videoPipeline.PacketReady += OnPacketReady;
         }
 
-
-
         /// <summary>
         /// Manifest Change Callback incoked by DashManifest class when new manifest is downloaded.
         /// </summary>
@@ -71,26 +67,24 @@ namespace JuvoPlayer.DataProviders.Dash
         /// NULL value indicates download/parse failure</param>
         private void OnManifestChanged(Object newDocument)
         {
-            if(disposed == true)
+            if (disposed)
             {
                 Logger.Warn("DashDataProvider already disposed. Ignoring Manifest change request.");
                 return;
             }
+
             // Mark time of "last" document update
             lastReloadTime = DateTime.UtcNow;
 
             // Check for error condition - newObject will be null
             if (newDocument == null)
             {
-                Logger.Info($"No Manifest.");
-                manifest.GetReloadManifestActivity?.Wait();
-
-                var res = manifest.ReloadManifest(DateTime.UtcNow + manifestRequestDelay);
-
+                Logger.Info("No Manifest.");
+                ScheduleNextManifestReload();
                 return;
             }
 
-            Logger.Info($"Processing Manifest");
+            Logger.Info("Processing Manifest");
             // Temps are used at this point, we do not need to lock down this entire
             // section if current* instance variables would be used.
             var tmpDocument = newDocument as Document;
@@ -98,20 +92,19 @@ namespace JuvoPlayer.DataProviders.Dash
 
             if (tmpPeriod == null)
             {
-                Logger.Info($"No period in Manifest.");
-                manifest.GetReloadManifestActivity?.Wait();
-                manifest.ReloadManifest(DateTime.UtcNow + manifestRequestDelay);
+                Logger.Info("No period in Manifest.");
+                ScheduleNextManifestReload();
                 return;
             }
+
             // No update period? Static content, set timeout to max
             minimumReloadPeriod = tmpDocument.MinimumUpdatePeriod ?? TimeSpan.MaxValue;
 
             //EarlyAvailable periods are not utilized now
-            if (tmpDocument.IsDynamic == true && tmpPeriod.Type == Period.Types.EarlyAvailable)
+            if (tmpDocument.IsDynamic && tmpPeriod.Type == Period.Types.EarlyAvailable)
             {
-                Logger.Info($"EarlyAvailable MPD are not utilized. {tmpDocument.ToString()}");
-                manifest.GetReloadManifestActivity?.Wait();
-                manifest.ReloadManifest(DateTime.UtcNow + manifestRequestDelay);
+                Logger.Info($"EarlyAvailable MPD are not utilized. {tmpDocument}");
+                ScheduleNextManifestReload();
                 return;
             }
 
@@ -119,11 +112,16 @@ namespace JuvoPlayer.DataProviders.Dash
             currentDocument = tmpDocument;
             currentPeriod = tmpPeriod;
 
-            // Signall anyone waiting for currentDocument
+            // Signal anyone waiting for currentDocument
             waitForManifest.Set();
 
             StartInternal();
+        }
 
+        private void ScheduleNextManifestReload()
+        {
+            manifest.GetReloadManifestActivity?.Wait();
+            manifest.ReloadManifest(DateTime.UtcNow + ManifestRequestDelay);
         }
 
         private void OnDRMInitDataFound(DRMInitData drmData)
@@ -242,12 +240,12 @@ namespace JuvoPlayer.DataProviders.Dash
         public void Start()
         {
             Logger.Info("Dash start.");
+
             manifest.ReloadManifest(DateTime.UtcNow);
         }
 
         private void StartInternal()
         {
-
             if (currentDocument == null || currentPeriod == null)
             {
                 Logger.Info("Dash start delayed. No Manifest/Period available.");
@@ -256,18 +254,16 @@ namespace JuvoPlayer.DataProviders.Dash
 
             // TODO:? In case of updates - should we check if A/V is any different from
             // anything we passed down before? Should offload client...
-            ManifestParameters manifestParams;
-            manifestParams = new ManifestParameters(currentDocument, currentPeriod);
+            var manifestParams = new ManifestParameters(currentDocument, currentPeriod);
             manifestParams.PlayClock = LiveClockTime(currentTime);
 
             Logger.Info(currentPeriod.ToString());
 
-            var audios = currentPeriod.Sets.Where(o => o.Type.Value == MediaType.Audio);
-            var videos = currentPeriod.Sets.Where(o => o.Type.Value == MediaType.Video);
+            var audios = currentPeriod.Sets.Where(o => o.Type.Value == MediaType.Audio).ToList();
+            var videos = currentPeriod.Sets.Where(o => o.Type.Value == MediaType.Video).ToList();
 
-            if (audios.Count() > 0 && videos.Count() > 0)
+            if (audios.Any() && videos.Any())
             {
-
                 BuildSubtitleInfos(currentPeriod);
 
                 if (currentPeriod.Duration.HasValue)
@@ -283,7 +279,6 @@ namespace JuvoPlayer.DataProviders.Dash
                     a.SetDocumentParameters(manifestParams);
                 }
 
-
                 videoPipeline.Start(videos);
                 audioPipeline.Start(audios);
             }
@@ -293,21 +288,20 @@ namespace JuvoPlayer.DataProviders.Dash
         /// Finds a period that matches current playback timestamp. May return "early access"
         /// Period. Based on ISO IEC 23009-1 2015 section 5.3.2.1 & DASH IF IOP v 3.3
         /// </summary>
-        /// <param name="Document">Document for which period is to be found </param>
+        /// <param name="document">Document for which period is to be found </param>
         /// <param name="timeIndex"></param>
         /// <returns></returns>
-        private Period FindPeriod(Document aDoc, TimeSpan timeIndex)
+        private Period FindPeriod(Document document, TimeSpan timeIndex)
         {
-
             // Periods are already "sorted" from lowest to highest, thus find a period
             // where start time (time elapsed when this period shouold start)
             // to do so, search periods backwards, starting from those that should play last.
-            for (int p = aDoc.Periods.Length - 1; p >= 0; p--)
+            for (int p = document.Periods.Length - 1; p >= 0; p--)
             {
-                var period = aDoc.Periods[p];
+                var period = document.Periods[p];
 
-                var availstart = aDoc.AvailabilityStartTime ?? DateTime.UtcNow;
-                var start = aDoc.IsDynamic == true ? DateTime.UtcNow.Subtract(availstart) : TimeSpan.Zero;
+                var availstart = document.AvailabilityStartTime ?? DateTime.UtcNow;
+                var start = document.IsDynamic ? DateTime.UtcNow.Subtract(availstart) : TimeSpan.Zero;
 
                 start = start.Add(period.Start ?? TimeSpan.Zero);
                 var end = start.Add(period.Duration ?? TimeSpan.Zero);
@@ -316,11 +310,11 @@ namespace JuvoPlayer.DataProviders.Dash
                 end = new TimeSpan(end.Ticks / TimeSpan.TicksPerSecond * TimeSpan.TicksPerSecond);
                 var ti = new TimeSpan(timeIndex.Ticks / TimeSpan.TicksPerSecond * TimeSpan.TicksPerSecond);
 
-                Logger.Debug($"Searching: {start}-{end} {period.ToString()} for TimeIndex/Current: {ti}");
+                Logger.Debug($"Searching: {start}-{end} {period} for TimeIndex/Current: {ti}");
 
                 if (ti >= start && ti <= end)
                 {
-                    Logger.Debug($"Matching period found: {period.ToString()} for TimeIndex: {ti}");
+                    Logger.Debug($"Matching period found: {period} for TimeIndex: {ti}");
                     return period;
                 }
 
@@ -353,28 +347,18 @@ namespace JuvoPlayer.DataProviders.Dash
         }
         /// <summary>
         /// Schedules a manifest reload for dynamic documents only.
-        /// Reload Time is scheduled as UtcNow + minimum reload period.
-        /// Uses current/previous timestamps from "OnTimeUpdated" event. to compute difference.
-        /// If difference between 
         /// </summary>
-        private void ScheduleManifestReload()
+        private void CheckAndReloadManifestReload()
         {
-            // Only update if pipeline is running
-            if (audioPipeline == null && videoPipeline == null)
-                return;
-
             if (currentDocument.IsDynamic == false)
                 return;
 
-            if (manifest.IsReloadInProgress == true)
+            if (manifest.IsReloadInProgress)
                 return;
 
             // should we check playback time here or actual time?
             if ((DateTime.UtcNow - lastReloadTime) >= minimumReloadPeriod)
-            {
                 manifest.ReloadManifest(DateTime.UtcNow);
-            }
-
         }
 
         private void BuildSubtitleInfos(Period period)
@@ -392,7 +376,7 @@ namespace JuvoPlayer.DataProviders.Dash
                     if (!mediaSegments.Any()) continue;
 
                     var segment = mediaSegments.First();
-                    var streamDescription = new SubtitleInfo()
+                    var streamDescription = new SubtitleInfo
                     {
                         Id = subtitleInfos.Count,
                         Language = lang,
@@ -416,12 +400,12 @@ namespace JuvoPlayer.DataProviders.Dash
             videoPipeline.OnTimeUpdated(time);
 
             // Check if MPD needs reload.
-            ScheduleManifestReload();
+            CheckAndReloadManifestReload();
         }
 
         public void Dispose()
         {
-            if (disposed == true)
+            if (disposed)
                 return;
 
             disposed = true;
