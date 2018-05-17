@@ -73,15 +73,15 @@ namespace JuvoPlayer.OpenGL
         public const int fpsGraphId = 0; // computations handled by C lib
 
         [DllImport(GlDemoLib, EntryPoint = "AddGraph")]
-        public static extern int AddGraph(byte* tag, int tagLen, int minVal, int maxVal, int valuesCount);
+        public static extern int AddGraph(byte* tag, int tagLen, float minVal, float maxVal, int valuesCount);
 
         [DllImport(GlDemoLib, EntryPoint = "SetGraphVisibility")]
         public static extern void SetGraphVisibility(int graphId, int visible);
 
         [DllImport(GlDemoLib, EntryPoint = "UpdateGraphValues")]
-        public static extern void UpdateGraphValues(int graphId, int* values, int valuesCount);
+        public static extern void UpdateGraphValues(int graphId, float* values, int valuesCount);
 
-        [DllImport(GlDemoLib, EntryPoint = "AddGraphValue")]
-        public static extern void UpdateGraphValue(int graphId, int value);
+        [DllImport(GlDemoLib, EntryPoint = "UpdateGraphValue")]
+        public static extern void UpdateGraphValue(int graphId, float value);
     }
 }

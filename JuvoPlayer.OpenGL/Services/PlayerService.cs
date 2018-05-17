@@ -16,7 +16,9 @@ using StreamType = JuvoPlayer.OpenGL.Services.StreamDescription.StreamType;
 
 namespace JuvoPlayer.OpenGL.Services
 {
-    class PlayerService : IPlayerService
+    public delegate void PlayerStateChangedEventHandler(object sender, PlayerStateChangedEventArgs e);
+
+    class PlayerService
     {
         private IDataProvider dataProvider;
         private IPlayerController playerController;
