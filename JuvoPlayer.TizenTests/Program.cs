@@ -14,7 +14,7 @@ using Tizen.Applications;
 
 namespace JuvoPlayer.TizenTests
 {
-    class Program : CoreUIApplication
+    class Program : ServiceApplication
     {
         private static ILogger Logger = LoggerManager.GetInstance().GetLogger("UT");
         private ReceivedAppControl receivedAppControl;

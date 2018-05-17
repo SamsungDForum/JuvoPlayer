@@ -1,4 +1,4 @@
-﻿// Copyright (c) 2018 Samsung Electronics Co., Ltd All Rights Reserved
+// Copyright (c) 2018 Samsung Electronics Co., Ltd All Rights Reserved
 // PROPRIETARY/CONFIDENTIAL 
 // This software is the confidential and proprietary
 // information of SAMSUNG ELECTRONICS ("Confidential Information"). You shall
@@ -25,15 +25,31 @@ namespace MpdParser.Node.Dynamic
             Start = start;
             Duration = duration;
         }
-    }
 
-    enum TimeRelation
+        /// <summary>
+        /// Clones TimeRange Object with Start/Duration TimeSpan preservation.
+        /// </summary>
+        /// <returns>TimeRange. A Cloned TimeRange object</returns>
+        public TimeRange Copy()
+        {
+            return (TimeRange)this.MemberwiseClone();
+        }
+
+        public override string ToString()
+        {
+            return $"({Start})-({Duration})";
+        }
+
+    }
+    public enum TimeRelation
     {
-        UNKNOWN = -2,
+        UNKNOWN = -3,
+        OVERLAP,
         EARLIER,
         SPOTON,
         LATER
     }
+   
     public class Segment
     {
         public readonly Uri Url;
@@ -49,7 +65,7 @@ namespace MpdParser.Node.Dynamic
 
         internal TimeRelation Contains(TimeSpan time_point)
         {
-            if (Period == null)
+            if (Period == null || time_point == null)
                 return TimeRelation.UNKNOWN;
             if (time_point < Period.Start)
                 return TimeRelation.LATER;
