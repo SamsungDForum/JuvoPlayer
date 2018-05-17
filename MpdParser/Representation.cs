@@ -336,13 +336,16 @@ namespace MpdParser.Node.Dynamic
             public int CompareTo(object obj)
             {
                 int res=-1;
-
-                Logger.Info($"CompareTo: {obj} {obj.GetType()}");
-
                 var lookFor = obj as TimelineSearch;
+                if(lookFor == null)
+                {
+                    // Manages "unsupported object"
+                    Logger.Debug($"{obj} {obj.GetType()} is unsupported. TimelineSearch only");
+                    return -1;
+                }
 
-                Logger.Info($"CompareTo: {obj} {obj.GetType()} {lookFor}");
-                switch (lookFor?.CompareType)
+                Logger.Info($"{lookFor.CompareType} S={lookFor.Start} D={lookFor.Duration} N={lookFor.Number} TsV={this.TimeScaled} TsD={this.DurationScaled} TsN={this.Number}");
+                switch(lookFor.CompareType)
                 {
                     case TimelineSearch.Comparison.Start:
                         if (this.TimeScaled < lookFor.Start)
@@ -356,7 +359,7 @@ namespace MpdParser.Node.Dynamic
                     case TimelineSearch.Comparison.StartDuration:
                         if (this.TimeScaled < lookFor.Start)
                             res = -1;
-                        else if (this.TimeScaled + this.DurationScaled > lookFor.Start)
+                        else if ( (this.TimeScaled + this.DurationScaled) > lookFor.Start)
                             res = 1;
                         else
                             res = 0;
@@ -364,10 +367,7 @@ namespace MpdParser.Node.Dynamic
                     case TimelineSearch.Comparison.Number:
                         res = (int)(this.Number - lookFor.Number);
                         break;
-                    default:
-                        // Manages "unsupported object"
-                        Logger.Debug($"{obj} {obj.GetType()} is unsupported. TimelineSearch only");
-                        break;
+                
                 }
 
                 return res;
@@ -568,12 +568,14 @@ namespace MpdParser.Node.Dynamic
         {
             string res;
 
-            res = $"All={timelineAll_.Length} Available={Count} {timelineAvailable_.Offset}-{timelineAvailable_.Offset+timelineAvailable_.Count}\r";
+            res = $"\nAll={timelineAll_.Length} Available={Count} {timelineAvailable_.Offset}-{timelineAvailable_.Offset+timelineAvailable_.Count}\n";
 
-            res += "Data:\r";
-            Array.ForEach(timelineAll_, item => { res += $"No={item.Number} Time={item.TimeScaled}/{item.Time} Duration={item.DurationScaled} R={item.Repeats}"; } );
+            res += "Data:\n";
+            foreach (var item in timelineAll_)
+            {
+                res += $"No={item.Number} TS={item.TimeScaled}/{item.Time} D={item.DurationScaled} R={item.Repeats}\n";
+            }
 
- 
             return res;
         }
       
@@ -797,14 +799,25 @@ namespace MpdParser.Node.Dynamic
                 return null;
 
             var idx = Array.FindIndex<TimelineItemRep>(timelineAll_, timelineAvailable_.Offset,timelineAvailable_.Count,
-                 i => ( i.TimeScaled <= durationSpan && i.TimeScaled + i.DurationScaled > durationSpan));
+                 i => ( ( durationSpan >= i.TimeScaled) && (durationSpan < (i.TimeScaled + i.DurationScaled)) ));
+
+            //var idx = Array.FindIndex(timelineAvailable_,i => ((durationSpan >= i.TimeScaled) && (durationSpan < (i.TimeScaled + i.DurationScaled))));
 
             //var idx = Array.BinarySearch(timelineAll_, timelineAvailable_.Offset, timelineAvailable_.Count,
             //    new TimelineSearch(durationSpan, TimeSpan.Zero));
 
             if (idx < 0)
             {
-                Logger.Debug($"Failed to find segment @time. FA={timeline_[0].Time}/{timeline_[0].TimeScaled} Req={durationSpan} LA={timeline_[timeline_.Count-1].Time}/{timeline_[timeline_.Count - 1].TimeScaled}");
+                Logger.Info($"Failed to find segment in {timeline_.Count} @time. FA={timeline_[0].TimeScaled}/{timeline_[0].Time} Req={durationSpan} LA={timeline_[timeline_.Count - 1].TimeScaled}/{timeline_[timeline_.Count - 1].TimeScaled}/{timeline_[0].Time}");
+                
+                Logger.Info($"FA={timelineAll_[timelineAvailable_.Offset].TimeScaled} Req={durationSpan} LA={timeline_[timelineAvailable_.Offset+timelineAvailable_.Count-1].TimeScaled}");
+                Logger.Info($"Data: {timelineAvailable_.Offset},{timelineAvailable_.Count}");
+                foreach (var item in timelineAll_)
+                {
+                    var res = ( (durationSpan >= item.TimeScaled) && 
+                                (durationSpan < (item.TimeScaled + item.DurationScaled)));
+                    Logger.Info($"{res} No={item.Number} TS={item.TimeScaled} D={item.DurationScaled} S={item.TimeScaled + item.DurationScaled} D={(item.TimeScaled + item.DurationScaled)-durationSpan}");
+                }
                 return null;
             }
 

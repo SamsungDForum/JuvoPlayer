@@ -257,7 +257,7 @@ namespace JuvoPlayer.DataProviders.Dash
         /// state handlers.
         /// </summary>
         /// <returns>Current download task status.</returns>
-        public TaskStatus? Process()
+        public void Process()
         {
             // There is no need to check for disposing state as dispose should never happen in parallel
             // to calling Process()
@@ -269,13 +269,13 @@ namespace JuvoPlayer.DataProviders.Dash
             {
                 DownloadErrorCount++;
                 RequestFailed?.Invoke(RequestTask.Exception, requestData, ignoreError);
-                return RequestTask?.Status;
+                return;
             }
 
             // Wait for request to complete - there's a wait on DownloadRequest. We do not
             // want that to bomb out if we remove task while thread hasn't processed the Wait.
             if (res < TaskStatus.RanToCompletion)
-                return res;
+                return;
 
             //Request task ok. Check download task status.
             res = DownloadTask?.Status;
@@ -310,9 +310,6 @@ namespace JuvoPlayer.DataProviders.Dash
                     //Do nothing. Most likely task not created yet.
                     break;
             }
-
-            return res;
-
         }
 
 
