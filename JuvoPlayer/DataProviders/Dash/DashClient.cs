@@ -131,17 +131,17 @@ namespace JuvoPlayer.DataProviders.Dash
 
         public TimeSpan Seek(TimeSpan position)
         {
-            Logger.Info(string.Format("{0} Seek to: {1} ", streamType, position));
-
+            var newTime = TimeSpan.Zero;
             var segmentId = currentStreams?.MediaSegmentAtTime(position);
             if (segmentId.HasValue == true)
             {
                 currentTime = position;
                 currentSegmentId = segmentId.Value;
 
-                return currentStreams.MediaSegmentAtPos(currentSegmentId.Value).Period.Start;
+                newTime = currentStreams.MediaSegmentAtPos(currentSegmentId.Value).Period.Start;
             }
 
+            Logger.Info($"{streamType} Seek. Pos Req: {position} Seek to: {newTime} SegId: {segmentId}");
             return TimeSpan.Zero;
         }
 
@@ -336,6 +336,8 @@ namespace JuvoPlayer.DataProviders.Dash
             if (currentSegmentId.HasValue == false)
                 currentSegmentId = currentStreams.GetStartSegment(currentTime, TimeBufferDepth);
 
+            bufferTime = currentTime;
+
             while (playback)
             {
 
@@ -356,9 +358,9 @@ namespace JuvoPlayer.DataProviders.Dash
                 }
 
                 // If underlying buffer is full & there are no download slots, wait for time update.
-                if (BufferFull == true && DownloadSlotsAvailable == false)
+                if (BufferFull == true || DownloadSlotsAvailable == false)
                 {
-                    WaitForUpdate($"Buffer Full ({bufferTime}-{currentTime}) {bufferTime - currentTime} > {TimeBufferDepth}.");
+                    WaitForUpdate($"Slots ({downloadRequestPool.Count}/{maxSegmentDownloads}) or Buffer Full ({bufferTime}-{currentTime}) {bufferTime - currentTime} > {TimeBufferDepth}.");
                     continue;
                 }
 
@@ -490,12 +492,6 @@ namespace JuvoPlayer.DataProviders.Dash
         /// <param name="requestParams">request parameters</param>
         private void SegmentDownloadOK(byte[] data, DownloadRequestData requestParams)
         {
-
-            // If buffer is full, return without removing request from request pool.
-            // will be serviced at next iteration.
-            if (BufferFull == true)
-                return;
-
             sharedBuffer.WriteData(data);
             bufferTime += requestParams.DownloadSegment.Period.Duration;
             var timeInfo = requestParams.DownloadSegment.Period.ToString();

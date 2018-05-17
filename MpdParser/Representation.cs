@@ -272,7 +272,7 @@ namespace MpdParser.Node.Dynamic
 
     public class TemplateRepresentationStream : IRepresentationStream
     {
-        internal class TimelineSearch : IComparer
+        internal class TimelineSearch 
         {
             public enum Comparison { Start, StartDuration, Number };
 
@@ -299,32 +299,14 @@ namespace MpdParser.Node.Dynamic
                 CompareType = Comparison.Number;
                 Number = number;
             }
-            int IComparer.Compare(object x, object y)
-            {
-                if (x is TimelineItemRep)
-                {
-                    if (y is TimelineSearch)
-                    {
-                        var titem = x as TimelineItemRep?;
-                        var comp = y as TimelineSearch;
-                        return titem?.CompareTo(comp)??-1;
-                    }
-
-
-                    return -1;
-                }
-
-
-                return -1;
-    
-            }
+            
         }
         /// <summary>
         /// Internal representation of a TimeLineItem entry.
         /// Internally relies on TimeLineItem structure used by majority of code
         /// +internal helper information build at object creation
         /// </summary>
-        internal struct TimelineItemRep : IComparable<TimelineSearch>
+        internal struct TimelineItemRep : IComparable
         {
             public TimelineItem Item;
             public TimeSpan TimeScaled;
@@ -350,12 +332,17 @@ namespace MpdParser.Node.Dynamic
                 get { return Item.Repeats; }
                 set { Item.Repeats = value; }
             }
-            #region IComparable<Car> Members
-            public int CompareTo(TimelineSearch lookFor)
-            {
-                int res=0;
 
-                switch (lookFor.CompareType)
+            public int CompareTo(object obj)
+            {
+                int res=-1;
+
+                Logger.Info($"CompareTo: {obj} {obj.GetType()}");
+
+                var lookFor = obj as TimelineSearch;
+
+                Logger.Info($"CompareTo: {obj} {obj.GetType()} {lookFor}");
+                switch (lookFor?.CompareType)
                 {
                     case TimelineSearch.Comparison.Start:
                         if (this.TimeScaled < lookFor.Start)
@@ -377,11 +364,15 @@ namespace MpdParser.Node.Dynamic
                     case TimelineSearch.Comparison.Number:
                         res = (int)(this.Number - lookFor.Number);
                         break;
+                    default:
+                        // Manages "unsupported object"
+                        Logger.Debug($"{obj} {obj.GetType()} is unsupported. TimelineSearch only");
+                        break;
                 }
 
                 return res;
             }
-            #endregion
+
         }
 
         private ManifestParameters Parameters;
@@ -808,7 +799,7 @@ namespace MpdParser.Node.Dynamic
             var idx = Array.FindIndex<TimelineItemRep>(timelineAll_, timelineAvailable_.Offset,timelineAvailable_.Count,
                  i => ( i.TimeScaled <= durationSpan && i.TimeScaled + i.DurationScaled > durationSpan));
 
-            //var idx2 = Array.BinarySearch(timelineAll_, timelineAvailable_.Offset, timelineAvailable_.Count,
+            //var idx = Array.BinarySearch(timelineAll_, timelineAvailable_.Offset, timelineAvailable_.Count,
             //    new TimelineSearch(durationSpan, TimeSpan.Zero));
 
             if (idx < 0)
