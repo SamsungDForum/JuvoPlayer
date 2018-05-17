@@ -2,342 +2,350 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Text;
 using System.Threading.Tasks;
 using ImageSharp;
 using JuvoLogger;
+using JuvoPlayer.Common;
 using JuvoPlayer.OpenGL.Services;
+using JuvoPlayer.Utils;
 
 namespace JuvoPlayer.OpenGL
 {
-    internal unsafe partial class Program
+    internal unsafe class ResourceLoader
     {
-        class ResourceLoader // TODO(g.skowinski): With current logic the loading will never end if one element doesn't load. Leave it be or handle it?
+        public int TilesCount { get; private set; } = 0;
+        private int _tilesCountTarget = 0;
+        private Queue<Tile> _loadedTiles = new Queue<Tile>();
+
+        public int FontsCount { get; private set; } = 0;
+        private readonly int _fontsCountTarget = 1;
+        private Queue<Font> _loadedFonts = new Queue<Font>();
+
+        public int IconsCount { get; private set; } = 0;
+        private readonly int _iconsCountTarget = Icons.Length;
+        private Queue<Icon> _loadedIcons = new Queue<Icon>();
+
+        public List<DetailContentData> ContentList { get; private set; }
+
+        public ILogger Logger { private get; set; }
+
+        private static readonly Icon[] Icons =
         {
-            public int TilesNumber = 0;
-            private int _tilesNumberTarget = 0;
-            private Queue<Tile> _loadedTiles;
-
-            public int FontsNumber = 0;
-            private readonly int _fontsNumberTarget = 1;
-            private Queue<KeyValuePair<List<int>, byte[]>> _loadedFonts;
-
-            public int IconsNumber = 0;
-            private readonly int _iconsNumberTarget = Icons.Length;
-            private Queue<Icon> _loadedIcons;
-
-            public List<DetailContentData> ContentList { get; private set; }
-            private List<Clip> Clips { get; set; }
-
-            public ILogger Logger { private get; set; }
-
-            private static readonly Icon[] Icons =
+            new Icon
             {
-                new Icon
-                {
-                    Id = IconType.Play,
-                    ImgPath = "play.png"
-                },
-                new Icon
-                {
-                    Id = IconType.Resume,
-                    ImgPath = "resume.png"
-                },
-                new Icon
-                {
-                    Id = IconType.Stop,
-                    ImgPath = "stop.png"
-                },
-                new Icon
-                {
-                    Id = IconType.Pause,
-                    ImgPath = "pause.png"
-                },
-                new Icon
-                {
-                    Id = IconType.FastForward,
-                    ImgPath = "fast-forward.png"
-                },
-                new Icon
-                {
-                    Id = IconType.Rewind,
-                    ImgPath = "rewind.png"
-                },
-                new Icon
-                {
-                    Id = IconType.SkipToEnd,
-                    ImgPath = "skip-to-end.png"
-                },
-                new Icon
-                {
-                    Id = IconType.SkipToStart,
-                    ImgPath = "skip-to-start.png"
-                }
-            };
-
-            public void LoadResources(string fullExecutablePath, bool loadTestContentList = false)
+                Id = IconType.Play,
+                Image = new ImageData { Path = "play.png" }
+            },
+            new Icon
             {
-                var clipsFilePath =
-                    Path.Combine(fullExecutablePath, "shared", "res",
-                        loadTestContentList ? "testvideoclips.json" : "videoclips.json");
-                LoadContentList(clipsFilePath);
-
-                var resourcesDirPath = Path.Combine(fullExecutablePath, "res/");
-                InitLoadingFonts(resourcesDirPath);
-                InitLoadingTiles(resourcesDirPath);
-                InitLoadingIcons(resourcesDirPath);
+                Id = IconType.Resume,
+                Image = new ImageData { Path = "resume.png" }
+            },
+            new Icon
+            {
+                Id = IconType.Stop,
+                Image = new ImageData { Path = "stop.png" }
+            },
+            new Icon
+            {
+                Id = IconType.Pause,
+                Image = new ImageData { Path = "pause.png" }
+            },
+            new Icon
+            {
+                Id = IconType.FastForward,
+                Image = new ImageData { Path = "fast-forward.png" }
+            },
+            new Icon
+            {
+                Id = IconType.Rewind,
+                Image = new ImageData { Path = "rewind.png" }
+            },
+            new Icon
+            {
+                Id = IconType.SkipToEnd,
+                Image = new ImageData { Path = "skip-to-end.png" }
+            },
+            new Icon
+            {
+                Id = IconType.SkipToStart,
+                Image = new ImageData { Path = "skip-to-start.png" }
             }
+        };
 
-            private void LoadContentList(string filePath)
+        public void LoadResources(string fullExecutablePath, bool loadTestContentList = false)
+        {
+            var clipsFilePath =
+                Path.Combine(fullExecutablePath, "shared", "res",
+                    loadTestContentList ? "testvideoclips.json" : "videoclips.json");
+            LoadContentList(clipsFilePath);
+
+            var resourcesDirPath = Path.Combine(fullExecutablePath, "res");
+            InitLoadingFonts(resourcesDirPath);
+            InitLoadingTiles(resourcesDirPath);
+            InitLoadingIcons(resourcesDirPath);
+        }
+
+        private void LoadContentList(string filePath)
+        {
+            List<ClipDefinition> clips = JSONFileReader.DeserializeJsonFile<List<ClipDefinition>>(filePath).ToList();
+            ContentList = clips.Select(o => new DetailContentData()
             {
-                Clips = ClipReaderService.ReadClips(filePath);
-                ContentList = Clips.Select(o => new DetailContentData()
+                Bg = o.Poster,
+                Clip = o,
+                ContentFocusedCommand =  null,
+                Description = o.Description,
+                Image = o.Poster,
+                Source = o.Description,
+                Title = o.Title,
+            }).ToList();
+        }
+
+        private void InitLoadingFonts(string dirPath)
+        {
+            _loadedFonts = new Queue<Font>();
+            LoadFont(new Font() { Id = 0, FontPath = Path.Combine(dirPath, "fonts/akashi.ttf")});
+        }
+
+        private void InitLoadingTiles(string dirPath)
+        {
+            _loadedTiles = new Queue<Tile>();
+            _tilesCountTarget = ContentList.Count;
+            foreach (var contentItem in ContentList)
+            {
+                var tile = new Tile
                 {
-                    Bg = o.Image,
-                    Clip = o.ClipDetailsHandle,
-                    ContentFocusedCommand = null,
-                    Description = o.Description,
-                    Image = o.Image,
-                    Source = o.Source,
-                    Title = o.Title,
-                }).ToList();
+                    Image = new ImageData() { Path = Path.Combine(dirPath, "tiles", contentItem.Image) },
+                    Description = contentItem.Description ?? "",
+                    Name = contentItem.Title ?? "",
+                    Id = DllImports.AddTile()
+                };
+                LoadTile(tile);
             }
+        }
 
-            private void InitLoadingFonts(string dirPath)
+        private void InitLoadingIcons(string dirPath)
+        {
+            _loadedIcons = new Queue<Icon>();
+            for (var i = 0; i < Icons.Length; ++i)
             {
-                _loadedFonts = new Queue<KeyValuePair<List<int>, byte[]>>();
-                LoadFont(dirPath + "fonts/akashi.ttf");
+                Icons[i].Image.Path = Path.Combine(dirPath, "icons", Icons[i].Image.Path);
+                LoadIcon(Icons[i]);
             }
+        }
 
-            private void InitLoadingTiles(string dirPath)
+        private void LoadFont(Font font)
+        {
+            Task.Run(() =>
             {
-                _loadedTiles = new Queue<Tile>();
-                _tilesNumberTarget = ContentList.Count;
-                foreach (var contentItem in ContentList)
+                try
                 {
-                    var tile = new Tile
+                    using (var stream = File.OpenRead(font.FontPath))
                     {
-                        ImgPath = dirPath + "tiles/" + contentItem.Image,
-                        Description = contentItem.Description ?? "",
-                        Name = contentItem.Title ?? ""
-                    };
-                    LoadTile(tile);
-                }
-            }
+                        var fontData = new byte[stream.Length];
+                        stream.Read(fontData, 0, (int) stream.Length);
+                        lock (_loadedFonts)
+                        {
+                            font.FontData = fontData;
+                            _loadedFonts.Enqueue(font);
+                        }
 
-            private void InitLoadingIcons(string dirPath)
-            {
-                _loadedIcons = new Queue<Icon>();
-                for (var i = 0; i < Icons.Length; ++i)
+                        Logger?.Info("Loaded font: " + font.FontPath + " (" + fontData.Length + "b)");
+                    }
+                }
+                catch (Exception e)
                 {
-                    Icons[i].ImgPath = dirPath + "icons/" + Icons[i].ImgPath;
-                    LoadIcon(Icons[i]);
+                    Logger?.Info(e
+                        .ToString());
                 }
-            }
+            });
+        }
 
-            private void LoadFont(string file)
+        private void LoadTile(Tile tile)
+        {
+            Task.Run(() =>
             {
-                Task.Run(() =>
+                try
+                {
+                    using (var stream = File.OpenRead(tile.Image.Path))
+                    {
+                        var image = new Image(stream);
+                        var pixels = GetPixels(image, ColorSpace.RGB);
+
+                        tile.Image.Width = image.Width;
+                        tile.Image.Height = image.Height;
+                        tile.Image.Pixels = pixels;
+                        lock (_loadedTiles)
+                        {
+                            _loadedTiles.Enqueue(tile);
+                        }
+
+                        Logger?.Info("Loaded tile: " + tile.Image.Path + ": " + image.Width + "x" + image.Height + " = " + image.Pixels.Length + (image.IsAnimated ? " (" + image.Frames.Count + " frames)" : ""));
+                    }
+                }
+                catch (Exception e)
+                {
+                    Logger?.Info(e
+                        .ToString());
+                }
+            });
+        }
+
+        private void LoadIcon(Icon icon)
+        {
+            Task.Run(() =>
+            {
+                try
+                {
+                    using (var stream = File.OpenRead(icon.Image.Path))
+                    {
+                        var image = new Image(stream);
+                        var pixels = GetPixels(image, ColorSpace.RGBA);
+
+                        icon.Image.Width = image.Width;
+                        icon.Image.Height = image.Height;
+                        icon.Image.Pixels = pixels;
+                        lock (_loadedTiles)
+                        {
+                            _loadedIcons.Enqueue(icon);
+                        }
+
+                        Logger?.Info("Loaded icon: " + icon.Image.Path + ": " + image.Width + "x" + image.Height + " = " + image.Pixels.Length + (image.IsAnimated ? " (" + image.Frames.Count + " frames)" : ""));
+                    }
+                }
+                catch (Exception e)
+                {
+                    Logger?.Info(e
+                        .ToString());
+                }
+            });
+        }
+
+        private byte[] GetPixels(Image image, ColorSpace colorSpace)
+        {
+            int channels;
+            switch (colorSpace)
+            {
+                case ColorSpace.RGB:
+                    channels = 3;
+                    break;
+                case ColorSpace.RGBA:
+                    channels = 4;
+                    break;
+                default:
+                    Logger.Error("Wrong color space.");
+                    return new byte[] {};
+            }
+            var pixels = new byte[image.Pixels.Length * channels];
+            for (var i = 0; i < image.Pixels.Length; ++i)
+            {
+                pixels[channels * i + 0] = image.Pixels[i].R;
+                pixels[channels * i + 1] = image.Pixels[i].G;
+                pixels[channels * i + 2] = image.Pixels[i].B;
+                if(colorSpace == ColorSpace.RGBA)
+                    pixels[channels * i + 3] = image.Pixels[i].A;
+            }
+            return pixels;
+        }
+
+        public static byte[] GetBytes(string str)
+        {
+            return Encoding.ASCII.GetBytes(str);
+        }
+
+        public void LoadQueuedResources()
+        {
+            var resourcesTarget = _tilesCountTarget + _fontsCountTarget + _iconsCountTarget;
+            var resourcesLoaded = TilesCount + FontsCount + IconsCount;
+            if (resourcesLoaded >= resourcesTarget)
+                return;
+            LoadQueuedTiles();
+            LoadQueuedFonts();
+            LoadQueuedIcons();
+        }
+
+        private void LoadQueuedTiles()
+        {
+            lock (_loadedTiles)
+            {
+                while (_loadedTiles.Count > 0)
                 {
                     try
                     {
-                        using (var stream = File.OpenRead(file))
+                        var tile = _loadedTiles.Dequeue();
+                        fixed (byte* p = tile.Image.Pixels, name = GetBytes(tile.Name), desc = GetBytes(tile.Description))
                         {
-                            var font = new byte[stream.Length];
-                            stream.Read(font, 0, (int) stream.Length);
-                            lock (_loadedFonts)
-                            {
-                                _loadedFonts.Enqueue(
-                                    new KeyValuePair<List<int>, byte[]>(new List<int>(new int[] { }), font));
-                            }
-
-                            Logger?.Info("Loaded font: " + file + " (" + font.Length + "b)");
+                            DllImports.SetTileData(tile.Id, p, tile.Image.Width, tile.Image.Height, name, tile.Name.Length, desc, tile.Description.Length);
                         }
+
+                        ++TilesCount;
+                        UpdateLoader();
                     }
                     catch (Exception e)
                     {
-                        Logger?.Info(e
-                            .ToString());
+                        Logger?.Error(e.ToString());
                     }
-                });
+                }
             }
+        }
 
-            private void LoadTile(Tile tile)
+        private void LoadQueuedFonts()
+        {
+            lock (_loadedFonts)
             {
-                tile.Id = DllImports.AddTile();
-                Task.Run(() =>
+                while (_loadedFonts.Count > 0)
                 {
                     try
                     {
-                        using (var stream = File.OpenRead(tile.ImgPath))
+                        var font = _loadedFonts.Dequeue();
+                        fixed (byte* p = font.FontData)
                         {
-                            var image = new Image(stream);
-                            var pixels = new byte[image.Pixels.Length * 3];
-                            for (var i = 0; i < image.Pixels.Length; ++i)
-                            {
-                                pixels[3 * i + 0] = image.Pixels[i].R;
-                                pixels[3 * i + 1] = image.Pixels[i].G;
-                                pixels[3 * i + 2] = image.Pixels[i].B;
-                            }
-
-                            tile.ImgWidth = image.Width;
-                            tile.ImgHeight = image.Height;
-                            tile.ImgPixels = pixels;
-                            lock (_loadedTiles)
-                            {
-                                _loadedTiles.Enqueue(tile);
-                            }
-
-                            Logger?.Info("Loaded tile: " + tile.ImgPath + ": " + image.Width + "x" + image.Height +
-                                         " = " + image.Pixels.Length +
-                                         (image.IsAnimated ? " (" + image.Frames.Count + " frames)" : ""));
+                            DllImports.AddFont(p, font.FontData.Length);
                         }
+
+                        ++FontsCount;
+                        UpdateLoader();
                     }
                     catch (Exception e)
                     {
-                        Logger?.Info(e
-                            .ToString());
+                        Logger?.Error(e.ToString());
                     }
-                });
+                }
             }
+        }
 
-            private void LoadIcon(Icon icon)
+        private void LoadQueuedIcons()
+        {
+            lock (_loadedIcons)
             {
-                Task.Run(() =>
+                while (_loadedIcons.Count > 0)
                 {
                     try
                     {
-                        using (var stream = File.OpenRead(icon.ImgPath))
+                        var icon = _loadedIcons.Dequeue();
+                        fixed (byte* p = icon.Image.Pixels)
                         {
-                            var image = new Image(stream);
-                            var pixels = new byte[image.Pixels.Length * 4];
-                            for (var i = 0; i < image.Pixels.Length; ++i)
-                            {
-                                pixels[4 * i + 0] = image.Pixels[i].R;
-                                pixels[4 * i + 1] = image.Pixels[i].G;
-                                pixels[4 * i + 2] = image.Pixels[i].B;
-                                pixels[4 * i + 3] = image.Pixels[i].A;
-                            }
-
-                            icon.ImgWidth = image.Width;
-                            icon.ImgHeight = image.Height;
-                            icon.ImgPixels = pixels;
-                            lock (_loadedTiles)
-                            {
-                                _loadedIcons.Enqueue(icon);
-                            }
-
-                            Logger?.Info("Loaded icon: " + icon.ImgPath + ": " + image.Width + "x" + image.Height +
-                                         " = " + image.Pixels.Length +
-                                         (image.IsAnimated ? " (" + image.Frames.Count + " frames)" : ""));
+                            DllImports.SetIcon((int)icon.Id, p, icon.Image.Width, icon.Image.Height);
                         }
+
+                        ++IconsCount;
+                        UpdateLoader();
                     }
                     catch (Exception e)
                     {
-                        Logger?.Info(e
-                            .ToString());
-                    }
-                });
-            }
-
-            public static byte[] GetBytes(string str)
-            {
-                var a = new byte[str.Length];
-                for (var i = 0; i < str.Length; ++i)
-                    a[i] = (byte) str[i];
-                return a;
-            }
-
-            public void LoadQueuedResources()
-            {
-                var resourcesTarget = _tilesNumberTarget + _fontsNumberTarget + _iconsNumberTarget;
-                var resourcesLoaded = TilesNumber + FontsNumber + IconsNumber;
-                if (resourcesLoaded >= resourcesTarget)
-                    return;
-                lock (_loadedTiles)
-                {
-                    while (_loadedTiles.Count > 0)
-                    {
-                        try
-                        {
-                            var tile = _loadedTiles.Dequeue();
-                            fixed (byte* p = tile.ImgPixels)
-                            {
-                                fixed (byte* name = GetBytes(tile.Name))
-                                {
-                                    fixed (byte* desc = GetBytes(tile.Description))
-                                    {
-                                        DllImports.SetTileData(tile.Id, p, tile.ImgWidth, tile.ImgHeight, name,
-                                            tile.Name.Length, desc,
-                                            tile.Description.Length);
-                                    }
-                                }
-                            }
-
-                            ++TilesNumber;
-                            UpdateLoader();
-                        }
-                        catch (Exception e)
-                        {
-                            Logger?.Info(e
-                                .ToString());
-                        }
-                    }
-                }
-
-                lock (_loadedFonts)
-                {
-                    while (_loadedFonts.Count > 0)
-                    {
-                        try
-                        {
-                            var font = _loadedFonts.Dequeue();
-                            fixed (byte* p = font.Value)
-                            {
-                                DllImports.AddFont(p, font.Value.Length);
-                            }
-
-                            ++FontsNumber;
-                            UpdateLoader();
-                        }
-                        catch (Exception e)
-                        {
-                            Logger?.Info(e
-                                .ToString());
-                        }
-                    }
-                }
-
-                lock (_loadedIcons)
-                {
-                    while (_loadedIcons.Count > 0)
-                    {
-                        try
-                        {
-                            var icon = _loadedIcons.Dequeue();
-                            fixed (byte* p = icon.ImgPixels)
-                            {
-                                DllImports.SetIcon((int) icon.Id, p, icon.ImgWidth, icon.ImgHeight);
-                            }
-
-                            ++IconsNumber;
-                            UpdateLoader();
-                        }
-                        catch (Exception e)
-                        {
-                            Logger?.Info(e
-                                .ToString());
-                        }
+                        Logger?.Error(e.ToString());
                     }
                 }
             }
+        }
 
-            private void UpdateLoader()
-            {
-                var resourcesTarget = _tilesNumberTarget + _fontsNumberTarget + _iconsNumberTarget;
-                var resourcesLoaded = TilesNumber + FontsNumber + IconsNumber;
-                DllImports.ShowLoader(resourcesLoaded < resourcesTarget ? 1 : 0,
-                    resourcesTarget > 0 ? 100 * resourcesLoaded / resourcesTarget : 0);
-            }
+        private void UpdateLoader()
+        {
+            var resourcesTarget = _tilesCountTarget + _fontsCountTarget + _iconsCountTarget;
+            var resourcesLoaded = TilesCount + FontsCount + IconsCount;
+            DllImports.ShowLoader(resourcesLoaded < resourcesTarget ? 1 : 0,
+                resourcesTarget > 0 ? 100 * resourcesLoaded / resourcesTarget : 0);
         }
     }
 }
