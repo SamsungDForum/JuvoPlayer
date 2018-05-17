@@ -142,7 +142,7 @@ namespace JuvoPlayer.DataProviders.Dash
             }
 
             Logger.Info($"{streamType} Seek. Pos Req: {position} Seek to: {newTime} SegId: {segmentId}");
-            return TimeSpan.Zero;
+            return newTime;
         }
 
         public void Start()
