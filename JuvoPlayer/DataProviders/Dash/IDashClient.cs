@@ -16,12 +16,13 @@ using MpdParser;
 
 namespace JuvoPlayer.DataProviders.Dash
 {
-    internal interface IDashClient
+    internal interface IDashClient : IDisposable
     {
         TimeSpan Seek(TimeSpan position);
         void SetRepresentation(Representation representation);
         void Start();
         void Stop();
         void OnTimeUpdated(TimeSpan time);
+        void UpdateRepresentation(Representation representation);
     }
 }

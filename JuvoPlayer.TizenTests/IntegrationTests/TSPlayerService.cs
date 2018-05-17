@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Threading.Tasks;
 using JuvoPlayer.TizenTests.Utils;
 using NUnit.Framework;

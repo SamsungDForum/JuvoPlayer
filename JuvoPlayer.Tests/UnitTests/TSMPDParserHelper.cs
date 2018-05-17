@@ -993,7 +993,7 @@ namespace JuvoPlayer.Tests.UnitTests
                 item.MaximumSAPPeriod = input.maximumSAPPeriod;
 
             if (input.startWithSAPSpecified)
-                item.StartWithSAP = (int)input.startWithSAP;
+                item.StartWithSAP = input.startWithSAP;
 
             if (input.maxPlayoutRateSpecified)
                 item.MaxPlayoutRate = input.maxPlayoutRate;
