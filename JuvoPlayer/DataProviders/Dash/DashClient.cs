@@ -102,11 +102,11 @@ namespace JuvoPlayer.DataProviders.Dash
         /// DownloadSlotsAvailable accessor. Check if max concurrent segment download count
         /// exceeds number of items in download queue.
         /// </summary>
-        private bool DownloadSlotsAvailable
+        private bool DownloadSlotsFull
         {
             get
             {
-                return (downloadRequestPool.Count < maxSegmentDownloads);
+                return (downloadRequestPool.Count >= maxSegmentDownloads);
             }
         }
 
@@ -229,24 +229,47 @@ namespace JuvoPlayer.DataProviders.Dash
             TimeBufferDepth = currentStreams.GetDocumentParameters().Document.MinBufferTime ?? TimeBufferDepthDefault;
 
             uint? newSeg = null;
+            bool res = false;
+
+            // TODO:
+            // Add API to Representation - GetNextSegmentIdAtTime(). would allow for finding exixsting segment
+            // and verifying if next segment is valid / available without having to call MediaSegmentAtPos()
+            // which is heavy compared to internal data checks/
             if (lastRequestedPeriod != null)
             {
                 newSeg = currentStreams.MediaSegmentAtTime(lastRequestedPeriod.Start);
+
+                if (newSeg.HasValue)
+                {
+                    newSeg++;
+                    var tmp = currentStreams.MediaSegmentAtPos((uint)newSeg);
+                    if (tmp != null)
+                    {
+                        Logger.Info($"{streamType}: Rep. Swap. Last Seg: {currentSegmentId}/{lastRequestedPeriod.Start}-{lastRequestedPeriod.Duration} Updated Seg: {newSeg}/{tmp.Period.Start}-{tmp.Period.Duration}");
+                        res = true;
+                    }
+                    else
+                    {
+                        Logger.Info($"{streamType}: Rep. Swap. Last Seg: {currentSegmentId}/{lastRequestedPeriod.Start}-{lastRequestedPeriod.Duration} Does not return stream for Seg {newSeg}. Setting segment to null");
+                        newSeg = null;
+                    }
+                }
+                else
+                {
+                    Logger.Info($"{streamType}: Rep. Swap. Last Seg: {currentSegmentId}/{lastRequestedPeriod.Start}-{lastRequestedPeriod.Duration} Not Found. Setting segment to null");
+                }
+
             }
             else
             {
                 newSeg = currentStreams.GetStartSegment(currentTime, TimeBufferDepth);
+                Logger.Info($"{streamType}: Rep. Swap. Start Seg: {currentSegmentId}");
             }
 
-            if (newSeg.HasValue == false)
-            {
-                Logger.Warn($"{streamType}: Segment: {currentSegmentId} failed to refresh.");
-            }
-
-            currentSegmentId = newSeg + 1;
+            currentSegmentId = newSeg;
 
             Logger.Info($"{streamType}: Representations swapped.");
-            return true;
+            return res;
         }
 
         public void OnTimeUpdated(TimeSpan time)
@@ -358,9 +381,9 @@ namespace JuvoPlayer.DataProviders.Dash
                 }
 
                 // If underlying buffer is full & there are no download slots, wait for time update.
-                if (BufferFull == true || DownloadSlotsAvailable == false)
+                if (BufferFull == true || DownloadSlotsFull == true)
                 {
-                    WaitForUpdate($"Slots ({downloadRequestPool.Count}/{maxSegmentDownloads}) or Buffer Full ({bufferTime}-{currentTime}) {bufferTime - currentTime} > {TimeBufferDepth}.");
+                    WaitForUpdate($"Slots({DownloadSlotsFull}) ({downloadRequestPool.Count}/{maxSegmentDownloads}) or Buffer ({BufferFull}) ({bufferTime}-{currentTime}) {bufferTime - currentTime} > {TimeBufferDepth}.");
                     continue;
                 }
 
@@ -405,6 +428,7 @@ namespace JuvoPlayer.DataProviders.Dash
                 break;
             }
 
+            Logger.Info($"{streamType}: Playback Terminated");
             SendEOSEvent();
         }
         private void SendEOSEvent()
@@ -428,11 +452,6 @@ namespace JuvoPlayer.DataProviders.Dash
         private DownloadRequest CreateDownloadRequest(MpdParser.Node.Dynamic.Segment stream,
             bool ignoreError, Action<byte[], DownloadRequestData> downloadOK = null)
         {
-            if (DownloadSlotsAvailable == false)
-            {
-                return null;
-            }
-
             var requestData = new DownloadRequestData();
             requestData.DownloadSegment = stream;
             requestData.SegmentID = currentSegmentId;
