@@ -1,12 +1,12 @@
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Xml;
-using JuvoPlayer.Common;
 using JuvoLogger;
+using JuvoPlayer.Common;
 using JuvoPlayer.Demuxers;
 using JuvoPlayer.Drms.Cenc;
 using MpdParser;
-using System.Collections.Generic;
 
 namespace JuvoPlayer.DataProviders.Dash
 {
@@ -19,12 +19,13 @@ namespace JuvoPlayer.DataProviders.Dash
                 Media = media;
                 Representation = representation;
             }
-            public Media Media { get; private set; }
-            public Representation Representation { get; private set; }
+
+            public Media Media { get; }
+            public Representation Representation { get; }
 
             public override bool Equals(object obj)
             {
-                return obj is DashStream && Equals((DashStream)obj);
+                return obj is DashStream && Equals((DashStream) obj);
             }
 
             public bool Equals(DashStream other)
@@ -38,7 +39,8 @@ namespace JuvoPlayer.DataProviders.Dash
                 var hashCode = 1768762187;
                 hashCode = hashCode * -1521134295 + base.GetHashCode();
                 hashCode = hashCode * -1521134295 + EqualityComparer<Media>.Default.GetHashCode(Media);
-                hashCode = hashCode * -1521134295 + EqualityComparer<Representation>.Default.GetHashCode(Representation);
+                hashCode = hashCode * -1521134295 +
+                           EqualityComparer<Representation>.Default.GetHashCode(Representation);
                 return hashCode;
             }
         }
@@ -54,14 +56,13 @@ namespace JuvoPlayer.DataProviders.Dash
         /// Used in Trimming Packet Handler to truncate down PTS/DTS values.
         /// First packet seen acts as flip switch. Fill initial values or not.
         /// </summary>
-        private bool haveTrimPTSDTS = false;
-        private TimeSpan trimValuePTSDTS = TimeSpan.Zero;
+        private bool haveTrimPTSDTS;
 
         private readonly IDashClient dashClient;
         private readonly IDemuxer demuxer;
         private readonly StreamType streamType;
 
-        private bool demuxerFullyInitialized = false;
+        private bool demuxerFullyInitialized;
 
         private DashStream currentStream;
         private List<DashStream> availableStreams = new List<DashStream>();
@@ -72,7 +73,8 @@ namespace JuvoPlayer.DataProviders.Dash
 
         public DashMediaPipeline(IDashClient dashClient, IDemuxer demuxer, StreamType streamType)
         {
-            this.dashClient = dashClient ?? throw new ArgumentNullException(nameof(dashClient), "dashClient cannot be null");
+            this.dashClient = dashClient ??
+                              throw new ArgumentNullException(nameof(dashClient), "dashClient cannot be null");
             this.demuxer = demuxer ?? throw new ArgumentNullException(nameof(dashClient), "demuxer cannot be null");
             this.streamType = streamType;
 
@@ -82,8 +84,7 @@ namespace JuvoPlayer.DataProviders.Dash
         }
 
 
-
-        public void Start(IEnumerable<Media> media)
+        public void Start(IList<Media> media)
         {
             if (media == null)
                 throw new ArgumentNullException(nameof(media), "media cannot be null");
@@ -121,12 +122,12 @@ namespace JuvoPlayer.DataProviders.Dash
                 if (defaultMedia.Group.HasValue)
                 {
                     availableStreams = media.Where(o => o.Group == defaultMedia.Group)
-                                            .SelectMany(o => o.Representations, (parent, repr) => new DashStream(parent, repr)).ToList();
+                        .SelectMany(o => o.Representations, (parent, repr) => new DashStream(parent, repr)).ToList();
                 }
                 else
                 {
-                    availableStreams = defaultMedia.Representations.Select(o => new DashStream(defaultMedia, o)).ToList();
-
+                    availableStreams = defaultMedia.Representations.Select(o => new DashStream(defaultMedia, o))
+                        .ToList();
                 }
             }
             else
@@ -141,7 +142,7 @@ namespace JuvoPlayer.DataProviders.Dash
 
             Logger.Info($"{streamType}: Dash pipeline start.");
             Logger.Info($"{streamType}: Media: {newStream.Media}");
-            Logger.Info($"{streamType}: {newStream.Representation.ToString()}");
+            Logger.Info($"{streamType}: {newStream.Representation}");
 
             dashClient.SetRepresentation(newStream.Representation);
             ParseDrms(newStream.Media);
@@ -159,16 +160,15 @@ namespace JuvoPlayer.DataProviders.Dash
         {
             currentStream = newStream;
 
-            Logger.Info($"{streamType}: Manifest update. {newStream.Media} {newStream.Representation.ToString()}");
+            Logger.Info($"{streamType}: Manifest update. {newStream.Media} {newStream.Representation}");
 
             dashClient.UpdateRepresentation(newStream.Representation);
-
         }
 
-        private static Media GetDefaultMedia(IEnumerable<Media> medias)
+        private static Media GetDefaultMedia(IList<Media> medias)
         {
             Media media = null;
-            if (medias.Count() == 1)
+            if (medias.Count == 1)
                 media = medias.First();
             if (media == null)
                 media = medias.FirstOrDefault(o => o.HasRole(MediaRole.Main));
@@ -180,7 +180,7 @@ namespace JuvoPlayer.DataProviders.Dash
             return media;
         }
 
-        private MediaType ToMediaType(StreamType streamType)
+        private static MediaType ToMediaType(StreamType streamType)
         {
             switch (streamType)
             {
@@ -251,7 +251,7 @@ namespace JuvoPlayer.DataProviders.Dash
         public List<StreamDescription> GetStreamsDescription()
         {
             return availableStreams.Select((o, i) =>
-                new StreamDescription()
+                new StreamDescription
                 {
                     Id = i,
                     Description = CreateStreamDescription(o),
@@ -294,7 +294,7 @@ namespace JuvoPlayer.DataProviders.Dash
                     // read first node inner text (should be psshbox or pro header)
                     var initData = doc.FirstChild?.FirstChild?.InnerText;
 
-                    var drmInitData = new DRMInitData()
+                    var drmInitData = new DRMInitData
                     {
                         InitData = Convert.FromBase64String(initData),
                         SystemId = CencUtils.SchemeIdUriToSystemId(schemeIdUri),
@@ -302,7 +302,8 @@ namespace JuvoPlayer.DataProviders.Dash
                     };
                     DRMInitDataFound?.Invoke(drmInitData);
                 }
-                else if (string.Equals(schemeIdUri, "http://youtube.com/drm/2012/10/10", StringComparison.CurrentCultureIgnoreCase))
+                else if (string.Equals(schemeIdUri, "http://youtube.com/drm/2012/10/10",
+                    StringComparison.CurrentCultureIgnoreCase))
                 {
                     XmlDocument doc = new XmlDocument();
                     try
@@ -322,7 +323,7 @@ namespace JuvoPlayer.DataProviders.Dash
                         var type = node.Attributes?.GetNamedItem("type")?.Value;
                         if (CencUtils.SupportsType(type))
                         {
-                            var drmDescriptor = new DRMDescription()
+                            var drmDescriptor = new DRMDescription
                             {
                                 LicenceUrl = node.InnerText,
                                 Scheme = type
@@ -364,12 +365,13 @@ namespace JuvoPlayer.DataProviders.Dash
             if (laskSeek == TimeSpan.Zero)
             {
                 //Get very first PTS/DTS
-                if (haveTrimPTSDTS == false)
-                {
-                    // TimeSpan.Zero - Value is used rather then -Value for better "visibility"
-                    demuxerTimeStamp = TimeSpan.Zero - TimeSpan.FromTicks(Math.Min(packet.Pts.Ticks, packet.Dts.Ticks));
-                    haveTrimPTSDTS = true;
-                }
+                if (haveTrimPTSDTS)
+                    return;
+
+                // TimeSpan.Zero - Value is used rather then -Value for better "visibility"
+                demuxerTimeStamp = TimeSpan.Zero - TimeSpan.FromTicks(Math.Min(packet.Pts.Ticks, packet.Dts.Ticks));
+                haveTrimPTSDTS = true;
+
                 return;
             }
 
@@ -395,4 +397,3 @@ namespace JuvoPlayer.DataProviders.Dash
         }
     }
 }
-
