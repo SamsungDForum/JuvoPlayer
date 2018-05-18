@@ -7,7 +7,6 @@ using System.Threading;
 
 namespace JuvoPlayer.DataProviders.Dash
 {
-
     internal class DashManifest : IManifest
     {
         private const string Tag = "JuvoPlayer";
@@ -21,28 +20,20 @@ namespace JuvoPlayer.DataProviders.Dash
         public event ManifestChanged ManifestChanged;
         public Uri Uri { get; set; }
 
-        /// <summary>
-        /// Task as returned by TimerEvent responsible for 
-        /// MPD download and parsing.
-        /// Update activity is a Task responsible for calling update.
-        /// This is required - as update may call request for update so we need to "complete it"
-        /// </summary>
-
-        public Task reloadActivity;
         private Task updateActivity;
-        private static readonly int ReloadIdle = 0;
-        private static readonly int ReloadRunning = 1;
+
+        // int because Interlocked.CompareExchange doesn't support Enums
+        private const int ReloadIdle = 0;
+        private const int ReloadRunning = 1;
         private int reloadState = ReloadIdle;
 
-        public Task GetReloadManifestActivity
-        {
-            get { return reloadActivity; }
-        }
+        public Task GetReloadManifestActivity { get; private set; }
 
         public bool IsReloadInProgress
         {
-            get { return (reloadActivity?.Status < TaskStatus.RanToCompletion || updateActivity?.Status < TaskStatus.RanToCompletion); }
+            get { return (GetReloadManifestActivity?.Status < TaskStatus.RanToCompletion || updateActivity?.Status < TaskStatus.RanToCompletion); }
         }
+
         public DashManifest(string url)
         {
             Uri = new Uri(
@@ -51,7 +42,7 @@ namespace JuvoPlayer.DataProviders.Dash
 
         }
 
-        private string DownloadManifest()
+        private async Task<string> DownloadManifest()
         {
             Logger.Info($"Downloading Manifest {Uri}");
 
@@ -61,12 +52,13 @@ namespace JuvoPlayer.DataProviders.Dash
                 {
                     var startTime = DateTime.Now;
 
-                    HttpResponseMessage response = client.GetAsync(
-                        Uri,
-                        HttpCompletionOption.ResponseHeadersRead).Result;
+                    var response = await client.GetAsync(Uri, HttpCompletionOption.ResponseHeadersRead);
                     response.EnsureSuccessStatusCode();
+
                     Logger.Info($"Downloading Manifest Done in {DateTime.Now - startTime} {Uri}");
-                    return response.Content.ReadAsStringAsync().Result;
+
+                    var result = await response.Content.ReadAsStringAsync();
+                    return result;
                 }
                 catch (Exception ex)
                 {
@@ -101,45 +93,27 @@ namespace JuvoPlayer.DataProviders.Dash
         /// <summary>
         ///  Async method which works "as timer" for downloading MPD.
         /// </summary>
-        /// <param name="reloadSchedule">delay which is to be before a download</param>
         /// <returns></returns>
-        private async Task TimerEvent(DateTime reloadSchedule)
+        private async void ReloadManifestEvent()
         {
-            // If reloadTime is "now" or behing "now", do immediate schedule,
-            // otherwise use provided value. Trigger is "delay from now" so get different from now to 
-            // requested time in ms. Let's just hope different classes do not run in different 
-            // time zones :D
-            var reloadDelay = reloadSchedule - DateTime.UtcNow;
-
-            //TaskScheduler.
-            Logger.Info($"Manifest {Uri} reload in {reloadDelay}");
-
-            if (reloadDelay < TimeSpan.Zero)
-                reloadDelay = TimeSpan.Zero;
-
-
-            // Wait specified time
-            await Task.Delay(reloadDelay);
-
             var requestTime = DateTime.UtcNow;
-            var XmlManifest = DownloadManifest();
+            var xmlManifest = await DownloadManifest();
             var downloadTime = DateTime.UtcNow;
 
-            if (XmlManifest == null)
+            if (xmlManifest == null)
             {
                 Logger.Info($"Manifest download failure {Uri}");
                 OnManifestChanged(null);
                 return;
             }
 
-
-            var newDoc = ParseManifest(XmlManifest);
+            var newDoc = ParseManifest(xmlManifest);
             var parseTime = DateTime.UtcNow;
 
             // Should we reschedule in case of parse failure?
             if (newDoc == null)
             {
-                Logger.Info($"Manifest parse error {Uri}");
+                Logger.Error($"Manifest parse error {Uri}");
                 OnManifestChanged(null);
                 return;
             }
@@ -149,9 +123,9 @@ namespace JuvoPlayer.DataProviders.Dash
             newDoc.ParseCompleteTime = parseTime;
             reloadsRequired = newDoc.IsDynamic;
 
-            if (updateActivity?.Status < TaskStatus.RanToCompletion)
+            if (updateActivity?.IsCompleted == false)
             {
-                Logger.Info($"Waiting for previous Manifest update to complete");
+                Logger.Info("Waiting for previous Manifest update to complete");
                 await updateActivity;
             }
 
@@ -162,9 +136,9 @@ namespace JuvoPlayer.DataProviders.Dash
             reloadInfoPrinted = false;
 
             Interlocked.Exchange(ref reloadState, ReloadIdle);
-
         }
 
+        /// <inheritdoc />
         /// <summary>
         /// Reloads manifest at provided DateTime in UTC form.
         /// Internally, method checks for a difference between UtcNow and provided 
@@ -173,39 +147,44 @@ namespace JuvoPlayer.DataProviders.Dash
         /// </summary>
         /// <param name="reloadTime">Manifest Reload Time in UTC</param>
         /// <returns>Task - Current awaitable reload task, NULL, update has been scheduled</returns>
-        public bool ReloadManifest(DateTime reloadTime)
+        public void ReloadManifest(DateTime reloadTime)
         {
-
-            if (reloadsRequired == false)
+            if (!reloadsRequired)
             {
-                if (reloadInfoPrinted == false)
-                    Logger.Warn("Document Reload is disabled. Last Document loaded was static");
-
-                reloadInfoPrinted = true;
-                return false;
+                LogReloadMessage("Document Reload is disabled. Last Document loaded was static");
+                return;
             }
 
             var reloaderState = Interlocked.CompareExchange(ref reloadState, ReloadRunning, ReloadIdle);
             if (reloaderState != ReloadIdle)
             {
-                if (reloadInfoPrinted == false)
-                    Logger.Info("Document Reload in progress. Ignoring request");
-
-                reloadInfoPrinted = true;
-                return false;
+                LogReloadMessage("Document Reload in progress. Ignoring request");
+                return;
             }
 
             // There is no expectation of a scenario where
             // timer event is fired & someone plays with ReloadManifest.
             // as such no protections for now...
-            reloadActivity = Task.Run(() => TimerEvent(reloadTime));
+            var reloadDelay = reloadTime - DateTime.UtcNow;
+            if (reloadDelay < TimeSpan.Zero)
+                reloadDelay = TimeSpan.Zero;
 
-            return true;
+            Logger.Info($"Manifest {Uri} reload in {reloadDelay}");
+
+            GetReloadManifestActivity = Task.Delay(reloadDelay).ContinueWith(_ => ReloadManifestEvent());
         }
 
-        private void OnManifestChanged(Object newDoc)
+        private void LogReloadMessage(string message)
         {
-            // OnManifestChanged is called from TimerEvent.
+            if (reloadInfoPrinted == false)
+                Logger.Info(message);
+
+            reloadInfoPrinted = true;
+        }
+
+        private void OnManifestChanged(object newDoc)
+        {
+            // OnManifestChanged is called from ReloadManifestEvent.
             // Handler may call ReloadManifest which in turn checks if update
             // has completed. As such, handler has to run "separately"
             // 

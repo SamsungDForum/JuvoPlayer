@@ -16,12 +16,7 @@
 using System;
 using System.Threading.Tasks;
 using MpdParser;
-/// <summary>
-/// IManifest is a generic manifest interface for all non static manifest
-/// files (Dynamic DASH, Live HLS, etc.).
-/// Interface exposes a notification mechanism by which a manifest can inform
-/// listers that its content has changed.
-/// </summary>
+
 namespace JuvoPlayer.DataProviders
 {
     /// <summary>
@@ -31,6 +26,12 @@ namespace JuvoPlayer.DataProviders
     /// <param name="newDocument"></param>
     public delegate void ManifestChanged(Object newDocument);
 
+    /// <summary>
+    /// IManifest is a generic manifest interface for all non static manifest
+    /// files (Dynamic DASH, Live HLS, etc.).
+    /// Interface exposes a notification mechanism by which a manifest can inform
+    /// listers that its content has changed.
+    /// </summary>
     public interface IManifest
     {
         /// <summary>
@@ -46,8 +47,7 @@ namespace JuvoPlayer.DataProviders
         /// </summary>
         /// <param name="reloadTime">DateTime specifying when new Playback document is to be 
         /// downloaded. Speficying DateTime.Now will schedule it immediately.</param>
-        /// <returns>True - scheduled. False - not scheduled</returns>
-        bool ReloadManifest(DateTime reloadTime);
+        void ReloadManifest(DateTime reloadTime);
 
         /// <summary>
         /// Returns currently running Manifest reload activity. May be null if called
