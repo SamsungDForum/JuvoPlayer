@@ -17,8 +17,7 @@ namespace JuvoPlayer.OpenGL
         public static extern int AddTile();
 
         [DllImport(GlDemoLib, EntryPoint = "SetTileData")]
-        public static extern void SetTileData(int tileId, byte* pixels, int w, int h, byte* name, int nameLen,
-            byte* desc, int descLen);
+        public static extern void SetTileData(int tileId, byte* pixels, int w, int h, byte* name, int nameLen, byte* desc, int descLen);
 
         [DllImport(GlDemoLib, EntryPoint = "AddEmptyTile")]
         public static extern int AddEmptyTile();
@@ -39,8 +38,7 @@ namespace JuvoPlayer.OpenGL
         public static extern void ShowLoader(int enabled, int percent);
 
         [DllImport(GlDemoLib, EntryPoint = "UpdatePlaybackControls")]
-        public static extern void UpdatePlaybackControls(int show, int state, int currentTime, int totalTime,
-            byte* text, int textLen);
+        public static extern void UpdatePlaybackControls(int show, int state, int currentTime, int totalTime, byte* text, int textLen);
 
         [DllImport(GlDemoLib, EntryPoint = "SetIcon")]
         public static extern void SetIcon(int id, byte* pixels, int w, int h);
@@ -64,8 +62,7 @@ namespace JuvoPlayer.OpenGL
         public static extern int AddSuboption(int parentId, int id, byte* text, int textLen);
 
         [DllImport(GlDemoLib, EntryPoint = "UpdateSelection")]
-        public static extern int UpdateSelection(int show, int activeOptionId, int activeSuboptionId,
-            int selectedOptionId, int selectedSuboptionId);
+        public static extern int UpdateSelection(int show, int activeOptionId, int activeSuboptionId, int selectedOptionId, int selectedSuboptionId);
 
         [DllImport(GlDemoLib, EntryPoint = "ClearOptions")]
         public static extern void ClearOptions();

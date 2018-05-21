@@ -1,6 +1,6 @@
 ﻿namespace JuvoPlayer.OpenGL
 {
-    public enum PlayerState
+    public enum PlayerState // int values are passed down to native code
     {
         Error = -1,
         Idle = 0,

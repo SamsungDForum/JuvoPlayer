@@ -73,11 +73,9 @@ namespace JuvoPlayer.OpenGL
             }
         };
 
-        public void LoadResources(string fullExecutablePath, bool loadTestContentList = false)
+        public void LoadResources(string fullExecutablePath)
         {
-            var clipsFilePath =
-                Path.Combine(fullExecutablePath, "shared", "res",
-                    loadTestContentList ? "testvideoclips.json" : "videoclips.json");
+            var clipsFilePath = Path.Combine(fullExecutablePath, "shared", "res", "videoclips.json");
             LoadContentList(clipsFilePath);
 
             var resourcesDirPath = Path.Combine(fullExecutablePath, "res");

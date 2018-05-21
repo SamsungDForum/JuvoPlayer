@@ -18,13 +18,9 @@
     <None Remove="res\backgrounds\**" />
   </ItemGroup>
   <ItemGroup>
-    <None Remove="shared\res\testvideoclips.json" />
     <None Remove="shared\res\videoclips.json" />
   </ItemGroup>
   <ItemGroup>
-    <Content Include="shared\res\testvideoclips.json">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
     <Content Include="shared\res\videoclips.json">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>

@@ -5,16 +5,10 @@ using Tizen.TV.NUI.GLApplication;
 using System.Linq;
 using System.Threading.Tasks;
 
-// TODO: Separate parts of Program class code to individual classes as appropriate. https://bitbucket.sprc.samsung.pl/projects/PSW/repos/juvo-player/pull-requests/38/overview?commentId=691
-// TODO: Change "using StreamDescription = JuvoPlayer.OpenGL.Services.StreamDescription;" to JuvoPlayer.Common.StreamDescription in options menu (remove this Services part) https://bitbucket.sprc.samsung.pl/projects/PSW/repos/juvo-player/pull-requests/38/overview?commentId=716
-// TODO: Get rid of loading queues; Maybe create task for every item and later wait for all tasks to return results? But I still need to load resources to GPU from main thread, so instead of having queue of loaded resources we'd have queue of finished tasks containing loaded resources... https://bitbucket.sprc.samsung.pl/projects/PSW/repos/juvo-player/pull-requests/38/overview?commentId=676
-
 namespace JuvoPlayer.OpenGL
 {
     internal class Program : TVGLApplication
     {
-        private const bool LoadTestContentList = true;
-
         private readonly TimeSpan _prograssBarFadeout = TimeSpan.FromMilliseconds(5000);
         private readonly TimeSpan _defaultSeekTime = TimeSpan.FromSeconds(30);
         private readonly TimeSpan _defaultSeekAccumulateTime = TimeSpan.FromMilliseconds(1000);
@@ -52,7 +46,7 @@ namespace JuvoPlayer.OpenGL
             {
                 Logger = Logger
             };
-            _resourceLoader.LoadResources(Path.GetDirectoryName(Path.GetDirectoryName(Current.ApplicationInfo.ExecutablePath)), LoadTestContentList);
+            _resourceLoader.LoadResources(Path.GetDirectoryName(Path.GetDirectoryName(Current.ApplicationInfo.ExecutablePath)));
             _metrics = new Metrics();
             SetMenuFooter();
             SetupOptionsMenu();
@@ -356,7 +350,7 @@ namespace JuvoPlayer.OpenGL
             }
 
             _playerTimeCurrentPosition += seekTime;
-            UpdatePlaybackControls(); // TODO(g.skowinski): To fix: after seek command is sent, progress bar returns to current time and then after seek is executed, it jumps to correct time.
+            UpdatePlaybackControls();
         }
 
         private async void SeekBufferingTask()

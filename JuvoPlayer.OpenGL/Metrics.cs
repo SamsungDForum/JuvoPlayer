@@ -30,13 +30,13 @@ namespace JuvoPlayer.OpenGL
             _metricsShown = false;
         }
 
-        public unsafe void Show()
+        public void Show()
         {
             _metricsShown = true;
             UpdateState();
         }
 
-        public unsafe void Hide()
+        public void Hide()
         {
             _metricsShown = false;
             UpdateState();
@@ -47,7 +47,7 @@ namespace JuvoPlayer.OpenGL
             return _metricsShown;
         }
 
-        private unsafe void UpdateState()
+        private void UpdateState()
         {
             DllImports.SetGraphVisibility(DllImports.fpsGraphId, _metricsShown ? 1 : 0);
             if (_systemMemoryUsageGraphId > DllImports.fpsGraphId)
@@ -58,9 +58,9 @@ namespace JuvoPlayer.OpenGL
                 DllImports.SetGraphVisibility(_systemCpuUsageGraphId, _metricsShown ? 1 : 0);
         }
 
-        public unsafe void Update()
+        public void Update()
         {
-            try
+            try // updates throw exceptions on faliure
             {
                 if (_systemMemoryUsageGraphId > DllImports.fpsGraphId)
                 {
@@ -70,8 +70,8 @@ namespace JuvoPlayer.OpenGL
 
                 if (_systemCpuUsageGraphId > DllImports.fpsGraphId)
                 {
-                    _systemCpuUsage.Update();
-                    DllImports.UpdateGraphValue(_systemCpuUsageGraphId, (float) (_systemCpuUsage.User + _systemCpuUsage.Nice + _systemCpuUsage.System)); // top -n1 => (us + sy + ni)
+                    _systemCpuUsage.Update(); // underlying code is broken - it takes only one sample from /proc/stat, so it's giving average load from system boot till now (like "top -n1" => us + sy + ni)
+                    DllImports.UpdateGraphValue(_systemCpuUsageGraphId, (float) (_systemCpuUsage.User + _systemCpuUsage.Nice + _systemCpuUsage.System));
                 }
             }
             catch
