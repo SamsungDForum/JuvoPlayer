@@ -11,14 +11,12 @@ using JuvoPlayer.Drms.Cenc;
 using JuvoPlayer.Drms.DummyDrm;
 using JuvoPlayer.Player;
 using JuvoPlayer.Player.SMPlayer;
-using StreamDefinition = JuvoPlayer.OpenGL.Services.StreamDescription;
-using StreamType = JuvoPlayer.OpenGL.Services.StreamDescription.StreamType;
 
-namespace JuvoPlayer.OpenGL.Services
+namespace JuvoPlayer.OpenGL
 {
-    public delegate void PlayerStateChangedEventHandler(object sender, PlayerStateChangedEventArgs e);
+    public delegate void PlayerStateChangedEventHandler(object sender, PlayerState playerState);
 
-    class PlayerService
+    class Player
     {
         private IDataProvider dataProvider;
         private IPlayerController playerController;
@@ -40,13 +38,13 @@ namespace JuvoPlayer.OpenGL.Services
             private set
             {
                 playerState = value;
-                StateChanged?.Invoke(this, new PlayerStateChangedEventArgs(playerState));
+                StateChanged?.Invoke(this, playerState);
             }
         }
 
         public string CurrentCueText => dataProvider?.CurrentCue?.Text;
 
-        public PlayerService()
+        public Player()
         {
             dataProviders = new DataProviderFactoryManager();
             dataProviders.RegisterDataProviderFactory(new DashDataProviderFactory());
@@ -75,13 +73,13 @@ namespace JuvoPlayer.OpenGL.Services
             playerController.OnSeek(to);
         }
 
-        public void ChangeActiveStream(StreamDefinition stream)
+        public void ChangeActiveStream(StreamDescription stream)
         {
-            var streamDescription = new JuvoPlayer.Common.StreamDescription()
+            var streamDescription = new StreamDescription()
             {
                 Id = stream.Id,
                 Description = stream.Description,
-                StreamType = ToJuvoStreamType(stream.Type)
+                StreamType = stream.StreamType
             };
 
             dataProvider.OnChangeActiveStream(streamDescription);
@@ -89,35 +87,20 @@ namespace JuvoPlayer.OpenGL.Services
 
         public void DeactivateStream(StreamType streamType)
         {
-            dataProvider.OnDeactivateStream(ToJuvoStreamType(streamType));
+            dataProvider.OnDeactivateStream(streamType);
         }
 
-        public List<StreamDefinition> GetStreamsDescription(StreamType streamType)
+        public List<StreamDescription> GetStreamsDescription(StreamType streamType)
         {
-            var streams = dataProvider.GetStreamsDescription(ToJuvoStreamType(streamType));
+            var streams = dataProvider.GetStreamsDescription(streamType);
             return streams.Select(o =>
-                new StreamDefinition()
+                new StreamDescription()
                 {
                     Id = o.Id,
                     Description = o.Description,
                     Default = o.Default,
-                    Type = ToStreamType(o.StreamType)
+                    StreamType = ToStreamType(o.StreamType)
                 }).ToList();
-        }
-
-        private JuvoPlayer.Common.StreamType ToJuvoStreamType(StreamType streamType)
-        {
-            switch (streamType)
-            {
-                case StreamType.Audio:
-                    return JuvoPlayer.Common.StreamType.Audio;
-                case StreamType.Video:
-                    return JuvoPlayer.Common.StreamType.Video;
-                case StreamType.Subtitle:
-                    return JuvoPlayer.Common.StreamType.Subtitle;
-                default:
-                    throw new IndexOutOfRangeException();
-            }
         }
 
         private StreamType ToStreamType(JuvoPlayer.Common.StreamType streamType)
@@ -135,17 +118,12 @@ namespace JuvoPlayer.OpenGL.Services
             }
         }
 
-        public void SetSource(object o)
+        public void SetSource(ClipDefinition clip)
         {
-            if (!(o is ClipDefinition))
-                return;
-            var clip = o as ClipDefinition;
-
             DataProviderConnector.Disconnect(playerController, dataProvider);
 
             dataProvider = dataProviders.CreateDataProvider(clip);
 
-            // TODO(p.galiszewsk) rethink!
             if (clip.DRMDatas != null)
             {
                 foreach (var drm in clip.DRMDatas)

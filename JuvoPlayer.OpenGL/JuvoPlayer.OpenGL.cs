@@ -1,7 +1,6 @@
 ﻿using System;
 using System.IO;
 using JuvoLogger;
-using JuvoPlayer.OpenGL.Services;
 using Tizen.TV.NUI.GLApplication;
 using System.Linq;
 using System.Threading.Tasks;
@@ -25,7 +24,7 @@ namespace JuvoPlayer.OpenGL
         private bool _isMenuShown;
         private bool _progressBarShown;
 
-        private PlayerService _player;
+        private Player _player;
         private TimeSpan _playerTimeCurrentPosition;
         private TimeSpan _playerTimeDuration;
         private bool _playbackCompletedNeedsHandling;
@@ -263,8 +262,8 @@ namespace JuvoPlayer.OpenGL
         {
             if (_player == null)
             {
-                _player = new PlayerService();
-                _player.StateChanged += (object sender, PlayerStateChangedEventArgs e) =>
+                _player = new Player();
+                _player.StateChanged += (object sender, PlayerState playerState) =>
                 {
                     Logger?.Info("Player state changed: " + _player.State);
                     if (_player.State == PlayerState.Prepared)
@@ -274,8 +273,8 @@ namespace JuvoPlayer.OpenGL
                 };
             }
 
-            Logger?.Info("Playing " + _resourceLoader.ContentList[_selectedTile].Title + " (" + _resourceLoader.ContentList[_selectedTile].Source + ")");
-            _player.SetSource(_resourceLoader.ContentList[_selectedTile].Clip);
+            Logger?.Info("Playing " + _resourceLoader.ContentList[_selectedTile].Title + " (" + _resourceLoader.ContentList[_selectedTile].Url + ")");
+            _player.SetSource(_resourceLoader.ContentList[_selectedTile]);
             _options.LoadStreamLists(_player);
             _seekBufferingInProgress = false;
         }
