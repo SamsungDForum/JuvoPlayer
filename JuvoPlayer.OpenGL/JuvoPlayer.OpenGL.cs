@@ -5,19 +5,10 @@ using JuvoPlayer.OpenGL.Services;
 using Tizen.TV.NUI.GLApplication;
 using System.Linq;
 using System.Threading.Tasks;
-using Tizen.System;
 
 // TODO: Separate parts of Program class code to individual classes as appropriate. https://bitbucket.sprc.samsung.pl/projects/PSW/repos/juvo-player/pull-requests/38/overview?commentId=691
 // TODO: Change "using StreamDescription = JuvoPlayer.OpenGL.Services.StreamDescription;" to JuvoPlayer.Common.StreamDescription in options menu (remove this Services part) https://bitbucket.sprc.samsung.pl/projects/PSW/repos/juvo-player/pull-requests/38/overview?commentId=716
 // TODO: Get rid of loading queues; Maybe create task for every item and later wait for all tasks to return results? But I still need to load resources to GPU from main thread, so instead of having queue of loaded resources we'd have queue of finished tasks containing loaded resources... https://bitbucket.sprc.samsung.pl/projects/PSW/repos/juvo-player/pull-requests/38/overview?commentId=676
-
-// TODO: Handle key name strings from other remotes https://bitbucket.sprc.samsung.pl/projects/PSW/repos/juvo-player/pull-requests/38/overview?commentId=725
-// TODO: Investigate a way to "properly" pass objects/structures containing containing byte arrays to native code https://bitbucket.sprc.samsung.pl/projects/PSW/repos/juvo-player/pull-requests/38/overview?commentId=683
-// TODO: Handle resource loading failure in a way that does not cause loading to loop indefinetely https://bitbucket.sprc.samsung.pl/projects/PSW/repos/juvo-player/pull-requests/38/overview?commentId=688
-// TODO: Make code styling consistent with the rest of the solution https://bitbucket.sprc.samsung.pl/projects/PSW/repos/juvo-player/pull-requests/38/overview?commentId=694
-// TODO: Find a way to refactor extern methods so passing a struct is possible instead of passing multiple arguments (solve byte* passing problem)
-// TODO: Use JuvoPlayer.TizenTests.Utils.Paths class (move it to common) instead of Path.GetDirectoryName train wreck. https://bitbucket.sprc.samsung.pl/projects/PSW/repos/juvo-player/pull-requests/38/overview?commentId=721
-// TODO: Decide on whether move all event handling logic to C++ library (so e.g. UI appearance change does not require change in both - C# and C++ - modules).
 
 namespace JuvoPlayer.OpenGL
 {
@@ -33,7 +24,6 @@ namespace JuvoPlayer.OpenGL
         private int _selectedTile;
         private bool _isMenuShown;
         private bool _progressBarShown;
-        private bool _metricsShown;
 
         private PlayerService _player;
         private TimeSpan _playerTimeCurrentPosition;
@@ -44,14 +34,12 @@ namespace JuvoPlayer.OpenGL
 
         private OptionsMenu _options;
         private ResourceLoader _resourceLoader;
+        private Metrics _metrics;
 
         private TimeSpan _accumulatedSeekTime;
         private DateTime _lastSeekTime;
         private bool _seekBufferingInProgress = false;
         private static readonly object _seekLock = new object();
-
-        private SystemMemoryUsage _systemMemoryUsage = new SystemMemoryUsage();
-        private int _systemMemoryUsageGraphId = -1;
 
         protected override void OnCreate()
         {
@@ -66,19 +54,10 @@ namespace JuvoPlayer.OpenGL
                 Logger = Logger
             };
             _resourceLoader.LoadResources(Path.GetDirectoryName(Path.GetDirectoryName(Current.ApplicationInfo.ExecutablePath)), LoadTestContentList);
-            SetupMetrics();
+            _metrics = new Metrics();
             SetMenuFooter();
             SetupOptionsMenu();
             SetDefaultMenuState();
-        }
-
-        private unsafe void SetupMetrics()
-        {
-            string tag = "MEM";
-            fixed (byte* name = ResourceLoader.GetBytes(tag))
-                _systemMemoryUsageGraphId = DllImports.AddGraph(name, tag.Length, 0, (float)_systemMemoryUsage.Total / 1024, 100);
-            if (_systemMemoryUsageGraphId > DllImports.fpsGraphId)
-                DllImports.SetGraphVisibility(_systemMemoryUsageGraphId, _metricsShown ? 1 : 0);
         }
 
         private unsafe void SetMenuFooter()
@@ -104,7 +83,7 @@ namespace JuvoPlayer.OpenGL
             _playerTimeDuration = TimeSpan.Zero;
             _playbackCompletedNeedsHandling = false;
 
-            _metricsShown = false;
+            _metrics.Hide();
         }
 
         private void SetupOptionsMenu()
@@ -140,50 +119,50 @@ namespace JuvoPlayer.OpenGL
             {
                 HandleKeyReturn();
             }
-            else if(key.KeyPressedName.Contains("XF86Back"))
+            else if(key.KeyPressedName.Contains("Back"))
             {
                 HandleKeyBack();
             }
-            else if(key.KeyPressedName.Contains("XF86Exit"))
+            else if(key.KeyPressedName.Contains("Exit"))
             {
                 HandleKeyExit();
             }
-            else if(key.KeyPressedName.Contains("XF863XSpeed"))
+            else if(key.KeyPressedName.Contains("Play") || key.KeyPressedName.Contains("3XSpeed"))
             {
                 HandleKeyPlay();
             }
-            else if(key.KeyPressedName.Contains("XF86AudioPause"))
+            else if(key.KeyPressedName.Contains("Pause"))
             {
                 HandleKeyPause();
             }
-            else if(key.KeyPressedName.Contains("XF863D"))
+            else if(key.KeyPressedName.Contains("Stop") || key.KeyPressedName.Contains("3D"))
             {
                 HandleKeyStop();
             }
-            else if(key.KeyPressedName.Contains("XF86AudioRewind"))
+            else if(key.KeyPressedName.Contains("Rewind"))
             {
                 HandleKeyRewind();
             }
-            else if (key.KeyPressedName.Contains("XF86AudioNext"))
+            else if (key.KeyPressedName.Contains("Next"))
             {
                 HandleKeySeekForward();
             }
-            else if(key.KeyPressedName.Contains("XF86Red"))
+            else if(key.KeyPressedName.Contains("Red"))
             {
-                _metricsShown = !_metricsShown;
-                DllImports.SetGraphVisibility(DllImports.fpsGraphId, _metricsShown ? 1 : 0);
-                if (_systemMemoryUsageGraphId > DllImports.fpsGraphId)
-                    DllImports.SetGraphVisibility(_systemMemoryUsageGraphId, _metricsShown ? 1 : 0);
+                if(_metrics.IsShown())
+                    _metrics.Hide();
+                else
+                    _metrics.Show();
             }
-            else if(key.KeyPressedName.Contains("XF86Green"))
+            else if(key.KeyPressedName.Contains("Green"))
             {
                 ShowMenu(!_isMenuShown);
             }
-            else if(key.KeyPressedName.Contains("XF86Yellow"))
+            else if(key.KeyPressedName.Contains("Yellow"))
             {
                 DllImports.SwitchTextRenderingMode();
             }
-            else if(key.KeyPressedName.Contains("XF86Blue"))
+            else if(key.KeyPressedName.Contains("Blue"))
             {
             }
             else
@@ -472,6 +451,11 @@ namespace JuvoPlayer.OpenGL
             _seekBufferingInProgress = false;
         }
 
+        private void UpdateMetrics()
+        {
+            _metrics.Update();
+        }
+
         private unsafe void UpdatePlaybackControls()
         {
             if (_seekBufferingInProgress == false)
@@ -487,15 +471,6 @@ namespace JuvoPlayer.OpenGL
             fixed (byte* name = ResourceLoader.GetBytes(_resourceLoader.ContentList[_selectedTile].Title))
                 DllImports.UpdatePlaybackControls(_progressBarShown ? 1 : 0, (int)(_player?.State ?? PlayerState.Idle), (int)_playerTimeCurrentPosition.TotalMilliseconds,
                     (int)_playerTimeDuration.TotalMilliseconds, name, _resourceLoader.ContentList[_selectedTile].Title.Length);
-        }
-
-        private void UpdateMetrics()
-        {
-            if (_systemMemoryUsageGraphId > DllImports.fpsGraphId)
-            {
-                _systemMemoryUsage.Update();
-                DllImports.UpdateGraphValue(_systemMemoryUsageGraphId, (float)_systemMemoryUsage.Used / 1024);
-            }
         }
 
         private void UpdateUI()

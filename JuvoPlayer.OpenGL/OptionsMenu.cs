@@ -2,6 +2,8 @@
 using JuvoLogger;
 using JuvoPlayer.OpenGL.Services;
 using StreamDescription = JuvoPlayer.OpenGL.Services.StreamDescription;
+//using StreamDescription = JuvoPlayer.Common.StreamDescription;
+//using StreamType = JuvoPlayer.Common.StreamType;
 
 namespace JuvoPlayer.OpenGL
 {

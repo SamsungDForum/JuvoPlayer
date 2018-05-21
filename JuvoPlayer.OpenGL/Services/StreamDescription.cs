@@ -1,8 +1,8 @@
 ﻿namespace JuvoPlayer.OpenGL.Services
 {
-    public class StreamDescription
+    public class StreamDescription // TODO(g.skowinski): Use JuvoPlayer.Common.StreamDescription; instead
     {
-        public enum StreamType
+        public enum StreamType // TODO(g.skowinski): Use JuvoPlayer.Common.StreamType instead
         {
             Audio,
             Video,
