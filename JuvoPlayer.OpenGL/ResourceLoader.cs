@@ -7,7 +7,6 @@ using System.Threading.Tasks;
 using ImageSharp;
 using JuvoLogger;
 using JuvoPlayer.Common;
-using JuvoPlayer.OpenGL.Services;
 using JuvoPlayer.Utils;
 
 namespace JuvoPlayer.OpenGL
@@ -26,7 +25,7 @@ namespace JuvoPlayer.OpenGL
         private readonly int _iconsCountTarget = Icons.Length;
         private Queue<Icon> _loadedIcons = new Queue<Icon>();
 
-        public List<DetailContentData> ContentList { get; private set; }
+        public List<ClipDefinition> ContentList { get; private set; }
 
         public ILogger Logger { private get; set; }
 
@@ -89,17 +88,7 @@ namespace JuvoPlayer.OpenGL
 
         private void LoadContentList(string filePath)
         {
-            List<ClipDefinition> clips = JSONFileReader.DeserializeJsonFile<List<ClipDefinition>>(filePath).ToList();
-            ContentList = clips.Select(o => new DetailContentData()
-            {
-                Bg = o.Poster,
-                Clip = o,
-                ContentFocusedCommand =  null,
-                Description = o.Description,
-                Image = o.Poster,
-                Source = o.Description,
-                Title = o.Title,
-            }).ToList();
+            ContentList = JSONFileReader.DeserializeJsonFile<List<ClipDefinition>>(filePath).ToList();
         }
 
         private void InitLoadingFonts(string dirPath)
@@ -116,7 +105,7 @@ namespace JuvoPlayer.OpenGL
             {
                 var tile = new Tile
                 {
-                    Image = new ImageData() { Path = Path.Combine(dirPath, "tiles", contentItem.Image) },
+                    Image = new ImageData() { Path = Path.Combine(dirPath, "tiles", contentItem.Poster) },
                     Description = contentItem.Description ?? "",
                     Name = contentItem.Title ?? "",
                     Id = DllImports.AddTile()

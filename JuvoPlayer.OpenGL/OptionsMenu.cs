@@ -1,9 +1,6 @@
 ﻿using System.Collections.Generic;
 using JuvoLogger;
-using JuvoPlayer.OpenGL.Services;
-using StreamDescription = JuvoPlayer.OpenGL.Services.StreamDescription;
-//using StreamDescription = JuvoPlayer.Common.StreamDescription;
-//using StreamType = JuvoPlayer.Common.StreamType;
+using JuvoPlayer.Common;
 
 namespace JuvoPlayer.OpenGL
 {
@@ -20,24 +17,24 @@ namespace JuvoPlayer.OpenGL
         private class StreamDescriptionsList
         {
             public List<StreamDescription> Descriptions;
-            public StreamDescription.StreamType StreamType;
+            public StreamType StreamType;
             public int Active;
             public int Id;
 
-            public StreamDescriptionsList(StreamDescription.StreamType streamType, int id)
+            public StreamDescriptionsList(StreamType streamType, int id)
             {
                 Id = id;
                 StreamType = streamType;
                 Active = -1;
                 Descriptions = new List<StreamDescription>();
-                if (streamType == StreamDescription.StreamType.Subtitle)
+                if (streamType == StreamType.Subtitle)
                 {
                     Descriptions.Add(new StreamDescription()
                     {
                         Default = true,
                         Description = "off",
                         Id = 0,
-                        Type = StreamDescription.StreamType.Subtitle
+                        StreamType = StreamType.Subtitle
                     });
                 }
             }
@@ -47,7 +44,7 @@ namespace JuvoPlayer.OpenGL
 
         public ILogger Logger { private get; set; }
 
-        public void LoadStreamLists(PlayerService player)
+        public void LoadStreamLists(Player player)
         {
             ClearOptionsMenu();
 
@@ -55,7 +52,7 @@ namespace JuvoPlayer.OpenGL
                 return;
 
             SubtitlesOn = false;
-            foreach (var streamType in new[] { StreamDescription.StreamType.Video, StreamDescription.StreamType.Audio, StreamDescription.StreamType.Subtitle })
+            foreach (var streamType in new[] { StreamType.Video, StreamType.Audio, StreamType.Subtitle })
             {
                 var streamDescriptionsList = new StreamDescriptionsList(streamType, _streams.Count);
                 streamDescriptionsList.Descriptions.AddRange(player.GetStreamsDescription(streamType));
@@ -66,18 +63,18 @@ namespace JuvoPlayer.OpenGL
             SetDefaultState();
         }
 
-        private void AddSubmenu(StreamDescriptionsList streamDescriptionsList, StreamDescription.StreamType streamType)
+        private void AddSubmenu(StreamDescriptionsList streamDescriptionsList, StreamType streamType)
         {
             fixed (byte* text = ResourceLoader.GetBytes(streamDescriptionsList.StreamType.ToString()))
                 DllImports.AddOption(streamDescriptionsList.Id, text, streamDescriptionsList.StreamType.ToString().Length);
             for (int id = 0; id < streamDescriptionsList.Descriptions.Count; ++id)
             {
                 var s = streamDescriptionsList.Descriptions[id];
-                Logger?.Info("stream.Description=\"" + s.Description + "\", stream.Id=\"" + s.Id + "\", stream.Type=\"" + s.Type + "\", stream.Default=\"" + s.Default + "\"");
+                Logger?.Info("stream.Description=\"" + s.Description + "\", stream.Id=\"" + s.Id + "\", stream.Type=\"" + s.StreamType + "\", stream.Default=\"" + s.Default + "\"");
                 if (s.Default)
                 {
                     streamDescriptionsList.Active = id;
-                    if (streamType == StreamDescription.StreamType.Subtitle)
+                    if (streamType == StreamType.Subtitle)
                         SubtitlesOn = true;
                 }
                 fixed (byte* text = ResourceLoader.GetBytes(s.Description))
@@ -170,21 +167,21 @@ namespace JuvoPlayer.OpenGL
             UpdateOptionsSelection();
         }
 
-        public void ControlSelect(PlayerService player)
+        public void ControlSelect(Player player)
         {
             int selectedStreamTypeIndex = _selectedOption;
             int selectedStreamIndex = _selectedSuboption;
 
             if (selectedStreamIndex >= 0 && selectedStreamIndex < _streams[selectedStreamTypeIndex].Descriptions.Count)
             {
-                if (_streams[selectedStreamTypeIndex].Descriptions[selectedStreamIndex].Type == StreamDescription.StreamType.Subtitle && selectedStreamIndex == 0) // special subtitles:off suboption
+                if (_streams[selectedStreamTypeIndex].Descriptions[selectedStreamIndex].StreamType == StreamType.Subtitle && selectedStreamIndex == 0) // special subtitles:off suboption
                 {
                     SubtitlesOn = false;
-                    player.DeactivateStream(StreamDescription.StreamType.Subtitle);
+                    player.DeactivateStream(StreamType.Subtitle);
                 }
                 else
                 {
-                    if (_streams[selectedStreamTypeIndex].Descriptions[selectedStreamIndex].Type == StreamDescription.StreamType.Subtitle)
+                    if (_streams[selectedStreamTypeIndex].Descriptions[selectedStreamIndex].StreamType == StreamType.Subtitle)
                         SubtitlesOn = true;
                     player.ChangeActiveStream(_streams[selectedStreamTypeIndex].Descriptions[selectedStreamIndex]);
                 }
