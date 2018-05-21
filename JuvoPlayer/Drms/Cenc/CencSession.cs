@@ -1,6 +1,7 @@
 using System;
 using System.IO;
 using System.Linq;
+using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Runtime.InteropServices;
@@ -28,7 +29,8 @@ namespace JuvoPlayer.Drms.Cenc
         private readonly DRMDescription drmDescription;
         private readonly AsyncContextThread thread = new AsyncContextThread();
         private Task initializationTask;
-        private bool isDisposing;
+        private CancellationTokenSource cancellationTokenSource;
+        private TaskCompletionSource<object> requestDataEventReceived;
 
         private CencSession(DRMInitData initData, DRMDescription drmDescription)
         {
@@ -57,9 +59,16 @@ namespace JuvoPlayer.Drms.Cenc
 
         public override void Dispose()
         {
-            isDisposing = true;
+            cancellationTokenSource?.Cancel();
+            try
+            {
+                initializationTask?.Wait();
+            }
+            catch (Exception)
+            {
+                // ignored, client can be notified about failures by awaiting task returned in Initialize() 
+            }
 
-            initializationTask?.Wait();
             thread.Factory.Run(() => DestroyCDM()).Wait(); //will do nothing on a disposed AsyncContextThread
             thread.Dispose();
             base.Dispose();
@@ -206,6 +215,7 @@ namespace JuvoPlayer.Drms.Cenc
                 case MessageType.kIndividualizationRequest:
                 {
                     requestData = Encoding.GetEncoding(437).GetBytes(message);
+                    requestDataEventReceived?.TrySetResult(null);
                     break;
                 }
                 default:
@@ -224,38 +234,38 @@ namespace JuvoPlayer.Drms.Cenc
         {
         }
 
-        private void CancelIfDisposing()
-        {
-            if (isDisposing)
-                throw new TaskCanceledException();
-        }
-
         public Task Initialize()
         {
-            initializationTask = thread.Factory.Run(() => StartLicenceChallengeOnIemeThread());
+            if (initializationTask != null)
+                throw new InvalidOperationException("Initialize in progress");
+
+            cancellationTokenSource = new CancellationTokenSource();
+            initializationTask = thread.Factory.Run(DoLicenceChallengeOnIemeThread);
             return initializationTask;
         }
 
-        private void StartLicenceChallengeOnIemeThread()
+        private async Task DoLicenceChallengeOnIemeThread()
         {
-            try
-            {
-                CreateIeme();
-                currentSessionId = CreateSession();
-                Logger.Info("Created session: " + currentSessionId);
-                GenerateRequest();
+            var cancellationToken = cancellationTokenSource.Token;
 
-                var responseText = AcquireLicenceFromServer();
-                InstallLicence(responseText);
-                licenceInstalled = true;
-            }
-            catch (TaskCanceledException) { }
+            CreateIeme();
+            cancellationToken.ThrowIfCancellationRequested();
+
+            currentSessionId = CreateSession();
+            cancellationToken.ThrowIfCancellationRequested();
+
+            await GenerateRequest();
+            cancellationToken.ThrowIfCancellationRequested();
+
+            var responseText = await AcquireLicenceFromServer();
+            cancellationToken.ThrowIfCancellationRequested();
+
+            InstallLicence(responseText);
+            licenceInstalled = true;
         }
 
         private void CreateIeme()
         {
-            CancelIfDisposing();
-
             var keySystem = CencUtils.GetKeySystemName(initData.SystemId);
             CDMInstance = IEME.create(this, keySystem, false, CDM_MODEL.E_CDM_MODEL_DEFAULT);
             if (CDMInstance == null)
@@ -264,36 +274,39 @@ namespace JuvoPlayer.Drms.Cenc
 
         private string CreateSession()
         {
-            CancelIfDisposing();
-
             string sessionId = null;
             var status = CDMInstance.session_create(SessionType.kTemporary, ref sessionId);
             if (status != Status.kSuccess)
                 throw new DrmException(EmeStatusConverter.Convert(status));
+            Logger.Info("Created session: " + sessionId);
             return sessionId;
         }
          
-        private void GenerateRequest()
+        private async Task GenerateRequest()
         {
-            CancelIfDisposing();
-
             if (initData.InitData == null)
                 throw new DrmException(ErrorMessage.InvalidArgument);
+
+            requestDataEventReceived = new TaskCompletionSource<object>();
 
             var status = CDMInstance.session_generateRequest(currentSessionId, InitDataType.kCenc, Encode(initData.InitData));
             if (status != Status.kSuccess)
                 throw new DrmException(EmeStatusConverter.Convert(status));
 
-            // During session_generateRequest, we should got called back synchronously via onMessage and we should receive
-            // requestData.
-            if (requestData == null)
-                throw new NotImplementedException("requestData is null. It will be probably delivered asynchronously. Implement this case.");
+            await WaitForRequestData();
         }
 
-        private string AcquireLicenceFromServer()
+        private async Task WaitForRequestData()
         {
-            CancelIfDisposing();
+            await requestDataEventReceived.Task.WaitAsync(cancellationTokenSource.Token);
+            requestDataEventReceived = null;
 
+            if (requestData == null)
+                throw new NotImplementedException("requestData is null.");
+        }
+
+        private async Task<string> AcquireLicenceFromServer()
+        {
             HttpClient client = new HttpClient();
             var licenceUrl = new Uri(drmDescription.LicenceUrl);
 
@@ -313,7 +326,7 @@ namespace JuvoPlayer.Drms.Cenc
                 }
             }
 
-            var responseTask = client.PostAsync(licenceUrl, content).Result;
+            var responseTask = await client.PostAsync(licenceUrl, content, cancellationTokenSource.Token);
 
             Logger.Info("Response: " + responseTask);
             var receiveStream = responseTask.Content.ReadAsStreamAsync();
@@ -326,7 +339,6 @@ namespace JuvoPlayer.Drms.Cenc
 
         private void InstallLicence(string responseText)
         {
-            CancelIfDisposing();
             try
             {
                 var status = CDMInstance.session_update(currentSessionId, responseText);
