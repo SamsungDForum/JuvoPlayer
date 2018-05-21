@@ -99,23 +99,8 @@ namespace JuvoPlayer.OpenGL
                     Id = o.Id,
                     Description = o.Description,
                     Default = o.Default,
-                    StreamType = ToStreamType(o.StreamType)
+                    StreamType = o.StreamType
                 }).ToList();
-        }
-
-        private StreamType ToStreamType(JuvoPlayer.Common.StreamType streamType)
-        {
-            switch (streamType)
-            {
-                case JuvoPlayer.Common.StreamType.Audio:
-                    return StreamType.Audio;
-                case JuvoPlayer.Common.StreamType.Video:
-                    return StreamType.Video;
-                case JuvoPlayer.Common.StreamType.Subtitle:
-                    return StreamType.Subtitle;
-                default:
-                    throw new IndexOutOfRangeException();
-            }
         }
 
         public void SetSource(ClipDefinition clip)
