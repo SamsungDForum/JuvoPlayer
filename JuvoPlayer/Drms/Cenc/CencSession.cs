@@ -23,14 +23,13 @@ namespace JuvoPlayer.Drms.Cenc
         private IEME CDMInstance;
         private readonly DRMInitData initData;
         private string currentSessionId;
-        private byte[] requestData;
         private bool licenceInstalled;
 
         private readonly DRMDescription drmDescription;
         private readonly AsyncContextThread thread = new AsyncContextThread();
         private Task initializationTask;
         private CancellationTokenSource cancellationTokenSource;
-        private TaskCompletionSource<object> requestDataEventReceived;
+        private TaskCompletionSource<byte[]> requestDataCompletionSource;
 
         private CencSession(DRMInitData initData, DRMDescription drmDescription)
         {
@@ -214,8 +213,7 @@ namespace JuvoPlayer.Drms.Cenc
                 case MessageType.kLicenseRequest:
                 case MessageType.kIndividualizationRequest:
                 {
-                    requestData = Encoding.GetEncoding(437).GetBytes(message);
-                    requestDataEventReceived?.TrySetResult(null);
+                    requestDataCompletionSource?.TrySetResult(Encoding.GetEncoding(437).GetBytes(message));
                     break;
                 }
                 default:
@@ -254,10 +252,10 @@ namespace JuvoPlayer.Drms.Cenc
             currentSessionId = CreateSession();
             cancellationToken.ThrowIfCancellationRequested();
 
-            await GenerateRequest();
+            var requestData = await GetRequestData();
             cancellationToken.ThrowIfCancellationRequested();
 
-            var responseText = await AcquireLicenceFromServer();
+            var responseText = await AcquireLicenceFromServer(requestData);
             cancellationToken.ThrowIfCancellationRequested();
 
             InstallLicence(responseText);
@@ -282,30 +280,22 @@ namespace JuvoPlayer.Drms.Cenc
             return sessionId;
         }
          
-        private async Task GenerateRequest()
+        private Task<byte[]> GetRequestData()
         {
             if (initData.InitData == null)
                 throw new DrmException(ErrorMessage.InvalidArgument);
 
-            requestDataEventReceived = new TaskCompletionSource<object>();
+            requestDataCompletionSource = new TaskCompletionSource<byte[]>();
+            cancellationTokenSource.Token.Register(() => requestDataCompletionSource.TrySetCanceled());
 
             var status = CDMInstance.session_generateRequest(currentSessionId, InitDataType.kCenc, Encode(initData.InitData));
             if (status != Status.kSuccess)
                 throw new DrmException(EmeStatusConverter.Convert(status));
 
-            await WaitForRequestData();
+            return requestDataCompletionSource.Task;
         }
 
-        private async Task WaitForRequestData()
-        {
-            await requestDataEventReceived.Task.WaitAsync(cancellationTokenSource.Token);
-            requestDataEventReceived = null;
-
-            if (requestData == null)
-                throw new NotImplementedException("requestData is null.");
-        }
-
-        private async Task<string> AcquireLicenceFromServer()
+        private async Task<string> AcquireLicenceFromServer(byte[] requestData)
         {
             HttpClient client = new HttpClient();
             var licenceUrl = new Uri(drmDescription.LicenceUrl);
