@@ -4,6 +4,7 @@ using System.Linq;
 using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
+using System.Runtime.ExceptionServices;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
@@ -28,6 +29,7 @@ namespace JuvoPlayer.Drms.Cenc
         private readonly DRMDescription drmDescription;
         private readonly AsyncContextThread thread = new AsyncContextThread();
         private Task initializationTask;
+        private bool isDisposing;
         private CancellationTokenSource cancellationTokenSource;
         private TaskCompletionSource<byte[]> requestDataCompletionSource;
 
@@ -58,6 +60,7 @@ namespace JuvoPlayer.Drms.Cenc
 
         public override void Dispose()
         {
+            isDisposing = true;
             cancellationTokenSource?.Cancel();
             try
             {
@@ -69,7 +72,8 @@ namespace JuvoPlayer.Drms.Cenc
             }
 
             thread.Factory.Run(() => DestroyCDM()).Wait(); //will do nothing on a disposed AsyncContextThread
-            thread.Dispose();
+            // thread.dispose is not waiting until thread ends. thread Join waits and calls dispose
+            thread.Join();
             base.Dispose();
 
             GC.SuppressFinalize(this);
@@ -94,15 +98,24 @@ namespace JuvoPlayer.Drms.Cenc
 
         public Task<Packet> DecryptPacket(EncryptedPacket packet)
         {
+            CancelIfDisposing();
+
             return thread.Factory.Run(() => DecryptPacketOnIemeThread(packet));
+        }
+
+        private void CancelIfDisposing()
+        {
+            if (isDisposing)
+                throw new TaskCanceledException();
         }
 
         private unsafe Packet DecryptPacketOnIemeThread(EncryptedPacket packet)
         {
             if (licenceInstalled == false)
-            {
                 throw new DrmException("No licence installed");
-            }
+
+            if (CDMInstance == null)
+                throw new TaskCanceledException();
 
             HandleSize[] pHandleArray = new HandleSize[1];
             var numofparam = 1;
@@ -223,12 +236,12 @@ namespace JuvoPlayer.Drms.Cenc
         }
 
         // There has been a change in the keys in the session or their status.
-        public override void onKeyStatusesChange(string session_id)
+        public override void onKeyStatusesChange(string sessionId)
         {
         }
 
         // A remove() operation has been completed.
-        public override void onRemoveComplete(string session_id)
+        public override void onRemoveComplete(string sessionId)
         {
         }
 
