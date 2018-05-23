@@ -215,7 +215,7 @@ namespace JuvoPlayer.Player.SMPlayer
                     SubmitDecryptedEmePacket(decryptedPacket as DecryptedEMEPacket);
                 }
             }
-            catch (TaskCanceledException)
+            catch (ObjectDisposedException)
             {
                 // decryptions has been canceled - drm session is already disposed
                 Logger.Warn("Ignoring decryption error - drm session has been already closed");

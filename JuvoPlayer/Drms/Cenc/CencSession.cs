@@ -29,7 +29,7 @@ namespace JuvoPlayer.Drms.Cenc
         private readonly DRMDescription drmDescription;
         private readonly AsyncContextThread thread = new AsyncContextThread();
         private Task initializationTask;
-        private bool isDisposing;
+        private bool isDisposed;
         private CancellationTokenSource cancellationTokenSource;
         private TaskCompletionSource<byte[]> requestDataCompletionSource;
 
@@ -60,23 +60,30 @@ namespace JuvoPlayer.Drms.Cenc
 
         public override void Dispose()
         {
-            isDisposing = true;
-            cancellationTokenSource?.Cancel();
-            try
+            lock (this)
             {
-                initializationTask?.Wait();
-            }
-            catch (Exception)
-            {
-                // ignored, client can be notified about failures by awaiting task returned in Initialize() 
-            }
+                if (isDisposed)
+                    return;
 
-            thread.Factory.Run(() => DestroyCDM()).Wait(); //will do nothing on a disposed AsyncContextThread
-            // thread.dispose is not waiting until thread ends. thread Join waits and calls dispose
-            thread.Join();
-            base.Dispose();
+                cancellationTokenSource?.Cancel();
+                try
+                {
+                    initializationTask?.Wait();
+                }
+                catch (Exception)
+                {
+                    // ignored, client can be notified about failures by awaiting task returned in Initialize() 
+                }
 
-            GC.SuppressFinalize(this);
+                thread.Factory.Run(() => DestroyCDM()).Wait(); //will do nothing on a disposed AsyncContextThread
+                // thread.dispose is not waiting until thread ends. thread Join waits and calls dispose
+                thread.Join();
+                base.Dispose();
+
+                GC.SuppressFinalize(this);
+
+                isDisposed = true;
+            }
         }
 
         ~CencSession()
@@ -98,24 +105,18 @@ namespace JuvoPlayer.Drms.Cenc
 
         public Task<Packet> DecryptPacket(EncryptedPacket packet)
         {
-            CancelIfDisposing();
+            lock (this)
+            {
+                ThrowIfDisposed();
 
-            return thread.Factory.Run(() => DecryptPacketOnIemeThread(packet));
-        }
-
-        private void CancelIfDisposing()
-        {
-            if (isDisposing)
-                throw new TaskCanceledException();
+                return thread.Factory.Run(() => DecryptPacketOnIemeThread(packet));
+            }
         }
 
         private unsafe Packet DecryptPacketOnIemeThread(EncryptedPacket packet)
         {
             if (licenceInstalled == false)
                 throw new DrmException("No licence installed");
-
-            if (CDMInstance == null)
-                throw new TaskCanceledException();
 
             HandleSize[] pHandleArray = new HandleSize[1];
             var numofparam = 1;
@@ -247,12 +248,23 @@ namespace JuvoPlayer.Drms.Cenc
 
         public Task Initialize()
         {
-            if (initializationTask != null)
-                throw new InvalidOperationException("Initialize in progress");
+            lock (this)
+            {
+                if (initializationTask != null)
+                    throw new InvalidOperationException("Initialize in progress");
 
-            cancellationTokenSource = new CancellationTokenSource();
-            initializationTask = thread.Factory.Run(DoLicenceChallengeOnIemeThread);
-            return initializationTask;
+                ThrowIfDisposed();
+
+                cancellationTokenSource = new CancellationTokenSource();
+                initializationTask = thread.Factory.Run(DoLicenceChallengeOnIemeThread);
+                return initializationTask;
+            }
+        }
+
+        private void ThrowIfDisposed()
+        {
+            if (isDisposed)
+                throw new ObjectDisposedException("CencSession is already disposed");
         }
 
         private async Task DoLicenceChallengeOnIemeThread()
@@ -293,19 +305,20 @@ namespace JuvoPlayer.Drms.Cenc
             return sessionId;
         }
          
-        private Task<byte[]> GetRequestData()
+        private async Task<byte[]> GetRequestData()
         {
             if (initData.InitData == null)
                 throw new DrmException(ErrorMessage.InvalidArgument);
 
             requestDataCompletionSource = new TaskCompletionSource<byte[]>();
-            cancellationTokenSource.Token.Register(() => requestDataCompletionSource.TrySetCanceled());
 
             var status = CDMInstance.session_generateRequest(currentSessionId, InitDataType.kCenc, Encode(initData.InitData));
             if (status != Status.kSuccess)
                 throw new DrmException(EmeStatusConverter.Convert(status));
 
-            return requestDataCompletionSource.Task;
+            var requestData = await requestDataCompletionSource.Task.WaitAsync(cancellationTokenSource.Token);
+            requestDataCompletionSource = null;
+            return requestData;
         }
 
         private async Task<string> AcquireLicenceFromServer(byte[] requestData)
