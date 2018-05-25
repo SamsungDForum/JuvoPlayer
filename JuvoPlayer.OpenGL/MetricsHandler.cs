@@ -2,7 +2,7 @@
 
 namespace JuvoPlayer.OpenGL
 {
-    class Metrics
+    class MetricsHandler
     {
 
         private readonly SystemMemoryUsage _systemMemoryUsage = new SystemMemoryUsage();
@@ -13,7 +13,7 @@ namespace JuvoPlayer.OpenGL
 
         private bool _metricsShown;
 
-        public unsafe Metrics()
+        public unsafe MetricsHandler()
         {
             string tag = "MEM";
             fixed (byte* name = ResourceLoader.GetBytes(tag))
