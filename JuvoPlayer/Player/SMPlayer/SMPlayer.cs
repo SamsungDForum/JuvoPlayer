@@ -193,9 +193,9 @@ namespace JuvoPlayer.Player.SMPlayer
             if (packet.IsEOS)
                 SubmitEOSPacket(packet);
             else if (packet is EncryptedPacket)
-                SubmitEncryptedPacket(packet as EncryptedPacket);
+                SubmitEncryptedPacket((EncryptedPacket) packet);
             else if (packet is BufferConfiguration)
-                SubmitStreamConfiguration(packet as BufferConfiguration);
+                SubmitStreamConfiguration((BufferConfiguration) packet);
             else
                 SubmitDataPacket(packet);
         }
@@ -214,6 +214,11 @@ namespace JuvoPlayer.Player.SMPlayer
                 {
                     SubmitDecryptedEmePacket(decryptedPacket as DecryptedEMEPacket);
                 }
+            }
+            catch (ObjectDisposedException)
+            {
+                // decryptions has been canceled - drm session is already disposed
+                Logger.Warn("Ignoring decryption error - drm session has been already closed");
             }
             catch (Exception e)
             {

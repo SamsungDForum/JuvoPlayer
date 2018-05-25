@@ -1,5 +1,7 @@
 using JuvoPlayer.Drms;
 using System;
+using System.Runtime.ExceptionServices;
+using System.Threading.Tasks;
 using System.Xml.Serialization;
 
 namespace JuvoPlayer.Common
@@ -25,7 +27,15 @@ namespace JuvoPlayer.Common
             if (DrmSession == null)
                 throw new InvalidOperationException("Decrypt called without DrmSession");
 
-            return DrmSession.DecryptPacket(this).Result;
+            try
+            {
+                return DrmSession.DecryptPacket(this).Result;
+            }
+            catch (AggregateException ex)
+            {
+                ExceptionDispatchInfo.Capture(ex.InnerException).Throw();
+                throw; // wont be executed as above method always throws
+            }
         }
     }
 }

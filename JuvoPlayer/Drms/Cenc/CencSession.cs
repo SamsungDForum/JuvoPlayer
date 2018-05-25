@@ -1,8 +1,10 @@
 using System;
 using System.IO;
 using System.Linq;
+using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
+using System.Runtime.ExceptionServices;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
@@ -22,13 +24,14 @@ namespace JuvoPlayer.Drms.Cenc
         private IEME CDMInstance;
         private readonly DRMInitData initData;
         private string currentSessionId;
-        private byte[] requestData;
         private bool licenceInstalled;
 
         private readonly DRMDescription drmDescription;
         private readonly AsyncContextThread thread = new AsyncContextThread();
         private Task initializationTask;
-        private bool isDisposing;
+        private bool isDisposed;
+        private CancellationTokenSource cancellationTokenSource;
+        private TaskCompletionSource<byte[]> requestDataCompletionSource;
 
         private CencSession(DRMInitData initData, DRMDescription drmDescription)
         {
@@ -57,14 +60,30 @@ namespace JuvoPlayer.Drms.Cenc
 
         public override void Dispose()
         {
-            isDisposing = true;
+            lock (this)
+            {
+                if (isDisposed)
+                    return;
 
-            initializationTask?.Wait();
-            thread.Factory.Run(() => DestroyCDM()).Wait(); //will do nothing on a disposed AsyncContextThread
-            thread.Dispose();
-            base.Dispose();
+                cancellationTokenSource?.Cancel();
+                try
+                {
+                    initializationTask?.Wait();
+                }
+                catch (Exception)
+                {
+                    // ignored, client can be notified about failures by awaiting task returned in Initialize() 
+                }
 
-            GC.SuppressFinalize(this);
+                thread.Factory.Run(() => DestroyCDM()).Wait(); //will do nothing on a disposed AsyncContextThread
+                // thread.dispose is not waiting until thread ends. thread Join waits and calls dispose
+                thread.Join();
+                base.Dispose();
+
+                GC.SuppressFinalize(this);
+
+                isDisposed = true;
+            }
         }
 
         ~CencSession()
@@ -86,15 +105,18 @@ namespace JuvoPlayer.Drms.Cenc
 
         public Task<Packet> DecryptPacket(EncryptedPacket packet)
         {
-            return thread.Factory.Run(() => DecryptPacketOnIemeThread(packet));
+            lock (this)
+            {
+                ThrowIfDisposed();
+
+                return thread.Factory.Run(() => DecryptPacketOnIemeThread(packet));
+            }
         }
 
         private unsafe Packet DecryptPacketOnIemeThread(EncryptedPacket packet)
         {
             if (licenceInstalled == false)
-            {
                 throw new DrmException("No licence installed");
-            }
 
             HandleSize[] pHandleArray = new HandleSize[1];
             var numofparam = 1;
@@ -205,7 +227,7 @@ namespace JuvoPlayer.Drms.Cenc
                 case MessageType.kLicenseRequest:
                 case MessageType.kIndividualizationRequest:
                 {
-                    requestData = Encoding.GetEncoding(437).GetBytes(message);
+                    requestDataCompletionSource?.TrySetResult(Encoding.GetEncoding(437).GetBytes(message));
                     break;
                 }
                 default:
@@ -215,47 +237,58 @@ namespace JuvoPlayer.Drms.Cenc
         }
 
         // There has been a change in the keys in the session or their status.
-        public override void onKeyStatusesChange(string session_id)
+        public override void onKeyStatusesChange(string sessionId)
         {
         }
 
         // A remove() operation has been completed.
-        public override void onRemoveComplete(string session_id)
+        public override void onRemoveComplete(string sessionId)
         {
-        }
-
-        private void CancelIfDisposing()
-        {
-            if (isDisposing)
-                throw new TaskCanceledException();
         }
 
         public Task Initialize()
         {
-            initializationTask = thread.Factory.Run(() => StartLicenceChallengeOnIemeThread());
-            return initializationTask;
+            lock (this)
+            {
+                if (initializationTask != null)
+                    throw new InvalidOperationException("Initialize in progress");
+
+                ThrowIfDisposed();
+
+                cancellationTokenSource = new CancellationTokenSource();
+                initializationTask = thread.Factory.Run(DoLicenceChallengeOnIemeThread);
+                return initializationTask;
+            }
         }
 
-        private void StartLicenceChallengeOnIemeThread()
+        private void ThrowIfDisposed()
         {
-            try
-            {
-                CreateIeme();
-                currentSessionId = CreateSession();
-                Logger.Info("Created session: " + currentSessionId);
-                GenerateRequest();
+            if (isDisposed)
+                throw new ObjectDisposedException("CencSession is already disposed");
+        }
 
-                var responseText = AcquireLicenceFromServer();
-                InstallLicence(responseText);
-                licenceInstalled = true;
-            }
-            catch (TaskCanceledException) { }
+        private async Task DoLicenceChallengeOnIemeThread()
+        {
+            var cancellationToken = cancellationTokenSource.Token;
+
+            CreateIeme();
+            cancellationToken.ThrowIfCancellationRequested();
+
+            currentSessionId = CreateSession();
+            cancellationToken.ThrowIfCancellationRequested();
+
+            var requestData = await GetRequestData();
+            cancellationToken.ThrowIfCancellationRequested();
+
+            var responseText = await AcquireLicenceFromServer(requestData);
+            cancellationToken.ThrowIfCancellationRequested();
+
+            InstallLicence(responseText);
+            licenceInstalled = true;
         }
 
         private void CreateIeme()
         {
-            CancelIfDisposing();
-
             var keySystem = CencUtils.GetKeySystemName(initData.SystemId);
             CDMInstance = IEME.create(this, keySystem, false, CDM_MODEL.E_CDM_MODEL_DEFAULT);
             if (CDMInstance == null)
@@ -264,36 +297,32 @@ namespace JuvoPlayer.Drms.Cenc
 
         private string CreateSession()
         {
-            CancelIfDisposing();
-
             string sessionId = null;
             var status = CDMInstance.session_create(SessionType.kTemporary, ref sessionId);
             if (status != Status.kSuccess)
                 throw new DrmException(EmeStatusConverter.Convert(status));
+            Logger.Info("Created session: " + sessionId);
             return sessionId;
         }
          
-        private void GenerateRequest()
+        private async Task<byte[]> GetRequestData()
         {
-            CancelIfDisposing();
-
             if (initData.InitData == null)
                 throw new DrmException(ErrorMessage.InvalidArgument);
+
+            requestDataCompletionSource = new TaskCompletionSource<byte[]>();
 
             var status = CDMInstance.session_generateRequest(currentSessionId, InitDataType.kCenc, Encode(initData.InitData));
             if (status != Status.kSuccess)
                 throw new DrmException(EmeStatusConverter.Convert(status));
 
-            // During session_generateRequest, we should got called back synchronously via onMessage and we should receive
-            // requestData.
-            if (requestData == null)
-                throw new NotImplementedException("requestData is null. It will be probably delivered asynchronously. Implement this case.");
+            var requestData = await requestDataCompletionSource.Task.WaitAsync(cancellationTokenSource.Token);
+            requestDataCompletionSource = null;
+            return requestData;
         }
 
-        private string AcquireLicenceFromServer()
+        private async Task<string> AcquireLicenceFromServer(byte[] requestData)
         {
-            CancelIfDisposing();
-
             HttpClient client = new HttpClient();
             var licenceUrl = new Uri(drmDescription.LicenceUrl);
 
@@ -313,7 +342,7 @@ namespace JuvoPlayer.Drms.Cenc
                 }
             }
 
-            var responseTask = client.PostAsync(licenceUrl, content).Result;
+            var responseTask = await client.PostAsync(licenceUrl, content, cancellationTokenSource.Token);
 
             Logger.Info("Response: " + responseTask);
             var receiveStream = responseTask.Content.ReadAsStreamAsync();
@@ -326,7 +355,6 @@ namespace JuvoPlayer.Drms.Cenc
 
         private void InstallLicence(string responseText)
         {
-            CancelIfDisposing();
             try
             {
                 var status = CDMInstance.session_update(currentSessionId, responseText);
