@@ -27,17 +27,29 @@ namespace JuvoPlayer.OpenGL
 
         private OptionsMenu _options;
         private ResourceLoader _resourceLoader;
-        private Metrics _metrics;
+        private MetricsHandler _metricsHandler;
 
         private TimeSpan _accumulatedSeekTime;
         private DateTime _lastSeekTime;
         private bool _seekBufferingInProgress = false;
         private static readonly object _seekLock = new object();
 
+        private static void Main(string[] args)
+        {
+            var myProgram = new Program();
+            myProgram.Run(args);
+        }
+
         protected override void OnCreate()
         {
             DllImports.Create();
             InitMenu();
+        }
+
+        protected override void OnUpdate(IntPtr eglDisplay, IntPtr eglSurface)
+        {
+            UpdateUI();
+            DllImports.Draw(eglDisplay, eglSurface);
         }
 
         private void InitMenu()
@@ -47,7 +59,7 @@ namespace JuvoPlayer.OpenGL
                 Logger = Logger
             };
             _resourceLoader.LoadResources(Path.GetDirectoryName(Path.GetDirectoryName(Current.ApplicationInfo.ExecutablePath)));
-            _metrics = new Metrics();
+            _metricsHandler = new MetricsHandler();
             SetMenuFooter();
             SetupOptionsMenu();
             SetDefaultMenuState();
@@ -76,7 +88,7 @@ namespace JuvoPlayer.OpenGL
             _playerTimeDuration = TimeSpan.Zero;
             _playbackCompletedNeedsHandling = false;
 
-            _metrics.Hide();
+            _metricsHandler.Hide();
         }
 
         private void SetupOptionsMenu()
@@ -142,10 +154,10 @@ namespace JuvoPlayer.OpenGL
             }
             else if(key.KeyPressedName.Contains("Red"))
             {
-                if(_metrics.IsShown())
-                    _metrics.Hide();
+                if(_metricsHandler.IsShown())
+                    _metricsHandler.Hide();
                 else
-                    _metrics.Show();
+                    _metricsHandler.Show();
             }
             else if(key.KeyPressedName.Contains("Green"))
             {
@@ -172,19 +184,6 @@ namespace JuvoPlayer.OpenGL
             _progressBarShown = !_isMenuShown;
             if (!_progressBarShown && _options.Visible)
                 _options.Hide();
-        }
-
-        protected override void OnUpdate(IntPtr eglDisplay, IntPtr eglSurface)
-        {
-            _resourceLoader.LoadQueuedResources();
-            UpdateUI();
-            DllImports.Draw(eglDisplay, eglSurface);
-        }
-
-        private static void Main(string[] args)
-        {
-            var myProgram = new Program();
-            myProgram.Run(args);
         }
 
         private void HandleKeyRight()
@@ -446,7 +445,7 @@ namespace JuvoPlayer.OpenGL
 
         private void UpdateMetrics()
         {
-            _metrics.Update();
+            _metricsHandler.Update();
         }
 
         private unsafe void UpdatePlaybackControls()
