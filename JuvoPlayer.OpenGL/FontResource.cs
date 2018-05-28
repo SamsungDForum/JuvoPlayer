@@ -2,7 +2,6 @@
 {
     class FontResource : Resource
     {
-        private int _id;
         private string _path;
         private byte[] _data;
 
@@ -20,7 +19,7 @@
         {
             fixed (byte* p = _data)
             {
-                _id = DllImports.AddFont(p, _data.Length);
+                DllImports.AddFont(p, _data.Length);
             }
         }
     }
