@@ -58,9 +58,8 @@ namespace JuvoPlayer.OpenGL
             {
                 ScheduleToBeLoadedInMainThread(() =>
                 {
-                    var tile = task.Result;
-                    tile.Push();
-                    Interlocked.Increment(ref _resourcesLoadedCount);
+                    task.Result.Push();
+                    ++_resourcesLoadedCount;
                     UpdateLoadingState();
                 });
             });
