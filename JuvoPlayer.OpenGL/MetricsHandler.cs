@@ -30,6 +30,14 @@ namespace JuvoPlayer.OpenGL
             _metricsShown = false;
         }
 
+        public void SwitchVisibility()
+        {
+            if (IsShown())
+                Hide();
+            else
+                Show();
+        }
+
         public void Show()
         {
             _metricsShown = true;

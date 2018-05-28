@@ -3,6 +3,7 @@ using System.IO;
 using JuvoLogger;
 using Tizen.TV.NUI.GLApplication;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace JuvoPlayer.OpenGL
@@ -30,9 +31,9 @@ namespace JuvoPlayer.OpenGL
         private MetricsHandler _metricsHandler;
 
         private TimeSpan _accumulatedSeekTime;
-        private DateTime _lastSeekTime;
+        private Task _seekDelay;
+        private CancellationTokenSource _seekCancellationTokenSource;
         private bool _seekBufferingInProgress = false;
-        private static readonly object _seekLock = new object();
 
         private static void Main(string[] args)
         {
@@ -82,7 +83,6 @@ namespace JuvoPlayer.OpenGL
 
             _lastKeyPressTime = DateTime.Now;
             _accumulatedSeekTime = TimeSpan.Zero;
-            _lastSeekTime = DateTime.MinValue;
 
             _playerTimeCurrentPosition = TimeSpan.Zero;
             _playerTimeDuration = TimeSpan.Zero;
@@ -154,10 +154,7 @@ namespace JuvoPlayer.OpenGL
             }
             else if(key.KeyPressedName.Contains("Red"))
             {
-                if(_metricsHandler.IsShown())
-                    _metricsHandler.Hide();
-                else
-                    _metricsHandler.Show();
+                _metricsHandler.SwitchVisibility();
             }
             else if(key.KeyPressedName.Contains("Green"))
             {
@@ -324,58 +321,41 @@ namespace JuvoPlayer.OpenGL
             Seek(_defaultSeekTime);
         }
 
-        private void Seek(TimeSpan seekTime)
+        private async void Seek(TimeSpan seekTime)
         {
-            if (_player == null)
-                return;
-
-            lock (_seekLock)
-                _lastSeekTime = DateTime.Now;
+            _seekCancellationTokenSource?.Cancel();
 
             if (_seekBufferingInProgress == false)
             {
-                lock (_seekLock)
-                {
-                    _accumulatedSeekTime = seekTime;
-                    _seekBufferingInProgress = true;
-                }
-
-                Task.Run(() => SeekBufferingTask());
+                _accumulatedSeekTime = seekTime;
+                _seekBufferingInProgress = true;
             }
             else
             {
-                lock (_seekLock)
-                    _accumulatedSeekTime += seekTime;
+                _accumulatedSeekTime += seekTime;
             }
-
             _playerTimeCurrentPosition += seekTime;
             UpdatePlaybackControls();
-        }
 
-        private async void SeekBufferingTask()
-        {
-            DateTime lastSeekTime;
-            lock (_seekLock)
-                lastSeekTime = _lastSeekTime;
-            while (lastSeekTime + _defaultSeekAccumulateTime > DateTime.Now)
+            _seekCancellationTokenSource = new CancellationTokenSource();
+            _seekDelay = Task.Delay(_defaultSeekAccumulateTime, _seekCancellationTokenSource.Token);
+            try
             {
-                TimeSpan delay = (lastSeekTime + _defaultSeekAccumulateTime) - DateTime.Now;
-                await Task.Delay(delay);
-                lock (_seekLock)
-                    lastSeekTime = _lastSeekTime;
+                await _seekDelay;
+            }
+            catch (TaskCanceledException)
+            {
+                return;
             }
 
-            TimeSpan accumulatedSeekTime;
-            lock (_seekLock)
-            {
-                accumulatedSeekTime = _accumulatedSeekTime;
-                _seekBufferingInProgress = false;
-            }
-
-            if (accumulatedSeekTime > TimeSpan.Zero)
-                Forward(accumulatedSeekTime);
+            if (_accumulatedSeekTime > TimeSpan.Zero)
+                Forward(_accumulatedSeekTime);
             else
-                Rewind(-accumulatedSeekTime);
+                Rewind(-_accumulatedSeekTime);
+            _seekBufferingInProgress = false;
+
+            _seekDelay = null;
+            _seekCancellationTokenSource = null;
         }
 
         private static bool IsStateSeekable(PlayerState state)
