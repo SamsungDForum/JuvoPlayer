@@ -1,0 +1,48 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>netcoreapp2.0</TargetFramework>
+  </PropertyGroup>
+
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugType>portable</DebugType>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugType>None</DebugType>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Remove="res\backgrounds\**" />
+    <EmbeddedResource Remove="res\backgrounds\**" />
+    <None Remove="res\backgrounds\**" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Remove="shared\res\videoclips.json" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="shared\res\videoclips.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="lib\" />
+    <Folder Include="res\fonts\" />
+    <Folder Include="res\icons\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="RevStackCore-ImageSharp" Version="0.9.0" />
+    <PackageReference Include="Tizen.NET" Version="4.0.0">
+      <ExcludeAssets>Runtime</ExcludeAssets>
+    </PackageReference>
+    <PackageReference Include="Tizen.NET.Sdk" Version="1.0.1" />
+    <PackageReference Include="Tizen.NET.TV" Version="4.4.0.1341" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\JuvoPlayer\JuvoPlayer.csproj" />
+  </ItemGroup>
+
+</Project>
