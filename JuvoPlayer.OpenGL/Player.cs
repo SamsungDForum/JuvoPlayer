@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Linq;
 using JuvoPlayer.Common;
 using JuvoPlayer.DataProviders;
 using JuvoPlayer.DataProviders.Dash;
@@ -92,15 +91,7 @@ namespace JuvoPlayer.OpenGL
 
         public List<StreamDescription> GetStreamsDescription(StreamType streamType)
         {
-            var streams = dataProvider.GetStreamsDescription(streamType);
-            return streams.Select(o =>
-                new StreamDescription()
-                {
-                    Id = o.Id,
-                    Description = o.Description,
-                    Default = o.Default,
-                    StreamType = o.StreamType
-                }).ToList();
+            return dataProvider.GetStreamsDescription(streamType);
         }
 
         public void SetSource(ClipDefinition clip)
