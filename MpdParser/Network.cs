@@ -84,12 +84,12 @@ namespace MpdParser.Network
             using (Stream stream = response.GetResponseStream(), mem = new MemoryStream(len != 0 ? len : avgDownloadSize))
             {
                 stream.CopyTo(mem);
-                return (mem as MemoryStream).ToArray();
+                return ((MemoryStream) mem).ToArray();
             }
         }
 
         //seems like a good default that won't drop data on slow-ish connections, yet not frustrate the user with wait times
         private static int _timeoutMs = (int)TimeSpan.FromSeconds(3).TotalMilliseconds;
-        private static Int32 avgDownloadSize = 1024;
+        private const Int32 avgDownloadSize = 1024;
     }
 }
