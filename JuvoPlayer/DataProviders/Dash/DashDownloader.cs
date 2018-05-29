@@ -14,9 +14,8 @@
 using JuvoLogger;
 using JuvoPlayer.Common;
 using System;
-using System.Collections.Generic;
 using System.Net;
-using System.Text;
+using System.Runtime.ExceptionServices;
 using System.Threading;
 using System.Threading.Tasks;
 
@@ -34,19 +33,15 @@ namespace JuvoPlayer.DataProviders.Dash
             High = 0;
             var ranges = range.Split('-');
             if (ranges.Length != 2)
-            {
                 throw new ArgumentException("Range cannot be parsed.");
-            }
+
             try
             {
                 Low = long.Parse(ranges[0]);
                 High = long.Parse(ranges[1]);
 
                 if (Low > High)
-                {
                     throw new ArgumentException("Range Low param cannot be higher then High param");
-                }
-
             }
             catch (Exception ex)
             {
@@ -110,256 +105,120 @@ namespace JuvoPlayer.DataProviders.Dash
         public StreamType StreamType { get; set; }
     }
 
+    public class DownloadResponse
+    {
+        public MpdParser.Node.Dynamic.Segment DownloadSegment { get; set; }
+        public uint? SegmentID { get; set; }
+        public StreamType StreamType { get; set; }
+        public byte[] Data { get; set; }
+    }
+
     /// <summary>
     /// Download request class for handling download requests.
     /// </summary>
-    public class DownloadRequest : IDisposable
+    public class DownloadRequest
     {
         private const string Tag = "JuvoPlayer";
 
-        /// <summary>
-        /// WebClient Task as returned by Async requests.
-        /// </summary>
-        public Task<byte[]> DownloadTask { get; internal set; }
-
-        /// <summary>
-        /// Request Task - Task which downloads data in asynchronous way.
-        /// </summary>
-        public Task RequestTask { get; internal set; }
-
-        /// <summary>
-        /// Download request data associated with this instance of request.
-        /// </summary>
-        public DownloadRequestData requestData { get; internal set; }
-
-        private ByteRange downloadRange;
         private readonly ILogger Logger = LoggerManager.GetInstance().GetLogger(Tag);
 
-        /// <summary>
-        /// DownloadTask state handlers. Will be called, Task State Dependant, when Process() is executed
-        /// </summary>
-        public Action<DownloadRequestData> Created { get; set; }
-        public Action<DownloadRequestData> WaitingForActivation { get; set; }
-        public Action<DownloadRequestData> WaitingToRun { get; set; }
-        public Action<DownloadRequestData> Running { get; set; }
-        public Action<DownloadRequestData> WaitingForChildrenToComplete { get; set; }
-        public Action<byte[], DownloadRequestData> RanToCompletion { get; set; }
-        public Action<DownloadRequestData> Canceled { get; set; }
-        public Action<Exception, DownloadRequestData, bool> Faulted { get; set; }
-        public Action<Exception, DownloadRequestData, bool> RequestFailed { get; set; }
-        public EventWaitHandle CompletionNotifier { get; set; }
+        private CancellationToken cancellationToken;
+        private readonly DownloadRequestData requestData;
+        private readonly ByteRange downloadRange;
 
-        /// <summary>
-        /// Download error counter
-        /// </summary>
-        public int DownloadErrorCount { get; internal set; } = 0;
+        private int downloadErrorCount;
+        private readonly bool ignoreError;
 
-        /// <summary>
-        /// Flag passed to fail handler idicating desired behavior on error.
-        /// </summary>
-        private bool ignoreError;
-
-        /// <summary>
-        /// Creates a Download Request object
-        /// </summary>
-        /// <param name="downloadRequest">Download Request Object</param>
-        /// <param name="downloadErrorIgnore">Ignore/Process download errors</param>
-        public DownloadRequest(DownloadRequestData downloadRequest, bool downloadErrorIgnore)
+        private DownloadRequest(DownloadRequestData downloadRequest, bool downloadErrorIgnore, CancellationToken cancellationToken)
         {
-
             requestData = downloadRequest;
 
-            if (!String.IsNullOrEmpty(requestData.DownloadSegment.ByteRange))
+            if (!string.IsNullOrEmpty(requestData.DownloadSegment.ByteRange))
                 downloadRange = new ByteRange(requestData.DownloadSegment.ByteRange);
 
             ignoreError = downloadErrorIgnore;
 
+            this.cancellationToken = cancellationToken;
         }
 
-        /// <summary>
-        /// External API for issuing a download. Calls internal Task method to preforma actual
-        /// work related with download startup.
-        /// </summary>
-        public void Download()
+        public static Task<DownloadResponse> CreateDownloadRequestAsync(DownloadRequestData downloadRequest, bool downloadErrorIgnore, CancellationToken cancellationToken)
         {
-            RequestTask = Task.Run(() => DownloadInternal());
+            var downloadRequst = new DownloadRequest(downloadRequest, downloadErrorIgnore, cancellationToken);
+
+            return downloadRequst.DownloadAsync();
         }
 
-        private async Task DownloadInternal()
+        private async Task<DownloadResponse> DownloadAsync()
         {
-            // I am opened to suggestions on WebClient reuse.
-            // Initail test show it to be... unreliable with tendency to randomly "crash"
-            // and refuse to service any further requests.
-            //
-            // TO CHECK: Do so only if download failes, in case of internal class failure
-            // kill & creatre new?
-            //
+            do
+            {
+                try
+                {
+                    await Task.Delay(CalculateSleepTime(), cancellationToken);
+                    return await DownloadDataTaskAsync();
+                }
+                catch (WebException e)
+                {
+                    if (e.InnerException is TaskCanceledException)
+                        ExceptionDispatchInfo.Capture(e.InnerException).Throw();
+
+                    Logger.Warn($"{requestData.StreamType}: Segment: {requestData.SegmentID} NetError: {e.Message}");
+                    ++downloadErrorCount;
+                }
+                catch (TaskCanceledException)
+                {
+                    throw;
+                }
+                catch (Exception e)
+                {
+                    Logger.Warn($"{requestData.StreamType}: Segment: {requestData.SegmentID} Error: {e.Message}");
+                    ++downloadErrorCount;
+                }
+            } while (ignoreError && downloadErrorCount < 3);
+
+            throw new Exception("{requestParams.StreamType}: Segment: {requestParams.SegmentID} Max retry count reached.");
+        }
+
+        private async Task<DownloadResponse> DownloadDataTaskAsync()
+        {
             using (var dataDownloader = new WebClientEx())
             {
                 if (downloadRange != null)
-                {
                     dataDownloader.SetRange(downloadRange.Low, downloadRange.High);
-                }
 
+                cancellationToken.Register(dataDownloader.CancelAsync);
 
-                // In case of download errors...
-                //
-                if (DownloadErrorCount != 0)
+                Logger.Info($"{requestData.StreamType}: Segment: {requestData.SegmentID} Requested. URL: {requestData.DownloadSegment.Url} Range: {downloadRange}");
+
+                return new DownloadResponse
                 {
-                    // Exponential backoff
-                    // Sleep:
-                    // 0-100ms for 1st error (DownloadErrorCount = 1)
-                    // 100-300ms for 2nd error (DownloadErrorCount = 2)
-                    // 200-700ms for 3rd error (DownloadErrorCount = 3)
-                    // ... and so on
-                    var rnd = new Random();
-
-                    var sleepTime = rnd.Next(
-                    (DownloadErrorCount - 1) * 100,
-                    ((DownloadErrorCount * DownloadErrorCount) - (DownloadErrorCount - 1)) * 100);
-
-                    await Task.Delay(sleepTime);
-
-                    //Check for being disposed. If so, do not proceed.
-                    if (disposedValue == true)
-                    {
-                        Logger.Warn($"{requestData.StreamType}: Downloader Disposed. Segment: {requestData.SegmentID} Requested. URL: {requestData.DownloadSegment.Url}.");
-                        return;
-                    }
-                }
-
-                // In case of reloads, get rid off previous DownloadTask.
-                DownloadTask?.Dispose();
-
-                try
-                {
-
-                    DownloadTask = dataDownloader.DownloadDataTaskAsync(requestData.DownloadSegment.Url);
-
-                    Logger.Info($"{requestData.StreamType}: Segment: {requestData.SegmentID} Requested. URL: {requestData.DownloadSegment.Url} Range: {downloadRange?.ToString()}");
-
-                    await DownloadTask;
-
-
-                }
-                catch { } //Dummy catcher. Error handling is done during common Process of all awaiters
-                finally
-                {
-                    //signall Completion Notifier that we're done.
-                    CompletionNotifier?.Set();
-                }
-
+                    StreamType = requestData.StreamType,
+                    DownloadSegment = requestData.DownloadSegment,
+                    SegmentID = requestData.SegmentID,
+                    Data = await dataDownloader.DownloadDataTaskAsync(requestData.DownloadSegment.Url)
+                };
             }
         }
 
-        /// <summary>
-        /// process download task based on its current status through
-        /// state handlers.
-        /// </summary>
-        /// <returns>Current download task status.</returns>
-        public void Process()
+        private int CalculateSleepTime()
         {
-            // There is no need to check for disposing state as dispose should never happen in parallel
-            // to calling Process()
+            if (ignoreError || downloadErrorCount == 0)
+                return 0;
 
-            TaskStatus? res = RequestTask?.Status;
+            // Exponential backoff
+            // Sleep:
+            // 0-100ms for 1st error (DownloadErrorCount = 1)
+            // 100-300ms for 2nd error (DownloadErrorCount = 2)
+            // 200-700ms for 3rd error (DownloadErrorCount = 3)
+            // ... and so on
+            var rnd = new Random();
 
-            // Check for failures at request task.
-            if (res == TaskStatus.Faulted)
-            {
-                DownloadErrorCount++;
-                RequestFailed?.Invoke(RequestTask.Exception, requestData, ignoreError);
-                return;
-            }
+            var sleepTime = rnd.Next(
+                (downloadErrorCount - 1) * 100,
+                (downloadErrorCount * downloadErrorCount - (downloadErrorCount - 1)) * 100);
 
-            // Wait for request to complete - there's a wait on DownloadRequest. We do not
-            // want that to bomb out if we remove task while thread hasn't processed the Wait.
-            if (res < TaskStatus.RanToCompletion)
-                return;
-
-            //Request task ok. Check download task status.
-            res = DownloadTask?.Status;
-            switch (res)
-            {
-                case TaskStatus.Created:
-                    Created?.Invoke(requestData);
-                    break;
-                case TaskStatus.WaitingForActivation:
-                    WaitingForActivation?.Invoke(requestData);
-                    break;
-                case TaskStatus.WaitingToRun:
-                    WaitingToRun?.Invoke(requestData);
-                    break;
-                case TaskStatus.Running:
-                    WaitingToRun?.Invoke(requestData);
-                    break;
-                case TaskStatus.WaitingForChildrenToComplete:
-                    WaitingForChildrenToComplete?.Invoke(requestData);
-                    break;
-                case TaskStatus.RanToCompletion:
-                    RanToCompletion?.Invoke(DownloadTask.Result, requestData);
-                    break;
-                case TaskStatus.Canceled:
-                    Canceled?.Invoke(requestData);
-                    break;
-                case TaskStatus.Faulted:
-                    DownloadErrorCount++;
-                    Faulted?.Invoke(DownloadTask.Exception.InnerException, requestData, ignoreError);
-                    break;
-                default:
-                    //Do nothing. Most likely task not created yet.
-                    break;
-            }
+            return sleepTime;
         }
-
-
-        #region IDisposable Support
-        private bool disposedValue = false; // To detect redundant calls
-
-        protected virtual void Dispose(bool disposing)
-        {
-            if (!disposedValue)
-            {
-                if (disposing)
-                {
-                    try
-                    {
-                        DownloadTask?.Dispose();
-                    }
-                    catch (Exception)
-                    {
-
-                    }
-                }
-                DownloadTask = null;
-                RequestTask = null;
-
-                Created = null;
-                WaitingForActivation = null;
-                WaitingToRun = null;
-                Running = null;
-                WaitingForChildrenToComplete = null;
-                RanToCompletion = null;
-                Canceled = null;
-                Faulted = null;
-
-                downloadRange = null;
-                requestData = null;
-
-                disposedValue = true;
-            }
-        }
-
-        // This code added to correctly implement the disposable pattern.
-        public void Dispose()
-        {
-            // Do not change this code. Put cleanup code in Dispose(bool disposing) above.
-            Dispose(true);
-            // TODO: uncomment the following line if the finalizer is overridden above.
-            // GC.SuppressFinalize(this);
-        }
-        #endregion
-
     }
 }
 

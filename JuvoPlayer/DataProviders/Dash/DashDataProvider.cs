@@ -65,7 +65,7 @@ namespace JuvoPlayer.DataProviders.Dash
         /// </summary>
         /// <param name="newDocument">IDocument containing an updated document version
         /// NULL value indicates download/parse failure</param>
-        private void OnManifestChanged(Object newDocument)
+        private void OnManifestChanged(object newDocument)
         {
             if (disposed)
             {

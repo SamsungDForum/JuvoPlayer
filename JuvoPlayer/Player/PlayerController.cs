@@ -160,9 +160,8 @@ namespace JuvoPlayer.Player
         public void OnStop()
         {
             foreach (var stream in streams.Values)
-            {
                 stream.OnClearStream();
-            }
+
             player.Stop();
 
             state = PlayerState.Finished;
