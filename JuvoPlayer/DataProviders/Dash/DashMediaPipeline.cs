@@ -98,13 +98,9 @@ namespace JuvoPlayer.DataProviders.Dash
             var defaultStream = new DashStream(defaultMedia, representation);
 
             if (demuxerFullyInitialized)
-            {
                 UpdatePipeline(defaultStream);
-            }
             else
-            {
                 StartPipeline(defaultStream);
-            }
 
             GetAvailableStreams(media, defaultMedia);
         }
@@ -117,7 +113,7 @@ namespace JuvoPlayer.DataProviders.Dash
             // if no, return all available medias
             // TODO: add support for: SupplementalProperty schemeIdUri="urn:mpeg:dash:adaptation-set-switching:2016" 
             //            if (media.Any(o => o.Representations.Count() > 1))
-            if (defaultMedia.Representations.Count() > 1)
+            if (defaultMedia.Representations.Length > 1)
             {
                 if (defaultMedia.Group.HasValue)
                 {
@@ -165,7 +161,7 @@ namespace JuvoPlayer.DataProviders.Dash
             dashClient.UpdateRepresentation(newStream.Representation);
         }
 
-        private static Media GetDefaultMedia(IList<Media> medias)
+        private static Media GetDefaultMedia(ICollection<Media> medias)
         {
             Media media = null;
             if (medias.Count == 1)
@@ -174,10 +170,8 @@ namespace JuvoPlayer.DataProviders.Dash
                 media = medias.FirstOrDefault(o => o.HasRole(MediaRole.Main));
             if (media == null)
                 media = medias.FirstOrDefault(o => o.Lang == "en");
-            if (media == null)
-                media = medias.FirstOrDefault();
 
-            return media;
+            return media ?? medias.FirstOrDefault();
         }
 
         private static MediaType ToMediaType(StreamType streamType)
@@ -230,7 +224,7 @@ namespace JuvoPlayer.DataProviders.Dash
             if (stream == null)
                 throw new ArgumentNullException(nameof(stream), "stream cannot be null");
 
-            if (availableStreams.Count() <= stream.Id)
+            if (availableStreams.Count <= stream.Id)
                 throw new ArgumentOutOfRangeException();
 
             var newMedia = availableStreams[stream.Id].Media;
@@ -260,15 +254,15 @@ namespace JuvoPlayer.DataProviders.Dash
                 }).ToList();
         }
 
-        private string CreateStreamDescription(DashStream stream)
+        private static string CreateStreamDescription(DashStream stream)
         {
-            string description = "";
+            var description = "";
             if (!string.IsNullOrEmpty(stream.Media.Lang))
                 description += stream.Media.Lang;
             if (stream.Representation.Height.HasValue && stream.Representation.Width.HasValue)
-                description += string.Format(" ( {0}x{1} )", stream.Representation.Width, stream.Representation.Height);
+                description += $" ( {stream.Representation.Width}x{stream.Representation.Height} )";
             if (stream.Representation.NumChannels.HasValue)
-                description += string.Format(" ( {0} ch )", stream.Representation.NumChannels);
+                description += $" ( {stream.Representation.NumChannels} ch )";
 
             return description;
         }
