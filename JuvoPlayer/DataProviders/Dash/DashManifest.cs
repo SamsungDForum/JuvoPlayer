@@ -18,8 +18,8 @@ namespace JuvoPlayer.DataProviders.Dash
         /// Notification event. Will be called when MPD is updated.
         /// </summary>
         public event ManifestChanged ManifestChanged;
-        public Uri Uri { get; set; }
 
+        private Uri Uri { get; }
         private Task updateActivity;
 
         // int because Interlocked.CompareExchange doesn't support Enums

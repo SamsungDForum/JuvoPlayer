@@ -25,7 +25,7 @@ namespace JuvoPlayer.DataProviders.Dash
 
             public override bool Equals(object obj)
             {
-                return obj is DashStream && Equals((DashStream) obj);
+                return obj is DashStream && Equals((DashStream)obj);
             }
 
             public bool Equals(DashStream other)
@@ -62,7 +62,7 @@ namespace JuvoPlayer.DataProviders.Dash
         private readonly IDemuxer demuxer;
         private readonly StreamType streamType;
 
-        private bool demuxerFullyInitialized;
+        private bool pipelineStarted;
 
         private DashStream currentStream;
         private List<DashStream> availableStreams = new List<DashStream>();
@@ -83,7 +83,6 @@ namespace JuvoPlayer.DataProviders.Dash
             demuxer.PacketReady += OnPacketReady;
         }
 
-
         public void Start(IList<Media> media)
         {
             if (media == null)
@@ -97,7 +96,7 @@ namespace JuvoPlayer.DataProviders.Dash
             var representation = defaultMedia.Representations.OrderByDescending(o => o.Bandwidth).First();
             var defaultStream = new DashStream(defaultMedia, representation);
 
-            if (demuxerFullyInitialized)
+            if (pipelineStarted)
                 UpdatePipeline(defaultStream);
             else
                 StartPipeline(defaultStream);
@@ -132,20 +131,23 @@ namespace JuvoPlayer.DataProviders.Dash
             }
         }
 
-        private void StartPipeline(DashStream newStream)
+        private void StartPipeline(DashStream? newStream = null)
         {
-            currentStream = newStream;
+            if (newStream.HasValue)
+            {
+                currentStream = newStream.Value;
 
-            Logger.Info($"{streamType}: Dash pipeline start.");
-            Logger.Info($"{streamType}: Media: {newStream.Media}");
-            Logger.Info($"{streamType}: {newStream.Representation}");
+                Logger.Info($"{streamType}: Dash pipeline start.");
+                Logger.Info($"{streamType}: Media: {currentStream.Media}");
+                Logger.Info($"{streamType}: {currentStream.Representation}");
 
-            dashClient.SetRepresentation(newStream.Representation);
-            ParseDrms(newStream.Media);
+                dashClient.SetRepresentation(currentStream.Representation);
+                ParseDrms(currentStream.Media);
+            }
 
             dashClient.Start();
-            demuxer.StartForExternalSource(InitializationMode.Full);
-            demuxerFullyInitialized = true;
+            demuxer.StartForExternalSource(newStream.HasValue ? InitializationMode.Full : InitializationMode.Minimal);
+            pipelineStarted = true;
         }
 
         /// <summary>
@@ -191,12 +193,10 @@ namespace JuvoPlayer.DataProviders.Dash
 
         public void Stop()
         {
-            dashClient.Stop();
+            StopPipeline();
 
             haveTrimPTSDTS = false;
-
-            demuxer.Dispose();
-            demuxerFullyInitialized = false;
+            pipelineStarted = false;
         }
 
         public void OnTimeUpdated(TimeSpan time)
@@ -206,17 +206,11 @@ namespace JuvoPlayer.DataProviders.Dash
 
         public void Seek(TimeSpan time)
         {
-            // Stop demuxer and dashclient
-            // Stop demuxer first so old incoming data will ignored
-            demuxer.Reset();
-            dashClient.Stop();
+            StopPipeline();
 
-            // Set new time
             laskSeek = dashClient.Seek(time);
 
-            // Start downloading and parsing new data
-            dashClient.Start();
-            demuxer.StartForExternalSource(InitializationMode.Minimal);
+            StartPipeline();
         }
 
         public void ChangeStream(StreamDescription stream)
@@ -234,12 +228,16 @@ namespace JuvoPlayer.DataProviders.Dash
             if (currentStream.Media.Type.Value != newMedia.Type.Value)
                 throw new ArgumentException("wrong media type");
 
+            StopPipeline();
+            StartPipeline(newStream);
+        }
+
+        private void StopPipeline()
+        {
             // Stop demuxer and dashclient
             // Stop demuxer first so old incoming data will ignored
-            demuxer.Reset();
+            demuxer.Stop();
             dashClient.Stop();
-
-            StartPipeline(newStream);
         }
 
         public List<StreamDescription> GetStreamsDescription()
@@ -274,58 +272,63 @@ namespace JuvoPlayer.DataProviders.Dash
             {
                 var schemeIdUri = descriptor.SchemeIdUri;
                 if (CencUtils.SupportsSchemeIdUri(schemeIdUri))
+                    ParseCencScheme(descriptor, schemeIdUri);
+                else if (string.Equals(schemeIdUri, "http://youtube.com/drm/2012/10/10", StringComparison.CurrentCultureIgnoreCase))
+                    ParseYoutubeScheme(descriptor);
+            }
+        }
+
+        private void ParseCencScheme(ContentProtection descriptor, string schemeIdUri)
+        {
+            var doc = new XmlDocument();
+            try
+            {
+                doc.LoadXml(descriptor.Data);
+            }
+            catch (Exception)
+            {
+                return;
+            }
+
+            // read first node inner text (should be psshbox or pro header)
+            var initData = doc.FirstChild?.FirstChild?.InnerText;
+
+            var drmInitData = new DRMInitData
+            {
+                InitData = Convert.FromBase64String(initData),
+                SystemId = CencUtils.SchemeIdUriToSystemId(schemeIdUri),
+                StreamType = streamType
+            };
+            DRMInitDataFound?.Invoke(drmInitData);
+        }
+
+        private void ParseYoutubeScheme(ContentProtection descriptor)
+        {
+            var doc = new XmlDocument();
+            try
+            {
+                doc.LoadXml(descriptor.Data);
+            }
+            catch (Exception)
+            {
+                return;
+            }
+
+            if (doc.FirstChild?.ChildNodes == null)
+                return;
+
+            foreach (XmlNode node in doc.FirstChild?.ChildNodes)
+            {
+                var type = node.Attributes?.GetNamedItem("type")?.Value;
+                if (!CencUtils.SupportsType(type))
+                    continue;
+
+                var drmDescriptor = new DRMDescription
                 {
-                    XmlDocument doc = new XmlDocument();
-                    try
-                    {
-                        doc.LoadXml(descriptor.Data);
-                    }
-                    catch (Exception)
-                    {
-                        continue;
-                    }
-
-                    // read first node inner text (should be psshbox or pro header)
-                    var initData = doc.FirstChild?.FirstChild?.InnerText;
-
-                    var drmInitData = new DRMInitData
-                    {
-                        InitData = Convert.FromBase64String(initData),
-                        SystemId = CencUtils.SchemeIdUriToSystemId(schemeIdUri),
-                        StreamType = streamType
-                    };
-                    DRMInitDataFound?.Invoke(drmInitData);
-                }
-                else if (string.Equals(schemeIdUri, "http://youtube.com/drm/2012/10/10",
-                    StringComparison.CurrentCultureIgnoreCase))
-                {
-                    XmlDocument doc = new XmlDocument();
-                    try
-                    {
-                        doc.LoadXml(descriptor.Data);
-                    }
-                    catch (Exception)
-                    {
-                        continue;
-                    }
-
-                    if (doc.FirstChild?.ChildNodes == null)
-                        continue;
-
-                    foreach (XmlNode node in doc.FirstChild?.ChildNodes)
-                    {
-                        var type = node.Attributes?.GetNamedItem("type")?.Value;
-                        if (CencUtils.SupportsType(type))
-                        {
-                            var drmDescriptor = new DRMDescription
-                            {
-                                LicenceUrl = node.InnerText,
-                                Scheme = type
-                            };
-                            SetDrmConfiguration?.Invoke(drmDescriptor);
-                        }
-                    }
-                }
+                    LicenceUrl = node.InnerText,
+                    Scheme = type
+                };
+                SetDrmConfiguration?.Invoke(drmDescriptor);
             }
         }
 
@@ -385,9 +388,8 @@ namespace JuvoPlayer.DataProviders.Dash
 
         public void Dispose()
         {
-            demuxer?.Dispose();
-
-            dashClient?.Dispose();
+            demuxer.Dispose();
+            dashClient.Dispose();
         }
     }
 }
