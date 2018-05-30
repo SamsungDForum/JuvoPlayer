@@ -120,7 +120,14 @@ namespace JuvoPlayer.DataProviders.Dash
 
         private void ScheduleNextManifestReload()
         {
-            manifest.GetReloadManifestActivity?.Wait();
+            try
+            {
+                manifest.GetReloadManifestActivity?.Wait();
+            }
+            catch (Exception)
+            {
+                // ignore
+            }
             manifest.ReloadManifest(DateTime.UtcNow + ManifestRequestDelay);
         }
 
