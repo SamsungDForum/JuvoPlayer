@@ -1,62 +1,39 @@
 using System;
-using System.Net;
 using System.Threading;
 using System.Threading.Tasks;
-using JuvoPlayer.Common;
 using JuvoLogger;
+using JuvoPlayer.Common;
 using JuvoPlayer.SharedBuffers;
 using MpdParser.Node;
-using Representation = MpdParser.Representation;
 using MpdParser.Node.Dynamic;
-using System.Collections.Generic;
+using Representation = MpdParser.Representation;
 
 namespace JuvoPlayer.DataProviders.Dash
 {
-
     internal class DashClient : IDashClient
     {
-        private static readonly string Tag = "JuvoPlayer";
+        private const string Tag = "JuvoPlayer";
+
         private static readonly ILogger Logger = LoggerManager.GetInstance().GetLogger(Tag);
         private static readonly TimeSpan TimeBufferDepthDefault = TimeSpan.FromSeconds(10);
-        private TimeSpan TimeBufferDepth = TimeBufferDepthDefault;
-        private static readonly int MaxRetryCount = 3;
+        private TimeSpan timeBufferDepth = TimeBufferDepthDefault;
 
         private readonly ISharedBuffer sharedBuffer;
         private readonly StreamType streamType;
-        private AutoResetEvent timeUpdatedEvent;
-
-        /// <summary>
-        /// Pool of awaitables. First N shall match number of concurrent downloaders.
-        /// anything extra can be used for other purposes in terms of "WaitForUpdate"
-        /// Currently this is used for timeUpdateEvent (3rd element)
-        /// </summary>
-        private readonly EventWaitHandle[] awaitablesPool = { new AutoResetEvent(false), new AutoResetEvent(false), new AutoResetEvent(false) };
-        private enum awaitableItems
-        {
-            timeUpdateEvent = maxSegmentDownloads
-        }
 
         private Representation currentRepresentation;
         private Representation newRepresentation;
         private TimeSpan currentTime = TimeSpan.Zero;
         private TimeSpan bufferTime = TimeSpan.Zero;
-        private uint? currentSegmentId = null;
+        private uint? currentSegmentId;
 
-        private bool playback;
         private IRepresentationStream currentStreams;
         private TimeSpan? currentStreamDuration;
 
         private byte[] initStreamBytes;
-        private Task downloadTask;
 
-        /// <summary>
-        /// Download queue with max concurrent download counts.
-        /// Linked List acts as FIFO for download request. New requests being pushed at the front
-        /// of the queue, processing is done from end of the queue. This assures in-request-order
-        /// placement of recieved data to the player regardless of their arrival order.
-        /// </summary>
-        private const int maxSegmentDownloads = 2;
-        private LinkedList<DownloadRequest> downloadRequestPool = new LinkedList<DownloadRequest>();
+        private Task processDataTask;
+        private CancellationTokenSource cancellationTokenSource;
 
         /// <summary>
         /// Contains information about timing data for last requested segment
@@ -64,64 +41,27 @@ namespace JuvoPlayer.DataProviders.Dash
         private TimeRange lastRequestedPeriod = new TimeRange(TimeSpan.Zero,TimeSpan.Zero);
 
         /// <summary>
-        /// Flags & timeouts used to limit number of messages displayed
-        /// when waiting for time / downloads. Those messages will be displayed 
-        /// only if time update arrives from underlying player or when 5 second timeout 
-        /// is reached. There is not much point in seeing same messages over & over.
-        /// dataTimeout defines time a client will wait for pending network IO
-        /// clocktickTimeout defines time a client will wait for clock update from unerlying player
-        /// </summary>
-        private bool timeUpdated = false;
-        private TimeSpan lastMessageTimeout = TimeSpan.Zero;
-        private static readonly TimeSpan maxMessageTimeout = TimeSpan.FromSeconds(5);
-        private static readonly TimeSpan awaitTimeout = TimeSpan.FromMilliseconds(500);
-
-        /// <summary>
         /// Buffer full accessor.
-        /// true - Underlying player recieved MagicBufferTime ammount of data
+        /// true - Underlying player received MagicBufferTime ammount of data
         /// false - Underlying player has at least some portion of MagicBufferTime left and can
         /// continue to accept data.
         /// 
         /// Buffer full is an indication of how much data (in units of time) has been pushed to the player.
         /// MagicBufferTime defines how much data (in units of time) can be pushed before Client needs to
         /// hold off further pushes. 
-        /// TimeTicks (current time) recieved from the player are an indication of how much data (in units of time)
+        /// TimeTicks (current time) received from the player are an indication of how much data (in units of time)
         /// player consumed.
         /// A difference between buffer time (data being pushed to player in units of time) and current tick time (currentTime)
         /// defines how much data (in units of time) is in the player and awaits presentation.
         /// </summary>
-        private bool BufferFull
-        {
-            get
-            {
-                return ((bufferTime - currentTime) > TimeBufferDepth);
-            }
-        }
-
-        /// <summary>
-        /// DownloadSlotsAvailable accessor. Check if max concurrent segment download count
-        /// exceeds number of items in download queue.
-        /// </summary>
-        private bool DownloadSlotsFull
-        {
-            get
-            {
-                return (downloadRequestPool.Count >= maxSegmentDownloads);
-            }
-        }
+        private bool BufferFull => (bufferTime - currentTime) > timeBufferDepth + timeBufferDepth;
 
         /// <summary>
         /// A shorthand for retrieving currently played out document type
         /// True - Content is dynamic
         /// False - Content is static.
         /// </summary>
-        private bool IsDynamic
-        {
-            get
-            {
-                return currentStreams.GetDocumentParameters().Document.IsDynamic;
-            }
-        }
+        private bool IsDynamic => currentStreams.GetDocumentParameters().Document.IsDynamic;
 
         public DashClient(ISharedBuffer sharedBuffer, StreamType streamType)
         {
@@ -133,7 +73,7 @@ namespace JuvoPlayer.DataProviders.Dash
         {
             var newTime = TimeSpan.Zero;
             var segmentId = currentStreams?.MediaSegmentAtTime(position);
-            if (segmentId.HasValue == true)
+            if (segmentId.HasValue)
             {
                 currentTime = position;
                 currentSegmentId = segmentId.Value;
@@ -150,38 +90,117 @@ namespace JuvoPlayer.DataProviders.Dash
             if (currentRepresentation == null)
                 throw new Exception("currentRepresentation has not been set");
 
-            Logger.Info(string.Format("{0} DashClient start.", streamType));
-            playback = true;
+            Logger.Info($"{streamType} DashClient start.");
+            cancellationTokenSource?.Dispose();
+            cancellationTokenSource = new CancellationTokenSource();
 
-            downloadTask = Task.Factory.StartNew(DownloadThread, TaskCreationOptions.LongRunning);
+            // clear garbage before appending new data
+            sharedBuffer?.ClearData();
+
+            bufferTime = currentTime;
+
+            if (currentSegmentId.HasValue == false)
+                currentSegmentId = currentStreams.GetStartSegment(currentTime, timeBufferDepth);
+
+            var initSegment = currentStreams.InitSegment;
+            if (initSegment != null)
+                DownloadSegment(initSegment, InitDataDownloaded);
+            else
+                ScheduleNextSegDownload();
+        }
+
+        private void ScheduleNextSegDownload()
+        {
+            lock (this)
+            {
+                if (!processDataTask.IsCompleted || cancellationTokenSource.IsCancellationRequested)
+                    return;
+
+                if (BufferFull)
+                {
+                    Logger.Info($"{streamType} Full buffer: ({bufferTime}-{currentTime}) {bufferTime - currentTime} > {timeBufferDepth}.");
+                    return;
+                }
+
+                SwapRepresentation();
+
+                if (!currentSegmentId.HasValue)
+                    return;
+
+                var segment = currentStreams.MediaSegmentAtPos(currentSegmentId.Value);
+                if (segment == null)
+                {
+                    if (IsDynamic)
+                        return;
+
+                    Logger.Warn($"{streamType}: Segment: {currentSegmentId} NULL stream. Stoping player.");
+                    Stop();
+                    return;
+                }
+
+                DownloadSegment(segment, HandleSuccessfullDownload);
+            }
+        }
+
+        private void DownloadSegment(Segment segment, Action<DownloadResponse> onSuccessfullDownloadAction)
+        {
+            var downloadTask = CreateDownloadTask(segment, true);
+            downloadTask.ContinueWith(response => HandleFailedDownload(GetErrorMessage(response)),
+                cancellationTokenSource.Token, TaskContinuationOptions.OnlyOnFaulted, TaskScheduler.Default);
+            processDataTask = downloadTask.ContinueWith(response => onSuccessfullDownloadAction.Invoke(response.Result),
+                cancellationTokenSource.Token, TaskContinuationOptions.OnlyOnRanToCompletion, TaskScheduler.Default);
+            processDataTask.ContinueWith(_ => ScheduleNextSegDownload(),
+                cancellationTokenSource.Token, TaskContinuationOptions.NotOnCanceled, TaskScheduler.Default);
+        }
+
+        private static string GetErrorMessage(Task response)
+        {
+            return response.Exception?.Flatten().InnerExceptions[0].Message;
+        }
+
+        private void HandleSuccessfullDownload(DownloadResponse responseResult)
+        {
+            sharedBuffer.WriteData(responseResult.Data);
+            lastRequestedPeriod = responseResult.DownloadSegment.Period.Copy();
+            ++currentSegmentId;
+
+            bufferTime += responseResult.DownloadSegment.Period.Duration;
+            var timeInfo = responseResult.DownloadSegment.Period.ToString();
+
+            Logger.Info($"{responseResult.StreamType}: Segment: {responseResult.SegmentID} received {timeInfo}");
+
+            if (IsEndOfContent())
+                Stop();
+        }
+
+        private void InitDataDownloaded(DownloadResponse responseResult)
+        {
+            initStreamBytes = responseResult.Data;
+
+            if (initStreamBytes != null)
+                sharedBuffer.WriteData(initStreamBytes);
+
+            Logger.Info($"{responseResult.StreamType}: Init segment downloaded.");
+        }
+
+        private void HandleFailedDownload(string message)
+        {
+            Logger.Error(message);
+
+            if (IsDynamic)
+                return;
+
+            Stop();
         }
 
         public void Stop()
         {
-            // playback has been already stopped
-            if (!playback)
-                return;
-            playback = false;
+            cancellationTokenSource?.Cancel();
+            SendEOSEvent();
 
-            while (downloadRequestPool.Count > 0)
-            {
-                downloadRequestPool.Last.Value.Dispose();
-                downloadRequestPool.RemoveLast();
-            }
-
-            
-            timeUpdatedEvent.Set();
-
-            sharedBuffer?.WriteData(null, true);
-            downloadTask.Wait();
-
-            Logger.Info(string.Format("{0} Data downloader stopped", streamType));
+            Logger.Info($"{streamType} Data downloader stopped");
         }
 
-        private void StopPlayback()
-        {
-            playback = false;
-        }
         public void SetRepresentation(Representation representation)
         {
             // representation has changed, so reset initstreambytes
@@ -191,7 +210,7 @@ namespace JuvoPlayer.DataProviders.Dash
             currentRepresentation = representation;
 
             currentStreams = currentRepresentation.Segments;
-            TimeBufferDepth = currentStreams.GetDocumentParameters().Document.MinBufferTime ?? TimeBufferDepthDefault;
+            timeBufferDepth = currentStreams.GetDocumentParameters().Document.MinBufferTime ?? TimeBufferDepthDefault;
         }
 
         /// <summary>
@@ -203,8 +222,10 @@ namespace JuvoPlayer.DataProviders.Dash
             if (IsDynamic == false)
                 return;
 
-            Interlocked.Exchange<Representation>(ref newRepresentation, representation);
+            Interlocked.Exchange(ref newRepresentation, representation);
             Logger.Info($"{streamType}: newRepresentation set");
+
+            ScheduleNextSegDownload();
         }
 
         /// <summary>
@@ -212,392 +233,104 @@ namespace JuvoPlayer.DataProviders.Dash
         /// Updates segment information and base segment ID for the stream.
         /// </summary>
         /// <returns>bool. True. Representations were swapped. False otherwise</returns>
-        private bool SwapRepresentation()
+        private void SwapRepresentation()
         {
             // Exchange updated representation with "null". On subsequent calls, this will be an indication
             // that there is no new representations.
-            Representation newRep;
-            newRep = Interlocked.Exchange<Representation>(ref newRepresentation, null);
+            var newRep = Interlocked.Exchange(ref newRepresentation, null);
 
             // Update internals with new representation if exists.
             if (newRep == null)
-                return false;
+                return;
 
             currentRepresentation = newRep;
             currentStreams = currentRepresentation.Segments;
             currentStreamDuration = currentStreams.Duration;
-            TimeBufferDepth = currentStreams.GetDocumentParameters().Document.MinBufferTime ?? TimeBufferDepthDefault;
 
-            uint? newSeg = null;
-            bool res = false;
+            timeBufferDepth = currentStreams.GetDocumentParameters().Document.MinBufferTime ?? TimeBufferDepthDefault;
 
             // TODO:
             // Add API to Representation - GetNextSegmentIdAtTime(). would allow for finding exixsting segment
             // and verifying if next segment is valid / available without having to call MediaSegmentAtPos()
             // which is heavy compared to internal data checks/
-            if (lastRequestedPeriod != null)
+            if (lastRequestedPeriod == null)
             {
-                newSeg = currentStreams.MediaSegmentAtTime(lastRequestedPeriod.Start);
+                currentSegmentId = currentStreams.GetStartSegment(currentTime, timeBufferDepth);
+                Logger.Info($"{streamType}: Rep. Swap. Start Seg: {currentSegmentId}");
+                return;
+            }
 
-                if (newSeg.HasValue)
+            string message;
+            var newSeg = currentStreams.MediaSegmentAtTime(lastRequestedPeriod.Start);
+            if (newSeg.HasValue)
+            {
+                newSeg++;
+                var tmp = currentStreams.MediaSegmentAtPos((uint)newSeg);
+                if (tmp != null)
                 {
-                    newSeg++;
-                    var tmp = currentStreams.MediaSegmentAtPos((uint)newSeg);
-                    if (tmp != null)
-                    {
-                        Logger.Info($"{streamType}: Rep. Swap. Last Seg: {currentSegmentId}/{lastRequestedPeriod.Start}-{lastRequestedPeriod.Duration} Updated Seg: {newSeg}/{tmp.Period.Start}-{tmp.Period.Duration}");
-                        res = true;
-                    }
-                    else
-                    {
-                        Logger.Info($"{streamType}: Rep. Swap. Last Seg: {currentSegmentId}/{lastRequestedPeriod.Start}-{lastRequestedPeriod.Duration} Does not return stream for Seg {newSeg}. Setting segment to null");
-                        newSeg = null;
-                    }
+                    message = $"Updated Seg: {newSeg}/{tmp.Period.Start}-{tmp.Period.Duration}";
                 }
                 else
                 {
-                    Logger.Info($"{streamType}: Rep. Swap. Last Seg: {currentSegmentId}/{lastRequestedPeriod.Start}-{lastRequestedPeriod.Duration} Not Found. Setting segment to null");
+                    message = $"Does not return stream for Seg {newSeg}. Setting segment to null";
+                    newSeg = null;
                 }
-
             }
             else
             {
-                newSeg = currentStreams.GetStartSegment(currentTime, TimeBufferDepth);
-                Logger.Info($"{streamType}: Rep. Swap. Start Seg: {currentSegmentId}");
+                message = "Not Found. Setting segment to null";
             }
+
+            Logger.Info($"{streamType}: Rep. Swap. Last Seg: {currentSegmentId}/{lastRequestedPeriod.Start}-{lastRequestedPeriod.Duration} {message}");
 
             currentSegmentId = newSeg;
 
             Logger.Info($"{streamType}: Representations swapped.");
-            return res;
         }
 
         public void OnTimeUpdated(TimeSpan time)
         {
             currentTime = time;
 
-            try
-            {
-                //this can throw when event is received after Dispose() was called
-                timeUpdatedEvent.Set();
-            }
-            catch
-            {
-                // ignored
-            }
-            finally
-            {
-
-                Logger.Info($"{streamType}: TimeSync {currentTime}");
-                timeUpdated = false;
-            }
+            ScheduleNextSegDownload();
         }
 
-        /// <summary>
-        /// Unified method for Time Update wait with optional
-        /// user message (reason for wait). Internal flag timeUpdate
-        /// is used to prevent multiple message printouts.
-        /// </summary>
-        /// <param name="waitReason">Additional message to be displayed</param>
-        private void WaitForUpdate(string waitReason)
-        {
-            // Wait on Download Request (if in progress)
-            // or timer event. 
-
-            if (timeUpdated == false)
-            {
-                timeUpdated = true;
-                lastMessageTimeout = TimeSpan.Zero;
-                Logger.Info($"{streamType}: {waitReason}");
-            }
-
-            lastMessageTimeout += awaitTimeout;
-            // 5sec. timeout on repeated messages.
-            if (lastMessageTimeout >= maxMessageTimeout)
-            {
-                lastMessageTimeout = TimeSpan.Zero;
-                timeUpdated = false;
-            }
-
-            try
-            {
-                // Currently we await ANY awaitable. This includes a download request which 
-                // may not be for us. Odds are 2:1 in our favor. Being woken up by a request of no
-                // interest is of no consequence to handling of those requests. Simply a third chance
-                // we get woken up for nothing. Still, I believe it is cheaper to do it this way
-                // then dynamically build list of awaitables when number of concurrent downloaders
-                // is so small.
-                WaitHandle.WaitAny(awaitablesPool, awaitTimeout);
-            }
-            catch { }
-
-        }
-
-        private void DownloadThread()
-        {
-            // clear garbage before appending new data
-            sharedBuffer?.ClearData();
-            timeUpdatedEvent = awaitablesPool[(int)awaitableItems.timeUpdateEvent] as AutoResetEvent;
-
-            var initSegment = currentStreams.InitSegment;
-            if (initSegment != null)
-            {
-                Logger.Info($"{streamType}: Requesting Init segment {initSegment.Url}");
-                var request = CreateDownloadRequest(initSegment, false, InitSegmentDownloadOK);
-                if (request == null)
-                {
-                    StopPlayback();
-                    SendEOSEvent();
-                    return;
-                }
-            }
-            else
-            {
-                Logger.Info($"{streamType}: No Init segment to request");
-            }
-
-            if (currentSegmentId.HasValue == false)
-                currentSegmentId = currentStreams.GetStartSegment(currentTime, TimeBufferDepth);
-
-            bufferTime = currentTime;
-
-            while (playback)
-            {
-
-                // Process any pending downloads.
-                ProcessRequests();
-
-                // Nothing is waiting for transfer to player at this stage 
-                // (second chunk may, but it will be processed at next iteration)
-
-                // After Manifest update refresh value of current segment to be downloaded as with new
-                // Manifest, its ID may be very different then last.
-                SwapRepresentation();
-
-                if (currentSegmentId.HasValue == false)
-                {
-                    WaitForUpdate($"CurrentSegmentId is NULL");
-                    continue;
-                }
-
-                // If underlying buffer is full & there are no download slots, wait for time update.
-                if (BufferFull == true || DownloadSlotsFull == true)
-                {
-                    WaitForUpdate($"Slots({DownloadSlotsFull}) ({downloadRequestPool.Count}/{maxSegmentDownloads}) or Buffer ({BufferFull}) ({bufferTime}-{currentTime}) {bufferTime - currentTime} > {TimeBufferDepth}.");
-                    continue;
-                }
-
-                // Get new stream.
-                // there should be NO case we get NULL stram at this point. This case is handled
-                // when swapping representations... but check for such scenario anyway.
-                var stream = currentStreams.MediaSegmentAtPos(currentSegmentId.Value);
-                if (stream == null)
-                {
-                    if (IsDynamic == true)
-                    {
-                        WaitForUpdate($"Segment: {currentSegmentId} NULL stream.");
-                        continue;
-                    }
-
-                    Logger.Warn($"{streamType}: Segment: {currentSegmentId} NULL stream. Stoping player.");
-                    StopPlayback();
-                    break;
-                }
-
-                // Download new segment. NULL indicates there are no download slots left.
-                // this may occour if buffer is not full, but slots are (which is kind of odd)
-                var downloadRequest = CreateDownloadRequest(stream, IsDynamic);
-                if (downloadRequest == null)
-                {
-                    WaitForUpdate($"No download slots available. Max {maxSegmentDownloads}");
-                    continue;
-                }
-
-                // Get timing information from last requested segment. 
-                // Used for finding new items when MPD is updated.
-                lastRequestedPeriod = stream.Period.Copy();
-
-                ++currentSegmentId;
-
-                if (CheckEndOfContent() == false)
-                    continue;
-        
-                // Before giving up, for dynamic content, re-check if there is a pending manifest update
-                Logger.Warn($"{streamType}: End of content. BuffTime {bufferTime} StreamDuration {currentStreamDuration}");
-                StopPlayback();
-                break;
-            }
-
-            Logger.Info($"{streamType}: Playback Terminated");
-            SendEOSEvent();
-        }
         private void SendEOSEvent()
         {
             sharedBuffer.WriteData(null, true);
         }
 
-        private bool CheckEndOfContent()
+        private bool IsEndOfContent()
         {
-            var EndTime = (currentStreamDuration ?? TimeSpan.MaxValue);
-            return (currentTime >= EndTime);
+            var endTime = currentStreamDuration ?? TimeSpan.MaxValue;
+            return bufferTime >= endTime;
         }
 
-        /// <summary>
-        /// Downloads a segment by creating a download request and scheduling it for download
-        /// </summary>
-        /// <param name="stream">Stream which is to be downloaded</param>
-        /// <param name="ignoreError"> True - download errors will be ignored. False - download errors will be retried.</param>
-        /// <param name="downloadOK">Optional. Overrides DashClient's current Download OK handler</param>
-        /// <returns></returns>
-        private DownloadRequest CreateDownloadRequest(MpdParser.Node.Dynamic.Segment stream,
-            bool ignoreError, Action<byte[], DownloadRequestData> downloadOK = null)
+        private Task<DownloadResponse> CreateDownloadTask(Segment stream, bool ignoreError)
         {
-            var requestData = new DownloadRequestData();
-            requestData.DownloadSegment = stream;
-            requestData.SegmentID = currentSegmentId;
-            requestData.StreamType = streamType;
-
-
-            var request = new DownloadRequest(requestData, ignoreError);
-            request.RanToCompletion = downloadOK ?? SegmentDownloadOK;
-            request.Faulted = SegmentDownloadFailed;
-            request.RequestFailed = SegmentDownloadFailed;
-            request.CompletionNotifier = awaitablesPool[downloadRequestPool.Count];
-
-            request = downloadRequestPool.AddFirst(request).Value;
-
-            request.Download();
-
-            return request;
-
-        }
-
-        /// <summary>
-        /// Wrapper on processing download requests. Processing (data transfer/error handling)
-        /// is not done manually in main lopp. Intentional. Allows easer managment of in-order
-        /// transfer of downloaded data.
-        /// </summary>
-        private void ProcessRequests()
-        {
-            // Process is "self cleaning".
-            // i.e. Downloaded tasks shall self remove.
-            // failed tasks shall re-schedule themselve or
-            // remove on failure.
-            downloadRequestPool.Last?.Value.Process();
-        }
-
-        /// <summary>
-        /// Download handler for init segment.
-        /// </summary>
-        /// <param name="data">requested data returned by WebClient</param>
-        /// <param name="requestParams">request parameters</param>
-        private void InitSegmentDownloadOK(byte[] data, DownloadRequestData requestParams)
-        {
-            initStreamBytes = data;
-
-            if (initStreamBytes != null)
-                sharedBuffer.WriteData(initStreamBytes);
-
-            downloadRequestPool.Last.Value.Dispose();
-            downloadRequestPool.RemoveLast();
-
-            Logger.Info($"{requestParams.StreamType}: Init segment downloaded.");
-        }
-
-        /// <summary>
-        /// Segment donwload handler. Applicable to both, Static & dynamic segments.
-        /// </summary>
-        /// <param name="data">requested data returned by WebClient</param>
-        /// <param name="requestParams">request parameters</param>
-        private void SegmentDownloadOK(byte[] data, DownloadRequestData requestParams)
-        {
-            sharedBuffer.WriteData(data);
-            bufferTime += requestParams.DownloadSegment.Period.Duration;
-            var timeInfo = requestParams.DownloadSegment.Period.ToString();
-
-            downloadRequestPool.Last.Value.Dispose();
-            downloadRequestPool.RemoveLast();
-
-            Logger.Info($"{requestParams.StreamType}: Segment: {requestParams.SegmentID} recieved {timeInfo}");
-        }
-
-        /// <summary>
-        /// Static Segment download fail handler. Provides for retries with (if not exceeded)
-        /// </summary>
-        /// <param name="ex">Exception which caused failure</param>
-        /// <param name="requestParams">request parameters</param>
-        private void SegmentDownloadFailed(Exception ex, DownloadRequestData requestParams, bool ignoreErrors)
-        {
-            WebException exw = ex as WebException;
-            if (exw == null)
+            var requestData = new DownloadRequestData
             {
-                Logger.Error($"{requestParams.StreamType}: Segment: {requestParams.SegmentID} Error: {ex.Message}");
-            }
-            else
-            {
-                Logger.Warn($"{requestParams.StreamType}: Segment: {requestParams.SegmentID} NetError: {exw.Message}");
-            }
+                DownloadSegment = stream,
+                SegmentID = currentSegmentId,
+                StreamType = streamType
+            };
 
-            if (ignoreErrors == true)
-            {
-                downloadRequestPool.Last.Value.Dispose();
-                downloadRequestPool.RemoveLast();
-                return;
-            }
-
-            if (downloadRequestPool.Last.Value.DownloadErrorCount >= MaxRetryCount)
-            {
-                Logger.Error($"{requestParams.StreamType}: Segment: {requestParams.SegmentID} Max retry count reached. Stoping Player.");
-
-                downloadRequestPool.Last.Value.Dispose();
-                downloadRequestPool.RemoveLast();
-
-                Stop();
-                return;
-            }
-
-            downloadRequestPool.Last.Value.Download();
+            return DownloadRequest.CreateDownloadRequestAsync(requestData, ignoreError, cancellationTokenSource.Token);
         }
 
         #region IDisposable Support
-        private bool disposedValue = false; // To detect redundant calls
+        private bool disposedValue; // To detect redundant calls
 
-        protected virtual void Dispose(bool disposing)
-        {
-            if (!disposedValue)
-            {
-                if (disposing)
-                {
-                    try
-                    {
-                        while (downloadRequestPool.Count > 0)
-                        {
-                            downloadRequestPool.Last.Value.Dispose();
-                            downloadRequestPool.RemoveLast();
-                        }
-
-                        Array.ForEach(awaitablesPool, waitHandle => waitHandle.Dispose());
-
-                        timeUpdatedEvent.Dispose();
-                    }
-                    catch (Exception)
-                    {
-
-                    }
-                }
-         
-                disposedValue = true;
-            }
-        }
-
-        // This code added to correctly implement the disposable pattern.
         public void Dispose()
         {
-            // Do not change this code. Put cleanup code in Dispose(bool disposing) above.
-            Dispose(true);
-            // TODO: uncomment the following line if the finalizer is overridden above.
-            // GC.SuppressFinalize(this);
+            if (disposedValue)
+                return;
+
+            cancellationTokenSource?.Dispose();
+
+            disposedValue = true;
         }
+
         #endregion
     }
 }

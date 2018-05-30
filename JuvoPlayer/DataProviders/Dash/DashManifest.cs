@@ -29,10 +29,7 @@ namespace JuvoPlayer.DataProviders.Dash
 
         public Task GetReloadManifestActivity { get; private set; }
 
-        public bool IsReloadInProgress
-        {
-            get { return (GetReloadManifestActivity?.Status < TaskStatus.RanToCompletion || updateActivity?.Status < TaskStatus.RanToCompletion); }
-        }
+        public bool IsReloadInProgress => GetReloadManifestActivity?.IsCompleted == false || updateActivity?.IsCompleted == false;
 
         public DashManifest(string url)
         {
