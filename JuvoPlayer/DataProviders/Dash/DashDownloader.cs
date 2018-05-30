@@ -141,11 +141,11 @@ namespace JuvoPlayer.DataProviders.Dash
             this.cancellationToken = cancellationToken;
         }
 
-        public static Task<DownloadResponse> CreateDownloadRequestAsync(DownloadRequestData downloadRequest, bool downloadErrorIgnore, CancellationToken cancellationToken)
+        public static Task<DownloadResponse> CreateDownloadRequestAsync(DownloadRequestData downloadRequestData, bool downloadErrorIgnore, CancellationToken cancellationToken)
         {
-            var downloadRequst = new DownloadRequest(downloadRequest, downloadErrorIgnore, cancellationToken);
+            var downloadRequest = new DownloadRequest(downloadRequestData, downloadErrorIgnore, cancellationToken);
 
-            return downloadRequst.DownloadAsync();
+            return downloadRequest.DownloadAsync();
         }
 
         private async Task<DownloadResponse> DownloadAsync()
@@ -176,7 +176,7 @@ namespace JuvoPlayer.DataProviders.Dash
                 }
             } while (ignoreError && downloadErrorCount < 3);
 
-            throw new Exception("{requestParams.StreamType}: Segment: {requestParams.SegmentID} Max retry count reached.");
+            throw new Exception($"{requestData.StreamType}: Segment: {requestData.SegmentID} Max retry count reached.");
         }
 
         private async Task<DownloadResponse> DownloadDataTaskAsync()
@@ -186,17 +186,18 @@ namespace JuvoPlayer.DataProviders.Dash
                 if (downloadRange != null)
                     dataDownloader.SetRange(downloadRange.Low, downloadRange.High);
 
-                cancellationToken.Register(dataDownloader.CancelAsync);
-
-                Logger.Info($"{requestData.StreamType}: Segment: {requestData.SegmentID} Requested. URL: {requestData.DownloadSegment.Url} Range: {downloadRange}");
-
-                return new DownloadResponse
+                using (cancellationToken.Register(dataDownloader.CancelAsync))
                 {
-                    StreamType = requestData.StreamType,
-                    DownloadSegment = requestData.DownloadSegment,
-                    SegmentID = requestData.SegmentID,
-                    Data = await dataDownloader.DownloadDataTaskAsync(requestData.DownloadSegment.Url)
-                };
+                    Logger.Info($"{requestData.StreamType}: Segment: {requestData.SegmentID} Requested. URL: {requestData.DownloadSegment.Url} Range: {downloadRange}");
+
+                    return new DownloadResponse
+                    {
+                        StreamType = requestData.StreamType,
+                        DownloadSegment = requestData.DownloadSegment,
+                        SegmentID = requestData.SegmentID,
+                        Data = await dataDownloader.DownloadDataTaskAsync(requestData.DownloadSegment.Url)
+                    };
+                }
             }
         }
 

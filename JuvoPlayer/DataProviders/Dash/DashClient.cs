@@ -32,7 +32,7 @@ namespace JuvoPlayer.DataProviders.Dash
 
         private byte[] initStreamBytes;
 
-        private Task downloadTask;
+        private Task processDataTask;
         private CancellationTokenSource cancellationTokenSource;
 
         /// <summary>
@@ -42,14 +42,14 @@ namespace JuvoPlayer.DataProviders.Dash
 
         /// <summary>
         /// Buffer full accessor.
-        /// true - Underlying player recieved MagicBufferTime ammount of data
+        /// true - Underlying player received MagicBufferTime ammount of data
         /// false - Underlying player has at least some portion of MagicBufferTime left and can
         /// continue to accept data.
         /// 
         /// Buffer full is an indication of how much data (in units of time) has been pushed to the player.
         /// MagicBufferTime defines how much data (in units of time) can be pushed before Client needs to
         /// hold off further pushes. 
-        /// TimeTicks (current time) recieved from the player are an indication of how much data (in units of time)
+        /// TimeTicks (current time) received from the player are an indication of how much data (in units of time)
         /// player consumed.
         /// A difference between buffer time (data being pushed to player in units of time) and current tick time (currentTime)
         /// defines how much data (in units of time) is in the player and awaits presentation.
@@ -91,78 +91,72 @@ namespace JuvoPlayer.DataProviders.Dash
                 throw new Exception("currentRepresentation has not been set");
 
             Logger.Info($"{streamType} DashClient start.");
+            cancellationTokenSource?.Dispose();
             cancellationTokenSource = new CancellationTokenSource();
 
             // clear garbage before appending new data
             sharedBuffer?.ClearData();
-
-            var initSegment = currentStreams.InitSegment;
-            if (initSegment != null)
-            {
-                downloadTask = CreateDownloadTask(initSegment, true).ContinueWith(response =>
-                {
-                    if (response.IsFaulted)
-                        HandleFailedDownload(GetErrorMessage(response));
-                    else
-                        InitDataDownloaded(response.Result);
-                }, cancellationTokenSource.Token, TaskContinuationOptions.NotOnCanceled, TaskScheduler.Default);
-            }
 
             bufferTime = currentTime;
 
             if (currentSegmentId.HasValue == false)
                 currentSegmentId = currentStreams.GetStartSegment(currentTime, timeBufferDepth);
 
-            ScheduleNextDownload();
+            var initSegment = currentStreams.InitSegment;
+            if (initSegment != null)
+                DownloadSegment(initSegment, InitDataDownloaded);
+            else
+                ScheduleNextSegDownload();
         }
 
-        private void ScheduleNextDownload()
+        private void ScheduleNextSegDownload()
         {
-            if (cancellationTokenSource.IsCancellationRequested)
-                return;
-            
-            if (BufferFull)
+            lock (this)
             {
-                Logger.Info($"{streamType} Full buffer: ({bufferTime}-{currentTime}) {bufferTime - currentTime} > {timeBufferDepth}.");
-                return;
-            }
-
-            if (downloadTask == null || downloadTask.IsCompleted)
-                downloadTask = Task.Delay(0);
-
-            downloadTask.ContinueWith(_ => DownloadSegment());
-        }
-
-        private void DownloadSegment()
-        {
-            SwapRepresentation();
-
-            if (!currentSegmentId.HasValue)
-                return;
-
-            var segment = currentStreams.MediaSegmentAtPos(currentSegmentId.Value);
-            if (segment == null)
-            { 
-                if (IsDynamic)
+                if (!processDataTask.IsCompleted || cancellationTokenSource.IsCancellationRequested)
                     return;
 
-                Logger.Warn($"{streamType}: Segment: {currentSegmentId} NULL stream. Stoping player.");
-                Stop();
-                return;
+                if (BufferFull)
+                {
+                    Logger.Info($"{streamType} Full buffer: ({bufferTime}-{currentTime}) {bufferTime - currentTime} > {timeBufferDepth}.");
+                    return;
+                }
+
+                SwapRepresentation();
+
+                if (!currentSegmentId.HasValue)
+                    return;
+
+                var segment = currentStreams.MediaSegmentAtPos(currentSegmentId.Value);
+                if (segment == null)
+                {
+                    if (IsDynamic)
+                        return;
+
+                    Logger.Warn($"{streamType}: Segment: {currentSegmentId} NULL stream. Stoping player.");
+                    Stop();
+                    return;
+                }
+
+                DownloadSegment(segment, HandleSuccessfullDownload);
             }
-
-            downloadTask = CreateDownloadTask(segment, IsDynamic).ContinueWith(response =>
-            {
-                if (response.IsFaulted)
-                    HandleFailedDownload(GetErrorMessage(response));
-                else
-                    HandleSuccessfullDownload(response.Result);
-            }, cancellationTokenSource.Token, TaskContinuationOptions.NotOnCanceled, TaskScheduler.Default);
-
-            ScheduleNextDownload();
         }
 
-        private static string GetErrorMessage(Task<DownloadResponse> response)
+        private void DownloadSegment(Segment segment, Action<DownloadResponse> onSuccessfullDownloadAction)
+        {
+            var downloadTask = CreateDownloadTask(segment, true);
+            downloadTask.ContinueWith(response => HandleFailedDownload(GetErrorMessage(response)),
+                cancellationTokenSource.Token, TaskContinuationOptions.OnlyOnFaulted, TaskScheduler.Default);
+            downloadTask.ContinueWith(_ => ScheduleNextSegDownload(),
+                cancellationTokenSource.Token, TaskContinuationOptions.NotOnCanceled, TaskScheduler.Default);
+
+            processDataTask = downloadTask.ContinueWith(response => onSuccessfullDownloadAction.Invoke(response.Result),
+                cancellationTokenSource.Token, TaskContinuationOptions.OnlyOnRanToCompletion, TaskScheduler.Default);
+            processDataTask.ContinueWith(_ => ScheduleNextSegDownload(),
+                cancellationTokenSource.Token, TaskContinuationOptions.NotOnCanceled, TaskScheduler.Default);
+        }
+
+        private static string GetErrorMessage(Task response)
         {
             return response.Exception?.Flatten().InnerExceptions[0].Message;
         }
@@ -176,12 +170,10 @@ namespace JuvoPlayer.DataProviders.Dash
             bufferTime += responseResult.DownloadSegment.Period.Duration;
             var timeInfo = responseResult.DownloadSegment.Period.ToString();
 
-            Logger.Info($"{responseResult.StreamType}: Segment: {responseResult.SegmentID} recieved {timeInfo}");
+            Logger.Info($"{responseResult.StreamType}: Segment: {responseResult.SegmentID} received {timeInfo}");
 
-            if (CheckEndOfContent() == false)
-                return;
-
-            Stop();
+            if (IsEndOfContent())
+                Stop();
         }
 
         private void InitDataDownloaded(DownloadResponse responseResult)
@@ -196,25 +188,17 @@ namespace JuvoPlayer.DataProviders.Dash
 
         private void HandleFailedDownload(string message)
         {
+            Logger.Error(message);
+
             if (IsDynamic)
                 return;
 
-            Logger.Error(message);
             Stop();
         }
 
         public void Stop()
         {
             cancellationTokenSource?.Cancel();
-            try
-            {
-                downloadTask?.Wait();
-            }
-            catch (Exception)
-            {
-                // ignore
-            }
-
             SendEOSEvent();
 
             Logger.Info($"{streamType} Data downloader stopped");
@@ -241,14 +225,10 @@ namespace JuvoPlayer.DataProviders.Dash
             if (IsDynamic == false)
                 return;
 
-            if (cancellationTokenSource.IsCancellationRequested)
-                return;
-
             Interlocked.Exchange(ref newRepresentation, representation);
             Logger.Info($"{streamType}: newRepresentation set");
 
-            if (downloadTask.IsCompleted)
-                ScheduleNextDownload();
+            ScheduleNextSegDownload();
         }
 
         /// <summary>
@@ -313,13 +293,9 @@ namespace JuvoPlayer.DataProviders.Dash
 
         public void OnTimeUpdated(TimeSpan time)
         {
-            if (cancellationTokenSource.IsCancellationRequested)
-                return;
-
             currentTime = time;
 
-            if (downloadTask.IsCompleted)
-                ScheduleNextDownload();
+            ScheduleNextSegDownload();
         }
 
         private void SendEOSEvent()
@@ -327,10 +303,10 @@ namespace JuvoPlayer.DataProviders.Dash
             sharedBuffer.WriteData(null, true);
         }
 
-        private bool CheckEndOfContent()
+        private bool IsEndOfContent()
         {
             var endTime = currentStreamDuration ?? TimeSpan.MaxValue;
-            return currentTime >= endTime;
+            return bufferTime >= endTime;
         }
 
         private Task<DownloadResponse> CreateDownloadTask(Segment stream, bool ignoreError)
