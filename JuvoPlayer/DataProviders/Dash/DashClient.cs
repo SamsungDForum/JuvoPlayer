@@ -147,9 +147,6 @@ namespace JuvoPlayer.DataProviders.Dash
             var downloadTask = CreateDownloadTask(segment, true);
             downloadTask.ContinueWith(response => HandleFailedDownload(GetErrorMessage(response)),
                 cancellationTokenSource.Token, TaskContinuationOptions.OnlyOnFaulted, TaskScheduler.Default);
-            downloadTask.ContinueWith(_ => ScheduleNextSegDownload(),
-                cancellationTokenSource.Token, TaskContinuationOptions.NotOnCanceled, TaskScheduler.Default);
-
             processDataTask = downloadTask.ContinueWith(response => onSuccessfullDownloadAction.Invoke(response.Result),
                 cancellationTokenSource.Token, TaskContinuationOptions.OnlyOnRanToCompletion, TaskScheduler.Default);
             processDataTask.ContinueWith(_ => ScheduleNextSegDownload(),
