@@ -18,12 +18,13 @@ namespace JuvoPlayer.DataProviders
             newDataProvider.SetDrmConfiguration += controller.OnSetDrmConfiguration;
             newDataProvider.StreamConfigReady += controller.OnStreamConfigReady;
             newDataProvider.PacketReady += controller.OnPacketReady;
+            newDataProvider.StreamError += controller.OnStreamError;
 
             controller.TimeUpdated += newDataProvider.OnTimeUpdated;
             controller.Paused += newDataProvider.OnPaused;
             controller.Played += newDataProvider.OnPlayed;
             controller.Seek += newDataProvider.OnSeek;
-            controller.Stopped += newDataProvider.OnPlayed;
+            controller.Stopped += newDataProvider.OnStopped;
         }
 
         public static void Disconnect(IPlayerController controller, IDataProvider oldDataProvider)
@@ -39,12 +40,13 @@ namespace JuvoPlayer.DataProviders
             oldDataProvider.SetDrmConfiguration -= controller.OnSetDrmConfiguration;
             oldDataProvider.StreamConfigReady -= controller.OnStreamConfigReady;
             oldDataProvider.PacketReady -= controller.OnPacketReady;
+            oldDataProvider.StreamError -= controller.OnStreamError;
 
             controller.TimeUpdated -= oldDataProvider.OnTimeUpdated;
             controller.Paused -= oldDataProvider.OnPaused;
             controller.Played -= oldDataProvider.OnPlayed;
             controller.Seek -= oldDataProvider.OnSeek;
-            controller.Stopped -= oldDataProvider.OnPlayed;
+            controller.Stopped -= oldDataProvider.OnStopped;
         }
     }
 }

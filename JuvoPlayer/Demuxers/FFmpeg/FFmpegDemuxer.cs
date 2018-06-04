@@ -20,6 +20,8 @@ using JuvoPlayer.Common;
 using JuvoLogger;
 using JuvoPlayer.Demuxers.FFmpeg.Interop;
 using JuvoPlayer.SharedBuffers;
+using JuvoPlayer.Common.Utils;
+using System.Diagnostics;
 
 namespace JuvoPlayer.Demuxers.FFmpeg
 {
@@ -31,6 +33,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg
         public event Common.DRMInitDataFound DRMInitDataFound;
         public event Common.StreamConfigReady StreamConfigReady;
         public event Common.PacketReady PacketReady;
+        public event DemuxerError DemuxerError;
 
         private const int BufferSize = 128 * 1024;
         private unsafe byte* buffer = null;
@@ -113,6 +116,18 @@ namespace JuvoPlayer.Demuxers.FFmpeg
             demuxTask = Task.Run(() => DemuxTask(() => InitURL(url), InitializationMode.Full));
         }
 
+        [Conditional("DEBUG")]
+        private unsafe void DumpBuffer(byte* bytes, int size)
+        {
+            // BufferSize is fixed size, however, it may be changed at will at dev. time,
+            // as such do buffer size / dump size verification to avoid odd crashes in case
+            // buffer size will be set to less then 512.
+            var dumpSize = size > 512 ? 512 : size;
+            var data = new byte[dumpSize];
+            Marshal.Copy((IntPtr)buffer, data, 0, dumpSize);
+            Logger.Debug($"Buffer:\n{HexDumper.HexDumpFirstN(data, dumpSize)}");
+        }
+
         private unsafe void InitES()
         {
             Logger.Info("INIT");
@@ -155,6 +170,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg
             if (ret != 0)
             {
                 Logger.Info("Could not parse input data: " + GetErrorText(ret));
+                DumpBuffer(buffer, BufferSize);
 
                 DeallocFFmpeg();
                 //FFmpeg.av_free(buffer); // should be freed by avformat_open_input if i recall correctly
@@ -211,7 +227,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg
                 Logger.Fatal($"Neither video ({videoIdx}) nor audio stream ({audioIdx}) found");
 
                 DeallocFFmpeg();
-                throw new Exception($"Neither video nor audio stream found");
+                throw new Exception($"Neither video ({videoIdx}) nor audio stream ({audioIdx}) found");
             }
 
             // disable not used streams
@@ -268,6 +284,16 @@ namespace JuvoPlayer.Demuxers.FFmpeg
             catch (Exception e)
             {
                 Logger.Error("An error occured: " + e.Message);
+
+                // Do error notification and gracefull exit only if demuxer error handler is set
+                // to avoid "silent/hard to spot" fails.
+                if (DemuxerError.GetInvocationList().Length > 0)
+                {
+                    DemuxerError.Invoke(e.Message);
+                    return;
+                }
+
+                // otherwise throw exception
                 throw new DemuxerException("Couldn't initialize demuxer", e);
             }
 
@@ -675,16 +701,22 @@ namespace JuvoPlayer.Demuxers.FFmpeg
 
         public void Reset()
         {
+            Logger.Info("DEMUX Reset Start");
             resetting = true;
 
-            Resume();
             dataBuffer.ClearData();
             dataBuffer.WriteData(null, true);
+            
+            Resume();
             demuxTask?.Wait();
 
+            // Clear EOS from buffer after demux task termination so there 
+            // will not be any data reads of EOS after restart.
+            dataBuffer.ClearData();
             DeallocFFmpeg();
 
             resetting = false;
+            Logger.Info("DEMUX Reset Complete");
         }
 
         public void Pause()

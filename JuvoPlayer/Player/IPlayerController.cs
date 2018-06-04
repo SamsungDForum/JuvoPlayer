@@ -38,6 +38,7 @@ namespace JuvoPlayer.Player
         void OnSetDrmConfiguration(DRMDescription description);
         void OnStreamConfigReady(StreamConfig config);
         void OnPacketReady(Packet packet);
+        void OnStreamError(string errorMessage);
         #endregion
 
         #region getters

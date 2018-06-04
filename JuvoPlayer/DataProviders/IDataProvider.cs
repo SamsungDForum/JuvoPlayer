@@ -20,6 +20,7 @@ namespace JuvoPlayer.DataProviders
 {
     public delegate void SetDrmConfiguration(DRMDescription description);
     public delegate void StreamsFound(List<StreamDescription> streams);
+    public delegate void StreamError(string errorMessage);
 
     public interface IDataProvider : IDisposable
     {
@@ -42,5 +43,6 @@ namespace JuvoPlayer.DataProviders
         event StreamConfigReady StreamConfigReady;
         event PacketReady PacketReady;
         event StreamsFound StreamsFound;
+        event StreamError StreamError;
     }
 }

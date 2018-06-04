@@ -190,6 +190,12 @@ namespace JuvoPlayer.Player
             player.SetPlaybackRate(rate);
         }
 
+        public void OnStreamError(string errorMessage)
+        {
+            //On error behave as if playback has completed.
+            OnPlaybackCompleted();
+        }
+
         #region getters
         TimeSpan IPlayerController.CurrentTime => currentTime;
 
