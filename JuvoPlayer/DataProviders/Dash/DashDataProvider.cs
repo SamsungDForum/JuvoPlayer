@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
+using System.Threading.Tasks;
 using JuvoLogger;
 using JuvoPlayer.Common;
 using JuvoPlayer.Subtitles;
@@ -33,6 +34,7 @@ namespace JuvoPlayer.DataProviders.Dash
         public event StreamConfigReady StreamConfigReady;
         public event PacketReady PacketReady;
         public event StreamsFound StreamsFound;
+        public event StreamError StreamError;
 
         private ManualResetEventSlim waitForManifest = new ManualResetEventSlim(false);
 
@@ -54,10 +56,13 @@ namespace JuvoPlayer.DataProviders.Dash
             audioPipeline.SetDrmConfiguration += OnSetDrmConfiguration;
             audioPipeline.StreamConfigReady += OnStreamConfigReady;
             audioPipeline.PacketReady += OnPacketReady;
+            audioPipeline.StreamError += OnStreamError;
+
             videoPipeline.DRMInitDataFound += OnDRMInitDataFound;
             videoPipeline.SetDrmConfiguration += OnSetDrmConfiguration;
             videoPipeline.StreamConfigReady += OnStreamConfigReady;
             videoPipeline.PacketReady += OnPacketReady;
+            videoPipeline.StreamError += OnStreamError;
         }
 
         /// <summary>
@@ -410,6 +415,41 @@ namespace JuvoPlayer.DataProviders.Dash
             CheckAndReloadManifestReload();
         }
 
+        // Reference to Pipeline Termination task. Purpose of this task is to terminate 
+        // pipeline "once" and from external thread. 
+        // TV Platform does not support BeginInvoke() thus task implementation.
+        // Termination can occour as a result of OnStreamError() raised from client or demuxer.
+        // 
+        private Task pipelineTerminator;
+
+        private void TerminatePipeline(string errorMessage)
+        {
+            Logger.Info("Terminating Pipelines.");
+
+            // This will generate "already stopped" message from failed pipeline.
+            audioPipeline.Stop();
+            videoPipeline.Stop();
+
+            // Bubble up stream error info up to PlayerController which will shut down
+            // underlying player
+            StreamError?.Invoke(errorMessage);
+        }
+
+        private void OnStreamError(string errorMessage)
+        {
+            Logger.Error($"Stream Error: {errorMessage}");
+
+            // Run once. 
+            if (pipelineTerminator is null)
+            {
+                pipelineTerminator = Task.Run(() => { TerminatePipeline(errorMessage); } );
+            }
+            else
+            {
+                Logger.Info($"Pipeline termination already executed {pipelineTerminator.Status}");
+            }
+        }
+
         public void Dispose()
         {
             if (disposed)
@@ -426,6 +466,12 @@ namespace JuvoPlayer.DataProviders.Dash
 
             waitForManifest?.Dispose();
             waitForManifest = null;
+
+            // Wait for pipeline termination (if in progress) to complete.
+            pipelineTerminator?.Wait();
+            pipelineTerminator?.Dispose();
+            pipelineTerminator = null;
+
         }
     }
 }

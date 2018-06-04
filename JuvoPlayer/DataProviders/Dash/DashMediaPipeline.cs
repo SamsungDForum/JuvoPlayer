@@ -50,13 +50,14 @@ namespace JuvoPlayer.DataProviders.Dash
         public event SetDrmConfiguration SetDrmConfiguration;
         public event StreamConfigReady StreamConfigReady;
         public event PacketReady PacketReady;
+        public event StreamError StreamError;
 
         /// <summary>
         /// Storage holders for initial packets PTS/DTS values.
         /// Used in Trimming Packet Handler to truncate down PTS/DTS values.
         /// First packet seen acts as flip switch. Fill initial values or not.
         /// </summary>
-        private bool haveTrimPTSDTS;
+        private TimeSpan? TrimmOffset = null;
 
         private readonly IDashClient dashClient;
         private readonly IDemuxer demuxer;
@@ -81,8 +82,9 @@ namespace JuvoPlayer.DataProviders.Dash
             demuxer.DRMInitDataFound += OnDRMInitDataFound;
             demuxer.StreamConfigReady += OnStreamConfigReady;
             demuxer.PacketReady += OnPacketReady;
+            demuxer.DemuxerError += OnStreamError;
+            
         }
-
 
         public void Start(IList<Media> media)
         {
@@ -193,7 +195,7 @@ namespace JuvoPlayer.DataProviders.Dash
         {
             dashClient.Stop();
 
-            haveTrimPTSDTS = false;
+            TrimmOffset = null;
 
             demuxer.Dispose();
             demuxerFullyInitialized = false;
@@ -344,8 +346,8 @@ namespace JuvoPlayer.DataProviders.Dash
                 // Sometimes we can receive invalid timestamp from demuxer
                 // eg during encrypted content seek or live video.
                 // Adjust timestamps to avoid playback problems
-                packet.Dts += demuxerTimeStamp;
-                packet.Pts += demuxerTimeStamp;
+                packet.Dts += demuxerTimeStamp - TrimmOffset.Value;
+                packet.Pts += demuxerTimeStamp - TrimmOffset.Value;
 
                 PacketReady?.Invoke(packet);
                 return;
@@ -354,20 +356,22 @@ namespace JuvoPlayer.DataProviders.Dash
             PacketReady?.Invoke(Packet.CreateEOS(streamType));
         }
 
+        private void OnStreamError(string errorMessage)
+        {
+            // Transfer event to Data Provider
+            StreamError?.Invoke(errorMessage);
+        }
+
         private void AdjustDemuxerTimeStampIfNeeded(Packet packet)
         {
-            if (laskSeek == TimeSpan.Zero)
+
+            //Get very first PTS/DTS
+            if (TrimmOffset.HasValue == false)
             {
-                //Get very first PTS/DTS
-                if (haveTrimPTSDTS)
-                    return;
-
                 // TimeSpan.Zero - Value is used rather then -Value for better "visibility"
-                demuxerTimeStamp = TimeSpan.Zero - TimeSpan.FromTicks(Math.Min(packet.Pts.Ticks, packet.Dts.Ticks));
-                haveTrimPTSDTS = true;
-
-                return;
+                TrimmOffset = TimeSpan.FromTicks(Math.Min(packet.Pts.Ticks, packet.Dts.Ticks));
             }
+             
 
             if (packet.Pts + SegmentEps < laskSeek)
             {

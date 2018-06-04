@@ -40,6 +40,7 @@ namespace JuvoPlayer.DataProviders.RTSP
         public event StreamConfigReady StreamConfigReady;
         public event PacketReady PacketReady;
         public event StreamsFound StreamsFound;
+        public event StreamError StreamError;
 
         private void OnStreamConfigReady(StreamConfig config)
         {

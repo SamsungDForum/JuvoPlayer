@@ -48,6 +48,7 @@ namespace JuvoPlayer.DataProviders.HLS
         public event StreamConfigReady StreamConfigReady;
         public event PacketReady PacketReady;
         public event StreamsFound StreamsFound;
+        public event StreamError StreamError;
 
         private void OnClipDurationChanged(TimeSpan clipDuration)
         {

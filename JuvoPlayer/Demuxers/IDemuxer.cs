@@ -16,6 +16,8 @@ using System;
 
 namespace JuvoPlayer.Demuxers
 {
+    public delegate void DemuxerError(string errorMessage);
+
     public enum InitializationMode
     {
         // Stream has been already initialized so preparinf StreamConfig is not needed 
@@ -39,5 +41,6 @@ namespace JuvoPlayer.Demuxers
         event DRMInitDataFound DRMInitDataFound;
         event StreamConfigReady StreamConfigReady;
         event PacketReady PacketReady;
+        event DemuxerError DemuxerError;
     }
 }
