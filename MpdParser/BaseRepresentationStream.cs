@@ -36,7 +36,7 @@ namespace MpdParser.Node.Dynamic
             AvaliabilityTimeOffset = avaliabilityTimeOffset;
             AvaliabilityTimeComplete = avaliabilityTimeComplete;
 
-            //Count = media == null ? 0u : 1u;
+
             Duration = media?.Period?.Duration;
         }
 
@@ -53,7 +53,18 @@ namespace MpdParser.Node.Dynamic
         {
             get
             {
-                DownloadIndexOnce();
+                // If media.Period.Duration has no value (not specified by Manifest), 
+                // try to guess duration from index information 
+                if (durationInternal_.HasValue == false)
+                {
+                    DownloadIndexOnce();
+                    if (segments_.Count > 0)
+                    {
+                        var index = segments_.Count - 1;
+
+                        durationInternal_ = segments_[index].Period.Start + segments_[index].Period.Duration;
+                    }
+                }
                 return durationInternal_;
             }
             set

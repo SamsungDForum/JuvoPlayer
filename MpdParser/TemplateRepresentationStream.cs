@@ -20,55 +20,70 @@ namespace MpdParser.Node.Dynamic
     public class TemplateRepresentationStream : IRepresentationStream
     {
         /// <summary>
-        /// Searchable ogject that can be used to search withing TimelineItemRep
-        /// array. It works as as timelineItemRep[] Array by default is sorted by start time
-        /// and ID number of the block. As such, Array.BinarySearch() for this object can be used on
-        /// TimelineItemRep array.
-        /// Provides following features:
-        /// Search by exact start time. Returns segment with exact StartTime match
-        /// Search by Time. Returns segment where time falls between Start Time and Duration
-        /// Search by Number. Segment number ID
+        /// Custom IComparer for searching TimelineItemRep[] array
+        /// by start time only.
+        /// 
+        /// TimelineItemRep.TimeScaled = Time to look for
+        /// 
+        /// Time to look for has to match exactly segment start time
+        /// 
         /// </summary>
-        internal class TimelineSearch
+        internal class TimelineSearchStartTime : IComparer<TimelineItemRep>
         {
-            public enum Comparison { Start, StartDuration, Number };
-
-            public TimeSpan Start { get; }
-            public TimeSpan Duration { get; }
-            public ulong Number { get; }
-            public Comparison CompareType { get; }
-            /// <summary>
-            /// Constructor to used for exact start time search
-            /// </summary>
-            /// <param name="start">Start time to be searched</param>
-            public TimelineSearch(TimeSpan start)
+            public int Compare(TimelineItemRep x, TimelineItemRep y)
             {
-                CompareType = Comparison.Start;
-                Start = start;
+                if (x.TimeScaled < y.TimeScaled)
+                    return -1;
+                else if (x.TimeScaled > y.TimeScaled)
+                    return 1;
+                else
+                    return 0;
             }
+        }
 
-            /// <summary>
-            /// Constructor to be used for fall within Start and Start + Duration
-            /// </summary>
-            /// <param name="start"></param>
-            /// <param name="duration">Ehm. Ignored. It is here to differentiate bewtween constructors</param>
-            public TimelineSearch(TimeSpan start, TimeSpan duration)
+        /// <summary>
+        /// Custom IComparer for searching TimelineItemRep[] array
+        /// by start time and duration.
+        /// 
+        /// TimelineItemRep.TimeScaled = Time to look for
+        /// 
+        /// Time To Look for has to fall withing Segment Start and its duration
+        /// 
+        /// </summary>
+        internal class TimelineSearchStartTimeDuration : IComparer<TimelineItemRep>
+        {
+            public int Compare(TimelineItemRep x, TimelineItemRep y)
             {
-                CompareType = Comparison.StartDuration;
-                Start = start;
-                Duration = duration;
-            }
+                if (x.TimeScaled <= y.TimeScaled)
+                {
+                    if (x.TimeScaled + x.DurationScaled > y.TimeScaled)
+                        return 0;
+                    else
+                        return -1;
+                }
+                else if (x.TimeScaled > y.TimeScaled)
+                    return 1;
+                else
+                   return 0;
 
-            /// <summary>
-            /// Constructor used for search by number
-            /// </summary>
-            /// <param name="number">Segment Number to be searched</param>
-            public TimelineSearch(ulong number)
+            }
+        }
+
+        /// <summary>
+        /// Custom IComparer for searching TimelineItemRep[] array
+        /// by segment number
+        /// 
+        /// TimelineItemRep.Number = Segment ID to find
+        /// 
+        /// Segment ID to find has to match exactly segment number in timelineItemRe[] array
+        /// 
+        /// </summary>
+        internal class TimelineSearchSegmentNumber : IComparer<TimelineItemRep>
+        {
+            public int Compare(TimelineItemRep x, TimelineItemRep y)
             {
-                CompareType = Comparison.Number;
-                Number = number;
+                return (int)(x.Number - y.Number);
             }
-
         }
 
         /// <summary>
@@ -76,7 +91,7 @@ namespace MpdParser.Node.Dynamic
         /// Internally relies on TimeLineItem structure used by majority of code
         /// +internal helper information build at object creation
         /// </summary>
-        internal struct TimelineItemRep : IComparable
+        internal struct TimelineItemRep
         {
             public TimelineItem Item;
             public TimeSpan TimeScaled;
@@ -101,51 +116,6 @@ namespace MpdParser.Node.Dynamic
             {
                 get { return Item.Repeats; }
                 set { Item.Repeats = value; }
-            }
-
-            public int CompareTo(object obj)
-            {
-                int res = -1;
-                var lookFor = obj as TimelineSearch;
-                if (lookFor == null)
-                {
-                    // Manages "unsupported object"
-                    Logger.Debug($"{obj} {obj.GetType()} is unsupported. TimelineSearch only");
-                    return -1;
-                }
-
-                switch (lookFor.CompareType)
-                {
-                    case TimelineSearch.Comparison.Start:
-                        if (this.TimeScaled < lookFor.Start)
-                            res = -1;
-                        else if (this.TimeScaled > lookFor.Start)
-                            res = 1;
-                        else
-                            res = 0;
-
-                        break;
-                    case TimelineSearch.Comparison.StartDuration:
-                        if (this.TimeScaled <= lookFor.Start)
-                        {
-                            if (this.TimeScaled + this.DurationScaled > lookFor.Start)
-                                res = 0;
-                            else
-                                res = -1;
-                        }
-                        else if (this.TimeScaled > lookFor.Start)
-                            res = 1;
-                        else
-                            res = 0;
-
-                        break;
-                    case TimelineSearch.Comparison.Number:
-                        res = (int)(this.Number - lookFor.Number);
-                        break;
-
-                }
-
-                return res;
             }
 
         }
@@ -521,10 +491,14 @@ namespace MpdParser.Node.Dynamic
             if (timelineAvailable_.Count == 0)
                 return null;
 
-            var searcher = new TimelineSearch(pos);
+            var searcher = new TimelineSearchSegmentNumber();
+            TimelineItemRep lookFor = new TimelineItemRep
+            {
+                Number = pos
+            };
 
             var idx = Array.BinarySearch(timelineAll_, timelineAvailable_.Offset, timelineAvailable_.Count,
-                searcher);
+                lookFor, searcher);
 
             if (idx < 0)
             {
@@ -541,10 +515,14 @@ namespace MpdParser.Node.Dynamic
             if (timelineAvailable_.Count == 0)
                 return null;
 
-            var searcher = new TimelineSearch(durationSpan, TimeSpan.Zero);
+            var searcher = new TimelineSearchStartTimeDuration();
+            TimelineItemRep lookFor = new TimelineItemRep
+            {
+                TimeScaled = durationSpan
+            };
 
             var idx = Array.BinarySearch(timelineAll_, timelineAvailable_.Offset, timelineAvailable_.Count,
-                searcher);
+                lookFor, searcher);
 
             if (idx < 0)
             {
