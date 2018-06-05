@@ -2,15 +2,22 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
+using System.Text;
+using System.Threading.Tasks;
+using System.Xml;
+using MpdParser.Node;
+using Tizen.Network.Nsd;
 
 namespace MpdParser.Xml
 {
     public class Element : System.Attribute
     {
-        private string mName = null;
+        private readonly string mName;
+
         public Element()
         {
         }
+
         public Element(string name)
         {
             mName = name;
@@ -36,14 +43,16 @@ namespace MpdParser.Xml
                 return name.Substring(0, name.Length - 1);
             return name;
         }
-    };
+    }
 
     public class Attribute : System.Attribute
     {
-        private string mName = null;
+        private string mName;
+
         public Attribute()
         {
         }
+
         public Attribute(string name)
         {
             mName = name;
@@ -63,79 +72,155 @@ namespace MpdParser.Xml
         {
             return name[0].ToString().ToLower() + name.Substring(1);
         }
-    };
+    }
 
     public class InnerXml : System.Attribute
     {
-        public InnerXml()
-        {
-        }
     }
 
     public class InnerText : System.Attribute
     {
-        public InnerText()
-        {
-        }
     }
 
     internal class Conv
     {
         public static T[] ToArray<T>(string val, Func<string, T> conv)
         {
-            string[] split = val.Split(new Char[] { ',', ' ' }, StringSplitOptions.RemoveEmptyEntries);
+            string[] split = val.Split(new[] {',', ' '}, StringSplitOptions.RemoveEmptyEntries);
             T[] result = new T[split.Length];
             for (int i = 0; i < split.Length; ++i)
                 result[i] = conv(split[i]);
             return result;
         }
 
-        public static int? ToInt(string val) { return System.Xml.XmlConvert.ToInt32(val); }
-        public static uint? ToUInt(string val) { return System.Xml.XmlConvert.ToUInt32(val); }
+        public static int? ToInt(string val)
+        {
+            return XmlConvert.ToInt32(val);
+        }
 
-        public static long? ToLong(string val) { return System.Xml.XmlConvert.ToInt64(val); }
-        public static ulong? ToULong(string val) { return System.Xml.XmlConvert.ToUInt64(val); }
+        public static uint? ToUInt(string val)
+        {
+            return XmlConvert.ToUInt32(val);
+        }
 
-        public static double? ToDouble(string val) { return System.Xml.XmlConvert.ToDouble(val); }
+        public static long? ToLong(string val)
+        {
+            return XmlConvert.ToInt64(val);
+        }
 
-        public static TimeSpan? ToTimeSpan(string val) { return System.Xml.XmlConvert.ToTimeSpan(val); }
+        public static ulong? ToULong(string val)
+        {
+            return XmlConvert.ToUInt64(val);
+        }
+
+        public static double? ToDouble(string val)
+        {
+            return XmlConvert.ToDouble(val);
+        }
+
+        public static TimeSpan? ToTimeSpan(string val)
+        {
+            return XmlConvert.ToTimeSpan(val);
+        }
 
         public static DateTime? ToDateTime(string val)
         {
-            return System.Xml.XmlConvert.ToDateTime(val,
-                System.Xml.XmlDateTimeSerializationMode.RoundtripKind);
+            return XmlConvert.ToDateTime(val,
+                XmlDateTimeSerializationMode.RoundtripKind);
         }
 
-        public static Node.Template ToTemplate(string val) { return new Node.Template(val); }
+        public static Template ToTemplate(string val)
+        {
+            return new Template(val);
+        }
 
-        public static string Ident(string val) { return val; }
-        public static string[] A2s(string val) { return ToArray(val, Ident); }
-        public static int[] A2int(string val) { return ToArray(val, System.Xml.XmlConvert.ToInt32); }
-        public static uint[] A2uint(string val) { return ToArray(val, System.Xml.XmlConvert.ToUInt32); }
+        public static string Ident(string val)
+        {
+            return val;
+        }
+
+        public static string[] A2s(string val)
+        {
+            return ToArray(val, Ident);
+        }
+
+        public static int[] A2int(string val)
+        {
+            return ToArray(val, XmlConvert.ToInt32);
+        }
+
+        public static uint[] A2uint(string val)
+        {
+            return ToArray(val, XmlConvert.ToUInt32);
+        }
     }
 
     internal class Attr
     {
-        public static string AsString(string value) { return value; }
+        public static string AsString(string value)
+        {
+            return value;
+        }
 
-        public static int? AsInt(string value) { return Conv.ToInt(value); }
-        public static uint? AsUInt(string value) { return Conv.ToUInt(value); }
+        public static int? AsInt(string value)
+        {
+            return Conv.ToInt(value);
+        }
 
-        public static long? AsLong(string value) { return Conv.ToLong(value); }
-        public static ulong? AsULong(string value) { return Conv.ToULong(value); }
+        public static uint? AsUInt(string value)
+        {
+            return Conv.ToUInt(value);
+        }
 
-        public static double? AsDouble(string value) { return Conv.ToDouble(value); }
+        public static long? AsLong(string value)
+        {
+            return Conv.ToLong(value);
+        }
 
-        public static bool AsBool(string value) { return System.Xml.XmlConvert.ToBoolean(value); }
+        public static ulong? AsULong(string value)
+        {
+            return Conv.ToULong(value);
+        }
 
-        public static TimeSpan? AsTimeSpan(string value) { return Conv.ToTimeSpan(value); }
-        public static DateTime? AsDateTime(string value) { return Conv.ToDateTime(value); }
+        public static double? AsDouble(string value)
+        {
+            return Conv.ToDouble(value);
+        }
 
-        public static Node.Template AsTemplate(string value) { return Conv.ToTemplate(value); }
+        public static bool AsBool(string value)
+        {
+            return XmlConvert.ToBoolean(value);
+        }
 
-        public static string[] AsStringArray(string value) { return Conv.A2s(value); }
-        public static int[] AsIntArray(string value) { return Conv.A2int(value); }
-        public static uint[] AsUIntArray(string value) { return Conv.A2uint(value); }
+        public static TimeSpan? AsTimeSpan(string value)
+        {
+            return Conv.ToTimeSpan(value);
+        }
+
+        public static DateTime? AsDateTime(string value)
+        {
+            return Conv.ToDateTime(value);
+        }
+
+        public static Template AsTemplate(string value)
+        {
+            return Conv.ToTemplate(value);
+        }
+
+        public static string[] AsStringArray(string value)
+        {
+            return Conv.A2s(value);
+        }
+
+        public static int[] AsIntArray(string value)
+        {
+            return Conv.A2int(value);
+        }
+
+        public static uint[] AsUIntArray(string value)
+        {
+            return Conv.A2uint(value);
+        }
 
         internal static object NullableFrom(string value, Type type)
         {
@@ -160,67 +245,70 @@ namespace MpdParser.Xml
         internal static object ObjectFrom(string value, Type type)
         {
             if (type == typeof(string)) return AsString(value);
-            if (type == typeof(Node.Template)) return AsTemplate(value);
+            if (type == typeof(Template)) return AsTemplate(value);
             throw new NotImplementedException();
         }
     }
 
     internal class Parser
     {
-        private static string InnerText(System.Xml.XmlReader reader)
+        private static async Task<string> InnerText(XmlReader reader)
         {
-            string s = string.Empty;
+            var sb = new StringBuilder();
             int depth = 1;
-            while (reader.Read())
+            while (await reader.ReadAsync())
             {
                 switch (reader.NodeType)
                 {
-                    case System.Xml.XmlNodeType.Element:
+                    case XmlNodeType.Element:
                         depth += 1;
                         if (!reader.IsEmptyElement)
                             break;
-                        goto case System.Xml.XmlNodeType.EndElement;
+                        goto case XmlNodeType.EndElement;
 
-                    case System.Xml.XmlNodeType.EndElement:
+                    case XmlNodeType.EndElement:
                         depth -= 1;
                         break;
 
-                    case System.Xml.XmlNodeType.Text:
-                        s += reader.Value;
+                    case XmlNodeType.Text:
+                        sb.Append(reader.Value);
                         break;
                 }
+
                 if (depth == 0)
                     break;
             }
-            return s;
+
+            return sb.ToString();
         }
 
-        private static void Ignore(System.Xml.XmlReader reader)
+        private static async Task IgnoreAsync(XmlReader reader)
         {
             int depth = 1;
-            while (reader.Read())
+            while (await reader.ReadAsync())
             {
                 switch (reader.NodeType)
                 {
-                    case System.Xml.XmlNodeType.Element:
+                    case XmlNodeType.Element:
                         depth += 1;
                         if (!reader.IsEmptyElement)
                             break;
-                        goto case System.Xml.XmlNodeType.EndElement;
+                        goto case XmlNodeType.EndElement;
 
-                    case System.Xml.XmlNodeType.EndElement:
+                    case XmlNodeType.EndElement:
                         depth -= 1;
                         break;
 
-                    case System.Xml.XmlNodeType.Text:
+                    case XmlNodeType.Text:
                         break;
                 }
+
                 if (depth == 0)
                     break;
             }
         }
 
-        private static void Attributes<T>(System.Xml.XmlReader reader, T result)
+        private static void Attributes<T>(XmlReader reader, T result)
         {
             Dictionary<string, PropertyInfo> attrs = new Dictionary<string, PropertyInfo>();
             Type type = result.GetType();
@@ -230,7 +318,7 @@ namespace MpdParser.Xml
                 {
                     if (!(attr is Attribute))
                         continue;
-                    string xmlname = ((Attribute)attr).Name(prop.Name);
+                    string xmlname = ((Attribute) attr).Name(prop.Name);
                     attrs.Add(xmlname, prop);
                 }
             }
@@ -245,21 +333,23 @@ namespace MpdParser.Xml
                 Type propType = prop.PropertyType;
                 if (propType.IsGenericType && propType.GetGenericTypeDefinition().Equals(typeof(Nullable<>)))
                 {
-                    Node.Internal.SetValue(prop, result, Attr.NullableFrom(reader.Value, Nullable.GetUnderlyingType(propType)));
+                    Internal.SetValue(prop, result,
+                        Attr.NullableFrom(reader.Value, Nullable.GetUnderlyingType(propType)));
                 }
                 else if (propType.IsArray)
                 {
-                    Node.Internal.SetValue(prop, result, Attr.ArrayFrom(reader.Value, propType.GetElementType()));
+                    Internal.SetValue(prop, result, Attr.ArrayFrom(reader.Value, propType.GetElementType()));
                 }
                 else if (propType == typeof(bool))
                 {
-                    Node.Internal.SetValue(prop, result, Attr.AsBool(reader.Value));
+                    Internal.SetValue(prop, result, Attr.AsBool(reader.Value));
                 }
                 else
                 {
-                    Node.Internal.SetValue(prop, result, Attr.ObjectFrom(reader.Value, propType));
+                    Internal.SetValue(prop, result, Attr.ObjectFrom(reader.Value, propType));
                 }
             }
+
             reader.MoveToElement();
         }
 
@@ -271,6 +361,7 @@ namespace MpdParser.Xml
             public MethodInfo add;
             public MethodInfo toArray;
             public MethodInfo count;
+
             public Property(PropertyInfo prop)
             {
                 this.prop = prop;
@@ -287,28 +378,23 @@ namespace MpdParser.Xml
                 {
                     Type listType = typeof(List<>).MakeGenericType(type);
                     ConstructorInfo ci = listType.GetConstructor(new Type[] { });
-                    this.container = ci.Invoke(new object[] { });
-                    this.add = listType.GetMethod("Add", new Type[] { type });
-                    this.toArray = listType.GetMethod("ToArray");
+                    container = ci.Invoke(new object[] { });
+                    add = listType.GetMethod("Add", new[] {type});
+                    toArray = listType.GetMethod("ToArray");
                     PropertyInfo info = listType.GetProperty("Count");
-                    this.count = info.GetGetMethod();
+                    count = info.GetGetMethod();
                 }
-                add.Invoke(container, new object[] { item });
+
+                add.Invoke(container, new[] {item});
             }
 
             public void Store<T>(T result)
             {
-                object value;
-                if (container == null)
-                {
-                    value = Activator.CreateInstance(type.MakeArrayType(), 0);
-                }
-                else
-                {
-                    value = toArray.Invoke(container, new object[] { });
-                }
+                var value = container == null 
+                    ? Activator.CreateInstance(type.MakeArrayType(), 0) 
+                    : toArray.Invoke(container, new object[] { });
 
-                Node.Internal.SetValue(prop, result, value);
+                Internal.SetValue(prop, result, value);
             }
         }
 
@@ -333,7 +419,7 @@ namespace MpdParser.Xml
         /// XMLReader methods which gobble up end tags.  
         /// </remarks>
         /// 
-        private static bool Children<T>(System.Xml.XmlReader reader, T result, string parent=null)
+        private static async Task<bool> Children<T>(XmlReader reader, T result, string parent = null)
         {
             Dictionary<string, Property> elems = new Dictionary<string, Property>();
 
@@ -342,9 +428,9 @@ namespace MpdParser.Xml
             {
                 foreach (Object attr in prop.GetCustomAttributes(false))
                 {
-                    if (attr is Element)
+                    if (attr is Element element)
                     {
-                        elems.Add(((Element)attr).Name(prop.Name), new Property(prop));
+                        elems.Add(element.Name(prop.Name), new Property(prop));
                     }
                     else if (attr is InnerText)
                     {
@@ -352,7 +438,7 @@ namespace MpdParser.Xml
                         // Behaviour of exit (false/true) may require adjusting, 
                         // depending where reader will be after InnerText() exits.
                         // 
-                        Node.Internal.SetValue(prop, result, InnerText(reader));
+                        Internal.SetValue(prop, result, await InnerText(reader));
                         return false;
                     }
                     else if (attr is InnerXml)
@@ -361,19 +447,20 @@ namespace MpdParser.Xml
                         // element. As such, inform caller about this so continuation
                         // on current level is performed
                         //
-                  
+
                         // "cleanup" of retrieved data is necessary in order to comapre 
                         // content protection data. ReadInnerXML() will read data with any white chars
                         // in between, while system reader (used in unit tests for comparison purposes)
                         // cleans internal data (due to different internal representation)
-                        string[] tmpdata = reader.ReadInnerXml().Split(new char[] { '\n', '\r', '\t' });
-                        
-                        for(int i =0; i < tmpdata.Length; i++)
-                        { 
-                            tmpdata[i] = tmpdata[i].Trim(new char[] { '\n', '\r', '\t', ' ' });
+                        string[] tmpdata = (await reader.ReadInnerXmlAsync()).Split('\n', '\r', '\t');
+
+                        for (int i = 0; i < tmpdata.Length; i++)
+                        {
+                            tmpdata[i] = tmpdata[i].Trim('\n', '\r', '\t', ' ');
                         }
+
                         string tmp = String.Join("", tmpdata);
-                        Node.Internal.SetValue(prop, result, $"<xml>{tmp}</xml>");
+                        Internal.SetValue(prop, result, $"<xml>{tmp}</xml>");
                         return true;
                     }
                 }
@@ -396,11 +483,11 @@ namespace MpdParser.Xml
 
             bool gotOut = false;
             bool rescan = false;
-            while (!gotOut )
+            while (!gotOut)
             {
-                if(rescan == false)
+                if (rescan == false)
                 {
-                    if(reader.Read() == false)
+                    if (await reader.ReadAsync() == false)
                     {
                         gotOut = true;
                         continue;
@@ -414,28 +501,31 @@ namespace MpdParser.Xml
 
                 switch (reader.NodeType)
                 {
-                    case System.Xml.XmlNodeType.Element:
+                    case XmlNodeType.Element:
                         if (!elems.ContainsKey(reader.Name))
                         {
                             continue;
                         }
+
                         string name = reader.Name;
                         Property prop = elems[name];
                         object o;
-                        
-                        (o,rescan) = CreateAndRead(prop.type, reader, result, name);
+
+                        (o, rescan) = await CreateAndRead(prop.type, reader, result, name);
                         elems[name].Add(o);
-                        if(rescan)
+                        if (rescan)
                         {
-                            break; 
+                            break;
                         }
-                        if (reader.NodeType == System.Xml.XmlNodeType.EndElement)
-                        { 
-                            goto case System.Xml.XmlNodeType.EndElement;
+
+                        if (reader.NodeType == XmlNodeType.EndElement)
+                        {
+                            goto case XmlNodeType.EndElement;
                         }
+
                         break;
 
-                    case System.Xml.XmlNodeType.EndElement:
+                    case XmlNodeType.EndElement:
                         //
                         // Exit to an upper level ONLY if end element 
                         // is a "matching" one.
@@ -447,11 +537,12 @@ namespace MpdParser.Xml
                         {
                             gotOut = true;
                         }
+
                         break;
                 }
             }
 
-            foreach (KeyValuePair<string, Property> pair in elems)
+            foreach (var pair in elems)
                 pair.Value.Store(result);
 
             return false;
@@ -459,53 +550,55 @@ namespace MpdParser.Xml
 
         private static object Create<T>(Type type, T parent)
         {
-            ConstructorInfo c = type.GetConstructor(new Type[] { parent.GetType() });
+            ConstructorInfo c = type.GetConstructor(new[] {parent.GetType()});
             if (c != null)
-                return c.Invoke(new object[] { parent });
+                return c.Invoke(new object[] {parent});
 
             return Activator.CreateInstance(type);
         }
 
-        private static (object,bool) CreateAndRead<T>(Type type, System.Xml.XmlReader reader, T parent, string name=null)
+        private static async Task<(object, bool)> CreateAndRead<T>(Type type, XmlReader reader, T parent, string name = null)
         {
             object o;
-            bool rescan_level = false;
-            if (type.Equals(typeof(string)))
+            bool rescanLevel = false;
+            if (type == typeof(string))
             {
-                o = InnerText(reader);
+                o = await InnerText(reader);
             }
             else
             {
                 o = Create(type, parent);
-                
+
                 Attributes(reader, o);
                 if (!reader.IsEmptyElement)
                 {
-
-                    rescan_level = Children(reader, o, name);
+                    rescanLevel = await Children(reader, o, name);
                 }
             }
-            return (o, rescan_level);
+
+            return (o, rescanLevel);
         }
 
-        public static void Parse<T>(TextReader io, T result, string name)
+        public static async Task ParseAsync<T>(TextReader io, T result, string name)
         {
-            System.Xml.XmlReader reader = System.Xml.XmlReader.Create(io);
-            while (reader.Read())
+            var reader = XmlReader.Create(io, new XmlReaderSettings {Async = true});
+            while (await reader.ReadAsync())
             {
                 switch (reader.NodeType)
                 {
-                    case System.Xml.XmlNodeType.Element:
+                    case XmlNodeType.Element:
                         if (reader.Name != name)
                         {
-                            Ignore(reader);
+                            await IgnoreAsync(reader);
                             break;
                         }
+
                         Attributes(reader, result);
                         if (!reader.IsEmptyElement)
                         {
-                            Children(reader, result, name);
+                            await Children(reader, result, name);
                         }
+
                         return;
                 }
             }

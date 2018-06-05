@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
+using System.Threading.Tasks;
 using JuvoLogger;
 using JuvoPlayer.Common;
 using JuvoPlayer.Subtitles;
@@ -23,10 +24,6 @@ namespace JuvoPlayer.DataProviders.Dash
         private CuesMap cuesMap;
         private TimeSpan currentTime = TimeSpan.Zero;
 
-        private DateTime lastReloadTime = DateTime.MinValue;
-        private TimeSpan minimumReloadPeriod = TimeSpan.Zero;
-        private static readonly TimeSpan ManifestRequestDelay = TimeSpan.FromSeconds(3);
-
         public event ClipDurationChanged ClipDurationChanged;
         public event DRMInitDataFound DRMInitDataFound;
         public event SetDrmConfiguration SetDrmConfiguration;
@@ -46,8 +43,6 @@ namespace JuvoPlayer.DataProviders.Dash
             this.audioPipeline = audioPipeline ?? throw new ArgumentNullException(nameof(audioPipeline), "audioPipeline cannot be null");
             this.videoPipeline = videoPipeline ?? throw new ArgumentNullException(nameof(videoPipeline), "videoPipeline cannot be null");
 
-            manifest.ManifestChanged += OnManifestChanged;
-
             audioPipeline.DRMInitDataFound += OnDRMInitDataFound;
             audioPipeline.SetDrmConfiguration += OnSetDrmConfiguration;
             audioPipeline.StreamConfigReady += OnStreamConfigReady;
@@ -56,77 +51,6 @@ namespace JuvoPlayer.DataProviders.Dash
             videoPipeline.SetDrmConfiguration += OnSetDrmConfiguration;
             videoPipeline.StreamConfigReady += OnStreamConfigReady;
             videoPipeline.PacketReady += OnPacketReady;
-        }
-
-        /// <summary>
-        /// Manifest Change Callback incoked by DashManifest class when new manifest is downloaded.
-        /// </summary>
-        /// <param name="newDocument">IDocument containing an updated document version
-        /// NULL value indicates download/parse failure</param>
-        private void OnManifestChanged(object newDocument)
-        {
-            if (disposed)
-            {
-                Logger.Warn("DashDataProvider already disposed. Ignoring Manifest change request.");
-                return;
-            }
-
-            // Mark time of "last" document update
-            lastReloadTime = DateTime.UtcNow;
-
-            // Check for error condition - newObject will be null
-            if (newDocument == null)
-            {
-                Logger.Info("No Manifest.");
-                ScheduleNextManifestReload();
-                return;
-            }
-
-            Logger.Info("Processing Manifest");
-            // Temps are used at this point, we do not need to lock down this entire
-            // section if current* instance variables would be used.
-            var tmpDocument = newDocument as Document;
-            var tmpPeriod = FindPeriod(tmpDocument, LiveClockTime(currentTime, tmpDocument));
-
-            if (tmpPeriod == null)
-            {
-                Logger.Info("No period in Manifest.");
-                ScheduleNextManifestReload();
-                return;
-            }
-
-            // No update period? Static content, set timeout to max
-            minimumReloadPeriod = tmpDocument.MinimumUpdatePeriod ?? TimeSpan.MaxValue;
-
-            //EarlyAvailable periods are not utilized now
-            if (tmpDocument.IsDynamic && tmpPeriod.Type == Period.Types.EarlyAvailable)
-            {
-                Logger.Info($"EarlyAvailable MPD are not utilized. {tmpDocument}");
-                ScheduleNextManifestReload();
-                return;
-            }
-
-            // Update document/period and start player
-            currentDocument = tmpDocument;
-            currentPeriod = tmpPeriod;
-
-            // Signal anyone waiting for currentDocument
-            waitForManifest.Set();
-
-            StartInternal();
-        }
-
-        private void ScheduleNextManifestReload()
-        {
-            try
-            {
-                manifest.GetReloadManifestActivity?.Wait();
-            }
-            catch (Exception)
-            {
-                // ignore
-            }
-            manifest.ReloadManifest(DateTime.UtcNow + ManifestRequestDelay);
         }
 
         private void OnDRMInitDataFound(DRMInitData drmData)
@@ -196,8 +120,10 @@ namespace JuvoPlayer.DataProviders.Dash
         {
         }
 
-        public void OnPlayed()
+        public async void OnPlayed()
         {
+            // try to update manifest. Needed in case of live content
+            await UpdateManifest();
         }
 
         public void OnSeek(TimeSpan time)
@@ -220,11 +146,7 @@ namespace JuvoPlayer.DataProviders.Dash
             // NOTE: Are we sure seeking is illegal on Dynamic MPDs?
             // Imho no. There is a "time window" in which content is available
             // but leave that for now...
-
-            //Wait for documemnt
-            waitForManifest.Wait();
             return (currentDocument.IsDynamic == false);
-
         }
 
         public List<StreamDescription> GetStreamsDescription(StreamType streamType)
@@ -242,15 +164,18 @@ namespace JuvoPlayer.DataProviders.Dash
             }
         }
 
-        public void Start()
+        public async void Start()
         {
             Logger.Info("Dash start.");
 
-            manifest.ReloadManifest(DateTime.UtcNow);
+            await UpdateManifest();
         }
 
         private void StartInternal()
         {
+            if (disposed)
+                return;
+
             if (currentDocument == null || currentPeriod == null)
             {
                 Logger.Info("Dash start delayed. No Manifest/Period available.");
@@ -347,21 +272,6 @@ namespace JuvoPlayer.DataProviders.Dash
             return time;
 
         }
-        /// <summary>
-        /// Schedules a manifest reload for dynamic documents only.
-        /// </summary>
-        private void CheckAndReloadManifestReload()
-        {
-            if (currentDocument.IsDynamic == false)
-                return;
-
-            if (manifest.IsReloadInProgress)
-                return;
-
-            // should we check playback time here or actual time?
-            if ((DateTime.UtcNow - lastReloadTime) >= minimumReloadPeriod)
-                manifest.ReloadManifest(DateTime.UtcNow);
-        }
 
         private void BuildSubtitleInfos(Period period)
         {
@@ -391,18 +301,45 @@ namespace JuvoPlayer.DataProviders.Dash
             }
         }
 
-
         public Cue CurrentCue => cuesMap?.Get(currentTime);
 
-        public void OnTimeUpdated(TimeSpan time)
+        public async void OnTimeUpdated(TimeSpan time)
         {
             currentTime = time;
 
             audioPipeline.OnTimeUpdated(time);
             videoPipeline.OnTimeUpdated(time);
 
-            // Check if MPD needs reload.
-            CheckAndReloadManifestReload();
+            await UpdateManifest();
+        }
+
+        public async Task UpdateManifest()
+        {
+            if (manifest.NeedsReload())
+            {
+                Logger.Info("Updating manifest");
+
+                await manifest.ReloadManifestTask();
+
+                var tmpDocument = manifest.CurrentDocument;
+                if (tmpDocument == null)
+                {
+                    Logger.Info("No Manifest.");
+                    return;
+                }
+
+                var tmpPeriod = FindPeriod(tmpDocument, LiveClockTime(currentTime, tmpDocument));
+                if (tmpPeriod == null)
+                {
+                    Logger.Info("No period in Manifest.");
+                    return;
+                }
+
+                currentDocument = manifest.CurrentDocument;
+                currentPeriod = tmpPeriod;
+
+                StartInternal();
+            }
         }
 
         public void Dispose()
