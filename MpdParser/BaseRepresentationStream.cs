@@ -36,8 +36,21 @@ namespace MpdParser.Node.Dynamic
             AvaliabilityTimeOffset = avaliabilityTimeOffset;
             AvaliabilityTimeComplete = avaliabilityTimeComplete;
 
-
             Duration = media?.Period?.Duration;
+
+            DownloadIndexOnce();
+            
+            // If media.Period.Duration has no value (not specified by Manifest), 
+            // try to guess duration from index information 
+            if (Duration.HasValue == false)
+            {
+                if (segments_.Count > 0)
+                {
+                    var lastEntry = segments_.Count - 1;
+
+                    Duration = segments_[lastEntry].Period.Start + segments_[lastEntry].Period.Duration;
+                }
+            }
         }
 
         protected static LoggerManager LogManager = LoggerManager.GetInstance();
@@ -48,30 +61,8 @@ namespace MpdParser.Node.Dynamic
         private bool indexDownloaded;
         private Segment media_;
 
-        private TimeSpan? durationInternal_;
-        public TimeSpan? Duration
-        {
-            get
-            {
-                // If media.Period.Duration has no value (not specified by Manifest), 
-                // try to guess duration from index information 
-                if (durationInternal_.HasValue == false)
-                {
-                    DownloadIndexOnce();
-                    if (segments_.Count > 0)
-                    {
-                        var index = segments_.Count - 1;
-
-                        durationInternal_ = segments_[index].Period.Start + segments_[index].Period.Duration;
-                    }
-                }
-                return durationInternal_;
-            }
-            set
-            {
-                durationInternal_ = value;
-            }
-        }
+        public TimeSpan? Duration { get; }
+        
         public Segment InitSegment { get; }
         public Segment IndexSegment { get; }
 
@@ -84,7 +75,6 @@ namespace MpdParser.Node.Dynamic
         {
             get
             {
-                DownloadIndexOnce();
                 return (uint)segments_.Count;
             }
         }
@@ -168,8 +158,6 @@ namespace MpdParser.Node.Dynamic
             if (media_ == null)
                 return null;
 
-            DownloadIndexOnce();
-
             if (segments_.Count == 0)
             {
                 Logger.Info(string.Format("No index data for {0}", media_.Url.ToString()));
@@ -190,8 +178,6 @@ namespace MpdParser.Node.Dynamic
 
             if (media_.Contains(duration) <= TimeRelation.EARLIER)
                 return null;
-
-            DownloadIndexOnce();
 
             for (int i = 0; i < segments_.Count; ++i)
             {
@@ -218,8 +204,6 @@ namespace MpdParser.Node.Dynamic
         {
             if (media_ == null)
                 return null;
-
-            DownloadIndexOnce();
 
             //TODO: Take into account @startNumber if available
             if (Parameters.Document.IsDynamic == true)
