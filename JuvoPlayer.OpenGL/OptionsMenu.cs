@@ -167,6 +167,13 @@ namespace JuvoPlayer.OpenGL
             UpdateOptionsSelection();
         }
 
+        public bool ProperSelection()
+        {
+            int selectedStreamTypeIndex = _selectedOption;
+            int selectedStreamIndex = _selectedSuboption;
+            return selectedStreamIndex >= 0 && selectedStreamIndex < _streams[selectedStreamTypeIndex].Descriptions.Count;
+        }
+
         public void ControlSelect(Player player)
         {
             int selectedStreamTypeIndex = _selectedOption;

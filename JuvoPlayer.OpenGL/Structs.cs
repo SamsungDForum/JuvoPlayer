@@ -37,7 +37,8 @@
         FastForward,
         Rewind,
         SkipToEnd,
-        SkipToStart
+        SkipToStart,
+        Options
     };
 
     internal struct Icon
@@ -57,5 +58,12 @@
     {
         RGB,
         RGBA
+    }
+
+    internal enum MenuAction
+    {
+        None = 0,
+        PlaybackControl = 1,
+        OptionsMenu = 2
     }
 }

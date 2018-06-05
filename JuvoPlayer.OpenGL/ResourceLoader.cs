@@ -149,6 +149,11 @@ namespace JuvoPlayer.OpenGL
             {
                 Id = IconType.SkipToStart,
                 Image = new ImageData { Path = "skip-to-start.png" }
+            },
+            new Icon
+            {
+                Id = IconType.Options,
+                Image = new ImageData { Path = "options.png" }
             }
         };
     }
