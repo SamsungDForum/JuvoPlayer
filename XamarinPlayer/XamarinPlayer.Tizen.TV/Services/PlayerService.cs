@@ -27,6 +27,7 @@ namespace XamarinPlayer.Tizen.Services
         private IPlayerController playerController;
         private readonly DataProviderFactoryManager dataProviders = new DataProviderFactoryManager();
         private PlayerState playerState = PlayerState.Idle;
+        private string playerStateMessage;
 
         public event PlayerStateChangedEventHandler StateChanged;
 
@@ -42,7 +43,7 @@ namespace XamarinPlayer.Tizen.Services
             private set
             {
                 playerState = value;
-                StateChanged?.Invoke(this, new PlayerStateChangedEventArgs(playerState));
+                StateChanged?.Invoke(this, new PlayerStateChangedEventArgs(playerState, playerStateMessage));
             }
         }
 
@@ -70,6 +71,7 @@ namespace XamarinPlayer.Tizen.Services
             };
             playerController.PlaybackError += (message) =>
             {
+                playerStateMessage = message;
                 State = PlayerState.Error;
             };
         }

@@ -193,7 +193,7 @@ namespace JuvoPlayer.Player
         public void OnStreamError(string errorMessage)
         {
             //On error behave as if playback has completed.
-            OnPlaybackCompleted();
+            OnPlaybackError(errorMessage);
         }
 
         #region getters
