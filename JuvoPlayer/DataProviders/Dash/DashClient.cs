@@ -111,7 +111,10 @@ namespace JuvoPlayer.DataProviders.Dash
 
         private void ScheduleNextSegDownload()
         {
-            lock (this)
+            if (!Monitor.TryEnter(this))
+                return;
+
+            try
             {
                 if (!processDataTask.IsCompleted || cancellationTokenSource.IsCancellationRequested)
                     return;
@@ -139,6 +142,10 @@ namespace JuvoPlayer.DataProviders.Dash
                 }
 
                 DownloadSegment(segment, HandleSuccessfullDownload);
+            }
+            finally
+            {
+                Monitor.Exit(this);
             }
         }
 
