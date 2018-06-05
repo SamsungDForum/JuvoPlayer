@@ -20,6 +20,7 @@ namespace XamarinPlayer.Views
         private bool _isPageDisappeared = false;
         private bool _isShowing = false;
         private bool _errorOccured = false;
+        private string _errorMessage;
 
         public static readonly BindableProperty ContentSourceProperty = BindableProperty.Create("ContentSource", typeof(object), typeof(PlayerView), null);
 
@@ -269,24 +270,24 @@ namespace XamarinPlayer.Views
 
         private void OnPlaybackCompleted()
         {
-            if (!_errorOccured)
-            {
+            
                 // Schedule closing the page on the next event loop. Give application time to finish
                 // playbackCompleted event handling
                 Device.StartTimer(TimeSpan.FromMilliseconds(0), () =>
                 {
                     Navigation.RemovePage(this);
 
+                    if(_errorOccured)
+                    {
+                        // TODO: Display error message.
+                        // error text is contained in _errorMessage variable
+                        // For now, just close
+
+                    }
                     return false;
                 });
                 
-            }
-            else
-            {
-                // TODO: display an error
-                UpdatePlayTime();
-                Show();
-            }
+            
         }
 
         protected override void OnAppearing()
@@ -340,7 +341,10 @@ namespace XamarinPlayer.Views
                 PlayButton.IsEnabled = false;
                 SettingsButton.IsEnabled = false;
 
+                _errorMessage = e.Message;
                 _errorOccured = true;
+
+                OnPlaybackCompleted();
             }
             else if (e.State == PlayerState.Prepared)
             {

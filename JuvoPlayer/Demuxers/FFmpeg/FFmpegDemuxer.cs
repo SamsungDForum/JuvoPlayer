@@ -106,6 +106,9 @@ namespace JuvoPlayer.Demuxers.FFmpeg
 
             // Potentially time-consuming part of initialization and demuxation loop will be executed on a detached thread.
             demuxTask = Task.Run(() => DemuxTask(InitES, initMode));
+
+            //Add error handler task if demuxer fails
+            demuxTask.ContinueWith(res => OnError(GetErrorMessage(res)),TaskContinuationOptions.OnlyOnFaulted);
         }
 
         public void StartForUrl(string url)
@@ -114,6 +117,9 @@ namespace JuvoPlayer.Demuxers.FFmpeg
 
             // Potentially time-consuming part of initialization and demuxation loop will be executed on a detached thread.
             demuxTask = Task.Run(() => DemuxTask(() => InitURL(url), InitializationMode.Full));
+
+            //Add error handler task if demuxer fails
+            demuxTask.ContinueWith(res => OnError(GetErrorMessage(res)), TaskContinuationOptions.OnlyOnFaulted);
         }
 
         [Conditional("DEBUG")]
@@ -124,7 +130,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg
             // buffer size will be set to less then 512.
             var dumpSize = size > 512 ? 512 : size;
             var data = new byte[dumpSize];
-            Marshal.Copy((IntPtr)buffer, data, 0, dumpSize);
+            Marshal.Copy((IntPtr)bytes, data, 0, dumpSize);
             Logger.Debug($"Buffer:\n{HexDumper.HexDumpFirstN(data, dumpSize)}");
         }
 
@@ -227,7 +233,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg
                 Logger.Fatal($"Neither video ({videoIdx}) nor audio stream ({audioIdx}) found");
 
                 DeallocFFmpeg();
-                throw new Exception($"Neither video ({videoIdx}) nor audio stream ({audioIdx}) found");
+                throw new Exception("Neither video nor audio stream found");
             }
 
             // disable not used streams
@@ -275,6 +281,26 @@ namespace JuvoPlayer.Demuxers.FFmpeg
             return streamId;
         }
 
+        private static string GetErrorMessage(Task response)
+        {
+            return response.Exception?.Flatten().InnerException.Message;
+        }
+
+        private void OnError(string errorMessage)
+        {
+
+            // Do error notification and gracefull exit only if demuxer error handler is set
+            // to avoid "silent/hard to spot" fails.
+            if(DemuxerError is null)
+            {
+                //no handler - rethrow recieved exception
+                throw new DemuxerException(errorMessage);
+            }
+
+            // Have handler. Inform without exception throwup.
+            DemuxerError.Invoke(errorMessage);
+        }
+
         private unsafe void DemuxTask(Action initAction, InitializationMode initMode)
         {
             try
@@ -285,15 +311,6 @@ namespace JuvoPlayer.Demuxers.FFmpeg
             {
                 Logger.Error("An error occured: " + e.Message);
 
-                // Do error notification and gracefull exit only if demuxer error handler is set
-                // to avoid "silent/hard to spot" fails.
-                if (DemuxerError.GetInvocationList().Length > 0)
-                {
-                    DemuxerError.Invoke(e.Message);
-                    return;
-                }
-
-                // otherwise throw exception
                 throw new DemuxerException("Couldn't initialize demuxer", e);
             }
 
