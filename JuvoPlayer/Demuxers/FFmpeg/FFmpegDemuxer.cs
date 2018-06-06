@@ -288,17 +288,8 @@ namespace JuvoPlayer.Demuxers.FFmpeg
 
         private void OnError(string errorMessage)
         {
-
-            // Do error notification and gracefull exit only if demuxer error handler is set
-            // to avoid "silent/hard to spot" fails.
-            if(DemuxerError is null)
-            {
-                //no handler - rethrow recieved exception
-                throw new DemuxerException(errorMessage);
-            }
-
             // Have handler. Inform without exception throwup.
-            DemuxerError.Invoke(errorMessage);
+            DemuxerError?.Invoke(errorMessage);
         }
 
         private unsafe void DemuxTask(Action initAction, InitializationMode initMode)
