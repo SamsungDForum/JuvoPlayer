@@ -30,8 +30,6 @@ namespace JuvoPlayer.DataProviders.Dash
         public event StreamConfigReady StreamConfigReady;
         public event PacketReady PacketReady;
 
-        private ManualResetEventSlim waitForManifest = new ManualResetEventSlim(false);
-
         private bool disposed;
 
         public DashDataProvider(
@@ -355,9 +353,6 @@ namespace JuvoPlayer.DataProviders.Dash
             audioPipeline = null;
             videoPipeline?.Dispose();
             videoPipeline = null;
-
-            waitForManifest?.Dispose();
-            waitForManifest = null;
         }
     }
 }

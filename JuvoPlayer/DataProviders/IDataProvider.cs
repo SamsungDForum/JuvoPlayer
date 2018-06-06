@@ -14,7 +14,6 @@
 using JuvoPlayer.Common;
 using System;
 using System.Collections.Generic;
-using System.Threading.Tasks;
 using JuvoPlayer.Subtitles;
 
 namespace JuvoPlayer.DataProviders

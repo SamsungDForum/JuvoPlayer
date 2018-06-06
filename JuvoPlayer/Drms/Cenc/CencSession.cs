@@ -346,8 +346,8 @@ namespace JuvoPlayer.Drms.Cenc
 
             Logger.Info("Response: " + responseTask);
             var receiveStream = responseTask.Content.ReadAsStreamAsync();
-            var readStream = new StreamReader(receiveStream.Result, Encoding.GetEncoding(437));
-            var responseText = readStream.ReadToEnd();
+            var readStream = new StreamReader(await receiveStream, Encoding.GetEncoding(437));
+            var responseText = await readStream.ReadToEndAsync();
             if (responseText.IndexOf("<?xml", StringComparison.Ordinal) > 0)
                 responseText = responseText.Substring(responseText.IndexOf("<?xml", StringComparison.Ordinal));
             return responseText;
