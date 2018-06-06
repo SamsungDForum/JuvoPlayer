@@ -270,23 +270,24 @@ namespace XamarinPlayer.Views
 
         private void OnPlaybackCompleted()
         {
-            
+
+            if (_errorOccured)
+            {
+                DisplayAlert("Playback Error", _errorMessage, "OK").Wait();
+            }
+            else
+            {
                 // Schedule closing the page on the next event loop. Give application time to finish
                 // playbackCompleted event handling
                 Device.StartTimer(TimeSpan.FromMilliseconds(0), () =>
-                {
-                    Navigation.RemovePage(this);
-
-                    if(_errorOccured)
                     {
-                        // TODO: Display error message.
-                        // error text is contained in _errorMessage variable
-                        // For now, just close
 
-                    }
-                    return false;
-                });
-                
+                        Navigation.RemovePage(this);
+
+                        return false;
+                    });
+            }
+           
             
         }
 
