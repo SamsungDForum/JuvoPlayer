@@ -171,7 +171,11 @@ namespace JuvoPlayer.DataProviders.Dash
             lastRequestedPeriod = responseResult.DownloadSegment.Period.Copy();
             ++currentSegmentId;
 
-            bufferTime += responseResult.DownloadSegment.Period.Duration;
+            if (IsDynamic)
+                bufferTime += responseResult.DownloadSegment.Period.Duration;
+            else
+                bufferTime = responseResult.DownloadSegment.Period.Start + responseResult.DownloadSegment.Period.Duration;
+
             var timeInfo = responseResult.DownloadSegment.Period.ToString();
 
             Logger.Info($"{responseResult.StreamType}: Segment: {responseResult.SegmentID} received {timeInfo}");
