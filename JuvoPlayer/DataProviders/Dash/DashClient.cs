@@ -38,7 +38,7 @@ namespace JuvoPlayer.DataProviders.Dash
         /// <summary>
         /// Contains information about timing data for last requested segment
         /// </summary>
-        private TimeRange lastRequestedPeriod = new TimeRange(TimeSpan.Zero,TimeSpan.Zero);
+        private TimeRange lastRequestedPeriod = new TimeRange(TimeSpan.Zero, TimeSpan.Zero);
 
         /// <summary>
         /// Buffer full accessor.
@@ -54,7 +54,7 @@ namespace JuvoPlayer.DataProviders.Dash
         /// A difference between buffer time (data being pushed to player in units of time) and current tick time (currentTime)
         /// defines how much data (in units of time) is in the player and awaits presentation.
         /// </summary>
-        private bool BufferFull => (bufferTime - currentTime) > timeBufferDepth + timeBufferDepth;
+        private bool BufferFull => (bufferTime - currentTime) > timeBufferDepth;
 
         /// <summary>
         /// A shorthand for retrieving currently played out document type
@@ -81,7 +81,7 @@ namespace JuvoPlayer.DataProviders.Dash
                 newTime = currentStreams.MediaSegmentAtPos(currentSegmentId.Value).Period.Start;
             }
 
-            Logger.Info($"{streamType} Seek. Pos Req: {position} Seek to: {newTime} SegId: {segmentId}");
+            LogInfo($"Seek. Pos Req: {position} Seek to: {newTime} SegId: {segmentId}");
             return newTime;
         }
 
@@ -90,7 +90,7 @@ namespace JuvoPlayer.DataProviders.Dash
             if (currentRepresentation == null)
                 throw new Exception("currentRepresentation has not been set");
 
-            Logger.Info($"{streamType} DashClient start.");
+            LogInfo("DashClient start.");
             cancellationTokenSource?.Dispose();
             cancellationTokenSource = new CancellationTokenSource();
 
@@ -121,7 +121,7 @@ namespace JuvoPlayer.DataProviders.Dash
 
                 if (BufferFull)
                 {
-                    Logger.Info($"{streamType} Full buffer: ({bufferTime}-{currentTime}) {bufferTime - currentTime} > {timeBufferDepth}.");
+                    LogInfo($"Full buffer: ({bufferTime}-{currentTime}) {bufferTime - currentTime} > {timeBufferDepth}.");
                     return;
                 }
 
@@ -136,7 +136,7 @@ namespace JuvoPlayer.DataProviders.Dash
                     if (IsDynamic)
                         return;
 
-                    Logger.Warn($"{streamType}: Segment: {currentSegmentId} NULL stream. Stoping player.");
+                    LogWarn($"Segment: {currentSegmentId} NULL stream. Stoping player.");
                     Stop();
                     return;
                 }
@@ -171,10 +171,14 @@ namespace JuvoPlayer.DataProviders.Dash
             lastRequestedPeriod = responseResult.DownloadSegment.Period.Copy();
             ++currentSegmentId;
 
-            bufferTime += responseResult.DownloadSegment.Period.Duration;
+            if (IsDynamic)
+                bufferTime += responseResult.DownloadSegment.Period.Duration;
+            else
+                bufferTime = responseResult.DownloadSegment.Period.Start + responseResult.DownloadSegment.Period.Duration;
+
             var timeInfo = responseResult.DownloadSegment.Period.ToString();
 
-            Logger.Info($"{responseResult.StreamType}: Segment: {responseResult.SegmentID} received {timeInfo}");
+            LogInfo($"Segment: {responseResult.SegmentID} received {timeInfo}");
 
             if (IsEndOfContent())
                 Stop();
@@ -187,7 +191,7 @@ namespace JuvoPlayer.DataProviders.Dash
             if (initStreamBytes != null)
                 sharedBuffer.WriteData(initStreamBytes);
 
-            Logger.Info($"{responseResult.StreamType}: Init segment downloaded.");
+            LogInfo("Init segment downloaded.");
         }
 
         private void HandleFailedDownload(string message)
@@ -205,7 +209,7 @@ namespace JuvoPlayer.DataProviders.Dash
             cancellationTokenSource?.Cancel();
             SendEOSEvent();
 
-            Logger.Info($"{streamType} Data downloader stopped");
+            LogInfo("Data downloader stopped");
         }
 
         public void SetRepresentation(Representation representation)
@@ -217,7 +221,7 @@ namespace JuvoPlayer.DataProviders.Dash
             currentRepresentation = representation;
 
             currentStreams = currentRepresentation.Segments;
-            timeBufferDepth = currentStreams.GetDocumentParameters().Document.MinBufferTime ?? TimeBufferDepthDefault;
+            UpdateTimeBufferDepth();
         }
 
         /// <summary>
@@ -230,7 +234,7 @@ namespace JuvoPlayer.DataProviders.Dash
                 return;
 
             Interlocked.Exchange(ref newRepresentation, representation);
-            Logger.Info($"{streamType}: newRepresentation set");
+            LogInfo("newRepresentation set");
 
             ScheduleNextSegDownload();
         }
@@ -254,7 +258,7 @@ namespace JuvoPlayer.DataProviders.Dash
             currentStreams = currentRepresentation.Segments;
             currentStreamDuration = currentStreams.Duration;
 
-            timeBufferDepth = currentStreams.GetDocumentParameters().Document.MinBufferTime ?? TimeBufferDepthDefault;
+            UpdateTimeBufferDepth();
 
             // TODO:
             // Add API to Representation - GetNextSegmentIdAtTime(). would allow for finding exixsting segment
@@ -263,7 +267,7 @@ namespace JuvoPlayer.DataProviders.Dash
             if (lastRequestedPeriod == null)
             {
                 currentSegmentId = currentStreams.GetStartSegment(currentTime, timeBufferDepth);
-                Logger.Info($"{streamType}: Rep. Swap. Start Seg: {currentSegmentId}");
+                LogInfo($"Rep. Swap. Start Seg: {currentSegmentId}");
                 return;
             }
 
@@ -288,11 +292,11 @@ namespace JuvoPlayer.DataProviders.Dash
                 message = "Not Found. Setting segment to null";
             }
 
-            Logger.Info($"{streamType}: Rep. Swap. Last Seg: {currentSegmentId}/{lastRequestedPeriod.Start}-{lastRequestedPeriod.Duration} {message}");
+            LogInfo($"Rep. Swap. Last Seg: {currentSegmentId}/{lastRequestedPeriod.Start}-{lastRequestedPeriod.Duration} {message}");
 
             currentSegmentId = newSeg;
 
-            Logger.Info($"{streamType}: Representations swapped.");
+            LogInfo("Representations swapped.");
         }
 
         public void OnTimeUpdated(TimeSpan time)
@@ -324,6 +328,82 @@ namespace JuvoPlayer.DataProviders.Dash
 
             return DownloadRequest.CreateDownloadRequestAsync(requestData, ignoreError, cancellationTokenSource.Token);
         }
+
+        private void TimeBufferDepthDynamic()
+        {
+            // For dynamic content, use Manifest buffer time 
+            timeBufferDepth = currentStreams.GetDocumentParameters().Document.MinBufferTime ?? TimeBufferDepthDefault;
+        }
+
+        private void TimeBufferDepthStatic()
+        {
+            // Buffer depth is calculated as so:
+            // TimeBufferDepth = 
+            // 1 avg. seg. duration (one being played out) +
+            // bufferTime in multiples of avgSegment Duration with roundup
+            // i.e:
+            // minbuftime = 5 sek.
+            // avgseg = 3 sek.
+            // bufferTime = 6 sec.
+            // timeBufferDepth = 3 sek + 6 sec.
+            //
+            var duration = currentStreams.Duration;
+            var segments = currentStreams.Count;
+            var manifestMinBufferDepth = currentStreams.GetDocumentParameters().Document.MinBufferTime ?? TimeSpan.Zero;
+
+            //Get average segment duration = Total Duration / number of segments.
+            var avgSegmentDuration = TimeSpan.FromSeconds(
+                    ((double)(duration.Value.TotalSeconds) / (double)segments));
+
+            // Compute multiples of manifest MinBufferTime in units of average segment duration
+            // with round up
+            var multiples = (uint)((manifestMinBufferDepth.TotalSeconds + avgSegmentDuration.TotalSeconds - 1) / avgSegmentDuration.TotalSeconds);
+            var bufferTime = TimeSpan.FromSeconds(multiples * avgSegmentDuration.TotalSeconds);
+
+            // Compose final timeBufferDepth.
+            timeBufferDepth = avgSegmentDuration + bufferTime;
+
+            LogInfo($"Average Segment Duration: {avgSegmentDuration} Manifest Min. Buffer Time: {manifestMinBufferDepth}");
+        }
+
+        private void UpdateTimeBufferDepth()
+        {
+            if (IsDynamic == true)
+            {
+                TimeBufferDepthDynamic();
+            }
+            else
+            {
+                TimeBufferDepthStatic();
+            }
+
+            LogInfo($"TimeBufferDepth: {timeBufferDepth}");
+
+        }
+
+        #region Logging Functions
+
+        private void LogInfo(string logMessage)
+        {
+            Logger.Info(streamType + ": " + logMessage);
+        }
+        private void LogDebug(string logMessage)
+        {
+            Logger.Debug(streamType + ": " + logMessage);
+        }
+        private void LogWarn(string logMessage)
+        {
+            Logger.Warn(streamType + ": " + logMessage);
+        }
+        private void LogFatal(string logMessage)
+        {
+            Logger.Fatal(streamType + ": " + logMessage);
+        }
+        private void LogError(string logMessage)
+        {
+            Logger.Error(streamType + ": " + logMessage);
+        }
+        #endregion
 
         #region IDisposable Support
         private bool disposedValue; // To detect redundant calls
