@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Threading.Tasks;
 using System.Xml;
 using System.Xml.Serialization;
 using JuvoPlayer.Utils;
@@ -132,8 +133,8 @@ namespace JuvoPlayer.Tests.UnitTests
 
                 item.rawXML = ReadEmbeddedFile(tc.file);
                 
-                Assert.DoesNotThrow(() => 
-                    item.parsedmpd = Document.FromText(item.rawXML, tc.url)
+                Assert.DoesNotThrowAsync(async () => 
+                    item.parsedmpd = await Document.FromText(item.rawXML, tc.url)
                     );
                 Assert.IsNotNull(item.parsedmpd);
 
@@ -230,7 +231,7 @@ namespace JuvoPlayer.Tests.UnitTests
         [Test]
         [Description("Compares 2 DASH Documents, application parsed and system parsed.")]
         [Property("SPEC", "MpdParser.DASH M")]
-        public static void XMLData_AppParserSysParser_same_OK()
+        public static async Task XMLData_AppParserSysParser_same_OK()
         {
             if (parsedmpds.Count == 0)
             {
@@ -262,7 +263,7 @@ namespace JuvoPlayer.Tests.UnitTests
 
                 // ok... so we are "re-parsing" internal xml here...
                 // but do it from original data (not schema replaced one)
-                MpdParser.Node.DASH IntMPD = Document.FromTextInternal(item.rawXML, item.url);
+                MpdParser.Node.DASH IntMPD = await Document.FromTextInternal(item.rawXML, item.url);
 
                 XmlSerializer serializer = new XmlSerializer(typeof(MPDtype));
                 System.IO.StringReader reader = new System.IO.StringReader(tmpxml);
