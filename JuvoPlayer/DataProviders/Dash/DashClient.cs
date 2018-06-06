@@ -54,7 +54,7 @@ namespace JuvoPlayer.DataProviders.Dash
         /// A difference between buffer time (data being pushed to player in units of time) and current tick time (currentTime)
         /// defines how much data (in units of time) is in the player and awaits presentation.
         /// </summary>
-        private bool BufferFull => (bufferTime - currentTime) > timeBufferDepth + timeBufferDepth;
+        private bool BufferFull => (bufferTime - currentTime) > timeBufferDepth;
 
         /// <summary>
         /// A shorthand for retrieving currently played out document type
@@ -171,7 +171,11 @@ namespace JuvoPlayer.DataProviders.Dash
             lastRequestedPeriod = responseResult.DownloadSegment.Period.Copy();
             ++currentSegmentId;
 
-            bufferTime += responseResult.DownloadSegment.Period.Duration;
+            if (IsDynamic)
+                bufferTime += responseResult.DownloadSegment.Period.Duration;
+            else
+                bufferTime = responseResult.DownloadSegment.Period.Start + responseResult.DownloadSegment.Period.Duration;
+
             var timeInfo = responseResult.DownloadSegment.Period.ToString();
 
             LogInfo($"Segment: {responseResult.SegmentID} received {timeInfo}");

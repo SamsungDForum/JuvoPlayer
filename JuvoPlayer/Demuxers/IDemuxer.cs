@@ -29,7 +29,7 @@ namespace JuvoPlayer.Demuxers
         void StartForExternalSource(InitializationMode initMode);
         void StartForUrl(string url);
         void ChangePID(int pid);
-        void Reset();
+        void Stop();
         void Pause();
         void Resume();
 
