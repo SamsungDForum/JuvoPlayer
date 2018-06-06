@@ -415,16 +415,9 @@ namespace JuvoPlayer.DataProviders.Dash
             CheckAndReloadManifestReload();
         }
 
-        // Reference to Pipeline Termination task. Purpose of this task is to terminate 
-        // pipeline "once" and from external thread. 
-        // TV Platform does not support BeginInvoke() thus task implementation.
-        // Termination can occour as a result of OnStreamError() raised from client or demuxer.
-        // 
-        private Task pipelineTerminator;
-
-        private void TerminatePipeline(string errorMessage)
+        private void OnStreamError(string errorMessage)
         {
-            Logger.Info("Terminating Pipelines.");
+            Logger.Error($"Stream Error: {errorMessage}. Terminating pipelines.");
 
             // This will generate "already stopped" message from failed pipeline.
             audioPipeline.Stop();
@@ -433,21 +426,6 @@ namespace JuvoPlayer.DataProviders.Dash
             // Bubble up stream error info up to PlayerController which will shut down
             // underlying player
             StreamError?.Invoke(errorMessage);
-        }
-
-        private void OnStreamError(string errorMessage)
-        {
-            Logger.Error($"Stream Error: {errorMessage}");
-
-            // Run once. 
-            if (pipelineTerminator is null)
-            {
-                pipelineTerminator = Task.Run(() => { TerminatePipeline(errorMessage); } );
-            }
-            else
-            {
-                Logger.Info($"Pipeline termination already executed {pipelineTerminator.Status}");
-            }
         }
 
         public void Dispose()
@@ -466,12 +444,6 @@ namespace JuvoPlayer.DataProviders.Dash
 
             waitForManifest?.Dispose();
             waitForManifest = null;
-
-            // Wait for pipeline termination (if in progress) to complete.
-            pipelineTerminator?.Wait();
-            pipelineTerminator?.Dispose();
-            pipelineTerminator = null;
-
         }
     }
 }
