@@ -25,7 +25,7 @@ namespace JuvoPlayer.DataProviders.Dash
 
             public override bool Equals(object obj)
             {
-                return obj is DashStream && Equals((DashStream)obj);
+                return obj is DashStream stream && Equals(stream);
             }
 
             public bool Equals(DashStream other)
@@ -91,17 +91,26 @@ namespace JuvoPlayer.DataProviders.Dash
             if (media.Any(o => o.Type.Value != ToMediaType(streamType)))
                 throw new ArgumentException("Not compatible media found");
 
+            if (pipelineStarted && currentStream.Media != null)
+            {
+                var currentMedia = media.Count == 1 ? media.First() : media.FirstOrDefault(o => o.Id == currentStream.Media.Id);
+                var currentRepresentation = currentMedia?.Representations.FirstOrDefault(o => o.Id == currentStream.Representation.Id);
+                if (currentRepresentation != null)
+                {
+                    var stream = new DashStream(currentMedia, currentRepresentation);
+                    UpdatePipeline(stream);
+                    GetAvailableStreams(media, currentStream.Media);
+                    return;
+                }
+            }
+
             var defaultMedia = GetDefaultMedia(media);
             // get first element of sorted array 
             var representation = defaultMedia.Representations.OrderByDescending(o => o.Bandwidth).First();
             var defaultStream = new DashStream(defaultMedia, representation);
 
-            if (pipelineStarted)
-                UpdatePipeline(defaultStream);
-            else
-                StartPipeline(defaultStream);
-
-            GetAvailableStreams(media, defaultMedia);
+            StartPipeline(defaultStream);
+            GetAvailableStreams(media, currentStream.Media);
         }
 
         private void GetAvailableStreams(IEnumerable<Media> media, Media defaultMedia)
