@@ -41,5 +41,6 @@ namespace JuvoPlayer.DataProviders
         event SetDrmConfiguration SetDrmConfiguration;
         event StreamConfigReady StreamConfigReady;
         event PacketReady PacketReady;
+        event StreamError StreamError;
     }
 }

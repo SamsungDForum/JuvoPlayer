@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
+using System.Threading.Tasks;
 using JuvoLogger;
 using JuvoPlayer.Common;
 using JuvoPlayer.Subtitles;
@@ -28,12 +29,12 @@ namespace JuvoPlayer.DataProviders.Dash
         public event SetDrmConfiguration SetDrmConfiguration;
         public event StreamConfigReady StreamConfigReady;
         public event PacketReady PacketReady;
-        public event StreamsFound StreamsFound;
-	public event StreamError StreamError;
+        public event StreamError StreamError;
 
         private ManualResetEventSlim waitForManifest = new ManualResetEventSlim(false);
 
         private bool disposed;
+        private bool errorProcessed;
 
         public DashDataProvider(
             DashManifest manifest,
@@ -54,7 +55,7 @@ namespace JuvoPlayer.DataProviders.Dash
             videoPipeline.SetDrmConfiguration += OnSetDrmConfiguration;
             videoPipeline.StreamConfigReady += OnStreamConfigReady;
             videoPipeline.PacketReady += OnPacketReady;
-	    videoPipeline.StreamError += OnStreamError;
+	        videoPipeline.StreamError += OnStreamError;
         }
 
         private void OnDRMInitDataFound(DRMInitData drmData)
@@ -345,6 +346,33 @@ namespace JuvoPlayer.DataProviders.Dash
 
                 StartInternal();
             }
+        }
+
+        private void OnStreamError(string errorMessage)
+        {
+            // Process error only once - there is no point in gobbling up
+            // CPU timne processing multiple requests as the very first will cause pipeline
+            // termination for Audio & Video
+            if (errorProcessed)
+                return;
+
+            errorProcessed = true;
+
+            // TODO: Review parallelization. Logging, A & V Stop, Stream Erro Invokation
+            // can be safely done in parallel.
+            Logger.Error($"Stream Error: {errorMessage}. Terminating pipelines.");
+
+            // This will generate "already stopped" message from failed pipeline.
+            // It is possible to forgo calling stop here, simply raise StreamError event
+            // and wait for termination as part of player window closure. Imho, better to call
+            // quits as early as possible.
+            audioPipeline.Stop();
+            videoPipeline.Stop();
+
+            // Bubble up stream error info up to PlayerController which will shut down
+            // underlying player
+            
+            StreamError?.Invoke(errorMessage);
         }
 
         public void Dispose()
