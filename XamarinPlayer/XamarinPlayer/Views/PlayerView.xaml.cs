@@ -385,9 +385,6 @@ namespace XamarinPlayer.Views
             {
                 PlayImage.Source = ImageSource.FromFile("btn_viewer_control_play_normal.png");
             }
-
-            Logger.Info("OnPlayerStateChanged COMPLETED!");
-
         }
 
         private string GetFormattedTime(TimeSpan time)
