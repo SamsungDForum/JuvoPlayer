@@ -325,7 +325,7 @@ namespace JuvoPlayer.DataProviders.Dash
                 {
                     await manifest.ReloadManifestTask();
                 }
-                catch (TaskCanceledException)
+                catch (OperationCanceledException)
                 {
                     Logger.Info("Reloading manifest was cancelled");
                     return;
