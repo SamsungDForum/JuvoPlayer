@@ -319,21 +319,20 @@ namespace XamarinPlayer.Views
 
         void OnPlaybackError(string errorMessage)
         {
-            Device.StartTimer(TimeSpan.FromMilliseconds(0), () => 
+            // DisplayAlert seems emotionally unstable
+            // if not called from main thread.
+            Device.BeginInvokeOnMainThread(async () =>
             {
-                // DisplayAlert seems emotionally unstable
-                // if not called from main thread.
-                Device.BeginInvokeOnMainThread(async () =>
-                {
-                    // TODO: It would be nice to close current page THEN
-                    // display popup error. PlayerService resources would be released 
-                    // while waiting for user confitrmation. However, this requires some rework
-                    // as Disposing of PlayerService here causes null object reference havoc.
-                    await DisplayAlert("Playback Error", errorMessage, "OK");
-                    await Navigation.PopAsync();
-                });
+                // TODO: It would be nice to close current page THEN
+                // display popup error. PlayerService resources would be released 
+                // while waiting for user confitrmation. However, this requires some rework
+                // as Disposing of PlayerService here causes null object reference havoc.
+                await DisplayAlert("Playback Error", errorMessage, "OK");
 
-                return false;
+                //Clear error flag
+                _errorOccured = false;
+
+                await Navigation.PopAsync();
             });
         }
 
@@ -341,7 +340,16 @@ namespace XamarinPlayer.Views
         {
             if (e.State == PlayerState.Completed)
             {
-                OnPlaybackCompleted();
+                // If error popup is in place, do not service OnPlaybackCompleted
+                // as it will remove current page
+                if (_errorOccured == false)
+                {
+                    OnPlaybackCompleted();
+                }
+                else
+                {
+                    Logger.Info("PlayerState.Completed Ignored due to error");
+                }
             }
             else if (e.State == PlayerState.Error)
             {
@@ -354,6 +362,9 @@ namespace XamarinPlayer.Views
                 // if it is a very first error event.
                 if (_errorOccured == false)
                 {
+                    // Terminate player.
+                    _playerService.Stop();
+
                     _errorOccured = true;
                     OnPlaybackError(e.Message);
                 }

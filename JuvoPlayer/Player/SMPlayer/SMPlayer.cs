@@ -32,6 +32,11 @@ namespace JuvoPlayer.Player.SMPlayer
         {
             return (ulong)(time.TotalMilliseconds * 1000000);
         }
+
+        public static TimeSpan FromNanoseconds(this UInt64 nanoTime)
+        {
+            return TimeSpan.FromMilliseconds(nanoTime / 1000000);
+        }
     }
 
     public sealed class SMPlayer : IPlayer, IPlayerEventListener
@@ -45,6 +50,7 @@ namespace JuvoPlayer.Player.SMPlayer
             Stopping
         };
 
+        private enum SeekStatus { NoData, Seeking, Found};
         private class BufferConfiguration : Packet
         {
             private BufferConfiguration() { }
@@ -84,6 +90,8 @@ namespace JuvoPlayer.Player.SMPlayer
         private readonly AutoResetEvent submitting = new AutoResetEvent(false);
 
         private TimeSpan currentTime;
+        private TimeSpan? videoSeekOffset = null;
+        private TimeSpan? audioSeekOffset = null;
 
         private bool isDisposed;
 
@@ -150,29 +158,155 @@ namespace JuvoPlayer.Player.SMPlayer
             WakeUpSubmitTask();
         }
 
+        private SeekStatus SeekingVideo()
+        {
+            if (videoSeekOffset.HasValue == false)
+                return SeekStatus.Found;
+
+            Logger.Debug($"Video {audioSeekOffset}");
+
+            if (videoPacketsQueue.TryPeek(out var packet))
+            {
+                // EOS / Config packets - send them without gobbling up
+                //
+                if (packet.IsEOS || packet is BufferConfiguration)
+                    return SeekStatus.Found;
+
+                if (packet.Pts < videoSeekOffset)
+                {
+                    if (videoPacketsQueue.TryDequeue(out packet))
+                    {
+                        Logger.Debug($"Ignored Video {packet.Pts}/{videoSeekOffset}");
+                    }
+                    return SeekStatus.Seeking;
+                }
+
+                // No first IFrame found. Increase Audio seek offsets to current
+                // video position and eat away current video packet.
+                // Increasing audioSeekOffset will result in audio packets being eaten away
+                // at next iteration.
+                //
+                if (packet.IsKeyFrame == false)
+                {
+                    if (videoPacketsQueue.TryDequeue(out packet))
+                    {
+                        audioSeekOffset = packet.Pts;
+                        Logger.Info($"Ignored non key fame Video {packet.Pts}/{videoSeekOffset}");
+                    }
+                    return SeekStatus.Seeking;
+                }
+
+                // Fall out out of if is intentional. Video seeker has found first key frame after
+                // on or after a specified seek position.
+            }
+            else
+            {
+                // Could not peek - No Data queue
+                //
+                return SeekStatus.NoData;
+            }
+
+            // Key frame found. Update audio seeker with peeked packet pts and disable video muncher.
+            //
+            Logger.Debug($"Video key frame @{packet.Pts}/{videoSeekOffset}. Seeting audio seek to {packet.Pts}");
+            audioSeekOffset = packet.Pts;
+            videoSeekOffset = null;
+            return SeekStatus.Found;
+        }
+
+        private SeekStatus SeekingAudio()
+        {
+            if (audioSeekOffset.HasValue == false)
+                return SeekStatus.Found;
+
+            Logger.Debug($"Audio {audioSeekOffset}");
+
+            // Audio Data. Gobble up packets up to specified seek position & wait for video.
+            // Video packet muncher may increase audio seek position to first found IFrame
+            //
+            if (audioPacketsQueue.TryPeek(out var packet))
+            {
+                // EOS / Config packets - send them without gobbling up
+                //
+                if (packet.IsEOS || packet is BufferConfiguration)
+                    return SeekStatus.Found;
+
+                if (packet.Pts < audioSeekOffset)
+                {
+                    if( audioPacketsQueue.TryDequeue(out packet))
+                    {
+                        Logger.Debug($"Ignored Audio {packet.Pts}/{audioSeekOffset}");
+                    }
+
+                    return SeekStatus.Seeking;
+                }
+                else
+                {
+                    // Check if Video Seek reached its final position
+                    // videoSeekOffset == null
+                    // If so, audio seek position will not increase, which means we found our spot
+                    //
+                    if(videoSeekOffset.HasValue == true)
+                    {
+                        return SeekStatus.Seeking;
+                    }
+
+                    // Fall out of if is intentional. Audio Seek reached seeked position
+                    // and video seek has completed thus audio seek will not get incremented
+                    // by video seek looking for a key frame
+                }
+            }
+            else
+            {
+                // Could not peek - No Data in queue
+                //
+                return SeekStatus.NoData;
+            }
+
+            Logger.Debug($"Audio frame @{packet.Pts}/{audioSeekOffset}");
+            
+            // Clear Audio seeking
+            //
+            audioSeekOffset = null;
+            return SeekStatus.Found;
+            
+        }
+
         internal void SubmittingPacketsTask()
         {
             while (internalState != SMPlayerState.Stopping)
             {
                 Logger.Debug("AUDIO: " + audioPacketsQueue.Count + ", VIDEO: " + videoPacketsQueue.Count);
                 var didSubmitPacket = false;
+                var audioSeek = SeekStatus.Found;
+                var videoSeek = SeekStatus.Found;
 
                 if (!smplayerSeekReconfiguration)
                 {
-                    if (needDataAudio && audioPacketsQueue.TryDequeue(out var packet))
+                    audioSeek = SeekingAudio();
+                    if (audioSeek == SeekStatus.Found)
                     {
-                        SubmitPacket(packet);
-                        didSubmitPacket = true;
+                        if (needDataAudio && audioPacketsQueue.TryDequeue(out var packet))
+                        {
+                            SubmitPacket(packet);
+                            didSubmitPacket = true;
+                        }
                     }
 
-                    if (needDataVideo && videoPacketsQueue.TryDequeue(out packet))
+                    videoSeek = SeekingVideo();
+                    if (audioSeek == SeekStatus.Found)
                     {
-                        SubmitPacket(packet);
-                        didSubmitPacket = true;
+                        if (needDataVideo && videoPacketsQueue.TryDequeue(out var packet))
+                        {
+                            SubmitPacket(packet);
+                            didSubmitPacket = true;
+                        }
                     }
                 }
 
+
                 if (didSubmitPacket) continue;
+                if (videoSeek != SeekStatus.NoData || audioSeek != SeekStatus.NoData) continue;
 
                 try
                 {
@@ -332,6 +466,9 @@ namespace JuvoPlayer.Player.SMPlayer
             playerInstance.Pause();
 
             ResetPacketsQueues();
+
+            audioSeekOffset = null;
+            videoSeekOffset = null;
 
             playerInstance.Seek((int)time.TotalMilliseconds);
         }
@@ -517,9 +654,28 @@ namespace JuvoPlayer.Player.SMPlayer
             Logger.Info("");
             ThrowIfDisposed();
 
-            if (internalState == SMPlayerState.Uninitialized
-                || internalState == SMPlayerState.Stopping)
+            if (internalState == SMPlayerState.Stopping)
                 return;
+
+            // Uninitialized state can switch to Ready during SetStreamConfig.
+            // Calling stop during SetStreamConfig would silently would silently ignore Stop.
+            // Transition from Uninitialized to Ready would occour.
+            // Forcing state from uninitialized to Stopping within a lock used in SetStreamConfig
+            // should prevent this case
+            //
+            // TODO: Change state setting to Interlocked.Exchange/Compare (?)
+            // Will allow to get rid of lock(). 
+            // Note: Interloacked API does not work with enums.
+            //
+            lock (this)
+            {
+                if (internalState == SMPlayerState.Uninitialized)
+                {
+                    internalState = SMPlayerState.Stopping;
+                    return;
+                }
+            }
+             
 
             internalState = SMPlayerState.Stopping;
 
@@ -603,11 +759,35 @@ namespace JuvoPlayer.Player.SMPlayer
             Logger.Debug(string.Format("Received OnSeekData: {0} offset: {1}", streamType, offset));
 
             if (streamType == StreamType.Audio)
+            {
                 needDataAudio = true;
+                if (smplayerSeekReconfiguration == true)
+                {
+                    videoSeekOffset = TimeSpanExtensions.FromNanoseconds(offset);
+                }
+            }
             else if (streamType == StreamType.Video)
+            {
                 needDataVideo = true;
+                if (smplayerSeekReconfiguration == true)
+                {
+                    audioSeekOffset = TimeSpanExtensions.FromNanoseconds(offset);
+                }
+            }
             else
                 return;
+
+            // If OnSeekData is recieved as a result of prior seek request
+            // smplayerSeekReconfiguration == true
+            // wakeup submit task ONLY when both, audio and video seek position are received.
+            // Otherwise audio may reach its seek point before video knows that it has to seek.
+            if (smplayerSeekReconfiguration == true)
+            {
+                if (audioSeekOffset.HasValue == false || videoSeekOffset.HasValue == false)
+                    return;
+
+                Logger.Debug($"Seek for key frame @ Audio: {audioSeekOffset} Video: {videoSeekOffset}");
+            }
 
             // We can start appending packets
             smplayerSeekReconfiguration = false;

@@ -103,6 +103,7 @@ namespace JuvoPlayer.DataProviders.Dash
         public MpdParser.Node.Dynamic.Segment DownloadSegment { get; set; }
         public uint? SegmentID { get; set; }
         public StreamType StreamType { get; set; }
+        public bool InitSegment { get; set; }
     }
 
     public class DownloadResponse
@@ -110,7 +111,9 @@ namespace JuvoPlayer.DataProviders.Dash
         public MpdParser.Node.Dynamic.Segment DownloadSegment { get; set; }
         public uint? SegmentID { get; set; }
         public StreamType StreamType { get; set; }
+        public bool InitSegment { get; set; }
         public byte[] Data { get; set; }
+        
     }
 
     /// <summary>
@@ -128,6 +131,8 @@ namespace JuvoPlayer.DataProviders.Dash
 
         private int downloadErrorCount;
         private readonly bool ignoreError;
+
+        public enum ExceptionDataKey { InitSegment=1 };
 
         private DownloadRequest(DownloadRequestData downloadRequest, bool downloadErrorIgnore, CancellationToken cancellationToken)
         {
@@ -176,7 +181,11 @@ namespace JuvoPlayer.DataProviders.Dash
                 }
             } while (ignoreError && downloadErrorCount < 3);
 
-            throw new Exception($"{requestData.StreamType}: Segment: {requestData.SegmentID} Max retry count reached.");
+            var ex = new Exception($"{requestData.StreamType}: Segment: {requestData.SegmentID} Max retry count reached.");
+
+            // Add segment ID to exception data. Needed to differentiate error handling for init/non init segments.
+            ex.Data.Add(ExceptionDataKey.InitSegment, requestData.InitSegment);
+            throw ex;   
         }
 
         private async Task<DownloadResponse> DownloadDataTaskAsync()
@@ -188,13 +197,15 @@ namespace JuvoPlayer.DataProviders.Dash
 
                 using (cancellationToken.Register(dataDownloader.CancelAsync))
                 {
-                    Logger.Info($"{requestData.StreamType}: Segment: {requestData.SegmentID} Requested. URL: {requestData.DownloadSegment.Url} Range: {downloadRange}");
+                    var segment = requestData.InitSegment ? "INIT" : requestData.SegmentID.ToString();
+                    Logger.Info($"{requestData.StreamType}: Segment: {segment} Requested. URL: {requestData.DownloadSegment.Url} Range: {downloadRange}");
 
                     return new DownloadResponse
                     {
                         StreamType = requestData.StreamType,
                         DownloadSegment = requestData.DownloadSegment,
                         SegmentID = requestData.SegmentID,
+                        InitSegment = requestData.InitSegment,
                         Data = await dataDownloader.DownloadDataTaskAsync(requestData.DownloadSegment.Url)
                     };
                 }

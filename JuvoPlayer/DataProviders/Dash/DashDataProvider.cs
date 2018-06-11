@@ -136,8 +136,14 @@ namespace JuvoPlayer.DataProviders.Dash
             if (!IsSeekingSupported())
                 return;
 
+            audioPipeline.Pause();
+            videoPipeline.Pause();
+
             audioPipeline.Seek(time);
             videoPipeline.Seek(time);
+
+            audioPipeline.Resume();
+            videoPipeline.Resume();
         }
 
         public void OnStopped()
