@@ -15,6 +15,8 @@ namespace JuvoPlayer.DataProviders.Dash
         private Uri Uri { get; }
 
         private readonly SemaphoreSlim updateInProgressLock = new SemaphoreSlim(1);
+        private CancellationTokenSource cancellationTokenSource;
+
         private DateTime lastReloadTime = DateTime.MinValue;
         private TimeSpan minimumReloadPeriod = TimeSpan.Zero;
 
@@ -33,21 +35,38 @@ namespace JuvoPlayer.DataProviders.Dash
                    && (DateTime.UtcNow - lastReloadTime) >= minimumReloadPeriod);
         }
 
+        public void CancelReload()
+        {
+            try
+            {
+                cancellationTokenSource?.Cancel();
+            }
+            catch
+            {
+                // ignored
+            }
+        }
+
         public async Task ReloadManifestTask()
         {
             if (!updateInProgressLock.Wait(0))
                 return;
 
+            cancellationTokenSource = new CancellationTokenSource();
+            var ct = cancellationTokenSource.Token;
+
             try
             {
+                ct.ThrowIfCancellationRequested();
                 lastReloadTime = DateTime.UtcNow;
 
                 var requestTime = DateTime.UtcNow;
-                var xmlManifest = await DownloadManifest();
+                var xmlManifest = await DownloadManifest(ct);
                 var downloadTime = DateTime.UtcNow;
 
                 if (xmlManifest == null)
                 {
+                    ct.ThrowIfCancellationRequested();
                     Logger.Info($"Manifest download failure {Uri}");
                     return;
                 }
@@ -55,9 +74,13 @@ namespace JuvoPlayer.DataProviders.Dash
                 var newDoc = await ParseManifest(xmlManifest);
                 if (newDoc == null)
                 {
+                    ct.ThrowIfCancellationRequested();
                     Logger.Error($"Manifest parse error {Uri}");
                     return;
                 }
+
+                ct.ThrowIfCancellationRequested();
+
                 var parseTime = DateTime.UtcNow;
                 newDoc.DownloadRequestTime = requestTime;
                 newDoc.DownloadCompleteTime = downloadTime;
@@ -69,11 +92,14 @@ namespace JuvoPlayer.DataProviders.Dash
             }
             finally
             {
+                cancellationTokenSource.Dispose();
+                cancellationTokenSource = null;
+
                 updateInProgressLock.Release();
             }
         }
 
-        private async Task<string> DownloadManifest()
+        private async Task<string> DownloadManifest(CancellationToken ct)
         {
             Logger.Info($"Downloading Manifest {Uri}");
 
@@ -83,7 +109,7 @@ namespace JuvoPlayer.DataProviders.Dash
                 {
                     var startTime = DateTime.Now;
 
-                    var response = await client.GetAsync(Uri, HttpCompletionOption.ResponseHeadersRead);
+                    var response = await client.GetAsync(Uri, HttpCompletionOption.ResponseHeadersRead, ct);
                     response.EnsureSuccessStatusCode();
 
                     Logger.Info($"Downloading Manifest Done in {DateTime.Now - startTime} {Uri}");
