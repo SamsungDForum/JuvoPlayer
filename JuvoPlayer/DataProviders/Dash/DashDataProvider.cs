@@ -34,7 +34,6 @@ namespace JuvoPlayer.DataProviders.Dash
         private ManualResetEventSlim waitForManifest = new ManualResetEventSlim(false);
 
         private bool disposed;
-        private bool errorProcessed;
 
         public DashDataProvider(
             DashManifest manifest,
@@ -350,14 +349,6 @@ namespace JuvoPlayer.DataProviders.Dash
 
         private void OnStreamError(string errorMessage)
         {
-            // Process error only once - there is no point in gobbling up
-            // CPU timne processing multiple requests as the very first will cause pipeline
-            // termination for Audio & Video
-            if (errorProcessed)
-                return;
-
-            errorProcessed = true;
-
             // TODO: Review parallelization. Logging, A & V Stop, Stream Erro Invokation
             // can be safely done in parallel.
             Logger.Error($"Stream Error: {errorMessage}. Terminating pipelines.");
