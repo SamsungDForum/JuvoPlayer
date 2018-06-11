@@ -63,6 +63,12 @@ namespace JuvoPlayer.DataProviders.Dash
         /// </summary>
         private bool IsDynamic => currentStreams.GetDocumentParameters().Document.IsDynamic;
 
+        /// <summary>
+        /// Notification event for informing dash pipeline that unrecoverable error
+        /// has occoured.
+        /// </summary>
+        public event DashClientError DashClientError;
+
         public DashClient(ISharedBuffer sharedBuffer, StreamType streamType)
         {
             this.sharedBuffer = sharedBuffer ?? throw new ArgumentNullException(nameof(sharedBuffer), "sharedBuffer cannot be null");
@@ -82,6 +88,7 @@ namespace JuvoPlayer.DataProviders.Dash
             }
 
             LogInfo($"Seek. Pos Req: {position} Seek to: {newTime} SegId: {segmentId}");
+            
             return newTime;
         }
 
@@ -104,7 +111,7 @@ namespace JuvoPlayer.DataProviders.Dash
 
             var initSegment = currentStreams.InitSegment;
             if (initSegment != null)
-                DownloadSegment(initSegment, InitDataDownloaded);
+                DownloadSegment(initSegment, InitDataDownloaded, true);
             else
                 ScheduleNextSegDownload();
         }
@@ -149,12 +156,13 @@ namespace JuvoPlayer.DataProviders.Dash
             }
         }
 
-        private void DownloadSegment(Segment segment, Action<DownloadResponse> onSuccessfullDownloadAction)
+        private void DownloadSegment(Segment segment, Action<DownloadResponse> onSuccessfullDownloadAction, bool isInitSegment=false)
         {
-            var downloadTask = CreateDownloadTask(segment, true);
-            downloadTask.ContinueWith(response => HandleFailedDownload(GetErrorMessage(response)),
+            var downloadTask = CreateDownloadTask(segment, true, isInitSegment);
+
+            downloadTask.ContinueWith(response => HandleFailedDownload(GetErrorMessage(response), IsInitSegment(response)),
                 cancellationTokenSource.Token, TaskContinuationOptions.OnlyOnFaulted, TaskScheduler.Default);
-            processDataTask = downloadTask.ContinueWith(response => onSuccessfullDownloadAction.Invoke(response.Result),
+            processDataTask = downloadTask.ContinueWith(response =>  onSuccessfullDownloadAction.Invoke(response.Result) ,
                 cancellationTokenSource.Token, TaskContinuationOptions.OnlyOnRanToCompletion, TaskScheduler.Default);
             processDataTask.ContinueWith(_ => ScheduleNextSegDownload(),
                 cancellationTokenSource.Token, TaskContinuationOptions.NotOnCanceled, TaskScheduler.Default);
@@ -163,6 +171,11 @@ namespace JuvoPlayer.DataProviders.Dash
         private static string GetErrorMessage(Task response)
         {
             return response.Exception?.Flatten().InnerExceptions[0].Message;
+        }
+
+        private static bool IsInitSegment(Task response)
+        {
+            return response.Exception?.Flatten().InnerException.Data[DownloadRequest.ExceptionDataKey.InitSegment] as bool? ?? false;
         }
 
         private void HandleSuccessfullDownload(DownloadResponse responseResult)
@@ -182,6 +195,7 @@ namespace JuvoPlayer.DataProviders.Dash
 
             if (IsEndOfContent())
                 Stop();
+
         }
 
         private void InitDataDownloaded(DownloadResponse responseResult)
@@ -189,19 +203,45 @@ namespace JuvoPlayer.DataProviders.Dash
             initStreamBytes = responseResult.Data;
 
             if (initStreamBytes != null)
+            {
                 sharedBuffer.WriteData(initStreamBytes);
-
-            LogInfo("Init segment downloaded.");
+                LogInfo("INIT segment downloaded.");
+            }
+            else
+            {
+                // This should never happen...
+                // Can do nothing without init segment, so just terminate playback
+                LogError("NULL INIT Segment Data recieved!");
+                cancellationTokenSource?.Cancel();
+                DashClientError?.Invoke("No Initialization data");
+            }
         }
 
-        private void HandleFailedDownload(string message)
+        private void HandleFailedDownload(string message, bool isInitSegment)
         {
-            Logger.Error(message);
+            LogError(message);
 
-            if (IsDynamic)
+            // In dynamic manifests, continue ONLY on non init segment failures         
+            if (IsDynamic && isInitSegment == false )
                 return;
 
-            Stop();
+            // Signall stream error. Stop() during init segment will generate demux error
+            // by sending EOS. Not desired - incorrect error message will be generated.
+            // Do stop functionality without sending EOS.
+            //
+            // For non init segments if one pipeline dies
+            // the other knows nothing about it and keeps on running happliy till buffers end,
+            // then just waits doing nothing
+            if (isInitSegment == true)
+            {
+                cancellationTokenSource?.Cancel();
+            }
+            else
+            {
+                Stop();
+            }
+            
+            DashClientError?.Invoke(message);
         }
 
         public void Stop()
@@ -317,13 +357,14 @@ namespace JuvoPlayer.DataProviders.Dash
             return bufferTime >= endTime;
         }
 
-        private Task<DownloadResponse> CreateDownloadTask(Segment stream, bool ignoreError)
+        private Task<DownloadResponse> CreateDownloadTask(Segment stream, bool ignoreError, bool isInitSegment=false)
         {
             var requestData = new DownloadRequestData
             {
                 DownloadSegment = stream,
                 SegmentID = currentSegmentId,
-                StreamType = streamType
+                StreamType = streamType,
+                InitSegment = isInitSegment
             };
 
             return DownloadRequest.CreateDownloadRequestAsync(requestData, ignoreError, cancellationTokenSource.Token);

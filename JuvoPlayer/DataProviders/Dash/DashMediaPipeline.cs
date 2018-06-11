@@ -83,6 +83,8 @@ namespace JuvoPlayer.DataProviders.Dash
             demuxer.StreamConfigReady += OnStreamConfigReady;
             demuxer.PacketReady += OnPacketReady;
             demuxer.DemuxerError += OnStreamError;
+
+            dashClient.DashClientError += OnStreamError;
             
         }
 
@@ -202,7 +204,16 @@ namespace JuvoPlayer.DataProviders.Dash
                     throw new ArgumentOutOfRangeException();
             }
         }
+        public void Resume()
+        {
+            StartPipeline();
+        }
 
+        public void Pause()
+        {
+            StopPipeline();
+            pipelineStarted = false;
+        }
         public void Stop()
         {
             StopPipeline();
@@ -218,11 +229,7 @@ namespace JuvoPlayer.DataProviders.Dash
 
         public void Seek(TimeSpan time)
         {
-            StopPipeline();
-
             laskSeek = dashClient.Seek(time);
-
-            StartPipeline();
         }
 
         public void ChangeStream(StreamDescription stream)
