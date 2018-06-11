@@ -8,12 +8,19 @@ namespace XamarinPlayer.Services
         {
             State = state;
         }
-        public PlayerStateChangedEventArgs(PlayerState state, string message)
+       
+        public PlayerState State { get; }
+        
+    }
+
+    public class PlayerStateChangedStreamError : PlayerStateChangedEventArgs
+    {
+        public PlayerStateChangedStreamError(PlayerState state, string message)
+            :base( state )
         {
-            State = state;
             Message = message;
         }
-        public PlayerState State { get; }
+
         public string Message { get; }
     }
 }

@@ -43,7 +43,14 @@ namespace XamarinPlayer.Tizen.Services
             private set
             {
                 playerState = value;
-                StateChanged?.Invoke(this, new PlayerStateChangedEventArgs(playerState, playerStateMessage));
+                if (playerState == PlayerState.Error)
+                {
+                    StateChanged?.Invoke(this, new PlayerStateChangedStreamError(playerState, playerStateMessage));
+                }
+                else
+                {
+                    StateChanged?.Invoke(this, new PlayerStateChangedEventArgs(playerState));
+                }
             }
         }
 
