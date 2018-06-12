@@ -159,13 +159,13 @@ namespace JuvoPlayer.DataProviders.Dash
                 }
                 catch (WebException e)
                 {
-                    if (e.InnerException is TaskCanceledException)
+                    if (e.InnerException is OperationCanceledException)
                         ExceptionDispatchInfo.Capture(e.InnerException).Throw();
 
                     Logger.Warn($"{requestData.StreamType}: Segment: {requestData.SegmentID} NetError: {e.Message}");
                     ++downloadErrorCount;
                 }
-                catch (TaskCanceledException)
+                catch (OperationCanceledException)
                 {
                     throw;
                 }
