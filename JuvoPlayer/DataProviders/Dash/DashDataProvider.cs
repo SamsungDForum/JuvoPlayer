@@ -135,6 +135,8 @@ namespace JuvoPlayer.DataProviders.Dash
 
         public void OnStopped()
         {
+            manifest.CancelReload();
+
             audioPipeline.Stop();
             videoPipeline.Stop();
         }
@@ -182,8 +184,10 @@ namespace JuvoPlayer.DataProviders.Dash
 
             // TODO:? In case of updates - should we check if A/V is any different from
             // anything we passed down before? Should offload client...
-            var manifestParams = new ManifestParameters(currentDocument, currentPeriod);
-            manifestParams.PlayClock = LiveClockTime(currentTime);
+            var manifestParams = new ManifestParameters(currentDocument, currentPeriod)
+            {
+                PlayClock = LiveClockTime(currentTime)
+            };
 
             Logger.Info(currentPeriod.ToString());
 
@@ -317,7 +321,15 @@ namespace JuvoPlayer.DataProviders.Dash
             {
                 Logger.Info("Updating manifest");
 
-                await manifest.ReloadManifestTask();
+                try
+                {
+                    await manifest.ReloadManifestTask();
+                }
+                catch (OperationCanceledException)
+                {
+                    Logger.Info("Reloading manifest was cancelled");
+                    return;
+                }
 
                 var tmpDocument = manifest.CurrentDocument;
                 if (tmpDocument == null)
