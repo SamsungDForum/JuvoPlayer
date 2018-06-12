@@ -31,8 +31,6 @@ namespace JuvoPlayer.DataProviders.Dash
         public event PacketReady PacketReady;
         public event StreamError StreamError;
 
-        private ManualResetEventSlim waitForManifest = new ManualResetEventSlim(false);
-
         private bool disposed;
 
         public DashDataProvider(
@@ -357,12 +355,11 @@ namespace JuvoPlayer.DataProviders.Dash
             // It is possible to forgo calling stop here, simply raise StreamError event
             // and wait for termination as part of player window closure. Imho, better to call
             // quits as early as possible.
-            audioPipeline.Stop();
-            videoPipeline.Stop();
+            OnStopped();
 
             // Bubble up stream error info up to PlayerController which will shut down
             // underlying player
-            
+
             StreamError?.Invoke(errorMessage);
         }
 
