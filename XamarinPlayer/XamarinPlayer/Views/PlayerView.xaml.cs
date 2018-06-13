@@ -356,7 +356,7 @@ namespace XamarinPlayer.Views
                 {
                     _errorOccured = true;
 
-                    OnPlaybackError((e as PlayerStateChangedStreamError)?.Message??"Unknow Error");
+                    OnPlaybackError((e as PlayerStateChangedStreamError)?.Message??"Unknown Error");
                 }
             }
             else if (e.State == PlayerState.Prepared)
