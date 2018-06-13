@@ -61,6 +61,7 @@ namespace JuvoPlayer.DataProviders.Dash
 
         private readonly IDashClient dashClient;
         private readonly IDemuxer demuxer;
+        private readonly IThroughputHistory throughputHistory;
         private readonly StreamType streamType;
 
         private bool pipelineStarted;
@@ -72,11 +73,11 @@ namespace JuvoPlayer.DataProviders.Dash
         private TimeSpan laskSeek = TimeSpan.Zero;
         private TimeSpan demuxerTimeStamp = TimeSpan.Zero;
 
-        public DashMediaPipeline(IDashClient dashClient, IDemuxer demuxer, StreamType streamType)
+        public DashMediaPipeline(IDashClient dashClient, IDemuxer demuxer, IThroughputHistory throughputHistory, StreamType streamType)
         {
-            this.dashClient = dashClient ??
-                              throw new ArgumentNullException(nameof(dashClient), "dashClient cannot be null");
+            this.dashClient = dashClient ?? throw new ArgumentNullException(nameof(dashClient), "dashClient cannot be null");
             this.demuxer = demuxer ?? throw new ArgumentNullException(nameof(dashClient), "demuxer cannot be null");
+            this.throughputHistory = throughputHistory ?? throw new ArgumentNullException(nameof(throughputHistory), "throughputHistory cannot be null");
             this.streamType = streamType;
 
             demuxer.DRMInitDataFound += OnDRMInitDataFound;

@@ -18,6 +18,7 @@ namespace JuvoPlayer.DataProviders.Dash
         private static readonly TimeSpan TimeBufferDepthDefault = TimeSpan.FromSeconds(10);
         private TimeSpan timeBufferDepth = TimeBufferDepthDefault;
 
+        private readonly IThroughputHistory throughputHistory;
         private readonly ISharedBuffer sharedBuffer;
         private readonly StreamType streamType;
 
@@ -63,14 +64,16 @@ namespace JuvoPlayer.DataProviders.Dash
         /// </summary>
         private bool IsDynamic => currentStreams.GetDocumentParameters().Document.IsDynamic;
 
+
         /// <summary>
         /// Notification event for informing dash pipeline that unrecoverable error
         /// has occoured.
         /// </summary>
         public event Error Error;
 
-        public DashClient(ISharedBuffer sharedBuffer, StreamType streamType)
+        public DashClient(IThroughputHistory throughputHistory, ISharedBuffer sharedBuffer,  StreamType streamType)
         {
+            this.throughputHistory = throughputHistory ?? throw new ArgumentNullException(nameof(throughputHistory), "throughputHistory cannot be null");
             this.sharedBuffer = sharedBuffer ?? throw new ArgumentNullException(nameof(sharedBuffer), "sharedBuffer cannot be null");
             this.streamType = streamType;
         }
