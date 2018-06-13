@@ -320,6 +320,10 @@ namespace JuvoPlayer.DataProviders.Dash
             videoPipeline.OnTimeUpdated(time);
 
             await UpdateManifest();
+
+            audioPipeline.AdaptToNetConditions();
+            videoPipeline.AdaptToNetConditions();
+
             audioPipeline.ReconfigurePipelineIfNeeded();
             videoPipeline.ReconfigurePipelineIfNeeded();
         }

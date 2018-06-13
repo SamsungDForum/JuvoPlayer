@@ -73,6 +73,7 @@ namespace JuvoPlayer.DataProviders.Dash
         private readonly StreamType streamType;
 
         private bool pipelineStarted;
+        private bool disableAdaptiveStreaming;
 
         private DashStream currentStream;
         private DashStream pendingStream;
@@ -125,8 +126,35 @@ namespace JuvoPlayer.DataProviders.Dash
             pendingStream = new DashStream(defaultMedia, representation);
         }
 
-            StartPipeline(defaultStream);
-            GetAvailableStreams(media, currentStream.Media);
+        public void AdaptToNetConditions()
+        {
+            if (disableAdaptiveStreaming)
+                return;
+
+            if (currentStream == null && pendingStream == null)
+                return;
+
+            var streamToAdapt = pendingStream ?? currentStream;
+            if (streamToAdapt.Representation.Bandwidth.HasValue == false)
+                return;
+
+            var currentThroughput = throughputHistory.GetAverageThroughput();
+            if (Math.Abs(currentThroughput) < 0.1)
+                return;
+
+            Logger.Debug("Adaptation values:");
+            Logger.Debug("  current throughput: " + currentThroughput);
+            Logger.Debug("  current stream bandwith: " + streamToAdapt.Representation.Bandwidth.Value);
+
+            // availableStreams is sorted array by descending bandwith
+            var stream = availableStreams.FirstOrDefault(o => o.Representation.Bandwidth <= currentThroughput);
+            if (stream != null && stream.Representation.Bandwidth != streamToAdapt.Representation.Bandwidth)
+            {
+                Logger.Info("Changing stream do bandiwth: " + stream.Representation.Bandwidth);
+                pendingStream = stream;
+            }
+        }
+
         //TODO: better name
         public void ReconfigurePipelineIfNeeded()
         {
@@ -162,17 +190,22 @@ namespace JuvoPlayer.DataProviders.Dash
                 if (defaultMedia.Group.HasValue)
                 {
                     availableStreams = media.Where(o => o.Group == defaultMedia.Group)
-                        .SelectMany(o => o.Representations, (parent, repr) => new DashStream(parent, repr)).ToList();
+                        .SelectMany(o => o.Representations, (parent, repr) => new DashStream(parent, repr))
+                        .OrderByDescending(o => o.Representation.Bandwidth)
+                        .ToList();
                 }
                 else
                 {
                     availableStreams = defaultMedia.Representations.Select(o => new DashStream(defaultMedia, o))
+                        .OrderByDescending(o => o.Representation.Bandwidth)
                         .ToList();
                 }
             }
             else
             {
-                availableStreams = media.Select(o => new DashStream(o, o.Representations.First())).ToList();
+                availableStreams = media.Select(o => new DashStream(o, o.Representations.First()))
+                    .OrderByDescending(o => o.Representation.Bandwidth)
+                    .ToList();
             }
         }
 
@@ -277,6 +310,8 @@ namespace JuvoPlayer.DataProviders.Dash
 
             if (currentStream.Media.Type.Value != newMedia.Type.Value)
                 throw new ArgumentException("wrong media type");
+
+            disableAdaptiveStreaming = true;
 
             StopPipeline();
             StartPipeline(newStream);
