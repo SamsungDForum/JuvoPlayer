@@ -190,7 +190,7 @@ namespace JuvoPlayer.DataProviders.Dash
                 // Already have init segment. Push it down the pipeline & schedule next download
                 var initData = new DownloadResponse();
                 initData.Data = initStreamBytes;
-                initData.SegmentID = null;
+                initData.SegmentId = null;
 
                 LogInfo($"Skipping INIT segment download");
                 InitDataDownloaded(initData);
@@ -217,7 +217,7 @@ namespace JuvoPlayer.DataProviders.Dash
 
             var timeInfo = responseResult.DownloadSegment.Period.ToString();
 
-            LogInfo($"Segment: {responseResult.SegmentID} received {timeInfo}");
+            LogInfo($"Segment: {responseResult.SegmentId} received {timeInfo}");
 
             if (IsEndOfContent())
                 Stop();
@@ -394,14 +394,15 @@ namespace JuvoPlayer.DataProviders.Dash
 
         private Task<DownloadResponse> CreateDownloadTask(Segment stream, bool ignoreError, uint? segmentId)
         {
-            var requestData = new DownloadRequestData
+            var requestData = new DownloadRequest
             {
                 DownloadSegment = stream,
-                SegmentID = segmentId,
+                IgnoreError = ignoreError,
+                SegmentId = segmentId,
                 StreamType = streamType
             };
 
-            return DownloadRequest.CreateDownloadRequestAsync(requestData, ignoreError, cancellationTokenSource.Token);
+            return DashDownloader.DownloadDataAsync(requestData, cancellationTokenSource.Token, throughputHistory);
         }
 
         private void TimeBufferDepthDynamic()
