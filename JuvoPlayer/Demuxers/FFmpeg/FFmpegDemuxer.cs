@@ -713,8 +713,8 @@ namespace JuvoPlayer.Demuxers.FFmpeg
             parse = false;
 
             Resume();
-            dataBuffer.ClearData();
-            dataBuffer.WriteData(null, true);
+            dataBuffer?.ClearData();
+            dataBuffer?.WriteData(null, true);
  
             // If a task fails with an exception that's not caught anywhere,
             // calling 
@@ -729,7 +729,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg
 
             // Clear EOS from buffer after demux task termination so there 
             // will not be any data reads of EOS after restart as EOS is persistant in buffer
-            dataBuffer.ClearData();
+            dataBuffer?.ClearData();
             
             DeallocFFmpeg();
         }
