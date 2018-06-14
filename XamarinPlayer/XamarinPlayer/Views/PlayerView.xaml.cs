@@ -269,24 +269,14 @@ namespace XamarinPlayer.Views
 
         private void OnPlaybackCompleted()
         {
-            if (!_errorOccured)
+            // Schedule closing the page on the next event loop. Give application time to finish
+            // playbackCompleted event handling
+            Device.StartTimer(TimeSpan.FromMilliseconds(0), () =>
             {
-                // Schedule closing the page on the next event loop. Give application time to finish
-                // playbackCompleted event handling
-                Device.StartTimer(TimeSpan.FromMilliseconds(0), () =>
-                {
-                    Navigation.RemovePage(this);
+                Navigation.PopAsync().Wait();
 
-                    return false;
-                });
-                
-            }
-            else
-            {
-                // TODO: display an error
-                UpdatePlayTime();
-                Show();
-            }
+                return false;
+            });        
         }
 
         protected override void OnAppearing()
@@ -301,7 +291,7 @@ namespace XamarinPlayer.Views
         {
             Device.StartTimer(TimeSpan.FromMilliseconds(0), () =>
             {
-                _playerService.Dispose();
+                _playerService?.Dispose();
                 _playerService = null;
 
                 return false;
@@ -327,6 +317,26 @@ namespace XamarinPlayer.Views
             return true;
         }
 
+        void OnPlaybackError(string errorMessage)
+        {
+            Device.StartTimer(TimeSpan.FromMilliseconds(0), () => 
+            {
+                // DisplayAlert seems emotionally unstable
+                // if not called from main thread.
+                Device.BeginInvokeOnMainThread(async () =>
+                {
+                    // TODO: It would be nice to close current page THEN
+                    // display popup error. PlayerService resources would be released 
+                    // while waiting for user confitrmation. However, this requires some rework
+                    // as Disposing of PlayerService here causes null object reference havoc.
+                    await DisplayAlert("Playback Error", errorMessage, "OK");
+                    await Navigation.PopAsync();
+                });
+
+                return false;
+            });
+        }
+
         private void OnPlayerStateChanged(object sender, PlayerStateChangedEventArgs e)
         {
             if (e.State == PlayerState.Completed)
@@ -340,7 +350,14 @@ namespace XamarinPlayer.Views
                 PlayButton.IsEnabled = false;
                 SettingsButton.IsEnabled = false;
 
-                _errorOccured = true;
+                // Prevent multiple popups from occouring, display them only
+                // if it is a very first error event.
+                if (_errorOccured == false)
+                {
+                    _errorOccured = true;
+
+                    OnPlaybackError((e as PlayerStateChangedStreamError)?.Message??"Unknown Error");
+                }
             }
             else if (e.State == PlayerState.Prepared)
             {

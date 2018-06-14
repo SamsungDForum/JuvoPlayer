@@ -29,6 +29,7 @@ namespace JuvoPlayer.DataProviders.Dash
         public event SetDrmConfiguration SetDrmConfiguration;
         public event StreamConfigReady StreamConfigReady;
         public event PacketReady PacketReady;
+        public event StreamError StreamError;
 
         private bool disposed;
 
@@ -45,10 +46,13 @@ namespace JuvoPlayer.DataProviders.Dash
             audioPipeline.SetDrmConfiguration += OnSetDrmConfiguration;
             audioPipeline.StreamConfigReady += OnStreamConfigReady;
             audioPipeline.PacketReady += OnPacketReady;
+            audioPipeline.StreamError += OnStreamError;
+
             videoPipeline.DRMInitDataFound += OnDRMInitDataFound;
             videoPipeline.SetDrmConfiguration += OnSetDrmConfiguration;
             videoPipeline.StreamConfigReady += OnStreamConfigReady;
             videoPipeline.PacketReady += OnPacketReady;
+	        videoPipeline.StreamError += OnStreamError;
         }
 
         private void OnDRMInitDataFound(DRMInitData drmData)
@@ -147,6 +151,7 @@ namespace JuvoPlayer.DataProviders.Dash
             // Imho no. There is a "time window" in which content is available
             // but leave that for now...
             return (currentDocument.IsDynamic == false);
+
         }
 
         public List<StreamDescription> GetStreamsDescription(StreamType streamType)
@@ -350,6 +355,24 @@ namespace JuvoPlayer.DataProviders.Dash
 
                 StartInternal();
             }
+        }
+
+        private void OnStreamError(string errorMessage)
+        {
+            // TODO: Review parallelization. Logging, A & V Stop, Stream Erro Invokation
+            // can be safely done in parallel.
+            Logger.Error($"Stream Error: {errorMessage}. Terminating pipelines.");
+
+            // This will generate "already stopped" message from failed pipeline.
+            // It is possible to forgo calling stop here, simply raise StreamError event
+            // and wait for termination as part of player window closure. Imho, better to call
+            // quits as early as possible.
+            OnStopped();
+
+            // Bubble up stream error info up to PlayerController which will shut down
+            // underlying player
+
+            StreamError?.Invoke(errorMessage);
         }
 
         public void Dispose()
