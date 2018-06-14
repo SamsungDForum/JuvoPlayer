@@ -38,7 +38,8 @@ namespace JuvoPlayer.DataProviders.RTSP
         public event DRMInitDataFound DRMInitDataFound;
         public event SetDrmConfiguration SetDrmConfiguration;
         public event StreamConfigReady StreamConfigReady;
-        public event PacketReady PacketReady;
+        public event PacketReady PacketReady;        
+        public event StreamError StreamError;
 
         private void OnStreamConfigReady(StreamConfig config)
         {

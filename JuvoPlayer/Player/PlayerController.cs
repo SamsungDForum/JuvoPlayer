@@ -76,7 +76,7 @@ namespace JuvoPlayer.Player
 
         private void OnPlaybackError(string error)
         {
-            state = PlayerState.Finished;
+            state = PlayerState.Error;
 
             PlaybackError?.Invoke(error);
         }
@@ -188,6 +188,11 @@ namespace JuvoPlayer.Player
         public void OnSetPlaybackRate(float rate)
         {
             player.SetPlaybackRate(rate);
+        }
+
+        public void OnStreamError(string errorMessage)
+        {
+            OnPlaybackError(errorMessage);
         }
 
         #region getters

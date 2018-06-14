@@ -19,6 +19,7 @@ using JuvoPlayer.Subtitles;
 namespace JuvoPlayer.DataProviders
 {
     public delegate void SetDrmConfiguration(DRMDescription description);
+    public delegate void StreamError(string errorMessage);
 
     public interface IDataProvider : IDisposable
     {
@@ -40,5 +41,6 @@ namespace JuvoPlayer.DataProviders
         event SetDrmConfiguration SetDrmConfiguration;
         event StreamConfigReady StreamConfigReady;
         event PacketReady PacketReady;
+        event StreamError StreamError;
     }
 }
