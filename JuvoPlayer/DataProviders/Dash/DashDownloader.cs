@@ -103,7 +103,6 @@ namespace JuvoPlayer.DataProviders.Dash
         public MpdParser.Node.Dynamic.Segment DownloadSegment { get; set; }
         public uint? SegmentID { get; set; }
         public StreamType StreamType { get; set; }
-        public bool InitSegment { get; set; }
     }
 
     public class DownloadResponse
@@ -111,7 +110,6 @@ namespace JuvoPlayer.DataProviders.Dash
         public MpdParser.Node.Dynamic.Segment DownloadSegment { get; set; }
         public uint? SegmentID { get; set; }
         public StreamType StreamType { get; set; }
-        public bool InitSegment { get; set; }
         public byte[] Data { get; set; }
         
     }
@@ -131,8 +129,6 @@ namespace JuvoPlayer.DataProviders.Dash
 
         private int downloadErrorCount;
         private readonly bool ignoreError;
-
-        public enum ExceptionDataKey { InitSegment=1 };
 
         private DownloadRequest(DownloadRequestData downloadRequest, bool downloadErrorIgnore, CancellationToken cancellationToken)
         {
@@ -155,6 +151,7 @@ namespace JuvoPlayer.DataProviders.Dash
 
         private async Task<DownloadResponse> DownloadAsync()
         {
+            string segmentID = SegmentID(requestData.SegmentID);
             do
             {
                 try
@@ -167,7 +164,7 @@ namespace JuvoPlayer.DataProviders.Dash
                     if (e.InnerException is TaskCanceledException)
                         ExceptionDispatchInfo.Capture(e.InnerException).Throw();
 
-                    Logger.Warn($"{requestData.StreamType}: Segment: {requestData.SegmentID} NetError: {e.Message}");
+                    Logger.Warn($"{requestData.StreamType}: Segment: {segmentID} NetError: {e.Message}");
                     ++downloadErrorCount;
                 }
                 catch (TaskCanceledException)
@@ -176,20 +173,18 @@ namespace JuvoPlayer.DataProviders.Dash
                 }
                 catch (Exception e)
                 {
-                    Logger.Warn($"{requestData.StreamType}: Segment: {requestData.SegmentID} Error: {e.Message}");
+                    Logger.Warn($"{requestData.StreamType}: Segment: {segmentID} Error: {e.Message}");
                     ++downloadErrorCount;
                 }
             } while (ignoreError && downloadErrorCount < 3);
 
-            var ex = new Exception($"{requestData.StreamType}: Segment: {requestData.SegmentID} Max retry count reached.");
-
-            // Add segment ID to exception data. Needed to differentiate error handling for init/non init segments.
-            ex.Data.Add(ExceptionDataKey.InitSegment, requestData.InitSegment);
-            throw ex;   
+            throw new Exception($"{requestData.StreamType}: Segment: {segmentID} Max retry count reached."); ;   
         }
 
         private async Task<DownloadResponse> DownloadDataTaskAsync()
         {
+            cancellationToken.ThrowIfCancellationRequested();
+
             using (var dataDownloader = new WebClientEx())
             {
                 if (downloadRange != null)
@@ -197,15 +192,15 @@ namespace JuvoPlayer.DataProviders.Dash
 
                 using (cancellationToken.Register(dataDownloader.CancelAsync))
                 {
-                    var segment = requestData.InitSegment ? "INIT" : requestData.SegmentID.ToString();
-                    Logger.Info($"{requestData.StreamType}: Segment: {segment} Requested. URL: {requestData.DownloadSegment.Url} Range: {downloadRange}");
+                    Logger.Info($"{requestData.StreamType}: Segment: {SegmentID(requestData.SegmentID)} Requested. URL: {requestData.DownloadSegment.Url} Range: {downloadRange}");
+
+                    cancellationToken.ThrowIfCancellationRequested();
 
                     return new DownloadResponse
                     {
                         StreamType = requestData.StreamType,
                         DownloadSegment = requestData.DownloadSegment,
                         SegmentID = requestData.SegmentID,
-                        InitSegment = requestData.InitSegment,
                         Data = await dataDownloader.DownloadDataTaskAsync(requestData.DownloadSegment.Url)
                     };
                 }
@@ -231,6 +226,12 @@ namespace JuvoPlayer.DataProviders.Dash
 
             return sleepTime;
         }
+
+        private static string SegmentID(uint? segmentId)
+        {
+            return segmentId.HasValue ? segmentId.ToString() : "INIT";
+        }
+ 
     }
 }
 

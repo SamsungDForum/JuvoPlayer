@@ -84,7 +84,7 @@ namespace JuvoPlayer.DataProviders.Dash
             demuxer.PacketReady += OnPacketReady;
             demuxer.DemuxerError += OnStreamError;
 
-            dashClient.DashClientError += OnStreamError;
+            dashClient.Error += OnStreamError;
             
         }
 
