@@ -20,6 +20,7 @@ namespace XamarinPlayer.Views
         private bool _isPageDisappeared = false;
         private bool _isShowing = false;
         private bool _errorOccured = false;
+        private string _errorMessage;
 
         public static readonly BindableProperty ContentSourceProperty = BindableProperty.Create("ContentSource", typeof(object), typeof(PlayerView), null);
 
@@ -61,6 +62,13 @@ namespace XamarinPlayer.Views
 
         private void KeyEventHandler(string e)
         {
+            // TODO: This is a workaround for alertbox & lost focus
+            // Prevents key handling & fous change in Show().
+            // Consider adding a call Focus(Focusable Object) where focus would be set in one place
+            // and error status could be handled.
+            if (_errorOccured)
+                return;
+
             if (e.Contains("Back"))
             {
                 if (_playerService.State < PlayerState.Playing ||
@@ -276,7 +284,7 @@ namespace XamarinPlayer.Views
                 Navigation.PopAsync().Wait();
 
                 return false;
-            });        
+            });
         }
 
         protected override void OnAppearing()
@@ -328,45 +336,39 @@ namespace XamarinPlayer.Views
                 // while waiting for user confitrmation. However, this requires some rework
                 // as Disposing of PlayerService here causes null object reference havoc.
                 await DisplayAlert("Playback Error", errorMessage, "OK");
-
-                //Clear error flag
                 _errorOccured = false;
-
                 await Navigation.PopAsync();
+
             });
         }
 
         private void OnPlayerStateChanged(object sender, PlayerStateChangedEventArgs e)
         {
+            Logger.Info($"{e.State}");
+            if (e.State == PlayerState.Stopped)
+            {
+                if (_errorOccured == true)
+                {
+                    OnPlaybackError("Doopa");
+                }
+            }
             if (e.State == PlayerState.Completed)
             {
                 // If error popup is in place, do not service OnPlaybackCompleted
                 // as it will remove current page
-                if (_errorOccured == false)
-                {
-                    OnPlaybackCompleted();
-                }
-                else
-                {
-                    Logger.Info("PlayerState.Completed Ignored due to error");
-                }
+                 OnPlaybackCompleted();
             }
             else if (e.State == PlayerState.Error)
             {
-                BackButton.IsEnabled = false;
-                ForwardButton.IsEnabled = false;
-                PlayButton.IsEnabled = false;
-                SettingsButton.IsEnabled = false;
-
                 // Prevent multiple popups from occouring, display them only
                 // if it is a very first error event.
                 if (_errorOccured == false)
                 {
-                    // Terminate player.
-                    _playerService.Stop();
-
                     _errorOccured = true;
-                    OnPlaybackError(e.Message);
+                    // Terminate player. This will issue a player.stopped event
+                    // during which error message will be displayed.(if error flag is set).
+                    // Displaying popup in this place... causes random focus failures...
+                    _playerService.Stop(); 
                 }
             }
             else if (e.State == PlayerState.Prepared)

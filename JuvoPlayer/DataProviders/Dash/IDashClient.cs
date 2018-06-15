@@ -16,7 +16,7 @@ using MpdParser;
 
 namespace JuvoPlayer.DataProviders.Dash
 {
-    public delegate void DashClientError(string errorMessage);
+    public delegate void Error(string errorMessage);
 
     internal interface IDashClient : IDisposable
     {
@@ -27,6 +27,6 @@ namespace JuvoPlayer.DataProviders.Dash
         void OnTimeUpdated(TimeSpan time);
         void UpdateRepresentation(Representation representation);
 
-        event DashClientError DashClientError;
+        event Error Error;
     }
 }
