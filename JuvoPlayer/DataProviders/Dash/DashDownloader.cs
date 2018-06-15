@@ -111,7 +111,6 @@ namespace JuvoPlayer.DataProviders.Dash
         public uint? SegmentID { get; set; }
         public StreamType StreamType { get; set; }
         public byte[] Data { get; set; }
-        
     }
 
     /// <summary>
@@ -161,13 +160,13 @@ namespace JuvoPlayer.DataProviders.Dash
                 }
                 catch (WebException e)
                 {
-                    if (e.InnerException is TaskCanceledException)
+                    if (e.InnerException is OperationCanceledException)
                         ExceptionDispatchInfo.Capture(e.InnerException).Throw();
 
                     Logger.Warn($"{requestData.StreamType}: Segment: {segmentID} NetError: {e.Message}");
                     ++downloadErrorCount;
                 }
-                catch (TaskCanceledException)
+                catch (OperationCanceledException)
                 {
                     throw;
                 }
@@ -178,7 +177,7 @@ namespace JuvoPlayer.DataProviders.Dash
                 }
             } while (ignoreError && downloadErrorCount < 3);
 
-            throw new Exception($"{requestData.StreamType}: Segment: {segmentID} Max retry count reached."); ;   
+            throw new Exception($"{requestData.StreamType}: Segment: {segmentID} Max retry count reached."); ;
         }
 
         private async Task<DownloadResponse> DownloadDataTaskAsync()
@@ -231,7 +230,7 @@ namespace JuvoPlayer.DataProviders.Dash
         {
             return segmentId.HasValue ? segmentId.ToString() : "INIT";
         }
- 
+
     }
 }
 

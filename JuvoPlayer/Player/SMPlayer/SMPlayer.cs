@@ -89,7 +89,9 @@ namespace JuvoPlayer.Player.SMPlayer
         private readonly AutoResetEvent submitting = new AutoResetEvent(false);
 
         private TimeSpan currentTime;
+
         private TimeSpan seekToTime;
+        bool seekInProgress = false;
 
         private bool isDisposed;
 
@@ -174,17 +176,9 @@ namespace JuvoPlayer.Player.SMPlayer
                 if (packet.Pts < seekToTime)
                 {
                     videoPacketsQueue.TryDequeue(out packet);
-
                 }
                 else
                 {
-                    // TO WATCH FOR: If for some reason there will be stale data in queue
-                    // when doing REW (FF is not affected) and there will be a key frame
-                    // such situation will not be catched!
-                    // Unlikely. Not expected. Possible solution: Keep flag (?) SeekStarted per
-                    // A and V. Set this flag to true when first pts with lower value then seekToTime
-                    // will be found.
-                    //
                     videoSeekReached = packet.IsKeyFrame;
                     if (packet.IsKeyFrame == false)
                     {
@@ -247,8 +241,6 @@ namespace JuvoPlayer.Player.SMPlayer
 
         internal void SubmittingPacketsTask()
         {
-            bool seekInProgress = false;
-
             while (internalState != SMPlayerState.Stopping)
             {
                 Logger.Debug("AUDIO: " + audioPacketsQueue.Count + ", VIDEO: " + videoPacketsQueue.Count);
@@ -259,16 +251,19 @@ namespace JuvoPlayer.Player.SMPlayer
                     if (seekInProgress)
                     {
                         // Seek AV returns TRUE when seek point has NOT been reached.
-                        // at this time, we do not need to wait for mo
-                        seekInProgress = !SeekAV();
+                        seekInProgress = SeekAV();
+
+                        // Exit loop if seek completed;
+                        if (seekInProgress == false)
+                        {
+                            Logger.Info($"Seek Key Frame completed @{seekToTime}");
+                            continue;
+                        }
 
                         // Contiue processing ONLY if both queues have data
                         // Data in one queue means one stream reached seek point.
                         // If seek point reach
                         moreDataToProcess = (audioPacketsQueue.Count > 0 && videoPacketsQueue.Count > 0);
-
-                        // If seeking is completed, force relop regardless of data in buffers
-                        moreDataToProcess |= !seekInProgress;
                     }
                     else
                     {
@@ -284,10 +279,6 @@ namespace JuvoPlayer.Player.SMPlayer
                             moreDataToProcess = true;
                         }
                     }
-                }
-                else
-                {
-                    seekInProgress = true;
                 }
 
                 if (moreDataToProcess) continue;
@@ -311,9 +302,9 @@ namespace JuvoPlayer.Player.SMPlayer
             if (packet.IsEOS)
                 SubmitEOSPacket(packet);
             else if (packet is EncryptedPacket)
-                SubmitEncryptedPacket((EncryptedPacket) packet);
+                SubmitEncryptedPacket((EncryptedPacket)packet);
             else if (packet is BufferConfiguration)
-                SubmitStreamConfiguration((BufferConfiguration) packet);
+                SubmitStreamConfiguration((BufferConfiguration)packet);
             else
                 SubmitDataPacket(packet);
         }
@@ -441,19 +432,25 @@ namespace JuvoPlayer.Player.SMPlayer
 
         public void Seek(TimeSpan time)
         {
-            Logger.Debug("");
+            Logger.Info("");
             ThrowIfDisposed();
+
+            if (playerInstance.Pause() == false)
+            {
+                Logger.Error("Pause Failed. Seek may fail!");
+            }
 
             // Stop appending packests.
             smplayerSeekReconfiguration = true;
 
-            playerInstance.Pause();
-
-            ResetPacketsQueues();
-
             seekToTime = time;
+            seekInProgress = true;
 
             playerInstance.Seek((int)time.TotalMilliseconds);
+
+            // Reset packet queue as late as possible to remove any stale data that might
+            // be put there by still running data provider client.
+            ResetPacketsQueues();
         }
 
         private void ResetPacketsQueues()
@@ -658,7 +655,7 @@ namespace JuvoPlayer.Player.SMPlayer
                     return;
                 }
             }
-             
+
 
             internalState = SMPlayerState.Stopping;
 
@@ -695,6 +692,7 @@ namespace JuvoPlayer.Player.SMPlayer
             audioSet = false;
             videoSet = false;
             smplayerSeekReconfiguration = false;
+            seekInProgress = false;
 
             currentTime = TimeSpan.Zero;
 
@@ -817,6 +815,13 @@ namespace JuvoPlayer.Player.SMPlayer
             Logger.Info("OnCurrentPosition = " + currTimeSpan);
 
             currentTime = currTimeSpan;
+
+            // TODO: Remove this code when even serialization will be merged.
+            // This is a temporary workaround for SM Player to prevent stale time events from 
+            // being sent up the pipeline.
+            //
+            if (seekInProgress)
+                return;
 
             TimeUpdated?.Invoke(currentTime);
         }
