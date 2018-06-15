@@ -31,10 +31,7 @@ namespace JuvoPlayer.DataProviders.Dash
         public event PacketReady PacketReady;
         public event StreamError StreamError;
 
-        private ManualResetEventSlim waitForManifest = new ManualResetEventSlim(false);
-
         private bool disposed;
-        private bool errorProcessed;
 
         public DashDataProvider(
             DashManifest manifest,
@@ -120,9 +117,10 @@ namespace JuvoPlayer.DataProviders.Dash
             cuesMap = new SubtitleFacade().LoadSubtitles(subtitleInfo);
         }
 
-
         public void OnPaused()
         {
+            Logger.Info("");
+            Parallel.Invoke(() => videoPipeline.Pause(), () => audioPipeline.Pause());
         }
 
         public async void OnPlayed()
@@ -136,18 +134,15 @@ namespace JuvoPlayer.DataProviders.Dash
             if (!IsSeekingSupported())
                 return;
 
-            audioPipeline.Pause();
-            videoPipeline.Pause();
-
-            audioPipeline.Seek(time);
-            videoPipeline.Seek(time);
-
-            audioPipeline.Resume();
-            videoPipeline.Resume();
+            Parallel.Invoke(() => videoPipeline.Pause(), () => audioPipeline.Pause());
+            Parallel.Invoke(() => videoPipeline.Seek(time), () => audioPipeline.Seek(time));
+            Parallel.Invoke(() => videoPipeline.Resume(), () => audioPipeline.Resume());            
         }
 
         public void OnStopped()
         {
+            manifest.CancelReload();
+
             audioPipeline.Stop();
             videoPipeline.Stop();
         }
@@ -196,8 +191,10 @@ namespace JuvoPlayer.DataProviders.Dash
 
             // TODO:? In case of updates - should we check if A/V is any different from
             // anything we passed down before? Should offload client...
-            var manifestParams = new ManifestParameters(currentDocument, currentPeriod);
-            manifestParams.PlayClock = LiveClockTime(currentTime);
+            var manifestParams = new ManifestParameters(currentDocument, currentPeriod)
+            {
+                PlayClock = LiveClockTime(currentTime)
+            };
 
             Logger.Info(currentPeriod.ToString());
 
@@ -331,7 +328,15 @@ namespace JuvoPlayer.DataProviders.Dash
             {
                 Logger.Info("Updating manifest");
 
-                await manifest.ReloadManifestTask();
+                try
+                {
+                    await manifest.ReloadManifestTask();
+                }
+                catch (OperationCanceledException)
+                {
+                    Logger.Info("Reloading manifest was cancelled");
+                    return;
+                }
 
                 var tmpDocument = manifest.CurrentDocument;
                 if (tmpDocument == null)
@@ -356,14 +361,6 @@ namespace JuvoPlayer.DataProviders.Dash
 
         private void OnStreamError(string errorMessage)
         {
-            // Process error only once - there is no point in gobbling up
-            // CPU timne processing multiple requests as the very first will cause pipeline
-            // termination for Audio & Video
-            if (errorProcessed)
-                return;
-
-            errorProcessed = true;
-
             // TODO: Review parallelization. Logging, A & V Stop, Stream Erro Invokation
             // can be safely done in parallel.
             Logger.Error($"Stream Error: {errorMessage}. Terminating pipelines.");
@@ -372,12 +369,11 @@ namespace JuvoPlayer.DataProviders.Dash
             // It is possible to forgo calling stop here, simply raise StreamError event
             // and wait for termination as part of player window closure. Imho, better to call
             // quits as early as possible.
-            audioPipeline.Stop();
-            videoPipeline.Stop();
+            OnStopped();
 
             // Bubble up stream error info up to PlayerController which will shut down
             // underlying player
-            
+
             StreamError?.Invoke(errorMessage);
         }
 

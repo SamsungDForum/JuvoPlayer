@@ -79,16 +79,16 @@ namespace JuvoPlayer.DataProviders.Dash
         {
             var newTime = TimeSpan.Zero;
             var segmentId = currentStreams?.MediaSegmentAtTime(position);
+            currentTime = position;
+
             if (segmentId.HasValue)
             {
-                currentTime = position;
                 currentSegmentId = segmentId.Value;
-
                 newTime = currentStreams.MediaSegmentAtPos(currentSegmentId.Value).Period.Start;
             }
 
             LogInfo($"Seek. Pos Req: {position} Seek to: {newTime} SegId: {segmentId}");
-            
+
             return newTime;
         }
 
@@ -145,6 +145,7 @@ namespace JuvoPlayer.DataProviders.Dash
 
                     LogWarn($"Segment: {currentSegmentId} NULL stream. Stoping player.");
                     Stop();
+                    Error?.Invoke("Unexpected end of content");
                     return;
                 }
 
@@ -170,14 +171,29 @@ namespace JuvoPlayer.DataProviders.Dash
 
         private void DownloadInitSegment(Segment segment)
         {
-            var downloadTask = CreateDownloadTask(segment, true, null);
+            if (initStreamBytes == null)
+            {
+                var downloadTask = CreateDownloadTask(segment, true, null);
 
-            downloadTask.ContinueWith(response => HandleFailedInitDownload(GetErrorMessage(response)),
-                cancellationTokenSource.Token, TaskContinuationOptions.OnlyOnFaulted, TaskScheduler.Default);
-            processDataTask = downloadTask.ContinueWith(response => InitDataDownloaded(response.Result) ,
-                cancellationTokenSource.Token, TaskContinuationOptions.OnlyOnRanToCompletion, TaskScheduler.Default);
-            processDataTask.ContinueWith(_ => ScheduleNextSegDownload(),
-                cancellationTokenSource.Token, TaskContinuationOptions.NotOnCanceled, TaskScheduler.Default);
+                downloadTask.ContinueWith(response => HandleFailedInitDownload(GetErrorMessage(response)),
+                    cancellationTokenSource.Token, TaskContinuationOptions.OnlyOnFaulted, TaskScheduler.Default);
+                processDataTask = downloadTask.ContinueWith(response => InitDataDownloaded(response.Result),
+                    cancellationTokenSource.Token, TaskContinuationOptions.OnlyOnRanToCompletion, TaskScheduler.Default);
+                processDataTask.ContinueWith(_ => ScheduleNextSegDownload(),
+                    cancellationTokenSource.Token, TaskContinuationOptions.NotOnCanceled, TaskScheduler.Default);
+            }
+            else
+            {
+                // Already have init segment. Push it down the pipeline & schedule next download
+                var initData = new DownloadResponse();
+                initData.Data = initStreamBytes;
+                initData.SegmentID = null;
+
+                LogInfo($"Skipping INIT segment download");
+                InitDataDownloaded(initData);
+                ScheduleNextSegDownload();
+
+            }
         }
 
         private static string GetErrorMessage(Task response)
@@ -206,11 +222,13 @@ namespace JuvoPlayer.DataProviders.Dash
 
         private void InitDataDownloaded(DownloadResponse responseResult)
         {
+            if (responseResult.Data != null)
+                sharedBuffer.WriteData(responseResult.Data);
+
+            // Assign initStreamBytes AFTER it has been pushed down the shared buffer.
+            // When issuing EOS, initStreamBytes will be checked for NULLnes.
+            // We do not want to send EOS before init data - will kill demuxer.
             initStreamBytes = responseResult.Data;
-
-            if(initStreamBytes != null)
-                sharedBuffer.WriteData(initStreamBytes);
-
             LogInfo("INIT segment downloaded.");
         }
 
@@ -223,40 +241,41 @@ namespace JuvoPlayer.DataProviders.Dash
             {
                 return;
             }
-                
 
             // Stop Client and signall error.
             //
             Stop();
-            
-            Error?.Invoke(message);
-        }
-        private void HandleFailedInitDownload(string message)
-        {
-            LogError(message);
- 
-            // Do not call Stop() for INIT segment as this will send EOS
-            // resulting in demuxer error. Do everything a STOP does without
-            // EOS & signal error.
-            cancellationTokenSource?.Cancel();
 
             Error?.Invoke(message);
         }
+
+        private void HandleFailedInitDownload(string message)
+        {
+            LogError(message);
+
+            Stop();
+
+            Error?.Invoke(message);
+        }
+
         public void Stop()
         {
             cancellationTokenSource?.Cancel();
             SendEOSEvent();
 
-            if (processDataTask.Status > TaskStatus.Created)
+            // Temporary prevention caused by out of order download processing.
+            // Wait for download task to complete. Stale cancellations
+            // may happen during FF/REW operations. 
+            // If received after client start may result in lack of further download requests 
+            // being issued. Once download handler are serialized, should be safe to remove.
+            try
             {
-                LogInfo("Waiting for process Data Task to complete");
-                try
-                {
+                if (processDataTask?.Status > TaskStatus.Created)
                     processDataTask.Wait();
-                }
-                catch (AggregateException)
-                { }
             }
+            catch (AggregateException) { }
+
+
             LogInfo("Data downloader stopped");
         }
 
@@ -356,6 +375,11 @@ namespace JuvoPlayer.DataProviders.Dash
 
         private void SendEOSEvent()
         {
+            // Send EOS only when init data has been processed.
+            // Stops demuxer being blown to high heavens.
+            if (initStreamBytes == null)
+                return;
+
             sharedBuffer.WriteData(null, true);
         }
 
