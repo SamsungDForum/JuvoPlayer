@@ -49,7 +49,11 @@ namespace JuvoPlayer.OpenGL
             ClearOptionsMenu();
 
             if (player == null)
+            {
+                Logger?.Info($"player null, cannot load stream lists");
                 return;
+            }
+            Logger?.Info($"loading stream lists");
 
             SubtitlesOn = false;
             foreach (var streamType in new[] { StreamType.Video, StreamType.Audio, StreamType.Subtitle })
@@ -70,7 +74,7 @@ namespace JuvoPlayer.OpenGL
             for (int id = 0; id < streamDescriptionsList.Descriptions.Count; ++id)
             {
                 var s = streamDescriptionsList.Descriptions[id];
-                Logger?.Info("stream.Description=\"" + s.Description + "\", stream.Id=\"" + s.Id + "\", stream.Type=\"" + s.StreamType + "\", stream.Default=\"" + s.Default + "\"");
+                Logger?.Info($"stream.Description=\"{s.Description}\", stream.Id=\"{s.Id}\", stream.Type=\"{s.StreamType}\", stream.Default=\"{s.Default}\"");
                 if (s.Default)
                 {
                     streamDescriptionsList.Active = id;
@@ -84,7 +88,7 @@ namespace JuvoPlayer.OpenGL
 
         private void UpdateOptionsSelection()
         {
-            Logger?.Info("activeOption=" + _activeOption + ", activeSuboption=" + _activeSuboption + ", selectedOption=" + _selectedOption + ", selectedSuboption=" + _selectedSuboption);
+            Logger?.Info($"activeOption={_activeOption}, activeSuboption={_activeSuboption}, selectedOption={_selectedOption}, selectedSuboption={_selectedSuboption}");
             if (_selectedOption >= 0 && _selectedOption < _streams.Count)
                 _activeSuboption = _streams[_selectedOption].Active;
             DllImports.UpdateSelection(Visible ? 1 : 0, _activeOption, _activeSuboption, _selectedOption, _selectedSuboption);
@@ -101,7 +105,7 @@ namespace JuvoPlayer.OpenGL
             UpdateOptionsSelection();
         }
 
-        private void ClearOptionsMenu()
+        public void ClearOptionsMenu()
         {
             _activeOption = -1;
             _activeSuboption = -1;
@@ -126,7 +130,7 @@ namespace JuvoPlayer.OpenGL
 
         public void ControlRight()
         {
-            if (_selectedSuboption == -1 && _streams[_selectedOption].Descriptions.Count > 0)
+            if (_selectedSuboption == -1 && _selectedOption >= 0 && _selectedOption < _streams.Count && _streams[_selectedOption].Descriptions.Count > 0)
                 _selectedSuboption =
                     _streams[_selectedOption].Active >= 0 && _streams[_selectedOption].Active <
                     _streams[_selectedOption].Descriptions.Count
