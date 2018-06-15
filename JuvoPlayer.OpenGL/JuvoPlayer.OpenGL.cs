@@ -5,7 +5,7 @@ using Tizen.TV.NUI.GLApplication;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Tizen.Pims.Calendar;
+using Tizen;
 
 namespace JuvoPlayer.OpenGL
 {
@@ -25,7 +25,8 @@ namespace JuvoPlayer.OpenGL
         private TimeSpan _playerTimeDuration;
         private bool _playbackCompletedNeedsHandling;
 
-        private readonly ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
+        private const string Tag = "JuvoPlayer";
+        private static readonly ILogger Logger = LoggerManager.GetInstance().GetLogger(Tag);
 
         private MenuAction _selectedAction = MenuAction.None;
 
@@ -37,6 +38,9 @@ namespace JuvoPlayer.OpenGL
         private Task _seekDelay;
         private CancellationTokenSource _seekCancellationTokenSource;
         private bool _seekBufferingInProgress = false;
+        private bool _seekInProgress = false;
+
+        private bool _isAlertShown = false;
 
         private static void Main(string[] args)
         {
@@ -107,6 +111,9 @@ namespace JuvoPlayer.OpenGL
             if (key.State != Key.StateType.Down)
                 return;
 
+            if (_isAlertShown && !key.KeyPressedName.Contains("Return") && !key.KeyPressedName.Contains("Exit"))
+                return;
+
             if(key.KeyPressedName.Contains("Right"))
             {
                 HandleKeyRight();
@@ -169,13 +176,48 @@ namespace JuvoPlayer.OpenGL
             }
             else if(key.KeyPressedName.Contains("Blue"))
             {
+                GC.Collect();
+            }
+            else if (key.KeyPressedName.Contains("1"))
+            {
+                TestLog();
+            }
+            else if (key.KeyPressedName.Contains("2"))
+            {
+                ShowAlert("Alert", "All your base are belong to us.");
             }
             else
             {
-                Logger?.Info("Unknown key pressed: " + key.KeyPressedName);
+                Logger?.Info($"Unknown key pressed: {key.KeyPressedName}");
             }
 
             KeyPressedMenuUpdate();
+        }
+
+        private unsafe void ShowAlert(string title, string text)
+        {
+            fixed (byte* textBytes = ResourceLoader.GetBytes(text))
+                fixed (byte* titleBytes = ResourceLoader.GetBytes(title))
+                    DllImports.ShowAlert(titleBytes, title.Length, textBytes, text.Length);
+            _isAlertShown = true;
+        }
+
+        private int testLog = 0;
+
+        private unsafe void TestLog()
+        {
+            Random rnd = new Random();
+            string[] logs =
+            {
+                "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.",
+                "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.",
+                "Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.",
+                "Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.",
+                "Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum."
+            };
+            string log = (++testLog).ToString() + ". " + logs[rnd.Next() % logs.Length];
+            fixed (byte* text = ResourceLoader.GetBytes(log))
+                DllImports.PushLog(text, log.Length);
         }
 
         private void KeyPressedMenuUpdate()
@@ -198,10 +240,18 @@ namespace JuvoPlayer.OpenGL
             {
                 _options.ControlRight();
             }
-            else if (_progressBarShown)
+            else if(_progressBarShown)
             {
-                if (_selectedAction == MenuAction.OptionsMenu)
-                    _options.Show();
+                switch (_selectedAction)
+                {
+                    case MenuAction.PlaybackControl:
+                        break;
+                    case MenuAction.OptionsMenu:
+                        SelectMenuAction(MenuAction.PlaybackControl);
+                        break;
+                    case MenuAction.None:
+                        break;
+                }
             }
         }
 
@@ -217,59 +267,45 @@ namespace JuvoPlayer.OpenGL
             {
                 _options.ControlLeft();
             }
+            else if (_progressBarShown)
+            {
+                switch (_selectedAction)
+                {
+                    case MenuAction.PlaybackControl:
+                        SelectMenuAction(MenuAction.OptionsMenu);
+                        break;
+                    case MenuAction.OptionsMenu:
+                        break;
+                    case MenuAction.None:
+                        break;
+                }
+            }
         }
 
         private void HandleKeyUp()
         {
-            if (!_isMenuShown)
+            if (!_isMenuShown && _options.Visible)
             {
-                if (_options.Visible)
-                {
-                    _options.ControlUp();
-                }
-                else if (_progressBarShown)
-                {
-                    switch (_selectedAction)
-                    {
-                        case MenuAction.PlaybackControl:
-                            SelectMenuAction(MenuAction.OptionsMenu);
-                            break;
-                        case MenuAction.OptionsMenu:
-                            break;
-                        case MenuAction.None:
-                            break;
-                    }
-                }
+                _options.ControlUp();
             }
         }
 
         private void HandleKeyDown()
         {
-            if (!_isMenuShown)
+            if (!_isMenuShown && _options.Visible)
             {
-                if (_options.Visible)
-                {
-                    _options.ControlDown();
-                }
-                else if(_progressBarShown)
-                {
-                    switch (_selectedAction)
-                    {
-                        case MenuAction.PlaybackControl:
-                            break;
-                        case MenuAction.OptionsMenu:
-                            SelectMenuAction(MenuAction.PlaybackControl);
-                            break;
-                        case MenuAction.None:
-                            break;
-                    }
-                }
+                _options.ControlDown();
             }
         }
 
         private void HandleKeyReturn()
         {
-            if (_isMenuShown)
+            if (_isAlertShown)
+            {
+                DllImports.HideAlert();
+                _isAlertShown = false;
+            }
+            else if (_isMenuShown)
             {
                 if (_selectedTile >= _resourceLoader.TilesCount)
                     return;
@@ -304,7 +340,6 @@ namespace JuvoPlayer.OpenGL
                         break;
                     case MenuAction.None:
                         break;
-
                 }
             }
         }
@@ -316,19 +351,28 @@ namespace JuvoPlayer.OpenGL
                 _player = new Player();
                 _player.StateChanged += (object sender, PlayerState playerState) =>
                 {
-                    Logger?.Info("Player state changed: " + _player.State);
+                    Logger?.Info($"Player state changed: {_player.State}");
                     if (_player.State == PlayerState.Prepared)
+                    {
+                        _options.LoadStreamLists(_player);
+                        SelectMenuAction(MenuAction.PlaybackControl);
                         _player?.Start();
+                    }
                     else if (_player.State == PlayerState.Completed)
                         _playbackCompletedNeedsHandling = true;
                 };
+                _player.SeekCompleted += () =>
+                {
+                    Logger?.Info("Seek completed.");
+                    _seekInProgress = false;
+                };
             }
 
-            Logger?.Info("Playing " + _resourceLoader.ContentList[_selectedTile].Title + " (" + _resourceLoader.ContentList[_selectedTile].Url + ")");
+            Logger?.Info($"Playing {_resourceLoader.ContentList[_selectedTile].Title} ({_resourceLoader.ContentList[_selectedTile].Url})");
             _player.SetSource(_resourceLoader.ContentList[_selectedTile]);
-            _options.LoadStreamLists(_player);
-            _seekBufferingInProgress = false;
-            SelectMenuAction(MenuAction.PlaybackControl);
+            _options.ClearOptionsMenu();
+            _seekInProgress = false;
+            SelectMenuAction(MenuAction.None);
         }
 
         private void HandleKeyBack()
@@ -371,6 +415,11 @@ namespace JuvoPlayer.OpenGL
 
         private void HandleKeyStop()
         {
+            if (!_isMenuShown && !_options.Visible)
+            {
+                ResetPlaybackControls();
+                ShowMenu(true);
+            }
             _player?.Stop();
             ClosePlayer();
         }
@@ -433,6 +482,7 @@ namespace JuvoPlayer.OpenGL
             if (_player == null || !_player.IsSeekingSupported || !IsStateSeekable(_player.State))
                 return;
 
+            _seekInProgress = true;
             if (_player.Duration - _player.CurrentPosition < seekTime)
                 _player.SeekTo(_player.Duration);
             else
@@ -444,6 +494,7 @@ namespace JuvoPlayer.OpenGL
             if (_player == null || (!_player.IsSeekingSupported || _player.State < PlayerState.Playing))
                 return;
 
+            _seekInProgress = true;
             if (_player.CurrentPosition < seekTime)
                 _player.SeekTo(TimeSpan.Zero);
             else
@@ -476,7 +527,7 @@ namespace JuvoPlayer.OpenGL
                 return;
 
             _playbackCompletedNeedsHandling = false;
-            Logger?.Info("Playback completed. Returning to menu.");
+            Logger?.Info($"Playback completed. Returning to menu.");
             if (_isMenuShown)
                 return;
             _progressBarShown = false;
@@ -495,7 +546,7 @@ namespace JuvoPlayer.OpenGL
 
         private unsafe void UpdatePlaybackControls()
         {
-            if (_seekBufferingInProgress == false)
+            if (_seekBufferingInProgress == false && _seekInProgress == false)
                 _playerTimeCurrentPosition = _player?.CurrentPosition ?? TimeSpan.Zero;
             _playerTimeDuration = _player?.Duration ?? TimeSpan.Zero;
             if (_progressBarShown && _player?.State == PlayerState.Playing && (DateTime.Now - _lastKeyPressTime).TotalMilliseconds >= _prograssBarFadeout.TotalMilliseconds)
@@ -503,7 +554,7 @@ namespace JuvoPlayer.OpenGL
                 _progressBarShown = false;
                 _options.Hide();
                 SelectMenuAction(MenuAction.PlaybackControl);
-                Logger?.Info((DateTime.Now - _lastKeyPressTime).TotalMilliseconds + "ms of inactivity, hiding progress bar.");
+                Logger?.Info($"{(DateTime.Now - _lastKeyPressTime).TotalMilliseconds} ms of inactivity, hiding progress bar.");
             }
 
             fixed (byte* name = ResourceLoader.GetBytes(_resourceLoader.ContentList[_selectedTile].Title))

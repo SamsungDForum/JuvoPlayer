@@ -4,7 +4,6 @@ namespace JuvoPlayer.OpenGL
 {
     class MetricsHandler
     {
-
         private readonly SystemMemoryUsage _systemMemoryUsage = new SystemMemoryUsage();
         private readonly int _systemMemoryUsageGraphId;
         private float _systemMemoryBottom;
@@ -62,12 +61,14 @@ namespace JuvoPlayer.OpenGL
         private void UpdateState()
         {
             DllImports.SetGraphVisibility(DllImports.fpsGraphId, _metricsShown ? 1 : 0);
+
             if (_systemMemoryUsageGraphId > DllImports.fpsGraphId)
                 DllImports.SetGraphVisibility(_systemMemoryUsageGraphId, _metricsShown ? 1 : 0);
-
-            DllImports.SetGraphVisibility(DllImports.fpsGraphId, _metricsShown ? 1 : 0);
+            
             if (_systemCpuUsageGraphId > DllImports.fpsGraphId)
                 DllImports.SetGraphVisibility(_systemCpuUsageGraphId, _metricsShown ? 1 : 0);
+
+            DllImports.SetLogConsoleVisibility(_metricsShown ? 1 : 0);
         }
 
         public void Update()

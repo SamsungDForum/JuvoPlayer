@@ -23,6 +23,7 @@ namespace JuvoPlayer.OpenGL
         private PlayerState playerState = PlayerState.Idle;
 
         public event PlayerStateChangedEventHandler StateChanged;
+        public event SeekCompleted SeekCompleted;
 
         public TimeSpan Duration => playerController?.ClipDuration ?? TimeSpan.FromSeconds(0);
 
@@ -59,6 +60,7 @@ namespace JuvoPlayer.OpenGL
             playerController.PlaybackCompleted += () => { State = PlayerState.Completed; };
             playerController.PlayerInitialized += () => { State = PlayerState.Prepared; };
             playerController.PlaybackError += (message) => { State = PlayerState.Error; };
+            playerController.SeekCompleted += () => { SeekCompleted?.Invoke(); };
         }
 
         public void Pause()

@@ -48,6 +48,7 @@ namespace JuvoPlayer.Player
         public event PlaybackError PlaybackError;
         public event PlayerInitialized PlayerInitialized;
         public event TimeUpdated TimeUpdated;
+        public event SeekCompleted SeekCompleted;
 
         public PlayerController(IPlayer player, IDrmManager drmManager)
         {
@@ -155,6 +156,8 @@ namespace JuvoPlayer.Player
         public void OnSeekCompleted()
         {
             seeking = false;
+
+            SeekCompleted?.Invoke();
         }
 
         public void OnStop()
