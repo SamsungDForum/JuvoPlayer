@@ -20,6 +20,8 @@ using JuvoPlayer.Common;
 using JuvoLogger;
 using JuvoPlayer.Demuxers.FFmpeg.Interop;
 using JuvoPlayer.SharedBuffers;
+using JuvoPlayer.Common.Utils;
+using System.Diagnostics;
 
 namespace JuvoPlayer.Demuxers.FFmpeg
 {
@@ -31,6 +33,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg
         public event Common.DRMInitDataFound DRMInitDataFound;
         public event Common.StreamConfigReady StreamConfigReady;
         public event Common.PacketReady PacketReady;
+        public event DemuxerError DemuxerError;
 
         private const int BufferSize = 128 * 1024;
         private unsafe byte* buffer = null;
@@ -39,7 +42,6 @@ namespace JuvoPlayer.Demuxers.FFmpeg
         private int audioIdx = -1;
         private int videoIdx = -1;
         private bool parse = true;
-        private bool resetting;
 
         private Task demuxTask;
 
@@ -103,6 +105,9 @@ namespace JuvoPlayer.Demuxers.FFmpeg
 
             // Potentially time-consuming part of initialization and demuxation loop will be executed on a detached thread.
             demuxTask = Task.Run(() => DemuxTask(InitES, initMode));
+
+            //Add error handler task if demuxer fails
+            demuxTask.ContinueWith(res => OnError(GetErrorMessage(res)),TaskContinuationOptions.OnlyOnFaulted);
         }
 
         public void StartForUrl(string url)
@@ -111,6 +116,21 @@ namespace JuvoPlayer.Demuxers.FFmpeg
 
             // Potentially time-consuming part of initialization and demuxation loop will be executed on a detached thread.
             demuxTask = Task.Run(() => DemuxTask(() => InitURL(url), InitializationMode.Full));
+
+            //Add error handler task if demuxer fails
+            demuxTask.ContinueWith(res => OnError(GetErrorMessage(res)), TaskContinuationOptions.OnlyOnFaulted);
+        }
+
+        [Conditional("DEBUG")]
+        private unsafe void DumpBuffer(byte* bytes, int size)
+        {
+            // BufferSize is fixed size, however, it may be changed at will at dev. time,
+            // as such do buffer size / dump size verification to avoid odd crashes in case
+            // buffer size will be set to less then 512.
+            var dumpSize = size > 512 ? 512 : size;
+            var data = new byte[dumpSize];
+            Marshal.Copy((IntPtr)bytes, data, 0, dumpSize);
+            Logger.Debug($"Buffer:\n{HexDumper.HexDumpFirstN(data, dumpSize)}");
         }
 
         private unsafe void InitES()
@@ -155,6 +175,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg
             if (ret != 0)
             {
                 Logger.Info("Could not parse input data: " + GetErrorText(ret));
+                DumpBuffer(buffer, BufferSize);
 
                 DeallocFFmpeg();
                 //FFmpeg.av_free(buffer); // should be freed by avformat_open_input if i recall correctly
@@ -211,7 +232,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg
                 Logger.Fatal($"Neither video ({videoIdx}) nor audio stream ({audioIdx}) found");
 
                 DeallocFFmpeg();
-                throw new Exception($"Neither video nor audio stream found");
+                throw new Exception("Neither video nor audio stream found");
             }
 
             // disable not used streams
@@ -259,8 +280,21 @@ namespace JuvoPlayer.Demuxers.FFmpeg
             return streamId;
         }
 
+        private static string GetErrorMessage(Task response)
+        {
+            return response.Exception?.Flatten().InnerException.Message;
+        }
+
+        private void OnError(string errorMessage)
+        {
+            // Have handler. Inform without exception throwup.
+            DemuxerError?.Invoke(errorMessage);
+        }
+
         private unsafe void DemuxTask(Action initAction, InitializationMode initMode)
         {
+            parse = true;
+
             try
             {
                 InitializeDemuxer(initAction, initMode);
@@ -283,7 +317,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg
                 int ret = Interop.FFmpeg.av_read_frame(formatContext, &pkt);
                 try
                 {
-                    if (resetting)
+                    if (!parse)
                         return;
 
                     if (ret >= 0)
@@ -339,7 +373,8 @@ namespace JuvoPlayer.Demuxers.FFmpeg
             // Finish more time-consuming init things
             initAction();
 
-            if (initMode != InitializationMode.Full) return;
+            if (initMode != InitializationMode.Full)
+                return;
 
             FindStreamsInfo();
             ReadAudioConfig();
@@ -486,19 +521,19 @@ namespace JuvoPlayer.Demuxers.FFmpeg
 
             for (uint i = 0; i < formatContext->protection_system_data_count; ++i)
             {
-                AVProtectionSystemSpecificData systemData = formatContext->protection_system_data[i];
-                if (systemData.pssh_box_size > 0)
+                var systemData = formatContext->protection_system_data[i];
+                if (systemData.pssh_box_size <= 0)
+                    continue;
+
+                var drmData = new DRMInitData
                 {
-                    var drmData = new DRMInitData
-                    {
-                        SystemId = systemData.system_id.ToArray(),
-                        InitData = new byte[systemData.pssh_box_size]
-                    };
+                    SystemId = systemData.system_id.ToArray(),
+                    InitData = new byte[systemData.pssh_box_size]
+                };
 
-                    Marshal.Copy((IntPtr)systemData.pssh_box, drmData.InitData, 0, (int)systemData.pssh_box_size);
+                Marshal.Copy((IntPtr)systemData.pssh_box, drmData.InitData, 0, (int)systemData.pssh_box_size);
 
-                    DRMInitDataFound?.Invoke(drmData);
-                }
+                DRMInitDataFound?.Invoke(drmData);
             }
         }
 
@@ -673,18 +708,30 @@ namespace JuvoPlayer.Demuxers.FFmpeg
             // TODO(g.skowinski): Implement.
         }
 
-        public void Reset()
+        public void Stop()
         {
-            resetting = true;
+            parse = false;
 
             Resume();
-            dataBuffer.ClearData();
-            dataBuffer.WriteData(null, true);
-            demuxTask?.Wait();
+            dataBuffer?.ClearData();
+            dataBuffer?.WriteData(null, true);
+ 
+            // If a task fails with an exception that's not caught anywhere,
+            // calling 
+            try
+            {
+                demuxTask?.Wait();
+            }
+            catch(Exception ex)
+            {
+                Logger.Debug($"Demuxer Status/Error: {demuxTask.Status} {ex.Message}");
+            }
 
+            // Clear EOS from buffer after demux task termination so there 
+            // will not be any data reads of EOS after restart as EOS is persistant in buffer
+            dataBuffer?.ClearData();
+            
             DeallocFFmpeg();
-
-            resetting = false;
         }
 
         public void Pause()
@@ -758,21 +805,11 @@ namespace JuvoPlayer.Demuxers.FFmpeg
             if (isDisposed)
                 return;
 
-            parse = false;
+            if (parse)
+                Stop();
 
-            dataBuffer?.WriteData(null, true);
-            Resume();
             pausedEvent.Dispose();
-            try
-            {
-                demuxTask?.Wait();
-            }
-            catch (Exception e)
-            {
-                Logger.Error($"Demux task faulted: {e}");
-            }
 
-            ReleaseUnmanagedResources();
             GC.SuppressFinalize(this);
 
             isDisposed = true;
@@ -780,7 +817,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg
 
         ~FFmpegDemuxer()
         {
-            ReleaseUnmanagedResources();
+            DeallocFFmpeg();
         }
     }
 }

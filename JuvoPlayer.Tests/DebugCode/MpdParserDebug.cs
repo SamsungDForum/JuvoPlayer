@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Net;
+using System.Threading.Tasks;
 using JuvoLogger;
 using JuvoPlayer.Tests.UnitTests;
 using MpdParser;
@@ -39,7 +40,7 @@ namespace JuvoPlayer.Tests.DebugCode
         }
 
         [Test]
-        public void DEBUG_MpdParser()
+        public async Task DEBUG_MpdParser()
         {
             LoggerBase CreateLogger(string channel, LogLevel level) => new DummyLogger(channel, level);
             LoggerManager.Configure(CreateLogger);
@@ -58,7 +59,7 @@ namespace JuvoPlayer.Tests.DebugCode
             {
                 xml = wc.DownloadString(url);
 
-                doc = Document.FromText(xml, url);
+                doc = await Document.FromText(xml, url);
 
                 foreach (var period in doc.Periods)
                 {
