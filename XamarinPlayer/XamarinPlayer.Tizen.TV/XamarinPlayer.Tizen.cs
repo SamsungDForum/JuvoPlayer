@@ -18,6 +18,7 @@ namespace XamarinPlayer.Tizen
             base.OnCreate();
 
             Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
+            System.Net.ServicePointManager.DefaultConnectionLimit = 100;
 
             _keyDown = new EcoreEvent<EcoreKeyEventArgs>(EcoreEventType.KeyDown, EcoreKeyEventArgs.Create);
             _keyDown.On += (s, e) =>
