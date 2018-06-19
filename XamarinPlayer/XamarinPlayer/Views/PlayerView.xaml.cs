@@ -20,6 +20,7 @@ namespace XamarinPlayer.Views
         private bool _isPageDisappeared = false;
         private bool _isShowing = false;
         private bool _errorOccured = false;
+        private string _errorMessage;
 
         public static readonly BindableProperty ContentSourceProperty = BindableProperty.Create("ContentSource", typeof(object), typeof(PlayerView), null);
 
@@ -47,7 +48,7 @@ namespace XamarinPlayer.Views
             SettingsButton.Clicked += (s, e) => { HandleSettings(); };
 
             PropertyChanged += PlayerViewPropertyChanged;
-            
+
             MessagingCenter.Subscribe<IKeyEventSender, string>(this, "KeyDown", (s, e) => { KeyEventHandler(e); });
         }
 
@@ -61,6 +62,13 @@ namespace XamarinPlayer.Views
 
         private void KeyEventHandler(string e)
         {
+            // TODO: This is a workaround for alertbox & lost focus
+            // Prevents key handling & fous change in Show().
+            // Consider adding a call Focus(Focusable Object) where focus would be set in one place
+            // and error status could be handled.
+            if (_errorOccured)
+                return;
+
             if (e.Contains("Back"))
             {
                 if (_playerService.State < PlayerState.Playing ||
@@ -203,7 +211,7 @@ namespace XamarinPlayer.Views
             {
                 if (picker.SelectedIndex != -1)
                 {
-                    var stream = (StreamDescription) picker.ItemsSource[picker.SelectedIndex];
+                    var stream = (StreamDescription)picker.ItemsSource[picker.SelectedIndex];
 
                     _playerService.ChangeActiveStream(stream);
                 }
@@ -239,6 +247,10 @@ namespace XamarinPlayer.Views
 
         public void Show(int timeout)
         {
+            // Do not show anything if error handling in progress.
+            if (_errorOccured)
+                return;
+
             if (!_isShowing)
             {
                 PlayButton.Focus();
@@ -276,7 +288,7 @@ namespace XamarinPlayer.Views
                 Navigation.PopAsync().Wait();
 
                 return false;
-            });        
+            });
         }
 
         protected override void OnAppearing()
@@ -317,46 +329,51 @@ namespace XamarinPlayer.Views
             return true;
         }
 
-        void OnPlaybackError(string errorMessage)
+        void OnPlaybackError()
         {
-            Device.StartTimer(TimeSpan.FromMilliseconds(0), () => 
-            {
-                // DisplayAlert seems emotionally unstable
-                // if not called from main thread.
-                Device.BeginInvokeOnMainThread(async () =>
-                {
-                    // TODO: It would be nice to close current page THEN
-                    // display popup error. PlayerService resources would be released 
-                    // while waiting for user confitrmation. However, this requires some rework
-                    // as Disposing of PlayerService here causes null object reference havoc.
-                    await DisplayAlert("Playback Error", errorMessage, "OK");
-                    await Navigation.PopAsync();
-                });
 
-                return false;
+            // DisplayAlert seems emotionally unstable
+            // if not called from main thread.
+            Device.BeginInvokeOnMainThread(async () =>
+            {
+                await DisplayAlert("Playback Error", _errorMessage, "OK");
+                _errorOccured = false;
+                await Navigation.PopAsync();
+
             });
         }
 
         private void OnPlayerStateChanged(object sender, PlayerStateChangedEventArgs e)
         {
+            Logger.Info($"Player State Changed: {e.State}");
+            if (e.State == PlayerState.Stopped)
+            {
+                if (_errorOccured)
+                    OnPlaybackError();
+            }
             if (e.State == PlayerState.Completed)
             {
-                OnPlaybackCompleted();
+                // Do not remove any screens in case of error. Will be done as part
+                // of error handling during Stopped event.
+                if (_errorOccured == false)
+                    OnPlaybackCompleted();
             }
             else if (e.State == PlayerState.Error)
             {
-                BackButton.IsEnabled = false;
-                ForwardButton.IsEnabled = false;
-                PlayButton.IsEnabled = false;
-                SettingsButton.IsEnabled = false;
-
                 // Prevent multiple popups from occouring, display them only
                 // if it is a very first error event.
                 if (_errorOccured == false)
                 {
                     _errorOccured = true;
+                    _errorMessage = (e as PlayerStateChangedStreamError)?.Message ?? "Unknown Error";
 
-                    OnPlaybackError((e as PlayerStateChangedStreamError)?.Message??"Unknown Error");
+                    // Terminate player to prevent any futher error events. 
+                    // This will issue a player.stopped event during which 
+                    // error message will be displayed.(if error flag is set).
+                    // Hide controls. If not hidden, a timeouts take away focus rendering alert
+                    // unclosable.
+                    //
+                    Device.StartTimer(TimeSpan.FromMilliseconds(0), () => { Hide(); _playerService.Stop(); return false; });
                 }
             }
             else if (e.State == PlayerState.Prepared)
@@ -401,7 +418,8 @@ namespace XamarinPlayer.Views
             if (_isPageDisappeared)
                 return false;
 
-            Device.BeginInvokeOnMainThread(() => {
+            Device.BeginInvokeOnMainThread(() =>
+            {
                 if (_playerService.State < PlayerState.Playing)
                 {
                     return;

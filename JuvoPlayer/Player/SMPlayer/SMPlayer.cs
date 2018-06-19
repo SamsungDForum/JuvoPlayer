@@ -32,6 +32,11 @@ namespace JuvoPlayer.Player.SMPlayer
         {
             return (ulong)(time.TotalMilliseconds * 1000000);
         }
+
+        public static TimeSpan FromNanoseconds(this UInt64 nanoTime)
+        {
+            return TimeSpan.FromMilliseconds(nanoTime / 1000000);
+        }
     }
 
     public sealed class SMPlayer : IPlayer, IPlayerEventListener
@@ -84,6 +89,9 @@ namespace JuvoPlayer.Player.SMPlayer
         private readonly AutoResetEvent submitting = new AutoResetEvent(false);
 
         private TimeSpan currentTime;
+
+        private TimeSpan seekToTime;
+        bool seekInProgress = false;
 
         private bool isDisposed;
 
@@ -150,29 +158,130 @@ namespace JuvoPlayer.Player.SMPlayer
             WakeUpSubmitTask();
         }
 
+        private bool SeekVideo()
+        {
+            bool videoSeekReached = false;
+            TimeSpan lastPts;
+
+            while (videoPacketsQueue.TryPeek(out var packet))
+            {
+                if (packet.IsEOS || packet is BufferConfiguration)
+                {
+                    videoPacketsQueue.TryDequeue(out packet);
+                    Logger.Warn("Video EOS/BufferConfiguration packet found during seek!");
+                    continue;
+                }
+
+                lastPts = packet.Pts;
+                if (packet.Pts < seekToTime)
+                {
+                    videoPacketsQueue.TryDequeue(out packet);
+                }
+                else
+                {
+                    videoSeekReached = packet.IsKeyFrame;
+                    if (packet.IsKeyFrame == false)
+                    {
+                        if (videoPacketsQueue.TryDequeue(out packet))
+                        {
+                            // We have reached seekToTime, but no key frame found.
+                            // increase seek to time to eat away audio data.
+                            seekToTime = packet.Pts;
+                        }
+                    }
+                    else
+                    {
+                        break;
+                    }
+                }
+            }
+
+            Logger.Debug($"Video Seek to {seekToTime} Last PTS {lastPts} Found {videoSeekReached}");
+            return videoSeekReached;
+        }
+
+        private bool SeekAudio()
+        {
+            bool audioSeekReached = false;
+            TimeSpan lastPts;
+
+            while (audioPacketsQueue.TryPeek(out var packet))
+            {
+                if (packet.IsEOS || packet is BufferConfiguration)
+                {
+                    audioPacketsQueue.TryDequeue(out packet);
+                    Logger.Warn("Audio EOS/BufferConfiguration packet found during seek!");
+                    continue;
+                }
+
+                lastPts = packet.Pts;
+                if (packet.Pts < seekToTime)
+                {
+                    audioPacketsQueue.TryDequeue(out packet);
+                }
+                else
+                {
+                    audioSeekReached = true;
+                    break;
+                }
+            }
+
+            Logger.Debug($"Audio Seek to {seekToTime} Last PTS {lastPts} Found {audioSeekReached}");
+            return audioSeekReached;
+        }
+
+        private bool SeekAV()
+        {
+            bool videoReached = SeekVideo();
+            bool audioReached = SeekAudio();
+
+            // If Audio & Video have been seeked to seek point, re-enable normal processing
+            return !(videoReached && audioReached);
+        }
+
         internal void SubmittingPacketsTask()
         {
             while (internalState != SMPlayerState.Stopping)
             {
                 Logger.Debug("AUDIO: " + audioPacketsQueue.Count + ", VIDEO: " + videoPacketsQueue.Count);
-                var didSubmitPacket = false;
+                var moreDataToProcess = false;
 
                 if (!smplayerSeekReconfiguration)
                 {
-                    if (needDataAudio && audioPacketsQueue.TryDequeue(out var packet))
+                    if (seekInProgress)
                     {
-                        SubmitPacket(packet);
-                        didSubmitPacket = true;
-                    }
+                        // Seek AV returns TRUE when seek point has NOT been reached.
+                        seekInProgress = SeekAV();
 
-                    if (needDataVideo && videoPacketsQueue.TryDequeue(out packet))
+                        // Exit loop if seek completed;
+                        if (seekInProgress == false)
+                        {
+                            Logger.Info($"Seek Key Frame completed @{seekToTime}");
+                            continue;
+                        }
+
+                        // Contiue processing ONLY if both queues have data
+                        // Data in one queue means one stream reached seek point.
+                        // If seek point reach
+                        moreDataToProcess = (audioPacketsQueue.Count > 0 && videoPacketsQueue.Count > 0);
+                    }
+                    else
                     {
-                        SubmitPacket(packet);
-                        didSubmitPacket = true;
+                        if (needDataAudio && audioPacketsQueue.TryDequeue(out var packet))
+                        {
+                            SubmitPacket(packet);
+                            moreDataToProcess = true;
+                        }
+
+                        if (needDataVideo && videoPacketsQueue.TryDequeue(out packet))
+                        {
+                            SubmitPacket(packet);
+                            moreDataToProcess = true;
+                        }
                     }
                 }
 
-                if (didSubmitPacket) continue;
+                if (moreDataToProcess) continue;
 
                 try
                 {
@@ -193,9 +302,9 @@ namespace JuvoPlayer.Player.SMPlayer
             if (packet.IsEOS)
                 SubmitEOSPacket(packet);
             else if (packet is EncryptedPacket)
-                SubmitEncryptedPacket((EncryptedPacket) packet);
+                SubmitEncryptedPacket((EncryptedPacket)packet);
             else if (packet is BufferConfiguration)
-                SubmitStreamConfiguration((BufferConfiguration) packet);
+                SubmitStreamConfiguration((BufferConfiguration)packet);
             else
                 SubmitDataPacket(packet);
         }
@@ -323,17 +432,25 @@ namespace JuvoPlayer.Player.SMPlayer
 
         public void Seek(TimeSpan time)
         {
-            Logger.Debug("");
+            Logger.Info("");
             ThrowIfDisposed();
+
+            if (playerInstance.Pause() == false)
+            {
+                Logger.Error("Pause Failed. Seek may fail!");
+            }
 
             // Stop appending packests.
             smplayerSeekReconfiguration = true;
 
-            playerInstance.Pause();
-
-            ResetPacketsQueues();
+            seekToTime = time;
+            seekInProgress = true;
 
             playerInstance.Seek((int)time.TotalMilliseconds);
+
+            // Reset packet queue as late as possible to remove any stale data that might
+            // be put there by still running data provider client.
+            ResetPacketsQueues();
         }
 
         private void ResetPacketsQueues()
@@ -517,9 +634,28 @@ namespace JuvoPlayer.Player.SMPlayer
             Logger.Info("");
             ThrowIfDisposed();
 
-            if (internalState == SMPlayerState.Uninitialized
-                || internalState == SMPlayerState.Stopping)
+            if (internalState == SMPlayerState.Stopping)
                 return;
+
+            // Uninitialized state can switch to Ready during SetStreamConfig.
+            // Calling stop during SetStreamConfig would silently would silently ignore Stop.
+            // Transition from Uninitialized to Ready would occour.
+            // Forcing state from uninitialized to Stopping within a lock used in SetStreamConfig
+            // should prevent this case
+            //
+            // TODO: Change state setting to Interlocked.Exchange/Compare (?)
+            // Will allow to get rid of lock(). 
+            // Note: Interloacked API does not work with enums.
+            //
+            lock (this)
+            {
+                if (internalState == SMPlayerState.Uninitialized)
+                {
+                    internalState = SMPlayerState.Stopping;
+                    return;
+                }
+            }
+
 
             internalState = SMPlayerState.Stopping;
 
@@ -556,6 +692,7 @@ namespace JuvoPlayer.Player.SMPlayer
             audioSet = false;
             videoSet = false;
             smplayerSeekReconfiguration = false;
+            seekInProgress = false;
 
             currentTime = TimeSpan.Zero;
 
@@ -603,9 +740,13 @@ namespace JuvoPlayer.Player.SMPlayer
             Logger.Debug(string.Format("Received OnSeekData: {0} offset: {1}", streamType, offset));
 
             if (streamType == StreamType.Audio)
+            {
                 needDataAudio = true;
+            }
             else if (streamType == StreamType.Video)
+            {
                 needDataVideo = true;
+            }
             else
                 return;
 
@@ -674,6 +815,13 @@ namespace JuvoPlayer.Player.SMPlayer
             Logger.Info("OnCurrentPosition = " + currTimeSpan);
 
             currentTime = currTimeSpan;
+
+            // TODO: Remove this code when even serialization will be merged.
+            // This is a temporary workaround for SM Player to prevent stale time events from 
+            // being sent up the pipeline.
+            //
+            if (seekInProgress)
+                return;
 
             TimeUpdated?.Invoke(currentTime);
         }
