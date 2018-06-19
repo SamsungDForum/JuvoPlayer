@@ -103,6 +103,8 @@ namespace JuvoPlayer.Demuxers.FFmpeg
             if (dataBuffer == null)
                 throw new InvalidOperationException("dataBuffer cannot be null");
 
+            dataBuffer.ClearData();
+
             // Potentially time-consuming part of initialization and demuxation loop will be executed on a detached thread.
             demuxTask = Task.Run(() => DemuxTask(InitES, initMode));
 
