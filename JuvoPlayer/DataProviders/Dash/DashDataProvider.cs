@@ -340,7 +340,8 @@ namespace JuvoPlayer.DataProviders.Dash
 
             try
             {
-                await manifest.ReloadManifestTask();
+                if (!await manifest.ReloadManifestTask())
+                    return false;
             }
             catch (OperationCanceledException)
             {

@@ -1,4 +1,5 @@
 using System;
+using System.IO;
 using System.Threading;
 using System.Threading.Tasks;
 using JuvoLogger;
@@ -39,7 +40,7 @@ namespace JuvoPlayer.DataProviders.Dash
         /// <summary>
         /// Contains information about timing data for last requested segment
         /// </summary>
-        private TimeRange lastRequestedPeriod = new TimeRange(TimeSpan.Zero, TimeSpan.Zero);
+        private TimeRange lastDownloadSegmentTimeRange = new TimeRange(TimeSpan.Zero, TimeSpan.Zero);
 
         /// <summary>
         /// Buffer full accessor.
@@ -162,8 +163,7 @@ namespace JuvoPlayer.DataProviders.Dash
 
         private void DownloadSegment(Segment segment)
         {
-            var downloadTask = CreateDownloadTask(segment, true, currentSegmentId);
-
+            var downloadTask = CreateDownloadTask(segment, IsDynamic, currentSegmentId);
             downloadTask.ContinueWith(response => HandleFailedDownload(GetErrorMessage(response)),
                 cancellationTokenSource.Token, TaskContinuationOptions.OnlyOnFaulted, TaskScheduler.Default);
             processDataTask = downloadTask.ContinueWith(response => HandleSuccessfullDownload(response.Result),
@@ -207,7 +207,7 @@ namespace JuvoPlayer.DataProviders.Dash
         private void HandleSuccessfullDownload(DownloadResponse responseResult)
         {
             sharedBuffer.WriteData(responseResult.Data);
-            lastRequestedPeriod = responseResult.DownloadSegment.Period.Copy();
+            lastDownloadSegmentTimeRange = responseResult.DownloadSegment.Period.Copy();
             ++currentSegmentId;
 
             if (IsDynamic)
@@ -334,7 +334,7 @@ namespace JuvoPlayer.DataProviders.Dash
             // Add API to Representation - GetNextSegmentIdAtTime(). would allow for finding exixsting segment
             // and verifying if next segment is valid / available without having to call MediaSegmentAtPos()
             // which is heavy compared to internal data checks/
-            if (lastRequestedPeriod == null)
+            if (lastDownloadSegmentTimeRange == null)
             {
                 currentSegmentId = currentStreams.GetStartSegment(currentTime, timeBufferDepth);
                 LogInfo($"Rep. Swap. Start Seg: {currentSegmentId}");
@@ -342,14 +342,19 @@ namespace JuvoPlayer.DataProviders.Dash
             }
 
             string message;
-            var newSeg = currentStreams.MediaSegmentAtTime(lastRequestedPeriod.Start);
+            var newSeg = currentStreams.MediaSegmentAtTime(lastDownloadSegmentTimeRange.Start);
             if (newSeg.HasValue)
             {
-                newSeg++;
-                var tmp = currentStreams.MediaSegmentAtPos((uint)newSeg);
-                if (tmp != null)
+                Segment tmpSegment;
+                do
                 {
-                    message = $"Updated Seg: {newSeg}/{tmp.Period.Start}-{tmp.Period.Duration}";
+                    newSeg++;
+                    tmpSegment = currentStreams.MediaSegmentAtPos((uint) newSeg);
+                } while (tmpSegment != null && tmpSegment.Period.Start <= lastDownloadSegmentTimeRange.Start);
+
+                if (tmpSegment != null)
+                { 
+                    message = $"Updated Seg: {newSeg}/{tmpSegment.Period.Start}-{tmpSegment.Period.Duration}";
                 }
                 else
                 {
@@ -362,7 +367,7 @@ namespace JuvoPlayer.DataProviders.Dash
                 message = "Not Found. Setting segment to null";
             }
 
-            LogInfo($"Rep. Swap. Last Seg: {currentSegmentId}/{lastRequestedPeriod.Start}-{lastRequestedPeriod.Duration} {message}");
+            LogInfo($"Rep. Swap. Last Seg: {currentSegmentId}/{lastDownloadSegmentTimeRange.Start}-{lastDownloadSegmentTimeRange.Duration} {message}");
 
             currentSegmentId = newSeg;
 

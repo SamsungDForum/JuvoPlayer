@@ -47,10 +47,10 @@ namespace JuvoPlayer.DataProviders.Dash
             }
         }
 
-        public async Task ReloadManifestTask()
+        public async Task<bool> ReloadManifestTask()
         {
             if (!updateInProgressLock.Wait(0))
-                return;
+                return false;
 
             cancellationTokenSource = new CancellationTokenSource();
             var ct = cancellationTokenSource.Token;
@@ -68,7 +68,7 @@ namespace JuvoPlayer.DataProviders.Dash
                 {
                     ct.ThrowIfCancellationRequested();
                     Logger.Info($"Manifest download failure {Uri}");
-                    return;
+                    return false;
                 }
 
                 var newDoc = await ParseManifest(xmlManifest);
@@ -76,7 +76,7 @@ namespace JuvoPlayer.DataProviders.Dash
                 {
                     ct.ThrowIfCancellationRequested();
                     Logger.Error($"Manifest parse error {Uri}");
-                    return;
+                    return false;
                 }
 
                 ct.ThrowIfCancellationRequested();
@@ -89,6 +89,8 @@ namespace JuvoPlayer.DataProviders.Dash
                 minimumReloadPeriod = newDoc.MinimumUpdatePeriod ?? TimeSpan.MaxValue;
 
                 CurrentDocument = newDoc;
+
+                return true;
             }
             finally
             {
@@ -103,13 +105,13 @@ namespace JuvoPlayer.DataProviders.Dash
         {
             Logger.Info($"Downloading Manifest {Uri}");
 
-            using (var client = new HttpClient())
+            try
             {
-                try
-                {
-                    var startTime = DateTime.Now;
+                var startTime = DateTime.Now;
 
-                    var response = await client.GetAsync(Uri, HttpCompletionOption.ResponseHeadersRead, ct);
+                using (var client = new HttpClient { Timeout = TimeSpan.FromSeconds(3) })
+                using (var response = await client.GetAsync(Uri, HttpCompletionOption.ResponseHeadersRead, ct).ConfigureAwait(false))
+                {
                     response.EnsureSuccessStatusCode();
 
                     Logger.Info($"Downloading Manifest Done in {DateTime.Now - startTime} {Uri}");
@@ -117,13 +119,14 @@ namespace JuvoPlayer.DataProviders.Dash
                     var result = await response.Content.ReadAsStringAsync();
                     return result;
                 }
-                catch (Exception ex)
-                {
-                    Logger.Error(
-                        "Cannot download manifest file. Error: " + ex.Message);
-                    return null;
-                }
             }
+            catch (Exception ex)
+            {
+                Logger.Error(
+                    "Cannot download manifest file. Error: " + ex.Message);
+                return null;
+            }
+
         }
         private async Task<Document> ParseManifest(string aManifest)
         {
