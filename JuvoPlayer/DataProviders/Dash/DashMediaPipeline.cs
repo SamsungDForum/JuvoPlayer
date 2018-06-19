@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Xml;
 using JuvoLogger;
@@ -12,7 +13,7 @@ namespace JuvoPlayer.DataProviders.Dash
 {
     internal class DashMediaPipeline : IDisposable
     {
-        private struct DashStream : IEquatable<DashStream>
+        private class DashStream : IEquatable<DashStream>
         {
             public DashStream(Media media, Representation representation)
             {
@@ -22,6 +23,13 @@ namespace JuvoPlayer.DataProviders.Dash
 
             public Media Media { get; }
             public Representation Representation { get; }
+
+            public bool IsCompatibleWith(DashStream other)
+            {
+                return Representation.Codecs == other.Representation.Codecs
+                       && Representation.Height == other.Representation.Height
+                       && Representation.Width == other.Representation.Width;
+            }
 
             public override bool Equals(object obj)
             {
@@ -61,22 +69,25 @@ namespace JuvoPlayer.DataProviders.Dash
 
         private readonly IDashClient dashClient;
         private readonly IDemuxer demuxer;
+        private readonly IThroughputHistory throughputHistory;
         private readonly StreamType streamType;
 
         private bool pipelineStarted;
+        private bool disableAdaptiveStreaming;
 
         private DashStream currentStream;
+        private DashStream pendingStream;
         private List<DashStream> availableStreams = new List<DashStream>();
 
         private static readonly TimeSpan SegmentEps = TimeSpan.FromSeconds(0.5);
         private TimeSpan laskSeek = TimeSpan.Zero;
         private TimeSpan demuxerTimeStamp = TimeSpan.Zero;
 
-        public DashMediaPipeline(IDashClient dashClient, IDemuxer demuxer, StreamType streamType)
+        public DashMediaPipeline(IDashClient dashClient, IDemuxer demuxer, IThroughputHistory throughputHistory, StreamType streamType)
         {
-            this.dashClient = dashClient ??
-                              throw new ArgumentNullException(nameof(dashClient), "dashClient cannot be null");
+            this.dashClient = dashClient ?? throw new ArgumentNullException(nameof(dashClient), "dashClient cannot be null");
             this.demuxer = demuxer ?? throw new ArgumentNullException(nameof(dashClient), "demuxer cannot be null");
+            this.throughputHistory = throughputHistory ?? throw new ArgumentNullException(nameof(throughputHistory), "throughputHistory cannot be null");
             this.streamType = streamType;
 
             demuxer.DRMInitDataFound += OnDRMInitDataFound;
@@ -88,7 +99,7 @@ namespace JuvoPlayer.DataProviders.Dash
 
         }
 
-        public void Start(IList<Media> media)
+        public void UpdateMedia(IList<Media> media)
         {
             if (media == null)
                 throw new ArgumentNullException(nameof(media), "media cannot be null");
@@ -96,26 +107,74 @@ namespace JuvoPlayer.DataProviders.Dash
             if (media.Any(o => o.Type.Value != ToMediaType(streamType)))
                 throw new ArgumentException("Not compatible media found");
 
-            if (pipelineStarted && currentStream.Media != null)
+            if (pipelineStarted && currentStream != null)
             {
                 var currentMedia = media.Count == 1 ? media.First() : media.FirstOrDefault(o => o.Id == currentStream.Media.Id);
                 var currentRepresentation = currentMedia?.Representations.FirstOrDefault(o => o.Id == currentStream.Representation.Id);
                 if (currentRepresentation != null)
                 {
-                    var stream = new DashStream(currentMedia, currentRepresentation);
-                    UpdatePipeline(stream);
-                    GetAvailableStreams(media, currentStream.Media);
+                    GetAvailableStreams(media, currentMedia);
+                    pendingStream = new DashStream(currentMedia, currentRepresentation);
                     return;
                 }
             }
 
             var defaultMedia = GetDefaultMedia(media);
+            GetAvailableStreams(media, defaultMedia);
             // get first element of sorted array 
             var representation = defaultMedia.Representations.OrderByDescending(o => o.Bandwidth).First();
-            var defaultStream = new DashStream(defaultMedia, representation);
+            pendingStream = new DashStream(defaultMedia, representation);
+        }
 
-            StartPipeline(defaultStream);
-            GetAvailableStreams(media, currentStream.Media);
+        public void AdaptToNetConditions()
+        {
+            if (disableAdaptiveStreaming)
+                return;
+
+            if (currentStream == null && pendingStream == null)
+                return;
+
+            var streamToAdapt = pendingStream ?? currentStream;
+            if (streamToAdapt.Representation.Bandwidth.HasValue == false)
+                return;
+
+            var currentThroughput = throughputHistory.GetAverageThroughput();
+            if (Math.Abs(currentThroughput) < 0.1)
+                return;
+
+            Logger.Debug("Adaptation values:");
+            Logger.Debug("  current throughput: " + currentThroughput);
+            Logger.Debug("  current stream bandwith: " + streamToAdapt.Representation.Bandwidth.Value);
+
+            // availableStreams is sorted array by descending bandwith
+            var stream = availableStreams.FirstOrDefault(o => o.Representation.Bandwidth <= currentThroughput);
+            if (stream != null && stream.Representation.Bandwidth != streamToAdapt.Representation.Bandwidth)
+            {
+                Logger.Info("Changing stream do bandwith: " + stream.Representation.Bandwidth);
+                pendingStream = stream;
+            }
+        }
+
+        public void SwitchStreamIfNeeded()
+        {
+            if (pendingStream == null)
+                return;
+
+            if (currentStream == null)
+            {
+                StartPipeline(pendingStream);
+            }
+            else if (currentStream.IsCompatibleWith(pendingStream))
+            {
+                UpdatePipeline(pendingStream);
+            }
+            else
+            {
+                StopPipeline();
+                StartPipeline(pendingStream);
+            }
+
+            pendingStream = null;
         }
 
         private void GetAvailableStreams(IEnumerable<Media> media, Media defaultMedia)
@@ -125,31 +184,35 @@ namespace JuvoPlayer.DataProviders.Dash
             // list of default media representation + representations from any media from the same group
             // if no, return all available medias
             // TODO: add support for: SupplementalProperty schemeIdUri="urn:mpeg:dash:adaptation-set-switching:2016" 
-            //            if (media.Any(o => o.Representations.Count() > 1))
             if (defaultMedia.Representations.Length > 1)
             {
                 if (defaultMedia.Group.HasValue)
                 {
                     availableStreams = media.Where(o => o.Group == defaultMedia.Group)
-                        .SelectMany(o => o.Representations, (parent, repr) => new DashStream(parent, repr)).ToList();
+                        .SelectMany(o => o.Representations, (parent, repr) => new DashStream(parent, repr))
+                        .OrderByDescending(o => o.Representation.Bandwidth)
+                        .ToList();
                 }
                 else
                 {
                     availableStreams = defaultMedia.Representations.Select(o => new DashStream(defaultMedia, o))
+                        .OrderByDescending(o => o.Representation.Bandwidth)
                         .ToList();
                 }
             }
             else
             {
-                availableStreams = media.Select(o => new DashStream(o, o.Representations.First())).ToList();
+                availableStreams = media.Select(o => new DashStream(o, o.Representations.First()))
+                    .OrderByDescending(o => o.Representation.Bandwidth)
+                    .ToList();
             }
         }
 
-        private void StartPipeline(DashStream? newStream = null)
+        private void StartPipeline(DashStream newStream = null)
         {
-            if (newStream.HasValue)
+            if (newStream != null)
             {
-                currentStream = newStream.Value;
+                currentStream = newStream;
 
                 Logger.Info($"{streamType}: Dash pipeline start.");
                 Logger.Info($"{streamType}: Media: {currentStream.Media}");
@@ -160,7 +223,7 @@ namespace JuvoPlayer.DataProviders.Dash
             }
 
             dashClient.Start();
-            demuxer.StartForExternalSource(newStream.HasValue ? InitializationMode.Full : InitializationMode.Minimal);
+            demuxer.StartForExternalSource(newStream != null ? InitializationMode.Full : InitializationMode.Minimal);
             pipelineStarted = true;
         }
 
@@ -246,6 +309,8 @@ namespace JuvoPlayer.DataProviders.Dash
 
             if (currentStream.Media.Type.Value != newMedia.Type.Value)
                 throw new ArgumentException("wrong media type");
+
+            disableAdaptiveStreaming = true;
 
             StopPipeline();
             StartPipeline(newStream);
