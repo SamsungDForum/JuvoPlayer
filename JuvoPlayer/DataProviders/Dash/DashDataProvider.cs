@@ -16,8 +16,6 @@ namespace JuvoPlayer.DataProviders.Dash
         private readonly ILogger Logger = LoggerManager.GetInstance().GetLogger(Tag);
 
         private readonly DashManifest manifest;
-        private Document currentDocument;
-        private Period currentPeriod;
         private DashMediaPipeline audioPipeline;
         private DashMediaPipeline videoPipeline;
         private readonly List<SubtitleInfo> subtitleInfos = new List<SubtitleInfo>();
@@ -32,6 +30,7 @@ namespace JuvoPlayer.DataProviders.Dash
         public event StreamError StreamError;
 
         private bool disposed;
+        private bool isDynamic;
 
         public DashDataProvider(
             DashManifest manifest,
@@ -126,7 +125,11 @@ namespace JuvoPlayer.DataProviders.Dash
         public async void OnPlayed()
         {
             // try to update manifest. Needed in case of live content
-            await UpdateManifest();
+            if (await UpdateManifest())
+            {
+                audioPipeline.SwitchStreamIfNeeded();
+                videoPipeline.SwitchStreamIfNeeded();
+            }
         }
 
         public void OnSeek(TimeSpan time)
@@ -152,8 +155,7 @@ namespace JuvoPlayer.DataProviders.Dash
             // NOTE: Are we sure seeking is illegal on Dynamic MPDs?
             // Imho no. There is a "time window" in which content is available
             // but leave that for now...
-            return (currentDocument.IsDynamic == false);
-
+            return !isDynamic;
         }
 
         public List<StreamDescription> GetStreamsDescription(StreamType streamType)
@@ -176,37 +178,34 @@ namespace JuvoPlayer.DataProviders.Dash
             Logger.Info("Dash start.");
 
             await UpdateManifest();
+
+            audioPipeline.SwitchStreamIfNeeded();
+            videoPipeline.SwitchStreamIfNeeded();
         }
 
-        private void StartInternal()
+        private bool UpdateMedia(Document document, Period period)
         {
             if (disposed)
-                return;
-
-            if (currentDocument == null || currentPeriod == null)
-            {
-                Logger.Info("Dash start delayed. No Manifest/Period available.");
-                return;
-            }
+                return false;
 
             // TODO:? In case of updates - should we check if A/V is any different from
             // anything we passed down before? Should offload client...
-            var manifestParams = new ManifestParameters(currentDocument, currentPeriod)
+            var manifestParams = new ManifestParameters(document, period)
             {
-                PlayClock = LiveClockTime(currentTime)
+                PlayClock = LiveClockTime(currentTime, document)
             };
 
-            Logger.Info(currentPeriod.ToString());
+            Logger.Info(period.ToString());
 
-            var audios = currentPeriod.Sets.Where(o => o.Type.Value == MediaType.Audio).ToList();
-            var videos = currentPeriod.Sets.Where(o => o.Type.Value == MediaType.Video).ToList();
+            var audios = period.Sets.Where(o => o.Type.Value == MediaType.Audio).ToList();
+            var videos = period.Sets.Where(o => o.Type.Value == MediaType.Video).ToList();
 
             if (audios.Any() && videos.Any())
             {
-                BuildSubtitleInfos(currentPeriod);
+                BuildSubtitleInfos(period);
 
-                if (currentPeriod.Duration.HasValue)
-                    ClipDurationChanged?.Invoke(currentPeriod.Duration.Value);
+                if (period.Duration.HasValue)
+                    ClipDurationChanged?.Invoke(period.Duration.Value);
 
                 foreach (var v in videos)
                 {
@@ -218,9 +217,14 @@ namespace JuvoPlayer.DataProviders.Dash
                     a.SetDocumentParameters(manifestParams);
                 }
 
-                videoPipeline.Start(videos);
-                audioPipeline.Start(audios);
+                isDynamic = document.IsDynamic;
+
+                videoPipeline.UpdateMedia(videos);
+                audioPipeline.UpdateMedia(audios);
+                return true;
             }
+
+            return false;
         }
 
         /// <summary>
@@ -266,20 +270,16 @@ namespace JuvoPlayer.DataProviders.Dash
         /// for dynamic content. Otherwise provided time will not be changed.
         /// </summary>
         /// <param name="time">Current Time Stamp</param>
-        /// <param name="newDoc">IDocument. Optional argument containing a document which will
-        /// be used to retrieve isLive information</param>
+        /// <param name="document">Document. A document which will be used to retrieve isLive information</param>
         /// <returns>TimeSpan - Current Live Clock for dynamic mpd. It is expressed as ammount
         /// of time has passed since Document.AvailabilityStartTime
         /// For static content, time passed as argument is returned.</returns>
-        private TimeSpan LiveClockTime(TimeSpan time, Document newDoc = null)
+        private static TimeSpan LiveClockTime(TimeSpan time, Document document)
         {
-            var document = newDoc ?? currentDocument;
-
             if (document.IsDynamic)
                 time = DateTime.UtcNow.Subtract(document.AvailabilityStartTime ?? DateTime.MinValue);
 
             return time;
-
         }
 
         private void BuildSubtitleInfos(Period period)
@@ -320,43 +320,49 @@ namespace JuvoPlayer.DataProviders.Dash
             videoPipeline.OnTimeUpdated(time);
 
             await UpdateManifest();
+
+            if (disposed)
+                return;
+
+            audioPipeline.AdaptToNetConditions();
+            videoPipeline.AdaptToNetConditions();
+
+            audioPipeline.SwitchStreamIfNeeded();
+            videoPipeline.SwitchStreamIfNeeded();
         }
 
-        public async Task UpdateManifest()
+        public async Task<bool> UpdateManifest()
         {
-            if (manifest.NeedsReload())
+            if (!manifest.NeedsReload())
+                return false;
+
+            Logger.Info("Updating manifest");
+
+            try
             {
-                Logger.Info("Updating manifest");
-
-                try
-                {
-                    await manifest.ReloadManifestTask();
-                }
-                catch (OperationCanceledException)
-                {
-                    Logger.Info("Reloading manifest was cancelled");
-                    return;
-                }
-
-                var tmpDocument = manifest.CurrentDocument;
-                if (tmpDocument == null)
-                {
-                    Logger.Info("No Manifest.");
-                    return;
-                }
-
-                var tmpPeriod = FindPeriod(tmpDocument, LiveClockTime(currentTime, tmpDocument));
-                if (tmpPeriod == null)
-                {
-                    Logger.Info("No period in Manifest.");
-                    return;
-                }
-
-                currentDocument = manifest.CurrentDocument;
-                currentPeriod = tmpPeriod;
-
-                StartInternal();
+                await manifest.ReloadManifestTask();
             }
+            catch (OperationCanceledException)
+            {
+                Logger.Info("Reloading manifest was cancelled");
+                return false;
+            }
+
+            var tmpDocument = manifest.CurrentDocument;
+            if (tmpDocument == null)
+            {
+                Logger.Info("No Manifest.");
+                return false;
+            }
+
+            var tmpPeriod = FindPeriod(tmpDocument, LiveClockTime(currentTime, tmpDocument));
+            if (tmpPeriod == null)
+            {
+                Logger.Info("No period in Manifest.");
+                return false;
+            }
+
+            return UpdateMedia(tmpDocument, tmpPeriod);
         }
 
         private void OnStreamError(string errorMessage)
