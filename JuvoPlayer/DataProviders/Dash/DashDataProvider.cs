@@ -127,8 +127,8 @@ namespace JuvoPlayer.DataProviders.Dash
             // try to update manifest. Needed in case of live content
             if (await UpdateManifest())
             {
-                audioPipeline.ReconfigurePipelineIfNeeded();
-                videoPipeline.ReconfigurePipelineIfNeeded();
+                audioPipeline.SwitchStreamIfNeeded();
+                videoPipeline.SwitchStreamIfNeeded();
             }
         }
 
@@ -179,8 +179,8 @@ namespace JuvoPlayer.DataProviders.Dash
 
             await UpdateManifest();
 
-            audioPipeline.ReconfigurePipelineIfNeeded();
-            videoPipeline.ReconfigurePipelineIfNeeded();
+            audioPipeline.SwitchStreamIfNeeded();
+            videoPipeline.SwitchStreamIfNeeded();
         }
 
         private bool UpdateMedia(Document document, Period period)
@@ -327,8 +327,8 @@ namespace JuvoPlayer.DataProviders.Dash
             audioPipeline.AdaptToNetConditions();
             videoPipeline.AdaptToNetConditions();
 
-            audioPipeline.ReconfigurePipelineIfNeeded();
-            videoPipeline.ReconfigurePipelineIfNeeded();
+            audioPipeline.SwitchStreamIfNeeded();
+            videoPipeline.SwitchStreamIfNeeded();
         }
 
         public async Task<bool> UpdateManifest()

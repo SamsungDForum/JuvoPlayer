@@ -46,12 +46,12 @@ namespace JuvoPlayer.DataProviders
             return sampleSize;
         }
 
-        public void Push(int size, TimeSpan duration)
+        public void Push(int sizeInBytes, TimeSpan duration)
         {
             lock (throughputs)
             {
                 // bits/ms = kbits/s
-                var throughput = 8 * size / duration.TotalMilliseconds;
+                var throughput = 8 * sizeInBytes / duration.TotalMilliseconds;
                 throughputs.AddFirst(throughput * 1000); // we want throughputs in bps
 
                 if (throughputs.Count > MaxMeasurementsToKeep)

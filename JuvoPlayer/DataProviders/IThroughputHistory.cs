@@ -7,7 +7,7 @@ namespace JuvoPlayer.DataProviders
     public interface IThroughputHistory
     {
         double GetAverageThroughput();
-        void Push(int size, TimeSpan duration);
+        void Push(int sizeInBytes, TimeSpan duration);
         void Reset();
     }
 }
