@@ -18,6 +18,7 @@ namespace JuvoPlayer.DataProviders.Dash
         private static readonly TimeSpan TimeBufferDepthDefault = TimeSpan.FromSeconds(10);
         private TimeSpan timeBufferDepth = TimeBufferDepthDefault;
 
+        private readonly IThroughputHistory throughputHistory;
         private readonly ISharedBuffer sharedBuffer;
         private readonly StreamType streamType;
 
@@ -63,14 +64,16 @@ namespace JuvoPlayer.DataProviders.Dash
         /// </summary>
         private bool IsDynamic => currentStreams.GetDocumentParameters().Document.IsDynamic;
 
+
         /// <summary>
         /// Notification event for informing dash pipeline that unrecoverable error
         /// has occoured.
         /// </summary>
         public event Error Error;
 
-        public DashClient(ISharedBuffer sharedBuffer, StreamType streamType)
+        public DashClient(IThroughputHistory throughputHistory, ISharedBuffer sharedBuffer,  StreamType streamType)
         {
+            this.throughputHistory = throughputHistory ?? throw new ArgumentNullException(nameof(throughputHistory), "throughputHistory cannot be null");
             this.sharedBuffer = sharedBuffer ?? throw new ArgumentNullException(nameof(sharedBuffer), "sharedBuffer cannot be null");
             this.streamType = streamType;
         }
@@ -187,7 +190,7 @@ namespace JuvoPlayer.DataProviders.Dash
                 // Already have init segment. Push it down the pipeline & schedule next download
                 var initData = new DownloadResponse();
                 initData.Data = initStreamBytes;
-                initData.SegmentID = null;
+                initData.SegmentId = null;
 
                 LogInfo($"Skipping INIT segment download");
                 InitDataDownloaded(initData);
@@ -214,7 +217,7 @@ namespace JuvoPlayer.DataProviders.Dash
 
             var timeInfo = responseResult.DownloadSegment.Period.ToString();
 
-            LogInfo($"Segment: {responseResult.SegmentID} received {timeInfo}");
+            LogInfo($"Segment: {responseResult.SegmentId} received {timeInfo}");
 
             if (IsEndOfContent())
                 Stop();
@@ -391,14 +394,15 @@ namespace JuvoPlayer.DataProviders.Dash
 
         private Task<DownloadResponse> CreateDownloadTask(Segment stream, bool ignoreError, uint? segmentId)
         {
-            var requestData = new DownloadRequestData
+            var requestData = new DownloadRequest
             {
                 DownloadSegment = stream,
-                SegmentID = segmentId,
+                IgnoreError = ignoreError,
+                SegmentId = segmentId,
                 StreamType = streamType
             };
 
-            return DownloadRequest.CreateDownloadRequestAsync(requestData, ignoreError, cancellationTokenSource.Token);
+            return DashDownloader.DownloadDataAsync(requestData, cancellationTokenSource.Token, throughputHistory);
         }
 
         private void TimeBufferDepthDynamic()
