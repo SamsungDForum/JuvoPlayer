@@ -321,6 +321,9 @@ namespace JuvoPlayer.DataProviders.Dash
 
             await UpdateManifest();
 
+            if (disposed)
+                return;
+
             audioPipeline.AdaptToNetConditions();
             videoPipeline.AdaptToNetConditions();
 
