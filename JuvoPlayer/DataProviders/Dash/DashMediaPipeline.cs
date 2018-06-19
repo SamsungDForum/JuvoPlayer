@@ -222,8 +222,8 @@ namespace JuvoPlayer.DataProviders.Dash
                 ParseDrms(currentStream.Media);
             }
 
-            dashClient.Start();
             demuxer.StartForExternalSource(newStream != null ? InitializationMode.Full : InitializationMode.Minimal);
+            dashClient.Start();
             pipelineStarted = true;
         }
 
@@ -320,13 +320,8 @@ namespace JuvoPlayer.DataProviders.Dash
         {
             // Stop demuxer and dashclient
             // Stop demuxer first so old incoming data will ignored
-            
-            // Client Stop first. Demux Stop clears buffer while Dash does not.
-            // If client will pump data after stop it will be in buffer causing issues during
-            // seek & key frame search
-            dashClient.Stop();
             demuxer.Stop();
-            
+            dashClient.Stop();
         }
 
         public List<StreamDescription> GetStreamsDescription()
