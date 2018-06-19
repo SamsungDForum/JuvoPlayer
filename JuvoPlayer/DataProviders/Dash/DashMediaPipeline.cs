@@ -150,13 +150,12 @@ namespace JuvoPlayer.DataProviders.Dash
             var stream = availableStreams.FirstOrDefault(o => o.Representation.Bandwidth <= currentThroughput);
             if (stream != null && stream.Representation.Bandwidth != streamToAdapt.Representation.Bandwidth)
             {
-                Logger.Info("Changing stream do bandiwth: " + stream.Representation.Bandwidth);
+                Logger.Info("Changing stream do bandwith: " + stream.Representation.Bandwidth);
                 pendingStream = stream;
             }
         }
 
-        //TODO: better name
-        public void ReconfigurePipelineIfNeeded()
+        public void SwitchStreamIfNeeded()
         {
             if (pendingStream == null)
                 return;
