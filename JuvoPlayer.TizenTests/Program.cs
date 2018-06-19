@@ -1,7 +1,6 @@
 using NUnitLite;
 using NUnit.Common;
 using System;
-using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -11,19 +10,29 @@ using System.Threading.Tasks;
 using JuvoLogger;
 using JuvoLogger.Tizen;
 using Tizen.Applications;
+using Path = System.IO.Path;
+using Window = ElmSharp.Window;
 
 namespace JuvoPlayer.TizenTests
 {
-    class Program : ServiceApplication
+    class Program : CoreUIApplication
     {
         private static ILogger Logger = LoggerManager.GetInstance().GetLogger("UT");
         private ReceivedAppControl receivedAppControl;
         private string[] nunitArgs;
+        private Window mainWindow;
 
         private static Assembly GetAssemblyByName(string name)
         {
-            return AppDomain.CurrentDomain.GetAssemblies().
-                SingleOrDefault(assembly => assembly.GetName().Name == name);
+            return AppDomain.CurrentDomain.GetAssemblies().SingleOrDefault(assembly => assembly.GetName().Name == name);
+        }
+
+        protected override void OnCreate()
+        {
+            base.OnCreate();
+
+            mainWindow = new Window("Main Window") {Geometry = new ElmSharp.Rect(0, 0, 1920, 1080)};
+            mainWindow.Show();
         }
 
         private void ExtractNunitArgs()
@@ -42,7 +51,8 @@ namespace JuvoPlayer.TizenTests
 
             using (ExtendedTextWrapper writer = new ExtendedTextWrapper(new StringWriter(sb)))
             {
-                string[] finalNunitArgs = nunitArgs.Concat(new string[] { "--result=/tmp/" + Path.GetFileNameWithoutExtension(dllName) + ".xml" }).ToArray();
+                string[] finalNunitArgs = nunitArgs.Concat(new string[]
+                    {"--result=/tmp/" + Path.GetFileNameWithoutExtension(dllName) + ".xml"}).ToArray();
                 new AutoRun(assembly).Execute(finalNunitArgs, writer, Console.In);
             }
 
