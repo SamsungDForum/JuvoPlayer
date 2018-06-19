@@ -144,6 +144,12 @@ namespace JuvoPlayer.Player
             if (seeking)
                 return;
 
+            // TODO: Consider Pause on DataProvider prior to calling
+            // Player.Seek() followed by DataProvider.Seek(). 
+            // Current model will generate stale data if demuxer or data provider pushes new data into
+            // pipeline between player.Seek() and Seek?.Invoke() calls. 
+            // Will result in longer seek times + possible key frame misses. 
+            //
             player.Seek(time);
 
             // prevent simultaneously seeks

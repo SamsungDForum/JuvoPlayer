@@ -16,6 +16,8 @@ using MpdParser;
 
 namespace JuvoPlayer.DataProviders.Dash
 {
+    public delegate void Error(string errorMessage);
+
     internal interface IDashClient : IDisposable
     {
         TimeSpan Seek(TimeSpan position);
@@ -24,5 +26,7 @@ namespace JuvoPlayer.DataProviders.Dash
         void Stop();
         void OnTimeUpdated(TimeSpan time);
         void UpdateRepresentation(Representation representation);
+
+        event Error Error;
     }
 }
