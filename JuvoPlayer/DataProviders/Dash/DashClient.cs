@@ -72,16 +72,10 @@ namespace JuvoPlayer.DataProviders.Dash
         public TimeSpan Seek(TimeSpan position)
         {
             var newTime = TimeSpan.Zero;
-            var segmentId = currentStreams?.MediaSegmentAtTime(position);
-            if (segmentId.HasValue)
-            {
-                currentTime = position;
-                currentSegmentId = segmentId.Value;
-
-                newTime = currentStreams.MediaSegmentAtPos(currentSegmentId.Value).Period.Start;
-            }
-
-            LogInfo($"Seek. Pos Req: {position} Seek to: {newTime} SegId: {segmentId}");
+            var currentSegmentId = currentStreams.SegmentId(position);
+            var timeInfo = currentStreams.SegmentTimeRange(currentSegmentId);
+            
+            LogInfo($"Seek. Pos Req: {position} Seek to: ({timeInfo}) SegId: {currentSegmentId}");
             return newTime;
         }
 
@@ -100,7 +94,7 @@ namespace JuvoPlayer.DataProviders.Dash
             bufferTime = currentTime;
 
             if (currentSegmentId.HasValue == false)
-                currentSegmentId = currentStreams.GetStartSegment(currentTime, timeBufferDepth);
+                currentSegmentId = currentStreams.StartSegmentId(currentTime, timeBufferDepth);
 
             var initSegment = currentStreams.InitSegment;
             if (initSegment != null)
@@ -127,10 +121,7 @@ namespace JuvoPlayer.DataProviders.Dash
 
                 SwapRepresentation();
 
-                if (!currentSegmentId.HasValue)
-                    return;
-
-                var segment = currentStreams.MediaSegmentAtPos(currentSegmentId.Value);
+                var segment = currentStreams.MediaSegment(currentSegmentId);
                 if (segment == null)
                 {
                     if (IsDynamic)
@@ -169,7 +160,7 @@ namespace JuvoPlayer.DataProviders.Dash
         {
             sharedBuffer.WriteData(responseResult.Data);
             lastRequestedPeriod = responseResult.DownloadSegment.Period.Copy();
-            ++currentSegmentId;
+            currentSegmentId = currentStreams.NextSegmentId(currentSegmentId);
 
             if (IsDynamic)
                 bufferTime += responseResult.DownloadSegment.Period.Duration;
@@ -260,39 +251,28 @@ namespace JuvoPlayer.DataProviders.Dash
 
             UpdateTimeBufferDepth();
 
-            // TODO:
-            // Add API to Representation - GetNextSegmentIdAtTime(). would allow for finding exixsting segment
-            // and verifying if next segment is valid / available without having to call MediaSegmentAtPos()
-            // which is heavy compared to internal data checks/
             if (lastRequestedPeriod == null)
             {
-                currentSegmentId = currentStreams.GetStartSegment(currentTime, timeBufferDepth);
-                LogInfo($"Rep. Swap. Start Seg: {currentSegmentId}");
+                currentSegmentId = currentStreams.StartSegmentId(currentTime, timeBufferDepth);
+                LogInfo($"Rep. Swap. Start Seg: [{currentSegmentId}]");
                 return;
             }
 
+            var newSeg = currentStreams.NextSegmentId(lastRequestedPeriod.Start);
             string message;
-            var newSeg = currentStreams.MediaSegmentAtTime(lastRequestedPeriod.Start);
+
             if (newSeg.HasValue)
             {
-                newSeg++;
-                var tmp = currentStreams.MediaSegmentAtPos((uint)newSeg);
-                if (tmp != null)
-                {
-                    message = $"Updated Seg: {newSeg}/{tmp.Period.Start}-{tmp.Period.Duration}";
-                }
-                else
-                {
-                    message = $"Does not return stream for Seg {newSeg}. Setting segment to null";
-                    newSeg = null;
-                }
+               
+                var segmentTimeRange = currentStreams.SegmentTimeRange(newSeg);
+                message = $"Updated Seg: [{newSeg}]/({segmentTimeRange?.Start}-{segmentTimeRange?.Duration})";
             }
             else
             {
                 message = "Not Found. Setting segment to null";
             }
 
-            LogInfo($"Rep. Swap. Last Seg: {currentSegmentId}/{lastRequestedPeriod.Start}-{lastRequestedPeriod.Duration} {message}");
+            LogInfo($"Rep. Swap. Last Seg: [{currentSegmentId}]/({lastRequestedPeriod.Start}-{lastRequestedPeriod.Duration}) {message}");
 
             currentSegmentId = newSeg;
 

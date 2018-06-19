@@ -39,7 +39,7 @@ namespace MpdParser.Node.Dynamic
             Duration = media?.Period?.Duration;
 
             DownloadIndexOnce();
-            
+
             // If media.Period.Duration has no value (not specified by Manifest), 
             // try to guess duration from index information 
             if (Duration.HasValue == false)
@@ -62,9 +62,10 @@ namespace MpdParser.Node.Dynamic
         private Segment media_;
 
         public TimeSpan? Duration { get; }
-        
+
         public Segment InitSegment { get; }
-        public Segment IndexSegment { get; }
+
+        private Segment IndexSegment;
 
         public ulong PresentationTimeOffset { get; }
         public TimeSpan? TimeShiftBufferDepth { get; }
@@ -151,11 +152,9 @@ namespace MpdParser.Node.Dynamic
             }
         }
 
-        public Segment MediaSegmentAtPos(uint pos)
+        public Segment MediaSegment(uint? segmentId)
         {
-            Logger.Info(string.Format("MediaSegmentAtPos {0}", pos));
-
-            if (media_ == null)
+            if (media_ == null || !segmentId.HasValue)
                 return null;
 
             if (segments_.Count == 0)
@@ -164,52 +163,52 @@ namespace MpdParser.Node.Dynamic
                 return media_;
             }
 
-            if (pos >= segments_.Count)
+            if (segmentId >= segments_.Count)
                 return null;
 
-            return segments_[(int)pos];
+            return segments_[(int)segmentId];
         }
 
-        public uint? MediaSegmentAtTime(TimeSpan duration)
+        public uint? SegmentId(TimeSpan pointInTime)
         {
-            Logger.Info(string.Format("MediaSegmentAtTime {0}", duration));
             if (media_ == null)
                 return null;
 
-            if (media_.Contains(duration) <= TimeRelation.EARLIER)
+            if (media_.Contains(pointInTime) <= TimeRelation.EARLIER)
                 return null;
 
+            // TODO: Values are sorted. Convert to binary search.
             for (int i = 0; i < segments_.Count; ++i)
             {
-                if (segments_[i].Period.Start + segments_[i].Period.Duration >= duration)
+                if (segments_[i].Period.Start + segments_[i].Period.Duration >= pointInTime)
                     return (uint)i;
             }
             return null;
         }
 
-        private uint? GetStartSegmentDynamic(TimeSpan durationSpan)
+        private uint? GetStartSegmentDynamic(TimeSpan pointInTime)
         {
             var availStart = (Parameters.Document.AvailabilityStartTime ?? DateTime.MinValue);
-            var liveTimeIndex = (availStart + durationSpan + Parameters.PlayClock) - availStart;
+            var liveTimeIndex = (availStart + pointInTime + Parameters.PlayClock) - availStart;
 
-            return MediaSegmentAtTime(liveTimeIndex);
+            return SegmentId(liveTimeIndex);
         }
 
-        private uint GetStartSegmentStatic(TimeSpan durationSpan)
+        private uint GetStartSegmentStatic(TimeSpan pointInTime)
         {
             return 0;
         }
 
-        public uint? GetStartSegment(TimeSpan durationSpan, TimeSpan bufferDepth)
+        public uint? StartSegmentId(TimeSpan pointInTime, TimeSpan bufferDepth)
         {
             if (media_ == null)
                 return null;
 
             //TODO: Take into account @startNumber if available
             if (Parameters.Document.IsDynamic == true)
-                return GetStartSegmentDynamic(durationSpan);
+                return GetStartSegmentDynamic(pointInTime);
 
-            return GetStartSegmentStatic(durationSpan);
+            return GetStartSegmentStatic(pointInTime);
         }
 
         public IEnumerable<Segment> MediaSegments()
@@ -217,6 +216,37 @@ namespace MpdParser.Node.Dynamic
             if (segments_.Count == 0 && media_ != null)
                 return new List<Segment>() { media_ };
             return segments_;
+        }
+
+        public uint? NextSegmentId(uint? segmentId)
+        {
+            var nextSegmentId = segmentId.HasValue ? segmentId + 1 : Count;
+
+            if (nextSegmentId < 0 || nextSegmentId >= Count)
+                return null;
+
+            return nextSegmentId;
+        }
+
+        public uint? NextSegmentId(TimeSpan pointInTime)
+        {
+            var nextSegmentId = SegmentId(pointInTime);
+
+            if (nextSegmentId.HasValue == false)
+                return null;
+
+            return NextSegmentId(nextSegmentId.Value);
+        }
+
+        public TimeRange SegmentTimeRange(uint? segmentId)
+        {
+            if (!segmentId.HasValue || segmentId < 0 || segmentId >= Count)
+                return null;
+
+            // Returned TimeRange via a copy. Intentional.
+            // If Manifest gets updated it is undesired to have wierd values in it.
+            //
+            return segments_[(int)segmentId].Period.Copy();
         }
     }
 }
