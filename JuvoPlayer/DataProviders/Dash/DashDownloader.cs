@@ -150,6 +150,7 @@ namespace JuvoPlayer.DataProviders.Dash
 
         private async Task<DownloadResponse> DownloadAsync()
         {
+            string segmentID = SegmentID(requestData.SegmentID);
             do
             {
                 try
@@ -162,7 +163,7 @@ namespace JuvoPlayer.DataProviders.Dash
                     if (e.InnerException is OperationCanceledException)
                         ExceptionDispatchInfo.Capture(e.InnerException).Throw();
 
-                    Logger.Warn($"{requestData.StreamType}: Segment: {requestData.SegmentID} NetError: {e.Message}");
+                    Logger.Warn($"{requestData.StreamType}: Segment: {segmentID} NetError: {e.Message}");
                     ++downloadErrorCount;
                 }
                 catch (OperationCanceledException)
@@ -171,16 +172,18 @@ namespace JuvoPlayer.DataProviders.Dash
                 }
                 catch (Exception e)
                 {
-                    Logger.Warn($"{requestData.StreamType}: Segment: {requestData.SegmentID} Error: {e.Message}");
+                    Logger.Warn($"{requestData.StreamType}: Segment: {segmentID} Error: {e.Message}");
                     ++downloadErrorCount;
                 }
             } while (ignoreError && downloadErrorCount < 3);
 
-            throw new Exception($"{requestData.StreamType}: Segment: {requestData.SegmentID} Max retry count reached.");
+            throw new Exception($"{requestData.StreamType}: Segment: {segmentID} Max retry count reached."); ;
         }
 
         private async Task<DownloadResponse> DownloadDataTaskAsync()
         {
+            cancellationToken.ThrowIfCancellationRequested();
+
             using (var dataDownloader = new WebClientEx())
             {
                 if (downloadRange != null)
@@ -188,7 +191,9 @@ namespace JuvoPlayer.DataProviders.Dash
 
                 using (cancellationToken.Register(dataDownloader.CancelAsync))
                 {
-                    Logger.Info($"{requestData.StreamType}: Segment: {requestData.SegmentID} Requested. URL: {requestData.DownloadSegment.Url} Range: {downloadRange}");
+                    Logger.Info($"{requestData.StreamType}: Segment: {SegmentID(requestData.SegmentID)} Requested. URL: {requestData.DownloadSegment.Url} Range: {downloadRange}");
+
+                    cancellationToken.ThrowIfCancellationRequested();
 
                     return new DownloadResponse
                     {
@@ -220,6 +225,12 @@ namespace JuvoPlayer.DataProviders.Dash
 
             return sleepTime;
         }
+
+        private static string SegmentID(uint? segmentId)
+        {
+            return segmentId.HasValue ? segmentId.ToString() : "INIT";
+        }
+
     }
 }
 
