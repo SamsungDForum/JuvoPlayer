@@ -50,10 +50,11 @@ namespace JuvoPlayer.DataProviders.Dash
         private static DashMediaPipeline CreateMediaPipeline(StreamType streamType, string libPath)
         {
             var sharedBuffer = new ChunksSharedBuffer();
-            var dashClient = new DashClient(sharedBuffer, streamType);
+            var throughputHistory = new ThroughputHistory();
+            var dashClient = new DashClient(throughputHistory, sharedBuffer, streamType);
             var demuxer = new FFmpegDemuxer(libPath, sharedBuffer);
 
-            return new DashMediaPipeline(dashClient, demuxer, streamType);
+            return new DashMediaPipeline(dashClient, demuxer, throughputHistory, streamType);
         }
 
         public bool SupportsClip(ClipDefinition clip)
