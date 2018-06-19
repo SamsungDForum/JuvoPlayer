@@ -103,13 +103,13 @@ namespace JuvoPlayer.DataProviders.Dash
         {
             Logger.Info($"Downloading Manifest {Uri}");
 
-            using (var client = new HttpClient())
+            try
             {
-                try
-                {
-                    var startTime = DateTime.Now;
+                var startTime = DateTime.Now;
 
-                    var response = await client.GetAsync(Uri, HttpCompletionOption.ResponseHeadersRead, ct);
+                using (var client = new HttpClient { Timeout = TimeSpan.FromSeconds(3) })
+                using (var response = await client.GetAsync(Uri, HttpCompletionOption.ResponseHeadersRead, ct).ConfigureAwait(false))
+                {
                     response.EnsureSuccessStatusCode();
 
                     Logger.Info($"Downloading Manifest Done in {DateTime.Now - startTime} {Uri}");
@@ -117,13 +117,14 @@ namespace JuvoPlayer.DataProviders.Dash
                     var result = await response.Content.ReadAsStringAsync();
                     return result;
                 }
-                catch (Exception ex)
-                {
-                    Logger.Error(
-                        "Cannot download manifest file. Error: " + ex.Message);
-                    return null;
-                }
             }
+            catch (Exception ex)
+            {
+                Logger.Error(
+                    "Cannot download manifest file. Error: " + ex.Message);
+                return null;
+            }
+
         }
         private async Task<Document> ParseManifest(string aManifest)
         {
