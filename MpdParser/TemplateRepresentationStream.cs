@@ -64,7 +64,7 @@ namespace MpdParser.Node.Dynamic
                 else if (x.TimeScaled > y.TimeScaled)
                     return 1;
                 else
-                   return 0;
+                    return 0;
 
             }
         }
@@ -171,7 +171,9 @@ namespace MpdParser.Node.Dynamic
         public Segment IndexSegment { get; }
 
         /// <summary>
-        /// Returns number of time available for segments in representation
+        /// Returns number of available segments in representation.
+        /// Static content = All Segments
+        /// Dyanmic content = Segments currently available
         /// </summary>
         public uint Count
         {
@@ -208,19 +210,19 @@ namespace MpdParser.Node.Dynamic
             AvaliabilityTimeOffset = avaliabilityTimeOffset;
             AvaliabilityTimeComplete = avaliabilityTimeComplete;
 
-
+            // Get the number of elements after unwinding all repeats.
+            //
             uint entryCount = (uint)timeline.Length;
-            ulong justDurations = 0;
 
-            // Get the number of elements after unwinding all repeats.    
             foreach (TimelineItem item in timeline)
             {
                 entryCount += (uint)item.Repeats;
             }
 
-            // Unwind timeline so there are no repeats which are just a pain in the anus...
             timelineAll_ = new TimelineItemRep[entryCount];
 
+            // Unwind timeline so there are no repeats which are just a pain in the anus...
+            //
             int idx = 0;
 
             foreach (TimelineItem item in timeline)
@@ -254,6 +256,8 @@ namespace MpdParser.Node.Dynamic
             // Compute average segment duration by taking start time of first segment
             // and start + duration of last segment. Divison of this by number of elements
             // gives an approximation of individual segment duration
+            ulong justDurations = 0;
+
             if (Count > 0)
             {
                 justDurations = timeline_[timeline_.Count - 1].Time + timeline_[timeline_.Count - 1].Duration - timeline_[0].Time;
@@ -262,7 +266,7 @@ namespace MpdParser.Node.Dynamic
             }
             else
             {
-                Duration = TimeSpan.Zero;
+                Duration = null;
                 AverageSegmentDuration = 1;
             }
 
@@ -472,65 +476,37 @@ namespace MpdParser.Node.Dynamic
 
         }
 
-        private uint GetStartSegmentStatic(TimeSpan durationSpan)
+        private uint GetStartSegmentStatic(TimeSpan pointInTime)
         {
-            return (uint)timelineAll_[0].Number;
+            return (uint)timeline_[0].Number;
         }
-        public uint? GetStartSegment(TimeSpan durationSpan, TimeSpan bufferDepth)
+        public uint? StartSegmentId(TimeSpan pointInTime, TimeSpan bufferDepth)
         {
-            durationSpan += Parameters.Document.TimeOffset;
+            pointInTime += Parameters.Document.TimeOffset;
 
             if (Parameters.Document.IsDynamic == true)
-                return GetStartSegmentDynamic(durationSpan, bufferDepth);
+                return GetStartSegmentDynamic(pointInTime, bufferDepth);
 
-            return GetStartSegmentStatic(durationSpan);
+            return GetStartSegmentStatic(pointInTime);
         }
 
-        public Segment MediaSegmentAtPos(uint pos)
+        public Segment MediaSegment(uint? segmentId)
         {
-            if (timelineAvailable_.Count == 0)
-                return null;
-
-            var searcher = new TimelineSearchSegmentNumber();
-            TimelineItemRep lookFor = new TimelineItemRep
-            {
-                Number = pos
-            };
-
-            var idx = Array.BinarySearch(timelineAll_, timelineAvailable_.Offset, timelineAvailable_.Count,
-                lookFor, searcher);
-
+            var idx = segmentId.HasValue ? GetSegmentIndex(segmentId.Value) : -1;
             if (idx < 0)
-            {
-                Logger.Info($"Failed to find segment @pos. FA={timeline_[0].Number} Pos={pos} LA={timeline_[timeline_.Count - 1].Number}");
                 return null;
-            }
 
-            return MakeSegment(timelineAll_[idx].Item, 0);
+            return MakeSegment(timeline_[idx].Item, 0);
         }
 
-        public uint? MediaSegmentAtTime(TimeSpan durationSpan)
+        public uint? SegmentId(TimeSpan pointInTime)
         {
-
-            if (timelineAvailable_.Count == 0)
-                return null;
-
-            var searcher = new TimelineSearchStartTimeDuration();
-            TimelineItemRep lookFor = new TimelineItemRep
-            {
-                TimeScaled = durationSpan
-            };
-
-            var idx = Array.BinarySearch(timelineAll_, timelineAvailable_.Offset, timelineAvailable_.Count,
-                lookFor, searcher);
-
+            var idx = GetSegmentIndex(pointInTime);
             if (idx < 0)
-            {
-                Logger.Info($"Failed to find segment in @time. FA={timeline_[0].TimeScaled}/{timeline_[0].Time} Req={durationSpan} LA={timeline_[timeline_.Count - 1].TimeScaled}/{timeline_[timeline_.Count - 1].TimeScaled}/{timeline_[0].Time}");
                 return null;
-            }
 
-            return (uint?)timelineAll_[idx].Number;
+            return (uint)timeline_[idx].Number;
+
         }
 
         public IEnumerable<Segment> MediaSegments()
@@ -540,5 +516,92 @@ namespace MpdParser.Node.Dynamic
                 yield return MakeSegment(item.Item, 0);
             }
         }
+
+        public uint? NextSegmentId(uint? segmentId)
+        {
+
+            var idx = segmentId.HasValue ? GetSegmentIndex(segmentId.Value) : -1;
+            if (idx < 0)
+                return null;
+
+            idx++;
+            if (idx >= timelineAvailable_.Count)
+                return null;
+
+            return (uint?)timeline_[idx].Number;
+
+        }
+
+        public uint? NextSegmentId(TimeSpan pointInTime)
+        {
+
+            var idx = GetSegmentIndex(pointInTime);
+            if (idx < 0)
+                return null;
+
+            idx++;
+            if (idx >= timelineAvailable_.Count)
+                return null;
+
+            return (uint)timeline_[idx].Number;
+
+        }
+
+        public TimeRange SegmentTimeRange(uint? segmentId)
+        {
+            var idx = segmentId.HasValue ? GetSegmentIndex(segmentId.Value) : -1;
+            if (idx < 0)
+                return null;
+
+            var item = timeline_[idx];
+            return new TimeRange(item.TimeScaled, item.DurationScaled);
+
+        }
+
+        private int GetSegmentIndex(uint segmentId)
+        {
+            if (timelineAvailable_.Count == 0)
+                return -1;
+
+            var searcher = new TimelineSearchSegmentNumber();
+            TimelineItemRep lookFor = new TimelineItemRep
+            {
+                Number = segmentId
+            };
+
+            var idx = Array.BinarySearch(timelineAll_, timelineAvailable_.Offset, timelineAvailable_.Count,
+                lookFor, searcher);
+
+            if (idx < 0)
+            {
+                Logger.Info($"Failed to find segment @pos. FA={timeline_[0].Number} Pos={segmentId} LA={timeline_[timeline_.Count - 1].Number}");
+            }
+
+            return idx;
+        }
+
+        private int GetSegmentIndex(TimeSpan pointInTime)
+        {
+            if (timelineAvailable_.Count == 0)
+                return -1;
+
+            var searcher = new TimelineSearchStartTimeDuration();
+            TimelineItemRep lookFor = new TimelineItemRep
+            {
+                TimeScaled = pointInTime
+            };
+
+            var idx = Array.BinarySearch(timelineAll_, timelineAvailable_.Offset, timelineAvailable_.Count,
+                lookFor, searcher);
+
+            if (idx < 0)
+            {
+                Logger.Info($"Failed to find segment in @time. FA={timeline_[0].TimeScaled}/{timeline_[0].Time} Req={pointInTime} LA={timeline_[timeline_.Count - 1].TimeScaled}/{timeline_[timeline_.Count - 1].TimeScaled}/{timeline_[0].Time}");
+            }
+
+            return idx;
+        }
+
+
     }
 }

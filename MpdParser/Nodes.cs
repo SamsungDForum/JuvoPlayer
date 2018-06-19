@@ -201,20 +201,111 @@ namespace MpdParser.Node
 
     public interface IRepresentationStream
     {
+        /// <summary>
+        /// Duration of entire representation stream
+        /// NULL if not present.
+        /// </summary>
         TimeSpan? Duration { get; }
+
+        /// <summary>
+        /// Initialization segment.
+        /// Null if init segment does not exist for representation stream.
+        /// </summary>
         Segment InitSegment { get; }
-        Segment IndexSegment { get; }
+
+        /// <summary>
+        /// Presentation Time Offset (Raw Value)
+        /// May be null if not specified in manifest
+        /// </summary>
         ulong PresentationTimeOffset { get; }
+
+        /// <summary>
+        /// TimeShiftBufferDepth value.
+        /// May be null if not present in manifest
+        /// </summary>
         TimeSpan? TimeShiftBufferDepth { get; }
+
+        /// <summary>
+        /// AvailabilityTimeOffset
+        /// May be null if not present in manifest
+        /// </summary>
         TimeSpan AvaliabilityTimeOffset { get; }
-        bool? AvaliabilityTimeComplete { get; }
+
+        /// <summary>
+        /// Number of playable media segments contained in stream. May be 0
+        /// Dynamic streams - number reflects segments available for playback, not all
+        /// segments in stream.
+        /// </summary>
         uint Count { get; }
+
+        /// <summary>
+        /// Media Segment iterator.
+        /// Static content - all media segments
+        /// Dynamic content - segments available for playback.
+        /// </summary>
+        /// <returns>playable media segment</returns>
         IEnumerable<Segment> MediaSegments();
-        Segment MediaSegmentAtPos(uint pos);
-        uint? MediaSegmentAtTime(TimeSpan duration);
-        uint? GetStartSegment(TimeSpan durationSpan, TimeSpan bufferDepth);
+
+        /// <summary>
+        /// Returns plyable media segment based on provided segment identifier.
+        /// </summary>
+        /// <param name="segmentId">Internal segment identifier</param>
+        /// <returns>Playable media segment. May be null if provided segment Id has no corresponding media</returns>
+        Segment MediaSegment(uint? segmentId);
+
+        /// <summary>
+        /// Retrieves internal segment identifier for a given point in time of stream
+        /// </summary>
+        /// <param name="pointInTime">point in time for which segment id is to be obtained</param>
+        /// <returns>Segment ID
+        /// May be null if point in time is outside of playable time range for a stream.</returns>
+        uint? SegmentId(TimeSpan pointInTime);
+
+        /// <summary>
+        /// Obtains segment identifier which is to be used as beginning of playback (Start Segment)
+        /// </summary>
+        /// <param name="pointInTime">Point in playback time. Applicable to Dynamic content. 
+        /// No application for static content</param>
+        /// <param name="bufferDepth">Duration of playback buffer. Applicable to Dynamic content
+        /// No application for static content</param>
+        /// <returns>Segment Identifier to be used as start point. May be null if start point has not
+        /// been found or provided arguments fall outside of currently playable segment range</returns>
+        uint? StartSegmentId(TimeSpan pointInTime, TimeSpan bufferDepth);
+
+        /// <summary>
+        /// Sets manifest parameters to stream
+        /// </summary>
+        /// <param name="docParams">ManifestParameters to be set </param>
         void SetDocumentParameters(ManifestParameters docParams);
+
+        /// <summary>
+        /// Retrieves ManifestParameters set by SetDocumentParameters
+        /// </summary>
+        /// <returns>ManifestParameters</returns>
         ManifestParameters GetDocumentParameters();
+
+        /// <summary>
+        /// Obtains next playable segment identifier based on provided segment Id
+        /// </summary>
+        /// <param name="segmentId">Segment Id</param>
+        /// <returns>Next Segment ID to be played. Null if no playable segment exist</returns>
+        uint? NextSegmentId(uint? segmentId);
+
+        /// <summary>
+        /// Obtains next playable segment identifier based on provided point in time
+        /// </summary>
+        /// <param name="pointInTime">A point in playback time</param>
+        /// <returns>Next Segment ID to be played. Null if no playable segment exist</returns>
+        uint? NextSegmentId(TimeSpan pointInTime);
+
+        /// <summary>
+        /// Obtains TimeRange information for a specified segment identifier
+        /// TimeRange contains data on segment start time and its duration
+        /// </summary>
+        /// <param name="segmentId">Segment Identifier for which TimeRange is to be retrieved</param>
+        /// <returns>TimeRange data. Null if specified segment ID does not 
+        /// correspond to a playable segment</returns>
+        TimeRange SegmentTimeRange(uint? segmentId);
     }
 
     public enum SegmentType
