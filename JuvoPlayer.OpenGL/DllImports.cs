@@ -104,7 +104,7 @@ namespace JuvoPlayer.OpenGL
         public static extern void PushLog(byte* log, int logLen);
 
         [DllImport(GlDemoLib, EntryPoint = "ShowAlert")]
-        public static extern void ShowAlert(byte *title, int titleLen, byte* text, int textLen);
+        public static extern void ShowAlert(byte *title, int titleLen, byte* body, int bodyLen, byte* button, int buttonLen);
 
         [DllImport(GlDemoLib, EntryPoint = "HideAlert")]
         public static extern void HideAlert();
