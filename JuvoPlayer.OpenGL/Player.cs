@@ -13,7 +13,7 @@ using JuvoPlayer.Player.SMPlayer;
 
 namespace JuvoPlayer.OpenGL
 {
-    public delegate void PlayerStateChangedEventHandler(object sender, PlayerState playerState);
+    public delegate void PlayerStateChangedEventHandler(object sender, PlayerStateChangedEventArgs e);
 
     class Player
     {
@@ -21,6 +21,7 @@ namespace JuvoPlayer.OpenGL
         private IPlayerController playerController;
         private readonly DataProviderFactoryManager dataProviders;
         private PlayerState playerState = PlayerState.Idle;
+        private string playerStateMessage;
 
         public event PlayerStateChangedEventHandler StateChanged;
         public event SeekCompleted SeekCompleted;
@@ -38,7 +39,14 @@ namespace JuvoPlayer.OpenGL
             private set
             {
                 playerState = value;
-                StateChanged?.Invoke(this, playerState);
+                if (playerState == PlayerState.Error)
+                {
+                    StateChanged?.Invoke(this, new PlayerStateChangedStreamError(playerState, playerStateMessage));
+                }
+                else
+                {
+                    StateChanged?.Invoke(this, new PlayerStateChangedEventArgs(playerState));
+                }
             }
         }
 

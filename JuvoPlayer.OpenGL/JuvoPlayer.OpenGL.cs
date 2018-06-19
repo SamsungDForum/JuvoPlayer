@@ -3,9 +3,11 @@ using System.IO;
 using JuvoLogger;
 using Tizen.TV.NUI.GLApplication;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Tizen;
+using JuvoLogger.Tizen;
 
 namespace JuvoPlayer.OpenGL
 {
@@ -50,6 +52,7 @@ namespace JuvoPlayer.OpenGL
 
         protected override void OnCreate()
         {
+            OpenGLLoggerManager.Configure();
             DllImports.Create();
             InitMenu();
         }
@@ -73,7 +76,7 @@ namespace JuvoPlayer.OpenGL
             SetDefaultMenuState();
         }
 
-        private unsafe void SetMenuFooter()
+        private static unsafe void SetMenuFooter()
         {
             var footer = "JuvoPlayer Prealpha, OpenGL UI #" + DllImports.OpenGLLibVersion().ToString("x") +
                             ", Samsung R&D Poland 2017-2018";
@@ -168,23 +171,7 @@ namespace JuvoPlayer.OpenGL
             }
             else if(key.KeyPressedName.Contains("Green"))
             {
-                ShowMenu(!_isMenuShown);
-            }
-            else if(key.KeyPressedName.Contains("Yellow"))
-            {
-                DllImports.SwitchTextRenderingMode();
-            }
-            else if(key.KeyPressedName.Contains("Blue"))
-            {
                 GC.Collect();
-            }
-            else if (key.KeyPressedName.Contains("1"))
-            {
-                TestLog();
-            }
-            else if (key.KeyPressedName.Contains("2"))
-            {
-                ShowAlert("Alert", "All your base are belong to us.");
             }
             else
             {
@@ -194,30 +181,31 @@ namespace JuvoPlayer.OpenGL
             KeyPressedMenuUpdate();
         }
 
-        private unsafe void ShowAlert(string title, string text)
+        public async void DisplayAlert(string title, string body, string button)
         {
-            fixed (byte* textBytes = ResourceLoader.GetBytes(text))
-                fixed (byte* titleBytes = ResourceLoader.GetBytes(title))
-                    DllImports.ShowAlert(titleBytes, title.Length, textBytes, text.Length);
+            ShowAlert(title, body, button);
+            await AwaitDisplayAlert();
+        }
+
+        public static unsafe void PushLog(string log)
+        {
+            fixed (byte* text = ResourceLoader.GetBytes(log))
+                DllImports.PushLog(text, log.Length);
+        }
+
+        private unsafe void ShowAlert(string title, string body, string button)
+        {
+            fixed (byte* titleBytes = ResourceLoader.GetBytes(title))
+            fixed (byte* bodyBytes = ResourceLoader.GetBytes(body))
+            fixed (byte* buttonBytes = ResourceLoader.GetBytes(button))
+                DllImports.ShowAlert(titleBytes, title.Length, bodyBytes, body.Length, buttonBytes, button.Length);
             _isAlertShown = true;
         }
 
-        private int testLog = 0;
-
-        private unsafe void TestLog()
+        private async Task AwaitDisplayAlert()
         {
-            Random rnd = new Random();
-            string[] logs =
-            {
-                "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua. Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat. Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur. Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum.",
-                "Lorem ipsum dolor sit amet, consectetur adipiscing elit, sed do eiusmod tempor incididunt ut labore et dolore magna aliqua.",
-                "Ut enim ad minim veniam, quis nostrud exercitation ullamco laboris nisi ut aliquip ex ea commodo consequat.",
-                "Duis aute irure dolor in reprehenderit in voluptate velit esse cillum dolore eu fugiat nulla pariatur.",
-                "Excepteur sint occaecat cupidatat non proident, sunt in culpa qui officia deserunt mollit anim id est laborum."
-            };
-            string log = (++testLog).ToString() + ". " + logs[rnd.Next() % logs.Length];
-            fixed (byte* text = ResourceLoader.GetBytes(log))
-                DllImports.PushLog(text, log.Length);
+            while (_isAlertShown)
+                await Task.Delay(100);
         }
 
         private void KeyPressedMenuUpdate()
@@ -349,7 +337,7 @@ namespace JuvoPlayer.OpenGL
             if (_player == null)
             {
                 _player = new Player();
-                _player.StateChanged += (object sender, PlayerState playerState) =>
+                _player.StateChanged += (object sender, PlayerStateChangedEventArgs e) =>
                 {
                     Logger?.Info($"Player state changed: {_player.State}");
                     if (_player.State == PlayerState.Prepared)
@@ -359,7 +347,14 @@ namespace JuvoPlayer.OpenGL
                         _player?.Start();
                     }
                     else if (_player.State == PlayerState.Completed)
+                    {
                         _playbackCompletedNeedsHandling = true;
+                    }
+                    else if (_player.State == PlayerState.Error)
+                    {
+                        DisplayAlert("Player Error", (e as PlayerStateChangedStreamError)?.Message ?? "Unknown Error", "OK");
+                        ClosePlayer();
+                    }
                 };
                 _player.SeekCompleted += () =>
                 {
@@ -501,7 +496,7 @@ namespace JuvoPlayer.OpenGL
                 _player.SeekTo(_player.CurrentPosition - seekTime);
         }
 
-        private unsafe void ResetPlaybackControls()
+        private static unsafe void ResetPlaybackControls()
         {
             DllImports.UpdatePlaybackControls(0, 0, 0, 0, null, 0);
         }

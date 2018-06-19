@@ -20,14 +20,6 @@
         public byte[] Pixels;
     }
 
-    internal struct Tile
-    {
-        public int Id;
-        public ImageData Image;
-        public string Name;
-        public string Description;
-    }
-
     internal enum IconType
     {
         Play,
@@ -45,13 +37,6 @@
     {
         public IconType Id;
         public ImageData Image;
-    }
-
-    internal struct Font
-    {
-        public int Id;
-        public string FontPath;
-        public byte[] FontData;
     }
 
     internal enum ColorSpace
