@@ -83,7 +83,9 @@ namespace JuvoPlayer.DataProviders.Dash
             demuxer.StreamConfigReady += OnStreamConfigReady;
             demuxer.PacketReady += OnPacketReady;
             demuxer.DemuxerError += OnStreamError;
-            
+
+            dashClient.Error += OnStreamError;
+
         }
 
         public void Start(IList<Media> media)
@@ -202,13 +204,22 @@ namespace JuvoPlayer.DataProviders.Dash
                     throw new ArgumentOutOfRangeException();
             }
         }
+        public void Resume()
+        {
+            StartPipeline();
+        }
 
+        public void Pause()
+        {
+            StopPipeline();
+            pipelineStarted = false;
+        }
         public void Stop()
         {
             StopPipeline();
 
             TrimmOffset = null;
-            pipelineStarted = false;            
+            pipelineStarted = false;
         }
 
         public void OnTimeUpdated(TimeSpan time)
@@ -218,11 +229,7 @@ namespace JuvoPlayer.DataProviders.Dash
 
         public void Seek(TimeSpan time)
         {
-            StopPipeline();
-
             laskSeek = dashClient.Seek(time);
-
-            StartPipeline();
         }
 
         public void ChangeStream(StreamDescription stream)
@@ -248,8 +255,13 @@ namespace JuvoPlayer.DataProviders.Dash
         {
             // Stop demuxer and dashclient
             // Stop demuxer first so old incoming data will ignored
-            demuxer.Stop();
+            
+            // Client Stop first. Demux Stop clears buffer while Dash does not.
+            // If client will pump data after stop it will be in buffer causing issues during
+            // seek & key frame search
             dashClient.Stop();
+            demuxer.Stop();
+            
         }
 
         public List<StreamDescription> GetStreamsDescription()

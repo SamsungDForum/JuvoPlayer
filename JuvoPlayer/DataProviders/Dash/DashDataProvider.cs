@@ -117,9 +117,10 @@ namespace JuvoPlayer.DataProviders.Dash
             cuesMap = new SubtitleFacade().LoadSubtitles(subtitleInfo);
         }
 
-
         public void OnPaused()
         {
+            Logger.Info("");
+            Parallel.Invoke(() => videoPipeline.Pause(), () => audioPipeline.Pause());
         }
 
         public async void OnPlayed()
@@ -133,8 +134,9 @@ namespace JuvoPlayer.DataProviders.Dash
             if (!IsSeekingSupported())
                 return;
 
-            audioPipeline.Seek(time);
-            videoPipeline.Seek(time);
+            Parallel.Invoke(() => videoPipeline.Pause(), () => audioPipeline.Pause());
+            Parallel.Invoke(() => videoPipeline.Seek(time), () => audioPipeline.Seek(time));
+            Parallel.Invoke(() => videoPipeline.Resume(), () => audioPipeline.Resume());            
         }
 
         public void OnStopped()
