@@ -177,7 +177,7 @@ namespace JuvoPlayer.DataProviders.Dash
                     Logger.Warn($"{request.StreamType}: Segment: {segmentId} Error: {e.Message}");
                     ++downloadErrorCount;
                 }
-            } while (request.IgnoreError && downloadErrorCount < 3);
+            } while (!request.IgnoreError && downloadErrorCount < 3);
 
             throw new Exception($"{request.StreamType}: Segment: {segmentId} Max retry count reached.");
         }
@@ -216,7 +216,7 @@ namespace JuvoPlayer.DataProviders.Dash
 
         private int CalculateSleepTime()
         {
-            if (request.IgnoreError || downloadErrorCount == 0)
+            if (!request.IgnoreError || downloadErrorCount == 0)
                 return 0;
 
             // Exponential backoff
