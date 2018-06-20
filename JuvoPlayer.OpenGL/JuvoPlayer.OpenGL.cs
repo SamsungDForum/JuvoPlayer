@@ -352,7 +352,7 @@ namespace JuvoPlayer.OpenGL
                     }
                     else if (_player.State == PlayerState.Error)
                     {
-                        DisplayAlert("Player Error", (e as PlayerStateChangedStreamError)?.Message ?? "Unknown Error", "OK");
+                        DisplayAlert("Playback Error", (e as PlayerStateChangedStreamError)?.Message ?? "Unknown Error", "OK");
                         ClosePlayer();
                     }
                 };

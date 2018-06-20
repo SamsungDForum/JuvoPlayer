@@ -10,7 +10,6 @@ namespace JuvoPlayer.OpenGL
         }
        
         public PlayerState State { get; }
-        
     }
 
     public class PlayerStateChangedStreamError : PlayerStateChangedEventArgs

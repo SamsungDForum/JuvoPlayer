@@ -67,7 +67,7 @@ namespace JuvoPlayer.OpenGL
             playerController = new PlayerController(player, drmManager);
             playerController.PlaybackCompleted += () => { State = PlayerState.Completed; };
             playerController.PlayerInitialized += () => { State = PlayerState.Prepared; };
-            playerController.PlaybackError += (message) => { State = PlayerState.Error; };
+            playerController.PlaybackError += (message) => { playerStateMessage = message; State = PlayerState.Error; };
             playerController.SeekCompleted += () => { SeekCompleted?.Invoke(); };
         }
 
