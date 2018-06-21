@@ -30,7 +30,7 @@ namespace JuvoPlayer.DataProviders.Dash
         private uint? currentSegmentId;
 
         private IRepresentationStream currentStreams;
-        private TimeSpan? currentStreamDuration;
+        private TimeSpan? currentStreamDuration => currentStreams.Duration;
 
         private byte[] initStreamBytes;
 
@@ -72,7 +72,7 @@ namespace JuvoPlayer.DataProviders.Dash
         /// </summary>
         public event Error Error;
 
-        public DashClient(IThroughputHistory throughputHistory, ISharedBuffer sharedBuffer,  StreamType streamType)
+        public DashClient(IThroughputHistory throughputHistory, ISharedBuffer sharedBuffer, StreamType streamType)
         {
             this.throughputHistory = throughputHistory ?? throw new ArgumentNullException(nameof(throughputHistory), "throughputHistory cannot be null");
             this.sharedBuffer = sharedBuffer ?? throw new ArgumentNullException(nameof(sharedBuffer), "sharedBuffer cannot be null");
@@ -86,19 +86,13 @@ namespace JuvoPlayer.DataProviders.Dash
 
             // We are not expecting NULL segments after seek. 
             // Termination will occour after restarting 
-            if(!currentSegmentId.HasValue || !newTime.HasValue)
+            if (!currentSegmentId.HasValue || !newTime.HasValue)
             {
                 LogError($"Seek Pos Req: {position} failed. No segment/TimeRange found");
-
-                currentTime = position;
-                newTime = position;
             }
-            else
-            {
-                currentTime = newTime.Value;
 
-            }
-            LogInfo($"Seek Pos Req: {position} Seek to: ({newTime}) SegId: {currentSegmentId}");
+            currentTime = newTime ?? position;
+            LogInfo($"Seek Pos Req: {position} Seek to: ({currentTime}) SegId: {currentSegmentId}");
             return newTime.Value;
         }
 
@@ -147,12 +141,12 @@ namespace JuvoPlayer.DataProviders.Dash
                 var segment = currentStreams.MediaSegment(currentSegmentId);
                 if (segment == null)
                 {
+                    LogInfo($"Segment: [{currentSegmentId}] NULL stream");
                     if (IsDynamic)
                         return;
 
-                    LogWarn($"Segment: {currentSegmentId} NULL stream. Stoping player.");
+                    LogWarn("Stoping player");
                     Stop();
-                    Error?.Invoke("Unexpected end of content");
                     return;
                 }
 
@@ -166,27 +160,34 @@ namespace JuvoPlayer.DataProviders.Dash
 
         private void DownloadSegment(Segment segment)
         {
-            var downloadTask = CreateDownloadTask(segment, IsDynamic, currentSegmentId);
+
+            // Grab a copy (its a struct) of cancellation token, so one token is used throughout entire operation
+            var cancelToken = cancellationTokenSource.Token;
+            var downloadTask = CreateDownloadTask(segment, IsDynamic, currentSegmentId, cancelToken);
+
             downloadTask.ContinueWith(response => HandleFailedDownload(GetErrorMessage(response)),
-                cancellationTokenSource.Token, TaskContinuationOptions.OnlyOnFaulted, TaskScheduler.Default);
+                cancelToken, TaskContinuationOptions.OnlyOnFaulted, TaskScheduler.Default);
             processDataTask = downloadTask.ContinueWith(response => HandleSuccessfullDownload(response.Result),
-                cancellationTokenSource.Token, TaskContinuationOptions.OnlyOnRanToCompletion, TaskScheduler.Default);
+                cancelToken, TaskContinuationOptions.OnlyOnRanToCompletion, TaskScheduler.Default);
             processDataTask.ContinueWith(_ => ScheduleNextSegDownload(),
-                cancellationTokenSource.Token, TaskContinuationOptions.NotOnCanceled, TaskScheduler.Default);
+                cancelToken, TaskContinuationOptions.NotOnCanceled, TaskScheduler.Default);
         }
 
         private void DownloadInitSegment(Segment segment)
         {
             if (initStreamBytes == null)
             {
-                var downloadTask = CreateDownloadTask(segment, true, null);
+
+                // Grab a copy (its a struct) of cancellation token so it is not referenced through cancellationTokenSource each time.
+                var cancelToken = cancellationTokenSource.Token;
+                var downloadTask = CreateDownloadTask(segment, true, null, cancelToken);
 
                 downloadTask.ContinueWith(response => HandleFailedInitDownload(GetErrorMessage(response)),
-                    cancellationTokenSource.Token, TaskContinuationOptions.OnlyOnFaulted, TaskScheduler.Default);
+                    cancelToken, TaskContinuationOptions.OnlyOnFaulted, TaskScheduler.Default);
                 processDataTask = downloadTask.ContinueWith(response => InitDataDownloaded(response.Result),
-                    cancellationTokenSource.Token, TaskContinuationOptions.OnlyOnRanToCompletion, TaskScheduler.Default);
+                    cancelToken, TaskContinuationOptions.OnlyOnRanToCompletion, TaskScheduler.Default);
                 processDataTask.ContinueWith(_ => ScheduleNextSegDownload(),
-                    cancellationTokenSource.Token, TaskContinuationOptions.NotOnCanceled, TaskScheduler.Default);
+                    cancelToken, TaskContinuationOptions.NotOnCanceled, TaskScheduler.Default);
             }
             else
             {
@@ -223,7 +224,9 @@ namespace JuvoPlayer.DataProviders.Dash
             LogInfo($"Segment: {responseResult.SegmentId} received {timeInfo}");
 
             if (IsEndOfContent())
+            {
                 Stop();
+            }
         }
 
         private void InitDataDownloaded(DownloadResponse responseResult)
@@ -292,8 +295,20 @@ namespace JuvoPlayer.DataProviders.Dash
                 initStreamBytes = null;
 
             currentRepresentation = representation;
-
             currentStreams = currentRepresentation.Segments;
+
+            // Prpeare Stream for playback.
+            if (!currentStreams.PrepeareStream())
+            {
+                LogError("Failed to prepare stream. No playable segments");
+
+                // Static content - treat as EOS.
+                if (!IsDynamic)
+                    Stop();
+
+                return;
+            }
+
             UpdateTimeBufferDepth();
         }
 
@@ -329,14 +344,22 @@ namespace JuvoPlayer.DataProviders.Dash
 
             currentRepresentation = newRep;
             currentStreams = currentRepresentation.Segments;
-            currentStreamDuration = currentStreams.Duration;
+
+            // Sanity check on streams (needed if stream fails its own IO - index download, etc.)
+            if (!currentStreams.PrepeareStream())
+            {
+                LogError("Failed to prepare stream. No playable segments");
+
+                // Static content - treat as EOS.
+                if (!IsDynamic)
+                    Stop();
+
+                currentSegmentId = null;
+                return;
+            }
 
             UpdateTimeBufferDepth();
 
-            // TODO:
-            // Add API to Representation - GetNextSegmentIdAtTime(). would allow for finding exixsting segment
-            // and verifying if next segment is valid / available without having to call MediaSegmentAtPos()
-            // which is heavy compared to internal data checks/
             if (lastDownloadSegmentTimeRange == null)
             {
                 currentSegmentId = currentStreams.StartSegmentId(currentTime, timeBufferDepth);
@@ -344,20 +367,11 @@ namespace JuvoPlayer.DataProviders.Dash
                 return;
             }
 
-            var newSeg = currentStreams.NextSegmentId(lastRequestedPeriod.Start);
+            var newSeg = currentStreams.NextSegmentId(lastDownloadSegmentTimeRange.Start);
             string message;
 
             if (newSeg.HasValue)
             {
-
-		//Segment tmpSegment;
-                //do
-                //{
-                //    newSeg++;
-                //    tmpSegment = currentStreams.MediaSegmentAtPos((uint) newSeg);
-                //} while (tmpSegment != null && tmpSegment.Period.Start <= lastDownloadSegmentTimeRange.Start);
-
-
                 var segmentTimeRange = currentStreams.SegmentTimeRange(newSeg);
                 message = $"Updated Seg: [{newSeg}]/({segmentTimeRange?.Start}-{segmentTimeRange?.Duration})";
             }
@@ -393,10 +407,11 @@ namespace JuvoPlayer.DataProviders.Dash
         private bool IsEndOfContent()
         {
             var endTime = currentStreamDuration ?? TimeSpan.MaxValue;
+            LogInfo($"{currentStreamDuration} {endTime} {bufferTime}");
             return bufferTime >= endTime;
         }
 
-        private Task<DownloadResponse> CreateDownloadTask(Segment stream, bool ignoreError, uint? segmentId)
+        private Task<DownloadResponse> CreateDownloadTask(Segment stream, bool ignoreError, uint? segmentId, CancellationToken cancelToken)
         {
             var requestData = new DownloadRequest
             {
@@ -406,7 +421,7 @@ namespace JuvoPlayer.DataProviders.Dash
                 StreamType = streamType
             };
 
-            return DashDownloader.DownloadDataAsync(requestData, cancellationTokenSource.Token, throughputHistory);
+            return DashDownloader.DownloadDataAsync(requestData, cancelToken, throughputHistory);
         }
 
         private void TimeBufferDepthDynamic()
