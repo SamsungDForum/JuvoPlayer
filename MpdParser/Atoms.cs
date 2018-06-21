@@ -17,7 +17,7 @@ using JuvoLogger;
 
 namespace MpdParser.Node.Atom
 {
-    public abstract class AtomBase 
+    public abstract class AtomBase
     {
         protected UInt32 AtomSize;
         protected static LoggerManager LogManager = LoggerManager.GetInstance();
@@ -99,7 +99,7 @@ namespace MpdParser.Node.Atom
                 case TypeCode.Single:
                 case TypeCode.String:
                 default:
-                    Logger.Info(string.Format("{0} Unsupported read type.", res.GetType().ToString()));
+                    Logger.Warn(string.Format("{0} Unsupported read type.", res.GetType().ToString()));
                     break;
             }
 
@@ -132,6 +132,7 @@ namespace MpdParser.Node.Atom
             return ((double)val / (double)scale);
         }
     }
+
     public class SIDXAtom : AtomBase
     {
         public class SIDX_index_entry
@@ -178,12 +179,12 @@ namespace MpdParser.Node.Atom
         public uint MovieIndexCount
         {
             get { return (uint)Movieidx.Count; }
-          
+
         }
         public uint SIDXIndexCount
         {
             get { return (uint)Sidxidx.Count; }
-            
+
         }
 
         protected static byte[] AtomName = { (byte)'s', (byte)'i', (byte)'d', (byte)'x' };
@@ -197,7 +198,7 @@ namespace MpdParser.Node.Atom
 
         public TimeSpan MaxIndexTime { get; set; }
 
-   
+
 
         protected UInt16 Reserved;
 
@@ -216,66 +217,24 @@ namespace MpdParser.Node.Atom
             ParseAtom(adata, dataStart);
         }
 
-       
-        public (UInt64, UInt64, TimeSpan) GetRangeDuration(TimeSpan curr)
-        {
-            Movie_index_entry i = Movieidx.Find(x =>
-                (x.TimeIndex >= curr && (curr < x.TimeIndex + x.SegmentDuration)));
-            UInt64 rl;
-            UInt64 rh;
-            TimeSpan ts;
-
-            if (i != null)
-            {
-                rl = i.Offset;
-                rh = rl + i.RawRefsize;
-                ts = i.SegmentDuration;
-            }
-            else
-            {
-                rl = 0;
-                rh = 0;
-                ts = default(TimeSpan);
-            }
-
-            return (rl, rh, ts);
-        }
-        
-
         public (UInt64, UInt64, TimeSpan, TimeSpan) GetRangeData(uint idx)
         {
 
-            UInt64 rl=0;
-            UInt64 rh=0;
+            UInt64 rl = 0;
+            UInt64 rh = 0;
             TimeSpan starttime = default(TimeSpan);
             TimeSpan duration = default(TimeSpan);
 
-            if ( idx < MovieIndexCount)
+            if (idx < MovieIndexCount)
             {
                 rl = Movieidx[(int)idx].Offset;
-                rh = rl+Movieidx[(int)idx].RawRefsize;
+                rh = rl + Movieidx[(int)idx].RawRefsize;
                 starttime = Movieidx[(int)idx].TimeIndex;
                 duration = Movieidx[(int)idx].SegmentDuration;
             }
-            
-            
+
+
             return (rl, rh, starttime, duration);
-        }
-
-        public uint? GetRangeDurationIndex(TimeSpan curr)
-        {
-            Movie_index_entry i = Movieidx.Find(x =>
-                (x.TimeIndex >= curr && (curr < x.TimeIndex + x.SegmentDuration)));
-            
-
-            if (i != null)
-            {
-                Logger.Info(string.Format("Index entry ID: {0} for time {1}",i.ID,curr));
-                return i.ID;
-            }
-
-            Logger.Info(string.Format("Index entry for time: {0} not found", curr));
-            return null;
         }
 
         public void DumpMovieIndex(TimeSpan curr = default(TimeSpan))
@@ -287,6 +246,7 @@ namespace MpdParser.Node.Atom
                     curr, mie.TimeIndex, mie.SegmentDuration, mie.TimeIndex + mie.SegmentDuration));
             }
         }
+
         public override void ParseAtom(byte[] adata, ulong dataStart)
         {
             int idx = 0;
@@ -343,7 +303,7 @@ namespace MpdParser.Node.Atom
             double AvgSegDur = 0.0;
             int i = 1;
             uint MovieIndexCount = 0;
-            
+
             Movieidx.Clear();
             Sidxidx.Clear();
 
@@ -375,14 +335,14 @@ namespace MpdParser.Node.Atom
                 if (typeset)
                 {
                     Sidxidx.Add(
-                        new SIDX_index_entry(ref_size-1, sseg_duration, SAPdata, offset)
+                        new SIDX_index_entry(ref_size - 1, sseg_duration, SAPdata, offset)
                                 );
-                   
+
                 }
                 else
                 {
                     Movieidx.Add(
-                        new Movie_index_entry(ref_size-1, sseg_duration, SAPdata, offset,
+                        new Movie_index_entry(ref_size - 1, sseg_duration, SAPdata, offset,
                                                 TimeSpan.FromSeconds(currdurr),
                                                 TimeSpan.FromSeconds(ToSeconds(pts, Timescale)),
                                                 MovieIndexCount++

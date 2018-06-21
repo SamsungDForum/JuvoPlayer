@@ -235,5 +235,11 @@ namespace MpdParser.Node.Dynamic
             var item = uris_[(int)segmentId];
             return new TimeRange(Scaled(item.Time), Scaled(item.Duration));
         }
+
+        public bool PrepeareStream()
+        {
+            // So far... nothing to prepare for list representations...
+            return true;
+        }
     }
 }

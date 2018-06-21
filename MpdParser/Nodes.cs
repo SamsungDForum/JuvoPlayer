@@ -306,6 +306,15 @@ namespace MpdParser.Node
         /// <returns>TimeRange data. Null if specified segment ID does not 
         /// correspond to a playable segment</returns>
         TimeRange SegmentTimeRange(uint? segmentId);
+
+        /// <summary>
+        /// Method prepares stream for usage by the client.
+        /// Performs all task consuming actions which for performance reasons should not be done
+        /// during stream construction, especially in multi representation content.
+        /// Has to be called before stream usage, otherewise, there will be dragons!
+        /// </summary>
+        /// <returns> True - Stream Ready. False - Stream cannot be used due to failures.</returns>
+        bool PrepeareStream();
     }
 
     public enum SegmentType
