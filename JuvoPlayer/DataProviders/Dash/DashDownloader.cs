@@ -93,8 +93,8 @@ namespace JuvoPlayer.DataProviders.Dash
             }
             return request;
         }
-
     }
+
     /// <summary>
     /// Download request data structure. Will be passed back to download handlers along with
     /// data.
@@ -157,11 +157,13 @@ namespace JuvoPlayer.DataProviders.Dash
             {
                 try
                 {
-                    await Task.Delay(CalculateSleepTime(), cancellationToken);
-                    return await DownloadDataTaskAsync();
+                    await Task.Delay(CalculateSleepTime(), cancellationToken).ConfigureAwait(false);
+                    return await DownloadDataTaskAsync().ConfigureAwait(false);
                 }
                 catch (WebException e)
                 {
+                    cancellationToken.ThrowIfCancellationRequested();
+
                     if (e.InnerException is OperationCanceledException)
                         ExceptionDispatchInfo.Capture(e.InnerException).Throw();
 
@@ -200,7 +202,7 @@ namespace JuvoPlayer.DataProviders.Dash
                 byte[] data;
                 using (new TimeCounter(t => time = t))
                 {
-                    data = await dataDownloader.DownloadDataTaskAsync(request.DownloadSegment.Url);
+                    data = await dataDownloader.DownloadDataTaskAsync(request.DownloadSegment.Url).ConfigureAwait(false);
                 }
                 throughputHistory.Push(data.Length, time);
 
@@ -238,7 +240,6 @@ namespace JuvoPlayer.DataProviders.Dash
         {
             return segmentId.HasValue ? segmentId.ToString() : "INIT";
         }
-
     }
 }
 
