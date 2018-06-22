@@ -1,5 +1,6 @@
 using System;
 using System.IO;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using JuvoLogger;
@@ -165,19 +166,34 @@ namespace JuvoPlayer.DataProviders.Dash
             }
         }
 
+
         private void DownloadSegment(Segment segment)
         {
-
             // Grab a copy (its a struct) of cancellation token, so one token is used throughout entire operation
             var cancelToken = cancellationTokenSource.Token;
             var downloadTask = CreateDownloadTask(segment, IsDynamic, currentSegmentId, cancelToken);
-
+            downloadTask.ContinueWith(_ => SegmentDownloadCancelled(), cancellationTokenSource.Token, TaskContinuationOptions.OnlyOnCanceled,
+                TaskScheduler.Default);
             downloadTask.ContinueWith(response => HandleFailedDownload(GetErrorMessage(response)),
                 cancelToken, TaskContinuationOptions.OnlyOnFaulted, TaskScheduler.Default);
             processDataTask = downloadTask.ContinueWith(response => HandleSuccessfullDownload(response.Result),
                 cancelToken, TaskContinuationOptions.OnlyOnRanToCompletion, TaskScheduler.Default);
             processDataTask.ContinueWith(_ => ScheduleNextSegDownload(),
                 cancelToken, TaskContinuationOptions.NotOnCanceled, TaskScheduler.Default);
+        }
+
+        private void SegmentDownloadCancelled()
+        {
+            if (cancellationTokenSource.IsCancellationRequested)
+            {
+                cancellationTokenSource.Dispose();
+                cancellationTokenSource = new CancellationTokenSource();
+            }
+            else
+            {
+                // download was cancelled by timeout cancellation token. Reschedule download
+                ScheduleNextSegDownload();
+            }
         }
 
         private void DownloadInitSegment(Segment segment)
@@ -422,17 +438,41 @@ namespace JuvoPlayer.DataProviders.Dash
             return bufferTime >= endTime;
         }
 
-        private Task<DownloadResponse> CreateDownloadTask(Segment stream, bool ignoreError, uint? segmentId, CancellationToken cancelToken)
+        private Task<DownloadResponse> CreateDownloadTask(Segment segment, bool ignoreError, uint? segmentId, CancellationToken cancelToken)
         {
             var requestData = new DownloadRequest
             {
-                DownloadSegment = stream,
+                DownloadSegment = segment,
                 IgnoreError = ignoreError,
                 SegmentId = segmentId,
                 StreamType = streamType
             };
 
-            return DashDownloader.DownloadDataAsync(requestData, cancelToken, throughputHistory);
+            var timeout = CalculateDownloadTimeout(segment);
+
+            var timeoutCancellationTokenSource = new CancellationTokenSource(timeout);
+            var downloadCancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(
+                cancellationTokenSource.Token,
+                timeoutCancellationTokenSource.Token);
+
+            return DashDownloader.DownloadDataAsync(requestData, downloadCancellationTokenSource.Token, throughputHistory);
+        }
+
+        private TimeSpan CalculateDownloadTimeout(Segment segment)
+        {
+            var timeout = TimeBufferDepthDefault;
+            var avarageThroughput = throughputHistory.GetAverageThroughput();
+            if (avarageThroughput > 0 && currentRepresentation.Bandwidth.HasValue && segment.Period != null)
+            {
+                var bandwith = currentRepresentation.Bandwidth.Value;
+                var duration = segment.Period.Duration.TotalSeconds;
+                var segmentSize = bandwith * duration;
+                var calculatedTimeNeeded = TimeSpan.FromSeconds(segmentSize / avarageThroughput * 1.5);
+                var manifestMinBufferDepth = currentStreams.GetDocumentParameters().Document.MinBufferTime ?? TimeSpan.Zero;
+                timeout = calculatedTimeNeeded > manifestMinBufferDepth ? calculatedTimeNeeded : manifestMinBufferDepth;
+            }
+
+            return timeout;
         }
 
         private void TimeBufferDepthDynamic()

@@ -65,7 +65,7 @@ namespace JuvoPlayer.DataProviders.Dash
         /// Used in Trimming Packet Handler to truncate down PTS/DTS values.
         /// First packet seen acts as flip switch. Fill initial values or not.
         /// </summary>
-        private TimeSpan? TrimmOffset = null;
+        private TimeSpan? trimmOffset;
 
         private readonly IDashClient dashClient;
         private readonly IDemuxer demuxer;
@@ -281,7 +281,7 @@ namespace JuvoPlayer.DataProviders.Dash
         {
             StopPipeline();
 
-            TrimmOffset = null;
+            trimmOffset = null;
             pipelineStarted = false;
         }
 
@@ -431,8 +431,8 @@ namespace JuvoPlayer.DataProviders.Dash
                 // Sometimes we can receive invalid timestamp from demuxer
                 // eg during encrypted content seek or live video.
                 // Adjust timestamps to avoid playback problems
-                packet.Dts += demuxerTimeStamp - TrimmOffset.Value;
-                packet.Pts += demuxerTimeStamp - TrimmOffset.Value;
+                packet.Dts += demuxerTimeStamp - trimmOffset.Value;
+                packet.Pts += demuxerTimeStamp - trimmOffset.Value;
 
                 PacketReady?.Invoke(packet);
                 return;
@@ -449,12 +449,9 @@ namespace JuvoPlayer.DataProviders.Dash
 
         private void AdjustDemuxerTimeStampIfNeeded(Packet packet)
         {
-
             //Get very first PTS/DTS
-            if (TrimmOffset.HasValue == false)
-            {
-                TrimmOffset = TimeSpan.FromTicks(Math.Min(packet.Pts.Ticks, packet.Dts.Ticks));
-            }
+            if (trimmOffset.HasValue == false)
+                trimmOffset = TimeSpan.FromTicks(Math.Min(packet.Pts.Ticks, packet.Dts.Ticks));
 
             if (packet.Pts + SegmentEps < laskSeek)
             {
