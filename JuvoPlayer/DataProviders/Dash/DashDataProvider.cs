@@ -392,6 +392,7 @@ namespace JuvoPlayer.DataProviders.Dash
             disposed = true;
 
             OnStopped();
+            manifest.Dispose();
 
             audioPipeline?.Dispose();
             audioPipeline = null;
