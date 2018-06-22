@@ -13,7 +13,7 @@ using JuvoPlayer.Player.SMPlayer;
 
 namespace JuvoPlayer.OpenGL
 {
-    public delegate void PlayerStateChangedEventHandler(object sender, PlayerState playerState);
+    public delegate void PlayerStateChangedEventHandler(object sender, PlayerStateChangedEventArgs e);
 
     class Player
     {
@@ -21,8 +21,10 @@ namespace JuvoPlayer.OpenGL
         private IPlayerController playerController;
         private readonly DataProviderFactoryManager dataProviders;
         private PlayerState playerState = PlayerState.Idle;
+        private string playerStateMessage;
 
         public event PlayerStateChangedEventHandler StateChanged;
+        public event SeekCompleted SeekCompleted;
 
         public TimeSpan Duration => playerController?.ClipDuration ?? TimeSpan.FromSeconds(0);
 
@@ -37,7 +39,10 @@ namespace JuvoPlayer.OpenGL
             private set
             {
                 playerState = value;
-                StateChanged?.Invoke(this, playerState);
+                StateChanged?.Invoke(this,
+                    playerState == PlayerState.Error
+                        ? new PlayerStateChangedStreamError(playerState, playerStateMessage)
+                        : new PlayerStateChangedEventArgs(playerState));
             }
         }
 
@@ -58,7 +63,8 @@ namespace JuvoPlayer.OpenGL
             playerController = new PlayerController(player, drmManager);
             playerController.PlaybackCompleted += () => { State = PlayerState.Completed; };
             playerController.PlayerInitialized += () => { State = PlayerState.Prepared; };
-            playerController.PlaybackError += (message) => { State = PlayerState.Error; };
+            playerController.PlaybackError += (message) => { playerStateMessage = message; State = PlayerState.Error; };
+            playerController.SeekCompleted += () => { SeekCompleted?.Invoke(); };
         }
 
         public void Pause()

@@ -55,5 +55,6 @@ namespace JuvoPlayer.Player
         event PlaybackError PlaybackError;
         event PlayerInitialized PlayerInitialized;
         event TimeUpdated TimeUpdated;
+        event SeekCompleted SeekCompleted;
     }
 }
