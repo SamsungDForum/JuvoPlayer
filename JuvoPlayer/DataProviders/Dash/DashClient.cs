@@ -484,25 +484,25 @@ namespace JuvoPlayer.DataProviders.Dash
 
         #region Logging Functions
 
-        private void LogInfo(string logMessage)
+        private void LogInfo(string logMessage, [CallerFilePath] string file = "", [CallerMemberName] string method = "", [CallerLineNumber] int line = 0)
         {
-            Logger.Info(streamType + ": " + logMessage);
+            Logger.Info(streamType + ": " + logMessage, file, method, line);
         }
-        private void LogDebug(string logMessage)
+        private void LogDebug(string logMessage, [CallerFilePath] string file = "", [CallerMemberName] string method = "", [CallerLineNumber] int line = 0)
         {
-            Logger.Debug(streamType + ": " + logMessage);
+            Logger.Debug(streamType + ": " + logMessage, file, method, line);
         }
-        private void LogWarn(string logMessage)
+        private void LogWarn(string logMessage, [CallerFilePath] string file = "", [CallerMemberName] string method = "", [CallerLineNumber] int line = 0)
         {
-            Logger.Warn(streamType + ": " + logMessage);
+            Logger.Warn(streamType + ": " + logMessage, file, method, line);
         }
-        private void LogFatal(string logMessage)
+        private void LogFatal(string logMessage, [CallerFilePath] string file = "", [CallerMemberName] string method = "", [CallerLineNumber] int line = 0)
         {
-            Logger.Fatal(streamType + ": " + logMessage);
+            Logger.Fatal(streamType + ": " + logMessage, file, method, line);
         }
-        private void LogError(string logMessage)
+        private void LogError(string logMessage, [CallerFilePath] string file = "", [CallerMemberName] string method = "", [CallerLineNumber] int line = 0)
         {
-            Logger.Error(streamType + ": " + logMessage);
+            Logger.Error(streamType + ": " + logMessage, file, method, line);
         }
         #endregion
 
