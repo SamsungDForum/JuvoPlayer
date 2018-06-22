@@ -2,6 +2,6 @@
 {
     public class MpdParser
     {
-        public static readonly string LogTag = "MpdParser";
+        public static readonly string LogTag = "JuvoPlayer";
     }
 }
