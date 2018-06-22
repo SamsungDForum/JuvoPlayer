@@ -339,27 +339,30 @@ namespace JuvoPlayer.OpenGL
                 _player = new Player();
                 _player.StateChanged += (object sender, PlayerStateChangedEventArgs e) =>
                 {
-                    _uiContext.Post(state => {
-                        Logger?.Info($"Player state changed: {_player.State.ToString() ?? "Unknown state"}");
-                        if (_player.State == PlayerState.Prepared)
+                    _uiContext.Post(state =>
                         {
-                            _options.LoadStreamLists(_player);
-                            SelectMenuAction(MenuAction.PlaybackControl);
-                            _player.Start();
-                        }
-                        else if (_player.State == PlayerState.Completed)
-                        {
-                            _playbackCompletedNeedsHandling = true;
-                        }
-                        else if (_player.State == PlayerState.Error)
-                        {
-                            Logger?.Info($"Playback Error: {(e as PlayerStateChangedStreamError)?.Message ?? "Unknown Error"}");
-                            ReturnToMainMenu();
-                            DisplayAlert("Playback Error", (e as PlayerStateChangedStreamError)?.Message ?? "Unknown Error", "OK");
-                        }
-                    },
-                    null);
-                };
+                            Logger?.Info($"Player state changed: {e.State.ToString() ?? "Unknown state"}");
+                            if (e.State == PlayerState.Prepared)
+                            {
+                                if (_player == null)
+                                    return;
+                                _options.LoadStreamLists(_player);
+                                SelectMenuAction(MenuAction.PlaybackControl);
+                                _player.Start();
+                            }
+                            else if (e.State == PlayerState.Completed)
+                            {
+                                _playbackCompletedNeedsHandling = true;
+                            }
+                            else if (e.State == PlayerState.Error)
+                            {
+                                Logger?.Info($"Playback Error: {(e as PlayerStateChangedStreamError)?.Message ?? "Unknown Error"}");
+                                ReturnToMainMenu();
+                                DisplayAlert("Playback Error", (e as PlayerStateChangedStreamError)?.Message ?? "Unknown Error", "OK");
+                            }
+                        },
+                        null);
+            };
                 _player.SeekCompleted += () =>
                 {
                     Logger?.Info("Seek completed.");
