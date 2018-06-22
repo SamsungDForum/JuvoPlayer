@@ -371,7 +371,7 @@ namespace JuvoPlayer.OpenGL
             }
 
             Logger?.Info($"Playing {_resourceLoader.ContentList[_selectedTile].Title} ({_resourceLoader.ContentList[_selectedTile].Url})");
-            Task.Run(() => { _player.SetSource(_resourceLoader.ContentList[_selectedTile]); });
+            _player.SetSource(_resourceLoader.ContentList[_selectedTile]);
             _options.ClearOptionsMenu();
             _seekInProgress = false;
             SelectMenuAction(MenuAction.None);
