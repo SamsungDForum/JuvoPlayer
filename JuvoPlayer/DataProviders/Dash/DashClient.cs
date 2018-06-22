@@ -30,7 +30,7 @@ namespace JuvoPlayer.DataProviders.Dash
         private uint? currentSegmentId;
 
         private IRepresentationStream currentStreams;
-        private TimeSpan? currentStreamDuration => currentStreams.Duration;
+        private TimeSpan? currentStreamDuration;
 
         private byte[] initStreamBytes;
 
@@ -365,6 +365,8 @@ namespace JuvoPlayer.DataProviders.Dash
                 return;
             }
 
+            currentStreamDuration = currentStreams.GetDocumentParameters().Document.MediaPresentationDuration;
+
             UpdateTimeBufferDepth();
 
             if (lastDownloadSegmentTimeRange == null)
@@ -413,8 +415,10 @@ namespace JuvoPlayer.DataProviders.Dash
 
         private bool IsEndOfContent()
         {
-            var endTime = currentStreamDuration ?? TimeSpan.MaxValue;
-            LogInfo($"{currentStreamDuration} {endTime} {bufferTime}");
+            var endTime = !currentStreamDuration.HasValue || currentStreamDuration.Value == TimeSpan.Zero
+                ? TimeSpan.MaxValue 
+                : currentStreamDuration.Value;
+
             return bufferTime >= endTime;
         }
 
@@ -455,7 +459,7 @@ namespace JuvoPlayer.DataProviders.Dash
 
             //Get average segment duration = Total Duration / number of segments.
             var avgSegmentDuration = TimeSpan.FromSeconds(
-                    ((double)(duration.Value.TotalSeconds) / (double)segments));
+                    (duration.Value.TotalSeconds / segments));
 
             // Compute multiples of manifest MinBufferTime in units of average segment duration
             // with round up
@@ -470,17 +474,12 @@ namespace JuvoPlayer.DataProviders.Dash
 
         private void UpdateTimeBufferDepth()
         {
-            if (IsDynamic == true)
-            {
+            if (IsDynamic)
                 TimeBufferDepthDynamic();
-            }
             else
-            {
                 TimeBufferDepthStatic();
-            }
 
             LogInfo($"TimeBufferDepth: {timeBufferDepth}");
-
         }
 
         #region Logging Functions

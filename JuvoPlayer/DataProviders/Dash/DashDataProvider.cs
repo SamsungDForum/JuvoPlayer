@@ -204,8 +204,8 @@ namespace JuvoPlayer.DataProviders.Dash
             {
                 BuildSubtitleInfos(period);
 
-                if (period.Duration.HasValue)
-                    ClipDurationChanged?.Invoke(period.Duration.Value);
+                if (document.MediaPresentationDuration.HasValue && document.MediaPresentationDuration.Value > TimeSpan.Zero)
+                    ClipDurationChanged?.Invoke(document.MediaPresentationDuration.Value);
 
                 foreach (var v in videos)
                 {
