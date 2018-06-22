@@ -143,39 +143,39 @@ namespace MpdParser.Node.Dynamic
         {
             return TimeSpan.FromSeconds((double)point / timescale_);
         }
+
         private Segment MakeSegment(ListItem item)
         {
             return MakeSegment(item.Media, item.Range, new TimeRange(Scaled(item.Time), Scaled(item.Duration)));
         }
 
-
-
-        private uint? GetStartSegmentDynamic(TimeSpan durationSpan)
+        private uint? GetStartSegmentDynamic(TimeSpan pointInTime)
         {
             var availStart = (Parameters.Document.AvailabilityStartTime ?? DateTime.MinValue);
-            var liveTimeIndex = (durationSpan + Parameters.PlayClock);
+            var liveTimeIndex = (pointInTime + Parameters.PlayClock);
 
             return MediaSegmentAtTimeDynamic(liveTimeIndex);
         }
 
-        private uint GetStartSegmentStatic(TimeSpan durationSpan)
+        private uint GetStartSegmentStatic(TimeSpan pointInTime)
         {
             return 0;
         }
 
-        public uint? GetStartSegment(TimeSpan durationSpan, TimeSpan bufferDepth)
+        public uint? StartSegmentId(TimeSpan pointInTime, TimeSpan bufferDepth)
         {
             //TODO: Take into account @startNumber if available
             if (Parameters.Document.IsDynamic == true)
-                return GetStartSegmentDynamic(durationSpan);
+                return GetStartSegmentDynamic(pointInTime);
 
-            return GetStartSegmentStatic(durationSpan);
+            return GetStartSegmentStatic(pointInTime);
         }
 
-        public Segment MediaSegmentAtPos(uint pos)
+        public Segment MediaSegment(uint? segmentId)
         {
-            if (pos < uris_.Length)
-                return MakeSegment(uris_[pos]);
+            if (segmentId.HasValue && segmentId < uris_.Length)
+                return MakeSegment(uris_[segmentId.Value]);
+
             return null;
         }
 
@@ -183,6 +183,7 @@ namespace MpdParser.Node.Dynamic
         {
             throw new NotImplementedException("MediaSegmentAtTime for dynamic content needs implementation");
         }
+
         private uint? MediaSegmentAtTimeStatic(TimeSpan durationSpan)
         {
             ulong duration = (ulong)Math.Ceiling(durationSpan.TotalSeconds * timescale_);
@@ -193,7 +194,7 @@ namespace MpdParser.Node.Dynamic
             }
             return null;
         }
-        public uint? MediaSegmentAtTime(TimeSpan durationSpan)
+        public uint? SegmentId(TimeSpan durationSpan)
         {
             if (Parameters.Document.IsDynamic)
                 return MediaSegmentAtTimeDynamic(durationSpan);
@@ -207,6 +208,38 @@ namespace MpdParser.Node.Dynamic
             {
                 yield return MakeSegment(item);
             }
+        }
+
+        public uint? NextSegmentId(uint? segmentId)
+        {
+            var nextSegmentId = segmentId.HasValue ? segmentId + 1 : Count;
+
+            if (nextSegmentId >= Count)
+                return null;
+
+            return nextSegmentId;
+        }
+
+        public uint? NextSegmentId(TimeSpan pointInTime)
+        {
+            var nextSegmentId = SegmentId(pointInTime);
+
+            return NextSegmentId(nextSegmentId);
+        }
+
+        public TimeRange SegmentTimeRange(uint? segmentId)
+        {
+            if (!segmentId.HasValue || segmentId >= Count)
+                return null;
+
+            var item = uris_[(int)segmentId];
+            return new TimeRange(Scaled(item.Time), Scaled(item.Duration));
+        }
+
+        public bool PrepeareStream()
+        {
+            // So far... nothing to prepare for list representations...
+            return true;
         }
     }
 }

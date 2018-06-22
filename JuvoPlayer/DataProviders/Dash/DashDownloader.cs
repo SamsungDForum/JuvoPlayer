@@ -194,7 +194,7 @@ namespace JuvoPlayer.DataProviders.Dash
 
                 cancellationToken.ThrowIfCancellationRequested();
 
-                Logger.Info($"{request.StreamType}: Segment: {request.SegmentId} Requested. URL: {request.DownloadSegment.Url} Range: {downloadRange}");
+                Logger.Info($"{request.StreamType}: Segment: {SegmentId(request.SegmentId)} Requested. URL: {request.DownloadSegment.Url} Range: {downloadRange}");
 
                 TimeSpan time;
                 byte[] data;

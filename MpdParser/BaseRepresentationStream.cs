@@ -22,12 +22,36 @@ namespace MpdParser.Node.Dynamic
 {
     public class BaseRepresentationStream : IRepresentationStream
     {
-        public BaseRepresentationStream(Segment init, Segment media,
+        /// <summary>
+        /// Custom IComparer for searching Segment array array
+        /// by start & Duration
+        /// 
+        /// Segment.Period.Start = Time to look for
+        /// 
+        /// Time to look for has to match exactly segment start time
+        /// 
+        /// </summary>
+        internal class IndexSearchStartTime : IComparer<Segment>
+        {
+            public int Compare(Segment x, Segment y)
+            {
+                if (x.Period.Start <= y.Period.Start)
+                {
+                    if (x.Period.Start + x.Period.Duration > y.Period.Start)
+                        return 0;
+                    return -1;
+                }
+
+                return 1;
+            }
+        }
+
+        public BaseRepresentationStream(Segment init, Segment media_,
           ulong presentationTimeOffset, TimeSpan? timeShiftBufferDepth,
           TimeSpan avaliabilityTimeOffset, bool? avaliabilityTimeComplete,
           Segment index = null)
         {
-            media_ = media;
+            media = media_;
             InitSegment = init;
             IndexSegment = index;
 
@@ -37,34 +61,21 @@ namespace MpdParser.Node.Dynamic
             AvaliabilityTimeComplete = avaliabilityTimeComplete;
 
             Duration = media?.Period?.Duration;
-
-            DownloadIndexOnce();
-            
-            // If media.Period.Duration has no value (not specified by Manifest), 
-            // try to guess duration from index information 
-            if (Duration.HasValue == false)
-            {
-                if (segments_.Count > 0)
-                {
-                    var lastEntry = segments_.Count - 1;
-
-                    Duration = segments_[lastEntry].Period.Start + segments_[lastEntry].Period.Duration;
-                }
-            }
         }
 
         protected static LoggerManager LogManager = LoggerManager.GetInstance();
         protected static ILogger Logger = LoggerManager.GetInstance().GetLogger(MpdParser.LogTag);
 
-        private ManifestParameters Parameters;
+        private ManifestParameters parameters;
 
         private bool indexDownloaded;
-        private Segment media_;
+        private Segment media;
 
-        public TimeSpan? Duration { get; }
-        
+        public TimeSpan? Duration { get; internal set; }
+
         public Segment InitSegment { get; }
-        public Segment IndexSegment { get; }
+
+        private Segment IndexSegment;
 
         public ulong PresentationTimeOffset { get; }
         public TimeSpan? TimeShiftBufferDepth { get; }
@@ -75,28 +86,30 @@ namespace MpdParser.Node.Dynamic
         {
             get
             {
-                return (uint)segments_.Count;
+                // Non indexed segments have just one element - media.
+                // Indexed segments have segments defined by index entry count
+                return (uint)(IndexSegment == null ? 1 : segments_.Count);
             }
         }
         private List<Segment> segments_ = new List<Segment>();
 
         public void SetDocumentParameters(ManifestParameters docParams)
         {
-            Parameters = docParams;
+            parameters = docParams;
         }
 
         public ManifestParameters GetDocumentParameters()
         {
-            return Parameters;
+            return parameters;
         }
 
         private void DownloadIndexOnce()
         {
             //Create index storage only if index segment is provided
-            if (IndexSegment == null || this.indexDownloaded)
-            {
+            if (this.indexDownloaded)
                 return;
-            }
+
+            indexDownloaded = true;
 
             ByteRange range = new ByteRange(IndexSegment.ByteRange);
 
@@ -106,12 +119,25 @@ namespace MpdParser.Node.Dynamic
                 byte[] data = Downloader.DownloadData(IndexSegment.Url, range);
                 Logger.Debug($"Downloaded successfully Index Segment {IndexSegment.Url} {range}");
                 ProcessIndexData(data, (UInt64)range.High);
-                indexDownloaded = true;
+
+                // Update Duration to correspond to what's contained in index data
+                if (segments_.Count > 0)
+                {
+                    var lastEntry = segments_.Count - 1;
+
+                    // Update duration with information from index segment data.
+                    // Index segment data is used for seeks. If variaes from Manifest Duration
+                    // especially if it is shorter, this will cause missing segments.
+                    //
+                    Duration = segments_[lastEntry].Period.Start + segments_[lastEntry].Period.Duration;
+                }
             }
             catch (WebException e)
             {
                 Logger.Error($"Downloading Index Segment FAILED {IndexSegment.Url} ({e.Status}):\n{e}");
-                //todo(m.rybinski): what now? Retry? How many times? Show an error to the user?
+                // todo(m.rybinski): what now? Retry? How many times? Show an error to the user?
+                // No need to add any special error handling for failed downloads. Indexed content
+                // will return null segments if no index data is present.
             }
         }
 
@@ -146,77 +172,165 @@ namespace MpdParser.Node.Dynamic
                 {
                     string rng = lb.ToString() + "-" + hb.ToString();
 
-                    segments_.Add(new Segment(media_.Url, rng, new TimeRange(starttime, duration)));
+                    segments_.Add(new Segment(media.Url, rng, new TimeRange(starttime, duration)));
                 }
             }
         }
 
-        public Segment MediaSegmentAtPos(uint pos)
+        public Segment MediaSegment(uint? segmentId)
         {
-            Logger.Info(string.Format("MediaSegmentAtPos {0}", pos));
-
-            if (media_ == null)
+            if (media == null || !segmentId.HasValue)
                 return null;
 
-            if (segments_.Count == 0)
-            {
-                Logger.Info(string.Format("No index data for {0}", media_.Url.ToString()));
-                return media_;
-            }
+            // Non Indexed base representation. segment Id verified to prevent
+            // repeated playback of same segment with different IDs
+            //
+            if (IndexSegment == null && segmentId == 0)
+                return media;
 
-            if (pos >= segments_.Count)
-                return null;
+            // Indexed Segments. Require segment information to be available.
+            // If does not exists (Count==0), do not return segment.
+            // Count - Segment ID Argument shall handle index validation
+            //
+            if (segments_.Count - segmentId > 0)
+                return segments_[(int)segmentId];
 
-            return segments_[(int)pos];
-        }
-
-        public uint? MediaSegmentAtTime(TimeSpan duration)
-        {
-            Logger.Info(string.Format("MediaSegmentAtTime {0}", duration));
-            if (media_ == null)
-                return null;
-
-            if (media_.Contains(duration) <= TimeRelation.EARLIER)
-                return null;
-
-            for (int i = 0; i < segments_.Count; ++i)
-            {
-                if (segments_[i].Period.Start + segments_[i].Period.Duration >= duration)
-                    return (uint)i;
-            }
             return null;
         }
 
-        private uint? GetStartSegmentDynamic(TimeSpan durationSpan)
+        public uint? SegmentId(TimeSpan pointInTime)
         {
-            var availStart = (Parameters.Document.AvailabilityStartTime ?? DateTime.MinValue);
-            var liveTimeIndex = (availStart + durationSpan + Parameters.PlayClock) - availStart;
+            if (media == null)
+                return null;
 
-            return MediaSegmentAtTime(liveTimeIndex);
+            // Non indexed case
+            //
+            if (IndexSegment == null)
+            {
+                if (media.Contains(pointInTime) <= TimeRelation.EARLIER)
+                    return null;
+
+                return 0;
+            }
+
+            var idx = GetIndexSegmentIndex(pointInTime);
+
+            if (idx < 0)
+                return null;
+
+            return (uint)idx;
         }
 
-        private uint GetStartSegmentStatic(TimeSpan durationSpan)
+        private uint? GetStartSegmentDynamic(TimeSpan pointInTime)
         {
+            var availStart = (parameters.Document.AvailabilityStartTime ?? DateTime.MinValue);
+            var liveTimeIndex = (availStart + pointInTime + parameters.PlayClock) - availStart;
+
+            return SegmentId(liveTimeIndex);
+        }
+
+        private uint? GetStartSegmentStatic(TimeSpan pointInTime)
+        {
+            // Non indexed case
+            //
+            if (IndexSegment == null)
+                return 0;
+
+            // Index Case. 
+            // Prepare stream had to be called first.
             return 0;
+
         }
 
-        public uint? GetStartSegment(TimeSpan durationSpan, TimeSpan bufferDepth)
+        public uint? StartSegmentId(TimeSpan pointInTime, TimeSpan bufferDepth)
         {
-            if (media_ == null)
+            if (media == null)
                 return null;
 
             //TODO: Take into account @startNumber if available
-            if (Parameters.Document.IsDynamic == true)
-                return GetStartSegmentDynamic(durationSpan);
+            if (parameters.Document.IsDynamic == true)
+                return GetStartSegmentDynamic(pointInTime);
 
-            return GetStartSegmentStatic(durationSpan);
+            return GetStartSegmentStatic(pointInTime);
         }
 
         public IEnumerable<Segment> MediaSegments()
         {
-            if (segments_.Count == 0 && media_ != null)
-                return new List<Segment>() { media_ };
+            if (segments_.Count == 0 && media != null)
+                return new List<Segment>() { media };
             return segments_;
+        }
+
+        public uint? NextSegmentId(uint? segmentId)
+        {
+            // Non Index case has no next segment. Just one - start
+            // so return no index. 
+            // Sanity check included (all ORs)
+            if (IndexSegment == null || media == null || !segmentId.HasValue)
+                return null;
+
+            var nextSegmentId = segmentId + 1;
+
+            if (nextSegmentId >= segments_.Count)
+                return null;
+
+            return nextSegmentId;
+        }
+
+        public uint? NextSegmentId(TimeSpan pointInTime)
+        {
+            var nextSegmentId = SegmentId(pointInTime);
+
+            if (nextSegmentId.HasValue == false)
+                return null;
+
+            return NextSegmentId(nextSegmentId.Value);
+        }
+
+        public TimeRange SegmentTimeRange(uint? segmentId)
+        {
+            if (!segmentId.HasValue || media == null)
+                return null;
+
+            // Non indexed case
+            if (IndexSegment == null && segmentId == 0)
+                return media.Period.Copy();
+
+            if (segmentId >= segments_.Count)
+                return null;
+
+            // Returned TimeRange via a copy. Intentional.
+            // If Manifest gets updated it is undesired to have wierd values in it.
+            //
+            return segments_[(int)segmentId].Period.Copy();
+        }
+
+        private int GetIndexSegmentIndex(TimeSpan pointInTime)
+        {
+            // TODO: Verify lower bound limit where iterative search will be faster then 
+            // binary search with associated object creation.
+            //
+            var searcher = new IndexSearchStartTime();
+            var searchFor = new Segment(null, null, new TimeRange(pointInTime, TimeSpan.Zero));
+            var idx = segments_.BinarySearch(0, segments_.Count, searchFor, searcher);
+
+            if (idx < 0)
+                Logger.Info($"Failed to find index segment in @time. FA={segments_[0].Period.Start} Req={pointInTime} LA={segments_[segments_.Count - 1].Period.Start}");
+
+            return idx;
+        }
+
+        public bool PrepeareStream()
+        {
+            // Index case - search index data for segment information. Ignore media information.
+            //
+            if (IndexSegment == null)
+                return true;
+
+            DownloadIndexOnce();
+
+            // If there are no segments, signall as not ready
+            return (segments_.Count > 0);
         }
     }
 }
