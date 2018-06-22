@@ -127,8 +127,8 @@ namespace JuvoPlayer.DataProviders.Dash
             // try to update manifest. Needed in case of live content
             if (await UpdateManifest())
             {
-                audioPipeline.SwitchStreamIfNeeded();
-                videoPipeline.SwitchStreamIfNeeded();
+                Parallel.Invoke(() => audioPipeline.SwitchStreamIfNeeded(),
+                    () => videoPipeline.SwitchStreamIfNeeded());
             }
         }
 
@@ -179,8 +179,8 @@ namespace JuvoPlayer.DataProviders.Dash
 
             await UpdateManifest();
 
-            audioPipeline.SwitchStreamIfNeeded();
-            videoPipeline.SwitchStreamIfNeeded();
+            Parallel.Invoke(() => audioPipeline.SwitchStreamIfNeeded(),
+                            () => videoPipeline.SwitchStreamIfNeeded());
         }
 
         private bool UpdateMedia(Document document, Period period)
@@ -316,19 +316,19 @@ namespace JuvoPlayer.DataProviders.Dash
         {
             currentTime = time;
 
-            audioPipeline.OnTimeUpdated(time);
-            videoPipeline.OnTimeUpdated(time);
+            Parallel.Invoke(() => audioPipeline.OnTimeUpdated(time),
+                () => videoPipeline.OnTimeUpdated(time));
 
             await UpdateManifest();
 
             if (disposed)
                 return;
 
-            audioPipeline.AdaptToNetConditions();
-            videoPipeline.AdaptToNetConditions();
+            Parallel.Invoke(() => audioPipeline.AdaptToNetConditions(),
+                            () => videoPipeline.AdaptToNetConditions());
 
-            audioPipeline.SwitchStreamIfNeeded();
-            videoPipeline.SwitchStreamIfNeeded();
+            Parallel.Invoke(() => audioPipeline.SwitchStreamIfNeeded(),
+                            () => videoPipeline.SwitchStreamIfNeeded());
         }
 
         public async Task<bool> UpdateManifest()
