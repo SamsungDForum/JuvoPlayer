@@ -72,7 +72,14 @@ namespace JuvoPlayer.DataProviders.Dash
         /// </summary>
         public event Error Error;
 
-        public DashClient(IThroughputHistory throughputHistory, ISharedBuffer sharedBuffer, StreamType streamType)
+        /// <summary>
+        /// Storage holders for initial packets PTS/DTS values.
+        /// Used in Trimming Packet Handler to truncate down PTS/DTS values.
+        /// First packet seen acts as flip switch. Fill initial values or not.
+        /// </summary>
+        private TimeSpan? trimmOffset;
+
+        public DashClient(IThroughputHistory throughputHistory, ISharedBuffer sharedBuffer,  StreamType streamType)
         {
             this.throughputHistory = throughputHistory ?? throw new ArgumentNullException(nameof(throughputHistory), "throughputHistory cannot be null");
             this.sharedBuffer = sharedBuffer ?? throw new ArgumentNullException(nameof(sharedBuffer), "sharedBuffer cannot be null");
@@ -192,14 +199,15 @@ namespace JuvoPlayer.DataProviders.Dash
             else
             {
                 // Already have init segment. Push it down the pipeline & schedule next download
-                var initData = new DownloadResponse();
-                initData.Data = initStreamBytes;
-                initData.SegmentId = null;
+                var initData = new DownloadResponse
+                {
+                    Data = initStreamBytes,
+                    SegmentId = null
+                };
 
-                LogInfo($"Skipping INIT segment download");
+                LogInfo("Skipping INIT segment download");
                 InitDataDownloaded(initData);
                 ScheduleNextSegDownload();
-
             }
         }
 
@@ -214,10 +222,10 @@ namespace JuvoPlayer.DataProviders.Dash
             lastDownloadSegmentTimeRange = responseResult.DownloadSegment.Period.Copy();
             currentSegmentId = currentStreams.NextSegmentId(currentSegmentId);
 
-            if (IsDynamic)
-                bufferTime += responseResult.DownloadSegment.Period.Duration;
-            else
-                bufferTime = responseResult.DownloadSegment.Period.Start + responseResult.DownloadSegment.Period.Duration;
+            if (trimmOffset.HasValue == false)
+                trimmOffset = responseResult.DownloadSegment.Period.Start;
+
+            bufferTime = responseResult.DownloadSegment.Period.Start + responseResult.DownloadSegment.Period.Duration - trimmOffset.Value;
 
             var timeInfo = responseResult.DownloadSegment.Period.ToString();
 
@@ -245,13 +253,10 @@ namespace JuvoPlayer.DataProviders.Dash
         {
             LogError(message);
 
-            // In dynamic manifests, continue ONLY on non init segment failures         
             if (IsDynamic)
-            {
                 return;
-            }
 
-            // Stop Client and signall error.
+            // Stop Client and signal error.
             //
             Stop();
 
@@ -271,6 +276,8 @@ namespace JuvoPlayer.DataProviders.Dash
         {
             cancellationTokenSource?.Cancel();
             SendEOSEvent();
+
+            trimmOffset = null;
 
             // Temporary prevention caused by out of order download processing.
             // Wait for download task to complete. Stale cancellations
