@@ -39,14 +39,10 @@ namespace JuvoPlayer.OpenGL
             private set
             {
                 playerState = value;
-                if (playerState == PlayerState.Error)
-                {
-                    StateChanged?.Invoke(this, new PlayerStateChangedStreamError(playerState, playerStateMessage));
-                }
-                else
-                {
-                    StateChanged?.Invoke(this, new PlayerStateChangedEventArgs(playerState));
-                }
+                StateChanged?.Invoke(this,
+                    playerState == PlayerState.Error
+                        ? new PlayerStateChangedStreamError(playerState, playerStateMessage)
+                        : new PlayerStateChangedEventArgs(playerState));
             }
         }
 

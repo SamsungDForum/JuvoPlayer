@@ -180,6 +180,9 @@ namespace JuvoPlayer.OpenGL
 
         public void ControlSelect(Player player)
         {
+            if (player == null)
+                return;
+
             int selectedStreamTypeIndex = _selectedOption;
             int selectedStreamIndex = _selectedSuboption;
 

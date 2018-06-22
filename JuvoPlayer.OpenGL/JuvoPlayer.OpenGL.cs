@@ -3,16 +3,15 @@ using System.IO;
 using JuvoLogger;
 using Tizen.TV.NUI.GLApplication;
 using System.Linq;
-using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
-using Tizen;
-using JuvoLogger.Tizen;
 
 namespace JuvoPlayer.OpenGL
 {
     internal class Program : TVGLApplication
     {
+        private SynchronizationContext _uiContext = null; // needs to be initialized in OnCreate!
+
         private readonly TimeSpan _prograssBarFadeout = TimeSpan.FromMilliseconds(5000);
         private readonly TimeSpan _defaultSeekTime = TimeSpan.FromSeconds(30);
         private readonly TimeSpan _defaultSeekAccumulateTime = TimeSpan.FromMilliseconds(1000);
@@ -52,7 +51,8 @@ namespace JuvoPlayer.OpenGL
 
         protected override void OnCreate()
         {
-            OpenGLLoggerManager.Configure();
+            _uiContext = SynchronizationContext.Current;
+            OpenGLLoggerManager.Configure(_uiContext);
             DllImports.Create();
             InitMenu();
         }
@@ -339,22 +339,26 @@ namespace JuvoPlayer.OpenGL
                 _player = new Player();
                 _player.StateChanged += (object sender, PlayerStateChangedEventArgs e) =>
                 {
-                    Logger?.Info($"Player state changed: {_player.State}");
-                    if (_player.State == PlayerState.Prepared)
-                    {
-                        _options.LoadStreamLists(_player);
-                        SelectMenuAction(MenuAction.PlaybackControl);
-                        _player?.Start();
-                    }
-                    else if (_player.State == PlayerState.Completed)
-                    {
-                        _playbackCompletedNeedsHandling = true;
-                    }
-                    else if (_player.State == PlayerState.Error)
-                    {
-                        DisplayAlert("Playback Error", (e as PlayerStateChangedStreamError)?.Message ?? "Unknown Error", "OK");
-                        ClosePlayer();
-                    }
+                    _uiContext.Post(state => {
+                        Logger?.Info($"Player state changed: {_player.State.ToString() ?? "Unknown state"}");
+                        if (_player.State == PlayerState.Prepared)
+                        {
+                            _options.LoadStreamLists(_player);
+                            SelectMenuAction(MenuAction.PlaybackControl);
+                            _player.Start();
+                        }
+                        else if (_player.State == PlayerState.Completed)
+                        {
+                            _playbackCompletedNeedsHandling = true;
+                        }
+                        else if (_player.State == PlayerState.Error)
+                        {
+                            Logger?.Info($"Playback Error: {(e as PlayerStateChangedStreamError)?.Message ?? "Unknown Error"}");
+                            ReturnToMainMenu();
+                            DisplayAlert("Playback Error", (e as PlayerStateChangedStreamError)?.Message ?? "Unknown Error", "OK");
+                        }
+                    },
+                    null);
                 };
                 _player.SeekCompleted += () =>
                 {
@@ -370,25 +374,27 @@ namespace JuvoPlayer.OpenGL
             SelectMenuAction(MenuAction.None);
         }
 
+        private void ReturnToMainMenu()
+        {
+            ResetPlaybackControls();
+            ShowMenu(true);
+            _progressBarShown = false;
+            ClosePlayer();
+        }
+
         private void HandleKeyBack()
         {
             if (!_isMenuShown && !_options.Visible)
-            {
-                ResetPlaybackControls();
-                ShowMenu(true);
-                ClosePlayer();
-            }
+                ReturnToMainMenu();
             else if (_options.Visible)
-            {
                 _options.Hide();
-            }
         }
 
         private void ClosePlayer()
         {
-            if (_player == null)
-                return;
-            _player.Dispose();
+            Logger?.Info("Closing player");
+            _player?.Stop();
+            _player?.Dispose();
             _player = null;
         }
 
@@ -410,13 +416,7 @@ namespace JuvoPlayer.OpenGL
 
         private void HandleKeyStop()
         {
-            if (!_isMenuShown && !_options.Visible)
-            {
-                ResetPlaybackControls();
-                ShowMenu(true);
-            }
-            _player?.Stop();
-            ClosePlayer();
+            ReturnToMainMenu();
         }
 
         private void HandleKeyRewind()
