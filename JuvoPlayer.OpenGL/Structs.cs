@@ -20,14 +20,6 @@
         public byte[] Pixels;
     }
 
-    internal struct Tile
-    {
-        public int Id;
-        public ImageData Image;
-        public string Name;
-        public string Description;
-    }
-
     internal enum IconType
     {
         Play,
@@ -37,7 +29,8 @@
         FastForward,
         Rewind,
         SkipToEnd,
-        SkipToStart
+        SkipToStart,
+        Options
     };
 
     internal struct Icon
@@ -46,16 +39,16 @@
         public ImageData Image;
     }
 
-    internal struct Font
-    {
-        public int Id;
-        public string FontPath;
-        public byte[] FontData;
-    }
-
     internal enum ColorSpace
     {
         RGB,
         RGBA
+    }
+
+    internal enum MenuAction
+    {
+        None = 0,
+        PlaybackControl = 1,
+        OptionsMenu = 2
     }
 }
