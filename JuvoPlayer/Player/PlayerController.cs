@@ -13,6 +13,7 @@
 
 using System;
 using System.Collections.Generic;
+using JuvoLogger;
 using JuvoPlayer.Common;
 using JuvoPlayer.Drms;
 
@@ -50,6 +51,8 @@ namespace JuvoPlayer.Player
         public event TimeUpdated TimeUpdated;
         public event SeekCompleted SeekCompleted;
 
+        private readonly ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
+
         public PlayerController(IPlayer player, IDrmManager drmManager)
         {
             this.drmManager = drmManager ?? throw new ArgumentNullException(nameof(drmManager), "drmManager cannot be null");
@@ -70,6 +73,12 @@ namespace JuvoPlayer.Player
 
         private void OnPlaybackCompleted()
         {
+            Logger.Info("");
+
+            //Clear streams to remove any pending DRMs
+            foreach (var stream in streams.Values)
+                stream.OnClearStream();
+
             state = PlayerState.Finished;
 
             PlaybackCompleted?.Invoke();
@@ -168,6 +177,8 @@ namespace JuvoPlayer.Player
 
         public void OnStop()
         {
+            Logger.Info("");
+
             foreach (var stream in streams.Values)
                 stream.OnClearStream();
 
