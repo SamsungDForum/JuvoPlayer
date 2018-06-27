@@ -1,7 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
+using JuvoLogger;
 using JuvoPlayer.Common;
 using JuvoPlayer.Drms;
 
@@ -12,11 +14,11 @@ namespace JuvoPlayer.Player
         protected ICodecExtraDataHandler codecExtraDataHandler;
         protected IDrmManager drmManager;
         protected IPlayer player;
-        private IDrmSession drmSession;
+        private IDrmSession drmSession = null;
         private StreamConfig config;
-        private bool forceDrmChange;
-        private Task drmSessionInitializeTask;
         private readonly StreamType streamType;
+        private ManualResetEventSlim waitForDRMSession = new ManualResetEventSlim(true);
+        private readonly ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
 
         public PacketStream(StreamType streamType, IPlayer player, IDrmManager drmManager, ICodecExtraDataHandler codecExtraDataHandler)
         {
@@ -30,22 +32,25 @@ namespace JuvoPlayer.Player
 
         public void OnAppendPacket(Packet packet)
         {
+
             if (packet.StreamType != streamType)
                 throw new ArgumentException("packet type doesn't match");
 
             if (config == null)
                 throw new InvalidOperationException("Packet stream is not configured");
 
-            if (drmSessionInitializeTask != null && packet is EncryptedPacket)
+            // Wait for new DRM Session. If not obtained within 
+            // 10 seconds... die...
+            if (!waitForDRMSession.Wait(TimeSpan.FromSeconds(10)))
             {
-                drmSessionInitializeTask.Wait();
-                drmSessionInitializeTask = null;
+                Logger.Error("No supported DRM Found");
+                throw new InvalidOperationException("No supported DRM Found");
             }
 
-            if (drmSession != null && packet is EncryptedPacket)
+            if (packet is EncryptedPacket)
             {
                 var encryptedPacket = (EncryptedPacket)packet;
-                encryptedPacket.DrmSession = drmSession;
+                encryptedPacket.DrmSession = drmSession.GetInstance();
             }
 
             codecExtraDataHandler.OnAppendPacket(packet);
@@ -64,8 +69,6 @@ namespace JuvoPlayer.Player
             if (this.config != null && this.config.Equals(config))
                 return;
 
-            forceDrmChange = this.config != null;
-
             this.config = config;
 
             codecExtraDataHandler.OnStreamConfigChanged(config);
@@ -75,20 +78,43 @@ namespace JuvoPlayer.Player
 
         public void OnClearStream()
         {
-            drmSession?.Dispose();
+            Logger.Info($"{streamType}");
+            drmSession?.FreeInstance();
             drmSession = null;
             config = null;
         }
 
         public void OnDRMFound(DRMInitData data)
         {
-            if (!forceDrmChange && drmSession != null)
+            Logger.Info($"{streamType}");
+
+            // Prevent packets from being appended till we find supported DRM Session
+            // Do so ONLY if there is no current session. Existing session will be used.
+            // If no new session will be found, DRM Decode errors will be raised by player.
+            //
+            if (drmSession == null)
+                waitForDRMSession.Reset();
+
+            var newSession = drmManager.CreateDRMSession(data);
+
+            // Do not reset wait for DRM event. If there is no valid session
+            // do not want to append new data
+            //
+            if (newSession == null)
                 return;
 
-            forceDrmChange = false;
-            drmSession?.Dispose();
-            drmSession = drmManager.CreateDRMSession(data);
-            drmSessionInitializeTask = drmSession?.Initialize();
+            Logger.Info($"{streamType}: New DRM session found");
+
+            // New valid DRM Session. If exists, mark current session as removable
+            drmSession?.AllowRemoval();
+
+            // Set new session as current & let data submitters run wild.
+            // There is no need to store sessions. They live in player queue
+            //
+            drmSession = newSession;
+
+            waitForDRMSession.Set();
+            drmSession.Initialize();
         }
 
         public void Dispose()
