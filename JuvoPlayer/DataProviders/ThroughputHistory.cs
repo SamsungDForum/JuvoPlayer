@@ -8,6 +8,7 @@ namespace JuvoPlayer.DataProviders
     {
         private const int MaxMeasurementsToKeep = 20;
         private const int AverageThroughputSampleAmount = 4;
+        private const int MinimumThroughputSampleAmount = 2;
 
         private const double ThroughputDecreaseScale = 1.3;
         private const double ThroughputIncreaseScale = 1.3;
@@ -24,8 +25,10 @@ namespace JuvoPlayer.DataProviders
 
         private int GetSamplesCount()
         {
-            var sampleSize = AverageThroughputSampleAmount;
+            if (throughputs.Count < MinimumThroughputSampleAmount)
+                return 0;
 
+            var sampleSize = AverageThroughputSampleAmount;
             if (sampleSize >= throughputs.Count)
                 return throughputs.Count;
 
