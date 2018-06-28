@@ -154,7 +154,10 @@ namespace JuvoPlayer.DataProviders.Dash
         public void Dispose()
         {
             httpClient.Dispose();
-            updateInProgressLock?.Dispose();
+            // Disposing need to be done only when AvailableWaitHandle is used
+            // We dont use it so, dont dispose lock to avoid exceptions when releasing 
+            // semaphore in other thread
+            // updateInProgressLock?.Dispose();
             cancellationTokenSource?.Dispose();
         }
     }
