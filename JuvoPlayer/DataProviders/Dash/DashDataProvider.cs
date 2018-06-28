@@ -51,7 +51,7 @@ namespace JuvoPlayer.DataProviders.Dash
             videoPipeline.SetDrmConfiguration += OnSetDrmConfiguration;
             videoPipeline.StreamConfigReady += OnStreamConfigReady;
             videoPipeline.PacketReady += OnPacketReady;
-	        videoPipeline.StreamError += OnStreamError;
+            videoPipeline.StreamError += OnStreamError;
         }
 
         private void OnDRMInitDataFound(DRMInitData drmData)
@@ -128,7 +128,7 @@ namespace JuvoPlayer.DataProviders.Dash
             if (await UpdateManifest())
             {
                 Parallel.Invoke(() => audioPipeline.SwitchStreamIfNeeded(),
-                    () => videoPipeline.SwitchStreamIfNeeded());
+                                () => videoPipeline.SwitchStreamIfNeeded());
             }
         }
 
@@ -139,15 +139,14 @@ namespace JuvoPlayer.DataProviders.Dash
 
             Parallel.Invoke(() => videoPipeline.Pause(), () => audioPipeline.Pause());
             Parallel.Invoke(() => videoPipeline.Seek(time), () => audioPipeline.Seek(time));
-            Parallel.Invoke(() => videoPipeline.Resume(), () => audioPipeline.Resume());            
+            Parallel.Invoke(() => videoPipeline.Resume(), () => audioPipeline.Resume());
         }
 
         public void OnStopped()
         {
             manifest.CancelReload();
 
-            audioPipeline.Stop();
-            videoPipeline.Stop();
+            Parallel.Invoke(() => videoPipeline.Stop(), () => audioPipeline.Stop());
         }
 
         public bool IsSeekingSupported()
@@ -392,10 +391,12 @@ namespace JuvoPlayer.DataProviders.Dash
             disposed = true;
 
             OnStopped();
+
             manifest.Dispose();
 
             audioPipeline?.Dispose();
             audioPipeline = null;
+
             videoPipeline?.Dispose();
             videoPipeline = null;
         }

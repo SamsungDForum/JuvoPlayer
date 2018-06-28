@@ -1,6 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
 using System.Xml;
 using JuvoLogger;
@@ -38,8 +37,8 @@ namespace JuvoPlayer.DataProviders.Dash
 
             public bool Equals(DashStream other)
             {
-                return EqualityComparer<Media>.Default.Equals(Media, other.Media) &&
-                       EqualityComparer<Representation>.Default.Equals(Representation, other.Representation);
+                return other != null && (EqualityComparer<Media>.Default.Equals(Media, other.Media) &&
+                                         EqualityComparer<Representation>.Default.Equals(Representation, other.Representation));
             }
 
             public override int GetHashCode()
@@ -170,7 +169,7 @@ namespace JuvoPlayer.DataProviders.Dash
             }
             else
             {
-                StopPipeline();
+                ResetPipeline();
                 StartPipeline(pendingStream);
             }
 
@@ -274,12 +273,13 @@ namespace JuvoPlayer.DataProviders.Dash
 
         public void Pause()
         {
-            StopPipeline();
+            ResetPipeline();
             pipelineStarted = false;
         }
         public void Stop()
         {
-            StopPipeline();
+            demuxer.Stop();
+            dashClient.Stop();
 
             trimmOffset = null;
             pipelineStarted = false;
@@ -312,16 +312,16 @@ namespace JuvoPlayer.DataProviders.Dash
 
             disableAdaptiveStreaming = true;
 
-            StopPipeline();
+            ResetPipeline();
             StartPipeline(newStream);
         }
 
-        private void StopPipeline()
+        private void ResetPipeline()
         {
             // Stop demuxer and dashclient
             // Stop demuxer first so old incoming data will ignored
             demuxer.Stop();
-            dashClient.Stop();
+            dashClient.Reset();
         }
 
         public List<StreamDescription> GetStreamsDescription()

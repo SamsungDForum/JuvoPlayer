@@ -34,7 +34,6 @@ namespace JuvoPlayer.Demuxers
         void Stop();
         void Pause();
         void Resume();
-
         bool IsPaused { get; }
 
         event ClipDurationChanged ClipDuration;
