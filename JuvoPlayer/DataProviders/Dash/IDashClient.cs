@@ -24,6 +24,8 @@ namespace JuvoPlayer.DataProviders.Dash
         void SetRepresentation(Representation representation);
         void Start();
         void Stop();
+        void Reset();
+
         void OnTimeUpdated(TimeSpan time);
         void UpdateRepresentation(Representation representation);
 

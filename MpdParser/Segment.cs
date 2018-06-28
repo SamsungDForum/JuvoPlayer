@@ -63,14 +63,14 @@ namespace MpdParser.Node.Dynamic
             Period = period;
         }
 
-        internal TimeRelation Contains(TimeSpan time_point)
+        internal TimeRelation Contains(TimeSpan timePoint)
         {
-            if (Period == null || time_point == null)
+            if (Period == null)
                 return TimeRelation.UNKNOWN;
-            if (time_point < Period.Start)
+            if (timePoint < Period.Start)
                 return TimeRelation.LATER;
-            time_point -= Period.Start;
-            return time_point <= Period.Duration ? TimeRelation.SPOTON : TimeRelation.EARLIER;
+            timePoint -= Period.Start;
+            return timePoint <= Period.Duration ? TimeRelation.SPOTON : TimeRelation.EARLIER;
         }
     }
 }
