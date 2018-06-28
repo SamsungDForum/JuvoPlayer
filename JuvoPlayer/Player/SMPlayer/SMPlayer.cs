@@ -23,6 +23,7 @@ using JuvoPlayer.Drms;
 using JuvoLogger;
 using Tizen.TV.Multimedia.IPTV;
 using StreamType = Tizen.TV.Multimedia.IPTV.StreamType;
+using JuvoPlayer.Common.Utils;
 
 namespace JuvoPlayer.Player.SMPlayer
 {
@@ -163,7 +164,7 @@ namespace JuvoPlayer.Player.SMPlayer
             if (packetQueue.TryDequeue(out var packet))
             {
                 if (packet is EncryptedPacket)
-                    (packet as EncryptedPacket).DrmSession.Dispose();
+                    (packet as EncryptedPacket).DrmSession.Release();
 
                 return true;
             }
@@ -320,7 +321,6 @@ namespace JuvoPlayer.Player.SMPlayer
                 SubmitDataPacket(packet);
         }
 
-
         private void SubmitEncryptedPacket(EncryptedPacket packet)
         {
             try
@@ -343,7 +343,7 @@ namespace JuvoPlayer.Player.SMPlayer
             }
             finally
             {
-                packet.DrmSession.Dispose();
+                packet.DrmSession.Release();
             }
         }
 
@@ -379,7 +379,6 @@ namespace JuvoPlayer.Player.SMPlayer
                 Marshal.FreeHGlobal(pnt);
             }
         }
-
 
         private void SubmitDataPacket(Packet packet) // TODO(g.skowinski): Implement it properly.
         {
@@ -487,9 +486,9 @@ namespace JuvoPlayer.Player.SMPlayer
             // Prior to resetting data queues, purge existing. Required to remove reference counts 
             // on possible encrypted packet's sessions. If not done, there will be uncleaned DRM sessions.
             // Will happen if DRM get's changed mid way through playback.
-            // Cleanup task can be run on any context. Run through captured queue references
-            // so new queues can be created and used while old ones are being cleared out.
-            Task.Factory.StartNew(() => DisposeEncryptedPackets(audioPacketsQueue, videoPacketsQueue)).ConfigureAwait(false);
+            // Cleanup task can be run completely parallel of SM Player activity.
+            //
+            Task.Factory.StartNew(() => DisposeEncryptedPackets(audioPacketsQueue, videoPacketsQueue));
 
             audioPacketsQueue = new ConcurrentQueue<Packet>();
             videoPacketsQueue = new ConcurrentQueue<Packet>();

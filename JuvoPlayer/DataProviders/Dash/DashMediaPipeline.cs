@@ -5,19 +5,13 @@ using System.Linq;
 using System.Xml;
 using JuvoLogger;
 using JuvoPlayer.Common;
+using JuvoPlayer.Common.Utils;
 using JuvoPlayer.Demuxers;
 using JuvoPlayer.Drms.Cenc;
 using MpdParser;
 
 namespace JuvoPlayer.DataProviders.Dash
 {
-    internal static class PacketHeler
-    {
-        public static bool ZeroClock(this Packet packet)
-        {
-            return (packet.Pts == TimeSpan.Zero && packet.Dts == TimeSpan.Zero);
-        }
-    }
     internal class DashMediaPipeline : IDisposable
     {
         private class DashStream : IEquatable<DashStream>
@@ -67,72 +61,6 @@ namespace JuvoPlayer.DataProviders.Dash
         public event PacketReady PacketReady;
         public event StreamError StreamError;
 
-        internal struct PacketTimeStamp
-        {
-            public TimeSpan Pts;
-            public TimeSpan Dts;
-
-            public PacketTimeStamp(Packet packet)
-            {
-                var offset = TimeSpan.FromTicks(Math.Min(packet.Pts.Ticks, packet.Dts.Ticks));
-                Pts = offset;
-                Dts = offset;
-            }
-
-            public static PacketTimeStamp operator +(PacketTimeStamp clock, TimeSpan time)
-            {
-                clock.Pts += time;
-                clock.Dts += time;
-                return clock;
-            }
-
-            public static PacketTimeStamp operator -(PacketTimeStamp clock, TimeSpan time)
-            {
-                clock.Pts -= time;
-                clock.Dts -= time;
-                return clock;
-            }
-
-            public static Packet operator +(Packet packet, PacketTimeStamp clock)
-            {
-                packet.Pts += clock.Pts;
-                packet.Dts += clock.Dts;
-                return packet;
-            }
-
-            public static Packet operator -(Packet packet, PacketTimeStamp clock)
-            {
-                packet.Pts -= clock.Pts;
-                packet.Dts -= clock.Dts;
-                return packet;
-            }
-
-            public static explicit operator PacketTimeStamp(Packet packet)
-            {
-                return new PacketTimeStamp
-                {
-                    Pts = packet.Pts,
-                    Dts = packet.Dts
-                };
-            }
-
-            public void SetClock(Packet packet)
-            {
-                Pts = packet.Pts;
-                Dts = packet.Dts;
-            }
-
-            public void SetClock(TimeSpan time)
-            {
-                Pts = time;
-                Dts = time;
-            }
-            public override string ToString()
-            {
-                return $"PTS: {Pts} DTS: {Dts}";
-            }
-        }
-
         /// <summary>
         /// Holds smaller of the two (PTS/DTS) from the initial packet.
         /// </summary>
@@ -156,8 +84,6 @@ namespace JuvoPlayer.DataProviders.Dash
         private PacketTimeStamp demuxerClock;
         private PacketTimeStamp lastPushedClock;
 
-
-
         public DashMediaPipeline(IDashClient dashClient, IDemuxer demuxer, IThroughputHistory throughputHistory, StreamType streamType)
         {
             this.dashClient = dashClient ?? throw new ArgumentNullException(nameof(dashClient), "dashClient cannot be null");
@@ -171,7 +97,6 @@ namespace JuvoPlayer.DataProviders.Dash
             demuxer.DemuxerError += OnStreamError;
 
             dashClient.Error += OnStreamError;
-
         }
 
         public void UpdateMedia(IList<Media> media)
@@ -543,8 +468,9 @@ namespace JuvoPlayer.DataProviders.Dash
 
             if (!lastSeek.HasValue)
             {
-                if (packet.ZeroClock())
+                if (packet.IsZeroClock())
                 {
+                    // This IS NOT ideal solution to work around reset of PTS/DTS after 
                     demuxerClock = lastPushedClock;
                     trimmOffset.Value.SetClock(TimeSpan.Zero);
                     Logger.Info($"{streamType}: Zero timestamped packet. Adjusting demuxerClock: {demuxerClock} trimmOffset: {trimmOffset.Value}");

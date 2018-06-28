@@ -1,10 +1,8 @@
 using System;
 using System.IO;
 using System.Linq;
-using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
-using System.Runtime.ExceptionServices;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
@@ -14,6 +12,7 @@ using JuvoLogger;
 using Nito.AsyncEx;
 using Tizen.TV.Security.DrmDecrypt;
 using Tizen.TV.Security.DrmDecrypt.emeCDM;
+using JuvoPlayer.Common.Utils;
 
 namespace JuvoPlayer.Drms.Cenc
 {
@@ -33,41 +32,8 @@ namespace JuvoPlayer.Drms.Cenc
         private CancellationTokenSource cancellationTokenSource;
         private TaskCompletionSource<byte[]> requestDataCompletionSource;
 
-        private int referenceCounter;
-        private bool canRemove;
-
-        public IDrmSession GetInstance()
-        {
-            Interlocked.Increment(ref referenceCounter);
-            return this;
-        }
-
-        public void FreeInstance()
-        {
-            Logger.Info("");
-
-            // Set reference counter to 1/2 on in.MinValue to prevent decrementing beyond
-            // int limit and Dispose of an object. This will set reference Counter to a negative
-            // value allowing Dispose to perform its actions
-            Interlocked.Exchange(ref referenceCounter, int.MinValue / 2);
-
-            // Set removal flag as we are forcing a clean.
-            AllowRemoval();
-
-        }
-
-        public void AllowRemoval()
-        {
-            canRemove = true;
-
-            Logger.Info($"Marking CencSession {currentSessionId} as removable");
-
-            // Check reference counter. If object no longer in use, remove it.
-            if (referenceCounter > 0)
-                return;
-
-            Dispose();
-        }
+        private int Counter;
+        ref int IReferenceCoutable.Count => ref Counter;
 
         private CencSession(DRMInitData initData, DRMDescription drmDescription)
         {
@@ -82,7 +48,6 @@ namespace JuvoPlayer.Drms.Cenc
 
         private void DestroyCDM()
         {
-
             if (CDMInstance == null)
                 return;
 
@@ -99,11 +64,6 @@ namespace JuvoPlayer.Drms.Cenc
 
         public override void Dispose()
         {
-            var r = Interlocked.Decrement(ref referenceCounter);
-
-            if (r > 0 || !canRemove)
-                return;
-
             Logger.Info($"Disposing CencSession: {currentSessionId}");
             lock (this)
             {
@@ -165,8 +125,6 @@ namespace JuvoPlayer.Drms.Cenc
                 }
                 else
                 {
-                    // TODO: Retry or not retry, this is a question!
-                    // which can only be asked by football game streaming
                     Logger.Error("Failed to obtain license");
                     throw new InvalidOperationException("Failed to obtain license");
                 }
@@ -323,6 +281,9 @@ namespace JuvoPlayer.Drms.Cenc
 
                 ThrowIfDisposed();
 
+                // Start Reference counting. 
+                this.Init();
+
                 cancellationTokenSource = new CancellationTokenSource();
                 initializationTask = thread.Factory.Run(DoLicenceChallengeOnIemeThread);
                 return initializationTask;
@@ -412,6 +373,8 @@ namespace JuvoPlayer.Drms.Cenc
             }
 
             var responseTask = await client.PostAsync(licenceUrl, content, cancellationTokenSource.Token);
+
+            // TODO: Add retries. Net failures are expected
 
             Logger.Info("Response: " + responseTask);
             var receiveStream = responseTask.Content.ReadAsStreamAsync();

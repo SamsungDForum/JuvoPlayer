@@ -6,6 +6,7 @@ using Nito.AsyncEx;
 using Tizen.Security.TEEC;
 using Tizen.TV.Security.DrmDecrypt;
 using System.Threading;
+using JuvoPlayer.Common.Utils;
 
 namespace JuvoPlayer.Drms.DummyDrm
 {
@@ -30,35 +31,8 @@ namespace JuvoPlayer.Drms.DummyDrm
         private Session session;
         private SharedMemory inputMemory;
 
-        private int referenceCounter;
-        private bool canRemove;
-
-        public IDrmSession GetInstance()
-        {
-            Interlocked.Increment(ref referenceCounter);
-            return this;
-        }
-
-        public void FreeInstance()
-        {
-            // Set reference counter to 1/2 on in.MinValue to prevent decrementing beyond
-            // int limit and Dispose of an object.
-            Interlocked.Exchange(ref referenceCounter, int.MinValue / 2);
-
-            // Forced remove operation.
-            AllowRemoval();
-        }
-
-        public void AllowRemoval()
-        {
-            canRemove = true;
-
-            // Check reference counter. If zero reached, we can remove object now.
-            if (referenceCounter > 0)
-                return;
-
-            Dispose();
-        }
+        private int Counter;
+        ref int IReferenceCoutable.Count => ref Counter;
 
         private DummyDrmSession()
         {
@@ -66,9 +40,6 @@ namespace JuvoPlayer.Drms.DummyDrm
 
         public void Dispose()
         {
-            if (Interlocked.Decrement(ref referenceCounter) > 0 || !canRemove)
-                return;
-
             //Should be uncommented after Tizen.Net 4.0.1 release
             //inputSharedMemory?.Dispose();
             //session?.Dispose();
@@ -82,6 +53,7 @@ namespace JuvoPlayer.Drms.DummyDrm
 
         public Task Initialize()
         {
+            this.Init();
             return thread.Factory.Run(() => InitializeOnTEECThread());
         }
 
