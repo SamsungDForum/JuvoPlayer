@@ -157,7 +157,8 @@ namespace JuvoPlayer.DataProviders.Dash
                     if (IsDynamic)
                         return;
 
-                    LogWarn("Stoping player");
+                    LogWarn("Stopping player");
+
                     Stop();
                     return;
                 }
@@ -331,7 +332,7 @@ namespace JuvoPlayer.DataProviders.Dash
             currentRepresentation = representation;
             currentStreams = currentRepresentation.Segments;
 
-            // Prpeare Stream for playback.
+            // Prepare Stream for playback.
             if (!currentStreams.PrepeareStream())
             {
                 LogError("Failed to prepare stream. No playable segments");
@@ -343,6 +344,10 @@ namespace JuvoPlayer.DataProviders.Dash
                 return;
             }
 
+            currentStreamDuration = IsDynamic
+                ? currentStreams.GetDocumentParameters().Document.MediaPresentationDuration
+                : currentStreams.Duration;
+
             UpdateTimeBufferDepth();
         }
 
@@ -352,7 +357,7 @@ namespace JuvoPlayer.DataProviders.Dash
         /// <param name="representation"></param>
         public void UpdateRepresentation(Representation representation)
         {
-            if (IsDynamic == false)
+            if (!IsDynamic)
                 return;
 
             Interlocked.Exchange(ref newRepresentation, representation);
@@ -392,7 +397,9 @@ namespace JuvoPlayer.DataProviders.Dash
                 return;
             }
 
-            currentStreamDuration = currentStreams.GetDocumentParameters().Document.MediaPresentationDuration;
+            currentStreamDuration = IsDynamic 
+                ? currentStreams.GetDocumentParameters().Document.MediaPresentationDuration
+                : currentStreams.Duration;
 
             UpdateTimeBufferDepth();
 
@@ -515,8 +522,7 @@ namespace JuvoPlayer.DataProviders.Dash
             var manifestMinBufferDepth = currentStreams.GetDocumentParameters().Document.MinBufferTime ?? TimeSpan.Zero;
 
             //Get average segment duration = Total Duration / number of segments.
-            var avgSegmentDuration = TimeSpan.FromSeconds(
-                    (duration.Value.TotalSeconds / segments));
+            var avgSegmentDuration = TimeSpan.FromSeconds((duration.Value.TotalSeconds / segments));
 
             // Compute multiples of manifest MinBufferTime in units of average segment duration
             // with round up
