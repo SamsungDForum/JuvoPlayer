@@ -248,7 +248,7 @@ namespace JuvoPlayer.DataProviders.Dash
 
             var sleepTime = rnd.Next(
                 (downloadErrorCount - 1) * 100 + 1,
-                (downloadErrorCount * downloadErrorCount - (downloadErrorCount - 1)) * 100);
+                (downloadErrorCount * downloadErrorCount - (downloadErrorCount - 1)) * 100) + 1;
 
             return sleepTime;
         }
