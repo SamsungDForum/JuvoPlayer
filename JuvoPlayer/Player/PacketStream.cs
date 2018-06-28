@@ -5,6 +5,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using JuvoLogger;
 using JuvoPlayer.Common;
+using JuvoPlayer.Common.Utils;
 using JuvoPlayer.Drms;
 
 namespace JuvoPlayer.Player
@@ -19,6 +20,7 @@ namespace JuvoPlayer.Player
         private readonly StreamType streamType;
         private ManualResetEventSlim waitForDRMSession = new ManualResetEventSlim(true);
         private readonly ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
+        private bool forceDrmChange;
 
         public PacketStream(StreamType streamType, IPlayer player, IDrmManager drmManager, ICodecExtraDataHandler codecExtraDataHandler)
         {
@@ -41,6 +43,7 @@ namespace JuvoPlayer.Player
 
             // Wait for new DRM Session. If not obtained within 
             // 10 seconds... die...
+            //
             if (!waitForDRMSession.Wait(TimeSpan.FromSeconds(10)))
             {
                 Logger.Error("No supported DRM Found");
@@ -50,7 +53,12 @@ namespace JuvoPlayer.Player
             if (packet is EncryptedPacket)
             {
                 var encryptedPacket = (EncryptedPacket)packet;
-                encryptedPacket.DrmSession = drmSession.GetInstance();
+
+                // Increment reference counter on DRM session
+                //
+                drmSession.Share();
+
+                encryptedPacket.DrmSession = drmSession;
             }
 
             codecExtraDataHandler.OnAppendPacket(packet);
@@ -60,6 +68,8 @@ namespace JuvoPlayer.Player
 
         public void OnStreamConfigChanged(StreamConfig config)
         {
+            Logger.Info($"{streamType}");
+
             if (config == null)
                 throw new ArgumentNullException(nameof(config), "config cannot be null");
 
@@ -68,6 +78,8 @@ namespace JuvoPlayer.Player
 
             if (this.config != null && this.config.Equals(config))
                 return;
+
+            forceDrmChange = (this.config != null);
 
             this.config = config;
 
@@ -79,7 +91,11 @@ namespace JuvoPlayer.Player
         public void OnClearStream()
         {
             Logger.Info($"{streamType}");
-            drmSession?.FreeInstance();
+
+            // Force remove current DRM session regardless of reference counts
+            //
+            drmSession?.Dispose();
+
             drmSession = null;
             config = null;
         }
@@ -87,6 +103,11 @@ namespace JuvoPlayer.Player
         public void OnDRMFound(DRMInitData data)
         {
             Logger.Info($"{streamType}");
+
+            if (!forceDrmChange && drmSession != null)
+                return;
+
+            forceDrmChange = false;
 
             // Prevent packets from being appended till we find supported DRM Session
             // Do so ONLY if there is no current session. Existing session will be used.
@@ -105,16 +126,21 @@ namespace JuvoPlayer.Player
 
             Logger.Info($"{streamType}: New DRM session found");
 
-            // New valid DRM Session. If exists, mark current session as removable
-            drmSession?.AllowRemoval();
+            // Decrement use counter for packet stream on old DRM Session
+            //
+            drmSession?.Release();
 
             // Set new session as current & let data submitters run wild.
             // There is no need to store sessions. They live in player queue
             //
             drmSession = newSession;
 
-            waitForDRMSession.Set();
+            // Initialize sets reference counter to 1 internally.
+            //
             drmSession.Initialize();
+
+            waitForDRMSession.Set();
+
         }
 
         public void Dispose()

@@ -36,6 +36,11 @@ namespace JuvoPlayer.Common
             };
         }
 
+        public bool IsZeroClock()
+        {
+            return (Pts == TimeSpan.Zero && Dts == TimeSpan.Zero);
+        }
+
         public virtual void Dispose() { }
     }
 }
