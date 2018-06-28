@@ -115,6 +115,15 @@ namespace JuvoPlayer.DataProviders.Dash
         public byte[] Data { get; set; }
     }
 
+    internal class DashDownloaderException : Exception
+    {
+        public DownloadRequest DownloadRequest { get; }
+        public DashDownloaderException(DownloadRequest request, string message, Exception inner) : base(message, inner)
+        {
+            DownloadRequest = request;
+        }
+    }
+
     /// <summary>
     /// Download request class for handling download requests.
     /// </summary>
@@ -152,22 +161,25 @@ namespace JuvoPlayer.DataProviders.Dash
 
         private async Task<DownloadResponse> DownloadInternalAsync()
         {
-            string segmentId = SegmentId(request.SegmentId);
+            var segmentId = SegmentId(request.SegmentId);
+            Exception lastException;
             do
             {
                 try
                 {
-                    await Task.Delay(CalculateSleepTime(), cancellationToken).ConfigureAwait(false);
-                    return await DownloadDataTaskAsync().ConfigureAwait(false);
+                    await Task.Delay(CalculateSleepTime(), cancellationToken);
+                    return await DownloadDataTaskAsync();
                 }
                 catch (WebException e)
                 {
+                    Logger.Warn($"{request.StreamType}: Segment: {segmentId} NetError: {e.Message}");
+
+                    lastException = e;
                     cancellationToken.ThrowIfCancellationRequested();
 
                     if (e.InnerException is OperationCanceledException)
                         ExceptionDispatchInfo.Capture(e.InnerException).Throw();
 
-                    Logger.Warn($"{request.StreamType}: Segment: {segmentId} NetError: {e.Message}");
                     ++downloadErrorCount;
                 }
                 catch (OperationCanceledException)
@@ -176,12 +188,15 @@ namespace JuvoPlayer.DataProviders.Dash
                 }
                 catch (Exception e)
                 {
+                    lastException = e;
                     Logger.Warn($"{request.StreamType}: Segment: {segmentId} Error: {e.Message}");
                     ++downloadErrorCount;
                 }
             } while (!request.IgnoreError && downloadErrorCount < 3);
 
-            throw new Exception($"{request.StreamType}: Segment: {segmentId} Max retry count reached.");
+            var message = $"{request.StreamType}: Cannot download segment: {segmentId}.";
+
+            throw new DashDownloaderException(request, message, lastException);
         }
 
         private async Task<DownloadResponse> DownloadDataTaskAsync()
@@ -204,6 +219,7 @@ namespace JuvoPlayer.DataProviders.Dash
                 {
                     data = await dataDownloader.DownloadDataTaskAsync(request.DownloadSegment.Url).ConfigureAwait(false);
                 }
+
                 throughputHistory.Push(data.Length, time);
 
                 return new DownloadResponse

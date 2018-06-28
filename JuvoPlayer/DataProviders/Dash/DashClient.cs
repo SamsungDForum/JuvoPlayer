@@ -133,6 +133,12 @@ namespace JuvoPlayer.DataProviders.Dash
 
             try
             {
+                if (IsEndOfContent(bufferTime))
+                {
+                    Stop();
+                    return;
+                }
+
                 if (!processDataTask.IsCompleted || cancellationTokenSource.IsCancellationRequested)
                     return;
 
@@ -245,10 +251,6 @@ namespace JuvoPlayer.DataProviders.Dash
 
             LogInfo($"Segment: {responseResult.SegmentId} received {timeInfo}");
 
-            if (IsEndOfContent())
-            {
-                Stop();
-            }
         }
 
         private void InitDataDownloaded(DownloadResponse responseResult)
@@ -274,7 +276,18 @@ namespace JuvoPlayer.DataProviders.Dash
             //
             Stop();
 
-            Error?.Invoke(message);
+            var exception = response.Exception?.Flatten().InnerExceptions[0];
+            if (exception is DashDownloaderException downloaderException)
+            {
+                var segmentTime = downloaderException.DownloadRequest.DownloadSegment.Period.Start;
+                var segmentDuration = downloaderException.DownloadRequest.DownloadSegment.Period.Duration;
+
+                var segmentEndTime = segmentTime + segmentDuration - (trimmOffset ?? TimeSpan.Zero);
+                if (IsEndOfContent(segmentEndTime))
+                    return false;
+            }
+
+            Error?.Invoke(errorMessage);
         }
 
         private void HandleFailedInitDownload(string message)
@@ -433,13 +446,13 @@ namespace JuvoPlayer.DataProviders.Dash
             isEosSent = true;
         }
 
-        private bool IsEndOfContent()
+        private bool IsEndOfContent(TimeSpan time)
         {
             var endTime = !currentStreamDuration.HasValue || currentStreamDuration.Value == TimeSpan.Zero
                 ? TimeSpan.MaxValue 
                 : currentStreamDuration.Value;
 
-            return bufferTime >= endTime;
+            return time >= endTime;
         }
 
         private Task<DownloadResponse> CreateDownloadTask(Segment segment, bool ignoreError, uint? segmentId, CancellationToken cancelToken)
