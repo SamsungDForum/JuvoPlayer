@@ -55,7 +55,7 @@ namespace JuvoPlayer.DataProviders.Dash
         }
     }
 
-    public class WebClientEx : WebClient
+    internal class WebClientEx : WebClient
     {
         private static readonly TimeSpan WebRequestTimeout = TimeSpan.FromSeconds(10);
 
@@ -99,7 +99,7 @@ namespace JuvoPlayer.DataProviders.Dash
     /// Download request data structure. Will be passed back to download handlers along with
     /// data.
     /// </summary>
-    public class DownloadRequest
+    internal class DownloadRequest
     {
         public MpdParser.Node.Dynamic.Segment DownloadSegment { get; set; }
         public bool IgnoreError { get; set; }
@@ -107,7 +107,7 @@ namespace JuvoPlayer.DataProviders.Dash
         public StreamType StreamType { get; set; }
     }
 
-    public class DownloadResponse
+    internal class DownloadResponse
     {
         public MpdParser.Node.Dynamic.Segment DownloadSegment { get; set; }
         public uint? SegmentId { get; set; }
@@ -118,7 +118,7 @@ namespace JuvoPlayer.DataProviders.Dash
     /// <summary>
     /// Download request class for handling download requests.
     /// </summary>
-    public class DashDownloader
+    internal class DashDownloader
     {
         private const string Tag = "JuvoPlayer";
 
@@ -218,8 +218,9 @@ namespace JuvoPlayer.DataProviders.Dash
 
         private int CalculateSleepTime()
         {
+            // sleep at least 1ms to make delay async 
             if (!request.IgnoreError || downloadErrorCount == 0)
-                return 0;
+                return 1;
 
             // Exponential backoff
             // Sleep:
@@ -230,7 +231,7 @@ namespace JuvoPlayer.DataProviders.Dash
             var rnd = new Random();
 
             var sleepTime = rnd.Next(
-                (downloadErrorCount - 1) * 100,
+                (downloadErrorCount - 1) * 100 + 1,
                 (downloadErrorCount * downloadErrorCount - (downloadErrorCount - 1)) * 100);
 
             return sleepTime;
