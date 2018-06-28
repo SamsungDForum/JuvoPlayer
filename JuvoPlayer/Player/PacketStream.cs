@@ -92,9 +92,9 @@ namespace JuvoPlayer.Player
         {
             Logger.Info($"{streamType}");
 
-            // Force remove current DRM session regardless of reference counts
-            //
-            drmSession?.Dispose();
+            // Remove reference count held by Packet Stream.
+            // Player may still have packets and process them. Don't force remove
+            drmSession?.Release();
 
             drmSession = null;
             config = null;
