@@ -1,5 +1,4 @@
 using System;
-using System.IO;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
@@ -29,6 +28,7 @@ namespace JuvoPlayer.DataProviders.Dash
         private TimeSpan currentTime = TimeSpan.Zero;
         private TimeSpan bufferTime = TimeSpan.Zero;
         private uint? currentSegmentId;
+        private bool isEosSent;
 
         private IRepresentationStream currentStreams;
         private TimeSpan? currentStreamDuration;
@@ -412,6 +412,10 @@ namespace JuvoPlayer.DataProviders.Dash
 
         public void OnTimeUpdated(TimeSpan time)
         {
+            // Ignore time updated events when EOS is already sent
+            if (isEosSent)
+                return;
+
             currentTime = time;
 
             ScheduleNextSegDownload();
@@ -425,6 +429,8 @@ namespace JuvoPlayer.DataProviders.Dash
                 return;
 
             sharedBuffer.WriteData(null, true);
+
+            isEosSent = true;
         }
 
         private bool IsEndOfContent()
