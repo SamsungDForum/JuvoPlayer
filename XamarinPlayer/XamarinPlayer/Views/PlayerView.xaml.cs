@@ -285,7 +285,7 @@ namespace XamarinPlayer.Views
             // playbackCompleted event handling
             Device.StartTimer(TimeSpan.FromMilliseconds(0), () =>
             {
-                Navigation.PopAsync().Wait();
+                Navigation.RemovePage(this);
 
                 return false;
             });
@@ -338,8 +338,7 @@ namespace XamarinPlayer.Views
             {
                 await DisplayAlert("Playback Error", _errorMessage, "OK");
                 _errorOccured = false;
-                await Navigation.PopAsync();
-
+                Navigation.RemovePage(this);            
             });
         }
 
