@@ -95,13 +95,11 @@ namespace JuvoPlayer.DataProviders.Dash
             // We are not expecting NULL segments after seek. 
             // Termination will occour after restarting 
             if (!currentSegmentId.HasValue || !newTime.HasValue)
-            {
                 LogError($"Seek Pos Req: {position} failed. No segment/TimeRange found");
-            }
 
             currentTime = newTime ?? position;
             LogInfo($"Seek Pos Req: {position} Seek to: ({currentTime}) SegId: {currentSegmentId}");
-            return newTime.Value;
+            return currentTime;
         }
 
         public void Start()
