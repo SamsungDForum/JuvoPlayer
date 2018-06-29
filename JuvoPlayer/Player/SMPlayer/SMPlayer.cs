@@ -92,7 +92,7 @@ namespace JuvoPlayer.Player.SMPlayer
         private TimeSpan currentTime;
 
         private TimeSpan seekToTime;
-        bool seekInProgress = false;
+        private bool seekInProgress;
 
         private bool isDisposed;
 
@@ -173,14 +173,16 @@ namespace JuvoPlayer.Player.SMPlayer
         }
         private bool SeekVideo()
         {
-            bool videoSeekReached = false;
+            var videoSeekReached = false;
             TimeSpan lastPts;
 
-            while (videoPacketsQueue.TryPeek(out var packet))
+            while (videoPacketsQueue.TryPeek(out var packet) && !videoSeekReached)
             {
                 if (packet.IsEOS || packet is BufferConfiguration)
                 {
-                    RemovePacket(videoPacketsQueue);
+                    SubmitPacket(packet);
+		    RemovePacket(videoPacketsQueue);
+
                     Logger.Warn("Video EOS/BufferConfiguration packet found during seek!");
                     continue;
                 }
@@ -193,19 +195,11 @@ namespace JuvoPlayer.Player.SMPlayer
                 else
                 {
                     videoSeekReached = packet.IsKeyFrame;
-                    if (packet.IsKeyFrame == false)
-                    {
-                        if (RemovePacket(videoPacketsQueue))
-                        {
-                            // We have reached seekToTime, but no key frame found.
-                            // increase seek to time to eat away audio data.
-                            seekToTime = packet.Pts;
-                        }
-                    }
-                    else
-                    {
-                        break;
-                    }
+
+                    // We have reached seekToTime, but no key frame found.
+                    // increase seek to time to eat away audio data.
+                    if (!videoSeekReached && videoPacketsQueue.TryDequeue(out packet))
+                        seekToTime = packet.Pts;
                 }
             }
 
@@ -215,28 +209,25 @@ namespace JuvoPlayer.Player.SMPlayer
 
         private bool SeekAudio()
         {
-            bool audioSeekReached = false;
+            var audioSeekReached = false;
             TimeSpan lastPts;
 
-            while (audioPacketsQueue.TryPeek(out var packet))
+            while (audioPacketsQueue.TryPeek(out var packet) && !audioSeekReached)
             {
                 if (packet.IsEOS || packet is BufferConfiguration)
                 {
+                    SubmitPacket(packet);
                     RemovePacket(audioPacketsQueue);
+
                     Logger.Warn("Audio EOS/BufferConfiguration packet found during seek!");
                     continue;
                 }
 
                 lastPts = packet.Pts;
                 if (packet.Pts < seekToTime)
-                {
                     RemovePacket(audioPacketsQueue);
-                }
                 else
-                {
                     audioSeekReached = true;
-                    break;
-                }
             }
 
             Logger.Debug($"Audio Seek to {seekToTime} Last PTS {lastPts} Found {audioSeekReached}");
@@ -245,8 +236,8 @@ namespace JuvoPlayer.Player.SMPlayer
 
         private bool SeekAV()
         {
-            bool videoReached = SeekVideo();
-            bool audioReached = SeekAudio();
+            var videoReached = SeekVideo();
+            var audioReached = SeekAudio();
 
             // If Audio & Video have been seeked to seek point, re-enable normal processing
             return !(videoReached && audioReached);
@@ -298,6 +289,7 @@ namespace JuvoPlayer.Player.SMPlayer
 
                 try
                 {
+                    Logger.Debug("SubmittingPacketsTask: Need to wait one.");
                     submitting.WaitOne();
                 }
                 catch (ObjectDisposedException ex)
@@ -362,7 +354,7 @@ namespace JuvoPlayer.Player.SMPlayer
             {
                 Marshal.StructureToPtr(drmInfo, pnt, false);
 
-                Logger.Debug(string.Format("[HQ] send es data to SubmitDecryptedEmePacket: {0} {1} ( {2} )", packet.Pts, drmInfo.tzHandle, trackType));
+                Logger.Debug($"[HQ] send es data to SubmitDecryptedEmePacket: {packet.Pts} {drmInfo.tzHandle} ( {trackType} )");
 
                 if (!playerInstance.SubmitPacket(IntPtr.Zero, packet.HandleSize.size, packet.Pts.TotalNanoseconds(),
                     trackType, pnt))
@@ -380,6 +372,7 @@ namespace JuvoPlayer.Player.SMPlayer
             }
         }
 
+
         private void SubmitDataPacket(Packet packet) // TODO(g.skowinski): Implement it properly.
         {
             // Initialize unmanaged memory to hold the array.
@@ -394,7 +387,7 @@ namespace JuvoPlayer.Player.SMPlayer
                 //byte[] managedArray2 = new byte[managedArray.Length];
                 //Marshal.Copy(pnt, managedArray2, 0, managedArray.Length);
                 var trackType = SMPlayerUtils.GetTrackType(packet);
-                Logger.Debug(string.Format("[HQ] send es data to SubmitDataPacket: {0} ( {1} )", packet.Pts, trackType));
+                Logger.Debug($"[HQ] send es data to SubmitDataPacket: {packet.Pts} ( {trackType} )");
 
                 playerInstance.SubmitPacket(pnt, (uint)packet.Data.Length, packet.Pts.TotalNanoseconds(), trackType, IntPtr.Zero);
             }
@@ -409,7 +402,7 @@ namespace JuvoPlayer.Player.SMPlayer
         {
             var trackType = SMPlayerUtils.GetTrackType(packet);
 
-            Logger.Debug(string.Format("[HQ] send EOS packet: {0} ( {1} )", packet.Pts, trackType));
+            Logger.Debug($"[HQ] send EOS packet: {packet.Pts} ( {trackType} )");
 
             playerInstance.SubmitEOSPacket(trackType);
         }
@@ -446,6 +439,7 @@ namespace JuvoPlayer.Player.SMPlayer
 
             if (!playerInstance.Pause())
                 Logger.Error("Pause Failed. Seek may fail!");
+            }
 
             // Stop appending packests.
             smplayerSeekReconfiguration = true;
@@ -697,8 +691,8 @@ namespace JuvoPlayer.Player.SMPlayer
 
 
             internalState = SMPlayerState.Stopping;
-
             WakeUpSubmitTask();
+
             try
             {
                 submitPacketTask?.Wait();
@@ -719,7 +713,6 @@ namespace JuvoPlayer.Player.SMPlayer
             finally
             {
                 playerInstance.Stop();
-
                 ResetInternalState();
             }
         }
@@ -776,16 +769,12 @@ namespace JuvoPlayer.Player.SMPlayer
 
         public void OnSeekData(StreamType streamType, System.UInt64 offset)
         {
-            Logger.Debug(string.Format("Received OnSeekData: {0} offset: {1}", streamType, offset));
+            Logger.Debug($"Received OnSeekData: {streamType} offset: {offset}");
 
             if (streamType == StreamType.Audio)
-            {
                 needDataAudio = true;
-            }
             else if (streamType == StreamType.Video)
-            {
                 needDataVideo = true;
-            }
             else
                 return;
 
@@ -797,7 +786,7 @@ namespace JuvoPlayer.Player.SMPlayer
 
         public void OnError(PlayerErrorType errorType, string msg)
         {
-            Logger.Info(string.Format("Type: {0} msg: {1}", errorType, msg));
+            Logger.Info($"Type: {errorType} msg: {msg}");
 
             PlaybackError?.Invoke(msg);
         }
@@ -824,6 +813,7 @@ namespace JuvoPlayer.Player.SMPlayer
         public void OnEndOfStream()
         {
             Logger.Info("");
+
             PlaybackCompleted?.Invoke();
         }
 
@@ -877,8 +867,8 @@ namespace JuvoPlayer.Player.SMPlayer
 
             Stop();
             submitting.Dispose();
-
             ReleaseUnmanagedResources();
+
             GC.SuppressFinalize(this);
 
             isDisposed = true;

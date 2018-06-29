@@ -7,7 +7,7 @@ using MpdParser;
 
 namespace JuvoPlayer.DataProviders.Dash
 {
-    internal class DashManifest
+    internal class DashManifest : IDisposable
     {
         private const string Tag = "JuvoPlayer";
         private readonly ILogger Logger = LoggerManager.GetInstance().GetLogger(Tag);
@@ -15,6 +15,8 @@ namespace JuvoPlayer.DataProviders.Dash
         private Uri Uri { get; }
 
         private readonly SemaphoreSlim updateInProgressLock = new SemaphoreSlim(1);
+        private readonly HttpClient httpClient = new HttpClient {Timeout = TimeSpan.FromSeconds(3)};
+
         private CancellationTokenSource cancellationTokenSource;
 
         private DateTime lastReloadTime = DateTime.MinValue;
@@ -109,8 +111,7 @@ namespace JuvoPlayer.DataProviders.Dash
             {
                 var startTime = DateTime.Now;
 
-                using (var client = new HttpClient { Timeout = TimeSpan.FromSeconds(3) })
-                using (var response = await client.GetAsync(Uri, HttpCompletionOption.ResponseHeadersRead, ct).ConfigureAwait(false))
+                using (var response = await httpClient.GetAsync(Uri, HttpCompletionOption.ResponseContentRead, ct).ConfigureAwait(false))
                 {
                     response.EnsureSuccessStatusCode();
 
@@ -148,6 +149,16 @@ namespace JuvoPlayer.DataProviders.Dash
                     "Cannot parse manifest file. Error: " + ex.Message);
                 return null;
             }
+        }
+
+        public void Dispose()
+        {
+            httpClient.Dispose();
+            // Disposing need to be done only when AvailableWaitHandle is used
+            // We dont use it so, dont dispose lock to avoid exceptions when releasing 
+            // semaphore in other thread
+            // updateInProgressLock?.Dispose();
+            cancellationTokenSource?.Dispose();
         }
     }
 }

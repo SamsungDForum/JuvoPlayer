@@ -1,5 +1,5 @@
 using System;
-using System.IO;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using JuvoLogger;
@@ -28,12 +28,14 @@ namespace JuvoPlayer.DataProviders.Dash
         private TimeSpan currentTime = TimeSpan.Zero;
         private TimeSpan bufferTime = TimeSpan.Zero;
         private uint? currentSegmentId;
+        private bool isEosSent;
 
         private IRepresentationStream currentStreams;
-        private TimeSpan? currentStreamDuration => currentStreams.Duration;
+        private TimeSpan? currentStreamDuration;
 
         private byte[] initStreamBytes;
 
+        private Task<DownloadResponse> downloadDataTask;
         private Task processDataTask;
         private CancellationTokenSource cancellationTokenSource;
 
@@ -72,7 +74,14 @@ namespace JuvoPlayer.DataProviders.Dash
         /// </summary>
         public event Error Error;
 
-        public DashClient(IThroughputHistory throughputHistory, ISharedBuffer sharedBuffer, StreamType streamType)
+        /// <summary>
+        /// Storage holders for initial packets PTS/DTS values.
+        /// Used in Trimming Packet Handler to truncate down PTS/DTS values.
+        /// First packet seen acts as flip switch. Fill initial values or not.
+        /// </summary>
+        private TimeSpan? trimmOffset;
+
+        public DashClient(IThroughputHistory throughputHistory, ISharedBuffer sharedBuffer,  StreamType streamType)
         {
             this.throughputHistory = throughputHistory ?? throw new ArgumentNullException(nameof(throughputHistory), "throughputHistory cannot be null");
             this.sharedBuffer = sharedBuffer ?? throw new ArgumentNullException(nameof(sharedBuffer), "sharedBuffer cannot be null");
@@ -87,13 +96,11 @@ namespace JuvoPlayer.DataProviders.Dash
             // We are not expecting NULL segments after seek. 
             // Termination will occour after restarting 
             if (!currentSegmentId.HasValue || !newTime.HasValue)
-            {
                 LogError($"Seek Pos Req: {position} failed. No segment/TimeRange found");
-            }
 
             currentTime = newTime ?? position;
             LogInfo($"Seek Pos Req: {position} Seek to: ({currentTime}) SegId: {currentSegmentId}");
-            return newTime.Value;
+            return currentTime;
         }
 
         public void Start()
@@ -127,6 +134,12 @@ namespace JuvoPlayer.DataProviders.Dash
 
             try
             {
+                if (IsEndOfContent(bufferTime))
+                {
+                    Stop();
+                    return;
+                }
+
                 if (!processDataTask.IsCompleted || cancellationTokenSource.IsCancellationRequested)
                     return;
 
@@ -145,7 +158,8 @@ namespace JuvoPlayer.DataProviders.Dash
                     if (IsDynamic)
                         return;
 
-                    LogWarn("Stoping player");
+                    LogWarn("Stopping player");
+
                     Stop();
                     return;
                 }
@@ -158,48 +172,83 @@ namespace JuvoPlayer.DataProviders.Dash
             }
         }
 
+
         private void DownloadSegment(Segment segment)
         {
-
             // Grab a copy (its a struct) of cancellation token, so one token is used throughout entire operation
             var cancelToken = cancellationTokenSource.Token;
-            var downloadTask = CreateDownloadTask(segment, IsDynamic, currentSegmentId, cancelToken);
 
-            downloadTask.ContinueWith(response => HandleFailedDownload(GetErrorMessage(response)),
-                cancelToken, TaskContinuationOptions.OnlyOnFaulted, TaskScheduler.Default);
-            processDataTask = downloadTask.ContinueWith(response => HandleSuccessfullDownload(response.Result),
-                cancelToken, TaskContinuationOptions.OnlyOnRanToCompletion, TaskScheduler.Default);
+            downloadDataTask = CreateDownloadTask(segment, IsDynamic, currentSegmentId, cancelToken);
+            processDataTask = downloadDataTask.ContinueWith(response =>
+            {
+                bool shouldContinue;
+                if (response.IsCanceled)
+                    shouldContinue = HandleCancelledDownload();
+                else if (response.IsFaulted)
+                    shouldContinue = HandleFailedDownload(response);
+                else // always continue on successfull download
+                    shouldContinue = HandleSuccessfullDownload(response.Result);
+
+                // throw exception so continuation wont run
+                if (!shouldContinue)
+                    throw new Exception();
+
+            }, TaskScheduler.Default);
+
             processDataTask.ContinueWith(_ => ScheduleNextSegDownload(),
-                cancelToken, TaskContinuationOptions.NotOnCanceled, TaskScheduler.Default);
+                cancelToken, TaskContinuationOptions.OnlyOnRanToCompletion, TaskScheduler.Default);
+        }
+
+        private bool HandleCancelledDownload()
+        {
+            LogInfo("Segment download cancelled");
+
+            // if download was cancelled by timeout cancellation token than reschedule download
+            return !cancellationTokenSource.IsCancellationRequested;
         }
 
         private void DownloadInitSegment(Segment segment)
         {
             if (initStreamBytes == null)
             {
-
                 // Grab a copy (its a struct) of cancellation token so it is not referenced through cancellationTokenSource each time.
                 var cancelToken = cancellationTokenSource.Token;
-                var downloadTask = CreateDownloadTask(segment, true, null, cancelToken);
 
-                downloadTask.ContinueWith(response => HandleFailedInitDownload(GetErrorMessage(response)),
-                    cancelToken, TaskContinuationOptions.OnlyOnFaulted, TaskScheduler.Default);
-                processDataTask = downloadTask.ContinueWith(response => InitDataDownloaded(response.Result),
-                    cancelToken, TaskContinuationOptions.OnlyOnRanToCompletion, TaskScheduler.Default);
+                downloadDataTask = CreateDownloadTask(segment, true, null, cancelToken);
+                processDataTask = downloadDataTask.ContinueWith(response =>
+                {
+                    var shouldContinue = true;
+                    if (response.IsFaulted)
+                    {
+                        HandleFailedInitDownload(GetErrorMessage(response));
+                        shouldContinue = false;
+                    }
+                    else if (response.IsCanceled)
+                        shouldContinue = false;
+                    else // always continue on successfull download
+                        InitDataDownloaded(response.Result);
+
+                    // throw exception so continuation wont run
+                    if (!shouldContinue)
+                        throw new Exception();
+
+                }, TaskScheduler.Default);
+
                 processDataTask.ContinueWith(_ => ScheduleNextSegDownload(),
-                    cancelToken, TaskContinuationOptions.NotOnCanceled, TaskScheduler.Default);
+                    cancelToken, TaskContinuationOptions.OnlyOnRanToCompletion, TaskScheduler.Default);
             }
             else
             {
                 // Already have init segment. Push it down the pipeline & schedule next download
-                var initData = new DownloadResponse();
-                initData.Data = initStreamBytes;
-                initData.SegmentId = null;
+                var initData = new DownloadResponse
+                {
+                    Data = initStreamBytes,
+                    SegmentId = null
+                };
 
-                LogInfo($"Skipping INIT segment download");
+                LogInfo("Skipping INIT segment download");
                 InitDataDownloaded(initData);
                 ScheduleNextSegDownload();
-
             }
         }
 
@@ -208,25 +257,24 @@ namespace JuvoPlayer.DataProviders.Dash
             return response.Exception?.Flatten().InnerExceptions[0].Message;
         }
 
-        private void HandleSuccessfullDownload(DownloadResponse responseResult)
+        private bool HandleSuccessfullDownload(DownloadResponse responseResult)
         {
+            if (cancellationTokenSource.IsCancellationRequested)
+                return false;
+
             sharedBuffer.WriteData(responseResult.Data);
-            lastDownloadSegmentTimeRange = responseResult.DownloadSegment.Period.Copy();
+
+            var segment = responseResult.DownloadSegment;
+            lastDownloadSegmentTimeRange = segment.Period.Copy();
+            bufferTime = segment.Period.Start + segment.Period.Duration - (trimmOffset ?? TimeSpan.Zero);
+
             currentSegmentId = currentStreams.NextSegmentId(currentSegmentId);
 
-            if (IsDynamic)
-                bufferTime += responseResult.DownloadSegment.Period.Duration;
-            else
-                bufferTime = responseResult.DownloadSegment.Period.Start + responseResult.DownloadSegment.Period.Duration;
-
-            var timeInfo = responseResult.DownloadSegment.Period.ToString();
+            var timeInfo = segment.Period.ToString();
 
             LogInfo($"Segment: {responseResult.SegmentId} received {timeInfo}");
 
-            if (IsEndOfContent())
-            {
-                Stop();
-            }
+            return true;
         }
 
         private void InitDataDownloaded(DownloadResponse responseResult)
@@ -241,51 +289,78 @@ namespace JuvoPlayer.DataProviders.Dash
             LogInfo("INIT segment downloaded.");
         }
 
-        private void HandleFailedDownload(string message)
+        private bool HandleFailedDownload(Task response)
         {
-            LogError(message);
+            var errorMessage = GetErrorMessage(response);
+            LogError(errorMessage);
 
-            // In dynamic manifests, continue ONLY on non init segment failures         
             if (IsDynamic)
+                return true;
+
+            StopAsync();
+
+            var exception = response.Exception?.Flatten().InnerExceptions[0];
+            if (exception is DashDownloaderException downloaderException)
             {
-                return;
+                var segmentTime = downloaderException.DownloadRequest.DownloadSegment.Period.Start;
+                var segmentDuration = downloaderException.DownloadRequest.DownloadSegment.Period.Duration;
+
+                var segmentEndTime = segmentTime + segmentDuration - (trimmOffset ?? TimeSpan.Zero);
+                if (IsEndOfContent(segmentEndTime))
+                    return false;
             }
 
-            // Stop Client and signall error.
-            //
-            Stop();
+            Error?.Invoke(errorMessage);
 
-            Error?.Invoke(message);
+            return false;
         }
 
         private void HandleFailedInitDownload(string message)
         {
             LogError(message);
 
-            Stop();
+            StopAsync();
 
             Error?.Invoke(message);
         }
 
-        public void Stop()
+        private void StopAsync()
         {
             cancellationTokenSource?.Cancel();
-            SendEOSEvent();
+            SendEosEvent();
+        }
+
+        public void Reset()
+        {
+            cancellationTokenSource?.Cancel();
 
             // Temporary prevention caused by out of order download processing.
             // Wait for download task to complete. Stale cancellations
             // may happen during FF/REW operations. 
             // If received after client start may result in lack of further download requests 
             // being issued. Once download handler are serialized, should be safe to remove.
-            try
-            {
-                if (processDataTask?.Status > TaskStatus.Created)
-                    processDataTask.Wait();
-            }
-            catch (AggregateException) { }
-
+            WaitForTaskCompletionNoError(downloadDataTask);
+            WaitForTaskCompletionNoError(processDataTask);
 
             LogInfo("Data downloader stopped");
+        }
+
+        private static void WaitForTaskCompletionNoError(Task task)
+        {
+            try
+            {
+                if (task?.Status > TaskStatus.Created)
+                    task.Wait();
+            }
+            catch (AggregateException)
+            {
+            }
+        }
+
+        public void Stop()
+        {
+            Reset();
+            SendEosEvent();
         }
 
         public void SetRepresentation(Representation representation)
@@ -297,7 +372,7 @@ namespace JuvoPlayer.DataProviders.Dash
             currentRepresentation = representation;
             currentStreams = currentRepresentation.Segments;
 
-            // Prpeare Stream for playback.
+            // Prepare Stream for playback.
             if (!currentStreams.PrepeareStream())
             {
                 LogError("Failed to prepare stream. No playable segments");
@@ -309,6 +384,10 @@ namespace JuvoPlayer.DataProviders.Dash
                 return;
             }
 
+            currentStreamDuration = IsDynamic
+                ? currentStreams.GetDocumentParameters().Document.MediaPresentationDuration
+                : currentStreams.Duration;
+
             UpdateTimeBufferDepth();
         }
 
@@ -318,7 +397,7 @@ namespace JuvoPlayer.DataProviders.Dash
         /// <param name="representation"></param>
         public void UpdateRepresentation(Representation representation)
         {
-            if (IsDynamic == false)
+            if (!IsDynamic)
                 return;
 
             Interlocked.Exchange(ref newRepresentation, representation);
@@ -358,6 +437,10 @@ namespace JuvoPlayer.DataProviders.Dash
                 return;
             }
 
+            currentStreamDuration = IsDynamic 
+                ? currentStreams.GetDocumentParameters().Document.MediaPresentationDuration
+                : currentStreams.Duration;
+
             UpdateTimeBufferDepth();
 
             if (lastDownloadSegmentTimeRange == null)
@@ -389,12 +472,16 @@ namespace JuvoPlayer.DataProviders.Dash
 
         public void OnTimeUpdated(TimeSpan time)
         {
+            // Ignore time updated events when EOS is already sent
+            if (isEosSent)
+                return;
+
             currentTime = time;
 
             ScheduleNextSegDownload();
         }
 
-        private void SendEOSEvent()
+        private void SendEosEvent()
         {
             // Send EOS only when init data has been processed.
             // Stops demuxer being blown to high heavens.
@@ -402,26 +489,57 @@ namespace JuvoPlayer.DataProviders.Dash
                 return;
 
             sharedBuffer.WriteData(null, true);
+
+            isEosSent = true;
         }
 
-        private bool IsEndOfContent()
+        private bool IsEndOfContent(TimeSpan time)
         {
-            var endTime = currentStreamDuration ?? TimeSpan.MaxValue;
-            LogInfo($"{currentStreamDuration} {endTime} {bufferTime}");
-            return bufferTime >= endTime;
+            var endTime = !currentStreamDuration.HasValue || currentStreamDuration.Value == TimeSpan.Zero
+                ? TimeSpan.MaxValue 
+                : currentStreamDuration.Value;
+
+            return time >= endTime;
         }
 
-        private Task<DownloadResponse> CreateDownloadTask(Segment stream, bool ignoreError, uint? segmentId, CancellationToken cancelToken)
+        private async Task<DownloadResponse> CreateDownloadTask(Segment segment, bool ignoreError, uint? segmentId, CancellationToken cancelToken)
         {
             var requestData = new DownloadRequest
             {
-                DownloadSegment = stream,
+                DownloadSegment = segment,
                 IgnoreError = ignoreError,
                 SegmentId = segmentId,
                 StreamType = streamType
             };
 
-            return DashDownloader.DownloadDataAsync(requestData, cancelToken, throughputHistory);
+            if (trimmOffset.HasValue == false && segment.Period != null)
+                trimmOffset = segment.Period.Start;
+
+            var timeout = CalculateDownloadTimeout(segment);
+            using (var timeoutCancellationTokenSource = new CancellationTokenSource(timeout))
+            using (var downloadCancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(
+                cancelToken, timeoutCancellationTokenSource.Token))
+            {
+                return await DashDownloader.DownloadDataAsync(requestData, downloadCancellationTokenSource.Token,
+                    throughputHistory);
+            }
+        }
+
+        private TimeSpan CalculateDownloadTimeout(Segment segment)
+        {
+            var timeout = TimeBufferDepthDefault;
+            var avarageThroughput = throughputHistory.GetAverageThroughput();
+            if (avarageThroughput > 0 && currentRepresentation.Bandwidth.HasValue && segment.Period != null)
+            {
+                var bandwith = currentRepresentation.Bandwidth.Value;
+                var duration = segment.Period.Duration.TotalSeconds;
+                var segmentSize = bandwith * duration;
+                var calculatedTimeNeeded = TimeSpan.FromSeconds(segmentSize / avarageThroughput * 1.5);
+                var manifestMinBufferDepth = currentStreams.GetDocumentParameters().Document.MinBufferTime ?? TimeSpan.Zero;
+                timeout = calculatedTimeNeeded > manifestMinBufferDepth ? calculatedTimeNeeded : manifestMinBufferDepth;
+            }
+
+            return timeout;
         }
 
         private void TimeBufferDepthDynamic()
@@ -447,8 +565,7 @@ namespace JuvoPlayer.DataProviders.Dash
             var manifestMinBufferDepth = currentStreams.GetDocumentParameters().Document.MinBufferTime ?? TimeSpan.Zero;
 
             //Get average segment duration = Total Duration / number of segments.
-            var avgSegmentDuration = TimeSpan.FromSeconds(
-                    ((double)(duration.Value.TotalSeconds) / (double)segments));
+            var avgSegmentDuration = TimeSpan.FromSeconds((duration.Value.TotalSeconds / segments));
 
             // Compute multiples of manifest MinBufferTime in units of average segment duration
             // with round up
@@ -463,40 +580,35 @@ namespace JuvoPlayer.DataProviders.Dash
 
         private void UpdateTimeBufferDepth()
         {
-            if (IsDynamic == true)
-            {
+            if (IsDynamic)
                 TimeBufferDepthDynamic();
-            }
             else
-            {
                 TimeBufferDepthStatic();
-            }
 
             LogInfo($"TimeBufferDepth: {timeBufferDepth}");
-
         }
 
         #region Logging Functions
 
-        private void LogInfo(string logMessage)
+        private void LogInfo(string logMessage, [CallerFilePath] string file = "", [CallerMemberName] string method = "", [CallerLineNumber] int line = 0)
         {
-            Logger.Info(streamType + ": " + logMessage);
+            Logger.Info(streamType + ": " + logMessage, file, method, line);
         }
-        private void LogDebug(string logMessage)
+        private void LogDebug(string logMessage, [CallerFilePath] string file = "", [CallerMemberName] string method = "", [CallerLineNumber] int line = 0)
         {
-            Logger.Debug(streamType + ": " + logMessage);
+            Logger.Debug(streamType + ": " + logMessage, file, method, line);
         }
-        private void LogWarn(string logMessage)
+        private void LogWarn(string logMessage, [CallerFilePath] string file = "", [CallerMemberName] string method = "", [CallerLineNumber] int line = 0)
         {
-            Logger.Warn(streamType + ": " + logMessage);
+            Logger.Warn(streamType + ": " + logMessage, file, method, line);
         }
-        private void LogFatal(string logMessage)
+        private void LogFatal(string logMessage, [CallerFilePath] string file = "", [CallerMemberName] string method = "", [CallerLineNumber] int line = 0)
         {
-            Logger.Fatal(streamType + ": " + logMessage);
+            Logger.Fatal(streamType + ": " + logMessage, file, method, line);
         }
-        private void LogError(string logMessage)
+        private void LogError(string logMessage, [CallerFilePath] string file = "", [CallerMemberName] string method = "", [CallerLineNumber] int line = 0)
         {
-            Logger.Error(streamType + ": " + logMessage);
+            Logger.Error(streamType + ": " + logMessage, file, method, line);
         }
         #endregion
 

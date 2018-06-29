@@ -51,7 +51,7 @@ namespace JuvoPlayer.DataProviders.Dash
             videoPipeline.SetDrmConfiguration += OnSetDrmConfiguration;
             videoPipeline.StreamConfigReady += OnStreamConfigReady;
             videoPipeline.PacketReady += OnPacketReady;
-	        videoPipeline.StreamError += OnStreamError;
+            videoPipeline.StreamError += OnStreamError;
         }
 
         private void OnDRMInitDataFound(DRMInitData drmData)
@@ -127,8 +127,8 @@ namespace JuvoPlayer.DataProviders.Dash
             // try to update manifest. Needed in case of live content
             if (await UpdateManifest())
             {
-                audioPipeline.SwitchStreamIfNeeded();
-                videoPipeline.SwitchStreamIfNeeded();
+                Parallel.Invoke(() => audioPipeline.SwitchStreamIfNeeded(),
+                                () => videoPipeline.SwitchStreamIfNeeded());
             }
         }
 
@@ -139,15 +139,14 @@ namespace JuvoPlayer.DataProviders.Dash
 
             Parallel.Invoke(() => videoPipeline.Pause(), () => audioPipeline.Pause());
             Parallel.Invoke(() => videoPipeline.Seek(time), () => audioPipeline.Seek(time));
-            Parallel.Invoke(() => videoPipeline.Resume(), () => audioPipeline.Resume());            
+            Parallel.Invoke(() => videoPipeline.Resume(), () => audioPipeline.Resume());
         }
 
         public void OnStopped()
         {
             manifest.CancelReload();
 
-            audioPipeline.Stop();
-            videoPipeline.Stop();
+            Parallel.Invoke(() => videoPipeline.Stop(), () => audioPipeline.Stop());
         }
 
         public bool IsSeekingSupported()
@@ -179,8 +178,8 @@ namespace JuvoPlayer.DataProviders.Dash
 
             await UpdateManifest();
 
-            audioPipeline.SwitchStreamIfNeeded();
-            videoPipeline.SwitchStreamIfNeeded();
+            Parallel.Invoke(() => audioPipeline.SwitchStreamIfNeeded(),
+                            () => videoPipeline.SwitchStreamIfNeeded());
         }
 
         private bool UpdateMedia(Document document, Period period)
@@ -204,8 +203,8 @@ namespace JuvoPlayer.DataProviders.Dash
             {
                 BuildSubtitleInfos(period);
 
-                if (period.Duration.HasValue)
-                    ClipDurationChanged?.Invoke(period.Duration.Value);
+                if (document.MediaPresentationDuration.HasValue && document.MediaPresentationDuration.Value > TimeSpan.Zero)
+                    ClipDurationChanged?.Invoke(document.MediaPresentationDuration.Value);
 
                 foreach (var v in videos)
                 {
@@ -316,19 +315,19 @@ namespace JuvoPlayer.DataProviders.Dash
         {
             currentTime = time;
 
-            audioPipeline.OnTimeUpdated(time);
-            videoPipeline.OnTimeUpdated(time);
+            Parallel.Invoke(() => audioPipeline.OnTimeUpdated(time),
+                () => videoPipeline.OnTimeUpdated(time));
 
             await UpdateManifest();
 
             if (disposed)
                 return;
 
-            audioPipeline.AdaptToNetConditions();
-            videoPipeline.AdaptToNetConditions();
+            Parallel.Invoke(() => audioPipeline.AdaptToNetConditions(),
+                            () => videoPipeline.AdaptToNetConditions());
 
-            audioPipeline.SwitchStreamIfNeeded();
-            videoPipeline.SwitchStreamIfNeeded();
+            Parallel.Invoke(() => audioPipeline.SwitchStreamIfNeeded(),
+                            () => videoPipeline.SwitchStreamIfNeeded());
         }
 
         public async Task<bool> UpdateManifest()
@@ -393,8 +392,11 @@ namespace JuvoPlayer.DataProviders.Dash
 
             OnStopped();
 
+            manifest.Dispose();
+
             audioPipeline?.Dispose();
             audioPipeline = null;
+
             videoPipeline?.Dispose();
             videoPipeline = null;
         }
