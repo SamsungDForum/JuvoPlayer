@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Threading.Tasks;
 using JuvoPlayer.Common;
+using JuvoPlayer.Common.Utils;
 using JuvoPlayer.Drms;
 using JuvoPlayer.Drms.Cenc;
 using JuvoPlayer.Drms.DummyDrm;
@@ -98,9 +99,7 @@ namespace JuvoPlayer.Tests.UnitTests
 
             using (var stream = CreatePacketStream(StreamType.Audio, playerMock, drmManagerStub, codecExtraDataHandlerStub))
             {
-                var packet = new EncryptedPacket() {StreamType = StreamType.Audio};
-                var DrmSession = Substitute.For<DummyDrmSession>();
-                packet.DrmSession = DrmSession;
+                var packet = new EncryptedPacket() { StreamType = StreamType.Audio };
                 var config = new AudioStreamConfig();
                 var drmInitData = new DRMInitData();
 
@@ -109,6 +108,7 @@ namespace JuvoPlayer.Tests.UnitTests
                 stream.OnAppendPacket(packet);
 
                 playerMock.Received().AppendPacket(Arg.Any<Packet>());
+  
             }
         }
 
@@ -158,9 +158,10 @@ namespace JuvoPlayer.Tests.UnitTests
 
         private static IDrmSession CreateDrmSessionFake()
         {
-            var drmSessionFake = Substitute.For<IDrmSession>();
+            var drmSessionFake = Substitute.For<IDrmSession, IReferenceCoutable>();
             drmSessionFake.Initialize().Returns(Task.CompletedTask);
             drmSessionFake.DecryptPacket(Arg.Any<EncryptedPacket>()).Returns(Task.FromResult(new Packet()));
+
             return drmSessionFake;
         }
     }
