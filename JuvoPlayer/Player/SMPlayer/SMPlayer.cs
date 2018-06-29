@@ -24,6 +24,7 @@ using JuvoLogger;
 using Tizen.TV.Multimedia.IPTV;
 using StreamType = Tizen.TV.Multimedia.IPTV.StreamType;
 using JuvoPlayer.Common.Utils;
+using JuvoPlayer.Common.Utils.IReferenceCountableExtensions;
 
 namespace JuvoPlayer.Player.SMPlayer
 {

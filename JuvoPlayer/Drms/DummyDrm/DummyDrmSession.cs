@@ -5,8 +5,7 @@ using JuvoLogger;
 using Nito.AsyncEx;
 using Tizen.Security.TEEC;
 using Tizen.TV.Security.DrmDecrypt;
-using System.Threading;
-using JuvoPlayer.Common.Utils;
+using JuvoPlayer.Common.Utils.IReferenceCountable;
 
 namespace JuvoPlayer.Drms.DummyDrm
 {
