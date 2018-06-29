@@ -12,7 +12,7 @@ using JuvoLogger;
 using Nito.AsyncEx;
 using Tizen.TV.Security.DrmDecrypt;
 using Tizen.TV.Security.DrmDecrypt.emeCDM;
-using JuvoPlayer.Common.Utils;
+using JuvoPlayer.Common.Utils.IReferenceCountable;
 
 namespace JuvoPlayer.Drms.Cenc
 {

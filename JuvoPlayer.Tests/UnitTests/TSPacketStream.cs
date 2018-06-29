@@ -1,16 +1,32 @@
 ﻿using System;
 using System.Threading.Tasks;
 using JuvoPlayer.Common;
-using JuvoPlayer.Common.Utils;
+using JuvoPlayer.Common.Utils.IReferenceCountable;
 using JuvoPlayer.Drms;
-using JuvoPlayer.Drms.Cenc;
-using JuvoPlayer.Drms.DummyDrm;
 using JuvoPlayer.Player;
 using NSubstitute;
 using NUnit.Framework;
 
+
 namespace JuvoPlayer.Tests.UnitTests
 {
+     
+    
+    public class TestDrmSession: IDrmSession
+    {
+        private int Counter;
+        ref int IReferenceCoutable.Count => ref Counter;
+
+        public void Dispose()
+        {
+
+        }
+
+        public Task Initialize() { return null; }
+
+        public Task<Packet> DecryptPacket(EncryptedPacket packet) { return null; }
+    }
+
     [TestFixture]
     public class TSPacketStream
     {
@@ -156,12 +172,21 @@ namespace JuvoPlayer.Tests.UnitTests
             return drmManagerStub;
         }
 
+        
+
         private static IDrmSession CreateDrmSessionFake()
         {
             var drmSessionFake = Substitute.For<IDrmSession, IReferenceCoutable>();
             drmSessionFake.Initialize().Returns(Task.CompletedTask);
             drmSessionFake.DecryptPacket(Arg.Any<EncryptedPacket>()).Returns(Task.FromResult(new Packet()));
-
+            /*
+            drmSessionFake.When(x => x.InitializeReferenceCounting()).DoNotCallBase();
+            drmSessionFake.InitializeReferenceCounting().Returns(drmSessionFake);
+            drmSessionFake.When(x => x.Share()).DoNotCallBase();
+            drmSessionFake.Share().Returns(drmSessionFake);
+            drmSessionFake.When(x => x.Release()).DoNotCallBase();
+            */
+            
             return drmSessionFake;
         }
     }

@@ -24,24 +24,9 @@ namespace System.Runtime.CompilerServices
 }
 */
 
-namespace JuvoPlayer.Common.Utils
+namespace JuvoPlayer.Common.Utils.IReferenceCountableExtensions
 {
-    //[UsingBuilder(typeof(ReferenceCoutableDisposer))]
-    public interface IReferenceCoutable : IDisposable
-    {
-        ref int Count { get; }
-    }
-
-    /*
-    public struct ReferenceCoutableDisposer
-    {
-        private IReferenceCoutable _r;
-        public static ReferenceCoutableDisposer GetDisposer(IReferenceCoutable r) => new ReferenceCoutableDisposer(r);
-        public ReferenceCoutableDisposer(IReferenceCoutable r) { _r = r; }
-        public void Dispose() => _r.Release();
-    }
-    */
-
+    using JuvoPlayer.Common.Utils.IReferenceCountable;
     public static class ReferenceCoutable
     {
         public static T InitializeReferenceCounting<T>(this T obj)
@@ -69,6 +54,28 @@ namespace JuvoPlayer.Common.Utils
             }
         }
     }
+
+}
+
+namespace JuvoPlayer.Common.Utils.IReferenceCountable
+{
+    //[UsingBuilder(typeof(ReferenceCoutableDisposer))]
+    public interface IReferenceCoutable : IDisposable
+    {
+        ref int Count { get; }
+    }
+
+    /*
+    public struct ReferenceCoutableDisposer
+    {
+        private IReferenceCoutable _r;
+        public static ReferenceCoutableDisposer GetDisposer(IReferenceCoutable r) => new ReferenceCoutableDisposer(r);
+        public ReferenceCoutableDisposer(IReferenceCoutable r) { _r = r; }
+        public void Dispose() => _r.Release();
+    }
+    */
+
+
 
     //
     // Test Code from original source file
