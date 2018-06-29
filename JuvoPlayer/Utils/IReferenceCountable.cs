@@ -2,11 +2,18 @@
 // Code snatched from:
 // https://gist.github.com/ufcpp/1c7977f4f5f7856787f3f2b6a8b13c8e
 //
+// Commented out support for calling Dispose on IReferenceCountable (not required)
+// Commented out test code
+// Changed Init() to InitializeReferenceCounting()
+//
 
+using JuvoLogger;
+using JuvoPlayer.Drms;
 using System;
 using System.Runtime.CompilerServices;
 using System.Threading;
 
+/*
 namespace System.Runtime.CompilerServices
 {
     internal class UsingBuilderAttribute : Attribute
@@ -15,15 +22,17 @@ namespace System.Runtime.CompilerServices
         public Type BuilderType { get; }
     }
 }
+*/
 
 namespace JuvoPlayer.Common.Utils
 {
-    [UsingBuilder(typeof(ReferenceCoutableDisposer))]
+    //[UsingBuilder(typeof(ReferenceCoutableDisposer))]
     public interface IReferenceCoutable : IDisposable
     {
         ref int Count { get; }
     }
 
+    /*
     public struct ReferenceCoutableDisposer
     {
         private IReferenceCoutable _r;
@@ -31,27 +40,30 @@ namespace JuvoPlayer.Common.Utils
         public ReferenceCoutableDisposer(IReferenceCoutable r) { _r = r; }
         public void Dispose() => _r.Release();
     }
+    */
 
     public static class ReferenceCoutable
     {
-        public static T Init<T>(this T obj)
+        public static T InitializeReferenceCounting<T>(this T obj)
             where T : IReferenceCoutable
         {
             obj.Count = 1;
+
             return obj;
         }
 
         public static T Share<T>(this T obj)
             where T : IReferenceCoutable
         {
-            Interlocked.Increment(ref obj.Count);
+            var r = Interlocked.Increment(ref obj.Count);
             return obj;
         }
 
         public static void Release<T>(this T obj)
             where T : IReferenceCoutable
         {
-            if (Interlocked.Decrement(ref obj.Count) == 0)
+            var r = Interlocked.Decrement(ref obj.Count);
+            if (r == 0)
             {
                 obj.Dispose();
             }

@@ -53,7 +53,6 @@ namespace JuvoPlayer.Drms.DummyDrm
 
         public Task Initialize()
         {
-            this.Init();
             return thread.Factory.Run(() => InitializeOnTEECThread());
         }
 

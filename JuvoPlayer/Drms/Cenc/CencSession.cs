@@ -281,9 +281,6 @@ namespace JuvoPlayer.Drms.Cenc
 
                 ThrowIfDisposed();
 
-                // Start Reference counting. 
-                this.Init();
-
                 cancellationTokenSource = new CancellationTokenSource();
                 initializationTask = thread.Factory.Run(DoLicenceChallengeOnIemeThread);
                 return initializationTask;
