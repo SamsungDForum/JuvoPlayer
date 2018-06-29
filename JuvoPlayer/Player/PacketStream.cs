@@ -94,6 +94,7 @@ namespace JuvoPlayer.Player
 
             // Remove reference count held by Packet Stream.
             // Player may still have packets and process them. Don't force remove
+            //
             drmSession?.Release();
 
             drmSession = null;
@@ -106,8 +107,6 @@ namespace JuvoPlayer.Player
 
             if (!forceDrmChange && drmSession != null)
                 return;
-
-            forceDrmChange = false;
 
             // Prevent packets from being appended till we find supported DRM Session
             // Do so ONLY if there is no current session. Existing session will be used.
@@ -125,22 +124,22 @@ namespace JuvoPlayer.Player
                 return;
 
             Logger.Info($"{streamType}: New DRM session found");
+            forceDrmChange = false;
 
             // Decrement use counter for packet stream on old DRM Session
             //
             drmSession?.Release();
 
+            // Initialize reference counting and session.
+            //
+            newSession.InitializeReferenceCounting();
+            newSession.Initialize();
+
             // Set new session as current & let data submitters run wild.
             // There is no need to store sessions. They live in player queue
             //
             drmSession = newSession;
-
-            // Initialize sets reference counter to 1 internally.
-            //
-            drmSession.Initialize();
-
             waitForDRMSession.Set();
-
         }
 
         public void Dispose()

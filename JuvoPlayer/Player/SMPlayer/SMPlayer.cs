@@ -462,25 +462,23 @@ namespace JuvoPlayer.Player.SMPlayer
 
         private void DisposeEncryptedPackets(ConcurrentQueue<Packet> audio, ConcurrentQueue<Packet> video)
         {
-            Logger.Debug("");
-            Parallel.Invoke(
-                () =>
-                {
-                    while (!audio.IsEmpty)
-                    {
-                        RemovePacket(audio);
-                    }
-                },
-                () =>
-                {
-                    while (!video.IsEmpty)
-                    {
-                        RemovePacket(video);
-                    }
-                });
+            var ac = audio.Count;
+            var vc = video.Count;
 
-            Logger.Debug("Done");
+            // Runs as a task already. Parallel.Invoke here won't make things faster.
+            while (!audio.IsEmpty)
+            {
+                RemovePacket(audio);
+            }
+
+            while (!video.IsEmpty)
+            {
+                RemovePacket(video);
+            }
+
+            Logger.Debug($"Done. Audio Packets: {ac} Video Packets {vc}");
         }
+
         private void ResetPacketsQueues()
         {
             // Prior to resetting data queues, purge existing. Required to remove reference counts 
@@ -488,10 +486,16 @@ namespace JuvoPlayer.Player.SMPlayer
             // Will happen if DRM get's changed mid way through playback.
             // Cleanup task can be run completely parallel of SM Player activity.
             //
-            Task.Factory.StartNew(() => DisposeEncryptedPackets(audioPacketsQueue, videoPacketsQueue));
+
+            // Grab current queue references. Tasks do not start when StartNew/Run is called, however,
+            // arguments are collected at actual start, thus need to grab a copy first.
+            var audioQueue = audioPacketsQueue;
+            var videoQueue = videoPacketsQueue;
 
             audioPacketsQueue = new ConcurrentQueue<Packet>();
             videoPacketsQueue = new ConcurrentQueue<Packet>();
+
+            Task.Factory.StartNew(() => DisposeEncryptedPackets(audioQueue, videoQueue));
         }
 
         public void SetStreamConfig(StreamConfig config)
@@ -820,7 +824,6 @@ namespace JuvoPlayer.Player.SMPlayer
         public void OnEndOfStream()
         {
             Logger.Info("");
-
             PlaybackCompleted?.Invoke();
         }
 
