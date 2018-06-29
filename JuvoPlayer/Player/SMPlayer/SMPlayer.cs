@@ -439,7 +439,6 @@ namespace JuvoPlayer.Player.SMPlayer
 
             if (!playerInstance.Pause())
                 Logger.Error("Pause Failed. Seek may fail!");
-            }
 
             // Stop appending packests.
             smplayerSeekReconfiguration = true;
