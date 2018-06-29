@@ -97,6 +97,8 @@ namespace JuvoPlayer.Tests.UnitTests
             using (var stream = CreatePacketStream(StreamType.Audio, playerMock, drmManagerStub, codecExtraDataHandlerStub))
             {
                 var packet = new EncryptedPacket() {StreamType = StreamType.Audio};
+                var DrmSession = Substitute.For<IDrmSession>();
+                packet.DrmSession = DrmSession;
                 var config = new AudioStreamConfig();
                 var drmInitData = new DRMInitData();
 
