@@ -3,6 +3,7 @@ using System.Threading.Tasks;
 using JuvoPlayer.Common;
 using JuvoPlayer.Drms;
 using JuvoPlayer.Drms.Cenc;
+using JuvoPlayer.Drms.DummyDrm;
 using JuvoPlayer.Player;
 using NSubstitute;
 using NUnit.Framework;
@@ -98,7 +99,7 @@ namespace JuvoPlayer.Tests.UnitTests
             using (var stream = CreatePacketStream(StreamType.Audio, playerMock, drmManagerStub, codecExtraDataHandlerStub))
             {
                 var packet = new EncryptedPacket() {StreamType = StreamType.Audio};
-                var DrmSession = Substitute.For<CencSession>();
+                var DrmSession = Substitute.For<DummyDrmSession>();
                 packet.DrmSession = DrmSession;
                 var config = new AudioStreamConfig();
                 var drmInitData = new DRMInitData();
