@@ -55,7 +55,7 @@ namespace JuvoPlayer.DataProviders.Dash
         }
     }
 
-    public class WebClientEx : WebClient
+    internal class WebClientEx : WebClient
     {
         private static readonly TimeSpan WebRequestTimeout = TimeSpan.FromSeconds(10);
 
@@ -93,13 +93,13 @@ namespace JuvoPlayer.DataProviders.Dash
             }
             return request;
         }
-
     }
+
     /// <summary>
     /// Download request data structure. Will be passed back to download handlers along with
     /// data.
     /// </summary>
-    public class DownloadRequest
+    internal class DownloadRequest
     {
         public MpdParser.Node.Dynamic.Segment DownloadSegment { get; set; }
         public bool IgnoreError { get; set; }
@@ -107,7 +107,7 @@ namespace JuvoPlayer.DataProviders.Dash
         public StreamType StreamType { get; set; }
     }
 
-    public class DownloadResponse
+    internal class DownloadResponse
     {
         public MpdParser.Node.Dynamic.Segment DownloadSegment { get; set; }
         public uint? SegmentId { get; set; }
@@ -115,10 +115,19 @@ namespace JuvoPlayer.DataProviders.Dash
         public byte[] Data { get; set; }
     }
 
+    internal class DashDownloaderException : Exception
+    {
+        public DownloadRequest DownloadRequest { get; }
+        public DashDownloaderException(DownloadRequest request, string message, Exception inner) : base(message, inner)
+        {
+            DownloadRequest = request;
+        }
+    }
+
     /// <summary>
     /// Download request class for handling download requests.
     /// </summary>
-    public class DashDownloader
+    internal class DashDownloader
     {
         private const string Tag = "JuvoPlayer";
 
@@ -152,7 +161,8 @@ namespace JuvoPlayer.DataProviders.Dash
 
         private async Task<DownloadResponse> DownloadInternalAsync()
         {
-            string segmentId = SegmentId(request.SegmentId);
+            var segmentId = SegmentId(request.SegmentId);
+            Exception lastException;
             do
             {
                 try
@@ -162,10 +172,14 @@ namespace JuvoPlayer.DataProviders.Dash
                 }
                 catch (WebException e)
                 {
+                    Logger.Warn($"{request.StreamType}: Segment: {segmentId} NetError: {e.Message}");
+
+                    lastException = e;
+                    cancellationToken.ThrowIfCancellationRequested();
+
                     if (e.InnerException is OperationCanceledException)
                         ExceptionDispatchInfo.Capture(e.InnerException).Throw();
 
-                    Logger.Warn($"{request.StreamType}: Segment: {segmentId} NetError: {e.Message}");
                     ++downloadErrorCount;
                 }
                 catch (OperationCanceledException)
@@ -174,12 +188,15 @@ namespace JuvoPlayer.DataProviders.Dash
                 }
                 catch (Exception e)
                 {
+                    lastException = e;
                     Logger.Warn($"{request.StreamType}: Segment: {segmentId} Error: {e.Message}");
                     ++downloadErrorCount;
                 }
             } while (!request.IgnoreError && downloadErrorCount < 3);
 
-            throw new Exception($"{request.StreamType}: Segment: {segmentId} Max retry count reached.");
+            var message = $"{request.StreamType}: Cannot download segment: {segmentId}.";
+
+            throw new DashDownloaderException(request, message, lastException);
         }
 
         private async Task<DownloadResponse> DownloadDataTaskAsync()
@@ -200,8 +217,9 @@ namespace JuvoPlayer.DataProviders.Dash
                 byte[] data;
                 using (new TimeCounter(t => time = t))
                 {
-                    data = await dataDownloader.DownloadDataTaskAsync(request.DownloadSegment.Url);
+                    data = await dataDownloader.DownloadDataTaskAsync(request.DownloadSegment.Url).ConfigureAwait(false);
                 }
+
                 throughputHistory.Push(data.Length, time);
 
                 return new DownloadResponse
@@ -216,8 +234,9 @@ namespace JuvoPlayer.DataProviders.Dash
 
         private int CalculateSleepTime()
         {
+            // sleep at least 1ms to make delay async 
             if (!request.IgnoreError || downloadErrorCount == 0)
-                return 0;
+                return 1;
 
             // Exponential backoff
             // Sleep:
@@ -228,8 +247,8 @@ namespace JuvoPlayer.DataProviders.Dash
             var rnd = new Random();
 
             var sleepTime = rnd.Next(
-                (downloadErrorCount - 1) * 100,
-                (downloadErrorCount * downloadErrorCount - (downloadErrorCount - 1)) * 100);
+                (downloadErrorCount - 1) * 100 + 1,
+                (downloadErrorCount * downloadErrorCount - (downloadErrorCount - 1)) * 100) + 1;
 
             return sleepTime;
         }
@@ -238,7 +257,6 @@ namespace JuvoPlayer.DataProviders.Dash
         {
             return segmentId.HasValue ? segmentId.ToString() : "INIT";
         }
-
     }
 }
 
