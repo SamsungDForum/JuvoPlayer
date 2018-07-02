@@ -15,7 +15,6 @@ namespace JuvoPlayer.Player
         private IDrmSession drmSession = null;
         private StreamConfig config;
         private readonly StreamType streamType;
-        private ManualResetEventSlim waitForDRMSession = new ManualResetEventSlim(true);
         private readonly ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
         private bool forceDrmChange;
 
@@ -37,15 +36,6 @@ namespace JuvoPlayer.Player
 
             if (config == null)
                 throw new InvalidOperationException("Packet stream is not configured");
-
-            // Wait for new DRM Session. If not obtained within 
-            // 10 seconds... die...
-            //
-            if (!waitForDRMSession.Wait(TimeSpan.FromSeconds(10)))
-            {
-                Logger.Error("No supported DRM Found");
-                throw new InvalidOperationException("No supported DRM Found");
-            }
 
             if (packet is EncryptedPacket)
             {
@@ -105,13 +95,6 @@ namespace JuvoPlayer.Player
             if (!forceDrmChange && drmSession != null)
                 return;
 
-            // Prevent packets from being appended till we find supported DRM Session
-            // Do so ONLY if there is no current session. Existing session will be used.
-            // If no new session will be found, DRM Decode errors will be raised by player.
-            //
-            if (drmSession == null)
-                waitForDRMSession.Reset();
-
             var newSession = drmManager.CreateDRMSession(data);
 
             // Do not reset wait for DRM event. If there is no valid session
@@ -136,13 +119,11 @@ namespace JuvoPlayer.Player
             // There is no need to store sessions. They live in player queue
             //
             drmSession = newSession;
-            waitForDRMSession.Set();
         }
 
         public void Dispose()
         {
             OnClearStream();
-            waitForDRMSession.Dispose();
         }
     }
 }
