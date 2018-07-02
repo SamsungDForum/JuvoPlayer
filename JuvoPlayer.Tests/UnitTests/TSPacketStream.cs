@@ -7,20 +7,18 @@ using JuvoPlayer.Player;
 using NSubstitute;
 using NUnit.Framework;
 
-
 namespace JuvoPlayer.Tests.UnitTests
 {
-     
-    
-    public class TestDrmSession: IDrmSession
+    /// <summary>
+    /// Dummy IDrmSession. Due to reference counting, simple interface replacement
+    /// does not do the trick - Static methods do not seem to be replacable by Unit Tests
+    /// </summary>
+    public class TestDrmSession : IDrmSession
     {
         private int Counter;
         ref int IReferenceCoutable.Count => ref Counter;
 
-        public void Dispose()
-        {
-
-        }
+        public void Dispose() { }
 
         public Task Initialize() { return null; }
 
@@ -59,7 +57,7 @@ namespace JuvoPlayer.Tests.UnitTests
         {
             using (var stream = CreatePacketStream(StreamType.Audio))
             {
-                var packet = new Packet { StreamType = StreamType.Video};
+                var packet = new Packet { StreamType = StreamType.Video };
                 Assert.Throws<ArgumentException>(() => stream.OnAppendPacket(packet));
             }
         }
@@ -73,7 +71,7 @@ namespace JuvoPlayer.Tests.UnitTests
 
             using (var stream = CreatePacketStream(StreamType.Audio, playerMock, drmManagerStub, codecExtraDataHandlerStub))
             {
-                var packet = new Packet { StreamType = StreamType.Audio};
+                var packet = new Packet { StreamType = StreamType.Audio };
                 var config = new AudioStreamConfig();
 
                 stream.OnStreamConfigChanged(config);
@@ -124,7 +122,7 @@ namespace JuvoPlayer.Tests.UnitTests
                 stream.OnAppendPacket(packet);
 
                 playerMock.Received().AppendPacket(Arg.Any<Packet>());
-  
+
             }
         }
 
@@ -172,21 +170,12 @@ namespace JuvoPlayer.Tests.UnitTests
             return drmManagerStub;
         }
 
-        
-
         private static IDrmSession CreateDrmSessionFake()
         {
-            var drmSessionFake = Substitute.For<IDrmSession, IReferenceCoutable>();
+            var drmSessionFake = Substitute.For<TestDrmSession>();
             drmSessionFake.Initialize().Returns(Task.CompletedTask);
             drmSessionFake.DecryptPacket(Arg.Any<EncryptedPacket>()).Returns(Task.FromResult(new Packet()));
-            /*
-            drmSessionFake.When(x => x.InitializeReferenceCounting()).DoNotCallBase();
-            drmSessionFake.InitializeReferenceCounting().Returns(drmSessionFake);
-            drmSessionFake.When(x => x.Share()).DoNotCallBase();
-            drmSessionFake.Share().Returns(drmSessionFake);
-            drmSessionFake.When(x => x.Release()).DoNotCallBase();
-            */
-            
+
             return drmSessionFake;
         }
     }
