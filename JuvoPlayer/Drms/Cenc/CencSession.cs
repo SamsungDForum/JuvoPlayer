@@ -1,10 +1,8 @@
 using System;
 using System.IO;
 using System.Linq;
-using System.Net;
 using System.Net.Http;
 using System.Net.Http.Headers;
-using System.Runtime.ExceptionServices;
 using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
@@ -14,6 +12,7 @@ using JuvoLogger;
 using Nito.AsyncEx;
 using Tizen.TV.Security.DrmDecrypt;
 using Tizen.TV.Security.DrmDecrypt.emeCDM;
+using JuvoPlayer.Common.Utils.IReferenceCountable;
 
 namespace JuvoPlayer.Drms.Cenc
 {
@@ -33,10 +32,14 @@ namespace JuvoPlayer.Drms.Cenc
         private CancellationTokenSource cancellationTokenSource;
         private TaskCompletionSource<byte[]> requestDataCompletionSource;
 
+        private int Counter;
+        ref int IReferenceCoutable.Count => ref Counter;
+
         private CencSession(DRMInitData initData, DRMDescription drmDescription)
         {
             if (string.IsNullOrEmpty(drmDescription?.LicenceUrl))
             {
+                Logger.Error("Licence url is null");
                 throw new NullReferenceException("Licence url is null");
             }
             this.initData = initData;
@@ -51,6 +54,7 @@ namespace JuvoPlayer.Drms.Cenc
             if (currentSessionId != null)
             {
                 CDMInstance.session_close(currentSessionId);
+                Logger.Info($"CencSession: {currentSessionId} closed");
                 currentSessionId = null;
             }
 
@@ -60,6 +64,7 @@ namespace JuvoPlayer.Drms.Cenc
 
         public override void Dispose()
         {
+            Logger.Info($"Disposing CencSession: {currentSessionId}");
             lock (this)
             {
                 if (isDisposed)
@@ -86,13 +91,6 @@ namespace JuvoPlayer.Drms.Cenc
             }
         }
 
-        ~CencSession()
-        {
-            //Dispose() was never called, so we have no choice,
-            //but to try to destroy CDM on the finalizer thread
-            DestroyCDM();
-        }
-
         private static string Encode(byte[] initData)
         {
             return Encoding.GetEncoding(437).GetString(initData);
@@ -105,18 +103,41 @@ namespace JuvoPlayer.Drms.Cenc
 
         public Task<Packet> DecryptPacket(EncryptedPacket packet)
         {
+            if (initializationTask == null)
+            {
+                Logger.Error("No License requested. Calling Initialize() helps");
+                throw new InvalidOperationException("CencSession Uninitialized");
+            }
+
             lock (this)
             {
                 ThrowIfDisposed();
+                if (!licenceInstalled)
+                {
+                    Logger.Warn("Getting old waiting for license");
+                    initializationTask.Wait();
+                }
 
-                return thread.Factory.Run(() => DecryptPacketOnIemeThread(packet));
+                // Don't start additional tasks if no license
+                if (licenceInstalled)
+                {
+                    return thread.Factory.Run(() => DecryptPacketOnIemeThread(packet));
+                }
+                else
+                {
+                    Logger.Error("Failed to obtain license");
+                    throw new InvalidOperationException("Failed to obtain license");
+                }
             }
         }
 
         private unsafe Packet DecryptPacketOnIemeThread(EncryptedPacket packet)
         {
             if (licenceInstalled == false)
+            {
+                Logger.Error("No licence installed");
                 throw new DrmException("No licence installed");
+            }
 
             HandleSize[] pHandleArray = new HandleSize[1];
             var numofparam = 1;
@@ -186,6 +207,7 @@ namespace JuvoPlayer.Drms.Cenc
                     }
                     else
                     {
+                        Logger.Error($"Decryption failed: {packet.StreamType} - {ret}");
                         throw new DrmException($"Decryption failed: {packet.StreamType} - {ret}");
                     }
                 }
@@ -226,10 +248,10 @@ namespace JuvoPlayer.Drms.Cenc
             {
                 case MessageType.kLicenseRequest:
                 case MessageType.kIndividualizationRequest:
-                {
-                    requestDataCompletionSource?.TrySetResult(Encoding.GetEncoding(437).GetBytes(message));
-                    break;
-                }
+                    {
+                        requestDataCompletionSource?.TrySetResult(Encoding.GetEncoding(437).GetBytes(message));
+                        break;
+                    }
                 default:
                     Logger.Info("unknown message");
                     break;
@@ -248,10 +270,14 @@ namespace JuvoPlayer.Drms.Cenc
 
         public Task Initialize()
         {
+            Logger.Info("");
             lock (this)
             {
                 if (initializationTask != null)
+                {
+                    Logger.Error("Initialize in progress");
                     throw new InvalidOperationException("Initialize in progress");
+                }
 
                 ThrowIfDisposed();
 
@@ -275,6 +301,7 @@ namespace JuvoPlayer.Drms.Cenc
             cancellationToken.ThrowIfCancellationRequested();
 
             currentSessionId = CreateSession();
+            Logger.Info($"CencSession ID {currentSessionId}");
             cancellationToken.ThrowIfCancellationRequested();
 
             var requestData = await GetRequestData();
@@ -304,7 +331,7 @@ namespace JuvoPlayer.Drms.Cenc
             Logger.Info("Created session: " + sessionId);
             return sessionId;
         }
-         
+
         private async Task<byte[]> GetRequestData()
         {
             if (initData.InitData == null)
@@ -344,6 +371,8 @@ namespace JuvoPlayer.Drms.Cenc
 
             var responseTask = await client.PostAsync(licenceUrl, content, cancellationTokenSource.Token);
 
+            // TODO: Add retries. Net failures are expected
+
             Logger.Info("Response: " + responseTask);
             var receiveStream = responseTask.Content.ReadAsStreamAsync();
             var readStream = new StreamReader(await receiveStream, Encoding.GetEncoding(437));
@@ -355,19 +384,28 @@ namespace JuvoPlayer.Drms.Cenc
 
         private void InstallLicence(string responseText)
         {
+            Logger.Info($"Installing CencSession: {currentSessionId}");
             try
             {
                 var status = CDMInstance.session_update(currentSessionId, responseText);
                 if (status != Status.kSuccess)
+                {
+                    Logger.Error($"License Installation failure {EmeStatusConverter.Convert(status)}");
                     throw new DrmException(EmeStatusConverter.Convert(status));
+                }
             }
             catch (Exception e)
             {
                 //Something went wrong i.e. communication with the license server failed
                 //TODO Show to the user as 'DRM license session error!' on the screen.
-                throw new DrmException(EmeStatusConverter.Convert(Status.kUnexpectedError) + " - Exception message: " + e.Message );
+                throw new DrmException(EmeStatusConverter.Convert(Status.kUnexpectedError) + " - Exception message: " + e.Message);
             }
-            
         }
+
+        public override string ToString()
+        {
+            return currentSessionId;
+        }
+
     }
 }

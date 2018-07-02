@@ -1,11 +1,11 @@
-using System;
 using System.Threading.Tasks;
 using JuvoPlayer.Common;
+using JuvoPlayer.Common.Utils.IReferenceCountable;
 
 namespace JuvoPlayer.Drms
 {
     /// <summary>Represents a single DRM Session.</summary>
-    public interface IDrmSession : IDisposable
+    public interface IDrmSession : IReferenceCoutable
     {
         /// <summary>Initializes a new instance of the <see cref="T:JuvoPlayer.Drms.IDRMSession"></see> class.</summary>
         /// <returns>A task, which will complete when Session initialization finishes.</returns>

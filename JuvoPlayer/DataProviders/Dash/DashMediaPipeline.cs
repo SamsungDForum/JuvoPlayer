@@ -4,6 +4,7 @@ using System.Linq;
 using System.Xml;
 using JuvoLogger;
 using JuvoPlayer.Common;
+using JuvoPlayer.Common.Utils;
 using JuvoPlayer.Demuxers;
 using JuvoPlayer.Drms.Cenc;
 using MpdParser;
@@ -60,11 +61,9 @@ namespace JuvoPlayer.DataProviders.Dash
         public event StreamError StreamError;
 
         /// <summary>
-        /// Storage holders for initial packets PTS/DTS values.
-        /// Used in Trimming Packet Handler to truncate down PTS/DTS values.
-        /// First packet seen acts as flip switch. Fill initial values or not.
+        /// Holds smaller of the two (PTS/DTS) from the initial packet.
         /// </summary>
-        private TimeSpan? trimmOffset;
+        private PacketTimeStamp? trimmOffset;
 
         private readonly IDashClient dashClient;
         private readonly IDemuxer demuxer;
@@ -79,8 +78,10 @@ namespace JuvoPlayer.DataProviders.Dash
         private List<DashStream> availableStreams = new List<DashStream>();
 
         private static readonly TimeSpan SegmentEps = TimeSpan.FromSeconds(0.5);
-        private TimeSpan laskSeek = TimeSpan.Zero;
-        private TimeSpan demuxerTimeStamp = TimeSpan.Zero;
+        private TimeSpan? lastSeek = TimeSpan.Zero;
+
+        private PacketTimeStamp demuxerClock;
+        private PacketTimeStamp lastPushedClock;
 
         public DashMediaPipeline(IDashClient dashClient, IDemuxer demuxer, IThroughputHistory throughputHistory, StreamType streamType)
         {
@@ -95,7 +96,6 @@ namespace JuvoPlayer.DataProviders.Dash
             demuxer.DemuxerError += OnStreamError;
 
             dashClient.Error += OnStreamError;
-
         }
 
         public void UpdateMedia(IList<Media> media)
@@ -158,6 +158,8 @@ namespace JuvoPlayer.DataProviders.Dash
         {
             if (pendingStream == null)
                 return;
+
+            Logger.Info($"{streamType}");
 
             if (currentStream == null)
             {
@@ -292,11 +294,13 @@ namespace JuvoPlayer.DataProviders.Dash
 
         public void Seek(TimeSpan time)
         {
-            laskSeek = dashClient.Seek(time);
+            lastSeek = dashClient.Seek(time);
         }
 
         public void ChangeStream(StreamDescription stream)
         {
+            Logger.Info("");
+
             if (stream == null)
                 throw new ArgumentNullException(nameof(stream), "stream cannot be null");
 
@@ -381,9 +385,10 @@ namespace JuvoPlayer.DataProviders.Dash
             {
                 InitData = Convert.FromBase64String(initData),
                 SystemId = CencUtils.SchemeIdUriToSystemId(schemeIdUri),
-                StreamType = streamType
+                // Stream Type will be appended during OnDRMInitDataFound()
             };
-            DRMInitDataFound?.Invoke(drmInitData);
+
+            OnDRMInitDataFound(drmInitData);
         }
 
         private void ParseYoutubeScheme(ContentProtection descriptor)
@@ -431,9 +436,11 @@ namespace JuvoPlayer.DataProviders.Dash
                 // Sometimes we can receive invalid timestamp from demuxer
                 // eg during encrypted content seek or live video.
                 // Adjust timestamps to avoid playback problems
-                packet.Dts += demuxerTimeStamp - trimmOffset.Value;
-                packet.Pts += demuxerTimeStamp - trimmOffset.Value;
+                packet += demuxerClock;
+                packet -= trimmOffset.Value;
 
+                // Don't convert packet here, use assignment (less costly)
+                lastPushedClock.SetClock(packet);
                 PacketReady?.Invoke(packet);
                 return;
             }
@@ -450,16 +457,38 @@ namespace JuvoPlayer.DataProviders.Dash
         private void AdjustDemuxerTimeStampIfNeeded(Packet packet)
         {
             //Get very first PTS/DTS
-            if (trimmOffset.HasValue == false)
-                trimmOffset = TimeSpan.FromTicks(Math.Min(packet.Pts.Ticks, packet.Dts.Ticks));
-
-            if (packet.Pts + SegmentEps < laskSeek)
+            if (!trimmOffset.HasValue)
             {
-                Logger.Debug("Got badly timestamped packet. Adding timestamp to packets");
-                demuxerTimeStamp = laskSeek;
+                trimmOffset = new PacketTimeStamp(packet);
+
+                Logger.Info($"{streamType}: trimmOffset: {trimmOffset.Value}");
             }
 
-            laskSeek = TimeSpan.Zero;
+            if (!lastSeek.HasValue)
+            {
+                if (packet.IsZeroClock())
+                {
+                    // This IS NOT ideal solution to work around reset of PTS/DTS after 
+                    demuxerClock = lastPushedClock;
+                    trimmOffset.Value.SetClock(TimeSpan.Zero);
+                    Logger.Info($"{streamType}: Zero timestamped packet. Adjusting demuxerClock: {demuxerClock} trimmOffset: {trimmOffset.Value}");
+                }
+            }
+            else
+            {
+                if (packet.Pts + SegmentEps < lastSeek)
+                {
+                    // Add last seek value to packet clock. Forcing last seek value looses
+                    // PTS/DTS differences causing lip sync issues.
+                    //
+                    demuxerClock = (PacketTimeStamp)packet + lastSeek.Value;
+
+                    Logger.Info($"{streamType}: Badly timestamped packet. Adjusting demuxerClock to: {demuxerClock}");
+                }
+
+                lastSeek = null;
+            }
+
         }
 
         private void OnStreamConfigReady(StreamConfig config)

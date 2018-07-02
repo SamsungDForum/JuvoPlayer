@@ -5,6 +5,7 @@ using JuvoLogger;
 using Nito.AsyncEx;
 using Tizen.Security.TEEC;
 using Tizen.TV.Security.DrmDecrypt;
+using JuvoPlayer.Common.Utils.IReferenceCountable;
 
 namespace JuvoPlayer.Drms.DummyDrm
 {
@@ -29,8 +30,11 @@ namespace JuvoPlayer.Drms.DummyDrm
         private Session session;
         private SharedMemory inputMemory;
 
+        private int Counter;
+        ref int IReferenceCoutable.Count => ref Counter;
+
         private DummyDrmSession()
-        {          
+        {
         }
 
         public void Dispose()
