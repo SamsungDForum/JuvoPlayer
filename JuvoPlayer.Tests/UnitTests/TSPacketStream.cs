@@ -20,9 +20,9 @@ namespace JuvoPlayer.Tests.UnitTests
 
         public void Dispose() { }
 
-        public Task Initialize() { return null; }
+        public Task Initialize() { return Task.CompletedTask; }
 
-        public Task<Packet> DecryptPacket(EncryptedPacket packet) { return null; }
+        public Task<Packet> DecryptPacket(EncryptedPacket packet) { return Task.FromResult(new Packet()); }
     }
 
     [TestFixture]
@@ -172,10 +172,8 @@ namespace JuvoPlayer.Tests.UnitTests
 
         private static IDrmSession CreateDrmSessionFake()
         {
-            var drmSessionFake = Substitute.For<TestDrmSession>();
-            drmSessionFake.Initialize().Returns(Task.CompletedTask);
-            drmSessionFake.DecryptPacket(Arg.Any<EncryptedPacket>()).Returns(Task.FromResult(new Packet()));
-
+            var drmSessionFake = new TestDrmSession();
+            
             return drmSessionFake;
         }
     }
