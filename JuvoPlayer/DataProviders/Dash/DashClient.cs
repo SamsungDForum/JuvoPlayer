@@ -81,7 +81,7 @@ namespace JuvoPlayer.DataProviders.Dash
         /// </summary>
         private TimeSpan? trimmOffset;
 
-        public DashClient(IThroughputHistory throughputHistory, ISharedBuffer sharedBuffer,  StreamType streamType)
+        public DashClient(IThroughputHistory throughputHistory, ISharedBuffer sharedBuffer, StreamType streamType)
         {
             this.throughputHistory = throughputHistory ?? throw new ArgumentNullException(nameof(throughputHistory), "throughputHistory cannot be null");
             this.sharedBuffer = sharedBuffer ?? throw new ArgumentNullException(nameof(sharedBuffer), "sharedBuffer cannot be null");
@@ -437,7 +437,7 @@ namespace JuvoPlayer.DataProviders.Dash
                 return;
             }
 
-            currentStreamDuration = IsDynamic 
+            currentStreamDuration = IsDynamic
                 ? currentStreams.GetDocumentParameters().Document.MediaPresentationDuration
                 : currentStreams.Duration;
 
@@ -496,7 +496,7 @@ namespace JuvoPlayer.DataProviders.Dash
         private bool IsEndOfContent(TimeSpan time)
         {
             var endTime = !currentStreamDuration.HasValue || currentStreamDuration.Value == TimeSpan.Zero
-                ? TimeSpan.MaxValue 
+                ? TimeSpan.MaxValue
                 : currentStreamDuration.Value;
 
             return time >= endTime;
@@ -550,30 +550,44 @@ namespace JuvoPlayer.DataProviders.Dash
 
         private void TimeBufferDepthStatic()
         {
-            // Buffer depth is calculated as so:
+            // Buffer depth is calculated as:
+            //
+            // Case: AverageSegmentDuration >= manifestBufferTime
+            // timeBufferDepth = AverageSegmentDuration + 10% of AverageSegmentDuration
+            // 
+            // Cases: AverageSegmentDuration < manifestBufferTime
             // TimeBufferDepth = 
-            // 1 avg. seg. duration (one being played out) +
-            // bufferTime in multiples of avgSegment Duration with roundup
-            // i.e:
-            // minbuftime = 5 sek.
-            // avgseg = 3 sek.
-            // bufferTime = 6 sec.
-            // timeBufferDepth = 3 sek + 6 sec.
+            // 1 AverageSegmentDuration (one being played out) + 
+            // bufferTime in multiples of AverageSegmentDuration (Rounded down)
+            // 
+            // Buffer time is cliped to maximum of 15 seconds or average segment size.
             //
             var duration = currentStreams.Duration;
             var segments = currentStreams.Count;
-            var manifestMinBufferDepth = currentStreams.GetDocumentParameters().Document.MinBufferTime ?? TimeSpan.Zero;
+            var manifestMinBufferDepth = currentStreams.GetDocumentParameters().Document.MinBufferTime ?? TimeBufferDepthDefault;
 
             //Get average segment duration = Total Duration / number of segments.
-            var avgSegmentDuration = TimeSpan.FromSeconds((duration.Value.TotalSeconds / segments));
+            var avgSegmentDuration = TimeSpan.FromSeconds(
+                    ((double)(duration.Value.TotalSeconds) / (double)segments));
 
-            // Compute multiples of manifest MinBufferTime in units of average segment duration
-            // with round up
-            var multiples = (uint)((manifestMinBufferDepth.TotalSeconds + avgSegmentDuration.TotalSeconds - 1) / avgSegmentDuration.TotalSeconds);
-            var bufferTime = TimeSpan.FromSeconds(multiples * avgSegmentDuration.TotalSeconds);
+            // Always buffer 1 downloadable segment
+            timeBufferDepth = avgSegmentDuration;
 
-            // Compose final timeBufferDepth.
-            timeBufferDepth = avgSegmentDuration + bufferTime;
+            if (avgSegmentDuration >= manifestMinBufferDepth)
+            {
+                timeBufferDepth += TimeSpan.FromSeconds(avgSegmentDuration.TotalSeconds * 0.1);
+            }
+            else
+            {
+                var muliples = Math.Floor(manifestMinBufferDepth.TotalSeconds / avgSegmentDuration.TotalSeconds);
+                timeBufferDepth += TimeSpan.FromSeconds((avgSegmentDuration.TotalSeconds * muliples));
+            }
+
+            // Truncate buffer time down to 15 seconds max or Average Segment Size 
+            // IF average segment size is larger.
+            var maxBufferTime = TimeSpan.FromSeconds(Math.Max(15, avgSegmentDuration.TotalSeconds));
+            if (timeBufferDepth > maxBufferTime)
+                timeBufferDepth = maxBufferTime;
 
             LogInfo($"Average Segment Duration: {avgSegmentDuration} Manifest Min. Buffer Time: {manifestMinBufferDepth}");
         }
