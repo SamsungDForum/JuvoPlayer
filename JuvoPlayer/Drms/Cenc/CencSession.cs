@@ -54,12 +54,12 @@ namespace JuvoPlayer.Drms.Cenc
             if (currentSessionId != null)
             {
                 CDMInstance.session_close(currentSessionId);
+                Logger.Info($"CencSession: {currentSessionId} closed");
                 currentSessionId = null;
             }
 
             IEME.destroy(CDMInstance);
             CDMInstance = null;
-            Logger.Info($"CencSession: {currentSessionId} closed");
         }
 
         public override void Dispose()
