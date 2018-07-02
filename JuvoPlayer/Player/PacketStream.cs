@@ -1,8 +1,8 @@
 ﻿using System;
-using System.Collections.Generic;
-using System.Text;
-using System.Threading.Tasks;
+using System.Threading;
+using JuvoLogger;
 using JuvoPlayer.Common;
+using JuvoPlayer.Common.Utils.IReferenceCountableExtensions;
 using JuvoPlayer.Drms;
 
 namespace JuvoPlayer.Player
@@ -12,11 +12,11 @@ namespace JuvoPlayer.Player
         protected ICodecExtraDataHandler codecExtraDataHandler;
         protected IDrmManager drmManager;
         protected IPlayer player;
-        private IDrmSession drmSession;
+        private IDrmSession drmSession = null;
         private StreamConfig config;
-        private bool forceDrmChange;
-        private Task drmSessionInitializeTask;
         private readonly StreamType streamType;
+        private readonly ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
+        private bool forceDrmChange;
 
         public PacketStream(StreamType streamType, IPlayer player, IDrmManager drmManager, ICodecExtraDataHandler codecExtraDataHandler)
         {
@@ -30,21 +30,21 @@ namespace JuvoPlayer.Player
 
         public void OnAppendPacket(Packet packet)
         {
+
             if (packet.StreamType != streamType)
                 throw new ArgumentException("packet type doesn't match");
 
             if (config == null)
                 throw new InvalidOperationException("Packet stream is not configured");
 
-            if (drmSessionInitializeTask != null && packet is EncryptedPacket)
-            {
-                drmSessionInitializeTask.Wait();
-                drmSessionInitializeTask = null;
-            }
-
-            if (drmSession != null && packet is EncryptedPacket)
+            if (packet is EncryptedPacket)
             {
                 var encryptedPacket = (EncryptedPacket)packet;
+
+                // Increment reference counter on DRM session
+                //
+                drmSession.Share();
+
                 encryptedPacket.DrmSession = drmSession;
             }
 
@@ -55,6 +55,8 @@ namespace JuvoPlayer.Player
 
         public void OnStreamConfigChanged(StreamConfig config)
         {
+            Logger.Info($"{streamType}");
+
             if (config == null)
                 throw new ArgumentNullException(nameof(config), "config cannot be null");
 
@@ -64,7 +66,7 @@ namespace JuvoPlayer.Player
             if (this.config != null && this.config.Equals(config))
                 return;
 
-            forceDrmChange = this.config != null;
+            forceDrmChange = (this.config != null);
 
             this.config = config;
 
@@ -75,20 +77,48 @@ namespace JuvoPlayer.Player
 
         public void OnClearStream()
         {
-            drmSession?.Dispose();
+            Logger.Info($"{streamType}");
+
+            // Remove reference count held by Packet Stream.
+            // Player may still have packets and process them. Don't force remove
+            //
+            drmSession?.Release();
+
             drmSession = null;
             config = null;
         }
 
         public void OnDRMFound(DRMInitData data)
         {
+            Logger.Info($"{streamType}");
+
             if (!forceDrmChange && drmSession != null)
                 return;
 
+            var newSession = drmManager.CreateDRMSession(data);
+
+            // Do not reset wait for DRM event. If there is no valid session
+            // do not want to append new data
+            //
+            if (newSession == null)
+                return;
+
+            Logger.Info($"{streamType}: New DRM session found");
             forceDrmChange = false;
-            drmSession?.Dispose();
-            drmSession = drmManager.CreateDRMSession(data);
-            drmSessionInitializeTask = drmSession?.Initialize();
+
+            // Decrement use counter for packet stream on old DRM Session
+            //
+            drmSession?.Release();
+
+            // Initialize reference counting and session.
+            //
+            newSession.InitializeReferenceCounting();
+            newSession.Initialize();
+
+            // Set new session as current & let data submitters run wild.
+            // There is no need to store sessions. They live in player queue
+            //
+            drmSession = newSession;
         }
 
         public void Dispose()

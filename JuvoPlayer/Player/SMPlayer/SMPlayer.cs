@@ -23,6 +23,7 @@ using JuvoPlayer.Drms;
 using JuvoLogger;
 using Tizen.TV.Multimedia.IPTV;
 using StreamType = Tizen.TV.Multimedia.IPTV.StreamType;
+using JuvoPlayer.Common.Utils.IReferenceCountableExtensions;
 
 namespace JuvoPlayer.Player.SMPlayer
 {
@@ -158,6 +159,18 @@ namespace JuvoPlayer.Player.SMPlayer
             WakeUpSubmitTask();
         }
 
+        private bool RemovePacket(ConcurrentQueue<Packet> packetQueue)
+        {
+            if (packetQueue.TryDequeue(out var packet))
+            {
+                if (packet is EncryptedPacket)
+                    (packet as EncryptedPacket).DrmSession.Release();
+
+                return true;
+            }
+
+            return false;
+        }
         private bool SeekVideo()
         {
             var videoSeekReached = false;
@@ -168,8 +181,8 @@ namespace JuvoPlayer.Player.SMPlayer
                 if (packet.IsEOS || packet is BufferConfiguration)
                 {
                     SubmitPacket(packet);
+                    RemovePacket(videoPacketsQueue);
 
-                    videoPacketsQueue.TryDequeue(out packet);
                     Logger.Warn("Video EOS/BufferConfiguration packet found during seek!");
                     continue;
                 }
@@ -177,7 +190,7 @@ namespace JuvoPlayer.Player.SMPlayer
                 lastPts = packet.Pts;
                 if (packet.Pts < seekToTime)
                 {
-                    videoPacketsQueue.TryDequeue(out packet);
+                    RemovePacket(videoPacketsQueue);
                 }
                 else
                 {
@@ -185,7 +198,7 @@ namespace JuvoPlayer.Player.SMPlayer
 
                     // We have reached seekToTime, but no key frame found.
                     // increase seek to time to eat away audio data.
-                    if (!videoSeekReached && videoPacketsQueue.TryDequeue(out packet))
+                    if (!videoSeekReached && RemovePacket(videoPacketsQueue))
                         seekToTime = packet.Pts;
                 }
             }
@@ -204,15 +217,15 @@ namespace JuvoPlayer.Player.SMPlayer
                 if (packet.IsEOS || packet is BufferConfiguration)
                 {
                     SubmitPacket(packet);
+                    RemovePacket(audioPacketsQueue);
 
-                    audioPacketsQueue.TryDequeue(out packet);
                     Logger.Warn("Audio EOS/BufferConfiguration packet found during seek!");
                     continue;
                 }
 
                 lastPts = packet.Pts;
                 if (packet.Pts < seekToTime)
-                    audioPacketsQueue.TryDequeue(out packet);
+                    RemovePacket(audioPacketsQueue);
                 else
                     audioSeekReached = true;
             }
@@ -302,12 +315,6 @@ namespace JuvoPlayer.Player.SMPlayer
 
         private void SubmitEncryptedPacket(EncryptedPacket packet)
         {
-            if (packet.DrmSession == null)
-            {
-                SubmitDataPacket(packet);
-                return;
-            }
-
             try
             {
                 using (var decryptedPacket = packet.Decrypt())
@@ -318,13 +325,17 @@ namespace JuvoPlayer.Player.SMPlayer
             catch (ObjectDisposedException)
             {
                 // decryptions has been canceled - drm session is already disposed
-                Logger.Warn("Ignoring decryption error - drm session has been already closed");
+                Logger.Warn($"Ignoring decryption error - drm session '{packet.DrmSession.ToString()}' has been already closed");
             }
             catch (Exception e)
             {
                 //log immediately, since the exception will propagate from the task sometime later
                 Logger.Error($"{e}");
                 throw;
+            }
+            finally
+            {
+                packet.DrmSession.Release();
             }
         }
 
@@ -442,10 +453,42 @@ namespace JuvoPlayer.Player.SMPlayer
             ResetPacketsQueues();
         }
 
+        private void DisposeEncryptedPackets(ConcurrentQueue<Packet> audio, ConcurrentQueue<Packet> video)
+        {
+            var ac = audio.Count;
+            var vc = video.Count;
+
+            // Runs as a task already. Parallel.Invoke here won't make things faster.
+            while (!audio.IsEmpty)
+            {
+                RemovePacket(audio);
+            }
+
+            while (!video.IsEmpty)
+            {
+                RemovePacket(video);
+            }
+
+            Logger.Debug($"Done. Audio Packets: {ac} Video Packets {vc}");
+        }
+
         private void ResetPacketsQueues()
         {
+            // Prior to resetting data queues, purge existing. Required to remove reference counts 
+            // on possible encrypted packet's sessions. If not done, there will be uncleaned DRM sessions.
+            // Will happen if DRM get's changed mid way through playback.
+            // Cleanup task can be run completely parallel of SM Player activity.
+            //
+
+            // Grab current queue references. Tasks do not start when StartNew/Run is called, however,
+            // arguments are collected at actual start, thus need to grab a copy first.
+            var audioQueue = audioPacketsQueue;
+            var videoQueue = videoPacketsQueue;
+
             audioPacketsQueue = new ConcurrentQueue<Packet>();
             videoPacketsQueue = new ConcurrentQueue<Packet>();
+
+            Task.Factory.StartNew(() => DisposeEncryptedPackets(audioQueue, videoQueue));
         }
 
         public void SetStreamConfig(StreamConfig config)
@@ -644,6 +687,7 @@ namespace JuvoPlayer.Player.SMPlayer
                     return;
                 }
             }
+
 
             internalState = SMPlayerState.Stopping;
             WakeUpSubmitTask();
