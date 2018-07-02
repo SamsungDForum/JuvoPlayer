@@ -23,7 +23,6 @@ using JuvoPlayer.Drms;
 using JuvoLogger;
 using Tizen.TV.Multimedia.IPTV;
 using StreamType = Tizen.TV.Multimedia.IPTV.StreamType;
-using JuvoPlayer.Common.Utils;
 using JuvoPlayer.Common.Utils.IReferenceCountableExtensions;
 
 namespace JuvoPlayer.Player.SMPlayer
@@ -182,7 +181,7 @@ namespace JuvoPlayer.Player.SMPlayer
                 if (packet.IsEOS || packet is BufferConfiguration)
                 {
                     SubmitPacket(packet);
-		    RemovePacket(videoPacketsQueue);
+                    RemovePacket(videoPacketsQueue);
 
                     Logger.Warn("Video EOS/BufferConfiguration packet found during seek!");
                     continue;
@@ -199,7 +198,7 @@ namespace JuvoPlayer.Player.SMPlayer
 
                     // We have reached seekToTime, but no key frame found.
                     // increase seek to time to eat away audio data.
-                    if (!videoSeekReached && videoPacketsQueue.TryDequeue(out packet))
+                    if (!videoSeekReached && RemovePacket(videoPacketsQueue))
                         seekToTime = packet.Pts;
                 }
             }

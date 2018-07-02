@@ -142,6 +142,7 @@ namespace JuvoPlayer.Player
         public void Dispose()
         {
             OnClearStream();
+            waitForDRMSession.Dispose();
         }
     }
 }
