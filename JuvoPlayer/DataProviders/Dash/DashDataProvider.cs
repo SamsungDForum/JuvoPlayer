@@ -371,15 +371,8 @@ namespace JuvoPlayer.DataProviders.Dash
             // can be safely done in parallel.
             Logger.Error($"Stream Error: {errorMessage}. Terminating pipelines.");
 
-            // This will generate "already stopped" message from failed pipeline.
-            // It is possible to forgo calling stop here, simply raise StreamError event
-            // and wait for termination as part of player window closure. Imho, better to call
-            // quits as early as possible.
-            OnStopped();
-
             // Bubble up stream error info up to PlayerController which will shut down
             // underlying player
-
             StreamError?.Invoke(errorMessage);
         }
 
