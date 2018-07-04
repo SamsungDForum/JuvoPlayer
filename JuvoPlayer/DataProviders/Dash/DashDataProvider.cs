@@ -185,7 +185,7 @@ namespace JuvoPlayer.DataProviders.Dash
             while (!(updateResult = await UpdateManifest()) && tryCount-- > 0)
             {
                 Logger.Warn("Manifest load failed. Will retry");
-                Thread.Sleep(manifestReloadDelay);
+                await Task.Delay(manifestReloadDelay);
             }
 
             if (updateResult != false)
