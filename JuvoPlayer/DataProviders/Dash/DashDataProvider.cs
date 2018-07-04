@@ -188,7 +188,6 @@ namespace JuvoPlayer.DataProviders.Dash
                 Thread.Sleep(manifestReloadDelay);
             }
 
-            updateResult = false;
             if (updateResult != false)
             {
                 Parallel.Invoke(() => audioPipeline.SwitchStreamIfNeeded(),
