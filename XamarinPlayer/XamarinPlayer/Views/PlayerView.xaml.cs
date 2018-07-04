@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel;
 using JuvoLogger;
 using Xamarin.Forms;
 using Xamarin.Forms.Xaml;
@@ -17,9 +18,9 @@ namespace XamarinPlayer.Views
 
         private IPlayerService _playerService;
         private int _hideTime;
-        private bool _isPageDisappeared = false;
-        private bool _isShowing = false;
-        private bool _errorOccured = false;
+        private bool _isPageDisappeared;
+        private bool _isShowing;
+        private bool _hasFinished;
         private string _errorMessage;
 
         public static readonly BindableProperty ContentSourceProperty = BindableProperty.Create("ContentSource", typeof(object), typeof(PlayerView), null);
@@ -27,7 +28,7 @@ namespace XamarinPlayer.Views
         public object ContentSource
         {
             set { SetValue(ContentSourceProperty, value); }
-            get { return (object)GetValue(ContentSourceProperty); }
+            get { return GetValue(ContentSourceProperty); }
         }
 
         public PlayerView()
@@ -66,7 +67,7 @@ namespace XamarinPlayer.Views
             // Prevents key handling & fous change in Show().
             // Consider adding a call Focus(Focusable Object) where focus would be set in one place
             // and error status could be handled.
-            if (_errorOccured)
+            if (_hasFinished)
                 return;
 
             if (e.Contains("Back"))
@@ -146,7 +147,7 @@ namespace XamarinPlayer.Views
         {
             var streams = new List<StreamDescription>
             {
-                new StreamDescription()
+                new StreamDescription
                 {
                     Default = true,
                     Description = "off",
@@ -248,7 +249,7 @@ namespace XamarinPlayer.Views
         public void Show(int timeout)
         {
             // Do not show anything if error handling in progress.
-            if (_errorOccured)
+            if (_hasFinished)
                 return;
 
             if (!_isShowing)
@@ -268,7 +269,7 @@ namespace XamarinPlayer.Views
             _isShowing = false;
         }
 
-        private void PlayerViewPropertyChanged(object sender, System.ComponentModel.PropertyChangedEventArgs e)
+        private void PlayerViewPropertyChanged(object sender, PropertyChangedEventArgs e)
         {
             if (e.PropertyName.Equals("ContentSource"))
             {
@@ -277,18 +278,6 @@ namespace XamarinPlayer.Views
 
                 _playerService.SetSource(ContentSource);
             }
-        }
-
-        private void OnPlaybackCompleted()
-        {
-            // Schedule closing the page on the next event loop. Give application time to finish
-            // playbackCompleted event handling
-            Device.StartTimer(TimeSpan.FromMilliseconds(0), () =>
-            {
-                Navigation.RemovePage(this);
-
-                return false;
-            });
         }
 
         protected override void OnAppearing()
@@ -329,15 +318,15 @@ namespace XamarinPlayer.Views
             return true;
         }
 
-        void OnPlaybackError()
+        void OnPlaybackFinished()
         {
-
             // DisplayAlert seems emotionally unstable
             // if not called from main thread.
             Device.BeginInvokeOnMainThread(async () =>
             {
-                await DisplayAlert("Playback Error", _errorMessage, "OK");
-                _errorOccured = false;
+                if (!string.IsNullOrEmpty(_errorMessage))
+                    await DisplayAlert("Playback Error", _errorMessage, "OK");
+
                 Navigation.RemovePage(this);            
             });
         }
@@ -347,23 +336,26 @@ namespace XamarinPlayer.Views
             Logger.Info($"Player State Changed: {e.State}");
             if (e.State == PlayerState.Stopped)
             {
-                if (_errorOccured)
-                    OnPlaybackError();
+                if (_hasFinished)
+                    OnPlaybackFinished();
             }
             if (e.State == PlayerState.Completed)
             {
                 // Do not remove any screens in case of error. Will be done as part
                 // of error handling during Stopped event.
-                if (_errorOccured == false)
-                    OnPlaybackCompleted();
+                if (_hasFinished == false)
+                {
+                    _hasFinished = true;
+                    OnPlaybackFinished();
+                }
             }
             else if (e.State == PlayerState.Error)
             {
                 // Prevent multiple popups from occouring, display them only
                 // if it is a very first error event.
-                if (_errorOccured == false)
+                if (_hasFinished == false)
                 {
-                    _errorOccured = true;
+                    _hasFinished = true;
                     _errorMessage = (e as PlayerStateChangedStreamError)?.Message ?? "Unknown Error";
 
                     // Terminate player to prevent any futher error events. 
@@ -372,7 +364,12 @@ namespace XamarinPlayer.Views
                     // Hide controls. If not hidden, a timeouts take away focus rendering alert
                     // unclosable.
                     //
-                    Device.StartTimer(TimeSpan.FromMilliseconds(0), () => { Hide(); _playerService.Stop(); return false; });
+                    Device.StartTimer(TimeSpan.FromMilliseconds(0), () =>
+                    {
+                        Hide();
+                        _playerService.Stop();
+                        return false;
+                    });
                 }
             }
             else if (e.State == PlayerState.Prepared)
@@ -408,8 +405,7 @@ namespace XamarinPlayer.Views
         {
             if (time.TotalHours > 1)
                 return time.ToString(@"hh\:mm\:ss");
-            else
-                return time.ToString(@"mm\:ss");
+            return time.ToString(@"mm\:ss");
         }
 
         private bool UpdatePlayerControl()
