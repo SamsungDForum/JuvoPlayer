@@ -22,6 +22,9 @@ namespace JuvoPlayer.DataProviders.Dash
         private CuesMap cuesMap;
         private TimeSpan currentTime = TimeSpan.Zero;
 
+        private static readonly int manifestDownloadRetries = 3;
+        private static readonly TimeSpan manifestReloadDelay = TimeSpan.FromMilliseconds(400);
+
         public event ClipDurationChanged ClipDurationChanged;
         public event DRMInitDataFound DRMInitDataFound;
         public event SetDrmConfiguration SetDrmConfiguration;
@@ -176,10 +179,24 @@ namespace JuvoPlayer.DataProviders.Dash
         {
             Logger.Info("Dash start.");
 
-            await UpdateManifest();
+            var tryCount = manifestDownloadRetries;
+            bool updateResult = false;
 
-            Parallel.Invoke(() => audioPipeline.SwitchStreamIfNeeded(),
-                            () => videoPipeline.SwitchStreamIfNeeded());
+            while (!(updateResult = await UpdateManifest()) && tryCount-- > 0)
+            {
+                Logger.Warn("Manifest load failed. Will retry");
+                await Task.Delay(manifestReloadDelay);
+            }
+
+            if (updateResult != false)
+            {
+                Parallel.Invoke(() => audioPipeline.SwitchStreamIfNeeded(),
+                                () => videoPipeline.SwitchStreamIfNeeded());
+            }
+            else
+            {
+                OnStreamError("Manifest download failed");
+            }
         }
 
         private bool UpdateMedia(Document document, Period period)
