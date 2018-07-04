@@ -106,7 +106,7 @@ namespace JuvoPlayer.DataProviders.Dash
             if (media.Any(o => o.Type.Value != ToMediaType(streamType)))
                 throw new ArgumentException("Not compatible media found");
 
-            if (pipelineStarted && currentStream != null)
+            if (currentStream != null)
             {
                 var currentMedia = media.Count == 1 ? media.First() : media.FirstOrDefault(o => o.Id == currentStream.Media.Id);
                 var currentRepresentation = currentMedia?.Representations.FirstOrDefault(o => o.Id == currentStream.Representation.Id);
@@ -225,6 +225,7 @@ namespace JuvoPlayer.DataProviders.Dash
 
             demuxer.StartForExternalSource(newStream != null ? InitializationMode.Full : InitializationMode.Minimal);
             dashClient.Start();
+
             pipelineStarted = true;
         }
 
@@ -276,10 +277,12 @@ namespace JuvoPlayer.DataProviders.Dash
         public void Pause()
         {
             ResetPipeline();
-            pipelineStarted = false;
         }
         public void Stop()
         {
+            if (!pipelineStarted)
+                return;
+
             demuxer.Stop();
             dashClient.Stop();
 
@@ -322,10 +325,15 @@ namespace JuvoPlayer.DataProviders.Dash
 
         private void ResetPipeline()
         {
+            if (!pipelineStarted)
+                return;
+
             // Stop demuxer and dashclient
             // Stop demuxer first so old incoming data will ignored
             demuxer.Stop();
             dashClient.Reset();
+
+            pipelineStarted = false;
         }
 
         public List<StreamDescription> GetStreamsDescription()
