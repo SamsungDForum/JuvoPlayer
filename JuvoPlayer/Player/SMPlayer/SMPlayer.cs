@@ -711,6 +711,10 @@ namespace JuvoPlayer.Player.SMPlayer
             }
             finally
             {
+                // Calling Stop() when player is in Paused() state seems to hang
+                // and require a hard restert in order to release underlying resources.
+                // as such, DO NOT call Stop when in Paused state
+                //
                 var playerState = playerInstance.GetPlayerState();
                 if (playerState != PlayerState.Paused)
                 {
@@ -718,7 +722,7 @@ namespace JuvoPlayer.Player.SMPlayer
                 }
                 else
                 {
-                    Logger.Warn($"Player State {playerState}. Stop() call skiped");
+                    Logger.Warn($"Player State {playerState}. Stop() call skiped. Stop() in this state hangs");
                 }
                 
                 ResetInternalState();
