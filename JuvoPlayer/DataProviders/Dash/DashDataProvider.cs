@@ -122,7 +122,6 @@ namespace JuvoPlayer.DataProviders.Dash
         public void OnPaused()
         {
             Logger.Info("");
-            Parallel.Invoke(() => videoPipeline.Pause(), () => audioPipeline.Pause());
         }
 
         public async void OnPlayed()
