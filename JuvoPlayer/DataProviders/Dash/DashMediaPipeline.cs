@@ -211,6 +211,9 @@ namespace JuvoPlayer.DataProviders.Dash
 
         private void StartPipeline(DashStream newStream = null)
         {
+            if (pipelineStarted)
+                return;
+
             if (newStream != null)
             {
                 currentStream = newStream;
