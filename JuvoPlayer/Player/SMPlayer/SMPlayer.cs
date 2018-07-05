@@ -711,7 +711,16 @@ namespace JuvoPlayer.Player.SMPlayer
             }
             finally
             {
-                playerInstance.Stop();
+                var playerState = playerInstance.GetPlayerState();
+                if (playerState != PlayerState.Paused)
+                {
+                    playerInstance.Stop();
+                }
+                else
+                {
+                    Logger.Warn($"Player State {playerState}. Stop() call skiped");
+                }
+                
                 ResetInternalState();
             }
         }
