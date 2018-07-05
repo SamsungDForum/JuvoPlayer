@@ -133,6 +133,11 @@ namespace JuvoPlayer.DataProviders.Dash
                 Parallel.Invoke(() => audioPipeline.SwitchStreamIfNeeded(),
                                 () => videoPipeline.SwitchStreamIfNeeded());
             }
+            else
+            {
+                Parallel.Invoke(() => audioPipeline.Resume(),
+                                () => videoPipeline.Resume());
+            }
         }
 
         public void OnSeek(TimeSpan time)
