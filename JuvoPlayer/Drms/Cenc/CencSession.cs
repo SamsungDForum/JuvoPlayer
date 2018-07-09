@@ -32,8 +32,13 @@ namespace JuvoPlayer.Drms.Cenc
         private CancellationTokenSource cancellationTokenSource;
         private TaskCompletionSource<byte[]> requestDataCompletionSource;
 
-        private int Counter;
-        ref int IReferenceCoutable.Count => ref Counter;
+        private int counter;
+        ref int IReferenceCoutable.Count => ref counter;
+
+        //Additional error code returned by drm_decrypt api when there is no space in trustzone
+        private const int E_DECRYPT_BUFFER_FULL = 2;
+        private const int MaxDecryptRetries = 5;
+        private static readonly TimeSpan DecryptBufferFullSleepTime = TimeSpan.FromMilliseconds(100);
 
         private CencSession(DRMInitData initData, DRMDescription drmDescription)
         {
@@ -192,8 +197,8 @@ namespace JuvoPlayer.Drms.Cenc
 
                 try
                 {
-                    var ret = API.EmeDecryptarray((eCDMReturnType)CDMInstance.getDecryptor(), ref param, numofparam, IntPtr.Zero, 0, ref pHandleArray);
-                    if (ret == eCDMReturnType.E_SUCCESS)
+                    var ret = DecryptData(param, numofparam, ref pHandleArray);
+                    if (ret == (int)eCDMReturnType.E_SUCCESS)
                     {
                         return new DecryptedEMEPacket(thread)
                         {
@@ -219,6 +224,28 @@ namespace JuvoPlayer.Drms.Cenc
                     Marshal.FreeHGlobal(subdataPointer);
                 }
             }
+        }
+
+        private int DecryptData(sMsdCipherParam[] param, int numofparam, ref HandleSize[] pHandleArray)
+        {
+            int ret;
+            var errorCount = 0;
+
+            while (true)
+            {
+                ret = (int) API.EmeDecryptarray((eCDMReturnType) CDMInstance.getDecryptor(), ref param, numofparam, IntPtr.Zero,
+                    0, ref pHandleArray);
+                if (ret == E_DECRYPT_BUFFER_FULL && errorCount < MaxDecryptRetries)
+                {
+                    ++errorCount;
+                    Thread.Sleep(DecryptBufferFullSleepTime);
+                    continue;
+                }
+
+                break;
+            }
+
+            return ret;
         }
 
         private static unsafe IntPtr MarshalSubsampleArray(MSD_SUBSAMPLE_INFO[] subsamples)
