@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Concurrent;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
@@ -81,6 +82,12 @@ namespace JuvoPlayer.DataProviders.Dash
         /// </summary>
         private TimeSpan? trimmOffset;
 
+        /// <summary>
+        /// Storage place for ALL, audio & video trimm offset. Used for retrieval of
+        /// smallest offset from audio or video.
+        /// </summary>
+        private static readonly ConcurrentDictionary<StreamType, TimeSpan> trimmOffsetStorage = new ConcurrentDictionary<StreamType, TimeSpan>();
+
         public DashClient(IThroughputHistory throughputHistory, ISharedBuffer sharedBuffer, StreamType streamType)
         {
             this.throughputHistory = throughputHistory ?? throw new ArgumentNullException(nameof(throughputHistory), "throughputHistory cannot be null");
@@ -116,6 +123,9 @@ namespace JuvoPlayer.DataProviders.Dash
             sharedBuffer?.ClearData();
 
             bufferTime = currentTime;
+
+            // Remove previous entry from trimmOffsetStorage
+            trimmOffsetStorage.TryRemove(streamType, out var tmp);
 
             if (currentSegmentId.HasValue == false)
                 currentSegmentId = currentStreams.StartSegmentId(currentTime, timeBufferDepth);
@@ -513,7 +523,13 @@ namespace JuvoPlayer.DataProviders.Dash
             };
 
             if (trimmOffset.HasValue == false && segment.Period != null)
+            {
                 trimmOffset = segment.Period.Start;
+                if (!trimmOffsetStorage.TryAdd(streamType, trimmOffset.Value))
+                {
+                    LogWarn($"Failed to store trimm offset {trimmOffset}. A/V may be out of sync");
+                }
+            }
 
             var timeout = CalculateDownloadTimeout(segment);
             using (var timeoutCancellationTokenSource = new CancellationTokenSource(timeout))
@@ -600,6 +616,38 @@ namespace JuvoPlayer.DataProviders.Dash
                 TimeBufferDepthStatic();
 
             LogInfo($"TimeBufferDepth: {timeBufferDepth}");
+        }
+
+        public TimeSpan GetTrimmOffset()
+        {
+            // Wait till Audio and Video trimm offsets are available OR untill we got cancelled
+            //
+            if (trimmOffsetStorage.Count != 2)
+            {
+                var waitFor = (streamType == StreamType.Video ? StreamType.Audio : StreamType.Video);
+                LogInfo($"Waiting for {waitFor} trimm Offset");
+                SpinWait.SpinUntil(() => trimmOffsetStorage.Count == 2 || cancellationTokenSource.IsCancellationRequested);
+
+                if (cancellationTokenSource.IsCancellationRequested)
+                    return TimeSpan.Zero;
+
+                LogInfo($"{trimmOffsetStorage.Count} Trimm Offsets available");
+            }
+
+            // Concurrent collection does not seem to offer Max extension method
+            // as defined in docs
+            // https://msdn.microsoft.com/library/dd287191(v=vs.110).aspx
+            // thus scan content manually
+            //
+            TimeSpan res = TimeSpan.MaxValue;
+
+            foreach (var v in trimmOffsetStorage.Values)
+            {
+                if (v < res)
+                    res = v;
+            }
+
+            return res;
         }
 
         #region Logging Functions

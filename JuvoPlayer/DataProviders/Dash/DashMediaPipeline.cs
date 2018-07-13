@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Xml;
 using JuvoLogger;
 using JuvoPlayer.Common;
@@ -63,7 +64,7 @@ namespace JuvoPlayer.DataProviders.Dash
         /// <summary>
         /// Holds smaller of the two (PTS/DTS) from the initial packet.
         /// </summary>
-        private PacketTimeStamp? trimmOffset;
+        private TimeSpan? trimmOffset;
 
         private readonly IDashClient dashClient;
         private readonly IDemuxer demuxer;
@@ -281,6 +282,7 @@ namespace JuvoPlayer.DataProviders.Dash
         {
             ResetPipeline();
         }
+
         public void Stop()
         {
             if (!pipelineStarted)
@@ -290,6 +292,7 @@ namespace JuvoPlayer.DataProviders.Dash
             dashClient.Stop();
 
             trimmOffset = null;
+
             pipelineStarted = false;
         }
 
@@ -467,13 +470,15 @@ namespace JuvoPlayer.DataProviders.Dash
 
         private void AdjustDemuxerTimeStampIfNeeded(Packet packet)
         {
+
             //Get very first PTS/DTS
             if (!trimmOffset.HasValue)
             {
-                trimmOffset = new PacketTimeStamp(packet);
+                trimmOffset = dashClient.GetTrimmOffset();
 
-                Logger.Info($"{streamType}: trimmOffset: {trimmOffset.Value}");
+                Logger.Info($"{streamType}: trimmOffset: {trimmOffset}");
             }
+
 
             if (!lastSeek.HasValue)
             {
@@ -481,7 +486,7 @@ namespace JuvoPlayer.DataProviders.Dash
                 {
                     // This IS NOT ideal solution to work around reset of PTS/DTS after 
                     demuxerClock = lastPushedClock;
-                    trimmOffset.Value.SetClock(TimeSpan.Zero);
+                    trimmOffset = TimeSpan.Zero;
                     Logger.Info($"{streamType}: Zero timestamped packet. Adjusting demuxerClock: {demuxerClock} trimmOffset: {trimmOffset.Value}");
                 }
             }
@@ -499,7 +504,6 @@ namespace JuvoPlayer.DataProviders.Dash
 
                 lastSeek = null;
             }
-
         }
 
         private void OnStreamConfigReady(StreamConfig config)
