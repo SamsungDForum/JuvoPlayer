@@ -124,9 +124,6 @@ namespace JuvoPlayer.DataProviders.Dash
 
             bufferTime = currentTime;
 
-            // Remove previous entry from trimmOffsetStorage
-            trimmOffsetStorage.TryRemove(streamType, out var tmp);
-
             if (currentSegmentId.HasValue == false)
                 currentSegmentId = currentStreams.StartSegmentId(currentTime, timeBufferDepth);
 
@@ -681,6 +678,9 @@ namespace JuvoPlayer.DataProviders.Dash
         {
             if (disposedValue)
                 return;
+
+            // Remove previous entry from trimmOffsetStorage
+            trimmOffsetStorage.TryRemove(streamType, out var tmp);
 
             cancellationTokenSource?.Dispose();
 
