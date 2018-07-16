@@ -453,6 +453,12 @@ namespace JuvoPlayer.DataProviders.Dash
                 packet += demuxerClock;
                 packet -= trimmOffset.Value;
 
+                if (packet.Pts < TimeSpan.Zero || packet.Dts < TimeSpan.Zero)
+                {
+                    packet.Pts = TimeSpan.Zero;
+                    packet.Dts = TimeSpan.Zero;
+                }
+
                 // Don't convert packet here, use assignment (less costly)
                 lastPushedClock.SetClock(packet);
                 PacketReady?.Invoke(packet);
