@@ -455,18 +455,26 @@ namespace JuvoPlayer.Player.SMPlayer
 
         private void DisposeEncryptedPackets(ConcurrentQueue<Packet> audio, ConcurrentQueue<Packet> video)
         {
-            var ac = audio.Count;
-            var vc = video.Count;
+            var ac = 0;
+            var vc = 0;
 
             // Runs as a task already. Parallel.Invoke here won't make things faster.
-            while (!audio.IsEmpty)
+            if (audio != null)
             {
-                RemovePacket(audio);
+                ac = audio.Count;
+                while (!audio.IsEmpty)
+                {
+                    RemovePacket(audio);
+                }
             }
 
-            while (!video.IsEmpty)
+            if (video != null)
             {
-                RemovePacket(video);
+                vc = video.Count;
+                while (!video.IsEmpty)
+                {
+                    RemovePacket(video);
+                }
             }
 
             Logger.Debug($"Done. Audio Packets: {ac} Video Packets {vc}");
@@ -488,6 +496,11 @@ namespace JuvoPlayer.Player.SMPlayer
             audioPacketsQueue = new ConcurrentQueue<Packet>();
             videoPacketsQueue = new ConcurrentQueue<Packet>();
 
+            // Do not start cleaner if BOTH queues are not initialized.
+            if (audioQueue == null && videoQueue == null)
+                return;
+
+            // Clean ANY valid queue. Can be just one.
             Task.Factory.StartNew(() => DisposeEncryptedPackets(audioQueue, videoQueue));
         }
 
@@ -724,7 +737,7 @@ namespace JuvoPlayer.Player.SMPlayer
                 {
                     Logger.Warn($"Player State {playerState}. Stop() call skiped. Stop() in this state hangs");
                 }
-                
+
                 ResetInternalState();
             }
         }
