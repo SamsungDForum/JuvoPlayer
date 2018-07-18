@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Threading;
 using System.Threading.Tasks;
 using JuvoLogger;
 using JuvoPlayer.Common;
@@ -339,11 +338,23 @@ namespace JuvoPlayer.DataProviders.Dash
             if (disposed)
                 return;
 
-            Parallel.Invoke(() => audioPipeline.AdaptToNetConditions(),
-                            () => videoPipeline.AdaptToNetConditions());
-
-            Parallel.Invoke(() => audioPipeline.SwitchStreamIfNeeded(),
-                            () => videoPipeline.SwitchStreamIfNeeded());
+            Parallel.Invoke(
+                () =>
+                {
+                    if (audioPipeline.CanStreamSwitch())
+                    {
+                        audioPipeline.AdaptToNetConditions();
+                        audioPipeline.SwitchStreamIfNeeded();
+                    }
+                },
+                () =>
+                {
+                    if (videoPipeline.CanStreamSwitch())
+                    {
+                        videoPipeline.AdaptToNetConditions();
+                        videoPipeline.SwitchStreamIfNeeded();
+                    }
+                });
         }
 
         public async Task<bool> UpdateManifest()
