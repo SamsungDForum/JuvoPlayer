@@ -240,7 +240,7 @@ namespace JuvoPlayer.DataProviders.Dash
             }
             else
             {
-                startResult = dashClient.Start(currentStream.Representation);
+                startResult = dashClient.Start();
             }
 
             return startResult;
