@@ -84,6 +84,7 @@ namespace JuvoPlayer.DataProviders.Dash
         private PacketTimeStamp demuxerClock;
         private PacketTimeStamp lastPushedClock;
 
+
         public DashMediaPipeline(IDashClient dashClient, IDemuxer demuxer, IThroughputHistory throughputHistory, StreamType streamType)
         {
             this.dashClient = dashClient ?? throw new ArgumentNullException(nameof(dashClient), "dashClient cannot be null");
@@ -162,9 +163,10 @@ namespace JuvoPlayer.DataProviders.Dash
 
             Logger.Info($"{streamType}");
 
+            bool pipelineStarted = true;
             if (currentStream == null)
             {
-                StartPipeline(pendingStream);
+                pipelineStarted = StartPipeline(pendingStream);
             }
             else if (currentStream.IsCompatibleWith(pendingStream))
             {
@@ -173,10 +175,11 @@ namespace JuvoPlayer.DataProviders.Dash
             else
             {
                 ResetPipeline();
-                StartPipeline(pendingStream);
+                pipelineStarted = StartPipeline(pendingStream);
             }
 
-            pendingStream = null;
+            if (pipelineStarted)
+                pendingStream = null;
         }
 
         private void GetAvailableStreams(IEnumerable<Media> media, Media defaultMedia)
@@ -210,27 +213,37 @@ namespace JuvoPlayer.DataProviders.Dash
             }
         }
 
-        private void StartPipeline(DashStream newStream = null)
+        private bool StartPipeline(DashStream newStream = null)
         {
-            if (pipelineStarted)
-                return;
+            pipelineStarted = true;
+            bool startResult = false;
+            demuxer.StartForExternalSource(newStream != null ? InitializationMode.Full : InitializationMode.Minimal);
 
             if (newStream != null)
             {
+                var oldStream = currentStream;
                 currentStream = newStream;
 
                 Logger.Info($"{streamType}: Dash pipeline start.");
                 Logger.Info($"{streamType}: Media: {currentStream.Media}");
                 Logger.Info($"{streamType}: {currentStream.Representation}");
 
-                dashClient.SetRepresentation(currentStream.Representation);
-                ParseDrms(currentStream.Media);
+                if (dashClient.Start(currentStream.Representation))
+                {
+                    ParseDrms(currentStream.Media);
+                    startResult = true;
+                }
+                else
+                {
+                    currentStream = oldStream;
+                }
+            }
+            else
+            {
+                startResult = dashClient.Start(currentStream.Representation);
             }
 
-            demuxer.StartForExternalSource(newStream != null ? InitializationMode.Full : InitializationMode.Minimal);
-            dashClient.Start();
-
-            pipelineStarted = true;
+            return startResult;
         }
 
         /// <summary>
@@ -275,25 +288,20 @@ namespace JuvoPlayer.DataProviders.Dash
         }
         public void Resume()
         {
+            Logger.Info("");
             StartPipeline();
         }
 
         public void Pause()
         {
+            Logger.Info("");
             ResetPipeline();
         }
 
         public void Stop()
         {
-            if (!pipelineStarted)
-                return;
-
-            demuxer.Stop();
-            dashClient.Stop();
-
-            trimmOffset = null;
-
-            pipelineStarted = false;
+            Logger.Info("");
+            ResetPipeline();
         }
 
         public void OnTimeUpdated(TimeSpan time)
@@ -457,6 +465,7 @@ namespace JuvoPlayer.DataProviders.Dash
                 {
                     packet.Pts = TimeSpan.Zero;
                     packet.Dts = TimeSpan.Zero;
+                    Logger.Warn("PTS/DTS set to ZERO");
                 }
 
                 // Don't convert packet here, use assignment (less costly)

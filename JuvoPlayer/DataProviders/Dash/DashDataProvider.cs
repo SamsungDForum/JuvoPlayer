@@ -146,6 +146,7 @@ namespace JuvoPlayer.DataProviders.Dash
 
         public void OnStopped()
         {
+            Logger.Info("");
             manifest.CancelReload();
 
             Parallel.Invoke(() => videoPipeline.Stop(), () => audioPipeline.Stop());
