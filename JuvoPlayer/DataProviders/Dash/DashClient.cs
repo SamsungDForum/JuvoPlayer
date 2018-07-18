@@ -14,6 +14,9 @@ namespace JuvoPlayer.DataProviders.Dash
 {
     internal class DashClient : IDashClient
     {
+        private enum ClientState { Idle, Init, Running };
+        private ClientState state = ClientState.Idle;
+
         private const string Tag = "JuvoPlayer";
 
         private static readonly ILogger Logger = LoggerManager.GetInstance().GetLogger(Tag);
@@ -39,6 +42,11 @@ namespace JuvoPlayer.DataProviders.Dash
         private Task<DownloadResponse> downloadDataTask;
         private Task processDataTask;
         private CancellationTokenSource cancellationTokenSource;
+
+        /// <summary>
+        /// Semaphore with initial value of 1. Serializes client start to one call at a time.
+        /// </summary>
+        private SemaphoreSlim clientStart = new SemaphoreSlim(1);
 
         /// <summary>
         /// Contains information about timing data for last requested segment
@@ -110,28 +118,66 @@ namespace JuvoPlayer.DataProviders.Dash
             return currentTime;
         }
 
-        public void Start()
+        public bool Start(Representation representation)
         {
-            if (currentRepresentation == null)
-                throw new Exception("currentRepresentation has not been set");
+            // Take start semaphore. If already taken (start in progress), exit.
+            if (clientStart.Wait(TimeSpan.Zero) == false)
+            {
+                Logger.Warn($"{streamType}: DashClient start already in progress.");
+                return false;
+            }
 
-            LogInfo("DashClient start.");
-            cancellationTokenSource?.Dispose();
-            cancellationTokenSource = new CancellationTokenSource();
+            try
+            {
+                if (representation != null && !SetRepresentation(representation))
+                {
+                    // Failed to set provided representation. Cancel any downloads
+                    // and issue an error.
+                    //
+                    Stop();
+                    Error.Invoke("Failed to prepare representation for playback.");
+                    return false;
+                }
 
-            // clear garbage before appending new data
-            sharedBuffer?.ClearData();
+                LogInfo("DashClient start.");
 
-            bufferTime = currentTime;
+                // Create cancellation token ONLY if it does not exits (first Start()) or
+                // when it has been used with Cancel (after Stop).
+                // During INIT phase, Start may be called a number of times due to Manifest or Adaptive streaming
+                // updates. We do not want to loose cancel capability for those tasks.
+                //
+                if (cancellationTokenSource == null || cancellationTokenSource?.IsCancellationRequested == true)
+                {
+                    // Dispose if cancellation source has already been cancelled.
+                    cancellationTokenSource?.Dispose();
+                    cancellationTokenSource = new CancellationTokenSource();
+                }
 
-            if (currentSegmentId.HasValue == false)
-                currentSegmentId = currentStreams.StartSegmentId(currentTime, timeBufferDepth);
+                // clear garbage before appending new data. Do not do it in INIT state
+                // to prevent init segment arrival/data clearage in case of representation change
+                // caused by auto bitrate adaptation
+                //
+                if (state != ClientState.Init)
+                    sharedBuffer?.ClearData();
 
-            var initSegment = currentStreams.InitSegment;
-            if (initSegment != null)
-                DownloadInitSegment(initSegment);
-            else
-                ScheduleNextSegDownload();
+                bufferTime = currentTime;
+
+                if (currentSegmentId.HasValue == false)
+                    currentSegmentId = currentStreams.StartSegmentId(currentTime, timeBufferDepth);
+
+                var initSegment = currentStreams.InitSegment;
+                if (initSegment != null)
+                    DownloadInitSegment(initSegment);
+                else
+                    ScheduleNextSegDownload();
+
+                return true;
+            }
+            finally
+            {
+                // Release start semaphore
+                clientStart.Release();
+            }
         }
 
         private void ScheduleNextSegDownload()
@@ -208,14 +254,23 @@ namespace JuvoPlayer.DataProviders.Dash
 
         private bool HandleCancelledDownload()
         {
-            LogInfo("Segment download cancelled");
+            var canContinue = !cancellationTokenSource.IsCancellationRequested;
 
             // if download was cancelled by timeout cancellation token than reschedule download
-            return !cancellationTokenSource.IsCancellationRequested;
+            return canContinue;
         }
 
         private void DownloadInitSegment(Segment segment)
         {
+            // Download INIT segment ONLY if it has not been previously requested
+            if (state == ClientState.Init && initStreamBytes == null)
+            {
+                LogInfo("Segment: INIT Ignoring download. Already scheduled.");
+                return;
+            }
+
+            state = ClientState.Init;
+
             if (initStreamBytes == null)
             {
                 // Grab a copy (its a struct) of cancellation token so it is not referenced through cancellationTokenSource each time.
@@ -231,7 +286,10 @@ namespace JuvoPlayer.DataProviders.Dash
                         shouldContinue = false;
                     }
                     else if (response.IsCanceled)
+                    {
+                        LogInfo("Segment: INIT download canceled.");
                         shouldContinue = false;
+                    }
                     else // always continue on successfull download
                         InitDataDownloaded(response.Result);
 
@@ -253,7 +311,7 @@ namespace JuvoPlayer.DataProviders.Dash
                     SegmentId = null
                 };
 
-                LogInfo("Skipping INIT segment download");
+                LogInfo("Segment: INIT Already downloaded. Reusing.");
                 InitDataDownloaded(initData);
                 ScheduleNextSegDownload();
             }
@@ -267,7 +325,10 @@ namespace JuvoPlayer.DataProviders.Dash
         private bool HandleSuccessfullDownload(DownloadResponse responseResult)
         {
             if (cancellationTokenSource.IsCancellationRequested)
+            {
+                LogInfo($"Segment: {responseResult.SegmentId} download cancelled.");
                 return false;
+            }
 
             sharedBuffer.WriteData(responseResult.Data);
 
@@ -279,7 +340,7 @@ namespace JuvoPlayer.DataProviders.Dash
 
             var timeInfo = segment.Period.ToString();
 
-            LogInfo($"Segment: {responseResult.SegmentId} received {timeInfo}");
+            LogInfo($"Segment: {responseResult.SegmentId} enqueued {timeInfo}");
 
             return true;
         }
@@ -287,13 +348,27 @@ namespace JuvoPlayer.DataProviders.Dash
         private void InitDataDownloaded(DownloadResponse responseResult)
         {
             if (responseResult.Data != null)
+            {
                 sharedBuffer.WriteData(responseResult.Data);
+                state = ClientState.Running;
 
-            // Assign initStreamBytes AFTER it has been pushed down the shared buffer.
-            // When issuing EOS, initStreamBytes will be checked for NULLnes.
-            // We do not want to send EOS before init data - will kill demuxer.
-            initStreamBytes = responseResult.Data;
-            LogInfo("INIT segment downloaded.");
+                // Assign initStreamBytes AFTER it has been pushed down the shared buffer.
+                // When issuing EOS, initStreamBytes will be checked for NULLnes.
+                // We do not want to send EOS before init data - will kill demuxer.
+                initStreamBytes = responseResult.Data;
+                LogInfo("Segment: INIT enqueued.");
+            }
+            else
+            {
+                LogWarn("Segment: INIT No Data");
+
+                // recieved NULL. Reset initRequested flag to allow for init segment reload
+                // TODO: Add download request or raise error.
+                //
+                state = ClientState.Idle;
+            }
+
+
         }
 
         private bool HandleFailedDownload(Task response)
@@ -317,7 +392,8 @@ namespace JuvoPlayer.DataProviders.Dash
                     return false;
             }
 
-            Error?.Invoke(errorMessage);
+            // Error notification on failed segment removed upon Pawel's request.
+            //Error?.Invoke(errorMessage);
 
             return false;
         }
@@ -349,6 +425,9 @@ namespace JuvoPlayer.DataProviders.Dash
             WaitForTaskCompletionNoError(downloadDataTask);
             WaitForTaskCompletionNoError(processDataTask);
 
+            // Reset previously obtained init data.   
+            initStreamBytes = null;
+
             LogInfo("Data downloader stopped");
         }
 
@@ -370,32 +449,28 @@ namespace JuvoPlayer.DataProviders.Dash
             SendEosEvent();
         }
 
-        public void SetRepresentation(Representation representation)
+        private bool SetRepresentation(Representation representation)
         {
-            // representation has changed, so reset initstreambytes
-            if (currentRepresentation != null)
-                initStreamBytes = null;
-
-            currentRepresentation = representation;
-            currentStreams = currentRepresentation.Segments;
-
-            // Prepare Stream for playback.
-            if (!currentStreams.PrepeareStream())
+            // Prepare Stream for playback. Do it BEFORE assigning it
+            // as "current"
+            //
+            if (!representation.Segments.PrepeareStream())
             {
                 LogError("Failed to prepare stream. No playable segments");
 
-                // Static content - treat as EOS.
-                if (!IsDynamic)
-                    Stop();
-
-                return;
+                return false;
             }
+
+            currentRepresentation = representation;
+            currentStreams = currentRepresentation.Segments;
 
             currentStreamDuration = IsDynamic
                 ? currentStreams.GetDocumentParameters().Document.MediaPresentationDuration
                 : currentStreams.Duration;
 
             UpdateTimeBufferDepth();
+
+            return true;
         }
 
         /// <summary>
@@ -496,7 +571,8 @@ namespace JuvoPlayer.DataProviders.Dash
                 return;
 
             sharedBuffer.WriteData(null, true);
-
+            state = ClientState.Idle;
+            initStreamBytes = null;
             isEosSent = true;
         }
 
@@ -683,6 +759,7 @@ namespace JuvoPlayer.DataProviders.Dash
             trimmOffsetStorage.TryRemove(streamType, out var tmp);
 
             cancellationTokenSource?.Dispose();
+            clientStart.Dispose();
 
             disposedValue = true;
         }

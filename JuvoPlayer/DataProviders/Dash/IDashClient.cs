@@ -21,8 +21,7 @@ namespace JuvoPlayer.DataProviders.Dash
     internal interface IDashClient : IDisposable
     {
         TimeSpan Seek(TimeSpan position);
-        void SetRepresentation(Representation representation);
-        void Start();
+        bool Start(Representation representation);
         void Stop();
         void Reset();
         void OnTimeUpdated(TimeSpan time);
