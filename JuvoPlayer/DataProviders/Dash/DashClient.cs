@@ -118,7 +118,7 @@ namespace JuvoPlayer.DataProviders.Dash
             return currentTime;
         }
 
-        public bool Start(Representation representation = null)
+        public bool Start(Representation representation)
         {
             // Take start semaphore. If already taken (start in progress), exit.
             if (clientStart.Wait(TimeSpan.Zero) == false)
@@ -129,20 +129,14 @@ namespace JuvoPlayer.DataProviders.Dash
 
             try
             {
-                if (representation != null)
+                if (representation != null && !SetRepresentation(representation))
                 {
-                    // Reset previously obtained init data. New representation is recieved.
-                    initStreamBytes = null;
-
-                    if (!SetRepresentation(representation))
-                    {
-                        // Failed to set provided representation. Cancel any downloads
-                        // and issue an error.
-                        //
-                        Stop();
-                        Error.Invoke("Failed to prepare representation for playback.");
-                        return false;
-                    }
+                    // Failed to set provided representation. Cancel any downloads
+                    // and issue an error.
+                    //
+                    Stop();
+                    Error.Invoke("Failed to prepare representation for playback.");
+                    return false;
                 }
 
                 LogInfo("DashClient start.");
@@ -385,8 +379,6 @@ namespace JuvoPlayer.DataProviders.Dash
             if (IsDynamic)
                 return true;
 
-            LogError($"Segment: {currentSegmentId} Download failure. Terminating playback");
-            
             StopAsync();
 
             var exception = response.Exception?.Flatten().InnerExceptions[0];
@@ -432,6 +424,9 @@ namespace JuvoPlayer.DataProviders.Dash
             // being issued. Once download handler are serialized, should be safe to remove.
             WaitForTaskCompletionNoError(downloadDataTask);
             WaitForTaskCompletionNoError(processDataTask);
+
+            // Reset previously obtained init data.   
+            initStreamBytes = null;
 
             LogInfo("Data downloader stopped");
         }
