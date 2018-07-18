@@ -517,6 +517,14 @@ namespace JuvoPlayer.DataProviders.Dash
             StreamConfigReady?.Invoke(config);
         }
 
+        public bool CanStreamSwitch()
+        {
+            // Allow adaptive stream switching if Client is in correct state and 
+            // Adaptive Streaming enabled.
+            //
+            return dashClient.CanStreamSwitch() && !disableAdaptiveStreaming;
+        }
+
         public void Dispose()
         {
             demuxer.Dispose();

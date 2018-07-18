@@ -88,6 +88,17 @@ namespace JuvoPlayer.DataProviders.Dash
         /// </summary>
         private static readonly ConcurrentDictionary<StreamType, TimeSpan> trimmOffsetStorage = new ConcurrentDictionary<StreamType, TimeSpan>();
 
+        /// <summary>
+        /// Flag indicating if DashClient is initializing. During INIT, adabtive bitrate switching is not
+        /// allowed.
+        /// </summary>
+        bool initInProgress = false;
+
+        /// <summary>
+        /// Start method srializer. Allows for a signle caller to access Start method.
+        /// </summary>
+        SemaphoreSlim canStart = new SemaphoreSlim(1);
+
         public DashClient(IThroughputHistory throughputHistory, ISharedBuffer sharedBuffer, StreamType streamType)
         {
             this.throughputHistory = throughputHistory ?? throw new ArgumentNullException(nameof(throughputHistory), "throughputHistory cannot be null");
@@ -115,23 +126,46 @@ namespace JuvoPlayer.DataProviders.Dash
             if (currentRepresentation == null)
                 throw new Exception("currentRepresentation has not been set");
 
-            LogInfo("DashClient start.");
-            cancellationTokenSource?.Dispose();
-            cancellationTokenSource = new CancellationTokenSource();
+            if (!canStart.Wait(TimeSpan.Zero))
+            {
+                LogInfo("Start() already in progress.");
+                return;
+            }
 
-            // clear garbage before appending new data
-            sharedBuffer?.ClearData();
+            try
+            {
+                initInProgress = true;
 
-            bufferTime = currentTime;
+                LogInfo("DashClient start.");
+                if (cancellationTokenSource == null || cancellationTokenSource?.IsCancellationRequested == true)
+                {
+                    cancellationTokenSource?.Dispose();
+                    cancellationTokenSource = new CancellationTokenSource();
+                }
 
-            if (currentSegmentId.HasValue == false)
-                currentSegmentId = currentStreams.StartSegmentId(currentTime, timeBufferDepth);
+                // clear garbage before appending new data
+                sharedBuffer?.ClearData();
 
-            var initSegment = currentStreams.InitSegment;
-            if (initSegment != null)
-                DownloadInitSegment(initSegment);
-            else
-                ScheduleNextSegDownload();
+                bufferTime = currentTime;
+
+                if (currentSegmentId.HasValue == false)
+                    currentSegmentId = currentStreams.StartSegmentId(currentTime, timeBufferDepth);
+
+                var initSegment = currentStreams.InitSegment;
+                if (initSegment != null)
+                {
+                    DownloadInitSegment(initSegment);
+                }
+                else
+                {
+                    ScheduleNextSegDownload();
+                    initInProgress = false;
+                }
+            }
+            finally
+            {
+                canStart.Release();
+            }
         }
 
         private void ScheduleNextSegDownload()
@@ -208,7 +242,7 @@ namespace JuvoPlayer.DataProviders.Dash
 
         private bool HandleCancelledDownload()
         {
-            LogInfo("Segment download cancelled");
+            LogInfo("Segment: download cancelled");
 
             // if download was cancelled by timeout cancellation token than reschedule download
             return !cancellationTokenSource.IsCancellationRequested;
@@ -253,7 +287,7 @@ namespace JuvoPlayer.DataProviders.Dash
                     SegmentId = null
                 };
 
-                LogInfo("Skipping INIT segment download");
+                LogInfo("Segment: INIT Reusing already downloaded data");
                 InitDataDownloaded(initData);
                 ScheduleNextSegDownload();
             }
@@ -279,7 +313,7 @@ namespace JuvoPlayer.DataProviders.Dash
 
             var timeInfo = segment.Period.ToString();
 
-            LogInfo($"Segment: {responseResult.SegmentId} received {timeInfo}");
+            LogInfo($"Segment: {responseResult.SegmentId} enqueued {timeInfo}");
 
             return true;
         }
@@ -293,7 +327,8 @@ namespace JuvoPlayer.DataProviders.Dash
             // When issuing EOS, initStreamBytes will be checked for NULLnes.
             // We do not want to send EOS before init data - will kill demuxer.
             initStreamBytes = responseResult.Data;
-            LogInfo("INIT segment downloaded.");
+            initInProgress = false;
+            LogInfo("Segment: INIT enqueued.");
         }
 
         private bool HandleFailedDownload(Task response)
@@ -522,10 +557,8 @@ namespace JuvoPlayer.DataProviders.Dash
             if (trimmOffset.HasValue == false && segment.Period != null)
             {
                 trimmOffset = segment.Period.Start;
-                if (!trimmOffsetStorage.TryAdd(streamType, trimmOffset.Value))
-                {
-                    LogWarn($"Failed to store trimm offset {trimmOffset}. A/V may be out of sync");
-                }
+                SpinWait.SpinUntil(() => trimmOffsetStorage.TryAdd(streamType, trimmOffset.Value) == true);
+
             }
 
             var timeout = CalculateDownloadTimeout(segment);
@@ -647,6 +680,15 @@ namespace JuvoPlayer.DataProviders.Dash
             return res;
         }
 
+        public bool CanStreamSwitch()
+        {
+            // Allow stream change ONLY if not performing initialization.
+            // If needed, initInProgress flag could be used to delay stream switching
+            // i.e. reset not after INIT segment but INIT + whatever number of data segments.
+            //
+            return !initInProgress;
+        }
+
         #region Logging Functions
 
         private void LogInfo(string logMessage, [CallerFilePath] string file = "", [CallerMemberName] string method = "", [CallerLineNumber] int line = 0)
@@ -683,6 +725,7 @@ namespace JuvoPlayer.DataProviders.Dash
             trimmOffsetStorage.TryRemove(streamType, out var tmp);
 
             cancellationTokenSource?.Dispose();
+            canStart.Dispose();
 
             disposedValue = true;
         }
