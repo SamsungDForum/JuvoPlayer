@@ -226,7 +226,7 @@ namespace JuvoPlayer.DataProviders.Dash
                 dashClient.SetRepresentation(currentStream.Representation);
                 ParseDrms(currentStream.Media);
             }
-
+             
             demuxer.StartForExternalSource(newStream != null ? InitializationMode.Full : InitializationMode.Minimal);
             dashClient.Start();
 
@@ -522,7 +522,8 @@ namespace JuvoPlayer.DataProviders.Dash
             // Allow adaptive stream switching if Client is in correct state and 
             // Adaptive Streaming enabled.
             //
-            return dashClient.CanStreamSwitch() && !disableAdaptiveStreaming;
+            //return dashClient.CanStreamSwitch() && !disableAdaptiveStreaming;
+            return false;
         }
 
         public void Dispose()
