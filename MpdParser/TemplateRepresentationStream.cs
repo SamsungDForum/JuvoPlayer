@@ -95,6 +95,7 @@ namespace MpdParser.Node.Dynamic
             public TimeSpan TimeScaled;
             public TimeSpan DurationScaled;
             public int StorageIndex;
+            public TimeSpan TimeToLive;
             public ulong Number
             {
                 get { return Item.Number; }
@@ -168,6 +169,14 @@ namespace MpdParser.Node.Dynamic
         public Segment IndexSegment { get; }
 
         /// <summary>
+        /// For dynamic content, representationWallClock contains base time used for availability
+        /// in time calculations. Currently available segments may be varified against availability
+        /// by adding a difference between:
+        /// Now.UTC - DocumentParameters.DownloadCompleteTime
+        /// </summary>
+        private TimeSpan representationWallClock = TimeSpan.Zero;
+
+        /// <summary>
         /// Returns number of time available for segments in representation
         /// </summary>
         public uint Count
@@ -229,6 +238,7 @@ namespace MpdParser.Node.Dynamic
                     timelineAll[idx].DurationScaled = Scaled(timelineAll[idx].Duration);
                     timelineAll[idx].Repeats = 0;
                     timelineAll[idx].StorageIndex = idx;
+                    timelineAll[idx].TimeToLive = TimeSpan.Zero;
 
                     idx++;
                     repeatCount++;
@@ -279,7 +289,7 @@ namespace MpdParser.Node.Dynamic
 
             stringBuilder.Append("Data:\n");
             foreach (var item in timelineAll)
-                stringBuilder.Append($"No={item.Number} TS={item.TimeScaled}/{item.Time} D={item.DurationScaled} R={item.Repeats}\n");
+                stringBuilder.Append($"No={item.Number} TS={item.TimeScaled}/{item.Time} D={item.DurationScaled} R={item.Repeats} TTL={item.TimeToLive}\n");
 
             return stringBuilder.ToString();
         }
@@ -386,21 +396,42 @@ namespace MpdParser.Node.Dynamic
                 return null;
 
             maxRange -= 1;
+            var timeShiftBufferDepth = parameters.Document.TimeShiftBufferDepth ?? TimeSpan.Zero;
+
             // Start by Time is calculated as:
-            // End Segment - Offset where
-            // Offset = Available Segment Range - Buffer Size in Units of Segments. For this purpose
-            // use quad buffer (4x the buffering time). 
-            // This will effectively shift us closer to
-            // beginning of Live Content rather then to the bleeding edge within data returned by quad buffer size.
-            // 1/4 of all available segments is set as a lower limit so we do not play out segments about to
-            // time out.
-            // Such choice is.... purely personal decision. Any approach is imho just as good as long as we do not overshoot
-            // and start getting 404s on future content. 
+            // Start Segment Time = Representation Start Time + 
+            //                      First available segment - First segment in playlist +
+            //                      1/4*timeShiftBufferDepth
+            // 
+            // This implies that MAX buffer time for dynamic content is 3/4*timeShiftBufferDepth
+            //
+            var startTime = timeline[0].TimeScaled;
+            startTime += TimeSpan.FromSeconds(timeShiftBufferDepth.TotalSeconds / 4);
 
-            var bufferInSegmentUnits = ((ulong)bufferDepth.TotalSeconds * 4 * timescale) / averageSegmentDuration;
-            var startByTime = maxRange - (int)Math.Min((ulong)((maxRange * 3) / 4), bufferInSegmentUnits);
+            var searcher = new TimelineSearchStartTimeDuration();
+            TimelineItemRep lookFor = new TimelineItemRep
+            {
+                TimeScaled = startTime
+            };
 
-            return (uint?)timeline[startByTime].Number;
+            var idx = Array.BinarySearch(timelineAll, 0, timelineAll.Length,
+                lookFor, searcher);
+
+            if (idx < 0)
+            {
+                var last = timelineAll.Length - 1;
+                Logger.Info($"Failed to find start segment @time. FAll={timelineAll[0].Number}/{timelineAll[0].TimeScaled} T={startTime} LAll={timelineAll[last].Number}/{timelineAll[last].TimeScaled}");
+                return null;
+            }
+
+            // Sanity check for availability
+            if (timelineAll[idx].TimeToLive == TimeSpan.Zero)
+            {
+                var last = timelineAll.Length - 1;
+                Logger.Info($"Start segment found {timelineAll[idx].Number} is unavailable FAll={timelineAll[0].Number}/{timelineAll[0].TimeScaled} T={startTime} TTL={timelineAll[idx].TimeToLive} LAll={timelineAll[last].Number}/{timelineAll[last].TimeScaled}");
+                return null;
+            }
+            return (uint?)timelineAll[idx].Number;
         }
 
         /// <summary>
@@ -410,10 +441,8 @@ namespace MpdParser.Node.Dynamic
         /// </summary>
         private void PurgeUnavailableSegments()
         {
-            TimeSpan current;
-
-            current = parameters.Document.DownloadCompleteTime - parameters.Document.AvailabilityStartTime.Value;
-            current += parameters.Document.TimeOffset;
+            representationWallClock = parameters.Document.DownloadCompleteTime - parameters.Document.AvailabilityStartTime.Value;
+            representationWallClock += parameters.Document.TimeOffset;
 
             int startIndex = -1;
             int endIndex = -1;
@@ -428,7 +457,7 @@ namespace MpdParser.Node.Dynamic
                 var availStart = timelineAll[i].TimeScaled + timelineAll[i].DurationScaled - presentationTimeOffsetScaled;
                 var availEnd = availStart + timeshiftBuffer + timelineAll[i].DurationScaled;
 
-                if (availStart <= current && current < availEnd)
+                if (availStart <= representationWallClock && representationWallClock < availEnd)
                 {
                     startIndex = i;
                     break;
@@ -440,7 +469,7 @@ namespace MpdParser.Node.Dynamic
                 var availStart = timelineAll[i].TimeScaled + timelineAll[i].DurationScaled - presentationTimeOffsetScaled;
                 var availEnd = availStart + timeshiftBuffer + timelineAll[i].DurationScaled;
 
-                if (availStart <= current && current < availEnd)
+                if (availStart <= representationWallClock && representationWallClock < availEnd)
                 {
                     endIndex = i;
                     break;
@@ -450,9 +479,23 @@ namespace MpdParser.Node.Dynamic
             if (startIndex == -1 || endIndex == -1)
                 timelineAvailable = new ArraySegment<TimelineItemRep>(Array.Empty<TimelineItemRep>());
             else
+            {
+                // Fill in Time To Live information for all available segments
+                //
+                for (int i = startIndex; i <= endIndex; i++)
+                {
+                    var availStart = timelineAll[i].TimeScaled + timelineAll[i].DurationScaled - presentationTimeOffsetScaled;
+                    var availEnd = availStart + timeshiftBuffer + timelineAll[i].DurationScaled;
+
+                    timelineAll[i].TimeToLive = availEnd - representationWallClock;
+                }
+
                 timelineAvailable = new ArraySegment<TimelineItemRep>(timelineAll, startIndex, endIndex - startIndex);
+            }
 
             timeline = timelineAvailable;
+
+
         }
 
         private uint GetStartSegmentStatic(TimeSpan durationSpan)

@@ -209,6 +209,7 @@ namespace JuvoPlayer.DataProviders.Dash
                 PlayClock = LiveClockTime(currentTime, document)
             };
 
+            // TODO 2: This could be parallelized like all other methods...
             Logger.Info(period.ToString());
 
             var audios = period.Sets.Where(o => o.Type.Value == MediaType.Audio).ToList();

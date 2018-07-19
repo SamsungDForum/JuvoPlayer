@@ -241,5 +241,6 @@ namespace MpdParser.Node.Dynamic
             // So far... nothing to prepare for list representations...
             return true;
         }
+
     }
 }

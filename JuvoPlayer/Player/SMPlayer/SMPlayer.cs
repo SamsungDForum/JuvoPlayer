@@ -701,7 +701,6 @@ namespace JuvoPlayer.Player.SMPlayer
                 }
             }
 
-
             internalState = SMPlayerState.Stopping;
             WakeUpSubmitTask();
 
@@ -724,13 +723,20 @@ namespace JuvoPlayer.Player.SMPlayer
             }
             finally
             {
-                // Calling Stop() when player is in Paused() state seems to hang
+                // Calling Stop() when player is in Paused state seems to hang
                 // and require a hard restert in order to release underlying resources.
                 // as such, DO NOT call Stop when in Paused state
                 //
                 var playerState = playerInstance.GetPlayerState();
                 if (playerState != PlayerState.Paused)
                 {
+                    // TODO: Check behaviour of submitting EOS packet when playerState == Paused.
+                    // If it will work, current workaround (not calling Stop()) in paused state will
+                    // no longer be necessary.
+                    //
+                    SubmitEOSPacket(Packet.CreateEOS(Common.StreamType.Audio));
+                    SubmitEOSPacket(Packet.CreateEOS(Common.StreamType.Video));
+
                     playerInstance.Stop();
                 }
                 else

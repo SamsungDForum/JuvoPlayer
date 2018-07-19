@@ -137,6 +137,7 @@ namespace JuvoPlayer.DataProviders.Dash
                 initInProgress = true;
 
                 LogInfo("DashClient start.");
+
                 if (cancellationTokenSource == null || cancellationTokenSource?.IsCancellationRequested == true)
                 {
                     cancellationTokenSource?.Dispose();
@@ -151,6 +152,20 @@ namespace JuvoPlayer.DataProviders.Dash
                 if (currentSegmentId.HasValue == false)
                     currentSegmentId = currentStreams.StartSegmentId(currentTime, timeBufferDepth);
 
+                // Get trimmOffset as early as possible. This is used by DashDataProvider to 
+                // trimm PTS/DTS, therefore the earlier obtain this (per pipeline), the less stalling
+                // will be in DashDataProvider
+                //
+                // TODO: Employ this mechanism at DashDataProvider to get trimmOffset and pass it down
+                // do DashMediaPipeline & DashClient.
+                // 
+                if (trimmOffset.HasValue == false)
+                {
+                    trimmOffset = currentStreams.SegmentTimeRange(currentSegmentId).Start;
+                    SpinWait.SpinUntil(() => trimmOffsetStorage.TryAdd(streamType, trimmOffset.Value) == true);
+                    LogInfo($"Start segment: {currentSegmentId} TrimmOffset: {trimmOffset}");
+                }
+
                 var initSegment = currentStreams.InitSegment;
                 if (initSegment != null)
                 {
@@ -161,6 +176,7 @@ namespace JuvoPlayer.DataProviders.Dash
                     ScheduleNextSegDownload();
                     initInProgress = false;
                 }
+
             }
             finally
             {
@@ -212,7 +228,6 @@ namespace JuvoPlayer.DataProviders.Dash
                 Monitor.Exit(this);
             }
         }
-
 
         private void DownloadSegment(Segment segment)
         {
@@ -352,7 +367,9 @@ namespace JuvoPlayer.DataProviders.Dash
                     return false;
             }
 
-            Error?.Invoke(errorMessage);
+            // Commented out on Dr. Boo request. No error message on failed download, just playback
+            // termination.
+            // Error?.Invoke(errorMessage);
 
             return false;
         }
@@ -554,13 +571,6 @@ namespace JuvoPlayer.DataProviders.Dash
                 StreamType = streamType
             };
 
-            if (trimmOffset.HasValue == false && segment.Period != null)
-            {
-                trimmOffset = segment.Period.Start;
-                SpinWait.SpinUntil(() => trimmOffsetStorage.TryAdd(streamType, trimmOffset.Value) == true);
-
-            }
-
             var timeout = CalculateDownloadTimeout(segment);
             using (var timeoutCancellationTokenSource = new CancellationTokenSource(timeout))
             using (var downloadCancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(
@@ -654,6 +664,7 @@ namespace JuvoPlayer.DataProviders.Dash
             //
             if (trimmOffsetStorage.Count != 2)
             {
+                var stime = DateTime.Now;
                 var waitFor = (streamType == StreamType.Video ? StreamType.Audio : StreamType.Video);
                 LogInfo($"Waiting for {waitFor} trimm Offset");
                 SpinWait.SpinUntil(() => trimmOffsetStorage.Count == 2 || cancellationTokenSource.IsCancellationRequested);
@@ -661,7 +672,8 @@ namespace JuvoPlayer.DataProviders.Dash
                 if (cancellationTokenSource.IsCancellationRequested)
                     return TimeSpan.Zero;
 
-                LogInfo($"{trimmOffsetStorage.Count} Trimm Offsets available");
+                var etime = DateTime.Now;
+                LogInfo($"{trimmOffsetStorage.Count} Trimm Offsets available {etime - stime}");
             }
 
             // Concurrent collection does not seem to offer Max extension method
