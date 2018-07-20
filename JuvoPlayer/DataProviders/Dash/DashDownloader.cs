@@ -57,8 +57,6 @@ namespace JuvoPlayer.DataProviders.Dash
 
     internal class WebClientEx : WebClient
     {
-        private static readonly TimeSpan WebRequestTimeout = TimeSpan.FromSeconds(10);
-
         private long? from;
         private long? to;
 
@@ -85,7 +83,6 @@ namespace JuvoPlayer.DataProviders.Dash
             var request = (HttpWebRequest)base.GetWebRequest(address);
             if (request != null)
             {
-                request.Timeout = (int)WebRequestTimeout.TotalMilliseconds;
                 if (to != null && from != null)
                 {
                     request.AddRange((int)from, (int)to);
@@ -105,6 +102,7 @@ namespace JuvoPlayer.DataProviders.Dash
         public bool IgnoreError { get; set; }
         public uint? SegmentId { get; set; }
         public StreamType StreamType { get; set; }
+        public TimeSpan Timeout { get; set; }
     }
 
     internal class DownloadResponse
@@ -167,7 +165,9 @@ namespace JuvoPlayer.DataProviders.Dash
             {
                 try
                 {
-                    await Task.Delay(CalculateSleepTime(), cancellationToken);
+                    // Temporary removed.
+                    // TODO: We should not wait before downloading data - only when it failed to do so.
+                    //await Task.Delay(CalculateSleepTime(), cancellationToken);
                     return await DownloadDataTaskAsync();
                 }
                 catch (WebException e)
@@ -184,6 +184,8 @@ namespace JuvoPlayer.DataProviders.Dash
                 }
                 catch (OperationCanceledException)
                 {
+                    // Register timeouts to force representation change if they do occour.
+                    throughputHistory.Push(1, request.Timeout);
                     throw;
                 }
                 catch (Exception e)

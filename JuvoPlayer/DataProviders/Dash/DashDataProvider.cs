@@ -1,14 +1,24 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using JuvoLogger;
 using JuvoPlayer.Common;
 using JuvoPlayer.Subtitles;
 using MpdParser;
+using AlignmentEntry = System.Tuple<uint?, System.TimeSpan, uint?, System.TimeSpan, System.TimeSpan>;
 
 namespace JuvoPlayer.DataProviders.Dash
 {
+    internal class AlignmentEntryComparer : IComparer<AlignmentEntry>
+    {
+        public int Compare(AlignmentEntry x, AlignmentEntry y)
+        {
+            return (int)(x.Item5.Ticks - y.Item5.Ticks);
+        }
+    }
+
     internal class DashDataProvider : IDataProvider
     {
         private const string Tag = "JuvoPlayer";
@@ -33,6 +43,10 @@ namespace JuvoPlayer.DataProviders.Dash
 
         private bool disposed;
         private bool isDynamic;
+
+        private DateTime? documentPublishTime;
+
+        private readonly SemaphoreSlim updateInProgressLock = new SemaphoreSlim(1);
 
         public DashDataProvider(
             DashManifest manifest,
@@ -177,25 +191,155 @@ namespace JuvoPlayer.DataProviders.Dash
         {
             Logger.Info("Dash start.");
 
-            var tryCount = manifestDownloadRetries;
-            bool updateResult = false;
+            documentPublishTime = null;
 
-            while (!(updateResult = await UpdateManifest()) && tryCount-- > 0)
+            var tryCount = manifestDownloadRetries;
+            var updateResult = false;
+
+            while (--tryCount > 0)
             {
+                updateResult = await UpdateManifest();
+                if (updateResult == true)
+                    break;
+
                 Logger.Warn("Manifest load failed. Will retry");
                 await Task.Delay(manifestReloadDelay);
+
             }
 
             if (updateResult != false)
             {
+
                 Parallel.Invoke(() => audioPipeline.SwitchStreamIfNeeded(),
                                 () => videoPipeline.SwitchStreamIfNeeded());
+
             }
             else
             {
                 OnStreamError("Manifest download failed");
             }
         }
+
+        /// <summary>
+        /// Function aligns Audio & Video Start Segments for dynamic content.
+        /// Static content no alignment is done, just selection of start segments and trimm offsets
+        /// </summary>
+        /// <remarks>
+        /// Video Segment is picked as start point. Segment Time Range (Start-Duration) is split
+        /// into 4 separate time points between Segment.Start and Segment.Duration.
+        /// For each of those points, audio segment is selected and its start time recorded.
+        /// Such list is recorded for 
+        /// 
+        /// {Prev. Video Segment}.{Start Video Segment}.{Next Video Segment}
+        /// 
+        /// if prev video segment is unavailable, then video segment source list is as following:
+        /// 
+        /// {Start Video Segment}.{Next Video Segment}.{Next Video Segment}
+        /// 
+        /// Once a list of {VideoSegmentId}.{Video Start Time}.{AudioSegmentID}.{Audio Start Time}
+        /// is created, it is scanned for smallest differences between Video Start Time & Audio Start Time.
+        /// Audio segment ID and Video Segment ID selected for aligned start parameters will have 
+        /// that difference smallest.
+        /// 
+        /// After selecting start IDs for audio & video, associated start times of each segment are chosen as
+        /// aligned trimm Offsets.
+        /// 
+        /// Reason for scanning mutiple time points of video segment: A & V segments do not have to be aligned,
+        /// as such there may be overlaps.
+        /// 
+        /// </remarks>
+        /// <param name="audio"></param>
+        /// <param name="video"></param>
+        private static void AlignStartParameters(Representation audio, Representation video, bool isDynamic, ILogger logger = null)
+        {
+            if (isDynamic)
+                AlignDynamicStartParameters(audio, video, logger);
+            else
+                AlignStaticStartParameters(audio, video, logger);
+        }
+
+        private static void AlignStaticStartParameters(Representation audio, Representation video, ILogger logger = null)
+        {
+            var videoStartSegment = video.Segments.StartSegmentId();
+            var audioStartSegment = audio.Segments.StartSegmentId();
+            var videoTimeRange = video.Segments.SegmentTimeRange(videoStartSegment);
+            var audioTimeRange = video.Segments.SegmentTimeRange(audioStartSegment);
+
+            var trimmOffset = videoTimeRange.Start < audioTimeRange.Start ? videoTimeRange.Start : audioTimeRange.Start;
+
+            //Set aligned start data
+            audio.SetAlignedStartParameters(audioStartSegment, trimmOffset);
+            video.SetAlignedStartParameters(videoStartSegment, trimmOffset);
+            logger?.Info($"Segment Alignment: Video={videoStartSegment} Audio={audioStartSegment} TrimmOffset={trimmOffset}");
+        }
+
+        private static void AlignDynamicStartParameters(Representation audio, Representation video, ILogger logger = null)
+        {
+            var alignments = new List<AlignmentEntry>();
+
+            var videoStartSegment = video.Segments.StartSegmentId();
+            var videoSegmentId = video.Segments.PreviousSegmentId(videoStartSegment);
+
+            if (!videoStartSegment.HasValue)
+                videoSegmentId = videoStartSegment;
+
+            // Scan 3 video segments starting from videoSegmentId.
+            for (int s = 0; s < 3; s++)
+            {
+                var videoTimeRange = video.Segments.SegmentTimeRange(videoSegmentId);
+
+                if (videoTimeRange == null)
+                    continue;
+
+                // Split duration into 3 elements to cover 4 time points in segment duration
+                // Start, Start+1/3*Duration, Start+2/3*Duration, Start+3/3*Duration
+                //
+                var tickOffset = videoTimeRange.Duration.Ticks / 3;
+                var tickStart = videoTimeRange.Start.Ticks;
+
+                for (int t = 0; t < 4; t++)
+                {
+                    // Get audio SegmentId & Start time for a given time point
+                    var timePoint = TimeSpan.FromTicks(tickStart + (t * tickOffset));
+                    var audioSegmentId = audio.Segments.SegmentId(timePoint);
+                    var audioTimeRange = audio.Segments.SegmentTimeRange(audioSegmentId);
+
+                    if (audioTimeRange == null)
+                        continue;
+
+                    // Store valid data
+                    var timeDiff = (videoTimeRange.Start - audioTimeRange.Start).Duration();
+                    var entry = new AlignmentEntry(videoSegmentId, videoTimeRange.Start, audioSegmentId, audioTimeRange.Start, timeDiff);
+                    alignments.Add(entry);
+                }
+                // Get Next video segment
+                videoSegmentId = video.Segments.NextSegmentId(videoSegmentId);
+            }
+
+            var audioStartSegment = videoStartSegment = null;
+            TimeSpan? trimmOffset = null;
+
+            // handle the unexpected
+            if (alignments.Count > 0)
+            {
+                // Sort all entries by timeDiff and pick smallest
+                var comparer = new AlignmentEntryComparer();
+
+                alignments.Sort(comparer);
+
+                videoStartSegment = alignments[0].Item1;
+                audioStartSegment = alignments[0].Item3;
+                var videoStart = alignments[0].Item2;
+                var audioStart = alignments[0].Item4;
+                trimmOffset = videoStart < audioStart ? videoStart : audioStart;
+            }
+
+            //Set aligned start data
+            audio.SetAlignedStartParameters(audioStartSegment, trimmOffset);
+            video.SetAlignedStartParameters(videoStartSegment, trimmOffset);
+            logger?.Info($"Segment Alignment: Video={videoStartSegment} Audio={audioStartSegment} TrimmOffset={trimmOffset}");
+        }
+
 
         private bool UpdateMedia(Document document, Period period)
         {
@@ -212,8 +356,43 @@ namespace JuvoPlayer.DataProviders.Dash
             // TODO 2: This could be parallelized like all other methods...
             Logger.Info(period.ToString());
 
-            var audios = period.Sets.Where(o => o.Type.Value == MediaType.Audio).ToList();
-            var videos = period.Sets.Where(o => o.Type.Value == MediaType.Video).ToList();
+            List<Media> audios = null;
+            List<Media> videos = null;
+            Representation audioRepresentation = null;
+            Representation videoRepresentation = null;
+
+            Parallel.Invoke(
+                () =>
+                {
+                    audios = period.Sets.Where(o => o.Type.Value == MediaType.Audio).ToList();
+                    if (!audios.Any())
+                        return;
+
+                    foreach (var a in audios)
+                    {
+                        a.SetDocumentParameters(manifestParams);
+                    }
+
+                    audioPipeline.UpdateMedia(audios);
+                    audioRepresentation = audioPipeline.GetRepresentation();
+                    audioRepresentation?.Segments.PrepeareStream();
+                },
+                () =>
+                {
+                    videos = period.Sets.Where(o => o.Type.Value == MediaType.Video).ToList();
+                    if (!videos.Any())
+                        return;
+
+                    foreach (var v in videos)
+                    {
+                        v.SetDocumentParameters(manifestParams);
+                    }
+
+                    videoPipeline.UpdateMedia(videos);
+                    videoRepresentation = videoPipeline.GetRepresentation();
+                    videoRepresentation?.Segments.PrepeareStream();
+
+                });
 
             if (audios.Any() && videos.Any())
             {
@@ -222,24 +401,15 @@ namespace JuvoPlayer.DataProviders.Dash
                 if (document.MediaPresentationDuration.HasValue && document.MediaPresentationDuration.Value > TimeSpan.Zero)
                     ClipDurationChanged?.Invoke(document.MediaPresentationDuration.Value);
 
-                foreach (var v in videos)
-                {
-                    v.SetDocumentParameters(manifestParams);
-                }
-
-                foreach (var a in audios)
-                {
-                    a.SetDocumentParameters(manifestParams);
-                }
-
                 isDynamic = document.IsDynamic;
 
-                videoPipeline.UpdateMedia(videos);
-                audioPipeline.UpdateMedia(audios);
+                AlignStartParameters(videoRepresentation, audioRepresentation, isDynamic, Logger);
+
                 return true;
             }
 
             return false;
+
         }
 
         /// <summary>
@@ -334,7 +504,8 @@ namespace JuvoPlayer.DataProviders.Dash
             Parallel.Invoke(() => audioPipeline.OnTimeUpdated(time),
                 () => videoPipeline.OnTimeUpdated(time));
 
-            await UpdateManifest();
+            if (updateInProgressLock.CurrentCount > 0)
+                await UpdateManifest();
 
             if (disposed)
                 return;
@@ -363,34 +534,73 @@ namespace JuvoPlayer.DataProviders.Dash
             if (!manifest.NeedsReload())
                 return false;
 
-            Logger.Info("Updating manifest");
+            // Update Manifest is an entry point for all manifest downloads.
+            // As such, we must serialize at this point rather then at ReloadManifest.
+            // Otherwise we can have uptades interracting with each other.
+            //
+            if (!updateInProgressLock.Wait(0))
+                return true;
+
+            bool res = true;
 
             try
             {
-                if (!await manifest.ReloadManifestTask())
+                Logger.Info("Updating manifest");
+
+                try
+                {
+                    if (!await manifest.ReloadManifestTask())
+                        return false;
+                }
+                catch (OperationCanceledException)
+                {
+                    Logger.Info("Reloading manifest was cancelled");
                     return false;
+                }
+
+                var tmpDocument = manifest.CurrentDocument;
+                if (tmpDocument == null)
+                {
+                    Logger.Info("No Manifest.");
+                    return false;
+                }
+
+                var tmpPeriod = FindPeriod(tmpDocument, LiveClockTime(currentTime, tmpDocument));
+                if (tmpPeriod == null)
+                {
+                    Logger.Info("No period in Manifest.");
+                    return false;
+                }
+
+                if (!documentPublishTime.HasValue)
+                {
+                    documentPublishTime = tmpDocument.PublishTime;
+                    res = UpdateMedia(tmpDocument, tmpPeriod);
+                }
+                else
+                {
+                    // Update document ONLY it has newer publish time then previously dowloaded manifest
+                    // or it is first download.
+                    //
+                    if (documentPublishTime < tmpDocument.PublishTime)
+                    {
+                        documentPublishTime = tmpDocument.PublishTime;
+                        res = UpdateMedia(tmpDocument, tmpPeriod);
+                    }
+                    else
+                    {
+                        Logger.Info($"Manifest update skipped. {tmpDocument.PublishTime} <= {documentPublishTime}");
+                    }
+                }
             }
-            catch (OperationCanceledException)
+            finally
             {
-                Logger.Info("Reloading manifest was cancelled");
-                return false;
+                updateInProgressLock.Release();
+
+                Logger.Info("Updating manifest DONE");
             }
 
-            var tmpDocument = manifest.CurrentDocument;
-            if (tmpDocument == null)
-            {
-                Logger.Info("No Manifest.");
-                return false;
-            }
-
-            var tmpPeriod = FindPeriod(tmpDocument, LiveClockTime(currentTime, tmpDocument));
-            if (tmpPeriod == null)
-            {
-                Logger.Info("No period in Manifest.");
-                return false;
-            }
-
-            return UpdateMedia(tmpDocument, tmpPeriod);
+            return res;
         }
 
         private void OnStreamError(string errorMessage)
@@ -420,6 +630,8 @@ namespace JuvoPlayer.DataProviders.Dash
 
             videoPipeline?.Dispose();
             videoPipeline = null;
+
+            updateInProgressLock.Dispose();
         }
     }
 }

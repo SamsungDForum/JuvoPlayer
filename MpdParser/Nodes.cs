@@ -264,13 +264,9 @@ namespace MpdParser.Node
         /// <summary>
         /// Obtains segment identifier which is to be used as beginning of playback (Start Segment)
         /// </summary>
-        /// <param name="pointInTime">Point in playback time. Applicable to Dynamic content. 
-        /// No application for static content</param>
-        /// <param name="bufferDepth">Duration of playback buffer. Applicable to Dynamic content
-        /// No application for static content</param>
         /// <returns>Segment Identifier to be used as start point. May be null if start point has not
-        /// been found or provided arguments fall outside of currently playable segment range</returns>
-        uint? StartSegmentId(TimeSpan pointInTime, TimeSpan bufferDepth);
+        /// been found</returns>
+        uint? StartSegmentId();
 
         /// <summary>
         /// Sets manifest parameters to stream
@@ -290,6 +286,13 @@ namespace MpdParser.Node
         /// <param name="segmentId">Segment Id</param>
         /// <returns>Next Segment ID to be played. Null if no playable segment exist</returns>
         uint? NextSegmentId(uint? segmentId);
+
+        /// <summary>
+        /// Based on provided SegmentID, method returns previous segmentID
+        /// </summary>
+        /// <param name="segmentId"></param>
+        /// <returns>Previous Segment ID</returns>
+        uint? PreviousSegmentId(uint? segmentId);
 
         /// <summary>
         /// Obtains next playable segment identifier based on provided point in time

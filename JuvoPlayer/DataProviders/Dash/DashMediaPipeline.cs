@@ -99,6 +99,11 @@ namespace JuvoPlayer.DataProviders.Dash
             dashClient.Error += OnStreamError;
         }
 
+        public Representation GetRepresentation()
+        {
+            return pendingStream?.Representation ?? currentStream?.Representation;
+        }
+
         public void UpdateMedia(IList<Media> media)
         {
             if (media == null)
@@ -212,8 +217,18 @@ namespace JuvoPlayer.DataProviders.Dash
 
         private void StartPipeline(DashStream newStream = null)
         {
-            if (pipelineStarted)
-                return;
+            // There may be mutliple calls here.
+            // AdaptiveStreaming, OnStreamChange and Resume.
+            // We must assure there are no multiple calls to Start Client. Blocking at client
+            // won't do the trick.
+            //
+            lock (dashClient)
+            {
+                if (pipelineStarted)
+                    return;
+
+                pipelineStarted = true;
+            }
 
             if (newStream != null)
             {
@@ -226,11 +241,12 @@ namespace JuvoPlayer.DataProviders.Dash
                 dashClient.SetRepresentation(currentStream.Representation);
                 ParseDrms(currentStream.Media);
             }
-             
+
+            if (!trimmOffset.HasValue)
+                trimmOffset = currentStream.Representation.AlignedTrimmOffset;
+
             demuxer.StartForExternalSource(newStream != null ? InitializationMode.Full : InitializationMode.Minimal);
             dashClient.Start();
-
-            pipelineStarted = true;
         }
 
         /// <summary>
@@ -476,16 +492,6 @@ namespace JuvoPlayer.DataProviders.Dash
 
         private void AdjustDemuxerTimeStampIfNeeded(Packet packet)
         {
-
-            //Get very first PTS/DTS
-            if (!trimmOffset.HasValue)
-            {
-                trimmOffset = dashClient.GetTrimmOffset();
-
-                Logger.Info($"{streamType}: trimmOffset: {trimmOffset}");
-            }
-
-
             if (!lastSeek.HasValue)
             {
                 if (packet.IsZeroClock())
