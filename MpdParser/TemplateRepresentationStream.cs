@@ -13,9 +13,7 @@
 
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Text;
-using System.Threading.Tasks;
 using JuvoLogger;
 
 namespace MpdParser.Node.Dynamic
@@ -319,9 +317,8 @@ namespace MpdParser.Node.Dynamic
         /// <summary>
         /// Retrieves live template number based on current timestamp.
         /// </summary>
-        /// <param name="durationSpan">Current timestamp for which segment is to be retrieved.</param>
-        /// <returns></returns>
-        private ulong? GetCurrentLiveTemplateNumber(TimeSpan durationSpan)
+        /// <returns>Start Segment number for live template</returns>
+        private ulong? GetCurrentLiveTemplateNumber()
         {
             var start = (ulong)(segmentStartNumber ?? 0);
 
@@ -331,7 +328,7 @@ namespace MpdParser.Node.Dynamic
 
 
             var duration = templateDuration.Value;
-            var playbackTime = parameters.Document.AvailabilityStartTime.Value + durationSpan;
+            var playbackTime = parameters.Document.AvailabilityStartTime.Value + parameters.Document.TimeOffset;
             var streamStart = parameters.Document.AvailabilityStartTime.Value +
                               (parameters.Period.Start ?? TimeSpan.Zero);
 
@@ -348,17 +345,16 @@ namespace MpdParser.Node.Dynamic
         /// <summary>
         /// Retrieves segment ID for initial live playback.
         /// </summary>
-        /// <param name="durationSpan">Timestamp for which Start Segment number is to be retrieved.</param>
-        /// <returns></returns>
-        private uint? GetStartSegmentDynamic(TimeSpan durationSpan, TimeSpan bufferDepth)
+        /// <returns>Start Segment for dynamic playlist</returns>
+        private uint? GetStartSegmentDynamic()
         {
             // Path when timeline was provided in MPD
             return fromTimeline
-                ? GetStartSegmentDynamicFromTimeline(bufferDepth)
-                : GetStartSegmentDynamicFromTemplate(durationSpan, bufferDepth);
+                ? GetStartSegmentDynamicFromTimeline()
+                : GetStartSegmentDynamicFromTemplate();
         }
 
-        private uint? GetStartSegmentDynamicFromTemplate(TimeSpan durationSpan, TimeSpan bufferDepth)
+        private uint? GetStartSegmentDynamicFromTemplate()
         {
             var delay = parameters.Document.SuggestedPresentationDelay ?? TimeSpan.Zero;
             var timeShiftBufferDepth = parameters.Document.TimeShiftBufferDepth ?? TimeSpan.Zero;
@@ -366,10 +362,7 @@ namespace MpdParser.Node.Dynamic
             if (delay == TimeSpan.Zero || delay > timeShiftBufferDepth)
                 delay = timeShiftBufferDepth;
 
-            if (delay < bufferDepth)
-                delay = bufferDepth;
-
-            var endSegment = GetCurrentLiveTemplateNumber(durationSpan);
+            var endSegment = GetCurrentLiveTemplateNumber();
 
             if (endSegment.HasValue == false)
                 return null;
@@ -389,7 +382,7 @@ namespace MpdParser.Node.Dynamic
             return (endSegment - start > buffCount) ? (uint)(endSegment.Value - buffCount) : (uint)start;
         }
 
-        private uint? GetStartSegmentDynamicFromTimeline(TimeSpan bufferDepth)
+        private uint? GetStartSegmentDynamicFromTimeline()
         {
             var maxRange = timeline.Count;
             if (maxRange == 0)
@@ -498,19 +491,17 @@ namespace MpdParser.Node.Dynamic
 
         }
 
-        private uint GetStartSegmentStatic(TimeSpan durationSpan)
+        private uint GetStartSegmentStatic()
         {
             return (uint)timeline[0].Number;
         }
 
-        public uint? StartSegmentId(TimeSpan durationSpan, TimeSpan bufferDepth)
+        public uint? StartSegmentId()
         {
-            durationSpan += parameters.Document.TimeOffset;
-
             if (parameters.Document.IsDynamic)
-                return GetStartSegmentDynamic(durationSpan, bufferDepth);
+                return GetStartSegmentDynamic();
 
-            return GetStartSegmentStatic(durationSpan);
+            return GetStartSegmentStatic();
         }
 
         public Segment MediaSegment(uint? segmentId)
@@ -548,6 +539,19 @@ namespace MpdParser.Node.Dynamic
 
             idx++;
             if (idx >= Count)
+                return null;
+
+            return (uint?)timeline[idx].Number;
+        }
+        public uint? PreviousSegmentId(uint? segmentId)
+        {
+
+            var idx = segmentId.HasValue ? GetSegmentIndex(segmentId.Value) : -1;
+            if (idx < 0)
+                return null;
+
+            idx--;
+            if (idx < 0)
                 return null;
 
             return (uint?)timeline[idx].Number;

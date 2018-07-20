@@ -83,21 +83,10 @@ namespace JuvoPlayer.DataProviders.Dash
         private TimeSpan? trimmOffset;
 
         /// <summary>
-        /// Storage place for ALL, audio & video trimm offset. Used for retrieval of
-        /// smallest offset from audio or video.
-        /// </summary>
-        private static readonly ConcurrentDictionary<StreamType, TimeSpan> trimmOffsetStorage = new ConcurrentDictionary<StreamType, TimeSpan>();
-
-        /// <summary>
         /// Flag indicating if DashClient is initializing. During INIT, adabtive bitrate switching is not
         /// allowed.
         /// </summary>
         bool initInProgress = false;
-
-        /// <summary>
-        /// Start method srializer. Allows for a signle caller to access Start method.
-        /// </summary>
-        SemaphoreSlim canStart = new SemaphoreSlim(1);
 
         public DashClient(IThroughputHistory throughputHistory, ISharedBuffer sharedBuffer, StreamType streamType)
         {
@@ -126,61 +115,36 @@ namespace JuvoPlayer.DataProviders.Dash
             if (currentRepresentation == null)
                 throw new Exception("currentRepresentation has not been set");
 
-            if (!canStart.Wait(TimeSpan.Zero))
+            initInProgress = true;
+
+            LogInfo("DashClient start.");
+
+            if (cancellationTokenSource == null || cancellationTokenSource?.IsCancellationRequested == true)
             {
-                LogInfo("Start() already in progress.");
-                return;
+                cancellationTokenSource?.Dispose();
+                cancellationTokenSource = new CancellationTokenSource();
             }
 
-            try
+            // clear garbage before appending new data
+            sharedBuffer?.ClearData();
+
+            bufferTime = currentTime;
+
+            if (currentSegmentId.HasValue == false)
+                currentSegmentId = currentRepresentation.AlignedStartSegmentID;
+
+            if (!trimmOffset.HasValue)
+                trimmOffset = currentRepresentation.AlignedTrimmOffset;
+
+            var initSegment = currentStreams.InitSegment;
+            if (initSegment != null)
             {
-                initInProgress = true;
-
-                LogInfo("DashClient start.");
-
-                if (cancellationTokenSource == null || cancellationTokenSource?.IsCancellationRequested == true)
-                {
-                    cancellationTokenSource?.Dispose();
-                    cancellationTokenSource = new CancellationTokenSource();
-                }
-
-                // clear garbage before appending new data
-                sharedBuffer?.ClearData();
-
-                bufferTime = currentTime;
-
-                if (currentSegmentId.HasValue == false)
-                    currentSegmentId = currentStreams.StartSegmentId(currentTime, timeBufferDepth);
-
-                // Get trimmOffset as early as possible. This is used by DashDataProvider to 
-                // trimm PTS/DTS, therefore the earlier obtain this (per pipeline), the less stalling
-                // will be in DashDataProvider
-                //
-                // TODO: Employ this mechanism at DashDataProvider to get trimmOffset and pass it down
-                // do DashMediaPipeline & DashClient.
-                // 
-                if (trimmOffset.HasValue == false)
-                {
-                    trimmOffset = currentStreams.SegmentTimeRange(currentSegmentId).Start;
-                    SpinWait.SpinUntil(() => trimmOffsetStorage.TryAdd(streamType, trimmOffset.Value) == true);
-                    LogInfo($"Start segment: {currentSegmentId} TrimmOffset: {trimmOffset}");
-                }
-
-                var initSegment = currentStreams.InitSegment;
-                if (initSegment != null)
-                {
-                    DownloadInitSegment(initSegment);
-                }
-                else
-                {
-                    ScheduleNextSegDownload();
-                    initInProgress = false;
-                }
-
+                DownloadInitSegment(initSegment);
             }
-            finally
+            else
             {
-                canStart.Release();
+                ScheduleNextSegDownload();
+                initInProgress = false;
             }
         }
 
@@ -352,7 +316,13 @@ namespace JuvoPlayer.DataProviders.Dash
             LogError(errorMessage);
 
             if (IsDynamic)
+            {
+                // Http 404 Not Found. Increment Segment ID
+                if (errorMessage.Contains("(404)"))
+                    currentSegmentId = currentStreams.NextSegmentId(currentSegmentId);
+
                 return true;
+            }
 
             StopAsync();
 
@@ -431,18 +401,6 @@ namespace JuvoPlayer.DataProviders.Dash
             currentRepresentation = representation;
             currentStreams = currentRepresentation.Segments;
 
-            // Prepare Stream for playback.
-            if (!currentStreams.PrepeareStream())
-            {
-                LogError("Failed to prepare stream. No playable segments");
-
-                // Static content - treat as EOS.
-                if (!IsDynamic)
-                    Stop();
-
-                return;
-            }
-
             currentStreamDuration = IsDynamic
                 ? currentStreams.GetDocumentParameters().Document.MediaPresentationDuration
                 : currentStreams.Duration;
@@ -483,19 +441,6 @@ namespace JuvoPlayer.DataProviders.Dash
             currentRepresentation = newRep;
             currentStreams = currentRepresentation.Segments;
 
-            // Sanity check on streams (needed if stream fails its own IO - index download, etc.)
-            if (!currentStreams.PrepeareStream())
-            {
-                LogError("Failed to prepare stream. No playable segments");
-
-                // Static content - treat as EOS.
-                if (!IsDynamic)
-                    Stop();
-
-                currentSegmentId = null;
-                return;
-            }
-
             currentStreamDuration = IsDynamic
                 ? currentStreams.GetDocumentParameters().Document.MediaPresentationDuration
                 : currentStreams.Duration;
@@ -504,7 +449,7 @@ namespace JuvoPlayer.DataProviders.Dash
 
             if (lastDownloadSegmentTimeRange == null)
             {
-                currentSegmentId = currentStreams.StartSegmentId(currentTime, timeBufferDepth);
+                currentSegmentId = currentRepresentation.AlignedStartSegmentID;
                 LogInfo($"Rep. Swap. Start Seg: [{currentSegmentId}]");
                 return;
             }
@@ -563,15 +508,17 @@ namespace JuvoPlayer.DataProviders.Dash
 
         private async Task<DownloadResponse> CreateDownloadTask(Segment segment, bool ignoreError, uint? segmentId, CancellationToken cancelToken)
         {
+            var timeout = CalculateDownloadTimeout(segment);
+
             var requestData = new DownloadRequest
             {
                 DownloadSegment = segment,
                 IgnoreError = ignoreError,
                 SegmentId = segmentId,
-                StreamType = streamType
+                StreamType = streamType,
+                Timeout = timeout
             };
 
-            var timeout = CalculateDownloadTimeout(segment);
             using (var timeoutCancellationTokenSource = new CancellationTokenSource(timeout))
             using (var downloadCancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(
                 cancelToken, timeoutCancellationTokenSource.Token))
@@ -600,8 +547,18 @@ namespace JuvoPlayer.DataProviders.Dash
 
         private void TimeBufferDepthDynamic()
         {
-            // For dynamic content, use Manifest buffer time 
-            timeBufferDepth = currentStreams.GetDocumentParameters().Document.MinBufferTime ?? TimeBufferDepthDefault;
+            // For dynamic content, use TimeShiftBuffer depth as it defines "available" content.
+            // 1/4 of the buffer is "used up" when selecting start segment.
+            // Start Segment = First Available + 1/4 of Time Shift Buffer.
+            // Use max 1/2 of TimeShiftBufferDepth.
+            //
+            var tsBuffer = (int)(currentStreams.GetDocumentParameters().Document.TimeShiftBufferDepth?.TotalSeconds ?? 0);
+            tsBuffer = tsBuffer / 2;
+
+            // If value is out of range, truncate to max 15 seconds.
+            timeBufferDepth = (tsBuffer == 0) ? TimeBufferDepthDefault : TimeSpan.FromSeconds(tsBuffer);
+            if (timeBufferDepth > TimeSpan.FromSeconds(15))
+                timeBufferDepth = TimeSpan.FromSeconds(15);
         }
 
         private void TimeBufferDepthStatic()
@@ -658,40 +615,6 @@ namespace JuvoPlayer.DataProviders.Dash
             LogInfo($"TimeBufferDepth: {timeBufferDepth}");
         }
 
-        public TimeSpan GetTrimmOffset()
-        {
-            // Wait till Audio and Video trimm offsets are available OR untill we got cancelled
-            //
-            if (trimmOffsetStorage.Count != 2)
-            {
-                var stime = DateTime.Now;
-                var waitFor = (streamType == StreamType.Video ? StreamType.Audio : StreamType.Video);
-                LogInfo($"Waiting for {waitFor} trimm Offset");
-                SpinWait.SpinUntil(() => trimmOffsetStorage.Count == 2 || cancellationTokenSource.IsCancellationRequested);
-
-                if (cancellationTokenSource.IsCancellationRequested)
-                    return TimeSpan.Zero;
-
-                var etime = DateTime.Now;
-                LogInfo($"{trimmOffsetStorage.Count} Trimm Offsets available {etime - stime}");
-            }
-
-            // Concurrent collection does not seem to offer Max extension method
-            // as defined in docs
-            // https://msdn.microsoft.com/library/dd287191(v=vs.110).aspx
-            // thus scan content manually
-            //
-            TimeSpan res = TimeSpan.MaxValue;
-
-            foreach (var v in trimmOffsetStorage.Values)
-            {
-                if (v < res)
-                    res = v;
-            }
-
-            return res;
-        }
-
         public bool CanStreamSwitch()
         {
             // Allow stream change ONLY if not performing initialization.
@@ -733,11 +656,7 @@ namespace JuvoPlayer.DataProviders.Dash
             if (disposedValue)
                 return;
 
-            // Remove previous entry from trimmOffsetStorage
-            trimmOffsetStorage.TryRemove(streamType, out var tmp);
-
             cancellationTokenSource?.Dispose();
-            canStart.Dispose();
 
             disposedValue = true;
         }

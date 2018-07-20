@@ -27,7 +27,7 @@ namespace JuvoPlayer.DataProviders.Dash
         void Reset();
         void OnTimeUpdated(TimeSpan time);
         void UpdateRepresentation(Representation representation);
-        TimeSpan GetTrimmOffset();
+
         bool CanStreamSwitch();
 
         event Error Error;

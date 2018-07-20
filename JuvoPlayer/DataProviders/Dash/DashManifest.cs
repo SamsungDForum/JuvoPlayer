@@ -51,11 +51,10 @@ namespace JuvoPlayer.DataProviders.Dash
 
         public async Task<bool> ReloadManifestTask()
         {
-            if (!updateInProgressLock.Wait(0))
-                return false;
-
             cancellationTokenSource = new CancellationTokenSource();
             var ct = cancellationTokenSource.Token;
+
+            OperationCanceledException toReThrow = null;
 
             try
             {
@@ -94,13 +93,28 @@ namespace JuvoPlayer.DataProviders.Dash
 
                 return true;
             }
+            catch (OperationCanceledException e)
+            {
+                // Catch needed!
+                // try/finally without a catch may result in lack of finally block
+                // execution (depends on usage scenario and we need it here!)
+                // https://docs.microsoft.com/en-us/dotnet/csharp/language-reference/keywords/try-finally
+                //
+                toReThrow = e;
+            }
             finally
             {
                 cancellationTokenSource.Dispose();
                 cancellationTokenSource = null;
 
-                updateInProgressLock.Release();
+                if (toReThrow != null)
+                    throw toReThrow;
             }
+
+            if (toReThrow != null)
+                return false;
+
+            return true;
         }
 
         private async Task<string> DownloadManifest(CancellationToken ct)
@@ -157,7 +171,6 @@ namespace JuvoPlayer.DataProviders.Dash
             // Disposing need to be done only when AvailableWaitHandle is used
             // We dont use it so, dont dispose lock to avoid exceptions when releasing 
             // semaphore in other thread
-            // updateInProgressLock?.Dispose();
             cancellationTokenSource?.Dispose();
         }
     }
