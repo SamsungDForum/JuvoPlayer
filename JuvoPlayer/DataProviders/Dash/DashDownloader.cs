@@ -102,7 +102,6 @@ namespace JuvoPlayer.DataProviders.Dash
         public bool IgnoreError { get; set; }
         public uint? SegmentId { get; set; }
         public StreamType StreamType { get; set; }
-        public TimeSpan Timeout { get; set; }
     }
 
     internal class DownloadResponse
@@ -166,9 +165,7 @@ namespace JuvoPlayer.DataProviders.Dash
             {
                 try
                 {
-                    // Check if last download attempt failed. If so, delay and retry
-                    if (downloadErrorCount > 0)
-                        await Task.Delay(CalculateSleepTime(), cancellationToken);
+                    await Task.Delay(CalculateSleepTime(), cancellationToken);
 
                     return await DownloadDataTaskAsync();
                 }
@@ -186,8 +183,6 @@ namespace JuvoPlayer.DataProviders.Dash
                 }
                 catch (OperationCanceledException)
                 {
-                    // Register timeouts to force representation change.
-                    throughputHistory.Push(1, request.Timeout);
                     throw;
                 }
                 catch (Exception e)
@@ -196,9 +191,6 @@ namespace JuvoPlayer.DataProviders.Dash
                     Logger.Warn($"{request.StreamType}: Segment: {segmentId} Error: {e.Message}");
                     ++downloadErrorCount;
                 }
-
-
-
             } while (!request.IgnoreError && downloadErrorCount < 3);
 
             var message = $"Cannot download segment: {segmentId}.";
