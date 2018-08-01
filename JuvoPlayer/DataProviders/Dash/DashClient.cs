@@ -39,6 +39,7 @@ namespace JuvoPlayer.DataProviders.Dash
         private Task<DownloadResponse> downloadDataTask;
         private Task processDataTask;
         private CancellationTokenSource cancellationTokenSource;
+        private Task scheduleNextTask;
 
         /// <summary>
         /// Contains information about timing data for last requested segment
@@ -143,13 +144,14 @@ namespace JuvoPlayer.DataProviders.Dash
             }
             else
             {
-                ScheduleNextSegDownload();
                 initInProgress = false;
+                ScheduleNextSegDownload();
             }
         }
 
         private void ScheduleNextSegDownload()
         {
+
             if (!Monitor.TryEnter(this))
                 return;
 
@@ -162,10 +164,7 @@ namespace JuvoPlayer.DataProviders.Dash
                 }
 
                 if (!processDataTask.IsCompleted || cancellationTokenSource.IsCancellationRequested)
-                {
-                    LogInfo($"IsCompleted {!processDataTask.IsCompleted} Status {processDataTask.Status} CancelReq {cancellationTokenSource.IsCancellationRequested}");
                     return;
-                }
 
                 if (BufferFull)
                 {
@@ -196,6 +195,15 @@ namespace JuvoPlayer.DataProviders.Dash
             }
         }
 
+        private Task CreateScheduleNextTask(CancellationToken token)
+        {
+            Task newScheduleNext;
+
+            newScheduleNext = processDataTask.ContinueWith(_ => ScheduleNextSegDownload(),
+                    token, TaskContinuationOptions.OnlyOnRanToCompletion, TaskScheduler.Default);
+
+            return newScheduleNext;
+        }
         private void DownloadSegment(Segment segment)
         {
             // Grab a copy (its a struct) of cancellation token, so one token is used throughout entire operation
@@ -206,7 +214,7 @@ namespace JuvoPlayer.DataProviders.Dash
             {
                 bool shouldContinue;
                 if (response.IsCanceled)
-                    shouldContinue = HandleCancelledDownload(cancelToken);
+                    shouldContinue = HandleCancelledDownload();
                 else if (response.IsFaulted)
                     shouldContinue = HandleFailedDownload(response);
                 else // always continue on successfull download
@@ -218,31 +226,24 @@ namespace JuvoPlayer.DataProviders.Dash
 
             }, TaskScheduler.Default);
 
-            LogInfo($"DL Task Status {processDataTask.Status}");
-
-            processDataTask.ContinueWith(_ => ScheduleNextSegDownload(),
-                cancelToken, TaskContinuationOptions.OnlyOnRanToCompletion, TaskScheduler.Default);
+            scheduleNextTask = CreateScheduleNextTask(cancelToken);
         }
 
-        private bool HandleCancelledDownload(CancellationToken token)
+        private bool HandleCancelledDownload()
         {
-            LogInfo("Segment: download cancelled");
-            
-            // if download was cancelled by timeout cancellation token than reschedule download
-            if(token.Equals(cancellationTokenSource?.Token))
-                return !token.IsCancellationRequested; 
+            LogInfo($"Segment: download cancelled. Continue? {!cancellationTokenSource.IsCancellationRequested}");
 
-            LogInfo("Segment: Download cancelled with stale token. Continuing.");
-            return true;
+            // if download was cancelled by timeout cancellation token than reschedule download
+            return !cancellationTokenSource.IsCancellationRequested;
         }
 
         private void DownloadInitSegment(Segment segment)
         {
+            // Grab a copy (its a struct) of cancellation token so it is not referenced through cancellationTokenSource each time.
+            var cancelToken = cancellationTokenSource.Token;
+
             if (initStreamBytes == null)
             {
-                // Grab a copy (its a struct) of cancellation token so it is not referenced through cancellationTokenSource each time.
-                var cancelToken = cancellationTokenSource.Token;
-
                 downloadDataTask = CreateDownloadTask(segment, true, null, cancelToken);
                 processDataTask = downloadDataTask.ContinueWith(response =>
                 {
@@ -263,8 +264,7 @@ namespace JuvoPlayer.DataProviders.Dash
 
                 }, TaskScheduler.Default);
 
-                processDataTask.ContinueWith(_ => ScheduleNextSegDownload(),
-                    cancelToken, TaskContinuationOptions.OnlyOnRanToCompletion, TaskScheduler.Default);
+                scheduleNextTask = CreateScheduleNextTask(cancelToken);
             }
             else
             {
@@ -381,6 +381,7 @@ namespace JuvoPlayer.DataProviders.Dash
             // may happen during FF/REW operations. 
             // If received after client start may result in lack of further download requests 
             // being issued. Once download handler are serialized, should be safe to remove.
+            WaitForTaskCompletionNoError(scheduleNextTask);
             WaitForTaskCompletionNoError(downloadDataTask);
             WaitForTaskCompletionNoError(processDataTask);
 
@@ -392,26 +393,12 @@ namespace JuvoPlayer.DataProviders.Dash
             try
             {
                 if (task?.Status > TaskStatus.Created)
-                {
-                    LogInfo($"Waiting for completion {task.Status}");
                     task.Wait();
-                    LogInfo($"Done Waiting {task.Status}");
-                    
-                }
-                else
-                {
-                    LogInfo($"NOT Waiting for completion {task.Status}");
-                }
+
             }
             catch (AggregateException)
             {
             }
-            catch (Exception e)
-            {
-                LogInfo($"{e.ToString()}");
-            }
-            task.Dispose();
-            LogInfo("Done");
         }
 
         public void Stop()
@@ -511,6 +498,7 @@ namespace JuvoPlayer.DataProviders.Dash
             currentTime = time;
 
             ScheduleNextSegDownload();
+
         }
 
         private void SendEosEvent()
@@ -543,8 +531,7 @@ namespace JuvoPlayer.DataProviders.Dash
                 DownloadSegment = segment,
                 IgnoreError = ignoreError,
                 SegmentId = segmentId,
-                StreamType = streamType,
-                Timeout = timeout
+                StreamType = streamType
             };
 
             using (var timeoutCancellationTokenSource = new CancellationTokenSource(timeout))
@@ -585,8 +572,9 @@ namespace JuvoPlayer.DataProviders.Dash
 
             // If value is out of range, truncate to max 15 seconds.
             timeBufferDepth = (tsBuffer == 0) ? TimeBufferDepthDefault : TimeSpan.FromSeconds(tsBuffer);
-            if (timeBufferDepth > TimeSpan.FromSeconds(15))
-                timeBufferDepth = TimeSpan.FromSeconds(15);
+            var maxBufferTime = TimeSpan.FromSeconds(15);
+            if (timeBufferDepth > maxBufferTime)
+                timeBufferDepth = maxBufferTime;
         }
 
         private void TimeBufferDepthStatic()

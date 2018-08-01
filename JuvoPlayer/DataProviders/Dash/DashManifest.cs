@@ -15,7 +15,7 @@ namespace JuvoPlayer.DataProviders.Dash
         private Uri Uri { get; }
 
         private readonly SemaphoreSlim updateInProgressLock = new SemaphoreSlim(1);
-        private readonly HttpClient httpClient = new HttpClient {Timeout = TimeSpan.FromSeconds(3)};
+        private readonly HttpClient httpClient = new HttpClient { Timeout = TimeSpan.FromSeconds(3) };
 
         private CancellationTokenSource cancellationTokenSource;
 
@@ -33,7 +33,7 @@ namespace JuvoPlayer.DataProviders.Dash
 
         public bool NeedsReload()
         {
-            return CurrentDocument == null || (CurrentDocument.IsDynamic 
+            return CurrentDocument == null || (CurrentDocument.IsDynamic
                    && (DateTime.UtcNow - lastReloadTime) >= minimumReloadPeriod);
         }
 
@@ -53,8 +53,6 @@ namespace JuvoPlayer.DataProviders.Dash
         {
             cancellationTokenSource = new CancellationTokenSource();
             var ct = cancellationTokenSource.Token;
-
-            OperationCanceledException toReThrow = null;
 
             try
             {
@@ -93,28 +91,11 @@ namespace JuvoPlayer.DataProviders.Dash
 
                 return true;
             }
-            catch (OperationCanceledException e)
-            {
-                // Catch needed!
-                // try/finally without a catch may result in lack of finally block
-                // execution (depends on usage scenario and we need it here!)
-                // https://docs.microsoft.com/en-us/dotnet/csharp/language-reference/keywords/try-finally
-                //
-                toReThrow = e;
-            }
             finally
             {
                 cancellationTokenSource.Dispose();
                 cancellationTokenSource = null;
-
-                if (toReThrow != null)
-                    throw toReThrow;
             }
-
-            if (toReThrow != null)
-                return false;
-
-            return true;
         }
 
         private async Task<string> DownloadManifest(CancellationToken ct)
