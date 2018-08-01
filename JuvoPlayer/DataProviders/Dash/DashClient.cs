@@ -162,7 +162,10 @@ namespace JuvoPlayer.DataProviders.Dash
                 }
 
                 if (!processDataTask.IsCompleted || cancellationTokenSource.IsCancellationRequested)
+                {
+                    LogInfo($"IsCompleted {!processDataTask.IsCompleted} Status {processDataTask.Status} CancelReq {cancellationTokenSource.IsCancellationRequested}");
                     return;
+                }
 
                 if (BufferFull)
                 {
@@ -203,7 +206,7 @@ namespace JuvoPlayer.DataProviders.Dash
             {
                 bool shouldContinue;
                 if (response.IsCanceled)
-                    shouldContinue = HandleCancelledDownload();
+                    shouldContinue = HandleCancelledDownload(cancelToken);
                 else if (response.IsFaulted)
                     shouldContinue = HandleFailedDownload(response);
                 else // always continue on successfull download
@@ -215,16 +218,22 @@ namespace JuvoPlayer.DataProviders.Dash
 
             }, TaskScheduler.Default);
 
+            LogInfo($"DL Task Status {processDataTask.Status}");
+
             processDataTask.ContinueWith(_ => ScheduleNextSegDownload(),
                 cancelToken, TaskContinuationOptions.OnlyOnRanToCompletion, TaskScheduler.Default);
         }
 
-        private bool HandleCancelledDownload()
+        private bool HandleCancelledDownload(CancellationToken token)
         {
             LogInfo("Segment: download cancelled");
-
+            
             // if download was cancelled by timeout cancellation token than reschedule download
-            return !cancellationTokenSource.IsCancellationRequested;
+            if(token.Equals(cancellationTokenSource?.Token))
+                return !token.IsCancellationRequested; 
+
+            LogInfo("Segment: Download cancelled with stale token. Continuing.");
+            return true;
         }
 
         private void DownloadInitSegment(Segment segment)
@@ -315,22 +324,25 @@ namespace JuvoPlayer.DataProviders.Dash
             var errorMessage = GetErrorMessage(response);
             LogError(errorMessage);
 
+            var exception = response.Exception?.Flatten().InnerExceptions[0] as DashDownloaderException;
+
             if (IsDynamic)
             {
                 // Http 404 Not Found. Increment Segment ID
-                if (errorMessage.Contains("(404)"))
-                    currentSegmentId = currentStreams.NextSegmentId(currentSegmentId);
-
+                if (exception != null)
+                {
+                    if (exception.InnerException.Message.Contains("(404)") == true)
+                        currentSegmentId = currentStreams.NextSegmentId(currentSegmentId);
+                }
                 return true;
             }
 
             StopAsync();
 
-            var exception = response.Exception?.Flatten().InnerExceptions[0];
-            if (exception is DashDownloaderException downloaderException)
+            if (exception != null)
             {
-                var segmentTime = downloaderException.DownloadRequest.DownloadSegment.Period.Start;
-                var segmentDuration = downloaderException.DownloadRequest.DownloadSegment.Period.Duration;
+                var segmentTime = exception.DownloadRequest.DownloadSegment.Period.Start;
+                var segmentDuration = exception.DownloadRequest.DownloadSegment.Period.Duration;
 
                 var segmentEndTime = segmentTime + segmentDuration - (trimmOffset ?? TimeSpan.Zero);
                 if (IsEndOfContent(segmentEndTime))
@@ -347,6 +359,7 @@ namespace JuvoPlayer.DataProviders.Dash
         private void HandleFailedInitDownload(string message)
         {
             LogError(message);
+            initInProgress = false;
 
             StopAsync();
 
@@ -374,16 +387,31 @@ namespace JuvoPlayer.DataProviders.Dash
             LogInfo("Data downloader stopped");
         }
 
-        private static void WaitForTaskCompletionNoError(Task task)
+        private void WaitForTaskCompletionNoError(Task task)
         {
             try
             {
                 if (task?.Status > TaskStatus.Created)
+                {
+                    LogInfo($"Waiting for completion {task.Status}");
                     task.Wait();
+                    LogInfo($"Done Waiting {task.Status}");
+                    
+                }
+                else
+                {
+                    LogInfo($"NOT Waiting for completion {task.Status}");
+                }
             }
             catch (AggregateException)
             {
             }
+            catch (Exception e)
+            {
+                LogInfo($"{e.ToString()}");
+            }
+            task.Dispose();
+            LogInfo("Done");
         }
 
         public void Stop()

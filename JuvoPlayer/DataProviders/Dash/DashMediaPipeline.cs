@@ -1,7 +1,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Threading;
 using System.Xml;
 using JuvoLogger;
 using JuvoPlayer.Common;
@@ -104,13 +103,16 @@ namespace JuvoPlayer.DataProviders.Dash
             return pendingStream?.Representation ?? currentStream?.Representation;
         }
 
-        public void UpdateMedia(IList<Media> media)
+        public bool UpdateMedia(IList<Media> media)
         {
             if (media == null)
                 throw new ArgumentNullException(nameof(media), "media cannot be null");
 
             if (media.Any(o => o.Type.Value != ToMediaType(streamType)))
                 throw new ArgumentException("Not compatible media found");
+
+            DashStream tmpStream = null;
+            bool res = false;
 
             if (currentStream != null)
             {
@@ -119,8 +121,13 @@ namespace JuvoPlayer.DataProviders.Dash
                 if (currentRepresentation != null)
                 {
                     GetAvailableStreams(media, currentMedia);
-                    pendingStream = new DashStream(currentMedia, currentRepresentation);
-                    return;
+
+                    // Prepeare set media before assigning it to "pending stram" to assure
+                    // ready to use stream is set. Otherwise adopt to net condition may snach it and send it to DashClient
+                    tmpStream = new DashStream(currentMedia, currentRepresentation);
+                    res = tmpStream.Representation.Segments.PrepeareStream();
+                    pendingStream = tmpStream;
+                    return res;
                 }
             }
 
@@ -128,7 +135,14 @@ namespace JuvoPlayer.DataProviders.Dash
             GetAvailableStreams(media, defaultMedia);
             // get first element of sorted array 
             var representation = defaultMedia.Representations.OrderByDescending(o => o.Bandwidth).First();
-            pendingStream = new DashStream(defaultMedia, representation);
+
+            // Prepeare set media before assigning it to "pending stram" to assure
+            // ready to use stream is set. Otherwise adopt to net condition may snach it and send it to DashClient
+            tmpStream = new DashStream(defaultMedia, representation);
+            res = tmpStream.Representation.Segments.PrepeareStream();
+            pendingStream = tmpStream;
+
+            return res;
         }
 
         public void AdaptToNetConditions()
@@ -338,6 +352,12 @@ namespace JuvoPlayer.DataProviders.Dash
 
             if (currentStream.Media.Type.Value != newMedia.Type.Value)
                 throw new ArgumentException("wrong media type");
+
+            if (!newStream.Representation.Segments.PrepeareStream())
+            {
+                Logger.Warn($"{streamType}: Failed to prepare stream. New stream IS NOT set. Continuing playing previous");
+                return;
+            }
 
             disableAdaptiveStreaming = true;
 
