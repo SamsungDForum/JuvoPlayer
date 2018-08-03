@@ -87,7 +87,7 @@ namespace JuvoPlayer.DataProviders.Dash
         /// Flag indicating if DashClient is initializing. During INIT, adabtive bitrate switching is not
         /// allowed.
         /// </summary>
-        bool initInProgress = false;
+        private bool initInProgress = false;
 
         public DashClient(IThroughputHistory throughputHistory, ISharedBuffer sharedBuffer, StreamType streamType)
         {
@@ -329,6 +329,8 @@ namespace JuvoPlayer.DataProviders.Dash
             if (IsDynamic)
             {
                 // Http 404 Not Found. Increment Segment ID
+                // TODO: Use Response Codes rather then text search
+                //
                 if (exception != null)
                 {
                     if (exception.InnerException.Message.Contains("(404)") == true)
@@ -388,7 +390,7 @@ namespace JuvoPlayer.DataProviders.Dash
             LogInfo("Data downloader stopped");
         }
 
-        private void WaitForTaskCompletionNoError(Task task)
+        private static void WaitForTaskCompletionNoError(Task task)
         {
             try
             {

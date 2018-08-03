@@ -23,6 +23,7 @@ namespace JuvoPlayer.DataProviders.Dash
 
             public Media Media { get; }
             public Representation Representation { get; }
+            public bool IsPrepared { get; internal set; }
 
             public bool IsCompatibleWith(DashStream other)
             {
@@ -98,10 +99,11 @@ namespace JuvoPlayer.DataProviders.Dash
             dashClient.Error += OnStreamError;
         }
 
-        public Representation GetRepresentation()
+        public Representation GetStreamRepresentation()
         {
             return pendingStream?.Representation ?? currentStream?.Representation;
         }
+
 
         public bool UpdateMedia(IList<Media> media)
         {
@@ -241,26 +243,26 @@ namespace JuvoPlayer.DataProviders.Dash
                 if (pipelineStarted)
                     return;
 
+                if (newStream != null)
+                {
+                    currentStream = newStream;
+
+                    Logger.Info($"{streamType}: Dash pipeline start.");
+                    Logger.Info($"{streamType}: Media: {currentStream.Media}");
+                    Logger.Info($"{streamType}: {currentStream.Representation}");
+
+                    dashClient.SetRepresentation(currentStream.Representation);
+                    ParseDrms(currentStream.Media);
+                }
+
+                if (!trimmOffset.HasValue)
+                    trimmOffset = currentStream.Representation.AlignedTrimmOffset;
+
+                demuxer.StartForExternalSource(newStream != null ? InitializationMode.Full : InitializationMode.Minimal);
+                dashClient.Start();
+
                 pipelineStarted = true;
             }
-
-            if (newStream != null)
-            {
-                currentStream = newStream;
-
-                Logger.Info($"{streamType}: Dash pipeline start.");
-                Logger.Info($"{streamType}: Media: {currentStream.Media}");
-                Logger.Info($"{streamType}: {currentStream.Representation}");
-
-                dashClient.SetRepresentation(currentStream.Representation);
-                ParseDrms(currentStream.Media);
-            }
-
-            if (!trimmOffset.HasValue)
-                trimmOffset = currentStream.Representation.AlignedTrimmOffset;
-
-            demuxer.StartForExternalSource(newStream != null ? InitializationMode.Full : InitializationMode.Minimal);
-            dashClient.Start();
         }
 
         /// <summary>
@@ -543,7 +545,7 @@ namespace JuvoPlayer.DataProviders.Dash
             StreamConfigReady?.Invoke(config);
         }
 
-        public bool CanStreamSwitch()
+        public bool CanSwitchStream()
         {
             // Allow adaptive stream switching if Client is in correct state and 
             // Adaptive Streaming enabled.
