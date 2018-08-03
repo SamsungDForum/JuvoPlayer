@@ -346,21 +346,21 @@ namespace JuvoPlayer.DataProviders.Dash
             video.AlignedTrimmOffset = trimmOffset;
         }
 
-        private static (bool, List<Media> media, Representation representation) ProcessMedia(Period period, MediaType type, ManifestParameters manifestParams, DashMediaPipeline pipeline)
+        private static (List<Media> media, Representation representation) ProcessMedia(Period period, MediaType type, ManifestParameters manifestParams, DashMediaPipeline pipeline)
         {
             var media = period.Sets.Where(o => o.Type.Value == type).ToList();
             if (!media.Any())
-                return (true, media, null);
+                return (media, null);
 
             foreach (var entry in media)
             {
                 entry.SetDocumentParameters(manifestParams);
             }
 
-            var prepared = pipeline.UpdateMedia(media);
+            pipeline.UpdateMedia(media);
             var representation = pipeline.GetStreamRepresentation();
 
-            return (prepared, media, representation);
+            return (media, representation);
         }
 
         private bool UpdateMedia(Document document, Period period)
@@ -381,22 +381,20 @@ namespace JuvoPlayer.DataProviders.Dash
             List<Media> videos = null;
             Representation audioRepresentation = null;
             Representation videoRepresentation = null;
-            bool videoPrepared = false;
-            bool audioPrepared = false;
 
             Parallel.Invoke(
                 () =>
                 {
-                    (audioPrepared, audios, audioRepresentation) = ProcessMedia(period, MediaType.Audio, manifestParams, audioPipeline);
+                    (audios, audioRepresentation) = ProcessMedia(period, MediaType.Audio, manifestParams, audioPipeline);
                 },
                 () =>
                 {
-                    (videoPrepared, videos, videoRepresentation) = ProcessMedia(period, MediaType.Video, manifestParams, videoPipeline);
+                    (videos, videoRepresentation) = ProcessMedia(period, MediaType.Video, manifestParams, videoPipeline);
                 });
 
-            if (!audioPrepared || !videoPrepared)
+            if (audioRepresentation==null || videoRepresentation==null)
             {
-                Logger.Error($"Failed to prepare A/V streams. Video={videoPrepared} Audio={audioPrepared}");
+                Logger.Error($"Failed to prepare A/V streams. Video={videoRepresentation != null} Audio={audioRepresentation!=null}");
                 OnStopped();
                 OnStreamError("Failed to prepare A/V streams");
                 return false;

@@ -342,8 +342,12 @@ namespace MpdParser.Node.Dynamic
             //
             if (IndexSegment == null)
                 return true;
-
-            DownloadIndexOnce();
+            try
+            {
+                DownloadIndexOnce();
+            }
+            catch (WebException)
+            { /* Ignore HTTP errors. If failed, segments_.Count == 0 */}
 
             // If there are no segments, signall as not ready
             return (segments_.Count > 0);

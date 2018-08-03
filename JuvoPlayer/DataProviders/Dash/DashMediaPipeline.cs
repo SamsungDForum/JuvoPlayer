@@ -8,6 +8,7 @@ using JuvoPlayer.Common.Utils;
 using JuvoPlayer.Demuxers;
 using JuvoPlayer.Drms.Cenc;
 using MpdParser;
+using System.Threading;
 
 namespace JuvoPlayer.DataProviders.Dash
 {
@@ -75,7 +76,17 @@ namespace JuvoPlayer.DataProviders.Dash
         private bool disableAdaptiveStreaming;
 
         private DashStream currentStream;
-        private DashStream pendingStream;
+        private DashStream _pendingStreamStorage;
+        private DashStream pendingStream
+        {
+            get { return _pendingStreamStorage; }
+            set
+            {
+                _pendingStreamStorage = InitializePendingStream(value);
+            }
+        }
+
+        private readonly Object switchStreamLock = new Object();
         private List<DashStream> availableStreams = new List<DashStream>();
 
         private static readonly TimeSpan SegmentEps = TimeSpan.FromSeconds(0.5);
@@ -99,22 +110,33 @@ namespace JuvoPlayer.DataProviders.Dash
             dashClient.Error += OnStreamError;
         }
 
+        private DashStream InitializePendingStream(DashStream newStream)
+        {
+            if (newStream == null)
+                return null;
+
+            // TODO: Make PrepareStream async or async with delayed status notification
+            //
+            if( newStream.Representation.Segments.PrepeareStream() )
+                return newStream;
+
+            Logger.Warn($"{streamType}: Stream preparation failed! Content will not be played.");
+
+            return null;
+        }
+
         public Representation GetStreamRepresentation()
         {
             return pendingStream?.Representation ?? currentStream?.Representation;
         }
 
-
-        public bool UpdateMedia(IList<Media> media)
+        public void UpdateMedia(IList<Media> media)
         {
             if (media == null)
                 throw new ArgumentNullException(nameof(media), "media cannot be null");
 
             if (media.Any(o => o.Type.Value != ToMediaType(streamType)))
                 throw new ArgumentException("Not compatible media found");
-
-            DashStream tmpStream = null;
-            bool res = false;
 
             if (currentStream != null)
             {
@@ -126,10 +148,8 @@ namespace JuvoPlayer.DataProviders.Dash
 
                     // Prepeare set media before assigning it to "pending stram" to assure
                     // ready to use stream is set. Otherwise adopt to net condition may snach it and send it to DashClient
-                    tmpStream = new DashStream(currentMedia, currentRepresentation);
-                    res = tmpStream.Representation.Segments.PrepeareStream();
-                    pendingStream = tmpStream;
-                    return res;
+                    pendingStream = new DashStream(currentMedia, currentRepresentation);
+                    return;
                 }
             }
 
@@ -138,13 +158,7 @@ namespace JuvoPlayer.DataProviders.Dash
             // get first element of sorted array 
             var representation = defaultMedia.Representations.OrderByDescending(o => o.Bandwidth).First();
 
-            // Prepeare set media before assigning it to "pending stram" to assure
-            // ready to use stream is set. Otherwise adopt to net condition may snach it and send it to DashClient
-            tmpStream = new DashStream(defaultMedia, representation);
-            res = tmpStream.Representation.Segments.PrepeareStream();
-            pendingStream = tmpStream;
-
-            return res;
+            pendingStream = new DashStream(defaultMedia, representation);
         }
 
         public void AdaptToNetConditions()
@@ -178,26 +192,47 @@ namespace JuvoPlayer.DataProviders.Dash
 
         public void SwitchStreamIfNeeded()
         {
-            if (pendingStream == null)
+            // Access serialization is needed.
+            // SwitchStreamIfNeeded can be called from DashDataProvider or
+            // timer based manifest reload (different threads) which can cause
+            // null object reference if pendingStream is nulled AFTER another thread
+            // passed pendingStream null check.
+            //
+            // Stream switching does not need to be serialized. If stream switch is already
+            // in progress, next stream switch can safly be ignored, thus use of monitor
+            // rather then lock.
+            //
+
+            if (!Monitor.TryEnter(switchStreamLock))
                 return;
+            
+            try
+            { 
+                if (pendingStream == null)
+                    return;
 
-            Logger.Info($"{streamType}");
+                Logger.Info($"{streamType}");
 
-            if (currentStream == null)
-            {
-                StartPipeline(pendingStream);
-            }
-            else if (currentStream.IsCompatibleWith(pendingStream))
-            {
-                UpdatePipeline(pendingStream);
-            }
-            else
-            {
-                ResetPipeline();
-                StartPipeline(pendingStream);
-            }
+                if (currentStream == null)
+                {
+                    StartPipeline(pendingStream);
+                }
+                else if (currentStream.IsCompatibleWith(pendingStream))
+                {
+                    UpdatePipeline(pendingStream);
+                }
+                else
+                {
+                    ResetPipeline();
+                    StartPipeline(pendingStream);
+                }
 
-            pendingStream = null;
+                pendingStream = null;
+            }
+            finally
+            {
+                Monitor.Exit(switchStreamLock);
+            }
         }
 
         private void GetAvailableStreams(IEnumerable<Media> media, Media defaultMedia)
@@ -350,21 +385,34 @@ namespace JuvoPlayer.DataProviders.Dash
 
             var newMedia = availableStreams[stream.Id].Media;
             var newRepresentation = availableStreams[stream.Id].Representation;
-            var newStream = new DashStream(newMedia, newRepresentation);
 
-            if (currentStream.Media.Type.Value != newMedia.Type.Value)
-                throw new ArgumentException("wrong media type");
-
-            if (!newStream.Representation.Segments.PrepeareStream())
+            // Use pendingStream in order to initialize stream for playback.
+            // pendingStream is shared with SwitchStreamIfNeeded, thus locking is required
+            // to avoid theft of pendingStream value;
+            //
+            Monitor.Enter(switchStreamLock);
+            try
             {
-                Logger.Warn($"{streamType}: Failed to prepare stream. New stream IS NOT set. Continuing playing previous");
-                return;
+                pendingStream = new DashStream(newMedia, newRepresentation);
+
+                if (pendingStream == null)
+                {
+                    Logger.Warn($"{streamType}: Failed to prepare stream. New stream IS NOT set. Continuing playing previous");
+                    return;
+                }
+
+                if (currentStream.Media.Type.Value != newMedia.Type.Value)
+                    throw new ArgumentException("wrong media type");
+
+                disableAdaptiveStreaming = true;
+
+                ResetPipeline();
+                StartPipeline(pendingStream);
             }
-
-            disableAdaptiveStreaming = true;
-
-            ResetPipeline();
-            StartPipeline(newStream);
+            finally
+            {
+                Monitor.Exit(switchStreamLock);
+            }
         }
 
         private void ResetPipeline()
