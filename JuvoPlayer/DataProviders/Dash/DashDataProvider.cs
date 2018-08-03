@@ -516,21 +516,17 @@ namespace JuvoPlayer.DataProviders.Dash
                 {
                     audioPipeline.OnTimeUpdated(time);
 
-                    if (audioPipeline.CanSwitchStream())
-                    {
-                        audioPipeline.AdaptToNetConditions();
-                        audioPipeline.SwitchStreamIfNeeded();
-                    }
+                    audioPipeline.AdaptToNetConditions();
+                    audioPipeline.SwitchStreamIfNeeded();
+
                 },
                 () =>
                 {
                     videoPipeline.OnTimeUpdated(time);
 
-                    if (videoPipeline.CanSwitchStream())
-                    {
-                        videoPipeline.AdaptToNetConditions();
-                        videoPipeline.SwitchStreamIfNeeded();
-                    }
+                    videoPipeline.AdaptToNetConditions();
+                    videoPipeline.SwitchStreamIfNeeded();
+
                 });
         }
 

@@ -208,7 +208,7 @@ namespace JuvoPlayer.DataProviders.Dash
             
             try
             { 
-                if (pendingStream == null)
+                if (pendingStream == null || !CanSwitchStream())
                     return;
 
                 Logger.Info($"{streamType}");
@@ -386,16 +386,19 @@ namespace JuvoPlayer.DataProviders.Dash
             var newMedia = availableStreams[stream.Id].Media;
             var newRepresentation = availableStreams[stream.Id].Representation;
 
-            // Use pendingStream in order to initialize stream for playback.
-            // pendingStream is shared with SwitchStreamIfNeeded, thus locking is required
-            // to avoid theft of pendingStream value;
-            //
+            // Share lock with switchStreamIfNeeded. Change stream may happen on a separate thread.
+            // As such, we do not want 2 starts happening
+            // - One as a manual stream selection
+            // - One as a adaptive stream switching.
+            // 
             Monitor.Enter(switchStreamLock);
             try
             {
-                pendingStream = new DashStream(newMedia, newRepresentation);
+                // Stream needs manual preparation as it is NOT passed through pendingStream
+                //
+                var newStream = InitializePendingStream(new DashStream(newMedia, newRepresentation));
 
-                if (pendingStream == null)
+                if (newStream == null)
                 {
                     Logger.Warn($"{streamType}: Failed to prepare stream. New stream IS NOT set. Continuing playing previous");
                     return;
@@ -407,7 +410,7 @@ namespace JuvoPlayer.DataProviders.Dash
                 disableAdaptiveStreaming = true;
 
                 ResetPipeline();
-                StartPipeline(pendingStream);
+                StartPipeline(newStream);
             }
             finally
             {
