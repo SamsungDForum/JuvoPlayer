@@ -25,15 +25,9 @@ namespace MpdParser
 
         public Node.IRepresentationStream Segments { get; }
 
-        public uint? AlignedStartSegmentID { get; internal set; }
+        public uint? AlignedStartSegmentID { get; set; }
 
-        public TimeSpan? AlignedTrimmOffset { get; internal set; }
-
-        public void SetAlignedStartParameters(uint? startSegmentId, TimeSpan? trimmOffset)
-        {
-            AlignedStartSegmentID = startSegmentId;
-            AlignedTrimmOffset = trimmOffset;
-        }
+        public TimeSpan? AlignedTrimmOffset { get; set; }
 
         public void SetDocumentParameters(ManifestParameters docParams)
         {

@@ -7,18 +7,10 @@ using JuvoLogger;
 using JuvoPlayer.Common;
 using JuvoPlayer.Subtitles;
 using MpdParser;
-using AlignmentEntry = System.Tuple<uint?, System.TimeSpan, uint?, System.TimeSpan, System.TimeSpan>;
+//using AlignmentEntry = System.Tuple<uint?, System.TimeSpan, uint?, System.TimeSpan, System.TimeSpan>;
 
 namespace JuvoPlayer.DataProviders.Dash
 {
-    internal class AlignmentEntryComparer : IComparer<AlignmentEntry>
-    {
-        public int Compare(AlignmentEntry x, AlignmentEntry y)
-        {
-            return (int)(x.Item5.Ticks - y.Item5.Ticks);
-        }
-    }
-
     internal class DashDataProvider : IDataProvider
     {
         private const string Tag = "JuvoPlayer";
@@ -31,9 +23,6 @@ namespace JuvoPlayer.DataProviders.Dash
         private CuesMap cuesMap;
         private TimeSpan currentTime = TimeSpan.Zero;
 
-        private static readonly int maxManifestDownloadRetries = 3;
-        private static readonly TimeSpan manifestReloadDelay = TimeSpan.FromMilliseconds(1500);
-
         public event ClipDurationChanged ClipDurationChanged;
         public event DRMInitDataFound DRMInitDataFound;
         public event SetDrmConfiguration SetDrmConfiguration;
@@ -44,12 +33,27 @@ namespace JuvoPlayer.DataProviders.Dash
         private bool disposed;
         private bool isDynamic;
 
-        private DateTime? documentPublishTime;
-
         private Timer manifestReloadTimer;
-        private int manifestDownloadRetries;
+        private static readonly TimeSpan manifestReloadDelay = TimeSpan.FromMilliseconds(1500);
+        private static readonly TimeSpan defaultTimerPeriod = TimeSpan.FromMilliseconds(-1);
 
-        private readonly SemaphoreSlim updateInProgressLock = new SemaphoreSlim(1);
+        internal struct AlignmentEntry
+        {
+            public uint? VideoSegmentID;
+            public TimeSpan VideoSegmentStart;
+            public uint? AudioSegmentID;
+            public TimeSpan AudioSegmentStart;
+            public TimeSpan AudioVideoStartDiff;
+
+            public AlignmentEntry(uint? vSegId, TimeSpan vStart, uint? aSegId, TimeSpan aStart)
+            {
+                VideoSegmentID = vSegId;
+                VideoSegmentStart = vStart;
+                AudioSegmentID = aSegId;
+                AudioSegmentStart = aStart;
+                AudioVideoStartDiff = (VideoSegmentStart - AudioSegmentStart).Duration();
+            }
+        };
 
         public DashDataProvider(
             DashManifest manifest,
@@ -71,68 +75,31 @@ namespace JuvoPlayer.DataProviders.Dash
             videoPipeline.StreamConfigReady += OnStreamConfigReady;
             videoPipeline.PacketReady += OnPacketReady;
             videoPipeline.StreamError += OnStreamError;
+
+            manifestReloadTimer = new Timer(OnManifestReload, null, Timeout.Infinite, Timeout.Infinite);
         }
 
         private async void OnManifestReload(Object state)
         {
             Logger.Info("");
 
-            if (!updateInProgressLock.Wait(0))
+            var updateResult = await UpdateManifest();
+
+            // Failed
+            if (updateResult == false)
+            {
+                OnStopped();
+                OnStreamError("Manifest download failed");
                 return;
-
-            try
-            {
-                // Stale event check.
-                if (manifestReloadTimer == null)
-                    return;
-
-                var updateResult = await UpdateManifest();
-
-                // Failed update. Retry with default timeout
-                if (updateResult == false)
-                {
-                    // Check if number of retries exceeds predefined limit.
-                    // If it does, stop playback and raise error.
-                    manifestDownloadRetries++;
-                    if (manifestDownloadRetries > maxManifestDownloadRetries)
-                    {
-                        OnStopped();
-                        OnStreamError("Manifest download failed");
-                        return;
-                    }
-
-                    manifestReloadTimer?.Change(manifestReloadDelay, TimeSpan.FromMilliseconds(-1));
-                    return;
-                }
-
-                // Got manifest. Reset retry counter
-                manifestDownloadRetries = 0;
-
-                Parallel.Invoke(() => audioPipeline.SwitchStreamIfNeeded(),
-                                () => videoPipeline.SwitchStreamIfNeeded());
-
-                if (manifest.CurrentDocument.IsDynamic)
-                {
-                    var reloadTime = manifest.CurrentDocument.MinimumUpdatePeriod ?? manifestReloadDelay;
-
-                    // For zero minimum update periods (aka, after every chunk) use default reload.
-                    if (reloadTime == TimeSpan.Zero)
-                        reloadTime = manifestReloadDelay;
-
-                    manifestReloadTimer?.Change(reloadTime, TimeSpan.FromMilliseconds(-1));
-                }
-                else
-                {
-                    // Static content. Reloads not needed
-                    manifestReloadTimer?.Dispose();
-                    manifestReloadTimer = null;
-                }
             }
-            catch (Exception e) { }
-            finally
-            {
-                updateInProgressLock.Release();
-            }
+
+            // DashDataProvider operations starts after obtaining a manifest
+            //
+            Parallel.Invoke(() => audioPipeline.SwitchStreamIfNeeded(),
+                            () => videoPipeline.SwitchStreamIfNeeded());
+
+            manifestReloadTimer.Change(manifest.GetReloadDueTime(), defaultTimerPeriod);
+
         }
 
         private void OnDRMInitDataFound(DRMInitData drmData)
@@ -212,7 +179,7 @@ namespace JuvoPlayer.DataProviders.Dash
         {
             if (!IsSeekingSupported())
                 return;
-               
+
             Parallel.Invoke(() => videoPipeline.Pause(), () => audioPipeline.Pause());
             Parallel.Invoke(() => videoPipeline.Seek(time), () => audioPipeline.Seek(time));
             Parallel.Invoke(() => videoPipeline.Resume(), () => audioPipeline.Resume());
@@ -220,17 +187,10 @@ namespace JuvoPlayer.DataProviders.Dash
 
         public void OnStopped()
         {
-            //Before disabling manifest update timer, make sure it is not in the middle of an update
-            Logger.Info("Waiting for manifest upates to complete");
-            updateInProgressLock.Wait();
-            Logger.Info("Manifest updates completed");
+            manifestReloadTimer.Change(Timeout.Infinite, Timeout.Infinite);
 
-            manifestReloadTimer?.Change(Timeout.Infinite, Timeout.Infinite);
-            manifestReloadTimer?.Dispose();
-            manifestReloadTimer = null;
-            
             Parallel.Invoke(() => videoPipeline.Stop(), () => audioPipeline.Stop());
-            updateInProgressLock.Release();
+
         }
 
         public bool IsSeekingSupported()
@@ -260,16 +220,14 @@ namespace JuvoPlayer.DataProviders.Dash
         {
             Logger.Info("Dash start.");
 
-            // Clear manifest publish time & download retry counter
-            documentPublishTime = null;
-            manifestDownloadRetries = 0;
-
-            manifestReloadTimer = new Timer(OnManifestReload, null, Timeout.Infinite, Timeout.Infinite);
+            // Start reload timer. It will trigger DashDataProvider operations after obtaining
+            // a vaild manifest.
+            //
             manifestReloadTimer.Change(0, Timeout.Infinite);
         }
 
         /// <summary>
-        /// Function aligns Audio & Video Start Segments for dynamic content.
+        /// Function aligns Audio & Video Start Segments for dynamic & static content content.
         /// Static content no alignment is done, just selection of start segments and trimm offsets
         /// </summary>
         /// <remarks>
@@ -299,38 +257,38 @@ namespace JuvoPlayer.DataProviders.Dash
         /// <param name="audio">Audio representation</param>
         /// <param name="video">Video Representation</param>
         /// <param name="isDynamic">Static/Dynamic flag</param>
-        /// <param name="logger">Logger object for debug output. Optional</param>
-        private static void AlignStartParameters(Representation audio, Representation video, bool isDynamic, ILogger logger = null)
+        private static void AlignStartParameters(Representation audio, Representation video, bool isDynamic)
         {
             if (isDynamic)
-                AlignDynamicStartParameters(audio, video, logger);
+                AlignDynamicStartParameters(audio, video);
             else
-                AlignStaticStartParameters(audio, video, logger);
+                AlignStaticStartParameters(audio, video);
         }
 
-        private static void AlignStaticStartParameters(Representation audio, Representation video, ILogger logger = null)
+        private static void AlignStaticStartParameters(Representation audio, Representation video)
         {
             var videoStartSegment = video.Segments.StartSegmentId();
             var audioStartSegment = audio.Segments.StartSegmentId();
             var videoTimeRange = video.Segments.SegmentTimeRange(videoStartSegment);
-            var audioTimeRange = video.Segments.SegmentTimeRange(audioStartSegment);
+            var audioTimeRange = audio.Segments.SegmentTimeRange(audioStartSegment);
 
             var trimmOffset = videoTimeRange.Start < audioTimeRange.Start ? videoTimeRange.Start : audioTimeRange.Start;
 
             //Set aligned start data
-            audio.SetAlignedStartParameters(audioStartSegment, trimmOffset);
-            video.SetAlignedStartParameters(videoStartSegment, trimmOffset);
-            logger?.Info($"Segment Alignment: Video={videoStartSegment} Audio={audioStartSegment} TrimmOffset={trimmOffset}");
+            audio.AlignedStartSegmentID = audioStartSegment;
+            audio.AlignedTrimmOffset = trimmOffset;
+            video.AlignedStartSegmentID = videoStartSegment;
+            video.AlignedTrimmOffset = trimmOffset;
         }
 
-        private static void AlignDynamicStartParameters(Representation audio, Representation video, ILogger logger = null)
+        private static void AlignDynamicStartParameters(Representation audio, Representation video)
         {
             var alignments = new List<AlignmentEntry>();
 
             var videoStartSegment = video.Segments.StartSegmentId();
             var videoSegmentId = video.Segments.PreviousSegmentId(videoStartSegment);
 
-            if (!videoStartSegment.HasValue)
+            if (!videoSegmentId.HasValue)
                 videoSegmentId = videoStartSegment;
 
             // Scan 3 video segments starting from videoSegmentId.
@@ -357,10 +315,7 @@ namespace JuvoPlayer.DataProviders.Dash
                     if (audioTimeRange == null)
                         continue;
 
-                    // Store valid data
-                    var timeDiff = (videoTimeRange.Start - audioTimeRange.Start).Duration();
-                    var entry = new AlignmentEntry(videoSegmentId, videoTimeRange.Start, audioSegmentId, audioTimeRange.Start, timeDiff);
-                    alignments.Add(entry);
+                    alignments.Add(new AlignmentEntry(videoSegmentId, videoTimeRange.Start, audioSegmentId, audioTimeRange.Start));
                 }
                 // Get Next video segment
                 videoSegmentId = video.Segments.NextSegmentId(videoSegmentId);
@@ -372,24 +327,41 @@ namespace JuvoPlayer.DataProviders.Dash
             // handle the unexpected
             if (alignments.Count > 0)
             {
-                // Sort all entries by timeDiff and pick smallest
-                var comparer = new AlignmentEntryComparer();
+                var bestAlignment = (from AlignmentEntry in alignments
+                                     orderby AlignmentEntry.AudioVideoStartDiff
+                                     select AlignmentEntry).First();
 
-                alignments.Sort(comparer);
+                videoStartSegment = bestAlignment.VideoSegmentID;
+                audioStartSegment = bestAlignment.AudioSegmentID;
+                var videoStart = bestAlignment.VideoSegmentStart;
+                var audioStart = bestAlignment.AudioSegmentStart;
 
-                videoStartSegment = alignments[0].Item1;
-                audioStartSegment = alignments[0].Item3;
-                var videoStart = alignments[0].Item2;
-                var audioStart = alignments[0].Item4;
                 trimmOffset = videoStart < audioStart ? videoStart : audioStart;
             }
 
             //Set aligned start data
-            audio.SetAlignedStartParameters(audioStartSegment, trimmOffset);
-            video.SetAlignedStartParameters(videoStartSegment, trimmOffset);
-            logger?.Info($"Segment Alignment: Video={videoStartSegment} Audio={audioStartSegment} TrimmOffset={trimmOffset}");
+            audio.AlignedStartSegmentID = audioStartSegment;
+            audio.AlignedTrimmOffset = trimmOffset;
+            video.AlignedStartSegmentID = videoStartSegment;
+            video.AlignedTrimmOffset = trimmOffset;
         }
 
+        private static (bool, List<Media> media, Representation representation) ProcessMedia(Period period, MediaType type, ManifestParameters manifestParams, DashMediaPipeline pipeline)
+        {
+            var media = period.Sets.Where(o => o.Type.Value == type).ToList();
+            if (!media.Any())
+                return (true, media, null);
+
+            foreach (var entry in media)
+            {
+                entry.SetDocumentParameters(manifestParams);
+            }
+
+            var prepared = pipeline.UpdateMedia(media);
+            var representation = pipeline.GetStreamRepresentation();
+
+            return (prepared, media, representation);
+        }
 
         private bool UpdateMedia(Document document, Period period)
         {
@@ -415,31 +387,11 @@ namespace JuvoPlayer.DataProviders.Dash
             Parallel.Invoke(
                 () =>
                 {
-                    audios = period.Sets.Where(o => o.Type.Value == MediaType.Audio).ToList();
-                    if (!audios.Any())
-                        return;
-
-                    foreach (var a in audios)
-                    {
-                        a.SetDocumentParameters(manifestParams);
-                    }
-
-                    audioPrepared = audioPipeline.UpdateMedia(audios);
-                    audioRepresentation = audioPipeline.GetRepresentation();
+                    (audioPrepared, audios, audioRepresentation) = ProcessMedia(period, MediaType.Audio, manifestParams, audioPipeline);
                 },
                 () =>
                 {
-                    videos = period.Sets.Where(o => o.Type.Value == MediaType.Video).ToList();
-                    if (!videos.Any())
-                        return;
-
-                    foreach (var v in videos)
-                    {
-                        v.SetDocumentParameters(manifestParams);
-                    }
-
-                    videoPrepared = videoPipeline.UpdateMedia(videos);
-                    videoRepresentation = videoPipeline.GetRepresentation();
+                    (videoPrepared, videos, videoRepresentation) = ProcessMedia(period, MediaType.Video, manifestParams, videoPipeline);
                 });
 
             if (!audioPrepared || !videoPrepared)
@@ -459,8 +411,9 @@ namespace JuvoPlayer.DataProviders.Dash
 
                 isDynamic = document.IsDynamic;
 
-                AlignStartParameters(videoRepresentation, audioRepresentation, isDynamic, Logger);
+                AlignStartParameters(videoRepresentation, audioRepresentation, isDynamic);
 
+                Logger.Info($"Segment Alignment: Video={videoRepresentation.AlignedStartSegmentID} Audio={audioRepresentation.AlignedStartSegmentID} TrimmOffset={videoRepresentation.AlignedTrimmOffset}");
                 return true;
             }
 
@@ -565,7 +518,7 @@ namespace JuvoPlayer.DataProviders.Dash
                 {
                     audioPipeline.OnTimeUpdated(time);
 
-                    if (audioPipeline.CanStreamSwitch())
+                    if (audioPipeline.CanSwitchStream())
                     {
                         audioPipeline.AdaptToNetConditions();
                         audioPipeline.SwitchStreamIfNeeded();
@@ -575,7 +528,7 @@ namespace JuvoPlayer.DataProviders.Dash
                 {
                     videoPipeline.OnTimeUpdated(time);
 
-                    if (videoPipeline.CanStreamSwitch())
+                    if (videoPipeline.CanSwitchStream())
                     {
                         videoPipeline.AdaptToNetConditions();
                         videoPipeline.SwitchStreamIfNeeded();
@@ -586,7 +539,7 @@ namespace JuvoPlayer.DataProviders.Dash
         public async Task<bool> UpdateManifest()
         {
             bool res = true;
-                        
+
             Logger.Info("Updating manifest");
 
             try
@@ -600,11 +553,13 @@ namespace JuvoPlayer.DataProviders.Dash
                 return false;
             }
 
+            // No need to verify "current doc". If there is none, ReloadManifest will return false;
             var tmpDocument = manifest.CurrentDocument;
-            if (tmpDocument == null)
+
+            if (!manifest.HasChanged)
             {
-                Logger.Info("No Manifest.");
-                return false;
+                Logger.Info($"Manifest update skipped. {tmpDocument.PublishTime} Publish Time not changed.");
+                return true;
             }
 
             var tmpPeriod = FindPeriod(tmpDocument, LiveClockTime(currentTime, tmpDocument));
@@ -614,27 +569,7 @@ namespace JuvoPlayer.DataProviders.Dash
                 return false;
             }
 
-            if (!documentPublishTime.HasValue)
-            {
-                documentPublishTime = tmpDocument.PublishTime;
-                res = UpdateMedia(tmpDocument, tmpPeriod);
-            }
-            else
-            {
-                // Update document ONLY it has newer publish time then previously dowloaded manifest
-                // or it is first download.
-                //
-                if (documentPublishTime < tmpDocument.PublishTime)
-                {
-                    documentPublishTime = tmpDocument.PublishTime;
-                    res = UpdateMedia(tmpDocument, tmpPeriod);
-                }
-                else
-                {
-                    Logger.Info($"Manifest update skipped. Current: {tmpDocument.PublishTime} Publish time not newer then {documentPublishTime}");
-                }
-            }
-            
+            res = UpdateMedia(tmpDocument, tmpPeriod);
 
             return res;
         }
@@ -667,7 +602,8 @@ namespace JuvoPlayer.DataProviders.Dash
             videoPipeline?.Dispose();
             videoPipeline = null;
 
-            updateInProgressLock.Dispose();
+            manifestReloadTimer.Change(Timeout.Infinite, Timeout.Infinite);
+            manifestReloadTimer.Dispose();
         }
     }
 }
