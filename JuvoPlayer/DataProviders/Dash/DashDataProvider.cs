@@ -83,7 +83,17 @@ namespace JuvoPlayer.DataProviders.Dash
         {
             Logger.Info("");
 
-            var updateResult = await UpdateManifest();
+            bool updateResult;
+            try
+            {
+                updateResult = await UpdateManifest();
+            }
+            catch (OperationCanceledException)
+            {
+                Logger.Info("Reloading manifest was cancelled");
+                manifestReloadTimer.Change(Timeout.Infinite, Timeout.Infinite);
+                return;
+            }
 
             // Failed
             if (updateResult == false)
@@ -187,7 +197,9 @@ namespace JuvoPlayer.DataProviders.Dash
 
         public void OnStopped()
         {
+            Logger.Info("");
             manifestReloadTimer.Change(Timeout.Infinite, Timeout.Infinite);
+            manifest.CancelReload();
 
             Parallel.Invoke(() => videoPipeline.Stop(), () => audioPipeline.Stop());
 
@@ -392,9 +404,9 @@ namespace JuvoPlayer.DataProviders.Dash
                     (videos, videoRepresentation) = ProcessMedia(period, MediaType.Video, manifestParams, videoPipeline);
                 });
 
-            if (audioRepresentation==null || videoRepresentation==null)
+            if (audioRepresentation == null || videoRepresentation == null)
             {
-                Logger.Error($"Failed to prepare A/V streams. Video={videoRepresentation != null} Audio={audioRepresentation!=null}");
+                Logger.Error($"Failed to prepare A/V streams. Video={videoRepresentation != null} Audio={audioRepresentation != null}");
                 OnStopped();
                 OnStreamError("Failed to prepare A/V streams");
                 return false;
@@ -536,16 +548,9 @@ namespace JuvoPlayer.DataProviders.Dash
 
             Logger.Info("Updating manifest");
 
-            try
-            {
-                if (!await manifest.ReloadManifestTask())
-                    return false;
-            }
-            catch (OperationCanceledException)
-            {
-                Logger.Info("Reloading manifest was cancelled");
+
+            if (!await manifest.ReloadManifestTask())
                 return false;
-            }
 
             // No need to verify "current doc". If there is none, ReloadManifest will return false;
             var tmpDocument = manifest.CurrentDocument;
@@ -588,6 +593,11 @@ namespace JuvoPlayer.DataProviders.Dash
 
             OnStopped();
 
+            using (var waitForTimer = new ManualResetEvent(false))
+            {
+                manifestReloadTimer.Dispose(waitForTimer);
+            }
+
             manifest.Dispose();
 
             audioPipeline?.Dispose();
@@ -596,8 +606,6 @@ namespace JuvoPlayer.DataProviders.Dash
             videoPipeline?.Dispose();
             videoPipeline = null;
 
-            manifestReloadTimer.Change(Timeout.Infinite, Timeout.Infinite);
-            manifestReloadTimer.Dispose();
         }
     }
 }
