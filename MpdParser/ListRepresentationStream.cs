@@ -13,7 +13,6 @@
 
 using System;
 using System.Collections.Generic;
-using JuvoLogger;
 
 namespace MpdParser.Node.Dynamic
 {
@@ -149,26 +148,26 @@ namespace MpdParser.Node.Dynamic
             return MakeSegment(item.Media, item.Range, new TimeRange(Scaled(item.Time), Scaled(item.Duration)));
         }
 
-        private uint? GetStartSegmentDynamic(TimeSpan pointInTime)
+        private uint? GetStartSegmentDynamic()
         {
             var availStart = (Parameters.Document.AvailabilityStartTime ?? DateTime.MinValue);
-            var liveTimeIndex = (pointInTime + Parameters.PlayClock);
+            var liveTimeIndex = Parameters.PlayClock;
 
             return MediaSegmentAtTimeDynamic(liveTimeIndex);
         }
 
-        private uint GetStartSegmentStatic(TimeSpan pointInTime)
+        private uint GetStartSegmentStatic()
         {
             return 0;
         }
 
-        public uint? StartSegmentId(TimeSpan pointInTime, TimeSpan bufferDepth)
+        public uint? StartSegmentId()
         {
             //TODO: Take into account @startNumber if available
             if (Parameters.Document.IsDynamic == true)
-                return GetStartSegmentDynamic(pointInTime);
+                return GetStartSegmentDynamic();
 
-            return GetStartSegmentStatic(pointInTime);
+            return GetStartSegmentStatic();
         }
 
         public Segment MediaSegment(uint? segmentId)
@@ -209,7 +208,6 @@ namespace MpdParser.Node.Dynamic
                 yield return MakeSegment(item);
             }
         }
-
         public uint? NextSegmentId(uint? segmentId)
         {
             var nextSegmentId = segmentId.HasValue ? segmentId + 1 : Count;
@@ -218,6 +216,15 @@ namespace MpdParser.Node.Dynamic
                 return null;
 
             return nextSegmentId;
+        }
+        public uint? PreviousSegmentId(uint? segmentId)
+        {
+            var prevSegmentId = segmentId.HasValue ? (int)segmentId - 1 : -1;
+
+            if (prevSegmentId < 0)
+                return null;
+
+            return (uint?)prevSegmentId;
         }
 
         public uint? NextSegmentId(TimeSpan pointInTime)
@@ -241,5 +248,6 @@ namespace MpdParser.Node.Dynamic
             // So far... nothing to prepare for list representations...
             return true;
         }
+
     }
 }

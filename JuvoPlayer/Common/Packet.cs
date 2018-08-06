@@ -41,6 +41,13 @@ namespace JuvoPlayer.Common
             return (Pts == TimeSpan.Zero && Dts == TimeSpan.Zero);
         }
 
+        public static Packet operator -(Packet data, TimeSpan time)
+        {
+            data.Pts -= time;
+            data.Dts -= time;
+            return data;
+        }
+
         public virtual void Dispose() { }
     }
 }

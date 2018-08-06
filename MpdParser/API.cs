@@ -25,6 +25,10 @@ namespace MpdParser
 
         public Node.IRepresentationStream Segments { get; }
 
+        public uint? AlignedStartSegmentID { get; set; }
+
+        public TimeSpan? AlignedTrimmOffset { get; set; }
+
         public void SetDocumentParameters(ManifestParameters docParams)
         {
             Segments.SetDocumentParameters(docParams);
@@ -266,7 +270,7 @@ namespace MpdParser
         public MimeType Type { get; }
         public Role[] Roles { get; }
         public Representation[] Representations { get; }
-        
+
         public void SetDocumentParameters(ManifestParameters docParams)
         {
             foreach (var rep in Representations)
