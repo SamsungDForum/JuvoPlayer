@@ -25,9 +25,10 @@ namespace JuvoPlayer.DataProviders.Dash
         void Start();
         void Stop();
         void Reset();
-
         void OnTimeUpdated(TimeSpan time);
         void UpdateRepresentation(Representation representation);
+
+        bool CanStreamSwitch();
 
         event Error Error;
     }

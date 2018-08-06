@@ -57,8 +57,6 @@ namespace JuvoPlayer.DataProviders.Dash
 
     internal class WebClientEx : WebClient
     {
-        private static readonly TimeSpan WebRequestTimeout = TimeSpan.FromSeconds(10);
-
         private long? from;
         private long? to;
 
@@ -85,7 +83,6 @@ namespace JuvoPlayer.DataProviders.Dash
             var request = (HttpWebRequest)base.GetWebRequest(address);
             if (request != null)
             {
-                request.Timeout = (int)WebRequestTimeout.TotalMilliseconds;
                 if (to != null && from != null)
                 {
                     request.AddRange((int)from, (int)to);
@@ -163,11 +160,13 @@ namespace JuvoPlayer.DataProviders.Dash
         {
             var segmentId = SegmentId(request.SegmentId);
             Exception lastException;
+
             do
             {
                 try
                 {
                     await Task.Delay(CalculateSleepTime(), cancellationToken);
+
                     return await DownloadDataTaskAsync();
                 }
                 catch (WebException e)
@@ -194,7 +193,7 @@ namespace JuvoPlayer.DataProviders.Dash
                 }
             } while (!request.IgnoreError && downloadErrorCount < 3);
 
-            var message = $"{request.StreamType}: Cannot download segment: {segmentId}.";
+            var message = $"Cannot download segment: {segmentId}.";
 
             throw new DashDownloaderException(request, message, lastException);
         }

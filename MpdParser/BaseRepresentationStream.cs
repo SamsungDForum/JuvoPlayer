@@ -221,15 +221,15 @@ namespace MpdParser.Node.Dynamic
             return (uint)idx;
         }
 
-        private uint? GetStartSegmentDynamic(TimeSpan pointInTime)
+        private uint? GetStartSegmentDynamic()
         {
             var availStart = (parameters.Document.AvailabilityStartTime ?? DateTime.MinValue);
-            var liveTimeIndex = (availStart + pointInTime + parameters.PlayClock) - availStart;
+            var liveTimeIndex = parameters.PlayClock;
 
             return SegmentId(liveTimeIndex);
         }
 
-        private uint? GetStartSegmentStatic(TimeSpan pointInTime)
+        private uint? GetStartSegmentStatic()
         {
             // Non indexed case
             //
@@ -242,16 +242,16 @@ namespace MpdParser.Node.Dynamic
 
         }
 
-        public uint? StartSegmentId(TimeSpan pointInTime, TimeSpan bufferDepth)
+        public uint? StartSegmentId()
         {
             if (media == null)
                 return null;
 
             //TODO: Take into account @startNumber if available
             if (parameters.Document.IsDynamic == true)
-                return GetStartSegmentDynamic(pointInTime);
+                return GetStartSegmentDynamic();
 
-            return GetStartSegmentStatic(pointInTime);
+            return GetStartSegmentStatic();
         }
 
         public IEnumerable<Segment> MediaSegments()
@@ -275,6 +275,22 @@ namespace MpdParser.Node.Dynamic
                 return null;
 
             return nextSegmentId;
+        }
+
+        public uint? PreviousSegmentId(uint? segmentId)
+        {
+            // Non Index case has no next segment. Just one - start
+            // so return no index. 
+            // Sanity check included (all ORs)
+            if (IndexSegment == null || media == null || !segmentId.HasValue)
+                return null;
+
+            var prevSegmentId = (int)segmentId - 1;
+
+            if (prevSegmentId < 0)
+                return null;
+
+            return (uint?)prevSegmentId;
         }
 
         public uint? NextSegmentId(TimeSpan pointInTime)
@@ -326,8 +342,12 @@ namespace MpdParser.Node.Dynamic
             //
             if (IndexSegment == null)
                 return true;
-
-            DownloadIndexOnce();
+            try
+            {
+                DownloadIndexOnce();
+            }
+            catch (WebException)
+            { /* Ignore HTTP errors. If failed, segments_.Count == 0 */}
 
             // If there are no segments, signall as not ready
             return (segments_.Count > 0);

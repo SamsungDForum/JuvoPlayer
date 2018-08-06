@@ -14,8 +14,7 @@ namespace JuvoPlayer.DataProviders.Dash
 
         private Uri Uri { get; }
 
-        private readonly SemaphoreSlim updateInProgressLock = new SemaphoreSlim(1);
-        private readonly HttpClient httpClient = new HttpClient {Timeout = TimeSpan.FromSeconds(3)};
+        private readonly HttpClient httpClient = new HttpClient { Timeout = TimeSpan.FromSeconds(3) };
 
         private CancellationTokenSource cancellationTokenSource;
 
@@ -23,6 +22,13 @@ namespace JuvoPlayer.DataProviders.Dash
         private TimeSpan minimumReloadPeriod = TimeSpan.Zero;
 
         public Document CurrentDocument { get; private set; }
+
+        public bool HasChanged { get; private set; }
+
+        private DateTime? publishTime = null;
+        private static readonly int maxManifestDownloadRetries = 3;
+        private static readonly TimeSpan manifestDownloadDelay = TimeSpan.FromMilliseconds(1000);
+        private static readonly TimeSpan manifestReloadDelay = TimeSpan.FromMilliseconds(1500);
 
         public DashManifest(string url)
         {
@@ -33,7 +39,7 @@ namespace JuvoPlayer.DataProviders.Dash
 
         public bool NeedsReload()
         {
-            return CurrentDocument == null || (CurrentDocument.IsDynamic 
+            return CurrentDocument == null || (CurrentDocument.IsDynamic
                    && (DateTime.UtcNow - lastReloadTime) >= minimumReloadPeriod);
         }
 
@@ -49,41 +55,84 @@ namespace JuvoPlayer.DataProviders.Dash
             }
         }
 
+        public TimeSpan GetReloadDueTime()
+        {
+            // No doc, use default
+            if (CurrentDocument == null)
+                return manifestReloadDelay;
+
+            // Doc is static, return -1 to disable reload Timer
+            if (!CurrentDocument.IsDynamic)
+                return TimeSpan.FromMilliseconds(-1);
+
+            var reloadTime = CurrentDocument.MinimumUpdatePeriod ?? manifestReloadDelay;
+
+            // For zero minimum update periods (aka, after every chunk) use default reload.
+            if (reloadTime == TimeSpan.Zero)
+                reloadTime = manifestReloadDelay;
+
+            return reloadTime;
+        }
+
         public async Task<bool> ReloadManifestTask()
         {
-            if (!updateInProgressLock.Wait(0))
-                return false;
-
             cancellationTokenSource = new CancellationTokenSource();
             var ct = cancellationTokenSource.Token;
 
             try
             {
-                ct.ThrowIfCancellationRequested();
-                lastReloadTime = DateTime.UtcNow;
+                var downloadRetries = maxManifestDownloadRetries;
+                Document newDoc = null;
+                DateTime requestTime = DateTime.MinValue;
+                DateTime downloadTime = DateTime.MinValue;
+                DateTime parseTime = DateTime.MinValue;
 
-                var requestTime = DateTime.UtcNow;
-                var xmlManifest = await DownloadManifest(ct);
-                var downloadTime = DateTime.UtcNow;
+                HasChanged = false;
 
-                if (xmlManifest == null)
+                do
                 {
                     ct.ThrowIfCancellationRequested();
-                    Logger.Info($"Manifest download failure {Uri}");
-                    return false;
-                }
+                    lastReloadTime = DateTime.UtcNow;
 
-                var newDoc = await ParseManifest(xmlManifest);
+                    requestTime = DateTime.UtcNow;
+                    var xmlManifest = await DownloadManifest(ct);
+                    downloadTime = DateTime.UtcNow;
+
+                    if (xmlManifest != null)
+                    {
+                        ct.ThrowIfCancellationRequested();
+
+                        newDoc = await ParseManifest(xmlManifest);
+                        parseTime = DateTime.UtcNow;
+
+                        if (newDoc != null)
+                        {
+                            break;
+                        }
+                        else
+                        {
+                            Logger.Error($"Manifest parse error {Uri}");
+                        }
+                    }
+                    else
+                    {
+                        Logger.Info($"Manifest download failure {Uri}");
+                    }
+
+                    ct.ThrowIfCancellationRequested();
+
+                    if (downloadRetries > 0)
+                    {
+                        await Task.Delay(manifestDownloadDelay, ct);
+                        ct.ThrowIfCancellationRequested();
+                    }
+
+                } while (downloadRetries-- > 0);
+
+                // Done our
                 if (newDoc == null)
-                {
-                    ct.ThrowIfCancellationRequested();
-                    Logger.Error($"Manifest parse error {Uri}");
                     return false;
-                }
 
-                ct.ThrowIfCancellationRequested();
-
-                var parseTime = DateTime.UtcNow;
                 newDoc.DownloadRequestTime = requestTime;
                 newDoc.DownloadCompleteTime = downloadTime;
                 newDoc.ParseCompleteTime = parseTime;
@@ -92,14 +141,21 @@ namespace JuvoPlayer.DataProviders.Dash
 
                 CurrentDocument = newDoc;
 
+
+                // Manifests without publish time are "uncheckable" for updates, assume
+                // always change
+                if (!publishTime.HasValue || !CurrentDocument.PublishTime.HasValue || CurrentDocument.PublishTime > publishTime)
+                {
+                    publishTime = CurrentDocument.PublishTime;
+                    HasChanged = true;
+                }
+
                 return true;
             }
             finally
             {
                 cancellationTokenSource.Dispose();
                 cancellationTokenSource = null;
-
-                updateInProgressLock.Release();
             }
         }
 
@@ -157,7 +213,6 @@ namespace JuvoPlayer.DataProviders.Dash
             // Disposing need to be done only when AvailableWaitHandle is used
             // We dont use it so, dont dispose lock to avoid exceptions when releasing 
             // semaphore in other thread
-            // updateInProgressLock?.Dispose();
             cancellationTokenSource?.Dispose();
         }
     }
