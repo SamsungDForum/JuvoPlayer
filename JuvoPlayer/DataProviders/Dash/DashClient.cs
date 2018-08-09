@@ -159,6 +159,10 @@ namespace JuvoPlayer.DataProviders.Dash
             {
                 if (IsEndOfContent(bufferTime))
                 {
+                    // DashClient termination. This may be happening as part of scheduleDownloadNextTask.
+                    // Clear referce held in scheduleDownloadNextTask to prevent Stop() from trying to wait
+                    // for itself. Otherwise DashClient will try to chase its own tail (deadlock)
+                    scheduleNextTask = null;
                     Stop();
                     return;
                 }
@@ -395,7 +399,7 @@ namespace JuvoPlayer.DataProviders.Dash
             try
             {
                 if (task?.Status > TaskStatus.Created)
-                    task.Wait();
+                    task?.Wait();
 
             }
             catch (AggregateException)
