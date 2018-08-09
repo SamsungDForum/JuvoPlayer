@@ -7,7 +7,6 @@ using JuvoLogger;
 using JuvoPlayer.Common;
 using JuvoPlayer.Subtitles;
 using MpdParser;
-//using AlignmentEntry = System.Tuple<uint?, System.TimeSpan, uint?, System.TimeSpan, System.TimeSpan>;
 
 namespace JuvoPlayer.DataProviders.Dash
 {
@@ -181,6 +180,7 @@ namespace JuvoPlayer.DataProviders.Dash
 
         public async void OnPlayed()
         {
+            Logger.Info("");
             Parallel.Invoke(() => audioPipeline.SwitchStreamIfNeeded(),
                             () => videoPipeline.SwitchStreamIfNeeded());
         }
