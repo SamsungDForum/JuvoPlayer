@@ -17,8 +17,11 @@ namespace JuvoPlayer.DataProviders.Dash
         private const string Tag = "JuvoPlayer";
 
         private static readonly ILogger Logger = LoggerManager.GetInstance().GetLogger(Tag);
-        private static readonly TimeSpan TimeBufferDepthDefault = TimeSpan.FromSeconds(10);
-        private TimeSpan timeBufferDepth = TimeBufferDepthDefault;
+        private static readonly TimeSpan timeBufferDepthDefault = TimeSpan.FromSeconds(10);
+        private static readonly TimeSpan maxBufferTime = TimeSpan.FromSeconds(15);
+        private static readonly TimeSpan minBufferTime = TimeSpan.FromSeconds(5);
+
+        private TimeSpan timeBufferDepth = timeBufferDepthDefault;
 
         private readonly IThroughputHistory throughputHistory;
         private readonly ISharedBuffer sharedBuffer;
@@ -99,19 +102,32 @@ namespace JuvoPlayer.DataProviders.Dash
         public TimeSpan Seek(TimeSpan position)
         {
             currentSegmentId = currentStreams.SegmentId(position);
-            var newTime = currentStreams.SegmentTimeRange(currentSegmentId)?.Start;
+            var seekToTimeRange = currentStreams.SegmentTimeRange(currentSegmentId);
 
             // We are not expecting NULL segments after seek. 
             // Termination will occour after restarting 
-            if (!currentSegmentId.HasValue || !newTime.HasValue)
+            if (seekToTimeRange == null)
+            {
                 LogError($"Seek Pos Req: {position} failed. No segment/TimeRange found");
+                currentTime = position;
+                return currentTime;
+            }
+            else
+            {
+                // Set "current time" to end time of segment which will be downloaded.
+                // Rational: In case of long segment duration and short buffer times we may buffer just one segment.
+                // If IFrame is at the very end of downloaded segment, underlaying player may NOT have enough 
+                // data to generate OnTime events, effectively stopping playback
+                //
+                currentTime = seekToTimeRange.Start + seekToTimeRange.Duration;
 
-            currentTime = newTime ?? position;
-            LogInfo($"Seek Pos Req: {position} Seek to: ({currentTime}) SegId: {currentSegmentId}");
-            return currentTime;
+                LogInfo($"Seek Pos Req: {position} Seek to: ({currentTime}) SegId: {currentSegmentId}");
+
+                return seekToTimeRange.Start;
+            }
         }
 
-        public void Start()
+        public void Start(bool initReloadRequired)
         {
             if (currentRepresentation == null)
                 throw new Exception("currentRepresentation has not been set");
@@ -140,7 +156,7 @@ namespace JuvoPlayer.DataProviders.Dash
             var initSegment = currentStreams.InitSegment;
             if (initSegment != null)
             {
-                DownloadInitSegment(initSegment);
+                DownloadInitSegment(initSegment, initReloadRequired);
             }
             else
             {
@@ -241,12 +257,14 @@ namespace JuvoPlayer.DataProviders.Dash
             return !cancellationTokenSource.IsCancellationRequested;
         }
 
-        private void DownloadInitSegment(Segment segment)
+        private void DownloadInitSegment(Segment segment, bool initReloadRequired)
         {
+            LogInfo($"Forcing INIT segment reload: {initReloadRequired}");
+
             // Grab a copy (its a struct) of cancellation token so it is not referenced through cancellationTokenSource each time.
             var cancelToken = cancellationTokenSource.Token;
 
-            if (initStreamBytes == null)
+            if (initStreamBytes == null || initReloadRequired)
             {
                 downloadDataTask = CreateDownloadTask(segment, true, null, cancelToken);
                 processDataTask = downloadDataTask.ContinueWith(response =>
@@ -551,7 +569,7 @@ namespace JuvoPlayer.DataProviders.Dash
 
         private TimeSpan CalculateDownloadTimeout(Segment segment)
         {
-            var timeout = TimeBufferDepthDefault;
+            var timeout = timeBufferDepthDefault;
             var avarageThroughput = throughputHistory.GetAverageThroughput();
             if (avarageThroughput > 0 && currentRepresentation.Bandwidth.HasValue && segment.Period != null)
             {
@@ -577,52 +595,36 @@ namespace JuvoPlayer.DataProviders.Dash
             tsBuffer = tsBuffer / 2;
 
             // If value is out of range, truncate to max 15 seconds.
-            timeBufferDepth = (tsBuffer == 0) ? TimeBufferDepthDefault : TimeSpan.FromSeconds(tsBuffer);
-            var maxBufferTime = TimeSpan.FromSeconds(15);
-            if (timeBufferDepth > maxBufferTime)
-                timeBufferDepth = maxBufferTime;
+            timeBufferDepth = (tsBuffer == 0) ? timeBufferDepthDefault : TimeSpan.FromSeconds(tsBuffer);
+
         }
 
         private void TimeBufferDepthStatic()
         {
-            // Buffer depth is calculated as:
-            //
-            // Case: AverageSegmentDuration >= manifestBufferTime
-            // timeBufferDepth = AverageSegmentDuration + 10% of AverageSegmentDuration
-            // 
-            // Cases: AverageSegmentDuration < manifestBufferTime
-            // TimeBufferDepth = 
-            // 1 AverageSegmentDuration (one being played out) + 
-            // bufferTime in multiples of AverageSegmentDuration (Rounded down)
-            // 
-            // Buffer time is cliped to maximum of 15 seconds or average segment size.
-            //
             var duration = currentStreams.Duration;
             var segments = currentStreams.Count;
-            var manifestMinBufferDepth = currentStreams.GetDocumentParameters().Document.MinBufferTime ?? TimeBufferDepthDefault;
+            var manifestMinBufferDepth = currentStreams.GetDocumentParameters().Document.MinBufferTime ?? timeBufferDepthDefault;
 
             //Get average segment duration = Total Duration / number of segments.
             var avgSegmentDuration = TimeSpan.FromSeconds(
                     ((double)(duration.Value.TotalSeconds) / (double)segments));
 
-            // Always buffer 1 downloadable segment
-            timeBufferDepth = avgSegmentDuration;
+
+            var portionOfSegmentDuration = TimeSpan.FromSeconds(avgSegmentDuration.TotalSeconds * 0.15);
 
             if (avgSegmentDuration >= manifestMinBufferDepth)
             {
-                timeBufferDepth += TimeSpan.FromSeconds(avgSegmentDuration.TotalSeconds * 0.1);
+                timeBufferDepth = avgSegmentDuration;
+                timeBufferDepth += portionOfSegmentDuration;
             }
             else
             {
-                var muliples = Math.Floor(manifestMinBufferDepth.TotalSeconds / avgSegmentDuration.TotalSeconds);
-                timeBufferDepth += TimeSpan.FromSeconds((avgSegmentDuration.TotalSeconds * muliples));
-            }
+                timeBufferDepth = manifestMinBufferDepth;
 
-            // Truncate buffer time down to 15 seconds max or Average Segment Size 
-            // IF average segment size is larger.
-            var maxBufferTime = TimeSpan.FromSeconds(Math.Max(15, avgSegmentDuration.TotalSeconds));
-            if (timeBufferDepth > maxBufferTime)
-                timeBufferDepth = maxBufferTime;
+                var bufferLeft = manifestMinBufferDepth - portionOfSegmentDuration;
+                if (bufferLeft < portionOfSegmentDuration)
+                    timeBufferDepth += portionOfSegmentDuration;
+            }
 
             LogInfo($"Average Segment Duration: {avgSegmentDuration} Manifest Min. Buffer Time: {manifestMinBufferDepth}");
         }
@@ -633,6 +635,11 @@ namespace JuvoPlayer.DataProviders.Dash
                 TimeBufferDepthDynamic();
             else
                 TimeBufferDepthStatic();
+
+            if (timeBufferDepth > maxBufferTime)
+                timeBufferDepth = maxBufferTime;
+            else if (timeBufferDepth < minBufferTime)
+                timeBufferDepth = minBufferTime;
 
             LogInfo($"TimeBufferDepth: {timeBufferDepth}");
         }

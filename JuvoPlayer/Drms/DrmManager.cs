@@ -20,44 +20,58 @@ namespace JuvoPlayer.Drms
         {
             Logger.Info("UpdateDrmConfiguration");
 
-            var currentDescription = clipDrmConfiguration.FirstOrDefault(o => SchemeEquals(o.Scheme, drmDescription.Scheme));
-            if (currentDescription == null)
+            lock (clipDrmConfiguration)
             {
-                clipDrmConfiguration.Add(drmDescription);
-                return;
+                var currentDescription = clipDrmConfiguration.FirstOrDefault(o => SchemeEquals(o.Scheme, drmDescription.Scheme));
+                if (currentDescription == null)
+                {
+                    clipDrmConfiguration.Add(drmDescription);
+                    return;
+                }
+            
+                if (drmDescription.KeyRequestProperties != null)
+                    currentDescription.KeyRequestProperties = drmDescription.KeyRequestProperties;
+                if (drmDescription.LicenceUrl != null)
+                    currentDescription.LicenceUrl = drmDescription.LicenceUrl;
             }
-
-            if (drmDescription.KeyRequestProperties != null)
-                currentDescription.KeyRequestProperties = drmDescription.KeyRequestProperties;
-            if (drmDescription.LicenceUrl != null)
-                currentDescription.LicenceUrl = drmDescription.LicenceUrl;
         }
 
         public void RegisterDrmHandler(IDrmHandler handler)
         {
-            drmHandlers.Add(handler);
+            lock (drmHandlers)
+            {
+                drmHandlers.Add(handler);
+            }
         }
 
         public IDrmSession CreateDRMSession(DRMInitData data)
         {
             Logger.Info("Create Drmsession");
-            var handler = drmHandlers.FirstOrDefault(o => o.SupportsSystemId(data.SystemId));
-            if (handler == null)
-            {
-                Logger.Info("unknown drm init data");
-                return null;
-            }
 
-            var scheme = handler.GetScheme(data.SystemId);
-            var drmConfiguration = clipDrmConfiguration.FirstOrDefault(o => SchemeEquals(o.Scheme, scheme));
-            if (drmConfiguration == null)
+            lock (drmHandlers)
             {
-                Logger.Info("drm not configured");
-                return null;
-            }
+                var handler = drmHandlers.FirstOrDefault(o => o.SupportsSystemId(data.SystemId));
+                if (handler == null)
+                {
+                    Logger.Info("unknown drm init data");
+                    return null;
+                }
 
-            var session = handler.CreateDRMSession(data, drmConfiguration);
-            return session;
+                var scheme = handler.GetScheme(data.SystemId);
+
+                lock (clipDrmConfiguration)
+                {
+                    var drmConfiguration = clipDrmConfiguration.FirstOrDefault(o => SchemeEquals(o.Scheme, scheme));
+                    if (drmConfiguration == null)
+                    {
+                        Logger.Info("drm not configured");
+                        return null;
+                    }
+
+                    var session = handler.CreateDRMSession(data, drmConfiguration);
+                    return session;
+                }
+            }
         }
 
         private static bool SchemeEquals(string scheme1, string scheme2)
