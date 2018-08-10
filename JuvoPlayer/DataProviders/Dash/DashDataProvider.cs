@@ -518,10 +518,10 @@ namespace JuvoPlayer.DataProviders.Dash
 
         public async void OnTimeUpdated(TimeSpan time)
         {
-            currentTime = time;
-
             if (disposed)
                 return;
+
+            currentTime = time;
 
             Parallel.Invoke(
                 () =>

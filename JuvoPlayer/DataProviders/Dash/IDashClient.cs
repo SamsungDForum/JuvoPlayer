@@ -22,7 +22,7 @@ namespace JuvoPlayer.DataProviders.Dash
     {
         TimeSpan Seek(TimeSpan position);
         void SetRepresentation(Representation representation);
-        void Start();
+        void Start(bool initRequired);
         void Stop();
         void Reset();
         void OnTimeUpdated(TimeSpan time);
