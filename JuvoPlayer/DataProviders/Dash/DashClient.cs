@@ -119,9 +119,14 @@ namespace JuvoPlayer.DataProviders.Dash
                 // If IFrame is at the very end of downloaded segment, underlaying player may NOT have enough 
                 // data to generate OnTime events, effectively stopping playback
                 //
+                // TODO: Add to SMPlayer.cs generation of OnCurrentTime for packets discarded during IFrame seek operation
+                // This will allow DashClient to recieve info on consumed data releasing buffer for further downloads.
+                // Such change will be more consistant and not require modification of current time during seek as it is done
+                // now.
+
                 currentTime = seekToTimeRange.Start + seekToTimeRange.Duration;
 
-                LogInfo($"Seek Pos Req: {position} Seek to: ({currentTime}) SegId: {currentSegmentId}");
+                LogInfo($"Seek Pos Req: {position} Seek to: ({seekToTimeRange.Start}/{currentTime}) SegId: {currentSegmentId}");
 
                 return seekToTimeRange.Start;
             }

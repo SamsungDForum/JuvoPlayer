@@ -96,7 +96,7 @@ namespace JuvoPlayer.Player.SMPlayer
 
         private bool isDisposed;
 
-        bool[] EOSSubmitted = new bool[(int)Common.StreamType.Max];
+        bool[] EOSSubmitted = new bool[(int)Common.StreamType.Count];
 
         // while SMPlayer is reconfigured after calling Seek we cant upload any packets
         // We need to wait for the first OnSeekData event what means that player is ready
@@ -424,7 +424,7 @@ namespace JuvoPlayer.Player.SMPlayer
 
             var trackType = SMPlayerUtils.GetTrackType(packet);
 
-            Logger.Info($"[HQ] send EOS packet: {packet.Pts} ( {trackType} )");
+            Logger.Debug($"[HQ] send EOS packet: {packet.Pts} ( {trackType} )");
 
             playerInstance.SubmitEOSPacket(trackType);
             EOSSubmitted[(int)packet.StreamType] = true;
