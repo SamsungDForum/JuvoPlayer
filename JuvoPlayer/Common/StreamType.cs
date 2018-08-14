@@ -13,12 +13,12 @@
 
 namespace JuvoPlayer.Common
 {
-    public enum StreamType : int
+    public enum StreamType
     {
         Audio = 0,
         Video = 1,
         Subtitle = 2,
         Teletext = 3,
-        Max = 4
+        Count = 4
     }
 }
