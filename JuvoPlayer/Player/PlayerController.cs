@@ -107,8 +107,6 @@ namespace JuvoPlayer.Player
 
         public void OnClipDurationChanged(TimeSpan duration)
         {
-            player.SetDuration(duration);
-
             this.duration = duration;
         }
 
