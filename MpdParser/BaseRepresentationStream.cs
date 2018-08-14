@@ -60,6 +60,9 @@ namespace MpdParser.Node.Dynamic
             AvaliabilityTimeOffset = avaliabilityTimeOffset;
             AvaliabilityTimeComplete = avaliabilityTimeComplete;
 
+            // For indexed segments, this value will be updated during preparation
+            // after obtaining index information.
+            //
             Duration = media?.Period?.Duration;
         }
 
@@ -345,6 +348,15 @@ namespace MpdParser.Node.Dynamic
             try
             {
                 DownloadIndexOnce();
+                if (segments_.Count > 0)
+                {
+                    var lastPeriod = segments_[segments_.Count - 1].Period;
+                    Duration = lastPeriod.Start + lastPeriod.Duration;
+                }
+                else
+                {
+                    Duration = TimeSpan.Zero;
+                }
             }
             catch (WebException)
             { /* Ignore HTTP errors. If failed, segments_.Count == 0 */}

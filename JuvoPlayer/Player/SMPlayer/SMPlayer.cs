@@ -96,6 +96,8 @@ namespace JuvoPlayer.Player.SMPlayer
 
         private bool isDisposed;
 
+        bool[] EOSSubmitted = new bool[(int)Common.StreamType.Count];
+
         // while SMPlayer is reconfigured after calling Seek we cant upload any packets
         // We need to wait for the first OnSeekData event what means that player is ready
         // to get packets
@@ -178,12 +180,20 @@ namespace JuvoPlayer.Player.SMPlayer
 
             while (videoPacketsQueue.TryPeek(out var packet) && !videoSeekReached)
             {
-                if (packet.IsEOS || packet is BufferConfiguration)
+                if (packet.IsEOS)
+                {
+                    SubmitPacket(packet);
+                    ResetPacketsQueue(videoPacketsQueue);
+
+                    Logger.Info("Video EOS packet found during seek. Seeking aborted.");
+                    return true;
+                }
+                else if (packet is BufferConfiguration)
                 {
                     SubmitPacket(packet);
                     RemovePacket(videoPacketsQueue);
 
-                    Logger.Warn("Video EOS/BufferConfiguration packet found during seek!");
+                    Logger.Warn("Video BufferConfiguration packet found during seek!");
                     continue;
                 }
 
@@ -214,12 +224,20 @@ namespace JuvoPlayer.Player.SMPlayer
 
             while (audioPacketsQueue.TryPeek(out var packet) && !audioSeekReached)
             {
-                if (packet.IsEOS || packet is BufferConfiguration)
+                if (packet.IsEOS)
+                {
+                    SubmitPacket(packet);
+                    ResetPacketsQueue(audioPacketsQueue);
+
+                    Logger.Info("Video EOS packet found during seek. Seeking aborted.");
+                    return true;
+                }
+                else if (packet is BufferConfiguration)
                 {
                     SubmitPacket(packet);
                     RemovePacket(audioPacketsQueue);
 
-                    Logger.Warn("Audio EOS/BufferConfiguration packet found during seek!");
+                    Logger.Warn("Audio BufferConfiguration packet found during seek!");
                     continue;
                 }
 
@@ -398,13 +416,24 @@ namespace JuvoPlayer.Player.SMPlayer
             }
         }
 
+
         private void SubmitEOSPacket(Packet packet)
         {
+            if (EOSSubmitted[(int)packet.StreamType])
+                return;
+
             var trackType = SMPlayerUtils.GetTrackType(packet);
 
             Logger.Debug($"[HQ] send EOS packet: {packet.Pts} ( {trackType} )");
 
             playerInstance.SubmitEOSPacket(trackType);
+            EOSSubmitted[(int)packet.StreamType] = true;
+
+            if (EOSSubmitted[(int)Common.StreamType.Audio] && EOSSubmitted[(int)Common.StreamType.Video])
+            {
+                Logger.Info($"Audio & Video EOS processed. Issuing End Of Stream Event");
+                OnEndOfStream();
+            }
         }
 
         private void SubmitStreamConfiguration(BufferConfiguration config)
@@ -480,6 +509,16 @@ namespace JuvoPlayer.Player.SMPlayer
             Logger.Debug($"Done. Audio Packets: {ac} Video Packets {vc}");
         }
 
+        private void ResetPacketsQueue(ConcurrentQueue<Packet> queue)
+        {
+            var queueToClear = queue;
+
+            queue = new ConcurrentQueue<Packet>();
+
+            if (queueToClear != null)
+                Task.Factory.StartNew(() => DisposeEncryptedPackets(queue, null));
+
+        }
         private void ResetPacketsQueues()
         {
             // Prior to resetting data queues, purge existing. Required to remove reference counts 
@@ -702,12 +741,12 @@ namespace JuvoPlayer.Player.SMPlayer
             }
 
             internalState = SMPlayerState.Stopping;
+
             WakeUpSubmitTask();
 
             try
             {
                 submitPacketTask?.Wait();
-                ResetPacketsQueues();
             }
             catch (AggregateException ae)
             {
@@ -723,26 +762,9 @@ namespace JuvoPlayer.Player.SMPlayer
             }
             finally
             {
-                // Calling Stop() when player is in Paused state seems to hang
-                // and require a hard restert in order to release underlying resources.
-                // as such, DO NOT call Stop when in Paused state
-                //
-                var playerState = playerInstance.GetPlayerState();
-                if (playerState != PlayerState.Paused)
-                {
-                    // TODO: Check behaviour of submitting EOS packet when playerState == Paused.
-                    // If it will work, current workaround (not calling Stop()) in paused state will
-                    // no longer be necessary.
-                    //
-                    SubmitEOSPacket(Packet.CreateEOS(Common.StreamType.Audio));
-                    SubmitEOSPacket(Packet.CreateEOS(Common.StreamType.Video));
+                ResetPacketsQueues();
 
-                    playerInstance.Stop();
-                }
-                else
-                {
-                    Logger.Warn($"Player State {playerState}. Stop() call skiped. Stop() in this state hangs");
-                }
+                playerInstance.Stop();
 
                 ResetInternalState();
             }

@@ -115,9 +115,10 @@ namespace JuvoPlayer.DataProviders.Dash
             if (newStream == null)
                 return null;
 
+            Logger.Info($"{streamType}: Preparing stream for playback.");
             // TODO: Make PrepareStream async or async with delayed status notification
             //
-            if( newStream.Representation.Segments.PrepeareStream() )
+            if (newStream.Representation.Segments.PrepeareStream())
                 return newStream;
 
             Logger.Warn($"{streamType}: Stream preparation failed! Content will not be played.");
@@ -205,9 +206,9 @@ namespace JuvoPlayer.DataProviders.Dash
 
             if (!Monitor.TryEnter(switchStreamLock))
                 return;
-            
+
             try
-            { 
+            {
                 if (pendingStream == null || !CanSwitchStream())
                     return;
 
@@ -293,8 +294,10 @@ namespace JuvoPlayer.DataProviders.Dash
                 if (!trimmOffset.HasValue)
                     trimmOffset = currentStream.Representation.AlignedTrimmOffset;
 
-                demuxer.StartForExternalSource(newStream != null ? InitializationMode.Full : InitializationMode.Minimal);
-                dashClient.Start();
+                var fullInitRequired = (newStream != null);
+
+                demuxer.StartForExternalSource(fullInitRequired ? InitializationMode.Full : InitializationMode.Minimal);
+                dashClient.Start(fullInitRequired);
 
                 pipelineStarted = true;
             }
