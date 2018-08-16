@@ -33,6 +33,7 @@ namespace JuvoPlayer.DataProviders
 
         bool IsSeekingSupported();
         void Start();
+        void Stop();
         Cue CurrentCue { get; }
         List<StreamDescription> GetStreamsDescription(StreamType streamType);
 

@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using JuvoLogger;
 using JuvoPlayer.Common;
 using JuvoPlayer.DataProviders;
 using JuvoPlayer.DataProviders.Dash;
@@ -28,6 +29,7 @@ namespace XamarinPlayer.Tizen.Services
         private readonly DataProviderFactoryManager dataProviders = new DataProviderFactoryManager();
         private PlayerState playerState = PlayerState.Idle;
         private string playerStateMessage;
+        private readonly ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
 
         public event PlayerStateChangedEventHandler StateChanged;
 
@@ -156,6 +158,7 @@ namespace XamarinPlayer.Tizen.Services
 
         public void SetSource(object o)
         {
+            Logger.Info("");
             if (!(o is ClipDefinition))
                 return;
             var clip = o as ClipDefinition;
@@ -184,6 +187,8 @@ namespace XamarinPlayer.Tizen.Services
 
         public void Start()
         {
+            Logger.Info("");
+
             playerController.OnPlay();
 
             State = PlayerState.Playing;
@@ -191,6 +196,16 @@ namespace XamarinPlayer.Tizen.Services
 
         public void Stop()
         {
+            if (State == PlayerState.Stopped)
+                return;
+
+            Logger.Info("");
+
+            // Stop data provider first so no new data is fed to player while
+            // it is being stopped.
+            //
+            dataProvider.Stop();
+
             playerController.OnStop();
 
             //prevent the callback from firing multiple times
@@ -200,13 +215,21 @@ namespace XamarinPlayer.Tizen.Services
 
         public void Dispose()
         {
+            Logger.Info("");
+
             DataProviderConnector.Disconnect(playerController, dataProvider);
+
+            // Stop Data provider during dispose AFTER disconnecting data privider and controller.
+            // Events propagated during stop (when disposing) are no longer needed nor required.
+            // Stop is issued here as exit without prior content end does not invoke Stop() method.
+            dataProvider.Stop();
+
             playerController.Dispose();
             dataProvider.Dispose();
 
             Int32 gcMaxGeneration = Math.Max(GC.GetGeneration(playerController), GC.GetGeneration(dataProvider));
             playerController = null;
-            dataProvider     = null;
+            dataProvider = null;
             GC.Collect(gcMaxGeneration, GCCollectionMode.Forced, false, true); //non-blocking (if possible), compacting
         }
     }

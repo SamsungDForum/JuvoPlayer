@@ -132,6 +132,11 @@ namespace JuvoPlayer.DataProviders.HLS
             return false;
         }
 
+        public void Stop()
+        {
+
+        }
+
         public void Start()
         {
             demuxer.StartForUrl(currentClip.Url);
