@@ -75,10 +75,6 @@ namespace JuvoPlayer.Player
         {
             Logger.Info("");
 
-            //Clear streams to remove any pending DRMs
-            foreach (var stream in streams.Values)
-                stream.OnClearStream();
-
             state = PlayerState.Finished;
 
             PlaybackCompleted?.Invoke();
@@ -224,6 +220,7 @@ namespace JuvoPlayer.Player
 
         public void Dispose()
         {
+            Logger.Info("");
             // It is possible that streams waits for some events to complete
             // eg. drm initialization, and after unblock they will call disposed
             // player.

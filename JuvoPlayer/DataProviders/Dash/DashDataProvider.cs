@@ -3,6 +3,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+
 using JuvoLogger;
 using JuvoPlayer.Common;
 using JuvoPlayer.Subtitles;
@@ -32,9 +33,10 @@ namespace JuvoPlayer.DataProviders.Dash
         private bool disposed;
         private bool isDynamic;
 
-        private Timer manifestReloadTimer;
+        private Task manifestReloader;
         private static readonly TimeSpan manifestReloadDelay = TimeSpan.FromMilliseconds(1500);
-        private static readonly TimeSpan defaultTimerPeriod = TimeSpan.FromMilliseconds(-1);
+        private CancellationTokenSource manifestReloadCancellationTokenSource;
+
 
         internal struct AlignmentEntry
         {
@@ -74,41 +76,118 @@ namespace JuvoPlayer.DataProviders.Dash
             videoPipeline.StreamConfigReady += OnStreamConfigReady;
             videoPipeline.PacketReady += OnPacketReady;
             videoPipeline.StreamError += OnStreamError;
-
-            manifestReloadTimer = new Timer(OnManifestReload, null, Timeout.Infinite, Timeout.Infinite);
         }
 
-        private async void OnManifestReload(Object state)
+        private async Task OnManifestReload(CancellationToken cancelToken)
         {
-            Logger.Info("");
-
-            bool updateResult;
+            Logger.Info("Manifest Reloader started.");
             try
             {
-                updateResult = await UpdateManifest();
+                while (true)
+                {
+                    if (!await manifest.ReloadManifestTask(cancelToken))
+                    {
+                        cancelToken.ThrowIfCancellationRequested();
+                        OnStreamError("Manifest download failed");
+                        return;
+                    }
+
+                    var reloadTime = manifest.GetReloadDueTime();
+
+                    if (!manifest.HasChanged)
+                    {
+                        Logger.Info($"Manifest update skipped. {manifest.CurrentDocument.PublishTime} Publish Time not changed.");
+                        await Task.Delay(reloadTime.Value, cancelToken);
+                        continue;
+                    }
+
+                    // Get Current period
+                    var tmpPeriod = FindPeriod(manifest.CurrentDocument, LiveClockTime(currentTime, manifest.CurrentDocument));
+                    if (tmpPeriod == null)
+                    {
+                        if (manifest.CurrentDocument.IsDynamic)
+                        {
+                            Logger.Info("Manifest reload will be retried.");
+                            manifest.ResetPublishTime();
+                            await Task.Delay(reloadTime.Value, cancelToken);
+                            continue;
+                        }
+
+                        cancelToken.ThrowIfCancellationRequested();
+                        OnStreamError("No matching period found in manifest.");
+                        return;
+                    }
+
+                    // Update manifest. On sucess, local isDynamic flag will be valid.
+                    bool updateResult = UpdateMedia(manifest.CurrentDocument, tmpPeriod);
+
+                    // Failed
+                    if (updateResult == false)
+                    {
+                        if (manifest.CurrentDocument.IsDynamic)
+                        {
+                            Logger.Info("Manifest reload will be retried.");
+                            manifest.ResetPublishTime();
+                            await Task.Delay(reloadTime.Value, cancelToken);
+                            continue;
+                        }
+
+                        cancelToken.ThrowIfCancellationRequested();
+                        OnStreamError("Manifest download failed");
+                        return;
+                    }
+
+                    // DashDataProvider operations starts after obtaining a manifest
+                    // Running on a task - no need to parallel
+                    cancelToken.ThrowIfCancellationRequested();
+                    audioPipeline.SwitchStreamIfNeeded();
+                    videoPipeline.SwitchStreamIfNeeded();
+
+                    // Check if reload time is valid. For static document will be null
+                    if (!reloadTime.HasValue)
+                        return;
+
+                    await Task.Delay(reloadTime.Value, cancelToken);
+                }
+
             }
             catch (OperationCanceledException)
             {
-                Logger.Info("Reloading manifest was cancelled");
-                manifestReloadTimer.Change(Timeout.Infinite, Timeout.Infinite);
+                Logger.Info("Manifest reload cancelled");
                 return;
             }
-
-            // Failed
-            if (updateResult == false)
+            finally
             {
-                OnStopped();
-                OnStreamError("Manifest download failed");
-                return;
+                Logger.Info("Manifest Reloader finished.");
             }
+        }
 
-            // DashDataProvider operations starts after obtaining a manifest
+        private void TerminateReloadTask()
+        {
+            // Don't do double termination. Nothing  bad will happen but there is no point :)
             //
-            Parallel.Invoke(() => audioPipeline.SwitchStreamIfNeeded(),
-                            () => videoPipeline.SwitchStreamIfNeeded());
+            if (manifestReloadCancellationTokenSource == null && manifestReloader == null)
+                return;
 
-            manifestReloadTimer.Change(manifest.GetReloadDueTime(), defaultTimerPeriod);
+            Logger.Info("Terminating manifest reloader");
+            manifestReloadCancellationTokenSource?.Cancel();
 
+            try
+            {
+                if (manifestReloader?.Status > TaskStatus.Created)
+                {
+                    Logger.Info($"Awaiting reloader completion {manifestReloader?.Status}");
+                    manifestReloader?.Wait();
+                }
+            }
+            catch (AggregateException) { }
+            finally
+            {
+                manifestReloadCancellationTokenSource?.Dispose();
+                manifestReloadCancellationTokenSource = null;
+                manifestReloader = null;
+                Logger.Info("Manifest Reloader terminated");
+            }
         }
 
         private void OnDRMInitDataFound(DRMInitData drmData)
@@ -178,7 +257,7 @@ namespace JuvoPlayer.DataProviders.Dash
             Logger.Info("");
         }
 
-        public async void OnPlayed()
+        public void OnPlayed()
         {
             Logger.Info("");
             Parallel.Invoke(() => audioPipeline.SwitchStreamIfNeeded(),
@@ -198,11 +277,10 @@ namespace JuvoPlayer.DataProviders.Dash
         public void OnStopped()
         {
             Logger.Info("");
-            manifestReloadTimer.Change(Timeout.Infinite, Timeout.Infinite);
-            manifest.CancelReload();
+
+            TerminateReloadTask();
 
             Parallel.Invoke(() => videoPipeline.Stop(), () => audioPipeline.Stop());
-
         }
 
         public bool IsSeekingSupported()
@@ -228,14 +306,23 @@ namespace JuvoPlayer.DataProviders.Dash
             }
         }
 
-        public async void Start()
+        public void Stop()
         {
-            Logger.Info("Dash start.");
+            Logger.Info("Dash Data Privider stop");
 
-            // Start reload timer. It will trigger DashDataProvider operations after obtaining
-            // a vaild manifest.
+            OnStopped();
+        }
+        public void Start()
+        {
+            Logger.Info("Dash Data Provider start");
+
+            // Start reloader.
             //
-            manifestReloadTimer.Change(0, Timeout.Infinite);
+            manifestReloadCancellationTokenSource = new CancellationTokenSource();
+            var cancelToken = manifestReloadCancellationTokenSource.Token;
+
+            // reload task may run for duration of playback, doing some work every reload period, so start it as long running
+            manifestReloader = Task.Factory.StartNew(() => OnManifestReload(cancelToken), cancelToken, TaskCreationOptions.LongRunning, TaskScheduler.Default);
         }
 
         /// <summary>
@@ -268,8 +355,7 @@ namespace JuvoPlayer.DataProviders.Dash
         /// </remarks>
         /// <param name="audio">Audio representation</param>
         /// <param name="video">Video Representation</param>
-        /// <param name="isDynamic">Static/Dynamic flag</param>
-        private static void AlignStartParameters(Representation audio, Representation video, bool isDynamic)
+        private void AlignStartParameters(Representation audio, Representation video)
         {
             if (isDynamic)
                 AlignDynamicStartParameters(audio, video);
@@ -377,9 +463,6 @@ namespace JuvoPlayer.DataProviders.Dash
 
         private bool UpdateMedia(Document document, Period period)
         {
-            if (disposed)
-                return false;
-
             // TODO:? In case of updates - should we check if A/V is any different from
             // anything we passed down before? Should offload client...
             var manifestParams = new ManifestParameters(document, period)
@@ -394,34 +477,28 @@ namespace JuvoPlayer.DataProviders.Dash
             Representation audioRepresentation = null;
             Representation videoRepresentation = null;
 
-            Parallel.Invoke(
-                () =>
-                {
-                    (audios, audioRepresentation) = ProcessMedia(period, MediaType.Audio, manifestParams, audioPipeline);
-                },
-                () =>
-                {
-                    (videos, videoRepresentation) = ProcessMedia(period, MediaType.Video, manifestParams, videoPipeline);
-                });
+            // Runs on a task - no need to parallel
+            (audios, audioRepresentation) = ProcessMedia(period, MediaType.Audio, manifestParams, audioPipeline);
+            (videos, videoRepresentation) = ProcessMedia(period, MediaType.Video, manifestParams, videoPipeline);
+
 
             if (audioRepresentation == null || videoRepresentation == null)
             {
                 Logger.Error($"Failed to prepare A/V streams. Video={videoRepresentation != null} Audio={audioRepresentation != null}");
-                OnStopped();
                 OnStreamError("Failed to prepare A/V streams");
                 return false;
             }
 
             if (audios.Any() && videos.Any())
             {
+                isDynamic = document.IsDynamic;
+
                 BuildSubtitleInfos(period);
 
                 if (document.MediaPresentationDuration.HasValue && document.MediaPresentationDuration.Value > TimeSpan.Zero)
                     ClipDurationChanged?.Invoke(document.MediaPresentationDuration.Value);
 
-                isDynamic = document.IsDynamic;
-
-                AlignStartParameters(videoRepresentation, audioRepresentation, isDynamic);
+                AlignStartParameters(videoRepresentation, audioRepresentation);
 
                 Logger.Info($"Segment Alignment: Video={videoRepresentation.AlignedStartSegmentID} Audio={audioRepresentation.AlignedStartSegmentID} TrimmOffset={videoRepresentation.AlignedTrimmOffset}");
                 return true;
@@ -516,7 +593,7 @@ namespace JuvoPlayer.DataProviders.Dash
 
         public Cue CurrentCue => cuesMap?.Get(currentTime);
 
-        public async void OnTimeUpdated(TimeSpan time)
+        public void OnTimeUpdated(TimeSpan time)
         {
             if (disposed)
                 return;
@@ -542,41 +619,8 @@ namespace JuvoPlayer.DataProviders.Dash
                 });
         }
 
-        public async Task<bool> UpdateManifest()
-        {
-            bool res = true;
-
-            Logger.Info("Updating manifest");
-
-
-            if (!await manifest.ReloadManifestTask())
-                return false;
-
-            // No need to verify "current doc". If there is none, ReloadManifest will return false;
-            var tmpDocument = manifest.CurrentDocument;
-
-            if (!manifest.HasChanged)
-            {
-                Logger.Info($"Manifest update skipped. {tmpDocument.PublishTime} Publish Time not changed.");
-                return true;
-            }
-
-            var tmpPeriod = FindPeriod(tmpDocument, LiveClockTime(currentTime, tmpDocument));
-            if (tmpPeriod == null)
-            {
-                Logger.Info("No period in Manifest.");
-                return false;
-            }
-
-            res = UpdateMedia(tmpDocument, tmpPeriod);
-
-            return res;
-        }
-
         private void OnStreamError(string errorMessage)
         {
-            // TODO: Review parallelization. Logging, A & V Stop, Stream Erro Invokation
-            // can be safely done in parallel.
             Logger.Error($"Stream Error: {errorMessage}. Terminating pipelines.");
 
             // Bubble up stream error info up to PlayerController which will shut down
@@ -592,11 +636,6 @@ namespace JuvoPlayer.DataProviders.Dash
             disposed = true;
 
             OnStopped();
-
-            using (var waitForTimer = new ManualResetEvent(false))
-            {
-                manifestReloadTimer.Dispose(waitForTimer);
-            }
 
             manifest.Dispose();
 

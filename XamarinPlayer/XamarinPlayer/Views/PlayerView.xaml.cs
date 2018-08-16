@@ -290,6 +290,14 @@ namespace XamarinPlayer.Views
 
         protected override void OnDisappearing()
         {
+            // Moved marking _isPageDisappeared flag to very beginning.
+            // OnPlayerStateChanged event handler may recieve events accessing
+            // _playerService while _playerService is being disposed/nullified
+            // Not something we want...
+            // Reproducable with fast playback start/exit before start completes.
+            //
+            _isPageDisappeared = true;
+
             Device.StartTimer(TimeSpan.FromMilliseconds(0), () =>
             {
                 _playerService?.Dispose();
@@ -298,7 +306,7 @@ namespace XamarinPlayer.Views
                 return false;
             });
             MessagingCenter.Unsubscribe<IKeyEventSender, string>(this, "KeyDown");
-            _isPageDisappeared = true;
+
 
             base.OnDisappearing();
         }
@@ -327,13 +335,20 @@ namespace XamarinPlayer.Views
                 if (!string.IsNullOrEmpty(_errorMessage))
                     await DisplayAlert("Playback Error", _errorMessage, "OK");
 
-                Navigation.RemovePage(this);            
+                Navigation.RemovePage(this);
             });
         }
 
         private void OnPlayerStateChanged(object sender, PlayerStateChangedEventArgs e)
         {
             Logger.Info($"Player State Changed: {e.State}");
+
+            if (_isPageDisappeared)
+            {
+                Logger.Warn($"Page scheduled for disappearing or already dissapeared. Stale Event? Not Processed.");
+                return;
+            }
+
             if (e.State == PlayerState.Stopped)
             {
                 if (_hasFinished)
