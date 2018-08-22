@@ -16,12 +16,25 @@
                 <StackLayout BackgroundColor="#B0101010"
                              Padding="0, 20"
                              x:Name="TopBar">
+                    <AbsoluteLayout HorizontalOptions="End">
+                        <Image x:Name="SettingsImage"
+                               Source="btn_viewer_control_settings_normal.png"
+                               HorizontalOptions="Center"
+                               VerticalOptions="Start"
+                               AbsoluteLayout.LayoutBounds="0,0,1,1" AbsoluteLayout.LayoutFlags="All"/>
+                        <Label x:Name="SettingsButton"
+                                Opacity="0.1"
+                                AbsoluteLayout.LayoutBounds="0,0,1,1" AbsoluteLayout.LayoutFlags="All"
+                                HorizontalOptions="Fill"
+                                VerticalOptions="Fill"
+                                WidthRequest="80"/>
+                    </AbsoluteLayout>
                     <Label x:Name="VideoTitle"
                            Text="{Binding Title}"
                            TextColor="White"
                            FontSize="Large"
-                           HorizontalOptions="CenterAndExpand"
-                           VerticalOptions="Fill"/>
+                           HorizontalOptions="Center"
+                           VerticalOptions="Center"/>
                 </StackLayout>
                 <StackLayout VerticalOptions="FillAndExpand">
                     <BoxView VerticalOptions="FillAndExpand">
@@ -102,13 +115,12 @@
                                    HorizontalOptions="Center"
                                    VerticalOptions="Center"                                    
                                    AbsoluteLayout.LayoutBounds="0,0,1,1" AbsoluteLayout.LayoutFlags="All"/>
-                            <Button x:Name="BackButton"
+                            <Label x:Name="BackButton"
                                     Opacity="0.1"
                                     AbsoluteLayout.LayoutBounds="0,0,1,1" AbsoluteLayout.LayoutFlags="All"
                                     HorizontalOptions="Fill"
                                     VerticalOptions="Fill"
-                                    WidthRequest="100"
-                                    IsEnabled="False"/>
+                                    WidthRequest="100"/>
                         </AbsoluteLayout>
                         <AbsoluteLayout HorizontalOptions="Center">
                             <Image x:Name="PlayImage"
@@ -130,27 +142,12 @@
                                    HorizontalOptions="Center"
                                    VerticalOptions="Center"                                    
                                    AbsoluteLayout.LayoutBounds="0,0,1,1" AbsoluteLayout.LayoutFlags="All"/>
-                            <Button x:Name="ForwardButton"
+                            <Label x:Name="ForwardButton"
                                     Opacity="0.1"
                                     AbsoluteLayout.LayoutBounds="0,0,1,1" AbsoluteLayout.LayoutFlags="All"
                                     HorizontalOptions="Fill"
                                     VerticalOptions="Fill"
-                                    WidthRequest="100"
-                                    IsEnabled="False"/>
-                        </AbsoluteLayout>
-                        <AbsoluteLayout HorizontalOptions="End">
-                            <Image x:Name="SettingsImage"
-                                   Source="btn_viewer_control_settings_normal.png"
-                                   HorizontalOptions="Center"
-                                   VerticalOptions="Center"
-                                   AbsoluteLayout.LayoutBounds="0,0,1,1" AbsoluteLayout.LayoutFlags="All"/>
-                            <Button x:Name="SettingsButton"
-                                    Opacity="0.1"
-                                    AbsoluteLayout.LayoutBounds="0,0,1,1" AbsoluteLayout.LayoutFlags="All"
-                                    HorizontalOptions="Fill"
-                                    VerticalOptions="Fill"
-                                    WidthRequest="80"
-                                    IsEnabled="False"/>
+                                    WidthRequest="100"/>
                         </AbsoluteLayout>
                     </StackLayout>
                 </StackLayout>

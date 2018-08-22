@@ -12,7 +12,7 @@ namespace XamarinPlayer.Views
     public partial class PlayerView : ContentPage
     {
         private static ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
-        private readonly int DefaultTimeout = 5000;
+        private readonly int DefaultTimeout = 10000;
         private readonly TimeSpan UpdateInterval = TimeSpan.FromMilliseconds(100);
         private readonly TimeSpan DefaultSeekTime = TimeSpan.FromSeconds(20);
 
@@ -42,11 +42,11 @@ namespace XamarinPlayer.Views
 
             PlayButton.Clicked += (s, e) => { Play(); };
 
-            BackButton.Clicked += (s, e) => { Rewind(); };
+            //BackButton.Clicked += (s, e) => { Rewind(); };
 
-            ForwardButton.Clicked += (s, e) => { Forward(); };
+            //ForwardButton.Clicked += (s, e) => { Forward(); };
 
-            SettingsButton.Clicked += (s, e) => { HandleSettings(); };
+            //SettingsButton.Clicked += (s, e) => { HandleSettings(); };
 
             PropertyChanged += PlayerViewPropertyChanged;
 
@@ -67,18 +67,25 @@ namespace XamarinPlayer.Views
             // Prevents key handling & fous change in Show().
             // Consider adding a call Focus(Focusable Object) where focus would be set in one place
             // and error status could be handled.
-            if (_hasFinished)
-                return;
+            //Logger.Info($"The KeyEventHandler argument value: {e.ToString()}");
 
+            if (_hasFinished)
+            {
+                return;
+            }
+            
             if (e.Contains("Back"))
             {
+                //If the 'return' button on standard or back arrow on the smart remote control was pressed do react depending on the playback state
                 if (_playerService.State < PlayerState.Playing ||
                     _playerService.State >= PlayerState.Playing && !_isShowing)
                 {
+                    //return to the main menu showing all the video contents list
                     Navigation.RemovePage(this);
                 }
                 else
                 {
+                    //just hide the controll bar and do nothing
                     if (Settings.IsVisible)
                         Settings.IsVisible = false;
                     else
@@ -87,32 +94,46 @@ namespace XamarinPlayer.Views
             }
             else
             {
-                Show();
+                if (_isShowing)
+                {
+                    if (e.Contains("Play") && _playerService.State == PlayerState.Paused)
+                    {
+                        _playerService.Start();
+                    }
+                    else if (e.Contains("Pause") && _playerService.State == PlayerState.Playing)
+                    {
+                        _playerService.Pause();
+                    }
 
-                if (e.Contains("Play") && _playerService.State == PlayerState.Paused)
-                {
-                    _playerService.Start();
+                    if ((e.Contains("Next") || e.Contains("Right")) )
+                    {
+                        Forward();
+                    }
+                    else if ((e.Contains("Rewind") || e.Contains("Left")) )
+                    {
+                        Rewind();
+                    }
+                    else if ((e.Contains("Up")) )
+                    {
+                        HandleSettings();
+                    }
+
+                    //expand the time that playback control bar is on the screen
+                    _hideTime = DefaultTimeout;
                 }
-                else if (e.Contains("Pause") && _playerService.State == PlayerState.Playing)
+                else
                 {
-                    _playerService.Pause();
+                    if (e.Contains("Stop"))
+                    {
+                        Navigation.RemovePage(this);
+                    }
+                    else
+                    {
+                        //Make the playback control bar visible on the screen
+                        Show();
+                    }
                 }
-                else if (e.Contains("Stop"))
-                {
-                    Navigation.RemovePage(this);
-                }
-                else if (e.Contains("Next"))
-                {
-                    Forward();
-                }
-                else if (e.Contains("Rewind"))
-                {
-                    Rewind();
-                }
-                else if (e.Contains("Blue"))
-                {
-                    HandleSettings();
-                }
+
             }
         }
 
