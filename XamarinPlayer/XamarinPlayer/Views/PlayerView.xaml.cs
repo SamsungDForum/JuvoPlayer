@@ -40,13 +40,7 @@ namespace XamarinPlayer.Views
             _playerService = DependencyService.Get<IPlayerService>(DependencyFetchTarget.NewInstance);
             _playerService.StateChanged += OnPlayerStateChanged;
 
-            PlayButton.Clicked += (s, e) => { Play(); };
-
-            //BackButton.Clicked += (s, e) => { Rewind(); };
-
-            //ForwardButton.Clicked += (s, e) => { Forward(); };
-
-            //SettingsButton.Clicked += (s, e) => { HandleSettings(); };
+            PlayButton.Clicked += (s, e) => { Play(); };                      
 
             PropertyChanged += PlayerViewPropertyChanged;
 
@@ -74,7 +68,7 @@ namespace XamarinPlayer.Views
                 return;
             }
             
-            if (e.Contains("Back"))
+            if (e.Contains("Back") && !e.Contains("XF86PlayBack"))
             {
                 //If the 'return' button on standard or back arrow on the smart remote control was pressed do react depending on the playback state
                 if (_playerService.State < PlayerState.Playing ||
@@ -85,22 +79,31 @@ namespace XamarinPlayer.Views
                 }
                 else
                 {
-                    //just hide the controll bar and do nothing
                     if (Settings.IsVisible)
+                    {
                         Settings.IsVisible = false;
+                        PlayButton.IsEnabled = true;
+                        PlayButton.Focus();
+                    }
                     else
                         Hide();
                 }
             }
             else
             {
+
+                if (Settings.IsVisible)
+                {
+                    return;
+                }
+
                 if (_isShowing)
                 {
-                    if (e.Contains("Play") && _playerService.State == PlayerState.Paused)
+                    if ((e.Contains("Play") || e.Contains("XF86PlayBack")) && _playerService.State == PlayerState.Paused)
                     {
                         _playerService.Start();
                     }
-                    else if (e.Contains("Pause") && _playerService.State == PlayerState.Playing)
+                    else if ((e.Contains("Pause") || e.Contains("XF86PlayBack")) && _playerService.State == PlayerState.Playing)
                     {
                         _playerService.Pause();
                     }
@@ -148,6 +151,8 @@ namespace XamarinPlayer.Views
                     BindStreamPicker(VideoQuality, StreamDescription.StreamType.Video);
                 if (Subtitles.ItemsSource == null)
                     BindSubtitleStreamPicker();
+
+                PlayButton.IsEnabled = false;
 
                 AudioTrack.Focus();
             }
