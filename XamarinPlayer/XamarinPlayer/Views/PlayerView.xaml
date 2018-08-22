@@ -6,9 +6,9 @@
     <ContentPage.Content>
         <StackLayout HorizontalOptions="FillAndExpand"
                      VerticalOptions="FillAndExpand">
-            <StackLayout.GestureRecognizers>
+            <StackLayout.GestureRecognizers>                
                 <TapGestureRecognizer
-                        Tapped="OnTapGestureRecognizerViewTapped"/>
+                        Tapped="OnTapGestureRecognizerViewTapped"/>                
             </StackLayout.GestureRecognizers>
             <StackLayout HorizontalOptions="FillAndExpand"
                          VerticalOptions="FillAndExpand"
@@ -38,9 +38,9 @@
                 </StackLayout>
                 <StackLayout VerticalOptions="FillAndExpand">
                     <BoxView VerticalOptions="FillAndExpand">
-                        <BoxView.GestureRecognizers>
+                        <BoxView.GestureRecognizers>                            
                             <TapGestureRecognizer
-                                Tapped="OnTapGestureRecognizerControllerTapped"/>
+                                Tapped="OnTapGestureRecognizerControllerTapped"/>                            
                         </BoxView.GestureRecognizers>
                     </BoxView>
                     <ContentView Padding="30, 30" HorizontalOptions="CenterAndExpand">
@@ -49,19 +49,19 @@
                     <AbsoluteLayout x:Name="Settings" IsVisible="false" BackgroundColor="#B0101010" HorizontalOptions="Center">
                         <StackLayout Padding="20, 10">
                             <StackLayout Orientation="Horizontal">
+                                <Label Text="Audio track" TextColor="White" HorizontalOptions="Start" VerticalOptions="Center" WidthRequest="200" />
+                                <Picker x:Name="AudioTrack" WidthRequest="300">
+                                </Picker>
+                            </StackLayout>
+                            <StackLayout Orientation="Horizontal">
                                 <Label Text="Video quality" TextColor="White" HorizontalOptions="Start" VerticalOptions="Center" WidthRequest="200" />
-                                <Picker x:Name="VideoQuality" WidthRequest="300" >
+                                <Picker x:Name="VideoQuality" WidthRequest="300">
                                     <Picker.Items>
                                         <x:String>auto</x:String>
                                     </Picker.Items>
                                     <Picker.SelectedIndex>0</Picker.SelectedIndex>
                                 </Picker>
-                            </StackLayout>
-                            <StackLayout Orientation="Horizontal">
-                                <Label Text="Audio track" TextColor="White" HorizontalOptions="Start" VerticalOptions="Center" WidthRequest="200" />
-                                <Picker x:Name="AudioTrack" WidthRequest="300">
-                                </Picker>
-                            </StackLayout>
+                            </StackLayout>                           
                             <StackLayout Orientation="Horizontal">
                                 <Label Text="Video speed" TextColor="White" HorizontalOptions="Start" VerticalOptions="Center" WidthRequest="200" />
                                 <Picker x:Name="VideoSpeed" WidthRequest="300" >
