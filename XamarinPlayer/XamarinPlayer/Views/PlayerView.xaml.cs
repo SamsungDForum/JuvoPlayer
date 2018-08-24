@@ -12,7 +12,7 @@ namespace XamarinPlayer.Views
     public partial class PlayerView : ContentPage
     {
         private static ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
-        private readonly int DefaultTimeout = 10000;
+        private readonly int DefaultTimeout = 5000;
         private readonly TimeSpan UpdateInterval = TimeSpan.FromMilliseconds(100);
         private readonly TimeSpan DefaultSeekTime = TimeSpan.FromSeconds(20);
 
@@ -60,8 +60,7 @@ namespace XamarinPlayer.Views
             // TODO: This is a workaround for alertbox & lost focus
             // Prevents key handling & fous change in Show().
             // Consider adding a call Focus(Focusable Object) where focus would be set in one place
-            // and error status could be handled.
-            //Logger.Info($"The KeyEventHandler argument value: {e.ToString()}");
+            // and error status could be handled.            
 
             if (_hasFinished)
             {

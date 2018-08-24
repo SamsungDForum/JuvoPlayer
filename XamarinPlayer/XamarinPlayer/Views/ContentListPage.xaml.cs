@@ -39,8 +39,7 @@ namespace XamarinPlayer.Views
 
             PropertyChanged += ContentChanged;
         }
-
-        // Logger.Info($"The KeyEventHandler argument value: {e.ToString()}");
+                
 
         private void ContentChanged(object sender, PropertyChangedEventArgs e)
         {
