@@ -11,7 +11,6 @@ using JuvoPlayer.Drms;
 using JuvoPlayer.Drms.Cenc;
 using JuvoPlayer.Drms.DummyDrm;
 using JuvoPlayer.Player;
-using JuvoPlayer.Player.MMPlayer;
 using JuvoPlayer.Player.SMPlayer;
 using JuvoPlayer.Utils;
 
