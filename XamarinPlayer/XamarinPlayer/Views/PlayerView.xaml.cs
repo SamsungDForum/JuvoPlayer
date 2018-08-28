@@ -40,13 +40,7 @@ namespace XamarinPlayer.Views
             _playerService = DependencyService.Get<IPlayerService>(DependencyFetchTarget.NewInstance);
             _playerService.StateChanged += OnPlayerStateChanged;
 
-            PlayButton.Clicked += (s, e) => { Play(); };
-
-            BackButton.Clicked += (s, e) => { Rewind(); };
-
-            ForwardButton.Clicked += (s, e) => { Forward(); };
-
-            SettingsButton.Clicked += (s, e) => { HandleSettings(); };
+            PlayButton.Clicked += (s, e) => { Play(); };                      
 
             PropertyChanged += PlayerViewPropertyChanged;
 
@@ -66,53 +60,82 @@ namespace XamarinPlayer.Views
             // TODO: This is a workaround for alertbox & lost focus
             // Prevents key handling & fous change in Show().
             // Consider adding a call Focus(Focusable Object) where focus would be set in one place
-            // and error status could be handled.
-            if (_hasFinished)
-                return;
+            // and error status could be handled.            
 
-            if (e.Contains("Back"))
+            if (_hasFinished)
             {
+                return;
+            }
+            
+            if (e.Contains("Back") && !e.Contains("XF86PlayBack"))
+            {
+                //If the 'return' button on standard or back arrow on the smart remote control was pressed do react depending on the playback state
                 if (_playerService.State < PlayerState.Playing ||
                     _playerService.State >= PlayerState.Playing && !_isShowing)
                 {
+                    //return to the main menu showing all the video contents list
                     Navigation.RemovePage(this);
                 }
                 else
                 {
                     if (Settings.IsVisible)
+                    {
                         Settings.IsVisible = false;
+                        PlayButton.IsEnabled = true;
+                        PlayButton.Focus();
+                    }
                     else
                         Hide();
                 }
             }
             else
             {
-                Show();
 
-                if (e.Contains("Play") && _playerService.State == PlayerState.Paused)
+                if (Settings.IsVisible)
                 {
-                    _playerService.Start();
+                    return;
                 }
-                else if (e.Contains("Pause") && _playerService.State == PlayerState.Playing)
+
+                if (_isShowing)
                 {
-                    _playerService.Pause();
+                    if ((e.Contains("Play") || e.Contains("XF86PlayBack")) && _playerService.State == PlayerState.Paused)
+                    {
+                        _playerService.Start();
+                    }
+                    else if ((e.Contains("Pause") || e.Contains("XF86PlayBack")) && _playerService.State == PlayerState.Playing)
+                    {
+                        _playerService.Pause();
+                    }
+
+                    if ((e.Contains("Next") || e.Contains("Right")) )
+                    {
+                        Forward();
+                    }
+                    else if ((e.Contains("Rewind") || e.Contains("Left")) )
+                    {
+                        Rewind();
+                    }
+                    else if ((e.Contains("Up")) )
+                    {
+                        HandleSettings();
+                    }
+
+                    //expand the time that playback control bar is on the screen
+                    _hideTime = DefaultTimeout;
                 }
-                else if (e.Contains("Stop"))
+                else
                 {
-                    Navigation.RemovePage(this);
+                    if (e.Contains("Stop"))
+                    {
+                        Navigation.RemovePage(this);
+                    }
+                    else
+                    {
+                        //Make the playback control bar visible on the screen
+                        Show();
+                    }
                 }
-                else if (e.Contains("Next"))
-                {
-                    Forward();
-                }
-                else if (e.Contains("Rewind"))
-                {
-                    Rewind();
-                }
-                else if (e.Contains("Blue"))
-                {
-                    HandleSettings();
-                }
+
             }
         }
 
@@ -127,6 +150,8 @@ namespace XamarinPlayer.Views
                     BindStreamPicker(VideoQuality, StreamDescription.StreamType.Video);
                 if (Subtitles.ItemsSource == null)
                     BindSubtitleStreamPicker();
+
+                PlayButton.IsEnabled = false;
 
                 AudioTrack.Focus();
             }
