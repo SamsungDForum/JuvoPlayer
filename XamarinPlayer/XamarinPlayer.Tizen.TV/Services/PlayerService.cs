@@ -204,7 +204,7 @@ namespace XamarinPlayer.Tizen.Services
             // Stop data provider first so no new data is fed to player while
             // it is being stopped.
             //
-            dataProvider.Stop();
+            dataProvider.OnStopped();
 
             playerController.OnStop();
 
@@ -222,7 +222,7 @@ namespace XamarinPlayer.Tizen.Services
             // Stop Data provider during dispose AFTER disconnecting data privider and controller.
             // Events propagated during stop (when disposing) are no longer needed nor required.
             // Stop is issued here as exit without prior content end does not invoke Stop() method.
-            dataProvider.Stop();
+            dataProvider.OnStopped();
 
             playerController.Dispose();
             dataProvider.Dispose();

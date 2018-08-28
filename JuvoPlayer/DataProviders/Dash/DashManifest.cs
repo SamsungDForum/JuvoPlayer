@@ -35,30 +35,20 @@ namespace JuvoPlayer.DataProviders.Dash
                     nameof(url), "Dash manifest url is empty."));
         }
 
-        public bool NeedsReload()
-        {
-            return CurrentDocument == null || (CurrentDocument.IsDynamic
-                   && (DateTime.UtcNow - lastReloadTime) >= minimumReloadPeriod);
-        }
-
         /// <summary>
         /// Function resets document publish time, effectively forcing next reloaded document to be 
         /// processed regardless of publishTime change.
         /// </summary>
-        public void ResetPublishTime()
+        public void ForceHasChangedOnNextReload()
         {
             publishTime = null;
         }
 
-        public TimeSpan? GetReloadDueTime()
+        public TimeSpan GetReloadDueTime()
         {
             // No doc, use default
             if (CurrentDocument == null)
                 return manifestReloadDelay;
-
-            // Doc is static, return -1 to disable reload Timer
-            if (!CurrentDocument.IsDynamic)
-                return null;
 
             var reloadTime = CurrentDocument.MinimumUpdatePeriod ?? manifestReloadDelay;
 
@@ -119,7 +109,7 @@ namespace JuvoPlayer.DataProviders.Dash
 
             } while (downloadRetries-- > 0);
 
-            // Done our
+            // If doc is null, max # of retries have been reached with no sucess
             if (newDoc == null)
                 return false;
 
