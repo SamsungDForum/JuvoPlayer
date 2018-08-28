@@ -42,6 +42,10 @@ namespace JuvoPlayer.Player.SMPlayer
 
     public sealed class SMPlayer : IPlayer, IPlayerEventListener
     {
+        // Enum Order! SMPlayer relies on order of states for Stop() Operation.
+        // as such, Unitnialized & Stopping MUST have a lower number then Ready, Playing, Paused.
+        // If it gets changed, do remember to apply required modification to Stop().
+        //
         private enum SMPlayerState
         {
             Uninitialized,
