@@ -39,6 +39,7 @@ namespace XamarinPlayer.Views
 
             PropertyChanged += ContentChanged;
         }
+                
 
         private void ContentChanged(object sender, PropertyChangedEventArgs e)
         {

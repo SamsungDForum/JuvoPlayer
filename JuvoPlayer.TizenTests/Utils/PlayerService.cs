@@ -62,6 +62,7 @@ namespace JuvoPlayer.TizenTests.Utils
             drmManager.RegisterDrmHandler(new DummyDrmHandler());
 
             var player = new SMPlayer();
+            
             playerController = new PlayerController(player, drmManager);
             playerController.PlaybackCompleted += () =>
             {
