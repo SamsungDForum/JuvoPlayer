@@ -116,6 +116,7 @@ namespace JuvoPlayer.DataProviders.Dash
                 return null;
 
             Logger.Info($"{streamType}: Preparing stream for playback.");
+
             // TODO: Make PrepareStream async or async with delayed status notification
             //
             if (newStream.Representation.Segments.PrepeareStream())
@@ -126,7 +127,7 @@ namespace JuvoPlayer.DataProviders.Dash
             return null;
         }
 
-        public Representation GetStreamRepresentation()
+        public Representation GetRepresentation()
         {
             return pendingStream?.Representation ?? currentStream?.Representation;
         }
@@ -147,7 +148,7 @@ namespace JuvoPlayer.DataProviders.Dash
                 {
                     GetAvailableStreams(media, currentMedia);
 
-                    // Prepeare set media before assigning it to "pending stram" to assure
+                    // Prepeare set media before assigning it to "pending stream" to assure
                     // ready to use stream is set. Otherwise adopt to net condition may snach it and send it to DashClient
                     pendingStream = new DashStream(currentMedia, currentRepresentation);
                     return;
