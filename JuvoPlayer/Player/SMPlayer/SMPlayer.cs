@@ -42,13 +42,17 @@ namespace JuvoPlayer.Player.SMPlayer
 
     public sealed class SMPlayer : IPlayer, IPlayerEventListener
     {
+        // Enum Order! SMPlayer relies on order of states for Stop() Operation.
+        // as such, Unitnialized & Stopping MUST have a lower number then Ready, Playing, Paused.
+        // If it gets changed, do remember to apply required modification to Stop().
+        //
         private enum SMPlayerState
         {
             Uninitialized,
+            Stopping,
             Ready,
             Playing,
             Paused,
-            Stopping
         };
 
         private class BufferConfiguration : Packet
@@ -421,6 +425,8 @@ namespace JuvoPlayer.Player.SMPlayer
 
         private void SubmitEOSPacket(Packet packet)
         {
+            // Prevent multiple EOS submissions by checking submit status
+            // It also prevents generation of multiple OnEndOfStream events
             if (EOSSubmitted[(int)packet.StreamType])
                 return;
 
@@ -554,16 +560,17 @@ namespace JuvoPlayer.Player.SMPlayer
                 && config.StreamType() != Common.StreamType.Video)
                 throw new NotImplementedException();
 
-            if (internalState != SMPlayerState.Uninitialized)
-            {
-                EnqueueStreamConfig(config);
-                return;
-            }
-
-            SetStreamConfigSync(config);
-
             lock (this)
             {
+
+                if (internalState != SMPlayerState.Uninitialized)
+                {
+                    EnqueueStreamConfig(config);
+                    return;
+                }
+
+                SetStreamConfigSync(config);
+
                 if (audioSet && videoSet && internalState == SMPlayerState.Uninitialized)
                     StartEsMode();
             }
@@ -701,7 +708,7 @@ namespace JuvoPlayer.Player.SMPlayer
 
         public void SetDuration(TimeSpan duration)
         {
-            Logger.Debug("");
+            Logger.Warn("DO NOT USE SMPlayer.SetDuration() API. Causes issues with Stop() during FF/REW");
             ThrowIfDisposed();
 
             playerInstance.SetDuration((uint)duration.TotalMilliseconds);
@@ -717,32 +724,24 @@ namespace JuvoPlayer.Player.SMPlayer
 
         public void Stop()
         {
-            Logger.Info("");
+            Logger.Debug($"{internalState}");
+
             ThrowIfDisposed();
 
-            if (internalState == SMPlayerState.Stopping)
+            if (internalState <= SMPlayerState.Stopping)
                 return;
 
+            Logger.Info("Stopping SM Player");
             // Uninitialized state can switch to Ready during SetStreamConfig.
             // Calling stop during SetStreamConfig would silently would silently ignore Stop.
             // Transition from Uninitialized to Ready would occour.
             // Forcing state from uninitialized to Stopping within a lock used in SetStreamConfig
             // should prevent this case
             //
-            // TODO: Change state setting to Interlocked.Exchange/Compare (?)
-            // Will allow to get rid of lock(). 
-            // Note: Interloacked API does not work with enums.
-            //
             lock (this)
             {
-                if (internalState == SMPlayerState.Uninitialized)
-                {
-                    internalState = SMPlayerState.Stopping;
-                    return;
-                }
+                internalState = SMPlayerState.Stopping;
             }
-
-            internalState = SMPlayerState.Stopping;
 
             WakeUpSubmitTask();
 
@@ -917,6 +916,8 @@ namespace JuvoPlayer.Player.SMPlayer
 
         public void Dispose()
         {
+            Logger.Info("");
+
             if (isDisposed)
                 return;
 
