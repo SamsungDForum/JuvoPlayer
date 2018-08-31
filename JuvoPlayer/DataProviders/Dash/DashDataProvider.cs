@@ -46,7 +46,7 @@ namespace JuvoPlayer.DataProviders.Dash
 
             manifestProvider = new DashManifestProvider(manifest, audioPipeline, videoPipeline);
             manifestProvider.StreamError += OnStreamError;
-            manifestProvider.ClipDurationChanged += ClipDurationChanged;
+            manifestProvider.ClipDurationChanged += OnClipDurationChanged;
             manifestProvider.ManifestReady += OnManifestReady;
 
             audioPipeline.DRMInitDataFound += OnDRMInitDataFound;
@@ -60,6 +60,11 @@ namespace JuvoPlayer.DataProviders.Dash
             videoPipeline.StreamConfigReady += OnStreamConfigReady;
             videoPipeline.PacketReady += OnPacketReady;
             videoPipeline.StreamError += OnStreamError;
+        }
+
+        private void OnClipDurationChanged(TimeSpan clipDuration)
+        {
+            ClipDurationChanged?.Invoke(clipDuration);
         }
 
         private void OnManifestReady()
