@@ -47,7 +47,7 @@ namespace JuvoPlayer.DataProviders.Dash
             manifestProvider = new DashManifestProvider(manifest, audioPipeline, videoPipeline);
             manifestProvider.StreamError += OnStreamError;
             manifestProvider.ClipDurationChanged += ClipDurationChanged;
-            manifestProvider.Play += OnPlayed;
+            manifestProvider.ManifestReady += OnManifestReady;
 
             audioPipeline.DRMInitDataFound += OnDRMInitDataFound;
             audioPipeline.SetDrmConfiguration += OnSetDrmConfiguration;
@@ -60,6 +60,14 @@ namespace JuvoPlayer.DataProviders.Dash
             videoPipeline.StreamConfigReady += OnStreamConfigReady;
             videoPipeline.PacketReady += OnPacketReady;
             videoPipeline.StreamError += OnStreamError;
+        }
+
+        private void OnManifestReady()
+        {
+            Logger.Info("");
+            Parallel.Invoke(() => audioPipeline.SwitchStreamIfNeeded(),
+                            () => videoPipeline.SwitchStreamIfNeeded());
+
         }
 
         private void OnDRMInitDataFound(DRMInitData drmData)
@@ -233,7 +241,7 @@ namespace JuvoPlayer.DataProviders.Dash
             // Detach event handlers from manifest provider before disposing
             manifestProvider.StreamError -= OnStreamError;
             manifestProvider.ClipDurationChanged -= ClipDurationChanged;
-            manifestProvider.Play -= OnPlayed;
+            manifestProvider.ManifestReady -= OnPlayed;
 
             manifestProvider.Dispose();
 
