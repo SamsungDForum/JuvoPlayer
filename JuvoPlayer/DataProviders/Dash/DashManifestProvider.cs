@@ -32,16 +32,17 @@ namespace JuvoPlayer.DataProviders.Dash
     internal class DashManifestProvider : IDisposable
     {
         private const string Tag = "JuvoPlayer";
-        private readonly ILogger Logger = LoggerManager.GetInstance().GetLogger(Tag);
+        private readonly ILogger logger = LoggerManager.GetInstance().GetLogger(Tag);
 
         public event StreamError StreamError;
         public event ClipDurationChanged ClipDurationChanged;
         public event Play Play;
 
-        public readonly DashManifest Manifest;
+        public DashManifest Manifest { get; internal set; }
         private Task manifestFeedTask;
         private CancellationTokenSource manifestFeedCts;
-        
+        private Object startStopLock = new Object();
+
         private readonly List<SubtitleInfo> subtitleInfos = new List<SubtitleInfo>();
 
         private readonly DashMediaPipeline audioPipeline;
@@ -51,12 +52,20 @@ namespace JuvoPlayer.DataProviders.Dash
 
         private bool isDisposed;
 
-        public DashManifestProvider(DashManifest manifest, DashMediaPipeline audioPipeline, DashMediaPipeline videoPipeline )
+        public DashManifestProvider(DashManifest manifest, DashMediaPipeline audioPipeline, DashMediaPipeline videoPipeline)
         {
             this.Manifest = manifest ?? throw new ArgumentNullException(nameof(manifest), "manifest cannot be null");
 
             this.audioPipeline = audioPipeline;
             this.videoPipeline = videoPipeline;
+        }
+
+        public List<StreamDescription> GetSubtitlesDescription()
+        {
+            lock (subtitleInfos)
+            {
+                return subtitleInfos.Select(info => info.ToStreamDescription()).ToList();
+            }
         }
 
         public SubtitleInfo GetSubtitleInfo(StreamDescription description)
@@ -70,8 +79,7 @@ namespace JuvoPlayer.DataProviders.Dash
                     throw new ArgumentException("Invalid subtitle description");
 
                 // Create a copy! 
-                var res = new SubtitleInfo(subtitleInfos[description.Id]);
-                return res;
+                return new SubtitleInfo(subtitleInfos[description.Id]);
             }
         }
 
@@ -79,7 +87,7 @@ namespace JuvoPlayer.DataProviders.Dash
         {
             if (reloadDelay != TimeSpan.Zero)
             {
-                Logger.Info($"Manifest reload in {reloadDelay}");
+                logger.Info($"Manifest reload in {reloadDelay}");
                 await Task.Delay(reloadDelay, token);
             }
 
@@ -99,26 +107,23 @@ namespace JuvoPlayer.DataProviders.Dash
             var wallClock = Manifest.CurrentDocument.WallClock(CurrentTime);
             var tmpPeriod = Manifest.CurrentDocument.FindPeriod(wallClock);
 
-            // If no period has been found, continue reloading untill a valid period has been found, regardless of static/dynamic content
+            // If no period has been found, continue reloading until a valid period has been found, regardless of static/dynamic content
             if (tmpPeriod == null)
-                Logger.Warn($"Failed to find period for WallClock {wallClock}");
-            
+                logger.Warn($"Failed to find period for WallClock {wallClock}");
+
 
             return tmpPeriod;
         }
 
-        private bool ApplyManifest(CancellationToken token, Period newPerdiod)
+        private void ApplyPeriod(CancellationToken token, Period newPeriod)
         {
-            token.ThrowIfCancellationRequested();
-
             // Set new media from obtained period information
-            return SetMediaFromPeriod(Manifest.CurrentDocument, newPerdiod);
+            SetMediaFromPeriod(newPeriod, token);
         }
-
 
         private void ProcessManifest(CancellationToken token)
         {
-            Logger.Info("");
+            logger.Info("");
 
             token.ThrowIfCancellationRequested();
 
@@ -132,86 +137,95 @@ namespace JuvoPlayer.DataProviders.Dash
                 return;
             }
 
-            if (Manifest.HasChanged)
+            if (!Manifest.HasChanged)
+                return;
+
+            // Set period with Manifest Parameters. Will be applied to ALL media within period.
+            //
+            var manifestParams = new ManifestParameters(Manifest.CurrentDocument, tmpPeriod)
             {
-                // Set period with Manifest Parameters. Will be applied to ALL media within period.
-                //
-                var manifestParams = new ManifestParameters(Manifest.CurrentDocument, tmpPeriod)
-                {
-                    PlayClock = Manifest.CurrentDocument.WallClock(CurrentTime)
-                };
-                tmpPeriod.SetManifestParameters(manifestParams);
+                PlayClock = Manifest.CurrentDocument.WallClock(CurrentTime)
+            };
 
-                // Apply new manifest
-                //
-                // Sucess   = Start of playback.
-                // Failure  = Static Content: Termination signalled by exception. 
-                //            Dynamic content: Do manifest reload and force "has changed" flag to be set
-                //            to allow re-application of manifest regardless of its content change.
-                //
-                if (ApplyManifest(token, tmpPeriod))
-                {
-                    token.ThrowIfCancellationRequested();
-                    Play.Invoke();
-                }
-                else
-                {
-                    if(!Manifest.CurrentDocument.IsDynamic)
-                        throw new DashManifestException("Failed to apply new manifest");
+            tmpPeriod.SetManifestParameters(manifestParams);
 
-                    Logger.Warn("Failed to apply Manifest. Retrying.");
-                    Manifest.ForceHasChangedOnNextReload();
-                }
-            }
+            // Apply new manifest
+            //
+            // Success  = Start of playback.
+            // Failure  = Static Content: Termination signaled by exception. 
+            //            Dynamic content: Do manifest reload and force "has changed" flag to be set
+            //            to allow re-application of manifest regardless of its content change.
+            //
+            // Manageable errors will be notified by ArgumentException and handled by the caller.
+            //
+            ApplyPeriod(token, tmpPeriod);
+            NotifyDurationChange();
+            BuildSubtitleInfos(tmpPeriod);
+            token.ThrowIfCancellationRequested();
+            Play?.Invoke();
+        }
+
+        private void NotifyDurationChange()
+        {
+            var duration = Manifest.CurrentDocument.MediaPresentationDuration;
+
+            if (duration.HasValue && duration.Value > TimeSpan.Zero)
+                ClipDurationChanged?.Invoke(duration.Value);
         }
 
         public void Stop()
         {
-            // Don't do double termination. Nothing  bad will happen but there is no point :)
-            if (manifestFeedTask == null )
-                return;
-
-            Logger.Info("Terminating DashManifestProvider");
-            manifestFeedCts?.Cancel();
-
-            try
+            lock (startStopLock)
             {
-                if (manifestFeedTask?.Status > TaskStatus.Created)
-                {
-                    Logger.Info($"Awaiting manifestTask completion {manifestFeedTask?.Status}");
-                    manifestFeedTask?.Wait();
-                }
-            }
-            catch (AggregateException) { }
-            finally
-            {
-                manifestFeedCts?.Dispose();
-                manifestFeedCts = null;
-                manifestFeedTask = null;
-                Logger.Info("DashManifestProvider terminated.");
-            }
-        }
+                // Don't do double termination. Nothing  bad will happen but there is no point :)
+                if (manifestFeedTask == null)
+                    return;
 
-        private void StartManifestTask(CancellationToken token, TimeSpan delay)
-        {
-            manifestFeedTask = Task.Factory.StartNew(async () =>
-            {
-                bool repeatFeed = false;
+                logger.Info("Terminating DashManifestProvider");
+                manifestFeedCts?.Cancel();
 
                 try
                 {
-                    await LoadManifestAsync(token, delay);
+                    if (manifestFeedTask?.Status > TaskStatus.Created)
+                    {
+                        logger.Info($"Awaiting manifestTask completion {manifestFeedTask?.Status}");
+                        manifestFeedTask?.Wait();
+                    }
+                }
+                catch (AggregateException)
+                {
+                }
+                finally
+                {
+                    manifestFeedCts?.Dispose();
+                    manifestFeedCts = null;
+                    manifestFeedTask = null;
+                    logger.Info("DashManifestProvider terminated.");
+                }
+            }
+        }
+
+        private async Task ManifestFeedProcess(CancellationToken token, TimeSpan delay)
+        {
+            var repeatFeed = false;
+            var currentDelay = delay;
+
+            do
+            {
+                try
+                {
+                    await LoadManifestAsync(token, currentDelay);
                     ProcessManifest(token);
 
                     // Dynamic content - Keep on reloading manifest
                     //
                     repeatFeed = Manifest.CurrentDocument.IsDynamic;
-                        
+
                 }
                 catch (DashManifestException dme)
                 {
                     // Dynamic content - if we have previously obtained a manifest
-                    // repeat downloads even if failures occour. If failure occoured
+                    // repeat downloads even if failures occur. If failure occured
                     // before any previous downloads - report it.
                     // For static, do always.
                     //
@@ -219,75 +233,87 @@ namespace JuvoPlayer.DataProviders.Dash
 
                     if (!repeatFeed)
                         StreamError?.Invoke(dme.Message);
+
+                    Manifest.ForceHasChangedOnNextReload();
                 }
                 catch (OperationCanceledException)
                 {
-                    Logger.Info("Maniest download cancelled");
+                    logger.Info("Manifest download cancelled");
                     repeatFeed = false;
                 }
-                catch(Exception e)
+                catch (ArgumentException ae)
+                {
+                    // When ApplyPeriod() in ProcessManifest() fails in a predictable way, ArgumentException will be thrown
+                    // Dynamic Docs - keep on running.
+                    // Static Docs - Notify failure and exit.
+                    repeatFeed = Manifest?.CurrentDocument.IsDynamic ?? false;
+
+                    if (!repeatFeed)
+                        StreamError?.Invoke(ae.Message);
+
+                    logger.Warn("Failed to apply Manifest. Retrying. Failure: " + ae.Message);
+
+                    Manifest.ForceHasChangedOnNextReload();
+                }
+                catch (Exception e)
                 {
                     // Report all other exceptions to screen
                     // as they silently terminate task to fail state
                     //
-                    Logger.Error(e.ToString());
+                    logger.Error(e.ToString());
                     repeatFeed = false;
                 }
-                
-                if (repeatFeed)
-                    StartManifestTask(token, Manifest.GetReloadDueTime());
 
-            }, token, TaskCreationOptions.LongRunning, TaskScheduler.Default);
+                currentDelay = Manifest.GetReloadDueTime();
+
+            } while (repeatFeed);
+        }
+
+        private void StartManifestTask(CancellationToken token, TimeSpan delay)
+        {
+            manifestFeedTask = Task.Factory.StartNew(() => ManifestFeedProcess(token, delay), token,
+                TaskCreationOptions.LongRunning, TaskScheduler.Default);
         }
 
         public void Start()
         {
-            // Start reloader.
-            //
-            manifestFeedCts?.Dispose();
-            manifestFeedCts = new CancellationTokenSource();
-            var cancelToken = manifestFeedCts.Token;
-            
-            // Starts manifest download on manifestTask
-            StartManifestTask(cancelToken, TimeSpan.Zero);
-           
+            lock (startStopLock)
+            {
+                // Double start prevention.
+                if (manifestFeedTask != null)
+                    return;
+
+                logger.Info("Starting DashManifestProvider");
+
+                // Start reloader.
+                //
+                manifestFeedCts?.Dispose();
+                manifestFeedCts = new CancellationTokenSource();
+                var cancelToken = manifestFeedCts.Token;
+
+                // Starts manifest download on manifestTask
+                StartManifestTask(cancelToken, TimeSpan.Zero);
+            }
         }
 
-        private bool SetMediaFromPeriod(Document document, Period period)
+        private void SetMediaFromPeriod(Period period, CancellationToken token)
         {
-            Logger.Info(period.ToString());
+            logger.Info(period.ToString());
 
-            var audioMedia = period.GetMedia(MediaType.Audio);
-            var videoMedia = period.GetMedia(MediaType.Video);
+            // NOTE: UpdateMedia is potentially a time consuming operation
+            // Case: BaseRepresentation with downloadable index data.
+            // Index download is synchronous now and blocking.
+            // 
+            // Possible workarounds (not to be mistaken with solution) would
+            // be use of Parallel.Invoke() to improve performance of UpdateMedia calls
+            //
+            audioPipeline.UpdateMedia(period);
+            token.ThrowIfCancellationRequested();
 
-            if (audioMedia == null || videoMedia == null)
-            {
-                Logger.Error($"Failed to initialize media. Video {videoMedia != null} Audio {audioMedia != null}");
-                return false;
-            }
+            videoPipeline.UpdateMedia(period);
+            token.ThrowIfCancellationRequested();
 
-            audioPipeline.UpdateMedia(audioMedia);
-            videoPipeline.UpdateMedia(videoMedia);
-
-            var audioRepresentation = audioPipeline.GetRepresentation();
-            var videoRepresentation = videoPipeline.GetRepresentation();
-
-            if (audioRepresentation == null || videoRepresentation == null)
-            {
-                Logger.Error($"Failed to prepare A/V streams. Video {videoRepresentation != null} Audio {audioRepresentation != null}");
-                return false;
-            }
-
-            BuildSubtitleInfos(period);
-
-            if (document.MediaPresentationDuration.HasValue && document.MediaPresentationDuration.Value > TimeSpan.Zero)
-                ClipDurationChanged?.Invoke(document.MediaPresentationDuration.Value);
-
-
-            audioRepresentation.AlignStartSegmentsWith(videoRepresentation);
-           
-            Logger.Info($"Segment Alignment: Video={videoRepresentation.AlignedStartSegmentID} Audio={audioRepresentation.AlignedStartSegmentID} TrimmOffset={videoRepresentation.AlignedTrimmOffset}");
-            return true;
+            audioPipeline.SynchronizeWith(videoPipeline);
         }
 
         private void BuildSubtitleInfos(Period period)
@@ -333,6 +359,7 @@ namespace JuvoPlayer.DataProviders.Dash
             // Stop handles clearing of task/cancellation tokens.
             Stop();
             Manifest.Dispose();
+            Manifest = null;
         }
     }
 }
