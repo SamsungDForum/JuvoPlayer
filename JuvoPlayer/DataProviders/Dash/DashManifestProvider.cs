@@ -41,7 +41,7 @@ namespace JuvoPlayer.DataProviders.Dash
         public DashManifest Manifest { get; internal set; }
         private Task manifestFeedTask;
         private CancellationTokenSource manifestFeedCts;
-        private Object startStopLock = new Object();
+        private readonly Object startStopLock = new Object();
 
         private readonly List<SubtitleInfo> subtitleInfos = new List<SubtitleInfo>();
 
@@ -169,6 +169,7 @@ namespace JuvoPlayer.DataProviders.Dash
         {
             var duration = Manifest.CurrentDocument.MediaPresentationDuration;
 
+            logger.Info($"{duration}");
             if (duration.HasValue && duration.Value > TimeSpan.Zero)
                 ClipDurationChanged?.Invoke(duration.Value);
         }
