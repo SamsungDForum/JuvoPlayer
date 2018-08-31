@@ -71,20 +71,20 @@ namespace JuvoPlayer.DataProviders.Dash
         private readonly IDemuxer demuxer;
         private readonly IThroughputHistory throughputHistory;
         private readonly StreamType streamType;
+        public StreamType StreamType => streamType;
 
         private bool pipelineStarted;
         private bool disableAdaptiveStreaming;
 
         private DashStream currentStream;
         private DashStream _pendingStreamStorage;
-        private DashStream pendingStream
+        private DashStream PendingStream
         {
-            get { return _pendingStreamStorage; }
-            set
-            {
-                _pendingStreamStorage = InitializePendingStream(value);
-            }
+            get => _pendingStreamStorage;
+            set => _pendingStreamStorage = InitializePendingStream(value);
         }
+
+
 
         private readonly Object switchStreamLock = new Object();
         private List<DashStream> availableStreams = new List<DashStream>();
@@ -115,30 +115,43 @@ namespace JuvoPlayer.DataProviders.Dash
             if (newStream == null)
                 return null;
 
-            Logger.Info($"{streamType}: Preparing stream for playback.");
+            Logger.Info($"{StreamType}: Preparing stream for playback.");
 
             // TODO: Make PrepareStream async or async with delayed status notification
             //
             if (newStream.Representation.Segments.PrepeareStream())
                 return newStream;
 
-            Logger.Warn($"{streamType}: Stream preparation failed! Content will not be played.");
+            Logger.Warn($"{StreamType}: Stream preparation failed! Content will not be played.");
 
             return null;
         }
 
         public Representation GetRepresentation()
         {
-            return pendingStream?.Representation ?? currentStream?.Representation;
+            return PendingStream?.Representation ?? currentStream?.Representation;
         }
 
-        public void UpdateMedia(IList<Media> media)
+        public void SynchronizeWith(DashMediaPipeline synchronizeWith)
         {
-            if (media == null)
-                throw new ArgumentNullException(nameof(media), "media cannot be null");
+            var myRepresentation = GetRepresentation();
+            var syncRepresentation = synchronizeWith.GetRepresentation();
 
-            if (media.Any(o => o.Type.Value != ToMediaType(streamType)))
-                throw new ArgumentException("Not compatible media found");
+            var myGood = myRepresentation != null;
+            var syncGood = syncRepresentation != null;
+
+            if (!myGood || !syncGood)
+                throw new ArgumentNullException($"{StreamType}: Null or Failed Init. Representation. {myGood}/{syncGood}");
+
+            myRepresentation.AlignStartSegmentsWith(syncRepresentation);
+
+            Logger.Info($"Segment Alignment: {streamType}={myRepresentation.AlignedStartSegmentID} {synchronizeWith.StreamType}={syncRepresentation.AlignedStartSegmentID} TrimmOffset={myRepresentation.AlignedTrimmOffset}");
+        }
+        public void UpdateMedia(Period period)
+        {
+            var media = period.GetMedia(ToMediaType(StreamType));
+            if (!media.Any())
+                throw new ArgumentOutOfRangeException($"{StreamType}: No media in period {period}");
 
             if (currentStream != null)
             {
@@ -148,9 +161,8 @@ namespace JuvoPlayer.DataProviders.Dash
                 {
                     GetAvailableStreams(media, currentMedia);
 
-                    // Prepeare set media before assigning it to "pending stream" to assure
-                    // ready to use stream is set. Otherwise adopt to net condition may snach it and send it to DashClient
-                    pendingStream = new DashStream(currentMedia, currentRepresentation);
+                    // Media Preparation (Call to Initialize) is done upon assignment to pendingStream.
+                    PendingStream = new DashStream(currentMedia, currentRepresentation);
                     return;
                 }
             }
@@ -160,7 +172,7 @@ namespace JuvoPlayer.DataProviders.Dash
             // get first element of sorted array 
             var representation = defaultMedia.Representations.OrderByDescending(o => o.Bandwidth).First();
 
-            pendingStream = new DashStream(defaultMedia, representation);
+            PendingStream = new DashStream(defaultMedia, representation);
         }
 
         public void AdaptToNetConditions()
@@ -168,10 +180,10 @@ namespace JuvoPlayer.DataProviders.Dash
             if (disableAdaptiveStreaming)
                 return;
 
-            if (currentStream == null && pendingStream == null)
+            if (currentStream == null && PendingStream == null)
                 return;
 
-            var streamToAdapt = pendingStream ?? currentStream;
+            var streamToAdapt = PendingStream ?? currentStream;
             if (streamToAdapt.Representation.Bandwidth.HasValue == false)
                 return;
 
@@ -188,7 +200,7 @@ namespace JuvoPlayer.DataProviders.Dash
             if (stream != null && stream.Representation.Bandwidth != streamToAdapt.Representation.Bandwidth)
             {
                 Logger.Info("Changing stream do bandwith: " + stream.Representation.Bandwidth);
-                pendingStream = stream;
+                PendingStream = stream;
             }
         }
 
@@ -210,26 +222,26 @@ namespace JuvoPlayer.DataProviders.Dash
 
             try
             {
-                if (pendingStream == null || !CanSwitchStream())
+                if (PendingStream == null || !CanSwitchStream())
                     return;
 
-                Logger.Info($"{streamType}");
+                Logger.Info($"{StreamType}");
 
                 if (currentStream == null)
                 {
-                    StartPipeline(pendingStream);
+                    StartPipeline(PendingStream);
                 }
-                else if (currentStream.IsCompatibleWith(pendingStream))
+                else if (currentStream.IsCompatibleWith(PendingStream))
                 {
-                    UpdatePipeline(pendingStream);
+                    UpdatePipeline(PendingStream);
                 }
                 else
                 {
                     ResetPipeline();
-                    StartPipeline(pendingStream);
+                    StartPipeline(PendingStream);
                 }
 
-                pendingStream = null;
+                PendingStream = null;
             }
             finally
             {
@@ -284,9 +296,9 @@ namespace JuvoPlayer.DataProviders.Dash
                 {
                     currentStream = newStream;
 
-                    Logger.Info($"{streamType}: Dash pipeline start.");
-                    Logger.Info($"{streamType}: Media: {currentStream.Media}");
-                    Logger.Info($"{streamType}: {currentStream.Representation}");
+                    Logger.Info($"{StreamType}: Dash pipeline start.");
+                    Logger.Info($"{StreamType}: Media: {currentStream.Media}");
+                    Logger.Info($"{StreamType}: {currentStream.Representation}");
 
                     dashClient.SetRepresentation(currentStream.Representation);
                     ParseDrms(currentStream.Media);
@@ -312,7 +324,7 @@ namespace JuvoPlayer.DataProviders.Dash
         {
             currentStream = newStream;
 
-            Logger.Info($"{streamType}: Manifest update. {newStream.Media} {newStream.Representation}");
+            Logger.Info($"{StreamType}: Manifest update. {newStream.Media} {newStream.Representation}");
 
             dashClient.UpdateRepresentation(newStream.Representation);
         }
@@ -404,7 +416,7 @@ namespace JuvoPlayer.DataProviders.Dash
 
                 if (newStream == null)
                 {
-                    Logger.Warn($"{streamType}: Failed to prepare stream. New stream IS NOT set. Continuing playing previous");
+                    Logger.Warn($"{StreamType}: Failed to prepare stream. New stream IS NOT set. Continuing playing previous");
                     return;
                 }
 
@@ -442,7 +454,7 @@ namespace JuvoPlayer.DataProviders.Dash
                 {
                     Id = i,
                     Description = CreateStreamDescription(o),
-                    StreamType = streamType,
+                    StreamType = StreamType,
                     Default = currentStream.Equals(o)
                 }).ToList();
         }
@@ -530,7 +542,7 @@ namespace JuvoPlayer.DataProviders.Dash
 
         private void OnDRMInitDataFound(DRMInitData drmData)
         {
-            drmData.StreamType = streamType;
+            drmData.StreamType = StreamType;
             DRMInitDataFound?.Invoke(drmData);
         }
 
@@ -558,7 +570,7 @@ namespace JuvoPlayer.DataProviders.Dash
                 return;
             }
 
-            PacketReady?.Invoke(Packet.CreateEOS(streamType));
+            PacketReady?.Invoke(Packet.CreateEOS(StreamType));
         }
 
         private void OnStreamError(string errorMessage)
@@ -576,7 +588,7 @@ namespace JuvoPlayer.DataProviders.Dash
                     // This IS NOT ideal solution to work around reset of PTS/DTS after 
                     demuxerClock = lastPushedClock;
                     trimmOffset = TimeSpan.Zero;
-                    Logger.Info($"{streamType}: Zero timestamped packet. Adjusting demuxerClock: {demuxerClock} trimmOffset: {trimmOffset.Value}");
+                    Logger.Info($"{StreamType}: Zero timestamped packet. Adjusting demuxerClock: {demuxerClock} trimmOffset: {trimmOffset.Value}");
                 }
             }
             else
@@ -588,7 +600,7 @@ namespace JuvoPlayer.DataProviders.Dash
                     //
                     demuxerClock = (PacketTimeStamp)packet + lastSeek.Value;
 
-                    Logger.Info($"{streamType}: Badly timestamped packet. Adjusting demuxerClock to: {demuxerClock}");
+                    Logger.Info($"{StreamType}: Badly timestamped packet. Adjusting demuxerClock to: {demuxerClock}");
                 }
 
                 lastSeek = null;

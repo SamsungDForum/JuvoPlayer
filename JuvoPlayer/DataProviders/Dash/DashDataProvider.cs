@@ -30,10 +30,8 @@ namespace JuvoPlayer.DataProviders.Dash
         public event StreamConfigReady StreamConfigReady;
         public event PacketReady PacketReady;
         public event StreamError StreamError;
-        private readonly List<SubtitleInfo> subtitleInfos = new List<SubtitleInfo>();
-        private readonly DashManifestProvider manifestProvider;
 
-        //private readonly DashManifest manifest;
+        private readonly DashManifestProvider manifestProvider;
 
         private bool disposed;
 
@@ -121,7 +119,7 @@ namespace JuvoPlayer.DataProviders.Dash
         {
 
 
-            var subtitleInfo = subtitleInfos[description.Id];
+            var subtitleInfo = manifestProvider.GetSubtitleInfo(description);
             cuesMap = new SubtitleFacade().LoadSubtitles(subtitleInfo);
         }
 
@@ -172,7 +170,7 @@ namespace JuvoPlayer.DataProviders.Dash
                 case StreamType.Video:
                     return videoPipeline.GetStreamsDescription();
                 case StreamType.Subtitle:
-                    return subtitleInfos.Select(info => info.ToStreamDescription()).ToList();
+                    return manifestProvider.GetSubtitlesDescription();
                 default:
                     return new List<StreamDescription>();
             }

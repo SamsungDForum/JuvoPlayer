@@ -780,11 +780,8 @@ namespace MpdParser
         /// <returns></returns>
         public List<Media> GetMedia(MediaType type)
         {
-            var media = Sets.Where(o => o.Type.Value == type).ToList();
-            if (!media.Any())
-                return null;
+            return Sets.Where(o => o.Type.Value == type).ToList();
 
-            return media;
         }
     }
 
