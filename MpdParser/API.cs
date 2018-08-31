@@ -8,6 +8,24 @@ namespace MpdParser
 {
     public class Representation
     {
+        internal struct AlignmentEntry
+        {
+            public uint? VideoSegmentID;
+            public TimeSpan VideoSegmentStart;
+            public uint? AudioSegmentID;
+            public TimeSpan AudioSegmentStart;
+            public TimeSpan AudioVideoStartDiff;
+
+            public AlignmentEntry(uint? vSegId, TimeSpan vStart, uint? aSegId, TimeSpan aStart)
+            {
+                VideoSegmentID = vSegId;
+                VideoSegmentStart = vStart;
+                AudioSegmentID = aSegId;
+                AudioSegmentStart = aStart;
+                AudioVideoStartDiff = (VideoSegmentStart - AudioSegmentStart).Duration();
+            }
+        };
+
         // REPR or ADAPTATION SET:
         public string Id { get; }
         public string Profiles { get; }
@@ -32,6 +50,143 @@ namespace MpdParser
         public void SetDocumentParameters(ManifestParameters docParams)
         {
             Segments.SetDocumentParameters(docParams);
+        }
+
+        /// <summary>
+        /// Function aligns Audio & Video Start Segments for dynamic & static content content.
+        /// Static content no alignment is done, just selection of start segments and trimm offsets
+        /// </summary>
+        /// <remarks>
+        /// Video Segment is picked as start point. Segment Time Range (Start-Duration) is split
+        /// into 4 separate time points between Segment.Start and Segment.Duration.
+        /// For each of those points, audio segment is selected and its start time recorded.
+        /// Such list is recorded for 
+        /// 
+        /// {Prev. Video Segment}.{Start Video Segment}.{Next Video Segment}
+        /// 
+        /// if prev video segment is unavailable, then video segment source list is as following:
+        /// 
+        /// {Start Video Segment}.{Next Video Segment}.{Next Video Segment}
+        /// 
+        /// Once a list of {VideoSegmentId}.{Video Start Time}.{AudioSegmentID}.{Audio Start Time}
+        /// is created, it is scanned for smallest differences between Video Start Time & Audio Start Time.
+        /// Audio segment ID and Video Segment ID selected for aligned start parameters will have 
+        /// that difference smallest.
+        /// 
+        /// After selecting start IDs for audio & video, associated start times of each segment are chosen as
+        /// aligned trimm Offsets.
+        /// 
+        /// Reason for scanning mutiple time points of video segment: A & V segments do not have to be aligned,
+        /// as such there may be overlaps.
+        /// 
+        /// Representation order (audio/video) is irrelavant, however, it is recommended to align audio TO video
+        /// i.e.
+        /// 
+        /// audioRepresentation.AlightStartSegmentWith( videoRepresentation )
+        /// 
+        /// </remarks>
+        /// <param name="alignTo">representation to align with (video)</param>
+        public void AlignStartSegmentsWith(Representation alignTo)
+        {
+            // Sanity checks
+            if (alignTo == null)
+                throw new ArgumentNullException("Representations is null");
+
+            var repAManifest = Segments.GetDocumentParameters();
+            var repBManifest = alignTo.Segments.GetDocumentParameters();
+
+            if (repAManifest == null || repBManifest == null)
+                throw new ArgumentNullException($"Manifest Paraers not set. RepA {repAManifest == null} RepB {repBManifest == null}");
+
+            if (repAManifest.Document.IsDynamic != repBManifest.Document.IsDynamic)
+                throw new ArgumentException($"Representation class mismatch. RepA Dynamic {repAManifest.Document.IsDynamic} RepB Dynamic {repBManifest.Document.IsDynamic}");
+
+            if (repAManifest.Document.IsDynamic)
+                AlignDynamicStartParameters(alignTo);
+            else
+                AlignStaticStartParameters(alignTo);
+        }
+
+        private void AlignStaticStartParameters(Representation video)
+        {
+            var audioStartSegment = Segments.StartSegmentId();
+            var audioTimeRange = Segments.SegmentTimeRange(audioStartSegment);
+
+            var videoStartSegment = video.Segments.StartSegmentId();
+            var videoTimeRange = video.Segments.SegmentTimeRange(videoStartSegment);
+
+            var trimmOffset = audioTimeRange.Start < videoTimeRange.Start ? audioTimeRange.Start : videoTimeRange.Start;
+
+            //Set aligned start data
+            AlignedStartSegmentID = audioStartSegment;
+            AlignedTrimmOffset = trimmOffset;
+            video.AlignedStartSegmentID = videoStartSegment;
+            video.AlignedTrimmOffset = trimmOffset;
+        }
+
+        private void AlignDynamicStartParameters(Representation video)
+        {
+            var alignments = new List<AlignmentEntry>();
+
+            var videoStartSegment = video.Segments.StartSegmentId();
+            var videoSegmentId = video.Segments.PreviousSegmentId(videoStartSegment);
+
+            if (!videoSegmentId.HasValue)
+                videoSegmentId = videoStartSegment;
+
+            // Scan 3 video segments starting from videoSegmentId.
+            for (int s = 0; s < 3; s++)
+            {
+                var videoTimeRange = video.Segments.SegmentTimeRange(videoSegmentId);
+
+                if (videoTimeRange == null)
+                    continue;
+
+                // Split duration into 3 elements to cover 4 time points in segment duration
+                // Start, Start+1/3*Duration, Start+2/3*Duration, Start+3/3*Duration
+                //
+                var tickOffset = videoTimeRange.Duration.Ticks / 3;
+                var tickStart = videoTimeRange.Start.Ticks;
+
+                for (int t = 0; t < 4; t++)
+                {
+                    // Get audio SegmentId & Start time for a given time point
+                    var timePoint = TimeSpan.FromTicks(tickStart + (t * tickOffset));
+                    var audioSegmentId = Segments.SegmentId(timePoint);
+                    var audioTimeRange = Segments.SegmentTimeRange(audioSegmentId);
+
+                    if (audioTimeRange == null)
+                        continue;
+
+                    alignments.Add(new AlignmentEntry(videoSegmentId, videoTimeRange.Start, audioSegmentId, audioTimeRange.Start));
+                }
+                // Get Next video segment
+                videoSegmentId = video.Segments.NextSegmentId(videoSegmentId);
+            }
+
+            var audioStartSegment = videoStartSegment = null;
+            TimeSpan? trimmOffset = null;
+
+            // handle the unexpected
+            if (alignments.Count > 0)
+            {
+                var bestAlignment = (from AlignmentEntry in alignments
+                                     orderby AlignmentEntry.AudioVideoStartDiff
+                                     select AlignmentEntry).First();
+
+                videoStartSegment = bestAlignment.VideoSegmentID;
+                audioStartSegment = bestAlignment.AudioSegmentID;
+                var videoStart = bestAlignment.VideoSegmentStart;
+                var audioStart = bestAlignment.AudioSegmentStart;
+
+                trimmOffset = videoStart < audioStart ? videoStart : audioStart;
+            }
+
+            //Set aligned start data
+            AlignedStartSegmentID = audioStartSegment;
+            AlignedTrimmOffset = trimmOffset;
+            video.AlignedStartSegmentID = videoStartSegment;
+            video.AlignedTrimmOffset = trimmOffset;
         }
 
         public Representation(Node.Representation repr)
@@ -232,10 +387,10 @@ namespace MpdParser
         public static MediaType Parse(string value)
         {
             if (string.IsNullOrEmpty(value)) return MediaType.Unknown;
-            if (value == "video") return MediaType.Video;
-            if (value == "audio") return MediaType.Audio;
-            if (value == "application") return MediaType.Application;
-            if (value == "text") return MediaType.Text;
+            if (value.IndexOf("video", StringComparison.OrdinalIgnoreCase) >= 0) return MediaType.Video;
+            if (value.IndexOf("audio", StringComparison.OrdinalIgnoreCase) >= 0) return MediaType.Audio;
+            if (value.IndexOf("application", StringComparison.OrdinalIgnoreCase) >= 0) return MediaType.Application;
+            if (value.IndexOf("text", StringComparison.OrdinalIgnoreCase) >= 0) return MediaType.Text;
             return MediaType.Other;
         }
         public override string ToString()
@@ -608,6 +763,26 @@ namespace MpdParser
                     (TimeSpan)p.Start);
             }
         }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="manifestParams"></param>
+        public void SetManifestParameters(ManifestParameters manifestParams)
+        {
+            Sets.ToList().ForEach(media => media.SetDocumentParameters(manifestParams));
+        }
+
+        /// <summary>
+        /// 
+        /// </summary>
+        /// <param name="type"></param>
+        /// <returns></returns>
+        public List<Media> GetMedia(MediaType type)
+        {
+            return Sets.Where(o => o.Type.Value == type).ToList();
+
+        }
     }
 
     /// <summary>
@@ -732,6 +907,47 @@ namespace MpdParser
             Periods = Period.BuildPeriods(dash.Periods, this);
 
             Array.Sort(Periods);
+        }
+
+        public TimeSpan WallClock(TimeSpan time)
+        {
+            if (!IsDynamic)
+                return time;
+
+            return DateTime.UtcNow.Subtract(AvailabilityStartTime ?? DateTime.MinValue);
+
+        }
+
+        /// <summary>
+        /// Finds a period that matches current playback timestamp. May return "early access"
+        /// Period. Based on ISO IEC 23009-1 2015 section 5.3.2.1 & DASH IF IOP v 3.3
+        /// </summary>
+        /// <param name="timeIndex"></param>
+        /// <returns></returns>
+        public Period FindPeriod(TimeSpan timeIndex)
+        {
+            var timeIndexTotalSeconds = Math.Truncate(timeIndex.TotalSeconds);
+            // Periods are already "sorted" from lowest to highest, thus find a period
+            // where start time (time elapsed when this period should start)
+            // to do so, search periods backwards, starting from those that should play last.
+            for (var p = Periods.Length - 1; p >= 0; p--)
+            {
+                var period = Periods[p];
+
+                var availstart = AvailabilityStartTime ?? DateTime.UtcNow;
+                var start = IsDynamic ? DateTime.UtcNow.Subtract(availstart) : TimeSpan.Zero;
+
+                start = start.Add(period.Start ?? TimeSpan.Zero);
+                var end = start.Add(period.Duration ?? TimeSpan.Zero);
+
+                if (timeIndexTotalSeconds >= Math.Truncate(start.TotalSeconds)
+                    && timeIndexTotalSeconds <= Math.Truncate(end.TotalSeconds))
+                {
+                    return period;
+                }
+            }
+
+            return null;
         }
 
         private static DocumentType ParseDashType(Node.DASH dash)

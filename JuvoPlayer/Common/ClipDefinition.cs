@@ -33,6 +33,18 @@ namespace JuvoPlayer.Common
             };
         }
 
+        public SubtitleInfo()
+        { }
+
+        public SubtitleInfo(SubtitleInfo createFrom)
+        {
+            Id = createFrom.Id;
+            Path = createFrom.Path;
+            Language = createFrom.Language;
+            Encoding = createFrom.Encoding;
+            MimeType = createFrom.MimeType;
+        }
+
     }
 
     public class DRMDescription

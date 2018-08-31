@@ -16,8 +16,6 @@ namespace JuvoPlayer.DataProviders.Dash
 
         private readonly HttpClient httpClient = new HttpClient { Timeout = TimeSpan.FromSeconds(3) };
 
-        private CancellationTokenSource cancellationTokenSource;
-
         private DateTime lastReloadTime = DateTime.MinValue;
         private TimeSpan minimumReloadPeriod = TimeSpan.Zero;
 
@@ -37,22 +35,13 @@ namespace JuvoPlayer.DataProviders.Dash
                     nameof(url), "Dash manifest url is empty."));
         }
 
-        public bool NeedsReload()
+        /// <summary>
+        /// Function resets document publish time, effectively forcing next reloaded document to be 
+        /// processed regardless of publishTime change.
+        /// </summary>
+        public void ForceHasChangedOnNextReload()
         {
-            return CurrentDocument == null || (CurrentDocument.IsDynamic
-                   && (DateTime.UtcNow - lastReloadTime) >= minimumReloadPeriod);
-        }
-
-        public void CancelReload()
-        {
-            try
-            {
-                cancellationTokenSource?.Cancel();
-            }
-            catch
-            {
-                // ignored
-            }
+            publishTime = null;
         }
 
         public TimeSpan GetReloadDueTime()
@@ -60,10 +49,6 @@ namespace JuvoPlayer.DataProviders.Dash
             // No doc, use default
             if (CurrentDocument == null)
                 return manifestReloadDelay;
-
-            // Doc is static, return -1 to disable reload Timer
-            if (!CurrentDocument.IsDynamic)
-                return TimeSpan.FromMilliseconds(-1);
 
             var reloadTime = CurrentDocument.MinimumUpdatePeriod ?? manifestReloadDelay;
 
@@ -74,89 +59,77 @@ namespace JuvoPlayer.DataProviders.Dash
             return reloadTime;
         }
 
-        public async Task<bool> ReloadManifestTask()
+        public async Task<bool> ReloadManifestTask(CancellationToken cancelToken)
         {
-            cancellationTokenSource = new CancellationTokenSource();
-            var ct = cancellationTokenSource.Token;
+            var downloadRetries = maxManifestDownloadRetries;
+            Document newDoc = null;
+            DateTime requestTime = DateTime.MinValue;
+            DateTime downloadTime = DateTime.MinValue;
+            DateTime parseTime = DateTime.MinValue;
 
-            try
+            HasChanged = false;
+
+            do
             {
-                var downloadRetries = maxManifestDownloadRetries;
-                Document newDoc = null;
-                DateTime requestTime = DateTime.MinValue;
-                DateTime downloadTime = DateTime.MinValue;
-                DateTime parseTime = DateTime.MinValue;
+                cancelToken.ThrowIfCancellationRequested();
+                lastReloadTime = DateTime.UtcNow;
 
-                HasChanged = false;
+                requestTime = DateTime.UtcNow;
+                var xmlManifest = await DownloadManifest(cancelToken);
+                downloadTime = DateTime.UtcNow;
 
-                do
+                if (xmlManifest != null)
                 {
-                    ct.ThrowIfCancellationRequested();
-                    lastReloadTime = DateTime.UtcNow;
+                    cancelToken.ThrowIfCancellationRequested();
 
-                    requestTime = DateTime.UtcNow;
-                    var xmlManifest = await DownloadManifest(ct);
-                    downloadTime = DateTime.UtcNow;
+                    newDoc = await ParseManifest(xmlManifest);
+                    parseTime = DateTime.UtcNow;
 
-                    if (xmlManifest != null)
+                    if (newDoc != null)
                     {
-                        ct.ThrowIfCancellationRequested();
-
-                        newDoc = await ParseManifest(xmlManifest);
-                        parseTime = DateTime.UtcNow;
-
-                        if (newDoc != null)
-                        {
-                            break;
-                        }
-                        else
-                        {
-                            Logger.Error($"Manifest parse error {Uri}");
-                        }
+                        break;
                     }
                     else
                     {
-                        Logger.Info($"Manifest download failure {Uri}");
+                        Logger.Error($"Manifest parse error {Uri}");
                     }
-
-                    ct.ThrowIfCancellationRequested();
-
-                    if (downloadRetries > 0)
-                    {
-                        await Task.Delay(manifestDownloadDelay, ct);
-                        ct.ThrowIfCancellationRequested();
-                    }
-
-                } while (downloadRetries-- > 0);
-
-                // Done our
-                if (newDoc == null)
-                    return false;
-
-                newDoc.DownloadRequestTime = requestTime;
-                newDoc.DownloadCompleteTime = downloadTime;
-                newDoc.ParseCompleteTime = parseTime;
-
-                minimumReloadPeriod = newDoc.MinimumUpdatePeriod ?? TimeSpan.MaxValue;
-
-                CurrentDocument = newDoc;
-
-
-                // Manifests without publish time are "uncheckable" for updates, assume
-                // always change
-                if (!publishTime.HasValue || !CurrentDocument.PublishTime.HasValue || CurrentDocument.PublishTime > publishTime)
+                }
+                else
                 {
-                    publishTime = CurrentDocument.PublishTime;
-                    HasChanged = true;
+                    Logger.Info($"Manifest download failure {Uri}");
                 }
 
-                return true;
-            }
-            finally
+                cancelToken.ThrowIfCancellationRequested();
+
+                if (downloadRetries > 0)
+                {
+                    await Task.Delay(manifestDownloadDelay, cancelToken);
+                    cancelToken.ThrowIfCancellationRequested();
+                }
+
+            } while (downloadRetries-- > 0);
+
+            // If doc is null, max # of retries have been reached with no sucess
+            if (newDoc == null)
+                return false;
+
+            newDoc.DownloadRequestTime = requestTime;
+            newDoc.DownloadCompleteTime = downloadTime;
+            newDoc.ParseCompleteTime = parseTime;
+
+            minimumReloadPeriod = newDoc.MinimumUpdatePeriod ?? TimeSpan.MaxValue;
+
+            CurrentDocument = newDoc;
+
+            // Manifests without publish time are "uncheckable" for updates, assume
+            // always change
+            if (!publishTime.HasValue || !CurrentDocument.PublishTime.HasValue || CurrentDocument.PublishTime > publishTime)
             {
-                cancellationTokenSource.Dispose();
-                cancellationTokenSource = null;
+                publishTime = CurrentDocument.PublishTime;
+                HasChanged = true;
             }
+
+            return true;
         }
 
         private async Task<string> DownloadManifest(CancellationToken ct)
@@ -210,10 +183,6 @@ namespace JuvoPlayer.DataProviders.Dash
         public void Dispose()
         {
             httpClient.Dispose();
-            // Disposing need to be done only when AvailableWaitHandle is used
-            // We dont use it so, dont dispose lock to avoid exceptions when releasing 
-            // semaphore in other thread
-            cancellationTokenSource?.Dispose();
         }
     }
 }
