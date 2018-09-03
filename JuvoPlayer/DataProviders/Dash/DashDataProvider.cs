@@ -46,8 +46,8 @@ namespace JuvoPlayer.DataProviders.Dash
 
             manifestProvider = new DashManifestProvider(manifest, audioPipeline, videoPipeline);
             manifestProvider.StreamError += OnStreamError;
-            manifestProvider.ClipDurationChanged += ClipDurationChanged;
-            manifestProvider.Play += OnPlayed;
+            manifestProvider.ClipDurationChanged += OnClipDurationChanged;
+            manifestProvider.ManifestReady += OnManifestReady;
 
             audioPipeline.DRMInitDataFound += OnDRMInitDataFound;
             audioPipeline.SetDrmConfiguration += OnSetDrmConfiguration;
@@ -60,6 +60,19 @@ namespace JuvoPlayer.DataProviders.Dash
             videoPipeline.StreamConfigReady += OnStreamConfigReady;
             videoPipeline.PacketReady += OnPacketReady;
             videoPipeline.StreamError += OnStreamError;
+        }
+
+        private void OnClipDurationChanged(TimeSpan clipDuration)
+        {
+            ClipDurationChanged?.Invoke(clipDuration);
+        }
+
+        private void OnManifestReady()
+        {
+            Logger.Info("");
+            Parallel.Invoke(() => audioPipeline.SwitchStreamIfNeeded(),
+                            () => videoPipeline.SwitchStreamIfNeeded());
+
         }
 
         private void OnDRMInitDataFound(DRMInitData drmData)
@@ -117,8 +130,6 @@ namespace JuvoPlayer.DataProviders.Dash
 
         private void OnChangeActiveSubtitleStream(StreamDescription description)
         {
-
-
             var subtitleInfo = manifestProvider.GetSubtitleInfo(description);
             cuesMap = new SubtitleFacade().LoadSubtitles(subtitleInfo);
         }
@@ -130,9 +141,6 @@ namespace JuvoPlayer.DataProviders.Dash
 
         public void OnPlayed()
         {
-            Logger.Info("");
-            Parallel.Invoke(() => audioPipeline.SwitchStreamIfNeeded(),
-                            () => videoPipeline.SwitchStreamIfNeeded());
         }
 
         public void OnSeek(TimeSpan time)
@@ -233,7 +241,7 @@ namespace JuvoPlayer.DataProviders.Dash
             // Detach event handlers from manifest provider before disposing
             manifestProvider.StreamError -= OnStreamError;
             manifestProvider.ClipDurationChanged -= ClipDurationChanged;
-            manifestProvider.Play -= OnPlayed;
+            manifestProvider.ManifestReady -= OnManifestReady;
 
             manifestProvider.Dispose();
 
