@@ -143,9 +143,6 @@ namespace JuvoPlayer.DataProviders.Dash
 
         public void OnPlayed()
         {
-            Logger.Info("");
-            Parallel.Invoke(() => audioPipeline.SwitchStreamIfNeeded(),
-                            () => videoPipeline.SwitchStreamIfNeeded());
         }
 
         public void OnSeek(TimeSpan time)
