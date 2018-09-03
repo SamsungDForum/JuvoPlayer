@@ -130,8 +130,6 @@ namespace JuvoPlayer.DataProviders.Dash
 
         private void OnChangeActiveSubtitleStream(StreamDescription description)
         {
-
-
             var subtitleInfo = manifestProvider.GetSubtitleInfo(description);
             cuesMap = new SubtitleFacade().LoadSubtitles(subtitleInfo);
         }
@@ -243,7 +241,7 @@ namespace JuvoPlayer.DataProviders.Dash
             // Detach event handlers from manifest provider before disposing
             manifestProvider.StreamError -= OnStreamError;
             manifestProvider.ClipDurationChanged -= ClipDurationChanged;
-            manifestProvider.ManifestReady -= OnPlayed;
+            manifestProvider.ManifestReady -= OnManifestReady;
 
             manifestProvider.Dispose();
 
