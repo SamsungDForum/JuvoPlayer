@@ -22,7 +22,7 @@ using System.Threading.Tasks;
 
 namespace JuvoPlayer.DataProviders.Dash
 {
-    public delegate void Play();
+    public delegate void ManifestReady();
 
     internal class DashManifestException : Exception
     {
@@ -36,12 +36,12 @@ namespace JuvoPlayer.DataProviders.Dash
 
         public event StreamError StreamError;
         public event ClipDurationChanged ClipDurationChanged;
-        public event Play Play;
+        public event ManifestReady ManifestReady;
 
         public DashManifest Manifest { get; internal set; }
         private Task manifestFeedTask;
         private CancellationTokenSource manifestFeedCts;
-        private Object startStopLock = new Object();
+        private readonly Object startStopLock = new Object();
 
         private readonly List<SubtitleInfo> subtitleInfos = new List<SubtitleInfo>();
 
@@ -162,13 +162,14 @@ namespace JuvoPlayer.DataProviders.Dash
             NotifyDurationChange();
             BuildSubtitleInfos(tmpPeriod);
             token.ThrowIfCancellationRequested();
-            Play?.Invoke();
+            ManifestReady?.Invoke();
         }
 
         private void NotifyDurationChange()
         {
             var duration = Manifest.CurrentDocument.MediaPresentationDuration;
 
+            logger.Info($"{duration}");
             if (duration.HasValue && duration.Value > TimeSpan.Zero)
                 ClipDurationChanged?.Invoke(duration.Value);
         }
