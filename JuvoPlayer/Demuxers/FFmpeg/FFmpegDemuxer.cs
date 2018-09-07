@@ -334,6 +334,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg
                         var dataSize = pkt.size;
                         var pts = Interop.FFmpeg.av_rescale_q(pkt.pts, s->time_base, microsBase) / 1000;
                         var dts = Interop.FFmpeg.av_rescale_q(pkt.dts, s->time_base, microsBase) / 1000;
+                        var duration = Interop.FFmpeg.av_rescale_q(pkt.duration, s->time_base, microsBase) / 1000;
 
                         var sideData = Interop.FFmpeg.av_packet_get_side_data(&pkt, AVPacketSideDataType.@AV_PKT_DATA_ENCRYPT_INFO, null);
 
@@ -346,6 +347,8 @@ namespace JuvoPlayer.Demuxers.FFmpeg
                         packet.StreamType = pkt.stream_index != audioIdx ? StreamType.Video : StreamType.Audio;
                         packet.Pts = TimeSpan.FromMilliseconds(pts >= 0 ? pts : 0);
                         packet.Dts = TimeSpan.FromMilliseconds(dts >= 0 ? dts : 0);
+                        packet.Duration = TimeSpan.FromMilliseconds(duration);
+
                         packet.Data = new byte[dataSize];
                         packet.IsKeyFrame = (pkt.flags == 1);
 

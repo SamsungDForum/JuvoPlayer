@@ -24,6 +24,7 @@ namespace JuvoPlayer.Common
         public TimeSpan Pts { get; set; }
         public bool IsEOS { get; set; }
         public bool IsKeyFrame { get; set; }
+        public TimeSpan Duration { get; set; }
 
         public static Packet CreateEOS(StreamType streamType)
         {
@@ -32,6 +33,7 @@ namespace JuvoPlayer.Common
                 StreamType = streamType,
                 Dts = TimeSpan.MaxValue,
                 Pts = TimeSpan.MaxValue,
+                Duration = TimeSpan.MinValue,
                 IsEOS = true
             };
         }
