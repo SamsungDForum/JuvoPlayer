@@ -33,7 +33,7 @@ namespace JuvoPlayer.Common
                 StreamType = streamType,
                 Dts = TimeSpan.MaxValue,
                 Pts = TimeSpan.MaxValue,
-                Duration = TimeSpan.MinValue,
+                Duration = TimeSpan.Zero,
                 IsEOS = true
             };
         }

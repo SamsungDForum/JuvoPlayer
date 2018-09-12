@@ -12,6 +12,7 @@ using JuvoPlayer.Drms.Cenc;
 using JuvoPlayer.Drms.DummyDrm;
 using JuvoPlayer.Player;
 using JuvoPlayer.Player.SMPlayer;
+using JuvoPlayer.Player.EsPlayer;
 using JuvoPlayer.Utils;
 
 namespace JuvoPlayer.TizenTests.Utils
@@ -61,7 +62,7 @@ namespace JuvoPlayer.TizenTests.Utils
             drmManager.RegisterDrmHandler(new CencHandler());
             drmManager.RegisterDrmHandler(new DummyDrmHandler());
 
-            var player = new SMPlayer();
+            var player = new EsPlayer();
             
             playerController = new PlayerController(player, drmManager);
             playerController.PlaybackCompleted += () =>

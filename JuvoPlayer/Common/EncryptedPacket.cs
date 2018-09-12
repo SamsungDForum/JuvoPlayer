@@ -3,6 +3,7 @@ using System;
 using System.Runtime.ExceptionServices;
 using System.Threading.Tasks;
 using System.Xml.Serialization;
+using JuvoPlayer.Common.Utils.IReferenceCountableExtensions;
 
 namespace JuvoPlayer.Common
 {
@@ -36,6 +37,19 @@ namespace JuvoPlayer.Common
                 ExceptionDispatchInfo.Capture(ex.InnerException).Throw();
                 throw; // wont be executed as above method always throws
             }
+        }
+
+        private bool isDisposed;
+        // Use override to assure base class object references
+        // of type EncryptedPacket will call this Dispose, not the base class
+        //
+        public override void Dispose()
+        {
+            if (isDisposed)
+                return;
+
+            DrmSession.Release();
+            isDisposed = true;
         }
     }
 }
