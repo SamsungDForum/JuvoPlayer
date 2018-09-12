@@ -230,16 +230,6 @@ namespace JuvoPlayer.OpenGL
             }
             else if(_progressBarShown)
             {
-                /*switch (_selectedAction)
-                {
-                    case MenuAction.PlaybackControl:
-                        break;
-                    case MenuAction.OptionsMenu:
-                        SelectMenuAction(MenuAction.PlaybackControl);
-                        break;
-                    case MenuAction.None:
-                        break;
-                }*/
                 Seek(_defaultSeekTime);
             }
         }
@@ -258,16 +248,6 @@ namespace JuvoPlayer.OpenGL
             }
             else if (_progressBarShown)
             {
-                /*switch (_selectedAction)
-                {
-                    case MenuAction.PlaybackControl:
-                        SelectMenuAction(MenuAction.OptionsMenu);
-                        break;
-                    case MenuAction.OptionsMenu:
-                        break;
-                    case MenuAction.None:
-                        break;
-                }*/
                 Seek(-_defaultSeekTime);
             }
         }
@@ -373,7 +353,6 @@ namespace JuvoPlayer.OpenGL
                                 if (_player == null)
                                     return;
                                 _options.LoadStreamLists(_player);
-                                SelectMenuAction(MenuAction.PlaybackControl);
                                 _player.Start();
                             }
                             else if (e.State == PlayerState.Completed)
@@ -400,7 +379,6 @@ namespace JuvoPlayer.OpenGL
             _player.SetSource(_resourceLoader.ContentList[_selectedTile]);
             _options.ClearOptionsMenu();
             _seekInProgress = false;
-            SelectMenuAction(MenuAction.None);
         }
 
         private void ReturnToMainMenu()
@@ -561,7 +539,6 @@ namespace JuvoPlayer.OpenGL
                 return;
             _progressBarShown = false;
             _options.Hide();
-            SelectMenuAction(MenuAction.None);
             ResetPlaybackControls();
             ShowMenu(true);
             ClosePlayer();
@@ -582,7 +559,6 @@ namespace JuvoPlayer.OpenGL
             {
                 _progressBarShown = false;
                 _options.Hide();
-                SelectMenuAction(MenuAction.PlaybackControl);
                 Logger?.Info($"{(DateTime.Now - _lastKeyPressTime).TotalMilliseconds} ms of inactivity, hiding progress bar.");
             }
 
@@ -601,7 +577,6 @@ namespace JuvoPlayer.OpenGL
 
         private void SelectMenuAction(MenuAction menuAction)
         {
-            return; // after last ui smart-remote focused behaviour change, don't highlight icons
             _selectedAction = menuAction;
             DllImports.SelectAction((int)_selectedAction);
         }
