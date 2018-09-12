@@ -230,7 +230,7 @@ namespace JuvoPlayer.OpenGL
             }
             else if(_progressBarShown)
             {
-                switch (_selectedAction)
+                /*switch (_selectedAction)
                 {
                     case MenuAction.PlaybackControl:
                         break;
@@ -239,7 +239,8 @@ namespace JuvoPlayer.OpenGL
                         break;
                     case MenuAction.None:
                         break;
-                }
+                }*/
+                Seek(_defaultSeekTime);
             }
         }
 
@@ -257,7 +258,7 @@ namespace JuvoPlayer.OpenGL
             }
             else if (_progressBarShown)
             {
-                switch (_selectedAction)
+                /*switch (_selectedAction)
                 {
                     case MenuAction.PlaybackControl:
                         SelectMenuAction(MenuAction.OptionsMenu);
@@ -266,7 +267,8 @@ namespace JuvoPlayer.OpenGL
                         break;
                     case MenuAction.None:
                         break;
-                }
+                }*/
+                Seek(-_defaultSeekTime);
             }
         }
 
@@ -275,6 +277,10 @@ namespace JuvoPlayer.OpenGL
             if (!_isMenuShown && _options.Visible)
             {
                 _options.ControlUp();
+            }
+            else if (!_isMenuShown && !_options.Visible && _progressBarShown)
+            {
+                _options.Show();
             }
         }
 
@@ -300,19 +306,39 @@ namespace JuvoPlayer.OpenGL
                 ShowMenu(false);
                 HandlePlaybackStart();
             }
-            else
+            else if (_progressBarShown && !_options.Visible)
+            {
+                switch (_player.State)
+                {
+                    case PlayerState.Playing:
+                        _player?.Pause();
+                        break;
+                    case PlayerState.Paused:
+                        _player?.Start();
+                        break;
+                }
+            }
+            else if (_options.Visible && _options.ProperSelection())
+            {
+                _options.ControlSelect(_player);
+                _options.Hide();
+            }
+            else if(false) // after last ui smart-remote focused behaviour change, don't step over icons
             {
                 switch (_selectedAction)
                 {
                     case MenuAction.PlaybackControl:
-                        switch (_player.State)
+                        if (_progressBarShown)
                         {
-                            case PlayerState.Playing:
-                                _player?.Pause();
-                                break;
-                            case PlayerState.Paused:
-                                _player?.Start();
-                                break;
+                            switch (_player.State)
+                            {
+                                case PlayerState.Playing:
+                                    _player?.Pause();
+                                    break;
+                                case PlayerState.Paused:
+                                    _player?.Start();
+                                    break;
+                            }
                         }
                         break;
                     case MenuAction.OptionsMenu:
@@ -391,6 +417,8 @@ namespace JuvoPlayer.OpenGL
                 ReturnToMainMenu();
             else if (_options.Visible)
                 _options.Hide();
+            else
+                Exit();
         }
 
         private void ClosePlayer()
@@ -409,7 +437,10 @@ namespace JuvoPlayer.OpenGL
 
         private void HandleKeyPlay()
         {
-            _player?.Start();
+            if(_player?.State == PlayerState.Playing)
+                _player?.Pause();
+            else
+                _player?.Start();
         }
 
         private void HandleKeyPause()
@@ -570,6 +601,7 @@ namespace JuvoPlayer.OpenGL
 
         private void SelectMenuAction(MenuAction menuAction)
         {
+            return; // after last ui smart-remote focused behaviour change, don't highlight icons
             _selectedAction = menuAction;
             DllImports.SelectAction((int)_selectedAction);
         }
