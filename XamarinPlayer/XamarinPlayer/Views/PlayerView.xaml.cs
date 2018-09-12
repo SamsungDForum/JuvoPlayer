@@ -40,7 +40,7 @@ namespace XamarinPlayer.Views
             _playerService = DependencyService.Get<IPlayerService>(DependencyFetchTarget.NewInstance);
             _playerService.StateChanged += OnPlayerStateChanged;
 
-            PlayButton.Clicked += (s, e) => { Play(); };                      
+            PlayButton.Clicked += (s, e) => { Play(); };
 
             PropertyChanged += PlayerViewPropertyChanged;
 
@@ -66,7 +66,7 @@ namespace XamarinPlayer.Views
             {
                 return;
             }
-            
+
             if (e.Contains("Back") && !e.Contains("XF86PlayBack"))
             {
                 //If the 'return' button on standard or back arrow on the smart remote control was pressed do react depending on the playback state
@@ -107,15 +107,15 @@ namespace XamarinPlayer.Views
                         _playerService.Pause();
                     }
 
-                    if ((e.Contains("Next") || e.Contains("Right")) )
+                    if ((e.Contains("Next") || e.Contains("Right")))
                     {
                         Forward();
                     }
-                    else if ((e.Contains("Rewind") || e.Contains("Left")) )
+                    else if ((e.Contains("Rewind") || e.Contains("Left")))
                     {
                         Rewind();
                     }
-                    else if ((e.Contains("Up")) )
+                    else if ((e.Contains("Up")))
                     {
                         HandleSettings();
                     }
@@ -364,13 +364,31 @@ namespace XamarinPlayer.Views
             });
         }
 
+        /// <summary>
+        /// This re-router through main thread has been added in order
+        /// to accomodate AsyncPrepare for ESPlayer.
+        /// AsyncPrepare cannot be awiaited in any form (none found).
+        /// If awiated - does not complete. Issuing prepared event from thread
+        /// other then UI causes load file exceptions.
+        /// If this redirector will cause issues, more selective approach may need
+        /// to be applied - i.e. prepare event only
+        /// </summary>
+        /// <param name="sender"></param>
+        /// <param name="e"></param>
         private void OnPlayerStateChanged(object sender, PlayerStateChangedEventArgs e)
+        {
+            Device.BeginInvokeOnMainThread(() =>
+            {
+                HandleStateChanged(sender, e);
+            });
+        }
+        private void HandleStateChanged(object sender, PlayerStateChangedEventArgs e)
         {
             Logger.Info($"Player State Changed: {e.State}");
 
             if (_isPageDisappeared)
             {
-                Logger.Warn($"Page scheduled for disappearing or already dissapeared. Stale Event? Not Processed.");
+                Logger.Warn($"Page scheduled for disappearing or already disappeared. Stale Event? Not Processed.");
                 return;
             }
 
