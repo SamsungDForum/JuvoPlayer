@@ -303,39 +303,6 @@ namespace JuvoPlayer.OpenGL
                 _options.ControlSelect(_player);
                 _options.Hide();
             }
-            else if(false) // after last ui smart-remote focused behaviour change, don't step over icons
-            {
-                switch (_selectedAction)
-                {
-                    case MenuAction.PlaybackControl:
-                        if (_progressBarShown)
-                        {
-                            switch (_player.State)
-                            {
-                                case PlayerState.Playing:
-                                    _player?.Pause();
-                                    break;
-                                case PlayerState.Paused:
-                                    _player?.Start();
-                                    break;
-                            }
-                        }
-                        break;
-                    case MenuAction.OptionsMenu:
-                        if (_options.Visible && _options.ProperSelection())
-                        {
-                            _options.ControlSelect(_player);
-                            _options.Hide();
-                        }
-                        else if (!_options.Visible)
-                        {
-                            _options.Show();
-                        }
-                        break;
-                    case MenuAction.None:
-                        break;
-                }
-            }
         }
 
         private void HandlePlaybackStart()
@@ -443,6 +410,9 @@ namespace JuvoPlayer.OpenGL
 
         private async void Seek(TimeSpan seekTime)
         {
+            if (_player.IsSeekingSupported == false)
+                return;
+
             _seekCancellationTokenSource?.Cancel();
 
             if (_seekBufferingInProgress == false)
