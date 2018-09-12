@@ -161,6 +161,8 @@ namespace JuvoPlayer.OpenGL
             {
                 if (_selectedOption < _streams.Count - 1)
                     ++_selectedOption;
+                else
+                    Hide();
             }
             else
             {
