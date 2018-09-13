@@ -36,6 +36,8 @@ namespace JuvoPlayer.Player.EsPlayer
         private bool allStreamsConfigured => DataStreams.All(streamEntry =>
             streamEntry?.IsConfigured ?? true);
 
+        private static TimeSpan currentClock;
+
         #region Instance Support
         public static EsStreamController GetInstance(ESPlayer.ESPlayer esPlayer)
         {
@@ -222,14 +224,16 @@ namespace JuvoPlayer.Player.EsPlayer
 
         private static async Task GenerateTimeUpdates()
         {
-            DateTime start = DateTime.Now;
 
-            logger.Info("Starting clock extractor (FAKE GENERATED)");
+            logger.Info("Starting clock extractor (GENERATED)");
 
             while (!stopToken.IsCancellationRequested)
             {
+                var delayStart = DateTime.Now;
                 await Task.Delay(500, stopToken);
-                StreamControl?.TimeUpdated?.Invoke(DateTime.Now - start);
+
+                currentClock += DateTime.Now - delayStart;
+                StreamControl?.TimeUpdated?.Invoke(currentClock);
             }
         }
 
