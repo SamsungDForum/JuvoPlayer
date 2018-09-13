@@ -64,6 +64,15 @@ namespace JuvoPlayer.Player.EsPlayer
         }
     }
 
+    /// <summary>
+    /// Internal EsPlayer event. Called when stream has to be reconfigured
+    /// </summary>
+    /// <param name="bufferConfigPacket">BufferConfigurationPacket</param>
+    internal delegate void StreamReconfigure(BufferConfigurationPacket bufferConfigPacket);
+
+    /// <summary>
+    /// Class representing and individual stream being transferred
+    /// </summary>
     internal class EsStream : IDisposable
     {
         private readonly ILogger logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
@@ -130,7 +139,10 @@ namespace JuvoPlayer.Player.EsPlayer
         /// </summary>
         private readonly object syncLock = new object();
 
-
+        /// <summary>
+        /// Event - Invoked when stream requires reconfiguration
+        /// </summary>
+        public event StreamReconfigure ReconfigureStream;
 
         #region Public API
 
@@ -163,17 +175,22 @@ namespace JuvoPlayer.Player.EsPlayer
         /// and processed once retrieved.
         /// </summary>
         /// <param name="bufferConfig">BufferConfigurationPacket</param>
-        public void SetStreamConfig(BufferConfigurationPacket bufferConfig)
+        /// <returns>bool
+        /// True - Config Pushed
+        /// False - Config Enqueued</returns>
+        public bool SetStreamConfig(BufferConfigurationPacket bufferConfig)
         {
-            logger.Info($"Already Configured: {IsConfigured}");
+            logger.Info($"{streamTypeJuvo}: Already Configured: {IsConfigured}");
 
             if (IsConfigured)
             {
                 packetStorage.AddPacket(bufferConfig);
-                return;
+                logger.Info($"{streamTypeJuvo}: New configuration queued");
+                return false;
             }
 
             PushStreamConfig(bufferConfig.Config);
+            return true;
         }
 
         /// <summary>
@@ -378,8 +395,18 @@ namespace JuvoPlayer.Player.EsPlayer
                             DisableTransfer();
                             break;
                         case BufferConfigurationPacket bufferConfigPacket:
-                            logger.Info($"{streamTypeJuvo}: Buffer Reconfiguration not implemented");
-                            break;
+
+                            logger.Info($"{streamTypeJuvo} Buffer Reconfiguration not supported");
+                            return;
+
+                            // Remove current configuration
+                            currentConfig = null;
+                            ReconfigureStream?.Invoke(bufferConfigPacket);
+
+                            // exit transfer task. This will prevent further transfers
+                            // Stops/Restarts will be called by reconfiguration handler.
+                            return;
+
                         case EncryptedPacket encryptedPacket:
                             logger.Info($"{streamTypeJuvo}: Encrypted packet not implemented");
                             break;

@@ -13,6 +13,7 @@ using Nito.AsyncEx;
 
 namespace JuvoPlayer.Player.EsPlayer
 {
+    
     /// <summary>
     /// Controls transfer stream operation
     /// </summary>
@@ -63,7 +64,7 @@ namespace JuvoPlayer.Player.EsPlayer
         /// <summary>
         /// Current clock time - used for fake clock generation
         /// </summary>
-        private static TimeSpan currentClock;
+        private TimeSpan currentClock;
 
         #region Instance Support
         /// <summary>
@@ -114,7 +115,7 @@ namespace JuvoPlayer.Player.EsPlayer
             stopCts?.Dispose();
 
             // Dispose of individual streams.
-            dataStreams.AsParallel().ForAll((esStream) => esStream?.Dispose());
+            dataStreams.AsParallel().ForAll((esStream) => DisposeStream(ref esStream));
 
             streamControl = null;
         }
@@ -130,6 +131,15 @@ namespace JuvoPlayer.Player.EsPlayer
             }
         }
 
+        private void DisposeStream(ref EsStream stream)
+        {
+            if (stream == null)
+                return;
+
+            stream.ReconfigureStream -= OnStreamReconfigure;
+            stream.Dispose();
+            stream = null;
+        }
         /// <summary>
         /// Initializes a stream to be used with stream controller
         /// Must be called before usage of the stream with stream controller
@@ -143,13 +153,14 @@ namespace JuvoPlayer.Player.EsPlayer
             //
             var esStream = dataStreams[(int)stream];
 
-            // Create new queue in its place
+            // Create new data stream in its place
             //
             dataStreams[(int)stream] = new EsStream(player, stream);
+            dataStreams[(int) stream].ReconfigureStream += OnStreamReconfigure;
 
             // Remove previous data if existed in first place...
             //
-            esStream?.Dispose();
+            DisposeStream(ref esStream);
         }
         #endregion
 
@@ -163,7 +174,13 @@ namespace JuvoPlayer.Player.EsPlayer
             try
             {
                 var stream = dataStreams[(int)config.StreamType()];
-                stream.SetStreamConfig(BufferConfigurationPacket.Create(config));
+
+                var isConfigPushed = stream.SetStreamConfig(BufferConfigurationPacket.Create(config));
+
+                // Configuration queued. Do not prepare stream :)
+                if (!isConfigPushed)
+                    return;
+                
 
                 // Check if all initialized streams are configured
                 if (!AllStreamsConfigured)
@@ -267,6 +284,23 @@ namespace JuvoPlayer.Player.EsPlayer
         #endregion
 
         #region Private Methods
+
+        #region Internal EsPlayer event handlers
+
+        private void OnStreamReconfigure(BufferConfigurationPacket configPacket)
+        {
+            logger.Info("");
+
+            var streamIdx = (int)configPacket.StreamType;
+
+            //player.Stop();
+            //dataStreams[streamIdx].Stop();
+            //dataStreams[streamIdx].SetStreamConfig(configPacket);
+            //dataStreams[streamIdx].Start();
+            //player.Start();
+        }
+
+        #endregion
         #region ESPlayer event handlers    
         /// <summary>
         /// ESPlayer event handler. Notifies that ALL played streams have
