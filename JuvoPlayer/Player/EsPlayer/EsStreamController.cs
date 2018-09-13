@@ -13,102 +13,160 @@ using Nito.AsyncEx;
 
 namespace JuvoPlayer.Player.EsPlayer
 {
-    class EsStreamController
+    /// <summary>
+    /// Controls transfer stream operation
+    /// </summary>
+    internal class EsStreamController
     {
-        private static ILogger logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
+        private readonly ILogger logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
 
-        internal static EsStreamController StreamControl;
-        internal static EsStream[] DataStreams;
-        internal static ESPlayer.ESPlayer Player;
+        /// <summary>
+        /// Instance reference & creation lock
+        /// </summary>
+        private static EsStreamController streamControl;
+        private static readonly object InstanceLock = new object();
 
-        private static readonly Object instanceLock = new Object();
+        /// <summary>
+        /// Reference to all data streams representing transfer
+        /// of individual stream data
+        /// </summary>
+        private EsStream[] dataStreams;
 
+        /// <summary>
+        /// Reference to ESPlayer
+        /// </summary>
+        private ESPlayer.ESPlayer player;
+
+        /// <summary>
+        /// event callbacks
+        /// </summary>
         public event TimeUpdated TimeUpdated;
         public event PlaybackError PlaybackError;
         public event PlaybackCompleted PlaybackCompleted;
-
         public event PlayerInitialized PlayerInitialized;
 
-        internal static Task timeUpdater;
-        private static CancellationTokenSource stopCts;
-        private static CancellationToken stopToken;
+        /// <summary>
+        /// Timer process and supporting cancellation elements
+        /// </summary>
+        private Task timeUpdater;
+        private CancellationTokenSource stopCts;
+        private CancellationToken stopToken;
 
-        private bool allStreamsConfigured => DataStreams.All(streamEntry =>
+        /// <summary>
+        /// Returns configuration status of all underlying streams.
+        /// True - all initialized streams are configures
+        /// False - at least one underlying stream is not configured
+        /// </summary>
+        private bool AllStreamsConfigured => dataStreams.All(streamEntry =>
             streamEntry?.IsConfigured ?? true);
 
+        /// <summary>
+        /// Current clock time - used for fake clock generation
+        /// </summary>
         private static TimeSpan currentClock;
 
         #region Instance Support
+        /// <summary>
+        /// Obtains an instance of Stream Controller
+        /// </summary>
+        /// <param name="esPlayer">ESPlayer</param>
+        /// <returns>EsStreamController instance</returns>
         public static EsStreamController GetInstance(ESPlayer.ESPlayer esPlayer)
         {
-            lock (instanceLock)
+            lock (InstanceLock)
             {
-                if (StreamControl != null)
-                    return StreamControl;
+                if (streamControl != null)
+                    return streamControl;
 
-                // Initialize player & attach event handlers
-                Player = esPlayer;
-                Player.EOSEmitted += OnEos;
-                Player.ErrorOccurred += OnError;
+                streamControl = new EsStreamController();
+                streamControl.ConfigureInstance(esPlayer);
 
-                StreamControl = new EsStreamController();
-                DataStreams = new EsStream[(int)StreamType.Count];
-
-                return StreamControl;
+                return streamControl;
             }
         }
 
+        /// <summary>
+        /// Configure newly created instance
+        /// </summary>
+        /// <param name="esPlayer">ESPlayer</param>
+        private void ConfigureInstance(ESPlayer.ESPlayer esPlayer)
+        {
+            // Initialize player & attach event handlers
+            player = esPlayer;
+            player.EOSEmitted += OnEos;
+            player.ErrorOccurred += OnError;
+
+            dataStreams = new EsStream[(int)StreamType.Count];
+        }
+
+        /// <summary>
+        /// Unconfigures and instance
+        /// </summary>
+        private void UnconfigureInstance()
+        {
+            logger.Info("");
+
+            // Detach event handlers
+            player.EOSEmitted -= OnEos;
+            player.ErrorOccurred -= OnError;
+
+            stopCts?.Cancel();
+            stopCts?.Dispose();
+
+            // Dispose of individual streams.
+            dataStreams.AsParallel().ForAll((esStream) => esStream?.Dispose());
+
+            streamControl = null;
+        }
+
+        /// <summary>
+        /// Releases instance resources. 
+        /// </summary>
+        public static void FreeInstance()
+        {
+            lock (InstanceLock)
+            {
+                streamControl?.UnconfigureInstance();
+            }
+        }
+
+        /// <summary>
+        /// Initializes a stream to be used with stream controller
+        /// Must be called before usage of the stream with stream controller
+        /// </summary>
+        /// <param name="stream">Common.StreamType</param>
         public void Initialize(Common.StreamType stream)
         {
             logger.Info(stream.ToString());
 
             // Grab "old" stream 
             //
-            var esStream = DataStreams[(int)stream];
+            var esStream = dataStreams[(int)stream];
 
             // Create new queue in its place
             //
-            DataStreams[(int)stream] = new EsStream(Player, stream);
+            dataStreams[(int)stream] = new EsStream(player, stream);
 
             // Remove previous data if existed in first place...
             //
             esStream?.Dispose();
         }
-
-        public static void FreeInstance()
-        {
-            lock (instanceLock)
-            {
-                if (StreamControl == null)
-                    return;
-
-                logger.Info("");
-
-                // Detach event handlers
-                Player.EOSEmitted -= OnEos;
-                Player.ErrorOccurred -= OnError;
-
-                stopCts?.Cancel();
-                stopCts?.Dispose();
-
-                // Dispose of individual streams.
-                DataStreams.AsParallel().ForAll((esStream) => esStream?.Dispose());
-
-                StreamControl = null;
-            }
-        }
         #endregion
 
         #region Public API
+        /// <summary>
+        /// Sets provided configuration to appropriate stream.
+        /// </summary>
+        /// <param name="config">StreamConfig</param>
         public void SetStreamConfiguration(StreamConfig config)
         {
             try
             {
-                var stream = DataStreams[(int)config.StreamType()];
+                var stream = dataStreams[(int)config.StreamType()];
                 stream.SetStreamConfig(BufferConfigurationPacket.Create(config));
 
                 // Check if all initialized streams are configured
-                if (!allStreamsConfigured)
+                if (!AllStreamsConfigured)
                     return;
 
                 // All configured. Do preparation.
@@ -131,17 +189,21 @@ namespace JuvoPlayer.Player.EsPlayer
             }
         }
 
+        /// <summary>
+        /// Starts playback on all initialized streams. Streams do have to be
+        /// configured in order for the call to start playback.
+        /// </summary>
         public void Play()
         {
             logger.Info("");
 
-            if (!allStreamsConfigured)
+            if (!AllStreamsConfigured)
             {
                 logger.Info("Initialized streams are not configured. Play Aborted");
                 return;
             }
 
-            if (!Player.Start())
+            if (!player.Start())
             {
                 logger.Error("ESPlayer.Start() failed");
                 return;
@@ -151,11 +213,15 @@ namespace JuvoPlayer.Player.EsPlayer
             StartClockGenerator();
         }
 
+        /// <summary>
+        /// Resumes playback on all initialized streams. Playback had to be
+        /// paused.
+        /// </summary>
         public void Resume()
         {
             logger.Info("");
 
-            if (!Player.Resume())
+            if (!player.Resume())
             {
                 logger.Error("ESPlayer.Resume() failed");
                 return;
@@ -165,11 +231,14 @@ namespace JuvoPlayer.Player.EsPlayer
             StartClockGenerator();
         }
 
+        /// <summary>
+        /// Pauses playback on all initialized streams. Playback had to be played.
+        /// </summary>
         public void Pause()
         {
             logger.Info("");
 
-            if (!Player.Pause())
+            if (!player.Pause())
             {
                 logger.Error("ESPlayer.Pause() failed");
                 return;
@@ -179,11 +248,14 @@ namespace JuvoPlayer.Player.EsPlayer
             StopClockGenerator();
         }
 
+        /// <summary>
+        /// Stops playback on all initialized streams.
+        /// </summary>
         public void Stop()
         {
             logger.Info("");
 
-            if (!Player.Stop())
+            if (!player.Stop())
             {
                 logger.Error("ESPlayer.Stop() failed");
                 return;
@@ -192,39 +264,129 @@ namespace JuvoPlayer.Player.EsPlayer
             StopDataStreams();
             StopClockGenerator();
         }
-
-
         #endregion
 
         #region Private Methods
         #region ESPlayer event handlers    
-        private static void OnEos(Object sender, ESPlayer.EosArgs eosArgs)
+        /// <summary>
+        /// ESPlayer event handler. Notifies that ALL played streams have
+        /// completed playback (EOS was sent on all of them)
+        /// Methods 
+        /// </summary>
+        /// <param name="sender">Object</param>
+        /// <param name="eosArgs">ESPlayer.EosArgs</param>
+        private void OnEos(object sender, ESPlayer.EosArgs eosArgs)
         {
             logger.Error(eosArgs.ToString());
-            StopDataStreams();
-            StreamControl?.PlaybackCompleted?.Invoke();
+
+            // Stop and disable all initialized data streams.
+            StopAndDisable();
+
+            streamControl?.PlaybackCompleted?.Invoke();
         }
 
-        private static void OnError(Object sender, ESPlayer.ErrorArgs errorArgs)
+        /// <summary>
+        /// ESPlayer event handler. Notifies of an error condition during
+        /// playback.
+        /// Stops and disables all initialized streams and notifies of an error condition
+        /// through PlaybackError event.
+        /// </summary>
+        /// <param name="sender">Object</param>
+        /// <param name="errorArgs">ESPlayer.ErrorArgs</param>
+        private void OnError(object sender, ESPlayer.ErrorArgs errorArgs)
         {
             var error = errorArgs.ToString();
             logger.Error(error);
 
-            // Stop playback on all valid streams
-            DataStreams.AsParallel().ForAll(esStream =>
+            // Stop and disable all initialized data streams.
+            StopAndDisable();
+
+            // Perform error notification
+            PlaybackError?.Invoke(error);
+        }
+
+        /// <summary>
+        /// ESPlayer event handler. Issued after calling AsyncPrepare. Stream type
+        /// passed as an argument indicates stream for which data transfer has be started.
+        /// This effectively starts playback.
+        /// </summary>
+        /// <param name="esPlayerStreamType">ESPlayer.StreamType</param>
+        private async void OnReadyToStartStream(ESPlayer.StreamType esPlayerStreamType)
+        {
+            var streamType = EsPlayerUtils.JuvoStreamType(esPlayerStreamType);
+
+            logger.Info(streamType.ToString());
+            dataStreams[(int)streamType].Start();
+        }
+        #endregion
+
+        /// <summary>
+        /// Method executes PrepareAsync on ESPlayer. On success, notifies
+        /// event PlayerInitialized. At this time player is ALREADY PLAYING
+        /// </summary>
+        /// <returns>Task</returns>
+        private async Task PrepareStream()
+        {
+            logger.Info("");
+
+            var prepareRes = await player.PrepareAsync(OnReadyToStartStream);
+
+            if (!prepareRes)
+            {
+                logger.Error("Player.PrepareAsync() Failed");
+                StopAndDisable();
+                return;
+            }
+
+            // This has to be called from UI Thread.
+            // It seems impossible to wait for AsyncPrepare completion - doing so
+            // prevents AsyncPrepare from completing.
+            // Currently, all events passed to UI are re-routed through main thread.
+            //
+            PlayerInitialized?.Invoke();
+
+            logger.Info("Player.PrepareAsync() Completed");
+
+        }
+
+        /// <summary>
+        /// Stops all initialized data streams
+        /// </summary>
+        private void StopDataStreams()
+        {
+            logger.Info("Stopping all data streams");
+            dataStreams.AsParallel().ForAll(esStream => esStream?.Stop());
+        }
+
+        /// <summary>
+        /// Starts all initialized data streams
+        /// </summary>
+        private void StartDataStreams()
+        {
+            logger.Info("Starting all data streams");
+            dataStreams.AsParallel().ForAll(esStream => esStream?.Start());
+        }
+
+        /// <summary>
+        /// Stops and disables all initialized data streams preventing
+        /// any further data transfer on those streams.
+        /// </summary>
+        private void StopAndDisable()
+        {
+            logger.Info("Stop and Disable all data streams");
+            dataStreams.AsParallel().ForAll(esStream =>
             {
                 esStream?.Stop();
                 esStream?.Disable();
             });
-
-            // Perform error notification
-            StreamControl?.PlaybackError?.Invoke(error);
         }
-        #endregion
 
-        private static async Task GenerateTimeUpdates()
+        /// <summary>
+        /// Time generation task
+        /// </summary>
+        /// <returns>Task</returns>
+        private async Task GenerateTimeUpdates()
         {
-
             logger.Info("Starting clock extractor (GENERATED)");
 
             while (!stopToken.IsCancellationRequested)
@@ -233,23 +395,14 @@ namespace JuvoPlayer.Player.EsPlayer
                 await Task.Delay(500, stopToken);
 
                 currentClock += DateTime.Now - delayStart;
-                StreamControl?.TimeUpdated?.Invoke(currentClock);
+                streamControl?.TimeUpdated?.Invoke(currentClock);
             }
         }
 
-        private static void StopDataStreams()
-        {
-            logger.Info("Stopping all data streams");
-            DataStreams.AsParallel().ForAll(esStream => esStream?.Stop());
-        }
-
-        private static void StartDataStreams()
-        {
-            logger.Info("Starting all data streams");
-            DataStreams.AsParallel().ForAll(esStream => esStream?.Start());
-        }
-
-        private static void StartClockGenerator()
+        /// <summary>
+        /// Starts clock generation task
+        /// </summary>
+        private void StartClockGenerator()
         {
             if (stopCts != null)
             {
@@ -264,42 +417,16 @@ namespace JuvoPlayer.Player.EsPlayer
             timeUpdater = GenerateTimeUpdates();
         }
 
-        private static void StopClockGenerator()
+        /// <summary>
+        /// Terminates clock generation task
+        /// </summary>
+        private void StopClockGenerator()
         {
             stopCts.Cancel();
             stopCts.Dispose();
             stopCts = null;
         }
 
-        private static void OnReadyToStartStream(ESPlayer.StreamType esPlayerStreamType)
-        {
-            var streamType = EsPlayerUtils.JuvoStreamType(esPlayerStreamType);
-            DataStreams[(int)streamType].Start();
-        }
-
-        private async Task PrepareStream()
-        {
-            logger.Info("");
-
-            var prepareRes = await Player.PrepareAsync(async esStreamType =>
-                OnReadyToStartStream(esStreamType));
-
-            if (!prepareRes)
-            {
-                logger.Error("Player.PrepareAsync() Failed");
-                return;
-            }
-
-            // This has to be called from UI Thread.
-            // It seems impossible to wait for AsyncPrepare completion - doing so
-            // prevents AsyncPrepare from completing.
-            // Currently, all events passed to UI are re-routed through main thread.
-            //
-            PlayerInitialized?.Invoke();
-
-            logger.Info("Player.PrepareAsync() Completed");
-
-        }
         #endregion
     }
 }

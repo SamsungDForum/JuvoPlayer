@@ -14,39 +14,65 @@
 using System;
 using System.Collections.Concurrent;
 using System.Linq;
-using System.Text;
 using System.Threading;
 using JuvoLogger;
 using JuvoPlayer.Common;
-using System.Threading.Tasks;
-
 
 namespace JuvoPlayer.Player.EsPlayer
 {
+    /// <summary>
+    /// Provides packet storage services for EsPlayer
+    /// </summary>
     internal class EsPlayerPacketStorage
     {
-        private static ILogger logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
+        private readonly ILogger logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
 
-        internal static BlockingCollection<Packet>[] packetQueues;
-        internal static EsPlayerPacketStorage packetStorage;
+        /// <summary>
+        /// Data storage collection
+        /// </summary>
+        private BlockingCollection<Packet>[] packetQueues;
 
-        private static readonly Object createLock = new Object();
+        /// <summary>
+        /// Reference to a singleton instance of EsPlayerPacketStorage
+        /// </summary>
+        private static EsPlayerPacketStorage packetStorage;
 
+        private static readonly object CreateLock = new object();
+
+        #region Instance Support
+
+        /// <summary>
+        /// Obtains an instance of packet storage
+        /// </summary>
+        /// <returns>EsPlayerPacketStorage</returns>
         public static EsPlayerPacketStorage GetInstance()
         {
-            lock (createLock)
+            lock (CreateLock)
             {
                 if (packetStorage != null)
                     return packetStorage;
 
-                logger.Info("Creating Instance");
                 packetStorage = new EsPlayerPacketStorage();
-                packetQueues = new BlockingCollection<Packet>[(int)Common.StreamType.Count];
+                packetStorage.CreateStorage();
 
                 return packetStorage;
             }
         }
 
+        /// <summary>
+        /// Creates underlying storage collection. 
+        /// </summary>
+        private void CreateStorage()
+        {
+            logger.Info("Creating Instance");
+            packetQueues = new BlockingCollection<Packet>[(int)Common.StreamType.Count];
+        }
+
+        /// <summary>
+        /// Initializes storage for specified stream. Has to be called before
+        /// using stream for data transfer
+        /// </summary>
+        /// <param name="stream">Common.StreamType</param>
         public void Initialize(Common.StreamType stream)
         {
             logger.Info(stream.ToString());
@@ -63,6 +89,24 @@ namespace JuvoPlayer.Player.EsPlayer
             EmptyQueue(ref queue);
             queue?.Dispose();
         }
+
+        /// <summary>
+        /// Releases created instance of data storage
+        /// </summary>
+        public static void FreeInstance()
+        {
+            lock (CreateLock)
+            {
+                if (packetStorage == null)
+                    return;
+
+                packetStorage.DisposeStorage();
+                packetStorage = null;
+            }
+        }
+        #endregion
+
+        #region Public API
 
         /// <summary>
         /// Adds packet to internal packet storage.
@@ -129,7 +173,8 @@ namespace JuvoPlayer.Player.EsPlayer
         }
 
         /// <summary>
-        /// Disables storage. No further addition/extraction of data will be possible.
+        /// Disables storage. No further addition of data will be possible.
+        /// Extraction of already contained data is still possible.
         /// </summary>
         /// <param name="stream">stream for which packet is to be retrieved</param>
         public void Disable(Common.StreamType stream)
@@ -148,7 +193,15 @@ namespace JuvoPlayer.Player.EsPlayer
             }
         }
 
-        private static void EmptyQueue(ref BlockingCollection<Packet> queue)
+        #endregion
+
+        #region Private Methods
+
+        /// <summary>
+        /// Empties individual data queue
+        /// </summary>
+        /// <param name="queue">BlockingCollection<Packet></param>
+        private void EmptyQueue(ref BlockingCollection<Packet> queue)
         {
             if (queue == null)
                 return;
@@ -163,7 +216,10 @@ namespace JuvoPlayer.Player.EsPlayer
             queueData.AsParallel().ForAll(aPacket => aPacket.Dispose());
         }
 
-        private static void DisposeStorage(ref BlockingCollection<Packet>[] packetQueues)
+        /// <summary>
+        /// Clears all underlying data storage - all data queues.
+        /// </summary>
+        private void DisposeStorage()
         {
             if (packetQueues == null)
                 return;
@@ -180,17 +236,6 @@ namespace JuvoPlayer.Player.EsPlayer
             });
         }
 
-
-        public static void FreeInstance()
-        {
-            lock (createLock)
-            {
-                if (packetStorage == null)
-                    return;
-
-                DisposeStorage(ref packetQueues);
-                packetStorage = null;
-            }
-        }
+        #endregion
     }
 }

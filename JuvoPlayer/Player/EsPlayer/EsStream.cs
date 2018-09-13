@@ -23,11 +23,16 @@ using JuvoPlayer.Common;
 using ESPlayer = Tizen.TV.Multimedia.ESPlayer;
 using System.Linq.Expressions;
 using System.Runtime.CompilerServices;
+using MpdParser.Node.Writers;
 
 namespace JuvoPlayer.Player.EsPlayer
 {
+    /// <summary>
+    /// Packet submit exception. Raised when packet push to ESPlayer failed in a terminal
+    /// way.
+    /// </summary>
     [Serializable]
-    public class PacketSubmitException : Exception
+    internal class PacketSubmitException : Exception
     {
         //
         // For guidelines regarding the creation of new exception types, see
@@ -61,7 +66,7 @@ namespace JuvoPlayer.Player.EsPlayer
 
     internal class EsStream : IDisposable
     {
-        private static ILogger logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
+        private readonly ILogger logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
 
         /// <summary>
         /// Delegate holding PushConfigMethod.
@@ -123,7 +128,11 @@ namespace JuvoPlayer.Player.EsPlayer
         /// lock object used for serialization of internal operations
         /// that can be accessed externally
         /// </summary>
-        private readonly Object syncLock = new Object();
+        private readonly object syncLock = new object();
+
+
+
+        #region Public API
 
         public EsStream(ESPlayer.ESPlayer player, Common.StreamType type)
         {
@@ -167,6 +176,39 @@ namespace JuvoPlayer.Player.EsPlayer
             PushStreamConfig(bufferConfig.Config);
         }
 
+        /// <summary>
+        /// Public API for starting data transfer
+        /// </summary>
+        public void Start()
+        {
+            StartTransfer();
+        }
+
+        /// <summary>
+        /// Public API for stopping data transfer
+        /// </summary>
+        public void Stop()
+        {
+            StopTransfer();
+        }
+
+        /// <summary>
+        /// Public API for disabling data transfer. Once called, no further
+        /// data transfer will be possible.
+        /// </summary>
+        public void Disable()
+        {
+            DisableTransfer();
+        }
+
+        #endregion
+
+        #region Private Methods
+
+        /// <summary>
+        /// Audio Configuration push method.
+        /// </summary>
+        /// <param name="streamConfig">Common.StreamConfig</param>
         private void PushAudioConfig(Common.StreamConfig streamConfig)
         {
             logger.Info($"{streamTypeJuvo}");
@@ -188,16 +230,24 @@ namespace JuvoPlayer.Player.EsPlayer
                 channels = audioConfig.ChannelLayout
             };
 
+            // Set config before calling add streams - resulting events
+            // may be processed at any time after
+            currentConfig = streamConfig;
+
             if (!player.AddStream(config))
             {
                 logger.Warn($"Failed to set config {streamTypeJuvo}");
+                currentConfig = null;
                 return;
             }
 
-            logger.Info($"{streamTypeJuvo} Stream configuration added");
-            currentConfig = streamConfig;
+            logger.Info($"{streamTypeJuvo} Stream configuration set");
         }
 
+        /// <summary>
+        /// Video Configuration push method.
+        /// </summary>
+        /// <param name="streamConfig">Common.StreamConfig</param>
         private void PushVideoConfig(Common.StreamConfig streamConfig)
         {
             logger.Info($"{streamTypeJuvo}");
@@ -224,22 +274,27 @@ namespace JuvoPlayer.Player.EsPlayer
                 den = videoConfig.FrameRateDen
             };
 
+            // Set config before calling add streams - resulting events
+            // may be processed at any time after
+            currentConfig = streamConfig;
+
             if (!player.AddStream(config))
             {
                 logger.Warn($"Failed to set config {streamTypeJuvo}");
+                currentConfig = null;
+
                 return;
             }
 
-            logger.Info($"{streamTypeJuvo} Stream configuration added");
-
-            currentConfig = streamConfig;
+            logger.Info($"{streamTypeJuvo} Stream configuration set");
         }
 
-        public void Start()
-        {
-            StartTransfer();
-        }
 
+
+        /// <summary>
+        /// Starts data transfer, if not already running, by starting
+        /// transfer task.
+        /// </summary>
         private void StartTransfer()
         {
             logger.Info($"{streamTypeJuvo}");
@@ -248,7 +303,7 @@ namespace JuvoPlayer.Player.EsPlayer
             {
                 if (IsRunning)
                 {
-                    logger.Warn($"{streamTypeJuvo}: Playback not stopped. {transferTask.Status}");
+                    logger.Info($"{streamTypeJuvo}: Already started: {transferTask.Status}");
                     return;
                 }
 
@@ -265,11 +320,9 @@ namespace JuvoPlayer.Player.EsPlayer
             }
         }
 
-        public void Stop()
-        {
-            StopTransfer();
-        }
-
+        /// <summary>
+        /// Stops data transfer, if already running, by terminating transfer task.
+        /// </summary>
         private void StopTransfer()
         {
             logger.Info($"{streamTypeJuvo}");
@@ -278,11 +331,11 @@ namespace JuvoPlayer.Player.EsPlayer
             {
                 if (!IsRunning)
                 {
-                    logger.Warn($"{streamTypeJuvo}: Playback not started");
+                    logger.Info($"{streamTypeJuvo}: Already stopped");
                     return;
                 }
 
-                logger.Info($"{streamTypeJuvo} Stopping transfer");
+                logger.Info($"{streamTypeJuvo}: Stopping transfer");
 
                 transferCts.Cancel();
                 transferCts.Dispose();
@@ -290,26 +343,22 @@ namespace JuvoPlayer.Player.EsPlayer
             }
         }
 
-        public void Disable()
-        {
-            logger.Info($"{streamTypeJuvo}");
-
-            DisableTransfer();
-        }
-
+        /// <summary>
+        /// Disables further data transfer. Existing data in queue will continue
+        /// to be pushed to the player.
+        /// </summary>
         private void DisableTransfer()
         {
             logger.Info($"{streamTypeJuvo}");
 
-            lock (syncLock)
-            {
-                // Stop Transfer and disable packet storage so no further packets 
-                // can be collected.
-                StopTransfer();
-                packetStorage.Disable(streamTypeJuvo);
-            }
+            packetStorage.Disable(streamTypeJuvo);
         }
 
+        /// <summary>
+        /// Transfer task. Retrieves data from underlying storage and pushes it down
+        /// to ESPlayer
+        /// </summary>
+        /// <param name="token">CancellationToken</param>
         private void TransferTask(CancellationToken token)
         {
             logger.Info($"{streamTypeJuvo}: Transfer task started");
@@ -369,11 +418,22 @@ namespace JuvoPlayer.Player.EsPlayer
             }
         }
 
+        /// <summary>
+        /// Pushes data packet to ESPlayer
+        /// </summary>
+        /// <param name="dataPacket">Packet</param>
+        /// <param name="token">CancellationToken</param>
+        /// <exception cref="PacketSubmitException">
+        /// Exception thrown on submit error
+        /// </exception>
         private void PushDataPacket(Packet dataPacket, CancellationToken token)
         {
-            var doRetry = false;
+            bool doRetry;
+
+            // Convert Juvo packet to ESPlayer packet
             var esPacket = dataPacket.ToESPlayerPacket(streamTypeEsPlayer);
 
+            // Continue pushing packet till success or terminal failure
             do
             {
                 var res = player.SubmitPacket(esPacket);
@@ -382,12 +442,21 @@ namespace JuvoPlayer.Player.EsPlayer
             } while (doRetry);
         }
 
+        /// <summary>
+        /// Pushes EOS packet to ESPlayer
+        /// </summary>
+        /// <param name="dataPacket">Packet</param>
+        /// <param name="token">CancellationToken</param>
+        /// <exception cref="PacketSubmitException">
+        /// Exception thrown on submit error
+        /// </exception>
         private void PushEosPacket(CancellationToken token)
         {
             logger.Info("");
 
-            var doRetry = false;
+            bool doRetry;
 
+            // Continue pushing packet till success or terminal failure
             do
             {
                 var res = player.SubmitEosPacket(streamTypeEsPlayer);
@@ -396,6 +465,19 @@ namespace JuvoPlayer.Player.EsPlayer
             } while (doRetry);
         }
 
+        /// <summary>
+        /// Processes packet push result. Returned is an indication if retry
+        /// should take place or not
+        /// </summary>
+        /// <param name="status">ESPlayer.SubmitStatus</param>
+        /// <param name="token">CancellationToken</param>
+        /// <returns>
+        /// True - retry packet push
+        /// False - do not retry packet push
+        /// </returns>
+        /// <exception cref="PacketSubmitException">
+        /// Exception thrown on submit error
+        /// </exception>
         private bool ProcessPushResult(ESPlayer.SubmitStatus status, CancellationToken token)
         {
             if (token.IsCancellationRequested)
@@ -404,21 +486,37 @@ namespace JuvoPlayer.Player.EsPlayer
                 return false;
             }
 
-            if (status == ESPlayer.SubmitStatus.Success)
-                return false;
-
-            if (status != ESPlayer.SubmitStatus.Full)
+            TimeSpan delay;
+            switch (status)
             {
-                throw new PacketSubmitException("Packet Submit Error", status);
+                case ESPlayer.SubmitStatus.Success:
+                    return false;
+
+                case ESPlayer.SubmitStatus.NotPrepared:
+                    logger.Info(status.ToString());
+                    delay = TimeSpan.FromSeconds(1);
+                    break;
+
+                case ESPlayer.SubmitStatus.Full:
+                    delay = TimeSpan.FromMilliseconds(10);
+                    break;
+
+                default:
+                    throw new PacketSubmitException("Packet Submit Error", status);
             }
 
             // We are left with Status.Full 
             // For now sleep, however, once buffer events will be 
             // emitted from ESPlayer, they could be used here
-            Task.Delay(10, token);
+            try
+            {
+                using (var napTime = new ManualResetEventSlim(false))
+                {
+                    napTime.Wait(delay, token);
+                }
 
-            // recheck token - could be cancelled during wait...
-            if (token.IsCancellationRequested)
+            }
+            catch (OperationCanceledException)
             {
                 logger.Info($"{streamTypeJuvo}: Operation Cancelled");
                 return false;
@@ -427,6 +525,8 @@ namespace JuvoPlayer.Player.EsPlayer
             return true;
 
         }
+
+        #endregion
 
         #region IDisposable Support
         private bool isDisposed;
