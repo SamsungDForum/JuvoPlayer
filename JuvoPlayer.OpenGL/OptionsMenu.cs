@@ -207,6 +207,12 @@ namespace JuvoPlayer.OpenGL
                     catch (Exception e)
                     {
                         Logger.Error(e.Message);
+                        if (_streams[selectedStreamTypeIndex].Descriptions[selectedStreamIndex].StreamType ==
+                            StreamType.Subtitle)
+                        {
+                            SubtitlesOn = false;
+                            selectedStreamIndex = 0;
+                        }
                     }
                 }
 
