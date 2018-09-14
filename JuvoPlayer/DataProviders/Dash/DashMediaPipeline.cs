@@ -223,7 +223,7 @@ namespace JuvoPlayer.DataProviders.Dash
 
             try
             {
-                if (PendingStream == null || !CanSwitchStream())
+                if (PendingStream == null)
                     return;
 
                 Logger.Info($"{StreamType}");
@@ -231,8 +231,13 @@ namespace JuvoPlayer.DataProviders.Dash
                 if (currentStream == null)
                 {
                     StartPipeline(PendingStream);
+                    return;
                 }
-                else if (currentStream.IsCompatibleWith(PendingStream))
+                
+                if (!CanSwitchStream())
+                    return;
+
+                if (currentStream.IsCompatibleWith(PendingStream))
                 {
                     UpdatePipeline(PendingStream);
                 }
