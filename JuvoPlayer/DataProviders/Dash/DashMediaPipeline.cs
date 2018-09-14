@@ -84,8 +84,6 @@ namespace JuvoPlayer.DataProviders.Dash
             set => _pendingStreamStorage = InitializePendingStream(value);
         }
 
-
-
         private readonly Object switchStreamLock = new Object();
         private List<DashStream> availableStreams = new List<DashStream>();
 
@@ -108,6 +106,9 @@ namespace JuvoPlayer.DataProviders.Dash
             demuxer.DemuxerError += OnStreamError;
 
             dashClient.Error += OnStreamError;
+
+            Logger.Warn($"{streamType} *** ADAPTIVE STREAMING TEMP. DISABLED. No Representation Change! ***");
+            disableAdaptiveStreaming = true;
         }
 
         private DashStream InitializePendingStream(DashStream newStream)

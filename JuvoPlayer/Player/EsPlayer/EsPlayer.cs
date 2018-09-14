@@ -41,8 +41,8 @@ namespace JuvoPlayer.Player.EsPlayer
 
         private static readonly ILogger logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
 
-        private readonly ESPlayer.ESPlayer player;
-        private readonly ElmSharp.Window displayWindow;
+        private ESPlayer.ESPlayer player;
+        private ElmSharp.Window displayWindow;
 
         private EsPlayerPacketStorage packetStorage;
         private EsStreamController streamControl;
@@ -81,6 +81,9 @@ namespace JuvoPlayer.Player.EsPlayer
             streamControl.PlayerInitialized += OnStreamInitialized;
             streamControl.PlaybackCompleted += OnPlaybackCompleted;
             streamControl.PlaybackError += OnPlaybackError;
+
+            // Temporary event for testing (I hope...)
+            streamControl.StreamReconfigure += OnStreamReconfigure;
 
             // Initialize player state
             playerState = EsPlayerState.Stopped;
@@ -170,7 +173,10 @@ namespace JuvoPlayer.Player.EsPlayer
         public void SetStreamConfig(StreamConfig config)
         {
             logger.Info(config.ToString());
-            streamControl.SetStreamConfiguration(config);
+
+            var configPacket = BufferConfigurationPacket.Create(config);
+
+            streamControl.SetStreamConfiguration(configPacket);
         }
 
         #region IPlayer Interface event callbacks
@@ -205,6 +211,11 @@ namespace JuvoPlayer.Player.EsPlayer
             PlaybackError?.Invoke(error);
             playerState = EsPlayerState.Stopped;
         }
+
+        private void OnStreamReconfigure(BufferConfigurationPacket bufferConfig)
+        {
+
+        }
         #endregion
         #endregion
 
@@ -224,6 +235,9 @@ namespace JuvoPlayer.Player.EsPlayer
                     streamControl.PlaybackCompleted -= OnPlaybackCompleted;
                     streamControl.PlaybackError -= OnPlaybackError;
 
+                    // Temporary event for testing (I hope...)
+                    streamControl.StreamReconfigure -= OnStreamReconfigure;
+
                     // Clean packet storage and stream controller
                     logger.Info("Freeing StreamController and PacketStorage");
                     EsStreamController.FreeInstance();
@@ -235,8 +249,10 @@ namespace JuvoPlayer.Player.EsPlayer
                     logger.Info("Shutting down ESPlayer");
                     player.Stop();
                     player.Close();
+                    player.Dispose();
 
-                    EsPlayerUtils.DestroyWindow(displayWindow);
+                    logger.Info("Destroying ELM Window");
+                    EsPlayerUtils.DestroyWindow(ref displayWindow);
                 }
 
                 // TODO: free unmanaged resources (unmanaged objects) and override a finalizer below.
