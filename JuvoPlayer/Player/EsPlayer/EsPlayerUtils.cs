@@ -102,7 +102,7 @@ namespace JuvoPlayer.Player.EsPlayer
             return window;
         }
 
-        internal static void DestroyWindow(Window window)
+        internal static void DestroyWindow(ref Window window)
         {
             window.Hide();
             window.Unrealize();

@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.Data.SqlTypes;
 using System.Text;
 using JuvoPlayer.Common;
 using JuvoLogger;
@@ -13,7 +14,7 @@ using Nito.AsyncEx;
 
 namespace JuvoPlayer.Player.EsPlayer
 {
-    
+
     /// <summary>
     /// Controls transfer stream operation
     /// </summary>
@@ -46,6 +47,8 @@ namespace JuvoPlayer.Player.EsPlayer
         public event PlaybackCompleted PlaybackCompleted;
         public event PlayerInitialized PlayerInitialized;
 
+        public event StreamReconfigure StreamReconfigure;
+
         /// <summary>
         /// Timer process and supporting cancellation elements
         /// </summary>
@@ -65,6 +68,8 @@ namespace JuvoPlayer.Player.EsPlayer
         /// Current clock time - used for fake clock generation
         /// </summary>
         private TimeSpan currentClock;
+
+        private bool inStreamReconfiguration;
 
         #region Instance Support
         /// <summary>
@@ -156,7 +161,7 @@ namespace JuvoPlayer.Player.EsPlayer
             // Create new data stream in its place
             //
             dataStreams[(int)stream] = new EsStream(player, stream);
-            dataStreams[(int) stream].ReconfigureStream += OnStreamReconfigure;
+            dataStreams[(int)stream].ReconfigureStream += OnStreamReconfigure;
 
             // Remove previous data if existed in first place...
             //
@@ -169,18 +174,19 @@ namespace JuvoPlayer.Player.EsPlayer
         /// Sets provided configuration to appropriate stream.
         /// </summary>
         /// <param name="config">StreamConfig</param>
-        public void SetStreamConfiguration(StreamConfig config)
+        public void SetStreamConfiguration(BufferConfigurationPacket configPacket)
         {
+            logger.Info("");
+
+            var streamType = configPacket.StreamType;
             try
             {
-                var stream = dataStreams[(int)config.StreamType()];
-
-                var isConfigPushed = stream.SetStreamConfig(BufferConfigurationPacket.Create(config));
+                var isConfigPushed = dataStreams[(int)streamType].SetStreamConfig(configPacket);
 
                 // Configuration queued. Do not prepare stream :)
                 if (!isConfigPushed)
                     return;
-                
+
 
                 // Check if all initialized streams are configured
                 if (!AllStreamsConfigured)
@@ -197,12 +203,12 @@ namespace JuvoPlayer.Player.EsPlayer
             {
                 // packetQueue can hold ALL StreamTypes, but not all of them
                 // have to be supported. 
-                logger.Warn($"Uninitialized Stream Type {config.StreamType()}");
+                logger.Warn($"Uninitialized Stream Type {streamType}");
             }
             catch (InvalidOperationException)
             {
                 // Queue has been marked as completed 
-                logger.Warn($"Data queue terminated for stream: {config.StreamType()}");
+                logger.Warn($"Data queue terminated for stream: {streamType}");
             }
         }
 
@@ -290,14 +296,23 @@ namespace JuvoPlayer.Player.EsPlayer
         private void OnStreamReconfigure(BufferConfigurationPacket configPacket)
         {
             logger.Info("");
+            inStreamReconfiguration = true;
 
-            var streamIdx = (int)configPacket.StreamType;
+            DoStreamChange(configPacket);
+        }
+        private async Task DoStreamChange(BufferConfigurationPacket configPacket)
+        {
+            await Task.CompletedTask;
 
-            //player.Stop();
-            //dataStreams[streamIdx].Stop();
-            //dataStreams[streamIdx].SetStreamConfig(configPacket);
-            //dataStreams[streamIdx].Start();
-            //player.Start();
+            logger.Info("");
+
+            logger.Error("***\n*** STREAM CHANGE CURRENTLY NOT SUPPORTED. Playback will terminate\n***");
+            inStreamReconfiguration = true;
+
+            StopDataStreams();
+            StopClockGenerator();
+
+            return;
         }
 
         #endregion
@@ -350,7 +365,11 @@ namespace JuvoPlayer.Player.EsPlayer
             var streamType = EsPlayerUtils.JuvoStreamType(esPlayerStreamType);
 
             logger.Info(streamType.ToString());
-            dataStreams[(int)streamType].Start();
+
+            await Task.Factory.StartNew(() => dataStreams[(int)streamType].Start(), TaskCreationOptions.DenyChildAttach);
+
+            logger.Info($"{streamType}: Completed");
+
         }
         #endregion
 
@@ -359,17 +378,25 @@ namespace JuvoPlayer.Player.EsPlayer
         /// event PlayerInitialized. At this time player is ALREADY PLAYING
         /// </summary>
         /// <returns>Task</returns>
-        private async Task PrepareStream()
+        private async Task<bool> PrepareStream()
         {
             logger.Info("");
 
-            var prepareRes = await player.PrepareAsync(OnReadyToStartStream);
+            var prepRes = await player.PrepareAsync(OnReadyToStartStream);
 
-            if (!prepareRes)
+            if (!prepRes)
             {
                 logger.Error("Player.PrepareAsync() Failed");
                 StopAndDisable();
-                return;
+                return false;
+            }
+
+            logger.Info("Player.PrepareAsync() Completed");
+
+            if (inStreamReconfiguration)
+            {
+                logger.Info("Reconfiguration mode. PlayerInitialized won't be notified");
+                return true;
             }
 
             // This has to be called from UI Thread.
@@ -377,10 +404,9 @@ namespace JuvoPlayer.Player.EsPlayer
             // prevents AsyncPrepare from completing.
             // Currently, all events passed to UI are re-routed through main thread.
             //
+            logger.Info("Initial configuration mode. PlayerInitialized notification");
             PlayerInitialized?.Invoke();
-
-            logger.Info("Player.PrepareAsync() Completed");
-
+            return true;
         }
 
         /// <summary>
@@ -408,6 +434,7 @@ namespace JuvoPlayer.Player.EsPlayer
         private void StopAndDisable()
         {
             logger.Info("Stop and Disable all data streams");
+
             dataStreams.AsParallel().ForAll(esStream =>
             {
                 esStream?.Stop();
