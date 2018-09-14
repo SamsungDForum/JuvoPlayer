@@ -158,7 +158,7 @@ namespace JuvoPlayer.Player.EsPlayer
         {
             try
             {
-                return packetQueues[(int)stream].Take();
+                return packetQueues[(int)stream].Take(extStopToken);
             }
             catch (NullReferenceException)
             {
