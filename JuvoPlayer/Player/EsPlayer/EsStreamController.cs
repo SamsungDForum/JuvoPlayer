@@ -63,6 +63,8 @@ namespace JuvoPlayer.Player.EsPlayer
 
         private bool inStreamReconfiguration;
 
+        public ElmSharp.Window displayWindow;
+
         #region Instance Support
         /// <summary>
         /// Obtains an instance of Stream Controller
@@ -218,12 +220,8 @@ namespace JuvoPlayer.Player.EsPlayer
                 return;
             }
 
-            if (!player.Start())
-            {
-                logger.Error("ESPlayer.Start() failed");
-                return;
-            }
-
+            player.Start();
+            
             StartDataStreams();
             StartClockGenerator();
         }
@@ -236,12 +234,8 @@ namespace JuvoPlayer.Player.EsPlayer
         {
             logger.Info("");
 
-            if (!player.Resume())
-            {
-                logger.Error("ESPlayer.Resume() failed");
-                return;
-            }
-
+            player.Resume();
+            
             StartDataStreams();
             StartClockGenerator();
         }
@@ -253,12 +247,8 @@ namespace JuvoPlayer.Player.EsPlayer
         {
             logger.Info("");
 
-            if (!player.Pause())
-            {
-                logger.Error("ESPlayer.Pause() failed");
-                return;
-            }
-
+            player.Pause();
+            
             StopDataStreams();
             StopClockGenerator();
         }
@@ -270,12 +260,8 @@ namespace JuvoPlayer.Player.EsPlayer
         {
             logger.Info("");
 
-            if (!player.Stop())
-            {
-                logger.Error("ESPlayer.Stop() failed");
-                return;
-            }
-
+            player.Stop();
+            
             StopDataStreams();
             StopClockGenerator();
         }
@@ -292,17 +278,57 @@ namespace JuvoPlayer.Player.EsPlayer
 
             DoStreamChange(configPacket);
         }
+
         private async Task DoStreamChange(BufferConfigurationPacket configPacket)
         {
-            await Task.CompletedTask;
+            //await Task.CompletedTask;
 
             logger.Info("");
 
             logger.Error("***\n*** STREAM CHANGE CURRENTLY NOT SUPPORTED. Playback will terminate\n***");
             inStreamReconfiguration = true;
 
+            logger.Info("Stopping streams");
             StopDataStreams();
             StopClockGenerator();
+
+            logger.Info("Player Stop");
+            player.Stop();
+            
+            logger.Info("Player Close");
+            player.Close();
+            
+            logger.Info("Waiting for streams to complete");
+            await Task.Delay(5000);
+
+            logger.Info("Player Open");
+            player.Open();
+            
+            logger.Info("Player SetDisplay");
+            player.SetDisplay(displayWindow);
+            
+            logger.Info("Setting configs");
+            // Don't parallelize. We do want to know when it actually completes
+            foreach (var esStream in dataStreams.Where(esStream => esStream != null))
+            {
+                var conf = esStream.CurrentConfig;
+                esStream.ClearStreamConfig();
+                esStream.SetStreamConfig(conf);
+            }
+
+            //StartDataStreams();
+            //StartClockGenerator();
+
+            await player.PrepareAsync(OnReadyToStartStream);
+            
+
+            logger.Info("Player Start()");
+            player.Start();
+            
+            //StartDataStreams();
+            StartClockGenerator();
+
+            logger.Info("All Done");
         }
 
         #endregion
@@ -356,6 +382,7 @@ namespace JuvoPlayer.Player.EsPlayer
 
             logger.Info(streamType.ToString());
 
+
             await Task.Factory.StartNew(() => dataStreams[(int)streamType].Start(), TaskCreationOptions.DenyChildAttach);
 
             logger.Info($"{streamType}: Completed");
@@ -374,14 +401,7 @@ namespace JuvoPlayer.Player.EsPlayer
         {
             logger.Info("");
 
-            var prepRes = await player.PrepareAsync(OnReadyToStartStream);
-
-            if (!prepRes)
-            {
-                logger.Error("Player.PrepareAsync() Failed");
-                StopAndDisable();
-                return;
-            }
+            await player.PrepareAsync(OnReadyToStartStream);
 
             logger.Info("Player.PrepareAsync() Completed");
 
@@ -409,6 +429,23 @@ namespace JuvoPlayer.Player.EsPlayer
             dataStreams.AsParallel().ForAll(esStream => esStream?.Stop());
         }
 
+        private async Task WaitForTermination()
+        {
+            //Task[] waiters = new []{Task.CompletedTask}
+
+            var waiters = Enumerable.Repeat<Task>(Task.CompletedTask, dataStreams.Length).ToArray();
+
+            logger.Info("Building wait list");
+            var idx = 0;
+            foreach (var esStream in dataStreams.Where(esStream => esStream != null))
+            {
+                waiters[idx++] = esStream.WaitForTermination();
+            }
+
+            logger.Info("Waiting for all streams to terminate");
+            Task.WaitAll(waiters);
+            
+        }
         /// <summary>
         /// Starts all initialized data streams
         /// </summary>

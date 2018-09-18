@@ -229,14 +229,10 @@ namespace JuvoPlayer.Player.EsPlayer
                 channels = audioConfig.ChannelLayout
             };
 
-            if (!player.AddStream(config))
-            {
-                logger.Warn($"{streamTypeJuvo}: Failed to set config");
-                CurrentConfig = null;
-                return;
-            }
-
+            player.AddStream(config);
+            
             logger.Info($"{streamTypeJuvo}: Stream configuration set");
+            //logger.Info(config.ToString());
         }
 
         /// <summary>
@@ -269,14 +265,10 @@ namespace JuvoPlayer.Player.EsPlayer
                 den = videoConfig.FrameRateDen
             };
 
-            if (!player.AddStream(config))
-            {
-                logger.Warn($"{streamTypeJuvo}: Failed to set config");
-                CurrentConfig = null;
-                return;
-            }
-
+            player.AddStream(config);
+            
             logger.Info($"{streamTypeJuvo}: Stream configuration set");
+            //logger.Info(config.ToString());
         }
 
 
@@ -344,6 +336,12 @@ namespace JuvoPlayer.Player.EsPlayer
             packetStorage.Disable(streamTypeJuvo);
         }
 
+        public async Task WaitForTermination()
+        {
+            logger.Info($"{streamTypeJuvo}:");
+            await transferTask;
+            logger.Info($"{streamTypeJuvo}: Done");
+        }
         /// <summary>
         /// Transfer task. Retrieves data from underlying storage and pushes it down
         /// to ESPlayer
@@ -371,6 +369,7 @@ namespace JuvoPlayer.Player.EsPlayer
 
                         case BufferConfigurationPacket bufferConfigPacket:
                             CurrentConfig = bufferConfigPacket;
+
                             ReconfigureStream?.Invoke(bufferConfigPacket);
 
                             // exit transfer task. This will prevent further transfers

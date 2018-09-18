@@ -58,16 +58,12 @@ namespace JuvoPlayer.Player.EsPlayer
 
             // Create and initialize player
             player = new ESPlayer.ESPlayer();
-            player.Create();
+            
             player.Open();
 
             // Set window to player
-            if (!player.SetDisplay(displayWindow))
-            {
-                logger.Error("ESPlayer.SetDisplayFailed!");
-                return;
-            }
-
+            player.SetDisplay(displayWindow);
+            
             packetStorage = EsPlayerPacketStorage.GetInstance();
             packetStorage.Initialize(StreamType.Audio);
             packetStorage.Initialize(StreamType.Video);
@@ -75,6 +71,8 @@ namespace JuvoPlayer.Player.EsPlayer
             streamControl = EsStreamController.GetInstance(player);
             streamControl.Initialize(StreamType.Audio);
             streamControl.Initialize(StreamType.Video);
+
+            streamControl.displayWindow = displayWindow;
 
             // Attach event handlers
             streamControl.TimeUpdated += OnTimeUpdate;
