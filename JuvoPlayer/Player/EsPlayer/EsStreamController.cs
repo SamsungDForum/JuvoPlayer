@@ -220,10 +220,18 @@ namespace JuvoPlayer.Player.EsPlayer
                 return;
             }
 
-            player.Start();
-            
-            StartDataStreams();
-            StartClockGenerator();
+            try
+            {
+                player.Start();
+
+                StartDataStreams();
+                StartClockGenerator();
+            }
+            catch (InvalidOperationException ioe)
+            {
+                logger.Error(ioe.Message);
+            }
+
         }
 
         /// <summary>
@@ -234,10 +242,17 @@ namespace JuvoPlayer.Player.EsPlayer
         {
             logger.Info("");
 
-            player.Resume();
-            
-            StartDataStreams();
-            StartClockGenerator();
+            try
+            {
+                player.Resume();
+
+                StartDataStreams();
+                StartClockGenerator();
+            }
+            catch (InvalidOperationException ioe)
+            {
+                logger.Error(ioe.Message);
+            }
         }
 
         /// <summary>
@@ -247,10 +262,17 @@ namespace JuvoPlayer.Player.EsPlayer
         {
             logger.Info("");
 
-            player.Pause();
-            
-            StopDataStreams();
-            StopClockGenerator();
+            try
+            {
+                player.Pause();
+
+                StopDataStreams();
+                StopClockGenerator();
+            }
+            catch (InvalidOperationException ioe)
+            {
+                logger.Error(ioe.Message);
+            }
         }
 
         /// <summary>
@@ -260,10 +282,17 @@ namespace JuvoPlayer.Player.EsPlayer
         {
             logger.Info("");
 
-            player.Stop();
-            
-            StopDataStreams();
-            StopClockGenerator();
+            try
+            {
+                player.Stop();
+
+                StopDataStreams();
+                StopClockGenerator();
+            }
+            catch (InvalidOperationException ioe)
+            {
+                logger.Error(ioe.Message);
+            }
         }
         #endregion
 
@@ -286,49 +315,55 @@ namespace JuvoPlayer.Player.EsPlayer
             logger.Info("");
 
             logger.Error("***\n*** STREAM CHANGE CURRENTLY NOT SUPPORTED. Playback will terminate\n***");
-            inStreamReconfiguration = true;
 
-            logger.Info("Stopping streams");
-            StopDataStreams();
-            StopClockGenerator();
-
-            logger.Info("Player Stop");
-            player.Stop();
-            
-            logger.Info("Player Close");
-            player.Close();
-            
-            logger.Info("Waiting for streams to complete");
-            await Task.Delay(5000);
-
-            logger.Info("Player Open");
-            player.Open();
-            
-            logger.Info("Player SetDisplay");
-            player.SetDisplay(displayWindow);
-            
-            logger.Info("Setting configs");
-            // Don't parallelize. We do want to know when it actually completes
-            foreach (var esStream in dataStreams.Where(esStream => esStream != null))
+            try
             {
-                var conf = esStream.CurrentConfig;
-                esStream.ClearStreamConfig();
-                esStream.SetStreamConfig(conf);
+                logger.Info("Stopping streams");
+                StopDataStreams();
+                StopClockGenerator();
+
+                logger.Info("Player Stop");
+                player.Stop();
+
+                logger.Info("Player Close");
+                player.Close();
+
+                logger.Info("Waiting for streams to complete");
+                await Task.Delay(5000);
+
+                logger.Info("Player Open");
+                player.Open();
+
+                //logger.Info("Player SetDisplay");
+                //player.SetDisplay(displayWindow);
+
+                logger.Info("Setting configs");
+                // Don't parallelize. We do want to know when it actually completes
+                foreach (var esStream in dataStreams.Where(esStream => esStream != null))
+                {
+                    var conf = esStream.CurrentConfig;
+                    esStream.ClearStreamConfig();
+                    esStream.SetStreamConfig(conf);
+                }
+
+                //StartDataStreams();
+                //StartClockGenerator();
+
+                await player.PrepareAsync(OnReadyToStartStream);
+
+
+                logger.Info("Player Start()");
+                player.Start();
+
+                //StartDataStreams();
+                StartClockGenerator();
+
+                logger.Info("All Done");
             }
-
-            //StartDataStreams();
-            //StartClockGenerator();
-
-            await player.PrepareAsync(OnReadyToStartStream);
-            
-
-            logger.Info("Player Start()");
-            player.Start();
-            
-            //StartDataStreams();
-            StartClockGenerator();
-
-            logger.Info("All Done");
+            catch (InvalidOperationException ioe)
+            {
+                logger.Error(ioe.Message);
+            }
         }
 
         #endregion
@@ -401,23 +436,30 @@ namespace JuvoPlayer.Player.EsPlayer
         {
             logger.Info("");
 
-            await player.PrepareAsync(OnReadyToStartStream);
-
-            logger.Info("Player.PrepareAsync() Completed");
-
-            if (inStreamReconfiguration)
+            try
             {
-                logger.Info("Reconfiguration mode. PlayerInitialized won't be notified");
-                return;
-            }
+                await player.PrepareAsync(OnReadyToStartStream);
 
-            // This has to be called from UI Thread.
-            // It seems impossible to wait for AsyncPrepare completion - doing so
-            // prevents AsyncPrepare from completing.
-            // Currently, all events passed to UI are re-routed through main thread.
-            //
-            logger.Info("Initial configuration mode. PlayerInitialized notification");
-            PlayerInitialized?.Invoke();
+                logger.Info("Player.PrepareAsync() Completed");
+
+                if (inStreamReconfiguration)
+                {
+                    logger.Info("Reconfiguration mode. PlayerInitialized won't be notified");
+                    return;
+                }
+
+                // This has to be called from UI Thread.
+                // It seems impossible to wait for AsyncPrepare completion - doing so
+                // prevents AsyncPrepare from completing.
+                // Currently, all events passed to UI are re-routed through main thread.
+                //
+                logger.Info("Initial configuration mode. PlayerInitialized notification");
+                PlayerInitialized?.Invoke();
+            }
+            catch (InvalidOperationException ioe)
+            {
+                logger.Error(ioe.Message);
+            }
         }
 
         /// <summary>
@@ -429,23 +471,6 @@ namespace JuvoPlayer.Player.EsPlayer
             dataStreams.AsParallel().ForAll(esStream => esStream?.Stop());
         }
 
-        private async Task WaitForTermination()
-        {
-            //Task[] waiters = new []{Task.CompletedTask}
-
-            var waiters = Enumerable.Repeat<Task>(Task.CompletedTask, dataStreams.Length).ToArray();
-
-            logger.Info("Building wait list");
-            var idx = 0;
-            foreach (var esStream in dataStreams.Where(esStream => esStream != null))
-            {
-                waiters[idx++] = esStream.WaitForTermination();
-            }
-
-            logger.Info("Waiting for all streams to terminate");
-            Task.WaitAll(waiters);
-            
-        }
         /// <summary>
         /// Starts all initialized data streams
         /// </summary>

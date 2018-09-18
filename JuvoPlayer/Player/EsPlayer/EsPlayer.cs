@@ -12,15 +12,9 @@
 // this software or its derivatives.
 
 using System;
-
-using System.Threading;
-
 using JuvoPlayer.Common;
-using JuvoPlayer.Drms;
 using JuvoLogger;
 using ESPlayer = Tizen.TV.Multimedia.ESPlayer;
-
-
 
 namespace JuvoPlayer.Player.EsPlayer
 {
@@ -53,36 +47,45 @@ namespace JuvoPlayer.Player.EsPlayer
 
         public EsPlayer()
         {
-            // Create Window
-            displayWindow = EsPlayerUtils.CreateWindow(EsPlayerUtils.DefaultWindowWidth, EsPlayerUtils.DefaultWindowHeight);
+            try
+            {
+                // Create Window
+                displayWindow =
+                    EsPlayerUtils.CreateWindow(EsPlayerUtils.DefaultWindowWidth, EsPlayerUtils.DefaultWindowHeight);
 
-            // Create and initialize player
-            player = new ESPlayer.ESPlayer();
-            
-            player.Open();
+                // Create and initialize player
+                player = new ESPlayer.ESPlayer();
 
-            // Set window to player
-            player.SetDisplay(displayWindow);
-            
-            packetStorage = EsPlayerPacketStorage.GetInstance();
-            packetStorage.Initialize(StreamType.Audio);
-            packetStorage.Initialize(StreamType.Video);
+                player.Open();
 
-            streamControl = EsStreamController.GetInstance(player);
-            streamControl.Initialize(StreamType.Audio);
-            streamControl.Initialize(StreamType.Video);
+                // Set window to player
+                player.SetDisplay(displayWindow);
 
-            streamControl.displayWindow = displayWindow;
+                packetStorage = EsPlayerPacketStorage.GetInstance();
+                packetStorage.Initialize(StreamType.Audio);
+                packetStorage.Initialize(StreamType.Video);
 
-            // Attach event handlers
-            streamControl.TimeUpdated += OnTimeUpdate;
-            streamControl.PlayerInitialized += OnStreamInitialized;
-            streamControl.PlaybackCompleted += OnPlaybackCompleted;
-            streamControl.PlaybackError += OnPlaybackError;
+                streamControl = EsStreamController.GetInstance(player);
+                streamControl.Initialize(StreamType.Audio);
+                streamControl.Initialize(StreamType.Video);
 
-            // Initialize player state
-            playerState = EsPlayerState.Stopped;
+                streamControl.displayWindow = displayWindow;
 
+                // Attach event handlers
+                streamControl.TimeUpdated += OnTimeUpdate;
+                streamControl.PlayerInitialized += OnStreamInitialized;
+                streamControl.PlaybackCompleted += OnPlaybackCompleted;
+                streamControl.PlaybackError += OnPlaybackError;
+
+                // Initialize player state
+                playerState = EsPlayerState.Stopped;
+
+            }
+            catch (InvalidOperationException ioe)
+            {
+                logger.Error("EsPlayer failure: " + ioe.Message);
+                throw ioe;
+            }
         }
 
         #region IPlayer Interface Implementation
