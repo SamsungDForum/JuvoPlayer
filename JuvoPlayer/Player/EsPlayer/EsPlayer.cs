@@ -82,9 +82,6 @@ namespace JuvoPlayer.Player.EsPlayer
             streamControl.PlaybackCompleted += OnPlaybackCompleted;
             streamControl.PlaybackError += OnPlaybackError;
 
-            // Temporary event for testing (I hope...)
-            streamControl.StreamReconfigure += OnStreamReconfigure;
-
             // Initialize player state
             playerState = EsPlayerState.Stopped;
 
@@ -194,7 +191,8 @@ namespace JuvoPlayer.Player.EsPlayer
 
             // ESPlayer is already receiving data at this point, but 
             // ESPlayer.Play() has not been called yet.
-
+            // Notify UI so it issues EsPlayer.Play()
+            //
             PlayerInitialized?.Invoke();
         }
 
@@ -212,10 +210,6 @@ namespace JuvoPlayer.Player.EsPlayer
             playerState = EsPlayerState.Stopped;
         }
 
-        private void OnStreamReconfigure(BufferConfigurationPacket bufferConfig)
-        {
-
-        }
         #endregion
         #endregion
 
@@ -234,9 +228,6 @@ namespace JuvoPlayer.Player.EsPlayer
                     streamControl.PlayerInitialized -= OnStreamInitialized;
                     streamControl.PlaybackCompleted -= OnPlaybackCompleted;
                     streamControl.PlaybackError -= OnPlaybackError;
-
-                    // Temporary event for testing (I hope...)
-                    streamControl.StreamReconfigure -= OnStreamReconfigure;
 
                     // Clean packet storage and stream controller
                     logger.Info("Freeing StreamController and PacketStorage");

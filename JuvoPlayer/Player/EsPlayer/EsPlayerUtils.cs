@@ -13,36 +13,33 @@
 
 using JuvoPlayer.Common;
 using System;
-using System.Collections.Concurrent;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using JuvoPlayer.DataProviders;
-using Tizen.NUI;
 using Window = ElmSharp.Window;
 using ESPlayer = Tizen.TV.Multimedia.ESPlayer;
 using StreamType = JuvoPlayer.Common.StreamType;
 
 namespace JuvoPlayer.Player.EsPlayer
 {
-    internal static class DateTimeExtensions
+    /// <summary>
+    /// TimeSpan extension methods. Provide time conversion
+    /// functionality to convert TimeSpan to ESPlayer time values
+    /// </summary>
+    internal static class TimeSpanExtensions
     {
         internal static ulong ToMilliseconds(this TimeSpan clock)
         {
             return (ulong)(clock.Ticks / TimeSpan.TicksPerMillisecond);
         }
 
-        internal static ulong ToMicroseconds(this TimeSpan clock)
-        {
-            return (ulong)(ToMilliseconds(clock) * 1000);
-        }
-
         internal static ulong ToNanoseconds(this TimeSpan clock)
         {
-            return (ulong)(ToMilliseconds(clock) * 1000000);
+            return (ToMilliseconds(clock) * 1000000);
         }
     }
 
+    /// <summary>
+    /// Packet extension method allowing conversion from
+    /// Common.Packet type to Tizen.TV.Multimedia.ESPlayer.EsPacket type
+    /// </summary>
     internal static class PacketConversionExtensions
     {
         internal static ESPlayer.EsPacket ToESPlayerPacket(this Common.Packet packet, ESPlayer.StreamType esStreamType)
@@ -59,6 +56,9 @@ namespace JuvoPlayer.Player.EsPlayer
         }
     }
 
+    /// <summary>
+    /// Buffer configuration data storage in Common.Packet type.
+    /// </summary>
     internal class BufferConfigurationPacket : Packet
     {
         public static BufferConfigurationPacket Create(StreamConfig config)
@@ -76,6 +76,9 @@ namespace JuvoPlayer.Player.EsPlayer
         public StreamConfig Config { get; private set; }
     };
 
+    /// <summary>
+    /// EsPlayer various utility/helper functions
+    /// </summary>
     internal static class EsPlayerUtils
     {
         public static readonly int DefaultWindowWidth = 1920;
@@ -110,10 +113,8 @@ namespace JuvoPlayer.Player.EsPlayer
 
         internal static Common.StreamType JuvoStreamType(ESPlayer.StreamType esStreamType)
         {
-            if (esStreamType == ESPlayer.StreamType.Video)
-                return StreamType.Video;
-            else
-                return StreamType.Audio;
+            return esStreamType == ESPlayer.StreamType.Video ?
+                StreamType.Video : StreamType.Audio;
         }
 
         internal static ESPlayer.VideoMimeType GetCodecMimeType(VideoCodec videoCodec)
