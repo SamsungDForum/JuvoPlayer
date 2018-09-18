@@ -12,18 +12,11 @@
 // this software or its derivatives.
 
 using System;
-using System.Collections.Generic;
-using System.Text;
-using System.Collections.Concurrent;
-using System.Runtime.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
 using JuvoLogger;
 using JuvoPlayer.Common;
 using ESPlayer = Tizen.TV.Multimedia.ESPlayer;
-using System.Linq.Expressions;
-using System.Runtime.CompilerServices;
-using MpdParser.Node.Writers;
 
 namespace JuvoPlayer.Player.EsPlayer
 {
@@ -31,36 +24,13 @@ namespace JuvoPlayer.Player.EsPlayer
     /// Packet submit exception. Raised when packet push to ESPlayer failed in a terminal
     /// way.
     /// </summary>
-    [Serializable]
     internal class PacketSubmitException : Exception
     {
-        //
-        // For guidelines regarding the creation of new exception types, see
-        //    http://msdn.microsoft.com/library/default.asp?url=/library/en-us/cpgenref/html/cpconerrorraisinghandlingguidelines.asp
-        // and
-        //    http://msdn.microsoft.com/library/default.asp?url=/library/en-us/dncscol/html/csharp07192001.asp
-        //
         public ESPlayer.SubmitStatus SubmitStatus { get; internal set; }
-
-        public PacketSubmitException(ESPlayer.SubmitStatus status)
-        {
-            SubmitStatus = status;
-        }
 
         public PacketSubmitException(string message, ESPlayer.SubmitStatus status) : base(message)
         {
             SubmitStatus = status;
-        }
-
-        public PacketSubmitException(string message, Exception inner, ESPlayer.SubmitStatus status) : base(message, inner)
-        {
-            SubmitStatus = status;
-        }
-
-        protected PacketSubmitException(
-            SerializationInfo info,
-            StreamingContext context) : base(info, context)
-        {
         }
     }
 
@@ -131,7 +101,7 @@ namespace JuvoPlayer.Player.EsPlayer
         /// Flag indicating if stream is transferring data between
         /// packet storage and ESPlayer
         /// </summary>
-        public bool IsRunning => (transferTask != null);
+        public bool IsRunning => (!transferTask.IsCompleted);
 
         /// <summary>
         /// lock object used for serialization of internal operations
@@ -148,6 +118,10 @@ namespace JuvoPlayer.Player.EsPlayer
 
         public EsStream(ESPlayer.ESPlayer player, Common.StreamType type)
         {
+            // Grab a reference to completed task to avoid 
+            // isnull checks
+            transferTask = Task.CompletedTask;
+
             this.player = player;
             streamTypeJuvo = type;
             packetStorage = EsPlayerPacketStorage.GetInstance();
@@ -262,7 +236,7 @@ namespace JuvoPlayer.Player.EsPlayer
                 return;
             }
 
-            logger.Info($"{streamTypeJuvo} Stream configuration set");
+            logger.Info($"{streamTypeJuvo}: Stream configuration set");
         }
 
         /// <summary>
@@ -302,7 +276,7 @@ namespace JuvoPlayer.Player.EsPlayer
                 return;
             }
 
-            logger.Info($"{streamTypeJuvo} Stream configuration set");
+            logger.Info($"{streamTypeJuvo}: Stream configuration set");
         }
 
 
@@ -334,8 +308,6 @@ namespace JuvoPlayer.Player.EsPlayer
 
                 transferTask = Task.Factory.StartNew(() => TransferTask(token), token);
             }
-
-            logger.Info($"{streamTypeJuvo} Completed");
         }
 
         /// <summary>
@@ -359,8 +331,6 @@ namespace JuvoPlayer.Player.EsPlayer
                 transferCts.Dispose();
 
             }
-
-            logger.Info($"{streamTypeJuvo} Completed");
         }
 
         /// <summary>
@@ -409,6 +379,7 @@ namespace JuvoPlayer.Player.EsPlayer
 
                         case EncryptedPacket encryptedPacket:
                             logger.Info($"{streamTypeJuvo}: Encrypted packet not implemented");
+                            packet.Dispose();
                             break;
 
                         case Packet dataPacket when packet.IsEOS == false:
@@ -416,7 +387,6 @@ namespace JuvoPlayer.Player.EsPlayer
                             break;
                     }
 
-                    packet.Dispose();
 
                 } while (!token.IsCancellationRequested);
             }
@@ -449,7 +419,6 @@ namespace JuvoPlayer.Player.EsPlayer
                     DisableTransfer();
 
                 logger.Info($"{streamTypeJuvo}: Transfer task terminated");
-                transferTask = null;
             }
         }
 
@@ -539,16 +508,10 @@ namespace JuvoPlayer.Player.EsPlayer
             // We are left with Status.Full 
             // For now sleep, however, once buffer events will be 
             // emitted from ESPlayer, they could be used here
-
             using (var napTime = new ManualResetEventSlim(false))
-            {
-                logger.Info($"{streamTypeJuvo} Naptime!");
                 napTime.Wait(delay, token);
-                logger.Info($"{streamTypeJuvo} Eggs & Bakey!");
-            }
 
             return true;
-
         }
 
         #endregion
@@ -565,6 +528,9 @@ namespace JuvoPlayer.Player.EsPlayer
             if (IsRunning)
                 StopTransfer();
 
+            DisableTransfer();
+
+            transferTask = null;
             isDisposed = true;
         }
         #endregion

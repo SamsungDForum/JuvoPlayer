@@ -1,16 +1,10 @@
 ﻿using System;
-using System.Collections.Concurrent;
-using System.Collections.Generic;
-using System.Data.SqlTypes;
-using System.Text;
 using JuvoPlayer.Common;
 using JuvoLogger;
 using System.Linq;
-using System.Linq.Expressions;
 using System.Threading;
 using ESPlayer = Tizen.TV.Multimedia.ESPlayer;
 using System.Threading.Tasks;
-using Nito.AsyncEx;
 
 namespace JuvoPlayer.Player.EsPlayer
 {
@@ -47,12 +41,10 @@ namespace JuvoPlayer.Player.EsPlayer
         public event PlaybackCompleted PlaybackCompleted;
         public event PlayerInitialized PlayerInitialized;
 
-        public event StreamReconfigure StreamReconfigure;
-
         /// <summary>
         /// Timer process and supporting cancellation elements
         /// </summary>
-        private Task timeUpdater;
+        private Task clockGenerator;
         private CancellationTokenSource stopCts;
         private CancellationToken stopToken;
 
@@ -116,8 +108,8 @@ namespace JuvoPlayer.Player.EsPlayer
             player.EOSEmitted -= OnEos;
             player.ErrorOccurred -= OnError;
 
-            stopCts?.Cancel();
-            stopCts?.Dispose();
+            // Stop clock
+            StopClockGenerator();
 
             // Dispose of individual streams.
             dataStreams.AsParallel().ForAll((esStream) => DisposeStream(ref esStream));
@@ -311,8 +303,6 @@ namespace JuvoPlayer.Player.EsPlayer
 
             StopDataStreams();
             StopClockGenerator();
-
-            return;
         }
 
         #endregion
@@ -377,8 +367,10 @@ namespace JuvoPlayer.Player.EsPlayer
         /// Method executes PrepareAsync on ESPlayer. On success, notifies
         /// event PlayerInitialized. At this time player is ALREADY PLAYING
         /// </summary>
-        /// <returns>Task</returns>
-        private async Task<bool> PrepareStream()
+        /// <returns>bool
+        /// True - AsyncPrepare
+        /// </returns>
+        private async Task PrepareStream()
         {
             logger.Info("");
 
@@ -388,7 +380,7 @@ namespace JuvoPlayer.Player.EsPlayer
             {
                 logger.Error("Player.PrepareAsync() Failed");
                 StopAndDisable();
-                return false;
+                return;
             }
 
             logger.Info("Player.PrepareAsync() Completed");
@@ -396,7 +388,7 @@ namespace JuvoPlayer.Player.EsPlayer
             if (inStreamReconfiguration)
             {
                 logger.Info("Reconfiguration mode. PlayerInitialized won't be notified");
-                return true;
+                return;
             }
 
             // This has to be called from UI Thread.
@@ -406,7 +398,6 @@ namespace JuvoPlayer.Player.EsPlayer
             //
             logger.Info("Initial configuration mode. PlayerInitialized notification");
             PlayerInitialized?.Invoke();
-            return true;
         }
 
         /// <summary>
@@ -448,7 +439,7 @@ namespace JuvoPlayer.Player.EsPlayer
         /// <returns>Task</returns>
         private async Task GenerateTimeUpdates()
         {
-            logger.Info("Starting clock extractor (GENERATED)");
+            logger.Info("Clock extractor: Started (GENERATED)");
 
             while (!stopToken.IsCancellationRequested)
             {
@@ -458,6 +449,8 @@ namespace JuvoPlayer.Player.EsPlayer
                 currentClock += DateTime.Now - delayStart;
                 streamControl?.TimeUpdated?.Invoke(currentClock);
             }
+
+            logger.Info("Clock extractor: Terminated");
         }
 
         /// <summary>
@@ -465,6 +458,7 @@ namespace JuvoPlayer.Player.EsPlayer
         /// </summary>
         private void StartClockGenerator()
         {
+            logger.Info("");
             if (stopCts != null)
             {
                 logger.Warn("Clock cannot be started. stopCts not cleared");
@@ -475,7 +469,7 @@ namespace JuvoPlayer.Player.EsPlayer
             stopToken = stopCts.Token;
 
             // Start time updater
-            timeUpdater = GenerateTimeUpdates();
+            clockGenerator = GenerateTimeUpdates();
         }
 
         /// <summary>
@@ -483,8 +477,9 @@ namespace JuvoPlayer.Player.EsPlayer
         /// </summary>
         private void StopClockGenerator()
         {
-            stopCts.Cancel();
-            stopCts.Dispose();
+            logger.Info("");
+            stopCts?.Cancel();
+            stopCts?.Dispose();
             stopCts = null;
         }
 
