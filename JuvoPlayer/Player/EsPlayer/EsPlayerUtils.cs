@@ -13,6 +13,7 @@
 
 using JuvoPlayer.Common;
 using System;
+using System.Text;
 using Window = ElmSharp.Window;
 using ESPlayer = Tizen.TV.Multimedia.ESPlayer;
 using StreamType = JuvoPlayer.Common.StreamType;
@@ -42,17 +43,42 @@ namespace JuvoPlayer.Player.EsPlayer
     /// </summary>
     internal static class PacketConversionExtensions
     {
-        internal static ESPlayer.EsPacket ToESPlayerPacket(this Common.Packet packet, ESPlayer.StreamType esStreamType)
+        internal static ESPlayer.ESPacket ToESPlayerPacket(this Common.Packet packet, ESPlayer.StreamType esStreamType)
         {
-            return new ESPlayer.EsPacket
+            return new ESPlayer.ESPacket
             {
                 type = esStreamType,
 
                 pts = packet.Pts.ToNanoseconds(),
                 duration = packet.Duration.ToNanoseconds(),
-                bufferSize = (uint)packet.Data.Length,
                 buffer = packet.Data
             };
+        }
+    }
+
+    internal static class ESPlayerStreamInfoExtensions
+    {
+        internal static string ToString(this ESPlayer.VideoStreamInfo videoConf)
+        {
+            StringBuilder sb = new StringBuilder();
+
+            sb.AppendLine("VideoStreamInfo:");
+            sb.Append("\tmimeType = ");
+            sb.AppendLine(videoConf.mimeType.ToString());
+            sb.Append("\tWidth = ");
+            sb.Append(videoConf.width);
+            sb.Append(" Height = ");
+            sb.AppendLine(videoConf.height.ToString());
+            sb.Append("\tMax Width = ");
+            sb.Append(videoConf.maxWidth);
+            sb.Append("\tMax Height = ");
+            sb.AppendLine(videoConf.maxHeight.ToString());
+            sb.Append("\tFrameRate = ");
+            sb.Append(videoConf.num+"/");
+            sb.Append(videoConf.den);
+            sb.AppendLine(" (" + (videoConf.num / videoConf.den == 0 ? 1 : videoConf.den) + ")");
+
+            return sb.ToString();
         }
     }
 
