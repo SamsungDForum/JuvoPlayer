@@ -12,15 +12,25 @@
 // this software or its derivatives.
 
 using System.Collections.Generic;
+using System.Runtime.Serialization;
 
 namespace JuvoPlayer.Common
 {
+    [DataContract]
     public class SubtitleInfo
     {
+        [DataMember(Name = "id")]
         public int Id { get; set; }
+
+        [DataMember(Name = "path")]
         public string Path { get; set; }
+
+        [DataMember(Name = "language")]
         public string Language { get; set; }
+
+        [DataMember(Name = "encoding")]
         public string Encoding { get; set; }
+
         public string MimeType { get; set; }
 
         public StreamDescription ToStreamDescription()
@@ -47,21 +57,41 @@ namespace JuvoPlayer.Common
 
     }
 
+    [DataContract]
     public class DRMDescription
     {
+        [DataMember(Name = "scheme")]
         public string Scheme { get; set; }
+
+        [DataMember(Name = "licenseUrl")]
         public string LicenceUrl { get; set; }
+
+        [DataMember(Name = "keyRequestProperties")]
         public Dictionary<string, string> KeyRequestProperties { get; set; }
     }
 
+    [DataContract]
     public class ClipDefinition
     {
+        [DataMember(Name = "title")]
         public string Title { get; set; }
+
+        [DataMember(Name = "type")]
         public string Type { get; set; }
+
+        [DataMember(Name = "url")]
         public string Url { get; set; }
+
+        [DataMember(Name = "subtitles")]
         public List<SubtitleInfo> Subtitles { get; set; }
+
+        [DataMember(Name = "poster")]
         public string Poster { get; set; }
+
+        [DataMember(Name = "description")]
         public string Description { get; set; }
+
+        [DataMember(Name = "drmDatas")]
         public List<DRMDescription> DRMDatas { get; set; }
     }
 }

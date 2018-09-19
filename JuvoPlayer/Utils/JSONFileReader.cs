@@ -13,7 +13,9 @@
 
 using System;
 using System.IO;
-using Newtonsoft.Json;
+using System.Runtime.Serialization.Json;
+using System.Text;
+using JuvoLogger;
 
 namespace JuvoPlayer.Utils
 {
@@ -42,7 +44,16 @@ namespace JuvoPlayer.Utils
             if (json.Length == 0)
                 throw new ArgumentException("json cannot be empty");
 
-            return JsonConvert.DeserializeObject<T>(json);
+            using (var ms = new MemoryStream(Encoding.UTF8.GetBytes(json)))
+            {
+                var ser = new DataContractJsonSerializer(typeof(T));
+                var res = ser.ReadObject(ms);
+
+                return (T)res;
+            }
+
         }
+
+
     }
 }

@@ -61,7 +61,7 @@ namespace JuvoPlayer.Tests.IntegrationTests
         //[Property("COVPARAM", " ")]
         public static void DeserializeJsonText_ThrowsInvalid()
         {
-            Assert.Throws<Newtonsoft.Json.JsonReaderException>(() => JSONFileReader.DeserializeJsonText<List<ClipDefinition>>("invalid"));
+            Assert.Throws<Exception>(() => JSONFileReader.DeserializeJsonText<List<ClipDefinition>>("invalid"));
         }
 
         [Test]
