@@ -58,25 +58,40 @@ namespace JuvoPlayer.Player.EsPlayer
 
     internal static class ESPlayerStreamInfoExtensions
     {
-        internal static string ToString(this ESPlayer.VideoStreamInfo videoConf)
+        internal static string DumpConfig(this ESPlayer.VideoStreamInfo videoConf)
         {
             StringBuilder sb = new StringBuilder();
 
             sb.AppendLine("VideoStreamInfo:");
             sb.Append("\tmimeType = ");
             sb.AppendLine(videoConf.mimeType.ToString());
-            sb.Append("\tWidth = ");
+            sb.Append("\tWidth / Max = ");
             sb.Append(videoConf.width);
-            sb.Append(" Height = ");
-            sb.AppendLine(videoConf.height.ToString());
-            sb.Append("\tMax Width = ");
-            sb.Append(videoConf.maxWidth);
-            sb.Append("\tMax Height = ");
+            sb.Append(" / ");
+            sb.AppendLine(videoConf.maxWidth.ToString());
+            sb.Append("\tHeight / Max = ");
+            sb.Append(videoConf.height);
+            sb.Append(" / ");
             sb.AppendLine(videoConf.maxHeight.ToString());
             sb.Append("\tFrameRate = ");
-            sb.Append(videoConf.num+"/");
+            sb.Append(videoConf.num + "/");
             sb.Append(videoConf.den);
-            sb.AppendLine(" (" + (videoConf.num / videoConf.den == 0 ? 1 : videoConf.den) + ")");
+            sb.AppendLine(" (" + (videoConf.num / (videoConf.den == 0 ? 1 : videoConf.den)) + ")");
+
+            return sb.ToString();
+        }
+
+        internal static string DumpConfig(this ESPlayer.AudioStreamInfo audioConf)
+        {
+            StringBuilder sb = new StringBuilder();
+
+            sb.AppendLine("AudioStreamInfo:");
+            sb.Append("\tmimeType = ");
+            sb.AppendLine(audioConf.mimeType.ToString());
+            sb.Append("\tsampleRate = ");
+            sb.AppendLine(audioConf.sampleRate.ToString());
+            sb.Append("\tchannels = ");
+            sb.AppendLine(audioConf.channels.ToString());
 
             return sb.ToString();
         }

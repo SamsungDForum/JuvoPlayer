@@ -8,7 +8,6 @@ using System.Threading.Tasks;
 
 namespace JuvoPlayer.Player.EsPlayer
 {
-
     /// <summary>
     /// Controls transfer stream operation
     /// </summary>
@@ -46,7 +45,6 @@ namespace JuvoPlayer.Player.EsPlayer
         /// </summary>
         private Task clockGenerator;
         private CancellationTokenSource stopCts;
-        private CancellationToken stopToken;
 
         /// <summary>
         /// Returns configuration status of all underlying streams.
@@ -310,11 +308,9 @@ namespace JuvoPlayer.Player.EsPlayer
 
         private async Task DoStreamChange(BufferConfigurationPacket configPacket)
         {
-            //await Task.CompletedTask;
-
             logger.Info("");
 
-            logger.Error("***\n*** STREAM CHANGE CURRENTLY NOT SUPPORTED. Playback will terminate\n***");
+            logger.Error("***\n*** STREAM CHANGE CURRENTLY HAS ISSUES. Video may not be seen\n***");
 
             try
             {
@@ -325,18 +321,6 @@ namespace JuvoPlayer.Player.EsPlayer
                 logger.Info("Player Stop");
                 player.Stop();
 
-                logger.Info("Player Close");
-                player.Close();
-
-                logger.Info("Waiting for streams to complete");
-                await Task.Delay(5000);
-
-                logger.Info("Player Open");
-                player.Open();
-
-                //logger.Info("Player SetDisplay");
-                //player.SetDisplay(displayWindow);
-
                 logger.Info("Setting configs");
                 // Don't parallelize. We do want to know when it actually completes
                 foreach (var esStream in dataStreams.Where(esStream => esStream != null))
@@ -346,17 +330,12 @@ namespace JuvoPlayer.Player.EsPlayer
                     esStream.SetStreamConfig(conf);
                 }
 
-                //StartDataStreams();
-                //StartClockGenerator();
+                StartClockGenerator();
 
                 await player.PrepareAsync(OnReadyToStartStream);
 
-
                 logger.Info("Player Start()");
                 player.Start();
-
-                //StartDataStreams();
-                StartClockGenerator();
 
                 logger.Info("All Done");
             }
@@ -418,7 +397,9 @@ namespace JuvoPlayer.Player.EsPlayer
             logger.Info(streamType.ToString());
 
 
-            await Task.Factory.StartNew(() => dataStreams[(int)streamType].Start(), TaskCreationOptions.DenyChildAttach);
+            Task.Factory.StartNew(() => dataStreams[(int)streamType].Start(), TaskCreationOptions.DenyChildAttach);
+
+            await Task.CompletedTask;
 
             logger.Info($"{streamType}: Completed");
 
@@ -499,20 +480,39 @@ namespace JuvoPlayer.Player.EsPlayer
         /// Time generation task
         /// </summary>
         /// <returns>Task</returns>
-        private async Task GenerateTimeUpdates()
+        private async Task GenerateTimeUpdates(CancellationToken token)
         {
-            logger.Info("Clock extractor: Started (GENERATED)");
+            logger.Info($"Clock extractor: Started (GENERATED)");
 
-            while (!stopToken.IsCancellationRequested)
+            try
             {
-                var delayStart = DateTime.Now;
-                await Task.Delay(500, stopToken);
+                while (!token.IsCancellationRequested)
+                {
+                    var delayStart = DateTime.Now;
+                    await Task.Delay(500, token);
 
-                currentClock += DateTime.Now - delayStart;
-                streamControl?.TimeUpdated?.Invoke(currentClock);
+                    //TimeSpan playTime;
+                    //player.GetPlayingTime(out playTime);
+                    currentClock += DateTime.Now - delayStart;
+                    streamControl?.TimeUpdated?.Invoke(currentClock);
+                }
             }
-
-            logger.Info("Clock extractor: Terminated");
+            catch (InvalidOperationException ioe)
+            {
+                logger.Error("GetPlayingTime failed");
+            }
+            catch (OperationCanceledException)
+            {
+                logger.Info("Operation Cancelled");
+            }
+            catch (Exception e)
+            {
+                logger.Error(e.Message);
+            }
+            finally
+            {
+                logger.Info("Clock extractor: Terminated");
+            }
         }
 
         /// <summary>
@@ -528,10 +528,10 @@ namespace JuvoPlayer.Player.EsPlayer
             }
 
             stopCts = new CancellationTokenSource();
-            stopToken = stopCts.Token;
+            var stopToken = stopCts.Token;
 
             // Start time updater
-            clockGenerator = GenerateTimeUpdates();
+            clockGenerator = GenerateTimeUpdates(stopToken);
         }
 
         /// <summary>

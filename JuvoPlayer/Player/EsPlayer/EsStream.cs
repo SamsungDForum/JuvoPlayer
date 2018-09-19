@@ -230,9 +230,9 @@ namespace JuvoPlayer.Player.EsPlayer
             };
 
             player.AddStream(config);
-            
+
             logger.Info($"{streamTypeJuvo}: Stream configuration set");
-            //logger.Info(config.ToString());
+            logger.Info(config.DumpConfig());
         }
 
         /// <summary>
@@ -266,12 +266,10 @@ namespace JuvoPlayer.Player.EsPlayer
             };
 
             player.AddStream(config);
-            
+
             logger.Info($"{streamTypeJuvo}: Stream configuration set");
-            //logger.Info(config.ToString());
+            logger.Info(config.DumpConfig());
         }
-
-
 
         /// <summary>
         /// Starts data transfer, if not already running, by starting
@@ -321,7 +319,6 @@ namespace JuvoPlayer.Player.EsPlayer
 
                 transferCts.Cancel();
                 transferCts.Dispose();
-
             }
         }
 
@@ -336,12 +333,6 @@ namespace JuvoPlayer.Player.EsPlayer
             packetStorage.Disable(streamTypeJuvo);
         }
 
-        public async Task WaitForTermination()
-        {
-            logger.Info($"{streamTypeJuvo}:");
-            await transferTask;
-            logger.Info($"{streamTypeJuvo}: Done");
-        }
         /// <summary>
         /// Transfer task. Retrieves data from underlying storage and pushes it down
         /// to ESPlayer
@@ -386,7 +377,6 @@ namespace JuvoPlayer.Player.EsPlayer
                             break;
                     }
 
-
                 } while (!token.IsCancellationRequested);
             }
             catch (InvalidOperationException)
@@ -413,9 +403,11 @@ namespace JuvoPlayer.Player.EsPlayer
             }
             finally
             {
-                logger.Info($"{streamTypeJuvo}: Terminating transfer");
                 if (doDisable)
+                {
+                    logger.Info($"{streamTypeJuvo}: Disabling transfer");
                     DisableTransfer();
+                }
 
                 logger.Info($"{streamTypeJuvo}: Transfer task terminated");
             }
@@ -441,6 +433,7 @@ namespace JuvoPlayer.Player.EsPlayer
             {
                 var res = player.SubmitPacket(esPacket);
                 doRetry = ProcessPushResult(res, token);
+                logger.Debug($"{streamTypeEsPlayer}: ({!doRetry}) PTS: {esPacket.pts} Duration: {esPacket.duration}");
 
             } while (doRetry);
         }
@@ -497,7 +490,7 @@ namespace JuvoPlayer.Player.EsPlayer
                     break;
 
                 case ESPlayer.SubmitStatus.Full:
-                    delay = TimeSpan.FromMilliseconds(10);
+                    delay = TimeSpan.FromMilliseconds(500);
                     break;
 
                 default:
