@@ -24,6 +24,7 @@
       <ExcludeAssets>Runtime</ExcludeAssets>
     </PackageReference>
     <PackageReference Include="Tizen.NET.API5" Version="5.0.0.14514" />
+    <PackageReference Include="Tizen.NET.TV" Version="4.4.0.1341" />
     <PackageReference Include="Tizen.TV.NUI" Version="1.0.83">
       <ExcludeAssets>Runtime</ExcludeAssets>
     </PackageReference>

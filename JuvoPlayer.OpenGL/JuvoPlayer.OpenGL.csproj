@@ -39,6 +39,7 @@
     </PackageReference>
     <PackageReference Include="Tizen.NET.API5" Version="5.0.0.14514" />
     <PackageReference Include="Tizen.NET.Sdk" Version="1.0.1" />
+    <PackageReference Include="Tizen.NET.TV" Version="4.4.0.1341" />
   </ItemGroup>
 
   <ItemGroup>
