@@ -164,9 +164,6 @@ namespace JuvoPlayer.DataProviders.Dash
 
         public bool IsSeekingSupported()
         {
-            Logger.Warn("**** SEEK TEMP. DISABLED!!! Request: Pawe³ Buczyñski ****");
-            return false;
-
             // If there is no current document (not downloaded yet), prevent seeking.
             // as manifest may be dynamic.
             return !manifestProvider.Manifest.CurrentDocument?.IsDynamic ?? false;
