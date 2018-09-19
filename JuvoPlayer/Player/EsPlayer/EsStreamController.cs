@@ -39,6 +39,7 @@ namespace JuvoPlayer.Player.EsPlayer
         public event PlaybackError PlaybackError;
         public event PlaybackCompleted PlaybackCompleted;
         public event PlayerInitialized PlayerInitialized;
+        public event SeekCompleted SeekCompleted;
 
         /// <summary>
         /// Timer process and supporting cancellation elements
@@ -59,9 +60,15 @@ namespace JuvoPlayer.Player.EsPlayer
         /// </summary>
         private TimeSpan currentClock;
 
-        private bool inStreamReconfiguration;
-
-        public ElmSharp.Window displayWindow;
+        /// <summary>
+        /// Placeholder for current async activity. Initialized with
+        /// Task.Task.Completed to avoid null checks.
+        ///
+        /// TODO: Add current state checks 
+        /// TODO: i.e. async operation in progress / not in progress.
+        /// 
+        /// </summary>
+        private Task activeTask = Task.CompletedTask;
 
         #region Instance Support
         /// <summary>
@@ -188,7 +195,7 @@ namespace JuvoPlayer.Player.EsPlayer
                 // Not waiting for PrepareStream is intentional.
                 // Prepare fails otherwise
                 //
-                PrepareStream();
+                activeTask = StreamPrepare();
 
             }
             catch (NullReferenceException)
@@ -292,6 +299,14 @@ namespace JuvoPlayer.Player.EsPlayer
                 logger.Error(ioe.Message);
             }
         }
+
+        public void Seek(TimeSpan time)
+        {
+            logger.Info("");
+
+            activeTask = StreamSeek(time);
+
+        }
         #endregion
 
         #region Private Methods
@@ -301,48 +316,8 @@ namespace JuvoPlayer.Player.EsPlayer
         private void OnStreamReconfigure(BufferConfigurationPacket configPacket)
         {
             logger.Info("");
-            inStreamReconfiguration = true;
 
-            DoStreamChange(configPacket);
-        }
-
-        private async Task DoStreamChange(BufferConfigurationPacket configPacket)
-        {
-            logger.Info("");
-
-            logger.Error("***\n*** STREAM CHANGE CURRENTLY HAS ISSUES. Video may not be seen\n***");
-
-            try
-            {
-                logger.Info("Stopping streams");
-                StopDataStreams();
-                StopClockGenerator();
-
-                logger.Info("Player Stop");
-                player.Stop();
-
-                logger.Info("Setting configs");
-                // Don't parallelize. We do want to know when it actually completes
-                foreach (var esStream in dataStreams.Where(esStream => esStream != null))
-                {
-                    var conf = esStream.CurrentConfig;
-                    esStream.ClearStreamConfig();
-                    esStream.SetStreamConfig(conf);
-                }
-
-                StartClockGenerator();
-
-                await player.PrepareAsync(OnReadyToStartStream);
-
-                logger.Info("Player Start()");
-                player.Start();
-
-                logger.Info("All Done");
-            }
-            catch (InvalidOperationException ioe)
-            {
-                logger.Error(ioe.Message);
-            }
+            activeTask = StreamChange(configPacket);
         }
 
         #endregion
@@ -392,17 +367,24 @@ namespace JuvoPlayer.Player.EsPlayer
         /// <param name="esPlayerStreamType">ESPlayer.StreamType</param>
         private async void OnReadyToStartStream(ESPlayer.StreamType esPlayerStreamType)
         {
+            await Task.CompletedTask;
+
             var streamType = EsPlayerUtils.JuvoStreamType(esPlayerStreamType);
 
             logger.Info(streamType.ToString());
 
-
             Task.Factory.StartNew(() => dataStreams[(int)streamType].Start(), TaskCreationOptions.DenyChildAttach);
-
-            await Task.CompletedTask;
 
             logger.Info($"{streamType}: Completed");
 
+        }
+
+        private async void OnReadyToSeekStream(ESPlayer.StreamType esPlayerStreamType, TimeSpan time)
+        {
+            await Task.CompletedTask;
+
+            logger.Info($"{esPlayerStreamType}: {time}");
+            OnReadyToStartStream(esPlayerStreamType);
         }
         #endregion
 
@@ -413,7 +395,7 @@ namespace JuvoPlayer.Player.EsPlayer
         /// <returns>bool
         /// True - AsyncPrepare
         /// </returns>
-        private async Task PrepareStream()
+        private async Task StreamPrepare()
         {
             logger.Info("");
 
@@ -423,23 +405,86 @@ namespace JuvoPlayer.Player.EsPlayer
 
                 logger.Info("Player.PrepareAsync() Completed");
 
-                if (inStreamReconfiguration)
-                {
-                    logger.Info("Reconfiguration mode. PlayerInitialized won't be notified");
-                    return;
-                }
-
                 // This has to be called from UI Thread.
                 // It seems impossible to wait for AsyncPrepare completion - doing so
                 // prevents AsyncPrepare from completing.
                 // Currently, all events passed to UI are re-routed through main thread.
                 //
-                logger.Info("Initial configuration mode. PlayerInitialized notification");
                 PlayerInitialized?.Invoke();
             }
             catch (InvalidOperationException ioe)
             {
                 logger.Error(ioe.Message);
+            }
+        }
+
+        private async Task StreamChange(BufferConfigurationPacket configPacket)
+        {
+            logger.Info("");
+
+            logger.Error("***\n*** STREAM CHANGE CURRENTLY HAS ISSUES. Video may not be seen\n***");
+
+            try
+            {
+                logger.Info("Stopping streams");
+                StopDataStreams();
+                StopClockGenerator();
+
+                logger.Info("Player Stop");
+                player.Stop();
+
+                logger.Info("Setting configs");
+
+                foreach (var esStream in dataStreams.Where(esStream => esStream != null))
+                {
+                    var conf = esStream.CurrentConfig;
+                    esStream.ClearStreamConfig();
+                    esStream.SetStreamConfig(conf);
+                }
+
+                StartClockGenerator();
+
+                await player.PrepareAsync(OnReadyToStartStream);
+
+                logger.Info("Player Start()");
+                player.Start();
+
+                logger.Info("All Done");
+            }
+            catch (InvalidOperationException ioe)
+            {
+                logger.Error(ioe.Message);
+            }
+        }
+
+        private async Task StreamSeek(TimeSpan time)
+        {
+            logger.Info(time.ToString());
+
+            try
+            {
+                StopClockGenerator();
+                StopDataStreams();
+
+                await player.SeekAsync(time, OnReadyToSeekStream);
+
+                // Update current time to new seek position
+                currentClock = time;
+                StartClockGenerator();
+            }
+            catch (InvalidOperationException ioe)
+            {
+                logger.Error(ioe.Message);
+            }
+            catch (Exception e)
+            {
+                logger.Error(e.Message);
+            }
+            finally
+            {
+                // Always notify UI on seek end regardless of seek status
+                // to unblock it for further seeks ops.
+                SeekCompleted?.Invoke();
             }
         }
 
@@ -449,7 +494,8 @@ namespace JuvoPlayer.Player.EsPlayer
         private void StopDataStreams()
         {
             logger.Info("Stopping all data streams");
-            dataStreams.AsParallel().ForAll(esStream => esStream?.Stop());
+            foreach (var esStream in dataStreams.Where(esStream => esStream != null))
+                esStream.Stop();
         }
 
         /// <summary>
@@ -458,6 +504,9 @@ namespace JuvoPlayer.Player.EsPlayer
         private void StartDataStreams()
         {
             logger.Info("Starting all data streams");
+
+            // Starts can happen.. when they happen. See no reason to
+            // wait for their completion.
             dataStreams.AsParallel().ForAll(esStream => esStream?.Start());
         }
 
@@ -469,11 +518,11 @@ namespace JuvoPlayer.Player.EsPlayer
         {
             logger.Info("Stop and Disable all data streams");
 
-            dataStreams.AsParallel().ForAll(esStream =>
+            foreach (var esStream in dataStreams.Where(esStream => esStream != null))
             {
-                esStream?.Stop();
-                esStream?.Disable();
-            });
+                esStream.Stop();
+                esStream.Disable();
+            }
         }
 
         /// <summary>

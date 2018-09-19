@@ -69,13 +69,12 @@ namespace JuvoPlayer.Player.EsPlayer
                 streamControl.Initialize(StreamType.Audio);
                 streamControl.Initialize(StreamType.Video);
 
-                streamControl.displayWindow = displayWindow;
-
                 // Attach event handlers
                 streamControl.TimeUpdated += OnTimeUpdate;
                 streamControl.PlayerInitialized += OnStreamInitialized;
                 streamControl.PlaybackCompleted += OnPlaybackCompleted;
                 streamControl.PlaybackError += OnPlaybackError;
+                streamControl.SeekCompleted += OnSeekCompleted;
 
                 // Initialize player state
                 playerState = EsPlayerState.Stopped;
@@ -153,7 +152,7 @@ namespace JuvoPlayer.Player.EsPlayer
         public void Seek(TimeSpan time)
         {
             logger.Info("");
-            throw new NotImplementedException();
+            streamControl.Seek(time);
         }
 
         public void SetDuration(TimeSpan duration)
@@ -211,6 +210,11 @@ namespace JuvoPlayer.Player.EsPlayer
             playerState = EsPlayerState.Stopped;
         }
 
+        private void OnSeekCompleted()
+        {
+            SeekCompleted?.Invoke();
+        }
+
         #endregion
         #endregion
 
@@ -229,6 +233,7 @@ namespace JuvoPlayer.Player.EsPlayer
                     streamControl.PlayerInitialized -= OnStreamInitialized;
                     streamControl.PlaybackCompleted -= OnPlaybackCompleted;
                     streamControl.PlaybackError -= OnPlaybackError;
+                    streamControl.SeekCompleted -= OnSeekCompleted;
 
                     // Clean packet storage and stream controller
                     logger.Info("Freeing StreamController and PacketStorage");
@@ -239,8 +244,6 @@ namespace JuvoPlayer.Player.EsPlayer
 
                     // Shutdown player & Window
                     logger.Info("Shutting down ESPlayer");
-                    player.Stop();
-                    player.Close();
                     player.Dispose();
 
                     logger.Info("Destroying ELM Window");
