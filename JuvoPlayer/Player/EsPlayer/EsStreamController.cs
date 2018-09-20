@@ -56,11 +56,6 @@ namespace JuvoPlayer.Player.EsPlayer
             streamEntry?.IsConfigured ?? true);
 
         /// <summary>
-        /// Current clock time - used for fake clock generation
-        /// </summary>
-        private TimeSpan currentClock;
-
-        /// <summary>
         /// Placeholder for current async activity issued to ESPlayer.
         /// Initialized with Task.Task.Completed to avoid null checks.
         ///
@@ -467,8 +462,6 @@ namespace JuvoPlayer.Player.EsPlayer
 
                 await player.SeekAsync(time, OnReadyToSeekStream);
 
-                // Update current time to new seek position
-                currentClock = time;
                 StartClockGenerator();
             }
             catch (InvalidOperationException ioe)
@@ -530,24 +523,22 @@ namespace JuvoPlayer.Player.EsPlayer
         /// <returns>Task</returns>
         private async Task GenerateTimeUpdates(CancellationToken token)
         {
-            logger.Info($"Clock extractor: Started (GENERATED)");
+            logger.Info($"Clock extractor: Started");
 
             try
             {
                 while (!token.IsCancellationRequested)
                 {
-                    var delayStart = DateTime.Now;
                     await Task.Delay(500, token);
 
-                    //TimeSpan playTime;
-                    //player.GetPlayingTime(out playTime);
-                    currentClock += DateTime.Now - delayStart;
-                    streamControl?.TimeUpdated?.Invoke(currentClock);
+                    player.GetPlayingTime(out var playTime);
+
+                    streamControl?.TimeUpdated?.Invoke(playTime);
                 }
             }
             catch (InvalidOperationException ioe)
             {
-                logger.Error("GetPlayingTime failed");
+                logger.Error($"GetPlayingTime failed: {ioe.Message}");
             }
             catch (OperationCanceledException)
             {
