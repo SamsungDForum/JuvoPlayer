@@ -435,7 +435,7 @@ namespace JuvoPlayer.Player.EsPlayer
                 doRetry = ProcessPushResult(res, token);
                 logger.Debug($"{streamTypeEsPlayer}: ({!doRetry}) PTS: {esPacket.pts} Duration: {esPacket.duration}");
 
-            } while (doRetry);
+            } while (doRetry && !token.IsCancellationRequested);
         }
 
         /// <summary>
@@ -458,7 +458,7 @@ namespace JuvoPlayer.Player.EsPlayer
                 var res = player.SubmitEosPacket(streamTypeEsPlayer);
                 doRetry = ProcessPushResult(res, token);
 
-            } while (doRetry);
+            } while (doRetry && !token.IsCancellationRequested);
         }
 
         /// <summary>
@@ -476,9 +476,8 @@ namespace JuvoPlayer.Player.EsPlayer
         /// </exception>
         private bool ProcessPushResult(ESPlayer.SubmitStatus status, CancellationToken token)
         {
-            token.ThrowIfCancellationRequested();
-
             TimeSpan delay;
+
             switch (status)
             {
                 case ESPlayer.SubmitStatus.Success:
@@ -522,7 +521,6 @@ namespace JuvoPlayer.Player.EsPlayer
 
             DisableTransfer();
 
-            transferTask = null;
             isDisposed = true;
         }
         #endregion
