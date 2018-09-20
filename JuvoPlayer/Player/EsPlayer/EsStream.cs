@@ -154,18 +154,29 @@ namespace JuvoPlayer.Player.EsPlayer
         /// False - Config Enqueued</returns>
         public bool SetStreamConfig(BufferConfigurationPacket bufferConfig)
         {
-            logger.Info($"{streamTypeJuvo}: Already Configured: {IsConfigured}");
-
-            if (IsConfigured)
+            // Depending on current configuration state, packets are either pushed
+            // directly to player or queued in packet queue.
+            // To make sure current state is known, sync this operation.
+            //
+            // TODO revise possibility of always queueing buffer config request.
+            // TODO that way packet queue will provide serialization without need for
+            // TODO other mechanism.
+            //
+            lock (syncLock)
             {
-                packetStorage.AddPacket(bufferConfig);
-                logger.Info($"{streamTypeJuvo}: New configuration queued");
-                return false;
-            }
+                logger.Info($"{streamTypeJuvo}: Already Configured: {IsConfigured}");
 
-            CurrentConfig = bufferConfig;
-            PushStreamConfig(bufferConfig.Config);
-            return true;
+                if (IsConfigured)
+                {
+                    packetStorage.AddPacket(bufferConfig);
+                    logger.Info($"{streamTypeJuvo}: New configuration queued");
+                    return false;
+                }
+
+                CurrentConfig = bufferConfig;
+                PushStreamConfig(bufferConfig.Config);
+                return true;
+            }
         }
 
         public void ClearStreamConfig()
