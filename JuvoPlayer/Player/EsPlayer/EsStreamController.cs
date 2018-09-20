@@ -12,6 +12,7 @@
 // this software or its derivatives.
 
 using System;
+using System.Collections.Generic;
 using JuvoPlayer.Common;
 using JuvoLogger;
 using System.Linq;
@@ -78,13 +79,17 @@ namespace JuvoPlayer.Player.EsPlayer
         /// </summary>
         private Task activeTask = Task.CompletedTask;
 
+        private ElmSharp.Window displayWindow;
+
+        private TimeSpan currentClock;
+
         #region Instance Support
         /// <summary>
         /// Obtains an instance of Stream Controller
         /// </summary>
         /// <param name="esPlayer">ESPlayer</param>
         /// <returns>EsStreamController instance</returns>
-        public static EsStreamController GetInstance(ESPlayer.ESPlayer esPlayer)
+        public static EsStreamController GetInstance(ESPlayer.ESPlayer esPlayer, ElmSharp.Window window)
         {
             lock (InstanceLock)
             {
@@ -92,7 +97,7 @@ namespace JuvoPlayer.Player.EsPlayer
                     return streamControl;
 
                 streamControl = new EsStreamController();
-                streamControl.ConfigureInstance(esPlayer);
+                streamControl.ConfigureInstance(esPlayer, window);
 
                 return streamControl;
             }
@@ -102,12 +107,16 @@ namespace JuvoPlayer.Player.EsPlayer
         /// Configure newly created instance
         /// </summary>
         /// <param name="esPlayer">ESPlayer</param>
-        private void ConfigureInstance(ESPlayer.ESPlayer esPlayer)
+        private void ConfigureInstance(ESPlayer.ESPlayer esPlayer, ElmSharp.Window window)
         {
             // Initialize player & attach event handlers
             player = esPlayer;
             player.EOSEmitted += OnEos;
             player.ErrorOccurred += OnError;
+
+            displayWindow = window;
+
+            player.SetDisplay(displayWindow);
 
             dataStreams = new EsStream[(int)StreamType.Count];
         }
@@ -374,13 +383,13 @@ namespace JuvoPlayer.Player.EsPlayer
         /// <param name="esPlayerStreamType">ESPlayer.StreamType</param>
         private async void OnReadyToStartStream(ESPlayer.StreamType esPlayerStreamType)
         {
-            await Task.CompletedTask;
-
             var streamType = EsPlayerUtils.JuvoStreamType(esPlayerStreamType);
 
             logger.Info(streamType.ToString());
 
-            Task.Factory.StartNew(() => dataStreams[(int)streamType].Start(), TaskCreationOptions.DenyChildAttach);
+            dataStreams[(int)streamType].Start();
+
+            await Task.CompletedTask;
 
             logger.Info($"{streamType}: Completed");
 
@@ -435,10 +444,20 @@ namespace JuvoPlayer.Player.EsPlayer
             {
                 logger.Info("Stopping streams");
                 StopDataStreams();
-                StopClockGenerator();
+
+                List<Task> awaitables = new List<Task>(
+                    dataStreams.Where(esStream => esStream != null)
+                    .Select(esStream => esStream.AwaitCompletion()));
+
+                logger.Info($"Waiting for completion of {awaitables.Count} activities");
+                await Task.WhenAll(awaitables);
+
 
                 logger.Info("Player Stop");
                 player.Stop();
+
+                logger.Info("Re-Setting display window");
+                player.SetDisplay(displayWindow);
 
                 logger.Info("Setting configs");
 
@@ -448,8 +467,6 @@ namespace JuvoPlayer.Player.EsPlayer
                     esStream.ClearStreamConfig();
                     esStream.SetStreamConfig(conf);
                 }
-
-                StartClockGenerator();
 
                 await player.PrepareAsync(OnReadyToStartStream);
 
@@ -531,27 +548,49 @@ namespace JuvoPlayer.Player.EsPlayer
         }
 
         /// <summary>
-        /// Time generation task
+        /// Time generation task. Time is generated from ESPlayer OR auto generated.
+        /// Auto generation handles current representation change mechanism where
+        /// full stop of ESPlayer is required and no new times are available.
+        ///
+        /// TODO Remove time generation feature when DashClient SharedBuffers usage
+        /// TODO will not be time dependent.
+        /// 
         /// </summary>
         /// <returns>Task</returns>
         private async Task GenerateTimeUpdates(CancellationToken token)
         {
             logger.Info($"Clock extractor: Started");
 
+            DateTime delayStart;
             try
             {
                 while (!token.IsCancellationRequested)
                 {
+                    delayStart = DateTime.Now;
                     await Task.Delay(500, token);
 
-                    player.GetPlayingTime(out var playTime);
+                    try
+                    {
+                        player.GetPlayingTime(out var currentPlayTime);
+                        if (currentPlayTime < currentClock)
+                            continue;
 
-                    streamControl?.TimeUpdated?.Invoke(playTime);
+                        currentClock = currentPlayTime;
+                    }
+                    catch (InvalidOperationException)
+                    {
+                        // GetPlayingTime not available after calling 
+                        // Player.Stop()->SetWindow()->Before new AddStream()
+                        // case: Stream Config Change.
+                        // Generate fake clock
+                        currentClock += DateTime.Now - delayStart;
+                        logger.Info("Clock Generated");
+                    }
+                    finally
+                    {
+                        streamControl?.TimeUpdated?.Invoke(currentClock);
+                    }
                 }
-            }
-            catch (InvalidOperationException ioe)
-            {
-                logger.Error($"GetPlayingTime failed: {ioe.Message}");
             }
             catch (OperationCanceledException)
             {

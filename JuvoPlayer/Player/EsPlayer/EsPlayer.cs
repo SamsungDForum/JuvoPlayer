@@ -58,14 +58,11 @@ namespace JuvoPlayer.Player.EsPlayer
 
                 player.Open();
 
-                // Set window to player
-                player.SetDisplay(displayWindow);
-
                 packetStorage = EsPlayerPacketStorage.GetInstance();
                 packetStorage.Initialize(StreamType.Audio);
                 packetStorage.Initialize(StreamType.Video);
 
-                streamControl = EsStreamController.GetInstance(player);
+                streamControl = EsStreamController.GetInstance(player, displayWindow);
                 streamControl.Initialize(StreamType.Audio);
                 streamControl.Initialize(StreamType.Video);
 
