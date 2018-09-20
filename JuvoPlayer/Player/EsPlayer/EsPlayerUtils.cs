@@ -150,6 +150,7 @@ namespace JuvoPlayer.Player.EsPlayer
         {
             window.Hide();
             window.Unrealize();
+            window = null;
         }
 
         internal static Common.StreamType JuvoStreamType(ESPlayer.StreamType esStreamType)

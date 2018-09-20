@@ -173,6 +173,29 @@ namespace JuvoPlayer.Player.EsPlayer
         }
 
         /// <summary>
+        /// Retrieves number of data packets in specified storage
+        /// </summary>
+        /// <param name="stream">stream for which packet is to be retrieved</param>
+        /// <returns>Number of packets</returns>
+        public int DataCount(Common.StreamType stream)
+        {
+            try
+            {
+                return packetQueues[(int)stream].Count;
+            }
+            catch (NullReferenceException)
+            {
+                logger.Warn($"Uninitialized packet storage for {stream}");
+            }
+            catch (ObjectDisposedException)
+            {
+                logger.Warn($"Packet storage for {stream} is disposed");
+            }
+
+            return 0;
+        }
+
+        /// <summary>
         /// Disables storage. No further addition of data will be possible.
         /// Extraction of already contained data is still possible.
         /// </summary>

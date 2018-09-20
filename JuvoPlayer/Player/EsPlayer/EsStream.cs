@@ -98,12 +98,6 @@ namespace JuvoPlayer.Player.EsPlayer
         public bool IsConfigured => (CurrentConfig != null);
 
         /// <summary>
-        /// Flag indicating if stream is transferring data between
-        /// packet storage and ESPlayer
-        /// </summary>
-        public bool IsRunning => (!transferTask.IsCompleted);
-
-        /// <summary>
         /// lock object used for serialization of internal operations
         /// that can be accessed externally
         /// </summary>
@@ -211,6 +205,12 @@ namespace JuvoPlayer.Player.EsPlayer
             DisableTransfer();
         }
 
+        public async Task AwaitCompletion()
+        {
+            logger.Info("");
+            await transferTask;
+            logger.Info("Done");
+        }
         #endregion
 
         #region Private Methods
@@ -292,7 +292,7 @@ namespace JuvoPlayer.Player.EsPlayer
 
             lock (syncLock)
             {
-                if (IsRunning)
+                if (!transferTask.IsCompleted)
                 {
                     logger.Info($"{streamTypeJuvo}: Already started: {transferTask.Status}");
                     return;
@@ -320,7 +320,7 @@ namespace JuvoPlayer.Player.EsPlayer
 
             lock (syncLock)
             {
-                if (!IsRunning)
+                if (transferTask.IsCompleted)
                 {
                     logger.Info($"{streamTypeJuvo}: Already stopped");
                     return;
@@ -527,7 +527,7 @@ namespace JuvoPlayer.Player.EsPlayer
 
             logger.Info(streamTypeJuvo.ToString());
 
-            if (IsRunning)
+            if (!transferTask.IsCompleted)
                 StopTransfer();
 
             DisableTransfer();
