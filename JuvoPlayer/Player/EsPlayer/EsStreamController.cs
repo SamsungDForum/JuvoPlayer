@@ -61,10 +61,10 @@ namespace JuvoPlayer.Player.EsPlayer
         private TimeSpan currentClock;
 
         /// <summary>
-        /// Placeholder for current async activity. Initialized with
-        /// Task.Task.Completed to avoid null checks.
+        /// Placeholder for current async activity issued to ESPlayer.
+        /// Initialized with Task.Task.Completed to avoid null checks.
         ///
-        /// TODO: Add current state checks 
+        /// TODO: Add current state checks to prevent launch of multiple async ops.
         /// TODO: i.e. async operation in progress / not in progress.
         /// 
         /// </summary>
@@ -119,8 +119,14 @@ namespace JuvoPlayer.Player.EsPlayer
             StopClockGenerator();
 
             // Dispose of individual streams.
-            dataStreams.AsParallel().ForAll((esStream) => DisposeStream(ref esStream));
+            foreach (var esStream in dataStreams.Where(esStream => esStream != null))
+            {
+                esStream.ReconfigureStream -= OnStreamReconfigure;
+                esStream.Dispose();
+            }
 
+            // Nullify references
+            dataStreams = Enumerable.Repeat<EsStream>(null, dataStreams.Length).ToArray();
             streamControl = null;
         }
 
@@ -135,15 +141,6 @@ namespace JuvoPlayer.Player.EsPlayer
             }
         }
 
-        private void DisposeStream(ref EsStream stream)
-        {
-            if (stream == null)
-                return;
-
-            stream.ReconfigureStream -= OnStreamReconfigure;
-            stream.Dispose();
-            stream = null;
-        }
         /// <summary>
         /// Initializes a stream to be used with stream controller
         /// Must be called before usage of the stream with stream controller
@@ -151,20 +148,22 @@ namespace JuvoPlayer.Player.EsPlayer
         /// <param name="stream">Common.StreamType</param>
         public void Initialize(Common.StreamType stream)
         {
-            logger.Info(stream.ToString());
+            lock (InstanceLock)
+            {
+                logger.Info(stream.ToString());
 
-            // Grab "old" stream 
-            //
-            var esStream = dataStreams[(int)stream];
+                if (dataStreams[(int)stream] != null)
+                {
+                    logger.Info($"{stream}: Already initialized");
+                    return;
+                }
 
-            // Create new data stream in its place
-            //
-            dataStreams[(int)stream] = new EsStream(player, stream);
-            dataStreams[(int)stream].ReconfigureStream += OnStreamReconfigure;
+                // Create new data stream in its place
+                //
+                dataStreams[(int)stream] = new EsStream(player, stream);
+                dataStreams[(int)stream].ReconfigureStream += OnStreamReconfigure;
+            }
 
-            // Remove previous data if existed in first place...
-            //
-            DisposeStream(ref esStream);
         }
         #endregion
 
