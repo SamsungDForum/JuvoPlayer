@@ -13,7 +13,9 @@
 
 using JuvoPlayer.Common;
 using System;
+using System.Runtime.InteropServices;
 using System.Text;
+using Tizen.TV.Multimedia.IPTV;
 using Window = ElmSharp.Window;
 using ESPlayer = Tizen.TV.Multimedia.ESPlayer;
 using StreamType = JuvoPlayer.Common.StreamType;
@@ -43,15 +45,28 @@ namespace JuvoPlayer.Player.EsPlayer
     /// </summary>
     internal static class PacketConversionExtensions
     {
-        internal static ESPlayer.ESPacket ToESPlayerPacket(this Common.Packet packet, ESPlayer.StreamType esStreamType)
+        internal static ESPlayer.ESPacket ESUnencryptedPacket(this Common.Packet packet, ESPlayer.StreamType esStreamType)
         {
             return new ESPlayer.ESPacket
             {
                 type = esStreamType,
-
                 pts = packet.Pts.ToNanoseconds(),
                 duration = packet.Duration.ToNanoseconds(),
                 buffer = packet.Data
+            };
+        }
+
+        internal static ESPlayer.ESHandlePacket ESDecryptedPacket(this Common.DecryptedEMEPacket packet, ESPlayer.StreamType esStreamType)
+        {
+            return new ESPlayer.ESHandlePacket
+            {
+                type = esStreamType,
+                pts = packet.Pts.ToNanoseconds(),
+                duration = packet.Duration.ToNanoseconds(),
+
+                handle = packet.HandleSize.handle,
+                handleSize = packet.HandleSize.size
+
             };
         }
     }
