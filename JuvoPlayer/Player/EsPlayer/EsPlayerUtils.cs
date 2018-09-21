@@ -13,12 +13,15 @@
 
 using JuvoPlayer.Common;
 using System;
+using System.Collections.Generic;
 using System.Runtime.InteropServices;
 using System.Text;
+using JuvoPlayer.Common.Utils;
 using Tizen.TV.Multimedia.IPTV;
 using Window = ElmSharp.Window;
 using ESPlayer = Tizen.TV.Multimedia.ESPlayer;
 using StreamType = JuvoPlayer.Common.StreamType;
+using Tizen.Multimedia;
 
 namespace JuvoPlayer.Player.EsPlayer
 {
@@ -92,6 +95,8 @@ namespace JuvoPlayer.Player.EsPlayer
             sb.Append(videoConf.num + "/");
             sb.Append(videoConf.den);
             sb.AppendLine(" (" + (videoConf.num / (videoConf.den == 0 ? 1 : videoConf.den)) + ")");
+            sb.AppendLine("\tCodec Data:");
+            sb.AppendLine(HexDumper.HexDump(videoConf.codecData));
 
             return sb.ToString();
         }
@@ -130,6 +135,62 @@ namespace JuvoPlayer.Player.EsPlayer
         }
 
         public StreamConfig Config { get; private set; }
+
+        public override bool Equals(Object obj)
+        {
+            //Check for null/types
+            if (obj == null)
+                return false;
+
+            var bcPacket = obj as BufferConfigurationPacket;
+            if (bcPacket == null)
+                return false;
+
+            return bcPacket.Config.Equals(this.Config);
+        }
+
+        public bool Compatible(BufferConfigurationPacket packet)
+        {
+            var streamType = Config.StreamType();
+            if (streamType != packet.Config.StreamType())
+                return false;
+
+            switch (streamType)
+            {
+                case StreamType.Audio:
+                    return Compatible(packet.Config as AudioStreamConfig);
+
+                case StreamType.Video:
+                    return Compatible(packet.Config as VideoStreamConfig);
+
+                default:
+                    return false;
+            }
+
+        }
+
+        public bool Compatible(AudioStreamConfig other)
+        {
+            var audioConfig = Config as AudioStreamConfig;
+
+            return audioConfig != null &&
+                   other != null &&
+                   audioConfig.Codec == other.Codec &&
+                   audioConfig.ChannelLayout == other.ChannelLayout &&
+                   audioConfig.SampleRate == other.SampleRate &&
+                   audioConfig.BitsPerChannel == other.BitsPerChannel &&
+                   audioConfig.BitRate == other.BitRate;
+        }
+
+        public bool Compatible(VideoStreamConfig other)
+        {
+            var videoConfig = Config as VideoStreamConfig;
+
+            return videoConfig != null &&
+                   other != null &&
+                   videoConfig.Codec == other.Codec &&
+                   videoConfig.FrameRate == other.FrameRate;
+        }
     };
 
     /// <summary>

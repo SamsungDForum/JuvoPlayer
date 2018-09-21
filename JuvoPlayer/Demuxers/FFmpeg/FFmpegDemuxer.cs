@@ -109,7 +109,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg
             demuxTask = Task.Run(() => DemuxTask(InitES, initMode));
 
             //Add error handler task if demuxer fails
-            demuxTask.ContinueWith(res => OnError(GetErrorMessage(res)),TaskContinuationOptions.OnlyOnFaulted);
+            demuxTask.ContinueWith(res => OnError(GetErrorMessage(res)), TaskContinuationOptions.OnlyOnFaulted);
         }
 
         public void StartForUrl(string url)
@@ -583,11 +583,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg
             // s->time_base.num
 
             Logger.Info("Setting audio stream to " + audioIdx + "/" + formatContext->nb_streams);
-            Logger.Info("  Codec = " + config.Codec);
-            Logger.Info("  BitsPerChannel = " + config.BitsPerChannel);
-            Logger.Info("  ChannelLayout = " + config.ChannelLayout);
-            Logger.Info("  SampleRate = " + config.SampleRate);
-            Logger.Info("");
+            Logger.Info(config.ToString());
 
             StreamConfigReady?.Invoke(config);
         }
@@ -601,13 +597,15 @@ namespace JuvoPlayer.Demuxers.FFmpeg
             }
 
             AVStream* s = formatContext->streams[videoIdx];
+
             var config = new VideoStreamConfig
             {
                 Codec = ConvertVideoCodec(s->codecpar->codec_id),
                 CodecProfile = s->codecpar->profile,
                 Size = new Tizen.Multimedia.Size(s->codecpar->width, s->codecpar->height),
                 FrameRateNum = s->r_frame_rate.num,
-                FrameRateDen = s->r_frame_rate.den
+                FrameRateDen = s->r_frame_rate.den,
+                FrameRate = s->r_frame_rate.num / (s->r_frame_rate.den == 0 ? 1 : s->r_frame_rate.den)
             };
 
             if (s->codecpar->extradata_size > 0)
@@ -623,9 +621,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg
             // s->time_base.num
 
             Logger.Info("Setting video stream to " + videoIdx + "/" + formatContext->nb_streams);
-            Logger.Info("  Codec = " + config.Codec);
-            Logger.Info("  Size = " + config.Size);
-            Logger.Info("  FrameRate = (" + config.FrameRateNum + "/" + config.FrameRateDen + ")");
+            Logger.Info(config.ToString());
 
             StreamConfigReady?.Invoke(config);
         }
@@ -720,14 +716,14 @@ namespace JuvoPlayer.Demuxers.FFmpeg
             Resume();
             dataBuffer?.ClearData();
             dataBuffer?.WriteData(null, true);
- 
+
             // If a task fails with an exception that's not caught anywhere,
             // calling 
             try
             {
                 demuxTask?.Wait();
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 Logger.Debug($"Demuxer Status/Error: {demuxTask.Status} {ex.Message}");
             }
@@ -735,7 +731,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg
             // Clear EOS from buffer after demux task termination so there 
             // will not be any data reads of EOS after restart as EOS is persistant in buffer
             dataBuffer?.ClearData();
-            
+
             DeallocFFmpeg();
         }
 

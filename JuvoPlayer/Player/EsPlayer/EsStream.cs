@@ -37,8 +37,7 @@ namespace JuvoPlayer.Player.EsPlayer
     /// <summary>
     /// Internal EsPlayer event. Called when stream has to be reconfigured
     /// </summary>
-    /// <param name="bufferConfigPacket">BufferConfigurationPacket</param>
-    internal delegate void StreamReconfigure(BufferConfigurationPacket bufferConfigPacket);
+    internal delegate void StreamReconfigure();
 
     /// <summary>
     /// Class representing and individual stream being transferred
@@ -152,10 +151,6 @@ namespace JuvoPlayer.Player.EsPlayer
             // directly to player or queued in packet queue.
             // To make sure current state is known, sync this operation.
             //
-            // TODO revise possibility of always queueing buffer config request.
-            // TODO that way packet queue will provide serialization without need for
-            // TODO other mechanism.
-            //
             lock (syncLock)
             {
                 logger.Info($"{streamTypeJuvo}: Already Configured: {IsConfigured}");
@@ -173,6 +168,9 @@ namespace JuvoPlayer.Player.EsPlayer
             }
         }
 
+        /// <summary>
+        /// Clears currently set stream configuration
+        /// </summary>
         public void ClearStreamConfig()
         {
             logger.Info($"{streamTypeJuvo}");
@@ -205,6 +203,10 @@ namespace JuvoPlayer.Player.EsPlayer
             DisableTransfer();
         }
 
+        /// <summary>
+        /// Awaitable function. Will return when a running task terminates.
+        /// </summary>
+        /// <returns></returns>
         public async Task AwaitCompletion()
         {
             logger.Info("");
@@ -243,7 +245,6 @@ namespace JuvoPlayer.Player.EsPlayer
             player.AddStream(config);
 
             logger.Info($"{streamTypeJuvo}: Stream configuration set");
-            logger.Info(config.DumpConfig());
         }
 
         /// <summary>
@@ -269,9 +270,9 @@ namespace JuvoPlayer.Player.EsPlayer
                 codecData = videoConfig.CodecExtraData,
                 mimeType = EsPlayerUtils.GetCodecMimeType(videoConfig.Codec),
                 width = videoConfig.Size.Width,
-                maxWidth = videoConfig.Size.Width,
+                maxWidth = 3840,
                 height = videoConfig.Size.Height,
-                maxHeight = videoConfig.Size.Height,
+                maxHeight = 2160,
                 num = videoConfig.FrameRateNum,
                 den = videoConfig.FrameRateDen
             };
@@ -279,7 +280,6 @@ namespace JuvoPlayer.Player.EsPlayer
             player.AddStream(config);
 
             logger.Info($"{streamTypeJuvo}: Stream configuration set");
-            logger.Info(config.DumpConfig());
         }
 
         /// <summary>
@@ -369,14 +369,28 @@ namespace JuvoPlayer.Player.EsPlayer
                             doDisable = true;
                             return;
 
-                        case BufferConfigurationPacket bufferConfigPacket:
+                        case BufferConfigurationPacket bufferConfigPacket when
+                            !CurrentConfig.Compatible(bufferConfigPacket):
+
                             CurrentConfig = bufferConfigPacket;
 
-                            ReconfigureStream?.Invoke(bufferConfigPacket);
+                            logger.Info($"{streamTypeJuvo}: Incompatible Stream config change.");
+                            ReconfigureStream?.Invoke();
 
                             // exit transfer task. This will prevent further transfers
                             // Stops/Restarts will be called by reconfiguration handler.
                             return;
+
+                        case BufferConfigurationPacket bufferConfigPacket when
+                            CurrentConfig.Compatible(bufferConfigPacket):
+
+                            CurrentConfig = bufferConfigPacket;
+
+                            logger.Info($"{streamTypeJuvo}: Compatible Stream config change");
+
+                            // exit transfer task. This will prevent further transfers
+                            // Stops/Restarts will be called by reconfiguration handler.
+                            break;
 
                         case EncryptedPacket encryptedPacket:
                             PushEncryptedPacket(encryptedPacket, token);
