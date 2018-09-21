@@ -379,12 +379,11 @@ namespace JuvoPlayer.Player.EsPlayer
                             return;
 
                         case EncryptedPacket encryptedPacket:
-                            logger.Info($"{streamTypeJuvo}: Encrypted packet not implemented");
-                            packet.Dispose();
+                            PushEncryptedPacket(encryptedPacket, token);
                             break;
 
                         case Packet dataPacket when packet.IsEOS == false:
-                            PushDataPacket(dataPacket, token);
+                            PushUnencryptedPacket(dataPacket, token);
                             break;
                     }
 
@@ -432,14 +431,13 @@ namespace JuvoPlayer.Player.EsPlayer
         /// <exception cref="PacketSubmitException">
         /// Exception thrown on submit error
         /// </exception>
-        private void PushDataPacket(Packet dataPacket, CancellationToken token)
+        private void PushUnencryptedPacket(Packet dataPacket, CancellationToken token)
         {
-            bool doRetry;
-
             // Convert Juvo packet to ESPlayer packet
-            var esPacket = dataPacket.ToESPlayerPacket(streamTypeEsPlayer);
+            var esPacket = dataPacket.ESUnencryptedPacket(streamTypeEsPlayer);
 
             // Continue pushing packet till success or terminal failure
+            bool doRetry;
             do
             {
                 var res = player.SubmitPacket(esPacket);
@@ -447,6 +445,24 @@ namespace JuvoPlayer.Player.EsPlayer
                 logger.Debug($"{streamTypeEsPlayer}: ({!doRetry}) PTS: {esPacket.pts} Duration: {esPacket.duration}");
 
             } while (doRetry && !token.IsCancellationRequested);
+        }
+
+        private void PushEncryptedPacket(EncryptedPacket dataPacket, CancellationToken token)
+        {
+            using (var decryptedPacket = dataPacket.Decrypt() as Common.DecryptedEMEPacket)
+            {
+                var esPacket = decryptedPacket.ESDecryptedPacket(streamTypeEsPlayer);
+
+                // Continue pushing packet till success or terminal failure
+                bool doRetry;
+                do
+                {
+                    var res = player.SubmitPacket(esPacket);
+                    doRetry = ProcessPushResult(res, token);
+                    logger.Debug($"{streamTypeEsPlayer}: ({!doRetry}) PTS: {esPacket.pts} Duration: {esPacket.duration}");
+
+                } while (doRetry && !token.IsCancellationRequested);
+            }
         }
 
         /// <summary>
