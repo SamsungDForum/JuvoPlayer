@@ -13,6 +13,8 @@
 
 using System;
 using System.Collections.Generic;
+using System.Text;
+using JuvoPlayer.Common.Utils;
 using Tizen.Multimedia;
 
 namespace JuvoPlayer.Common
@@ -59,5 +61,16 @@ namespace JuvoPlayer.Common
         public int FrameRateNum { get; set; }
         public int FrameRateDen { get; set; }
         public int BitRate { get; set; }
+        public int FrameRate { get; set; }
+        public override string ToString()
+        {
+            StringBuilder sb = new StringBuilder();
+            sb.AppendLine("");
+            sb.AppendLine("\tCodec = " + Codec);
+            sb.AppendLine("\tSize    " + Size);
+            sb.AppendLine("\tFrameRate = (" + FrameRateNum + "/" + FrameRateDen + ") " + FrameRate);
+
+            return sb.ToString();
+        }
     }
 }

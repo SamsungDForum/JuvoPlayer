@@ -166,7 +166,7 @@ namespace JuvoPlayer.Player.EsPlayer
 
         public void SetStreamConfig(StreamConfig config)
         {
-            logger.Info(config.ToString());
+            logger.Info(config.StreamType().ToString());
 
             var configPacket = BufferConfigurationPacket.Create(config);
 

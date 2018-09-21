@@ -59,7 +59,7 @@ namespace JuvoPlayer.Player.EsPlayer
         /// Timer process and supporting cancellation elements
         /// </summary>
         private Task clockGenerator = Task.CompletedTask;
-        private CancellationTokenSource stopCts;
+        private CancellationTokenSource clockGeneratorCts;
 
         /// <summary>
         /// Returns configuration status of all underlying streams.
@@ -78,6 +78,7 @@ namespace JuvoPlayer.Player.EsPlayer
         /// 
         /// </summary>
         private Task activeTask = Task.CompletedTask;
+        private CancellationTokenSource activeTaskCts;
 
         private ElmSharp.Window displayWindow;
 
@@ -128,12 +129,16 @@ namespace JuvoPlayer.Player.EsPlayer
         {
             logger.Info("");
 
+            streamControl = null;
+
             // Detach event handlers
             player.EOSEmitted -= OnEos;
             player.ErrorOccurred -= OnError;
 
             // Stop clock
             StopClockGenerator();
+            activeTaskCts.Cancel();
+            activeTaskCts.Dispose();
 
             // Dispose of individual streams.
             foreach (var esStream in dataStreams.Where(esStream => esStream != null))
@@ -144,7 +149,6 @@ namespace JuvoPlayer.Player.EsPlayer
 
             // Nullify references
             dataStreams = Enumerable.Repeat<EsStream>(null, dataStreams.Length).ToArray();
-            streamControl = null;
         }
 
         /// <summary>
@@ -154,6 +158,9 @@ namespace JuvoPlayer.Player.EsPlayer
         {
             lock (InstanceLock)
             {
+                if (streamControl == null)
+                    return;
+
                 streamControl?.UnconfigureInstance();
             }
         }
@@ -179,6 +186,8 @@ namespace JuvoPlayer.Player.EsPlayer
                 //
                 dataStreams[(int)stream] = new EsStream(player, stream);
                 dataStreams[(int)stream].ReconfigureStream += OnStreamReconfigure;
+
+                activeTaskCts = new CancellationTokenSource();
             }
 
         }
@@ -212,6 +221,7 @@ namespace JuvoPlayer.Player.EsPlayer
                 // Prepare fails otherwise
                 //
                 activeTask = StreamPrepare();
+
 
             }
             catch (NullReferenceException)
@@ -321,7 +331,6 @@ namespace JuvoPlayer.Player.EsPlayer
             logger.Info("");
 
             activeTask = StreamSeek(time);
-
         }
         #endregion
 
@@ -329,11 +338,11 @@ namespace JuvoPlayer.Player.EsPlayer
 
         #region Internal EsPlayer event handlers
 
-        private void OnStreamReconfigure(BufferConfigurationPacket configPacket)
+        private void OnStreamReconfigure()
         {
             logger.Info("");
 
-            activeTask = StreamChange(configPacket);
+            activeTask = RestartPlayer();
         }
 
         #endregion
@@ -381,7 +390,7 @@ namespace JuvoPlayer.Player.EsPlayer
         /// This effectively starts playback.
         /// </summary>
         /// <param name="esPlayerStreamType">ESPlayer.StreamType</param>
-        private async void OnReadyToStartStream(ESPlayer.StreamType esPlayerStreamType)
+        private void OnReadyToStartStream(ESPlayer.StreamType esPlayerStreamType)
         {
             var streamType = EsPlayerUtils.JuvoStreamType(esPlayerStreamType);
 
@@ -389,16 +398,12 @@ namespace JuvoPlayer.Player.EsPlayer
 
             dataStreams[(int)streamType].Start();
 
-            await Task.CompletedTask;
-
             logger.Info($"{streamType}: Completed");
 
         }
 
-        private async void OnReadyToSeekStream(ESPlayer.StreamType esPlayerStreamType, TimeSpan time)
+        private void OnReadyToSeekStream(ESPlayer.StreamType esPlayerStreamType, TimeSpan time)
         {
-            await Task.CompletedTask;
-
             logger.Info($"{esPlayerStreamType}: {time}");
             OnReadyToStartStream(esPlayerStreamType);
         }
@@ -432,17 +437,19 @@ namespace JuvoPlayer.Player.EsPlayer
             {
                 logger.Error(ioe.Message);
             }
+            catch (OperationCanceledException oce)
+            {
+                logger.Info("Operation Cancelled");
+            }
         }
 
-        private async Task StreamChange(BufferConfigurationPacket configPacket)
+        private async Task RestartPlayer()
         {
-            logger.Info("");
-
-            logger.Error("***\n*** STREAM CHANGE CURRENTLY HAS ISSUES. Video may not be seen\n***");
+            logger.Info("Restarting ESPlayer");
 
             try
             {
-                logger.Info("Stopping streams");
+
                 StopDataStreams();
 
                 List<Task> awaitables = new List<Task>(
@@ -478,6 +485,10 @@ namespace JuvoPlayer.Player.EsPlayer
             catch (InvalidOperationException ioe)
             {
                 logger.Error(ioe.Message);
+            }
+            catch (OperationCanceledException oce)
+            {
+                logger.Info("Operation Cancelled");
             }
         }
 
@@ -619,8 +630,8 @@ namespace JuvoPlayer.Player.EsPlayer
                 return;
             }
 
-            stopCts = new CancellationTokenSource();
-            var stopToken = stopCts.Token;
+            clockGeneratorCts = new CancellationTokenSource();
+            var stopToken = clockGeneratorCts.Token;
 
             // Start time updater
             clockGenerator = GenerateTimeUpdates(stopToken);
@@ -633,8 +644,8 @@ namespace JuvoPlayer.Player.EsPlayer
         {
             logger.Info("");
 
-            stopCts?.Cancel();
-            stopCts?.Dispose();
+            clockGeneratorCts?.Cancel();
+            clockGeneratorCts?.Dispose();
         }
 
         #endregion

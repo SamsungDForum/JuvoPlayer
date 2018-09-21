@@ -12,6 +12,7 @@
 // this software or its derivatives.
 
 using System;
+using System.Text;
 
 namespace JuvoPlayer.Common
 {
@@ -53,5 +54,16 @@ namespace JuvoPlayer.Common
         public int SampleRate { get; set; }
         public int BitsPerChannel { get; set; }
         public int BitRate { get; set; }
+        public override string ToString()
+        {
+            StringBuilder sb = new StringBuilder();
+            sb.AppendLine("");
+            sb.AppendLine("\tCodec = " + Codec);
+            sb.AppendLine("\tBitsPerChannel =" + BitsPerChannel);
+            sb.AppendLine("\tChannelLayout = " + ChannelLayout);
+            sb.AppendLine("\tSampleRate = " + SampleRate);
+
+            return sb.ToString();
+        }
     }
 }
