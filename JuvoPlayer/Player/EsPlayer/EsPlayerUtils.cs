@@ -13,15 +13,13 @@
 
 using JuvoPlayer.Common;
 using System;
-using System.Collections.Generic;
-using System.Runtime.InteropServices;
 using System.Text;
+using System.Threading;
+using System.Threading.Tasks;
 using JuvoPlayer.Common.Utils;
-using Tizen.TV.Multimedia.IPTV;
 using Window = ElmSharp.Window;
 using ESPlayer = Tizen.TV.Multimedia.ESPlayer;
 using StreamType = JuvoPlayer.Common.StreamType;
-using Tizen.Multimedia;
 
 namespace JuvoPlayer.Player.EsPlayer
 {
@@ -117,6 +115,43 @@ namespace JuvoPlayer.Player.EsPlayer
         }
     }
 
+    /// <summary>
+    /// Helper class for cancelling non cancellable async operations
+    /// SeekAsync, PrepareAsync, etc.
+    /// Idea snatched from:
+    /// 
+    /// https://blogs.msdn.microsoft.com/pfxteam/2012/10/05/how-do-i-cancel-non-cancelable-async-operations/
+    /// https://docs.microsoft.com/en-us/dotnet/api/microsoft.visualstudio.threading.threadingtools.withcancellation?view=visualstudiosdk-2017
+    /// 
+    /// </summary>
+    internal static class TaskExtensions
+    {
+        public static async Task<T> WithCancellation<T>(this Task<T> nonCancellable, CancellationToken token)
+        {
+            var tcs = new TaskCompletionSource<bool>();
+            using (token.Register(
+                s => ((TaskCompletionSource<bool>)s).TrySetResult(true), tcs))
+            {
+                if (nonCancellable != await Task.WhenAny(nonCancellable, tcs.Task).ConfigureAwait(false))
+                    throw new OperationCanceledException(token.ToString());
+            }
+
+            return await nonCancellable;
+        }
+
+        public static async Task WithCancellation(this Task nonCancellable, CancellationToken token)
+        {
+            var tcs = new TaskCompletionSource<bool>();
+            using (token.Register(
+                s => ((TaskCompletionSource<bool>)s).TrySetResult(true), tcs))
+            {
+                if (nonCancellable != await Task.WhenAny(nonCancellable, tcs.Task).ConfigureAwait(false))
+                    throw new OperationCanceledException(token.ToString());
+            }
+
+            await nonCancellable;
+        }
+    }
     /// <summary>
     /// Buffer configuration data storage in Common.Packet type.
     /// </summary>

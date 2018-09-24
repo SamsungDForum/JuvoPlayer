@@ -70,15 +70,28 @@ namespace JuvoPlayer.Player.EsPlayer
             streamEntry?.IsConfigured ?? true);
 
         /// <summary>
-        /// Placeholder for current async activity issued to ESPlayer.
+        /// Placeholder for current async activity issued to ESPlayer and storage
+        /// place for underlying async operation.
         /// Initialized with Task.Task.Completed to avoid null checks.
-        ///
-        /// TODO: Add current state checks to prevent launch of multiple async ops.
-        /// TODO: i.e. async operation in progress / not in progress.
-        /// 
         /// </summary>
         private Task activeTask = Task.CompletedTask;
+        private Task asyncOperation = Task.CompletedTask;
+
+        /// <summary>
+        /// Cancellation token source for terminating current active task.
+        /// </summary>
         private CancellationTokenSource activeTaskCts;
+
+        /// <summary>
+        /// Cancellation token source for terminating current active async operation
+        /// </summary>
+        private CancellationTokenSource asyncOperationCts;
+
+        /// <summary>
+        /// active task serializer. Used for assuring that only one active task will
+        /// be created, offering awaitability.
+        /// </summary>
+        private SemaphoreSlim activeTaskSerializer;
 
         private ElmSharp.Window displayWindow;
 
@@ -111,7 +124,6 @@ namespace JuvoPlayer.Player.EsPlayer
         private void ConfigureInstance()
         {
             // Create player & window
-
             displayWindow =
                 EsPlayerUtils.CreateWindow(EsPlayerUtils.DefaultWindowWidth, EsPlayerUtils.DefaultWindowHeight);
 
@@ -119,11 +131,21 @@ namespace JuvoPlayer.Player.EsPlayer
             player.Open();
             player.SetDisplay(displayWindow);
 
+            // Create async operation/task cancellations
+            asyncOperationCts = new CancellationTokenSource();
+            activeTaskCts = new CancellationTokenSource();
+            clockGeneratorCts = new CancellationTokenSource();
+
+            // Create serialization object assuring single async activity
+            activeTaskSerializer = new SemaphoreSlim(1);
+
+            // Create placeholder to data streams.
+            dataStreams = new EsStream[(int)StreamType.Count];
+
+            // Create storage places
             //attach event handlers
             player.EOSEmitted += OnEos;
             player.ErrorOccurred += OnError;
-
-            dataStreams = new EsStream[(int)StreamType.Count];
         }
 
         /// <summary>
@@ -135,27 +157,41 @@ namespace JuvoPlayer.Player.EsPlayer
 
             streamControl = null;
 
+            logger.Info("Data Streams shutdown");
+            // Stop data streams
+            StopDataStreams();
+
             // Detach event handlers
             logger.Info("Detaching event handlers");
             player.EOSEmitted -= OnEos;
             player.ErrorOccurred -= OnError;
 
-            // Stop clock
+            // Stop clock & async operations
             logger.Info("Clock/AsyncOps shutdown");
             StopClockGenerator();
+
+            asyncOperationCts.Cancel();
             activeTaskCts.Cancel();
-            activeTaskCts.Dispose();
+            clockGeneratorCts.Cancel();
 
-            // Stop data streams
-            StopDataStreams();
-
-            // Wait for data streams/clock & async op to terminate
+            // Wait for data streams/clock & active task to terminate
+            // No need to add underlying async operation task. This is just placeholder
+            // for async op which cannot be terminated.
+            // This will also release any pending async activity
+            //
             var terminations = CompleteDataStreams();
             terminations.Add(clockGenerator);
             terminations.Add(activeTask);
 
             logger.Info($"Waiting for completion of {terminations.Count} activities");
-            Task.WhenAll(terminations).Wait();
+
+            try
+            {
+                Task.WhenAll(terminations);
+            }
+            catch (AggregateException)
+            {
+            }
 
             // Dispose of individual streams.
             logger.Info("Data Streams shutdown");
@@ -170,10 +206,17 @@ namespace JuvoPlayer.Player.EsPlayer
 
             // Shut down player
             logger.Info("ESPlayer shutdown");
-            player.Close();
+
+            // Don't call Close. Dispose does that. Otherwise exceptions will fly
             player.Dispose();
             EsPlayerUtils.DestroyWindow(ref displayWindow);
-            //player = null;
+
+            // Should be safe now to dispose cancellation tokens &
+            // serialization object
+            asyncOperationCts.Dispose();
+            activeTaskCts.Dispose();
+            activeTaskSerializer.Dispose();
+            clockGeneratorCts.Dispose();
         }
 
         /// <summary>
@@ -242,18 +285,30 @@ namespace JuvoPlayer.Player.EsPlayer
                     return;
 
                 // All configured. Do preparation.
-                // Not waiting for PrepareStream is intentional.
-                // Prepare fails otherwise
-                //
+                // This will block if there is an active async operation in progress
+                // however, can be made async/non blocking
+                if (activeTaskSerializer.CurrentCount == 0)
+                {
+                    logger.Info("Waiting for current async activity to complete");
+                }
+
+                var token = activeTaskCts.Token;
+                activeTaskSerializer.Wait(token);
                 activeTask = StreamPrepare();
-
-
             }
             catch (NullReferenceException)
             {
                 // packetQueue can hold ALL StreamTypes, but not all of them
                 // have to be supported. 
                 logger.Warn($"Uninitialized Stream Type {streamType}");
+            }
+            catch (OperationCanceledException)
+            {
+                logger.Info("Operation Cancelled");
+            }
+            catch (ObjectDisposedException)
+            {
+                logger.Info("Operation Cancelled and disposed");
             }
             catch (InvalidOperationException)
             {
@@ -367,7 +422,25 @@ namespace JuvoPlayer.Player.EsPlayer
         {
             logger.Info("");
 
-            activeTask = RestartPlayer();
+            try
+            {
+                if (activeTaskSerializer.CurrentCount == 0)
+                {
+                    logger.Info("Waiting for current async activity to complete");
+                }
+
+                var token = asyncOperationCts.Token;
+                activeTaskSerializer.Wait(token);
+                activeTask = RestartPlayer();
+            }
+            catch (OperationCanceledException)
+            {
+                logger.Info("Operation canceled");
+            }
+            catch (ObjectDisposedException)
+            {
+                logger.Info("Operation cancelled and disposed");
+            }
         }
 
         #endregion
@@ -447,7 +520,8 @@ namespace JuvoPlayer.Player.EsPlayer
 
             try
             {
-                await player.PrepareAsync(OnReadyToStartStream);
+                var token = asyncOperationCts.Token;
+                await player.PrepareAsync(OnReadyToStartStream).WithCancellation(token);
 
                 logger.Info("Player.PrepareAsync() Completed");
 
@@ -462,9 +536,14 @@ namespace JuvoPlayer.Player.EsPlayer
             {
                 logger.Error(ioe.Message);
             }
-            catch (OperationCanceledException oce)
+            catch (OperationCanceledException)
             {
                 logger.Info("Operation Cancelled");
+            }
+            finally
+            {
+                // Unblock serializer
+                activeTaskSerializer.Release();
             }
         }
 
@@ -488,18 +567,43 @@ namespace JuvoPlayer.Player.EsPlayer
 
             try
             {
-
+                // Stop data streams
                 StopDataStreams();
 
+                // Stop any underlying async ops
+                // 
+                // TODO: Check with HQ if multiple aync ops can be scheduled,
+                // TODO: or it is required for underlying async to complete
+                // TODO: Question registered under
+                // TODO: http://wiki.vd.sec.samsung.net/display/MP/Discussion+for+ESPlusPlayer+C%23+API?focusedCommentId=41429119#comment-41429119
+                //
+                // TODO: Currently underlying ops are not awaited.
+                //
+
+                // Cancel any underlying async operation
+                asyncOperationCts.Cancel();
+
                 var terminations = CompleteDataStreams();
+
                 logger.Info($"Waiting for completion of {terminations.Count} activities");
-                await Task.WhenAll(terminations);
+                try
+                {
+                    await Task.WhenAll(terminations);
+                }
+                catch (AggregateException)
+                {
+                }
+
 
                 logger.Info("Player Stop");
                 player.Stop();
 
                 logger.Info("Re-Setting display window");
                 player.SetDisplay(displayWindow);
+
+                // re-create cancellation token
+                asyncOperationCts.Dispose();
+                asyncOperationCts = new CancellationTokenSource();
 
                 logger.Info("Setting configs");
 
@@ -510,7 +614,8 @@ namespace JuvoPlayer.Player.EsPlayer
                     esStream.SetStreamConfig(conf);
                 }
 
-                await player.PrepareAsync(OnReadyToStartStream);
+                var token = asyncOperationCts.Token;
+                await player.PrepareAsync(OnReadyToStartStream).WithCancellation(token);
 
                 logger.Info("Player Start()");
                 player.Start();
@@ -521,7 +626,7 @@ namespace JuvoPlayer.Player.EsPlayer
             {
                 logger.Error(ioe.Message);
             }
-            catch (OperationCanceledException oce)
+            catch (OperationCanceledException)
             {
                 logger.Info("Operation Cancelled");
             }
@@ -533,10 +638,16 @@ namespace JuvoPlayer.Player.EsPlayer
 
             try
             {
+                // Stop clock generator. During seek, clock API
+                // does not work - throws exceptions
                 StopClockGenerator();
+
+                // Stop data streams. They will be restarted from
+                // SeekAsync handler.
                 StopDataStreams();
 
-                await player.SeekAsync(time, OnReadyToSeekStream);
+                var token = activeTaskCts.Token;
+                await player.SeekAsync(time, OnReadyToSeekStream).WithCancellation(token);
 
                 StartClockGenerator();
             }
@@ -544,9 +655,9 @@ namespace JuvoPlayer.Player.EsPlayer
             {
                 logger.Error(ioe.Message);
             }
-            catch (Exception e)
+            catch (OperationCanceledException)
             {
-                logger.Error(e.Message);
+                logger.Info("Operation Cancelled");
             }
             finally
             {
@@ -665,7 +776,6 @@ namespace JuvoPlayer.Player.EsPlayer
                 return;
             }
 
-            clockGeneratorCts = new CancellationTokenSource();
             var stopToken = clockGeneratorCts.Token;
 
             // Start time updater
@@ -679,8 +789,15 @@ namespace JuvoPlayer.Player.EsPlayer
         {
             logger.Info("");
 
-            clockGeneratorCts?.Cancel();
-            clockGeneratorCts?.Dispose();
+            if (clockGenerator.IsCompleted)
+            {
+                logger.Warn($"Clock generator not running: {clockGenerator.Status}");
+                return;
+            }
+
+            clockGeneratorCts.Cancel();
+            clockGeneratorCts.Dispose();
+            clockGeneratorCts = new CancellationTokenSource();
         }
 
         #endregion
