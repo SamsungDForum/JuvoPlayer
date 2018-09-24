@@ -35,9 +35,6 @@ namespace JuvoPlayer.Player.EsPlayer
 
         private static readonly ILogger logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
 
-        private ESPlayer.ESPlayer player;
-        private ElmSharp.Window displayWindow;
-
         private EsPlayerPacketStorage packetStorage;
         private EsStreamController streamControl;
 
@@ -49,20 +46,11 @@ namespace JuvoPlayer.Player.EsPlayer
         {
             try
             {
-                // Create Window
-                displayWindow =
-                    EsPlayerUtils.CreateWindow(EsPlayerUtils.DefaultWindowWidth, EsPlayerUtils.DefaultWindowHeight);
-
-                // Create and initialize player
-                player = new ESPlayer.ESPlayer();
-
-                player.Open();
-
                 packetStorage = EsPlayerPacketStorage.GetInstance();
                 packetStorage.Initialize(StreamType.Audio);
                 packetStorage.Initialize(StreamType.Video);
 
-                streamControl = EsStreamController.GetInstance(player, displayWindow);
+                streamControl = EsStreamController.GetInstance();
                 streamControl.Initialize(StreamType.Audio);
                 streamControl.Initialize(StreamType.Video);
 
@@ -233,18 +221,11 @@ namespace JuvoPlayer.Player.EsPlayer
                     streamControl.SeekCompleted -= OnSeekCompleted;
 
                     // Clean packet storage and stream controller
-                    logger.Info("Freeing StreamController and PacketStorage");
+                    logger.Info("StreamController and PacketStorage shutdown");
                     EsStreamController.FreeInstance();
                     EsPlayerPacketStorage.FreeInstance();
                     packetStorage = null;
                     streamControl = null;
-
-                    // Shutdown player & Window
-                    logger.Info("Shutting down ESPlayer");
-                    player.Dispose();
-
-                    logger.Info("Destroying ELM Window");
-                    EsPlayerUtils.DestroyWindow(ref displayWindow);
                 }
 
                 // TODO: free unmanaged resources (unmanaged objects) and override a finalizer below.
