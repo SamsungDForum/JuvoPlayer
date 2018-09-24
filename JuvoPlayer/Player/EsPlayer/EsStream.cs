@@ -115,6 +115,9 @@ namespace JuvoPlayer.Player.EsPlayer
             // isnull checks
             transferTask = Task.CompletedTask;
 
+            // Create cancellation
+            transferCts = new CancellationTokenSource();
+
             this.player = player;
             streamTypeJuvo = type;
             packetStorage = EsPlayerPacketStorage.GetInstance();
@@ -292,9 +295,10 @@ namespace JuvoPlayer.Player.EsPlayer
 
             lock (syncLock)
             {
+                // No cancellation requested = task not stopped
                 if (!transferTask.IsCompleted)
                 {
-                    logger.Info($"{streamTypeJuvo}: Already started: {transferTask.Status}");
+                    logger.Info($"{streamTypeJuvo}: Already running: {transferTask.Status}");
                     return;
                 }
 
@@ -304,7 +308,6 @@ namespace JuvoPlayer.Player.EsPlayer
                     return;
                 }
 
-                transferCts = new CancellationTokenSource();
                 var token = transferCts.Token;
 
                 transferTask = Task.Factory.StartNew(() => TransferTask(token), token);
@@ -322,14 +325,15 @@ namespace JuvoPlayer.Player.EsPlayer
             {
                 if (transferTask.IsCompleted)
                 {
-                    logger.Info($"{streamTypeJuvo}: Already stopped");
+                    logger.Info($"{streamTypeJuvo}: Not Started");
                     return;
                 }
 
-                logger.Info($"{streamTypeJuvo}: Stopping transfer");
-
                 transferCts.Cancel();
                 transferCts.Dispose();
+                transferCts = new CancellationTokenSource();
+
+                logger.Info($"{streamTypeJuvo}: Stopping transfer");
             }
         }
 
@@ -557,8 +561,7 @@ namespace JuvoPlayer.Player.EsPlayer
 
             logger.Info(streamTypeJuvo.ToString());
 
-            if (!transferTask.IsCompleted)
-                StopTransfer();
+            StopTransfer();
 
             DisableTransfer();
 
