@@ -90,7 +90,7 @@ namespace JuvoPlayer.Player.EsPlayer
         /// </summary>
         /// <param name="esPlayer">ESPlayer</param>
         /// <returns>EsStreamController instance</returns>
-        public static EsStreamController GetInstance(ESPlayer.ESPlayer esPlayer, ElmSharp.Window window)
+        public static EsStreamController GetInstance()
         {
             lock (InstanceLock)
             {
@@ -98,7 +98,7 @@ namespace JuvoPlayer.Player.EsPlayer
                     return streamControl;
 
                 streamControl = new EsStreamController();
-                streamControl.ConfigureInstance(esPlayer, window);
+                streamControl.ConfigureInstance();
 
                 return streamControl;
             }
@@ -108,16 +108,20 @@ namespace JuvoPlayer.Player.EsPlayer
         /// Configure newly created instance
         /// </summary>
         /// <param name="esPlayer">ESPlayer</param>
-        private void ConfigureInstance(ESPlayer.ESPlayer esPlayer, ElmSharp.Window window)
+        private void ConfigureInstance()
         {
-            // Initialize player & attach event handlers
-            player = esPlayer;
+            // Create player & window
+
+            displayWindow =
+                EsPlayerUtils.CreateWindow(EsPlayerUtils.DefaultWindowWidth, EsPlayerUtils.DefaultWindowHeight);
+
+            player = new ESPlayer.ESPlayer();
+            player.Open();
+            player.SetDisplay(displayWindow);
+
+            //attach event handlers
             player.EOSEmitted += OnEos;
             player.ErrorOccurred += OnError;
-
-            displayWindow = window;
-
-            player.SetDisplay(displayWindow);
 
             dataStreams = new EsStream[(int)StreamType.Count];
         }
@@ -132,23 +136,44 @@ namespace JuvoPlayer.Player.EsPlayer
             streamControl = null;
 
             // Detach event handlers
+            logger.Info("Detaching event handlers");
             player.EOSEmitted -= OnEos;
             player.ErrorOccurred -= OnError;
 
             // Stop clock
+            logger.Info("Clock/AsyncOps shutdown");
             StopClockGenerator();
             activeTaskCts.Cancel();
             activeTaskCts.Dispose();
 
+            // Stop data streams
+            StopDataStreams();
+
+            // Wait for data streams/clock & async op to terminate
+            var terminations = CompleteDataStreams();
+            terminations.Add(clockGenerator);
+            terminations.Add(activeTask);
+
+            logger.Info($"Waiting for completion of {terminations.Count} activities");
+            Task.WhenAll(terminations).Wait();
+
             // Dispose of individual streams.
+            logger.Info("Data Streams shutdown");
             foreach (var esStream in dataStreams.Where(esStream => esStream != null))
             {
                 esStream.ReconfigureStream -= OnStreamReconfigure;
                 esStream.Dispose();
             }
 
-            // Nullify references
+            // Nullify references to data streams
             dataStreams = Enumerable.Repeat<EsStream>(null, dataStreams.Length).ToArray();
+
+            // Shut down player
+            logger.Info("ESPlayer shutdown");
+            player.Close();
+            player.Dispose();
+            EsPlayerUtils.DestroyWindow(ref displayWindow);
+            //player = null;
         }
 
         /// <summary>
@@ -443,6 +468,20 @@ namespace JuvoPlayer.Player.EsPlayer
             }
         }
 
+        /// <summary>
+        /// Completes data streams.
+        /// </summary>
+        /// <returns>List<Task> List of data streams being terminated</returns>
+        private List<Task> CompleteDataStreams()
+        {
+            logger.Info("");
+            var awaitables = new List<Task>(
+                dataStreams.Where(esStream => esStream != null)
+                    .Select(esStream => esStream.AwaitCompletion()));
+
+            return awaitables;
+        }
+
         private async Task RestartPlayer()
         {
             logger.Info("Restarting ESPlayer");
@@ -452,13 +491,9 @@ namespace JuvoPlayer.Player.EsPlayer
 
                 StopDataStreams();
 
-                List<Task> awaitables = new List<Task>(
-                    dataStreams.Where(esStream => esStream != null)
-                    .Select(esStream => esStream.AwaitCompletion()));
-
-                logger.Info($"Waiting for completion of {awaitables.Count} activities");
-                await Task.WhenAll(awaitables);
-
+                var terminations = CompleteDataStreams();
+                logger.Info($"Waiting for completion of {terminations.Count} activities");
+                await Task.WhenAll(terminations);
 
                 logger.Info("Player Stop");
                 player.Stop();
