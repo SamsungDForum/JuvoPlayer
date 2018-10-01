@@ -37,8 +37,8 @@ namespace JuvoPlayer.Drms.Cenc
 
         //Additional error code returned by drm_decrypt api when there is no space in trustzone
         private const int E_DECRYPT_BUFFER_FULL = 2;
-        private const int MaxDecryptRetries = 5;
-        private static readonly TimeSpan DecryptBufferFullSleepTime = TimeSpan.FromMilliseconds(100);
+        private const int MaxDecryptRetries = 30;
+        private static readonly TimeSpan DecryptBufferFullSleepTime = TimeSpan.FromMilliseconds(1000);
 
         private CencSession(DRMInitData initData, DRMDescription drmDescription)
         {
@@ -197,7 +197,7 @@ namespace JuvoPlayer.Drms.Cenc
 
                 try
                 {
-                    var ret = DecryptData(param, numofparam, ref pHandleArray);
+                    var ret = DecryptData(param, numofparam, ref pHandleArray, packet.StreamType);
                     if (ret == (int)eCDMReturnType.E_SUCCESS)
                     {
                         return new DecryptedEMEPacket(thread)
@@ -226,17 +226,19 @@ namespace JuvoPlayer.Drms.Cenc
             }
         }
 
-        private int DecryptData(sMsdCipherParam[] param, int numofparam, ref HandleSize[] pHandleArray)
+        private int DecryptData(sMsdCipherParam[] param, int numofparam, ref HandleSize[] pHandleArray, StreamType type)
         {
             int ret;
             var errorCount = 0;
 
             while (true)
             {
-                ret = (int) API.EmeDecryptarray((eCDMReturnType) CDMInstance.getDecryptor(), ref param, numofparam, IntPtr.Zero,
+                ret = (int)API.EmeDecryptarray((eCDMReturnType)CDMInstance.getDecryptor(), ref param, numofparam, IntPtr.Zero,
                     0, ref pHandleArray);
+
                 if (ret == E_DECRYPT_BUFFER_FULL && errorCount < MaxDecryptRetries)
                 {
+                    Logger.Debug($"API.EmeDecryptarray()={ret} {type} ({errorCount}/{MaxDecryptRetries})");
                     ++errorCount;
                     Thread.Sleep(DecryptBufferFullSleepTime);
                     continue;

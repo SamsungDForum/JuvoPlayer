@@ -1,4 +1,4 @@
-﻿// Copyright (c) 2017 Samsung Electronics Co., Ltd All Rights Reserved
+﻿// Copyright (c) 2018 Samsung Electronics Co., Ltd All Rights Reserved
 // PROPRIETARY/CONFIDENTIAL 
 // This software is the confidential and proprietary
 // information of SAMSUNG ELECTRONICS ("Confidential Information"). You shall
@@ -578,14 +578,6 @@ namespace JuvoPlayer.Player.EsPlayer
 
                 // Stop any underlying async ops
                 // 
-                // TODO: Check with HQ if multiple aync ops can be scheduled,
-                // TODO: or it is required for underlying async to complete
-                // TODO: Question registered under
-                // TODO: http://wiki.vd.sec.samsung.net/display/MP/Discussion+for+ESPlusPlayer+C%23+API?focusedCommentId=41429119#comment-41429119
-                //
-                // TODO: Currently underlying ops are not awaited.
-                //
-
                 var terminations = CompleteDataStreams();
 
                 logger.Info($"Waiting for completion of {terminations.Count} activities");

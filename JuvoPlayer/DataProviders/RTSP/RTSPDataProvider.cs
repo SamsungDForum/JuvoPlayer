@@ -98,8 +98,11 @@ namespace JuvoPlayer.DataProviders.RTSP
             if (rtpClient == null)
                 return;
 
-            rtpClient.Start(currentClip);
+            // Start demuxer before client. Demuxer start clears
+            // underlying buffer. We do not want that to happen after client
+            // puts something in there.
             demuxer.StartForExternalSource(InitializationMode.Full);
+            rtpClient.Start(currentClip);
         }
 
         public Cue CurrentCue { get; }
