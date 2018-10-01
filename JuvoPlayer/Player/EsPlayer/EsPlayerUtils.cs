@@ -1,4 +1,4 @@
-﻿// Copyright (c) 2017 Samsung Electronics Co., Ltd All Rights Reserved
+﻿// Copyright (c) 2018 Samsung Electronics Co., Ltd All Rights Reserved
 // PROPRIETARY/CONFIDENTIAL 
 // This software is the confidential and proprietary
 // information of SAMSUNG ELECTRONICS ("Confidential Information"). You shall
@@ -67,7 +67,6 @@ namespace JuvoPlayer.Player.EsPlayer
 
                 handle = packet.HandleSize.handle,
                 handleSize = packet.HandleSize.size
-
             };
         }
     }
@@ -110,7 +109,8 @@ namespace JuvoPlayer.Player.EsPlayer
             sb.AppendLine(audioConf.sampleRate.ToString());
             sb.Append("\tchannels = ");
             sb.AppendLine(audioConf.channels.ToString());
-
+            sb.AppendLine("\tCodec Data:");
+            sb.AppendLine(HexDumper.HexDump(audioConf.codecData));
             return sb.ToString();
         }
     }

@@ -1,4 +1,4 @@
-﻿// Copyright (c) 2017 Samsung Electronics Co., Ltd All Rights Reserved
+﻿// Copyright (c) 2018 Samsung Electronics Co., Ltd All Rights Reserved
 // PROPRIETARY/CONFIDENTIAL 
 // This software is the confidential and proprietary
 // information of SAMSUNG ELECTRONICS ("Confidential Information"). You shall
@@ -17,6 +17,7 @@ using System.Threading.Tasks;
 using JuvoLogger;
 using JuvoPlayer.Common;
 using ESPlayer = Tizen.TV.Multimedia.ESPlayer;
+using StreamType = JuvoPlayer.Common.StreamType;
 
 namespace JuvoPlayer.Player.EsPlayer
 {
@@ -176,9 +177,12 @@ namespace JuvoPlayer.Player.EsPlayer
         /// </summary>
         public void ClearStreamConfig()
         {
-            logger.Info($"{streamTypeJuvo}");
+            logger.Info($"{streamTypeJuvo}:");
 
-            CurrentConfig = null;
+            lock (syncLock)
+            {
+                CurrentConfig = null;
+            }
         }
 
         /// <summary>
@@ -226,7 +230,7 @@ namespace JuvoPlayer.Player.EsPlayer
         /// <param name="streamConfig">Common.StreamConfig</param>
         private void PushAudioConfig(Common.StreamConfig streamConfig)
         {
-            logger.Info($"{streamTypeJuvo}");
+            logger.Info($"{streamTypeJuvo}:");
             AudioStreamConfig audioConfig = streamConfig as Common.AudioStreamConfig;
 
             if (audioConfig == null)
@@ -234,8 +238,6 @@ namespace JuvoPlayer.Player.EsPlayer
                 logger.Error("Invalid stream configuration. Not audio.");
                 return;
             }
-
-            logger.Info($"{streamTypeJuvo}: Pushing Stream Config");
 
             var config = new ESPlayer.AudioStreamInfo
             {
@@ -248,6 +250,7 @@ namespace JuvoPlayer.Player.EsPlayer
             player.AddStream(config);
 
             logger.Info($"{streamTypeJuvo}: Stream configuration set");
+            logger.Debug(config.DumpConfig());
         }
 
         /// <summary>
@@ -256,7 +259,7 @@ namespace JuvoPlayer.Player.EsPlayer
         /// <param name="streamConfig">Common.StreamConfig</param>
         private void PushVideoConfig(Common.StreamConfig streamConfig)
         {
-            logger.Info($"{streamTypeJuvo}");
+            logger.Info($"{streamTypeJuvo}:");
 
             VideoStreamConfig videoConfig = streamConfig as Common.VideoStreamConfig;
 
@@ -265,8 +268,6 @@ namespace JuvoPlayer.Player.EsPlayer
                 logger.Error("Invalid stream configuration. Not video");
                 return;
             }
-
-            logger.Info($"{streamTypeJuvo}: Pushing Stream Config");
 
             var config = new ESPlayer.VideoStreamInfo
             {
@@ -280,9 +281,11 @@ namespace JuvoPlayer.Player.EsPlayer
                 den = videoConfig.FrameRateDen
             };
 
+
             player.AddStream(config);
 
             logger.Info($"{streamTypeJuvo}: Stream configuration set");
+            logger.Debug(config.DumpConfig());
         }
 
         /// <summary>
@@ -291,7 +294,7 @@ namespace JuvoPlayer.Player.EsPlayer
         /// </summary>
         private void StartTransfer()
         {
-            logger.Info($"{streamTypeJuvo}");
+            logger.Info($"{streamTypeJuvo}:");
 
             lock (syncLock)
             {
@@ -319,7 +322,7 @@ namespace JuvoPlayer.Player.EsPlayer
         /// </summary>
         private void StopTransfer()
         {
-            logger.Info($"{streamTypeJuvo}");
+            logger.Info($"{streamTypeJuvo}:");
 
             lock (syncLock)
             {
@@ -343,7 +346,7 @@ namespace JuvoPlayer.Player.EsPlayer
         /// </summary>
         private void DisableTransfer()
         {
-            logger.Info($"{streamTypeJuvo}");
+            logger.Info($"{streamTypeJuvo}:");
 
             packetStorage.Disable(streamTypeJuvo);
         }
@@ -467,8 +470,14 @@ namespace JuvoPlayer.Player.EsPlayer
 
         private void PushEncryptedPacket(EncryptedPacket dataPacket, CancellationToken token)
         {
-            using (var decryptedPacket = dataPacket.Decrypt() as Common.DecryptedEMEPacket)
+            using (Common.DecryptedEMEPacket decryptedPacket = dataPacket.Decrypt() as Common.DecryptedEMEPacket)
             {
+                if (decryptedPacket == null)
+                {
+                    logger.Error($"{dataPacket.StreamType}: Non an EME Packet!");
+                    return;
+                }
+
                 var esPacket = decryptedPacket.ESDecryptedPacket(streamTypeEsPlayer);
 
                 // Continue pushing packet till success or terminal failure
@@ -476,7 +485,13 @@ namespace JuvoPlayer.Player.EsPlayer
                 do
                 {
                     var res = player.SubmitPacket(esPacket);
+
+                    // reset unmanaged handle on successful submit
+                    if (res == ESPlayer.SubmitStatus.Success)
+                        decryptedPacket.CleanHandle();
+
                     doRetry = ProcessPushResult(res, token);
+
                     logger.Debug($"{streamTypeEsPlayer}: ({!doRetry}) PTS: {esPacket.pts} Duration: {esPacket.duration}");
 
                 } while (doRetry && !token.IsCancellationRequested);
@@ -559,11 +574,14 @@ namespace JuvoPlayer.Player.EsPlayer
             if (isDisposed)
                 return;
 
-            logger.Info(streamTypeJuvo.ToString());
+            logger.Info($"{streamTypeJuvo}:");
 
             StopTransfer();
 
             DisableTransfer();
+
+            transferCts.Cancel();
+            transferCts.Dispose();
 
             isDisposed = true;
         }
