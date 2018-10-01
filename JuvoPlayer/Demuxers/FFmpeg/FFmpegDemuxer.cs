@@ -22,6 +22,7 @@ using JuvoPlayer.Demuxers.FFmpeg.Interop;
 using JuvoPlayer.SharedBuffers;
 using JuvoPlayer.Common.Utils;
 using System.Diagnostics;
+using System.Drawing;
 
 namespace JuvoPlayer.Demuxers.FFmpeg
 {
@@ -602,7 +603,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg
             {
                 Codec = ConvertVideoCodec(s->codecpar->codec_id),
                 CodecProfile = s->codecpar->profile,
-                Size = new Tizen.Multimedia.Size(s->codecpar->width, s->codecpar->height),
+                Size = new Size(s->codecpar->width, s->codecpar->height),
                 FrameRateNum = s->r_frame_rate.num,
                 FrameRateDen = s->r_frame_rate.den,
                 FrameRate = s->r_frame_rate.num / (s->r_frame_rate.den == 0 ? 1 : s->r_frame_rate.den)

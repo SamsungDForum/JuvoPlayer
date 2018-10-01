@@ -12,10 +12,8 @@
 // this software or its derivatives.
 
 using System;
-using System.Collections.Generic;
+using System.Drawing;
 using System.Text;
-using JuvoPlayer.Common.Utils;
-using Tizen.Multimedia;
 
 namespace JuvoPlayer.Common
 {
@@ -36,7 +34,7 @@ namespace JuvoPlayer.Common
             return other != null &&
                    Codec == other.Codec &&
                    CodecProfile == other.CodecProfile &&
-                   EqualityComparer<Size>.Default.Equals(Size, other.Size) &&
+                   Size == other.Size &&
                    FrameRateNum == other.FrameRateNum &&
                    FrameRateDen == other.FrameRateDen &&
                    BitRate == other.BitRate;
@@ -47,7 +45,7 @@ namespace JuvoPlayer.Common
             var hashCode = -1742922824;
             hashCode = hashCode * -1521134295 + Codec.GetHashCode();
             hashCode = hashCode * -1521134295 + CodecProfile.GetHashCode();
-            hashCode = hashCode * -1521134295 + EqualityComparer<Size>.Default.GetHashCode(Size);
+            hashCode = hashCode * -1521134295 + Size.GetHashCode();
             hashCode = hashCode * -1521134295 + FrameRateNum.GetHashCode();
             hashCode = hashCode * -1521134295 + FrameRateDen.GetHashCode();
             hashCode = hashCode * -1521134295 + BitRate.GetHashCode();
@@ -57,7 +55,7 @@ namespace JuvoPlayer.Common
         public VideoCodec Codec { get; set; }
         //TODO(p.galiszewsk)
         public int CodecProfile { get; set; }
-        public Tizen.Multimedia.Size Size { get; set; }
+        public Size Size { get; set; }
         public int FrameRateNum { get; set; }
         public int FrameRateDen { get; set; }
         public int BitRate { get; set; }
