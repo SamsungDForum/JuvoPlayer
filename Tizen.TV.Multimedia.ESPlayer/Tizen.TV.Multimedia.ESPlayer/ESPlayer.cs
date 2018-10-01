@@ -10,7 +10,7 @@ namespace Tizen.TV.Multimedia.ESPlayer
     {
         internal static readonly string LogTag = "Tizen.Multimedia.ESPlayer";
 
-        public event EventHandler<ErrorArgs> ErrorOccurred
+        public event EventHandler<ErrorEventArgs> ErrorOccurred
         {
             add
             {
@@ -27,8 +27,26 @@ namespace Tizen.TV.Multimedia.ESPlayer
                 ErrorOccurred_ -= value;
             }
         }
+        
+        public event EventHandler<BufferStatusEventArgs> BufferStatusChanged
+        {
+            add
+            {
+                if(BufferStatusEmitted_ != null)
+                {
+                    Log.Error(LogTag, "BufferStatusEmitted is already added.");
+                    return;
+                }
 
-        public event EventHandler<ResourceConflictArgs> ResourceConflicted
+                BufferStatusEmitted_ += value;
+            }
+            remove
+            {
+                BufferStatusEmitted_ -= value;
+            }
+        }
+
+        public event EventHandler<ResourceConflictEventArgs> ResourceConflicted
         {
             add
             {
@@ -47,7 +65,7 @@ namespace Tizen.TV.Multimedia.ESPlayer
         }
 
         // EventHandler 를 확장해서, add를 1회만 할 수 있도록 변경할 수 있을지 ?
-        public event EventHandler<EosArgs> EOSEmitted
+        public event EventHandler<EosEventArgs> EOSEmitted
         {
             add
             {
@@ -115,11 +133,14 @@ namespace Tizen.TV.Multimedia.ESPlayer
             NativeESPlusPlayer.Close(player).VerifyOperation("ESPlayer Close is failed.");
         }
 
+        //1. prepare async에서 cancellation token을 사용할 경우, seek async에서도 적용 가능한지
+        //2. stop() 호출로 prepare async를 cancel 할 수 있는지 ?
+
         public async Task PrepareAsync(Action<StreamType> onReadyToPrepare)
         {
             Log.Info(LogTag, "start");
             
-            this.ReadyToPrepare_ += (s, e) => 
+            this.ReadyToPrepare_ = (s, e) => 
             {
                 onReadyToPrepare(e.StreamType);
             };
@@ -168,7 +189,7 @@ namespace Tizen.TV.Multimedia.ESPlayer
         {
             Log.Info(LogTag, "start");
 
-            this.ReadyToSeek_ += (s, e) =>
+            this.ReadyToSeek_ = (s, e) =>
             {
                 onReadyToSeek(e.StreamType, e.Offset);
             };
@@ -195,20 +216,6 @@ namespace Tizen.TV.Multimedia.ESPlayer
             display = new EsDisplay(window);
 
             display.SetDisplay(player).VerifyOperation("ESPlayer SetDisplay is failed.");
-        }
-
-        // ecore
-        public void SetDisplay(Tizen.NUI.Window window)
-        {
-            Log.Info(LogTag, "start");
-            display = new EsDisplay(window);
-            display.SetDisplay(player).VerifyOperation("ESPlayer SetDisplay is failed.");
-        }
-
-        public void SetDisplay(IntPtr window)
-        {
-            Log.Info(LogTag, "SetDisplay() start");            
-            NativeESPlusPlayer.SetDisplay(player, DisplayType.Overlay, window, 0, 0, 1920, 1080).VerifyOperation("ESPlayer SetDisplay is failed.");
         }
 
         public void SetDisplayMode(DisplayMode mode)
@@ -243,6 +250,7 @@ namespace Tizen.TV.Multimedia.ESPlayer
 
         public void AddStream(AudioStreamInfo info)
         {
+            Log.Info(LogTag, "start");
             IntPtr unmanagedBuffer = IntPtr.Zero;
 
             if (info.codecData != null)
@@ -278,6 +286,7 @@ namespace Tizen.TV.Multimedia.ESPlayer
 
         public void AddStream(VideoStreamInfo info)
         {
+            Log.Info(LogTag, "start");
             IntPtr unmanagedBuffer = IntPtr.Zero;
 
             if (info.codecData != null)
@@ -362,6 +371,19 @@ namespace Tizen.TV.Multimedia.ESPlayer
             Log.Info(LogTag, $"[{type}] submit eos packet");
             return NativeESPlusPlayer.SubmitEOSPacket(player, type);
         }
+
+        public void SetTrustZoneUse(bool isUsing)
+        {
+            Log.Info(LogTag, "start");
+            NativeESPlusPlayer.SetTrustZoneUse(player, isUsing).VerifyOperation("ESPlayer SetTrustZoneUse is failed.");
+        }
+
+        public void SetDrm(DrmType type)
+        {
+            Log.Info(LogTag, "start");
+            NativeESPlusPlayer.SetDrm(player, type).VerifyOperation("ESPlayer SetDrm is failed.");
+        }
+
         public void GetPlayingTime(out TimeSpan timeInMilliseconds)
         {
             NativeESPlusPlayer.GetPlayingTime(player, out ulong ms).VerifyOperation("ESPlayer AddStream is failed.");
