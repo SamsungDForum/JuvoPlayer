@@ -230,16 +230,7 @@ namespace JuvoPlayer.OpenGL
             }
             else if(_progressBarShown)
             {
-                switch (_selectedAction)
-                {
-                    case MenuAction.PlaybackControl:
-                        break;
-                    case MenuAction.OptionsMenu:
-                        SelectMenuAction(MenuAction.PlaybackControl);
-                        break;
-                    case MenuAction.None:
-                        break;
-                }
+                Seek(_defaultSeekTime);
             }
         }
 
@@ -257,16 +248,7 @@ namespace JuvoPlayer.OpenGL
             }
             else if (_progressBarShown)
             {
-                switch (_selectedAction)
-                {
-                    case MenuAction.PlaybackControl:
-                        SelectMenuAction(MenuAction.OptionsMenu);
-                        break;
-                    case MenuAction.OptionsMenu:
-                        break;
-                    case MenuAction.None:
-                        break;
-                }
+                Seek(-_defaultSeekTime);
             }
         }
 
@@ -275,6 +257,10 @@ namespace JuvoPlayer.OpenGL
             if (!_isMenuShown && _options.Visible)
             {
                 _options.ControlUp();
+            }
+            else if (!_isMenuShown && !_options.Visible && _progressBarShown)
+            {
+                _options.Show();
             }
         }
 
@@ -300,35 +286,22 @@ namespace JuvoPlayer.OpenGL
                 ShowMenu(false);
                 HandlePlaybackStart();
             }
-            else
+            else if (_progressBarShown && !_options.Visible)
             {
-                switch (_selectedAction)
+                switch (_player.State)
                 {
-                    case MenuAction.PlaybackControl:
-                        switch (_player.State)
-                        {
-                            case PlayerState.Playing:
-                                _player?.Pause();
-                                break;
-                            case PlayerState.Paused:
-                                _player?.Start();
-                                break;
-                        }
+                    case PlayerState.Playing:
+                        _player?.Pause();
                         break;
-                    case MenuAction.OptionsMenu:
-                        if (_options.Visible && _options.ProperSelection())
-                        {
-                            _options.ControlSelect(_player);
-                            _options.Hide();
-                        }
-                        else if (!_options.Visible)
-                        {
-                            _options.Show();
-                        }
-                        break;
-                    case MenuAction.None:
+                    case PlayerState.Paused:
+                        _player?.Start();
                         break;
                 }
+            }
+            else if (_options.Visible && _options.ProperSelection())
+            {
+                _options.ControlSelect(_player);
+                _options.Hide();
             }
         }
 
@@ -347,7 +320,6 @@ namespace JuvoPlayer.OpenGL
                                 if (_player == null)
                                     return;
                                 _options.LoadStreamLists(_player);
-                                SelectMenuAction(MenuAction.PlaybackControl);
                                 _player.Start();
                             }
                             else if (e.State == PlayerState.Completed)
@@ -374,7 +346,6 @@ namespace JuvoPlayer.OpenGL
             _player.SetSource(_resourceLoader.ContentList[_selectedTile]);
             _options.ClearOptionsMenu();
             _seekInProgress = false;
-            SelectMenuAction(MenuAction.None);
         }
 
         private void ReturnToMainMenu()
@@ -391,6 +362,8 @@ namespace JuvoPlayer.OpenGL
                 ReturnToMainMenu();
             else if (_options.Visible)
                 _options.Hide();
+            else
+                Exit();
         }
 
         private void ClosePlayer()
@@ -409,7 +382,10 @@ namespace JuvoPlayer.OpenGL
 
         private void HandleKeyPlay()
         {
-            _player?.Start();
+            if(_player?.State == PlayerState.Playing)
+                _player?.Pause();
+            else
+                _player?.Start();
         }
 
         private void HandleKeyPause()
@@ -434,6 +410,9 @@ namespace JuvoPlayer.OpenGL
 
         private async void Seek(TimeSpan seekTime)
         {
+            if (_player.IsSeekingSupported == false)
+                return;
+
             _seekCancellationTokenSource?.Cancel();
 
             if (_seekBufferingInProgress == false)
@@ -530,7 +509,6 @@ namespace JuvoPlayer.OpenGL
                 return;
             _progressBarShown = false;
             _options.Hide();
-            SelectMenuAction(MenuAction.None);
             ResetPlaybackControls();
             ShowMenu(true);
             ClosePlayer();
@@ -551,7 +529,6 @@ namespace JuvoPlayer.OpenGL
             {
                 _progressBarShown = false;
                 _options.Hide();
-                SelectMenuAction(MenuAction.PlaybackControl);
                 Logger?.Info($"{(DateTime.Now - _lastKeyPressTime).TotalMilliseconds} ms of inactivity, hiding progress bar.");
             }
 

@@ -1,4 +1,5 @@
-﻿using System.Collections.Generic;
+﻿using System;
+using System.Collections.Generic;
 using JuvoLogger;
 using JuvoPlayer.Common;
 
@@ -161,6 +162,8 @@ namespace JuvoPlayer.OpenGL
             {
                 if (_selectedOption < _streams.Count - 1)
                     ++_selectedOption;
+                else
+                    Hide();
             }
             else
             {
@@ -195,9 +198,22 @@ namespace JuvoPlayer.OpenGL
                 }
                 else
                 {
-                    if (_streams[selectedStreamTypeIndex].Descriptions[selectedStreamIndex].StreamType == StreamType.Subtitle)
-                        SubtitlesOn = true;
-                    player.ChangeActiveStream(_streams[selectedStreamTypeIndex].Descriptions[selectedStreamIndex]);
+                    try
+                    {
+                        player.ChangeActiveStream(_streams[selectedStreamTypeIndex].Descriptions[selectedStreamIndex]);
+                        if (_streams[selectedStreamTypeIndex].Descriptions[selectedStreamIndex].StreamType == StreamType.Subtitle)
+                            SubtitlesOn = true;
+                    }
+                    catch (Exception e)
+                    {
+                        Logger.Error(e.Message);
+                        if (_streams[selectedStreamTypeIndex].Descriptions[selectedStreamIndex].StreamType ==
+                            StreamType.Subtitle)
+                        {
+                            SubtitlesOn = false;
+                            selectedStreamIndex = 0;
+                        }
+                    }
                 }
 
                 _streams[selectedStreamTypeIndex].Active = selectedStreamIndex;
