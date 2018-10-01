@@ -452,7 +452,7 @@ namespace JuvoPlayer.Player.EsPlayer
         /// </summary>
         /// <param name="sender">Object</param>
         /// <param name="eosArgs">ESPlayer.EosArgs</param>
-        private void OnEos(object sender, ESPlayer.EosArgs eosArgs)
+        private void OnEos(object sender, ESPlayer.EosEventArgs eosArgs)
         {
             logger.Error(eosArgs.ToString());
 
@@ -470,7 +470,7 @@ namespace JuvoPlayer.Player.EsPlayer
         /// </summary>
         /// <param name="sender">Object</param>
         /// <param name="errorArgs">ESPlayer.ErrorArgs</param>
-        private void OnError(object sender, ESPlayer.ErrorArgs errorArgs)
+        private void OnError(object sender, ESPlayer.ErrorEventArgs errorArgs)
         {
             var error = errorArgs.ToString();
             logger.Error(error);

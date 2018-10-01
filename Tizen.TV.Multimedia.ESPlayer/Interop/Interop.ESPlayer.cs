@@ -6,23 +6,6 @@ internal static partial class Interop
 {
     internal static class NativeESPlusPlayer
     {
-        /*
-        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-        internal delegate void AudioIsDualmonoCallback(bool is_dualmono, IntPtr userData);
-
-        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-        internal delegate void MissedPluginTypeCallback(PlayerMissedPluginType type, string message, IntPtr userData);
-
-        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-        internal delegate void SeekCompletedCallback(IntPtr userData);
-
-        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-        internal delegate void SpectrumAnalysisCallback(IntPtr userData, IntPtr bands, int size);
-
-        [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-        internal delegate void OtherEventCallback(int event_type, IntPtr message, IntPtr userData);
-        */
-
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
         internal delegate void OnError(ErrorType errCode);
 
@@ -35,13 +18,11 @@ internal static partial class Interop
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
         internal delegate void OnEos();
 
-        /// for test
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
         internal delegate void OnReadyToPrepare(StreamType type);
-        /// /// ///
-
+        
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
-        internal delegate void OnPrepareDone(bool result);
+        internal delegate void OnPrepareAsyncDone(bool result);
 
         [UnmanagedFunctionPointer(CallingConvention.Cdecl)]
         internal delegate void OnSeekDone();
@@ -107,6 +88,12 @@ internal static partial class Interop
         [DllImport(Libraries.ESPlayer, EntryPoint = "esplusplayer_submit_eos_packet")]
         internal static extern SubmitStatus SubmitEOSPacket(IntPtr player, StreamType type);
 
+        [DllImport(Libraries.ESPlayer, EntryPoint = "esplusplayer_set_tz_use")]
+        internal static extern bool SetTrustZoneUse(IntPtr player, bool isUsing);
+
+        [DllImport(Libraries.ESPlayer, EntryPoint = "esplusplayer_set_drm")]
+        internal static extern bool SetDrm(IntPtr player, DrmType type);
+
         [DllImport(Libraries.ESPlayer, EntryPoint = "esplusplayer_add_audio_stream_info")]
         internal static extern bool AddAudioStreamInfo(IntPtr player, IntPtr stream);
 
@@ -117,30 +104,28 @@ internal static partial class Interop
         internal static extern bool GetPlayingTime(IntPtr player, out ulong timeInMilliseconds);
 
 
-        [DllImport(Libraries.ESPlayer, EntryPoint = "esplusplayer_register_on_error_listener")]
-        internal static extern void RegisterOnErrorListener(IntPtr player, IntPtr onError);
+        [DllImport(Libraries.ESPlayer, EntryPoint = "esplusplayer_set_error_cb")]
+        internal static extern void SetOnErrorCallback(IntPtr player, IntPtr errorCallback);
 
-        [DllImport(Libraries.ESPlayer, EntryPoint = "esplusplayer_register_on_buffer_status_listener")]
-        internal static extern void RegisteronBufferStatusListener(IntPtr player, IntPtr onBUfferStatus);
+        [DllImport(Libraries.ESPlayer, EntryPoint = "esplusplayer_set_buffer_status_cb")]
+        internal static extern void SetOnBufferStatusCallback(IntPtr player, IntPtr bufferStatusCallback);
 
-        [DllImport(Libraries.ESPlayer, EntryPoint = "esplusplayer_register_on_resource_conflicted")]
-        internal static extern void RegisterOnResourceConflicted(IntPtr player, IntPtr onResourceConflicted);
+        [DllImport(Libraries.ESPlayer, EntryPoint = "esplusplayer_set_resource_conflicted_cb")]
+        internal static extern void SetOnResourceConflictedCallback(IntPtr player, IntPtr resourceConflictedCallback);
 
-        [DllImport(Libraries.ESPlayer, EntryPoint = "esplusplayer_register_on_eos_listener")]
-        internal static extern void RegisterOnEosListener(IntPtr player, IntPtr onEos);
+        [DllImport(Libraries.ESPlayer, EntryPoint = "esplusplayer_set_eos_cb")]
+        internal static extern void SetOnEosCallback(IntPtr player, IntPtr eosCallback);
 
-        /// temp ///
-        [DllImport(Libraries.ESPlayer, EntryPoint = "esplusplayer_register_on_ready_to_prepare_listener")]
-        internal static extern void RegisterOnReadyToPrepareListener(IntPtr player, IntPtr onReadyToPrepare);
-        ////////////
+        [DllImport(Libraries.ESPlayer, EntryPoint = "esplusplayer_set_ready_to_prepare_cb")]
+        internal static extern void SetOnReadyToPrepareCallback(IntPtr player, IntPtr readyToPrepareCallback);
 
-        [DllImport(Libraries.ESPlayer, EntryPoint = "esplusplayer_register_on_prepare_async_done_listener")]
-        internal static extern void RegisterOnPrepareAsyncDoneListener(IntPtr player, IntPtr onPrepareAsyncDone);
+        [DllImport(Libraries.ESPlayer, EntryPoint = "esplusplayer_set_prepare_async_done_cb")]
+        internal static extern void SetOnPrepareAsyncDoneCallback(IntPtr player, IntPtr prepareAsyncDoneCallback);
 
-        [DllImport(Libraries.ESPlayer, EntryPoint = "esplusplayer_register_on_seek_done_listener")]
-        internal static extern void RegisterOnSeekDoneListener(IntPtr player, IntPtr onSeekDone);
+        [DllImport(Libraries.ESPlayer, EntryPoint = "esplusplayer_set_seek_done_cb")]
+        internal static extern void SetOnSeekDoneCallback(IntPtr player, IntPtr seekDoneCallback);
 
-        [DllImport(Libraries.ESPlayer, EntryPoint = "esplusplayer_register_on_ready_to_seek_listener")]
-        internal static extern void RegisterOnReadyToSeekListener(IntPtr player, IntPtr onReadyToSeek);
+        [DllImport(Libraries.ESPlayer, EntryPoint = "esplusplayer_set_ready_to_seek_cb")]
+        internal static extern void SetOnReadyToSeekCallback(IntPtr player, IntPtr readyToSeekCallback);
     }
 }

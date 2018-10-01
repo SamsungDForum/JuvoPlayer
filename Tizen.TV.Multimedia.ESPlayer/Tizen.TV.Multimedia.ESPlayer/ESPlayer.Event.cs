@@ -5,20 +5,20 @@ using static Interop;
 
 namespace Tizen.TV.Multimedia.ESPlayer
 {
-    internal class ReadyToPrepareArgs : EventArgs
+    internal class ReadyToPrepareEventArgs : EventArgs
     {
         internal StreamType StreamType
         {
             get; private set;
         }
 
-        internal ReadyToPrepareArgs(StreamType type)
+        internal ReadyToPrepareEventArgs(StreamType type)
         {
             this.StreamType = type;
         }
     }
 
-    internal class ReadyToSeekArgs : EventArgs
+    internal class ReadyToSeekEventArgs : EventArgs
     {
         internal StreamType StreamType
         {
@@ -30,30 +30,38 @@ namespace Tizen.TV.Multimedia.ESPlayer
             get; private set;
         }
 
-        internal ReadyToSeekArgs(StreamType type, TimeSpan offset)
+        internal ReadyToSeekEventArgs(StreamType type, ulong offset)
         {
-            this.StreamType = type;
-            this.Offset = offset;
+            try
+            {
+                this.StreamType = type;
+                this.Offset = TimeSpan.FromMilliseconds(offset);
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ESPlayer.LogTag, $"exception : {ex.Message}");
+                Log.Error(ESPlayer.LogTag, $"trace : {ex.StackTrace}");
+            }
         }
     }
 
     public partial class ESPlayer : IDisposable
     {
         // event handler / delegate 를 묶어서 새 class로 정의할 것.
-        private EventHandler<ErrorArgs> ErrorOccurred_;
-        private EventHandler<BufferStatusArgs> BufferStatusEmitted_;
-        private EventHandler<ResourceConflictArgs> ResourceConflicted_;
-        private EventHandler<EosArgs> EOSEmitted_;
+        private EventHandler<ErrorEventArgs> ErrorOccurred_;
+        private EventHandler<BufferStatusEventArgs> BufferStatusEmitted_;
+        private EventHandler<ResourceConflictEventArgs> ResourceConflicted_;
+        private EventHandler<EosEventArgs> EOSEmitted_;
 
-        private EventHandler<ReadyToPrepareArgs> ReadyToPrepare_;
-        private EventHandler<ReadyToSeekArgs> ReadyToSeek_;
+        private EventHandler<ReadyToPrepareEventArgs> ReadyToPrepare_;
+        private EventHandler<ReadyToSeekEventArgs> ReadyToSeek_;
 
         private NativeESPlusPlayer.OnError onError;
         private NativeESPlusPlayer.OnBufferStatus onBufferStatus;
         private NativeESPlusPlayer.OnResourceConflicted onResourceConflicted;
         private NativeESPlusPlayer.OnEos onEos;
         private NativeESPlusPlayer.OnReadyToPrepare onReadyToPrepare;
-        private NativeESPlusPlayer.OnPrepareDone onPrepareDone;
+        private NativeESPlusPlayer.OnPrepareAsyncDone onPrepareAsyncDone;
         private NativeESPlusPlayer.OnSeekDone onSeekDone;
         private NativeESPlusPlayer.OnReadyToSeek onReadyToSeek;
 
@@ -63,32 +71,32 @@ namespace Tizen.TV.Multimedia.ESPlayer
             {
                 Log.Info(LogTag, "onError");
                 var handler = this.ErrorOccurred_;
-                handler?.Invoke(this, new ErrorArgs(code));
+                handler?.Invoke(this, new ErrorEventArgs(code));
             };
 
             onBufferStatus = (type, status) =>
             {
                 Log.Info(LogTag, "onBufferStatus");
                 var handler = this.BufferStatusEmitted_;
-                handler?.Invoke(this, new BufferStatusArgs(type, status));
+                handler?.Invoke(this, new BufferStatusEventArgs(type, status));
             };
 
             onResourceConflicted = () =>
             {
                 Log.Info(LogTag, "onResourceConflicted");
                 var handler = this.ResourceConflicted_;
-                handler?.Invoke(this, new ResourceConflictArgs());
+                handler?.Invoke(this, new ResourceConflictEventArgs());
             };
 
             onEos = () =>
             {
                 Log.Info(LogTag, "onEos");
                 var handler = this.EOSEmitted_;
-                handler?.Invoke(this, new EosArgs());
+                handler?.Invoke(this, new EosEventArgs());
             };
         
-            onPrepareDone = (result) => {
-                Log.Info(LogTag, "onPrepareDone");
+            onPrepareAsyncDone = (result) => {
+                Log.Info(LogTag, "onPrepareAsyncDone");
                 Log.Info(LogTag, $"native prepare async done. result : {result}");
 
                 lock (lockerForPrepare)
@@ -111,9 +119,9 @@ namespace Tizen.TV.Multimedia.ESPlayer
 
             onReadyToSeek = (type, offset) =>
             {
-                Log.Info(LogTag, "onReadyToSeek");
+                Log.Info(LogTag, $"onReadyToSeek[{type}] - offset : [{offset} ms]");
                 var handler = this.ReadyToSeek_;
-                handler?.Invoke(this, new ReadyToSeekArgs(type, TimeSpan.FromMilliseconds(offset)));
+                handler?.Invoke(this, new ReadyToSeekEventArgs(type, offset));
                 //this.ReadyToSeek_ = null;
             };
 
@@ -121,25 +129,25 @@ namespace Tizen.TV.Multimedia.ESPlayer
             {
                 Log.Info(LogTag, "onReadyToPrepare");
                 var handler = this.ReadyToPrepare_;
-                handler?.Invoke(this, new ReadyToPrepareArgs(type));
+                handler?.Invoke(this, new ReadyToPrepareEventArgs(type));
                 //this.ReadyToPrepare_ = null;
             };
 
-            NativeESPlusPlayer.RegisterOnErrorListener(player, Marshal.GetFunctionPointerForDelegate(onError));
+            NativeESPlusPlayer.SetOnErrorCallback(player, Marshal.GetFunctionPointerForDelegate(onError));
 
-            NativeESPlusPlayer.RegisteronBufferStatusListener(player, Marshal.GetFunctionPointerForDelegate(onBufferStatus));
+            NativeESPlusPlayer.SetOnBufferStatusCallback(player, Marshal.GetFunctionPointerForDelegate(onBufferStatus));
 
-            NativeESPlusPlayer.RegisterOnResourceConflicted(player, Marshal.GetFunctionPointerForDelegate(onResourceConflicted));
+            NativeESPlusPlayer.SetOnResourceConflictedCallback(player, Marshal.GetFunctionPointerForDelegate(onResourceConflicted));
 
-            NativeESPlusPlayer.RegisterOnEosListener(player, Marshal.GetFunctionPointerForDelegate(onEos));
+            NativeESPlusPlayer.SetOnEosCallback(player, Marshal.GetFunctionPointerForDelegate(onEos));
 
-            NativeESPlusPlayer.RegisterOnPrepareAsyncDoneListener(player, Marshal.GetFunctionPointerForDelegate(onPrepareDone));
+            NativeESPlusPlayer.SetOnReadyToPrepareCallback(player, Marshal.GetFunctionPointerForDelegate(onReadyToPrepare));
 
-            NativeESPlusPlayer.RegisterOnSeekDoneListener(player, Marshal.GetFunctionPointerForDelegate(onSeekDone));
+            NativeESPlusPlayer.SetOnPrepareAsyncDoneCallback(player, Marshal.GetFunctionPointerForDelegate(onPrepareAsyncDone));
 
-            NativeESPlusPlayer.RegisterOnReadyToPrepareListener(player, Marshal.GetFunctionPointerForDelegate(onReadyToPrepare));
+            NativeESPlusPlayer.SetOnSeekDoneCallback(player, Marshal.GetFunctionPointerForDelegate(onSeekDone));
 
-            NativeESPlusPlayer.RegisterOnReadyToSeekListener(player, Marshal.GetFunctionPointerForDelegate(onReadyToSeek));
+            NativeESPlusPlayer.SetOnReadyToSeekCallback(player, Marshal.GetFunctionPointerForDelegate(onReadyToSeek));
         }
     }
 }

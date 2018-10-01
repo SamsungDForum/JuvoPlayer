@@ -89,4 +89,14 @@
         Overlay,
         Evas
     }
+
+    public enum DrmType
+    {
+        None,
+        Playready,
+        Marlin,
+        Verimatrix,
+        WidevineCdm,
+        Max
+    }
 }
