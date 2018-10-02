@@ -23,6 +23,7 @@ namespace JuvoPlayer.Player
         event PlayerInitialized PlayerInitialized;
         event SeekCompleted SeekCompleted;
         event TimeUpdated TimeUpdated;
+        event BufferStatus BufferStatus;
 
         void Pause();
         void Play();

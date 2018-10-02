@@ -54,6 +54,7 @@ namespace JuvoPlayer.Player.EsPlayer
         public event PlaybackCompleted PlaybackCompleted;
         public event PlayerInitialized PlayerInitialized;
         public event SeekCompleted SeekCompleted;
+        public event BufferStatus BufferStatus;
 
         /// <summary>
         /// Timer process and supporting cancellation elements
@@ -139,6 +140,7 @@ namespace JuvoPlayer.Player.EsPlayer
             //attach event handlers
             player.EOSEmitted += OnEos;
             player.ErrorOccurred += OnError;
+            player.BufferStatusChanged += OnBufferStatusChanged;
         }
 
         /// <summary>
@@ -158,6 +160,7 @@ namespace JuvoPlayer.Player.EsPlayer
             logger.Info("Detaching event handlers");
             player.EOSEmitted -= OnEos;
             player.ErrorOccurred -= OnError;
+            player.BufferStatusChanged -= OnBufferStatusChanged;
 
             // Stop clock & async operations
             logger.Info("Clock/AsyncOps shutdown");
@@ -445,6 +448,17 @@ namespace JuvoPlayer.Player.EsPlayer
 
         #endregion
         #region ESPlayer event handlers    
+
+        private void OnBufferStatusChanged(object sender, ESPlayer.BufferStatusEventArgs buffArgs)
+        {
+            var juvoStream = EsPlayerUtils.JuvoStreamType(buffArgs.StreamType);
+            var state = buffArgs.BufferStatus == ESPlayer.BufferStatus.Overrun
+                ? BufferState.BufferOverrun
+                : BufferState.BufferUnderrun;
+
+            BufferStatus?.Invoke(juvoStream, state);
+        }
+
         /// <summary>
         /// ESPlayer event handler. Notifies that ALL played streams have
         /// completed playback (EOS was sent on all of them)

@@ -32,6 +32,7 @@ namespace JuvoPlayer.Player.EsPlayer
         public event PlayerInitialized PlayerInitialized;
         public event SeekCompleted SeekCompleted;
         public event TimeUpdated TimeUpdated;
+        public event BufferStatus BufferStatus;
 
         private static readonly ILogger logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
 
@@ -60,6 +61,7 @@ namespace JuvoPlayer.Player.EsPlayer
                 streamControl.PlaybackCompleted += OnPlaybackCompleted;
                 streamControl.PlaybackError += OnPlaybackError;
                 streamControl.SeekCompleted += OnSeekCompleted;
+                streamControl.BufferStatus += OnBufferStatusChange;
 
                 // Initialize player state
                 playerState = EsPlayerState.Stopped;
@@ -162,6 +164,14 @@ namespace JuvoPlayer.Player.EsPlayer
         }
 
         #region IPlayer Interface event callbacks
+
+        private void OnBufferStatusChange(StreamType stream, BufferState state)
+        {
+            logger.Info($"{stream}: {state}");
+
+            BufferStatus?.Invoke(stream, state);
+        }
+
         private void OnTimeUpdate(TimeSpan clock)
         {
             logger.Info(clock.ToString());
@@ -219,6 +229,7 @@ namespace JuvoPlayer.Player.EsPlayer
                     streamControl.PlaybackCompleted -= OnPlaybackCompleted;
                     streamControl.PlaybackError -= OnPlaybackError;
                     streamControl.SeekCompleted -= OnSeekCompleted;
+                    streamControl.BufferStatus -= OnBufferStatusChange;
 
                     // Clean packet storage and stream controller
                     logger.Info("StreamController and PacketStorage shutdown");
