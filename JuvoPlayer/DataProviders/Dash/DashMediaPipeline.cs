@@ -106,9 +106,6 @@ namespace JuvoPlayer.DataProviders.Dash
             demuxer.DemuxerError += OnStreamError;
 
             dashClient.Error += OnStreamError;
-
-            Logger.Warn($"{streamType} *** ADAPTIVE STREAMING TEMP. DISABLED. No Representation Change! ***");
-            disableAdaptiveStreaming = true;
         }
 
         private DashStream InitializePendingStream(DashStream newStream)
