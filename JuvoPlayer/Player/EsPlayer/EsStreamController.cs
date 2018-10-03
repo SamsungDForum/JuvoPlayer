@@ -123,8 +123,11 @@ namespace JuvoPlayer.Player.EsPlayer
                 EsPlayerUtils.CreateWindow(EsPlayerUtils.DefaultWindowWidth, EsPlayerUtils.DefaultWindowHeight);
 
             player = new ESPlayer.ESPlayer();
+
             player.Open();
+            player.SetTrustZoneUse(true);
             player.SetDisplay(displayWindow);
+
 
             // Create async operation/task cancellations
             activeTaskCts = new CancellationTokenSource();
@@ -410,7 +413,7 @@ namespace JuvoPlayer.Player.EsPlayer
                 WaitForActiveTaskCompletion(token);
                 activeTask = StreamSeek(time, token);
             }
-            catch (OperationCanceledException oce)
+            catch (OperationCanceledException)
             {
                 logger.Info("Operation Canceled");
             }
@@ -609,6 +612,8 @@ namespace JuvoPlayer.Player.EsPlayer
 
                 logger.Info("Re-Setting display window");
                 player.SetDisplay(displayWindow);
+
+                player.SetTrustZoneUse(true);
 
                 logger.Info("Setting configs");
 

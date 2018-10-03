@@ -463,7 +463,7 @@ namespace JuvoPlayer.Player.EsPlayer
             {
                 var res = player.SubmitPacket(esPacket);
                 doRetry = ProcessPushResult(res, token);
-                logger.Debug($"{streamTypeEsPlayer}: ({!doRetry}) PTS: {esPacket.pts} Duration: {esPacket.duration}");
+                logger.Debug($"{esPacket.type}: ({!doRetry}/{res}) PTS: {esPacket.pts} Duration: {esPacket.duration}");
 
             } while (doRetry && !token.IsCancellationRequested);
         }
@@ -492,7 +492,7 @@ namespace JuvoPlayer.Player.EsPlayer
 
                     doRetry = ProcessPushResult(res, token);
 
-                    logger.Debug($"{streamTypeEsPlayer}: ({!doRetry}) PTS: {esPacket.pts} Duration: {esPacket.duration}");
+                    logger.Debug($"{esPacket.type}: ({!doRetry}/{res}) PTS: {esPacket.pts} Duration: {esPacket.duration} Handle: {esPacket.handle} HandleSize: {esPacket.handleSize}");
 
                 } while (doRetry && !token.IsCancellationRequested);
             }
