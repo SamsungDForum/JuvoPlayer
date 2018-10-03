@@ -207,6 +207,7 @@ namespace JuvoPlayer.Drms.Cenc
                             StreamType = packet.StreamType,
                             IsEOS = packet.IsEOS,
                             IsKeyFrame = packet.IsKeyFrame,
+                            Duration = packet.Duration,
                             HandleSize = pHandleArray[0]
                         };
                     }
