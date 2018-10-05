@@ -50,6 +50,17 @@ namespace JuvoPlayer.Common
             return data;
         }
 
-        public virtual void Dispose() { }
+        #region Disposable Support
+        protected bool IsDisposed = false;
+        public void Dispose()
+        {
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+        }
+        #endregion
     }
 }

@@ -59,16 +59,23 @@ namespace JuvoPlayer.Common
         public int FrameRateNum { get; set; }
         public int FrameRateDen { get; set; }
         public int BitRate { get; set; }
-        public int FrameRate { get; set; }
+        public int FrameRate => FrameRateNum / (FrameRateDen == 0 ? 1 : FrameRateDen);
         public override string ToString()
         {
             StringBuilder sb = new StringBuilder();
-            sb.AppendLine("");
+            sb.AppendLine("Video Configuration:");
             sb.AppendLine("\tCodec = " + Codec);
             sb.AppendLine("\tSize    " + Size);
             sb.AppendLine("\tFrameRate = (" + FrameRateNum + "/" + FrameRateDen + ") " + FrameRate);
 
             return sb.ToString();
+        }
+
+        public bool Compatible(VideoStreamConfig other)
+        {
+            return other != null &&
+                   Codec == other.Codec &&
+                   FrameRate == other.FrameRate;
         }
     }
 }

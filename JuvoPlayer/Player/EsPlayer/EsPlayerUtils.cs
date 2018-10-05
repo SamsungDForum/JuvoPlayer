@@ -29,14 +29,9 @@ namespace JuvoPlayer.Player.EsPlayer
     /// </summary>
     internal static class TimeSpanExtensions
     {
-        internal static ulong ToMilliseconds(this TimeSpan clock)
+        internal static ulong TotalNanoseconds(this TimeSpan clock)
         {
-            return (ulong)(clock.Ticks / TimeSpan.TicksPerMillisecond);
-        }
-
-        internal static ulong ToNanoseconds(this TimeSpan clock)
-        {
-            return (ToMilliseconds(clock) * 1000000);
+            return (ulong)(clock.TotalMilliseconds * 1000000);
         }
     }
 
@@ -46,24 +41,24 @@ namespace JuvoPlayer.Player.EsPlayer
     /// </summary>
     internal static class PacketConversionExtensions
     {
-        internal static ESPlayer.ESPacket ESUnencryptedPacket(this Common.Packet packet, ESPlayer.StreamType esStreamType)
+        internal static ESPlayer.ESPacket ESUnencryptedPacket(this Common.Packet packet)
         {
             return new ESPlayer.ESPacket
             {
-                type = esStreamType,
-                pts = packet.Pts.ToNanoseconds(),
-                duration = packet.Duration.ToNanoseconds(),
+                type = packet.StreamType.ESStreamType(),
+                pts = packet.Pts.TotalNanoseconds(),
+                duration = packet.Duration.TotalNanoseconds(),
                 buffer = packet.Data
             };
         }
 
-        internal static ESPlayer.ESHandlePacket ESDecryptedPacket(this Common.DecryptedEMEPacket packet, ESPlayer.StreamType esStreamType)
+        internal static ESPlayer.ESHandlePacket ESDecryptedPacket(this Common.DecryptedEMEPacket packet)
         {
             return new ESPlayer.ESHandlePacket
             {
-                type = esStreamType,
-                pts = packet.Pts.ToNanoseconds(),
-                duration = packet.Duration.ToNanoseconds(),
+                type = packet.StreamType.ESStreamType(),
+                pts = packet.Pts.TotalNanoseconds(),
+                duration = packet.Duration.TotalNanoseconds(),
 
                 handle = packet.HandleSize.handle,
                 handleSize = packet.HandleSize.size
@@ -171,60 +166,19 @@ namespace JuvoPlayer.Player.EsPlayer
 
         public StreamConfig Config { get; private set; }
 
-        public override bool Equals(Object obj)
-        {
-            //Check for null/types
-            if (obj == null)
-                return false;
-
-            var bcPacket = obj as BufferConfigurationPacket;
-            if (bcPacket == null)
-                return false;
-
-            return bcPacket.Config.Equals(this.Config);
-        }
-
         public bool Compatible(BufferConfigurationPacket packet)
         {
-            var streamType = Config.StreamType();
-            if (streamType != packet.Config.StreamType())
-                return false;
-
-            switch (streamType)
+            switch (packet.Config)
             {
-                case StreamType.Audio:
-                    return Compatible(packet.Config as AudioStreamConfig);
+                case AudioStreamConfig audioConfig:
+                    return (Config as AudioStreamConfig)?.Compatible(audioConfig) ?? false;
 
-                case StreamType.Video:
-                    return Compatible(packet.Config as VideoStreamConfig);
+                case VideoStreamConfig videoConfig:
+                    return (Config as VideoStreamConfig)?.Compatible(videoConfig) ?? false;
 
                 default:
                     return false;
             }
-
-        }
-
-        public bool Compatible(AudioStreamConfig other)
-        {
-            var audioConfig = Config as AudioStreamConfig;
-
-            return audioConfig != null &&
-                   other != null &&
-                   audioConfig.Codec == other.Codec &&
-                   audioConfig.ChannelLayout == other.ChannelLayout &&
-                   audioConfig.SampleRate == other.SampleRate &&
-                   audioConfig.BitsPerChannel == other.BitsPerChannel &&
-                   audioConfig.BitRate == other.BitRate;
-        }
-
-        public bool Compatible(VideoStreamConfig other)
-        {
-            var videoConfig = Config as VideoStreamConfig;
-
-            return videoConfig != null &&
-                   other != null &&
-                   videoConfig.Codec == other.Codec &&
-                   videoConfig.FrameRate == other.FrameRate;
         }
     };
 
@@ -264,10 +218,52 @@ namespace JuvoPlayer.Player.EsPlayer
             window = null;
         }
 
-        internal static Common.StreamType JuvoStreamType(ESPlayer.StreamType esStreamType)
+        internal static Common.StreamType JuvoStreamType(this ESPlayer.StreamType esStreamType)
         {
             return esStreamType == ESPlayer.StreamType.Video ?
                 StreamType.Video : StreamType.Audio;
+        }
+
+        internal static ESPlayer.StreamType ESStreamType(this Common.StreamType juvoStreamType)
+        {
+            return juvoStreamType == Common.StreamType.Video ?
+                ESPlayer.StreamType.Video : ESPlayer.StreamType.Audio;
+        }
+
+        internal static ESPlayer.VideoStreamInfo ESVideoStreamInfo(this Common.StreamConfig streamConfig)
+        {
+            if (!(streamConfig is Common.VideoStreamConfig))
+                throw new ArgumentException("StreamConfig is not of VideoStreamConfig Type");
+
+            var videoConfig = (Common.VideoStreamConfig)streamConfig;
+
+            return new ESPlayer.VideoStreamInfo
+            {
+                codecData = videoConfig.CodecExtraData,
+                mimeType = EsPlayerUtils.GetCodecMimeType(videoConfig.Codec),
+                width = videoConfig.Size.Width,
+                maxWidth = 3840,
+                height = videoConfig.Size.Height,
+                maxHeight = 2160,
+                num = videoConfig.FrameRateNum,
+                den = videoConfig.FrameRateDen
+            };
+        }
+
+        internal static ESPlayer.AudioStreamInfo ESAudioStreamInfo(this Common.StreamConfig streamConfig)
+        {
+            if (!(streamConfig is Common.AudioStreamConfig))
+                throw new ArgumentException("StreamConfig is not of AudioStreamConfig Type");
+
+            var audioConfig = (Common.AudioStreamConfig)streamConfig;
+
+            return new ESPlayer.AudioStreamInfo
+            {
+                codecData = audioConfig.CodecExtraData,
+                mimeType = EsPlayerUtils.GetCodecMimeType(audioConfig.Codec),
+                sampleRate = audioConfig.SampleRate,
+                channels = audioConfig.ChannelLayout
+            };
         }
 
         internal static ESPlayer.VideoMimeType GetCodecMimeType(VideoCodec videoCodec)

@@ -47,11 +47,11 @@ namespace JuvoPlayer.Player.EsPlayer
         {
             try
             {
-                packetStorage = EsPlayerPacketStorage.GetInstance();
+                packetStorage = new EsPlayerPacketStorage();
                 packetStorage.Initialize(StreamType.Audio);
                 packetStorage.Initialize(StreamType.Video);
 
-                streamControl = EsStreamController.GetInstance();
+                streamControl = new EsStreamController(packetStorage);
                 streamControl.Initialize(StreamType.Audio);
                 streamControl.Initialize(StreamType.Video);
 
@@ -233,20 +233,14 @@ namespace JuvoPlayer.Player.EsPlayer
 
                     // Clean packet storage and stream controller
                     logger.Info("StreamController and PacketStorage shutdown");
-                    EsStreamController.FreeInstance();
-                    EsPlayerPacketStorage.FreeInstance();
-                    packetStorage = null;
-                    streamControl = null;
+                    streamControl.Dispose();
+                    packetStorage.Dispose();
                 }
-
-                // TODO: free unmanaged resources (unmanaged objects) and override a finalizer below.
-                // TODO: set large fields to null.
 
                 disposedValue = true;
             }
         }
 
-        // TODO: override a finalizer only if Dispose(bool disposing) above has code to free unmanaged resources.
         ~EsPlayer()
         {
             // Do not change this code. Put cleanup code in Dispose(bool disposing) above.
@@ -258,7 +252,6 @@ namespace JuvoPlayer.Player.EsPlayer
         {
             // Do not change this code. Put cleanup code in Dispose(bool disposing) above.
             Dispose(true);
-            // TODO: uncomment the following line if the finalizer is overridden above.
             GC.SuppressFinalize(this);
         }
         #endregion
