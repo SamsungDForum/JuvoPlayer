@@ -37,7 +37,7 @@ namespace JuvoPlayer.Drms.Cenc
 
         //Additional error code returned by drm_decrypt api when there is no space in trustzone
         private const int E_DECRYPT_BUFFER_FULL = 2;
-        private const int MaxDecryptRetries = 30;
+        private const int MaxDecryptRetries = 5;
         private static readonly TimeSpan DecryptBufferFullSleepTime = TimeSpan.FromMilliseconds(1000);
 
         private CencSession(DRMInitData initData, DRMDescription drmDescription)

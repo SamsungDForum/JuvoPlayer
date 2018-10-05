@@ -606,7 +606,6 @@ namespace JuvoPlayer.Demuxers.FFmpeg
                 Size = new Size(s->codecpar->width, s->codecpar->height),
                 FrameRateNum = s->r_frame_rate.num,
                 FrameRateDen = s->r_frame_rate.den,
-                FrameRate = s->r_frame_rate.num / (s->r_frame_rate.den == 0 ? 1 : s->r_frame_rate.den)
             };
 
             if (s->codecpar->extradata_size > 0)

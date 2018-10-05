@@ -57,7 +57,7 @@ namespace JuvoPlayer.Common
         public override string ToString()
         {
             StringBuilder sb = new StringBuilder();
-            sb.AppendLine("");
+            sb.AppendLine("Audio Configuration:");
             sb.AppendLine("\tCodec = " + Codec);
             sb.AppendLine("\tBitsPerChannel =" + BitsPerChannel);
             sb.AppendLine("\tChannelLayout = " + ChannelLayout);
@@ -65,5 +65,9 @@ namespace JuvoPlayer.Common
 
             return sb.ToString();
         }
+
+        // Audio compatibility criteria: 
+        // All parameters must match
+        public bool Compatible(AudioStreamConfig other) => Equals(other);
     }
 }

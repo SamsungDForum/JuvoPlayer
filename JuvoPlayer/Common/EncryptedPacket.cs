@@ -39,17 +39,19 @@ namespace JuvoPlayer.Common
             }
         }
 
-        private bool isDisposed;
+        #region Disposable support
         // Use override to assure base class object references
         // of type EncryptedPacket will call this Dispose, not the base class
         //
-        public override void Dispose()
+        protected override void Dispose(bool disposing)
         {
-            if (isDisposed)
+            if (IsDisposed || !disposing)
                 return;
 
-            DrmSession.Release();
-            isDisposed = true;
+            DrmSession?.Release();
+
+            IsDisposed = true;
         }
+        #endregion
     }
 }

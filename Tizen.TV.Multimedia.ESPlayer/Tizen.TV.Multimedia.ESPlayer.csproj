@@ -15,10 +15,19 @@
 
   <!-- Include Nuget Package for Tizen Project building -->
   <ItemGroup>
-    <PackageReference Include="Tizen.NET" Version="5.0.0.14522" />
-    <PackageReference Include="Tizen.NET.Sdk" Version="1.0.1" />
-    <PackageReference Include="Tizen.TV.NUI" Version="1.0.78" />
-    <PackageReference Include="Tizen.TV.NUI.GLApplication" Version="1.0.78" />
+    <!-- Tizen.* packages are excluded from runtime -->
+    <PackageReference Include="Tizen.NET" Version="5.0.0.14522">
+      <ExcludeAssets>Runtime</ExcludeAssets>
+    </PackageReference>
+    <PackageReference Include="Tizen.NET.Sdk" Version="1.0.1">
+      <ExcludeAssets>Runtime</ExcludeAssets>
+    </PackageReference>
+    <PackageReference Include="Tizen.TV.NUI" Version="1.0.78">
+      <ExcludeAssets>Runtime</ExcludeAssets>
+    </PackageReference>
+    <PackageReference Include="Tizen.TV.NUI.GLApplication" Version="1.0.78">
+      <ExcludeAssets>Runtime</ExcludeAssets>
+    </PackageReference>
   </ItemGroup>
 
 </Project>

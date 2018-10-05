@@ -45,72 +45,43 @@ namespace JuvoPlayer.Player.EsPlayer
     /// </summary>
     internal class EsStream : IDisposable
     {
+        internal enum SetStreamConfigResult
+        {
+            ConfigPushed,
+            ConfigQueued
+        }
+
         private readonly ILogger logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
 
-        /// <summary>
-        /// Delegate holding PushConfigMethod.
-        /// Different for Audio and Video
-        /// </summary>
+        /// Delegate holding PushConfigMethod. Different for Audio and Video
         private delegate void StreamConfigure(Common.StreamConfig streamConfig);
         private readonly StreamConfigure PushStreamConfig;
 
-        /// <summary>
-        /// Reference to ES Player
-        /// </summary>
+        // Reference to internal EsPlayer objects
         private readonly ESPlayer.ESPlayer player;
-
-        /// <summary>
-        /// Reference to packet storage
-        /// </summary>
         private readonly EsPlayerPacketStorage packetStorage;
 
-        /// <summary>
-        /// Reference to task responsible for transferring data
-        /// between packet storage and ES Player
-        /// </summary>
+        // transfer task & cancellation toke,
         private Task transferTask;
-
-        /// <summary>
-        /// Cancellation source responsible for terminating
-        /// transfer task.
-        /// </summary>
         private CancellationTokenSource transferCts;
 
-        /// <summary>
-        /// Stream Type as known by Juvo Player
-        /// </summary>
+        // Stream type for this instance to EsStream.
         private readonly Common.StreamType streamTypeJuvo;
 
-        /// <summary>
-        /// Stream Type as known by ESPlayer. Corresponds to
-        /// Juvo Player stream type
-        /// </summary>
-        private readonly ESPlayer.StreamType streamTypeEsPlayer;
-
-        /// <summary>
-        /// Currently used stream configuration
-        /// </summary>
+        // Buffer configuration and supporting info
         public BufferConfigurationPacket CurrentConfig { get; internal set; }
-
-        /// <summary>
-        /// Flag indicating if stream has been configured
-        /// </summary>
         public bool IsConfigured => (CurrentConfig != null);
 
-        /// <summary>
-        /// lock object used for serialization of internal operations
-        /// that can be accessed externally
-        /// </summary>
+        // lock object used for serialization of internal operations
+        // that can be externally accessed
         private readonly object syncLock = new object();
 
-        /// <summary>
-        /// Event - Invoked when stream requires reconfiguration
-        /// </summary>
+        // Event - Invoked when stream requires reconfiguration
         public event StreamReconfigure ReconfigureStream;
 
         #region Public API
 
-        public EsStream(ESPlayer.ESPlayer player, Common.StreamType type)
+        public EsStream(ESPlayer.ESPlayer player, Common.StreamType type, EsPlayerPacketStorage storage)
         {
             // Grab a reference to completed task to avoid 
             // isnull checks
@@ -121,20 +92,18 @@ namespace JuvoPlayer.Player.EsPlayer
 
             this.player = player;
             streamTypeJuvo = type;
-            packetStorage = EsPlayerPacketStorage.GetInstance();
+            packetStorage = storage;
 
             switch (streamTypeJuvo)
             {
                 case StreamType.Audio:
                     PushStreamConfig = PushAudioConfig;
-                    streamTypeEsPlayer = ESPlayer.StreamType.Audio;
                     break;
                 case StreamType.Video:
                     PushStreamConfig = PushVideoConfig;
-                    streamTypeEsPlayer = ESPlayer.StreamType.Video;
                     break;
                 default:
-                    logger.Warn($"Unsupported stream type: {streamTypeJuvo}");
+                    PushStreamConfig = PushDummyConfig;
                     break;
             }
         }
@@ -146,10 +115,8 @@ namespace JuvoPlayer.Player.EsPlayer
         /// and processed once retrieved.
         /// </summary>
         /// <param name="bufferConfig">BufferConfigurationPacket</param>
-        /// <returns>bool
-        /// True - Config Pushed
-        /// False - Config Enqueued</returns>
-        public bool SetStreamConfig(BufferConfigurationPacket bufferConfig)
+        /// <returns>SetStreamConfigResult</returns>
+        public SetStreamConfigResult SetStreamConfig(BufferConfigurationPacket bufferConfig)
         {
             // Depending on current configuration state, packets are either pushed
             // directly to player or queued in packet queue.
@@ -163,34 +130,37 @@ namespace JuvoPlayer.Player.EsPlayer
                 {
                     packetStorage.AddPacket(bufferConfig);
                     logger.Info($"{streamTypeJuvo}: New configuration queued");
-                    return false;
+                    return SetStreamConfigResult.ConfigQueued;
                 }
 
                 CurrentConfig = bufferConfig;
-                PushStreamConfig(bufferConfig.Config);
-                return true;
+                PushStreamConfig(CurrentConfig.Config);
+                return SetStreamConfigResult.ConfigPushed;
             }
         }
 
         /// <summary>
-        /// Clears currently set stream configuration
+        /// Method resets current config. When config change occurs as a result
+        /// of config packet being queued, CurrentConfig holds value of new configuration
+        /// which needs to be pushed to player 
         /// </summary>
-        public void ClearStreamConfig()
+        public void ResetStreamConfig()
         {
             logger.Info($"{streamTypeJuvo}:");
 
             lock (syncLock)
             {
-                CurrentConfig = null;
+                PushStreamConfig(CurrentConfig.Config);
             }
         }
+
 
         /// <summary>
         /// Public API for starting data transfer
         /// </summary>
         public void Start()
         {
-            StartTransfer();
+            EnableTransfer();
         }
 
         /// <summary>
@@ -198,7 +168,7 @@ namespace JuvoPlayer.Player.EsPlayer
         /// </summary>
         public void Stop()
         {
-            StopTransfer();
+            DisableTransfer();
         }
 
         /// <summary>
@@ -207,7 +177,7 @@ namespace JuvoPlayer.Player.EsPlayer
         /// </summary>
         public void Disable()
         {
-            DisableTransfer();
+            DisableInput();
         }
 
         /// <summary>
@@ -231,26 +201,13 @@ namespace JuvoPlayer.Player.EsPlayer
         private void PushAudioConfig(Common.StreamConfig streamConfig)
         {
             logger.Info($"{streamTypeJuvo}:");
-            AudioStreamConfig audioConfig = streamConfig as Common.AudioStreamConfig;
 
-            if (audioConfig == null)
-            {
-                logger.Error("Invalid stream configuration. Not audio.");
-                return;
-            }
+            var streamInfo = streamConfig.ESAudioStreamInfo();
 
-            var config = new ESPlayer.AudioStreamInfo
-            {
-                codecData = audioConfig.CodecExtraData,
-                mimeType = EsPlayerUtils.GetCodecMimeType(audioConfig.Codec),
-                sampleRate = audioConfig.SampleRate,
-                channels = audioConfig.ChannelLayout
-            };
-
-            player.AddStream(config);
+            player.AddStream(streamInfo);
 
             logger.Info($"{streamTypeJuvo}: Stream configuration set");
-            logger.Debug(config.DumpConfig());
+            logger.Debug(streamInfo.DumpConfig());
         }
 
         /// <summary>
@@ -261,38 +218,24 @@ namespace JuvoPlayer.Player.EsPlayer
         {
             logger.Info($"{streamTypeJuvo}:");
 
-            VideoStreamConfig videoConfig = streamConfig as Common.VideoStreamConfig;
+            var streamInfo = streamConfig.ESVideoStreamInfo();
 
-            if (videoConfig == null)
-            {
-                logger.Error("Invalid stream configuration. Not video");
-                return;
-            }
-
-            var config = new ESPlayer.VideoStreamInfo
-            {
-                codecData = videoConfig.CodecExtraData,
-                mimeType = EsPlayerUtils.GetCodecMimeType(videoConfig.Codec),
-                width = videoConfig.Size.Width,
-                maxWidth = 3840,
-                height = videoConfig.Size.Height,
-                maxHeight = 2160,
-                num = videoConfig.FrameRateNum,
-                den = videoConfig.FrameRateDen
-            };
-
-
-            player.AddStream(config);
+            player.AddStream(streamInfo);
 
             logger.Info($"{streamTypeJuvo}: Stream configuration set");
-            logger.Debug(config.DumpConfig());
+            logger.Debug(streamInfo.DumpConfig());
+        }
+
+        private void PushDummyConfig(Common.StreamConfig streamConfig)
+        {
+            logger.Warn($"{streamTypeJuvo}: Stream does not support stream configuration");
         }
 
         /// <summary>
         /// Starts data transfer, if not already running, by starting
         /// transfer task.
         /// </summary>
-        private void StartTransfer()
+        private void EnableTransfer()
         {
             logger.Info($"{streamTypeJuvo}:");
 
@@ -320,7 +263,7 @@ namespace JuvoPlayer.Player.EsPlayer
         /// <summary>
         /// Stops data transfer, if already running, by terminating transfer task.
         /// </summary>
-        private void StopTransfer()
+        private void DisableTransfer()
         {
             logger.Info($"{streamTypeJuvo}:");
 
@@ -344,7 +287,7 @@ namespace JuvoPlayer.Player.EsPlayer
         /// Disables further data transfer. Existing data in queue will continue
         /// to be pushed to the player.
         /// </summary>
-        private void DisableTransfer()
+        private void DisableInput()
         {
             logger.Info($"{streamTypeJuvo}:");
 
@@ -361,7 +304,7 @@ namespace JuvoPlayer.Player.EsPlayer
         {
             logger.Info($"{streamTypeJuvo}: Transfer task started");
 
-            var doDisable = false;
+            var disableTransfer = false;
 
             try
             {
@@ -373,7 +316,7 @@ namespace JuvoPlayer.Player.EsPlayer
                     {
                         case Packet eosPacket when eosPacket.IsEOS:
                             PushEosPacket(token);
-                            doDisable = true;
+                            disableTransfer = true;
                             return;
 
                         case BufferConfigurationPacket bufferConfigPacket when
@@ -413,7 +356,7 @@ namespace JuvoPlayer.Player.EsPlayer
             catch (InvalidOperationException)
             {
                 logger.Info($"{streamTypeJuvo}: Stream completed");
-                doDisable = true;
+                disableTransfer = true;
             }
             catch (OperationCanceledException)
             {
@@ -425,19 +368,19 @@ namespace JuvoPlayer.Player.EsPlayer
             catch (PacketSubmitException pse)
             {
                 logger.Error($"{streamTypeJuvo}: Submit Error " + pse.SubmitStatus);
-                doDisable = true;
+                disableTransfer = true;
             }
             catch (Exception e)
             {
                 logger.Error($"{streamTypeJuvo}: Error " + e);
-                doDisable = true;
+                disableTransfer = true;
             }
             finally
             {
-                if (doDisable)
+                if (disableTransfer)
                 {
                     logger.Info($"{streamTypeJuvo}: Disabling transfer");
-                    DisableTransfer();
+                    DisableInput();
                 }
 
                 logger.Info($"{streamTypeJuvo}: Transfer task terminated");
@@ -455,7 +398,7 @@ namespace JuvoPlayer.Player.EsPlayer
         private void PushUnencryptedPacket(Packet dataPacket, CancellationToken token)
         {
             // Convert Juvo packet to ESPlayer packet
-            var esPacket = dataPacket.ESUnencryptedPacket(streamTypeEsPlayer);
+            var esPacket = dataPacket.ESUnencryptedPacket();
 
             // Continue pushing packet till success or terminal failure
             bool doRetry;
@@ -478,7 +421,7 @@ namespace JuvoPlayer.Player.EsPlayer
                     return;
                 }
 
-                var esPacket = decryptedPacket.ESDecryptedPacket(streamTypeEsPlayer);
+                var esPacket = decryptedPacket.ESDecryptedPacket();
 
                 // Continue pushing packet till success or terminal failure
                 bool doRetry;
@@ -515,7 +458,7 @@ namespace JuvoPlayer.Player.EsPlayer
             // Continue pushing packet till success or terminal failure
             do
             {
-                var res = player.SubmitEosPacket(streamTypeEsPlayer);
+                var res = player.SubmitEosPacket(streamTypeJuvo.ESStreamType());
                 doRetry = ProcessPushResult(res, token);
 
             } while (doRetry && !token.IsCancellationRequested);
@@ -576,9 +519,9 @@ namespace JuvoPlayer.Player.EsPlayer
 
             logger.Info($"{streamTypeJuvo}:");
 
-            StopTransfer();
-
             DisableTransfer();
+
+            DisableInput();
 
             transferCts.Cancel();
             transferCts.Dispose();
