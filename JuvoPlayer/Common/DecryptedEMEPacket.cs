@@ -42,20 +42,18 @@ namespace JuvoPlayer.Common
         #region Disposable Support
         protected override void Dispose(bool disposing)
         {
-            if (IsDisposed || !disposing)
+            if (IsDisposed)
                 return;
 
             ReleaseUnmanagedResources();
-            GC.SuppressFinalize(this);
 
             IsDisposed = true;
         }
 
         ~DecryptedEMEPacket()
         {
-            ReleaseUnmanagedResources();
+            Dispose(false);
         }
         #endregion
-        
     }
 }

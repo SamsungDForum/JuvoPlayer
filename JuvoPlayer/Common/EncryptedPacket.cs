@@ -45,7 +45,7 @@ namespace JuvoPlayer.Common
         //
         protected override void Dispose(bool disposing)
         {
-            if (IsDisposed || !disposing)
+            if (IsDisposed)
                 return;
 
             DrmSession?.Release();
