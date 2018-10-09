@@ -14,6 +14,7 @@
 using System;
 using System.Collections.Concurrent;
 using System.Collections.Generic;
+using System.ComponentModel;
 using JuvoPlayer.Common;
 using JuvoLogger;
 using System.Linq;
@@ -51,7 +52,7 @@ namespace JuvoPlayer.Player.EsPlayer
         public event PlayerInitialized PlayerInitialized;
         public event SeekCompleted SeekCompleted;
         public event BufferStatus BufferStatus;
-
+        public event PlaybackRestart PlaybackRestart;
 
         // Timer process and supporting cancellation elements for clock extraction
         // and generation
@@ -394,6 +395,7 @@ namespace JuvoPlayer.Player.EsPlayer
             catch (InvalidOperationException ioe)
             {
                 logger.Error(ioe.Message);
+                PlaybackError?.Invoke(ioe.Message);
             }
             catch (OperationCanceledException)
             {
@@ -431,15 +433,12 @@ namespace JuvoPlayer.Player.EsPlayer
                     var terminations = CompleteDataStreams();
 
                     logger.Info($"Waiting for completion of {terminations.Count} activities");
-                    try
-                    {
-                        await Task.WhenAll(terminations).WithCancellation(token);
-                    }
-                    catch (AggregateException)
-                    {
-                    }
+                    await Task.WhenAll(terminations).WithCancellation(token);
 
                     token.ThrowIfCancellationRequested();
+
+                    player.GetPlayingTime(out var currentPlayTime);
+                    PlaybackRestart?.Invoke(currentPlayTime);
 
                     logger.Info("Player Stop");
                     player.Stop();
@@ -450,6 +449,7 @@ namespace JuvoPlayer.Player.EsPlayer
                     player.SetTrustZoneUse(true);
 
                     logger.Info("Setting configs");
+
 
                     foreach (var esStream in dataStreams.Where(esStream => esStream != null))
                         esStream.ResetStreamConfig();
@@ -465,6 +465,7 @@ namespace JuvoPlayer.Player.EsPlayer
             catch (InvalidOperationException ioe)
             {
                 logger.Error(ioe.Message);
+                PlaybackError?.Invoke(ioe.Message);
             }
             catch (OperationCanceledException)
             {
@@ -495,13 +496,8 @@ namespace JuvoPlayer.Player.EsPlayer
                     terminations.Add(clockGenerator);
 
                     logger.Info($"Waiting for completion of {terminations.Count} activities");
-                    try
-                    {
-                        await Task.WhenAll(terminations).WithCancellation(token);
-                    }
-                    catch (AggregateException)
-                    {
-                    }
+
+                    await Task.WhenAll(terminations).WithCancellation(token);
 
                     await player.SeekAsync(time, OnReadyToSeekStream).WithCancellation(token);
 
@@ -516,6 +512,7 @@ namespace JuvoPlayer.Player.EsPlayer
             catch (InvalidOperationException ioe)
             {
                 logger.Error(ioe.Message);
+                PlaybackError?.Invoke(ioe.Message);
             }
             catch (OperationCanceledException)
             {

@@ -24,6 +24,7 @@ namespace JuvoPlayer.Player
         event SeekCompleted SeekCompleted;
         event TimeUpdated TimeUpdated;
         event BufferStatus BufferStatus;
+        event PlaybackRestart PlaybackRestart;
 
         void Pause();
         void Play();

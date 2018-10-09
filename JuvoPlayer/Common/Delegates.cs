@@ -11,4 +11,5 @@ namespace JuvoPlayer.Common
     public delegate void SeekCompleted();
     public delegate void StreamConfigReady(StreamConfig config);
     public delegate void TimeUpdated(TimeSpan time);
+    public delegate void PlaybackRestart(TimeSpan time);
 }
