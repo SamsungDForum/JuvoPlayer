@@ -480,13 +480,28 @@ namespace JuvoPlayer.Player.EsPlayer
             {
                 using (await asyncOpSerializer.LockAsync(token))
                 {
+                    // Stop data streams. They will be restarted from
+                    // SeekAsync handler.
+                    DisableTransfer();
+
                     // Stop clock generator. During seek, clock API
                     // does not work - throws exceptions
                     StopClockGenerator();
 
-                    // Stop data streams. They will be restarted from
-                    // SeekAsync handler.
-                    DisableTransfer();
+                    // Make sure data transfer is stopped!
+                    // SeekAsync behaves unpredictably when data transfer to player
+                    // is occuring while SeekAsync gets called
+                    var terminations = CompleteDataStreams();
+                    terminations.Add(clockGenerator);
+
+                    logger.Info($"Waiting for completion of {terminations.Count} activities");
+                    try
+                    {
+                        await Task.WhenAll(terminations).WithCancellation(token);
+                    }
+                    catch (AggregateException)
+                    {
+                    }
 
                     await player.SeekAsync(time, OnReadyToSeekStream).WithCancellation(token);
 
@@ -566,12 +581,11 @@ namespace JuvoPlayer.Player.EsPlayer
         {
             logger.Info($"Clock extractor: Started");
 
-            DateTime delayStart;
+            var delayStart = DateTime.Now;
             try
             {
                 while (!token.IsCancellationRequested)
                 {
-                    delayStart = DateTime.Now;
                     await Task.Delay(500, token);
 
                     try
@@ -597,13 +611,9 @@ namespace JuvoPlayer.Player.EsPlayer
                     }
                 }
             }
-            catch (OperationCanceledException)
+            catch (TaskCanceledException)
             {
                 logger.Info("Operation Cancelled");
-            }
-            catch (Exception e)
-            {
-                logger.Error(e.Message);
             }
             finally
             {
