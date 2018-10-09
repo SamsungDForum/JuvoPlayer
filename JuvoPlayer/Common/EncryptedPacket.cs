@@ -48,7 +48,8 @@ namespace JuvoPlayer.Common
             if (IsDisposed)
                 return;
 
-            DrmSession?.Release();
+            if (disposing)
+                DrmSession?.Release();
 
             IsDisposed = true;
         }
