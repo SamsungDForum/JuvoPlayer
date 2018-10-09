@@ -81,6 +81,7 @@ namespace JuvoPlayer.Player.SMPlayer
         public event SeekCompleted SeekCompleted;
         public event TimeUpdated TimeUpdated;
         public event BufferStatus BufferStatus;
+        public event PlaybackRestart PlaybackRestart;
 
         private readonly SmplayerWrapper playerInstance;
 
