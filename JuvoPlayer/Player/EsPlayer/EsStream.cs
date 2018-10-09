@@ -16,6 +16,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using JuvoLogger;
 using JuvoPlayer.Common;
+using JuvoPlayer.Drms;
 using ESPlayer = Tizen.TV.Multimedia.ESPlayer;
 using StreamType = JuvoPlayer.Common.StreamType;
 
@@ -218,11 +219,6 @@ namespace JuvoPlayer.Player.EsPlayer
             logger.Debug(streamInfo.DumpConfig());
         }
 
-        private void PushDummyConfig(Common.StreamConfig streamConfig)
-        {
-            logger.Warn($"{streamType}: Stream does not support stream configuration");
-        }
-
         /// <summary>
         /// Starts data transfer, if not already running, by starting
         /// transfer task.
@@ -245,6 +241,7 @@ namespace JuvoPlayer.Player.EsPlayer
                     throw new InvalidOperationException($"{streamType}: Not Configured");
                 }
 
+                transferCts?.Dispose();
                 transferCts = new CancellationTokenSource();
                 var token = transferCts.Token;
 
@@ -261,14 +258,7 @@ namespace JuvoPlayer.Player.EsPlayer
 
             lock (syncLock)
             {
-                if (transferTask.IsCompleted)
-                {
-                    logger.Info($"{streamType}: Not Started");
-                    return;
-                }
-
-                transferCts.Cancel();
-                transferCts.Dispose();
+                transferCts?.Cancel();
 
                 logger.Info($"{streamType}: Stopping transfer");
             }
@@ -361,9 +351,9 @@ namespace JuvoPlayer.Player.EsPlayer
                 logger.Error($"{streamType}: Submit Error " + pse.SubmitStatus);
                 disableTransfer = true;
             }
-            catch (Exception e)
+            catch (DrmException drme)
             {
-                logger.Error($"{streamType}: Error " + e);
+                logger.Error($"{streamType}: Decrypt Error: " + drme.Message);
                 disableTransfer = true;
             }
             finally
@@ -513,7 +503,13 @@ namespace JuvoPlayer.Player.EsPlayer
             DisableInput();
             DisableTransfer();
 
-            transferCts = null;
+            if (transferCts != null)
+            {
+                logger.Info($"{streamType}: Waiting for cancellation to be signaled");
+                WaitHandle.WaitAll(new WaitHandle[] { transferCts.Token.WaitHandle });
+                transferCts.Dispose();
+                transferCts = null;
+            }
 
             isDisposed = true;
         }
