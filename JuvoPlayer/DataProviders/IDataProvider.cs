@@ -30,6 +30,7 @@ namespace JuvoPlayer.DataProviders
         void OnSeek(TimeSpan time);
         void OnStopped();
         void OnTimeUpdated(TimeSpan time);
+        void OnRestart(TimeSpan time);
 
         bool IsSeekingSupported();
         void Start();
@@ -42,5 +43,6 @@ namespace JuvoPlayer.DataProviders
         event StreamConfigReady StreamConfigReady;
         event PacketReady PacketReady;
         event StreamError StreamError;
+
     }
 }

@@ -41,6 +41,7 @@ namespace JuvoPlayer.DataProviders.RTSP
         public event PacketReady PacketReady;
         public event StreamError StreamError;
 
+
         private void OnStreamConfigReady(StreamConfig config)
         {
             StreamConfigReady?.Invoke(config);
@@ -57,6 +58,11 @@ namespace JuvoPlayer.DataProviders.RTSP
             // eos packets, one for audio and one for video
             PacketReady?.Invoke(Packet.CreateEOS(StreamType.Audio));
             PacketReady?.Invoke(Packet.CreateEOS(StreamType.Video));
+        }
+
+        public void OnRestart(TimeSpan time)
+        {
+           throw new NotImplementedException();
         }
 
         public void OnChangeActiveStream(StreamDescription stream)

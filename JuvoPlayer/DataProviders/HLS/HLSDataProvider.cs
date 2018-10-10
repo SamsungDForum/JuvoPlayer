@@ -49,6 +49,11 @@ namespace JuvoPlayer.DataProviders.HLS
         public event PacketReady PacketReady;
         public event StreamError StreamError;
 
+        public void OnRestart(TimeSpan time)
+        {
+            throw new NotImplementedException();
+        }
+
         private void OnClipDurationChanged(TimeSpan clipDuration)
         {
             ClipDurationChanged?.Invoke(clipDuration);
