@@ -197,9 +197,12 @@ namespace JuvoPlayer.Player.EsPlayer
 
             var streamInfo = streamConfig.ESAudioStreamInfo();
 
+            logger.Info(streamInfo.DumpConfig());
+
             player.SetStream(streamInfo);
+
             logger.Info($"{streamType}: Stream configuration set");
-            logger.Debug(streamInfo.DumpConfig());
+            
         }
 
         /// <summary>
@@ -212,10 +215,12 @@ namespace JuvoPlayer.Player.EsPlayer
 
             var streamInfo = streamConfig.ESVideoStreamInfo();
 
+            logger.Info(streamInfo.DumpConfig());
+            
             player.SetStream(streamInfo);
 
             logger.Info($"{streamType}: Stream configuration set");
-            logger.Debug(streamInfo.DumpConfig());
+            
         }
 
         /// <summary>

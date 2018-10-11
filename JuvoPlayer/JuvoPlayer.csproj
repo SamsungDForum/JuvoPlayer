@@ -36,7 +36,7 @@
     <PackageReference Include="System.Text.Encoding.CodePages" Version="4.5.0" />
 
     <!-- Tizen.* packages are excluded from runtime -->
-    <PackageReference Include="Tizen.NET" Version="5.0.0.14522">
+    <PackageReference Include="Tizen.NET" Version="5.0.0.14545">
       <ExcludeAssets>Runtime</ExcludeAssets>
     </PackageReference>
     <PackageReference Include="Tizen.NET.Sdk" Version="1.0.1">
