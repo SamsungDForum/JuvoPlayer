@@ -1,4 +1,4 @@
-﻿/// @file SeekDoneEventArgs.cs 
+﻿/// @file ReadyToSeekEventArgs.cs 
 /// <published> N </published>
 /// <privlevel> Non-privilege </privlevel>
 /// <privilege> None </privilege>
@@ -23,11 +23,30 @@ using System;
 
 namespace Tizen.TV.Multimedia
 {
-    internal class SeekDoneEventArgs : EventArgs
+    internal class ReadyToSeekEventArgs : EventArgs
     {
-        internal SeekDoneEventArgs()
+        internal StreamType StreamType
         {
-            // empty
+            get; private set;
+        }
+
+        internal TimeSpan Offset
+        {
+            get; private set;
+        }
+
+        internal ReadyToSeekEventArgs(StreamType type, ulong offset)
+        {
+            try
+            {
+                this.StreamType = type;
+                this.Offset = TimeSpan.FromMilliseconds(offset);
+            }
+            catch (Exception ex)
+            {
+                Log.Error(ESPlayer.LogTag, $"exception : {ex.Message}");
+                Log.Error(ESPlayer.LogTag, $"trace : {ex.StackTrace}");
+            }
         }
     }
 }

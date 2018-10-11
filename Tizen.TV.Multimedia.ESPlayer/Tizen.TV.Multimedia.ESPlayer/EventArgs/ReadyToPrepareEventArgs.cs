@@ -1,4 +1,4 @@
-﻿/// @file SeekDoneEventArgs.cs 
+﻿/// @file ReadyToPrepareEventArgs.cs 
 /// <published> N </published>
 /// <privlevel> Non-privilege </privlevel>
 /// <privilege> None </privilege>
@@ -23,11 +23,16 @@ using System;
 
 namespace Tizen.TV.Multimedia
 {
-    internal class SeekDoneEventArgs : EventArgs
+    internal class ReadyToPrepareEventArgs : EventArgs
     {
-        internal SeekDoneEventArgs()
+        internal StreamType StreamType
         {
-            // empty
+            get; private set;
+        }
+
+        internal ReadyToPrepareEventArgs(StreamType type)
+        {
+            this.StreamType = type;
         }
     }
 }
