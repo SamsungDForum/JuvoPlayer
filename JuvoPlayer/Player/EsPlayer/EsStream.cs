@@ -17,7 +17,7 @@ using System.Threading.Tasks;
 using JuvoLogger;
 using JuvoPlayer.Common;
 using JuvoPlayer.Drms;
-using ESPlayer = Tizen.TV.Multimedia.ESPlayer;
+using ESPlayer = Tizen.TV.Multimedia;
 using StreamType = JuvoPlayer.Common.StreamType;
 
 namespace JuvoPlayer.Player.EsPlayer
@@ -197,8 +197,7 @@ namespace JuvoPlayer.Player.EsPlayer
 
             var streamInfo = streamConfig.ESAudioStreamInfo();
 
-            player.AddStream(streamInfo);
-
+            player.SetStream(streamInfo);
             logger.Info($"{streamType}: Stream configuration set");
             logger.Debug(streamInfo.DumpConfig());
         }
@@ -213,7 +212,7 @@ namespace JuvoPlayer.Player.EsPlayer
 
             var streamInfo = streamConfig.ESVideoStreamInfo();
 
-            player.AddStream(streamInfo);
+            player.SetStream(streamInfo);
 
             logger.Info($"{streamType}: Stream configuration set");
             logger.Debug(streamInfo.DumpConfig());

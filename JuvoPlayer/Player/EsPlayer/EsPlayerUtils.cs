@@ -18,7 +18,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using JuvoPlayer.Common.Utils;
 using Window = ElmSharp.Window;
-using ESPlayer = Tizen.TV.Multimedia.ESPlayer;
+using ESPlayer = Tizen.TV.Multimedia;
 using StreamType = JuvoPlayer.Common.StreamType;
 
 namespace JuvoPlayer.Player.EsPlayer
@@ -270,6 +270,8 @@ namespace JuvoPlayer.Player.EsPlayer
         {
             switch (videoCodec)
             {
+                case VideoCodec.H263:
+                    return ESPlayer.VideoMimeType.H263;
                 case VideoCodec.H264:
                     return ESPlayer.VideoMimeType.H264;
                 case VideoCodec.H265:
@@ -287,7 +289,7 @@ namespace JuvoPlayer.Player.EsPlayer
                 case VideoCodec.WMV1:
                 case VideoCodec.WMV2:
                 default:
-                    return ESPlayer.VideoMimeType.UnKnown;
+                    throw new ArgumentOutOfRangeException($"No mapping from Juvo video codec {videoCodec} to ESPlayer aideo codec");
             }
         }
 
@@ -309,8 +311,7 @@ namespace JuvoPlayer.Player.EsPlayer
                     return ESPlayer.AudioMimeType.PcmS24be;
                 case AudioCodec.EAC3:
                     return ESPlayer.AudioMimeType.Eac3;
-                case AudioCodec.DTS:
-                    return ESPlayer.AudioMimeType.Dts;
+
                 case AudioCodec.AC3:
                     return ESPlayer.AudioMimeType.Ac3;
                 case AudioCodec.PCM:
@@ -323,7 +324,7 @@ namespace JuvoPlayer.Player.EsPlayer
                 case AudioCodec.WMAV1:
                 case AudioCodec.WMAV2:
                 default:
-                    return ESPlayer.AudioMimeType.UnKnown;
+                    throw new ArgumentOutOfRangeException($"No mapping from Juvo audio codec {audioCodec} to ESPlayer audio codec");
             }
         }
     }
