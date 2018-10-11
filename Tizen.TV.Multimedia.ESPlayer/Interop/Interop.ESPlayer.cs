@@ -1,6 +1,20 @@
-﻿using System;
+﻿/// @file Interop.ESPlayer.cs 
+/// Copyright (c) 2018 Samsung Electronics Co., Ltd All Rights Reserved  
+/// PROPRIETARY/CONFIDENTIAL  
+/// This software is the confidential and proprietary  
+/// information of SAMSUNG ELECTRONICS ("Confidential Information"). You shall  
+/// not disclose such Confidential Information and shall use it only in  
+/// accordance with the terms of the license agreement you entered into with  
+/// SAMSUNG ELECTRONICS. SAMSUNG make no representations or warranties about the  
+/// suitability of the software, either express or implied, including but not  
+/// limited to the implied warranties of merchantability, fitness for a  
+/// particular purpose, or non-infringement. SAMSUNG shall not be liable for any  
+/// damages suffered by licensee as a result of using, modifying or distributing  
+/// this software or its derivatives.
+
+using System;
 using System.Runtime.InteropServices;
-using Tizen.TV.Multimedia.ESPlayer;
+using Tizen.TV.Multimedia;
 
 internal static partial class Interop
 {
@@ -67,6 +81,9 @@ internal static partial class Interop
         [DllImport(Libraries.ESPlayer, EntryPoint = "esplusplayer_set_display_mode")]
         internal static extern bool SetDisplayMode(IntPtr player, DisplayMode mode);
 
+        [DllImport(Libraries.ESPlayer, EntryPoint = "esplusplayer_set_display_mode")]
+        internal static extern bool SetDisplayMode(IntPtr player, int mode);
+
         [DllImport(Libraries.ESPlayer, EntryPoint = "esplusplayer_set_display_roi")]
         internal static extern bool SetDisplayRoi(IntPtr player, int x, int y, int width, int height);
 
@@ -77,7 +94,7 @@ internal static partial class Interop
         internal static extern bool SetAudioMute(IntPtr player, bool mute);
 
         [DllImport(Libraries.ESPlayer, EntryPoint = "esplusplayer_get_state")]
-        internal static extern EsState GetState(IntPtr player);
+        internal static extern ESPlayerState GetState(IntPtr player);
 
         [DllImport(Libraries.ESPlayer, EntryPoint = "esplusplayer_submit_packet")]
         internal static extern SubmitStatus SubmitPacket(IntPtr player, IntPtr packet);
@@ -91,8 +108,10 @@ internal static partial class Interop
         [DllImport(Libraries.ESPlayer, EntryPoint = "esplusplayer_set_tz_use")]
         internal static extern bool SetTrustZoneUse(IntPtr player, bool isUsing);
 
+        /*
         [DllImport(Libraries.ESPlayer, EntryPoint = "esplusplayer_set_drm")]
         internal static extern bool SetDrm(IntPtr player, DrmType type);
+        */
 
         [DllImport(Libraries.ESPlayer, EntryPoint = "esplusplayer_add_audio_stream_info")]
         internal static extern bool AddAudioStreamInfo(IntPtr player, IntPtr stream);
