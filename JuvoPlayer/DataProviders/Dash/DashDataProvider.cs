@@ -16,10 +16,8 @@ namespace JuvoPlayer.DataProviders.Dash
         private const string Tag = "JuvoPlayer";
         private readonly ILogger Logger = LoggerManager.GetInstance().GetLogger(Tag);
 
-
         private DashMediaPipeline audioPipeline;
         private DashMediaPipeline videoPipeline;
-
 
         private CuesMap cuesMap;
         private TimeSpan currentTime = TimeSpan.Zero;
@@ -60,6 +58,15 @@ namespace JuvoPlayer.DataProviders.Dash
             videoPipeline.StreamConfigReady += OnStreamConfigReady;
             videoPipeline.PacketReady += OnPacketReady;
             videoPipeline.StreamError += OnStreamError;
+        }
+
+        public void OnRestart(TimeSpan time)
+        {
+            Logger.Info(time.ToString());
+
+            Parallel.Invoke(() => videoPipeline.Pause(), () => audioPipeline.Pause());
+            Parallel.Invoke(() => videoPipeline.Seek(time), () => audioPipeline.Seek(time));
+            Parallel.Invoke(() => videoPipeline.Resume(), () => audioPipeline.Resume());
         }
 
         private void OnClipDurationChanged(TimeSpan clipDuration)
@@ -206,9 +213,11 @@ namespace JuvoPlayer.DataProviders.Dash
                 {
                     audioPipeline.OnTimeUpdated(time);
 
-                    audioPipeline.AdaptToNetConditions();
-                    audioPipeline.SwitchStreamIfNeeded();
+                    // Do not do bandwidth adaptation on audio.
+                    // ESPlayer - all audio changes will result in destructive
+                    // stream change.
 
+                    videoPipeline.SwitchStreamIfNeeded();
                 },
                 () =>
                 {
@@ -216,7 +225,6 @@ namespace JuvoPlayer.DataProviders.Dash
 
                     videoPipeline.AdaptToNetConditions();
                     videoPipeline.SwitchStreamIfNeeded();
-
                 });
         }
 

@@ -12,9 +12,7 @@
 // this software or its derivatives.
 
 using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
-using System.ComponentModel;
 using JuvoPlayer.Common;
 using JuvoLogger;
 using System.Linq;
@@ -66,7 +64,6 @@ namespace JuvoPlayer.Player.EsPlayer
         private bool AllStreamsConfigured => dataStreams.All(streamEntry =>
             streamEntry?.IsConfigured ?? true);
 
-
         // Termination & serialization objects for async operations.
         private CancellationTokenSource activeTaskCts = new CancellationTokenSource();
         private AsyncLock asyncOpSerializer = new AsyncLock();
@@ -74,7 +71,6 @@ namespace JuvoPlayer.Player.EsPlayer
         #region Public API
         public void Initialize(Common.StreamType stream)
         {
-
             lock (initializeLock)
             {
                 logger.Info(stream.ToString());
@@ -139,8 +135,6 @@ namespace JuvoPlayer.Player.EsPlayer
 
                 var token = activeTaskCts.Token;
                 StreamPrepare(token);
-
-
             }
             catch (NullReferenceException)
             {
@@ -180,7 +174,6 @@ namespace JuvoPlayer.Player.EsPlayer
             try
             {
                 player.Start();
-
                 EnableTransfer();
                 StartClockGenerator();
             }
@@ -188,7 +181,6 @@ namespace JuvoPlayer.Player.EsPlayer
             {
                 logger.Error(ioe.Message);
             }
-
         }
 
         /// <summary>
@@ -202,7 +194,6 @@ namespace JuvoPlayer.Player.EsPlayer
             try
             {
                 player.Resume();
-
                 EnableTransfer();
                 StartClockGenerator();
             }
@@ -221,9 +212,8 @@ namespace JuvoPlayer.Player.EsPlayer
 
             try
             {
-                player.Pause();
-
                 DisableTransfer();
+                player.Pause();
                 StopClockGenerator();
             }
             catch (InvalidOperationException ioe)
@@ -241,9 +231,8 @@ namespace JuvoPlayer.Player.EsPlayer
 
             try
             {
-                player.Stop();
-
                 DisableTransfer();
+                player.Stop();
                 StopClockGenerator();
             }
             catch (InvalidOperationException ioe)
@@ -386,11 +375,11 @@ namespace JuvoPlayer.Player.EsPlayer
                 using (await asyncOpSerializer.LockAsync(token))
                 {
                     await player.PrepareAsync(OnReadyToStartStream).WithCancellation(token);
+
+                    logger.Info("Player.PrepareAsync() Completed");
+
+                    PlayerInitialized?.Invoke();
                 }
-
-                logger.Info("Player.PrepareAsync() Completed");
-
-                PlayerInitialized?.Invoke();
             }
             catch (InvalidOperationException ioe)
             {
@@ -419,18 +408,20 @@ namespace JuvoPlayer.Player.EsPlayer
 
         private async Task RestartPlayer(CancellationToken token)
         {
-            logger.Info("Restarting ESPlayer");
+            logger.Info("");
 
             try
             {
                 using (await asyncOpSerializer.LockAsync(token))
                 {
-                    // Stop data streams
+                    // Stop data streams & clock
                     DisableTransfer();
+                    StopClockGenerator();
 
                     // Stop any underlying async ops
                     // 
                     var terminations = CompleteDataStreams();
+                    terminations.Add(clockGenerator);
 
                     logger.Info($"Waiting for completion of {terminations.Count} activities");
                     await Task.WhenAll(terminations).WithCancellation(token);
@@ -440,26 +431,23 @@ namespace JuvoPlayer.Player.EsPlayer
                     player.GetPlayingTime(out var currentPlayTime);
                     PlaybackRestart?.Invoke(currentPlayTime);
 
-                    logger.Info("Player Stop");
                     player.Stop();
-
-                    logger.Info("Re-Setting display window");
                     player.SetDisplay(displayWindow);
-
                     player.SetTrustZoneUse(true);
 
-                    logger.Info("Setting configs");
-
+                    logger.Info("Setting new stream configuration");
 
                     foreach (var esStream in dataStreams.Where(esStream => esStream != null))
                         esStream.ResetStreamConfig();
 
                     await player.PrepareAsync(OnReadyToStartStream).WithCancellation(token);
 
-                    logger.Info("Player Start()");
-                    player.Start();
+                    logger.Info("Player.PrepareAsync() Completed");
 
-                    logger.Info("All Done");
+                    player.Start();
+                    StartClockGenerator();
+
+                    logger.Info("Completed");
                 }
             }
             catch (InvalidOperationException ioe)
@@ -501,10 +489,7 @@ namespace JuvoPlayer.Player.EsPlayer
 
                     await player.SeekAsync(time, OnReadyToSeekStream).WithCancellation(token);
 
-                    // Set the clock. 
-                    // TODO: Remove this once time generation will be removed!
-                    //
-                    currentClock = time;
+                    logger.Info("Player.SeekAsync() Completed");
 
                     StartClockGenerator();
                 }
@@ -568,17 +553,12 @@ namespace JuvoPlayer.Player.EsPlayer
         /// Time generation task. Time is generated from ESPlayer OR auto generated.
         /// Auto generation handles current representation change mechanism where
         /// full stop of ESPlayer is required and no new times are available.
-        ///
-        /// TODO Remove time generation feature when DashClient SharedBuffers usage
-        /// TODO will not be time dependent.
-        /// 
         /// </summary>
         /// <returns>Task</returns>
         private async Task GenerateTimeUpdates(CancellationToken token)
         {
             logger.Info($"Clock extractor: Started");
 
-            var delayStart = DateTime.Now;
             try
             {
                 while (!token.IsCancellationRequested)
@@ -588,29 +568,25 @@ namespace JuvoPlayer.Player.EsPlayer
                     try
                     {
                         player.GetPlayingTime(out var currentPlayTime);
-                        if (currentPlayTime < currentClock)
-                            continue;
 
                         currentClock = currentPlayTime;
-                    }
-                    catch (InvalidOperationException)
-                    {
-                        // GetPlayingTime not available after calling 
-                        // Player.Stop()->SetWindow()->Before new AddStream()
-                        // case: Stream Config Change.
-                        // Generate fake clock
-                        currentClock += DateTime.Now - delayStart;
-                        logger.Info("Clock Generated");
-                    }
-                    finally
-                    {
                         TimeUpdated?.Invoke(currentClock);
+                    }
+                    catch (InvalidOperationException ioe)
+                    {
+                        logger.Warn("Cannot obtain play time from player: " + ioe.Message);
                     }
                 }
             }
             catch (TaskCanceledException)
             {
                 logger.Info("Operation Cancelled");
+            }
+            catch (Exception e)
+            {
+                // Invoking "external" code through TimeUpdate event. Catch any exceptions
+                // and display info to ease debugging
+                logger.Info("Error: " + e.Message);
             }
             finally
             {

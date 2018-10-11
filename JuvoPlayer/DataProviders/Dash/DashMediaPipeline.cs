@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Linq.Expressions;
 using System.Xml;
 using JuvoLogger;
 using JuvoPlayer.Common;
@@ -30,7 +31,20 @@ namespace JuvoPlayer.DataProviders.Dash
             {
                 return Representation.Codecs == other.Representation.Codecs
                        && Representation.Height == other.Representation.Height
-                       && Representation.Width == other.Representation.Width;
+                       && Representation.Width == other.Representation.Width
+                       && Representation.FrameRate == other.Representation.FrameRate
+                       && Representation.FrameRate?.Length > 0
+                       && Representation.NumChannels == other.Representation.NumChannels
+                       && Representation.SampleRate == other.Representation.SampleRate;
+            }
+
+            public bool IsSeamlessSwitchable(DashStream other)
+            {
+                return Representation.Codecs == other.Representation.Codecs
+                       && Representation.FrameRate == other.Representation.FrameRate
+                       && Representation.FrameRate?.Length > 0
+                       && Representation.NumChannels == other.Representation.NumChannels
+                       && Representation.SampleRate == other.Representation.SampleRate;
             }
 
             public override bool Equals(object obj)
@@ -175,30 +189,45 @@ namespace JuvoPlayer.DataProviders.Dash
 
         public void AdaptToNetConditions()
         {
-            if (disableAdaptiveStreaming)
-                return;
-
-            if (currentStream == null && PendingStream == null)
-                return;
-
-            var streamToAdapt = PendingStream ?? currentStream;
-            if (streamToAdapt.Representation.Bandwidth.HasValue == false)
-                return;
-
-            var currentThroughput = throughputHistory.GetAverageThroughput();
-            if (Math.Abs(currentThroughput) < 0.1)
-                return;
-
-            Logger.Debug("Adaptation values:");
-            Logger.Debug("  current throughput: " + currentThroughput);
-            Logger.Debug("  current stream bandwith: " + streamToAdapt.Representation.Bandwidth.Value);
-
-            // availableStreams is sorted array by descending bandwith
-            var stream = availableStreams.FirstOrDefault(o => o.Representation.Bandwidth <= currentThroughput);
-            if (stream != null && stream.Representation.Bandwidth != streamToAdapt.Representation.Bandwidth)
+            try
             {
-                Logger.Info("Changing stream do bandwith: " + stream.Representation.Bandwidth);
-                PendingStream = stream;
+                if (disableAdaptiveStreaming)
+                    return;
+
+                if (currentStream == null && PendingStream == null)
+                    return;
+
+                var streamToAdapt = PendingStream ?? currentStream;
+                if (streamToAdapt.Representation.Bandwidth.HasValue == false)
+                    return;
+
+                var currentThroughput = throughputHistory.GetAverageThroughput();
+                if (Math.Abs(currentThroughput) < 0.1)
+                    return;
+
+                Logger.Debug("Adaptation values:");
+                Logger.Debug("  current throughput: " + currentThroughput);
+                Logger.Debug("  current stream bandwidth: " + streamToAdapt.Representation.Bandwidth.Value);
+
+                // availableStreams is sorted array by descending bandwith
+                var stream = availableStreams.FirstOrDefault(o => o.Representation.Bandwidth <= currentThroughput);
+                if (stream != null && stream.Representation.Bandwidth != streamToAdapt.Representation.Bandwidth)
+                {
+                    // Validate seamless switch capability 
+                    if (currentStream != null && !streamToAdapt.IsSeamlessSwitchable(stream))
+                    {
+                        Logger.Info("No seamless switchable stream found");
+                        return;
+                    }
+
+                    Logger.Info("Changing stream do bandwidth: " + stream.Representation.Bandwidth);
+
+                    PendingStream = stream;
+                }
+            }
+            catch (Exception e)
+            {
+                Logger.Error(e.Message+"\n***\n"+e.Source+"\n***\n"+e.StackTrace);
             }
         }
 
