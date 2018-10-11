@@ -189,46 +189,39 @@ namespace JuvoPlayer.DataProviders.Dash
 
         public void AdaptToNetConditions()
         {
-            try
+            if (disableAdaptiveStreaming)
+                return;
+
+            if (currentStream == null && PendingStream == null)
+                return;
+
+            var streamToAdapt = PendingStream ?? currentStream;
+            if (streamToAdapt.Representation.Bandwidth.HasValue == false)
+                return;
+
+            var currentThroughput = throughputHistory.GetAverageThroughput();
+            if (Math.Abs(currentThroughput) < 0.1)
+                return;
+
+            Logger.Debug("Adaptation values:");
+            Logger.Debug("  current throughput: " + currentThroughput);
+            Logger.Debug("  current stream bandwidth: " + streamToAdapt.Representation.Bandwidth.Value);
+
+            // availableStreams is sorted array by descending bandwidth
+            var stream = availableStreams.FirstOrDefault(o => o.Representation.Bandwidth <= currentThroughput);
+            if (stream != null && stream.Representation.Bandwidth != streamToAdapt.Representation.Bandwidth)
             {
-                if (disableAdaptiveStreaming)
-                    return;
-
-                if (currentStream == null && PendingStream == null)
-                    return;
-
-                var streamToAdapt = PendingStream ?? currentStream;
-                if (streamToAdapt.Representation.Bandwidth.HasValue == false)
-                    return;
-
-                var currentThroughput = throughputHistory.GetAverageThroughput();
-                if (Math.Abs(currentThroughput) < 0.1)
-                    return;
-
-                Logger.Debug("Adaptation values:");
-                Logger.Debug("  current throughput: " + currentThroughput);
-                Logger.Debug("  current stream bandwidth: " + streamToAdapt.Representation.Bandwidth.Value);
-
-                // availableStreams is sorted array by descending bandwith
-                var stream = availableStreams.FirstOrDefault(o => o.Representation.Bandwidth <= currentThroughput);
-                if (stream != null && stream.Representation.Bandwidth != streamToAdapt.Representation.Bandwidth)
+                // Validate seamless switch capability 
+                if (currentStream != null && !streamToAdapt.IsSeamlessSwitchable(stream))
                 {
-                    // Validate seamless switch capability 
-                    if (currentStream != null && !streamToAdapt.IsSeamlessSwitchable(stream))
-                    {
-                        Logger.Info("No seamless switchable stream found");
-                        return;
-                    }
-
-                    Logger.Info("Changing stream do bandwidth: " + stream.Representation.Bandwidth);
-
-                    PendingStream = stream;
+                    Logger.Info("No seamless switchable stream found");
+                    return;
                 }
-            }
-            catch (Exception e)
-            {
-                Logger.Error(e.Message+"\n***\n"+e.Source+"\n***\n"+e.StackTrace);
-            }
+
+                Logger.Info("Changing stream do bandwidth: " + stream.Representation.Bandwidth);
+
+                PendingStream = stream;
+            }   
         }
 
         public void SwitchStreamIfNeeded()
