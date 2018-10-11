@@ -1,0 +1,30 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>netcoreapp2.0</TargetFramework>
+  </PropertyGroup>
+
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugType>portable</DebugType>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugType>None</DebugType>
+  </PropertyGroup>
+
+  <ItemGroup>
+    <Folder Include="lib\" />
+    <Folder Include="res\" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="NUnit" Version="3.8.1" />
+    <PackageReference Include="NUnitLite" Version="3.8.1" />
+    <PackageReference Include="Tizen.NET.Sdk" Version="1.0.1" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <ProjectReference Include="..\Tizen.TV.Multimedia.ESPlayer\Tizen.TV.Multimedia.ESPlayer.csproj" />
+  </ItemGroup>
+
+</Project>

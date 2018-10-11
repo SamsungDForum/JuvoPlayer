@@ -17,7 +17,7 @@ using JuvoPlayer.Common;
 using JuvoLogger;
 using System.Linq;
 using System.Threading;
-using ESPlayer = Tizen.TV.Multimedia.ESPlayer;
+using ESPlayer = Tizen.TV.Multimedia;
 using System.Threading.Tasks;
 using Nito.AsyncEx;
 
@@ -302,7 +302,7 @@ namespace JuvoPlayer.Player.EsPlayer
         /// </summary>
         /// <param name="sender">Object</param>
         /// <param name="eosArgs">ESPlayer.EosArgs</param>
-        private void OnEos(object sender, ESPlayer.EosEventArgs eosArgs)
+        private void OnEos(object sender, ESPlayer.EOSEventArgs eosArgs)
         {
             logger.Error(eosArgs.ToString());
 

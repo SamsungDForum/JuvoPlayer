@@ -54,10 +54,10 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\csapi-tv-multimedia\Tizen.TV.Multimedia.ESPlayer\Tizen.TV.Multimedia.ESPlayer.csproj" />
     <ProjectReference Include="..\JuvoLogger\JuvoLogger.csproj" />
     <ProjectReference Include="..\MpdParser\MpdParser.csproj" />
     <ProjectReference Include="..\thirdparty\RTSP\RTSP.csproj" />
-    <ProjectReference Include="..\Tizen.TV.Multimedia.ESPlayer\Tizen.TV.Multimedia.ESPlayer.csproj" />
   </ItemGroup>
 
   <ItemGroup>
