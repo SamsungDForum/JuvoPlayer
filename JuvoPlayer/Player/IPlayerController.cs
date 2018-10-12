@@ -12,7 +12,6 @@
 // this software or its derivatives.
 
 using System;
-using System.Collections.Generic;
 using JuvoPlayer.Common;
 
 namespace JuvoPlayer.Player
@@ -56,5 +55,6 @@ namespace JuvoPlayer.Player
         event PlayerInitialized PlayerInitialized;
         event TimeUpdated TimeUpdated;
         event SeekCompleted SeekCompleted;
+        event PlaybackRestart PlaybackRestart;
     }
 }

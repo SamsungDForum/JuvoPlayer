@@ -12,6 +12,7 @@
 // this software or its derivatives.
 
 using System;
+using System.Drawing;
 using System.Threading.Tasks;
 using JuvoPlayer.Common;
 using JuvoLogger;
@@ -35,6 +36,8 @@ namespace JuvoPlayer.Player.MMPlayer
         public event PlayerInitialized PlayerInitialized;
         public event SeekCompleted SeekCompleted;
         public event TimeUpdated TimeUpdated;
+        public event BufferStatus BufferStatus;
+        public event PlaybackRestart PlaybackRestart;
 
         public MultimediaPlayer()
         {
@@ -203,7 +206,8 @@ namespace JuvoPlayer.Player.MMPlayer
             if (config == null)
                 throw new ArgumentNullException(nameof(config), "config cannot be null");
 
-            videoFormat = new VideoMediaFormat(CastVideoCodedToAudioMimeType(config.Codec), config.Size, config.FrameRateNum/config.FrameRateDen, config.BitRate);
+            Tizen.Multimedia.Size mmSize = new Tizen.Multimedia.Size(config.Size.Width, config.Size.Height);
+            videoFormat = new VideoMediaFormat(CastVideoCodedToAudioMimeType(config.Codec), mmSize, config.FrameRateNum / config.FrameRateDen, config.BitRate);
 
             StreamInitialized();
         }

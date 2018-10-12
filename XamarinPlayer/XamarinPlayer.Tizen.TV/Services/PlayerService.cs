@@ -13,6 +13,7 @@ using JuvoPlayer.Drms.DummyDrm;
 using JuvoPlayer.Player;
 using JuvoPlayer.Player.MMPlayer;
 using JuvoPlayer.Player.SMPlayer;
+using JuvoPlayer.Player.EsPlayer;
 using Xamarin.Forms;
 using XamarinPlayer.Services;
 using XamarinPlayer.Tizen.Services;
@@ -69,7 +70,7 @@ namespace XamarinPlayer.Tizen.Services
             drmManager.RegisterDrmHandler(new CencHandler());
             drmManager.RegisterDrmHandler(new DummyDrmHandler());
 
-            var player = new SMPlayer();
+            var player = new EsPlayer();
 
             playerController = new PlayerController(player, drmManager);
             playerController.PlaybackCompleted += () =>
@@ -85,6 +86,15 @@ namespace XamarinPlayer.Tizen.Services
                 playerStateMessage = message;
                 State = PlayerState.Error;
             };
+
+            playerController.PlaybackRestart += OnRestart;
+        }
+
+        private void OnRestart(TimeSpan time)
+        {
+            Logger.Info(time.ToString());
+
+            dataProvider.OnRestart(time);
         }
 
         public void Pause()

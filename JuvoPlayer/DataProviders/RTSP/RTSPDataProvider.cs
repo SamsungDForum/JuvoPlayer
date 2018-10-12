@@ -41,6 +41,7 @@ namespace JuvoPlayer.DataProviders.RTSP
         public event PacketReady PacketReady;
         public event StreamError StreamError;
 
+
         private void OnStreamConfigReady(StreamConfig config)
         {
             StreamConfigReady?.Invoke(config);
@@ -57,6 +58,11 @@ namespace JuvoPlayer.DataProviders.RTSP
             // eos packets, one for audio and one for video
             PacketReady?.Invoke(Packet.CreateEOS(StreamType.Audio));
             PacketReady?.Invoke(Packet.CreateEOS(StreamType.Video));
+        }
+
+        public void OnRestart(TimeSpan time)
+        {
+           throw new NotImplementedException();
         }
 
         public void OnChangeActiveStream(StreamDescription stream)
@@ -98,8 +104,11 @@ namespace JuvoPlayer.DataProviders.RTSP
             if (rtpClient == null)
                 return;
 
-            rtpClient.Start(currentClip);
+            // Start demuxer before client. Demuxer start clears
+            // underlying buffer. We do not want that to happen after client
+            // puts something in there.
             demuxer.StartForExternalSource(InitializationMode.Full);
+            rtpClient.Start(currentClip);
         }
 
         public Cue CurrentCue { get; }

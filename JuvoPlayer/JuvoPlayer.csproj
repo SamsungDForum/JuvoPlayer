@@ -31,16 +31,30 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="Nito.AsyncEx" Version="5.0.0-pre-05" />
     <PackageReference Include="Nito.AsyncEx.Context" Version="5.0.0-pre-05" />
     <PackageReference Include="System.Text.Encoding.CodePages" Version="4.5.0" />
-    <PackageReference Include="Tizen.NET" Version="4.0.0" />
-    <PackageReference Include="Tizen.NET.Sdk" Version="1.0.1" />
-    <PackageReference Include="Tizen.NET.TV" Version="4.4.0.1341" />
-    <PackageReference Include="Tizen.TV.Multimedia.IPTV" Version="1.0.0" />
-    <PackageReference Include="Tizen.TV.Security" Version="1.0.3" />
+
+    <!-- Tizen.* packages are excluded from runtime -->
+    <PackageReference Include="Tizen.NET" Version="5.0.0.14545">
+      <ExcludeAssets>Runtime</ExcludeAssets>
+    </PackageReference>
+    <PackageReference Include="Tizen.NET.Sdk" Version="1.0.1">
+      <ExcludeAssets>Runtime</ExcludeAssets>
+    </PackageReference>
+    <PackageReference Include="Tizen.NET.TV" Version="4.4.0.1341">
+      <ExcludeAssets>Runtime</ExcludeAssets>
+    </PackageReference>
+    <PackageReference Include="Tizen.TV.Multimedia.IPTV" Version="1.0.0">
+      <ExcludeAssets>Runtime</ExcludeAssets>
+    </PackageReference>
+
+    <!-- Tizen.TV.Security is hijacked, as such it is included in assets. Add exclusion once released -->
+    <PackageReference Include="Tizen.TV.Security" Version="1.0.2" />
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\csapi-tv-multimedia\Tizen.TV.Multimedia.ESPlayer\Tizen.TV.Multimedia.ESPlayer.csproj" />
     <ProjectReference Include="..\JuvoLogger\JuvoLogger.csproj" />
     <ProjectReference Include="..\MpdParser\MpdParser.csproj" />
     <ProjectReference Include="..\thirdparty\RTSP\RTSP.csproj" />

@@ -23,7 +23,7 @@ namespace JuvoPlayer.Player
     {
         private enum PlayerState
         {
-            Unitialized,
+            Uninitialized,
             Ready,
             Paused,
             Playing,
@@ -32,7 +32,7 @@ namespace JuvoPlayer.Player
         };
 
         private bool seeking;
-        private PlayerState state = PlayerState.Unitialized;
+        private PlayerState state = PlayerState.Uninitialized;
         private TimeSpan currentTime;
         private TimeSpan duration;
 
@@ -50,6 +50,7 @@ namespace JuvoPlayer.Player
         public event PlayerInitialized PlayerInitialized;
         public event TimeUpdated TimeUpdated;
         public event SeekCompleted SeekCompleted;
+        public event PlaybackRestart PlaybackRestart;
 
         private readonly ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
 
@@ -63,12 +64,20 @@ namespace JuvoPlayer.Player
             this.player.PlayerInitialized += OnPlayerInitialized;
             this.player.SeekCompleted += OnSeekCompleted;
             this.player.TimeUpdated += OnTimeUpdated;
+            this.player.PlaybackRestart += OnPlaybackRestart;
 
             var audioCodecExtraDataHandler = new AudioCodecExtraDataHandler(player);
             var vidoeCodecExtraDataHandler = new VideoCodecExtraDataHandler(player);
 
             streams[StreamType.Audio] = new PacketStream(StreamType.Audio, this.player, drmManager, audioCodecExtraDataHandler);
             streams[StreamType.Video] = new PacketStream(StreamType.Video, this.player, drmManager, vidoeCodecExtraDataHandler);
+        }
+
+        private void OnPlaybackRestart(TimeSpan time)
+        {
+            Logger.Info(time.ToString());
+
+            PlaybackRestart?.Invoke(time);
         }
 
         private void OnPlaybackCompleted()

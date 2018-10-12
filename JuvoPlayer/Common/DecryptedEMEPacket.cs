@@ -39,15 +39,21 @@ namespace JuvoPlayer.Common
             }
         }
 
-        public override void Dispose()
+        #region Disposable Support
+        protected override void Dispose(bool disposing)
         {
+            if (IsDisposed)
+                return;
+
             ReleaseUnmanagedResources();
-            GC.SuppressFinalize(this);
+
+            IsDisposed = true;
         }
 
         ~DecryptedEMEPacket()
         {
-            ReleaseUnmanagedResources();
+            Dispose(false);
         }
+        #endregion
     }
 }

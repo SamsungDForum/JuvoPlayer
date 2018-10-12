@@ -1,0 +1,18 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<manifest package="org.tizen.example.Tizen.TV.Multimedia.ESPlayer.Tests" version="1.0.0" api-version="4" xmlns="http://tizen.org/ns/packages">
+    <profile name="tv" />
+    <ui-application appid="org.tizen.example.Tizen.TV.Multimedia.ESPlayer.Tests" exec="Tizen.TV.Multimedia.ESPlayer.Tests.dll" multiple="false" nodisplay="false" taskmanage="true" splash-screen-display="true" type="dotnet-inhouse" launch_mode="single">
+        <icon>Tizen.TV.Multimedia.ESPlayer.Tests.png</icon>
+        <label>Tizen.TV.Multimedia.ESPlayer.Tests</label>
+        <metadata key="http://samsung.com/tv/metadata/mountinstall" value="true" />
+        <splash-screens />
+    </ui-application>
+    <shortcut-list />
+    <privileges>
+        <privilege>http://tizen.org/privilege/internet</privilege>
+        <privilege>http://tizen.org/privilege/mediastorage</privilege>
+        <privilege>http://tizen.org/privilege/externalstorage</privilege>
+    </privileges>
+    <provides-appdefined-privileges />
+    <feature name="http://tizen.org/feature/screen.size.normal.1080.1920">true</feature>
+</manifest>
