@@ -9,7 +9,7 @@ using JuvoPlayer.Drms;
 using JuvoPlayer.Drms.Cenc;
 using JuvoPlayer.Drms.DummyDrm;
 using JuvoPlayer.Player;
-using JuvoPlayer.Player.SMPlayer;
+using JuvoPlayer.Player.EsPlayer;
 
 namespace JuvoPlayer.OpenGL
 {
@@ -59,7 +59,7 @@ namespace JuvoPlayer.OpenGL
             drmManager.RegisterDrmHandler(new CencHandler());
             drmManager.RegisterDrmHandler(new DummyDrmHandler());
 
-            var player = new SMPlayer();
+            var player = new EsPlayer();
             playerController = new PlayerController(player, drmManager);
             playerController.PlaybackCompleted += () => { State = PlayerState.Completed; };
             playerController.PlayerInitialized += () => { State = PlayerState.Prepared; };

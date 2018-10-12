@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Linq.Expressions;
 using System.Xml;
 using JuvoLogger;
 using JuvoPlayer.Common;
@@ -30,7 +31,20 @@ namespace JuvoPlayer.DataProviders.Dash
             {
                 return Representation.Codecs == other.Representation.Codecs
                        && Representation.Height == other.Representation.Height
-                       && Representation.Width == other.Representation.Width;
+                       && Representation.Width == other.Representation.Width
+                       && Representation.FrameRate == other.Representation.FrameRate
+                       && Representation.FrameRate?.Length > 0
+                       && Representation.NumChannels == other.Representation.NumChannels
+                       && Representation.SampleRate == other.Representation.SampleRate;
+            }
+
+            public bool IsSeamlessSwitchable(DashStream other)
+            {
+                return Representation.Codecs == other.Representation.Codecs
+                       && Representation.FrameRate == other.Representation.FrameRate
+                       && Representation.FrameRate?.Length > 0
+                       && Representation.NumChannels == other.Representation.NumChannels
+                       && Representation.SampleRate == other.Representation.SampleRate;
             }
 
             public override bool Equals(object obj)
@@ -83,8 +97,6 @@ namespace JuvoPlayer.DataProviders.Dash
             get => _pendingStreamStorage;
             set => _pendingStreamStorage = InitializePendingStream(value);
         }
-
-
 
         private readonly Object switchStreamLock = new Object();
         private List<DashStream> availableStreams = new List<DashStream>();
@@ -193,15 +205,23 @@ namespace JuvoPlayer.DataProviders.Dash
 
             Logger.Debug("Adaptation values:");
             Logger.Debug("  current throughput: " + currentThroughput);
-            Logger.Debug("  current stream bandwith: " + streamToAdapt.Representation.Bandwidth.Value);
+            Logger.Debug("  current stream bandwidth: " + streamToAdapt.Representation.Bandwidth.Value);
 
-            // availableStreams is sorted array by descending bandwith
+            // availableStreams is sorted array by descending bandwidth
             var stream = availableStreams.FirstOrDefault(o => o.Representation.Bandwidth <= currentThroughput);
             if (stream != null && stream.Representation.Bandwidth != streamToAdapt.Representation.Bandwidth)
             {
-                Logger.Info("Changing stream do bandwith: " + stream.Representation.Bandwidth);
+                // Validate seamless switch capability 
+                if (currentStream != null && !streamToAdapt.IsSeamlessSwitchable(stream))
+                {
+                    Logger.Info("No seamless switchable stream found");
+                    return;
+                }
+
+                Logger.Info("Changing stream do bandwidth: " + stream.Representation.Bandwidth);
+
                 PendingStream = stream;
-            }
+            }   
         }
 
         public void SwitchStreamIfNeeded()
@@ -222,7 +242,7 @@ namespace JuvoPlayer.DataProviders.Dash
 
             try
             {
-                if (PendingStream == null || !CanSwitchStream())
+                if (PendingStream == null)
                     return;
 
                 Logger.Info($"{StreamType}");
@@ -230,8 +250,13 @@ namespace JuvoPlayer.DataProviders.Dash
                 if (currentStream == null)
                 {
                     StartPipeline(PendingStream);
+                    return;
                 }
-                else if (currentStream.IsCompatibleWith(PendingStream))
+                
+                if (!CanSwitchStream())
+                    return;
+
+                if (currentStream.IsCompatibleWith(PendingStream))
                 {
                     UpdatePipeline(PendingStream);
                 }

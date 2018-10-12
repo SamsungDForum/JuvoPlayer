@@ -22,6 +22,7 @@ using JuvoPlayer.Demuxers.FFmpeg.Interop;
 using JuvoPlayer.SharedBuffers;
 using JuvoPlayer.Common.Utils;
 using System.Diagnostics;
+using System.Drawing;
 
 namespace JuvoPlayer.Demuxers.FFmpeg
 {
@@ -109,7 +110,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg
             demuxTask = Task.Run(() => DemuxTask(InitES, initMode));
 
             //Add error handler task if demuxer fails
-            demuxTask.ContinueWith(res => OnError(GetErrorMessage(res)),TaskContinuationOptions.OnlyOnFaulted);
+            demuxTask.ContinueWith(res => OnError(GetErrorMessage(res)), TaskContinuationOptions.OnlyOnFaulted);
         }
 
         public void StartForUrl(string url)
@@ -334,6 +335,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg
                         var dataSize = pkt.size;
                         var pts = Interop.FFmpeg.av_rescale_q(pkt.pts, s->time_base, microsBase) / 1000;
                         var dts = Interop.FFmpeg.av_rescale_q(pkt.dts, s->time_base, microsBase) / 1000;
+                        var duration = Interop.FFmpeg.av_rescale_q(pkt.duration, s->time_base, microsBase) / 1000;
 
                         var sideData = Interop.FFmpeg.av_packet_get_side_data(&pkt, AVPacketSideDataType.@AV_PKT_DATA_ENCRYPT_INFO, null);
 
@@ -346,6 +348,8 @@ namespace JuvoPlayer.Demuxers.FFmpeg
                         packet.StreamType = pkt.stream_index != audioIdx ? StreamType.Video : StreamType.Audio;
                         packet.Pts = TimeSpan.FromMilliseconds(pts >= 0 ? pts : 0);
                         packet.Dts = TimeSpan.FromMilliseconds(dts >= 0 ? dts : 0);
+                        packet.Duration = TimeSpan.FromMilliseconds(duration);
+
                         packet.Data = new byte[dataSize];
                         packet.IsKeyFrame = (pkt.flags == 1);
 
@@ -580,11 +584,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg
             // s->time_base.num
 
             Logger.Info("Setting audio stream to " + audioIdx + "/" + formatContext->nb_streams);
-            Logger.Info("  Codec = " + config.Codec);
-            Logger.Info("  BitsPerChannel = " + config.BitsPerChannel);
-            Logger.Info("  ChannelLayout = " + config.ChannelLayout);
-            Logger.Info("  SampleRate = " + config.SampleRate);
-            Logger.Info("");
+            Logger.Info(config.ToString());
 
             StreamConfigReady?.Invoke(config);
         }
@@ -598,13 +598,14 @@ namespace JuvoPlayer.Demuxers.FFmpeg
             }
 
             AVStream* s = formatContext->streams[videoIdx];
+
             var config = new VideoStreamConfig
             {
                 Codec = ConvertVideoCodec(s->codecpar->codec_id),
                 CodecProfile = s->codecpar->profile,
-                Size = new Tizen.Multimedia.Size(s->codecpar->width, s->codecpar->height),
+                Size = new Size(s->codecpar->width, s->codecpar->height),
                 FrameRateNum = s->r_frame_rate.num,
-                FrameRateDen = s->r_frame_rate.den
+                FrameRateDen = s->r_frame_rate.den,
             };
 
             if (s->codecpar->extradata_size > 0)
@@ -620,9 +621,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg
             // s->time_base.num
 
             Logger.Info("Setting video stream to " + videoIdx + "/" + formatContext->nb_streams);
-            Logger.Info("  Codec = " + config.Codec);
-            Logger.Info("  Size = " + config.Size);
-            Logger.Info("  FrameRate = (" + config.FrameRateNum + "/" + config.FrameRateDen + ")");
+            Logger.Info(config.ToString());
 
             StreamConfigReady?.Invoke(config);
         }
@@ -717,14 +716,14 @@ namespace JuvoPlayer.Demuxers.FFmpeg
             Resume();
             dataBuffer?.ClearData();
             dataBuffer?.WriteData(null, true);
- 
+
             // If a task fails with an exception that's not caught anywhere,
             // calling 
             try
             {
                 demuxTask?.Wait();
             }
-            catch(Exception ex)
+            catch (Exception ex)
             {
                 Logger.Debug($"Demuxer Status/Error: {demuxTask.Status} {ex.Message}");
             }
@@ -732,7 +731,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg
             // Clear EOS from buffer after demux task termination so there 
             // will not be any data reads of EOS after restart as EOS is persistant in buffer
             dataBuffer?.ClearData();
-            
+
             DeallocFFmpeg();
         }
 

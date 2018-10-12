@@ -11,6 +11,8 @@
 // damages suffered by licensee as a result of using, modifying or distributing
 // this software or its derivatives.
 
+using JuvoPlayer.Common.Utils;
+
 namespace JuvoPlayer.Common
 {
     public abstract class StreamConfig
@@ -18,5 +20,10 @@ namespace JuvoPlayer.Common
         public byte[] CodecExtraData = null;
 
         public abstract StreamType StreamType();
+
+        public override string ToString()
+        {
+            return "\tCodecData:\n" + HexDumper.HexDump(CodecExtraData);
+        }
     }
 }

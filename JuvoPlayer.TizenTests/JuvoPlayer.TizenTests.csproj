@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <!-- Property Group for Tizen40 Project -->
   <PropertyGroup>
@@ -31,12 +31,16 @@
 
   <ItemGroup>
     <PackageReference Include="NSubstitute" Version="3.1.0" />
-    <PackageReference Include="Tizen.NET" Version="4.0.0">
-      <ExcludeAssets>Runtime</ExcludeAssets>
-    </PackageReference>
     <PackageReference Include="NUnit" Version="3.9.0" />
     <PackageReference Include="NUnitLite" Version="3.9.0" />
-    <PackageReference Include="Tizen.NET.Sdk" Version="1.0.1" />
+
+    <!-- Tizen.* packages are excluded from runtime -->
+    <PackageReference Include="Tizen.NET" Version="5.0.0.14545">
+      <ExcludeAssets>Runtime</ExcludeAssets>
+    </PackageReference>
+    <PackageReference Include="Tizen.NET.Sdk" Version="1.0.1">
+      <ExcludeAssets>Runtime</ExcludeAssets>
+    </PackageReference>
   </ItemGroup>
 
   <ItemGroup>
