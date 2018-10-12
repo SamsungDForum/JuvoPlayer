@@ -82,7 +82,8 @@ namespace JuvoPlayer.Player.EsPlayer
 
                 // Create new data stream in its place
                 //
-                dataStreams[(int)stream] = new EsStream(player, stream, packetStorage);
+                dataStreams[(int)stream] = new EsStream(stream, packetStorage);
+                dataStreams[(int)stream].SetPlayer(player);
                 dataStreams[(int)stream].ReconfigureStream += OnStreamReconfigure;
             }
         }
@@ -324,6 +325,7 @@ namespace JuvoPlayer.Player.EsPlayer
         private void OnError(object sender, ESPlayer.ErrorEventArgs errorArgs)
         {
             var error = errorArgs.ToString();
+
             logger.Error(error);
 
             // Stop and disable all initialized data streams.
@@ -429,16 +431,25 @@ namespace JuvoPlayer.Player.EsPlayer
                     token.ThrowIfCancellationRequested();
 
                     player.GetPlayingTime(out var currentPlayTime);
+
+                    logger.Info("Restarting ESPlayer");
+                    player.Stop();
+                    player.Dispose();
+
                     PlaybackRestart?.Invoke(currentPlayTime);
 
-                    player.Stop();
-                    player.SetDisplay(displayWindow);
+                    player = new ESPlayer.ESPlayer();
+                    player.Open();
                     player.SetTrustZoneUse(true);
+                    player.SetDisplay(displayWindow);
 
                     logger.Info("Setting new stream configuration");
 
                     foreach (var esStream in dataStreams.Where(esStream => esStream != null))
+                    {
+                        esStream.SetPlayer(player);
                         esStream.ResetStreamConfig();
+                    }
 
                     await player.PrepareAsync(OnReadyToStartStream).WithCancellation(token);
 

@@ -59,7 +59,7 @@ namespace JuvoPlayer.Player.EsPlayer
         private readonly StreamConfigure PushStreamConfig;
 
         // Reference to internal EsPlayer objects
-        private readonly ESPlayer.ESPlayer player;
+        private ESPlayer.ESPlayer player;
         private readonly EsPlayerPacketStorage packetStorage;
 
         // transfer task & cancellation token
@@ -82,9 +82,8 @@ namespace JuvoPlayer.Player.EsPlayer
 
         #region Public API
 
-        public EsStream(ESPlayer.ESPlayer player, Common.StreamType type, EsPlayerPacketStorage storage)
+        public EsStream(Common.StreamType type, EsPlayerPacketStorage storage)
         {
-            this.player = player;
             streamType = type;
             packetStorage = storage;
 
@@ -99,6 +98,15 @@ namespace JuvoPlayer.Player.EsPlayer
                 default:
                     throw new ArgumentException($"Stream Type {streamType} is unsupported");
             }
+        }
+
+        /// <summary>
+        /// Sets the player to be used by EsStream
+        /// </summary>
+        /// <param name="player">ESPlayer</param>
+        public void SetPlayer(ESPlayer.ESPlayer player)
+        {
+            this.player = player;
         }
 
         /// <summary>
@@ -202,7 +210,7 @@ namespace JuvoPlayer.Player.EsPlayer
             player.SetStream(streamInfo);
 
             logger.Info($"{streamType}: Stream configuration set");
-            
+
         }
 
         /// <summary>
@@ -216,11 +224,11 @@ namespace JuvoPlayer.Player.EsPlayer
             var streamInfo = streamConfig.ESVideoStreamInfo();
 
             logger.Info(streamInfo.DumpConfig());
-            
+
             player.SetStream(streamInfo);
 
             logger.Info($"{streamType}: Stream configuration set");
-            
+
         }
 
         /// <summary>
