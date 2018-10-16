@@ -1,16 +1,31 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<manifest package="org.tizen.example.XamarinPlayer.Tizen.TV" version="1.0.0" api-version="4" xmlns="http://tizen.org/ns/packages">
-    <profile name="common" />
-    <ui-application appid="org.tizen.example.XamarinPlayer.Tizen.TV" exec="XamarinPlayer.Tizen.TV.dll" multiple="false" nodisplay="false" taskmanage="true" splash-screen-display="true" type="dotnet" launch_mode="single">
-        <label>XamarinPlayer.Tizen.TV</label>
-        <icon>Icon.png</icon>
+<manifest 
+  package="JuvoPlayerXamarin.Tizen.TV"   
+  version="1.0.0" 
+  api-version="4" 
+  xmlns="http://tizen.org/ns/packages">
+  <feature 
+    name="http://tizen.org/feature/screen.size.normal.1080.1920">true</feature>
+    <profile name="tv" />
+    <ui-application 
+      appid="JuvoPlayerXamarin.Tizen.TV" 
+      exec="JuvoPlayerXamarin.Tizen.TV.dll" 
+      multiple="false" 
+      nodisplay="false" 
+      taskmanage="true" 
+      splash-screen-display="true" 
+      type="dotnet" 
+      launch_mode="single">
+        <label>JuvoPlayerXamarin.Tizen.TV</label>        
+        <icon>JuvoPlayerXamarinTizenTV.png</icon>
+        <splash-screens />
     </ui-application>
     <shortcut-list />
     <privileges>
         <privilege>http://tizen.org/privilege/internet</privilege>
-		<privilege>http://tizen.org/privilege/tee.client</privilege>
-		<privilege>http://developer.samsung.com/privilege/drmplay</privilege>
-      <privilege>http://developer.samsung.com/privilege/drminfo</privilege>
+        <privilege>http://tizen.org/privilege/tee.client</privilege>
+        <privilege>http://developer.samsung.com/privilege/drmplay</privilege>
+        <privilege>http://developer.samsung.com/privilege/drminfo</privilege>
     </privileges>
     <provides-appdefined-privileges />
 </manifest>
