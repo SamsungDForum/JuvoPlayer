@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using ElmSharp;
 using JuvoPlayer.Common;
 using JuvoPlayer.DataProviders;
 using JuvoPlayer.DataProviders.Dash;
@@ -11,7 +12,6 @@ using JuvoPlayer.Drms;
 using JuvoPlayer.Drms.Cenc;
 using JuvoPlayer.Drms.DummyDrm;
 using JuvoPlayer.Player;
-using JuvoPlayer.Player.SMPlayer;
 using JuvoPlayer.Player.EsPlayer;
 using JuvoPlayer.Utils;
 
@@ -28,6 +28,13 @@ namespace JuvoPlayer.TizenTests.Utils
             Playing,
             Paused,
             Completed
+        }
+
+        private static Window window;
+
+        public static void SetWindow(Window w)
+        {
+            window = w;
         }
 
         public List<ClipDefinition> ReadClips()
@@ -62,8 +69,10 @@ namespace JuvoPlayer.TizenTests.Utils
             drmManager.RegisterDrmHandler(new CencHandler());
             drmManager.RegisterDrmHandler(new DummyDrmHandler());
 
-            var player = new EsPlayer();
-            
+            if (window == null)
+                window = WindowUtils.CreateElmSharpWindow();
+            var player = new EsPlayer(window);
+
             playerController = new PlayerController(player, drmManager);
             playerController.PlaybackCompleted += () =>
             {
