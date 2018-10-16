@@ -1,5 +1,5 @@
 ﻿// Copyright (c) 2018 Samsung Electronics Co., Ltd All Rights Reserved
-// PROPRIETARY/CONFIDENTIAL 
+// PROPRIETARY/CONFIDENTIAL
 // This software is the confidential and proprietary
 // information of SAMSUNG ELECTRONICS ("Confidential Information"). You shall
 // not disclose such Confidential Information and shall use it only in
@@ -12,9 +12,10 @@
 // this software or its derivatives.
 
 using System;
+using ElmSharp;
 using JuvoPlayer.Common;
 using JuvoLogger;
-using ESPlayer = Tizen.TV.Multimedia.ESPlayer;
+using JuvoPlayer.Utils;
 
 namespace JuvoPlayer.Player.EsPlayer
 {
@@ -45,6 +46,11 @@ namespace JuvoPlayer.Player.EsPlayer
         private EsPlayerState playerState;
 
         public EsPlayer()
+            : this(WindowUtils.CreateElmSharpWindow())
+        {
+        }
+
+        public EsPlayer(Window window)
         {
             try
             {
@@ -52,7 +58,7 @@ namespace JuvoPlayer.Player.EsPlayer
                 packetStorage.Initialize(StreamType.Audio);
                 packetStorage.Initialize(StreamType.Video);
 
-                streamControl = new EsStreamController(packetStorage);
+                streamControl = new EsStreamController(packetStorage, window);
                 streamControl.Initialize(StreamType.Audio);
                 streamControl.Initialize(StreamType.Video);
 
@@ -186,7 +192,7 @@ namespace JuvoPlayer.Player.EsPlayer
         {
             logger.Info("");
 
-            // ESPlayer is already receiving data at this point, but 
+            // ESPlayer is already receiving data at this point, but
             // ESPlayer.Play() has not been called yet.
             // Notify UI so it issues EsPlayer.Play()
             //

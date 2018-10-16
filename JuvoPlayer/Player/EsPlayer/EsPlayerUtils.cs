@@ -1,5 +1,5 @@
 ﻿// Copyright (c) 2018 Samsung Electronics Co., Ltd All Rights Reserved
-// PROPRIETARY/CONFIDENTIAL 
+// PROPRIETARY/CONFIDENTIAL
 // This software is the confidential and proprietary
 // information of SAMSUNG ELECTRONICS ("Confidential Information"). You shall
 // not disclose such Confidential Information and shall use it only in
@@ -17,7 +17,6 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using JuvoPlayer.Common.Utils;
-using Window = ElmSharp.Window;
 using ESPlayer = Tizen.TV.Multimedia;
 using StreamType = JuvoPlayer.Common.StreamType;
 
@@ -114,10 +113,10 @@ namespace JuvoPlayer.Player.EsPlayer
     /// Helper class for cancelling non cancellable async operations
     /// SeekAsync, PrepareAsync, etc.
     /// Idea snatched from:
-    /// 
+    ///
     /// https://blogs.msdn.microsoft.com/pfxteam/2012/10/05/how-do-i-cancel-non-cancelable-async-operations/
     /// https://docs.microsoft.com/en-us/dotnet/api/microsoft.visualstudio.threading.threadingtools.withcancellation?view=visualstudiosdk-2017
-    /// 
+    ///
     /// </summary>
     internal static class TaskExtensions
     {
@@ -187,37 +186,6 @@ namespace JuvoPlayer.Player.EsPlayer
     /// </summary>
     internal static class EsPlayerUtils
     {
-        public static readonly int DefaultWindowWidth = 1920;
-        public static readonly int DefaultWindowHeight = 1080;
-
-        internal static Window CreateWindow(int width, int height)
-        {
-            var window = new Window("JuvoPlayer")
-            {
-                Geometry = new ElmSharp.Rect(0, 0, width, height)
-            };
-
-            // Sample code calls following API:
-            // skipping geometry settings
-            //
-            // window.Resize(width, height);
-            // window.Realize(null);
-            // window.Active();
-            // window.Show();
-            // 
-            // Does not seem to be necessary in case of Juvo/Xamarin
-            //
-
-            return window;
-        }
-
-        internal static void DestroyWindow(ref Window window)
-        {
-            window.Hide();
-            window.Unrealize();
-            window = null;
-        }
-
         internal static Common.StreamType JuvoStreamType(this ESPlayer.StreamType esStreamType)
         {
             return esStreamType == ESPlayer.StreamType.Video ?

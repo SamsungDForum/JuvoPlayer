@@ -6,7 +6,6 @@ using NUnit.Framework;
 namespace JuvoPlayer.TizenTests.IntegrationTests
 {
     [TestFixture]
-    [Ignore("These tests usually cause crashes/hangs/out of memory issues")]
     class TSPlayerService
     {
         [TestCase("Clean MP4 over HTTP")]
