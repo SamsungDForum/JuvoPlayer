@@ -1,5 +1,5 @@
 ﻿// Copyright (c) 2018 Samsung Electronics Co., Ltd All Rights Reserved
-// PROPRIETARY/CONFIDENTIAL 
+// PROPRIETARY/CONFIDENTIAL
 // This software is the confidential and proprietary
 // information of SAMSUNG ELECTRONICS ("Confidential Information"). You shall
 // not disclose such Confidential Information and shall use it only in
@@ -19,6 +19,8 @@ using System.Linq;
 using System.Threading;
 using ESPlayer = Tizen.TV.Multimedia;
 using System.Threading.Tasks;
+using ElmSharp;
+using JuvoPlayer.Utils;
 using Nito.AsyncEx;
 
 namespace JuvoPlayer.Player.EsPlayer
@@ -42,6 +44,7 @@ namespace JuvoPlayer.Player.EsPlayer
         // Reference to ESPlayer & associated window
         private ESPlayer.ESPlayer player;
         private ElmSharp.Window displayWindow;
+        private readonly bool usesExternalWindow = true;
 
         // event callbacks
         public event TimeUpdated TimeUpdated;
@@ -69,30 +72,36 @@ namespace JuvoPlayer.Player.EsPlayer
         private AsyncLock asyncOpSerializer = new AsyncLock();
 
         #region Public API
+
         public void Initialize(Common.StreamType stream)
         {
             lock (initializeLock)
             {
                 logger.Info(stream.ToString());
 
-                if (dataStreams[(int)stream] != null)
+                if (dataStreams[(int) stream] != null)
                 {
                     throw new ArgumentException($"Stream {stream} already initialized");
                 }
 
                 // Create new data stream in its place
                 //
-                dataStreams[(int)stream] = new EsStream(stream, packetStorage);
-                dataStreams[(int)stream].SetPlayer(player);
-                dataStreams[(int)stream].ReconfigureStream += OnStreamReconfigure;
+                dataStreams[(int) stream] = new EsStream(stream, packetStorage);
+                dataStreams[(int) stream].SetPlayer(player);
+                dataStreams[(int) stream].ReconfigureStream += OnStreamReconfigure;
             }
         }
 
         public EsStreamController(EsPlayerPacketStorage storage)
+            : this(storage,
+                WindowUtils.CreateElmSharpWindow())
         {
-            // Create player & window
-            displayWindow =
-                EsPlayerUtils.CreateWindow(EsPlayerUtils.DefaultWindowWidth, EsPlayerUtils.DefaultWindowHeight);
+            usesExternalWindow = false;
+        }
+
+        public EsStreamController(EsPlayerPacketStorage storage, Window window)
+        {
+            displayWindow = window;
 
             player = new ESPlayer.ESPlayer();
 
@@ -103,7 +112,7 @@ namespace JuvoPlayer.Player.EsPlayer
             packetStorage = storage;
 
             // Create placeholder to data streams.
-            dataStreams = new EsStream[(int)StreamType.Count];
+            dataStreams = new EsStream[(int) StreamType.Count];
 
             // Create storage places
             //attach event handlers
@@ -123,7 +132,7 @@ namespace JuvoPlayer.Player.EsPlayer
             var streamType = configPacket.StreamType;
             try
             {
-                var pushResult = dataStreams[(int)streamType].SetStreamConfig(configPacket);
+                var pushResult = dataStreams[(int) streamType].SetStreamConfig(configPacket);
 
                 // Configuration queued. Do not prepare stream :)
                 if (pushResult == EsStream.SetStreamConfigResult.ConfigQueued)
@@ -140,7 +149,7 @@ namespace JuvoPlayer.Player.EsPlayer
             catch (NullReferenceException)
             {
                 // packetQueue can hold ALL StreamTypes, but not all of them
-                // have to be supported. 
+                // have to be supported.
                 logger.Warn($"Uninitialized Stream Type {streamType}");
             }
             catch (OperationCanceledException)
@@ -153,7 +162,7 @@ namespace JuvoPlayer.Player.EsPlayer
             }
             catch (InvalidOperationException)
             {
-                // Queue has been marked as completed 
+                // Queue has been marked as completed
                 logger.Warn($"Data queue terminated for stream: {streamType}");
             }
         }
@@ -251,13 +260,13 @@ namespace JuvoPlayer.Player.EsPlayer
                 var token = activeTaskCts.Token;
 
                 StreamSeek(time, token);
-
             }
             catch (OperationCanceledException)
             {
                 logger.Info("Operation Canceled");
             }
         }
+
         #endregion
 
         #region Private Methods
@@ -284,7 +293,8 @@ namespace JuvoPlayer.Player.EsPlayer
         }
 
         #endregion
-        #region ESPlayer event handlers    
+
+        #region ESPlayer event handlers
 
         private void OnBufferStatusChanged(object sender, ESPlayer.BufferStatusEventArgs buffArgs)
         {
@@ -299,7 +309,7 @@ namespace JuvoPlayer.Player.EsPlayer
         /// <summary>
         /// ESPlayer event handler. Notifies that ALL played streams have
         /// completed playback (EOS was sent on all of them)
-        /// Methods 
+        /// Methods
         /// </summary>
         /// <param name="sender">Object</param>
         /// <param name="eosArgs">ESPlayer.EosArgs</param>
@@ -348,10 +358,9 @@ namespace JuvoPlayer.Player.EsPlayer
 
             logger.Info(streamType.ToString());
 
-            dataStreams[(int)streamType].Start();
+            dataStreams[(int) streamType].Start();
 
             logger.Info($"{streamType}: Completed");
-
         }
 
         private void OnReadyToSeekStream(ESPlayer.StreamType esPlayerStreamType, TimeSpan time)
@@ -359,6 +368,7 @@ namespace JuvoPlayer.Player.EsPlayer
             logger.Info($"{esPlayerStreamType}: {time}");
             OnReadyToStartStream(esPlayerStreamType);
         }
+
         #endregion
 
         /// <summary>
@@ -421,7 +431,7 @@ namespace JuvoPlayer.Player.EsPlayer
                     StopClockGenerator();
 
                     // Stop any underlying async ops
-                    // 
+                    //
                     var terminations = CompleteDataStreams();
                     terminations.Add(clockGenerator);
 
@@ -557,7 +567,6 @@ namespace JuvoPlayer.Player.EsPlayer
 
             foreach (var esStream in dataStreams.Where(esStream => esStream != null))
                 esStream.Disable();
-
         }
 
         /// <summary>
@@ -645,7 +654,9 @@ namespace JuvoPlayer.Player.EsPlayer
         #endregion
 
         #region Dispose support
+
         private bool isDisposed;
+
         public void Dispose()
         {
             if (isDisposed)
@@ -703,7 +714,9 @@ namespace JuvoPlayer.Player.EsPlayer
 
             // Don't call Close. Dispose does that. Otherwise exceptions will fly
             player.Dispose();
-            EsPlayerUtils.DestroyWindow(ref displayWindow);
+            if (usesExternalWindow == false)
+                WindowUtils.DestroyElmSharpWindow(displayWindow);
+            displayWindow = null;
             player = null;
 
             // Clean up internal object
@@ -718,9 +731,8 @@ namespace JuvoPlayer.Player.EsPlayer
             packetStorage = null;
 
             isDisposed = true;
-
         }
-        #endregion
 
+        #endregion
     }
 }
