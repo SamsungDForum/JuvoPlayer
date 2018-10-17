@@ -29,7 +29,7 @@
   },
   {
     "title": "Encrypted 4K MPEG DASH",
-    "url": "http://106.120.45.49/tears_of_steel/manifest(format=mpd-time-csf)",
+    "url": "http://profficialsite.origin.mediaservices.windows.net/c51358ea-9a5e-4322-8951-897d640fdfd7/tearsofsteel_4k.ism/manifest(format=mpd-time-csf)",
     "type": "dash",
     "description": "1280x572 AZURE MEDIA SERVICES ON DEMAND H264 AAC 4K CENC PLAYREADY 2.0. Origin https://test.playready.microsoft.com/Content/Content2X. URI: http://profficialsite.origin.mediaservices.windows.net/c51358ea-9a5e-4322-8951-897d640fdfd7/tearsofsteel_4k.ism/manifest(format=mpd-time-csf)",
     "poster": "tos-poster.jpg",
