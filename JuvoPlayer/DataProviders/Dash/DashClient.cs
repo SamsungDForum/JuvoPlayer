@@ -17,9 +17,9 @@ namespace JuvoPlayer.DataProviders.Dash
         private const string Tag = "JuvoPlayer";
 
         private static readonly ILogger Logger = LoggerManager.GetInstance().GetLogger(Tag);
-        private static readonly TimeSpan timeBufferDepthDefault = TimeSpan.FromSeconds(10);
-        private static readonly TimeSpan maxBufferTime = TimeSpan.FromSeconds(15);
-        private static readonly TimeSpan minBufferTime = TimeSpan.FromSeconds(5);
+        private static readonly TimeSpan timeBufferDepthDefault = TimeSpan.FromSeconds(15);
+        private static readonly TimeSpan maxBufferTime = TimeSpan.FromSeconds(20);
+        private static readonly TimeSpan minBufferTime = TimeSpan.FromSeconds(10);
 
         private TimeSpan timeBufferDepth = timeBufferDepthDefault;
 
@@ -54,10 +54,10 @@ namespace JuvoPlayer.DataProviders.Dash
         /// true - Underlying player received MagicBufferTime ammount of data
         /// false - Underlying player has at least some portion of MagicBufferTime left and can
         /// continue to accept data.
-        /// 
+        ///
         /// Buffer full is an indication of how much data (in units of time) has been pushed to the player.
         /// MagicBufferTime defines how much data (in units of time) can be pushed before Client needs to
-        /// hold off further pushes. 
+        /// hold off further pushes.
         /// TimeTicks (current time) received from the player are an indication of how much data (in units of time)
         /// player consumed.
         /// A difference between buffer time (data being pushed to player in units of time) and current tick time (currentTime)
@@ -104,8 +104,8 @@ namespace JuvoPlayer.DataProviders.Dash
             currentSegmentId = currentStreams.SegmentId(position);
             var seekToTimeRange = currentStreams.SegmentTimeRange(currentSegmentId);
 
-            // We are not expecting NULL segments after seek. 
-            // Termination will occour after restarting 
+            // We are not expecting NULL segments after seek.
+            // Termination will occour after restarting
             if (seekToTimeRange == null)
             {
                 LogError($"Seek Pos Req: {position} failed. No segment/TimeRange found");
@@ -116,7 +116,7 @@ namespace JuvoPlayer.DataProviders.Dash
             {
                 // Set "current time" to end time of segment which will be downloaded.
                 // Rational: In case of long segment duration and short buffer times we may buffer just one segment.
-                // If IFrame is at the very end of downloaded segment, underlaying player may NOT have enough 
+                // If IFrame is at the very end of downloaded segment, underlaying player may NOT have enough
                 // data to generate OnTime events, effectively stopping playback
                 //
                 // TODO: Add to SMPlayer.cs generation of OnCurrentTime for packets discarded during IFrame seek operation
@@ -407,8 +407,8 @@ namespace JuvoPlayer.DataProviders.Dash
 
             // Temporary prevention caused by out of order download processing.
             // Wait for download task to complete. Stale cancellations
-            // may happen during FF/REW operations. 
-            // If received after client start may result in lack of further download requests 
+            // may happen during FF/REW operations.
+            // If received after client start may result in lack of further download requests
             // being issued. Once download handler are serialized, should be safe to remove.
             WaitForTaskCompletionNoError(scheduleNextTask);
             WaitForTaskCompletionNoError(downloadDataTask);
@@ -458,9 +458,6 @@ namespace JuvoPlayer.DataProviders.Dash
         /// <param name="representation"></param>
         public void UpdateRepresentation(Representation representation)
         {
-            if (!IsDynamic)
-                return;
-
             Interlocked.Exchange(ref newRepresentation, representation);
             LogInfo("newRepresentation set");
 
@@ -498,7 +495,7 @@ namespace JuvoPlayer.DataProviders.Dash
                 return;
             }
 
-            var newSeg = currentStreams.NextSegmentId(lastDownloadSegmentTimeRange.Start);
+            var newSeg = currentSegmentId;
             string message;
 
             if (newSeg.HasValue)
@@ -554,6 +551,8 @@ namespace JuvoPlayer.DataProviders.Dash
         private async Task<DownloadResponse> CreateDownloadTask(Segment segment, bool ignoreError, uint? segmentId, CancellationToken cancelToken)
         {
             var timeout = CalculateDownloadTimeout(segment);
+
+            Logger.Info($"Calculated download timeout is {timeout.TotalMilliseconds}");
 
             var requestData = new DownloadRequest
             {
