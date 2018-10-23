@@ -1,7 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Threading;
 using System.Threading.Tasks;
 using JuvoLogger;
 using JuvoPlayer.Common;
@@ -114,8 +112,6 @@ namespace JuvoPlayer.DataProviders.Dash
                     break;
                 case StreamType.Subtitle:
                     OnChangeActiveSubtitleStream(stream);
-                    break;
-                default:
                     break;
             }
         }
