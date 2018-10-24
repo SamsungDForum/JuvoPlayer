@@ -7,6 +7,10 @@
   <feature 
     name="http://tizen.org/feature/screen.size.normal.1080.1920">true</feature>
     <profile name="tv" />
+    <app-control>
+    <src name="index.html" reload="disable"/>
+    <operation name="http://samsung.com/appcontrol/operation/eden_resume"/>
+    </app-control>
     <ui-application 
       appid="JuvoPlayerXamarin.Tizen.TV" 
       exec="JuvoPlayerXamarin.Tizen.TV.dll" 
@@ -16,9 +20,12 @@
       splash-screen-display="true" 
       type="dotnet" 
       launch_mode="single">
-        <label>JuvoPlayerXamarin.Tizen.TV</label>        
-        <icon>JuvoPlayerXamarinTizenTV.png</icon>
-        <splash-screens />
+      <label>JuvoPlayerXamarin.Tizen.TV</label>        
+      <icon>JuvoPlayerXamarinTizenTV.png</icon>
+      <metadata key="http://samsung.com/tv/metadata/mountinstall"  value="false" />
+      <metadata key="http://samsung.com/tv/metadata/devel.api.version" value="2.4"/>
+      <metadata key="http://samsung.com/tv/metadata/use.preview" value="endpoint_URL=https://developer.samsung.com/onlinedocs/tv/Preview/sampleJSON.json"/>
+      <splash-screens />
     </ui-application>
     <shortcut-list />
     <privileges>
