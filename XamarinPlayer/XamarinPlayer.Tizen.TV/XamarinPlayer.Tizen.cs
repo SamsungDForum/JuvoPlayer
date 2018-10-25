@@ -2,16 +2,19 @@ using System;
 using System.Text;
 using ElmSharp;
 using JuvoLogger.Tizen;
+using JuvoLogger;
 using Tizen;
 using Tizen.Applications;
 using XamarinPlayer.Services;
 
 namespace XamarinPlayer.Tizen
 {
-    class Program : global::Xamarin.Forms.Platform.Tizen.FormsApplication, IKeyEventSender
-    {
-        EcoreEvent<EcoreKeyEventArgs> _keyDown;
+    
 
+    class Program : global::Xamarin.Forms.Platform.Tizen.FormsApplication, IKeyEventSender, IPreviewPayloadEventSender
+    {
+        EcoreEvent<EcoreKeyEventArgs> _keyDown, _payloadSent;
+        private static ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
         public static readonly string Tag = "JuvoPlayer";
 
         protected override void OnCreate()
@@ -24,29 +27,13 @@ namespace XamarinPlayer.Tizen
             _keyDown = new EcoreEvent<EcoreKeyEventArgs>(EcoreEventType.KeyDown, EcoreKeyEventArgs.Create);
             _keyDown.On += (s, e) =>
             {
-                // Send key event to the portable project using MessagingCenter
+                // Send key event to the portable project using MessagingCenter                
                 Xamarin.Forms.MessagingCenter.Send<IKeyEventSender, string>(this, "KeyDown", e.KeyName);
-            };
-
-            App app = new App();
+            };            
             
-            LoadApplication(app);
+            LoadApplication(new App());
         }
-
-        static void AppControlReplyCallback(AppControl launchRequest, AppControl replyRequest, AppControlReplyResult result)
-        {
-            string callerAppId;
-            string selected;
-
-            Log.Info("BOO", " AppControlReplyCallback launched");
-
-            if (result >= AppControlReplyResult.Succeeded)
-            {
-                /// Get the value of ExtraData sent by callee
-                callerAppId = replyRequest.ExtraData.Get<string>("CallerApplicationId");
-                selected = replyRequest.ExtraData.Get<string>(AppControlData.Selected);
-            }
-        }
+               
 
         static void UnhandledException(object sender, UnhandledExceptionEventArgs evt)
         {
@@ -63,9 +50,26 @@ namespace XamarinPlayer.Tizen
                 Log.Error(Tag, "Got unhandled exception event: " + evt);
             }
         }
-           
 
-        
+        protected override void OnAppControlReceived(AppControlReceivedEventArgs e)
+        {
+            /// Handle the launch request, show the user the task requested through the
+            /// "AppControlReceivedEventArgs" parameter
+            /// Smart Hub Preview fucntion requires the below code to identify which deeplink have to be launched            
+            ReceivedAppControl receivedAppControl = e.ReceivedAppControl;
+
+            //fetch the JSON metadata defined on the smart Hub preview web server
+            string payload = "";
+            receivedAppControl.ExtraData.TryGet("PAYLOAD", out payload);
+            Logger.Info($"Boo OnAppControlReceived... {payload} ");
+
+            // Send key event to the portable project using MessagingCenter           
+            Xamarin.Forms.MessagingCenter.Send<IPreviewPayloadEventSender, string>(this, "PayloadSent", payload);            
+            
+
+            base.OnAppControlReceived(e);
+        }
+
 
         static void Main(string[] args)
         {

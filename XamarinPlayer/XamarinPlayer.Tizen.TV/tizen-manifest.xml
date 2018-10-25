@@ -9,7 +9,7 @@
     <profile name="tv" />
     <app-control>
     <src name="index.html" reload="disable"/>
-    <operation name="http://samsung.com/appcontrol/operation/eden_resume"/>
+      <operation name="http://samsung.com/appcontrol/operation/eden_resume"/>
     </app-control>
     <ui-application 
       appid="JuvoPlayerXamarin.Tizen.TV" 

@@ -45,7 +45,11 @@ namespace XamarinPlayer.Views
             PropertyChanged += PlayerViewPropertyChanged;
 
             MessagingCenter.Subscribe<IKeyEventSender, string>(this, "KeyDown", (s, e) => { KeyEventHandler(e); });
+            MessagingCenter.Subscribe<IPreviewPayloadEventSender, string>(this, "PayloadSent", (s, e) => { PayloadHandler(e);});
+
         }
+
+
 
         private void Play()
         {
@@ -53,6 +57,11 @@ namespace XamarinPlayer.Views
                 _playerService.Pause();
             else
                 _playerService.Start();
+        }
+
+        private void PayloadHandler(string e)
+        {
+            Logger.Info($"PayloadHandler... {e}");
         }
 
         private void KeyEventHandler(string e)
