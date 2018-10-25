@@ -34,7 +34,6 @@ namespace JuvoPlayer.Player.EsPlayer
         public event SeekCompleted SeekCompleted;
         public event TimeUpdated TimeUpdated;
         public event BufferStatus BufferStatus;
-        public event PlaybackRestart PlaybackRestart;
 
         private static readonly ILogger logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
 
@@ -69,7 +68,7 @@ namespace JuvoPlayer.Player.EsPlayer
                 streamControl.PlaybackError += OnPlaybackError;
                 streamControl.SeekCompleted += OnSeekCompleted;
                 streamControl.BufferStatus += OnBufferStatusChange;
-                streamControl.PlaybackRestart += OnPlaybackRestart;
+
 
                 // Initialize player state
                 playerState = EsPlayerState.Stopped;
@@ -144,10 +143,10 @@ namespace JuvoPlayer.Player.EsPlayer
             playerState = EsPlayerState.Stopped;
         }
 
-        public void Seek(TimeSpan time)
+        public uint Seek(TimeSpan time)
         {
             logger.Info("");
-            streamControl.Seek(time);
+            return streamControl.Seek(time);
         }
 
         public void SetDuration(TimeSpan duration)
@@ -192,10 +191,11 @@ namespace JuvoPlayer.Player.EsPlayer
         {
             logger.Info("");
 
-            // ESPlayer is already receiving data at this point, but
-            // ESPlayer.Play() has not been called yet.
-            // Notify UI so it issues EsPlayer.Play()
-            //
+            // ESPlayer is already receiving data at this point, with play called.
+            // Change state to playing to prevent CB from invoking play again.
+
+            playerState = EsPlayerState.Playing;
+
             PlayerInitialized?.Invoke();
         }
 
@@ -218,11 +218,6 @@ namespace JuvoPlayer.Player.EsPlayer
             SeekCompleted?.Invoke();
         }
 
-        private void OnPlaybackRestart(TimeSpan time)
-        {
-            logger.Info(time.ToString());
-            PlaybackRestart?.Invoke(time);
-        }
         #endregion
         #endregion
 
@@ -243,7 +238,6 @@ namespace JuvoPlayer.Player.EsPlayer
                     streamControl.PlaybackError -= OnPlaybackError;
                     streamControl.SeekCompleted -= OnSeekCompleted;
                     streamControl.BufferStatus -= OnBufferStatusChange;
-                    streamControl.PlaybackRestart -= OnPlaybackRestart;
 
                     // Clean packet storage and stream controller
                     logger.Info("StreamController and PacketStorage shutdown");

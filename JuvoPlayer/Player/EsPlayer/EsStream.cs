@@ -37,9 +37,11 @@ namespace JuvoPlayer.Player.EsPlayer
     }
 
     /// <summary>
-    /// Internal EsPlayer event. Called when stream has to be reconfigured
+    /// Internal EsPlayer events:
+    /// Stream Reconfiguration & chunk transfer completion.
     /// </summary>
     internal delegate void StreamReconfigure();
+    internal delegate void ChunkCompleted(StreamType streamType, TimeSpan chunkDuration, ulong dataLength, CancellationToken token);
 
     /// <summary>
     /// Class representing and individual stream being transferred
@@ -50,6 +52,12 @@ namespace JuvoPlayer.Player.EsPlayer
         {
             ConfigPushed,
             ConfigQueued
+        }
+
+        internal enum SeekResult
+        {
+            Ok,
+            RestartRequired
         }
 
         private readonly ILogger logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
@@ -63,11 +71,15 @@ namespace JuvoPlayer.Player.EsPlayer
         private readonly EsPlayerPacketStorage packetStorage;
 
         // transfer task & cancellation token
-        private Task transferTask = Task.CompletedTask;
+        private Task activeTask = Task.CompletedTask;
         private CancellationTokenSource transferCts;
 
         // Stream type for this instance to EsStream.
         private readonly Common.StreamType streamType;
+
+        // chunk transfer support elements. Max chunk size & wakeup object
+        private static readonly TimeSpan transferChunk = TimeSpan.FromSeconds(4);
+        private ManualResetEventSlim wakeup;
 
         // Buffer configuration and supporting info
         public BufferConfigurationPacket CurrentConfig { get; internal set; }
@@ -77,8 +89,10 @@ namespace JuvoPlayer.Player.EsPlayer
         // that can be externally accessed
         private readonly object syncLock = new object();
 
-        // Event - Invoked when stream requires reconfiguration
+        // Events
         public event StreamReconfigure ReconfigureStream;
+        public event PlaybackError PlaybackError;
+
 
         #region Public API
 
@@ -98,6 +112,8 @@ namespace JuvoPlayer.Player.EsPlayer
                 default:
                     throw new ArgumentException($"Stream Type {streamType} is unsupported");
             }
+
+            wakeup = new ManualResetEventSlim(false);
         }
 
         /// <summary>
@@ -155,7 +171,6 @@ namespace JuvoPlayer.Player.EsPlayer
             }
         }
 
-
         /// <summary>
         /// Public API for starting data transfer
         /// </summary>
@@ -167,10 +182,12 @@ namespace JuvoPlayer.Player.EsPlayer
         /// <summary>
         /// Public API for stopping data transfer
         /// </summary>
+
         public void Stop()
         {
             DisableTransfer();
         }
+
 
         /// <summary>
         /// Public API for disabling data transfer. Once called, no further
@@ -185,16 +202,108 @@ namespace JuvoPlayer.Player.EsPlayer
         /// Awaitable function. Will return when a running task terminates.
         /// </summary>
         /// <returns></returns>
-        public async Task AwaitCompletion()
+        public Task GetActiveTask()
         {
-            logger.Info("");
-            await transferTask;
-            logger.Info("Done");
+            return activeTask;
         }
+
+        public void Wakeup()
+        {
+            logger.Info($"{streamType}:");
+            wakeup.Set();
+        }
+
+        public Task<SeekResult> Seek(uint seekId, TimeSpan seekPosition, CancellationToken token)
+        {
+            return Task.Factory.StartNew(() => SeekTask(seekId, seekPosition, token), token);
+        }
+
+
         #endregion
 
         #region Private Methods
 
+        /// <summary>
+        /// Seek Task. Performs seek to specified seekId, followed by seek to specified
+        /// seek position
+        /// </summary>
+        /// <param name="seekId">Seek ID to seek to</param>
+        /// <param name="seekPosition">seek position to seek to</param>
+        /// <param name="token">cancel token</param>
+        /// <returns></returns>
+        private SeekResult SeekTask(uint seekId, TimeSpan seekPosition, CancellationToken token)
+        {
+            bool keepSeeking = true;
+            bool checkTime = false;
+            SeekResult res = SeekResult.Ok;
+
+            logger.Info($"{streamType}: {seekId}");
+
+            do
+            {
+                try
+                {
+                    var packet = packetStorage.GetPacket(streamType, token);
+
+                    switch (packet)
+                    {
+                        case BufferConfigurationPacket bufferConfigPacket:
+
+
+                            CurrentConfig = bufferConfigPacket;
+
+                            if (CurrentConfig.Compatible(bufferConfigPacket))
+                                break;
+
+                            // Destructive stream change during seek.
+                            logger.Info($"{streamType}: Destructive config change during seek");
+                            res = SeekResult.RestartRequired;
+
+                            break;
+
+                        case SeekPacket seekPacket:
+                            if (seekPacket.SeekId != seekId)
+                                break;
+
+                            logger.Info($"{streamType}: Seek Id {seekId} found. Looking for time {seekPosition}");
+                            checkTime = true;
+
+                            break;
+                    }
+
+                    // When looking for time, ignore non data packets.
+                    // Their PTS are bogus.
+                    if (checkTime && packet.Data != null)
+                    {
+                        if (packet.Pts >= seekPosition)
+                            keepSeeking = false;
+                    }
+
+                    packet.Dispose();
+
+                }
+                catch (InvalidOperationException)
+                {
+                    logger.Info($"{streamType}: Stream completed");
+                }
+                catch (OperationCanceledException)
+                {
+                    logger.Info($"{streamType}: Seek cancelled");
+                }
+                catch (Exception e)
+                {
+                    logger.Error($"{streamType}: " + e.Message);
+                    logger.Error($"{streamType}: " + e.Source);
+                    logger.Error($"{streamType}: " + e.StackTrace);
+
+                    throw;
+                }
+
+            } while (keepSeeking);
+
+            return res;
+
+        }
         /// <summary>
         /// Audio Configuration push method.
         /// </summary>
@@ -242,9 +351,9 @@ namespace JuvoPlayer.Player.EsPlayer
             lock (syncLock)
             {
                 // No cancellation requested = task not stopped
-                if (!transferTask.IsCompleted)
+                if (!activeTask.IsCompleted)
                 {
-                    logger.Info($"{streamType}: Already running: {transferTask.Status}");
+                    logger.Info($"{streamType}: Already running: {activeTask.Status}");
                     return;
                 }
 
@@ -257,7 +366,7 @@ namespace JuvoPlayer.Player.EsPlayer
                 transferCts = new CancellationTokenSource();
                 var token = transferCts.Token;
 
-                transferTask = Task.Factory.StartNew(() => TransferTask(token), token);
+                activeTask = Task.Factory.StartNew(() => TransferTask(token), token);
             }
         }
 
@@ -276,6 +385,7 @@ namespace JuvoPlayer.Player.EsPlayer
             }
         }
 
+
         /// <summary>
         /// Disables further data transfer. Existing data in queue will continue
         /// to be pushed to the player.
@@ -287,97 +397,175 @@ namespace JuvoPlayer.Player.EsPlayer
             packetStorage.Disable(streamType);
         }
 
+
+        private bool ProcessPacket(Packet packet, CancellationToken transferToken)
+        {
+            bool continueProcessing = true;
+
+            switch (packet)
+            {
+                case Packet eosPacket when eosPacket.IsEOS:
+                    PushEosPacket(transferToken);
+                    continueProcessing = false;
+                    break;
+
+                case BufferConfigurationPacket bufferConfigPacket when
+                    !CurrentConfig.Compatible(bufferConfigPacket):
+
+                    CurrentConfig = bufferConfigPacket;
+
+                    logger.Info($"{streamType}: Incompatible Stream config change.");
+                    ReconfigureStream?.Invoke();
+
+                    // exit transfer task. This will prevent further transfers
+                    // Stops/Restarts will be called by reconfiguration handler.
+                    continueProcessing = false;
+                    break;
+
+                case BufferConfigurationPacket bufferConfigPacket when
+                    CurrentConfig.Compatible(bufferConfigPacket):
+
+                    CurrentConfig = bufferConfigPacket;
+
+                    logger.Info($"{streamType}: Compatible Stream config change");
+
+                    // Compatible stream change. Keep going
+                    break;
+
+                case EncryptedPacket encryptedPacket:
+                    PushEncryptedPacket(encryptedPacket, transferToken);
+                    break;
+
+                case Packet dataPacket when packet.IsEOS == false:
+                    PushUnencryptedPacket(dataPacket, transferToken);
+                    break;
+
+                default:
+                    throw new ArgumentException($"{streamType}: Unsupported packet type");
+            }
+
+            return continueProcessing;
+        }
+
+        private void DelayTransfer(TimeSpan delay, CancellationToken token)
+        {
+            logger.Info($"{streamType}: Transfer task restart in {delay}");
+            if (delay > TimeSpan.Zero)
+            {
+                logger.Info($"{streamType}: {delay}");
+                wakeup.Wait(delay, token);
+            }
+
+            wakeup.Reset();
+            logger.Info($"{streamType}: Transfer restarted");
+
+        }
+
         /// <summary>
         /// Transfer task. Retrieves data from underlying storage and pushes it down
         /// to ESPlayer
         /// </summary>
         /// <param name="token">CancellationToken</param>
-        //private async Task TransferTask(CancellationToken token)
         private void TransferTask(CancellationToken token)
         {
             logger.Info($"{streamType}: Transfer task started");
 
-            var disableTransfer = false;
+            var disableInput = false;
+            TimeSpan currentTransfer = TimeSpan.Zero;
+            var haltTransfer = false;
+            ulong dataLength = 0;
+            TimeSpan? firstPts = null;
+            DateTime startTime = DateTime.Now;
+            bool invokeError = false;
 
             try
             {
+                bool repeat;
                 do
                 {
-                    var packet = packetStorage.GetPacket(streamType, token);
-
-                    switch (packet)
+                    if (haltTransfer)
                     {
-                        case Packet eosPacket when eosPacket.IsEOS:
-                            PushEosPacket(token);
-                            disableTransfer = true;
-                            return;
+                        var delay = currentTransfer - (DateTime.Now - startTime);
 
-                        case BufferConfigurationPacket bufferConfigPacket when
-                            !CurrentConfig.Compatible(bufferConfigPacket):
+                        logger.Info(
+                            $"{streamType}: Transfer task halted. {currentTransfer}/{(float)dataLength / 1024} kB pushed");
 
-                            CurrentConfig = bufferConfigPacket;
+                        DelayTransfer(delay, token);
 
-                            logger.Info($"{streamType}: Incompatible Stream config change.");
-                            ReconfigureStream?.Invoke();
-
-                            // exit transfer task. This will prevent further transfers
-                            // Stops/Restarts will be called by reconfiguration handler.
-                            return;
-
-                        case BufferConfigurationPacket bufferConfigPacket when
-                            CurrentConfig.Compatible(bufferConfigPacket):
-
-                            CurrentConfig = bufferConfigPacket;
-
-                            logger.Info($"{streamType}: Compatible Stream config change");
-
-                            // exit transfer task. This will prevent further transfers
-                            // Stops/Restarts will be called by reconfiguration handler.
-                            break;
-
-                        case EncryptedPacket encryptedPacket:
-                            PushEncryptedPacket(encryptedPacket, token);
-                            break;
-
-                        case Packet dataPacket when packet.IsEOS == false:
-                            PushUnencryptedPacket(dataPacket, token);
-                            break;
+                        firstPts = null;
+                        dataLength = 0;
+                        haltTransfer = false;
+                        currentTransfer = TimeSpan.Zero;
                     }
 
-                } while (!token.IsCancellationRequested);
+                    var packet = packetStorage.GetPacket(streamType, token);
+
+                    // Ignore non data packets (EOS/BufferChange/etc.)
+                    if (packet.Data != null)
+                    {
+                        dataLength += (ulong)packet.Data.Length;
+
+                        if (firstPts.HasValue)
+                        {
+                            currentTransfer = packet.Pts - firstPts.Value;
+
+                            if (currentTransfer >= transferChunk)
+                                haltTransfer = true;
+                        }
+                        else
+                        {
+                            firstPts = packet.Pts;
+                            startTime = DateTime.Now;
+                        }
+                    }
+
+                    repeat = ProcessPacket(packet, token);
+                    repeat &= !token.IsCancellationRequested;
+                } while (repeat);
+
             }
             catch (InvalidOperationException)
             {
                 logger.Info($"{streamType}: Stream completed");
-                disableTransfer = true;
             }
             catch (OperationCanceledException)
             {
-                logger.Info($"{streamType}: Transfer stopped");
-
-                // Operation is cancelled thus Stop/StopInternal has already been
-                // called. No need to repeat.
+                logger.Info($"{streamType}: Transfer cancelled");
             }
             catch (PacketSubmitException pse)
             {
                 logger.Error($"{streamType}: Submit Error " + pse.SubmitStatus);
-                disableTransfer = true;
+                disableInput = true;
+
             }
             catch (DrmException drme)
             {
                 logger.Error($"{streamType}: Decrypt Error: " + drme.Message);
-                disableTransfer = true;
-            }
-            finally
-            {
-                if (disableTransfer)
-                {
-                    logger.Info($"{streamType}: Disabling transfer");
-                    DisableInput();
-                }
+                disableInput = true;
 
-                logger.Info($"{streamType}: Transfer task terminated");
             }
+            catch (Exception e)
+            {
+                // Dump unhandled exception. Running as a task so they will not be reported.
+                logger.Error($"{streamType}: " + e.Message);
+                logger.Error($"{streamType}: " + e.Source);
+                logger.Error($"{streamType}: " + e.StackTrace);
+                invokeError = true;
+            }
+
+
+            if (disableInput)
+            {
+                logger.Info($"{streamType}: Disabling Input");
+                DisableInput();
+            }
+
+            logger.Info(
+                $"{streamType}: Transfer task terminated. {currentTransfer}/{(float)dataLength / 1024} kB pushed");
+
+            if (invokeError)
+                PlaybackError?.Invoke("Playback Error");
+
         }
 
         /// <summary>
@@ -428,7 +616,8 @@ namespace JuvoPlayer.Player.EsPlayer
 
                     doRetry = ShouldRetry(res, token);
 
-                    logger.Debug($"{esPacket.type}: ({!doRetry}/{res}) PTS: {esPacket.pts} Duration: {esPacket.duration} Handle: {esPacket.handle} HandleSize: {esPacket.handleSize}");
+                    logger.Debug(
+                        $"{esPacket.type}: ({!doRetry}/{res}) PTS: {esPacket.pts} Duration: {esPacket.duration} Handle: {esPacket.handle} HandleSize: {esPacket.handleSize}");
 
                 } while (doRetry && !token.IsCancellationRequested);
             }
@@ -522,6 +711,9 @@ namespace JuvoPlayer.Player.EsPlayer
                 transferCts.Dispose();
                 transferCts = null;
             }
+
+            wakeup.Dispose();
+            wakeup = null;
 
             isDisposed = true;
         }

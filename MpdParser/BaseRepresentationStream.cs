@@ -142,6 +142,13 @@ namespace MpdParser.Node.Dynamic
                 // No need to add any special error handling for failed downloads. Indexed content
                 // will return null segments if no index data is present.
             }
+            catch (Exception e)
+            {
+                Logger.Error($"Downloading Index Segment FAILED {IndexSegment.Url}");
+                Logger.Error(e.Message);
+                Logger.Error(e.Source);
+                Logger.Error(e.StackTrace);
+            }
         }
 
 
