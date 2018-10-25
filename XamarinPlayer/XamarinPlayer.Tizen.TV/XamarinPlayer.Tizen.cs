@@ -3,6 +3,7 @@ using System.Text;
 using ElmSharp;
 using JuvoLogger.Tizen;
 using Tizen;
+using Tizen.Applications;
 using XamarinPlayer.Services;
 
 namespace XamarinPlayer.Tizen
@@ -27,7 +28,24 @@ namespace XamarinPlayer.Tizen
                 Xamarin.Forms.MessagingCenter.Send<IKeyEventSender, string>(this, "KeyDown", e.KeyName);
             };
 
-            LoadApplication(new App());
+            App app = new App();
+            
+            LoadApplication(app);
+        }
+
+        static void AppControlReplyCallback(AppControl launchRequest, AppControl replyRequest, AppControlReplyResult result)
+        {
+            string callerAppId;
+            string selected;
+
+            Log.Info("BOO", " AppControlReplyCallback launched");
+
+            if (result >= AppControlReplyResult.Succeeded)
+            {
+                /// Get the value of ExtraData sent by callee
+                callerAppId = replyRequest.ExtraData.Get<string>("CallerApplicationId");
+                selected = replyRequest.ExtraData.Get<string>(AppControlData.Selected);
+            }
         }
 
         static void UnhandledException(object sender, UnhandledExceptionEventArgs evt)
@@ -45,15 +63,19 @@ namespace XamarinPlayer.Tizen
                 Log.Error(Tag, "Got unhandled exception event: " + evt);
             }
         }
+           
+
+        
 
         static void Main(string[] args)
         {
             TizenLoggerManager.Configure();
             AppDomain.CurrentDomain.UnhandledException += UnhandledException;
-
+            
             var app = new Program();
-            global::Xamarin.Forms.Platform.Tizen.Forms.Init(app);
-            app.Run(args);
+            
+            global::Xamarin.Forms.Platform.Tizen.Forms.Init(app);            
+            app.Run(args);            
         }
     }
 }
