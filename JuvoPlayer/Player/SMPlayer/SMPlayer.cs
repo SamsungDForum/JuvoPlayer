@@ -81,7 +81,6 @@ namespace JuvoPlayer.Player.SMPlayer
         public event SeekCompleted SeekCompleted;
         public event TimeUpdated TimeUpdated;
         public event BufferStatus BufferStatus;
-        public event PlaybackRestart PlaybackRestart;
 
         private readonly SmplayerWrapper playerInstance;
 
@@ -471,7 +470,7 @@ namespace JuvoPlayer.Player.SMPlayer
                 Logger.Error("Play failed.");
         }
 
-        public void Seek(TimeSpan time)
+        public uint Seek(TimeSpan time)
         {
             Logger.Info("");
             ThrowIfDisposed();
@@ -490,6 +489,8 @@ namespace JuvoPlayer.Player.SMPlayer
             // Reset packet queue as late as possible to remove any stale data that might
             // be put there by still running data provider client.
             ResetPacketsQueues();
+
+            return 0;
         }
 
         private void DisposeEncryptedPackets(ConcurrentQueue<Packet> audio, ConcurrentQueue<Packet> video)

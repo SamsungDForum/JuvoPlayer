@@ -18,7 +18,7 @@ namespace JuvoPlayer.Player
 {
     public delegate void Pause();
     public delegate void Play();
-    public delegate void Seek(TimeSpan time);
+    public delegate void Seek(TimeSpan time, uint seekId);
     public delegate void Stop();
 
     public interface IPlayerController : IDisposable
@@ -55,6 +55,5 @@ namespace JuvoPlayer.Player
         event PlayerInitialized PlayerInitialized;
         event TimeUpdated TimeUpdated;
         event SeekCompleted SeekCompleted;
-        event PlaybackRestart PlaybackRestart;
     }
 }

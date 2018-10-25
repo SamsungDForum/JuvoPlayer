@@ -221,7 +221,7 @@ namespace JuvoPlayer.DataProviders.Dash
                 Logger.Info("Changing stream do bandwidth: " + stream.Representation.Bandwidth);
 
                 PendingStream = stream;
-            }   
+            }
         }
 
         public void SwitchStreamIfNeeded()
@@ -252,7 +252,7 @@ namespace JuvoPlayer.DataProviders.Dash
                     StartPipeline(PendingStream);
                     return;
                 }
-                
+
                 if (!CanSwitchStream())
                     return;
 
@@ -409,9 +409,10 @@ namespace JuvoPlayer.DataProviders.Dash
             dashClient.OnTimeUpdated(time);
         }
 
-        public void Seek(TimeSpan time)
+        public void Seek(TimeSpan time, uint seekId)
         {
             lastSeek = dashClient.Seek(time);
+            PacketReady?.Invoke(SeekPacket.CreatePacket(StreamType, seekId));
         }
 
         public void ChangeStream(StreamDescription stream)

@@ -86,15 +86,6 @@ namespace XamarinPlayer.Tizen.Services
                 playerStateMessage = message;
                 State = PlayerState.Error;
             };
-
-            playerController.PlaybackRestart += OnRestart;
-        }
-
-        private void OnRestart(TimeSpan time)
-        {
-            Logger.Info(time.ToString());
-
-            dataProvider.OnRestart(time);
         }
 
         public void Pause()

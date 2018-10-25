@@ -60,15 +60,6 @@ namespace JuvoPlayer.DataProviders.Dash
             videoPipeline.StreamError += OnStreamError;
         }
 
-        public void OnRestart(TimeSpan time)
-        {
-            Logger.Info(time.ToString());
-
-            Parallel.Invoke(() => videoPipeline.Pause(), () => audioPipeline.Pause());
-            Parallel.Invoke(() => videoPipeline.Seek(time), () => audioPipeline.Seek(time));
-            Parallel.Invoke(() => videoPipeline.Resume(), () => audioPipeline.Resume());
-        }
-
         private void OnClipDurationChanged(TimeSpan clipDuration)
         {
             ClipDurationChanged?.Invoke(clipDuration);
@@ -150,13 +141,13 @@ namespace JuvoPlayer.DataProviders.Dash
         {
         }
 
-        public void OnSeek(TimeSpan time)
+        public void OnSeek(TimeSpan time, uint seekId)
         {
             if (!IsSeekingSupported())
                 return;
 
             Parallel.Invoke(() => videoPipeline.Pause(), () => audioPipeline.Pause());
-            Parallel.Invoke(() => videoPipeline.Seek(time), () => audioPipeline.Seek(time));
+            Parallel.Invoke(() => videoPipeline.Seek(time, seekId), () => audioPipeline.Seek(time, seekId));
             Parallel.Invoke(() => videoPipeline.Resume(), () => audioPipeline.Resume());
         }
 

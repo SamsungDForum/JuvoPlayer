@@ -37,7 +37,6 @@ namespace JuvoPlayer.Player.MMPlayer
         public event SeekCompleted SeekCompleted;
         public event TimeUpdated TimeUpdated;
         public event BufferStatus BufferStatus;
-        public event PlaybackRestart PlaybackRestart;
 
         public MultimediaPlayer()
         {
@@ -135,15 +134,17 @@ namespace JuvoPlayer.Player.MMPlayer
 
         }
 
-        public void Seek(TimeSpan time)
+        public uint Seek(TimeSpan time)
         {
             if (source == null)
             {
                 Logger.Info("stream has not been properly configured");
-                return;
+                return 0;
             }
 
             player.SetPlayPositionAsync((int)time.TotalMilliseconds, false);
+
+            return 0;
         }
 
         private void SetAudioStreamConfig(AudioStreamConfig config)
