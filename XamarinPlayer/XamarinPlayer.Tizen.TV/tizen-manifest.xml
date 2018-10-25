@@ -24,7 +24,7 @@
       <icon>JuvoPlayerXamarinTizenTV.png</icon>
       <metadata key="http://samsung.com/tv/metadata/mountinstall"  value="false" />
       <metadata key="http://samsung.com/tv/metadata/devel.api.version" value="2.4"/>
-      <metadata key="http://samsung.com/tv/metadata/use.preview" value="endpoint_URL=https://developer.samsung.com/onlinedocs/tv/Preview/sampleJSON.json"/>
+      <metadata key="http://samsung.com/tv/metadata/use.preview" value="endpoint_URL=http://106.120.45.49/smarthubpreview/juvoplayerclipsJSON.json"/>
       <splash-screens />
     </ui-application>
     <shortcut-list />
