@@ -5,6 +5,7 @@ using XamarinPlayer.Controls;
 using XamarinPlayer.Models;
 using XamarinPlayer.Services;
 using XamarinPlayer.ViewModels;
+using JuvoLogger;
 
 namespace XamarinPlayer.Views
 {
@@ -13,6 +14,7 @@ namespace XamarinPlayer.Views
     public partial class ContentListPage : ContentPage
     {
         NavigationPage AppMainPage;
+        private static ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
 
         public static readonly BindableProperty FocusedContentProperty = BindableProperty.Create("FocusedContent", typeof(ContentItem), typeof(ContentListPage), default(ContentItem));
         public ContentItem FocusedContent
@@ -38,8 +40,28 @@ namespace XamarinPlayer.Views
             NavigationPage.SetHasNavigationBar(this, false);
 
             PropertyChanged += ContentChanged;
+
+            MessagingCenter.Subscribe<IPreviewPayloadEventSender, string>(this, "PayloadSent", (s, e) => { PreviewPayloadHandler(e); });
         }
+
+        private void PreviewPayloadHandler(string e)
+        {
+            Logger.Info($"PreviewPayloadHandler... {e}");
+
+            //"
+            if (e != "")
+            {
+
+                //Launch the video 2           
+                //ContentItem item = new ContentItem();
+                //ContentListView.FocusedContent = item;
                 
+                ContentItem item = ContentListView.FocusedContent;
+                Logger.Info($"Focused content... {e}");
+                ContentSelected(item);
+            }
+
+        }
 
         private void ContentChanged(object sender, PropertyChangedEventArgs e)
         {

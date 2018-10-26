@@ -13,7 +13,7 @@ namespace XamarinPlayer.Tizen
 
     class Program : global::Xamarin.Forms.Platform.Tizen.FormsApplication, IKeyEventSender, IPreviewPayloadEventSender
     {
-        EcoreEvent<EcoreKeyEventArgs> _keyDown, _payloadSent;
+        EcoreEvent<EcoreKeyEventArgs> _keyDown;
         private static ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
         public static readonly string Tag = "JuvoPlayer";
 
@@ -65,7 +65,8 @@ namespace XamarinPlayer.Tizen
 
             // Send key event to the portable project using MessagingCenter           
             Xamarin.Forms.MessagingCenter.Send<IPreviewPayloadEventSender, string>(this, "PayloadSent", payload);            
-            
+            //MessagingCenter.Send<MainPage, string> (this, "Hi", "John");
+
 
             base.OnAppControlReceived(e);
         }
