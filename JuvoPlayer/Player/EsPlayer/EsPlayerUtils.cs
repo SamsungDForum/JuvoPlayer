@@ -13,6 +13,9 @@
 
 using JuvoPlayer.Common;
 using System;
+using System.Collections.Generic;
+using System.Collections.ObjectModel;
+using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
@@ -186,6 +189,37 @@ namespace JuvoPlayer.Player.EsPlayer
     /// </summary>
     internal static class EsPlayerUtils
     {
+        private class VideoConfiguration
+        {
+            public VideoCodec Codec { get; internal set; }
+            public int Fps { get; internal set; }
+            public int Bps { get; internal set; }
+            public int Width { get; internal set; }
+            public int Height { get; internal set; }
+            public bool Supported { get; internal set; }
+        }
+
+        // Based on
+        // https://developer.samsung.com/tv/develop/specifications/media-specifications/2018-tv-video-specifications
+        //
+        private static readonly IList<VideoConfiguration> VideoConfigurations = new List<VideoConfiguration>
+        {
+            new VideoConfiguration{Codec = VideoCodec.MPEG4,  Fps = 60, Bps = 60*1000000, Width=1920, Height = 1080, Supported = true},
+            new VideoConfiguration{Codec = VideoCodec.H263,   Fps = 30, Bps = 30*1000000, Width=1920, Height = 1080, Supported = true},
+            new VideoConfiguration{Codec = VideoCodec.H264,   Fps = 30, Bps = 60*1000000, Width=4096, Height = 2160, Supported = true},
+            new VideoConfiguration{Codec = VideoCodec.H264,   Fps = 60, Bps = 60*1000000, Width=3840, Height = 2160, Supported = true},
+            new VideoConfiguration{Codec = VideoCodec.H265,   Fps = 60, Bps = 80*1000000, Width=4096, Height = 2160, Supported = true},
+            new VideoConfiguration{Codec = VideoCodec.INDEO3, Fps = 30, Bps = 20*1000000, Width=1920, Height = 1080, Supported = false},
+            new VideoConfiguration{Codec = VideoCodec.MPEG2,  Fps = 60, Bps = 20*1000000, Width=1920, Height = 1080, Supported = true},
+            new VideoConfiguration{Codec = VideoCodec.THEORA, Fps = 30, Bps = 20*1000000, Width=1920, Height = 1080, Supported = false},
+            new VideoConfiguration{Codec = VideoCodec.VC1,    Fps = 60, Bps = 20*1000000, Width=1920, Height = 1080, Supported = true},
+            new VideoConfiguration{Codec = VideoCodec.VP8,    Fps = 60, Bps = 20*1000000, Width=1920, Height = 1080, Supported = true},
+            new VideoConfiguration{Codec = VideoCodec.VP9,    Fps = 60, Bps = 20*1000000, Width=1920, Height = 1080, Supported = false},
+            new VideoConfiguration{Codec = VideoCodec.WMV1,   Fps = 30, Bps = 20*1000000, Width=1920, Height = 1080, Supported = true},
+            new VideoConfiguration{Codec = VideoCodec.WMV2,   Fps = 30, Bps = 20*1000000, Width=1920, Height = 1080, Supported = true},
+            new VideoConfiguration{Codec = VideoCodec.WMV3,   Fps = 60, Bps = 20*1000000, Width=1920, Height = 1080, Supported = true}
+        };
+
         internal static Common.StreamType JuvoStreamType(this ESPlayer.StreamType esStreamType)
         {
             return esStreamType == ESPlayer.StreamType.Video ?
@@ -205,14 +239,22 @@ namespace JuvoPlayer.Player.EsPlayer
 
             var videoConfig = (Common.VideoStreamConfig)streamConfig;
 
+            // Sort configuration by FPS (lowest first) & get an entry matching codec & FPS
+            var fpsOrderedConfigs = VideoConfigurations.OrderBy(entry => entry.Bps);
+            var configParameters = fpsOrderedConfigs.First(entry => videoConfig.Codec == entry.Codec && entry.Bps >= videoConfig.BitRate) ??
+                                   fpsOrderedConfigs.Last(entry => videoConfig.Codec == entry.Codec);
+
+            if (configParameters == null)
+                throw new ArgumentException($"Unsupported codec {videoConfig.Codec}");
+
             return new ESPlayer.VideoStreamInfo
             {
                 codecData = videoConfig.CodecExtraData,
                 mimeType = EsPlayerUtils.GetCodecMimeType(videoConfig.Codec),
                 width = videoConfig.Size.Width,
-                maxWidth = 3840,
+                maxWidth = configParameters.Width,
                 height = videoConfig.Size.Height,
-                maxHeight = 2160,
+                maxHeight = configParameters.Height,
                 num = videoConfig.FrameRateNum,
                 den = videoConfig.FrameRateDen
             };
