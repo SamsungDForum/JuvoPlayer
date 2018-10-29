@@ -55,6 +55,8 @@ namespace JuvoPlayer.DataProviders.Dash
         public event StreamConfigReady StreamConfigReady;
         public event PacketReady PacketReady;
         public event StreamError StreamError;
+        public event BufferingStarted BufferingStarted;
+        public event BufferingCompleted BufferingCompleted;
 
         /// <summary>
         /// Holds smaller of the two (PTS/DTS) from the initial packet.
@@ -105,6 +107,8 @@ namespace JuvoPlayer.DataProviders.Dash
             demuxer.DemuxerError += OnStreamError;
 
             dashClient.Error += OnStreamError;
+            dashClient.BufferingCompleted += OnBufferingCompleted;
+            dashClient.BufferingStarted += OnBufferingStarted;
         }
 
         private DashStream InitializePendingStream(DashStream newStream)
@@ -173,7 +177,7 @@ namespace JuvoPlayer.DataProviders.Dash
             var defaultMedia = GetDefaultMedia(media);
             GetAvailableStreams(media, defaultMedia);
             // get first element of sorted array
-            var representation = defaultMedia.Representations.OrderByDescending(o => o.Bandwidth).First();
+            var representation = defaultMedia.Representations.OrderByDescending(o => o.Bandwidth).Last();
 
             PendingStream = new DashStream(defaultMedia, representation);
         }
@@ -569,6 +573,16 @@ namespace JuvoPlayer.DataProviders.Dash
         {
             // Transfer event to Data Provider
             StreamError?.Invoke(errorMessage);
+        }
+
+        private void OnBufferingStarted()
+        {
+            BufferingStarted?.Invoke();
+        }
+
+        private void OnBufferingCompleted()
+        {
+            BufferingCompleted?.Invoke();
         }
 
         private void AdjustDemuxerTimeStampIfNeeded(Packet packet)

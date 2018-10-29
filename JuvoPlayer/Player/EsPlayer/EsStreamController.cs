@@ -141,7 +141,6 @@ namespace JuvoPlayer.Player.EsPlayer
                 // Check if all initialized streams are configured
                 if (!AllStreamsConfigured)
                     return;
-
                 var token = activeTaskCts.Token;
                 StreamPrepare(token);
             }

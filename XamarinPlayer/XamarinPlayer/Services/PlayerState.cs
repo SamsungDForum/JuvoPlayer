@@ -9,6 +9,7 @@
         Stopped,
         Playing,
         Paused,
-        Completed
+        Completed,
+        Buffering
     }
 }

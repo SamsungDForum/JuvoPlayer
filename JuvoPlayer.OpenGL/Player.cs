@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using JuvoLogger;
 using JuvoPlayer.Common;
 using JuvoPlayer.DataProviders;
 using JuvoPlayer.DataProviders.Dash;
@@ -22,6 +23,7 @@ namespace JuvoPlayer.OpenGL
         private readonly DataProviderFactoryManager dataProviders;
         private PlayerState playerState = PlayerState.Idle;
         private string playerStateMessage;
+        private readonly ILogger logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
 
         public event PlayerStateChangedEventHandler StateChanged;
         public event SeekCompleted SeekCompleted;
@@ -61,10 +63,44 @@ namespace JuvoPlayer.OpenGL
 
             var player = new EsPlayer();
             playerController = new PlayerController(player, drmManager);
-            playerController.PlaybackCompleted += () => { State = PlayerState.Completed; };
-            playerController.PlayerInitialized += () => { State = PlayerState.Prepared; };
-            playerController.PlaybackError += (message) => { playerStateMessage = message; State = PlayerState.Error; };
+            playerController.PlaybackError += message => { playerStateMessage = message; State = PlayerState.Error; };
             playerController.SeekCompleted += () => { SeekCompleted?.Invoke(); };
+            playerController.StateChanged += (sender, args) =>
+            {
+                try
+                {
+                    var state = ToPlayerState(args.State);
+                    State = state;
+                }
+                catch (ArgumentOutOfRangeException ex)
+                {
+                    logger.Warn($"Unsupported state: {ex.Message}");
+                    logger.Warn($"{ex.StackTrace}");
+                }
+            };
+        }
+
+        private PlayerState ToPlayerState(JuvoPlayer.Player.PlayerState state)
+        {
+            switch (state)
+            {
+                case JuvoPlayer.Player.PlayerState.Uninitialized:
+                    return PlayerState.Idle;
+                case JuvoPlayer.Player.PlayerState.Ready:
+                    return PlayerState.Prepared;
+                case JuvoPlayer.Player.PlayerState.Buffering:
+                    return PlayerState.Buffering;
+                case JuvoPlayer.Player.PlayerState.Paused:
+                    return PlayerState.Paused;
+                case JuvoPlayer.Player.PlayerState.Playing:
+                    return PlayerState.Playing;
+                case JuvoPlayer.Player.PlayerState.Finished:
+                    return PlayerState.Completed;
+                case JuvoPlayer.Player.PlayerState.Error:
+                    return PlayerState.Error;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(state), state, null);
+            }
         }
 
         public void Pause()
