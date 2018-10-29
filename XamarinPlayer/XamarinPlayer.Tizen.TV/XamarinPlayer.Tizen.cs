@@ -7,6 +7,7 @@ using Tizen;
 using Tizen.Applications;
 using XamarinPlayer.Services;
 
+
 namespace XamarinPlayer.Tizen
 {
     
@@ -60,13 +61,9 @@ namespace XamarinPlayer.Tizen
 
             //fetch the JSON metadata defined on the smart Hub preview web server
             string payload = "";
-            receivedAppControl.ExtraData.TryGet("PAYLOAD", out payload);
-            Logger.Info($"Boo OnAppControlReceived... {payload} ");
-
+            receivedAppControl.ExtraData.TryGet("PAYLOAD", out payload);   
             // Send key event to the portable project using MessagingCenter           
             Xamarin.Forms.MessagingCenter.Send<IPreviewPayloadEventSender, string>(this, "PayloadSent", payload);            
-            //MessagingCenter.Send<MainPage, string> (this, "Hi", "John");
-
 
             base.OnAppControlReceived(e);
         }

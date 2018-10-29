@@ -6,6 +6,8 @@ using XamarinPlayer.Models;
 using XamarinPlayer.Services;
 using XamarinPlayer.ViewModels;
 using JuvoLogger;
+using Newtonsoft.Json;
+
 
 namespace XamarinPlayer.Views
 {
@@ -43,25 +45,32 @@ namespace XamarinPlayer.Views
 
             MessagingCenter.Subscribe<IPreviewPayloadEventSender, string>(this, "PayloadSent", (s, e) => { PreviewPayloadHandler(e); });
         }
+        
 
-        private void PreviewPayloadHandler(string e)
-        {
-            Logger.Info($"PreviewPayloadHandler... {e}");
-
-            //"
-            if (e != "")
+        
+        private void PreviewPayloadHandler(string message)
+        {               
+            //This method is being exected always. If launched wihoud the SmartHub Preview tail, the message string is null.            
+            if (!string.IsNullOrEmpty(message))
             {
-
-                //Launch the video 2           
-                //ContentItem item = new ContentItem();
-                //ContentListView.FocusedContent = item;
-                
-                ContentItem item = ContentListView.FocusedContent;
-                Logger.Info($"Focused content... {e}");
-                ContentSelected(item);
+                var definition = new { values = "" };                
+                var payload = JsonConvert.DeserializeAnonymousType(message, definition);              
+                                
+                int index = 0;
+                try
+                {
+                    //In this case the payload has to be an integer - index value.
+                    index = int.Parse(payload.values);
+                    ContentItem item = ContentListView.GetItem(index);
+                    ContentListView.FocusedContent = item;
+                    ContentSelected(item);
+                } catch (System.Exception exc)
+                {
+                    Logger.Error("PreviewPayloadHandler exception " + exc.Message);
+                }               
             }
-
         }
+                
 
         private void ContentChanged(object sender, PropertyChangedEventArgs e)
         {
