@@ -9,7 +9,8 @@
         Stopped = 3,
         Playing = 4,
         Paused = 5,
-        Completed = 6
+        Completed = 6,
+        Buffering
     }
 
     internal struct ImageData

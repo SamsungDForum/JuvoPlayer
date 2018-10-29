@@ -26,6 +26,8 @@ namespace JuvoPlayer.DataProviders.Dash
         public event StreamConfigReady StreamConfigReady;
         public event PacketReady PacketReady;
         public event StreamError StreamError;
+        public event BufferingStarted BufferingStarted;
+        public event BufferingCompleted BufferingCompleted;
 
         private readonly DashManifestProvider manifestProvider;
 
@@ -56,8 +58,9 @@ namespace JuvoPlayer.DataProviders.Dash
             videoPipeline.StreamConfigReady += OnStreamConfigReady;
             videoPipeline.PacketReady += OnPacketReady;
             videoPipeline.StreamError += OnStreamError;
+            videoPipeline.BufferingStarted += OnBufferingStarted;
+            videoPipeline.BufferingCompleted += OnBufferingCompleted;
         }
-
         public void OnRestart(TimeSpan time)
         {
             Logger.Info(time.ToString());
@@ -98,6 +101,16 @@ namespace JuvoPlayer.DataProviders.Dash
         private void OnPacketReady(Packet packet)
         {
             PacketReady?.Invoke(packet);
+        }
+
+        private void OnBufferingCompleted()
+        {
+            BufferingCompleted?.Invoke();
+        }
+
+        private void OnBufferingStarted()
+        {
+            BufferingStarted?.Invoke();
         }
 
         public void OnChangeActiveStream(StreamDescription stream)
@@ -212,8 +225,6 @@ namespace JuvoPlayer.DataProviders.Dash
                     // Do not do bandwidth adaptation on audio.
                     // ESPlayer - all audio changes will result in destructive
                     // stream change.
-
-                    videoPipeline.SwitchStreamIfNeeded();
                 },
                 () =>
                 {

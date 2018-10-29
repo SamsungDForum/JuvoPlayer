@@ -14,11 +14,11 @@
 using JuvoLogger;
 using JuvoPlayer.Common;
 using System;
-using System.Diagnostics;
 using System.Net;
 using System.Runtime.ExceptionServices;
 using System.Threading;
 using System.Threading.Tasks;
+using JuvoPlayer.Utils;
 
 namespace JuvoPlayer.DataProviders.Dash
 {
@@ -219,10 +219,14 @@ namespace JuvoPlayer.DataProviders.Dash
                 Logger.Info(
                     $"{request.StreamType}: Segment: {SegmentId(request.SegmentId)} Requested. URL: {request.DownloadSegment.Url} Range: {downloadRange}");
 
-                UpdateThroughputHistory(dataDownloader);
+                TimeSpan time;
+                byte[] data;
+                using (new TimeCounter(t => time = t))
+                {
+                    data = await dataDownloader.DownloadDataTaskAsync(request.DownloadSegment.Url).ConfigureAwait(false);
+                }
 
-                var data = await dataDownloader.DownloadDataTaskAsync(request.DownloadSegment.Url)
-                    .ConfigureAwait(false);
+                throughputHistory.Push(data.Length, time);
 
                 return new DownloadResponse
                 {
@@ -232,31 +236,6 @@ namespace JuvoPlayer.DataProviders.Dash
                     Data = data
                 };
             }
-        }
-
-        private void UpdateThroughputHistory(WebClientEx dataDownloader)
-        {
-            var timeElapsed = Stopwatch.StartNew();
-            long bytesReceived = 0;
-            const int totalNumberOfAccumulatedEvents = 100;
-            var numberOfAccumulatedEvents = 0;
-
-            dataDownloader.DownloadProgressChanged += (sender, args) =>
-            {
-                ++numberOfAccumulatedEvents;
-
-                if (numberOfAccumulatedEvents != totalNumberOfAccumulatedEvents) return;
-
-                var bytesReceivedSinceLastUpdate =
-                    (int) (args.BytesReceived - bytesReceived);
-
-                throughputHistory.Push(bytesReceivedSinceLastUpdate,
-                    timeElapsed.Elapsed);
-
-                timeElapsed = Stopwatch.StartNew();
-                bytesReceived = args.BytesReceived;
-                numberOfAccumulatedEvents = 0;
-            };
         }
 
         private int CalculateSleepTime()
