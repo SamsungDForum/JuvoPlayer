@@ -5,7 +5,6 @@ using XamarinPlayer.Controls;
 using XamarinPlayer.Models;
 using XamarinPlayer.Services;
 using XamarinPlayer.ViewModels;
-using JuvoLogger;
 using Newtonsoft.Json;
 
 
@@ -15,8 +14,7 @@ namespace XamarinPlayer.Views
 
     public partial class ContentListPage : ContentPage
     {
-        NavigationPage AppMainPage;
-        private static ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
+        NavigationPage AppMainPage;        
 
         public static readonly BindableProperty FocusedContentProperty = BindableProperty.Create("FocusedContent", typeof(ContentItem), typeof(ContentListPage), default(ContentItem));
         public ContentItem FocusedContent
@@ -65,8 +63,8 @@ namespace XamarinPlayer.Views
                     ContentListView.FocusedContent = item;
                     ContentSelected(item);
                 } catch (System.Exception exc)
-                {
-                    Logger.Error("PreviewPayloadHandler exception " + exc.Message);
+                {                    
+                    throw new System.Exception("PreviewPayloadHandler exception " + exc.Message);
                 }               
             }
         }
