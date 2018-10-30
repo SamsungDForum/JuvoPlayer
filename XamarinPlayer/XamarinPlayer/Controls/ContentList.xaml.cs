@@ -27,6 +27,12 @@ namespace XamarinPlayer.Controls
             ContentLayout.Children.Add(item);
         }
 
+        public ContentItem GetItem(int index)
+        {
+            ContentItem item = ContentLayout.Children.ElementAt(index) as ContentItem;
+            return item;
+        }
+
         public bool SetFocus()
         {
             ContentItem item = ContentLayout.Children.First() as ContentItem;

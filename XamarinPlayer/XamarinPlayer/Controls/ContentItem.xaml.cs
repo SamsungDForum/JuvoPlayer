@@ -54,6 +54,7 @@ namespace XamarinPlayer.Controls
             InitializeComponent();
 
             SetItemState(ItemState.Unfocused);
+
             _height = 0;
 
             PropertyChanged += ContentPropertyChanged;
