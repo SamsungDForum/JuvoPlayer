@@ -22,6 +22,14 @@ using StreamType = JuvoPlayer.Common.StreamType;
 
 namespace JuvoPlayer.Player.EsPlayer
 {
+    internal class UnsupportedStreamException : Exception
+    {
+        public UnsupportedStreamException(string message) : base(message)
+        {
+
+        }
+    }
+
     /// <summary>
     /// Packet submit exception. Raised when packet push to ESPlayer failed in a terminal
     /// way.
@@ -248,17 +256,15 @@ namespace JuvoPlayer.Player.EsPlayer
                     switch (packet)
                     {
                         case BufferConfigurationPacket bufferConfigPacket:
-
-
+                            var isCompatible = CurrentConfig.Compatible(bufferConfigPacket);
                             CurrentConfig = bufferConfigPacket;
 
-                            if (CurrentConfig.Compatible(bufferConfigPacket))
+                            if (isCompatible)
                                 break;
 
                             // Destructive stream change during seek.
                             logger.Info($"{streamType}: Destructive config change during seek");
                             res = SeekResult.RestartRequired;
-
                             break;
 
                         case SeekPacket seekPacket:
@@ -267,7 +273,6 @@ namespace JuvoPlayer.Player.EsPlayer
 
                             logger.Info($"{streamType}: Seek Id {seekId} found. Looking for time {seekPosition}");
                             checkTime = true;
-
                             break;
                     }
 
@@ -542,6 +547,7 @@ namespace JuvoPlayer.Player.EsPlayer
             {
                 logger.Error($"{streamType}: Decrypt Error: " + drme.Message);
                 disableInput = true;
+                invokeError = true;
 
             }
             catch (Exception e)
@@ -550,6 +556,7 @@ namespace JuvoPlayer.Player.EsPlayer
                 logger.Error($"{streamType}: " + e.Message);
                 logger.Error($"{streamType}: " + e.Source);
                 logger.Error($"{streamType}: " + e.StackTrace);
+                disableInput = true;
                 invokeError = true;
             }
 

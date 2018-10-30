@@ -19,6 +19,7 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using JuvoLogger;
 using JuvoPlayer.Common.Utils;
 using ESPlayer = Tizen.TV.Multimedia;
 using StreamType = JuvoPlayer.Common.StreamType;
@@ -240,12 +241,12 @@ namespace JuvoPlayer.Player.EsPlayer
             var videoConfig = (Common.VideoStreamConfig)streamConfig;
 
             // Sort configuration by FPS (lowest first) & get an entry matching codec & FPS
-            var fpsOrderedConfigs = VideoConfigurations.OrderBy(entry => entry.Bps);
-            var configParameters = fpsOrderedConfigs.First(entry => videoConfig.Codec == entry.Codec && entry.Bps >= videoConfig.BitRate) ??
-                                   fpsOrderedConfigs.Last(entry => videoConfig.Codec == entry.Codec);
+            var fpsOrderedConfigs = VideoConfigurations.OrderBy(entry => entry.Fps);
+            var configParameters = fpsOrderedConfigs.FirstOrDefault(entry => videoConfig.Codec == entry.Codec && entry.Fps >= videoConfig.FrameRate) ??
+                                   fpsOrderedConfigs.LastOrDefault(entry => videoConfig.Codec == entry.Codec);
 
             if (configParameters == null)
-                throw new ArgumentException($"Unsupported codec {videoConfig.Codec}");
+                throw new UnsupportedStreamException($"Unsupported codec {videoConfig.Codec}");
 
             return new ESPlayer.VideoStreamInfo
             {

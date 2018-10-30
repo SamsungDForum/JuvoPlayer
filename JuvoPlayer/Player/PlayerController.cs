@@ -157,12 +157,19 @@ namespace JuvoPlayer.Player
             // pipeline between player.Seek() and Seek?.Invoke() calls. 
             // Will result in longer seek times + possible key frame misses. 
             //
-            var id = player.Seek(time);
+            try
+            {
+                var id = player.Seek(time);
 
-            // prevent simultaneously seeks
-            seeking = true;
+                // prevent simultaneously seeks
+                seeking = true;
 
-            Seek?.Invoke(time, id);
+                Seek?.Invoke(time, id);
+            }
+            catch (OperationCanceledException)
+            {
+                Logger.Info("Operation Canceled");
+            }
         }
 
         public void OnSeekCompleted()
