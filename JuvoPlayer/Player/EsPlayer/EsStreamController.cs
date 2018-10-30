@@ -176,16 +176,21 @@ namespace JuvoPlayer.Player.EsPlayer
             }
             catch (OperationCanceledException)
             {
-                logger.Info("Operation Cancelled");
+                logger.Info($"{streamType}: Operation Cancelled");
             }
             catch (ObjectDisposedException)
             {
-                logger.Info("Operation Cancelled and disposed");
+                logger.Info($"{streamType}: Operation Cancelled and disposed");
             }
             catch (InvalidOperationException)
             {
                 // Queue has been marked as completed
                 logger.Warn($"Data queue terminated for stream: {streamType}");
+            }
+            catch (UnsupportedStreamException use)
+            {
+                logger.Error($"{streamType}: " + use.Message);
+                OnEsStreamError(use.Message);
             }
 
         }
@@ -199,10 +204,7 @@ namespace JuvoPlayer.Player.EsPlayer
             logger.Info("");
 
             if (!AllStreamsConfigured)
-            {
-                logger.Info("Initialized streams are not configured. Play Aborted");
-                return;
-            }
+                throw new InvalidOperationException("Initialized streams are not configured. Play Aborted");
 
             try
             {
@@ -286,19 +288,12 @@ namespace JuvoPlayer.Player.EsPlayer
 
             ++seekID;
 
-            try
-            {
-                var token = activeTaskCts.Token;
+            var token = activeTaskCts.Token;
 
-                StreamSeek(time, token);
-
-            }
-            catch (OperationCanceledException)
-            {
-                logger.Info("Operation Canceled");
-            }
+            StreamSeek(time, token);
 
             return seekID;
+
         }
 
         #endregion
@@ -407,11 +402,11 @@ namespace JuvoPlayer.Player.EsPlayer
 
             logger.Info(streamType.ToString());
 
-            StartStream(streamType);
+            dataStreams[(int)streamType].Stream.Start();
 
             logger.Info($"{streamType}: Completed");
 
-            await Task.CompletedTask;
+            await Task.Yield();
         }
 
         private async void OnReadyToSeekStream(ESPlayer.StreamType esPlayerStreamType, TimeSpan time)
@@ -419,7 +414,7 @@ namespace JuvoPlayer.Player.EsPlayer
             logger.Info($"{esPlayerStreamType}: {time}");
             OnReadyToStartStream(esPlayerStreamType);
 
-            await Task.CompletedTask;
+            await Task.Yield();
         }
 
         #endregion
@@ -658,7 +653,7 @@ namespace JuvoPlayer.Player.EsPlayer
             logger.Info("Stopping all data streams");
 
             foreach (var esStream in dataStreams.Where(esStream => esStream != null))
-                StopStream(esStream.StreamType);
+                esStream.Stream.Stop();
 
         }
 
@@ -676,17 +671,7 @@ namespace JuvoPlayer.Player.EsPlayer
             // Starts can happen.. when they happen. See no reason to
             // wait for their completion.
             foreach (var esStream in dataStreams.Where(esStream => esStream != null))
-                StartStream(esStream.StreamType);
-        }
-
-        private void StartStream(StreamType stream)
-        {
-            dataStreams[(int)stream].Stream.Start();
-        }
-
-        private void StopStream(StreamType stream)
-        {
-            dataStreams[(int)stream].Stream.Stop();
+                esStream.Stream.Start();
         }
 
         /// <summary>
