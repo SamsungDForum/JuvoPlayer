@@ -332,10 +332,6 @@ namespace JuvoPlayer.OpenGL
                                 ReturnToMainMenu();
                                 DisplayAlert("Playback Error", (e as PlayerStateChangedStreamError)?.Message ?? "Unknown Error", "OK");
                             }
-                            else if (e.State == PlayerState.Buffering)
-                            {
-                                // TODO: Display progress spinner
-                            }
                         },
                         null);
             };
