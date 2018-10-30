@@ -17,9 +17,9 @@ namespace JuvoPlayer.DataProviders.Dash
         private const string Tag = "JuvoPlayer";
 
         private static readonly ILogger Logger = LoggerManager.GetInstance().GetLogger(Tag);
-        private static readonly TimeSpan timeBufferDepthDefault = TimeSpan.FromSeconds(15);
-        private static readonly TimeSpan maxBufferTime = TimeSpan.FromSeconds(20);
-        private static readonly TimeSpan minBufferTime = TimeSpan.FromSeconds(10);
+        private static readonly TimeSpan timeBufferDepthDefault = TimeSpan.FromSeconds(10);
+        private static readonly TimeSpan maxBufferTime = TimeSpan.FromSeconds(15);
+        private static readonly TimeSpan minBufferTime = TimeSpan.FromSeconds(5);
 
         private TimeSpan timeBufferDepth = timeBufferDepthDefault;
 
@@ -707,7 +707,7 @@ namespace JuvoPlayer.DataProviders.Dash
             // If needed, initInProgress flag could be used to delay stream switching
             // i.e. reset not after INIT segment but INIT + whatever number of data segments.
             //
-            return !initInProgress && bufferTime >= TimeSpan.FromTicks((long) (timeBufferDepth.Ticks * 0.50));
+            return !initInProgress && bufferTime >= minBufferTime;
         }
 
         #region Logging Functions
