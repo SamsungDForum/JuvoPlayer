@@ -19,6 +19,8 @@ namespace JuvoPlayer.DataProviders
             newDataProvider.StreamConfigReady += controller.OnStreamConfigReady;
             newDataProvider.PacketReady += controller.OnPacketReady;
             newDataProvider.StreamError += controller.OnStreamError;
+            newDataProvider.BufferingCompleted += controller.OnBufferingCompleted;
+            newDataProvider.BufferingStarted += controller.OnBufferingStarted;
 
             controller.TimeUpdated += newDataProvider.OnTimeUpdated;
             controller.Paused += newDataProvider.OnPaused;
@@ -41,6 +43,8 @@ namespace JuvoPlayer.DataProviders
             oldDataProvider.StreamConfigReady -= controller.OnStreamConfigReady;
             oldDataProvider.PacketReady -= controller.OnPacketReady;
             oldDataProvider.StreamError -= controller.OnStreamError;
+            oldDataProvider.BufferingCompleted -= controller.OnBufferingCompleted;
+            oldDataProvider.BufferingStarted -= controller.OnBufferingStarted;
 
             controller.TimeUpdated -= oldDataProvider.OnTimeUpdated;
             controller.Paused -= oldDataProvider.OnPaused;

@@ -44,8 +44,11 @@ namespace XamarinPlayer.Views
 
             PropertyChanged += PlayerViewPropertyChanged;
 
-            MessagingCenter.Subscribe<IKeyEventSender, string>(this, "KeyDown", (s, e) => { KeyEventHandler(e); });
+            MessagingCenter.Subscribe<IKeyEventSender, string>(this, "KeyDown", (s, e) => { KeyEventHandler(e); });            
+
         }
+
+
 
         private void Play()
         {
@@ -54,13 +57,14 @@ namespace XamarinPlayer.Views
             else
                 _playerService.Start();
         }
+               
 
         private void KeyEventHandler(string e)
         {
             // TODO: This is a workaround for alertbox & lost focus
             // Prevents key handling & fous change in Show().
             // Consider adding a call Focus(Focusable Object) where focus would be set in one place
-            // and error status could be handled.            
+            // and error status could be handled.
 
             if (_hasFinished)
             {
@@ -416,8 +420,8 @@ namespace XamarinPlayer.Views
                     _hasFinished = true;
                     _errorMessage = (e as PlayerStateChangedStreamError)?.Message ?? "Unknown Error";
 
-                    // Terminate player to prevent any futher error events. 
-                    // This will issue a player.stopped event during which 
+                    // Terminate player to prevent any futher error events.
+                    // This will issue a player.stopped event during which
                     // error message will be displayed.(if error flag is set).
                     // Hide controls. If not hidden, a timeouts take away focus rendering alert
                     // unclosable.
@@ -457,6 +461,14 @@ namespace XamarinPlayer.Views
             {
                 PlayImage.Source = ImageSource.FromFile("btn_viewer_control_play_normal.png");
             }
+
+            if (e.State == PlayerState.Buffering)
+            {
+                InfoTextLabel.Text = "Buffering...";
+                InfoTextLabel.IsVisible = true;
+            }
+            else
+                InfoTextLabel.IsVisible = false;
         }
 
         private string GetFormattedTime(TimeSpan time)

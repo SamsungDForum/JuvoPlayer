@@ -8,9 +8,8 @@ namespace XamarinPlayer.Services
         {
             State = state;
         }
-       
+
         public PlayerState State { get; }
-        
     }
 
     public class PlayerStateChangedStreamError : PlayerStateChangedEventArgs

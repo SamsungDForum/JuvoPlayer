@@ -5,6 +5,8 @@ using XamarinPlayer.Controls;
 using XamarinPlayer.Models;
 using XamarinPlayer.Services;
 using XamarinPlayer.ViewModels;
+using Newtonsoft.Json;
+
 
 namespace XamarinPlayer.Views
 {
@@ -12,7 +14,7 @@ namespace XamarinPlayer.Views
 
     public partial class ContentListPage : ContentPage
     {
-        NavigationPage AppMainPage;
+        NavigationPage AppMainPage;        
 
         public static readonly BindableProperty FocusedContentProperty = BindableProperty.Create("FocusedContent", typeof(ContentItem), typeof(ContentListPage), default(ContentItem));
         public ContentItem FocusedContent
@@ -38,6 +40,33 @@ namespace XamarinPlayer.Views
             NavigationPage.SetHasNavigationBar(this, false);
 
             PropertyChanged += ContentChanged;
+
+            MessagingCenter.Subscribe<IPreviewPayloadEventSender, string>(this, "PayloadSent", (s, e) => { PreviewPayloadHandler(e); });
+        }
+        
+
+        
+        private void PreviewPayloadHandler(string message)
+        {               
+            //This method is being exected always. If launched wihoud the SmartHub Preview tail, the message string is null.            
+            if (!string.IsNullOrEmpty(message))
+            {
+                var definition = new { values = "" };                
+                var payload = JsonConvert.DeserializeAnonymousType(message, definition);              
+                                
+                int index = 0;
+                try
+                {
+                    //In this case the payload has to be an integer - index value.
+                    index = int.Parse(payload.values);
+                    ContentItem item = ContentListView.GetItem(index);
+                    ContentListView.FocusedContent = item;
+                    ContentSelected(item);
+                } catch (System.Exception exc)
+                {                    
+                    throw new System.Exception("PreviewPayloadHandler exception " + exc.Message);
+                }               
+            }
         }
                 
 
