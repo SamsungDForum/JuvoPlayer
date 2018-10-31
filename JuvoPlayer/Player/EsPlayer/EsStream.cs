@@ -295,9 +295,9 @@ namespace JuvoPlayer.Player.EsPlayer
                 }
                 catch (Exception e)
                 {
-                    logger.Error($"{streamType}: " + e.Message);
-                    logger.Error($"{streamType}: " + e.Source);
-                    logger.Error($"{streamType}: " + e.StackTrace);
+                    logger.Error($"{streamType}: {e.Message}");
+                    logger.Error($"{streamType}: {e.Source}");
+                    logger.Error($"{streamType}: {e.StackTrace}");
 
                     throw;
                 }
@@ -503,8 +503,10 @@ namespace JuvoPlayer.Player.EsPlayer
 
                     var packet = packetStorage.GetPacket(streamType, token);
 
-                        case BufferConfigurationPacket bufferConfigPacket when
-                            CurrentConfig.Compatible(bufferConfigPacket):
+                    // Ignore non data packets (EOS/BufferChange/etc.)
+                    if (packet.Data != null)
+                    {
+                        dataLength += (ulong)packet.Data.Length;
 
                         if (firstPts.HasValue)
                         {
@@ -549,9 +551,9 @@ namespace JuvoPlayer.Player.EsPlayer
             catch (Exception e)
             {
                 // Dump unhandled exception. Running as a task so they will not be reported.
-                logger.Error($"{streamType}: " + e.Message);
-                logger.Error($"{streamType}: " + e.Source);
-                logger.Error($"{streamType}: " + e.StackTrace);
+                logger.Error($"{streamType}: {e.Message}");
+                logger.Error($"{streamType}: {e.Source}");
+                logger.Error($"{streamType}: {e.StackTrace}");
                 disableInput = true;
                 invokeError = true;
             }
