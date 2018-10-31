@@ -21,20 +21,20 @@ namespace JuvoPlayer.Player
 {
     public class PlayerController : IPlayerController
     {
-        private enum PlayerState
-        {
-            Uninitialized,
-            Ready,
-            Paused,
-            Playing,
-            Finished,
-            Error = -1
-        };
-
         private bool seeking;
         private PlayerState state = PlayerState.Uninitialized;
         private TimeSpan currentTime;
         private TimeSpan duration;
+
+        private PlayerState State
+        {
+            get => state;
+            set
+            {
+                state = value;
+                StateChanged?.Invoke(this, new StateChangedEventArgs {State = value});
+            }
+        }
 
         private readonly IDrmManager drmManager;
         private readonly IPlayer player;
@@ -50,12 +50,14 @@ namespace JuvoPlayer.Player
         public event PlayerInitialized PlayerInitialized;
         public event TimeUpdated TimeUpdated;
         public event SeekCompleted SeekCompleted;
+        public event EventHandler<StateChangedEventArgs> StateChanged;
 
         private readonly ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
 
         public PlayerController(IPlayer player, IDrmManager drmManager)
         {
-            this.drmManager = drmManager ?? throw new ArgumentNullException(nameof(drmManager), "drmManager cannot be null");
+            this.drmManager = drmManager ??
+                              throw new ArgumentNullException(nameof(drmManager), "drmManager cannot be null");
             this.player = player ?? throw new ArgumentNullException(nameof(player), "player cannot be null");
 
             this.player.PlaybackCompleted += OnPlaybackCompleted;
@@ -65,31 +67,35 @@ namespace JuvoPlayer.Player
             this.player.TimeUpdated += OnTimeUpdated;
 
             var audioCodecExtraDataHandler = new AudioCodecExtraDataHandler(player);
-            var vidoeCodecExtraDataHandler = new VideoCodecExtraDataHandler(player);
+            var videoCodecExtraDataHandler = new VideoCodecExtraDataHandler(player);
 
-            streams[StreamType.Audio] = new PacketStream(StreamType.Audio, this.player, drmManager, audioCodecExtraDataHandler);
-            streams[StreamType.Video] = new PacketStream(StreamType.Video, this.player, drmManager, vidoeCodecExtraDataHandler);
+            streams[StreamType.Audio] =
+                new PacketStream(StreamType.Audio, this.player, drmManager, audioCodecExtraDataHandler);
+            streams[StreamType.Video] =
+                new PacketStream(StreamType.Video, this.player, drmManager, videoCodecExtraDataHandler);
         }
+
+
 
         private void OnPlaybackCompleted()
         {
             Logger.Info("");
 
-            state = PlayerState.Finished;
+            State = PlayerState.Finished;
 
             PlaybackCompleted?.Invoke();
         }
 
         private void OnPlaybackError(string error)
         {
-            state = PlayerState.Error;
+            State = PlayerState.Error;
 
             PlaybackError?.Invoke(error);
         }
 
         private void OnPlayerInitialized()
         {
-            state = PlayerState.Ready;
+            State = PlayerState.Ready;
 
             PlayerInitialized?.Invoke();
         }
@@ -121,24 +127,24 @@ namespace JuvoPlayer.Player
 
         public void OnPause()
         {
-            if (state != PlayerState.Playing)
+            if (State != PlayerState.Playing)
                 return;
 
             player.Pause();
 
-            state = PlayerState.Paused;
+            State = PlayerState.Paused;
 
             Paused?.Invoke();
         }
 
         public void OnPlay()
         {
-            if (state < PlayerState.Ready)
+            if (State < PlayerState.Ready)
                 return;
 
             player.Play();
 
-            state = PlayerState.Playing;
+            State = PlayerState.Playing;
 
             Played?.Invoke();
         }
@@ -151,12 +157,6 @@ namespace JuvoPlayer.Player
             if (time > duration)
                 time = duration;
 
-            // TODO: Consider Pause on DataProvider prior to calling
-            // Player.Seek() followed by DataProvider.Seek(). 
-            // Current model will generate stale data if demuxer or data provider pushes new data into
-            // pipeline between player.Seek() and Seek?.Invoke() calls. 
-            // Will result in longer seek times + possible key frame misses. 
-            //
             try
             {
                 var id = player.Seek(time);
@@ -188,7 +188,7 @@ namespace JuvoPlayer.Player
 
             player.Stop();
 
-            state = PlayerState.Finished;
+            State = PlayerState.Finished;
 
             Stopped?.Invoke();
         }
@@ -219,10 +219,34 @@ namespace JuvoPlayer.Player
             OnPlaybackError(errorMessage);
         }
 
+        public void OnBufferingStarted()
+        {
+            if (State != PlayerState.Playing)
+                return;
+
+            player.Pause();
+            State = PlayerState.Buffering;
+        }
+
+        public void OnBufferingCompleted()
+        {
+            if (State != PlayerState.Buffering)
+                return;
+
+            player.Play();
+            State = PlayerState.Playing;
+
+            // TODO: Get rid of the Played event
+            // We can notify UI via StateChanged event
+            Played?.Invoke();
+        }
+
         #region getters
+
         TimeSpan IPlayerController.CurrentTime => currentTime;
 
         TimeSpan IPlayerController.ClipDuration => duration;
+
         #endregion
 
         public void Dispose()

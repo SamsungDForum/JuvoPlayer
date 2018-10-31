@@ -6,9 +6,9 @@
     <ContentPage.Content>
         <StackLayout HorizontalOptions="FillAndExpand"
                      VerticalOptions="FillAndExpand">
-            <StackLayout.GestureRecognizers>                
+            <StackLayout.GestureRecognizers>
                 <TapGestureRecognizer
-                        Tapped="OnTapGestureRecognizerViewTapped"/>                
+                        Tapped="OnTapGestureRecognizerViewTapped"/>
             </StackLayout.GestureRecognizers>
             <StackLayout HorizontalOptions="FillAndExpand"
                          VerticalOptions="FillAndExpand"
@@ -38,11 +38,14 @@
                 </StackLayout>
                 <StackLayout VerticalOptions="FillAndExpand">
                     <BoxView VerticalOptions="FillAndExpand">
-                        <BoxView.GestureRecognizers>                            
+                        <BoxView.GestureRecognizers>
                             <TapGestureRecognizer
-                                Tapped="OnTapGestureRecognizerControllerTapped"/>                            
+                                Tapped="OnTapGestureRecognizerControllerTapped"/>
                         </BoxView.GestureRecognizers>
                     </BoxView>
+                    <ContentView Padding="30, 30" HorizontalOptions="Center">
+                        <Label IsVisible="false" BackgroundColor="#B0101010" FontSize="Large" TextColor="White" x:Name="InfoTextLabel" HorizontalOptions="Center" HorizontalTextAlignment="Center"/>
+                    </ContentView>
                     <ContentView Padding="30, 30" HorizontalOptions="CenterAndExpand">
                         <Label BackgroundColor="#B0101010" IsVisible="false" FontSize="Medium" TextColor="White" x:Name="CueTextLabel" HorizontalOptions="CenterAndExpand" WidthRequest="800" HorizontalTextAlignment="Center"/>
                     </ContentView>
@@ -61,7 +64,7 @@
                                     </Picker.Items>
                                     <Picker.SelectedIndex>0</Picker.SelectedIndex>
                                 </Picker>
-                            </StackLayout>                           
+                            </StackLayout>
                             <StackLayout Orientation="Horizontal">
                                 <Label Text="Video speed" TextColor="White" HorizontalOptions="Start" VerticalOptions="Center" WidthRequest="200" />
                                 <Picker x:Name="VideoSpeed" WidthRequest="300" >
@@ -113,7 +116,7 @@
                             <Image x:Name="BackImage"
                                    Source="btn_viewer_control_back_normal.png"
                                    HorizontalOptions="Center"
-                                   VerticalOptions="Center"                                    
+                                   VerticalOptions="Center"
                                    AbsoluteLayout.LayoutBounds="0,0,1,1" AbsoluteLayout.LayoutFlags="All"/>
                             <Label x:Name="BackButton"
                                     Opacity="0.1"
@@ -126,7 +129,7 @@
                             <Image x:Name="PlayImage"
                                     Source="btn_viewer_control_play_normal.png"
                                     HorizontalOptions="Center"
-                                    VerticalOptions="Center"                                    
+                                    VerticalOptions="Center"
                                     AbsoluteLayout.LayoutBounds="0,0,1,1" AbsoluteLayout.LayoutFlags="All"/>
                             <Button x:Name="PlayButton"
                                     Opacity="0.1"
@@ -140,7 +143,7 @@
                             <Image x:Name="ForwardImage"
                                    Source="btn_viewer_control_forward_normal.png"
                                    HorizontalOptions="Center"
-                                   VerticalOptions="Center"                                    
+                                   VerticalOptions="Center"
                                    AbsoluteLayout.LayoutBounds="0,0,1,1" AbsoluteLayout.LayoutFlags="All"/>
                             <Label x:Name="ForwardButton"
                                     Opacity="0.1"

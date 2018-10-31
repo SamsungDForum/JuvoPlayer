@@ -14,6 +14,7 @@ namespace JuvoPlayer.DataProviders
         private const double ThroughputIncreaseScale = 1.3;
 
         private readonly LinkedList<double> throughputs = new LinkedList<double>();
+
         public double GetAverageThroughput()
         {
             lock (throughputs)

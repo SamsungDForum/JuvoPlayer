@@ -1,7 +1,5 @@
 using System;
 using System.Collections.Generic;
-using System.Linq;
-using System.Threading;
 using System.Threading.Tasks;
 using JuvoLogger;
 using JuvoPlayer.Common;
@@ -28,6 +26,8 @@ namespace JuvoPlayer.DataProviders.Dash
         public event StreamConfigReady StreamConfigReady;
         public event PacketReady PacketReady;
         public event StreamError StreamError;
+        public event BufferingStarted BufferingStarted;
+        public event BufferingCompleted BufferingCompleted;
 
         private readonly DashManifestProvider manifestProvider;
 
@@ -58,7 +58,11 @@ namespace JuvoPlayer.DataProviders.Dash
             videoPipeline.StreamConfigReady += OnStreamConfigReady;
             videoPipeline.PacketReady += OnPacketReady;
             videoPipeline.StreamError += OnStreamError;
+            videoPipeline.BufferingStarted += OnBufferingStarted;
+            videoPipeline.BufferingCompleted += OnBufferingCompleted;
         }
+
+        
 
         private void OnClipDurationChanged(TimeSpan clipDuration)
         {
@@ -93,6 +97,16 @@ namespace JuvoPlayer.DataProviders.Dash
             PacketReady?.Invoke(packet);
         }
 
+        private void OnBufferingCompleted()
+        {
+            BufferingCompleted?.Invoke();
+        }
+
+        private void OnBufferingStarted()
+        {
+            BufferingStarted?.Invoke();
+        }
+
         public void OnChangeActiveStream(StreamDescription stream)
         {
             switch (stream.StreamType)
@@ -105,8 +119,6 @@ namespace JuvoPlayer.DataProviders.Dash
                     break;
                 case StreamType.Subtitle:
                     OnChangeActiveSubtitleStream(stream);
-                    break;
-                default:
                     break;
             }
         }
@@ -207,8 +219,6 @@ namespace JuvoPlayer.DataProviders.Dash
                     // Do not do bandwidth adaptation on audio.
                     // ESPlayer - all audio changes will result in destructive
                     // stream change.
-
-                    videoPipeline.SwitchStreamIfNeeded();
                 },
                 () =>
                 {

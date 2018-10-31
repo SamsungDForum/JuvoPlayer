@@ -1,5 +1,5 @@
 // Copyright (c) 2017 Samsung Electronics Co., Ltd All Rights Reserved
-// PROPRIETARY/CONFIDENTIAL 
+// PROPRIETARY/CONFIDENTIAL
 // This software is the confidential and proprietary
 // information of SAMSUNG ELECTRONICS ("Confidential Information"). You shall
 // not disclose such Confidential Information and shall use it only in
@@ -53,6 +53,7 @@ namespace JuvoPlayer.Common
         }
 
         public VideoCodec Codec { get; set; }
+
         //TODO(p.galiszewsk)
         public int CodecProfile { get; set; }
         public Size Size { get; set; }
@@ -60,6 +61,7 @@ namespace JuvoPlayer.Common
         public int FrameRateDen { get; set; }
         public int BitRate { get; set; }
         public int FrameRate => FrameRateNum / (FrameRateDen == 0 ? 1 : FrameRateDen);
+
         public override string ToString()
         {
             StringBuilder sb = new StringBuilder();
@@ -69,13 +71,6 @@ namespace JuvoPlayer.Common
             sb.AppendLine("\tFrameRate = (" + FrameRateNum + "/" + FrameRateDen + ") " + FrameRate);
 
             return sb.ToString();
-        }
-
-        public bool Compatible(VideoStreamConfig other)
-        {
-            return other != null &&
-                   Codec == other.Codec &&
-                   FrameRate == other.FrameRate;
         }
     }
 }

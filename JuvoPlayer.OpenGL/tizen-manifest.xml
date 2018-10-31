@@ -1,20 +1,20 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 
-<manifest package="Tizen.TV.NUI.GLApplication.JuvoPlayer.OpenGL" version="1.0.0" api-version="4"
-          xmlns="http://tizen.org/ns/packages">
+<manifest package="JuvoPlayerOpenGLNative.Tizen.TV" version="1.0.0" api-version="4" xmlns="http://tizen.org/ns/packages">
+  <feature
+    name="http://tizen.org/feature/screen.size.normal.1080.1920">true</feature>  
   <profile name="tv" />
-  <ui-application appid="Tizen.TV.NUI.GLApplication.JuvoPlayer.OpenGL" exec="JuvoPlayer.OpenGL.dll" multiple="false"
-                  nodisplay="false" taskmanage="true" splash-screen-display="true" type="dotnet"
-                  launch_mode="single">
-    <icon>Tizen.TV.NUI.GLApplication.JuvoPlayer.OpenGL.png</icon>
-    <label>Tizen.TV.NUI.GLApplication.JuvoPlayer.OpenGL</label>
-  </ui-application>
-  <shortcut-list />
-  <privileges>
-    <privilege>http://tizen.org/privilege/internet</privilege>
-    <privilege>http://tizen.org/privilege/tee.client</privilege>
-    <privilege>http://developer.samsung.com/privilege/drmplay</privilege>
-    <privilege>http://developer.samsung.com/privilege/drminfo</privilege>
-  </privileges>
-  <provides-appdefined-privileges />
+    <ui-application appid="JuvoPlayerOpenGLNative.Tizen.TV" exec="JuvoPlayerOpenGLNative.Tizen.TV.dll" multiple="false" nodisplay="false" taskmanage="true" splash-screen-display="true" type="dotnet" launch_mode="single">
+        <icon>JuvoPlayerOpenGLNativeTizenTV.png</icon>
+        <label>JuvoPlayerOpenGLNative.Tizen.TV</label>
+        <splash-screens />
+    </ui-application>
+    <shortcut-list />
+    <privileges>
+        <privilege>http://tizen.org/privilege/internet</privilege>
+        <privilege>http://tizen.org/privilege/tee.client</privilege>
+        <privilege>http://developer.samsung.com/privilege/drmplay</privilege>
+        <privilege>http://developer.samsung.com/privilege/drminfo</privilege>
+    </privileges>
+    <provides-appdefined-privileges />
 </manifest>

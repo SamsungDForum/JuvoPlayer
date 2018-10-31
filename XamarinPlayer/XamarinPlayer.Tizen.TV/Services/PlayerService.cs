@@ -17,7 +17,7 @@ using JuvoPlayer.Player.EsPlayer;
 using Xamarin.Forms;
 using XamarinPlayer.Services;
 using XamarinPlayer.Tizen.Services;
-
+using PlayerState = XamarinPlayer.Services.PlayerState;
 using StreamDefinition = XamarinPlayer.Services.StreamDescription;
 using StreamType = XamarinPlayer.Services.StreamDescription.StreamType;
 
@@ -73,14 +73,20 @@ namespace XamarinPlayer.Tizen.Services
             var player = new EsPlayer();
 
             playerController = new PlayerController(player, drmManager);
-            playerController.PlaybackCompleted += () =>
+            playerController.StateChanged += (sender, args) =>
             {
-                State = PlayerState.Completed;
+                try
+                {
+                    var state = args.State;
+                    State = ToPlayerState(state);
+                }
+                catch (ArgumentOutOfRangeException ex)
+                {
+                    Logger.Warn($"Unsupported state: {ex.Message}");
+                    Logger.Warn($"{ex.StackTrace}");
+                }
             };
-            playerController.PlayerInitialized += () =>
-            {
-                State = PlayerState.Prepared;
-            };
+
             playerController.PlaybackError += (message) =>
             {
                 playerStateMessage = message;
@@ -156,6 +162,30 @@ namespace XamarinPlayer.Tizen.Services
                     return StreamType.Subtitle;
                 default:
                     throw new IndexOutOfRangeException();
+            }
+        }
+
+        private PlayerState ToPlayerState(JuvoPlayer.Player.PlayerState state)
+        {
+            switch (state)
+            {
+                case JuvoPlayer.Player.PlayerState.Uninitialized:
+                    return PlayerState.Idle;
+                case JuvoPlayer.Player.PlayerState.Ready:
+                    return PlayerState.Prepared;
+                case JuvoPlayer.Player.PlayerState.Buffering:
+                    return PlayerState.Buffering;
+                case JuvoPlayer.Player.PlayerState.Paused:
+                    return PlayerState.Paused;
+                case JuvoPlayer.Player.PlayerState.Playing:
+                    return PlayerState.Playing;
+                case JuvoPlayer.Player.PlayerState.Finished:
+                    return PlayerState.Completed;
+                case JuvoPlayer.Player.PlayerState.Error:
+                    return PlayerState.Error;
+                default:
+                    Logger.Warn($"Unsupported state {state}");
+                    throw new ArgumentOutOfRangeException(nameof(state), state, null);
             }
         }
 

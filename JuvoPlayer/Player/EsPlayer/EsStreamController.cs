@@ -76,7 +76,6 @@ namespace JuvoPlayer.Player.EsPlayer
 
         // Termination & serialization objects for async operations.
         private CancellationTokenSource activeTaskCts = new CancellationTokenSource();
-
         private AsyncLock asyncOpSerializer = new AsyncLock();
 
         // Seek ID. Holds seek ID Request starting from one.
@@ -474,6 +473,11 @@ namespace JuvoPlayer.Player.EsPlayer
 
                     PlayerInitialized?.Invoke();
                 }
+            }
+            catch (InvalidOperationException ioe)
+            {
+                logger.Error(ioe.Message);
+                PlaybackError?.Invoke(ioe.Message);
             }
             catch (OperationCanceledException)
             {

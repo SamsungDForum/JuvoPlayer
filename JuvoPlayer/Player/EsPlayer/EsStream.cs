@@ -49,7 +49,6 @@ namespace JuvoPlayer.Player.EsPlayer
     /// Stream Reconfiguration & chunk transfer completion.
     /// </summary>
     internal delegate void StreamReconfigure();
-    internal delegate void ChunkCompleted(StreamType streamType, TimeSpan chunkDuration, ulong dataLength, CancellationToken token);
 
     /// <summary>
     /// Class representing and individual stream being transferred
@@ -196,7 +195,6 @@ namespace JuvoPlayer.Player.EsPlayer
             DisableTransfer();
         }
 
-
         /// <summary>
         /// Public API for disabling data transfer. Once called, no further
         /// data transfer will be possible.
@@ -309,6 +307,7 @@ namespace JuvoPlayer.Player.EsPlayer
             return res;
 
         }
+
         /// <summary>
         /// Audio Configuration push method.
         /// </summary>
@@ -389,7 +388,6 @@ namespace JuvoPlayer.Player.EsPlayer
                 logger.Info($"{streamType}: Stopping transfer");
             }
         }
-
 
         /// <summary>
         /// Disables further data transfer. Existing data in queue will continue
@@ -505,10 +503,8 @@ namespace JuvoPlayer.Player.EsPlayer
 
                     var packet = packetStorage.GetPacket(streamType, token);
 
-                    // Ignore non data packets (EOS/BufferChange/etc.)
-                    if (packet.Data != null)
-                    {
-                        dataLength += (ulong)packet.Data.Length;
+                        case BufferConfigurationPacket bufferConfigPacket when
+                            CurrentConfig.Compatible(bufferConfigPacket):
 
                         if (firstPts.HasValue)
                         {

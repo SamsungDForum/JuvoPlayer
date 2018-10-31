@@ -1,5 +1,5 @@
 // Copyright (c) 2017 Samsung Electronics Co., Ltd All Rights Reserved
-// PROPRIETARY/CONFIDENTIAL 
+// PROPRIETARY/CONFIDENTIAL
 // This software is the confidential and proprietary
 // information of SAMSUNG ELECTRONICS ("Confidential Information"). You shall
 // not disclose such Confidential Information and shall use it only in
@@ -48,6 +48,8 @@ namespace JuvoPlayer.DataProviders.HLS
         public event StreamConfigReady StreamConfigReady;
         public event PacketReady PacketReady;
         public event StreamError StreamError;
+        public event BufferingStarted BufferingStarted;
+        public event BufferingCompleted BufferingCompleted;
 
         private void OnClipDurationChanged(TimeSpan clipDuration)
         {
@@ -72,7 +74,7 @@ namespace JuvoPlayer.DataProviders.HLS
                 return;
             }
 
-            // found empty packet which means EOS. We need to send two fake 
+            // found empty packet which means EOS. We need to send two fake
             // eos packets, one for audio and one for video
             PacketReady?.Invoke(Packet.CreateEOS(StreamType.Audio));
             PacketReady?.Invoke(Packet.CreateEOS(StreamType.Video));
