@@ -1,5 +1,5 @@
 // Copyright (c) 2017 Samsung Electronics Co., Ltd All Rights Reserved
-// PROPRIETARY/CONFIDENTIAL 
+// PROPRIETARY/CONFIDENTIAL
 // This software is the confidential and proprietary
 // information of SAMSUNG ELECTRONICS ("Confidential Information"). You shall
 // not disclose such Confidential Information and shall use it only in
@@ -21,6 +21,11 @@ namespace JuvoPlayer.Player
     public delegate void Seek(TimeSpan time);
     public delegate void Stop();
 
+    public class StateChangedEventArgs : EventArgs
+    {
+        public PlayerState State { get; set; }
+    }
+
     public interface IPlayerController : IDisposable
     {
         #region ui_slots
@@ -38,11 +43,15 @@ namespace JuvoPlayer.Player
         void OnStreamConfigReady(StreamConfig config);
         void OnPacketReady(Packet packet);
         void OnStreamError(string errorMessage);
+        void OnBufferingStarted();
+        void OnBufferingCompleted();
         #endregion
 
         #region getters
+
         TimeSpan CurrentTime { get; }
         TimeSpan ClipDuration { get; }
+
         #endregion
 
         event Pause Paused;
@@ -56,5 +65,6 @@ namespace JuvoPlayer.Player
         event TimeUpdated TimeUpdated;
         event SeekCompleted SeekCompleted;
         event PlaybackRestart PlaybackRestart;
+        event EventHandler<StateChangedEventArgs> StateChanged;
     }
 }

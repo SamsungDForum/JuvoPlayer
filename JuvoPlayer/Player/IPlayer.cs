@@ -1,5 +1,5 @@
 // Copyright (c) 2017 Samsung Electronics Co., Ltd All Rights Reserved
-// PROPRIETARY/CONFIDENTIAL 
+// PROPRIETARY/CONFIDENTIAL
 // This software is the confidential and proprietary
 // information of SAMSUNG ELECTRONICS ("Confidential Information"). You shall
 // not disclose such Confidential Information and shall use it only in
@@ -23,7 +23,6 @@ namespace JuvoPlayer.Player
         event PlayerInitialized PlayerInitialized;
         event SeekCompleted SeekCompleted;
         event TimeUpdated TimeUpdated;
-        event BufferStatus BufferStatus;
         event PlaybackRestart PlaybackRestart;
 
         void Pause();

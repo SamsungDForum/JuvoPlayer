@@ -88,7 +88,6 @@ namespace JuvoPlayer.Player.EsPlayer
                 //
                 dataStreams[(int) stream] = new EsStream(stream, packetStorage);
                 dataStreams[(int) stream].SetPlayer(player);
-                dataStreams[(int) stream].ReconfigureStream += OnStreamReconfigure;
             }
         }
 
@@ -142,7 +141,6 @@ namespace JuvoPlayer.Player.EsPlayer
                 // Check if all initialized streams are configured
                 if (!AllStreamsConfigured)
                     return;
-
                 var token = activeTaskCts.Token;
                 StreamPrepare(token);
             }
@@ -270,29 +268,6 @@ namespace JuvoPlayer.Player.EsPlayer
         #endregion
 
         #region Private Methods
-
-        #region Internal EsPlayer event handlers
-
-        private void OnStreamReconfigure()
-        {
-            logger.Info("");
-
-            try
-            {
-                var token = activeTaskCts.Token;
-                RestartPlayer(token);
-            }
-            catch (OperationCanceledException)
-            {
-                logger.Info("Operation canceled");
-            }
-            catch (ObjectDisposedException)
-            {
-                logger.Info("Operation cancelled and disposed");
-            }
-        }
-
-        #endregion
 
         #region ESPlayer event handlers
 
@@ -583,8 +558,6 @@ namespace JuvoPlayer.Player.EsPlayer
             {
                 while (!token.IsCancellationRequested)
                 {
-                    await Task.Delay(500, token);
-
                     try
                     {
                         player.GetPlayingTime(out var currentPlayTime);
@@ -596,6 +569,8 @@ namespace JuvoPlayer.Player.EsPlayer
                     {
                         logger.Warn("Cannot obtain play time from player: " + ioe.Message);
                     }
+
+                    await Task.Delay(500, token);
                 }
             }
             catch (TaskCanceledException)
@@ -705,7 +680,6 @@ namespace JuvoPlayer.Player.EsPlayer
             logger.Info("Data Streams shutdown");
             foreach (var esStream in dataStreams.Where(esStream => esStream != null))
             {
-                esStream.ReconfigureStream -= OnStreamReconfigure;
                 esStream.Dispose();
             }
 
