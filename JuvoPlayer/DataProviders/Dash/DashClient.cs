@@ -355,7 +355,7 @@ namespace JuvoPlayer.DataProviders.Dash
         {
             if (buffering)
                 return;
-            BufferingStarted?.Invoke();
+            Task.Run(() => BufferingStarted?.Invoke());
             buffering = true;
         }
 
@@ -368,7 +368,7 @@ namespace JuvoPlayer.DataProviders.Dash
         {
             if (!buffering)
                 return;
-            BufferingCompleted?.Invoke();
+            Task.Run(() => BufferingCompleted?.Invoke());
             buffering = false;
         }
 
