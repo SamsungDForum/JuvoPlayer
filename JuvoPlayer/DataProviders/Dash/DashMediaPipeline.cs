@@ -169,7 +169,9 @@ namespace JuvoPlayer.DataProviders.Dash
                     GetAvailableStreams(media, currentMedia);
 
                     // Media Preparation (Call to Initialize) is done upon assignment to pendingStream.
-                    PendingStream = new DashStream(currentMedia, currentRepresentation);
+                    //PendingStream = new DashStream(currentMedia, currentRepresentation);
+                    currentStream = new DashStream(currentMedia, currentRepresentation);
+                    dashClient.UpdateRepresentation(currentStream.Representation);
                     return;
                 }
             }
@@ -606,7 +608,7 @@ namespace JuvoPlayer.DataProviders.Dash
                     // Add last seek value to packet clock. Forcing last seek value looses
                     // PTS/DTS differences causing lip sync issues.
                     //
-                    demuxerClock = (PacketTimeStamp) packet + lastSeek.Value;
+                    demuxerClock = (PacketTimeStamp)packet + lastSeek.Value;
 
                     Logger.Info($"{StreamType}: Badly timestamped packet. Adjusting demuxerClock to: {demuxerClock}");
                 }
