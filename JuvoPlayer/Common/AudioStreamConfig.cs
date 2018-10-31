@@ -1,5 +1,5 @@
 // Copyright (c) 2017 Samsung Electronics Co., Ltd All Rights Reserved
-// PROPRIETARY/CONFIDENTIAL 
+// PROPRIETARY/CONFIDENTIAL
 // This software is the confidential and proprietary
 // information of SAMSUNG ELECTRONICS ("Confidential Information"). You shall
 // not disclose such Confidential Information and shall use it only in
@@ -66,8 +66,5 @@ namespace JuvoPlayer.Common
             return sb.ToString();
         }
 
-        // Audio compatibility criteria: 
-        // All parameters must match
-        public bool Compatible(AudioStreamConfig other) => Equals(other);
     }
 }

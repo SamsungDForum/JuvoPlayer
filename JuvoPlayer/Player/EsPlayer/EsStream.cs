@@ -1,5 +1,5 @@
 ﻿// Copyright (c) 2018 Samsung Electronics Co., Ltd All Rights Reserved
-// PROPRIETARY/CONFIDENTIAL 
+// PROPRIETARY/CONFIDENTIAL
 // This software is the confidential and proprietary
 // information of SAMSUNG ELECTRONICS ("Confidential Information"). You shall
 // not disclose such Confidential Information and shall use it only in
@@ -77,9 +77,6 @@ namespace JuvoPlayer.Player.EsPlayer
         // that can be externally accessed
         private readonly object syncLock = new object();
 
-        // Event - Invoked when stream requires reconfiguration
-        public event StreamReconfigure ReconfigureStream;
-
         #region Public API
 
         public EsStream(Common.StreamType type, EsPlayerPacketStorage storage)
@@ -143,7 +140,7 @@ namespace JuvoPlayer.Player.EsPlayer
         /// <summary>
         /// Method resets current config. When config change occurs as a result
         /// of config packet being queued, CurrentConfig holds value of new configuration
-        /// which needs to be pushed to player 
+        /// which needs to be pushed to player
         /// </summary>
         public void ResetStreamConfig()
         {
@@ -312,20 +309,7 @@ namespace JuvoPlayer.Player.EsPlayer
                             disableTransfer = true;
                             return;
 
-                        case BufferConfigurationPacket bufferConfigPacket when
-                            !CurrentConfig.Compatible(bufferConfigPacket):
-
-                            CurrentConfig = bufferConfigPacket;
-
-                            logger.Info($"{streamType}: Incompatible Stream config change.");
-                            ReconfigureStream?.Invoke();
-
-                            // exit transfer task. This will prevent further transfers
-                            // Stops/Restarts will be called by reconfiguration handler.
-                            return;
-
-                        case BufferConfigurationPacket bufferConfigPacket when
-                            CurrentConfig.Compatible(bufferConfigPacket):
+                        case BufferConfigurationPacket bufferConfigPacket:
 
                             CurrentConfig = bufferConfigPacket;
 
@@ -492,8 +476,8 @@ namespace JuvoPlayer.Player.EsPlayer
                     throw new PacketSubmitException("Packet Submit Error", status);
             }
 
-            // We are left with Status.Full 
-            // For now sleep, however, once buffer events will be 
+            // We are left with Status.Full
+            // For now sleep, however, once buffer events will be
             // emitted from ESPlayer, they could be used here
             using (var napTime = new ManualResetEventSlim(false))
                 napTime.Wait(delay, token);

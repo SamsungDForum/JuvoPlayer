@@ -1,5 +1,5 @@
 // Copyright (c) 2017 Samsung Electronics Co., Ltd All Rights Reserved
-// PROPRIETARY/CONFIDENTIAL 
+// PROPRIETARY/CONFIDENTIAL
 // This software is the confidential and proprietary
 // information of SAMSUNG ELECTRONICS ("Confidential Information"). You shall
 // not disclose such Confidential Information and shall use it only in
@@ -28,6 +28,7 @@ namespace JuvoPlayer.DataProviders.Dash
         private static readonly ILogger Logger = LoggerManager.GetInstance().GetLogger(Tag);
         public long Low { get; }
         public long High { get; }
+
         public ByteRange(string range)
         {
             Low = 0;
@@ -49,6 +50,7 @@ namespace JuvoPlayer.DataProviders.Dash
                 Logger.Error(ex + " Cannot parse range.");
             }
         }
+
         public override string ToString()
         {
             return $"{Low}-{High}";
@@ -80,14 +82,15 @@ namespace JuvoPlayer.DataProviders.Dash
 
         protected override WebRequest GetWebRequest(Uri address)
         {
-            var request = (HttpWebRequest)base.GetWebRequest(address);
+            var request = (HttpWebRequest) base.GetWebRequest(address);
             if (request != null)
             {
                 if (to != null && from != null)
                 {
-                    request.AddRange((int)from, (int)to);
+                    request.AddRange((int) from, (int) to);
                 }
             }
+
             return request;
         }
     }
@@ -115,6 +118,7 @@ namespace JuvoPlayer.DataProviders.Dash
     internal class DashDownloaderException : Exception
     {
         public DownloadRequest DownloadRequest { get; }
+
         public DashDownloaderException(DownloadRequest request, string message, Exception inner) : base(message, inner)
         {
             DownloadRequest = request;
@@ -138,7 +142,8 @@ namespace JuvoPlayer.DataProviders.Dash
 
         private int downloadErrorCount;
 
-        private DashDownloader(DownloadRequest downloadRequest, CancellationToken cancellationToken, IThroughputHistory throughputHistory)
+        private DashDownloader(DownloadRequest downloadRequest, CancellationToken cancellationToken,
+            IThroughputHistory throughputHistory)
         {
             request = downloadRequest;
 
@@ -149,7 +154,8 @@ namespace JuvoPlayer.DataProviders.Dash
             this.throughputHistory = throughputHistory;
         }
 
-        public static Task<DownloadResponse> DownloadDataAsync(DownloadRequest downloadRequest, CancellationToken cancellationToken, IThroughputHistory throughputHistory)
+        public static Task<DownloadResponse> DownloadDataAsync(DownloadRequest downloadRequest,
+            CancellationToken cancellationToken, IThroughputHistory throughputHistory)
         {
             var dashDownloader = new DashDownloader(downloadRequest, cancellationToken, throughputHistory);
 
@@ -210,7 +216,8 @@ namespace JuvoPlayer.DataProviders.Dash
 
                 cancellationToken.ThrowIfCancellationRequested();
 
-                Logger.Info($"{request.StreamType}: Segment: {SegmentId(request.SegmentId)} Requested. URL: {request.DownloadSegment.Url} Range: {downloadRange}");
+                Logger.Info(
+                    $"{request.StreamType}: Segment: {SegmentId(request.SegmentId)} Requested. URL: {request.DownloadSegment.Url} Range: {downloadRange}");
 
                 TimeSpan time;
                 byte[] data;
@@ -233,7 +240,7 @@ namespace JuvoPlayer.DataProviders.Dash
 
         private int CalculateSleepTime()
         {
-            // sleep at least 1ms to make delay async 
+            // sleep at least 1ms to make delay async
             if (!request.IgnoreError || downloadErrorCount == 0)
                 return 1;
 
@@ -246,8 +253,8 @@ namespace JuvoPlayer.DataProviders.Dash
             var rnd = new Random();
 
             var sleepTime = rnd.Next(
-                (downloadErrorCount - 1) * 100 + 1,
-                (downloadErrorCount * downloadErrorCount - (downloadErrorCount - 1)) * 100) + 1;
+                                (downloadErrorCount - 1) * 100 + 1,
+                                (downloadErrorCount * downloadErrorCount - (downloadErrorCount - 1)) * 100) + 1;
 
             return sleepTime;
         }
@@ -258,4 +265,3 @@ namespace JuvoPlayer.DataProviders.Dash
         }
     }
 }
-
