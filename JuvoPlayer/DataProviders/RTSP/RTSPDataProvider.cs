@@ -62,11 +62,6 @@ namespace JuvoPlayer.DataProviders.RTSP
             PacketReady?.Invoke(Packet.CreateEOS(StreamType.Video));
         }
 
-        public void OnRestart(TimeSpan time)
-        {
-           throw new NotImplementedException();
-        }
-
         public void OnChangeActiveStream(StreamDescription stream)
         {
             throw new NotImplementedException();
@@ -87,7 +82,7 @@ namespace JuvoPlayer.DataProviders.RTSP
             rtpClient?.Play();
         }
 
-        public void OnSeek(TimeSpan time)
+        public void OnSeek(TimeSpan time, uint seekId)
         {
         }
 

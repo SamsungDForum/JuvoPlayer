@@ -63,4 +63,18 @@ namespace JuvoPlayer.Common
         }
         #endregion
     }
+
+    public class SeekPacket : Packet
+    {
+        public uint SeekId { get; internal set; }
+
+        public static SeekPacket CreatePacket(StreamType streamType, uint seekId)
+        {
+            return new SeekPacket
+            {
+                StreamType = streamType,
+                SeekId = seekId
+            };
+        }
+    }
 }

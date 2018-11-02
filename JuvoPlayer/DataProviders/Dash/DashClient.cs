@@ -534,7 +534,7 @@ namespace JuvoPlayer.DataProviders.Dash
                 return;
             }
 
-            var newSeg = currentSegmentId;
+            var newSeg = currentStreams.NextSegmentId(lastDownloadSegmentTimeRange.Start);
             string message;
 
             if (newSeg.HasValue)
@@ -646,7 +646,7 @@ namespace JuvoPlayer.DataProviders.Dash
             // Start Segment = First Available + 1/4 of Time Shift Buffer.
             // Use max 1/2 of TimeShiftBufferDepth.
             //
-            var tsBuffer = (int) (currentStreams.GetDocumentParameters().Document.TimeShiftBufferDepth?.TotalSeconds ??
+            var tsBuffer = (int)(currentStreams.GetDocumentParameters().Document.TimeShiftBufferDepth?.TotalSeconds ??
                                   0);
             tsBuffer = tsBuffer / 2;
 

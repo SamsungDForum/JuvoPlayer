@@ -30,10 +30,9 @@ namespace JuvoPlayer.DataProviders
         void OnDeactivateStream(StreamType streamType);
         void OnPaused();
         void OnPlayed();
-        void OnSeek(TimeSpan time);
+        void OnSeek(TimeSpan time, uint seekId);
         void OnStopped();
         void OnTimeUpdated(TimeSpan time);
-        void OnRestart(TimeSpan time);
 
         bool IsSeekingSupported();
         void Start();

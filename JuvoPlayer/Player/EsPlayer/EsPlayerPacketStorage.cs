@@ -13,10 +13,12 @@
 
 using System;
 using System.Collections.Concurrent;
+using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using JuvoLogger;
 using JuvoPlayer.Common;
+using JuvoPlayer.Common.Utils;
 
 namespace JuvoPlayer.Player.EsPlayer
 {
@@ -25,12 +27,21 @@ namespace JuvoPlayer.Player.EsPlayer
     /// </summary>
     internal sealed class EsPlayerPacketStorage : IDisposable
     {
+
+        private class DataStorage
+        {
+            public BlockingCollection<Packet> packetQueue;
+            public StreamType StreamType;
+            public TimeSpan PtsIn;
+            public TimeSpan PtsOut;
+        }
+
         private readonly ILogger logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
 
         /// <summary>
         /// Data storage collection
         /// </summary>
-        private readonly BlockingCollection<Packet>[] packetQueues = new BlockingCollection<Packet>[(int)Common.StreamType.Count];
+        private readonly DataStorage[] packetQueues = new DataStorage[(int)Common.StreamType.Count];
 
         #region Public API
 
@@ -45,16 +56,25 @@ namespace JuvoPlayer.Player.EsPlayer
 
             // Grab "old" queue 
             //
-            var queue = packetQueues[(int)stream];
+            var storage = packetQueues[(int)stream];
 
             // Create new queue in its place
             //
-            packetQueues[(int)stream] = new BlockingCollection<Packet>();
+            packetQueues[(int)stream] = new DataStorage
+            {
+                packetQueue = new BlockingCollection<Packet>(),
+                StreamType = stream,
+                PtsIn = TimeSpan.Zero,
+                PtsOut = TimeSpan.Zero
+            };
 
-            // Remove previous data if existed in first place...
-            //
-            EmptyQueue(ref queue);
-            queue?.Dispose();
+            if (storage != null)
+            {
+                // Remove previous data if existed in first place...
+                //
+                EmptyQueue(stream, ref storage.packetQueue);
+                storage.packetQueue.Dispose();
+            }
         }
 
         /// <summary>
@@ -65,8 +85,15 @@ namespace JuvoPlayer.Player.EsPlayer
         {
             try
             {
-                packetQueues[(int)packet.StreamType].Add(packet);
+                var storage = packetQueues[(int)packet.StreamType];
+
+                if (packet.Pts != TimeSpan.MaxValue && packet.Pts != TimeSpan.MinValue)
+                    storage.PtsIn = packet.Pts;
+
+                storage.packetQueue.Add(packet);
+
                 return;
+
             }
             catch (InvalidOperationException)
             {
@@ -96,19 +123,37 @@ namespace JuvoPlayer.Player.EsPlayer
         /// </remarks>
         public Packet GetPacket(Common.StreamType stream, CancellationToken extStopToken)
         {
-            return packetQueues[(int)stream].Take(extStopToken);
+            var storage = packetQueues[(int)stream];
+            var packet = storage.packetQueue.Take(extStopToken);
+
+            if (packet.Pts != TimeSpan.MaxValue && packet.Pts != TimeSpan.MinValue)
+                storage.PtsOut = packet.Pts;
+
+            return packet;
         }
+
 
         /// <summary>
         /// Retrieves number of data packets in specified storage
         /// </summary>
         /// <param name="stream">stream for which packet is to be retrieved</param>
         /// <returns>Number of packets</returns>
-        public int DataCount(Common.StreamType stream)
+        public int PacketCount(Common.StreamType stream)
         {
-            return packetQueues[(int)stream].Count;
+            var storage = packetQueues[(int)stream];
+            return storage.packetQueue.Count;
         }
 
+        public TimeSpan Duration(Common.StreamType stream)
+        {
+            var storage = packetQueues[(int)stream];
+            var duration = storage.PtsIn - storage.PtsOut;
+
+            // packets pts order IS randomish, thus duration may be negative
+            // In those cases, return zero.
+            return duration < TimeSpan.Zero ? TimeSpan.Zero : duration;
+
+        }
         /// <summary>
         /// Disables storage. No further addition of data will be possible.
         /// Extraction of already contained data is still possible.
@@ -116,7 +161,8 @@ namespace JuvoPlayer.Player.EsPlayer
         /// <param name="stream">stream for which packet is to be retrieved</param>
         public void Disable(Common.StreamType stream)
         {
-            packetQueues[(int)stream].CompleteAdding();
+            var storage = packetQueues[(int)stream];
+            storage.packetQueue.CompleteAdding();
         }
 
         #endregion
@@ -126,8 +172,10 @@ namespace JuvoPlayer.Player.EsPlayer
         /// <summary>
         /// Empties individual data queue
         /// </summary>
-        /// <param name="queue">BlockingCollection<Packet></param>
-        private void EmptyQueue(ref BlockingCollection<Packet> queue)
+        /// <param name="queue">BlockingCollection(packet)></param>
+        /// <param name="stream">Stream to be emptied</param>
+        /// 
+        private void EmptyQueue(Common.StreamType stream, ref BlockingCollection<Packet> queue)
         {
             if (queue == null)
                 return;
@@ -137,7 +185,7 @@ namespace JuvoPlayer.Player.EsPlayer
             // We do not care about order of execution nor have to wait for its 
             // completion
             //
-            logger.Info($"Disposing of {queueData.Length} packets");
+            logger.Info($"{stream}: Disposing of {queueData.Length} packets");
 
             queueData.AsParallel().ForAll(aPacket => aPacket.Dispose());
         }
@@ -155,11 +203,19 @@ namespace JuvoPlayer.Player.EsPlayer
             // We have an array of blocking collection now, we can
             // dispose of them by calling EmptyQueue on each.
             //
-            packetQueues.ToArray().AsParallel().ForAll(packetQueue =>
+            packetQueues.ToArray().AsParallel().ForAll(storage =>
             {
-                EmptyQueue(ref packetQueue);
-                packetQueue?.Dispose();
+                if (storage == null)
+                    return;
+
+                EmptyQueue(storage.StreamType, ref storage.packetQueue);
+                storage.packetQueue?.Dispose();
+                storage.packetQueue = null;
+
+                logger.Info($"{storage.StreamType}: Disposed.");
             });
+
+
 
             isDisposed = true;
         }

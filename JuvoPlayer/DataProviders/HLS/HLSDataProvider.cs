@@ -51,11 +51,6 @@ namespace JuvoPlayer.DataProviders.HLS
         public event BufferingStarted BufferingStarted;
         public event BufferingCompleted BufferingCompleted;
 
-        public void OnRestart(TimeSpan time)
-        {
-            throw new NotImplementedException();
-        }
-
         private void OnClipDurationChanged(TimeSpan clipDuration)
         {
             ClipDurationChanged?.Invoke(clipDuration);
@@ -126,7 +121,7 @@ namespace JuvoPlayer.DataProviders.HLS
             demuxer.Resume();
         }
 
-        public void OnSeek(TimeSpan time)
+        public void OnSeek(TimeSpan time, uint seekId)
         {
         }
 

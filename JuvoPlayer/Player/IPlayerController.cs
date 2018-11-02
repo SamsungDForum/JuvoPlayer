@@ -1,5 +1,5 @@
 // Copyright (c) 2017 Samsung Electronics Co., Ltd All Rights Reserved
-// PROPRIETARY/CONFIDENTIAL
+// PROPRIETARY/CONFIDENTIAL 
 // This software is the confidential and proprietary
 // information of SAMSUNG ELECTRONICS ("Confidential Information"). You shall
 // not disclose such Confidential Information and shall use it only in
@@ -18,7 +18,7 @@ namespace JuvoPlayer.Player
 {
     public delegate void Pause();
     public delegate void Play();
-    public delegate void Seek(TimeSpan time);
+    public delegate void Seek(TimeSpan time, uint seekId);
     public delegate void Stop();
 
     public class StateChangedEventArgs : EventArgs
@@ -64,7 +64,6 @@ namespace JuvoPlayer.Player
         event PlayerInitialized PlayerInitialized;
         event TimeUpdated TimeUpdated;
         event SeekCompleted SeekCompleted;
-        event PlaybackRestart PlaybackRestart;
         event EventHandler<StateChangedEventArgs> StateChanged;
     }
 }

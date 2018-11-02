@@ -1,5 +1,5 @@
 // Copyright (c) 2017 Samsung Electronics Co., Ltd All Rights Reserved
-// PROPRIETARY/CONFIDENTIAL
+// PROPRIETARY/CONFIDENTIAL 
 // This software is the confidential and proprietary
 // information of SAMSUNG ELECTRONICS ("Confidential Information"). You shall
 // not disclose such Confidential Information and shall use it only in
@@ -50,7 +50,6 @@ namespace JuvoPlayer.Player
         public event PlayerInitialized PlayerInitialized;
         public event TimeUpdated TimeUpdated;
         public event SeekCompleted SeekCompleted;
-        public event PlaybackRestart PlaybackRestart;
         public event EventHandler<StateChangedEventArgs> StateChanged;
 
         private readonly ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
@@ -66,7 +65,6 @@ namespace JuvoPlayer.Player
             this.player.PlayerInitialized += OnPlayerInitialized;
             this.player.SeekCompleted += OnSeekCompleted;
             this.player.TimeUpdated += OnTimeUpdated;
-            this.player.PlaybackRestart += OnPlaybackRestart;
 
             var audioCodecExtraDataHandler = new AudioCodecExtraDataHandler(player);
             var videoCodecExtraDataHandler = new VideoCodecExtraDataHandler(player);
@@ -77,12 +75,7 @@ namespace JuvoPlayer.Player
                 new PacketStream(StreamType.Video, this.player, drmManager, videoCodecExtraDataHandler);
         }
 
-        private void OnPlaybackRestart(TimeSpan time)
-        {
-            Logger.Info(time.ToString());
 
-            PlaybackRestart?.Invoke(time);
-        }
 
         private void OnPlaybackCompleted()
         {
@@ -164,18 +157,19 @@ namespace JuvoPlayer.Player
             if (time > duration)
                 time = duration;
 
-            // TODO: Consider Pause on DataProvider prior to calling
-            // Player.Seek() followed by DataProvider.Seek().
-            // Current model will generate stale data if demuxer or data provider pushes new data into
-            // pipeline between player.Seek() and Seek?.Invoke() calls.
-            // Will result in longer seek times + possible key frame misses.
-            //
-            player.Seek(time);
+            try
+            {
+                var id = player.Seek(time);
 
-            // prevent simultaneously seeks
-            seeking = true;
+                // prevent simultaneously seeks
+                seeking = true;
 
-            Seek?.Invoke(time);
+                Seek?.Invoke(time, id);
+            }
+            catch (OperationCanceledException)
+            {
+                Logger.Info("Operation Canceled");
+            }
         }
 
         public void OnSeekCompleted()
