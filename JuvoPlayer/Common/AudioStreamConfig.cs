@@ -66,5 +66,8 @@ namespace JuvoPlayer.Common
             return sb.ToString();
         }
 
+        // Audio compatibility criteria: 
+        // All parameters must match
+        public bool Compatible(AudioStreamConfig other) => Equals(other);
     }
 }
