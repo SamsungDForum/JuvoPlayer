@@ -54,9 +54,8 @@ namespace XamarinPlayer.Tizen
 
         protected override void OnAppControlReceived(AppControlReceivedEventArgs e)
         {
-            /// Handle the launch request, show the user the task requested through the
-            /// "AppControlReceivedEventArgs" parameter
-            /// Smart Hub Preview fucntion requires the below code to identify which deeplink have to be launched            
+            // Handle the launch request, show the user the task requested through the "AppControlReceivedEventArgs" parameter
+            // Smart Hub Preview function requires the below code to identify which deeplink have to be launched            
             ReceivedAppControl receivedAppControl = e.ReceivedAppControl;
 
             //fetch the JSON metadata defined on the smart Hub preview web server

@@ -48,7 +48,7 @@ namespace XamarinPlayer.Views
         
         private void PreviewPayloadHandler(string message)
         {               
-            //This method is being exected always. If launched wihoud the SmartHub Preview tail, the message string is null.            
+            //This method is being executed always. If launched without the SmartHub Preview tail, the message string is null.            
             if (!string.IsNullOrEmpty(message))
             {
                 var definition = new { values = "" };                
