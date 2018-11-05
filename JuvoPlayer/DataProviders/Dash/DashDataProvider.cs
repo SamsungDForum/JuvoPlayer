@@ -62,7 +62,7 @@ namespace JuvoPlayer.DataProviders.Dash
             videoPipeline.BufferingCompleted += OnBufferingCompleted;
         }
 
-        
+
 
         private void OnClipDurationChanged(TimeSpan clipDuration)
         {
@@ -223,9 +223,6 @@ namespace JuvoPlayer.DataProviders.Dash
                 () =>
                 {
                     videoPipeline.OnTimeUpdated(time);
-
-                    videoPipeline.AdaptToNetConditions();
-                    videoPipeline.SwitchStreamIfNeeded();
                 });
         }
 

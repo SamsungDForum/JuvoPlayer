@@ -70,7 +70,7 @@ namespace JuvoPlayer.DataProviders.Dash
         public StreamType StreamType => streamType;
 
         private bool pipelineStarted;
-        private bool disableAdaptiveStreaming;
+        public bool DisableAdaptiveStreaming { get; set; }
 
         private DashStream currentStream;
         private DashStream _pendingStreamStorage;
@@ -109,6 +109,14 @@ namespace JuvoPlayer.DataProviders.Dash
             dashClient.Error += OnStreamError;
             dashClient.BufferingCompleted += OnBufferingCompleted;
             dashClient.BufferingStarted += OnBufferingStarted;
+            dashClient.DownloadCompleted += OnDownloadCompleted;
+        }
+
+        private void OnDownloadCompleted()
+        {
+            AdaptToNetConditions();
+            SwitchStreamIfNeeded();
+            dashClient.ScheduleNextSegDownload();
         }
 
         private DashStream InitializePendingStream(DashStream newStream)
@@ -172,6 +180,7 @@ namespace JuvoPlayer.DataProviders.Dash
                     //PendingStream = new DashStream(currentMedia, currentRepresentation);
                     currentStream = new DashStream(currentMedia, currentRepresentation);
                     dashClient.UpdateRepresentation(currentStream.Representation);
+                    dashClient.ScheduleNextSegDownload();
                     return;
                 }
             }
@@ -186,7 +195,7 @@ namespace JuvoPlayer.DataProviders.Dash
 
         public void AdaptToNetConditions()
         {
-            if (disableAdaptiveStreaming)
+            if (DisableAdaptiveStreaming)
                 return;
 
             if (currentStream == null && PendingStream == null)
@@ -246,7 +255,7 @@ namespace JuvoPlayer.DataProviders.Dash
                 if (!CanSwitchStream())
                     return;
 
-                ResetPipeline();
+                FlushPipeline();
                 StartPipeline(PendingStream);
 
                 PendingStream = null;
@@ -367,7 +376,7 @@ namespace JuvoPlayer.DataProviders.Dash
             if (!pipelineStarted)
                 return;
 
-            demuxer.Stop();
+            demuxer.Reset();
             dashClient.Stop();
 
             trimmOffset = null;
@@ -421,9 +430,9 @@ namespace JuvoPlayer.DataProviders.Dash
                 if (currentStream.Media.Type.Value != newMedia.Type.Value)
                     throw new ArgumentException("wrong media type");
 
-                disableAdaptiveStreaming = true;
+                DisableAdaptiveStreaming = true;
 
-                ResetPipeline();
+                FlushPipeline();
                 StartPipeline(newStream);
             }
             finally
@@ -439,7 +448,20 @@ namespace JuvoPlayer.DataProviders.Dash
 
             // Stop demuxer and dashclient
             // Stop demuxer first so old incoming data will ignored
-            demuxer.Stop();
+            demuxer.Reset();
+            dashClient.Reset();
+
+            pipelineStarted = false;
+        }
+
+        private void FlushPipeline()
+        {
+            if (!pipelineStarted)
+                return;
+
+            // Stop demuxer and dashclient
+            // Stop demuxer first so old incoming data will ignored
+            demuxer.Flush();
             dashClient.Reset();
 
             pipelineStarted = false;
@@ -627,7 +649,7 @@ namespace JuvoPlayer.DataProviders.Dash
             // Allow adaptive stream switching if Client is in correct state and
             // Adaptive Streaming enabled.
             //
-            return dashClient.CanStreamSwitch() && !disableAdaptiveStreaming;
+            return dashClient.CanStreamSwitch() && !DisableAdaptiveStreaming;
         }
 
         public void Dispose()
