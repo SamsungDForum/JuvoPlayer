@@ -1,5 +1,5 @@
 ﻿// Copyright (c) 2018 Samsung Electronics Co., Ltd All Rights Reserved
-// PROPRIETARY/CONFIDENTIAL 
+// PROPRIETARY/CONFIDENTIAL
 // This software is the confidential and proprietary
 // information of SAMSUNG ELECTRONICS ("Confidential Information"). You shall
 // not disclose such Confidential Information and shall use it only in
@@ -78,7 +78,7 @@ namespace JuvoPlayer.DataProviders.Dash
                 if (description.Id >= subtitleInfos.Count)
                     throw new ArgumentException("Invalid subtitle description");
 
-                // Create a copy! 
+                // Create a copy!
                 return new SubtitleInfo(subtitleInfos[description.Id]);
             }
         }
@@ -152,7 +152,7 @@ namespace JuvoPlayer.DataProviders.Dash
             // Apply new manifest
             //
             // Success  = Start of playback.
-            // Failure  = Static Content: Termination signaled by exception. 
+            // Failure  = Static Content: Termination signaled by exception.
             //            Dynamic content: Do manifest reload and force "has changed" flag to be set
             //            to allow re-application of manifest regardless of its content change.
             //
@@ -230,7 +230,7 @@ namespace JuvoPlayer.DataProviders.Dash
                     // before any previous downloads - report it.
                     // For static, do always.
                     //
-                    repeatFeed = Manifest?.CurrentDocument.IsDynamic ?? false;
+                    repeatFeed = Manifest?.CurrentDocument?.IsDynamic ?? false;
 
                     if (!repeatFeed)
                         StreamError?.Invoke(dme.Message);
@@ -304,7 +304,7 @@ namespace JuvoPlayer.DataProviders.Dash
             // NOTE: UpdateMedia is potentially a time consuming operation
             // Case: BaseRepresentation with downloadable index data.
             // Index download is synchronous now and blocking.
-            // 
+            //
             // Possible workarounds (not to be mistaken with solution) would
             // be use of Parallel.Invoke() to improve performance of UpdateMedia calls
             //

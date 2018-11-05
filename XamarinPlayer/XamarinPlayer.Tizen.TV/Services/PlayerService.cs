@@ -89,8 +89,13 @@ namespace XamarinPlayer.Tizen.Services
 
             playerController.PlaybackError += (message) =>
             {
-                playerStateMessage = message;
-                State = PlayerState.Error;
+                lock (playerController)
+                {
+                    if (State == PlayerState.Error)
+                        return;
+                    playerStateMessage = message;
+                    State = PlayerState.Error;
+                }
             };
         }
 
