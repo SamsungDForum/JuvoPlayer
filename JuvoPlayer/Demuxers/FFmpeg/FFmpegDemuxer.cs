@@ -1,5 +1,5 @@
 // Copyright (c) 2017 Samsung Electronics Co., Ltd All Rights Reserved
-// PROPRIETARY/CONFIDENTIAL 
+// PROPRIETARY/CONFIDENTIAL
 // This software is the confidential and proprietary
 // information of SAMSUNG ELECTRONICS ("Confidential Information"). You shall
 // not disclose such Confidential Information and shall use it only in
@@ -62,6 +62,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg
         public bool IsPaused { get; private set; }
         private readonly AutoResetEvent pausedEvent = new AutoResetEvent(false);
         private bool isDisposed;
+        private bool flushing;
 
         public unsafe FFmpegDemuxer(string libPath, ISharedBuffer dataBuffer = null)
         {
@@ -358,7 +359,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg
                     }
                     else
                     {
-                        if (ret == -541478725 && parse)
+                        if (ret == -541478725 && parse && !flushing)
                         {
                             // null means EOF
                             PacketReady?.Invoke(null);
@@ -709,7 +710,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg
             // TODO(g.skowinski): Implement.
         }
 
-        public void Stop()
+        public void Reset()
         {
             parse = false;
 
@@ -718,21 +719,44 @@ namespace JuvoPlayer.Demuxers.FFmpeg
             dataBuffer?.WriteData(null, true);
 
             // If a task fails with an exception that's not caught anywhere,
-            // calling 
+            // calling
             try
             {
                 demuxTask?.Wait();
             }
             catch (Exception ex)
             {
-                Logger.Debug($"Demuxer Status/Error: {demuxTask.Status} {ex.Message}");
+                Logger.Error($"Demuxer Status/Error: {demuxTask.Status} {ex.Message}");
             }
 
-            // Clear EOS from buffer after demux task termination so there 
+            // Clear EOS from buffer after demux task termination so there
             // will not be any data reads of EOS after restart as EOS is persistant in buffer
             dataBuffer?.ClearData();
 
             DeallocFFmpeg();
+        }
+
+        public void Flush()
+        {
+            flushing = true;
+
+            Resume();
+            dataBuffer?.WriteData(null, true);
+
+            try
+            {
+                demuxTask?.Wait();
+            }
+            catch (Exception ex)
+            {
+                Logger.Error($"Demuxer Status/Error: {demuxTask.Status} {ex.Message}");
+            }
+
+            // Clear EOS from buffer after demux task termination so there
+            // will not be any data reads of EOS after restart as EOS is persistant in buffer
+            dataBuffer?.ClearData();
+
+            flushing = false;
         }
 
         public void Pause()
@@ -807,7 +831,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg
                 return;
 
             if (parse)
-                Stop();
+                Reset();
 
             pausedEvent.Dispose();
 

@@ -45,6 +45,7 @@ namespace JuvoPlayer.DataProviders.Dash
         private Task scheduleNextTask;
 
         private bool buffering;
+        private TimeSpan startTime;
 
         /// <summary>
         /// Contains information about timing data for last requested segment
@@ -80,6 +81,8 @@ namespace JuvoPlayer.DataProviders.Dash
         /// has occured.
         /// </summary>
         public event Error Error;
+
+        public event DownloadCompleted DownloadCompleted;
 
         /// <summary>
         /// Storage holders for initial packets PTS/DTS values.
@@ -160,6 +163,8 @@ namespace JuvoPlayer.DataProviders.Dash
             sharedBuffer?.ClearData();
 
             bufferTime = currentTime;
+            buffering = false;
+            startTime = currentTime;
 
             if (currentSegmentId.HasValue == false)
                 currentSegmentId = currentRepresentation.AlignedStartSegmentID;
@@ -179,7 +184,7 @@ namespace JuvoPlayer.DataProviders.Dash
             }
         }
 
-        private void ScheduleNextSegDownload()
+        public void ScheduleNextSegDownload()
         {
             if (!Monitor.TryEnter(this))
                 return;
@@ -252,15 +257,16 @@ namespace JuvoPlayer.DataProviders.Dash
                     shouldContinue = HandleCancelledDownload();
                 else if (response.IsFaulted)
                     shouldContinue = HandleFailedDownload(response);
-                else // always continue on successfull download
+                else // always continue on successful download
                     shouldContinue = HandleSuccessfullDownload(response.Result);
 
                 // throw exception so continuation wont run
                 if (!shouldContinue)
                     throw new Exception();
+
+                Task.Run(() => DownloadCompleted?.Invoke());
             }, TaskScheduler.Default);
 
-            scheduleNextTask = CreateScheduleNextTask(cancelToken);
         }
 
         private bool HandleCancelledDownload()
@@ -297,9 +303,8 @@ namespace JuvoPlayer.DataProviders.Dash
                     // throw exception so continuation wont run
                     if (!shouldContinue)
                         throw new Exception();
+                    Task.Run(() => DownloadCompleted?.Invoke());
                 }, TaskScheduler.Default);
-
-                scheduleNextTask = CreateScheduleNextTask(cancelToken);
             }
             else
             {
@@ -347,8 +352,8 @@ namespace JuvoPlayer.DataProviders.Dash
         private bool IsBufferingNeeded()
         {
             return !buffering
-                   && bufferTime.Subtract(currentTime) <= TimeSpan.FromSeconds(2)
-                   && currentTime > TimeSpan.FromSeconds(5);
+                   && bufferTime - currentTime <= TimeSpan.FromSeconds(2)
+                   && currentTime - startTime > TimeSpan.FromSeconds(5);
         }
 
         private void SendBufferingStartedEvent()
@@ -361,7 +366,7 @@ namespace JuvoPlayer.DataProviders.Dash
 
         private bool IsBufferingCompleted()
         {
-            return buffering && bufferTime.Subtract(currentTime) >= TimeSpan.FromSeconds(5);
+            return buffering && bufferTime - currentTime >= TimeSpan.FromSeconds(5);
         }
 
         private void SendBufferingCompletedEvent()
@@ -499,8 +504,6 @@ namespace JuvoPlayer.DataProviders.Dash
         {
             Interlocked.Exchange(ref newRepresentation, representation);
             LogInfo("newRepresentation set");
-
-            ScheduleNextSegDownload();
         }
 
         /// <summary>
@@ -760,4 +763,5 @@ namespace JuvoPlayer.DataProviders.Dash
 
         #endregion
     }
+
 }

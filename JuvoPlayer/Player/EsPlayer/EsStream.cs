@@ -1,5 +1,5 @@
 ﻿// Copyright (c) 2018 Samsung Electronics Co., Ltd All Rights Reserved
-// PROPRIETARY/CONFIDENTIAL 
+// PROPRIETARY/CONFIDENTIAL
 // This software is the confidential and proprietary
 // information of SAMSUNG ELECTRONICS ("Confidential Information"). You shall
 // not disclose such Confidential Information and shall use it only in
@@ -166,7 +166,7 @@ namespace JuvoPlayer.Player.EsPlayer
         /// <summary>
         /// Method resets current config. When config change occurs as a result
         /// of config packet being queued, CurrentConfig holds value of new configuration
-        /// which needs to be pushed to player 
+        /// which needs to be pushed to player
         /// </summary>
         public void ResetStreamConfig()
         {
@@ -239,13 +239,9 @@ namespace JuvoPlayer.Player.EsPlayer
         /// <returns></returns>
         private SeekResult SeekTask(uint seekId, TimeSpan seekPosition, CancellationToken token)
         {
-            bool keepSeeking = true;
-            bool checkTime = false;
-            SeekResult res = SeekResult.Ok;
-
             logger.Info($"{streamType}: {seekId}");
 
-            do
+            while (true)
             {
                 try
                 {
@@ -256,42 +252,30 @@ namespace JuvoPlayer.Player.EsPlayer
                         case BufferConfigurationPacket bufferConfigPacket:
                             var isCompatible = CurrentConfig.Compatible(bufferConfigPacket);
                             CurrentConfig = bufferConfigPacket;
-
-                            if (isCompatible)
-                                break;
-
-                            // Destructive stream change during seek.
-                            logger.Info($"{streamType}: Destructive config change during seek");
-                            res = SeekResult.RestartRequired;
+                            if (CurrentConfig.StreamType == StreamType.Audio && !isCompatible)
+                                return SeekResult.RestartRequired;
                             break;
-
                         case SeekPacket seekPacket:
                             if (seekPacket.SeekId != seekId)
                                 break;
 
                             logger.Info($"{streamType}: Seek Id {seekId} found. Looking for time {seekPosition}");
-                            checkTime = true;
+                            return SeekResult.Ok;
+                        default:
+                            packet.Dispose();
                             break;
                     }
-
-                    // When looking for time, ignore non data packets.
-                    // Their PTS are bogus.
-                    if (checkTime && packet.Data != null)
-                    {
-                        if (packet.Pts >= seekPosition)
-                            keepSeeking = false;
-                    }
-
-                    packet.Dispose();
 
                 }
                 catch (InvalidOperationException)
                 {
                     logger.Info($"{streamType}: Stream completed");
+                    return SeekResult.Ok;
                 }
                 catch (OperationCanceledException)
                 {
                     logger.Info($"{streamType}: Seek cancelled");
+                    return SeekResult.Ok;
                 }
                 catch (Exception e)
                 {
@@ -301,11 +285,7 @@ namespace JuvoPlayer.Player.EsPlayer
 
                     throw;
                 }
-
-            } while (keepSeeking);
-
-            return res;
-
+            }
         }
 
         /// <summary>
@@ -412,27 +392,18 @@ namespace JuvoPlayer.Player.EsPlayer
                     continueProcessing = false;
                     break;
 
-                case BufferConfigurationPacket bufferConfigPacket when
-                    !CurrentConfig.Compatible(bufferConfigPacket):
-
+                case BufferConfigurationPacket bufferConfigPacket:
                     CurrentConfig = bufferConfigPacket;
 
-                    logger.Info($"{streamType}: Incompatible Stream config change.");
-                    ReconfigureStream?.Invoke();
+                    if (CurrentConfig.StreamType == StreamType.Audio && !CurrentConfig.Compatible(bufferConfigPacket))
+                    {
+                        logger.Info($"{streamType}: Incompatible Stream config change.");
+                        ReconfigureStream?.Invoke();
 
-                    // exit transfer task. This will prevent further transfers
-                    // Stops/Restarts will be called by reconfiguration handler.
-                    continueProcessing = false;
-                    break;
-
-                case BufferConfigurationPacket bufferConfigPacket when
-                    CurrentConfig.Compatible(bufferConfigPacket):
-
-                    CurrentConfig = bufferConfigPacket;
-
-                    logger.Info($"{streamType}: Compatible Stream config change");
-
-                    // Compatible stream change. Keep going
+                        // exit transfer task. This will prevent further transfers
+                        // Stops/Restarts will be called by reconfiguration handler.
+                        continueProcessing = false;
+                    }
                     break;
 
                 case EncryptedPacket encryptedPacket:
@@ -686,8 +657,8 @@ namespace JuvoPlayer.Player.EsPlayer
                     throw new PacketSubmitException("Packet Submit Error", status);
             }
 
-            // We are left with Status.Full 
-            // For now sleep, however, once buffer events will be 
+            // We are left with Status.Full
+            // For now sleep, however, once buffer events will be
             // emitted from ESPlayer, they could be used here
             using (var napTime = new ManualResetEventSlim(false))
                 napTime.Wait(delay, token);

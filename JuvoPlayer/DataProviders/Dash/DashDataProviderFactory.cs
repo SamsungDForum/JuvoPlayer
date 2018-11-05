@@ -42,6 +42,7 @@ namespace JuvoPlayer.DataProviders.Dash
 
             var manifest = new DashManifest(clip.Url);
             var audioPipeline = CreateMediaPipeline(StreamType.Audio, libPath);
+            audioPipeline.DisableAdaptiveStreaming = true;
             var videoPipeline = CreateMediaPipeline(StreamType.Video, libPath);
 
             return new DashDataProvider(manifest, audioPipeline, videoPipeline);
@@ -50,7 +51,7 @@ namespace JuvoPlayer.DataProviders.Dash
         private static DashMediaPipeline CreateMediaPipeline(StreamType streamType, string libPath)
         {
             var sharedBuffer = new ChunksSharedBuffer();
-            var throughputHistory = new EWMAThroughputHistory();
+            var throughputHistory = new ThroughputHistory();
             var dashClient = new DashClient(throughputHistory, sharedBuffer, streamType);
             var demuxer = new FFmpegDemuxer(libPath, sharedBuffer);
 
