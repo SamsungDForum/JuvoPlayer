@@ -17,6 +17,7 @@ using MpdParser;
 namespace JuvoPlayer.DataProviders.Dash
 {
     public delegate void Error(string errorMessage);
+    public delegate void DownloadCompleted();
 
     internal interface IDashClient : IDisposable
     {
@@ -27,10 +28,12 @@ namespace JuvoPlayer.DataProviders.Dash
         void Reset();
         void OnTimeUpdated(TimeSpan time);
         void UpdateRepresentation(Representation representation);
+        void ScheduleNextSegDownload();
 
         bool CanStreamSwitch();
 
         event Error Error;
+        event DownloadCompleted DownloadCompleted;
         event BufferingStarted BufferingStarted;
         event BufferingCompleted BufferingCompleted;
     }

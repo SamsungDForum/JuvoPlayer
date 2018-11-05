@@ -42,6 +42,7 @@ namespace JuvoPlayer.DataProviders.Dash
 
             var manifest = new DashManifest(clip.Url);
             var audioPipeline = CreateMediaPipeline(StreamType.Audio, libPath);
+            audioPipeline.DisableAdaptiveStreaming = true;
             var videoPipeline = CreateMediaPipeline(StreamType.Video, libPath);
 
             return new DashDataProvider(manifest, audioPipeline, videoPipeline);

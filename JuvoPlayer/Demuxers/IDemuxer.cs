@@ -1,5 +1,5 @@
 // Copyright (c) 2017 Samsung Electronics Co., Ltd All Rights Reserved
-// PROPRIETARY/CONFIDENTIAL 
+// PROPRIETARY/CONFIDENTIAL
 // This software is the confidential and proprietary
 // information of SAMSUNG ELECTRONICS ("Confidential Information"). You shall
 // not disclose such Confidential Information and shall use it only in
@@ -20,7 +20,7 @@ namespace JuvoPlayer.Demuxers
 
     public enum InitializationMode
     {
-        // Stream has been already initialized so preparinf StreamConfig is not needed 
+        // Stream has been already initialized so preparing StreamConfig is not needed
         Minimal,
         // Stream needs full initialization
         Full
@@ -31,9 +31,10 @@ namespace JuvoPlayer.Demuxers
         void StartForExternalSource(InitializationMode initMode);
         void StartForUrl(string url);
         void ChangePID(int pid);
-        void Stop();
+        void Reset();
         void Pause();
         void Resume();
+        void Flush();
         bool IsPaused { get; }
 
         event ClipDurationChanged ClipDuration;
