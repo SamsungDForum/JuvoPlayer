@@ -752,6 +752,10 @@ namespace JuvoPlayer.Demuxers.FFmpeg
                 Logger.Error($"Demuxer Status/Error: {demuxTask.Status} {ex.Message}");
             }
 
+            // Clear EOS from buffer after demux task termination so there
+            // will not be any data reads of EOS after restart as EOS is persistant in buffer
+            dataBuffer?.ClearData();
+
             flushing = false;
         }
 

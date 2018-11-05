@@ -460,9 +460,8 @@ namespace JuvoPlayer.DataProviders.Dash
                 return;
 
             // Stop demuxer and dashclient
-            // Stop demuxer first so old incoming data will ignored
-            demuxer.Flush();
             dashClient.Reset();
+            demuxer.Flush();
 
             pipelineStarted = false;
         }
