@@ -54,7 +54,7 @@ namespace JuvoPlayer.TizenTests
             using (ExtendedTextWrapper writer = new ExtendedTextWrapper(new StringWriter(sb)))
             {
                 string[] finalNunitArgs = nunitArgs.Concat(new string[]
-                    {"--result=/tmp/" + Path.GetFileNameWithoutExtension(dllName) + ".xml"}).ToArray();
+                    {"--result=/tmp/" + Path.GetFileNameWithoutExtension(dllName) + ".xml", "--work=/tmp"}).ToArray();
                 new AutoRun(assembly).Execute(finalNunitArgs, writer, Console.In);
             }
 
