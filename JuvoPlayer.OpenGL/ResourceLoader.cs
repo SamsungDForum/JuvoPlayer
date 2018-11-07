@@ -17,8 +17,7 @@ namespace JuvoPlayer.OpenGL
         public ILogger Logger { private get; set; }
         public int TilesCount => ContentList?.Count ?? 0;
 
-        public bool IsLoadingFinished { get => _isLoadingFinished; }
-        private bool _isLoadingFinished;
+        public bool IsLoadingFinished { get; private set; }
 
         private int _resourcesLoadedCount;
         private int _resourcesTargetCount;
@@ -28,7 +27,7 @@ namespace JuvoPlayer.OpenGL
 
         public void LoadResources(string fullExecutablePath, Action doAfterFinishedLoading = null)
         {
-            _isLoadingFinished = false;
+            IsLoadingFinished = false;
             _doAfterFinishedLoading = doAfterFinishedLoading;
 
             InitLoadingScreen();
@@ -75,7 +74,7 @@ namespace JuvoPlayer.OpenGL
 
         private void FinishLoading()
         {
-            _isLoadingFinished = true;
+            IsLoadingFinished = true;
             if(_doAfterFinishedLoading != null)
                 ScheduleToBeLoadedInMainThread(_doAfterFinishedLoading); // it's already called from the main thread since last job calls this method, but just to be safe let's schedule it for the main thread
         }
