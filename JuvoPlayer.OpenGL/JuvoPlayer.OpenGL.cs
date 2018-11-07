@@ -46,7 +46,6 @@ namespace JuvoPlayer.OpenGL
         private bool _isAlertShown = false;
 
         private bool _startedFromDeeplink = false;
-        private bool _startedPlaybackFromDeeplink = false;
 
         private static void Main(string[] args)
         {
@@ -243,7 +242,7 @@ namespace JuvoPlayer.OpenGL
 
         private void HandleExternalPlaybackStart()
         {
-            if (!_startedFromDeeplink || _startedPlaybackFromDeeplink)
+            if (!_startedFromDeeplink || _player != null)
                 return;
 
             Logger.Info("Starting playback from deeplink.");
@@ -253,7 +252,6 @@ namespace JuvoPlayer.OpenGL
                 ShowMenu(true);
                 return;
             }
-            _startedPlaybackFromDeeplink = true;
             ShowMenu(false);
             KeyPressedMenuUpdate(); // Playback UI should be visible
             HandlePlaybackStart();
@@ -436,12 +434,6 @@ namespace JuvoPlayer.OpenGL
 
         private void HandleKeyBack()
         {
-            if (_startedFromDeeplink && !_options.Visible)
-            {
-                Exit();
-                return;
-            }
-
             if (!_isMenuShown && !_options.Visible)
                 ReturnToMainMenu();
             else if (_options.Visible)
