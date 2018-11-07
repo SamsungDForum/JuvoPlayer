@@ -215,7 +215,6 @@ namespace JuvoPlayer.OpenGL
 
         private void HandleExternalTileSelection(int tileNo)
         {
-            Logger.Info($"Handling external tile selection: {tileNo}.");
             _startedFromDeeplink = true;
             if (tileNo >= 0 && tileNo < _resourceLoader.TilesCount)
             {
@@ -229,26 +228,18 @@ namespace JuvoPlayer.OpenGL
         private void HandleLoadingFinished()
         {
             if (_startedFromDeeplink)
-            {
-                Logger.Info("Loading finished, starting deeplink content.");
                 HandleExternalPlaybackStart();
-            }
             else
-            {
-                Logger.Info("Loading finished, showing menu.");
                 ShowMenu(true);
-            }
         }
 
         private void HandleExternalPlaybackStart()
         {
-            if (!_startedFromDeeplink || _player != null)
+            if (_player != null) // it's possible that playback has already started via other control path (PreviewPayloadHandler vs HandleLoadingFinished calls order)
                 return;
 
-            Logger.Info("Starting playback from deeplink.");
             if (_selectedTile >= _resourceLoader.TilesCount)
             {
-                Logger.Info("Wrong deeplink data.");
                 ShowMenu(true);
                 return;
             }
@@ -595,7 +586,6 @@ namespace JuvoPlayer.OpenGL
             ShowMenu(true);
             ClosePlayer();
             _seekBufferingInProgress = false;
-            _startedFromDeeplink = false;
         }
 
         private void UpdateMetrics()
