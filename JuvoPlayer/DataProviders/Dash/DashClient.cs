@@ -50,7 +50,7 @@ namespace JuvoPlayer.DataProviders.Dash
         /// <summary>
         /// Contains information about timing data for last requested segment
         /// </summary>
-        private TimeRange lastDownloadSegmentTimeRange = new TimeRange(TimeSpan.Zero, TimeSpan.Zero);
+        private TimeRange lastDownloadSegmentTimeRange;
 
         /// <summary>
         /// Buffer full accessor.
@@ -146,6 +146,8 @@ namespace JuvoPlayer.DataProviders.Dash
 
         public void Start(bool initReloadRequired)
         {
+            SwapRepresentation();
+
             if (currentRepresentation == null)
                 throw new Exception("currentRepresentation has not been set");
 
@@ -478,22 +480,6 @@ namespace JuvoPlayer.DataProviders.Dash
         {
             Reset();
             SendEosEvent();
-        }
-
-        public void SetRepresentation(Representation representation)
-        {
-            // representation has changed, so reset initstreambytes
-            if (currentRepresentation != null)
-                initStreamBytes = null;
-
-            currentRepresentation = representation;
-            currentStreams = currentRepresentation.Segments;
-
-            currentStreamDuration = IsDynamic
-                ? currentStreams.GetDocumentParameters().Document.MediaPresentationDuration
-                : currentStreams.Duration;
-
-            UpdateTimeBufferDepth();
         }
 
         /// <summary>
