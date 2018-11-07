@@ -83,7 +83,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg
                     Interop.FFmpeg.av_log_format_line(p0, level, format, vl, lineBuffer, lineSize, &printPrefix);
                     var line = Marshal.PtrToStringAnsi((IntPtr)lineBuffer);
 
-                    Logger.Info(line);
+                    Logger.Warn(line);
                 };
                 Interop.FFmpeg.av_log_set_callback(logCallback);
             }
@@ -756,6 +756,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg
             // will not be any data reads of EOS after restart as EOS is persistant in buffer
             dataBuffer?.ClearData();
 
+            DeallocFFmpeg();
             flushing = false;
         }
 
