@@ -85,6 +85,7 @@ namespace JuvoPlayer.DataProviders.Dash
             var request = (HttpWebRequest) base.GetWebRequest(address);
             if (request != null)
             {
+                request.Accept = "*/*";
                 if (to != null && from != null)
                 {
                     request.AddRange((int) from, (int) to);
