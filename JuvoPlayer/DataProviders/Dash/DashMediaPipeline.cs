@@ -165,32 +165,33 @@ namespace JuvoPlayer.DataProviders.Dash
             if (!media.Any())
                 throw new ArgumentOutOfRangeException($"{StreamType}: No media in period {period}");
 
-            if (currentStream != null)
+            lock (switchStreamLock)
             {
-                var currentMedia = media.Count == 1
-                    ? media.First()
-                    : media.FirstOrDefault(o => o.Id == currentStream.Media.Id);
-                var currentRepresentation =
-                    currentMedia?.Representations.FirstOrDefault(o => o.Id == currentStream.Representation.Id);
-                if (currentRepresentation != null)
+                if (currentStream != null)
                 {
-                    GetAvailableStreams(media, currentMedia);
+                    var currentMedia = media.Count == 1
+                        ? media.First()
+                        : media.FirstOrDefault(o => o.Id == currentStream.Media.Id);
+                    var currentRepresentation =
+                        currentMedia?.Representations.FirstOrDefault(o => o.Id == currentStream.Representation.Id);
+                    if (currentRepresentation != null)
+                    {
+                        GetAvailableStreams(media, currentMedia);
 
-                    // Media Preparation (Call to Initialize) is done upon assignment to pendingStream.
-                    //PendingStream = new DashStream(currentMedia, currentRepresentation);
-                    currentStream = new DashStream(currentMedia, currentRepresentation);
-                    dashClient.UpdateRepresentation(currentStream.Representation);
-                    dashClient.ScheduleNextSegDownload();
-                    return;
+                        // Media Preparation (Call to Initialize) is done upon assignment to pendingStream.
+                        currentStream = new DashStream(currentMedia, currentRepresentation);
+                        dashClient.UpdateRepresentation(currentStream.Representation);
+                        return;
+                    }
                 }
+
+                var defaultMedia = GetDefaultMedia(media);
+                GetAvailableStreams(media, defaultMedia);
+                // get first element of sorted array
+                var representation = defaultMedia.Representations.OrderByDescending(o => o.Bandwidth).Last();
+
+                PendingStream = new DashStream(defaultMedia, representation);
             }
-
-            var defaultMedia = GetDefaultMedia(media);
-            GetAvailableStreams(media, defaultMedia);
-            // get first element of sorted array
-            var representation = defaultMedia.Representations.OrderByDescending(o => o.Bandwidth).Last();
-
-            PendingStream = new DashStream(defaultMedia, representation);
         }
 
         public void AdaptToNetConditions()
@@ -249,6 +250,7 @@ namespace JuvoPlayer.DataProviders.Dash
                 if (currentStream == null)
                 {
                     StartPipeline(PendingStream);
+                    PendingStream = null;
                     return;
                 }
 
@@ -299,7 +301,7 @@ namespace JuvoPlayer.DataProviders.Dash
 
         private void StartPipeline(DashStream newStream = null)
         {
-            // There may be mutliple calls here.
+            // There may be multiple calls here.
             // AdaptiveStreaming, OnStreamChange and Resume.
             // We must assure there are no multiple calls to Start Client. Blocking at client
             // won't do the trick.
@@ -317,7 +319,7 @@ namespace JuvoPlayer.DataProviders.Dash
                     Logger.Info($"{StreamType}: Media: {currentStream.Media}");
                     Logger.Info($"{StreamType}: {currentStream.Representation}");
 
-                    dashClient.SetRepresentation(currentStream.Representation);
+                    dashClient.UpdateRepresentation(currentStream.Representation);
                     ParseDrms(currentStream.Media);
                 }
 
@@ -413,8 +415,7 @@ namespace JuvoPlayer.DataProviders.Dash
             // - One as a manual stream selection
             // - One as a adaptive stream switching.
             //
-            Monitor.Enter(switchStreamLock);
-            try
+            lock (switchStreamLock)
             {
                 // Stream needs manual preparation as it is NOT passed through pendingStream
                 //
@@ -434,10 +435,6 @@ namespace JuvoPlayer.DataProviders.Dash
 
                 FlushPipeline();
                 StartPipeline(newStream);
-            }
-            finally
-            {
-                Monitor.Exit(switchStreamLock);
             }
         }
 
@@ -629,7 +626,7 @@ namespace JuvoPlayer.DataProviders.Dash
                     // Add last seek value to packet clock. Forcing last seek value looses
                     // PTS/DTS differences causing lip sync issues.
                     //
-                    demuxerClock = (PacketTimeStamp)packet + lastSeek.Value;
+                    demuxerClock = (PacketTimeStamp) packet + lastSeek.Value;
 
                     Logger.Info($"{StreamType}: Badly timestamped packet. Adjusting demuxerClock to: {demuxerClock}");
                 }
