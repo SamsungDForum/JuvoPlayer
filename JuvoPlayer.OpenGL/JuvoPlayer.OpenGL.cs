@@ -5,6 +5,8 @@ using Tizen.TV.NUI.GLApplication;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Newtonsoft.Json;
+using Tizen.Applications;
 
 namespace JuvoPlayer.OpenGL
 {
@@ -61,6 +63,19 @@ namespace JuvoPlayer.OpenGL
         {
             UpdateUI();
             DllImports.Draw(eglDisplay, eglSurface);
+        }
+
+        protected override void OnAppControlReceived(AppControlReceivedEventArgs e)
+        {
+            // Handle the launch request, show the user the task requested through the "AppControlReceivedEventArgs" parameter
+            // Smart Hub Preview function requires the below code to identify which deeplink have to be launched
+            ReceivedAppControl receivedAppControl = e.ReceivedAppControl;
+
+            string payload = "";
+            receivedAppControl.ExtraData.TryGet("PAYLOAD", out payload); // Fetch the JSON metadata defined on the smart Hub preview web server
+            PreviewPayloadHandler(payload);
+
+            base.OnAppControlReceived(e);
         }
 
         private void InitMenu()
@@ -179,6 +194,37 @@ namespace JuvoPlayer.OpenGL
             }
 
             KeyPressedMenuUpdate();
+        }
+
+        private void PreviewPayloadHandler(string message)
+        {
+            if (string.IsNullOrEmpty(message))
+                return;
+
+            var definition = new { values = "" };
+            var payload = JsonConvert.DeserializeAnonymousType(message, definition);
+
+            try
+            {
+                HandleExternalTileSelection(int.Parse(payload.values));
+            }
+            catch (Exception e)
+            {
+                Logger.Error("PreviewPayloadHandler exception " + e.Message);
+            }
+        }
+
+        private void HandleExternalTileSelection(int tileNo)
+        {
+            if (_isMenuShown)
+            {
+                if (tileNo >= 0 && tileNo < _resourceLoader.TilesCount)
+                {
+                    _selectedTile = tileNo;
+                    DllImports.SelectTile(_selectedTile);
+                    //HandlePlaybackStart(); // TODO: start playback after the app and it's resources are loaded
+                }
+            }
         }
 
         public async void DisplayAlert(string title, string body, string button)
