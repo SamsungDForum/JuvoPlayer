@@ -17,13 +17,19 @@ namespace JuvoPlayer.OpenGL
         public ILogger Logger { private get; set; }
         public int TilesCount => ContentList?.Count ?? 0;
 
+        public bool IsLoadingFinished { get; private set; }
+
         private int _resourcesLoadedCount;
         private int _resourcesTargetCount;
         private readonly SynchronizationContext _synchronizationContext = SynchronizationContext.Current; // If "Current" is null, then the thread's current context is "new SynchronizationContext()", by convention.
         List<Task> baseTasks = new List<Task>();
+        private Action _doAfterFinishedLoading;
 
-        public void LoadResources(string fullExecutablePath)
+        public void LoadResources(string fullExecutablePath, Action doAfterFinishedLoading = null)
         {
+            IsLoadingFinished = false;
+            _doAfterFinishedLoading = doAfterFinishedLoading;
+
             InitLoadingScreen();
             var clipsFilePath = Path.Combine(fullExecutablePath, "shared", "res", "videoclips.json");
             LoadContentList(clipsFilePath);
@@ -66,6 +72,13 @@ namespace JuvoPlayer.OpenGL
             baseTasks.Add(baseTask);
         }
 
+        private void FinishLoading()
+        {
+            IsLoadingFinished = true;
+            if(_doAfterFinishedLoading != null)
+                ScheduleToBeLoadedInMainThread(_doAfterFinishedLoading); // it's already called from the main thread since last job calls this method, but just to be safe let's schedule it for the main thread
+        }
+
         private void LoadContentList(string filePath)
         {
             ContentList = JSONFileReader.DeserializeJsonFile<List<ClipDefinition>>(filePath).ToList();
@@ -100,7 +113,10 @@ namespace JuvoPlayer.OpenGL
         {
             UpdateLoadingScreen();
             if (_resourcesLoadedCount >= _resourcesTargetCount)
+            {
                 baseTasks.Clear();
+                FinishLoading();
+            }
         }
 
         private void UpdateLoadingScreen()
