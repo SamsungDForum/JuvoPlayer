@@ -14,7 +14,7 @@ namespace JuvoPlayer.OpenGL
     {
         private SynchronizationContext _uiContext = null; // needs to be initialized in OnCreate!
 
-        private readonly TimeSpan _prograssBarFadeout = TimeSpan.FromMilliseconds(5000);
+        private readonly TimeSpan _progressBarFadeout = TimeSpan.FromMilliseconds(5000);
         private readonly TimeSpan _defaultSeekTime = TimeSpan.FromSeconds(30);
         private readonly TimeSpan _defaultSeekAccumulateTime = TimeSpan.FromMilliseconds(1000);
 
@@ -45,6 +45,8 @@ namespace JuvoPlayer.OpenGL
 
         private bool _isAlertShown = false;
 
+        private bool _startedFromDeeplink = false;
+
         private static void Main(string[] args)
         {
             var myProgram = new Program();
@@ -71,8 +73,7 @@ namespace JuvoPlayer.OpenGL
             // Smart Hub Preview function requires the below code to identify which deeplink have to be launched
             ReceivedAppControl receivedAppControl = e.ReceivedAppControl;
 
-            string payload = "";
-            receivedAppControl.ExtraData.TryGet("PAYLOAD", out payload); // Fetch the JSON metadata defined on the smart Hub preview web server
+            receivedAppControl.ExtraData.TryGet("PAYLOAD", out string payload); // Fetch the JSON metadata defined on the smart Hub preview web server
             PreviewPayloadHandler(payload);
 
             base.OnAppControlReceived(e);
@@ -84,7 +85,7 @@ namespace JuvoPlayer.OpenGL
             {
                 Logger = Logger
             };
-            _resourceLoader.LoadResources(Path.GetDirectoryName(Path.GetDirectoryName(Current.ApplicationInfo.ExecutablePath)));
+            _resourceLoader.LoadResources(Path.GetDirectoryName(Path.GetDirectoryName(Current.ApplicationInfo.ExecutablePath)), HandleLoadingFinished);
             _metricsHandler = new MetricsHandler();
             SetMenuFooter();
             SetupOptionsMenu();
@@ -103,7 +104,7 @@ namespace JuvoPlayer.OpenGL
         {
             _selectedTile = 0;
             DllImports.SelectTile(_selectedTile);
-            _isMenuShown = true;
+            _isMenuShown = false;
             DllImports.ShowLoader(1, 0);
 
             _lastKeyPressTime = DateTime.Now;
@@ -201,11 +202,9 @@ namespace JuvoPlayer.OpenGL
             if (string.IsNullOrEmpty(message))
                 return;
 
-            var definition = new { values = "" };
-            var payload = JsonConvert.DeserializeAnonymousType(message, definition);
-
             try
             {
+                var payload = JsonConvert.DeserializeAnonymousType(message, new { values = "" });
                 HandleExternalTileSelection(int.Parse(payload.values));
             }
             catch (Exception e)
@@ -216,15 +215,37 @@ namespace JuvoPlayer.OpenGL
 
         private void HandleExternalTileSelection(int tileNo)
         {
-            if (_isMenuShown)
+            _startedFromDeeplink = true;
+            if (tileNo >= 0 && tileNo < _resourceLoader.TilesCount)
             {
-                if (tileNo >= 0 && tileNo < _resourceLoader.TilesCount)
-                {
-                    _selectedTile = tileNo;
-                    DllImports.SelectTile(_selectedTile);
-                    //HandlePlaybackStart(); // TODO: start playback after the app and it's resources are loaded
-                }
+                _selectedTile = tileNo;
+                DllImports.SelectTile(_selectedTile);
+                if (_resourceLoader.IsLoadingFinished)
+                    HandleExternalPlaybackStart();
             }
+        }
+
+        private void HandleLoadingFinished()
+        {
+            if (_startedFromDeeplink)
+                HandleExternalPlaybackStart();
+            else
+                ShowMenu(true);
+        }
+
+        private void HandleExternalPlaybackStart()
+        {
+            if (_player != null) // it's possible that playback has already started via other control path (PreviewPayloadHandler vs HandleLoadingFinished calls order)
+                return;
+
+            if (_selectedTile >= _resourceLoader.TilesCount)
+            {
+                ShowMenu(true);
+                return;
+            }
+            ShowMenu(false);
+            KeyPressedMenuUpdate(); // Playback UI should be visible
+            HandlePlaybackStart();
         }
 
         public async void DisplayAlert(string title, string body, string button)
@@ -531,6 +552,12 @@ namespace JuvoPlayer.OpenGL
 
         private void ShowMenu(bool show)
         {
+            if (show == _isMenuShown)
+            {
+                Logger.Info($"ShowMenu({show}) dupe, ignoring.");
+                return;
+            }
+
             _isMenuShown = show;
             DllImports.ShowMenu(_isMenuShown ? 1 : 0);
         }
@@ -571,7 +598,7 @@ namespace JuvoPlayer.OpenGL
             if (_seekBufferingInProgress == false && _seekInProgress == false)
                 _playerTimeCurrentPosition = _player?.CurrentPosition ?? TimeSpan.Zero;
             _playerTimeDuration = _player?.Duration ?? TimeSpan.Zero;
-            if (_progressBarShown && _player?.State == PlayerState.Playing && (DateTime.Now - _lastKeyPressTime).TotalMilliseconds >= _prograssBarFadeout.TotalMilliseconds)
+            if (_progressBarShown && _player?.State == PlayerState.Playing && (DateTime.Now - _lastKeyPressTime).TotalMilliseconds >= _progressBarFadeout.TotalMilliseconds)
             {
                 _progressBarShown = false;
                 _options.Hide();
