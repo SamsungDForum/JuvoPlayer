@@ -6,7 +6,6 @@ using JuvoPlayer.DataProviders.RTSP;
 using JuvoPlayer.Drms;
 using JuvoPlayer.Drms.Cenc;
 using JuvoPlayer.Player;
-using JuvoPlayer.Player.SMPlayer;
 using Tizen.Applications;
 using Tizen.NUI;
 using Tizen.NUI.BaseComponents;
@@ -72,8 +71,8 @@ namespace NUIPlayer
             var drmManager = new DrmManager();
             drmManager.RegisterDrmHandler(new CencHandler());
 
-            var player = new SMPlayer();
-            playerController = new PlayerController(player, drmManager);
+            //var player = new SMPlayer();
+            //playerController = new PlayerController(player, drmManager);
             playerController.TimeUpdated += OnTimeUpdated;
             playerController.PlaybackCompleted += OnPlaybackCompleted;
         }

@@ -87,9 +87,9 @@
   },
   {
     "title": "RTSP multicast streamming",
-    "url": "rtsp://192.168.137.200/canimals.ts",
+    "url": "rtsp://10.88.91.96/canimals.ts",
     "type": "rtsp",
-    "poster": "canimals.jpg",    
+    "poster": "canimals.jpg",
     "description": "Fixed URI rtsp://192.168.137.200/canimals.ts!!! IPTV multicast protocol H264 + AAC. RTSP streaming, 1920x1080 MPEG1/2 video (mpgv) + AC3 codecs."
   },
   {

@@ -1,7 +1,7 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <manifest
   package="JuvoPlayerOpenGLNative.Tizen.TV"
-  version="1.0.0"
+  version="1.0.7"
   api-version="4"
   xmlns="http://tizen.org/ns/packages">
   <feature
@@ -18,7 +18,7 @@
       nodisplay="false"
       taskmanage="true"
       splash-screen-display="true"
-      type="dotnet"
+      type="dotnet-inhouse"
       launch_mode="single">
       <label>JuvoPlayerOpenGLNative.Tizen.TV</label>
       <icon>JuvoPlayerOpenGLNativeTizenTV.png</icon>
