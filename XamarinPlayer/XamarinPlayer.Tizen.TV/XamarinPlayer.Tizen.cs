@@ -6,6 +6,7 @@ using JuvoLogger;
 using Tizen;
 using Tizen.Applications;
 using XamarinPlayer.Services;
+using System.Text.RegularExpressions;
 
 
 namespace XamarinPlayer.Tizen
@@ -60,8 +61,33 @@ namespace XamarinPlayer.Tizen
 
             //fetch the JSON metadata defined on the smart Hub preview web server
             string payload = "";
-            receivedAppControl.ExtraData.TryGet("PAYLOAD", out payload);   
-            // Send key event to the portable project using MessagingCenter           
+            
+            receivedAppControl.ExtraData.TryGet("PAYLOAD", out payload);
+            Logger.Info("The PAYLOAD value: " + payload);
+
+            if (string.IsNullOrEmpty(payload))
+                return;
+
+            //TODO
+            var pattern = "";//   \{\"\w*\"\:\"[0-9]*\"\}*;
+            string input = payload;
+            Match m = Regex.Match(input, pattern, RegexOptions.IgnoreCase);
+            Logger.Info("The regexp result value: " + m.Value);
+            if (!m.Success)
+                return;
+
+            payload = m.Value;
+            Logger.Info("The PAYLOAD after regexp value: " + payload);
+            //.WriteLine("Found '{0}' at position {1}.", m.Value, m.Index);
+
+            //receivedAppControl.ExtraData.TryGet("payload", out payload);
+            //Logger.Info("The payload value: " + payload);
+
+            //receivedAppControl.ExtraData.TryGet("Payload", out payload);
+            //Logger.Info("The Payload value: " + payload);
+
+            ////Send key event to the portable project using MessagingCenter
+            ////Logger.Info("The PAYLOAD value: " + payload);            
             Xamarin.Forms.MessagingCenter.Send<IPreviewPayloadEventSender, string>(this, "PayloadSent", payload);            
 
             base.OnAppControlReceived(e);

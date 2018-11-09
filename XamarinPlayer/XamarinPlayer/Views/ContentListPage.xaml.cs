@@ -51,6 +51,9 @@ namespace XamarinPlayer.Views
             //This method is being executed always. If launched without the SmartHub Preview tail, the message string is null.            
             if (!string.IsNullOrEmpty(message))
             {
+                if (!message.Contains("values"))
+                    return;               
+
                 var definition = new { values = "" };                
                 var payload = JsonConvert.DeserializeAnonymousType(message, definition);              
                                 
