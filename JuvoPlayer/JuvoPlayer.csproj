@@ -5,7 +5,7 @@
     <OutputType>Library</OutputType>
     <TargetFramework>netstandard2.0</TargetFramework>
     <TizenCreateTpkOnBuild>false</TizenCreateTpkOnBuild>
-    <Version>1.3.1</Version>
+    <Version>1.4.2</Version>
     <PackageReleaseNotes>Release of first beta to be presented to the public. It will be uploaded to the Samsung Seller Office site</PackageReleaseNotes>
     <Company>SRPOL MVS</Company>
     <Description>Refrence application of video streaming Tizen .Net Tv applications</Description>
@@ -49,9 +49,6 @@
       <ExcludeAssets>Runtime</ExcludeAssets>
     </PackageReference>
     <PackageReference Include="Tizen.NET.TV" Version="4.4.0.1341">
-      <ExcludeAssets>Runtime</ExcludeAssets>
-    </PackageReference>
-    <PackageReference Include="Tizen.TV.Multimedia.IPTV" Version="1.0.0">
       <ExcludeAssets>Runtime</ExcludeAssets>
     </PackageReference>
 
