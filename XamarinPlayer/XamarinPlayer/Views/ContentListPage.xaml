@@ -42,6 +42,7 @@
             <Controls:ContentList x:Name="ContentListView"
                                   HorizontalOptions="Center"
                                   VerticalOptions="Center"
+                                  IsVisible="False"
                                   RelativeLayout.HeightConstraint="{ConstraintExpression Type=RelativeToParent, Property=Height, Factor=0.21}"
                                   RelativeLayout.WidthConstraint="{ConstraintExpression Type=RelativeToParent, Property=Width, Factor=0.94}"
                                   RelativeLayout.YConstraint="{ConstraintExpression Type=RelativeToParent, Property=Height, Factor=0.7}"
