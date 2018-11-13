@@ -47,29 +47,25 @@ namespace XamarinPlayer.Views
 
         
         private void PreviewPayloadHandler(string message)
-        {               
-            //This method is being executed always. If launched without the SmartHub Preview tail, the message string is null.            
-            if (!string.IsNullOrEmpty(message))
-            {
-                if (!message.Contains("values"))
-                    return;               
+        {   
+            if (!message.Contains("values"))
+                return;                           
 
-                var definition = new { values = "" };                
-                var payload = JsonConvert.DeserializeAnonymousType(message, definition);              
-                                
+            try
+            {
+                var definition = new { values = "" };
+                var payload = JsonConvert.DeserializeAnonymousType(message, definition);
                 int index = 0;
-                try
-                {
-                    //In this case the payload has to be an integer - index value.
-                    index = int.Parse(payload.values);
-                    ContentItem item = ContentListView.GetItem(index);
-                    ContentListView.FocusedContent = item;
-                    ContentSelected(item);
-                } catch (System.Exception exc)
-                {                    
-                    throw new System.Exception("PreviewPayloadHandler exception " + exc.Message);
-                }               
-            }
+                //In this case the payload has to be an integer - index value.
+                index = int.Parse(payload.values);
+                ContentItem item = ContentListView.GetItem(index);
+                ContentListView.FocusedContent = item;
+                ContentSelected(item);
+            } catch (System.Exception exc)
+            {                    
+                throw new System.Exception("PreviewPayloadHandler exception " + exc.Message);
+            }               
+            
         }
                 
 

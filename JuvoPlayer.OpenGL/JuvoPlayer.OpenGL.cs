@@ -72,9 +72,15 @@ namespace JuvoPlayer.OpenGL
             // Handle the launch request, show the user the task requested through the "AppControlReceivedEventArgs" parameter
             // Smart Hub Preview function requires the below code to identify which deeplink have to be launched
             ReceivedAppControl receivedAppControl = e.ReceivedAppControl;
-
             receivedAppControl.ExtraData.TryGet("PAYLOAD", out string payload); // Fetch the JSON metadata defined on the smart Hub preview web server
-            PreviewPayloadHandler(payload);
+
+            if (!string.IsNullOrEmpty(payload))
+            {
+                char[] charSeparator = new char[] { '&' };
+                string[] result = payload.Split(charSeparator, StringSplitOptions.RemoveEmptyEntries);
+                if (result.Length > 0)
+                    PreviewPayloadHandler(result[0]);
+            }           
 
             base.OnAppControlReceived(e);
         }
@@ -201,7 +207,6 @@ namespace JuvoPlayer.OpenGL
         {
             if (string.IsNullOrEmpty(message))
                 return;
-
             try
             {
                 var payload = JsonConvert.DeserializeAnonymousType(message, new { values = "" });

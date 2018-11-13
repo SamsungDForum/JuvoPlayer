@@ -1,7 +1,7 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <manifest
   package="JuvoPlayerOpenGLNative.Tizen.TV"
-  version="1.0.7"
+  version="1.0.8"
   api-version="4"
   xmlns="http://tizen.org/ns/packages">
   <feature
@@ -18,13 +18,13 @@
       nodisplay="false"
       taskmanage="true"
       splash-screen-display="true"
-      type="dotnet-inhouse"
+      type="dotnet"
       launch_mode="single">
       <label>JuvoPlayerOpenGLNative.Tizen.TV</label>
       <icon>JuvoPlayerOpenGLNativeTizenTV.png</icon>
       <metadata key="http://samsung.com/tv/metadata/mountinstall"  value="false" />
       <metadata key="http://samsung.com/tv/metadata/devel.api.version" value="2.4"/>
-      <metadata key="http://samsung.com/tv/metadata/use.preview" value="endpoint_URL=http://106.120.45.49/smarthubpreview/juvoplayerclipsJSON.json"/>
+      <metadata key="http://samsung.com/tv/metadata/use.preview" value="endpoint_URL=http://serwer1852815.home.pl/juvoplayer/smarthubpreview/juvoplayerclipsJSON.json"/>
       <splash-screens />
     </ui-application>
     <shortcut-list />
