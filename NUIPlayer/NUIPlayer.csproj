@@ -21,13 +21,13 @@
 
   <ItemGroup>
     <!-- Tizen.* packages are excluded from runtime -->
-    <PackageReference Include="Tizen.NET" Version="5.0.0.14545">
+    <PackageReference Include="Tizen.NET" Version="5.0.0.14572">
       <ExcludeAssets>Runtime</ExcludeAssets>
     </PackageReference>
     <PackageReference Include="Tizen.NET.TV" Version="4.4.0.1341">
       <ExcludeAssets>Runtime</ExcludeAssets>
     </PackageReference>
-    <PackageReference Include="Tizen.TV.NUI" Version="1.0.83">
+    <PackageReference Include="Tizen.TV.NUI" Version="1.0.97">
       <ExcludeAssets>Runtime</ExcludeAssets>
     </PackageReference>
     <PackageReference Include="Tizen.NET.Sdk" Version="1.0.1">

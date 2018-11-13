@@ -18,7 +18,7 @@
       nodisplay="false"
       taskmanage="true"
       splash-screen-display="true"
-      type="dotnet"
+      type="dotnet-inhouse"
       launch_mode="single">
       <label>JuvoPlayerOpenGLNative.Tizen.TV</label>
       <icon>JuvoPlayerOpenGLNativeTizenTV.png</icon>

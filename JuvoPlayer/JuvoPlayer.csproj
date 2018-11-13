@@ -42,7 +42,7 @@
     <PackageReference Include="System.Text.Encoding.CodePages" Version="4.5.0" />
 
     <!-- Tizen.* packages are excluded from runtime -->
-    <PackageReference Include="Tizen.NET" Version="5.0.0.14545">
+    <PackageReference Include="Tizen.NET" Version="5.0.0.14572">
       <ExcludeAssets>Runtime</ExcludeAssets>
     </PackageReference>
     <PackageReference Include="Tizen.NET.Sdk" Version="1.0.1">
@@ -53,7 +53,7 @@
     </PackageReference>
 
     <!-- Tizen.TV.Security is hijacked, as such it is included in assets. Add exclusion once released -->
-    <PackageReference Include="Tizen.TV.Security" Version="1.0.2" />
+    <PackageReference Include="Tizen.TV.Security" Version="1.0.3" />
   </ItemGroup>
 
   <ItemGroup>
