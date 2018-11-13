@@ -1,7 +1,7 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <manifest
   package="JuvoPlayerOpenGLNative.Tizen.TV"
-  version="1.0.8"
+  version="1.0.9"
   api-version="4"
   xmlns="http://tizen.org/ns/packages">
   <feature

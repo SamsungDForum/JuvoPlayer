@@ -50,7 +50,6 @@ namespace XamarinPlayer.Views
         {   
             if (!message.Contains("values"))
                 return;                           
-
             try
             {
                 var definition = new { values = "" };
@@ -58,8 +57,7 @@ namespace XamarinPlayer.Views
                 int index = 0;
                 //In this case the payload has to be an integer - index value.
                 index = int.Parse(payload.values);
-                ContentItem item = ContentListView.GetItem(index);
-                ContentListView.FocusedContent = item;
+                ContentItem item = ContentListView.GetItem(index);                
                 ContentSelected(item);
             } catch (System.Exception exc)
             {                    
@@ -79,10 +77,11 @@ namespace XamarinPlayer.Views
 
         private void ContentSelected(ContentItem item)
         {
+            ContentListView.FocusedContent = item;
             var playerView = new PlayerView()
             {
                 BindingContext = item.BindingContext
-            };
+            };            
             AppMainPage.PushAsync(playerView);
         }
 
