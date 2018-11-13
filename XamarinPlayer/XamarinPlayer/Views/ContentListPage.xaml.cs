@@ -34,7 +34,7 @@ namespace XamarinPlayer.Views
             InitializeComponent();
 
             AppMainPage = page;
-
+                        
             UpdateItem();
 
             NavigationPage.SetHasNavigationBar(this, false);
@@ -87,15 +87,18 @@ namespace XamarinPlayer.Views
 
         private void UpdateItem()
         {
+            
             foreach (DetailContentData content in ((ContentListPageViewModel)BindingContext).ContentList)
             {
                 ContentItem item = new ContentItem()
                 {
                     BindingContext = content
                 };
-                item.OnContentSelect += new ContentSelectHandler(ContentSelected);
+                item.OnContentSelect += new ContentSelectHandler(ContentSelected);                
                 ContentListView.Add(item);
             }
+
+            
         }
 
         protected async void UpdateContentInfo()
@@ -111,8 +114,13 @@ namespace XamarinPlayer.Views
         protected override void OnAppearing()
         {
             base.OnAppearing();
-
+            
             ContentListView.SetFocus();
+
+            //By default the content list is invisible (see the attribute in the .xaml file). 
+            //It fixes the 'stretching graphics during the content loading' issue.
+            //We need the below line to make it reappear on the screen.
+            ContentListView.IsVisible = true;
         }
 
         protected override void OnSizeAllocated(double width, double height)
