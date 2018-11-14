@@ -58,7 +58,7 @@ namespace XamarinPlayer.Views
                 //In this case the payload has to be an integer - index value.
                 index = int.Parse(payload.values);
                 ContentItem item = ContentListView.GetItem(index);                
-                ContentSelected(item);
+                ContentSelected(item);                
             } catch (System.Exception exc)
             {                    
                 throw new System.Exception("PreviewPayloadHandler exception " + exc.Message);
