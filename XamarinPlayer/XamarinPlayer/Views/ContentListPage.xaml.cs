@@ -57,7 +57,8 @@ namespace XamarinPlayer.Views
                 int index = 0;
                 //In this case the payload has to be an integer - index value.
                 index = int.Parse(payload.values);
-                ContentItem item = ContentListView.GetItem(index);                
+                ContentItem item = ContentListView.GetItem(index);
+                //ContentListView.ScrollToAsync
                 ContentSelected(item);                
             } catch (System.Exception exc)
             {                    
@@ -120,7 +121,11 @@ namespace XamarinPlayer.Views
             //By default the content list is invisible (see the attribute in the .xaml file). 
             //It fixes the 'stretching graphics during the content loading' issue.
             //We need the below line to make it reappear on the screen.
-            ContentListView.IsVisible = true;
+           // ContentListView.IsVisible = true;
+
+            //await Task.Yield();
+
+            //await ScrollViewAgenda.ScrollToAsync(bla, ScrollToPosition.MakeVisible, false);
         }
 
         protected override void OnSizeAllocated(double width, double height)
