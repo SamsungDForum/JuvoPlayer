@@ -14,6 +14,8 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reactive;
+using System.Reactive.Linq;
 using JuvoPlayer.Common;
 using JuvoPlayer.Demuxers;
 using JuvoPlayer.Subtitles;
@@ -35,49 +37,8 @@ namespace JuvoPlayer.DataProviders.HLS
         public HLSDataProvider(IDemuxer demuxer, ClipDefinition currentClip)
         {
             this.demuxer = demuxer ?? throw new ArgumentNullException(nameof(demuxer), "demuxer cannot be null");
-            this.currentClip = currentClip ?? throw new ArgumentNullException(nameof(currentClip), "clip cannot be null");
-
-            this.demuxer.ClipDuration += OnClipDurationChanged;
-            this.demuxer.StreamConfigReady += OnStreamConfigReady;
-            this.demuxer.PacketReady += OnPacketReady;
-        }
-
-        public event ClipDurationChanged ClipDurationChanged;
-        public event DRMInitDataFound DRMInitDataFound;
-        public event SetDrmConfiguration SetDrmConfiguration;
-        public event StreamConfigReady StreamConfigReady;
-        public event PacketReady PacketReady;
-        public event StreamError StreamError;
-        public event BufferingStarted BufferingStarted;
-        public event BufferingCompleted BufferingCompleted;
-
-        private void OnClipDurationChanged(TimeSpan clipDuration)
-        {
-            ClipDurationChanged?.Invoke(clipDuration);
-        }
-
-        private void OnStreamConfigReady(StreamConfig config)
-        {
-            StreamConfigReady?.Invoke(config);
-        }
-
-        private void OnPacketReady(Packet packet)
-        {
-            if (packet != null)
-            {
-                lastReceivedPts = packet.Pts;
-
-                if (ShouldPauseDemuxer())
-                    demuxer.Pause();
-
-                PacketReady?.Invoke(packet);
-                return;
-            }
-
-            // found empty packet which means EOS. We need to send two fake
-            // eos packets, one for audio and one for video
-            PacketReady?.Invoke(Packet.CreateEOS(StreamType.Audio));
-            PacketReady?.Invoke(Packet.CreateEOS(StreamType.Video));
+            this.currentClip =
+                currentClip ?? throw new ArgumentNullException(nameof(currentClip), "clip cannot be null");
         }
 
         private bool ShouldPauseDemuxer()
@@ -92,6 +53,7 @@ namespace JuvoPlayer.DataProviders.HLS
                 OnChangeActiveSubtitleStream(stream);
                 return;
             }
+
             throw new NotImplementedException();
         }
 
@@ -121,8 +83,14 @@ namespace JuvoPlayer.DataProviders.HLS
             demuxer.Resume();
         }
 
-        public void OnSeek(TimeSpan time, uint seekId)
+        public void OnSeekStarted(TimeSpan time, uint seekId)
         {
+            throw new NotImplementedException();
+        }
+
+        public void OnSeekCompleted()
+        {
+            throw new NotImplementedException();
         }
 
         public void OnStopped()
@@ -136,7 +104,6 @@ namespace JuvoPlayer.DataProviders.HLS
 
         public void Stop()
         {
-
         }
 
         public void Start()
@@ -170,6 +137,61 @@ namespace JuvoPlayer.DataProviders.HLS
             if (streamType == StreamType.Subtitle)
                 return GetSubtitleStreamsDescription();
             return new List<StreamDescription>();
+        }
+
+        public IObservable<TimeSpan> ClipDurationChanged()
+        {
+            return demuxer.ClipDurationChanged();
+        }
+
+        public IObservable<DRMInitData> DRMInitDataFound()
+        {
+            return demuxer.DRMInitDataFound();
+        }
+
+        public IObservable<DRMDescription> SetDrmConfiguration()
+        {
+            return Observable.Empty<DRMDescription>();
+        }
+
+        public IObservable<StreamConfig> StreamConfigReady()
+        {
+            return demuxer.StreamConfigReady();
+        }
+
+        public IObservable<Packet> PacketReady()
+        {
+            return demuxer.PacketReady()
+                .Do(packet =>
+                {
+                    if (packet == null) return;
+                    lastReceivedPts = packet.Pts;
+                    if (ShouldPauseDemuxer())
+                        demuxer.Pause();
+                }).SelectMany(packet =>
+                {
+                    if (packet != null)
+                        return Observable.Return(packet);
+                    // found empty packet which means EOS. We need to send two fake
+                    // eos packets, one for audio and one for video
+                    return Observable.Return(Packet.CreateEOS(StreamType.Audio))
+                        .Merge(Observable.Return(Packet.CreateEOS(StreamType.Video)));
+                });
+        }
+
+        public IObservable<string> StreamError()
+        {
+            throw new NotImplementedException();
+        }
+
+        public IObservable<Unit> BufferingStarted()
+        {
+            throw new NotImplementedException();
+        }
+
+        public IObservable<Unit> BufferingCompleted()
+        {
+            throw new NotImplementedException();
         }
 
         private List<StreamDescription> GetSubtitleStreamsDescription()

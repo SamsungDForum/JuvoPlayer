@@ -16,6 +16,9 @@ using System.Collections.Generic;
 using JuvoPlayer.Common;
 using JuvoLogger;
 using System.Linq;
+using System.Reactive;
+using System.Reactive.Linq;
+using System.Reactive.Subjects;
 using System.Threading;
 using ESPlayer = Tizen.TV.Multimedia;
 using System.Threading.Tasks;
@@ -55,12 +58,15 @@ namespace JuvoPlayer.Player.EsPlayer
         private readonly bool usesExternalWindow = true;
 
         // event callbacks
-        public event TimeUpdated TimeUpdated;
-        public event PlaybackError PlaybackError;
-        public event PlaybackCompleted PlaybackCompleted;
-        public event PlayerInitialized PlayerInitialized;
-        public event SeekCompleted SeekCompleted;
-        public event BufferStatus BufferStatus;
+        private readonly Subject<TimeSpan> timeUpdatedSubject = new Subject<TimeSpan>();
+        private readonly Subject<string> playbackErrorSubject = new Subject<string>();
+        private readonly Subject<Unit> seekCompletedSubject = new Subject<Unit>();
+        private readonly Subject<Unit> playbackCompletedSubject = new Subject<Unit>();
+        private readonly Subject<Unit> playerInitializedSubject = new Subject<Unit>();
+        private readonly Subject<SeekArgs> seekStartedSubject = new Subject<SeekArgs>();
+        private readonly Subject<Unit> pausedSubject = new Subject<Unit>();
+        private readonly Subject<Unit> playedSubject = new Subject<Unit>();
+        private readonly Subject<Unit> stoppedSubject = new Subject<Unit>();
 
         // Timer process and supporting cancellation elements for clock extraction
         // and generation
@@ -79,9 +85,12 @@ namespace JuvoPlayer.Player.EsPlayer
         private AsyncLock asyncOpSerializer = new AsyncLock();
 
         // Seek ID. Holds seek ID Request starting from one.
-        // Used for munching stale packets in data queue untill "seek packet" with
+        // Used for munching stale packets in data queue until "seek packet" with
         // matching ID is received. This
         private uint seekID;
+
+        private IDisposable[] streamReconfigureSubs;
+        private IDisposable[] playbackErrorSubs;
 
         #region Public API
 
@@ -105,8 +114,10 @@ namespace JuvoPlayer.Player.EsPlayer
                 };
 
                 dataStreams[(int) stream].Stream.SetPlayer(player);
-                dataStreams[(int) stream].Stream.ReconfigureStream += OnStreamReconfigure;
-                dataStreams[(int) stream].Stream.PlaybackError += OnEsStreamError;
+                streamReconfigureSubs[(int) stream] = dataStreams[(int) stream].Stream.StreamReconfigure()
+                    .Subscribe(unit => OnStreamReconfigure(), SynchronizationContext.Current);
+                playbackErrorSubs[(int) stream] = dataStreams[(int) stream].Stream.PlaybackError()
+                    .Subscribe(OnEsStreamError, SynchronizationContext.Current);
             }
         }
 
@@ -131,6 +142,8 @@ namespace JuvoPlayer.Player.EsPlayer
 
             // Create placeholder to data streams & chunk states
             dataStreams = new DataStream[(int) StreamType.Count];
+            streamReconfigureSubs = new IDisposable[(int) StreamType.Count];
+            playbackErrorSubs = new IDisposable[(int) StreamType.Count];
 
             //attach event handlers
             player.EOSEmitted += OnEos;
@@ -214,6 +227,7 @@ namespace JuvoPlayer.Player.EsPlayer
                 player.Start();
                 EnableTransfer();
                 StartClockGenerator();
+                playedSubject.OnNext(Unit.Default);
             }
             catch (InvalidOperationException ioe)
             {
@@ -234,6 +248,7 @@ namespace JuvoPlayer.Player.EsPlayer
                 player.Resume();
                 EnableTransfer();
                 StartClockGenerator();
+                playedSubject.OnNext(Unit.Default);
             }
             catch (InvalidOperationException ioe)
             {
@@ -253,6 +268,7 @@ namespace JuvoPlayer.Player.EsPlayer
                 DisableTransfer();
                 player.Pause();
                 StopClockGenerator();
+                pausedSubject.OnNext(Unit.Default);
             }
             catch (InvalidOperationException ioe)
             {
@@ -272,6 +288,7 @@ namespace JuvoPlayer.Player.EsPlayer
                 DisableTransfer();
                 player.Stop();
                 StopClockGenerator();
+                stoppedSubject.OnNext(Unit.Default);
             }
             catch (InvalidOperationException ioe)
             {
@@ -279,7 +296,7 @@ namespace JuvoPlayer.Player.EsPlayer
             }
         }
 
-        public uint Seek(TimeSpan time)
+        public async void Seek(TimeSpan time)
         {
             logger.Info("");
 
@@ -287,10 +304,11 @@ namespace JuvoPlayer.Player.EsPlayer
 
             var token = activeTaskCts.Token;
 
-            SeekStreamInitialize(token).Wait();
-            StreamSeek(time, token);
+            await SeekStreamInitialize(token);
 
-            return seekID;
+            seekStartedSubject.OnNext(new SeekArgs {Id = seekID, Position = time});
+
+            await StreamSeek(time, token);
         }
 
         #endregion
@@ -331,8 +349,6 @@ namespace JuvoPlayer.Player.EsPlayer
 
             if (state == BufferState.BufferUnderrun)
                 dataStreams[(int) juvoStream].Stream.Wakeup();
-
-            BufferStatus?.Invoke(juvoStream, state);
         }
 
         /// <summary>
@@ -350,7 +366,7 @@ namespace JuvoPlayer.Player.EsPlayer
             DisableTransfer();
             DisableInput();
 
-            PlaybackCompleted?.Invoke();
+            playbackCompletedSubject.OnNext(Unit.Default);
         }
 
         /// <summary>
@@ -372,7 +388,7 @@ namespace JuvoPlayer.Player.EsPlayer
             DisableInput();
 
             // Perform error notification
-            PlaybackError?.Invoke(error);
+            playbackErrorSubject.OnNext(error);
         }
 
         private void OnEsStreamError(string error)
@@ -384,7 +400,17 @@ namespace JuvoPlayer.Player.EsPlayer
             DisableInput();
 
             // Perform error notification
-            PlaybackError?.Invoke(error);
+            playbackErrorSubject.OnNext(error);
+        }
+
+        public IObservable<string> ErrorOccured()
+        {
+            return playbackErrorSubject.AsObservable();
+        }
+
+        public IObservable<Unit> PlaybackCompleted()
+        {
+            return playbackCompletedSubject.AsObservable();
         }
 
         /// <summary>
@@ -415,6 +441,21 @@ namespace JuvoPlayer.Player.EsPlayer
         }
 
         #endregion
+
+        public IObservable<TimeSpan> TimeUpdated()
+        {
+            return timeUpdatedSubject.AsObservable();
+        }
+
+        public IObservable<Unit> PlayerInitialized()
+        {
+            return playerInitializedSubject.AsObservable();
+        }
+
+        public IObservable<Unit> SeekCompleted()
+        {
+            return seekCompletedSubject.AsObservable();
+        }
 
         private async Task Prebuffer(CancellationToken token)
         {
@@ -468,13 +509,13 @@ namespace JuvoPlayer.Player.EsPlayer
                     player.Start();
                     StartClockGenerator();
 
-                    PlayerInitialized?.Invoke();
+                    playerInitializedSubject.OnNext(Unit.Default);
                 }
             }
             catch (InvalidOperationException ioe)
             {
                 logger.Error(ioe.Message);
-                PlaybackError?.Invoke(ioe.Message);
+                playbackErrorSubject.OnNext(ioe.Message);
             }
             catch (OperationCanceledException)
             {
@@ -486,7 +527,7 @@ namespace JuvoPlayer.Player.EsPlayer
                 logger.Error(e.Message);
                 logger.Error(e.Source);
                 logger.Error(e.StackTrace);
-                PlaybackError?.Invoke("Start Failed");
+                playbackErrorSubject.OnNext("Start Failed");
             }
         }
 
@@ -565,7 +606,7 @@ namespace JuvoPlayer.Player.EsPlayer
                 logger.Error(e.Message);
                 logger.Error(e.Source);
                 logger.Error(e.StackTrace);
-                PlaybackError?.Invoke("Restart Error");
+                playbackErrorSubject.OnNext("Restart Error");
             }
         }
 
@@ -592,7 +633,6 @@ namespace JuvoPlayer.Player.EsPlayer
             logger.Info(time.ToString());
 
             // TODO: Propagate exceptions to upper layers
-            var seekFailed = false;
             try
             {
                 using (await asyncOpSerializer.LockAsync(token))
@@ -621,31 +661,27 @@ namespace JuvoPlayer.Player.EsPlayer
                     await player.SeekAsync(time, OnReadyToSeekStream).WithCancellation(token);
 
                     logger.Info("Player.SeekAsync() Completed");
+                    StartClockGenerator();
                 }
             }
             catch (OperationCanceledException)
             {
                 logger.Info("Operation Cancelled");
-                DisableTransfer();
-                seekFailed = true;
             }
             catch (Exception e)
             {
                 logger.Error(e.Message);
                 logger.Error(e.Source);
                 logger.Error(e.StackTrace);
-                PlaybackError?.Invoke("Seek Failed");
-                seekFailed = true;
+                playbackErrorSubject.OnNext("Seek Failed");
             }
             finally
             {
                 // Always notify UI on seek end regardless of seek status
                 // to unblock it for further seeks ops.
                 // TODO: Remove SeekCompleted event. Return Task to PlayerController/PlayerService.
-                SeekCompleted?.Invoke();
-
-                if (!seekFailed)
-                    StartClockGenerator();
+                if (!token.IsCancellationRequested)
+                    seekCompletedSubject.OnNext(Unit.Default);
             }
         }
 
@@ -709,7 +745,7 @@ namespace JuvoPlayer.Player.EsPlayer
                         player.GetPlayingTime(out var currentPlayTime);
 
                         currentClock = currentPlayTime;
-                        TimeUpdated?.Invoke(currentClock);
+                        timeUpdatedSubject.OnNext(currentClock);
                     }
                     catch (InvalidOperationException ioe)
                     {
@@ -730,14 +766,7 @@ namespace JuvoPlayer.Player.EsPlayer
                 logger.Info(e.Message);
                 logger.Info(e.Source);
                 logger.Info(e.StackTrace);
-                PlaybackError?.Invoke("Playback Error");
-            }
-            finally
-            {
-                // Publish very last time clock.
-                player.GetPlayingTime(out var currentPlayTime);
-                TimeUpdated?.Invoke(currentClock);
-                logger.Info("Clock extractor: Terminated");
+                playbackErrorSubject.OnNext("Playback Error");
             }
         }
 
@@ -759,7 +788,7 @@ namespace JuvoPlayer.Player.EsPlayer
             var stopToken = clockGeneratorCts.Token;
 
             // Start time updater
-            clockGenerator = GenerateTimeUpdates(stopToken);
+            clockGenerator = Task.Run(() => GenerateTimeUpdates(stopToken), stopToken);
         }
 
         /// <summary>
@@ -789,53 +818,8 @@ namespace JuvoPlayer.Player.EsPlayer
             // Stop clock & async operations
             logger.Info("Clock/AsyncOps shutdown");
             activeTaskCts.Cancel();
+
             StopClockGenerator();
-
-            // Wait for cancellations to be signaled to assure any listening tasks
-            // will be in cancel mode before proceeding further.
-            logger.Info($"Waiting for cancellations to be signaled");
-            WaitHandle[] waitFor;
-
-            if (clockGeneratorCts != null)
-            {
-                waitFor = new WaitHandle[]
-                {
-                    activeTaskCts.Token.WaitHandle,
-                    clockGeneratorCts?.Token.WaitHandle
-                };
-            }
-            else
-            {
-                waitFor = new WaitHandle[]
-                {
-                    activeTaskCts.Token.WaitHandle,
-                };
-            }
-
-            WaitHandle.WaitAll(waitFor);
-        }
-
-        private void ShutdownStreams()
-        {
-            // Dispose of individual streams.
-            logger.Info("Data Streams shutdown");
-            foreach (var esStream in dataStreams.Where(esStream => esStream != null))
-            {
-                esStream.Stream.ReconfigureStream -= OnStreamReconfigure;
-                esStream.Stream.PlaybackError -= OnEsStreamError;
-                esStream.Stream.Dispose();
-                esStream.Stream = null;
-            }
-        }
-
-        private void DetachEventHandlers()
-        {
-            // Detach event handlers
-            logger.Info("Detaching event handlers");
-
-            player.EOSEmitted -= OnEos;
-            player.ErrorOccurred -= OnESPlayerError;
-            player.BufferStatusChanged -= OnBufferStatusChanged;
         }
 
         public void Dispose()
@@ -863,6 +847,10 @@ namespace JuvoPlayer.Player.EsPlayer
 
             ShutdownStreams();
 
+            DisposeAllSubjects();
+
+            DisposeAllSubscriptions();
+
             // Shut down player
             logger.Info("ESPlayer shutdown");
 
@@ -870,23 +858,73 @@ namespace JuvoPlayer.Player.EsPlayer
             player.Dispose();
             if (usesExternalWindow == false)
                 WindowUtils.DestroyElmSharpWindow(displayWindow);
-            displayWindow = null;
-            player = null;
 
             // Clean up internal object
             activeTaskCts.Dispose();
-            activeTaskCts = null;
             clockGeneratorCts?.Dispose();
-            clockGeneratorCts = null;
-
-            asyncOpSerializer = null;
-
-            dataStreams = null;
-            packetStorage = null;
 
             isDisposed = true;
         }
 
+        private void ShutdownStreams()
+        {
+            // Dispose of individual streams.
+            logger.Info("Data Streams shutdown");
+            foreach (var esStream in dataStreams.Where(esStream => esStream != null))
+                esStream.Stream.Dispose();
+        }
+
+        private void DetachEventHandlers()
+        {
+            // Detach event handlers
+            logger.Info("Detaching event handlers");
+
+            player.EOSEmitted -= OnEos;
+            player.ErrorOccurred -= OnESPlayerError;
+            player.BufferStatusChanged -= OnBufferStatusChanged;
+        }
+
+        private void DisposeAllSubjects()
+        {
+            pausedSubject.Dispose();
+            playedSubject.Dispose();
+            stoppedSubject.Dispose();
+            playbackCompletedSubject.Dispose();
+            playbackErrorSubject.Dispose();
+            playerInitializedSubject.Dispose();
+            seekCompletedSubject.Dispose();
+            seekStartedSubject.Dispose();
+            timeUpdatedSubject.Dispose();
+        }
+
+        private void DisposeAllSubscriptions()
+        {
+            foreach (var streamReconfigureSub in streamReconfigureSubs)
+                streamReconfigureSub?.Dispose();
+            foreach (var playbackErrorSub in playbackErrorSubs)
+                playbackErrorSub?.Dispose();
+        }
+
         #endregion
+
+        public IObservable<SeekArgs> SeekStarted()
+        {
+            return seekStartedSubject.AsObservable();
+        }
+
+        public IObservable<Unit> Paused()
+        {
+            return pausedSubject.AsObservable();
+        }
+
+        public IObservable<Unit> Played()
+        {
+            return playedSubject.AsObservable();
+        }
+
+        public IObservable<Unit> Stopped()
+        {
+            return stoppedSubject.AsObservable();
+        }
     }
 }

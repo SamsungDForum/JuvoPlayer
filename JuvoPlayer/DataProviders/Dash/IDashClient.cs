@@ -12,13 +12,11 @@
 // this software or its derivatives.
 
 using System;
+using System.Reactive;
 using MpdParser;
 
 namespace JuvoPlayer.DataProviders.Dash
 {
-    public delegate void Error(string errorMessage);
-    public delegate void DownloadCompleted();
-
     internal interface IDashClient : IDisposable
     {
         TimeSpan Seek(TimeSpan position);
@@ -31,9 +29,9 @@ namespace JuvoPlayer.DataProviders.Dash
 
         bool CanStreamSwitch();
 
-        event Error Error;
-        event DownloadCompleted DownloadCompleted;
-        event BufferingStarted BufferingStarted;
-        event BufferingCompleted BufferingCompleted;
+        IObservable<string> ErrorOccurred();
+        IObservable<Unit> DownloadCompleted();
+        IObservable<Unit> BufferingStarted();
+        IObservable<Unit> BufferingCompleted();
     }
 }
