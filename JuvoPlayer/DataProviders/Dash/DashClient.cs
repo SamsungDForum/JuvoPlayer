@@ -44,7 +44,7 @@ namespace JuvoPlayer.DataProviders.Dash
         private Task<DownloadResponse> downloadDataTask;
         private Task processDataTask;
         private CancellationTokenSource cancellationTokenSource;
-        private Task scheduleNextTask;
+        private Task downloadCompletedTask;
 
         private bool buffering;
         private TimeSpan startTime;
@@ -198,7 +198,7 @@ namespace JuvoPlayer.DataProviders.Dash
                     // DashClient termination. This may be happening as part of scheduleDownloadNextTask.
                     // Clear referce held in scheduleDownloadNextTask to prevent Stop() from trying to wait
                     // for itself. Otherwise DashClient will try to chase its own tail (deadlock)
-                    scheduleNextTask = null;
+                    downloadCompletedTask = null;
                     Stop();
                     return;
                 }
@@ -257,9 +257,11 @@ namespace JuvoPlayer.DataProviders.Dash
                 // throw exception so continuation wont run
                 if (!shouldContinue)
                     throw new Exception();
-
-                downloadCompletedSubject.OnNext(Unit.Default);
             }, TaskScheduler.Default);
+
+            downloadCompletedTask = processDataTask.ContinueWith(
+                _ => downloadCompletedSubject.OnNext(Unit.Default),
+                TaskContinuationOptions.OnlyOnRanToCompletion);
         }
 
         private bool HandleCancelledDownload(CancellationToken token)
@@ -310,7 +312,7 @@ namespace JuvoPlayer.DataProviders.Dash
 
                 LogInfo("Segment: INIT Reusing already downloaded data");
                 InitDataDownloaded(initData);
-                ScheduleNextSegDownload();
+                downloadCompletedSubject.OnNext(Unit.Default);
             }
         }
 
@@ -448,7 +450,7 @@ namespace JuvoPlayer.DataProviders.Dash
             // may happen during FF/REW operations.
             // If received after client start may result in lack of further download requests
             // being issued. Once download handler are serialized, should be safe to remove.
-            WaitForTaskCompletionNoError(scheduleNextTask);
+            WaitForTaskCompletionNoError(downloadCompletedTask);
             WaitForTaskCompletionNoError(downloadDataTask);
             WaitForTaskCompletionNoError(processDataTask);
 

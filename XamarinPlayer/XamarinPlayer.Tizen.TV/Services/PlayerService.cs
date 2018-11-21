@@ -101,7 +101,10 @@ namespace XamarinPlayer.Tizen.Services
                         return;
                     playerStateMessage = message;
                     State = PlayerState.Error;
-                }, SynchronizationContext.Current)
+                }, SynchronizationContext.Current),
+
+                playerController.PlaybackCompleted()
+                    .Subscribe(unit => State = PlayerState.Completed, SynchronizationContext.Current)
             };
         }
 

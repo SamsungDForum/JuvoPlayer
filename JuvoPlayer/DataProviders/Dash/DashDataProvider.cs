@@ -46,9 +46,8 @@ namespace JuvoPlayer.DataProviders.Dash
         private void OnManifestReady()
         {
             Logger.Info("");
-            Parallel.Invoke(() => audioPipeline.SwitchStreamIfNeeded(),
-                            () => videoPipeline.SwitchStreamIfNeeded());
-
+            audioPipeline.SwitchStreamIfNeeded();
+            videoPipeline.SwitchStreamIfNeeded();
         }
 
         public IObservable<TimeSpan> ClipDurationChanged()
@@ -150,9 +149,13 @@ namespace JuvoPlayer.DataProviders.Dash
 
             ignoreTimeUpdates = true;
 
-            Parallel.Invoke(() => videoPipeline.Pause(), () => audioPipeline.Pause());
-            Parallel.Invoke(() => videoPipeline.Seek(time, seekId), () => audioPipeline.Seek(time, seekId));
-            Parallel.Invoke(() => videoPipeline.Resume(), () => audioPipeline.Resume());
+            var pipelines = new[] {videoPipeline, audioPipeline};
+            foreach (var pipeline in pipelines)
+            {
+                pipeline.Pause();
+                pipeline.Seek(time, seekId);
+                pipeline.Resume();
+            }
         }
 
         public void OnSeekCompleted()
@@ -165,8 +168,8 @@ namespace JuvoPlayer.DataProviders.Dash
             Logger.Info("");
 
             manifestProvider.Stop();
-
-            Parallel.Invoke(() => videoPipeline.Stop(), () => audioPipeline.Stop());
+            videoPipeline.Stop();
+            audioPipeline.Stop();
         }
 
         public bool IsSeekingSupported()
@@ -208,20 +211,10 @@ namespace JuvoPlayer.DataProviders.Dash
             currentTime = time;
             manifestProvider.CurrentTime = time;
 
-            Parallel.Invoke(
-                () =>
-                {
-                    audioPipeline.OnTimeUpdated(time);
-
-                    // Do not do bandwidth adaptation on audio.
-                    // ESPlayer - all audio changes will result in destructive
-                    // stream change.
-                },
-                () =>
-                {
-                    videoPipeline.OnTimeUpdated(time);
-                });
+            audioPipeline.OnTimeUpdated(time);
+            videoPipeline.OnTimeUpdated(time);
         }
+
         public void Dispose()
         {
             if (disposed)
