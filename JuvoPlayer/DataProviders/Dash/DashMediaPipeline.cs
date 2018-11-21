@@ -1,7 +1,9 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Linq.Expressions;
+using System.Reactive;
+using System.Reactive.Linq;
+using System.Reactive.Subjects;
 using System.Xml;
 using JuvoLogger;
 using JuvoPlayer.Common;
@@ -50,13 +52,6 @@ namespace JuvoPlayer.DataProviders.Dash
         }
 
         private readonly ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
-        public event DRMInitDataFound DRMInitDataFound;
-        public event SetDrmConfiguration SetDrmConfiguration;
-        public event StreamConfigReady StreamConfigReady;
-        public event PacketReady PacketReady;
-        public event StreamError StreamError;
-        public event BufferingStarted BufferingStarted;
-        public event BufferingCompleted BufferingCompleted;
 
         /// <summary>
         /// Holds smaller of the two (PTS/DTS) from the initial packet.
@@ -90,6 +85,15 @@ namespace JuvoPlayer.DataProviders.Dash
         private PacketTimeStamp demuxerClock;
         private PacketTimeStamp lastPushedClock;
 
+        private readonly Subject<DRMInitData> drmInitDataSubject = new Subject<DRMInitData>();
+        private readonly Subject<DRMDescription> setDrmConfigurationSubject = new Subject<DRMDescription>();
+        private readonly Subject<Packet> packetReadySubject = new Subject<Packet>();
+        private readonly Subject<StreamConfig> demuxerStreamConfigReadySubject = new Subject<StreamConfig>();
+
+        private IDisposable demuxerPacketReadySub;
+        private IDisposable demuxerStreamConfigReadySub;
+        private IDisposable downloadCompletedSub;
+
         public DashMediaPipeline(IDashClient dashClient, IDemuxer demuxer, IThroughputHistory throughputHistory,
             StreamType streamType)
         {
@@ -101,19 +105,13 @@ namespace JuvoPlayer.DataProviders.Dash
                                          "throughputHistory cannot be null");
             this.streamType = streamType;
 
-            demuxer.DRMInitDataFound += OnDRMInitDataFound;
-            demuxer.StreamConfigReady += OnStreamConfigReady;
-            demuxer.PacketReady += OnPacketReady;
-            demuxer.DemuxerError += OnStreamError;
-
-            dashClient.Error += OnStreamError;
-            dashClient.BufferingCompleted += OnBufferingCompleted;
-            dashClient.BufferingStarted += OnBufferingStarted;
-            dashClient.DownloadCompleted += OnDownloadCompleted;
+            downloadCompletedSub = dashClient.DownloadCompleted().Subscribe(unit => OnDownloadCompleted(), SynchronizationContext.Current);
+            SubscribeDemuxerEvents();
         }
 
         private void OnDownloadCompleted()
         {
+            Logger.Info("");
             AdaptToNetConditions();
             SwitchStreamIfNeeded();
             dashClient.ScheduleNextSegDownload();
@@ -394,7 +392,7 @@ namespace JuvoPlayer.DataProviders.Dash
         public void Seek(TimeSpan time, uint seekId)
         {
             lastSeek = dashClient.Seek(time);
-            PacketReady?.Invoke(SeekPacket.CreatePacket(StreamType, seekId));
+            packetReadySubject.OnNext(SeekPacket.CreatePacket(StreamType, seekId));
         }
 
         public void ChangeStream(StreamDescription stream)
@@ -524,7 +522,7 @@ namespace JuvoPlayer.DataProviders.Dash
                 // Stream Type will be appended during OnDRMInitDataFound()
             };
 
-            OnDRMInitDataFound(drmInitData);
+            drmInitDataSubject.OnNext(drmInitData);
         }
 
         private void ParseYoutubeScheme(ContentProtection descriptor)
@@ -553,57 +551,88 @@ namespace JuvoPlayer.DataProviders.Dash
                     LicenceUrl = node.InnerText,
                     Scheme = type
                 };
-                SetDrmConfiguration?.Invoke(drmDescriptor);
+                setDrmConfigurationSubject.OnNext(drmDescriptor);
             }
         }
 
-        private void OnDRMInitDataFound(DRMInitData drmData)
+        public IObservable<DRMInitData> OnDRMInitDataFound()
         {
-            drmData.StreamType = StreamType;
-            DRMInitDataFound?.Invoke(drmData);
-        }
-
-        private void OnPacketReady(Packet packet)
-        {
-            if (packet != null)
-            {
-                AdjustDemuxerTimeStampIfNeeded(packet);
-
-                // Sometimes we can receive invalid timestamp from demuxer
-                // eg during encrypted content seek or live video.
-                // Adjust timestamps to avoid playback problems
-                packet += demuxerClock;
-                packet -= trimmOffset.Value;
-
-                if (packet.Pts < TimeSpan.Zero || packet.Dts < TimeSpan.Zero)
+            return demuxer.DRMInitDataFound()
+                .Merge(drmInitDataSubject.AsObservable())
+                .Select(data =>
                 {
-                    packet.Pts = TimeSpan.Zero;
-                    packet.Dts = TimeSpan.Zero;
-                }
-
-                // Don't convert packet here, use assignment (less costly)
-                lastPushedClock.SetClock(packet);
-                PacketReady?.Invoke(packet);
-                return;
-            }
-
-            PacketReady?.Invoke(Packet.CreateEOS(StreamType));
+                    data.StreamType = streamType;
+                    return data;
+                });
         }
 
-        private void OnStreamError(string errorMessage)
+        public IObservable<Packet> PacketReady()
         {
-            // Transfer event to Data Provider
-            StreamError?.Invoke(errorMessage);
+            return packetReadySubject.AsObservable()
+                .Select(packet =>
+                {
+                    if (packet == null) return Packet.CreateEOS(streamType);
+                    if (packet is SeekPacket)
+                        return packet;
+
+                    AdjustDemuxerTimeStampIfNeeded(packet);
+
+                    // Sometimes we can receive invalid timestamp from demuxer
+                    // eg during encrypted content seek or live video.
+                    // Adjust timestamps to avoid playback problems
+                    packet += demuxerClock;
+                    packet -= trimmOffset.Value;
+
+                    if (packet.Pts < TimeSpan.Zero || packet.Dts < TimeSpan.Zero)
+                    {
+                        packet.Pts = TimeSpan.Zero;
+                        packet.Dts = TimeSpan.Zero;
+                    }
+
+                    // Don't convert packet here, use assignment (less costly)
+                    lastPushedClock.SetClock(packet);
+                    return packet;
+                });
         }
 
-        private void OnBufferingStarted()
+        public IObservable<DRMDescription> SetDrmConfiguration()
         {
-            BufferingStarted?.Invoke();
+            return setDrmConfigurationSubject.AsObservable();
         }
 
-        private void OnBufferingCompleted()
+        public IObservable<string> StreamError()
         {
-            BufferingCompleted?.Invoke();
+            return dashClient.ErrorOccurred().Merge(demuxer.DemuxerError());
+        }
+
+        public IObservable<Unit> BufferingStarted()
+        {
+            return dashClient.BufferingStarted();
+        }
+
+        public IObservable<Unit> BufferingCompleted()
+        {
+            return dashClient.BufferingCompleted();
+        }
+
+        public IObservable<StreamConfig> StreamConfigReady()
+        {
+            return demuxerStreamConfigReadySubject.AsObservable();
+        }
+
+        private void DisposeDemuxerSubscriptions()
+        {
+            demuxerPacketReadySub?.Dispose();
+            demuxerStreamConfigReadySub?.Dispose();
+        }
+
+        private void SubscribeDemuxerEvents()
+        {
+            demuxerPacketReadySub = demuxer.PacketReady()
+                .Subscribe(packet => packetReadySubject.OnNext(packet), SynchronizationContext.Current);
+
+            demuxerStreamConfigReadySub = demuxer.StreamConfigReady()
+                .Subscribe(config => demuxerStreamConfigReadySubject.OnNext(config), SynchronizationContext.Current);
         }
 
         private void AdjustDemuxerTimeStampIfNeeded(Packet packet)
@@ -635,11 +664,6 @@ namespace JuvoPlayer.DataProviders.Dash
             }
         }
 
-        private void OnStreamConfigReady(StreamConfig config)
-        {
-            StreamConfigReady?.Invoke(config);
-        }
-
         public bool CanSwitchStream()
         {
             // Allow adaptive stream switching if Client is in correct state and
@@ -652,6 +676,19 @@ namespace JuvoPlayer.DataProviders.Dash
         {
             demuxer.Dispose();
             dashClient.Dispose();
+
+            DisposeAllSubjects();
+
+            DisposeDemuxerSubscriptions();
+            downloadCompletedSub.Dispose();
+        }
+
+        private void DisposeAllSubjects()
+        {
+            drmInitDataSubject.Dispose();
+            setDrmConfigurationSubject.Dispose();
+            packetReadySubject.Dispose();
+            demuxerStreamConfigReadySubject.Dispose();
         }
     }
 }

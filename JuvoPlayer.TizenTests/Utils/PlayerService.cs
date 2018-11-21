@@ -2,6 +2,8 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Reactive.Disposables;
+using System.Threading;
 using ElmSharp;
 using JuvoPlayer.Common;
 using JuvoPlayer.DataProviders;
@@ -17,7 +19,7 @@ using JuvoPlayer.Utils;
 
 namespace JuvoPlayer.TizenTests.Utils
 {
-    class PlayerService : IDisposable
+    public class PlayerService : IDisposable
     {
         public enum PlayerState
         {
@@ -26,6 +28,7 @@ namespace JuvoPlayer.TizenTests.Utils
             Prepared,
             Stopped,
             Playing,
+            Buffering,
             Paused,
             Completed
         }
@@ -46,17 +49,21 @@ namespace JuvoPlayer.TizenTests.Utils
 
         private IDataProvider dataProvider;
         private IPlayerController playerController;
+        private DataProviderConnector connector;
         private readonly DataProviderFactoryManager dataProviders;
 
         public TimeSpan Duration => playerController?.ClipDuration ?? TimeSpan.FromSeconds(0);
 
-        public TimeSpan CurrentPosition => dataProvider == null ? TimeSpan.FromSeconds(0) : playerController.CurrentTime;
+        public TimeSpan CurrentPosition =>
+            dataProvider == null ? TimeSpan.FromSeconds(0) : playerController.CurrentTime;
 
         public bool IsSeekingSupported => dataProvider?.IsSeekingSupported() ?? false;
 
         public PlayerState State { get; private set; } = PlayerState.Idle;
 
         public string CurrentCueText => dataProvider?.CurrentCue?.Text;
+
+        private readonly CompositeDisposable subscriptions;
 
         public PlayerService()
         {
@@ -74,18 +81,41 @@ namespace JuvoPlayer.TizenTests.Utils
             var player = new EsPlayer(window);
 
             playerController = new PlayerController(player, drmManager);
-            playerController.PlaybackCompleted += () =>
+
+            subscriptions = new CompositeDisposable
             {
-                State = PlayerState.Completed;
+                playerController.StateChanged()
+                    .Subscribe(state => State = FromJuvoState(state), SynchronizationContext.Current),
+                playerController.Initialized()
+                    .Subscribe(unit => { State = PlayerState.Prepared; }, SynchronizationContext.Current),
+                playerController.PlaybackCompleted()
+                    .Subscribe(unit => State = PlayerState.Completed, SynchronizationContext.Current),
+                playerController.PlaybackError()
+                    .Subscribe(unit => State = PlayerState.Error, SynchronizationContext.Current)
             };
-            playerController.PlayerInitialized += () =>
+        }
+
+        private PlayerState FromJuvoState(JuvoPlayer.Player.PlayerState juvoState)
+        {
+            switch (juvoState)
             {
-                State = PlayerState.Prepared;
-            };
-            playerController.PlaybackError += (message) =>
-            {
-                State = PlayerState.Error;
-            };
+                case Player.PlayerState.Uninitialized:
+                    return PlayerState.Idle;
+                case Player.PlayerState.Ready:
+                    return PlayerState.Prepared;
+                case Player.PlayerState.Buffering:
+                    return PlayerState.Buffering;
+                case Player.PlayerState.Paused:
+                    return PlayerState.Paused;
+                case Player.PlayerState.Playing:
+                    return PlayerState.Playing;
+                case Player.PlayerState.Finished:
+                    return PlayerState.Completed;
+                case Player.PlayerState.Error:
+                    return PlayerState.Error;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(juvoState), juvoState, null);
+            }
         }
 
         public void Pause()
@@ -106,12 +136,12 @@ namespace JuvoPlayer.TizenTests.Utils
 
         public List<StreamDescription> GetStreamsDescription(StreamType streamType)
         {
-            return dataProvider.GetStreamsDescription(streamType);
+            return dataProvider?.GetStreamsDescription(streamType) ?? new List<StreamDescription>();
         }
 
         public void SetClipDefinition(ClipDefinition clip)
         {
-            DataProviderConnector.Disconnect(playerController, dataProvider);
+            connector?.Dispose();
 
             dataProvider = dataProviders.CreateDataProvider(clip);
 
@@ -121,7 +151,7 @@ namespace JuvoPlayer.TizenTests.Utils
                     playerController.OnSetDrmConfiguration(drm);
             }
 
-            DataProviderConnector.Connect(playerController, dataProvider);
+            connector = new DataProviderConnector(playerController, dataProvider);
 
             dataProvider.Start();
         }
@@ -149,11 +179,14 @@ namespace JuvoPlayer.TizenTests.Utils
         {
             if (disposing)
             {
-                DataProviderConnector.Disconnect(playerController, dataProvider);
+                connector?.Dispose();
                 playerController?.Dispose();
                 playerController = null;
                 dataProvider?.Dispose();
                 dataProvider = null;
+
+                subscriptions.Dispose();
+
                 GC.Collect();
             }
         }
