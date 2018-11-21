@@ -105,13 +105,13 @@ namespace JuvoPlayer.DataProviders.Dash
                                          "throughputHistory cannot be null");
             this.streamType = streamType;
 
-            downloadCompletedSub = dashClient.DownloadCompleted().Subscribe(unit => OnDownloadCompleted(), SynchronizationContext.Current);
+            downloadCompletedSub = dashClient.DownloadCompleted()
+                .Subscribe(unit => OnDownloadCompleted(), SynchronizationContext.Current);
             SubscribeDemuxerEvents();
         }
 
         private void OnDownloadCompleted()
         {
-            Logger.Info("");
             AdaptToNetConditions();
             SwitchStreamIfNeeded();
             dashClient.ScheduleNextSegDownload();
