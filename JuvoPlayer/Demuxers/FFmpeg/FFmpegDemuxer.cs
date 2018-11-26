@@ -69,7 +69,6 @@ namespace JuvoPlayer.Demuxers.FFmpeg
             this.dataBuffer = dataBuffer;
             try
             {
-                Interop.FFmpeg.Initialize(libPath);
                 Interop.FFmpeg.av_register_all(); // TODO(g.skowinski): Is registering multiple times unwanted or doesn't it matter?
 
                 Interop.FFmpeg.av_log_set_level(FFmpegMacros.AV_LOG_WARNING);
