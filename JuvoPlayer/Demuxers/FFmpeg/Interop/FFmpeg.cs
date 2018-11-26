@@ -1,5 +1,5 @@
 // Copyright (c) 2017 Samsung Electronics Co., Ltd All Rights Reserved
-// PROPRIETARY/CONFIDENTIAL 
+// PROPRIETARY/CONFIDENTIAL
 // This software is the confidential and proprietary
 // information of SAMSUNG ELECTRONICS ("Confidential Information"). You shall
 // not disclose such Confidential Information and shall use it only in
@@ -23,2497 +23,2432 @@ namespace JuvoPlayer.Demuxers.FFmpeg.Interop
         private static readonly ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
 
         #region filenames
+
         const string libavcodecFilename = @"libavcodec-juvo.so.57";
-        const string libavdeviceFilename = @"";
+        const string libavdeviceFilename = @"libavdevice-juvo.so";
         const string libavfilterFilename = @"libavfilter-juvo.so.6";
         const string libavformatFilename = @"libavformat-juvo.so.57";
         const string libavutilFilename = @"libavutil-juvo.so.55";
-        const string libpostprocFilename = @"";
+        const string libpostprocFilename = @"libpostproc-juvo.so";
         const string libswresampleFilename = @"libswresample-juvo.so.2";
         const string libswscaleFilename = @"libswscale-juvo.so.4";
+
         #endregion
 
-        #region libidl
-        // dlopen flags
-        const int RTLD_NOW = 2;
-        const int RTLD_GLOBAL = 8;
+        [DllImport(libavfilterFilename)]
+        public static extern int avfilter_open(AVFilterContext** @filter_ctx, AVFilter* @filter,
+            [MarshalAs(UnmanagedType.LPStr)] string @inst_name);
 
-        // DllImports
-        [DllImport("libdl.so.2")]
-        protected static extern IntPtr dlopen(string filename, int flags);
-        [DllImport("libdl.so.2")]
-        protected static extern IntPtr dlsym(IntPtr handle, string symbol);
-        #endregion
+        [DllImport(libavutilFilename)]
+        public static extern int av_samples_get_buffer_size(int* @linesize, int @nb_channels, int @nb_samples,
+            AVSampleFormat @sample_fmt, int @align);
 
-        #region delegates
-        unsafe public delegate int audio_resample_d(ReSampleContext* @s, short* @output, short* @input, int @nb_samples);
-        unsafe public delegate void audio_resample_close_d(ReSampleContext* @s);
-        unsafe public delegate ReSampleContext* av_audio_resample_init_d(int @output_channels, int @input_channels, int @output_rate, int @input_rate, AVSampleFormat @sample_fmt_out, AVSampleFormat @sample_fmt_in, int @filter_length, int @log2_phase_count, int @linear, double @cutoff);
-        unsafe public delegate void av_bitstream_filter_close_d(AVBitStreamFilterContext* @bsf);
-        unsafe public delegate int av_bitstream_filter_filter_d(AVBitStreamFilterContext* @bsfc, AVCodecContext* @avctx, [MarshalAs(UnmanagedType.LPStr)] string @args, byte** @poutbuf, int* @poutbuf_size, byte* @buf, int @buf_size, int @keyframe);
-        unsafe public delegate AVBitStreamFilterContext* av_bitstream_filter_init_d([MarshalAs(UnmanagedType.LPStr)] string @name);
-        unsafe public delegate AVBitStreamFilter* av_bitstream_filter_next_d(AVBitStreamFilter* @f);
-        unsafe public delegate int av_bsf_alloc_d(AVBitStreamFilter* @filter, AVBSFContext** @ctx);
-        unsafe public delegate void av_bsf_free_d(AVBSFContext** @ctx);
-        unsafe public delegate AVBitStreamFilter* av_bsf_get_by_name_d([MarshalAs(UnmanagedType.LPStr)] string @name);
-        unsafe public delegate AVClass* av_bsf_get_class_d();
-        unsafe public delegate int av_bsf_get_null_filter_d(AVBSFContext** @bsf);
-        unsafe public delegate int av_bsf_init_d(AVBSFContext* @ctx);
-        unsafe public delegate AVBSFList* av_bsf_list_alloc_d();
-        unsafe public delegate int av_bsf_list_append_d(AVBSFList* @lst, AVBSFContext* @bsf);
-        unsafe public delegate int av_bsf_list_append2_d(AVBSFList* @lst, [MarshalAs(UnmanagedType.LPStr)] string @bsf_name, AVDictionary** @options);
-        unsafe public delegate int av_bsf_list_finalize_d(AVBSFList** @lst, AVBSFContext** @bsf);
-        unsafe public delegate void av_bsf_list_free_d(AVBSFList** @lst);
-        unsafe public delegate int av_bsf_list_parse_str_d([MarshalAs(UnmanagedType.LPStr)] string @str, AVBSFContext** @bsf);
-        unsafe public delegate AVBitStreamFilter* av_bsf_next_d(void** @opaque);
-        unsafe public delegate int av_bsf_receive_packet_d(AVBSFContext* @ctx, AVPacket* @pkt);
-        unsafe public delegate int av_bsf_send_packet_d(AVBSFContext* @ctx, AVPacket* @pkt);
-        unsafe public delegate ushort* av_codec_get_chroma_intra_matrix_d(AVCodecContext* @avctx);
-        unsafe public delegate AVCodecDescriptor* av_codec_get_codec_descriptor_d(AVCodecContext* @avctx);
-        unsafe public delegate uint av_codec_get_codec_properties_d(AVCodecContext* @avctx);
-        unsafe public delegate int av_codec_get_lowres_d(AVCodecContext* @avctx);
-        unsafe public delegate int av_codec_get_max_lowres_d(AVCodec* @codec);
-        unsafe public delegate AVRational av_codec_get_pkt_timebase_d(AVCodecContext* @avctx);
-        unsafe public delegate int av_codec_get_seek_preroll_d(AVCodecContext* @avctx);
-        unsafe public delegate int av_codec_is_decoder_d(AVCodec* @codec);
-        unsafe public delegate int av_codec_is_encoder_d(AVCodec* @codec);
-        unsafe public delegate AVCodec* av_codec_next_d(AVCodec* @c);
-        unsafe public delegate void av_codec_set_chroma_intra_matrix_d(AVCodecContext* @avctx, ushort* @val);
-        unsafe public delegate void av_codec_set_codec_descriptor_d(AVCodecContext* @avctx, AVCodecDescriptor* @desc);
-        unsafe public delegate void av_codec_set_lowres_d(AVCodecContext* @avctx, int @val);
-        unsafe public delegate void av_codec_set_pkt_timebase_d(AVCodecContext* @avctx, AVRational @val);
-        unsafe public delegate void av_codec_set_seek_preroll_d(AVCodecContext* @avctx, int @val);
-        unsafe public delegate int av_copy_packet_d(AVPacket* @dst, AVPacket* @src);
-        unsafe public delegate int av_copy_packet_side_data_d(AVPacket* @dst, AVPacket* @src);
-        unsafe public delegate AVCPBProperties* av_cpb_properties_alloc_d(ulong* @size);
-        unsafe public delegate int av_dup_packet_d(AVPacket* @pkt);
-        unsafe public delegate void av_fast_padded_malloc_d(void* @ptr, uint* @size, ulong @min_size);
-        unsafe public delegate void av_fast_padded_mallocz_d(void* @ptr, uint* @size, ulong @min_size);
-        unsafe public delegate void av_free_packet_d(AVPacket* @pkt);
-        unsafe public delegate int av_get_audio_frame_duration_d(AVCodecContext* @avctx, int @frame_bytes);
-        unsafe public delegate int av_get_audio_frame_duration2_d(AVCodecParameters* @par, int @frame_bytes);
-        unsafe public delegate int av_get_bits_per_sample_d(AVCodecID @codec_id);
-        unsafe public delegate ulong av_get_codec_tag_string_d(byte* @buf, ulong @buf_size, uint @codec_tag);
-        unsafe public delegate int av_get_exact_bits_per_sample_d(AVCodecID @codec_id);
-        unsafe public delegate AVCodecID av_get_pcm_codec_d(AVSampleFormat @fmt, int @be);
-        unsafe public delegate string av_get_profile_name_d(AVCodec* @codec, int @profile);
-        unsafe public delegate int av_grow_packet_d(AVPacket* @pkt, int @grow_by);
-        unsafe public delegate AVHWAccel* av_hwaccel_next_d(AVHWAccel* @hwaccel);
-        unsafe public delegate void av_init_packet_d(AVPacket* @pkt);
-        unsafe public delegate int av_lockmgr_register_d(av_lockmgr_register_cb_func @cb);
-        unsafe public delegate void av_log_ask_for_sample_d(void* @avc, [MarshalAs(UnmanagedType.LPStr)] string @msg);
-        unsafe public delegate void av_log_missing_feature_d(void* @avc, [MarshalAs(UnmanagedType.LPStr)] string @feature, int @want_sample);
-        unsafe public delegate int av_new_packet_d(AVPacket* @pkt, int @size);
-        unsafe public delegate int av_packet_add_side_data_d(AVPacket* @pkt, AVPacketSideDataType @type, byte* @data, ulong @size);
-        unsafe public delegate AVPacket* av_packet_alloc_d();
-        unsafe public delegate AVPacket* av_packet_clone_d(AVPacket* @src);
-        unsafe public delegate int av_packet_copy_props_d(AVPacket* @dst, AVPacket* @src);
-        unsafe public delegate void av_packet_free_d(AVPacket** @pkt);
-        unsafe public delegate void av_packet_free_side_data_d(AVPacket* @pkt);
-        unsafe public delegate int av_packet_from_data_d(AVPacket* @pkt, byte* @data, int @size);
-        unsafe public delegate byte* av_packet_get_side_data_d(AVPacket* @pkt, AVPacketSideDataType @type, int* @size);
-        unsafe public delegate int av_packet_merge_side_data_d(AVPacket* @pkt);
-        unsafe public delegate void av_packet_move_ref_d(AVPacket* @dst, AVPacket* @src);
-        unsafe public delegate byte* av_packet_new_side_data_d(AVPacket* @pkt, AVPacketSideDataType @type, int @size);
-        unsafe public delegate byte* av_packet_pack_dictionary_d(AVDictionary* @dict, int* @size);
-        unsafe public delegate int av_packet_ref_d(AVPacket* @dst, AVPacket* @src);
-        unsafe public delegate void av_packet_rescale_ts_d(AVPacket* @pkt, AVRational @tb_src, AVRational @tb_dst);
-        unsafe public delegate int av_packet_shrink_side_data_d(AVPacket* @pkt, AVPacketSideDataType @type, int @size);
-        unsafe public delegate string av_packet_side_data_name_d(AVPacketSideDataType @type);
-        unsafe public delegate int av_packet_split_side_data_d(AVPacket* @pkt);
-        unsafe public delegate int av_packet_unpack_dictionary_d(byte* @data, int @size, AVDictionary** @dict);
-        unsafe public delegate void av_packet_unref_d(AVPacket* @pkt);
-        unsafe public delegate int av_parser_change_d(AVCodecParserContext* @s, AVCodecContext* @avctx, byte** @poutbuf, int* @poutbuf_size, byte* @buf, int @buf_size, int @keyframe);
-        unsafe public delegate void av_parser_close_d(AVCodecParserContext* @s);
-        unsafe public delegate AVCodecParserContext* av_parser_init_d(int @codec_id);
-        unsafe public delegate AVCodecParser* av_parser_next_d(AVCodecParser* @c);
-        unsafe public delegate int av_parser_parse2_d(AVCodecParserContext* @s, AVCodecContext* @avctx, byte** @poutbuf, int* @poutbuf_size, byte* @buf, int @buf_size, long @pts, long @dts, long @pos);
-        unsafe public delegate void av_picture_copy_d(AVPicture* @dst, AVPicture* @src, AVPixelFormat @pix_fmt, int @width, int @height);
-        unsafe public delegate int av_picture_crop_d(AVPicture* @dst, AVPicture* @src, AVPixelFormat @pix_fmt, int @top_band, int @left_band);
-        unsafe public delegate int av_picture_pad_d(AVPicture* @dst, AVPicture* @src, int @height, int @width, AVPixelFormat @pix_fmt, int @padtop, int @padbottom, int @padleft, int @padright, int* @color);
-        unsafe public delegate void av_register_bitstream_filter_d(AVBitStreamFilter* @bsf);
-        unsafe public delegate void av_register_codec_parser_d(AVCodecParser* @parser);
-        unsafe public delegate void av_register_hwaccel_d(AVHWAccel* @hwaccel);
-        unsafe public delegate int av_resample_d(AVResampleContext* @c, short* @dst, short* @src, int* @consumed, int @src_size, int @dst_size, int @update_ctx);
-        unsafe public delegate void av_resample_close_d(AVResampleContext* @c);
-        unsafe public delegate void av_resample_compensate_d(AVResampleContext* @c, int @sample_delta, int @compensation_distance);
-        unsafe public delegate AVResampleContext* av_resample_init_d(int @out_rate, int @in_rate, int @filter_length, int @log2_phase_count, int @linear, double @cutoff);
-        unsafe public delegate void av_shrink_packet_d(AVPacket* @pkt, int @size);
-        unsafe public delegate uint av_xiphlacing_d(byte* @s, uint @v);
-        unsafe public delegate void avcodec_align_dimensions_d(AVCodecContext* @s, int* @width, int* @height);
-        unsafe public delegate void avcodec_align_dimensions2_d(AVCodecContext* @s, int* @width, int* @height, ref int_array8 @linesize_align);
-        unsafe public delegate AVCodecContext* avcodec_alloc_context3_d(AVCodec* @codec);
-        unsafe public delegate AVChromaLocation avcodec_chroma_pos_to_enum_d(int @xpos, int @ypos);
-        unsafe public delegate int avcodec_close_d(AVCodecContext* @avctx);
-        unsafe public delegate string avcodec_configuration_d();
-        unsafe public delegate int avcodec_copy_context_d(AVCodecContext* @dest, AVCodecContext* @src);
-        unsafe public delegate int avcodec_decode_audio4_d(AVCodecContext* @avctx, AVFrame* @frame, int* @got_frame_ptr, AVPacket* @avpkt);
-        unsafe public delegate int avcodec_decode_subtitle2_d(AVCodecContext* @avctx, AVSubtitle* @sub, int* @got_sub_ptr, AVPacket* @avpkt);
-        unsafe public delegate int avcodec_decode_video2_d(AVCodecContext* @avctx, AVFrame* @picture, int* @got_picture_ptr, AVPacket* @avpkt);
-        unsafe public delegate int avcodec_default_execute_d(AVCodecContext* @c, avcodec_default_execute_func_func @func, void* @arg, int* @ret, int @count, int @size);
-        unsafe public delegate int avcodec_default_execute2_d(AVCodecContext* @c, avcodec_default_execute2_func_func @func, void* @arg, int* @ret, int @count);
-        unsafe public delegate int avcodec_default_get_buffer2_d(AVCodecContext* @s, AVFrame* @frame, int @flags);
-        unsafe public delegate AVPixelFormat avcodec_default_get_format_d(AVCodecContext* @s, AVPixelFormat* @fmt);
-        unsafe public delegate AVCodecDescriptor* avcodec_descriptor_get_d(AVCodecID @id);
-        unsafe public delegate AVCodecDescriptor* avcodec_descriptor_get_by_name_d([MarshalAs(UnmanagedType.LPStr)] string @name);
-        unsafe public delegate AVCodecDescriptor* avcodec_descriptor_next_d(AVCodecDescriptor* @prev);
-        unsafe public delegate int avcodec_encode_audio2_d(AVCodecContext* @avctx, AVPacket* @avpkt, AVFrame* @frame, int* @got_packet_ptr);
-        unsafe public delegate int avcodec_encode_subtitle_d(AVCodecContext* @avctx, byte* @buf, int @buf_size, AVSubtitle* @sub);
-        unsafe public delegate int avcodec_encode_video2_d(AVCodecContext* @avctx, AVPacket* @avpkt, AVFrame* @frame, int* @got_packet_ptr);
-        unsafe public delegate int avcodec_enum_to_chroma_pos_d(int* @xpos, int* @ypos, AVChromaLocation @pos);
-        unsafe public delegate int avcodec_fill_audio_frame_d(AVFrame* @frame, int @nb_channels, AVSampleFormat @sample_fmt, byte* @buf, int @buf_size, int @align);
-        unsafe public delegate AVPixelFormat avcodec_find_best_pix_fmt_of_2_d(AVPixelFormat @dst_pix_fmt1, AVPixelFormat @dst_pix_fmt2, AVPixelFormat @src_pix_fmt, int @has_alpha, int* @loss_ptr);
-        unsafe public delegate AVPixelFormat avcodec_find_best_pix_fmt_of_list_d(AVPixelFormat* @pix_fmt_list, AVPixelFormat @src_pix_fmt, int @has_alpha, int* @loss_ptr);
-        unsafe public delegate AVPixelFormat avcodec_find_best_pix_fmt2_d(AVPixelFormat @dst_pix_fmt1, AVPixelFormat @dst_pix_fmt2, AVPixelFormat @src_pix_fmt, int @has_alpha, int* @loss_ptr);
-        unsafe public delegate AVCodec* avcodec_find_decoder_d(AVCodecID @id);
-        unsafe public delegate AVCodec* avcodec_find_decoder_by_name_d([MarshalAs(UnmanagedType.LPStr)] string @name);
-        unsafe public delegate AVCodec* avcodec_find_encoder_d(AVCodecID @id);
-        unsafe public delegate AVCodec* avcodec_find_encoder_by_name_d([MarshalAs(UnmanagedType.LPStr)] string @name);
-        unsafe public delegate void avcodec_flush_buffers_d(AVCodecContext* @avctx);
-        unsafe public delegate void avcodec_free_context_d(AVCodecContext** @avctx);
-        unsafe public delegate void avcodec_get_chroma_sub_sample_d(AVPixelFormat @pix_fmt, int* @h_shift, int* @v_shift);
-        unsafe public delegate AVClass* avcodec_get_class_d();
-        unsafe public delegate int avcodec_get_context_defaults3_d(AVCodecContext* @s, AVCodec* @codec);
-        unsafe public delegate uint avcodec_get_edge_width_d();
-        unsafe public delegate AVClass* avcodec_get_frame_class_d();
-        unsafe public delegate string avcodec_get_name_d(AVCodecID @id);
-        unsafe public delegate int avcodec_get_pix_fmt_loss_d(AVPixelFormat @dst_pix_fmt, AVPixelFormat @src_pix_fmt, int @has_alpha);
-        unsafe public delegate AVClass* avcodec_get_subtitle_rect_class_d();
-        unsafe public delegate AVMediaType avcodec_get_type_d(AVCodecID @codec_id);
-        unsafe public delegate int avcodec_is_open_d(AVCodecContext* @s);
-        unsafe public delegate string avcodec_license_d();
-        unsafe public delegate int avcodec_open2_d(AVCodecContext* @avctx, AVCodec* @codec, AVDictionary** @options);
-        unsafe public delegate AVCodecParameters* avcodec_parameters_alloc_d();
-        unsafe public delegate int avcodec_parameters_copy_d(AVCodecParameters* @dst, AVCodecParameters* @src);
-        unsafe public delegate void avcodec_parameters_free_d(AVCodecParameters** @par);
-        unsafe public delegate int avcodec_parameters_from_context_d(AVCodecParameters* @par, AVCodecContext* @codec);
-        unsafe public delegate int avcodec_parameters_to_context_d(AVCodecContext* @codec, AVCodecParameters* @par);
-        unsafe public delegate uint avcodec_pix_fmt_to_codec_tag_d(AVPixelFormat @pix_fmt);
-        unsafe public delegate string avcodec_profile_name_d(AVCodecID @codec_id, int @profile);
-        unsafe public delegate int avcodec_receive_frame_d(AVCodecContext* @avctx, AVFrame* @frame);
-        unsafe public delegate int avcodec_receive_packet_d(AVCodecContext* @avctx, AVPacket* @avpkt);
-        unsafe public delegate void avcodec_register_d(AVCodec* @codec);
-        unsafe public delegate void avcodec_register_all_d();
-        unsafe public delegate int avcodec_send_frame_d(AVCodecContext* @avctx, AVFrame* @frame);
-        unsafe public delegate int avcodec_send_packet_d(AVCodecContext* @avctx, AVPacket* @avpkt);
-        unsafe public delegate void avcodec_set_dimensions_d(AVCodecContext* @s, int @width, int @height);
-        unsafe public delegate void avcodec_string_d(byte* @buf, int @buf_size, AVCodecContext* @enc, int @encode);
-        unsafe public delegate uint avcodec_version_d();
-        unsafe public delegate int avpicture_alloc_d(AVPicture* @picture, AVPixelFormat @pix_fmt, int @width, int @height);
-        unsafe public delegate int avpicture_fill_d(AVPicture* @picture, byte* @ptr, AVPixelFormat @pix_fmt, int @width, int @height);
-        unsafe public delegate void avpicture_free_d(AVPicture* @picture);
-        unsafe public delegate int avpicture_get_size_d(AVPixelFormat @pix_fmt, int @width, int @height);
-        unsafe public delegate int avpicture_layout_d(AVPicture* @src, AVPixelFormat @pix_fmt, int @width, int @height, byte* @dest, int @dest_size);
-        unsafe public delegate void avsubtitle_free_d(AVSubtitle* @sub);
-        unsafe public delegate AVInputFormat* av_input_audio_device_next_d(AVInputFormat* @d);
-        unsafe public delegate AVInputFormat* av_input_video_device_next_d(AVInputFormat* @d);
-        unsafe public delegate AVOutputFormat* av_output_audio_device_next_d(AVOutputFormat* @d);
-        unsafe public delegate AVOutputFormat* av_output_video_device_next_d(AVOutputFormat* @d);
-        unsafe public delegate int avdevice_app_to_dev_control_message_d(AVFormatContext* @s, AVAppToDevMessageType @type, void* @data, ulong @data_size);
-        unsafe public delegate int avdevice_capabilities_create_d(AVDeviceCapabilitiesQuery** @caps, AVFormatContext* @s, AVDictionary** @device_options);
-        unsafe public delegate void avdevice_capabilities_free_d(AVDeviceCapabilitiesQuery** @caps, AVFormatContext* @s);
-        unsafe public delegate string avdevice_configuration_d();
-        unsafe public delegate int avdevice_dev_to_app_control_message_d(AVFormatContext* @s, AVDevToAppMessageType @type, void* @data, ulong @data_size);
-        unsafe public delegate void avdevice_free_list_devices_d(AVDeviceInfoList** @device_list);
-        unsafe public delegate string avdevice_license_d();
-        unsafe public delegate int avdevice_list_devices_d(AVFormatContext* @s, AVDeviceInfoList** @device_list);
-        unsafe public delegate int avdevice_list_input_sources_d(AVInputFormat* @device, [MarshalAs(UnmanagedType.LPStr)] string @device_name, AVDictionary* @device_options, AVDeviceInfoList** @device_list);
-        unsafe public delegate int avdevice_list_output_sinks_d(AVOutputFormat* @device, [MarshalAs(UnmanagedType.LPStr)] string @device_name, AVDictionary* @device_options, AVDeviceInfoList** @device_list);
-        unsafe public delegate void avdevice_register_all_d();
-        unsafe public delegate uint avdevice_version_d();
-        unsafe public delegate AVABufferSinkParams* av_abuffersink_params_alloc_d();
-        unsafe public delegate ulong av_buffersink_get_channel_layout_d(AVFilterContext* @ctx);
-        unsafe public delegate int av_buffersink_get_channels_d(AVFilterContext* @ctx);
-        unsafe public delegate int av_buffersink_get_format_d(AVFilterContext* @ctx);
-        unsafe public delegate int av_buffersink_get_frame_d(AVFilterContext* @ctx, AVFrame* @frame);
-        unsafe public delegate int av_buffersink_get_frame_flags_d(AVFilterContext* @ctx, AVFrame* @frame, int @flags);
-        unsafe public delegate AVRational av_buffersink_get_frame_rate_d(AVFilterContext* @ctx);
-        unsafe public delegate int av_buffersink_get_h_d(AVFilterContext* @ctx);
-        unsafe public delegate AVBufferRef* av_buffersink_get_hw_frames_ctx_d(AVFilterContext* @ctx);
-        unsafe public delegate AVRational av_buffersink_get_sample_aspect_ratio_d(AVFilterContext* @ctx);
-        unsafe public delegate int av_buffersink_get_sample_rate_d(AVFilterContext* @ctx);
-        unsafe public delegate int av_buffersink_get_samples_d(AVFilterContext* @ctx, AVFrame* @frame, int @nb_samples);
-        unsafe public delegate AVRational av_buffersink_get_time_base_d(AVFilterContext* @ctx);
-        unsafe public delegate AVMediaType av_buffersink_get_type_d(AVFilterContext* @ctx);
-        unsafe public delegate int av_buffersink_get_w_d(AVFilterContext* @ctx);
-        unsafe public delegate AVBufferSinkParams* av_buffersink_params_alloc_d();
-        unsafe public delegate void av_buffersink_set_frame_size_d(AVFilterContext* @ctx, uint @frame_size);
-        unsafe public delegate int av_buffersrc_add_frame_d(AVFilterContext* @ctx, AVFrame* @frame);
-        unsafe public delegate int av_buffersrc_add_frame_flags_d(AVFilterContext* @buffer_src, AVFrame* @frame, int @flags);
-        unsafe public delegate uint av_buffersrc_get_nb_failed_requests_d(AVFilterContext* @buffer_src);
-        unsafe public delegate AVBufferSrcParameters* av_buffersrc_parameters_alloc_d();
-        unsafe public delegate int av_buffersrc_parameters_set_d(AVFilterContext* @ctx, AVBufferSrcParameters* @param);
-        unsafe public delegate int av_buffersrc_write_frame_d(AVFilterContext* @ctx, AVFrame* @frame);
-        unsafe public delegate AVFilter** av_filter_next_d(AVFilter** @filter);
-        unsafe public delegate int avfilter_config_links_d(AVFilterContext* @filter);
-        unsafe public delegate string avfilter_configuration_d();
-        unsafe public delegate void avfilter_free_d(AVFilterContext* @filter);
-        unsafe public delegate AVFilter* avfilter_get_by_name_d([MarshalAs(UnmanagedType.LPStr)] string @name);
-        unsafe public delegate AVClass* avfilter_get_class_d();
-        unsafe public delegate int avfilter_graph_add_filter_d(AVFilterGraph* @graphctx, AVFilterContext* @filter);
-        unsafe public delegate AVFilterGraph* avfilter_graph_alloc_d();
-        unsafe public delegate AVFilterContext* avfilter_graph_alloc_filter_d(AVFilterGraph* @graph, AVFilter* @filter, [MarshalAs(UnmanagedType.LPStr)] string @name);
-        unsafe public delegate int avfilter_graph_config_d(AVFilterGraph* @graphctx, void* @log_ctx);
-        unsafe public delegate int avfilter_graph_create_filter_d(AVFilterContext** @filt_ctx, AVFilter* @filt, [MarshalAs(UnmanagedType.LPStr)] string @name, [MarshalAs(UnmanagedType.LPStr)] string @args, void* @opaque, AVFilterGraph* @graph_ctx);
-        unsafe public delegate byte* avfilter_graph_dump_d(AVFilterGraph* @graph, [MarshalAs(UnmanagedType.LPStr)] string @options);
-        unsafe public delegate void avfilter_graph_free_d(AVFilterGraph** @graph);
-        unsafe public delegate AVFilterContext* avfilter_graph_get_filter_d(AVFilterGraph* @graph, [MarshalAs(UnmanagedType.LPStr)] string @name);
-        unsafe public delegate int avfilter_graph_parse_d(AVFilterGraph* @graph, [MarshalAs(UnmanagedType.LPStr)] string @filters, AVFilterInOut* @inputs, AVFilterInOut* @outputs, void* @log_ctx);
-        unsafe public delegate int avfilter_graph_parse_ptr_d(AVFilterGraph* @graph, [MarshalAs(UnmanagedType.LPStr)] string @filters, AVFilterInOut** @inputs, AVFilterInOut** @outputs, void* @log_ctx);
-        unsafe public delegate int avfilter_graph_parse2_d(AVFilterGraph* @graph, [MarshalAs(UnmanagedType.LPStr)] string @filters, AVFilterInOut** @inputs, AVFilterInOut** @outputs);
-        unsafe public delegate int avfilter_graph_queue_command_d(AVFilterGraph* @graph, [MarshalAs(UnmanagedType.LPStr)] string @target, [MarshalAs(UnmanagedType.LPStr)] string @cmd, [MarshalAs(UnmanagedType.LPStr)] string @arg, int @flags, double @ts);
-        unsafe public delegate int avfilter_graph_request_oldest_d(AVFilterGraph* @graph);
-        unsafe public delegate int avfilter_graph_send_command_d(AVFilterGraph* @graph, [MarshalAs(UnmanagedType.LPStr)] string @target, [MarshalAs(UnmanagedType.LPStr)] string @cmd, [MarshalAs(UnmanagedType.LPStr)] string @arg, byte* @res, int @res_len, int @flags);
-        unsafe public delegate void avfilter_graph_set_auto_convert_d(AVFilterGraph* @graph, uint @flags);
-        unsafe public delegate int avfilter_init_dict_d(AVFilterContext* @ctx, AVDictionary** @options);
-        unsafe public delegate int avfilter_init_filter_d(AVFilterContext* @filter, [MarshalAs(UnmanagedType.LPStr)] string @args, void* @opaque);
-        unsafe public delegate int avfilter_init_str_d(AVFilterContext* @ctx, [MarshalAs(UnmanagedType.LPStr)] string @args);
-        unsafe public delegate AVFilterInOut* avfilter_inout_alloc_d();
-        unsafe public delegate void avfilter_inout_free_d(AVFilterInOut** @inout);
-        unsafe public delegate int avfilter_insert_filter_d(AVFilterLink* @link, AVFilterContext* @filt, uint @filt_srcpad_idx, uint @filt_dstpad_idx);
-        unsafe public delegate string avfilter_license_d();
-        unsafe public delegate int avfilter_link_d(AVFilterContext* @src, uint @srcpad, AVFilterContext* @dst, uint @dstpad);
-        unsafe public delegate void avfilter_link_free_d(AVFilterLink** @link);
-        unsafe public delegate int avfilter_link_get_channels_d(AVFilterLink* @link);
-        unsafe public delegate void avfilter_link_set_closed_d(AVFilterLink* @link, int @closed);
-        unsafe public delegate AVFilter* avfilter_next_d(AVFilter* @prev);
-        unsafe public delegate int avfilter_open_d(AVFilterContext** @filter_ctx, AVFilter* @filter, [MarshalAs(UnmanagedType.LPStr)] string @inst_name);
-        unsafe public delegate int avfilter_pad_count_d(AVFilterPad* @pads);
-        unsafe public delegate string avfilter_pad_get_name_d(AVFilterPad* @pads, int @pad_idx);
-        unsafe public delegate AVMediaType avfilter_pad_get_type_d(AVFilterPad* @pads, int @pad_idx);
-        unsafe public delegate int avfilter_process_command_d(AVFilterContext* @filter, [MarshalAs(UnmanagedType.LPStr)] string @cmd, [MarshalAs(UnmanagedType.LPStr)] string @arg, byte* @res, int @res_len, int @flags);
-        unsafe public delegate int avfilter_register_d(AVFilter* @filter);
-        unsafe public delegate void avfilter_register_all_d();
-        unsafe public delegate void avfilter_uninit_d();
-        unsafe public delegate uint avfilter_version_d();
-        unsafe public delegate int av_add_index_entry_d(AVStream* @st, long @pos, long @timestamp, int @size, int @distance, int @flags);
-        unsafe public delegate int av_append_packet_d(AVIOContext* @s, AVPacket* @pkt, int @size);
-        unsafe public delegate int av_apply_bitstream_filters_d(AVCodecContext* @codec, AVPacket* @pkt, AVBitStreamFilterContext* @bsfc);
-        unsafe public delegate AVCodecID av_codec_get_id_d(AVCodecTag** @tags, uint @tag);
-        unsafe public delegate uint av_codec_get_tag_d(AVCodecTag** @tags, AVCodecID @id);
-        unsafe public delegate int av_codec_get_tag2_d(AVCodecTag** @tags, AVCodecID @id, uint* @tag);
-        unsafe public delegate int av_demuxer_open_d(AVFormatContext* @ic);
-        unsafe public delegate void av_dump_format_d(AVFormatContext* @ic, int @index, [MarshalAs(UnmanagedType.LPStr)] string @url, int @is_output);
-        unsafe public delegate int av_filename_number_test_d([MarshalAs(UnmanagedType.LPStr)] string @filename);
-        unsafe public delegate int av_find_best_stream_d(AVFormatContext* @ic, AVMediaType @type, int @wanted_stream_nb, int @related_stream, AVCodec** @decoder_ret, int @flags);
-        unsafe public delegate int av_find_default_stream_index_d(AVFormatContext* @s);
-        unsafe public delegate AVInputFormat* av_find_input_format_d([MarshalAs(UnmanagedType.LPStr)] string @short_name);
-        unsafe public delegate AVProgram* av_find_program_from_stream_d(AVFormatContext* @ic, AVProgram* @last, int @s);
-        unsafe public delegate AVDurationEstimationMethod av_fmt_ctx_get_duration_estimation_method_d(AVFormatContext* @ctx);
-        unsafe public delegate AVCodec* av_format_get_audio_codec_d(AVFormatContext* @s);
-        unsafe public delegate av_format_get_control_message_cb_func av_format_get_control_message_cb_d(AVFormatContext* @s);
-        unsafe public delegate AVCodec* av_format_get_data_codec_d(AVFormatContext* @s);
-        unsafe public delegate int av_format_get_metadata_header_padding_d(AVFormatContext* @s);
-        unsafe public delegate void* av_format_get_opaque_d(AVFormatContext* @s);
-        unsafe public delegate av_format_get_open_cb_func av_format_get_open_cb_d(AVFormatContext* @s);
-        unsafe public delegate int av_format_get_probe_score_d(AVFormatContext* @s);
-        unsafe public delegate AVCodec* av_format_get_subtitle_codec_d(AVFormatContext* @s);
-        unsafe public delegate AVCodec* av_format_get_video_codec_d(AVFormatContext* @s);
-        unsafe public delegate void av_format_inject_global_side_data_d(AVFormatContext* @s);
-        unsafe public delegate void av_format_set_audio_codec_d(AVFormatContext* @s, AVCodec* @c);
-        unsafe public delegate void av_format_set_control_message_cb_d(AVFormatContext* @s, av_format_set_control_message_cb_callback_func @callback);
-        unsafe public delegate void av_format_set_data_codec_d(AVFormatContext* @s, AVCodec* @c);
-        unsafe public delegate void av_format_set_metadata_header_padding_d(AVFormatContext* @s, int @c);
-        unsafe public delegate void av_format_set_opaque_d(AVFormatContext* @s, void* @opaque);
-        unsafe public delegate void av_format_set_open_cb_d(AVFormatContext* @s, av_format_set_open_cb_callback_func @callback);
-        unsafe public delegate void av_format_set_subtitle_codec_d(AVFormatContext* @s, AVCodec* @c);
-        unsafe public delegate void av_format_set_video_codec_d(AVFormatContext* @s, AVCodec* @c);
-        unsafe public delegate int av_get_frame_filename_d(byte* @buf, int @buf_size, [MarshalAs(UnmanagedType.LPStr)] string @path, int @number);
-        unsafe public delegate int av_get_frame_filename2_d(byte* @buf, int @buf_size, [MarshalAs(UnmanagedType.LPStr)] string @path, int @number, int @flags);
-        unsafe public delegate int av_get_output_timestamp_d(AVFormatContext* @s, int @stream, long* @dts, long* @wall);
-        unsafe public delegate int av_get_packet_d(AVIOContext* @s, AVPacket* @pkt, int @size);
-        unsafe public delegate AVCodecID av_guess_codec_d(AVOutputFormat* @fmt, [MarshalAs(UnmanagedType.LPStr)] string @short_name, [MarshalAs(UnmanagedType.LPStr)] string @filename, [MarshalAs(UnmanagedType.LPStr)] string @mime_type, AVMediaType @type);
-        unsafe public delegate AVOutputFormat* av_guess_format_d([MarshalAs(UnmanagedType.LPStr)] string @short_name, [MarshalAs(UnmanagedType.LPStr)] string @filename, [MarshalAs(UnmanagedType.LPStr)] string @mime_type);
-        unsafe public delegate AVRational av_guess_frame_rate_d(AVFormatContext* @ctx, AVStream* @stream, AVFrame* @frame);
-        unsafe public delegate AVRational av_guess_sample_aspect_ratio_d(AVFormatContext* @format, AVStream* @stream, AVFrame* @frame);
-        unsafe public delegate void av_hex_dump_d(_iobuf* @f, byte* @buf, int @size);
-        unsafe public delegate void av_hex_dump_log_d(void* @avcl, int @level, byte* @buf, int @size);
-        unsafe public delegate AVInputFormat* av_iformat_next_d(AVInputFormat* @f);
-        unsafe public delegate int av_index_search_timestamp_d(AVStream* @st, long @timestamp, int @flags);
-        unsafe public delegate int av_interleaved_write_frame_d(AVFormatContext* @s, AVPacket* @pkt);
-        unsafe public delegate int av_interleaved_write_uncoded_frame_d(AVFormatContext* @s, int @stream_index, AVFrame* @frame);
-        unsafe public delegate int av_match_ext_d([MarshalAs(UnmanagedType.LPStr)] string @filename, [MarshalAs(UnmanagedType.LPStr)] string @extensions);
-        unsafe public delegate AVProgram* av_new_program_d(AVFormatContext* @s, int @id);
-        unsafe public delegate AVOutputFormat* av_oformat_next_d(AVOutputFormat* @f);
-        unsafe public delegate void av_pkt_dump_log2_d(void* @avcl, int @level, AVPacket* @pkt, int @dump_payload, AVStream* @st);
-        unsafe public delegate void av_pkt_dump2_d(_iobuf* @f, AVPacket* @pkt, int @dump_payload, AVStream* @st);
-        unsafe public delegate int av_probe_input_buffer_d(AVIOContext* @pb, AVInputFormat** @fmt, [MarshalAs(UnmanagedType.LPStr)] string @url, void* @logctx, uint @offset, uint @max_probe_size);
-        unsafe public delegate int av_probe_input_buffer2_d(AVIOContext* @pb, AVInputFormat** @fmt, [MarshalAs(UnmanagedType.LPStr)] string @url, void* @logctx, uint @offset, uint @max_probe_size);
-        unsafe public delegate AVInputFormat* av_probe_input_format_d(AVProbeData* @pd, int @is_opened);
-        unsafe public delegate AVInputFormat* av_probe_input_format2_d(AVProbeData* @pd, int @is_opened, int* @score_max);
-        unsafe public delegate AVInputFormat* av_probe_input_format3_d(AVProbeData* @pd, int @is_opened, int* @score_ret);
-        unsafe public delegate void av_program_add_stream_index_d(AVFormatContext* @ac, int @progid, uint @idx);
-        unsafe public delegate int av_read_frame_d(AVFormatContext* @s, AVPacket* @pkt);
-        unsafe public delegate int av_read_pause_d(AVFormatContext* @s);
-        unsafe public delegate int av_read_play_d(AVFormatContext* @s);
-        unsafe public delegate void av_register_all_d();
-        unsafe public delegate void av_register_input_format_d(AVInputFormat* @format);
-        unsafe public delegate void av_register_output_format_d(AVOutputFormat* @format);
-        unsafe public delegate int av_sdp_create_d(AVFormatContext*[] @ac, int @n_files, byte* @buf, int @size);
-        unsafe public delegate int av_seek_frame_d(AVFormatContext* @s, int @stream_index, long @timestamp, int @flags);
-        unsafe public delegate int av_stream_add_side_data_d(AVStream* @st, AVPacketSideDataType @type, byte* @data, ulong @size);
-        unsafe public delegate AVRational av_stream_get_codec_timebase_d(AVStream* @st);
-        unsafe public delegate long av_stream_get_end_pts_d(AVStream* @st);
-        unsafe public delegate AVCodecParserContext* av_stream_get_parser_d(AVStream* @s);
-        unsafe public delegate AVRational av_stream_get_r_frame_rate_d(AVStream* @s);
-        unsafe public delegate byte* av_stream_get_recommended_encoder_configuration_d(AVStream* @s);
-        unsafe public delegate byte* av_stream_get_side_data_d(AVStream* @stream, AVPacketSideDataType @type, int* @size);
-        unsafe public delegate byte* av_stream_new_side_data_d(AVStream* @stream, AVPacketSideDataType @type, int @size);
-        unsafe public delegate void av_stream_set_r_frame_rate_d(AVStream* @s, AVRational @r);
-        unsafe public delegate void av_stream_set_recommended_encoder_configuration_d(AVStream* @s, byte* @configuration);
-        unsafe public delegate void av_url_split_d(byte* @proto, int @proto_size, byte* @authorization, int @authorization_size, byte* @hostname, int @hostname_size, int* @port_ptr, byte* @path, int @path_size, [MarshalAs(UnmanagedType.LPStr)] string @url);
-        unsafe public delegate int av_write_frame_d(AVFormatContext* @s, AVPacket* @pkt);
-        unsafe public delegate int av_write_trailer_d(AVFormatContext* @s);
-        unsafe public delegate int av_write_uncoded_frame_d(AVFormatContext* @s, int @stream_index, AVFrame* @frame);
-        unsafe public delegate int av_write_uncoded_frame_query_d(AVFormatContext* @s, int @stream_index);
-        unsafe public delegate AVFormatContext* avformat_alloc_context_d();
-        unsafe public delegate int avformat_alloc_output_context2_d(AVFormatContext** @ctx, AVOutputFormat* @oformat, [MarshalAs(UnmanagedType.LPStr)] string @format_name, [MarshalAs(UnmanagedType.LPStr)] string @filename);
-        unsafe public delegate void avformat_close_input_d(AVFormatContext** @s);
-        unsafe public delegate string avformat_configuration_d();
-        unsafe public delegate int avformat_find_stream_info_d(AVFormatContext* @ic, AVDictionary** @options);
-        unsafe public delegate int avformat_flush_d(AVFormatContext* @s);
-        unsafe public delegate void avformat_free_context_d(AVFormatContext* @s);
-        unsafe public delegate AVClass* avformat_get_class_d();
-        unsafe public delegate AVCodecTag* avformat_get_mov_audio_tags_d();
-        unsafe public delegate AVCodecTag* avformat_get_mov_video_tags_d();
-        unsafe public delegate AVCodecTag* avformat_get_riff_audio_tags_d();
-        unsafe public delegate AVCodecTag* avformat_get_riff_video_tags_d();
-        unsafe public delegate int avformat_init_output_d(AVFormatContext* @s, AVDictionary** @options);
-        unsafe public delegate string avformat_license_d();
-        unsafe public delegate int avformat_match_stream_specifier_d(AVFormatContext* @s, AVStream* @st, [MarshalAs(UnmanagedType.LPStr)] string @spec);
-        unsafe public delegate int avformat_network_deinit_d();
-        unsafe public delegate int avformat_network_init_d();
-        unsafe public delegate AVStream* avformat_new_stream_d(AVFormatContext* @s, AVCodec* @c);
-        unsafe public delegate int avformat_open_input_d(AVFormatContext** @ps, [MarshalAs(UnmanagedType.LPStr)] string @url, AVInputFormat* @fmt, AVDictionary** @options);
-        unsafe public delegate int avformat_query_codec_d(AVOutputFormat* @ofmt, AVCodecID @codec_id, int @std_compliance);
-        unsafe public delegate int avformat_queue_attached_pictures_d(AVFormatContext* @s);
-        unsafe public delegate int avformat_seek_file_d(AVFormatContext* @s, int @stream_index, long @min_ts, long @ts, long @max_ts, int @flags);
-        unsafe public delegate int avformat_transfer_internal_stream_timing_info_d(AVOutputFormat* @ofmt, AVStream* @ost, AVStream* @ist, AVTimebaseSource @copy_tb);
-        unsafe public delegate uint avformat_version_d();
-        unsafe public delegate int avformat_write_header_d(AVFormatContext* @s, AVDictionary** @options);
-        unsafe public delegate int avio_accept_d(AVIOContext* @s, AVIOContext** @c);
-        unsafe public delegate AVIOContext* avio_alloc_context_d(byte* @buffer, int @buffer_size, int @write_flag, void* @opaque, avio_alloc_context_read_packet_func @read_packet, avio_alloc_context_write_packet_func @write_packet, avio_alloc_context_seek_func @seek);
-        unsafe public delegate void avio_context_free_d(AVIOContext** @ptr);
-        unsafe public delegate int avio_check_d([MarshalAs(UnmanagedType.LPStr)] string @url, int @flags);
-        unsafe public delegate int avio_close_d(AVIOContext* @s);
-        unsafe public delegate int avio_close_dir_d(AVIODirContext** @s);
-        unsafe public delegate int avio_close_dyn_buf_d(AVIOContext* @s, byte** @pbuffer);
-        unsafe public delegate int avio_closep_d(AVIOContext** @s);
-        unsafe public delegate string avio_enum_protocols_d(void** @opaque, int @output);
-        unsafe public delegate int avio_feof_d(AVIOContext* @s);
-        unsafe public delegate string avio_find_protocol_name_d([MarshalAs(UnmanagedType.LPStr)] string @url);
-        unsafe public delegate void avio_flush_d(AVIOContext* @s);
-        unsafe public delegate void avio_free_directory_entry_d(AVIODirEntry** @entry);
-        unsafe public delegate int avio_get_dyn_buf_d(AVIOContext* @s, byte** @pbuffer);
-        unsafe public delegate int avio_get_str_d(AVIOContext* @pb, int @maxlen, byte* @buf, int @buflen);
-        unsafe public delegate int avio_get_str16be_d(AVIOContext* @pb, int @maxlen, byte* @buf, int @buflen);
-        unsafe public delegate int avio_get_str16le_d(AVIOContext* @pb, int @maxlen, byte* @buf, int @buflen);
-        unsafe public delegate int avio_handshake_d(AVIOContext* @c);
-        unsafe public delegate int avio_open_d(AVIOContext** @s, [MarshalAs(UnmanagedType.LPStr)] string @url, int @flags);
-        unsafe public delegate int avio_open_dir_d(AVIODirContext** @s, [MarshalAs(UnmanagedType.LPStr)] string @url, AVDictionary** @options);
-        unsafe public delegate int avio_open_dyn_buf_d(AVIOContext** @s);
-        unsafe public delegate int avio_open2_d(AVIOContext** @s, [MarshalAs(UnmanagedType.LPStr)] string @url, int @flags, AVIOInterruptCB* @int_cb, AVDictionary** @options);
-        unsafe public delegate int avio_pause_d(AVIOContext* @h, int @pause);
-        unsafe public delegate int avio_printf_d(AVIOContext* @s, [MarshalAs(UnmanagedType.LPStr)] string @fmt);
-        unsafe public delegate int avio_put_str_d(AVIOContext* @s, [MarshalAs(UnmanagedType.LPStr)] string @str);
-        unsafe public delegate int avio_put_str16be_d(AVIOContext* @s, [MarshalAs(UnmanagedType.LPStr)] string @str);
-        unsafe public delegate int avio_put_str16le_d(AVIOContext* @s, [MarshalAs(UnmanagedType.LPStr)] string @str);
-        unsafe public delegate int avio_r8_d(AVIOContext* @s);
-        unsafe public delegate uint avio_rb16_d(AVIOContext* @s);
-        unsafe public delegate uint avio_rb24_d(AVIOContext* @s);
-        unsafe public delegate uint avio_rb32_d(AVIOContext* @s);
-        unsafe public delegate ulong avio_rb64_d(AVIOContext* @s);
-        unsafe public delegate int avio_read_d(AVIOContext* @s, byte* @buf, int @size);
-        unsafe public delegate int avio_read_dir_d(AVIODirContext* @s, AVIODirEntry** @next);
-        unsafe public delegate int avio_read_to_bprint_d(AVIOContext* @h, AVBPrint* @pb, ulong @max_size);
-        unsafe public delegate uint avio_rl16_d(AVIOContext* @s);
-        unsafe public delegate uint avio_rl24_d(AVIOContext* @s);
-        unsafe public delegate uint avio_rl32_d(AVIOContext* @s);
-        unsafe public delegate ulong avio_rl64_d(AVIOContext* @s);
-        unsafe public delegate long avio_seek_d(AVIOContext* @s, long @offset, int @whence);
-        unsafe public delegate long avio_seek_time_d(AVIOContext* @h, int @stream_index, long @timestamp, int @flags);
-        unsafe public delegate long avio_size_d(AVIOContext* @s);
-        unsafe public delegate long avio_skip_d(AVIOContext* @s, long @offset);
-        unsafe public delegate void avio_w8_d(AVIOContext* @s, int @b);
-        unsafe public delegate void avio_wb16_d(AVIOContext* @s, uint @val);
-        unsafe public delegate void avio_wb24_d(AVIOContext* @s, uint @val);
-        unsafe public delegate void avio_wb32_d(AVIOContext* @s, uint @val);
-        unsafe public delegate void avio_wb64_d(AVIOContext* @s, ulong @val);
-        unsafe public delegate void avio_wl16_d(AVIOContext* @s, uint @val);
-        unsafe public delegate void avio_wl24_d(AVIOContext* @s, uint @val);
-        unsafe public delegate void avio_wl32_d(AVIOContext* @s, uint @val);
-        unsafe public delegate void avio_wl64_d(AVIOContext* @s, ulong @val);
-        unsafe public delegate void avio_write_d(AVIOContext* @s, byte* @buf, int @size);
-        unsafe public delegate void avio_write_marker_d(AVIOContext* @s, long @time, AVIODataMarkerType @type);
-        unsafe public delegate int avpriv_io_delete_d([MarshalAs(UnmanagedType.LPStr)] string @url);
-        unsafe public delegate int avpriv_io_move_d([MarshalAs(UnmanagedType.LPStr)] string @url_src, [MarshalAs(UnmanagedType.LPStr)] string @url_dst);
-        unsafe public delegate int url_feof_d(AVIOContext* @s);
-        unsafe public delegate AVRational av_add_q_d(AVRational @b, AVRational @c);
-        unsafe public delegate long av_add_stable_d(AVRational @ts_tb, long @ts, AVRational @inc_tb, long @inc);
-        unsafe public delegate AVAudioFifo* av_audio_fifo_alloc_d(AVSampleFormat @sample_fmt, int @channels, int @nb_samples);
-        unsafe public delegate int av_audio_fifo_drain_d(AVAudioFifo* @af, int @nb_samples);
-        unsafe public delegate void av_audio_fifo_free_d(AVAudioFifo* @af);
-        unsafe public delegate int av_audio_fifo_peek_d(AVAudioFifo* @af, void** @data, int @nb_samples);
-        unsafe public delegate int av_audio_fifo_peek_at_d(AVAudioFifo* @af, void** @data, int @nb_samples, int @offset);
-        unsafe public delegate int av_audio_fifo_read_d(AVAudioFifo* @af, void** @data, int @nb_samples);
-        unsafe public delegate int av_audio_fifo_realloc_d(AVAudioFifo* @af, int @nb_samples);
-        unsafe public delegate void av_audio_fifo_reset_d(AVAudioFifo* @af);
-        unsafe public delegate int av_audio_fifo_size_d(AVAudioFifo* @af);
-        unsafe public delegate int av_audio_fifo_space_d(AVAudioFifo* @af);
-        unsafe public delegate int av_audio_fifo_write_d(AVAudioFifo* @af, void** @data, int @nb_samples);
-        unsafe public delegate void av_bprint_channel_layout_d(AVBPrint* @bp, int @nb_channels, ulong @channel_layout);
-        unsafe public delegate AVBufferRef* av_buffer_alloc_d(int @size);
-        unsafe public delegate AVBufferRef* av_buffer_allocz_d(int @size);
-        unsafe public delegate AVBufferRef* av_buffer_create_d(byte* @data, int @size, av_buffer_create_free_func @free, void* @opaque, int @flags);
-        unsafe public delegate void av_buffer_default_free_d(void* @opaque, byte* @data);
-        unsafe public delegate void* av_buffer_get_opaque_d(AVBufferRef* @buf);
-        unsafe public delegate int av_buffer_get_ref_count_d(AVBufferRef* @buf);
-        unsafe public delegate int av_buffer_is_writable_d(AVBufferRef* @buf);
-        unsafe public delegate int av_buffer_make_writable_d(AVBufferRef** @buf);
-        unsafe public delegate AVBufferRef* av_buffer_pool_get_d(AVBufferPool* @pool);
-        unsafe public delegate AVBufferPool* av_buffer_pool_init_d(int @size, av_buffer_pool_init_alloc_func @alloc);
-        unsafe public delegate AVBufferPool* av_buffer_pool_init2_d(int @size, void* @opaque, av_buffer_pool_init2_alloc_func @alloc, av_buffer_pool_init2_pool_free_func @pool_free);
-        unsafe public delegate void av_buffer_pool_uninit_d(AVBufferPool** @pool);
-        unsafe public delegate int av_buffer_realloc_d(AVBufferRef** @buf, int @size);
-        unsafe public delegate AVBufferRef* av_buffer_ref_d(AVBufferRef* @buf);
-        unsafe public delegate void av_buffer_unref_d(AVBufferRef** @buf);
-        unsafe public delegate void* av_calloc_d(ulong @nmemb, ulong @size);
-        unsafe public delegate ulong av_channel_layout_extract_channel_d(ulong @channel_layout, int @index);
-        unsafe public delegate string av_chroma_location_name_d(AVChromaLocation @location);
-        unsafe public delegate string av_color_primaries_name_d(AVColorPrimaries @primaries);
-        unsafe public delegate string av_color_range_name_d(AVColorRange @range);
-        unsafe public delegate string av_color_space_name_d(AVColorSpace @space);
-        unsafe public delegate string av_color_transfer_name_d(AVColorTransferCharacteristic @transfer);
-        unsafe public delegate long av_compare_mod_d(ulong @a, ulong @b, ulong @mod);
-        unsafe public delegate int av_compare_ts_d(long @ts_a, AVRational @tb_a, long @ts_b, AVRational @tb_b);
-        unsafe public delegate int av_cpu_count_d();
-        unsafe public delegate AVRational av_d2q_d(double @d, int @max);
-        unsafe public delegate AVClassCategory av_default_get_category_d(void* @ptr);
-        unsafe public delegate string av_default_item_name_d(void* @ctx);
-        unsafe public delegate int av_dict_copy_d(AVDictionary** @dst, AVDictionary* @src, int @flags);
-        unsafe public delegate int av_dict_count_d(AVDictionary* @m);
-        unsafe public delegate void av_dict_free_d(AVDictionary** @m);
-        unsafe public delegate AVDictionaryEntry* av_dict_get_d(AVDictionary* @m, [MarshalAs(UnmanagedType.LPStr)] string @key, AVDictionaryEntry* @prev, int @flags);
-        unsafe public delegate int av_dict_get_string_d(AVDictionary* @m, byte** @buffer, byte @key_val_sep, byte @pairs_sep);
-        unsafe public delegate int av_dict_parse_string_d(AVDictionary** @pm, [MarshalAs(UnmanagedType.LPStr)] string @str, [MarshalAs(UnmanagedType.LPStr)] string @key_val_sep, [MarshalAs(UnmanagedType.LPStr)] string @pairs_sep, int @flags);
-        unsafe public delegate int av_dict_set_d(AVDictionary** @pm, [MarshalAs(UnmanagedType.LPStr)] string @key, [MarshalAs(UnmanagedType.LPStr)] string @value, int @flags);
-        unsafe public delegate int av_dict_set_int_d(AVDictionary** @pm, [MarshalAs(UnmanagedType.LPStr)] string @key, long @value, int @flags);
-        unsafe public delegate AVRational av_div_q_d(AVRational @b, AVRational @c);
-        unsafe public delegate void av_dynarray_add_d(void* @tab_ptr, int* @nb_ptr, void* @elem);
-        unsafe public delegate int av_dynarray_add_nofree_d(void* @tab_ptr, int* @nb_ptr, void* @elem);
-        unsafe public delegate void* av_dynarray2_add_d(void** @tab_ptr, int* @nb_ptr, ulong @elem_size, byte* @elem_data);
-        unsafe public delegate void av_fast_malloc_d(void* @ptr, uint* @size, ulong @min_size);
-        unsafe public delegate void av_fast_mallocz_d(void* @ptr, uint* @size, ulong @min_size);
-        unsafe public delegate void* av_fast_realloc_d(void* @ptr, uint* @size, ulong @min_size);
-        unsafe public delegate AVFifoBuffer* av_fifo_alloc_d(uint @size);
-        unsafe public delegate AVFifoBuffer* av_fifo_alloc_array_d(ulong @nmemb, ulong @size);
-        unsafe public delegate void av_fifo_drain_d(AVFifoBuffer* @f, int @size);
-        unsafe public delegate void av_fifo_free_d(AVFifoBuffer* @f);
-        unsafe public delegate void av_fifo_freep_d(AVFifoBuffer** @f);
-        unsafe public delegate int av_fifo_generic_peek_d(AVFifoBuffer* @f, void* @dest, int @buf_size, av_fifo_generic_peek_func_func @func);
-        unsafe public delegate int av_fifo_generic_peek_at_d(AVFifoBuffer* @f, void* @dest, int @offset, int @buf_size, av_fifo_generic_peek_at_func_func @func);
-        unsafe public delegate int av_fifo_generic_read_d(AVFifoBuffer* @f, void* @dest, int @buf_size, av_fifo_generic_read_func_func @func);
-        unsafe public delegate int av_fifo_generic_write_d(AVFifoBuffer* @f, void* @src, int @size, av_fifo_generic_write_func_func @func);
-        unsafe public delegate int av_fifo_grow_d(AVFifoBuffer* @f, uint @additional_space);
-        unsafe public delegate int av_fifo_realloc2_d(AVFifoBuffer* @f, uint @size);
-        unsafe public delegate void av_fifo_reset_d(AVFifoBuffer* @f);
-        unsafe public delegate int av_fifo_size_d(AVFifoBuffer* @f);
-        unsafe public delegate int av_fifo_space_d(AVFifoBuffer* @f);
-        unsafe public delegate AVPixelFormat av_find_best_pix_fmt_of_2_d(AVPixelFormat @dst_pix_fmt1, AVPixelFormat @dst_pix_fmt2, AVPixelFormat @src_pix_fmt, int @has_alpha, int* @loss_ptr);
-        unsafe public delegate int av_find_nearest_q_idx_d(AVRational @q, AVRational* @q_list);
-        unsafe public delegate _iobuf* av_fopen_utf8_d([MarshalAs(UnmanagedType.LPStr)] string @path, [MarshalAs(UnmanagedType.LPStr)] string @mode);
-        unsafe public delegate void av_force_cpu_flags_d(int @flags);
-        unsafe public delegate byte* av_fourcc_make_string_d(byte* @buf, uint @fourcc);
-        unsafe public delegate AVFrame* av_frame_alloc_d();
-        unsafe public delegate AVFrame* av_frame_clone_d(AVFrame* @src);
-        unsafe public delegate int av_frame_copy_d(AVFrame* @dst, AVFrame* @src);
-        unsafe public delegate int av_frame_copy_props_d(AVFrame* @dst, AVFrame* @src);
-        unsafe public delegate void av_frame_free_d(AVFrame** @frame);
-        unsafe public delegate long av_frame_get_best_effort_timestamp_d(AVFrame* @frame);
-        unsafe public delegate int av_frame_get_buffer_d(AVFrame* @frame, int @align);
-        unsafe public delegate long av_frame_get_channel_layout_d(AVFrame* @frame);
-        unsafe public delegate int av_frame_get_channels_d(AVFrame* @frame);
-        unsafe public delegate AVColorRange av_frame_get_color_range_d(AVFrame* @frame);
-        unsafe public delegate AVColorSpace av_frame_get_colorspace_d(AVFrame* @frame);
-        unsafe public delegate int av_frame_get_decode_error_flags_d(AVFrame* @frame);
-        unsafe public delegate AVDictionary* av_frame_get_metadata_d(AVFrame* @frame);
-        unsafe public delegate long av_frame_get_pkt_duration_d(AVFrame* @frame);
-        unsafe public delegate long av_frame_get_pkt_pos_d(AVFrame* @frame);
-        unsafe public delegate int av_frame_get_pkt_size_d(AVFrame* @frame);
-        unsafe public delegate AVBufferRef* av_frame_get_plane_buffer_d(AVFrame* @frame, int @plane);
-        unsafe public delegate sbyte* av_frame_get_qp_table_d(AVFrame* @f, int* @stride, int* @type);
-        unsafe public delegate int av_frame_get_sample_rate_d(AVFrame* @frame);
-        unsafe public delegate AVFrameSideData* av_frame_get_side_data_d(AVFrame* @frame, AVFrameSideDataType @type);
-        unsafe public delegate int av_frame_is_writable_d(AVFrame* @frame);
-        unsafe public delegate int av_frame_make_writable_d(AVFrame* @frame);
-        unsafe public delegate void av_frame_move_ref_d(AVFrame* @dst, AVFrame* @src);
-        unsafe public delegate AVFrameSideData* av_frame_new_side_data_d(AVFrame* @frame, AVFrameSideDataType @type, int @size);
-        unsafe public delegate int av_frame_ref_d(AVFrame* @dst, AVFrame* @src);
-        unsafe public delegate void av_frame_remove_side_data_d(AVFrame* @frame, AVFrameSideDataType @type);
-        unsafe public delegate void av_frame_set_best_effort_timestamp_d(AVFrame* @frame, long @val);
-        unsafe public delegate void av_frame_set_channel_layout_d(AVFrame* @frame, long @val);
-        unsafe public delegate void av_frame_set_channels_d(AVFrame* @frame, int @val);
-        unsafe public delegate void av_frame_set_color_range_d(AVFrame* @frame, AVColorRange @val);
-        unsafe public delegate void av_frame_set_colorspace_d(AVFrame* @frame, AVColorSpace @val);
-        unsafe public delegate void av_frame_set_decode_error_flags_d(AVFrame* @frame, int @val);
-        unsafe public delegate void av_frame_set_metadata_d(AVFrame* @frame, AVDictionary* @val);
-        unsafe public delegate void av_frame_set_pkt_duration_d(AVFrame* @frame, long @val);
-        unsafe public delegate void av_frame_set_pkt_pos_d(AVFrame* @frame, long @val);
-        unsafe public delegate void av_frame_set_pkt_size_d(AVFrame* @frame, int @val);
-        unsafe public delegate int av_frame_set_qp_table_d(AVFrame* @f, AVBufferRef* @buf, int @stride, int @type);
-        unsafe public delegate void av_frame_set_sample_rate_d(AVFrame* @frame, int @val);
-        unsafe public delegate string av_frame_side_data_name_d(AVFrameSideDataType @type);
-        unsafe public delegate void av_frame_unref_d(AVFrame* @frame);
-        unsafe public delegate void av_free_d(void* @ptr);
-        unsafe public delegate void av_freep_d(void* @ptr);
-        unsafe public delegate long av_gcd_d(long @a, long @b);
-        unsafe public delegate AVSampleFormat av_get_alt_sample_fmt_d(AVSampleFormat @sample_fmt, int @planar);
-        unsafe public delegate int av_get_bits_per_pixel_d(AVPixFmtDescriptor* @pixdesc);
-        unsafe public delegate int av_get_bytes_per_sample_d(AVSampleFormat @sample_fmt);
-        unsafe public delegate string av_get_channel_description_d(ulong @channel);
-        unsafe public delegate ulong av_get_channel_layout_d([MarshalAs(UnmanagedType.LPStr)] string @name);
-        unsafe public delegate int av_get_channel_layout_channel_index_d(ulong @channel_layout, ulong @channel);
-        unsafe public delegate int av_get_channel_layout_nb_channels_d(ulong @channel_layout);
-        unsafe public delegate void av_get_channel_layout_string_d(byte* @buf, int @buf_size, int @nb_channels, ulong @channel_layout);
-        unsafe public delegate string av_get_channel_name_d(ulong @channel);
-        unsafe public delegate string av_get_colorspace_name_d(AVColorSpace @val);
-        unsafe public delegate int av_get_cpu_flags_d();
-        unsafe public delegate long av_get_default_channel_layout_d(int @nb_channels);
-        unsafe public delegate int av_get_extended_channel_layout_d([MarshalAs(UnmanagedType.LPStr)] string @name, ulong* @channel_layout, int* @nb_channels);
-        unsafe public delegate string av_get_media_type_string_d(AVMediaType @media_type);
-        unsafe public delegate AVSampleFormat av_get_packed_sample_fmt_d(AVSampleFormat @sample_fmt);
-        unsafe public delegate int av_get_padded_bits_per_pixel_d(AVPixFmtDescriptor* @pixdesc);
-        unsafe public delegate byte av_get_picture_type_char_d(AVPictureType @pict_type);
-        unsafe public delegate AVPixelFormat av_get_pix_fmt_d([MarshalAs(UnmanagedType.LPStr)] string @name);
-        unsafe public delegate int av_get_pix_fmt_loss_d(AVPixelFormat @dst_pix_fmt, AVPixelFormat @src_pix_fmt, int @has_alpha);
-        unsafe public delegate string av_get_pix_fmt_name_d(AVPixelFormat @pix_fmt);
-        unsafe public delegate byte* av_get_pix_fmt_string_d(byte* @buf, int @buf_size, AVPixelFormat @pix_fmt);
-        unsafe public delegate AVSampleFormat av_get_planar_sample_fmt_d(AVSampleFormat @sample_fmt);
-        unsafe public delegate AVSampleFormat av_get_sample_fmt_d([MarshalAs(UnmanagedType.LPStr)] string @name);
-        unsafe public delegate string av_get_sample_fmt_name_d(AVSampleFormat @sample_fmt);
-        unsafe public delegate byte* av_get_sample_fmt_string_d(byte* @buf, int @buf_size, AVSampleFormat @sample_fmt);
-        unsafe public delegate int av_get_standard_channel_layout_d(uint @index, ulong* @layout, byte** @name);
-        unsafe public delegate AVRational av_get_time_base_q_d();
-        unsafe public delegate int av_image_alloc_d(ref byte_ptrArray4 @pointers, ref int_array4 @linesizes, int @w, int @h, AVPixelFormat @pix_fmt, int @align);
-        unsafe public delegate int av_image_check_sar_d(uint @w, uint @h, AVRational @sar);
-        unsafe public delegate int av_image_check_size_d(uint @w, uint @h, int @log_offset, void* @log_ctx);
-        unsafe public delegate int av_image_check_size2_d(uint @w, uint @h, long @max_pixels, AVPixelFormat @pix_fmt, int @log_offset, void* @log_ctx);
-        unsafe public delegate void av_image_copy_d(ref byte_ptrArray4 @dst_data, ref int_array4 @dst_linesizes, ref byte_ptrArray4 @src_data, int_array4 @src_linesizes, AVPixelFormat @pix_fmt, int @width, int @height);
-        unsafe public delegate void av_image_copy_plane_d(byte* @dst, int @dst_linesize, byte* @src, int @src_linesize, int @bytewidth, int @height);
-        unsafe public delegate int av_image_copy_to_buffer_d(byte* @dst, int @dst_size, byte_ptrArray4 @src_data, int_array4 @src_linesize, AVPixelFormat @pix_fmt, int @width, int @height, int @align);
-        unsafe public delegate void av_image_copy_uc_from_d(ref byte_ptrArray4 @dst_data, long_array4 @dst_linesizes, ref byte_ptrArray4 @src_data, long_array4 @src_linesizes, AVPixelFormat @pix_fmt, int @width, int @height);
-        unsafe public delegate int av_image_fill_arrays_d(ref byte_ptrArray4 @dst_data, ref int_array4 @dst_linesize, byte* @src, AVPixelFormat @pix_fmt, int @width, int @height, int @align);
-        unsafe public delegate int av_image_fill_linesizes_d(ref int_array4 @linesizes, AVPixelFormat @pix_fmt, int @width);
-        unsafe public delegate void av_image_fill_max_pixsteps_d(ref int_array4 @max_pixsteps, ref int_array4 @max_pixstep_comps, AVPixFmtDescriptor* @pixdesc);
-        unsafe public delegate int av_image_fill_pointers_d(ref byte_ptrArray4 @data, AVPixelFormat @pix_fmt, int @height, byte* @ptr, int_array4 @linesizes);
-        unsafe public delegate int av_image_get_buffer_size_d(AVPixelFormat @pix_fmt, int @width, int @height, int @align);
-        unsafe public delegate int av_image_get_linesize_d(AVPixelFormat @pix_fmt, int @width, int @plane);
-        unsafe public delegate uint av_int_list_length_for_size_d(uint @elsize, void* @list, ulong @term);
-        unsafe public delegate void av_log_d(void* @avcl, int @level, [MarshalAs(UnmanagedType.LPStr)] string @fmt);
-        unsafe public delegate void av_log_default_callback_d(void* @avcl, int @level, [MarshalAs(UnmanagedType.LPStr)] string @fmt, byte* @vl);
-        unsafe public delegate void av_log_format_line_d(void* @ptr, int @level, [MarshalAs(UnmanagedType.LPStr)] string @fmt, byte* @vl, byte* @line, int @line_size, int* @print_prefix);
-        unsafe public delegate int av_log_format_line2_d(void* @ptr, int @level, [MarshalAs(UnmanagedType.LPStr)] string @fmt, byte* @vl, byte* @line, int @line_size, int* @print_prefix);
-        unsafe public delegate int av_log_get_flags_d();
-        unsafe public delegate int av_log_get_level_d();
-        unsafe public delegate void av_log_set_callback_d(av_log_set_callback_callback_func @callback);
-        unsafe public delegate void av_log_set_flags_d(int @arg);
-        unsafe public delegate void av_log_set_level_d(int @level);
-        unsafe public delegate int av_log2_d(uint @v);
-        unsafe public delegate int av_log2_16bit_d(uint @v);
-        unsafe public delegate void* av_malloc_d(ulong @size);
-        unsafe public delegate void* av_mallocz_d(ulong @size);
-        unsafe public delegate void av_max_alloc_d(ulong @max);
-        unsafe public delegate void av_memcpy_backptr_d(byte* @dst, int @back, int @cnt);
-        unsafe public delegate void* av_memdup_d(void* @p, ulong @size);
-        unsafe public delegate AVRational av_mul_q_d(AVRational @b, AVRational @c);
-        unsafe public delegate int av_nearer_q_d(AVRational @q, AVRational @q1, AVRational @q2);
-        unsafe public delegate AVClass* av_opt_child_class_next_d(AVClass* @parent, AVClass* @prev);
-        unsafe public delegate void* av_opt_child_next_d(void* @obj, void* @prev);
-        unsafe public delegate int av_opt_copy_d(void* @dest, void* @src);
-        unsafe public delegate int av_opt_eval_double_d(void* @obj, AVOption* @o, [MarshalAs(UnmanagedType.LPStr)] string @val, double* @double_out);
-        unsafe public delegate int av_opt_eval_flags_d(void* @obj, AVOption* @o, [MarshalAs(UnmanagedType.LPStr)] string @val, int* @flags_out);
-        unsafe public delegate int av_opt_eval_float_d(void* @obj, AVOption* @o, [MarshalAs(UnmanagedType.LPStr)] string @val, float* @float_out);
-        unsafe public delegate int av_opt_eval_int_d(void* @obj, AVOption* @o, [MarshalAs(UnmanagedType.LPStr)] string @val, int* @int_out);
-        unsafe public delegate int av_opt_eval_int64_d(void* @obj, AVOption* @o, [MarshalAs(UnmanagedType.LPStr)] string @val, long* @int64_out);
-        unsafe public delegate int av_opt_eval_q_d(void* @obj, AVOption* @o, [MarshalAs(UnmanagedType.LPStr)] string @val, AVRational* @q_out);
-        unsafe public delegate AVOption* av_opt_find_d(void* @obj, [MarshalAs(UnmanagedType.LPStr)] string @name, [MarshalAs(UnmanagedType.LPStr)] string @unit, int @opt_flags, int @search_flags);
-        unsafe public delegate AVOption* av_opt_find2_d(void* @obj, [MarshalAs(UnmanagedType.LPStr)] string @name, [MarshalAs(UnmanagedType.LPStr)] string @unit, int @opt_flags, int @search_flags, void** @target_obj);
-        unsafe public delegate int av_opt_flag_is_set_d(void* @obj, [MarshalAs(UnmanagedType.LPStr)] string @field_name, [MarshalAs(UnmanagedType.LPStr)] string @flag_name);
-        unsafe public delegate void av_opt_free_d(void* @obj);
-        unsafe public delegate void av_opt_freep_ranges_d(AVOptionRanges** @ranges);
-        unsafe public delegate int av_opt_get_d(void* @obj, [MarshalAs(UnmanagedType.LPStr)] string @name, int @search_flags, byte** @out_val);
-        unsafe public delegate int av_opt_get_channel_layout_d(void* @obj, [MarshalAs(UnmanagedType.LPStr)] string @name, int @search_flags, long* @ch_layout);
-        unsafe public delegate int av_opt_get_dict_val_d(void* @obj, [MarshalAs(UnmanagedType.LPStr)] string @name, int @search_flags, AVDictionary** @out_val);
-        unsafe public delegate int av_opt_get_double_d(void* @obj, [MarshalAs(UnmanagedType.LPStr)] string @name, int @search_flags, double* @out_val);
-        unsafe public delegate int av_opt_get_image_size_d(void* @obj, [MarshalAs(UnmanagedType.LPStr)] string @name, int @search_flags, int* @w_out, int* @h_out);
-        unsafe public delegate int av_opt_get_int_d(void* @obj, [MarshalAs(UnmanagedType.LPStr)] string @name, int @search_flags, long* @out_val);
-        unsafe public delegate int av_opt_get_key_value_d(byte** @ropts, [MarshalAs(UnmanagedType.LPStr)] string @key_val_sep, [MarshalAs(UnmanagedType.LPStr)] string @pairs_sep, uint @flags, byte** @rkey, byte** @rval);
-        unsafe public delegate int av_opt_get_pixel_fmt_d(void* @obj, [MarshalAs(UnmanagedType.LPStr)] string @name, int @search_flags, AVPixelFormat* @out_fmt);
-        unsafe public delegate int av_opt_get_q_d(void* @obj, [MarshalAs(UnmanagedType.LPStr)] string @name, int @search_flags, AVRational* @out_val);
-        unsafe public delegate int av_opt_get_sample_fmt_d(void* @obj, [MarshalAs(UnmanagedType.LPStr)] string @name, int @search_flags, AVSampleFormat* @out_fmt);
-        unsafe public delegate int av_opt_get_video_rate_d(void* @obj, [MarshalAs(UnmanagedType.LPStr)] string @name, int @search_flags, AVRational* @out_val);
-        unsafe public delegate int av_opt_is_set_to_default_d(void* @obj, AVOption* @o);
-        unsafe public delegate int av_opt_is_set_to_default_by_name_d(void* @obj, [MarshalAs(UnmanagedType.LPStr)] string @name, int @search_flags);
-        unsafe public delegate AVOption* av_opt_next_d(void* @obj, AVOption* @prev);
-        unsafe public delegate void* av_opt_ptr_d(AVClass* @avclass, void* @obj, [MarshalAs(UnmanagedType.LPStr)] string @name);
-        unsafe public delegate int av_opt_query_ranges_d(AVOptionRanges** @p0, void* @obj, [MarshalAs(UnmanagedType.LPStr)] string @key, int @flags);
-        unsafe public delegate int av_opt_query_ranges_default_d(AVOptionRanges** @p0, void* @obj, [MarshalAs(UnmanagedType.LPStr)] string @key, int @flags);
-        unsafe public delegate int av_opt_serialize_d(void* @obj, int @opt_flags, int @flags, byte** @buffer, byte @key_val_sep, byte @pairs_sep);
-        unsafe public delegate int av_opt_set_d(void* @obj, [MarshalAs(UnmanagedType.LPStr)] string @name, [MarshalAs(UnmanagedType.LPStr)] string @val, int @search_flags);
-        unsafe public delegate int av_opt_set_bin_d(void* @obj, [MarshalAs(UnmanagedType.LPStr)] string @name, byte* @val, int @size, int @search_flags);
-        unsafe public delegate int av_opt_set_channel_layout_d(void* @obj, [MarshalAs(UnmanagedType.LPStr)] string @name, long @ch_layout, int @search_flags);
-        unsafe public delegate void av_opt_set_defaults_d(void* @s);
-        unsafe public delegate void av_opt_set_defaults2_d(void* @s, int @mask, int @flags);
-        unsafe public delegate int av_opt_set_dict_d(void* @obj, AVDictionary** @options);
-        unsafe public delegate int av_opt_set_dict_val_d(void* @obj, [MarshalAs(UnmanagedType.LPStr)] string @name, AVDictionary* @val, int @search_flags);
-        unsafe public delegate int av_opt_set_dict2_d(void* @obj, AVDictionary** @options, int @search_flags);
-        unsafe public delegate int av_opt_set_double_d(void* @obj, [MarshalAs(UnmanagedType.LPStr)] string @name, double @val, int @search_flags);
-        unsafe public delegate int av_opt_set_from_string_d(void* @ctx, [MarshalAs(UnmanagedType.LPStr)] string @opts, byte** @shorthand, [MarshalAs(UnmanagedType.LPStr)] string @key_val_sep, [MarshalAs(UnmanagedType.LPStr)] string @pairs_sep);
-        unsafe public delegate int av_opt_set_image_size_d(void* @obj, [MarshalAs(UnmanagedType.LPStr)] string @name, int @w, int @h, int @search_flags);
-        unsafe public delegate int av_opt_set_int_d(void* @obj, [MarshalAs(UnmanagedType.LPStr)] string @name, long @val, int @search_flags);
-        unsafe public delegate int av_opt_set_pixel_fmt_d(void* @obj, [MarshalAs(UnmanagedType.LPStr)] string @name, AVPixelFormat @fmt, int @search_flags);
-        unsafe public delegate int av_opt_set_q_d(void* @obj, [MarshalAs(UnmanagedType.LPStr)] string @name, AVRational @val, int @search_flags);
-        unsafe public delegate int av_opt_set_sample_fmt_d(void* @obj, [MarshalAs(UnmanagedType.LPStr)] string @name, AVSampleFormat @fmt, int @search_flags);
-        unsafe public delegate int av_opt_set_video_rate_d(void* @obj, [MarshalAs(UnmanagedType.LPStr)] string @name, AVRational @val, int @search_flags);
-        unsafe public delegate int av_opt_show2_d(void* @obj, void* @av_log_obj, int @req_flags, int @rej_flags);
-        unsafe public delegate int av_parse_cpu_caps_d(uint* @flags, [MarshalAs(UnmanagedType.LPStr)] string @s);
-        unsafe public delegate int av_parse_cpu_flags_d([MarshalAs(UnmanagedType.LPStr)] string @s);
-        unsafe public delegate int av_pix_fmt_count_planes_d(AVPixelFormat @pix_fmt);
-        unsafe public delegate AVPixFmtDescriptor* av_pix_fmt_desc_get_d(AVPixelFormat @pix_fmt);
-        unsafe public delegate AVPixelFormat av_pix_fmt_desc_get_id_d(AVPixFmtDescriptor* @desc);
-        unsafe public delegate AVPixFmtDescriptor* av_pix_fmt_desc_next_d(AVPixFmtDescriptor* @prev);
-        unsafe public delegate int av_pix_fmt_get_chroma_sub_sample_d(AVPixelFormat @pix_fmt, int* @h_shift, int* @v_shift);
-        unsafe public delegate AVPixelFormat av_pix_fmt_swap_endianness_d(AVPixelFormat @pix_fmt);
-        unsafe public delegate uint av_q2intfloat_d(AVRational @q);
-        unsafe public delegate void av_read_image_line_d(ushort* @dst, ref byte_ptrArray4 @data, int_array4 @linesize, AVPixFmtDescriptor* @desc, int @x, int @y, int @c, int @w, int @read_pal_component);
-        unsafe public delegate void* av_realloc_d(void* @ptr, ulong @size);
-        unsafe public delegate void* av_realloc_array_d(void* @ptr, ulong @nmemb, ulong @size);
-        unsafe public delegate void* av_realloc_f_d(void* @ptr, ulong @nelem, ulong @elsize);
-        unsafe public delegate int av_reallocp_d(void* @ptr, ulong @size);
-        unsafe public delegate int av_reallocp_array_d(void* @ptr, ulong @nmemb, ulong @size);
-        unsafe public delegate int av_reduce_d(int* @dst_num, int* @dst_den, long @num, long @den, long @max);
-        unsafe public delegate long av_rescale_d(long @a, long @b, long @c);
-        unsafe public delegate long av_rescale_delta_d(AVRational @in_tb, long @in_ts, AVRational @fs_tb, int @duration, long* @last, AVRational @out_tb);
-        unsafe public delegate long av_rescale_q_d(long @a, AVRational @bq, AVRational @cq);
-        unsafe public delegate long av_rescale_q_rnd_d(long @a, AVRational @bq, AVRational @cq, AVRounding @rnd);
-        unsafe public delegate long av_rescale_rnd_d(long @a, long @b, long @c, AVRounding @rnd);
-        unsafe public delegate int av_sample_fmt_is_planar_d(AVSampleFormat @sample_fmt);
-        unsafe public delegate int av_samples_alloc_d(byte** @audio_data, int* @linesize, int @nb_channels, int @nb_samples, AVSampleFormat @sample_fmt, int @align);
-        unsafe public delegate int av_samples_alloc_array_and_samples_d(byte*** @audio_data, int* @linesize, int @nb_channels, int @nb_samples, AVSampleFormat @sample_fmt, int @align);
-        unsafe public delegate int av_samples_copy_d(byte** @dst, byte** @src, int @dst_offset, int @src_offset, int @nb_samples, int @nb_channels, AVSampleFormat @sample_fmt);
-        unsafe public delegate int av_samples_fill_arrays_d(byte** @audio_data, int* @linesize, byte* @buf, int @nb_channels, int @nb_samples, AVSampleFormat @sample_fmt, int @align);
-        unsafe public delegate int av_samples_get_buffer_size_d(int* @linesize, int @nb_channels, int @nb_samples, AVSampleFormat @sample_fmt, int @align);
-        unsafe public delegate int av_samples_set_silence_d(byte** @audio_data, int @offset, int @nb_samples, int @nb_channels, AVSampleFormat @sample_fmt);
-        unsafe public delegate void av_set_cpu_flags_mask_d(int @mask);
-        unsafe public delegate int av_set_options_string_d(void* @ctx, [MarshalAs(UnmanagedType.LPStr)] string @opts, [MarshalAs(UnmanagedType.LPStr)] string @key_val_sep, [MarshalAs(UnmanagedType.LPStr)] string @pairs_sep);
-        unsafe public delegate byte* av_strdup_d([MarshalAs(UnmanagedType.LPStr)] string @s);
-        unsafe public delegate int av_strerror_d(int @errnum, byte* @errbuf, ulong @errbuf_size);
-        unsafe public delegate byte* av_strndup_d([MarshalAs(UnmanagedType.LPStr)] string @s, ulong @len);
-        unsafe public delegate AVRational av_sub_q_d(AVRational @b, AVRational @c);
-        unsafe public delegate int av_timecode_adjust_ntsc_framenum2_d(int @framenum, int @fps);
-        unsafe public delegate int av_timecode_check_frame_rate_d(AVRational @rate);
-        unsafe public delegate uint av_timecode_get_smpte_from_framenum_d(AVTimecode* @tc, int @framenum);
-        unsafe public delegate int av_timecode_init_d(AVTimecode* @tc, AVRational @rate, int @flags, int @frame_start, void* @log_ctx);
-        unsafe public delegate int av_timecode_init_from_string_d(AVTimecode* @tc, AVRational @rate, [MarshalAs(UnmanagedType.LPStr)] string @str, void* @log_ctx);
-        unsafe public delegate byte* av_timecode_make_mpeg_tc_string_d(byte* @buf, uint @tc25bit);
-        unsafe public delegate byte* av_timecode_make_smpte_tc_string_d(byte* @buf, uint @tcsmpte, int @prevent_df);
-        unsafe public delegate byte* av_timecode_make_string_d(AVTimecode* @tc, byte* @buf, int @framenum);
-        unsafe public delegate string av_version_info_d();
-        unsafe public delegate void av_vlog_d(void* @avcl, int @level, [MarshalAs(UnmanagedType.LPStr)] string @fmt, byte* @vl);
-        unsafe public delegate void av_write_image_line_d(ushort* @src, ref byte_ptrArray4 @data, int_array4 @linesize, AVPixFmtDescriptor* @desc, int @x, int @y, int @c, int @w);
-        unsafe public delegate AVDictionary** avpriv_frame_get_metadatap_d(AVFrame* @frame);
-        unsafe public delegate string avutil_configuration_d();
-        unsafe public delegate string avutil_license_d();
-        unsafe public delegate uint avutil_version_d();
-        unsafe public delegate string postproc_configuration_d();
-        unsafe public delegate string postproc_license_d();
-        unsafe public delegate uint postproc_version_d();
-        unsafe public delegate void pp_free_context_d(void* @ppContext);
-        unsafe public delegate void pp_free_mode_d(void* @mode);
-        unsafe public delegate void* pp_get_context_d(int @width, int @height, int @flags);
-        unsafe public delegate void* pp_get_mode_by_name_and_quality_d([MarshalAs(UnmanagedType.LPStr)] string @name, int @quality);
-        unsafe public delegate void pp_postprocess_d(ref byte_ptrArray3 @src, int_array3 @srcStride, ref byte_ptrArray3 @dst, int_array3 @dstStride, int @horizontalSize, int @verticalSize, sbyte* @QP_store, int @QP_stride, void* @mode, void* @ppContext, int @pict_type);
-        unsafe public delegate SwrContext* swr_alloc_d();
-        unsafe public delegate SwrContext* swr_alloc_set_opts_d(SwrContext* @s, long @out_ch_layout, AVSampleFormat @out_sample_fmt, int @out_sample_rate, long @in_ch_layout, AVSampleFormat @in_sample_fmt, int @in_sample_rate, int @log_offset, void* @log_ctx);
-        unsafe public delegate int swr_build_matrix_d(ulong @in_layout, ulong @out_layout, double @center_mix_level, double @surround_mix_level, double @lfe_mix_level, double @rematrix_maxval, double @rematrix_volume, double* @matrix, int @stride, AVMatrixEncoding @matrix_encoding, void* @log_ctx);
-        unsafe public delegate void swr_close_d(SwrContext* @s);
-        unsafe public delegate int swr_config_frame_d(SwrContext* @swr, AVFrame* @out, AVFrame* @in);
-        unsafe public delegate int swr_convert_d(SwrContext* @s, byte** @out, int @out_count, byte** @in, int @in_count);
-        unsafe public delegate int swr_convert_frame_d(SwrContext* @swr, AVFrame* @output, AVFrame* @input);
-        unsafe public delegate int swr_drop_output_d(SwrContext* @s, int @count);
-        unsafe public delegate void swr_free_d(SwrContext** @s);
-        unsafe public delegate AVClass* swr_get_class_d();
-        unsafe public delegate long swr_get_delay_d(SwrContext* @s, long @base);
-        unsafe public delegate int swr_get_out_samples_d(SwrContext* @s, int @in_samples);
-        unsafe public delegate int swr_init_d(SwrContext* @s);
-        unsafe public delegate int swr_inject_silence_d(SwrContext* @s, int @count);
-        unsafe public delegate int swr_is_initialized_d(SwrContext* @s);
-        unsafe public delegate long swr_next_pts_d(SwrContext* @s, long @pts);
-        unsafe public delegate int swr_set_channel_mapping_d(SwrContext* @s, int* @channel_map);
-        unsafe public delegate int swr_set_compensation_d(SwrContext* @s, int @sample_delta, int @compensation_distance);
-        unsafe public delegate int swr_set_matrix_d(SwrContext* @s, double* @matrix, int @stride);
-        unsafe public delegate string swresample_configuration_d();
-        unsafe public delegate string swresample_license_d();
-        unsafe public delegate uint swresample_version_d();
-        unsafe public delegate void sws_addVec_d(SwsVector* @a, SwsVector* @b);
-        unsafe public delegate SwsContext* sws_alloc_context_d();
-        unsafe public delegate SwsVector* sws_allocVec_d(int @length);
-        unsafe public delegate SwsVector* sws_cloneVec_d(SwsVector* @a);
-        unsafe public delegate void sws_convertPalette8ToPacked24_d(byte* @src, byte* @dst, int @num_pixels, byte* @palette);
-        unsafe public delegate void sws_convertPalette8ToPacked32_d(byte* @src, byte* @dst, int @num_pixels, byte* @palette);
-        unsafe public delegate void sws_convVec_d(SwsVector* @a, SwsVector* @b);
-        unsafe public delegate void sws_freeContext_d(SwsContext* @swsContext);
-        unsafe public delegate void sws_freeFilter_d(SwsFilter* @filter);
-        unsafe public delegate void sws_freeVec_d(SwsVector* @a);
-        unsafe public delegate AVClass* sws_get_class_d();
-        unsafe public delegate SwsContext* sws_getCachedContext_d(SwsContext* @context, int @srcW, int @srcH, AVPixelFormat @srcFormat, int @dstW, int @dstH, AVPixelFormat @dstFormat, int @flags, SwsFilter* @srcFilter, SwsFilter* @dstFilter, double* @param);
-        unsafe public delegate int* sws_getCoefficients_d(int @colorspace);
-        unsafe public delegate int sws_getColorspaceDetails_d(SwsContext* @c, int** @inv_table, int* @srcRange, int** @table, int* @dstRange, int* @brightness, int* @contrast, int* @saturation);
-        unsafe public delegate SwsVector* sws_getConstVec_d(double @c, int @length);
-        unsafe public delegate SwsContext* sws_getContext_d(int @srcW, int @srcH, AVPixelFormat @srcFormat, int @dstW, int @dstH, AVPixelFormat @dstFormat, int @flags, SwsFilter* @srcFilter, SwsFilter* @dstFilter, double* @param);
-        unsafe public delegate SwsFilter* sws_getDefaultFilter_d(float @lumaGBlur, float @chromaGBlur, float @lumaSharpen, float @chromaSharpen, float @chromaHShift, float @chromaVShift, int @verbose);
-        unsafe public delegate SwsVector* sws_getGaussianVec_d(double @variance, double @quality);
-        unsafe public delegate SwsVector* sws_getIdentityVec_d();
-        unsafe public delegate int sws_init_context_d(SwsContext* @sws_context, SwsFilter* @srcFilter, SwsFilter* @dstFilter);
-        unsafe public delegate int sws_isSupportedEndiannessConversion_d(AVPixelFormat @pix_fmt);
-        unsafe public delegate int sws_isSupportedInput_d(AVPixelFormat @pix_fmt);
-        unsafe public delegate int sws_isSupportedOutput_d(AVPixelFormat @pix_fmt);
-        unsafe public delegate void sws_normalizeVec_d(SwsVector* @a, double @height);
-        unsafe public delegate void sws_printVec2_d(SwsVector* @a, AVClass* @log_ctx, int @log_level);
-        unsafe public delegate int sws_scale_d(SwsContext* @c, byte*[] @srcSlice, int[] @srcStride, int @srcSliceY, int @srcSliceH, byte*[] @dst, int[] @dstStride);
-        unsafe public delegate void sws_scaleVec_d(SwsVector* @a, double @scalar);
-        unsafe public delegate int sws_setColorspaceDetails_d(SwsContext* @c, int_array4 @inv_table, int @srcRange, int_array4 @table, int @dstRange, int @brightness, int @contrast, int @saturation);
-        unsafe public delegate void sws_shiftVec_d(SwsVector* @a, int @shift);
-        unsafe public delegate void sws_subVec_d(SwsVector* @a, SwsVector* @b);
-        unsafe public delegate string swscale_configuration_d();
-        unsafe public delegate string swscale_license_d();
-        unsafe public delegate uint swscale_version_d();
-        #endregion
+        [DllImport(libavcodecFilename)]
+        public static extern AVPixelFormat avcodec_find_best_pix_fmt2(AVPixelFormat @dst_pix_fmt1,
+            AVPixelFormat @dst_pix_fmt2, AVPixelFormat @src_pix_fmt, int @has_alpha, int* @loss_ptr);
 
-        #region callables
-        static public audio_resample_d audio_resample;
-        static public audio_resample_close_d audio_resample_close;
-        static public av_audio_resample_init_d av_audio_resample_init;
-        static public av_bitstream_filter_close_d av_bitstream_filter_close;
-        static public av_bitstream_filter_filter_d av_bitstream_filter_filter;
-        static public av_bitstream_filter_init_d av_bitstream_filter_init;
-        static public av_bitstream_filter_next_d av_bitstream_filter_next;
-        static public av_bsf_alloc_d av_bsf_alloc;
-        static public av_bsf_free_d av_bsf_free;
-        static public av_bsf_get_by_name_d av_bsf_get_by_name;
-        static public av_bsf_get_class_d av_bsf_get_class;
-        static public av_bsf_get_null_filter_d av_bsf_get_null_filter;
-        static public av_bsf_init_d av_bsf_init;
-        static public av_bsf_list_alloc_d av_bsf_list_alloc;
-        static public av_bsf_list_append_d av_bsf_list_append;
-        static public av_bsf_list_append2_d av_bsf_list_append2;
-        static public av_bsf_list_finalize_d av_bsf_list_finalize;
-        static public av_bsf_list_free_d av_bsf_list_free;
-        static public av_bsf_list_parse_str_d av_bsf_list_parse_str;
-        static public av_bsf_next_d av_bsf_next;
-        static public av_bsf_receive_packet_d av_bsf_receive_packet;
-        static public av_bsf_send_packet_d av_bsf_send_packet;
-        static public av_codec_get_chroma_intra_matrix_d av_codec_get_chroma_intra_matrix;
-        static public av_codec_get_codec_descriptor_d av_codec_get_codec_descriptor;
-        static public av_codec_get_codec_properties_d av_codec_get_codec_properties;
-        static public av_codec_get_lowres_d av_codec_get_lowres;
-        static public av_codec_get_max_lowres_d av_codec_get_max_lowres;
-        static public av_codec_get_pkt_timebase_d av_codec_get_pkt_timebase;
-        static public av_codec_get_seek_preroll_d av_codec_get_seek_preroll;
-        static public av_codec_is_decoder_d av_codec_is_decoder;
-        static public av_codec_is_encoder_d av_codec_is_encoder;
-        static public av_codec_next_d av_codec_next;
-        static public av_codec_set_chroma_intra_matrix_d av_codec_set_chroma_intra_matrix;
-        static public av_codec_set_codec_descriptor_d av_codec_set_codec_descriptor;
-        static public av_codec_set_lowres_d av_codec_set_lowres;
-        static public av_codec_set_pkt_timebase_d av_codec_set_pkt_timebase;
-        static public av_codec_set_seek_preroll_d av_codec_set_seek_preroll;
-        static public av_copy_packet_d av_copy_packet;
-        static public av_copy_packet_side_data_d av_copy_packet_side_data;
-        static public av_cpb_properties_alloc_d av_cpb_properties_alloc;
-        static public av_dup_packet_d av_dup_packet;
-        static public av_fast_padded_malloc_d av_fast_padded_malloc;
-        static public av_fast_padded_mallocz_d av_fast_padded_mallocz;
-        static public av_free_packet_d av_free_packet;
-        static public av_get_audio_frame_duration_d av_get_audio_frame_duration;
-        static public av_get_audio_frame_duration2_d av_get_audio_frame_duration2;
-        static public av_get_bits_per_sample_d av_get_bits_per_sample;
-        static public av_get_codec_tag_string_d av_get_codec_tag_string;
-        static public av_get_exact_bits_per_sample_d av_get_exact_bits_per_sample;
-        static public av_get_pcm_codec_d av_get_pcm_codec;
-        static public av_get_profile_name_d av_get_profile_name;
-        static public av_grow_packet_d av_grow_packet;
-        static public av_hwaccel_next_d av_hwaccel_next;
-        static public av_init_packet_d av_init_packet;
-        static public av_lockmgr_register_d av_lockmgr_register;
-        static public av_log_ask_for_sample_d av_log_ask_for_sample;
-        static public av_log_missing_feature_d av_log_missing_feature;
-        static public av_new_packet_d av_new_packet;
-        static public av_packet_add_side_data_d av_packet_add_side_data;
-        static public av_packet_alloc_d av_packet_alloc;
-        static public av_packet_clone_d av_packet_clone;
-        static public av_packet_copy_props_d av_packet_copy_props;
-        static public av_packet_free_d av_packet_free;
-        static public av_packet_free_side_data_d av_packet_free_side_data;
-        static public av_packet_from_data_d av_packet_from_data;
-        static public av_packet_get_side_data_d av_packet_get_side_data;
-        static public av_packet_merge_side_data_d av_packet_merge_side_data;
-        static public av_packet_move_ref_d av_packet_move_ref;
-        static public av_packet_new_side_data_d av_packet_new_side_data;
-        static public av_packet_pack_dictionary_d av_packet_pack_dictionary;
-        static public av_packet_ref_d av_packet_ref;
-        static public av_packet_rescale_ts_d av_packet_rescale_ts;
-        static public av_packet_shrink_side_data_d av_packet_shrink_side_data;
-        static public av_packet_side_data_name_d av_packet_side_data_name;
-        static public av_packet_split_side_data_d av_packet_split_side_data;
-        static public av_packet_unpack_dictionary_d av_packet_unpack_dictionary;
-        static public av_packet_unref_d av_packet_unref;
-        static public av_parser_change_d av_parser_change;
-        static public av_parser_close_d av_parser_close;
-        static public av_parser_init_d av_parser_init;
-        static public av_parser_next_d av_parser_next;
-        static public av_parser_parse2_d av_parser_parse2;
-        static public av_picture_copy_d av_picture_copy;
-        static public av_picture_crop_d av_picture_crop;
-        static public av_picture_pad_d av_picture_pad;
-        static public av_register_bitstream_filter_d av_register_bitstream_filter;
-        static public av_register_codec_parser_d av_register_codec_parser;
-        static public av_register_hwaccel_d av_register_hwaccel;
-        static public av_resample_d av_resample;
-        static public av_resample_close_d av_resample_close;
-        static public av_resample_compensate_d av_resample_compensate;
-        static public av_resample_init_d av_resample_init;
-        static public av_shrink_packet_d av_shrink_packet;
-        static public av_xiphlacing_d av_xiphlacing;
-        static public avcodec_align_dimensions_d avcodec_align_dimensions;
-        static public avcodec_align_dimensions2_d avcodec_align_dimensions2;
-        static public avcodec_alloc_context3_d avcodec_alloc_context3;
-        static public avcodec_chroma_pos_to_enum_d avcodec_chroma_pos_to_enum;
-        static public avcodec_close_d avcodec_close;
-        static public avcodec_configuration_d avcodec_configuration;
-        static public avcodec_copy_context_d avcodec_copy_context;
-        static public avcodec_decode_audio4_d avcodec_decode_audio4;
-        static public avcodec_decode_subtitle2_d avcodec_decode_subtitle2;
-        static public avcodec_decode_video2_d avcodec_decode_video2;
-        static public avcodec_default_execute_d avcodec_default_execute;
-        static public avcodec_default_execute2_d avcodec_default_execute2;
-        static public avcodec_default_get_buffer2_d avcodec_default_get_buffer2;
-        static public avcodec_default_get_format_d avcodec_default_get_format;
-        static public avcodec_descriptor_get_d avcodec_descriptor_get;
-        static public avcodec_descriptor_get_by_name_d avcodec_descriptor_get_by_name;
-        static public avcodec_descriptor_next_d avcodec_descriptor_next;
-        static public avcodec_encode_audio2_d avcodec_encode_audio2;
-        static public avcodec_encode_subtitle_d avcodec_encode_subtitle;
-        static public avcodec_encode_video2_d avcodec_encode_video2;
-        static public avcodec_enum_to_chroma_pos_d avcodec_enum_to_chroma_pos;
-        static public avcodec_fill_audio_frame_d avcodec_fill_audio_frame;
-        static public avcodec_find_best_pix_fmt_of_2_d avcodec_find_best_pix_fmt_of_2;
-        static public avcodec_find_best_pix_fmt_of_list_d avcodec_find_best_pix_fmt_of_list;
-        static public avcodec_find_best_pix_fmt2_d avcodec_find_best_pix_fmt2;
-        static public avcodec_find_decoder_d avcodec_find_decoder;
-        static public avcodec_find_decoder_by_name_d avcodec_find_decoder_by_name;
-        static public avcodec_find_encoder_d avcodec_find_encoder;
-        static public avcodec_find_encoder_by_name_d avcodec_find_encoder_by_name;
-        static public avcodec_flush_buffers_d avcodec_flush_buffers;
-        static public avcodec_free_context_d avcodec_free_context;
-        static public avcodec_get_chroma_sub_sample_d avcodec_get_chroma_sub_sample;
-        static public avcodec_get_class_d avcodec_get_class;
-        static public avcodec_get_context_defaults3_d avcodec_get_context_defaults3;
-        static public avcodec_get_edge_width_d avcodec_get_edge_width;
-        static public avcodec_get_frame_class_d avcodec_get_frame_class;
-        static public avcodec_get_name_d avcodec_get_name;
-        static public avcodec_get_pix_fmt_loss_d avcodec_get_pix_fmt_loss;
-        static public avcodec_get_subtitle_rect_class_d avcodec_get_subtitle_rect_class;
-        static public avcodec_get_type_d avcodec_get_type;
-        static public avcodec_is_open_d avcodec_is_open;
-        static public avcodec_license_d avcodec_license;
-        static public avcodec_open2_d avcodec_open2;
-        static public avcodec_parameters_alloc_d avcodec_parameters_alloc;
-        static public avcodec_parameters_copy_d avcodec_parameters_copy;
-        static public avcodec_parameters_free_d avcodec_parameters_free;
-        static public avcodec_parameters_from_context_d avcodec_parameters_from_context;
-        static public avcodec_parameters_to_context_d avcodec_parameters_to_context;
-        static public avcodec_pix_fmt_to_codec_tag_d avcodec_pix_fmt_to_codec_tag;
-        static public avcodec_profile_name_d avcodec_profile_name;
-        static public avcodec_receive_frame_d avcodec_receive_frame;
-        static public avcodec_receive_packet_d avcodec_receive_packet;
-        static public avcodec_register_d avcodec_register;
-        static public avcodec_register_all_d avcodec_register_all;
-        static public avcodec_send_frame_d avcodec_send_frame;
-        static public avcodec_send_packet_d avcodec_send_packet;
-        static public avcodec_set_dimensions_d avcodec_set_dimensions;
-        static public avcodec_string_d avcodec_string;
-        static public avcodec_version_d avcodec_version;
-        static public avpicture_alloc_d avpicture_alloc;
-        static public avpicture_fill_d avpicture_fill;
-        static public avpicture_free_d avpicture_free;
-        static public avpicture_get_size_d avpicture_get_size;
-        static public avpicture_layout_d avpicture_layout;
-        static public avsubtitle_free_d avsubtitle_free;
-        static public av_input_audio_device_next_d av_input_audio_device_next;
-        static public av_input_video_device_next_d av_input_video_device_next;
-        static public av_output_audio_device_next_d av_output_audio_device_next;
-        static public av_output_video_device_next_d av_output_video_device_next;
-        static public avdevice_app_to_dev_control_message_d avdevice_app_to_dev_control_message;
-        static public avdevice_capabilities_create_d avdevice_capabilities_create;
-        static public avdevice_capabilities_free_d avdevice_capabilities_free;
-        static public avdevice_configuration_d avdevice_configuration;
-        static public avdevice_dev_to_app_control_message_d avdevice_dev_to_app_control_message;
-        static public avdevice_free_list_devices_d avdevice_free_list_devices;
-        static public avdevice_license_d avdevice_license;
-        static public avdevice_list_devices_d avdevice_list_devices;
-        static public avdevice_list_input_sources_d avdevice_list_input_sources;
-        static public avdevice_list_output_sinks_d avdevice_list_output_sinks;
-        static public avdevice_register_all_d avdevice_register_all;
-        static public avdevice_version_d avdevice_version;
-        static public av_abuffersink_params_alloc_d av_abuffersink_params_alloc;
-        static public av_buffersink_get_channel_layout_d av_buffersink_get_channel_layout;
-        static public av_buffersink_get_channels_d av_buffersink_get_channels;
-        static public av_buffersink_get_format_d av_buffersink_get_format;
-        static public av_buffersink_get_frame_d av_buffersink_get_frame;
-        static public av_buffersink_get_frame_flags_d av_buffersink_get_frame_flags;
-        static public av_buffersink_get_frame_rate_d av_buffersink_get_frame_rate;
-        static public av_buffersink_get_h_d av_buffersink_get_h;
-        static public av_buffersink_get_hw_frames_ctx_d av_buffersink_get_hw_frames_ctx;
-        static public av_buffersink_get_sample_aspect_ratio_d av_buffersink_get_sample_aspect_ratio;
-        static public av_buffersink_get_sample_rate_d av_buffersink_get_sample_rate;
-        static public av_buffersink_get_samples_d av_buffersink_get_samples;
-        static public av_buffersink_get_time_base_d av_buffersink_get_time_base;
-        static public av_buffersink_get_type_d av_buffersink_get_type;
-        static public av_buffersink_get_w_d av_buffersink_get_w;
-        static public av_buffersink_params_alloc_d av_buffersink_params_alloc;
-        static public av_buffersink_set_frame_size_d av_buffersink_set_frame_size;
-        static public av_buffersrc_add_frame_d av_buffersrc_add_frame;
-        static public av_buffersrc_add_frame_flags_d av_buffersrc_add_frame_flags;
-        static public av_buffersrc_get_nb_failed_requests_d av_buffersrc_get_nb_failed_requests;
-        static public av_buffersrc_parameters_alloc_d av_buffersrc_parameters_alloc;
-        static public av_buffersrc_parameters_set_d av_buffersrc_parameters_set;
-        static public av_buffersrc_write_frame_d av_buffersrc_write_frame;
-        static public av_filter_next_d av_filter_next;
-        static public avfilter_config_links_d avfilter_config_links;
-        static public avfilter_configuration_d avfilter_configuration;
-        static public avfilter_free_d avfilter_free;
-        static public avfilter_get_by_name_d avfilter_get_by_name;
-        static public avfilter_get_class_d avfilter_get_class;
-        static public avfilter_graph_add_filter_d avfilter_graph_add_filter;
-        static public avfilter_graph_alloc_d avfilter_graph_alloc;
-        static public avfilter_graph_alloc_filter_d avfilter_graph_alloc_filter;
-        static public avfilter_graph_config_d avfilter_graph_config;
-        static public avfilter_graph_create_filter_d avfilter_graph_create_filter;
-        static public avfilter_graph_dump_d avfilter_graph_dump;
-        static public avfilter_graph_free_d avfilter_graph_free;
-        static public avfilter_graph_get_filter_d avfilter_graph_get_filter;
-        static public avfilter_graph_parse_d avfilter_graph_parse;
-        static public avfilter_graph_parse_ptr_d avfilter_graph_parse_ptr;
-        static public avfilter_graph_parse2_d avfilter_graph_parse2;
-        static public avfilter_graph_queue_command_d avfilter_graph_queue_command;
-        static public avfilter_graph_request_oldest_d avfilter_graph_request_oldest;
-        static public avfilter_graph_send_command_d avfilter_graph_send_command;
-        static public avfilter_graph_set_auto_convert_d avfilter_graph_set_auto_convert;
-        static public avfilter_init_dict_d avfilter_init_dict;
-        static public avfilter_init_filter_d avfilter_init_filter;
-        static public avfilter_init_str_d avfilter_init_str;
-        static public avfilter_inout_alloc_d avfilter_inout_alloc;
-        static public avfilter_inout_free_d avfilter_inout_free;
-        static public avfilter_insert_filter_d avfilter_insert_filter;
-        static public avfilter_license_d avfilter_license;
-        static public avfilter_link_d avfilter_link;
-        static public avfilter_link_free_d avfilter_link_free;
-        static public avfilter_link_get_channels_d avfilter_link_get_channels;
-        static public avfilter_link_set_closed_d avfilter_link_set_closed;
-        static public avfilter_next_d avfilter_next;
-        static public avfilter_open_d avfilter_open;
-        static public avfilter_pad_count_d avfilter_pad_count;
-        static public avfilter_pad_get_name_d avfilter_pad_get_name;
-        static public avfilter_pad_get_type_d avfilter_pad_get_type;
-        static public avfilter_process_command_d avfilter_process_command;
-        static public avfilter_register_d avfilter_register;
-        static public avfilter_register_all_d avfilter_register_all;
-        static public avfilter_uninit_d avfilter_uninit;
-        static public avfilter_version_d avfilter_version;
-        static public av_add_index_entry_d av_add_index_entry;
-        static public av_append_packet_d av_append_packet;
-        static public av_apply_bitstream_filters_d av_apply_bitstream_filters;
-        static public av_codec_get_id_d av_codec_get_id;
-        static public av_codec_get_tag_d av_codec_get_tag;
-        static public av_codec_get_tag2_d av_codec_get_tag2;
-        static public av_demuxer_open_d av_demuxer_open;
-        static public av_dump_format_d av_dump_format;
-        static public av_filename_number_test_d av_filename_number_test;
-        static public av_find_best_stream_d av_find_best_stream;
-        static public av_find_default_stream_index_d av_find_default_stream_index;
-        static public av_find_input_format_d av_find_input_format;
-        static public av_find_program_from_stream_d av_find_program_from_stream;
-        static public av_fmt_ctx_get_duration_estimation_method_d av_fmt_ctx_get_duration_estimation_method;
-        static public av_format_get_audio_codec_d av_format_get_audio_codec;
-        static public av_format_get_control_message_cb_d av_format_get_control_message_cb;
-        static public av_format_get_data_codec_d av_format_get_data_codec;
-        static public av_format_get_metadata_header_padding_d av_format_get_metadata_header_padding;
-        static public av_format_get_opaque_d av_format_get_opaque;
-        static public av_format_get_open_cb_d av_format_get_open_cb;
-        static public av_format_get_probe_score_d av_format_get_probe_score;
-        static public av_format_get_subtitle_codec_d av_format_get_subtitle_codec;
-        static public av_format_get_video_codec_d av_format_get_video_codec;
-        static public av_format_inject_global_side_data_d av_format_inject_global_side_data;
-        static public av_format_set_audio_codec_d av_format_set_audio_codec;
-        static public av_format_set_control_message_cb_d av_format_set_control_message_cb;
-        static public av_format_set_data_codec_d av_format_set_data_codec;
-        static public av_format_set_metadata_header_padding_d av_format_set_metadata_header_padding;
-        static public av_format_set_opaque_d av_format_set_opaque;
-        static public av_format_set_open_cb_d av_format_set_open_cb;
-        static public av_format_set_subtitle_codec_d av_format_set_subtitle_codec;
-        static public av_format_set_video_codec_d av_format_set_video_codec;
-        static public av_get_frame_filename_d av_get_frame_filename;
-        static public av_get_frame_filename2_d av_get_frame_filename2;
-        static public av_get_output_timestamp_d av_get_output_timestamp;
-        static public av_get_packet_d av_get_packet;
-        static public av_guess_codec_d av_guess_codec;
-        static public av_guess_format_d av_guess_format;
-        static public av_guess_frame_rate_d av_guess_frame_rate;
-        static public av_guess_sample_aspect_ratio_d av_guess_sample_aspect_ratio;
-        static public av_hex_dump_d av_hex_dump;
-        static public av_hex_dump_log_d av_hex_dump_log;
-        static public av_iformat_next_d av_iformat_next;
-        static public av_index_search_timestamp_d av_index_search_timestamp;
-        static public av_interleaved_write_frame_d av_interleaved_write_frame;
-        static public av_interleaved_write_uncoded_frame_d av_interleaved_write_uncoded_frame;
-        static public av_match_ext_d av_match_ext;
-        static public av_new_program_d av_new_program;
-        static public av_oformat_next_d av_oformat_next;
-        static public av_pkt_dump_log2_d av_pkt_dump_log2;
-        static public av_pkt_dump2_d av_pkt_dump2;
-        static public av_probe_input_buffer_d av_probe_input_buffer;
-        static public av_probe_input_buffer2_d av_probe_input_buffer2;
-        static public av_probe_input_format_d av_probe_input_format;
-        static public av_probe_input_format2_d av_probe_input_format2;
-        static public av_probe_input_format3_d av_probe_input_format3;
-        static public av_program_add_stream_index_d av_program_add_stream_index;
-        static public av_read_frame_d av_read_frame;
-        static public av_read_pause_d av_read_pause;
-        static public av_read_play_d av_read_play;
-        static public av_register_all_d av_register_all;
-        static public av_register_input_format_d av_register_input_format;
-        static public av_register_output_format_d av_register_output_format;
-        static public av_sdp_create_d av_sdp_create;
-        static public av_seek_frame_d av_seek_frame;
-        static public av_stream_add_side_data_d av_stream_add_side_data;
-        static public av_stream_get_codec_timebase_d av_stream_get_codec_timebase;
-        static public av_stream_get_end_pts_d av_stream_get_end_pts;
-        static public av_stream_get_parser_d av_stream_get_parser;
-        static public av_stream_get_r_frame_rate_d av_stream_get_r_frame_rate;
-        static public av_stream_get_recommended_encoder_configuration_d av_stream_get_recommended_encoder_configuration;
-        static public av_stream_get_side_data_d av_stream_get_side_data;
-        static public av_stream_new_side_data_d av_stream_new_side_data;
-        static public av_stream_set_r_frame_rate_d av_stream_set_r_frame_rate;
-        static public av_stream_set_recommended_encoder_configuration_d av_stream_set_recommended_encoder_configuration;
-        static public av_url_split_d av_url_split;
-        static public av_write_frame_d av_write_frame;
-        static public av_write_trailer_d av_write_trailer;
-        static public av_write_uncoded_frame_d av_write_uncoded_frame;
-        static public av_write_uncoded_frame_query_d av_write_uncoded_frame_query;
-        static public avformat_alloc_context_d avformat_alloc_context;
-        static public avformat_alloc_output_context2_d avformat_alloc_output_context2;
-        static public avformat_close_input_d avformat_close_input;
-        static public avformat_configuration_d avformat_configuration;
-        static public avformat_find_stream_info_d avformat_find_stream_info;
-        static public avformat_flush_d avformat_flush;
-        static public avformat_free_context_d avformat_free_context;
-        static public avformat_get_class_d avformat_get_class;
-        static public avformat_get_mov_audio_tags_d avformat_get_mov_audio_tags;
-        static public avformat_get_mov_video_tags_d avformat_get_mov_video_tags;
-        static public avformat_get_riff_audio_tags_d avformat_get_riff_audio_tags;
-        static public avformat_get_riff_video_tags_d avformat_get_riff_video_tags;
-        static public avformat_init_output_d avformat_init_output;
-        static public avformat_license_d avformat_license;
-        static public avformat_match_stream_specifier_d avformat_match_stream_specifier;
-        static public avformat_network_deinit_d avformat_network_deinit;
-        static public avformat_network_init_d avformat_network_init;
-        static public avformat_new_stream_d avformat_new_stream;
-        static public avformat_open_input_d avformat_open_input;
-        static public avformat_query_codec_d avformat_query_codec;
-        static public avformat_queue_attached_pictures_d avformat_queue_attached_pictures;
-        static public avformat_seek_file_d avformat_seek_file;
-        static public avformat_transfer_internal_stream_timing_info_d avformat_transfer_internal_stream_timing_info;
-        static public avformat_version_d avformat_version;
-        static public avformat_write_header_d avformat_write_header;
-        static public avio_accept_d avio_accept;
-        static public avio_alloc_context_d avio_alloc_context;
-        static public avio_context_free_d avio_context_free;
-        static public avio_check_d avio_check;
-        static public avio_close_d avio_close;
-        static public avio_close_dir_d avio_close_dir;
-        static public avio_close_dyn_buf_d avio_close_dyn_buf;
-        static public avio_closep_d avio_closep;
-        static public avio_enum_protocols_d avio_enum_protocols;
-        static public avio_feof_d avio_feof;
-        static public avio_find_protocol_name_d avio_find_protocol_name;
-        static public avio_flush_d avio_flush;
-        static public avio_free_directory_entry_d avio_free_directory_entry;
-        static public avio_get_dyn_buf_d avio_get_dyn_buf;
-        static public avio_get_str_d avio_get_str;
-        static public avio_get_str16be_d avio_get_str16be;
-        static public avio_get_str16le_d avio_get_str16le;
-        static public avio_handshake_d avio_handshake;
-        static public avio_open_d avio_open;
-        static public avio_open_dir_d avio_open_dir;
-        static public avio_open_dyn_buf_d avio_open_dyn_buf;
-        static public avio_open2_d avio_open2;
-        static public avio_pause_d avio_pause;
-        static public avio_printf_d avio_printf;
-        static public avio_put_str_d avio_put_str;
-        static public avio_put_str16be_d avio_put_str16be;
-        static public avio_put_str16le_d avio_put_str16le;
-        static public avio_r8_d avio_r8;
-        static public avio_rb16_d avio_rb16;
-        static public avio_rb24_d avio_rb24;
-        static public avio_rb32_d avio_rb32;
-        static public avio_rb64_d avio_rb64;
-        static public avio_read_d avio_read;
-        static public avio_read_dir_d avio_read_dir;
-        static public avio_read_to_bprint_d avio_read_to_bprint;
-        static public avio_rl16_d avio_rl16;
-        static public avio_rl24_d avio_rl24;
-        static public avio_rl32_d avio_rl32;
-        static public avio_rl64_d avio_rl64;
-        static public avio_seek_d avio_seek;
-        static public avio_seek_time_d avio_seek_time;
-        static public avio_size_d avio_size;
-        static public avio_skip_d avio_skip;
-        static public avio_w8_d avio_w8;
-        static public avio_wb16_d avio_wb16;
-        static public avio_wb24_d avio_wb24;
-        static public avio_wb32_d avio_wb32;
-        static public avio_wb64_d avio_wb64;
-        static public avio_wl16_d avio_wl16;
-        static public avio_wl24_d avio_wl24;
-        static public avio_wl32_d avio_wl32;
-        static public avio_wl64_d avio_wl64;
-        static public avio_write_d avio_write;
-        static public avio_write_marker_d avio_write_marker;
-        static public avpriv_io_delete_d avpriv_io_delete;
-        static public avpriv_io_move_d avpriv_io_move;
-        static public url_feof_d url_feof;
-        static public av_add_q_d av_add_q;
-        static public av_add_stable_d av_add_stable;
-        static public av_audio_fifo_alloc_d av_audio_fifo_alloc;
-        static public av_audio_fifo_drain_d av_audio_fifo_drain;
-        static public av_audio_fifo_free_d av_audio_fifo_free;
-        static public av_audio_fifo_peek_d av_audio_fifo_peek;
-        static public av_audio_fifo_peek_at_d av_audio_fifo_peek_at;
-        static public av_audio_fifo_read_d av_audio_fifo_read;
-        static public av_audio_fifo_realloc_d av_audio_fifo_realloc;
-        static public av_audio_fifo_reset_d av_audio_fifo_reset;
-        static public av_audio_fifo_size_d av_audio_fifo_size;
-        static public av_audio_fifo_space_d av_audio_fifo_space;
-        static public av_audio_fifo_write_d av_audio_fifo_write;
-        static public av_bprint_channel_layout_d av_bprint_channel_layout;
-        static public av_buffer_alloc_d av_buffer_alloc;
-        static public av_buffer_allocz_d av_buffer_allocz;
-        static public av_buffer_create_d av_buffer_create;
-        static public av_buffer_default_free_d av_buffer_default_free;
-        static public av_buffer_get_opaque_d av_buffer_get_opaque;
-        static public av_buffer_get_ref_count_d av_buffer_get_ref_count;
-        static public av_buffer_is_writable_d av_buffer_is_writable;
-        static public av_buffer_make_writable_d av_buffer_make_writable;
-        static public av_buffer_pool_get_d av_buffer_pool_get;
-        static public av_buffer_pool_init_d av_buffer_pool_init;
-        static public av_buffer_pool_init2_d av_buffer_pool_init2;
-        static public av_buffer_pool_uninit_d av_buffer_pool_uninit;
-        static public av_buffer_realloc_d av_buffer_realloc;
-        static public av_buffer_ref_d av_buffer_ref;
-        static public av_buffer_unref_d av_buffer_unref;
-        static public av_calloc_d av_calloc;
-        static public av_channel_layout_extract_channel_d av_channel_layout_extract_channel;
-        static public av_chroma_location_name_d av_chroma_location_name;
-        static public av_color_primaries_name_d av_color_primaries_name;
-        static public av_color_range_name_d av_color_range_name;
-        static public av_color_space_name_d av_color_space_name;
-        static public av_color_transfer_name_d av_color_transfer_name;
-        static public av_compare_mod_d av_compare_mod;
-        static public av_compare_ts_d av_compare_ts;
-        static public av_cpu_count_d av_cpu_count;
-        static public av_d2q_d av_d2q;
-        static public av_default_get_category_d av_default_get_category;
-        static public av_default_item_name_d av_default_item_name;
-        static public av_dict_copy_d av_dict_copy;
-        static public av_dict_count_d av_dict_count;
-        static public av_dict_free_d av_dict_free;
-        static public av_dict_get_d av_dict_get;
-        static public av_dict_get_string_d av_dict_get_string;
-        static public av_dict_parse_string_d av_dict_parse_string;
-        static public av_dict_set_d av_dict_set;
-        static public av_dict_set_int_d av_dict_set_int;
-        static public av_div_q_d av_div_q;
-        static public av_dynarray_add_d av_dynarray_add;
-        static public av_dynarray_add_nofree_d av_dynarray_add_nofree;
-        static public av_dynarray2_add_d av_dynarray2_add;
-        static public av_fast_malloc_d av_fast_malloc;
-        static public av_fast_mallocz_d av_fast_mallocz;
-        static public av_fast_realloc_d av_fast_realloc;
-        static public av_fifo_alloc_d av_fifo_alloc;
-        static public av_fifo_alloc_array_d av_fifo_alloc_array;
-        static public av_fifo_drain_d av_fifo_drain;
-        static public av_fifo_free_d av_fifo_free;
-        static public av_fifo_freep_d av_fifo_freep;
-        static public av_fifo_generic_peek_d av_fifo_generic_peek;
-        static public av_fifo_generic_peek_at_d av_fifo_generic_peek_at;
-        static public av_fifo_generic_read_d av_fifo_generic_read;
-        static public av_fifo_generic_write_d av_fifo_generic_write;
-        static public av_fifo_grow_d av_fifo_grow;
-        static public av_fifo_realloc2_d av_fifo_realloc2;
-        static public av_fifo_reset_d av_fifo_reset;
-        static public av_fifo_size_d av_fifo_size;
-        static public av_fifo_space_d av_fifo_space;
-        static public av_find_best_pix_fmt_of_2_d av_find_best_pix_fmt_of_2;
-        static public av_find_nearest_q_idx_d av_find_nearest_q_idx;
-        static public av_fopen_utf8_d av_fopen_utf8;
-        static public av_force_cpu_flags_d av_force_cpu_flags;
-        static public av_fourcc_make_string_d av_fourcc_make_string;
-        static public av_frame_alloc_d av_frame_alloc;
-        static public av_frame_clone_d av_frame_clone;
-        static public av_frame_copy_d av_frame_copy;
-        static public av_frame_copy_props_d av_frame_copy_props;
-        static public av_frame_free_d av_frame_free;
-        static public av_frame_get_best_effort_timestamp_d av_frame_get_best_effort_timestamp;
-        static public av_frame_get_buffer_d av_frame_get_buffer;
-        static public av_frame_get_channel_layout_d av_frame_get_channel_layout;
-        static public av_frame_get_channels_d av_frame_get_channels;
-        static public av_frame_get_color_range_d av_frame_get_color_range;
-        static public av_frame_get_colorspace_d av_frame_get_colorspace;
-        static public av_frame_get_decode_error_flags_d av_frame_get_decode_error_flags;
-        static public av_frame_get_metadata_d av_frame_get_metadata;
-        static public av_frame_get_pkt_duration_d av_frame_get_pkt_duration;
-        static public av_frame_get_pkt_pos_d av_frame_get_pkt_pos;
-        static public av_frame_get_pkt_size_d av_frame_get_pkt_size;
-        static public av_frame_get_plane_buffer_d av_frame_get_plane_buffer;
-        static public av_frame_get_qp_table_d av_frame_get_qp_table;
-        static public av_frame_get_sample_rate_d av_frame_get_sample_rate;
-        static public av_frame_get_side_data_d av_frame_get_side_data;
-        static public av_frame_is_writable_d av_frame_is_writable;
-        static public av_frame_make_writable_d av_frame_make_writable;
-        static public av_frame_move_ref_d av_frame_move_ref;
-        static public av_frame_new_side_data_d av_frame_new_side_data;
-        static public av_frame_ref_d av_frame_ref;
-        static public av_frame_remove_side_data_d av_frame_remove_side_data;
-        static public av_frame_set_best_effort_timestamp_d av_frame_set_best_effort_timestamp;
-        static public av_frame_set_channel_layout_d av_frame_set_channel_layout;
-        static public av_frame_set_channels_d av_frame_set_channels;
-        static public av_frame_set_color_range_d av_frame_set_color_range;
-        static public av_frame_set_colorspace_d av_frame_set_colorspace;
-        static public av_frame_set_decode_error_flags_d av_frame_set_decode_error_flags;
-        static public av_frame_set_metadata_d av_frame_set_metadata;
-        static public av_frame_set_pkt_duration_d av_frame_set_pkt_duration;
-        static public av_frame_set_pkt_pos_d av_frame_set_pkt_pos;
-        static public av_frame_set_pkt_size_d av_frame_set_pkt_size;
-        static public av_frame_set_qp_table_d av_frame_set_qp_table;
-        static public av_frame_set_sample_rate_d av_frame_set_sample_rate;
-        static public av_frame_side_data_name_d av_frame_side_data_name;
-        static public av_frame_unref_d av_frame_unref;
-        static public av_free_d av_free;
-        static public av_freep_d av_freep;
-        static public av_gcd_d av_gcd;
-        static public av_get_alt_sample_fmt_d av_get_alt_sample_fmt;
-        static public av_get_bits_per_pixel_d av_get_bits_per_pixel;
-        static public av_get_bytes_per_sample_d av_get_bytes_per_sample;
-        static public av_get_channel_description_d av_get_channel_description;
-        static public av_get_channel_layout_d av_get_channel_layout;
-        static public av_get_channel_layout_channel_index_d av_get_channel_layout_channel_index;
-        static public av_get_channel_layout_nb_channels_d av_get_channel_layout_nb_channels;
-        static public av_get_channel_layout_string_d av_get_channel_layout_string;
-        static public av_get_channel_name_d av_get_channel_name;
-        static public av_get_colorspace_name_d av_get_colorspace_name;
-        static public av_get_cpu_flags_d av_get_cpu_flags;
-        static public av_get_default_channel_layout_d av_get_default_channel_layout;
-        static public av_get_extended_channel_layout_d av_get_extended_channel_layout;
-        static public av_get_media_type_string_d av_get_media_type_string;
-        static public av_get_packed_sample_fmt_d av_get_packed_sample_fmt;
-        static public av_get_padded_bits_per_pixel_d av_get_padded_bits_per_pixel;
-        static public av_get_picture_type_char_d av_get_picture_type_char;
-        static public av_get_pix_fmt_d av_get_pix_fmt;
-        static public av_get_pix_fmt_loss_d av_get_pix_fmt_loss;
-        static public av_get_pix_fmt_name_d av_get_pix_fmt_name;
-        static public av_get_pix_fmt_string_d av_get_pix_fmt_string;
-        static public av_get_planar_sample_fmt_d av_get_planar_sample_fmt;
-        static public av_get_sample_fmt_d av_get_sample_fmt;
-        static public av_get_sample_fmt_name_d av_get_sample_fmt_name;
-        static public av_get_sample_fmt_string_d av_get_sample_fmt_string;
-        static public av_get_standard_channel_layout_d av_get_standard_channel_layout;
-        static public av_get_time_base_q_d av_get_time_base_q;
-        static public av_image_alloc_d av_image_alloc;
-        static public av_image_check_sar_d av_image_check_sar;
-        static public av_image_check_size_d av_image_check_size;
-        static public av_image_check_size2_d av_image_check_size2;
-        static public av_image_copy_d av_image_copy;
-        static public av_image_copy_plane_d av_image_copy_plane;
-        static public av_image_copy_to_buffer_d av_image_copy_to_buffer;
-        static public av_image_copy_uc_from_d av_image_copy_uc_from;
-        static public av_image_fill_arrays_d av_image_fill_arrays;
-        static public av_image_fill_linesizes_d av_image_fill_linesizes;
-        static public av_image_fill_max_pixsteps_d av_image_fill_max_pixsteps;
-        static public av_image_fill_pointers_d av_image_fill_pointers;
-        static public av_image_get_buffer_size_d av_image_get_buffer_size;
-        static public av_image_get_linesize_d av_image_get_linesize;
-        static public av_int_list_length_for_size_d av_int_list_length_for_size;
-        static public av_log_d av_log;
-        static public av_log_default_callback_d av_log_default_callback;
-        static public av_log_format_line_d av_log_format_line;
-        static public av_log_format_line2_d av_log_format_line2;
-        static public av_log_get_flags_d av_log_get_flags;
-        static public av_log_get_level_d av_log_get_level;
-        static public av_log_set_callback_d av_log_set_callback;
-        static public av_log_set_flags_d av_log_set_flags;
-        static public av_log_set_level_d av_log_set_level;
-        static public av_log2_d av_log2;
-        static public av_log2_16bit_d av_log2_16bit;
-        static public av_malloc_d av_malloc;
-        static public av_mallocz_d av_mallocz;
-        static public av_max_alloc_d av_max_alloc;
-        static public av_memcpy_backptr_d av_memcpy_backptr;
-        static public av_memdup_d av_memdup;
-        static public av_mul_q_d av_mul_q;
-        static public av_nearer_q_d av_nearer_q;
-        static public av_opt_child_class_next_d av_opt_child_class_next;
-        static public av_opt_child_next_d av_opt_child_next;
-        static public av_opt_copy_d av_opt_copy;
-        static public av_opt_eval_double_d av_opt_eval_double;
-        static public av_opt_eval_flags_d av_opt_eval_flags;
-        static public av_opt_eval_float_d av_opt_eval_float;
-        static public av_opt_eval_int_d av_opt_eval_int;
-        static public av_opt_eval_int64_d av_opt_eval_int64;
-        static public av_opt_eval_q_d av_opt_eval_q;
-        static public av_opt_find_d av_opt_find;
-        static public av_opt_find2_d av_opt_find2;
-        static public av_opt_flag_is_set_d av_opt_flag_is_set;
-        static public av_opt_free_d av_opt_free;
-        static public av_opt_freep_ranges_d av_opt_freep_ranges;
-        static public av_opt_get_d av_opt_get;
-        static public av_opt_get_channel_layout_d av_opt_get_channel_layout;
-        static public av_opt_get_dict_val_d av_opt_get_dict_val;
-        static public av_opt_get_double_d av_opt_get_double;
-        static public av_opt_get_image_size_d av_opt_get_image_size;
-        static public av_opt_get_int_d av_opt_get_int;
-        static public av_opt_get_key_value_d av_opt_get_key_value;
-        static public av_opt_get_pixel_fmt_d av_opt_get_pixel_fmt;
-        static public av_opt_get_q_d av_opt_get_q;
-        static public av_opt_get_sample_fmt_d av_opt_get_sample_fmt;
-        static public av_opt_get_video_rate_d av_opt_get_video_rate;
-        static public av_opt_is_set_to_default_d av_opt_is_set_to_default;
-        static public av_opt_is_set_to_default_by_name_d av_opt_is_set_to_default_by_name;
-        static public av_opt_next_d av_opt_next;
-        static public av_opt_ptr_d av_opt_ptr;
-        static public av_opt_query_ranges_d av_opt_query_ranges;
-        static public av_opt_query_ranges_default_d av_opt_query_ranges_default;
-        static public av_opt_serialize_d av_opt_serialize;
-        static public av_opt_set_d av_opt_set;
-        static public av_opt_set_bin_d av_opt_set_bin;
-        static public av_opt_set_channel_layout_d av_opt_set_channel_layout;
-        static public av_opt_set_defaults_d av_opt_set_defaults;
-        static public av_opt_set_defaults2_d av_opt_set_defaults2;
-        static public av_opt_set_dict_d av_opt_set_dict;
-        static public av_opt_set_dict_val_d av_opt_set_dict_val;
-        static public av_opt_set_dict2_d av_opt_set_dict2;
-        static public av_opt_set_double_d av_opt_set_double;
-        static public av_opt_set_from_string_d av_opt_set_from_string;
-        static public av_opt_set_image_size_d av_opt_set_image_size;
-        static public av_opt_set_int_d av_opt_set_int;
-        static public av_opt_set_pixel_fmt_d av_opt_set_pixel_fmt;
-        static public av_opt_set_q_d av_opt_set_q;
-        static public av_opt_set_sample_fmt_d av_opt_set_sample_fmt;
-        static public av_opt_set_video_rate_d av_opt_set_video_rate;
-        static public av_opt_show2_d av_opt_show2;
-        static public av_parse_cpu_caps_d av_parse_cpu_caps;
-        static public av_parse_cpu_flags_d av_parse_cpu_flags;
-        static public av_pix_fmt_count_planes_d av_pix_fmt_count_planes;
-        static public av_pix_fmt_desc_get_d av_pix_fmt_desc_get;
-        static public av_pix_fmt_desc_get_id_d av_pix_fmt_desc_get_id;
-        static public av_pix_fmt_desc_next_d av_pix_fmt_desc_next;
-        static public av_pix_fmt_get_chroma_sub_sample_d av_pix_fmt_get_chroma_sub_sample;
-        static public av_pix_fmt_swap_endianness_d av_pix_fmt_swap_endianness;
-        static public av_q2intfloat_d av_q2intfloat;
-        static public av_read_image_line_d av_read_image_line;
-        static public av_realloc_d av_realloc;
-        static public av_realloc_array_d av_realloc_array;
-        static public av_realloc_f_d av_realloc_f;
-        static public av_reallocp_d av_reallocp;
-        static public av_reallocp_array_d av_reallocp_array;
-        static public av_reduce_d av_reduce;
-        static public av_rescale_d av_rescale;
-        static public av_rescale_delta_d av_rescale_delta;
-        static public av_rescale_q_d av_rescale_q;
-        static public av_rescale_q_rnd_d av_rescale_q_rnd;
-        static public av_rescale_rnd_d av_rescale_rnd;
-        static public av_sample_fmt_is_planar_d av_sample_fmt_is_planar;
-        static public av_samples_alloc_d av_samples_alloc;
-        static public av_samples_alloc_array_and_samples_d av_samples_alloc_array_and_samples;
-        static public av_samples_copy_d av_samples_copy;
-        static public av_samples_fill_arrays_d av_samples_fill_arrays;
-        static public av_samples_get_buffer_size_d av_samples_get_buffer_size;
-        static public av_samples_set_silence_d av_samples_set_silence;
-        static public av_set_cpu_flags_mask_d av_set_cpu_flags_mask;
-        static public av_set_options_string_d av_set_options_string;
-        static public av_strdup_d av_strdup;
-        static public av_strerror_d av_strerror;
-        static public av_strndup_d av_strndup;
-        static public av_sub_q_d av_sub_q;
-        static public av_timecode_adjust_ntsc_framenum2_d av_timecode_adjust_ntsc_framenum2;
-        static public av_timecode_check_frame_rate_d av_timecode_check_frame_rate;
-        static public av_timecode_get_smpte_from_framenum_d av_timecode_get_smpte_from_framenum;
-        static public av_timecode_init_d av_timecode_init;
-        static public av_timecode_init_from_string_d av_timecode_init_from_string;
-        static public av_timecode_make_mpeg_tc_string_d av_timecode_make_mpeg_tc_string;
-        static public av_timecode_make_smpte_tc_string_d av_timecode_make_smpte_tc_string;
-        static public av_timecode_make_string_d av_timecode_make_string;
-        static public av_version_info_d av_version_info;
-        static public av_vlog_d av_vlog;
-        static public av_write_image_line_d av_write_image_line;
-        static public avpriv_frame_get_metadatap_d avpriv_frame_get_metadatap;
-        static public avutil_configuration_d avutil_configuration;
-        static public avutil_license_d avutil_license;
-        static public avutil_version_d avutil_version;
-        static public postproc_configuration_d postproc_configuration;
-        static public postproc_license_d postproc_license;
-        static public postproc_version_d postproc_version;
-        static public pp_free_context_d pp_free_context;
-        static public pp_free_mode_d pp_free_mode;
-        static public pp_get_context_d pp_get_context;
-        static public pp_get_mode_by_name_and_quality_d pp_get_mode_by_name_and_quality;
-        static public pp_postprocess_d pp_postprocess;
-        static public swr_alloc_d swr_alloc;
-        static public swr_alloc_set_opts_d swr_alloc_set_opts;
-        static public swr_build_matrix_d swr_build_matrix;
-        static public swr_close_d swr_close;
-        static public swr_config_frame_d swr_config_frame;
-        static public swr_convert_d swr_convert;
-        static public swr_convert_frame_d swr_convert_frame;
-        static public swr_drop_output_d swr_drop_output;
-        static public swr_free_d swr_free;
-        static public swr_get_class_d swr_get_class;
-        static public swr_get_delay_d swr_get_delay;
-        static public swr_get_out_samples_d swr_get_out_samples;
-        static public swr_init_d swr_init;
-        static public swr_inject_silence_d swr_inject_silence;
-        static public swr_is_initialized_d swr_is_initialized;
-        static public swr_next_pts_d swr_next_pts;
-        static public swr_set_channel_mapping_d swr_set_channel_mapping;
-        static public swr_set_compensation_d swr_set_compensation;
-        static public swr_set_matrix_d swr_set_matrix;
-        static public swresample_configuration_d swresample_configuration;
-        static public swresample_license_d swresample_license;
-        static public swresample_version_d swresample_version;
-        static public sws_addVec_d sws_addVec;
-        static public sws_alloc_context_d sws_alloc_context;
-        static public sws_allocVec_d sws_allocVec;
-        static public sws_cloneVec_d sws_cloneVec;
-        static public sws_convertPalette8ToPacked24_d sws_convertPalette8ToPacked24;
-        static public sws_convertPalette8ToPacked32_d sws_convertPalette8ToPacked32;
-        static public sws_convVec_d sws_convVec;
-        static public sws_freeContext_d sws_freeContext;
-        static public sws_freeFilter_d sws_freeFilter;
-        static public sws_freeVec_d sws_freeVec;
-        static public sws_get_class_d sws_get_class;
-        static public sws_getCachedContext_d sws_getCachedContext;
-        static public sws_getCoefficients_d sws_getCoefficients;
-        static public sws_getColorspaceDetails_d sws_getColorspaceDetails;
-        static public sws_getConstVec_d sws_getConstVec;
-        static public sws_getContext_d sws_getContext;
-        static public sws_getDefaultFilter_d sws_getDefaultFilter;
-        static public sws_getGaussianVec_d sws_getGaussianVec;
-        static public sws_getIdentityVec_d sws_getIdentityVec;
-        static public sws_init_context_d sws_init_context;
-        static public sws_isSupportedEndiannessConversion_d sws_isSupportedEndiannessConversion;
-        static public sws_isSupportedInput_d sws_isSupportedInput;
-        static public sws_isSupportedOutput_d sws_isSupportedOutput;
-        static public sws_normalizeVec_d sws_normalizeVec;
-        static public sws_printVec2_d sws_printVec2;
-        static public sws_scale_d sws_scale;
-        static public sws_scaleVec_d sws_scaleVec;
-        static public sws_setColorspaceDetails_d sws_setColorspaceDetails;
-        static public sws_shiftVec_d sws_shiftVec;
-        static public sws_subVec_d sws_subVec;
-        static public swscale_configuration_d swscale_configuration;
-        static public swscale_license_d swscale_license;
-        static public swscale_version_d swscale_version;
-        #endregion
+        [DllImport(libavformatFilename)]
+        public static extern int avformat_flush(AVFormatContext* @s);
 
-        public static bool Initialized { get; private set; } = false;
+        [DllImport(libavutilFilename)]
+        public static extern AVFrame* av_frame_alloc();
 
-        // Init function pointers
-        public static void Initialize(string libdir)
-        {
-            if (Initialized)
-            {
-                //throw new InvalidOperationException("ffmpeg already initialized");
-                return; // No need to initialize again.
-            }
+        [DllImport(libavformatFilename)]
+        public static extern AVCodecTag* avformat_get_riff_audio_tags();
 
-            if (libdir.Length == 0)
-            {
-                throw new ArgumentException("libdir cannot be empty");
-            }
+        [DllImport(libavformatFilename)]
+        public static extern int av_get_packet(AVIOContext* @s, AVPacket* @pkt, int @size);
 
-            if (!Directory.Exists(libdir))
-            {
-                throw new ArgumentException("libdir does not exist: " + libdir);
-            }
+        [DllImport(libavformatFilename)]
+        public static extern int av_add_index_entry(AVStream* @st, long @pos, long @timestamp, int @size, int @distance,
+            int @flags);
 
-            // Parial order of libraries loading must be preserved, because some libraries depend on others:
-            // libavutil     dependencies: none from ffmpeg
-            // libavcodec    dependencies: libavutil
-            // libavformat   dependencies: libavutil, libavcodec
-            // libswscale    dependencies: libavutil
-            // libavfilter   dependencies: libavutil, libswscale
-            // libswresample dependencies: libavutil
-            // libpostproc   dependencies: ????????????????????? (not available in current build)
-            // libavdevice   dependencies: ????????????????????? (not available in current build)
-            try
-            {
-                InitializeLibavutil(libdir, libavutilFilename);
-                InitializeLibavcodec(libdir, libavcodecFilename);
-                InitializeLibavformat(libdir, libavformatFilename);
-                InitializeLibswscale(libdir, libswscaleFilename);
-                InitializeLibavfilter(libdir, libavfilterFilename);
-                InitializeLibswresample(libdir, libswresampleFilename);
-                //InitializeLibpostproc(libdir, libpostprocFilename);
-                //InitializeLibavdevice(libdir, libavdeviceFilename);
-            }
-            catch (Exception e)
-            {
-                Logger.Info(e.ToString());
-                throw;
-            }
-            Initialized = true;
-        }
+        [DllImport(libavfilterFilename)]
+        public static extern AVFilterContext* avfilter_graph_alloc_filter(AVFilterGraph* @graph, AVFilter* @filter,
+            [MarshalAs(UnmanagedType.LPStr)] string @name);
 
-        #region imports
-        private static void InitializeLibavcodec(string libdir, string filename)
-        {
-            if (libdir.Length == 0)
-            {
-                throw new ArgumentException("libdir cannot be empty");
-            }
+        [DllImport(libavutilFilename)]
+        public static extern void av_buffer_unref(AVBufferRef** @buf);
 
-            if (filename.Length == 0)
-            {
-                throw new ArgumentException("filename cannot be empty");
-            }
+        [DllImport(libavformatFilename)]
+        public static extern uint avio_rl32(AVIOContext* @s);
 
-            var path = Path.Combine(libdir, filename);
+        [DllImport(libavutilFilename)]
+        public static extern int av_opt_query_ranges_default(AVOptionRanges** @p0, void* @obj,
+            [MarshalAs(UnmanagedType.LPStr)] string @key, int @flags);
 
-            if (!File.Exists(path))
-            {
-                throw new ArgumentException("file does not exist: " + path);
-            }
+        [DllImport(libavutilFilename)]
+        public static extern void av_write_image_line(ushort* @src, ref byte_ptrArray4 @data, int_array4 @linesize,
+            AVPixFmtDescriptor* @desc, int @x, int @y, int @c, int @w);
 
-            var libavcodecHandle = dlopen(path, RTLD_NOW | RTLD_GLOBAL);
+        [DllImport(libavutilFilename)]
+        public static extern AVSampleFormat av_get_packed_sample_fmt(AVSampleFormat @sample_fmt);
 
-            audio_resample = Marshal.GetDelegateForFunctionPointer<audio_resample_d>(dlsym(libavcodecHandle, "audio_resample"));
-            audio_resample_close = Marshal.GetDelegateForFunctionPointer<audio_resample_close_d>(dlsym(libavcodecHandle, "audio_resample_close"));
-            av_audio_resample_init = Marshal.GetDelegateForFunctionPointer<av_audio_resample_init_d>(dlsym(libavcodecHandle, "av_audio_resample_init"));
-            av_bitstream_filter_close = Marshal.GetDelegateForFunctionPointer<av_bitstream_filter_close_d>(dlsym(libavcodecHandle, "av_bitstream_filter_close"));
-            av_bitstream_filter_filter = Marshal.GetDelegateForFunctionPointer<av_bitstream_filter_filter_d>(dlsym(libavcodecHandle, "av_bitstream_filter_filter"));
-            av_bitstream_filter_init = Marshal.GetDelegateForFunctionPointer<av_bitstream_filter_init_d>(dlsym(libavcodecHandle, "av_bitstream_filter_init"));
-            av_bitstream_filter_next = Marshal.GetDelegateForFunctionPointer<av_bitstream_filter_next_d>(dlsym(libavcodecHandle, "av_bitstream_filter_next"));
-            av_bsf_alloc = Marshal.GetDelegateForFunctionPointer<av_bsf_alloc_d>(dlsym(libavcodecHandle, "av_bsf_alloc"));
-            av_bsf_free = Marshal.GetDelegateForFunctionPointer<av_bsf_free_d>(dlsym(libavcodecHandle, "av_bsf_free"));
-            av_bsf_get_by_name = Marshal.GetDelegateForFunctionPointer<av_bsf_get_by_name_d>(dlsym(libavcodecHandle, "av_bsf_get_by_name"));
-            av_bsf_get_class = Marshal.GetDelegateForFunctionPointer<av_bsf_get_class_d>(dlsym(libavcodecHandle, "av_bsf_get_class"));
-            av_bsf_get_null_filter = Marshal.GetDelegateForFunctionPointer<av_bsf_get_null_filter_d>(dlsym(libavcodecHandle, "av_bsf_get_null_filter"));
-            av_bsf_init = Marshal.GetDelegateForFunctionPointer<av_bsf_init_d>(dlsym(libavcodecHandle, "av_bsf_init"));
-            av_bsf_list_alloc = Marshal.GetDelegateForFunctionPointer<av_bsf_list_alloc_d>(dlsym(libavcodecHandle, "av_bsf_list_alloc"));
-            av_bsf_list_append = Marshal.GetDelegateForFunctionPointer<av_bsf_list_append_d>(dlsym(libavcodecHandle, "av_bsf_list_append"));
-            av_bsf_list_append2 = Marshal.GetDelegateForFunctionPointer<av_bsf_list_append2_d>(dlsym(libavcodecHandle, "av_bsf_list_append2"));
-            av_bsf_list_finalize = Marshal.GetDelegateForFunctionPointer<av_bsf_list_finalize_d>(dlsym(libavcodecHandle, "av_bsf_list_finalize"));
-            av_bsf_list_free = Marshal.GetDelegateForFunctionPointer<av_bsf_list_free_d>(dlsym(libavcodecHandle, "av_bsf_list_free"));
-            av_bsf_list_parse_str = Marshal.GetDelegateForFunctionPointer<av_bsf_list_parse_str_d>(dlsym(libavcodecHandle, "av_bsf_list_parse_str"));
-            av_bsf_next = Marshal.GetDelegateForFunctionPointer<av_bsf_next_d>(dlsym(libavcodecHandle, "av_bsf_next"));
-            av_bsf_receive_packet = Marshal.GetDelegateForFunctionPointer<av_bsf_receive_packet_d>(dlsym(libavcodecHandle, "av_bsf_receive_packet"));
-            av_bsf_send_packet = Marshal.GetDelegateForFunctionPointer<av_bsf_send_packet_d>(dlsym(libavcodecHandle, "av_bsf_send_packet"));
-            av_codec_get_chroma_intra_matrix = Marshal.GetDelegateForFunctionPointer<av_codec_get_chroma_intra_matrix_d>(dlsym(libavcodecHandle, "av_codec_get_chroma_intra_matrix"));
-            av_codec_get_codec_descriptor = Marshal.GetDelegateForFunctionPointer<av_codec_get_codec_descriptor_d>(dlsym(libavcodecHandle, "av_codec_get_codec_descriptor"));
-            av_codec_get_codec_properties = Marshal.GetDelegateForFunctionPointer<av_codec_get_codec_properties_d>(dlsym(libavcodecHandle, "av_codec_get_codec_properties"));
-            av_codec_get_lowres = Marshal.GetDelegateForFunctionPointer<av_codec_get_lowres_d>(dlsym(libavcodecHandle, "av_codec_get_lowres"));
-            av_codec_get_max_lowres = Marshal.GetDelegateForFunctionPointer<av_codec_get_max_lowres_d>(dlsym(libavcodecHandle, "av_codec_get_max_lowres"));
-            av_codec_get_pkt_timebase = Marshal.GetDelegateForFunctionPointer<av_codec_get_pkt_timebase_d>(dlsym(libavcodecHandle, "av_codec_get_pkt_timebase"));
-            av_codec_get_seek_preroll = Marshal.GetDelegateForFunctionPointer<av_codec_get_seek_preroll_d>(dlsym(libavcodecHandle, "av_codec_get_seek_preroll"));
-            av_codec_is_decoder = Marshal.GetDelegateForFunctionPointer<av_codec_is_decoder_d>(dlsym(libavcodecHandle, "av_codec_is_decoder"));
-            av_codec_is_encoder = Marshal.GetDelegateForFunctionPointer<av_codec_is_encoder_d>(dlsym(libavcodecHandle, "av_codec_is_encoder"));
-            av_codec_next = Marshal.GetDelegateForFunctionPointer<av_codec_next_d>(dlsym(libavcodecHandle, "av_codec_next"));
-            av_codec_set_chroma_intra_matrix = Marshal.GetDelegateForFunctionPointer<av_codec_set_chroma_intra_matrix_d>(dlsym(libavcodecHandle, "av_codec_set_chroma_intra_matrix"));
-            av_codec_set_codec_descriptor = Marshal.GetDelegateForFunctionPointer<av_codec_set_codec_descriptor_d>(dlsym(libavcodecHandle, "av_codec_set_codec_descriptor"));
-            av_codec_set_lowres = Marshal.GetDelegateForFunctionPointer<av_codec_set_lowres_d>(dlsym(libavcodecHandle, "av_codec_set_lowres"));
-            av_codec_set_pkt_timebase = Marshal.GetDelegateForFunctionPointer<av_codec_set_pkt_timebase_d>(dlsym(libavcodecHandle, "av_codec_set_pkt_timebase"));
-            av_codec_set_seek_preroll = Marshal.GetDelegateForFunctionPointer<av_codec_set_seek_preroll_d>(dlsym(libavcodecHandle, "av_codec_set_seek_preroll"));
-            av_copy_packet = Marshal.GetDelegateForFunctionPointer<av_copy_packet_d>(dlsym(libavcodecHandle, "av_copy_packet"));
-            av_copy_packet_side_data = Marshal.GetDelegateForFunctionPointer<av_copy_packet_side_data_d>(dlsym(libavcodecHandle, "av_copy_packet_side_data"));
-            av_cpb_properties_alloc = Marshal.GetDelegateForFunctionPointer<av_cpb_properties_alloc_d>(dlsym(libavcodecHandle, "av_cpb_properties_alloc"));
-            av_dup_packet = Marshal.GetDelegateForFunctionPointer<av_dup_packet_d>(dlsym(libavcodecHandle, "av_dup_packet"));
-            av_fast_padded_malloc = Marshal.GetDelegateForFunctionPointer<av_fast_padded_malloc_d>(dlsym(libavcodecHandle, "av_fast_padded_malloc"));
-            av_fast_padded_mallocz = Marshal.GetDelegateForFunctionPointer<av_fast_padded_mallocz_d>(dlsym(libavcodecHandle, "av_fast_padded_mallocz"));
-            av_free_packet = Marshal.GetDelegateForFunctionPointer<av_free_packet_d>(dlsym(libavcodecHandle, "av_free_packet"));
-            av_get_audio_frame_duration = Marshal.GetDelegateForFunctionPointer<av_get_audio_frame_duration_d>(dlsym(libavcodecHandle, "av_get_audio_frame_duration"));
-            av_get_audio_frame_duration2 = Marshal.GetDelegateForFunctionPointer<av_get_audio_frame_duration2_d>(dlsym(libavcodecHandle, "av_get_audio_frame_duration2"));
-            av_get_bits_per_sample = Marshal.GetDelegateForFunctionPointer<av_get_bits_per_sample_d>(dlsym(libavcodecHandle, "av_get_bits_per_sample"));
-            av_get_codec_tag_string = Marshal.GetDelegateForFunctionPointer<av_get_codec_tag_string_d>(dlsym(libavcodecHandle, "av_get_codec_tag_string"));
-            av_get_exact_bits_per_sample = Marshal.GetDelegateForFunctionPointer<av_get_exact_bits_per_sample_d>(dlsym(libavcodecHandle, "av_get_exact_bits_per_sample"));
-            av_get_pcm_codec = Marshal.GetDelegateForFunctionPointer<av_get_pcm_codec_d>(dlsym(libavcodecHandle, "av_get_pcm_codec"));
-            av_get_profile_name = Marshal.GetDelegateForFunctionPointer<av_get_profile_name_d>(dlsym(libavcodecHandle, "av_get_profile_name"));
-            av_grow_packet = Marshal.GetDelegateForFunctionPointer<av_grow_packet_d>(dlsym(libavcodecHandle, "av_grow_packet"));
-            av_hwaccel_next = Marshal.GetDelegateForFunctionPointer<av_hwaccel_next_d>(dlsym(libavcodecHandle, "av_hwaccel_next"));
-            av_init_packet = Marshal.GetDelegateForFunctionPointer<av_init_packet_d>(dlsym(libavcodecHandle, "av_init_packet"));
-            av_lockmgr_register = Marshal.GetDelegateForFunctionPointer<av_lockmgr_register_d>(dlsym(libavcodecHandle, "av_lockmgr_register"));
-            av_log_ask_for_sample = Marshal.GetDelegateForFunctionPointer<av_log_ask_for_sample_d>(dlsym(libavcodecHandle, "av_log_ask_for_sample"));
-            av_log_missing_feature = Marshal.GetDelegateForFunctionPointer<av_log_missing_feature_d>(dlsym(libavcodecHandle, "av_log_missing_feature"));
-            av_new_packet = Marshal.GetDelegateForFunctionPointer<av_new_packet_d>(dlsym(libavcodecHandle, "av_new_packet"));
-            av_packet_add_side_data = Marshal.GetDelegateForFunctionPointer<av_packet_add_side_data_d>(dlsym(libavcodecHandle, "av_packet_add_side_data"));
-            av_packet_alloc = Marshal.GetDelegateForFunctionPointer<av_packet_alloc_d>(dlsym(libavcodecHandle, "av_packet_alloc"));
-            av_packet_clone = Marshal.GetDelegateForFunctionPointer<av_packet_clone_d>(dlsym(libavcodecHandle, "av_packet_clone"));
-            av_packet_copy_props = Marshal.GetDelegateForFunctionPointer<av_packet_copy_props_d>(dlsym(libavcodecHandle, "av_packet_copy_props"));
-            av_packet_free = Marshal.GetDelegateForFunctionPointer<av_packet_free_d>(dlsym(libavcodecHandle, "av_packet_free"));
-            av_packet_free_side_data = Marshal.GetDelegateForFunctionPointer<av_packet_free_side_data_d>(dlsym(libavcodecHandle, "av_packet_free_side_data"));
-            av_packet_from_data = Marshal.GetDelegateForFunctionPointer<av_packet_from_data_d>(dlsym(libavcodecHandle, "av_packet_from_data"));
-            av_packet_get_side_data = Marshal.GetDelegateForFunctionPointer<av_packet_get_side_data_d>(dlsym(libavcodecHandle, "av_packet_get_side_data"));
-            av_packet_merge_side_data = Marshal.GetDelegateForFunctionPointer<av_packet_merge_side_data_d>(dlsym(libavcodecHandle, "av_packet_merge_side_data"));
-            av_packet_move_ref = Marshal.GetDelegateForFunctionPointer<av_packet_move_ref_d>(dlsym(libavcodecHandle, "av_packet_move_ref"));
-            av_packet_new_side_data = Marshal.GetDelegateForFunctionPointer<av_packet_new_side_data_d>(dlsym(libavcodecHandle, "av_packet_new_side_data"));
-            av_packet_pack_dictionary = Marshal.GetDelegateForFunctionPointer<av_packet_pack_dictionary_d>(dlsym(libavcodecHandle, "av_packet_pack_dictionary"));
-            av_packet_ref = Marshal.GetDelegateForFunctionPointer<av_packet_ref_d>(dlsym(libavcodecHandle, "av_packet_ref"));
-            av_packet_rescale_ts = Marshal.GetDelegateForFunctionPointer<av_packet_rescale_ts_d>(dlsym(libavcodecHandle, "av_packet_rescale_ts"));
-            av_packet_shrink_side_data = Marshal.GetDelegateForFunctionPointer<av_packet_shrink_side_data_d>(dlsym(libavcodecHandle, "av_packet_shrink_side_data"));
-            av_packet_side_data_name = Marshal.GetDelegateForFunctionPointer<av_packet_side_data_name_d>(dlsym(libavcodecHandle, "av_packet_side_data_name"));
-            av_packet_split_side_data = Marshal.GetDelegateForFunctionPointer<av_packet_split_side_data_d>(dlsym(libavcodecHandle, "av_packet_split_side_data"));
-            av_packet_unpack_dictionary = Marshal.GetDelegateForFunctionPointer<av_packet_unpack_dictionary_d>(dlsym(libavcodecHandle, "av_packet_unpack_dictionary"));
-            av_packet_unref = Marshal.GetDelegateForFunctionPointer<av_packet_unref_d>(dlsym(libavcodecHandle, "av_packet_unref"));
-            av_parser_change = Marshal.GetDelegateForFunctionPointer<av_parser_change_d>(dlsym(libavcodecHandle, "av_parser_change"));
-            av_parser_close = Marshal.GetDelegateForFunctionPointer<av_parser_close_d>(dlsym(libavcodecHandle, "av_parser_close"));
-            av_parser_init = Marshal.GetDelegateForFunctionPointer<av_parser_init_d>(dlsym(libavcodecHandle, "av_parser_init"));
-            av_parser_next = Marshal.GetDelegateForFunctionPointer<av_parser_next_d>(dlsym(libavcodecHandle, "av_parser_next"));
-            av_parser_parse2 = Marshal.GetDelegateForFunctionPointer<av_parser_parse2_d>(dlsym(libavcodecHandle, "av_parser_parse2"));
-            av_picture_copy = Marshal.GetDelegateForFunctionPointer<av_picture_copy_d>(dlsym(libavcodecHandle, "av_picture_copy"));
-            av_picture_crop = Marshal.GetDelegateForFunctionPointer<av_picture_crop_d>(dlsym(libavcodecHandle, "av_picture_crop"));
-            av_picture_pad = Marshal.GetDelegateForFunctionPointer<av_picture_pad_d>(dlsym(libavcodecHandle, "av_picture_pad"));
-            av_register_bitstream_filter = Marshal.GetDelegateForFunctionPointer<av_register_bitstream_filter_d>(dlsym(libavcodecHandle, "av_register_bitstream_filter"));
-            av_register_codec_parser = Marshal.GetDelegateForFunctionPointer<av_register_codec_parser_d>(dlsym(libavcodecHandle, "av_register_codec_parser"));
-            av_register_hwaccel = Marshal.GetDelegateForFunctionPointer<av_register_hwaccel_d>(dlsym(libavcodecHandle, "av_register_hwaccel"));
-            av_resample = Marshal.GetDelegateForFunctionPointer<av_resample_d>(dlsym(libavcodecHandle, "av_resample"));
-            av_resample_close = Marshal.GetDelegateForFunctionPointer<av_resample_close_d>(dlsym(libavcodecHandle, "av_resample_close"));
-            av_resample_compensate = Marshal.GetDelegateForFunctionPointer<av_resample_compensate_d>(dlsym(libavcodecHandle, "av_resample_compensate"));
-            av_resample_init = Marshal.GetDelegateForFunctionPointer<av_resample_init_d>(dlsym(libavcodecHandle, "av_resample_init"));
-            av_shrink_packet = Marshal.GetDelegateForFunctionPointer<av_shrink_packet_d>(dlsym(libavcodecHandle, "av_shrink_packet"));
-            av_xiphlacing = Marshal.GetDelegateForFunctionPointer<av_xiphlacing_d>(dlsym(libavcodecHandle, "av_xiphlacing"));
-            avcodec_align_dimensions = Marshal.GetDelegateForFunctionPointer<avcodec_align_dimensions_d>(dlsym(libavcodecHandle, "avcodec_align_dimensions"));
-            avcodec_align_dimensions2 = Marshal.GetDelegateForFunctionPointer<avcodec_align_dimensions2_d>(dlsym(libavcodecHandle, "avcodec_align_dimensions2"));
-            avcodec_alloc_context3 = Marshal.GetDelegateForFunctionPointer<avcodec_alloc_context3_d>(dlsym(libavcodecHandle, "avcodec_alloc_context3"));
-            avcodec_chroma_pos_to_enum = Marshal.GetDelegateForFunctionPointer<avcodec_chroma_pos_to_enum_d>(dlsym(libavcodecHandle, "avcodec_chroma_pos_to_enum"));
-            avcodec_close = Marshal.GetDelegateForFunctionPointer<avcodec_close_d>(dlsym(libavcodecHandle, "avcodec_close"));
-            avcodec_configuration = Marshal.GetDelegateForFunctionPointer<avcodec_configuration_d>(dlsym(libavcodecHandle, "avcodec_configuration"));
-            avcodec_copy_context = Marshal.GetDelegateForFunctionPointer<avcodec_copy_context_d>(dlsym(libavcodecHandle, "avcodec_copy_context"));
-            avcodec_decode_audio4 = Marshal.GetDelegateForFunctionPointer<avcodec_decode_audio4_d>(dlsym(libavcodecHandle, "avcodec_decode_audio4"));
-            avcodec_decode_subtitle2 = Marshal.GetDelegateForFunctionPointer<avcodec_decode_subtitle2_d>(dlsym(libavcodecHandle, "avcodec_decode_subtitle2"));
-            avcodec_decode_video2 = Marshal.GetDelegateForFunctionPointer<avcodec_decode_video2_d>(dlsym(libavcodecHandle, "avcodec_decode_video2"));
-            avcodec_default_execute = Marshal.GetDelegateForFunctionPointer<avcodec_default_execute_d>(dlsym(libavcodecHandle, "avcodec_default_execute"));
-            avcodec_default_execute2 = Marshal.GetDelegateForFunctionPointer<avcodec_default_execute2_d>(dlsym(libavcodecHandle, "avcodec_default_execute2"));
-            avcodec_default_get_buffer2 = Marshal.GetDelegateForFunctionPointer<avcodec_default_get_buffer2_d>(dlsym(libavcodecHandle, "avcodec_default_get_buffer2"));
-            avcodec_default_get_format = Marshal.GetDelegateForFunctionPointer<avcodec_default_get_format_d>(dlsym(libavcodecHandle, "avcodec_default_get_format"));
-            avcodec_descriptor_get = Marshal.GetDelegateForFunctionPointer<avcodec_descriptor_get_d>(dlsym(libavcodecHandle, "avcodec_descriptor_get"));
-            avcodec_descriptor_get_by_name = Marshal.GetDelegateForFunctionPointer<avcodec_descriptor_get_by_name_d>(dlsym(libavcodecHandle, "avcodec_descriptor_get_by_name"));
-            avcodec_descriptor_next = Marshal.GetDelegateForFunctionPointer<avcodec_descriptor_next_d>(dlsym(libavcodecHandle, "avcodec_descriptor_next"));
-            avcodec_encode_audio2 = Marshal.GetDelegateForFunctionPointer<avcodec_encode_audio2_d>(dlsym(libavcodecHandle, "avcodec_encode_audio2"));
-            avcodec_encode_subtitle = Marshal.GetDelegateForFunctionPointer<avcodec_encode_subtitle_d>(dlsym(libavcodecHandle, "avcodec_encode_subtitle"));
-            avcodec_encode_video2 = Marshal.GetDelegateForFunctionPointer<avcodec_encode_video2_d>(dlsym(libavcodecHandle, "avcodec_encode_video2"));
-            avcodec_enum_to_chroma_pos = Marshal.GetDelegateForFunctionPointer<avcodec_enum_to_chroma_pos_d>(dlsym(libavcodecHandle, "avcodec_enum_to_chroma_pos"));
-            avcodec_fill_audio_frame = Marshal.GetDelegateForFunctionPointer<avcodec_fill_audio_frame_d>(dlsym(libavcodecHandle, "avcodec_fill_audio_frame"));
-            avcodec_find_best_pix_fmt_of_2 = Marshal.GetDelegateForFunctionPointer<avcodec_find_best_pix_fmt_of_2_d>(dlsym(libavcodecHandle, "avcodec_find_best_pix_fmt_of_2"));
-            avcodec_find_best_pix_fmt_of_list = Marshal.GetDelegateForFunctionPointer<avcodec_find_best_pix_fmt_of_list_d>(dlsym(libavcodecHandle, "avcodec_find_best_pix_fmt_of_list"));
-            avcodec_find_best_pix_fmt2 = Marshal.GetDelegateForFunctionPointer<avcodec_find_best_pix_fmt2_d>(dlsym(libavcodecHandle, "avcodec_find_best_pix_fmt2"));
-            avcodec_find_decoder = Marshal.GetDelegateForFunctionPointer<avcodec_find_decoder_d>(dlsym(libavcodecHandle, "avcodec_find_decoder"));
-            avcodec_find_decoder_by_name = Marshal.GetDelegateForFunctionPointer<avcodec_find_decoder_by_name_d>(dlsym(libavcodecHandle, "avcodec_find_decoder_by_name"));
-            avcodec_find_encoder = Marshal.GetDelegateForFunctionPointer<avcodec_find_encoder_d>(dlsym(libavcodecHandle, "avcodec_find_encoder"));
-            avcodec_find_encoder_by_name = Marshal.GetDelegateForFunctionPointer<avcodec_find_encoder_by_name_d>(dlsym(libavcodecHandle, "avcodec_find_encoder_by_name"));
-            avcodec_flush_buffers = Marshal.GetDelegateForFunctionPointer<avcodec_flush_buffers_d>(dlsym(libavcodecHandle, "avcodec_flush_buffers"));
-            avcodec_free_context = Marshal.GetDelegateForFunctionPointer<avcodec_free_context_d>(dlsym(libavcodecHandle, "avcodec_free_context"));
-            avcodec_get_chroma_sub_sample = Marshal.GetDelegateForFunctionPointer<avcodec_get_chroma_sub_sample_d>(dlsym(libavcodecHandle, "avcodec_get_chroma_sub_sample"));
-            avcodec_get_class = Marshal.GetDelegateForFunctionPointer<avcodec_get_class_d>(dlsym(libavcodecHandle, "avcodec_get_class"));
-            avcodec_get_context_defaults3 = Marshal.GetDelegateForFunctionPointer<avcodec_get_context_defaults3_d>(dlsym(libavcodecHandle, "avcodec_get_context_defaults3"));
-            avcodec_get_edge_width = Marshal.GetDelegateForFunctionPointer<avcodec_get_edge_width_d>(dlsym(libavcodecHandle, "avcodec_get_edge_width"));
-            avcodec_get_frame_class = Marshal.GetDelegateForFunctionPointer<avcodec_get_frame_class_d>(dlsym(libavcodecHandle, "avcodec_get_frame_class"));
-            avcodec_get_name = Marshal.GetDelegateForFunctionPointer<avcodec_get_name_d>(dlsym(libavcodecHandle, "avcodec_get_name"));
-            avcodec_get_pix_fmt_loss = Marshal.GetDelegateForFunctionPointer<avcodec_get_pix_fmt_loss_d>(dlsym(libavcodecHandle, "avcodec_get_pix_fmt_loss"));
-            avcodec_get_subtitle_rect_class = Marshal.GetDelegateForFunctionPointer<avcodec_get_subtitle_rect_class_d>(dlsym(libavcodecHandle, "avcodec_get_subtitle_rect_class"));
-            avcodec_get_type = Marshal.GetDelegateForFunctionPointer<avcodec_get_type_d>(dlsym(libavcodecHandle, "avcodec_get_type"));
-            avcodec_is_open = Marshal.GetDelegateForFunctionPointer<avcodec_is_open_d>(dlsym(libavcodecHandle, "avcodec_is_open"));
-            avcodec_license = Marshal.GetDelegateForFunctionPointer<avcodec_license_d>(dlsym(libavcodecHandle, "avcodec_license"));
-            avcodec_open2 = Marshal.GetDelegateForFunctionPointer<avcodec_open2_d>(dlsym(libavcodecHandle, "avcodec_open2"));
-            avcodec_parameters_alloc = Marshal.GetDelegateForFunctionPointer<avcodec_parameters_alloc_d>(dlsym(libavcodecHandle, "avcodec_parameters_alloc"));
-            avcodec_parameters_copy = Marshal.GetDelegateForFunctionPointer<avcodec_parameters_copy_d>(dlsym(libavcodecHandle, "avcodec_parameters_copy"));
-            avcodec_parameters_free = Marshal.GetDelegateForFunctionPointer<avcodec_parameters_free_d>(dlsym(libavcodecHandle, "avcodec_parameters_free"));
-            avcodec_parameters_from_context = Marshal.GetDelegateForFunctionPointer<avcodec_parameters_from_context_d>(dlsym(libavcodecHandle, "avcodec_parameters_from_context"));
-            avcodec_parameters_to_context = Marshal.GetDelegateForFunctionPointer<avcodec_parameters_to_context_d>(dlsym(libavcodecHandle, "avcodec_parameters_to_context"));
-            avcodec_pix_fmt_to_codec_tag = Marshal.GetDelegateForFunctionPointer<avcodec_pix_fmt_to_codec_tag_d>(dlsym(libavcodecHandle, "avcodec_pix_fmt_to_codec_tag"));
-            avcodec_profile_name = Marshal.GetDelegateForFunctionPointer<avcodec_profile_name_d>(dlsym(libavcodecHandle, "avcodec_profile_name"));
-            avcodec_receive_frame = Marshal.GetDelegateForFunctionPointer<avcodec_receive_frame_d>(dlsym(libavcodecHandle, "avcodec_receive_frame"));
-            avcodec_receive_packet = Marshal.GetDelegateForFunctionPointer<avcodec_receive_packet_d>(dlsym(libavcodecHandle, "avcodec_receive_packet"));
-            avcodec_register = Marshal.GetDelegateForFunctionPointer<avcodec_register_d>(dlsym(libavcodecHandle, "avcodec_register"));
-            avcodec_register_all = Marshal.GetDelegateForFunctionPointer<avcodec_register_all_d>(dlsym(libavcodecHandle, "avcodec_register_all"));
-            avcodec_send_frame = Marshal.GetDelegateForFunctionPointer<avcodec_send_frame_d>(dlsym(libavcodecHandle, "avcodec_send_frame"));
-            avcodec_send_packet = Marshal.GetDelegateForFunctionPointer<avcodec_send_packet_d>(dlsym(libavcodecHandle, "avcodec_send_packet"));
-            avcodec_set_dimensions = Marshal.GetDelegateForFunctionPointer<avcodec_set_dimensions_d>(dlsym(libavcodecHandle, "avcodec_set_dimensions"));
-            avcodec_string = Marshal.GetDelegateForFunctionPointer<avcodec_string_d>(dlsym(libavcodecHandle, "avcodec_string"));
-            avcodec_version = Marshal.GetDelegateForFunctionPointer<avcodec_version_d>(dlsym(libavcodecHandle, "avcodec_version"));
-            avpicture_alloc = Marshal.GetDelegateForFunctionPointer<avpicture_alloc_d>(dlsym(libavcodecHandle, "avpicture_alloc"));
-            avpicture_fill = Marshal.GetDelegateForFunctionPointer<avpicture_fill_d>(dlsym(libavcodecHandle, "avpicture_fill"));
-            avpicture_free = Marshal.GetDelegateForFunctionPointer<avpicture_free_d>(dlsym(libavcodecHandle, "avpicture_free"));
-            avpicture_get_size = Marshal.GetDelegateForFunctionPointer<avpicture_get_size_d>(dlsym(libavcodecHandle, "avpicture_get_size"));
-            avpicture_layout = Marshal.GetDelegateForFunctionPointer<avpicture_layout_d>(dlsym(libavcodecHandle, "avpicture_layout"));
-            avsubtitle_free = Marshal.GetDelegateForFunctionPointer<avsubtitle_free_d>(dlsym(libavcodecHandle, "avsubtitle_free"));
+        [DllImport(libavutilFilename)]
+        public static extern int av_opt_get_sample_fmt(void* @obj, [MarshalAs(UnmanagedType.LPStr)] string @name,
+            int @search_flags, AVSampleFormat* @out_fmt);
 
-        }
+        [DllImport(libswresampleFilename)]
+        public static extern int swr_set_channel_mapping(SwrContext* @s, int* @channel_map);
 
-        private static void InitializeLibavdevice(string libdir, string filename)
-        {
-            if (libdir.Length == 0)
-            {
-                throw new ArgumentException("libdir cannot be empty");
-            }
+        [DllImport(libavcodecFilename)]
+        public static extern AVClass* avcodec_get_subtitle_rect_class();
 
-            if (filename.Length == 0)
-            {
-                throw new ArgumentException("filename cannot be empty");
-            }
+        [DllImport(libavformatFilename)]
+        public static extern AVCodec* av_format_get_subtitle_codec(AVFormatContext* @s);
 
-            var path = Path.Combine(libdir, filename);
+        [DllImport(libavformatFilename)]
+        public static extern void av_format_set_audio_codec(AVFormatContext* @s, AVCodec* @c);
 
-            if (!File.Exists(path))
-            {
-                throw new ArgumentException("file does not exist: " + path);
-            }
+        [DllImport(libavutilFilename)]
+        public static extern int av_fifo_generic_write(AVFifoBuffer* @f, void* @src, int @size,
+            av_fifo_generic_write_func_func @func);
 
-            var libavdeviceHandle = dlopen(path, RTLD_NOW | RTLD_GLOBAL);
+        [DllImport(libavformatFilename)]
+        public static extern int avio_close_dir(AVIODirContext** @s);
 
-            av_input_audio_device_next = Marshal.GetDelegateForFunctionPointer<av_input_audio_device_next_d>(dlsym(libavdeviceHandle, "av_input_audio_device_next"));
-            av_input_video_device_next = Marshal.GetDelegateForFunctionPointer<av_input_video_device_next_d>(dlsym(libavdeviceHandle, "av_input_video_device_next"));
-            av_output_audio_device_next = Marshal.GetDelegateForFunctionPointer<av_output_audio_device_next_d>(dlsym(libavdeviceHandle, "av_output_audio_device_next"));
-            av_output_video_device_next = Marshal.GetDelegateForFunctionPointer<av_output_video_device_next_d>(dlsym(libavdeviceHandle, "av_output_video_device_next"));
-            avdevice_app_to_dev_control_message = Marshal.GetDelegateForFunctionPointer<avdevice_app_to_dev_control_message_d>(dlsym(libavdeviceHandle, "avdevice_app_to_dev_control_message"));
-            avdevice_capabilities_create = Marshal.GetDelegateForFunctionPointer<avdevice_capabilities_create_d>(dlsym(libavdeviceHandle, "avdevice_capabilities_create"));
-            avdevice_capabilities_free = Marshal.GetDelegateForFunctionPointer<avdevice_capabilities_free_d>(dlsym(libavdeviceHandle, "avdevice_capabilities_free"));
-            avdevice_configuration = Marshal.GetDelegateForFunctionPointer<avdevice_configuration_d>(dlsym(libavdeviceHandle, "avdevice_configuration"));
-            avdevice_dev_to_app_control_message = Marshal.GetDelegateForFunctionPointer<avdevice_dev_to_app_control_message_d>(dlsym(libavdeviceHandle, "avdevice_dev_to_app_control_message"));
-            avdevice_free_list_devices = Marshal.GetDelegateForFunctionPointer<avdevice_free_list_devices_d>(dlsym(libavdeviceHandle, "avdevice_free_list_devices"));
-            avdevice_license = Marshal.GetDelegateForFunctionPointer<avdevice_license_d>(dlsym(libavdeviceHandle, "avdevice_license"));
-            avdevice_list_devices = Marshal.GetDelegateForFunctionPointer<avdevice_list_devices_d>(dlsym(libavdeviceHandle, "avdevice_list_devices"));
-            avdevice_list_input_sources = Marshal.GetDelegateForFunctionPointer<avdevice_list_input_sources_d>(dlsym(libavdeviceHandle, "avdevice_list_input_sources"));
-            avdevice_list_output_sinks = Marshal.GetDelegateForFunctionPointer<avdevice_list_output_sinks_d>(dlsym(libavdeviceHandle, "avdevice_list_output_sinks"));
-            avdevice_register_all = Marshal.GetDelegateForFunctionPointer<avdevice_register_all_d>(dlsym(libavdeviceHandle, "avdevice_register_all"));
-            avdevice_version = Marshal.GetDelegateForFunctionPointer<avdevice_version_d>(dlsym(libavdeviceHandle, "avdevice_version"));
-        }
+        [DllImport(libavcodecFilename)]
+        public static extern int av_packet_shrink_side_data(AVPacket* @pkt, AVPacketSideDataType @type, int @size);
 
-        private static void InitializeLibavfilter(string libdir, string filename)
-        {
-            if (libdir.Length == 0)
-            {
-                throw new ArgumentException("libdir cannot be empty");
-            }
+        [DllImport(libavutilFilename)]
+        public static extern int av_opt_get_channel_layout(void* @obj, [MarshalAs(UnmanagedType.LPStr)] string @name,
+            int @search_flags, long* @ch_layout);
 
-            if (filename.Length == 0)
-            {
-                throw new ArgumentException("filename cannot be empty");
-            }
+        [DllImport(libavcodecFilename)]
+        public static extern void av_log_ask_for_sample(void* @avc, [MarshalAs(UnmanagedType.LPStr)] string @msg);
 
-            var path = Path.Combine(libdir, filename);
+        [DllImport(libavformatFilename)]
+        public static extern int av_read_play(AVFormatContext* @s);
 
-            if (!File.Exists(path))
-            {
-                throw new ArgumentException("file does not exist: " + path);
-            }
+        [DllImport(libavfilterFilename)]
+        public static extern int avfilter_link(AVFilterContext* @src, uint @srcpad, AVFilterContext* @dst,
+            uint @dstpad);
 
-            var libavfilterHandle = dlopen(path, RTLD_NOW | RTLD_GLOBAL);
+        [DllImport(libavformatFilename)]
+        public static extern int av_probe_input_buffer2(AVIOContext* @pb, AVInputFormat** @fmt,
+            [MarshalAs(UnmanagedType.LPStr)] string @url, void* @logctx, uint @offset, uint @max_probe_size);
 
-            av_abuffersink_params_alloc = Marshal.GetDelegateForFunctionPointer<av_abuffersink_params_alloc_d>(dlsym(libavfilterHandle, "av_abuffersink_params_alloc"));
-            av_buffersink_get_channel_layout = Marshal.GetDelegateForFunctionPointer<av_buffersink_get_channel_layout_d>(dlsym(libavfilterHandle, "av_buffersink_get_channel_layout"));
-            av_buffersink_get_channels = Marshal.GetDelegateForFunctionPointer<av_buffersink_get_channels_d>(dlsym(libavfilterHandle, "av_buffersink_get_channels"));
-            av_buffersink_get_format = Marshal.GetDelegateForFunctionPointer<av_buffersink_get_format_d>(dlsym(libavfilterHandle, "av_buffersink_get_format"));
-            av_buffersink_get_frame = Marshal.GetDelegateForFunctionPointer<av_buffersink_get_frame_d>(dlsym(libavfilterHandle, "av_buffersink_get_frame"));
-            av_buffersink_get_frame_flags = Marshal.GetDelegateForFunctionPointer<av_buffersink_get_frame_flags_d>(dlsym(libavfilterHandle, "av_buffersink_get_frame_flags"));
-            av_buffersink_get_frame_rate = Marshal.GetDelegateForFunctionPointer<av_buffersink_get_frame_rate_d>(dlsym(libavfilterHandle, "av_buffersink_get_frame_rate"));
-            av_buffersink_get_h = Marshal.GetDelegateForFunctionPointer<av_buffersink_get_h_d>(dlsym(libavfilterHandle, "av_buffersink_get_h"));
-            av_buffersink_get_hw_frames_ctx = Marshal.GetDelegateForFunctionPointer<av_buffersink_get_hw_frames_ctx_d>(dlsym(libavfilterHandle, "av_buffersink_get_hw_frames_ctx"));
-            av_buffersink_get_sample_aspect_ratio = Marshal.GetDelegateForFunctionPointer<av_buffersink_get_sample_aspect_ratio_d>(dlsym(libavfilterHandle, "av_buffersink_get_sample_aspect_ratio"));
-            av_buffersink_get_sample_rate = Marshal.GetDelegateForFunctionPointer<av_buffersink_get_sample_rate_d>(dlsym(libavfilterHandle, "av_buffersink_get_sample_rate"));
-            av_buffersink_get_samples = Marshal.GetDelegateForFunctionPointer<av_buffersink_get_samples_d>(dlsym(libavfilterHandle, "av_buffersink_get_samples"));
-            av_buffersink_get_time_base = Marshal.GetDelegateForFunctionPointer<av_buffersink_get_time_base_d>(dlsym(libavfilterHandle, "av_buffersink_get_time_base"));
-            av_buffersink_get_type = Marshal.GetDelegateForFunctionPointer<av_buffersink_get_type_d>(dlsym(libavfilterHandle, "av_buffersink_get_type"));
-            av_buffersink_get_w = Marshal.GetDelegateForFunctionPointer<av_buffersink_get_w_d>(dlsym(libavfilterHandle, "av_buffersink_get_w"));
-            av_buffersink_params_alloc = Marshal.GetDelegateForFunctionPointer<av_buffersink_params_alloc_d>(dlsym(libavfilterHandle, "av_buffersink_params_alloc"));
-            av_buffersink_set_frame_size = Marshal.GetDelegateForFunctionPointer<av_buffersink_set_frame_size_d>(dlsym(libavfilterHandle, "av_buffersink_set_frame_size"));
-            av_buffersrc_add_frame = Marshal.GetDelegateForFunctionPointer<av_buffersrc_add_frame_d>(dlsym(libavfilterHandle, "av_buffersrc_add_frame"));
-            av_buffersrc_add_frame_flags = Marshal.GetDelegateForFunctionPointer<av_buffersrc_add_frame_flags_d>(dlsym(libavfilterHandle, "av_buffersrc_add_frame_flags"));
-            av_buffersrc_get_nb_failed_requests = Marshal.GetDelegateForFunctionPointer<av_buffersrc_get_nb_failed_requests_d>(dlsym(libavfilterHandle, "av_buffersrc_get_nb_failed_requests"));
-            av_buffersrc_parameters_alloc = Marshal.GetDelegateForFunctionPointer<av_buffersrc_parameters_alloc_d>(dlsym(libavfilterHandle, "av_buffersrc_parameters_alloc"));
-            av_buffersrc_parameters_set = Marshal.GetDelegateForFunctionPointer<av_buffersrc_parameters_set_d>(dlsym(libavfilterHandle, "av_buffersrc_parameters_set"));
-            av_buffersrc_write_frame = Marshal.GetDelegateForFunctionPointer<av_buffersrc_write_frame_d>(dlsym(libavfilterHandle, "av_buffersrc_write_frame"));
-            av_filter_next = Marshal.GetDelegateForFunctionPointer<av_filter_next_d>(dlsym(libavfilterHandle, "av_filter_next"));
-            avfilter_config_links = Marshal.GetDelegateForFunctionPointer<avfilter_config_links_d>(dlsym(libavfilterHandle, "avfilter_config_links"));
-            avfilter_configuration = Marshal.GetDelegateForFunctionPointer<avfilter_configuration_d>(dlsym(libavfilterHandle, "avfilter_configuration"));
-            avfilter_free = Marshal.GetDelegateForFunctionPointer<avfilter_free_d>(dlsym(libavfilterHandle, "avfilter_free"));
-            avfilter_get_by_name = Marshal.GetDelegateForFunctionPointer<avfilter_get_by_name_d>(dlsym(libavfilterHandle, "avfilter_get_by_name"));
-            avfilter_get_class = Marshal.GetDelegateForFunctionPointer<avfilter_get_class_d>(dlsym(libavfilterHandle, "avfilter_get_class"));
-            avfilter_graph_add_filter = Marshal.GetDelegateForFunctionPointer<avfilter_graph_add_filter_d>(dlsym(libavfilterHandle, "avfilter_graph_add_filter"));
-            avfilter_graph_alloc = Marshal.GetDelegateForFunctionPointer<avfilter_graph_alloc_d>(dlsym(libavfilterHandle, "avfilter_graph_alloc"));
-            avfilter_graph_alloc_filter = Marshal.GetDelegateForFunctionPointer<avfilter_graph_alloc_filter_d>(dlsym(libavfilterHandle, "avfilter_graph_alloc_filter"));
-            avfilter_graph_config = Marshal.GetDelegateForFunctionPointer<avfilter_graph_config_d>(dlsym(libavfilterHandle, "avfilter_graph_config"));
-            avfilter_graph_create_filter = Marshal.GetDelegateForFunctionPointer<avfilter_graph_create_filter_d>(dlsym(libavfilterHandle, "avfilter_graph_create_filter"));
-            avfilter_graph_dump = Marshal.GetDelegateForFunctionPointer<avfilter_graph_dump_d>(dlsym(libavfilterHandle, "avfilter_graph_dump"));
-            avfilter_graph_free = Marshal.GetDelegateForFunctionPointer<avfilter_graph_free_d>(dlsym(libavfilterHandle, "avfilter_graph_free"));
-            avfilter_graph_get_filter = Marshal.GetDelegateForFunctionPointer<avfilter_graph_get_filter_d>(dlsym(libavfilterHandle, "avfilter_graph_get_filter"));
-            avfilter_graph_parse = Marshal.GetDelegateForFunctionPointer<avfilter_graph_parse_d>(dlsym(libavfilterHandle, "avfilter_graph_parse"));
-            avfilter_graph_parse_ptr = Marshal.GetDelegateForFunctionPointer<avfilter_graph_parse_ptr_d>(dlsym(libavfilterHandle, "avfilter_graph_parse_ptr"));
-            avfilter_graph_parse2 = Marshal.GetDelegateForFunctionPointer<avfilter_graph_parse2_d>(dlsym(libavfilterHandle, "avfilter_graph_parse2"));
-            avfilter_graph_queue_command = Marshal.GetDelegateForFunctionPointer<avfilter_graph_queue_command_d>(dlsym(libavfilterHandle, "avfilter_graph_queue_command"));
-            avfilter_graph_request_oldest = Marshal.GetDelegateForFunctionPointer<avfilter_graph_request_oldest_d>(dlsym(libavfilterHandle, "avfilter_graph_request_oldest"));
-            avfilter_graph_send_command = Marshal.GetDelegateForFunctionPointer<avfilter_graph_send_command_d>(dlsym(libavfilterHandle, "avfilter_graph_send_command"));
-            avfilter_graph_set_auto_convert = Marshal.GetDelegateForFunctionPointer<avfilter_graph_set_auto_convert_d>(dlsym(libavfilterHandle, "avfilter_graph_set_auto_convert"));
-            avfilter_init_dict = Marshal.GetDelegateForFunctionPointer<avfilter_init_dict_d>(dlsym(libavfilterHandle, "avfilter_init_dict"));
-            avfilter_init_filter = Marshal.GetDelegateForFunctionPointer<avfilter_init_filter_d>(dlsym(libavfilterHandle, "avfilter_init_filter"));
-            avfilter_init_str = Marshal.GetDelegateForFunctionPointer<avfilter_init_str_d>(dlsym(libavfilterHandle, "avfilter_init_str"));
-            avfilter_inout_alloc = Marshal.GetDelegateForFunctionPointer<avfilter_inout_alloc_d>(dlsym(libavfilterHandle, "avfilter_inout_alloc"));
-            avfilter_inout_free = Marshal.GetDelegateForFunctionPointer<avfilter_inout_free_d>(dlsym(libavfilterHandle, "avfilter_inout_free"));
-            avfilter_insert_filter = Marshal.GetDelegateForFunctionPointer<avfilter_insert_filter_d>(dlsym(libavfilterHandle, "avfilter_insert_filter"));
-            avfilter_license = Marshal.GetDelegateForFunctionPointer<avfilter_license_d>(dlsym(libavfilterHandle, "avfilter_license"));
-            avfilter_link = Marshal.GetDelegateForFunctionPointer<avfilter_link_d>(dlsym(libavfilterHandle, "avfilter_link"));
-            avfilter_link_free = Marshal.GetDelegateForFunctionPointer<avfilter_link_free_d>(dlsym(libavfilterHandle, "avfilter_link_free"));
-            avfilter_link_get_channels = Marshal.GetDelegateForFunctionPointer<avfilter_link_get_channels_d>(dlsym(libavfilterHandle, "avfilter_link_get_channels"));
-            avfilter_link_set_closed = Marshal.GetDelegateForFunctionPointer<avfilter_link_set_closed_d>(dlsym(libavfilterHandle, "avfilter_link_set_closed"));
-            avfilter_next = Marshal.GetDelegateForFunctionPointer<avfilter_next_d>(dlsym(libavfilterHandle, "avfilter_next"));
-            avfilter_open = Marshal.GetDelegateForFunctionPointer<avfilter_open_d>(dlsym(libavfilterHandle, "avfilter_open"));
-            avfilter_pad_count = Marshal.GetDelegateForFunctionPointer<avfilter_pad_count_d>(dlsym(libavfilterHandle, "avfilter_pad_count"));
-            avfilter_pad_get_name = Marshal.GetDelegateForFunctionPointer<avfilter_pad_get_name_d>(dlsym(libavfilterHandle, "avfilter_pad_get_name"));
-            avfilter_pad_get_type = Marshal.GetDelegateForFunctionPointer<avfilter_pad_get_type_d>(dlsym(libavfilterHandle, "avfilter_pad_get_type"));
-            avfilter_process_command = Marshal.GetDelegateForFunctionPointer<avfilter_process_command_d>(dlsym(libavfilterHandle, "avfilter_process_command"));
-            avfilter_register = Marshal.GetDelegateForFunctionPointer<avfilter_register_d>(dlsym(libavfilterHandle, "avfilter_register"));
-            avfilter_register_all = Marshal.GetDelegateForFunctionPointer<avfilter_register_all_d>(dlsym(libavfilterHandle, "avfilter_register_all"));
-            avfilter_uninit = Marshal.GetDelegateForFunctionPointer<avfilter_uninit_d>(dlsym(libavfilterHandle, "avfilter_uninit"));
-            avfilter_version = Marshal.GetDelegateForFunctionPointer<avfilter_version_d>(dlsym(libavfilterHandle, "avfilter_version"));
+        [DllImport(libavutilFilename)]
+        public static extern AVBufferRef* av_frame_get_plane_buffer(AVFrame* @frame, int @plane);
 
-        }
+        [DllImport(libavcodecFilename)]
+        public static extern AVClass* avcodec_get_class();
 
-        private static void InitializeLibavformat(string libdir, string filename)
-        {
-            if (libdir.Length == 0)
-            {
-                throw new ArgumentException("libdir cannot be empty");
-            }
+        [DllImport(libavformatFilename)]
+        public static extern AVCodec* av_format_get_audio_codec(AVFormatContext* @s);
 
-            if (filename.Length == 0)
-            {
-                throw new ArgumentException("filename cannot be empty");
-            }
+        [DllImport(libavutilFilename)]
+        public static extern int av_get_channel_layout_nb_channels(ulong @channel_layout);
 
-            var path = Path.Combine(libdir, filename);
+        [DllImport(libavformatFilename)]
+        public static extern AVRational av_stream_get_r_frame_rate(AVStream* @s);
 
-            if (!File.Exists(path))
-            {
-                throw new ArgumentException("file does not exist: " + path);
-            }
+        [DllImport(libavutilFilename)]
+        public static extern int av_buffer_is_writable(AVBufferRef* @buf);
 
-            var libavformatHandle = dlopen(path, RTLD_NOW | RTLD_GLOBAL);
+        [DllImport(libavdeviceFilename)]
+        public static extern string avdevice_configuration();
 
-            av_add_index_entry = Marshal.GetDelegateForFunctionPointer<av_add_index_entry_d>(dlsym(libavformatHandle, "av_add_index_entry"));
-            av_append_packet = Marshal.GetDelegateForFunctionPointer<av_append_packet_d>(dlsym(libavformatHandle, "av_append_packet"));
-            av_apply_bitstream_filters = Marshal.GetDelegateForFunctionPointer<av_apply_bitstream_filters_d>(dlsym(libavformatHandle, "av_apply_bitstream_filters"));
-            av_codec_get_id = Marshal.GetDelegateForFunctionPointer<av_codec_get_id_d>(dlsym(libavformatHandle, "av_codec_get_id"));
-            av_codec_get_tag = Marshal.GetDelegateForFunctionPointer<av_codec_get_tag_d>(dlsym(libavformatHandle, "av_codec_get_tag"));
-            av_codec_get_tag2 = Marshal.GetDelegateForFunctionPointer<av_codec_get_tag2_d>(dlsym(libavformatHandle, "av_codec_get_tag2"));
-            av_demuxer_open = Marshal.GetDelegateForFunctionPointer<av_demuxer_open_d>(dlsym(libavformatHandle, "av_demuxer_open"));
-            av_dump_format = Marshal.GetDelegateForFunctionPointer<av_dump_format_d>(dlsym(libavformatHandle, "av_dump_format"));
-            av_filename_number_test = Marshal.GetDelegateForFunctionPointer<av_filename_number_test_d>(dlsym(libavformatHandle, "av_filename_number_test"));
-            av_find_best_stream = Marshal.GetDelegateForFunctionPointer<av_find_best_stream_d>(dlsym(libavformatHandle, "av_find_best_stream"));
-            av_find_default_stream_index = Marshal.GetDelegateForFunctionPointer<av_find_default_stream_index_d>(dlsym(libavformatHandle, "av_find_default_stream_index"));
-            av_find_input_format = Marshal.GetDelegateForFunctionPointer<av_find_input_format_d>(dlsym(libavformatHandle, "av_find_input_format"));
-            av_find_program_from_stream = Marshal.GetDelegateForFunctionPointer<av_find_program_from_stream_d>(dlsym(libavformatHandle, "av_find_program_from_stream"));
-            av_fmt_ctx_get_duration_estimation_method = Marshal.GetDelegateForFunctionPointer<av_fmt_ctx_get_duration_estimation_method_d>(dlsym(libavformatHandle, "av_fmt_ctx_get_duration_estimation_method"));
-            av_format_get_audio_codec = Marshal.GetDelegateForFunctionPointer<av_format_get_audio_codec_d>(dlsym(libavformatHandle, "av_format_get_audio_codec"));
-            av_format_get_control_message_cb = Marshal.GetDelegateForFunctionPointer<av_format_get_control_message_cb_d>(dlsym(libavformatHandle, "av_format_get_control_message_cb"));
-            av_format_get_data_codec = Marshal.GetDelegateForFunctionPointer<av_format_get_data_codec_d>(dlsym(libavformatHandle, "av_format_get_data_codec"));
-            av_format_get_metadata_header_padding = Marshal.GetDelegateForFunctionPointer<av_format_get_metadata_header_padding_d>(dlsym(libavformatHandle, "av_format_get_metadata_header_padding"));
-            av_format_get_opaque = Marshal.GetDelegateForFunctionPointer<av_format_get_opaque_d>(dlsym(libavformatHandle, "av_format_get_opaque"));
-            av_format_get_open_cb = Marshal.GetDelegateForFunctionPointer<av_format_get_open_cb_d>(dlsym(libavformatHandle, "av_format_get_open_cb"));
-            av_format_get_probe_score = Marshal.GetDelegateForFunctionPointer<av_format_get_probe_score_d>(dlsym(libavformatHandle, "av_format_get_probe_score"));
-            av_format_get_subtitle_codec = Marshal.GetDelegateForFunctionPointer<av_format_get_subtitle_codec_d>(dlsym(libavformatHandle, "av_format_get_subtitle_codec"));
-            av_format_get_video_codec = Marshal.GetDelegateForFunctionPointer<av_format_get_video_codec_d>(dlsym(libavformatHandle, "av_format_get_video_codec"));
-            av_format_inject_global_side_data = Marshal.GetDelegateForFunctionPointer<av_format_inject_global_side_data_d>(dlsym(libavformatHandle, "av_format_inject_global_side_data"));
-            av_format_set_audio_codec = Marshal.GetDelegateForFunctionPointer<av_format_set_audio_codec_d>(dlsym(libavformatHandle, "av_format_set_audio_codec"));
-            av_format_set_control_message_cb = Marshal.GetDelegateForFunctionPointer<av_format_set_control_message_cb_d>(dlsym(libavformatHandle, "av_format_set_control_message_cb"));
-            av_format_set_data_codec = Marshal.GetDelegateForFunctionPointer<av_format_set_data_codec_d>(dlsym(libavformatHandle, "av_format_set_data_codec"));
-            av_format_set_metadata_header_padding = Marshal.GetDelegateForFunctionPointer<av_format_set_metadata_header_padding_d>(dlsym(libavformatHandle, "av_format_set_metadata_header_padding"));
-            av_format_set_opaque = Marshal.GetDelegateForFunctionPointer<av_format_set_opaque_d>(dlsym(libavformatHandle, "av_format_set_opaque"));
-            av_format_set_open_cb = Marshal.GetDelegateForFunctionPointer<av_format_set_open_cb_d>(dlsym(libavformatHandle, "av_format_set_open_cb"));
-            av_format_set_subtitle_codec = Marshal.GetDelegateForFunctionPointer<av_format_set_subtitle_codec_d>(dlsym(libavformatHandle, "av_format_set_subtitle_codec"));
-            av_format_set_video_codec = Marshal.GetDelegateForFunctionPointer<av_format_set_video_codec_d>(dlsym(libavformatHandle, "av_format_set_video_codec"));
-            av_get_frame_filename = Marshal.GetDelegateForFunctionPointer<av_get_frame_filename_d>(dlsym(libavformatHandle, "av_get_frame_filename"));
-            av_get_frame_filename2 = Marshal.GetDelegateForFunctionPointer<av_get_frame_filename2_d>(dlsym(libavformatHandle, "av_get_frame_filename2"));
-            av_get_output_timestamp = Marshal.GetDelegateForFunctionPointer<av_get_output_timestamp_d>(dlsym(libavformatHandle, "av_get_output_timestamp"));
-            av_get_packet = Marshal.GetDelegateForFunctionPointer<av_get_packet_d>(dlsym(libavformatHandle, "av_get_packet"));
-            av_guess_codec = Marshal.GetDelegateForFunctionPointer<av_guess_codec_d>(dlsym(libavformatHandle, "av_guess_codec"));
-            av_guess_format = Marshal.GetDelegateForFunctionPointer<av_guess_format_d>(dlsym(libavformatHandle, "av_guess_format"));
-            av_guess_frame_rate = Marshal.GetDelegateForFunctionPointer<av_guess_frame_rate_d>(dlsym(libavformatHandle, "av_guess_frame_rate"));
-            av_guess_sample_aspect_ratio = Marshal.GetDelegateForFunctionPointer<av_guess_sample_aspect_ratio_d>(dlsym(libavformatHandle, "av_guess_sample_aspect_ratio"));
-            av_hex_dump = Marshal.GetDelegateForFunctionPointer<av_hex_dump_d>(dlsym(libavformatHandle, "av_hex_dump"));
-            av_hex_dump_log = Marshal.GetDelegateForFunctionPointer<av_hex_dump_log_d>(dlsym(libavformatHandle, "av_hex_dump_log"));
-            av_iformat_next = Marshal.GetDelegateForFunctionPointer<av_iformat_next_d>(dlsym(libavformatHandle, "av_iformat_next"));
-            av_index_search_timestamp = Marshal.GetDelegateForFunctionPointer<av_index_search_timestamp_d>(dlsym(libavformatHandle, "av_index_search_timestamp"));
-            av_interleaved_write_frame = Marshal.GetDelegateForFunctionPointer<av_interleaved_write_frame_d>(dlsym(libavformatHandle, "av_interleaved_write_frame"));
-            av_interleaved_write_uncoded_frame = Marshal.GetDelegateForFunctionPointer<av_interleaved_write_uncoded_frame_d>(dlsym(libavformatHandle, "av_interleaved_write_uncoded_frame"));
-            av_match_ext = Marshal.GetDelegateForFunctionPointer<av_match_ext_d>(dlsym(libavformatHandle, "av_match_ext"));
-            av_new_program = Marshal.GetDelegateForFunctionPointer<av_new_program_d>(dlsym(libavformatHandle, "av_new_program"));
-            av_oformat_next = Marshal.GetDelegateForFunctionPointer<av_oformat_next_d>(dlsym(libavformatHandle, "av_oformat_next"));
-            av_pkt_dump_log2 = Marshal.GetDelegateForFunctionPointer<av_pkt_dump_log2_d>(dlsym(libavformatHandle, "av_pkt_dump_log2"));
-            av_pkt_dump2 = Marshal.GetDelegateForFunctionPointer<av_pkt_dump2_d>(dlsym(libavformatHandle, "av_pkt_dump2"));
-            av_probe_input_buffer = Marshal.GetDelegateForFunctionPointer<av_probe_input_buffer_d>(dlsym(libavformatHandle, "av_probe_input_buffer"));
-            av_probe_input_buffer2 = Marshal.GetDelegateForFunctionPointer<av_probe_input_buffer2_d>(dlsym(libavformatHandle, "av_probe_input_buffer2"));
-            av_probe_input_format = Marshal.GetDelegateForFunctionPointer<av_probe_input_format_d>(dlsym(libavformatHandle, "av_probe_input_format"));
-            av_probe_input_format2 = Marshal.GetDelegateForFunctionPointer<av_probe_input_format2_d>(dlsym(libavformatHandle, "av_probe_input_format2"));
-            av_probe_input_format3 = Marshal.GetDelegateForFunctionPointer<av_probe_input_format3_d>(dlsym(libavformatHandle, "av_probe_input_format3"));
-            av_program_add_stream_index = Marshal.GetDelegateForFunctionPointer<av_program_add_stream_index_d>(dlsym(libavformatHandle, "av_program_add_stream_index"));
-            av_read_frame = Marshal.GetDelegateForFunctionPointer<av_read_frame_d>(dlsym(libavformatHandle, "av_read_frame"));
-            av_read_pause = Marshal.GetDelegateForFunctionPointer<av_read_pause_d>(dlsym(libavformatHandle, "av_read_pause"));
-            av_read_play = Marshal.GetDelegateForFunctionPointer<av_read_play_d>(dlsym(libavformatHandle, "av_read_play"));
-            av_register_all = Marshal.GetDelegateForFunctionPointer<av_register_all_d>(dlsym(libavformatHandle, "av_register_all"));
-            av_register_input_format = Marshal.GetDelegateForFunctionPointer<av_register_input_format_d>(dlsym(libavformatHandle, "av_register_input_format"));
-            av_register_output_format = Marshal.GetDelegateForFunctionPointer<av_register_output_format_d>(dlsym(libavformatHandle, "av_register_output_format"));
-            //av_sdp_create = Marshal.GetDelegateForFunctionPointer<av_sdp_create_d>(dlsym(libavformatHandle, "av_sdp_create"));
-            av_seek_frame = Marshal.GetDelegateForFunctionPointer<av_seek_frame_d>(dlsym(libavformatHandle, "av_seek_frame"));
-            av_stream_add_side_data = Marshal.GetDelegateForFunctionPointer<av_stream_add_side_data_d>(dlsym(libavformatHandle, "av_stream_add_side_data"));
-            av_stream_get_codec_timebase = Marshal.GetDelegateForFunctionPointer<av_stream_get_codec_timebase_d>(dlsym(libavformatHandle, "av_stream_get_codec_timebase"));
-            av_stream_get_end_pts = Marshal.GetDelegateForFunctionPointer<av_stream_get_end_pts_d>(dlsym(libavformatHandle, "av_stream_get_end_pts"));
-            av_stream_get_parser = Marshal.GetDelegateForFunctionPointer<av_stream_get_parser_d>(dlsym(libavformatHandle, "av_stream_get_parser"));
-            av_stream_get_r_frame_rate = Marshal.GetDelegateForFunctionPointer<av_stream_get_r_frame_rate_d>(dlsym(libavformatHandle, "av_stream_get_r_frame_rate"));
-            av_stream_get_recommended_encoder_configuration = Marshal.GetDelegateForFunctionPointer<av_stream_get_recommended_encoder_configuration_d>(dlsym(libavformatHandle, "av_stream_get_recommended_encoder_configuration"));
-            av_stream_get_side_data = Marshal.GetDelegateForFunctionPointer<av_stream_get_side_data_d>(dlsym(libavformatHandle, "av_stream_get_side_data"));
-            av_stream_new_side_data = Marshal.GetDelegateForFunctionPointer<av_stream_new_side_data_d>(dlsym(libavformatHandle, "av_stream_new_side_data"));
-            av_stream_set_r_frame_rate = Marshal.GetDelegateForFunctionPointer<av_stream_set_r_frame_rate_d>(dlsym(libavformatHandle, "av_stream_set_r_frame_rate"));
-            av_stream_set_recommended_encoder_configuration = Marshal.GetDelegateForFunctionPointer<av_stream_set_recommended_encoder_configuration_d>(dlsym(libavformatHandle, "av_stream_set_recommended_encoder_configuration"));
-            av_url_split = Marshal.GetDelegateForFunctionPointer<av_url_split_d>(dlsym(libavformatHandle, "av_url_split"));
-            av_write_frame = Marshal.GetDelegateForFunctionPointer<av_write_frame_d>(dlsym(libavformatHandle, "av_write_frame"));
-            av_write_trailer = Marshal.GetDelegateForFunctionPointer<av_write_trailer_d>(dlsym(libavformatHandle, "av_write_trailer"));
-            av_write_uncoded_frame = Marshal.GetDelegateForFunctionPointer<av_write_uncoded_frame_d>(dlsym(libavformatHandle, "av_write_uncoded_frame"));
-            av_write_uncoded_frame_query = Marshal.GetDelegateForFunctionPointer<av_write_uncoded_frame_query_d>(dlsym(libavformatHandle, "av_write_uncoded_frame_query"));
-            avformat_alloc_context = Marshal.GetDelegateForFunctionPointer<avformat_alloc_context_d>(dlsym(libavformatHandle, "avformat_alloc_context"));
-            avformat_alloc_output_context2 = Marshal.GetDelegateForFunctionPointer<avformat_alloc_output_context2_d>(dlsym(libavformatHandle, "avformat_alloc_output_context2"));
-            avformat_close_input = Marshal.GetDelegateForFunctionPointer<avformat_close_input_d>(dlsym(libavformatHandle, "avformat_close_input"));
-            avformat_configuration = Marshal.GetDelegateForFunctionPointer<avformat_configuration_d>(dlsym(libavformatHandle, "avformat_configuration"));
-            avformat_find_stream_info = Marshal.GetDelegateForFunctionPointer<avformat_find_stream_info_d>(dlsym(libavformatHandle, "avformat_find_stream_info"));
-            avformat_flush = Marshal.GetDelegateForFunctionPointer<avformat_flush_d>(dlsym(libavformatHandle, "avformat_flush"));
-            avformat_free_context = Marshal.GetDelegateForFunctionPointer<avformat_free_context_d>(dlsym(libavformatHandle, "avformat_free_context"));
-            avformat_get_class = Marshal.GetDelegateForFunctionPointer<avformat_get_class_d>(dlsym(libavformatHandle, "avformat_get_class"));
-            avformat_get_mov_audio_tags = Marshal.GetDelegateForFunctionPointer<avformat_get_mov_audio_tags_d>(dlsym(libavformatHandle, "avformat_get_mov_audio_tags"));
-            avformat_get_mov_video_tags = Marshal.GetDelegateForFunctionPointer<avformat_get_mov_video_tags_d>(dlsym(libavformatHandle, "avformat_get_mov_video_tags"));
-            avformat_get_riff_audio_tags = Marshal.GetDelegateForFunctionPointer<avformat_get_riff_audio_tags_d>(dlsym(libavformatHandle, "avformat_get_riff_audio_tags"));
-            avformat_get_riff_video_tags = Marshal.GetDelegateForFunctionPointer<avformat_get_riff_video_tags_d>(dlsym(libavformatHandle, "avformat_get_riff_video_tags"));
-            avformat_init_output = Marshal.GetDelegateForFunctionPointer<avformat_init_output_d>(dlsym(libavformatHandle, "avformat_init_output"));
-            avformat_license = Marshal.GetDelegateForFunctionPointer<avformat_license_d>(dlsym(libavformatHandle, "avformat_license"));
-            avformat_match_stream_specifier = Marshal.GetDelegateForFunctionPointer<avformat_match_stream_specifier_d>(dlsym(libavformatHandle, "avformat_match_stream_specifier"));
-            avformat_network_deinit = Marshal.GetDelegateForFunctionPointer<avformat_network_deinit_d>(dlsym(libavformatHandle, "avformat_network_deinit"));
-            avformat_network_init = Marshal.GetDelegateForFunctionPointer<avformat_network_init_d>(dlsym(libavformatHandle, "avformat_network_init"));
-            avformat_new_stream = Marshal.GetDelegateForFunctionPointer<avformat_new_stream_d>(dlsym(libavformatHandle, "avformat_new_stream"));
-            avformat_open_input = Marshal.GetDelegateForFunctionPointer<avformat_open_input_d>(dlsym(libavformatHandle, "avformat_open_input"));
-            avformat_query_codec = Marshal.GetDelegateForFunctionPointer<avformat_query_codec_d>(dlsym(libavformatHandle, "avformat_query_codec"));
-            avformat_queue_attached_pictures = Marshal.GetDelegateForFunctionPointer<avformat_queue_attached_pictures_d>(dlsym(libavformatHandle, "avformat_queue_attached_pictures"));
-            avformat_seek_file = Marshal.GetDelegateForFunctionPointer<avformat_seek_file_d>(dlsym(libavformatHandle, "avformat_seek_file"));
-            avformat_transfer_internal_stream_timing_info = Marshal.GetDelegateForFunctionPointer<avformat_transfer_internal_stream_timing_info_d>(dlsym(libavformatHandle, "avformat_transfer_internal_stream_timing_info"));
-            avformat_version = Marshal.GetDelegateForFunctionPointer<avformat_version_d>(dlsym(libavformatHandle, "avformat_version"));
-            avformat_write_header = Marshal.GetDelegateForFunctionPointer<avformat_write_header_d>(dlsym(libavformatHandle, "avformat_write_header"));
-            avio_accept = Marshal.GetDelegateForFunctionPointer<avio_accept_d>(dlsym(libavformatHandle, "avio_accept"));
-            avio_alloc_context = Marshal.GetDelegateForFunctionPointer<avio_alloc_context_d>(dlsym(libavformatHandle, "avio_alloc_context"));
-            avio_context_free = Marshal.GetDelegateForFunctionPointer<avio_context_free_d>(dlsym(libavformatHandle, "avio_context_free"));
-            avio_check = Marshal.GetDelegateForFunctionPointer<avio_check_d>(dlsym(libavformatHandle, "avio_check"));
-            avio_close = Marshal.GetDelegateForFunctionPointer<avio_close_d>(dlsym(libavformatHandle, "avio_close"));
-            avio_close_dir = Marshal.GetDelegateForFunctionPointer<avio_close_dir_d>(dlsym(libavformatHandle, "avio_close_dir"));
-            avio_close_dyn_buf = Marshal.GetDelegateForFunctionPointer<avio_close_dyn_buf_d>(dlsym(libavformatHandle, "avio_close_dyn_buf"));
-            avio_closep = Marshal.GetDelegateForFunctionPointer<avio_closep_d>(dlsym(libavformatHandle, "avio_closep"));
-            avio_enum_protocols = Marshal.GetDelegateForFunctionPointer<avio_enum_protocols_d>(dlsym(libavformatHandle, "avio_enum_protocols"));
-            avio_feof = Marshal.GetDelegateForFunctionPointer<avio_feof_d>(dlsym(libavformatHandle, "avio_feof"));
-            avio_find_protocol_name = Marshal.GetDelegateForFunctionPointer<avio_find_protocol_name_d>(dlsym(libavformatHandle, "avio_find_protocol_name"));
-            avio_flush = Marshal.GetDelegateForFunctionPointer<avio_flush_d>(dlsym(libavformatHandle, "avio_flush"));
-            avio_free_directory_entry = Marshal.GetDelegateForFunctionPointer<avio_free_directory_entry_d>(dlsym(libavformatHandle, "avio_free_directory_entry"));
-            avio_get_dyn_buf = Marshal.GetDelegateForFunctionPointer<avio_get_dyn_buf_d>(dlsym(libavformatHandle, "avio_get_dyn_buf"));
-            avio_get_str = Marshal.GetDelegateForFunctionPointer<avio_get_str_d>(dlsym(libavformatHandle, "avio_get_str"));
-            avio_get_str16be = Marshal.GetDelegateForFunctionPointer<avio_get_str16be_d>(dlsym(libavformatHandle, "avio_get_str16be"));
-            avio_get_str16le = Marshal.GetDelegateForFunctionPointer<avio_get_str16le_d>(dlsym(libavformatHandle, "avio_get_str16le"));
-            avio_handshake = Marshal.GetDelegateForFunctionPointer<avio_handshake_d>(dlsym(libavformatHandle, "avio_handshake"));
-            avio_open = Marshal.GetDelegateForFunctionPointer<avio_open_d>(dlsym(libavformatHandle, "avio_open"));
-            avio_open_dir = Marshal.GetDelegateForFunctionPointer<avio_open_dir_d>(dlsym(libavformatHandle, "avio_open_dir"));
-            avio_open_dyn_buf = Marshal.GetDelegateForFunctionPointer<avio_open_dyn_buf_d>(dlsym(libavformatHandle, "avio_open_dyn_buf"));
-            avio_open2 = Marshal.GetDelegateForFunctionPointer<avio_open2_d>(dlsym(libavformatHandle, "avio_open2"));
-            avio_pause = Marshal.GetDelegateForFunctionPointer<avio_pause_d>(dlsym(libavformatHandle, "avio_pause"));
-            avio_printf = Marshal.GetDelegateForFunctionPointer<avio_printf_d>(dlsym(libavformatHandle, "avio_printf"));
-            avio_put_str = Marshal.GetDelegateForFunctionPointer<avio_put_str_d>(dlsym(libavformatHandle, "avio_put_str"));
-            avio_put_str16be = Marshal.GetDelegateForFunctionPointer<avio_put_str16be_d>(dlsym(libavformatHandle, "avio_put_str16be"));
-            avio_put_str16le = Marshal.GetDelegateForFunctionPointer<avio_put_str16le_d>(dlsym(libavformatHandle, "avio_put_str16le"));
-            avio_r8 = Marshal.GetDelegateForFunctionPointer<avio_r8_d>(dlsym(libavformatHandle, "avio_r8"));
-            avio_rb16 = Marshal.GetDelegateForFunctionPointer<avio_rb16_d>(dlsym(libavformatHandle, "avio_rb16"));
-            avio_rb24 = Marshal.GetDelegateForFunctionPointer<avio_rb24_d>(dlsym(libavformatHandle, "avio_rb24"));
-            avio_rb32 = Marshal.GetDelegateForFunctionPointer<avio_rb32_d>(dlsym(libavformatHandle, "avio_rb32"));
-            avio_rb64 = Marshal.GetDelegateForFunctionPointer<avio_rb64_d>(dlsym(libavformatHandle, "avio_rb64"));
-            avio_read = Marshal.GetDelegateForFunctionPointer<avio_read_d>(dlsym(libavformatHandle, "avio_read"));
-            avio_read_dir = Marshal.GetDelegateForFunctionPointer<avio_read_dir_d>(dlsym(libavformatHandle, "avio_read_dir"));
-            avio_read_to_bprint = Marshal.GetDelegateForFunctionPointer<avio_read_to_bprint_d>(dlsym(libavformatHandle, "avio_read_to_bprint"));
-            avio_rl16 = Marshal.GetDelegateForFunctionPointer<avio_rl16_d>(dlsym(libavformatHandle, "avio_rl16"));
-            avio_rl24 = Marshal.GetDelegateForFunctionPointer<avio_rl24_d>(dlsym(libavformatHandle, "avio_rl24"));
-            avio_rl32 = Marshal.GetDelegateForFunctionPointer<avio_rl32_d>(dlsym(libavformatHandle, "avio_rl32"));
-            avio_rl64 = Marshal.GetDelegateForFunctionPointer<avio_rl64_d>(dlsym(libavformatHandle, "avio_rl64"));
-            avio_seek = Marshal.GetDelegateForFunctionPointer<avio_seek_d>(dlsym(libavformatHandle, "avio_seek"));
-            avio_seek_time = Marshal.GetDelegateForFunctionPointer<avio_seek_time_d>(dlsym(libavformatHandle, "avio_seek_time"));
-            avio_size = Marshal.GetDelegateForFunctionPointer<avio_size_d>(dlsym(libavformatHandle, "avio_size"));
-            avio_skip = Marshal.GetDelegateForFunctionPointer<avio_skip_d>(dlsym(libavformatHandle, "avio_skip"));
-            avio_w8 = Marshal.GetDelegateForFunctionPointer<avio_w8_d>(dlsym(libavformatHandle, "avio_w8"));
-            avio_wb16 = Marshal.GetDelegateForFunctionPointer<avio_wb16_d>(dlsym(libavformatHandle, "avio_wb16"));
-            avio_wb24 = Marshal.GetDelegateForFunctionPointer<avio_wb24_d>(dlsym(libavformatHandle, "avio_wb24"));
-            avio_wb32 = Marshal.GetDelegateForFunctionPointer<avio_wb32_d>(dlsym(libavformatHandle, "avio_wb32"));
-            avio_wb64 = Marshal.GetDelegateForFunctionPointer<avio_wb64_d>(dlsym(libavformatHandle, "avio_wb64"));
-            avio_wl16 = Marshal.GetDelegateForFunctionPointer<avio_wl16_d>(dlsym(libavformatHandle, "avio_wl16"));
-            avio_wl24 = Marshal.GetDelegateForFunctionPointer<avio_wl24_d>(dlsym(libavformatHandle, "avio_wl24"));
-            avio_wl32 = Marshal.GetDelegateForFunctionPointer<avio_wl32_d>(dlsym(libavformatHandle, "avio_wl32"));
-            avio_wl64 = Marshal.GetDelegateForFunctionPointer<avio_wl64_d>(dlsym(libavformatHandle, "avio_wl64"));
-            avio_write = Marshal.GetDelegateForFunctionPointer<avio_write_d>(dlsym(libavformatHandle, "avio_write"));
-            avio_write_marker = Marshal.GetDelegateForFunctionPointer<avio_write_marker_d>(dlsym(libavformatHandle, "avio_write_marker"));
-            avpriv_io_delete = Marshal.GetDelegateForFunctionPointer<avpriv_io_delete_d>(dlsym(libavformatHandle, "avpriv_io_delete"));
-            avpriv_io_move = Marshal.GetDelegateForFunctionPointer<avpriv_io_move_d>(dlsym(libavformatHandle, "avpriv_io_move"));
-            url_feof = Marshal.GetDelegateForFunctionPointer<url_feof_d>(dlsym(libavformatHandle, "url_feof"));
-        }
+        [DllImport(libavcodecFilename)]
+        public static extern AVBitStreamFilter* av_bsf_get_by_name([MarshalAs(UnmanagedType.LPStr)] string @name);
 
-        private static void InitializeLibavutil(string libdir, string filename)
-        {
-            if (libdir.Length == 0)
-            {
-                throw new ArgumentException("libdir cannot be empty");
-            }
+        [DllImport(libavutilFilename)]
+        public static extern _iobuf* av_fopen_utf8([MarshalAs(UnmanagedType.LPStr)] string @path,
+            [MarshalAs(UnmanagedType.LPStr)] string @mode);
 
-            if (filename.Length == 0)
-            {
-                throw new ArgumentException("filename cannot be empty");
-            }
+        [DllImport(libavformatFilename)]
+        public static extern void av_format_set_open_cb(AVFormatContext* @s,
+            av_format_set_open_cb_callback_func @callback);
 
-            var path = Path.Combine(libdir, filename);
+        [DllImport(libavutilFilename)]
+        public static extern int av_log_get_level();
 
-            if (!File.Exists(path))
-            {
-                throw new ArgumentException("file does not exist: " + path);
-            }
+        [DllImport(libavcodecFilename)]
+        public static extern void av_register_codec_parser(AVCodecParser* @parser);
 
-            var libavutilHandle = dlopen(path, RTLD_NOW | RTLD_GLOBAL);
+        [DllImport(libavutilFilename)]
+        public static extern int av_image_fill_arrays(ref byte_ptrArray4 @dst_data, ref int_array4 @dst_linesize,
+            byte* @src, AVPixelFormat @pix_fmt, int @width, int @height, int @align);
 
-            av_add_q = Marshal.GetDelegateForFunctionPointer<av_add_q_d>(dlsym(libavutilHandle, "av_add_q"));
-            av_add_stable = Marshal.GetDelegateForFunctionPointer<av_add_stable_d>(dlsym(libavutilHandle, "av_add_stable"));
-            av_audio_fifo_alloc = Marshal.GetDelegateForFunctionPointer<av_audio_fifo_alloc_d>(dlsym(libavutilHandle, "av_audio_fifo_alloc"));
-            av_audio_fifo_drain = Marshal.GetDelegateForFunctionPointer<av_audio_fifo_drain_d>(dlsym(libavutilHandle, "av_audio_fifo_drain"));
-            av_audio_fifo_free = Marshal.GetDelegateForFunctionPointer<av_audio_fifo_free_d>(dlsym(libavutilHandle, "av_audio_fifo_free"));
-            av_audio_fifo_peek = Marshal.GetDelegateForFunctionPointer<av_audio_fifo_peek_d>(dlsym(libavutilHandle, "av_audio_fifo_peek"));
-            av_audio_fifo_peek_at = Marshal.GetDelegateForFunctionPointer<av_audio_fifo_peek_at_d>(dlsym(libavutilHandle, "av_audio_fifo_peek_at"));
-            av_audio_fifo_read = Marshal.GetDelegateForFunctionPointer<av_audio_fifo_read_d>(dlsym(libavutilHandle, "av_audio_fifo_read"));
-            av_audio_fifo_realloc = Marshal.GetDelegateForFunctionPointer<av_audio_fifo_realloc_d>(dlsym(libavutilHandle, "av_audio_fifo_realloc"));
-            av_audio_fifo_reset = Marshal.GetDelegateForFunctionPointer<av_audio_fifo_reset_d>(dlsym(libavutilHandle, "av_audio_fifo_reset"));
-            av_audio_fifo_size = Marshal.GetDelegateForFunctionPointer<av_audio_fifo_size_d>(dlsym(libavutilHandle, "av_audio_fifo_size"));
-            av_audio_fifo_space = Marshal.GetDelegateForFunctionPointer<av_audio_fifo_space_d>(dlsym(libavutilHandle, "av_audio_fifo_space"));
-            av_audio_fifo_write = Marshal.GetDelegateForFunctionPointer<av_audio_fifo_write_d>(dlsym(libavutilHandle, "av_audio_fifo_write"));
-            av_bprint_channel_layout = Marshal.GetDelegateForFunctionPointer<av_bprint_channel_layout_d>(dlsym(libavutilHandle, "av_bprint_channel_layout"));
-            av_buffer_alloc = Marshal.GetDelegateForFunctionPointer<av_buffer_alloc_d>(dlsym(libavutilHandle, "av_buffer_alloc"));
-            av_buffer_allocz = Marshal.GetDelegateForFunctionPointer<av_buffer_allocz_d>(dlsym(libavutilHandle, "av_buffer_allocz"));
-            av_buffer_create = Marshal.GetDelegateForFunctionPointer<av_buffer_create_d>(dlsym(libavutilHandle, "av_buffer_create"));
-            av_buffer_default_free = Marshal.GetDelegateForFunctionPointer<av_buffer_default_free_d>(dlsym(libavutilHandle, "av_buffer_default_free"));
-            av_buffer_get_opaque = Marshal.GetDelegateForFunctionPointer<av_buffer_get_opaque_d>(dlsym(libavutilHandle, "av_buffer_get_opaque"));
-            av_buffer_get_ref_count = Marshal.GetDelegateForFunctionPointer<av_buffer_get_ref_count_d>(dlsym(libavutilHandle, "av_buffer_get_ref_count"));
-            av_buffer_is_writable = Marshal.GetDelegateForFunctionPointer<av_buffer_is_writable_d>(dlsym(libavutilHandle, "av_buffer_is_writable"));
-            av_buffer_make_writable = Marshal.GetDelegateForFunctionPointer<av_buffer_make_writable_d>(dlsym(libavutilHandle, "av_buffer_make_writable"));
-            av_buffer_pool_get = Marshal.GetDelegateForFunctionPointer<av_buffer_pool_get_d>(dlsym(libavutilHandle, "av_buffer_pool_get"));
-            av_buffer_pool_init = Marshal.GetDelegateForFunctionPointer<av_buffer_pool_init_d>(dlsym(libavutilHandle, "av_buffer_pool_init"));
-            av_buffer_pool_init2 = Marshal.GetDelegateForFunctionPointer<av_buffer_pool_init2_d>(dlsym(libavutilHandle, "av_buffer_pool_init2"));
-            av_buffer_pool_uninit = Marshal.GetDelegateForFunctionPointer<av_buffer_pool_uninit_d>(dlsym(libavutilHandle, "av_buffer_pool_uninit"));
-            av_buffer_realloc = Marshal.GetDelegateForFunctionPointer<av_buffer_realloc_d>(dlsym(libavutilHandle, "av_buffer_realloc"));
-            av_buffer_ref = Marshal.GetDelegateForFunctionPointer<av_buffer_ref_d>(dlsym(libavutilHandle, "av_buffer_ref"));
-            av_buffer_unref = Marshal.GetDelegateForFunctionPointer<av_buffer_unref_d>(dlsym(libavutilHandle, "av_buffer_unref"));
-            av_calloc = Marshal.GetDelegateForFunctionPointer<av_calloc_d>(dlsym(libavutilHandle, "av_calloc"));
-            av_channel_layout_extract_channel = Marshal.GetDelegateForFunctionPointer<av_channel_layout_extract_channel_d>(dlsym(libavutilHandle, "av_channel_layout_extract_channel"));
-            av_chroma_location_name = Marshal.GetDelegateForFunctionPointer<av_chroma_location_name_d>(dlsym(libavutilHandle, "av_chroma_location_name"));
-            av_color_primaries_name = Marshal.GetDelegateForFunctionPointer<av_color_primaries_name_d>(dlsym(libavutilHandle, "av_color_primaries_name"));
-            av_color_range_name = Marshal.GetDelegateForFunctionPointer<av_color_range_name_d>(dlsym(libavutilHandle, "av_color_range_name"));
-            av_color_space_name = Marshal.GetDelegateForFunctionPointer<av_color_space_name_d>(dlsym(libavutilHandle, "av_color_space_name"));
-            av_color_transfer_name = Marshal.GetDelegateForFunctionPointer<av_color_transfer_name_d>(dlsym(libavutilHandle, "av_color_transfer_name"));
-            av_compare_mod = Marshal.GetDelegateForFunctionPointer<av_compare_mod_d>(dlsym(libavutilHandle, "av_compare_mod"));
-            av_compare_ts = Marshal.GetDelegateForFunctionPointer<av_compare_ts_d>(dlsym(libavutilHandle, "av_compare_ts"));
-            av_cpu_count = Marshal.GetDelegateForFunctionPointer<av_cpu_count_d>(dlsym(libavutilHandle, "av_cpu_count"));
-            av_d2q = Marshal.GetDelegateForFunctionPointer<av_d2q_d>(dlsym(libavutilHandle, "av_d2q"));
-            av_default_get_category = Marshal.GetDelegateForFunctionPointer<av_default_get_category_d>(dlsym(libavutilHandle, "av_default_get_category"));
-            av_default_item_name = Marshal.GetDelegateForFunctionPointer<av_default_item_name_d>(dlsym(libavutilHandle, "av_default_item_name"));
-            av_dict_copy = Marshal.GetDelegateForFunctionPointer<av_dict_copy_d>(dlsym(libavutilHandle, "av_dict_copy"));
-            av_dict_count = Marshal.GetDelegateForFunctionPointer<av_dict_count_d>(dlsym(libavutilHandle, "av_dict_count"));
-            av_dict_free = Marshal.GetDelegateForFunctionPointer<av_dict_free_d>(dlsym(libavutilHandle, "av_dict_free"));
-            av_dict_get = Marshal.GetDelegateForFunctionPointer<av_dict_get_d>(dlsym(libavutilHandle, "av_dict_get"));
-            av_dict_get_string = Marshal.GetDelegateForFunctionPointer<av_dict_get_string_d>(dlsym(libavutilHandle, "av_dict_get_string"));
-            av_dict_parse_string = Marshal.GetDelegateForFunctionPointer<av_dict_parse_string_d>(dlsym(libavutilHandle, "av_dict_parse_string"));
-            av_dict_set = Marshal.GetDelegateForFunctionPointer<av_dict_set_d>(dlsym(libavutilHandle, "av_dict_set"));
-            av_dict_set_int = Marshal.GetDelegateForFunctionPointer<av_dict_set_int_d>(dlsym(libavutilHandle, "av_dict_set_int"));
-            av_div_q = Marshal.GetDelegateForFunctionPointer<av_div_q_d>(dlsym(libavutilHandle, "av_div_q"));
-            av_dynarray_add = Marshal.GetDelegateForFunctionPointer<av_dynarray_add_d>(dlsym(libavutilHandle, "av_dynarray_add"));
-            av_dynarray_add_nofree = Marshal.GetDelegateForFunctionPointer<av_dynarray_add_nofree_d>(dlsym(libavutilHandle, "av_dynarray_add_nofree"));
-            av_dynarray2_add = Marshal.GetDelegateForFunctionPointer<av_dynarray2_add_d>(dlsym(libavutilHandle, "av_dynarray2_add"));
-            av_fast_malloc = Marshal.GetDelegateForFunctionPointer<av_fast_malloc_d>(dlsym(libavutilHandle, "av_fast_malloc"));
-            av_fast_mallocz = Marshal.GetDelegateForFunctionPointer<av_fast_mallocz_d>(dlsym(libavutilHandle, "av_fast_mallocz"));
-            av_fast_realloc = Marshal.GetDelegateForFunctionPointer<av_fast_realloc_d>(dlsym(libavutilHandle, "av_fast_realloc"));
-            av_fifo_alloc = Marshal.GetDelegateForFunctionPointer<av_fifo_alloc_d>(dlsym(libavutilHandle, "av_fifo_alloc"));
-            av_fifo_alloc_array = Marshal.GetDelegateForFunctionPointer<av_fifo_alloc_array_d>(dlsym(libavutilHandle, "av_fifo_alloc_array"));
-            av_fifo_drain = Marshal.GetDelegateForFunctionPointer<av_fifo_drain_d>(dlsym(libavutilHandle, "av_fifo_drain"));
-            av_fifo_free = Marshal.GetDelegateForFunctionPointer<av_fifo_free_d>(dlsym(libavutilHandle, "av_fifo_free"));
-            av_fifo_freep = Marshal.GetDelegateForFunctionPointer<av_fifo_freep_d>(dlsym(libavutilHandle, "av_fifo_freep"));
-            av_fifo_generic_peek = Marshal.GetDelegateForFunctionPointer<av_fifo_generic_peek_d>(dlsym(libavutilHandle, "av_fifo_generic_peek"));
-            av_fifo_generic_peek_at = Marshal.GetDelegateForFunctionPointer<av_fifo_generic_peek_at_d>(dlsym(libavutilHandle, "av_fifo_generic_peek_at"));
-            av_fifo_generic_read = Marshal.GetDelegateForFunctionPointer<av_fifo_generic_read_d>(dlsym(libavutilHandle, "av_fifo_generic_read"));
-            av_fifo_generic_write = Marshal.GetDelegateForFunctionPointer<av_fifo_generic_write_d>(dlsym(libavutilHandle, "av_fifo_generic_write"));
-            av_fifo_grow = Marshal.GetDelegateForFunctionPointer<av_fifo_grow_d>(dlsym(libavutilHandle, "av_fifo_grow"));
-            av_fifo_realloc2 = Marshal.GetDelegateForFunctionPointer<av_fifo_realloc2_d>(dlsym(libavutilHandle, "av_fifo_realloc2"));
-            av_fifo_reset = Marshal.GetDelegateForFunctionPointer<av_fifo_reset_d>(dlsym(libavutilHandle, "av_fifo_reset"));
-            av_fifo_size = Marshal.GetDelegateForFunctionPointer<av_fifo_size_d>(dlsym(libavutilHandle, "av_fifo_size"));
-            av_fifo_space = Marshal.GetDelegateForFunctionPointer<av_fifo_space_d>(dlsym(libavutilHandle, "av_fifo_space"));
-            av_find_best_pix_fmt_of_2 = Marshal.GetDelegateForFunctionPointer<av_find_best_pix_fmt_of_2_d>(dlsym(libavutilHandle, "av_find_best_pix_fmt_of_2"));
-            av_find_nearest_q_idx = Marshal.GetDelegateForFunctionPointer<av_find_nearest_q_idx_d>(dlsym(libavutilHandle, "av_find_nearest_q_idx"));
-            av_fopen_utf8 = Marshal.GetDelegateForFunctionPointer<av_fopen_utf8_d>(dlsym(libavutilHandle, "av_fopen_utf8"));
-            av_force_cpu_flags = Marshal.GetDelegateForFunctionPointer<av_force_cpu_flags_d>(dlsym(libavutilHandle, "av_force_cpu_flags"));
-            av_fourcc_make_string = Marshal.GetDelegateForFunctionPointer<av_fourcc_make_string_d>(dlsym(libavutilHandle, "av_fourcc_make_string"));
-            av_frame_alloc = Marshal.GetDelegateForFunctionPointer<av_frame_alloc_d>(dlsym(libavutilHandle, "av_frame_alloc"));
-            av_frame_clone = Marshal.GetDelegateForFunctionPointer<av_frame_clone_d>(dlsym(libavutilHandle, "av_frame_clone"));
-            av_frame_copy = Marshal.GetDelegateForFunctionPointer<av_frame_copy_d>(dlsym(libavutilHandle, "av_frame_copy"));
-            av_frame_copy_props = Marshal.GetDelegateForFunctionPointer<av_frame_copy_props_d>(dlsym(libavutilHandle, "av_frame_copy_props"));
-            av_frame_free = Marshal.GetDelegateForFunctionPointer<av_frame_free_d>(dlsym(libavutilHandle, "av_frame_free"));
-            av_frame_get_best_effort_timestamp = Marshal.GetDelegateForFunctionPointer<av_frame_get_best_effort_timestamp_d>(dlsym(libavutilHandle, "av_frame_get_best_effort_timestamp"));
-            av_frame_get_buffer = Marshal.GetDelegateForFunctionPointer<av_frame_get_buffer_d>(dlsym(libavutilHandle, "av_frame_get_buffer"));
-            av_frame_get_channel_layout = Marshal.GetDelegateForFunctionPointer<av_frame_get_channel_layout_d>(dlsym(libavutilHandle, "av_frame_get_channel_layout"));
-            av_frame_get_channels = Marshal.GetDelegateForFunctionPointer<av_frame_get_channels_d>(dlsym(libavutilHandle, "av_frame_get_channels"));
-            av_frame_get_color_range = Marshal.GetDelegateForFunctionPointer<av_frame_get_color_range_d>(dlsym(libavutilHandle, "av_frame_get_color_range"));
-            av_frame_get_colorspace = Marshal.GetDelegateForFunctionPointer<av_frame_get_colorspace_d>(dlsym(libavutilHandle, "av_frame_get_colorspace"));
-            av_frame_get_decode_error_flags = Marshal.GetDelegateForFunctionPointer<av_frame_get_decode_error_flags_d>(dlsym(libavutilHandle, "av_frame_get_decode_error_flags"));
-            av_frame_get_metadata = Marshal.GetDelegateForFunctionPointer<av_frame_get_metadata_d>(dlsym(libavutilHandle, "av_frame_get_metadata"));
-            av_frame_get_pkt_duration = Marshal.GetDelegateForFunctionPointer<av_frame_get_pkt_duration_d>(dlsym(libavutilHandle, "av_frame_get_pkt_duration"));
-            av_frame_get_pkt_pos = Marshal.GetDelegateForFunctionPointer<av_frame_get_pkt_pos_d>(dlsym(libavutilHandle, "av_frame_get_pkt_pos"));
-            av_frame_get_pkt_size = Marshal.GetDelegateForFunctionPointer<av_frame_get_pkt_size_d>(dlsym(libavutilHandle, "av_frame_get_pkt_size"));
-            av_frame_get_plane_buffer = Marshal.GetDelegateForFunctionPointer<av_frame_get_plane_buffer_d>(dlsym(libavutilHandle, "av_frame_get_plane_buffer"));
-            av_frame_get_qp_table = Marshal.GetDelegateForFunctionPointer<av_frame_get_qp_table_d>(dlsym(libavutilHandle, "av_frame_get_qp_table"));
-            av_frame_get_sample_rate = Marshal.GetDelegateForFunctionPointer<av_frame_get_sample_rate_d>(dlsym(libavutilHandle, "av_frame_get_sample_rate"));
-            av_frame_get_side_data = Marshal.GetDelegateForFunctionPointer<av_frame_get_side_data_d>(dlsym(libavutilHandle, "av_frame_get_side_data"));
-            av_frame_is_writable = Marshal.GetDelegateForFunctionPointer<av_frame_is_writable_d>(dlsym(libavutilHandle, "av_frame_is_writable"));
-            av_frame_make_writable = Marshal.GetDelegateForFunctionPointer<av_frame_make_writable_d>(dlsym(libavutilHandle, "av_frame_make_writable"));
-            av_frame_move_ref = Marshal.GetDelegateForFunctionPointer<av_frame_move_ref_d>(dlsym(libavutilHandle, "av_frame_move_ref"));
-            av_frame_new_side_data = Marshal.GetDelegateForFunctionPointer<av_frame_new_side_data_d>(dlsym(libavutilHandle, "av_frame_new_side_data"));
-            av_frame_ref = Marshal.GetDelegateForFunctionPointer<av_frame_ref_d>(dlsym(libavutilHandle, "av_frame_ref"));
-            av_frame_remove_side_data = Marshal.GetDelegateForFunctionPointer<av_frame_remove_side_data_d>(dlsym(libavutilHandle, "av_frame_remove_side_data"));
-            av_frame_set_best_effort_timestamp = Marshal.GetDelegateForFunctionPointer<av_frame_set_best_effort_timestamp_d>(dlsym(libavutilHandle, "av_frame_set_best_effort_timestamp"));
-            av_frame_set_channel_layout = Marshal.GetDelegateForFunctionPointer<av_frame_set_channel_layout_d>(dlsym(libavutilHandle, "av_frame_set_channel_layout"));
-            av_frame_set_channels = Marshal.GetDelegateForFunctionPointer<av_frame_set_channels_d>(dlsym(libavutilHandle, "av_frame_set_channels"));
-            av_frame_set_color_range = Marshal.GetDelegateForFunctionPointer<av_frame_set_color_range_d>(dlsym(libavutilHandle, "av_frame_set_color_range"));
-            av_frame_set_colorspace = Marshal.GetDelegateForFunctionPointer<av_frame_set_colorspace_d>(dlsym(libavutilHandle, "av_frame_set_colorspace"));
-            av_frame_set_decode_error_flags = Marshal.GetDelegateForFunctionPointer<av_frame_set_decode_error_flags_d>(dlsym(libavutilHandle, "av_frame_set_decode_error_flags"));
-            av_frame_set_metadata = Marshal.GetDelegateForFunctionPointer<av_frame_set_metadata_d>(dlsym(libavutilHandle, "av_frame_set_metadata"));
-            av_frame_set_pkt_duration = Marshal.GetDelegateForFunctionPointer<av_frame_set_pkt_duration_d>(dlsym(libavutilHandle, "av_frame_set_pkt_duration"));
-            av_frame_set_pkt_pos = Marshal.GetDelegateForFunctionPointer<av_frame_set_pkt_pos_d>(dlsym(libavutilHandle, "av_frame_set_pkt_pos"));
-            av_frame_set_pkt_size = Marshal.GetDelegateForFunctionPointer<av_frame_set_pkt_size_d>(dlsym(libavutilHandle, "av_frame_set_pkt_size"));
-            av_frame_set_qp_table = Marshal.GetDelegateForFunctionPointer<av_frame_set_qp_table_d>(dlsym(libavutilHandle, "av_frame_set_qp_table"));
-            av_frame_set_sample_rate = Marshal.GetDelegateForFunctionPointer<av_frame_set_sample_rate_d>(dlsym(libavutilHandle, "av_frame_set_sample_rate"));
-            av_frame_side_data_name = Marshal.GetDelegateForFunctionPointer<av_frame_side_data_name_d>(dlsym(libavutilHandle, "av_frame_side_data_name"));
-            av_frame_unref = Marshal.GetDelegateForFunctionPointer<av_frame_unref_d>(dlsym(libavutilHandle, "av_frame_unref"));
-            av_free = Marshal.GetDelegateForFunctionPointer<av_free_d>(dlsym(libavutilHandle, "av_free"));
-            av_freep = Marshal.GetDelegateForFunctionPointer<av_freep_d>(dlsym(libavutilHandle, "av_freep"));
-            av_gcd = Marshal.GetDelegateForFunctionPointer<av_gcd_d>(dlsym(libavutilHandle, "av_gcd"));
-            av_get_alt_sample_fmt = Marshal.GetDelegateForFunctionPointer<av_get_alt_sample_fmt_d>(dlsym(libavutilHandle, "av_get_alt_sample_fmt"));
-            av_get_bits_per_pixel = Marshal.GetDelegateForFunctionPointer<av_get_bits_per_pixel_d>(dlsym(libavutilHandle, "av_get_bits_per_pixel"));
-            av_get_bytes_per_sample = Marshal.GetDelegateForFunctionPointer<av_get_bytes_per_sample_d>(dlsym(libavutilHandle, "av_get_bytes_per_sample"));
-            av_get_channel_description = Marshal.GetDelegateForFunctionPointer<av_get_channel_description_d>(dlsym(libavutilHandle, "av_get_channel_description"));
-            av_get_channel_layout = Marshal.GetDelegateForFunctionPointer<av_get_channel_layout_d>(dlsym(libavutilHandle, "av_get_channel_layout"));
-            av_get_channel_layout_channel_index = Marshal.GetDelegateForFunctionPointer<av_get_channel_layout_channel_index_d>(dlsym(libavutilHandle, "av_get_channel_layout_channel_index"));
-            av_get_channel_layout_nb_channels = Marshal.GetDelegateForFunctionPointer<av_get_channel_layout_nb_channels_d>(dlsym(libavutilHandle, "av_get_channel_layout_nb_channels"));
-            av_get_channel_layout_string = Marshal.GetDelegateForFunctionPointer<av_get_channel_layout_string_d>(dlsym(libavutilHandle, "av_get_channel_layout_string"));
-            av_get_channel_name = Marshal.GetDelegateForFunctionPointer<av_get_channel_name_d>(dlsym(libavutilHandle, "av_get_channel_name"));
-            av_get_colorspace_name = Marshal.GetDelegateForFunctionPointer<av_get_colorspace_name_d>(dlsym(libavutilHandle, "av_get_colorspace_name"));
-            av_get_cpu_flags = Marshal.GetDelegateForFunctionPointer<av_get_cpu_flags_d>(dlsym(libavutilHandle, "av_get_cpu_flags"));
-            av_get_default_channel_layout = Marshal.GetDelegateForFunctionPointer<av_get_default_channel_layout_d>(dlsym(libavutilHandle, "av_get_default_channel_layout"));
-            av_get_extended_channel_layout = Marshal.GetDelegateForFunctionPointer<av_get_extended_channel_layout_d>(dlsym(libavutilHandle, "av_get_extended_channel_layout"));
-            av_get_media_type_string = Marshal.GetDelegateForFunctionPointer<av_get_media_type_string_d>(dlsym(libavutilHandle, "av_get_media_type_string"));
-            av_get_packed_sample_fmt = Marshal.GetDelegateForFunctionPointer<av_get_packed_sample_fmt_d>(dlsym(libavutilHandle, "av_get_packed_sample_fmt"));
-            av_get_padded_bits_per_pixel = Marshal.GetDelegateForFunctionPointer<av_get_padded_bits_per_pixel_d>(dlsym(libavutilHandle, "av_get_padded_bits_per_pixel"));
-            av_get_picture_type_char = Marshal.GetDelegateForFunctionPointer<av_get_picture_type_char_d>(dlsym(libavutilHandle, "av_get_picture_type_char"));
-            av_get_pix_fmt = Marshal.GetDelegateForFunctionPointer<av_get_pix_fmt_d>(dlsym(libavutilHandle, "av_get_pix_fmt"));
-            av_get_pix_fmt_loss = Marshal.GetDelegateForFunctionPointer<av_get_pix_fmt_loss_d>(dlsym(libavutilHandle, "av_get_pix_fmt_loss"));
-            av_get_pix_fmt_name = Marshal.GetDelegateForFunctionPointer<av_get_pix_fmt_name_d>(dlsym(libavutilHandle, "av_get_pix_fmt_name"));
-            av_get_pix_fmt_string = Marshal.GetDelegateForFunctionPointer<av_get_pix_fmt_string_d>(dlsym(libavutilHandle, "av_get_pix_fmt_string"));
-            av_get_planar_sample_fmt = Marshal.GetDelegateForFunctionPointer<av_get_planar_sample_fmt_d>(dlsym(libavutilHandle, "av_get_planar_sample_fmt"));
-            av_get_sample_fmt = Marshal.GetDelegateForFunctionPointer<av_get_sample_fmt_d>(dlsym(libavutilHandle, "av_get_sample_fmt"));
-            av_get_sample_fmt_name = Marshal.GetDelegateForFunctionPointer<av_get_sample_fmt_name_d>(dlsym(libavutilHandle, "av_get_sample_fmt_name"));
-            av_get_sample_fmt_string = Marshal.GetDelegateForFunctionPointer<av_get_sample_fmt_string_d>(dlsym(libavutilHandle, "av_get_sample_fmt_string"));
-            av_get_standard_channel_layout = Marshal.GetDelegateForFunctionPointer<av_get_standard_channel_layout_d>(dlsym(libavutilHandle, "av_get_standard_channel_layout"));
-            av_get_time_base_q = Marshal.GetDelegateForFunctionPointer<av_get_time_base_q_d>(dlsym(libavutilHandle, "av_get_time_base_q"));
-            av_image_alloc = Marshal.GetDelegateForFunctionPointer<av_image_alloc_d>(dlsym(libavutilHandle, "av_image_alloc"));
-            av_image_check_sar = Marshal.GetDelegateForFunctionPointer<av_image_check_sar_d>(dlsym(libavutilHandle, "av_image_check_sar"));
-            av_image_check_size = Marshal.GetDelegateForFunctionPointer<av_image_check_size_d>(dlsym(libavutilHandle, "av_image_check_size"));
-            av_image_check_size2 = Marshal.GetDelegateForFunctionPointer<av_image_check_size2_d>(dlsym(libavutilHandle, "av_image_check_size2"));
-            av_image_copy = Marshal.GetDelegateForFunctionPointer<av_image_copy_d>(dlsym(libavutilHandle, "av_image_copy"));
-            av_image_copy_plane = Marshal.GetDelegateForFunctionPointer<av_image_copy_plane_d>(dlsym(libavutilHandle, "av_image_copy_plane"));
-            av_image_copy_to_buffer = Marshal.GetDelegateForFunctionPointer<av_image_copy_to_buffer_d>(dlsym(libavutilHandle, "av_image_copy_to_buffer"));
-            av_image_copy_uc_from = Marshal.GetDelegateForFunctionPointer<av_image_copy_uc_from_d>(dlsym(libavutilHandle, "av_image_copy_uc_from"));
-            av_image_fill_arrays = Marshal.GetDelegateForFunctionPointer<av_image_fill_arrays_d>(dlsym(libavutilHandle, "av_image_fill_arrays"));
-            av_image_fill_linesizes = Marshal.GetDelegateForFunctionPointer<av_image_fill_linesizes_d>(dlsym(libavutilHandle, "av_image_fill_linesizes"));
-            av_image_fill_max_pixsteps = Marshal.GetDelegateForFunctionPointer<av_image_fill_max_pixsteps_d>(dlsym(libavutilHandle, "av_image_fill_max_pixsteps"));
-            av_image_fill_pointers = Marshal.GetDelegateForFunctionPointer<av_image_fill_pointers_d>(dlsym(libavutilHandle, "av_image_fill_pointers"));
-            av_image_get_buffer_size = Marshal.GetDelegateForFunctionPointer<av_image_get_buffer_size_d>(dlsym(libavutilHandle, "av_image_get_buffer_size"));
-            av_image_get_linesize = Marshal.GetDelegateForFunctionPointer<av_image_get_linesize_d>(dlsym(libavutilHandle, "av_image_get_linesize"));
-            av_int_list_length_for_size = Marshal.GetDelegateForFunctionPointer<av_int_list_length_for_size_d>(dlsym(libavutilHandle, "av_int_list_length_for_size"));
-            av_log = Marshal.GetDelegateForFunctionPointer<av_log_d>(dlsym(libavutilHandle, "av_log"));
-            av_log_default_callback = Marshal.GetDelegateForFunctionPointer<av_log_default_callback_d>(dlsym(libavutilHandle, "av_log_default_callback"));
-            av_log_format_line = Marshal.GetDelegateForFunctionPointer<av_log_format_line_d>(dlsym(libavutilHandle, "av_log_format_line"));
-            av_log_format_line2 = Marshal.GetDelegateForFunctionPointer<av_log_format_line2_d>(dlsym(libavutilHandle, "av_log_format_line2"));
-            av_log_get_flags = Marshal.GetDelegateForFunctionPointer<av_log_get_flags_d>(dlsym(libavutilHandle, "av_log_get_flags"));
-            av_log_get_level = Marshal.GetDelegateForFunctionPointer<av_log_get_level_d>(dlsym(libavutilHandle, "av_log_get_level"));
-            av_log_set_callback = Marshal.GetDelegateForFunctionPointer<av_log_set_callback_d>(dlsym(libavutilHandle, "av_log_set_callback"));
-            av_log_set_flags = Marshal.GetDelegateForFunctionPointer<av_log_set_flags_d>(dlsym(libavutilHandle, "av_log_set_flags"));
-            av_log_set_level = Marshal.GetDelegateForFunctionPointer<av_log_set_level_d>(dlsym(libavutilHandle, "av_log_set_level"));
-            av_log2 = Marshal.GetDelegateForFunctionPointer<av_log2_d>(dlsym(libavutilHandle, "av_log2"));
-            av_log2_16bit = Marshal.GetDelegateForFunctionPointer<av_log2_16bit_d>(dlsym(libavutilHandle, "av_log2_16bit"));
-            av_malloc = Marshal.GetDelegateForFunctionPointer<av_malloc_d>(dlsym(libavutilHandle, "av_malloc"));
-            av_mallocz = Marshal.GetDelegateForFunctionPointer<av_mallocz_d>(dlsym(libavutilHandle, "av_mallocz"));
-            av_max_alloc = Marshal.GetDelegateForFunctionPointer<av_max_alloc_d>(dlsym(libavutilHandle, "av_max_alloc"));
-            av_memcpy_backptr = Marshal.GetDelegateForFunctionPointer<av_memcpy_backptr_d>(dlsym(libavutilHandle, "av_memcpy_backptr"));
-            av_memdup = Marshal.GetDelegateForFunctionPointer<av_memdup_d>(dlsym(libavutilHandle, "av_memdup"));
-            av_mul_q = Marshal.GetDelegateForFunctionPointer<av_mul_q_d>(dlsym(libavutilHandle, "av_mul_q"));
-            av_nearer_q = Marshal.GetDelegateForFunctionPointer<av_nearer_q_d>(dlsym(libavutilHandle, "av_nearer_q"));
-            av_opt_child_class_next = Marshal.GetDelegateForFunctionPointer<av_opt_child_class_next_d>(dlsym(libavutilHandle, "av_opt_child_class_next"));
-            av_opt_child_next = Marshal.GetDelegateForFunctionPointer<av_opt_child_next_d>(dlsym(libavutilHandle, "av_opt_child_next"));
-            av_opt_copy = Marshal.GetDelegateForFunctionPointer<av_opt_copy_d>(dlsym(libavutilHandle, "av_opt_copy"));
-            av_opt_eval_double = Marshal.GetDelegateForFunctionPointer<av_opt_eval_double_d>(dlsym(libavutilHandle, "av_opt_eval_double"));
-            av_opt_eval_flags = Marshal.GetDelegateForFunctionPointer<av_opt_eval_flags_d>(dlsym(libavutilHandle, "av_opt_eval_flags"));
-            av_opt_eval_float = Marshal.GetDelegateForFunctionPointer<av_opt_eval_float_d>(dlsym(libavutilHandle, "av_opt_eval_float"));
-            av_opt_eval_int = Marshal.GetDelegateForFunctionPointer<av_opt_eval_int_d>(dlsym(libavutilHandle, "av_opt_eval_int"));
-            av_opt_eval_int64 = Marshal.GetDelegateForFunctionPointer<av_opt_eval_int64_d>(dlsym(libavutilHandle, "av_opt_eval_int64"));
-            av_opt_eval_q = Marshal.GetDelegateForFunctionPointer<av_opt_eval_q_d>(dlsym(libavutilHandle, "av_opt_eval_q"));
-            av_opt_find = Marshal.GetDelegateForFunctionPointer<av_opt_find_d>(dlsym(libavutilHandle, "av_opt_find"));
-            av_opt_find2 = Marshal.GetDelegateForFunctionPointer<av_opt_find2_d>(dlsym(libavutilHandle, "av_opt_find2"));
-            av_opt_flag_is_set = Marshal.GetDelegateForFunctionPointer<av_opt_flag_is_set_d>(dlsym(libavutilHandle, "av_opt_flag_is_set"));
-            av_opt_free = Marshal.GetDelegateForFunctionPointer<av_opt_free_d>(dlsym(libavutilHandle, "av_opt_free"));
-            av_opt_freep_ranges = Marshal.GetDelegateForFunctionPointer<av_opt_freep_ranges_d>(dlsym(libavutilHandle, "av_opt_freep_ranges"));
-            av_opt_get = Marshal.GetDelegateForFunctionPointer<av_opt_get_d>(dlsym(libavutilHandle, "av_opt_get"));
-            av_opt_get_channel_layout = Marshal.GetDelegateForFunctionPointer<av_opt_get_channel_layout_d>(dlsym(libavutilHandle, "av_opt_get_channel_layout"));
-            av_opt_get_dict_val = Marshal.GetDelegateForFunctionPointer<av_opt_get_dict_val_d>(dlsym(libavutilHandle, "av_opt_get_dict_val"));
-            av_opt_get_double = Marshal.GetDelegateForFunctionPointer<av_opt_get_double_d>(dlsym(libavutilHandle, "av_opt_get_double"));
-            av_opt_get_image_size = Marshal.GetDelegateForFunctionPointer<av_opt_get_image_size_d>(dlsym(libavutilHandle, "av_opt_get_image_size"));
-            av_opt_get_int = Marshal.GetDelegateForFunctionPointer<av_opt_get_int_d>(dlsym(libavutilHandle, "av_opt_get_int"));
-            av_opt_get_key_value = Marshal.GetDelegateForFunctionPointer<av_opt_get_key_value_d>(dlsym(libavutilHandle, "av_opt_get_key_value"));
-            av_opt_get_pixel_fmt = Marshal.GetDelegateForFunctionPointer<av_opt_get_pixel_fmt_d>(dlsym(libavutilHandle, "av_opt_get_pixel_fmt"));
-            av_opt_get_q = Marshal.GetDelegateForFunctionPointer<av_opt_get_q_d>(dlsym(libavutilHandle, "av_opt_get_q"));
-            av_opt_get_sample_fmt = Marshal.GetDelegateForFunctionPointer<av_opt_get_sample_fmt_d>(dlsym(libavutilHandle, "av_opt_get_sample_fmt"));
-            av_opt_get_video_rate = Marshal.GetDelegateForFunctionPointer<av_opt_get_video_rate_d>(dlsym(libavutilHandle, "av_opt_get_video_rate"));
-            av_opt_is_set_to_default = Marshal.GetDelegateForFunctionPointer<av_opt_is_set_to_default_d>(dlsym(libavutilHandle, "av_opt_is_set_to_default"));
-            av_opt_is_set_to_default_by_name = Marshal.GetDelegateForFunctionPointer<av_opt_is_set_to_default_by_name_d>(dlsym(libavutilHandle, "av_opt_is_set_to_default_by_name"));
-            av_opt_next = Marshal.GetDelegateForFunctionPointer<av_opt_next_d>(dlsym(libavutilHandle, "av_opt_next"));
-            av_opt_ptr = Marshal.GetDelegateForFunctionPointer<av_opt_ptr_d>(dlsym(libavutilHandle, "av_opt_ptr"));
-            av_opt_query_ranges = Marshal.GetDelegateForFunctionPointer<av_opt_query_ranges_d>(dlsym(libavutilHandle, "av_opt_query_ranges"));
-            av_opt_query_ranges_default = Marshal.GetDelegateForFunctionPointer<av_opt_query_ranges_default_d>(dlsym(libavutilHandle, "av_opt_query_ranges_default"));
-            av_opt_serialize = Marshal.GetDelegateForFunctionPointer<av_opt_serialize_d>(dlsym(libavutilHandle, "av_opt_serialize"));
-            av_opt_set = Marshal.GetDelegateForFunctionPointer<av_opt_set_d>(dlsym(libavutilHandle, "av_opt_set"));
-            av_opt_set_bin = Marshal.GetDelegateForFunctionPointer<av_opt_set_bin_d>(dlsym(libavutilHandle, "av_opt_set_bin"));
-            av_opt_set_channel_layout = Marshal.GetDelegateForFunctionPointer<av_opt_set_channel_layout_d>(dlsym(libavutilHandle, "av_opt_set_channel_layout"));
-            av_opt_set_defaults = Marshal.GetDelegateForFunctionPointer<av_opt_set_defaults_d>(dlsym(libavutilHandle, "av_opt_set_defaults"));
-            av_opt_set_defaults2 = Marshal.GetDelegateForFunctionPointer<av_opt_set_defaults2_d>(dlsym(libavutilHandle, "av_opt_set_defaults2"));
-            av_opt_set_dict = Marshal.GetDelegateForFunctionPointer<av_opt_set_dict_d>(dlsym(libavutilHandle, "av_opt_set_dict"));
-            av_opt_set_dict_val = Marshal.GetDelegateForFunctionPointer<av_opt_set_dict_val_d>(dlsym(libavutilHandle, "av_opt_set_dict_val"));
-            av_opt_set_dict2 = Marshal.GetDelegateForFunctionPointer<av_opt_set_dict2_d>(dlsym(libavutilHandle, "av_opt_set_dict2"));
-            av_opt_set_double = Marshal.GetDelegateForFunctionPointer<av_opt_set_double_d>(dlsym(libavutilHandle, "av_opt_set_double"));
-            av_opt_set_from_string = Marshal.GetDelegateForFunctionPointer<av_opt_set_from_string_d>(dlsym(libavutilHandle, "av_opt_set_from_string"));
-            av_opt_set_image_size = Marshal.GetDelegateForFunctionPointer<av_opt_set_image_size_d>(dlsym(libavutilHandle, "av_opt_set_image_size"));
-            av_opt_set_int = Marshal.GetDelegateForFunctionPointer<av_opt_set_int_d>(dlsym(libavutilHandle, "av_opt_set_int"));
-            av_opt_set_pixel_fmt = Marshal.GetDelegateForFunctionPointer<av_opt_set_pixel_fmt_d>(dlsym(libavutilHandle, "av_opt_set_pixel_fmt"));
-            av_opt_set_q = Marshal.GetDelegateForFunctionPointer<av_opt_set_q_d>(dlsym(libavutilHandle, "av_opt_set_q"));
-            av_opt_set_sample_fmt = Marshal.GetDelegateForFunctionPointer<av_opt_set_sample_fmt_d>(dlsym(libavutilHandle, "av_opt_set_sample_fmt"));
-            av_opt_set_video_rate = Marshal.GetDelegateForFunctionPointer<av_opt_set_video_rate_d>(dlsym(libavutilHandle, "av_opt_set_video_rate"));
-            av_opt_show2 = Marshal.GetDelegateForFunctionPointer<av_opt_show2_d>(dlsym(libavutilHandle, "av_opt_show2"));
-            av_parse_cpu_caps = Marshal.GetDelegateForFunctionPointer<av_parse_cpu_caps_d>(dlsym(libavutilHandle, "av_parse_cpu_caps"));
-            av_parse_cpu_flags = Marshal.GetDelegateForFunctionPointer<av_parse_cpu_flags_d>(dlsym(libavutilHandle, "av_parse_cpu_flags"));
-            av_pix_fmt_count_planes = Marshal.GetDelegateForFunctionPointer<av_pix_fmt_count_planes_d>(dlsym(libavutilHandle, "av_pix_fmt_count_planes"));
-            av_pix_fmt_desc_get = Marshal.GetDelegateForFunctionPointer<av_pix_fmt_desc_get_d>(dlsym(libavutilHandle, "av_pix_fmt_desc_get"));
-            av_pix_fmt_desc_get_id = Marshal.GetDelegateForFunctionPointer<av_pix_fmt_desc_get_id_d>(dlsym(libavutilHandle, "av_pix_fmt_desc_get_id"));
-            av_pix_fmt_desc_next = Marshal.GetDelegateForFunctionPointer<av_pix_fmt_desc_next_d>(dlsym(libavutilHandle, "av_pix_fmt_desc_next"));
-            av_pix_fmt_get_chroma_sub_sample = Marshal.GetDelegateForFunctionPointer<av_pix_fmt_get_chroma_sub_sample_d>(dlsym(libavutilHandle, "av_pix_fmt_get_chroma_sub_sample"));
-            av_pix_fmt_swap_endianness = Marshal.GetDelegateForFunctionPointer<av_pix_fmt_swap_endianness_d>(dlsym(libavutilHandle, "av_pix_fmt_swap_endianness"));
-            av_q2intfloat = Marshal.GetDelegateForFunctionPointer<av_q2intfloat_d>(dlsym(libavutilHandle, "av_q2intfloat"));
-            av_read_image_line = Marshal.GetDelegateForFunctionPointer<av_read_image_line_d>(dlsym(libavutilHandle, "av_read_image_line"));
-            av_realloc = Marshal.GetDelegateForFunctionPointer<av_realloc_d>(dlsym(libavutilHandle, "av_realloc"));
-            av_realloc_array = Marshal.GetDelegateForFunctionPointer<av_realloc_array_d>(dlsym(libavutilHandle, "av_realloc_array"));
-            av_realloc_f = Marshal.GetDelegateForFunctionPointer<av_realloc_f_d>(dlsym(libavutilHandle, "av_realloc_f"));
-            av_reallocp = Marshal.GetDelegateForFunctionPointer<av_reallocp_d>(dlsym(libavutilHandle, "av_reallocp"));
-            av_reallocp_array = Marshal.GetDelegateForFunctionPointer<av_reallocp_array_d>(dlsym(libavutilHandle, "av_reallocp_array"));
-            av_reduce = Marshal.GetDelegateForFunctionPointer<av_reduce_d>(dlsym(libavutilHandle, "av_reduce"));
-            av_rescale = Marshal.GetDelegateForFunctionPointer<av_rescale_d>(dlsym(libavutilHandle, "av_rescale"));
-            av_rescale_delta = Marshal.GetDelegateForFunctionPointer<av_rescale_delta_d>(dlsym(libavutilHandle, "av_rescale_delta"));
-            av_rescale_q = Marshal.GetDelegateForFunctionPointer<av_rescale_q_d>(dlsym(libavutilHandle, "av_rescale_q"));
-            av_rescale_q_rnd = Marshal.GetDelegateForFunctionPointer<av_rescale_q_rnd_d>(dlsym(libavutilHandle, "av_rescale_q_rnd"));
-            av_rescale_rnd = Marshal.GetDelegateForFunctionPointer<av_rescale_rnd_d>(dlsym(libavutilHandle, "av_rescale_rnd"));
-            av_sample_fmt_is_planar = Marshal.GetDelegateForFunctionPointer<av_sample_fmt_is_planar_d>(dlsym(libavutilHandle, "av_sample_fmt_is_planar"));
-            av_samples_alloc = Marshal.GetDelegateForFunctionPointer<av_samples_alloc_d>(dlsym(libavutilHandle, "av_samples_alloc"));
-            av_samples_alloc_array_and_samples = Marshal.GetDelegateForFunctionPointer<av_samples_alloc_array_and_samples_d>(dlsym(libavutilHandle, "av_samples_alloc_array_and_samples"));
-            av_samples_copy = Marshal.GetDelegateForFunctionPointer<av_samples_copy_d>(dlsym(libavutilHandle, "av_samples_copy"));
-            av_samples_fill_arrays = Marshal.GetDelegateForFunctionPointer<av_samples_fill_arrays_d>(dlsym(libavutilHandle, "av_samples_fill_arrays"));
-            av_samples_get_buffer_size = Marshal.GetDelegateForFunctionPointer<av_samples_get_buffer_size_d>(dlsym(libavutilHandle, "av_samples_get_buffer_size"));
-            av_samples_set_silence = Marshal.GetDelegateForFunctionPointer<av_samples_set_silence_d>(dlsym(libavutilHandle, "av_samples_set_silence"));
-            av_set_cpu_flags_mask = Marshal.GetDelegateForFunctionPointer<av_set_cpu_flags_mask_d>(dlsym(libavutilHandle, "av_set_cpu_flags_mask"));
-            av_set_options_string = Marshal.GetDelegateForFunctionPointer<av_set_options_string_d>(dlsym(libavutilHandle, "av_set_options_string"));
-            av_strdup = Marshal.GetDelegateForFunctionPointer<av_strdup_d>(dlsym(libavutilHandle, "av_strdup"));
-            av_strerror = Marshal.GetDelegateForFunctionPointer<av_strerror_d>(dlsym(libavutilHandle, "av_strerror"));
-            av_strndup = Marshal.GetDelegateForFunctionPointer<av_strndup_d>(dlsym(libavutilHandle, "av_strndup"));
-            av_sub_q = Marshal.GetDelegateForFunctionPointer<av_sub_q_d>(dlsym(libavutilHandle, "av_sub_q"));
-            av_timecode_adjust_ntsc_framenum2 = Marshal.GetDelegateForFunctionPointer<av_timecode_adjust_ntsc_framenum2_d>(dlsym(libavutilHandle, "av_timecode_adjust_ntsc_framenum2"));
-            av_timecode_check_frame_rate = Marshal.GetDelegateForFunctionPointer<av_timecode_check_frame_rate_d>(dlsym(libavutilHandle, "av_timecode_check_frame_rate"));
-            av_timecode_get_smpte_from_framenum = Marshal.GetDelegateForFunctionPointer<av_timecode_get_smpte_from_framenum_d>(dlsym(libavutilHandle, "av_timecode_get_smpte_from_framenum"));
-            av_timecode_init = Marshal.GetDelegateForFunctionPointer<av_timecode_init_d>(dlsym(libavutilHandle, "av_timecode_init"));
-            av_timecode_init_from_string = Marshal.GetDelegateForFunctionPointer<av_timecode_init_from_string_d>(dlsym(libavutilHandle, "av_timecode_init_from_string"));
-            av_timecode_make_mpeg_tc_string = Marshal.GetDelegateForFunctionPointer<av_timecode_make_mpeg_tc_string_d>(dlsym(libavutilHandle, "av_timecode_make_mpeg_tc_string"));
-            av_timecode_make_smpte_tc_string = Marshal.GetDelegateForFunctionPointer<av_timecode_make_smpte_tc_string_d>(dlsym(libavutilHandle, "av_timecode_make_smpte_tc_string"));
-            av_timecode_make_string = Marshal.GetDelegateForFunctionPointer<av_timecode_make_string_d>(dlsym(libavutilHandle, "av_timecode_make_string"));
-            av_version_info = Marshal.GetDelegateForFunctionPointer<av_version_info_d>(dlsym(libavutilHandle, "av_version_info"));
-            av_vlog = Marshal.GetDelegateForFunctionPointer<av_vlog_d>(dlsym(libavutilHandle, "av_vlog"));
-            av_write_image_line = Marshal.GetDelegateForFunctionPointer<av_write_image_line_d>(dlsym(libavutilHandle, "av_write_image_line"));
-            avpriv_frame_get_metadatap = Marshal.GetDelegateForFunctionPointer<avpriv_frame_get_metadatap_d>(dlsym(libavutilHandle, "avpriv_frame_get_metadatap"));
-            avutil_configuration = Marshal.GetDelegateForFunctionPointer<avutil_configuration_d>(dlsym(libavutilHandle, "avutil_configuration"));
-            avutil_license = Marshal.GetDelegateForFunctionPointer<avutil_license_d>(dlsym(libavutilHandle, "avutil_license"));
-            avutil_version = Marshal.GetDelegateForFunctionPointer<avutil_version_d>(dlsym(libavutilHandle, "avutil_version"));
-        }
+        [DllImport(libavutilFilename)]
+        public static extern int av_audio_fifo_peek(AVAudioFifo* @af, void** @data, int @nb_samples);
 
-        private static void InitializeLibpostproc(string libdir, string filename)
-        {
-            if (libdir.Length == 0)
-            {
-                throw new ArgumentException("libdir cannot be empty");
-            }
+        [DllImport(libavutilFilename)]
+        public static extern byte av_get_picture_type_char(AVPictureType @pict_type);
 
-            if (filename.Length == 0)
-            {
-                throw new ArgumentException("filename cannot be empty");
-            }
+        [DllImport(libavutilFilename)]
+        public static extern AVPixFmtDescriptor* av_pix_fmt_desc_next(AVPixFmtDescriptor* @prev);
 
-            var path = Path.Combine(libdir, filename);
+        [DllImport(libavutilFilename)]
+        public static extern uint av_int_list_length_for_size(uint @elsize, void* @list, ulong @term);
 
-            if (!File.Exists(path))
-            {
-                throw new ArgumentException("file does not exist: " + path);
-            }
+        [DllImport(libavcodecFilename)]
+        public static extern void avcodec_set_dimensions(AVCodecContext* @s, int @width, int @height);
 
-            var libpostprocHandle = dlopen(path, RTLD_NOW | RTLD_GLOBAL);
+        [DllImport(libavcodecFilename)]
+        public static extern string av_get_profile_name(AVCodec* @codec, int @profile);
 
-            postproc_configuration = Marshal.GetDelegateForFunctionPointer<postproc_configuration_d>(dlsym(libpostprocHandle, "postproc_configuration"));
-            postproc_license = Marshal.GetDelegateForFunctionPointer<postproc_license_d>(dlsym(libpostprocHandle, "postproc_license"));
-            postproc_version = Marshal.GetDelegateForFunctionPointer<postproc_version_d>(dlsym(libpostprocHandle, "postproc_version"));
-            pp_free_context = Marshal.GetDelegateForFunctionPointer<pp_free_context_d>(dlsym(libpostprocHandle, "pp_free_context"));
-            pp_free_mode = Marshal.GetDelegateForFunctionPointer<pp_free_mode_d>(dlsym(libpostprocHandle, "pp_free_mode"));
-            pp_get_context = Marshal.GetDelegateForFunctionPointer<pp_get_context_d>(dlsym(libpostprocHandle, "pp_get_context"));
-            pp_get_mode_by_name_and_quality = Marshal.GetDelegateForFunctionPointer<pp_get_mode_by_name_and_quality_d>(dlsym(libpostprocHandle, "pp_get_mode_by_name_and_quality"));
-            pp_postprocess = Marshal.GetDelegateForFunctionPointer<pp_postprocess_d>(dlsym(libpostprocHandle, "pp_postprocess"));
-        }
+        [DllImport(libavutilFilename)]
+        public static extern int av_timecode_init_from_string(AVTimecode* @tc, AVRational @rate,
+            [MarshalAs(UnmanagedType.LPStr)] string @str, void* @log_ctx);
 
-        private static void InitializeLibswscale(string libdir, string filename)
-        {
-            if (libdir.Length == 0)
-            {
-                throw new ArgumentException("libdir cannot be empty");
-            }
+        [DllImport(libavcodecFilename)]
+        public static extern int avcodec_close(AVCodecContext* @avctx);
 
-            if (filename.Length == 0)
-            {
-                throw new ArgumentException("filename cannot be empty");
-            }
+        [DllImport(libpostprocFilename)]
+        public static extern void pp_free_context(void* @ppContext);
 
-            var path = Path.Combine(libdir, filename);
+        [DllImport(libavcodecFilename)]
+        public static extern int av_get_audio_frame_duration(AVCodecContext* @avctx, int @frame_bytes);
 
-            if (!File.Exists(path))
-            {
-                throw new ArgumentException("file does not exist: " + path);
-            }
+        [DllImport(libavcodecFilename)]
+        public static extern void avcodec_flush_buffers(AVCodecContext* @avctx);
 
-            var libswscaleHandle = dlopen(path, RTLD_NOW | RTLD_GLOBAL);
+        [DllImport(libavutilFilename)]
+        public static extern int av_opt_serialize(void* @obj, int @opt_flags, int @flags, byte** @buffer,
+            byte @key_val_sep, byte @pairs_sep);
 
-            sws_addVec = Marshal.GetDelegateForFunctionPointer<sws_addVec_d>(dlsym(libswscaleHandle, "sws_addVec"));
-            sws_alloc_context = Marshal.GetDelegateForFunctionPointer<sws_alloc_context_d>(dlsym(libswscaleHandle, "sws_alloc_context"));
-            sws_allocVec = Marshal.GetDelegateForFunctionPointer<sws_allocVec_d>(dlsym(libswscaleHandle, "sws_allocVec"));
-            sws_cloneVec = Marshal.GetDelegateForFunctionPointer<sws_cloneVec_d>(dlsym(libswscaleHandle, "sws_cloneVec"));
-            sws_convertPalette8ToPacked24 = Marshal.GetDelegateForFunctionPointer<sws_convertPalette8ToPacked24_d>(dlsym(libswscaleHandle, "sws_convertPalette8ToPacked24"));
-            sws_convertPalette8ToPacked32 = Marshal.GetDelegateForFunctionPointer<sws_convertPalette8ToPacked32_d>(dlsym(libswscaleHandle, "sws_convertPalette8ToPacked32"));
-            sws_convVec = Marshal.GetDelegateForFunctionPointer<sws_convVec_d>(dlsym(libswscaleHandle, "sws_convVec"));
-            sws_freeContext = Marshal.GetDelegateForFunctionPointer<sws_freeContext_d>(dlsym(libswscaleHandle, "sws_freeContext"));
-            sws_freeFilter = Marshal.GetDelegateForFunctionPointer<sws_freeFilter_d>(dlsym(libswscaleHandle, "sws_freeFilter"));
-            sws_freeVec = Marshal.GetDelegateForFunctionPointer<sws_freeVec_d>(dlsym(libswscaleHandle, "sws_freeVec"));
-            sws_get_class = Marshal.GetDelegateForFunctionPointer<sws_get_class_d>(dlsym(libswscaleHandle, "sws_get_class"));
-            sws_getCachedContext = Marshal.GetDelegateForFunctionPointer<sws_getCachedContext_d>(dlsym(libswscaleHandle, "sws_getCachedContext"));
-            sws_getCoefficients = Marshal.GetDelegateForFunctionPointer<sws_getCoefficients_d>(dlsym(libswscaleHandle, "sws_getCoefficients"));
-            sws_getColorspaceDetails = Marshal.GetDelegateForFunctionPointer<sws_getColorspaceDetails_d>(dlsym(libswscaleHandle, "sws_getColorspaceDetails"));
-            sws_getConstVec = Marshal.GetDelegateForFunctionPointer<sws_getConstVec_d>(dlsym(libswscaleHandle, "sws_getConstVec"));
-            sws_getContext = Marshal.GetDelegateForFunctionPointer<sws_getContext_d>(dlsym(libswscaleHandle, "sws_getContext"));
-            sws_getDefaultFilter = Marshal.GetDelegateForFunctionPointer<sws_getDefaultFilter_d>(dlsym(libswscaleHandle, "sws_getDefaultFilter"));
-            sws_getGaussianVec = Marshal.GetDelegateForFunctionPointer<sws_getGaussianVec_d>(dlsym(libswscaleHandle, "sws_getGaussianVec"));
-            sws_getIdentityVec = Marshal.GetDelegateForFunctionPointer<sws_getIdentityVec_d>(dlsym(libswscaleHandle, "sws_getIdentityVec"));
-            sws_init_context = Marshal.GetDelegateForFunctionPointer<sws_init_context_d>(dlsym(libswscaleHandle, "sws_init_context"));
-            sws_isSupportedEndiannessConversion = Marshal.GetDelegateForFunctionPointer<sws_isSupportedEndiannessConversion_d>(dlsym(libswscaleHandle, "sws_isSupportedEndiannessConversion"));
-            sws_isSupportedInput = Marshal.GetDelegateForFunctionPointer<sws_isSupportedInput_d>(dlsym(libswscaleHandle, "sws_isSupportedInput"));
-            sws_isSupportedOutput = Marshal.GetDelegateForFunctionPointer<sws_isSupportedOutput_d>(dlsym(libswscaleHandle, "sws_isSupportedOutput"));
-            sws_normalizeVec = Marshal.GetDelegateForFunctionPointer<sws_normalizeVec_d>(dlsym(libswscaleHandle, "sws_normalizeVec"));
-            sws_printVec2 = Marshal.GetDelegateForFunctionPointer<sws_printVec2_d>(dlsym(libswscaleHandle, "sws_printVec2"));
-            sws_scale = Marshal.GetDelegateForFunctionPointer<sws_scale_d>(dlsym(libswscaleHandle, "sws_scale"));
-            sws_scaleVec = Marshal.GetDelegateForFunctionPointer<sws_scaleVec_d>(dlsym(libswscaleHandle, "sws_scaleVec"));
-            sws_setColorspaceDetails = Marshal.GetDelegateForFunctionPointer<sws_setColorspaceDetails_d>(dlsym(libswscaleHandle, "sws_setColorspaceDetails"));
-            sws_shiftVec = Marshal.GetDelegateForFunctionPointer<sws_shiftVec_d>(dlsym(libswscaleHandle, "sws_shiftVec"));
-            sws_subVec = Marshal.GetDelegateForFunctionPointer<sws_subVec_d>(dlsym(libswscaleHandle, "sws_subVec"));
-            swscale_configuration = Marshal.GetDelegateForFunctionPointer<swscale_configuration_d>(dlsym(libswscaleHandle, "swscale_configuration"));
-            swscale_license = Marshal.GetDelegateForFunctionPointer<swscale_license_d>(dlsym(libswscaleHandle, "swscale_license"));
-            swscale_version = Marshal.GetDelegateForFunctionPointer<swscale_version_d>(dlsym(libswscaleHandle, "swscale_version"));
+        [DllImport(libavcodecFilename)]
+        public static extern byte* av_packet_new_side_data(AVPacket* @pkt, AVPacketSideDataType @type, int @size);
 
-        }
+        [DllImport(libswresampleFilename)]
+        public static extern int swr_convert_frame(SwrContext* @swr, AVFrame* @output, AVFrame* @input);
 
-        private static void InitializeLibswresample(string libdir, string filename)
-        {
-            if (libdir.Length == 0)
-            {
-                throw new ArgumentException("libdir cannot be empty");
-            }
+        [DllImport(libavutilFilename)]
+        public static extern int av_frame_set_qp_table(AVFrame* @f, AVBufferRef* @buf, int @stride, int @type);
 
-            if (filename.Length == 0)
-            {
-                throw new ArgumentException("filename cannot be empty");
-            }
+        [DllImport(libavutilFilename)]
+        public static extern int av_fifo_realloc2(AVFifoBuffer* @f, uint @size);
 
-            var path = Path.Combine(libdir, filename);
+        [DllImport(libavutilFilename)]
+        public static extern int av_sample_fmt_is_planar(AVSampleFormat @sample_fmt);
 
-            if (!File.Exists(path))
-            {
-                throw new ArgumentException("file does not exist: " + path);
-            }
+        [DllImport(libavformatFilename)]
+        public static extern void av_format_set_subtitle_codec(AVFormatContext* @s, AVCodec* @c);
 
-            var libswresampleHandle = dlopen(path, RTLD_NOW | RTLD_GLOBAL);
+        [DllImport(libavcodecFilename)]
+        public static extern AVPixelFormat avcodec_default_get_format(AVCodecContext* @s, AVPixelFormat* @fmt);
 
-            swr_alloc = Marshal.GetDelegateForFunctionPointer<swr_alloc_d>(dlsym(libswresampleHandle, "swr_alloc"));
-            swr_alloc_set_opts = Marshal.GetDelegateForFunctionPointer<swr_alloc_set_opts_d>(dlsym(libswresampleHandle, "swr_alloc_set_opts"));
-            swr_build_matrix = Marshal.GetDelegateForFunctionPointer<swr_build_matrix_d>(dlsym(libswresampleHandle, "swr_build_matrix"));
-            swr_close = Marshal.GetDelegateForFunctionPointer<swr_close_d>(dlsym(libswresampleHandle, "swr_close"));
-            swr_config_frame = Marshal.GetDelegateForFunctionPointer<swr_config_frame_d>(dlsym(libswresampleHandle, "swr_config_frame"));
-            swr_convert = Marshal.GetDelegateForFunctionPointer<swr_convert_d>(dlsym(libswresampleHandle, "swr_convert"));
-            swr_convert_frame = Marshal.GetDelegateForFunctionPointer<swr_convert_frame_d>(dlsym(libswresampleHandle, "swr_convert_frame"));
-            swr_drop_output = Marshal.GetDelegateForFunctionPointer<swr_drop_output_d>(dlsym(libswresampleHandle, "swr_drop_output"));
-            swr_free = Marshal.GetDelegateForFunctionPointer<swr_free_d>(dlsym(libswresampleHandle, "swr_free"));
-            swr_get_class = Marshal.GetDelegateForFunctionPointer<swr_get_class_d>(dlsym(libswresampleHandle, "swr_get_class"));
-            swr_get_delay = Marshal.GetDelegateForFunctionPointer<swr_get_delay_d>(dlsym(libswresampleHandle, "swr_get_delay"));
-            swr_get_out_samples = Marshal.GetDelegateForFunctionPointer<swr_get_out_samples_d>(dlsym(libswresampleHandle, "swr_get_out_samples"));
-            swr_init = Marshal.GetDelegateForFunctionPointer<swr_init_d>(dlsym(libswresampleHandle, "swr_init"));
-            swr_inject_silence = Marshal.GetDelegateForFunctionPointer<swr_inject_silence_d>(dlsym(libswresampleHandle, "swr_inject_silence"));
-            swr_is_initialized = Marshal.GetDelegateForFunctionPointer<swr_is_initialized_d>(dlsym(libswresampleHandle, "swr_is_initialized"));
-            swr_next_pts = Marshal.GetDelegateForFunctionPointer<swr_next_pts_d>(dlsym(libswresampleHandle, "swr_next_pts"));
-            swr_set_channel_mapping = Marshal.GetDelegateForFunctionPointer<swr_set_channel_mapping_d>(dlsym(libswresampleHandle, "swr_set_channel_mapping"));
-            swr_set_compensation = Marshal.GetDelegateForFunctionPointer<swr_set_compensation_d>(dlsym(libswresampleHandle, "swr_set_compensation"));
-            swr_set_matrix = Marshal.GetDelegateForFunctionPointer<swr_set_matrix_d>(dlsym(libswresampleHandle, "swr_set_matrix"));
-            swresample_configuration = Marshal.GetDelegateForFunctionPointer<swresample_configuration_d>(dlsym(libswresampleHandle, "swresample_configuration"));
-            swresample_license = Marshal.GetDelegateForFunctionPointer<swresample_license_d>(dlsym(libswresampleHandle, "swresample_license"));
-            swresample_version = Marshal.GetDelegateForFunctionPointer<swresample_version_d>(dlsym(libswresampleHandle, "swresample_version"));
-        }
-        #endregion
+        [DllImport(libavcodecFilename)]
+        public static extern int avcodec_encode_audio2(AVCodecContext* @avctx, AVPacket* @avpkt, AVFrame* @frame,
+            int* @got_packet_ptr);
+
+        [DllImport(libavutilFilename)]
+        public static extern uint avutil_version();
+
+        [DllImport(libavfilterFilename)]
+        public static extern ulong av_buffersink_get_channel_layout(AVFilterContext* @ctx);
+
+        [DllImport(libavutilFilename)]
+        public static extern void* av_malloc(ulong @size);
+
+        [DllImport(libavutilFilename)]
+        public static extern AVBufferRef* av_buffer_pool_get(AVBufferPool* @pool);
+
+        [DllImport(libavformatFilename)]
+        public static extern void avio_wl24(AVIOContext* @s, uint @val);
+
+        [DllImport(libavutilFilename)]
+        public static extern void av_frame_set_metadata(AVFrame* @frame, AVDictionary* @val);
+
+        [DllImport(libavutilFilename)]
+        public static extern int av_log_format_line2(void* @ptr, int @level,
+            [MarshalAs(UnmanagedType.LPStr)] string @fmt, byte* @vl, byte* @line, int @line_size, int* @print_prefix);
+
+        [DllImport(libavformatFilename)]
+        public static extern AVRational av_stream_get_codec_timebase(AVStream* @st);
+
+        [DllImport(libavformatFilename)]
+        public static extern byte* av_stream_new_side_data(AVStream* @stream, AVPacketSideDataType @type, int @size);
+
+        [DllImport(libavformatFilename)]
+        public static extern int avio_read_to_bprint(AVIOContext* @h, AVBPrint* @pb, ulong @max_size);
+
+        [DllImport(libavutilFilename)]
+        public static extern long av_compare_mod(ulong @a, ulong @b, ulong @mod);
+
+        [DllImport(libavutilFilename)]
+        public static extern int av_image_copy_to_buffer(byte* @dst, int @dst_size, byte_ptrArray4 @src_data,
+            int_array4 @src_linesize, AVPixelFormat @pix_fmt, int @width, int @height, int @align);
+
+        [DllImport(libavcodecFilename)]
+        public static extern int avcodec_is_open(AVCodecContext* @s);
+
+        [DllImport(libavcodecFilename)]
+        public static extern int av_codec_is_decoder(AVCodec* @codec);
+
+        [DllImport(libavutilFilename)]
+        public static extern void av_frame_set_sample_rate(AVFrame* @frame, int @val);
+
+        [DllImport(libavfilterFilename)]
+        public static extern int avfilter_init_filter(AVFilterContext* @filter,
+            [MarshalAs(UnmanagedType.LPStr)] string @args, void* @opaque);
+
+        [DllImport(libavutilFilename)]
+        public static extern string av_get_colorspace_name(AVColorSpace @val);
+
+        [DllImport(libavutilFilename)]
+        public static extern void av_fifo_drain(AVFifoBuffer* @f, int @size);
+
+        [DllImport(libavutilFilename)]
+        public static extern int av_dict_set(AVDictionary** @pm, [MarshalAs(UnmanagedType.LPStr)] string @key,
+            [MarshalAs(UnmanagedType.LPStr)] string @value, int @flags);
+
+        [DllImport(libavutilFilename)]
+        public static extern void av_frame_set_colorspace(AVFrame* @frame, AVColorSpace @val);
+
+        [DllImport(libavutilFilename)]
+        public static extern long av_rescale(long @a, long @b, long @c);
+
+        [DllImport(libavformatFilename)]
+        public static extern void av_register_all();
+
+        [DllImport(libavfilterFilename)]
+        public static extern AVRational av_buffersink_get_frame_rate(AVFilterContext* @ctx);
+
+        [DllImport(libavutilFilename)]
+        public static extern void av_frame_move_ref(AVFrame* @dst, AVFrame* @src);
+
+        [DllImport(libavutilFilename)]
+        public static extern int av_opt_set_sample_fmt(void* @obj, [MarshalAs(UnmanagedType.LPStr)] string @name,
+            AVSampleFormat @fmt, int @search_flags);
+
+        [DllImport(libavformatFilename)]
+        public static extern int avio_read(AVIOContext* @s, byte* @buf, int @size);
+
+        [DllImport(libswscaleFilename)]
+        public static extern SwsVector* sws_getConstVec(double @c, int @length);
+
+        [DllImport(libavcodecFilename)]
+        public static extern AVBitStreamFilterContext* av_bitstream_filter_init(
+            [MarshalAs(UnmanagedType.LPStr)] string @name);
+
+        [DllImport(libswscaleFilename)]
+        public static extern void sws_freeVec(SwsVector* @a);
+
+        [DllImport(libavutilFilename)]
+        public static extern int av_audio_fifo_realloc(AVAudioFifo* @af, int @nb_samples);
+
+        [DllImport(libavformatFilename)]
+        public static extern AVCodecParserContext* av_stream_get_parser(AVStream* @s);
+
+        [DllImport(libavdeviceFilename)]
+        public static extern int avdevice_capabilities_create(AVDeviceCapabilitiesQuery** @caps, AVFormatContext* @s,
+            AVDictionary** @device_options);
+
+        [DllImport(libavutilFilename)]
+        public static extern void av_frame_set_channels(AVFrame* @frame, int @val);
+
+        [DllImport(libavcodecFilename)]
+        public static extern int avpicture_fill(AVPicture* @picture, byte* @ptr, AVPixelFormat @pix_fmt, int @width,
+            int @height);
+
+        [DllImport(libavcodecFilename)]
+        public static extern AVCPBProperties* av_cpb_properties_alloc(ulong* @size);
+
+        [DllImport(libavformatFilename)]
+        public static extern AVInputFormat* av_probe_input_format3(AVProbeData* @pd, int @is_opened, int* @score_ret);
+
+        [DllImport(libavformatFilename)]
+        public static extern AVInputFormat* av_probe_input_format2(AVProbeData* @pd, int @is_opened, int* @score_max);
+
+        [DllImport(libavfilterFilename)]
+        public static extern AVBufferRef* av_buffersink_get_hw_frames_ctx(AVFilterContext* @ctx);
+
+        [DllImport(libavcodecFilename)]
+        public static extern int avcodec_copy_context(AVCodecContext* @dest, AVCodecContext* @src);
+
+        [DllImport(libavcodecFilename)]
+        public static extern int av_packet_unpack_dictionary(byte* @data, int @size, AVDictionary** @dict);
+
+        [DllImport(libavfilterFilename)]
+        public static extern int avfilter_graph_parse2(AVFilterGraph* @graph,
+            [MarshalAs(UnmanagedType.LPStr)] string @filters, AVFilterInOut** @inputs, AVFilterInOut** @outputs);
+
+        [DllImport(libavcodecFilename)]
+        public static extern void av_shrink_packet(AVPacket* @pkt, int @size);
+
+        [DllImport(libavcodecFilename)]
+        public static extern void avcodec_register(AVCodec* @codec);
+
+        [DllImport(libavcodecFilename)]
+        public static extern void avcodec_align_dimensions2(AVCodecContext* @s, int* @width, int* @height,
+            ref int_array8 @linesize_align);
+
+        [DllImport(libavformatFilename)]
+        public static extern AVCodec* av_format_get_data_codec(AVFormatContext* @s);
+
+        [DllImport(libavutilFilename)]
+        public static extern int av_opt_get_int(void* @obj, [MarshalAs(UnmanagedType.LPStr)] string @name,
+            int @search_flags, long* @out_val);
+
+        [DllImport(libavcodecFilename)]
+        public static extern uint av_codec_get_codec_properties(AVCodecContext* @avctx);
+
+        [DllImport(libavutilFilename)]
+        public static extern void av_opt_freep_ranges(AVOptionRanges** @ranges);
+
+        [DllImport(libavutilFilename)]
+        public static extern int av_get_bits_per_pixel(AVPixFmtDescriptor* @pixdesc);
+
+        [DllImport(libavformatFilename)]
+        public static extern int avio_get_str16le(AVIOContext* @pb, int @maxlen, byte* @buf, int @buflen);
+
+        [DllImport(libavformatFilename)]
+        public static extern int avio_open(AVIOContext** @s, [MarshalAs(UnmanagedType.LPStr)] string @url, int @flags);
+
+        [DllImport(libavcodecFilename)]
+        public static extern void avcodec_parameters_free(AVCodecParameters** @par);
+
+        [DllImport(libavutilFilename)]
+        public static extern void av_opt_set_defaults2(void* @s, int @mask, int @flags);
+
+        [DllImport(libavformatFilename)]
+        public static extern int av_write_frame(AVFormatContext* @s, AVPacket* @pkt);
+
+        [DllImport(libavcodecFilename)]
+        public static extern AVResampleContext* av_resample_init(int @out_rate, int @in_rate, int @filter_length,
+            int @log2_phase_count, int @linear, double @cutoff);
+
+        [DllImport(libavformatFilename)]
+        public static extern string avformat_configuration();
+
+        [DllImport(libavcodecFilename)]
+        public static extern ulong av_get_codec_tag_string(byte* @buf, ulong @buf_size, uint @codec_tag);
+
+        [DllImport(libavfilterFilename)]
+        public static extern int avfilter_process_command(AVFilterContext* @filter,
+            [MarshalAs(UnmanagedType.LPStr)] string @cmd, [MarshalAs(UnmanagedType.LPStr)] string @arg, byte* @res,
+            int @res_len, int @flags);
+
+        [DllImport(libavfilterFilename)]
+        public static extern void avfilter_graph_free(AVFilterGraph** @graph);
+
+        [DllImport(libavutilFilename)]
+        public static extern uint av_q2intfloat(AVRational @q);
+
+        [DllImport(libavutilFilename)]
+        public static extern int av_fifo_generic_peek_at(AVFifoBuffer* @f, void* @dest, int @offset, int @buf_size,
+            av_fifo_generic_peek_at_func_func @func);
+
+        [DllImport(libavutilFilename)]
+        public static extern AVFrameSideData* av_frame_get_side_data(AVFrame* @frame, AVFrameSideDataType @type);
+
+        [DllImport(libavformatFilename)]
+        public static extern void avio_context_free(AVIOContext** @ptr);
+
+        [DllImport(libavcodecFilename)]
+        public static extern int avcodec_decode_audio4(AVCodecContext* @avctx, AVFrame* @frame, int* @got_frame_ptr,
+            AVPacket* @avpkt);
+
+        [DllImport(libavutilFilename)]
+        public static extern AVRational av_get_time_base_q();
+
+        [DllImport(libavfilterFilename)]
+        public static extern int
+            avfilter_init_str(AVFilterContext* @ctx, [MarshalAs(UnmanagedType.LPStr)] string @args);
+
+        [DllImport(libavfilterFilename)]
+        public static extern int av_buffersink_get_channels(AVFilterContext* @ctx);
+
+        [DllImport(libpostprocFilename)]
+        public static extern void pp_postprocess(ref byte_ptrArray3 @src, int_array3 @srcStride,
+            ref byte_ptrArray3 @dst, int_array3 @dstStride, int @horizontalSize, int @verticalSize, sbyte* @QP_store,
+            int @QP_stride, void* @mode, void* @ppContext, int @pict_type);
+
+        [DllImport(libavcodecFilename)]
+        public static extern void av_packet_move_ref(AVPacket* @dst, AVPacket* @src);
+
+        [DllImport(libavutilFilename)]
+        public static extern int av_buffer_make_writable(AVBufferRef** @buf);
+
+        [DllImport(libavutilFilename)]
+        public static extern int av_compare_ts(long @ts_a, AVRational @tb_a, long @ts_b, AVRational @tb_b);
+
+        [DllImport(libswscaleFilename)]
+        public static extern SwsVector* sws_getGaussianVec(double @variance, double @quality);
+
+        [DllImport(libavutilFilename)]
+        public static extern void* av_mallocz(ulong @size);
+
+        [DllImport(libavfilterFilename)]
+        public static extern string avfilter_license();
+
+        [DllImport(libavformatFilename)]
+        public static extern int av_format_get_probe_score(AVFormatContext* @s);
+
+        [DllImport(libavcodecFilename)]
+        public static extern void avcodec_free_context(AVCodecContext** @avctx);
+
+        [DllImport(libavfilterFilename)]
+        public static extern int
+            av_buffersrc_add_frame_flags(AVFilterContext* @buffer_src, AVFrame* @frame, int @flags);
+
+        [DllImport(libavcodecFilename)]
+        public static extern int av_dup_packet(AVPacket* @pkt);
+
+        [DllImport(libavutilFilename)]
+        public static extern AVOption* av_opt_find(void* @obj, [MarshalAs(UnmanagedType.LPStr)] string @name,
+            [MarshalAs(UnmanagedType.LPStr)] string @unit, int @opt_flags, int @search_flags);
+
+        [DllImport(libavformatFilename)]
+        public static extern void avio_wl64(AVIOContext* @s, ulong @val);
+
+        [DllImport(libavformatFilename)]
+        public static extern void av_stream_set_recommended_encoder_configuration(AVStream* @s, byte* @configuration);
+
+        [DllImport(libavformatFilename)]
+        public static extern av_format_get_control_message_cb_func
+            av_format_get_control_message_cb(AVFormatContext* @s);
+
+        [DllImport(libavformatFilename)]
+        public static extern int avio_close_dyn_buf(AVIOContext* @s, byte** @pbuffer);
+
+        [DllImport(libavcodecFilename)]
+        public static extern AVRational av_codec_get_pkt_timebase(AVCodecContext* @avctx);
+
+        [DllImport(libavformatFilename)]
+        public static extern long av_stream_get_end_pts(AVStream* @st);
+
+        [DllImport(libavfilterFilename)]
+        public static extern uint av_buffersrc_get_nb_failed_requests(AVFilterContext* @buffer_src);
+
+        [DllImport(libavutilFilename)]
+        public static extern int av_audio_fifo_size(AVAudioFifo* @af);
+
+        [DllImport(libswscaleFilename)]
+        public static extern int sws_isSupportedOutput(AVPixelFormat @pix_fmt);
+
+        [DllImport(libavutilFilename)]
+        public static extern void av_free(void* @ptr);
+
+        [DllImport(libavutilFilename)]
+        public static extern void av_freep(void* @ptr);
+
+        [DllImport(libswresampleFilename)]
+        public static extern int swr_inject_silence(SwrContext* @s, int @count);
+
+        [DllImport(libavcodecFilename)]
+        public static extern string avcodec_profile_name(AVCodecID @codec_id, int @profile);
+
+        [DllImport(libavutilFilename)]
+        public static extern int av_opt_get_pixel_fmt(void* @obj, [MarshalAs(UnmanagedType.LPStr)] string @name,
+            int @search_flags, AVPixelFormat* @out_fmt);
+
+        [DllImport(libavformatFilename)]
+        public static extern string avio_find_protocol_name([MarshalAs(UnmanagedType.LPStr)] string @url);
+
+        [DllImport(libavformatFilename)]
+        public static extern int av_get_output_timestamp(AVFormatContext* @s, int @stream, long* @dts, long* @wall);
+
+        [DllImport(libavutilFilename)]
+        public static extern int av_opt_set_channel_layout(void* @obj, [MarshalAs(UnmanagedType.LPStr)] string @name,
+            long @ch_layout, int @search_flags);
+
+        [DllImport(libavutilFilename)]
+        public static extern int av_opt_set(void* @obj, [MarshalAs(UnmanagedType.LPStr)] string @name,
+            [MarshalAs(UnmanagedType.LPStr)] string @val, int @search_flags);
+
+        [DllImport(libavfilterFilename)]
+        public static extern int avfilter_config_links(AVFilterContext* @filter);
+
+        [DllImport(libavcodecFilename)]
+        public static extern AVCodecDescriptor* avcodec_descriptor_get(AVCodecID @id);
+
+        [DllImport(libavutilFilename)]
+        public static extern AVDictionaryEntry* av_dict_get(AVDictionary* @m,
+            [MarshalAs(UnmanagedType.LPStr)] string @key, AVDictionaryEntry* @prev, int @flags);
+
+        [DllImport(libavfilterFilename)]
+        public static extern int av_buffersink_get_frame(AVFilterContext* @ctx, AVFrame* @frame);
+
+        [DllImport(libavcodecFilename)]
+        public static extern void av_codec_set_chroma_intra_matrix(AVCodecContext* @avctx, ushort* @val);
+
+        [DllImport(libavcodecFilename)]
+        public static extern AVClass* avcodec_get_frame_class();
+
+        [DllImport(libavformatFilename)]
+        public static extern int avio_get_str16be(AVIOContext* @pb, int @maxlen, byte* @buf, int @buflen);
+
+        [DllImport(libavutilFilename)]
+        public static extern int av_opt_set_dict2(void* @obj, AVDictionary** @options, int @search_flags);
+
+        [DllImport(libavformatFilename)]
+        public static extern int avformat_network_init();
+
+        [DllImport(libavfilterFilename)]
+        public static extern AVBufferSrcParameters* av_buffersrc_parameters_alloc();
+
+        [DllImport(libavcodecFilename)]
+        public static extern AVPixelFormat avcodec_find_best_pix_fmt_of_list(AVPixelFormat* @pix_fmt_list,
+            AVPixelFormat @src_pix_fmt, int @has_alpha, int* @loss_ptr);
+
+        [DllImport(libavutilFilename)]
+        public static extern void* av_realloc_f(void* @ptr, ulong @nelem, ulong @elsize);
+
+        [DllImport(libswscaleFilename)]
+        public static extern void sws_shiftVec(SwsVector* @a, int @shift);
+
+        [DllImport(libavfilterFilename)]
+        public static extern int avfilter_graph_create_filter(AVFilterContext** @filt_ctx, AVFilter* @filt,
+            [MarshalAs(UnmanagedType.LPStr)] string @name, [MarshalAs(UnmanagedType.LPStr)] string @args, void* @opaque,
+            AVFilterGraph* @graph_ctx);
+
+        [DllImport(libavutilFilename)]
+        public static extern int av_log2_16bit(uint @v);
+
+        [DllImport(libavformatFilename)]
+        public static extern void avio_write(AVIOContext* @s, byte* @buf, int @size);
+
+        [DllImport(libavutilFilename)]
+        public static extern AVBufferPool* av_buffer_pool_init2(int @size, void* @opaque,
+            av_buffer_pool_init2_alloc_func @alloc, av_buffer_pool_init2_pool_free_func @pool_free);
+
+        [DllImport(libavcodecFilename)]
+        public static extern void av_fast_padded_mallocz(void* @ptr, uint* @size, ulong @min_size);
+
+        [DllImport(libavcodecFilename)]
+        public static extern void av_codec_set_lowres(AVCodecContext* @avctx, int @val);
+
+        [DllImport(libavformatFilename)]
+        public static extern int av_format_get_metadata_header_padding(AVFormatContext* @s);
+
+        [DllImport(libavutilFilename)]
+        public static extern int av_dict_parse_string(AVDictionary** @pm, [MarshalAs(UnmanagedType.LPStr)] string @str,
+            [MarshalAs(UnmanagedType.LPStr)] string @key_val_sep, [MarshalAs(UnmanagedType.LPStr)] string @pairs_sep,
+            int @flags);
+
+        [DllImport(libswscaleFilename)]
+        public static extern int sws_getColorspaceDetails(SwsContext* @c, int** @inv_table, int* @srcRange,
+            int** @table, int* @dstRange, int* @brightness, int* @contrast, int* @saturation);
+
+        [DllImport(libavutilFilename)]
+        public static extern long av_frame_get_best_effort_timestamp(AVFrame* @frame);
+
+        [DllImport(libavcodecFilename)]
+        public static extern int av_lockmgr_register(av_lockmgr_register_cb_func @cb);
+
+        [DllImport(libavcodecFilename)]
+        public static extern int avcodec_decode_video2(AVCodecContext* @avctx, AVFrame* @picture, int* @got_picture_ptr,
+            AVPacket* @avpkt);
+
+        [DllImport(libavdeviceFilename)]
+        public static extern AVInputFormat* av_input_audio_device_next(AVInputFormat* @d);
+
+        [DllImport(libswresampleFilename)]
+        public static extern SwrContext* swr_alloc_set_opts(SwrContext* @s, long @out_ch_layout,
+            AVSampleFormat @out_sample_fmt, int @out_sample_rate, long @in_ch_layout, AVSampleFormat @in_sample_fmt,
+            int @in_sample_rate, int @log_offset, void* @log_ctx);
+
+        [DllImport(libswscaleFilename)]
+        public static extern int sws_isSupportedEndiannessConversion(AVPixelFormat @pix_fmt);
+
+        [DllImport(libswscaleFilename)]
+        public static extern int sws_scale(SwsContext* @c, byte*[] @srcSlice, int[] @srcStride, int @srcSliceY,
+            int @srcSliceH, byte*[] @dst, int[] @dstStride);
+
+        [DllImport(libavdeviceFilename)]
+        public static extern int avdevice_list_output_sinks(AVOutputFormat* @device,
+            [MarshalAs(UnmanagedType.LPStr)] string @device_name, AVDictionary* @device_options,
+            AVDeviceInfoList** @device_list);
+
+        [DllImport(libavcodecFilename)]
+        public static extern ReSampleContext* av_audio_resample_init(int @output_channels, int @input_channels,
+            int @output_rate, int @input_rate, AVSampleFormat @sample_fmt_out, AVSampleFormat @sample_fmt_in,
+            int @filter_length, int @log2_phase_count, int @linear, double @cutoff);
+
+        [DllImport(libavutilFilename)]
+        public static extern int av_opt_eval_double(void* @obj, AVOption* @o,
+            [MarshalAs(UnmanagedType.LPStr)] string @val, double* @double_out);
+
+        [DllImport(libavutilFilename)]
+        public static extern int av_opt_is_set_to_default_by_name(void* @obj,
+            [MarshalAs(UnmanagedType.LPStr)] string @name, int @search_flags);
+
+        [DllImport(libavutilFilename)]
+        public static extern void av_bprint_channel_layout(AVBPrint* @bp, int @nb_channels, ulong @channel_layout);
+
+        [DllImport(libswscaleFilename)]
+        public static extern int sws_init_context(SwsContext* @sws_context, SwsFilter* @srcFilter,
+            SwsFilter* @dstFilter);
+
+        [DllImport(libavcodecFilename)]
+        public static extern int avcodec_parameters_copy(AVCodecParameters* @dst, AVCodecParameters* @src);
+
+        [DllImport(libavformatFilename)]
+        public static extern int av_write_trailer(AVFormatContext* @s);
+
+        [DllImport(libavformatFilename)]
+        public static extern long avio_skip(AVIOContext* @s, long @offset);
+
+        [DllImport(libavformatFilename)]
+        public static extern int avformat_alloc_output_context2(AVFormatContext** @ctx, AVOutputFormat* @oformat,
+            [MarshalAs(UnmanagedType.LPStr)] string @format_name, [MarshalAs(UnmanagedType.LPStr)] string @filename);
+
+        [DllImport(libavformatFilename)]
+        public static extern void av_register_input_format(AVInputFormat* @format);
+
+        [DllImport(libavformatFilename)]
+        public static extern int av_interleaved_write_frame(AVFormatContext* @s, AVPacket* @pkt);
+
+        [DllImport(libavutilFilename)]
+        public static extern int av_reduce(int* @dst_num, int* @dst_den, long @num, long @den, long @max);
+
+        [DllImport(libavcodecFilename)]
+        public static extern ushort* av_codec_get_chroma_intra_matrix(AVCodecContext* @avctx);
+
+        [DllImport(libavutilFilename)]
+        public static extern void av_frame_set_best_effort_timestamp(AVFrame* @frame, long @val);
+
+        [DllImport(libswscaleFilename)]
+        public static extern string swscale_license();
+
+        [DllImport(libavutilFilename)]
+        public static extern int av_frame_copy_props(AVFrame* @dst, AVFrame* @src);
+
+        [DllImport(libavutilFilename)]
+        public static extern int av_fifo_space(AVFifoBuffer* @f);
+
+        [DllImport(libavutilFilename)]
+        public static extern void av_frame_set_channel_layout(AVFrame* @frame, long @val);
+
+        [DllImport(libavformatFilename)]
+        public static extern int av_get_frame_filename(byte* @buf, int @buf_size,
+            [MarshalAs(UnmanagedType.LPStr)] string @path, int @number);
+
+        [DllImport(libavutilFilename)]
+        public static extern int av_opt_is_set_to_default(void* @obj, AVOption* @o);
+
+        [DllImport(libswresampleFilename)]
+        public static extern void swr_free(SwrContext** @s);
+
+        [DllImport(libswscaleFilename)]
+        public static extern uint swscale_version();
+
+        [DllImport(libavformatFilename)]
+        public static extern AVStream* avformat_new_stream(AVFormatContext* @s, AVCodec* @c);
+
+        [DllImport(libavutilFilename)]
+        public static extern void av_frame_remove_side_data(AVFrame* @frame, AVFrameSideDataType @type);
+
+        [DllImport(libavformatFilename)]
+        public static extern byte* av_stream_get_side_data(AVStream* @stream, AVPacketSideDataType @type, int* @size);
+
+        [DllImport(libavcodecFilename)]
+        public static extern void av_codec_set_codec_descriptor(AVCodecContext* @avctx, AVCodecDescriptor* @desc);
+
+        [DllImport(libavutilFilename)]
+        public static extern int av_samples_set_silence(byte** @audio_data, int @offset, int @nb_samples,
+            int @nb_channels, AVSampleFormat @sample_fmt);
+
+        [DllImport(libpostprocFilename)]
+        public static extern void* pp_get_context(int @width, int @height, int @flags);
+
+        [DllImport(libavcodecFilename)]
+        public static extern void avcodec_align_dimensions(AVCodecContext* @s, int* @width, int* @height);
+
+        [DllImport(libavformatFilename)]
+        public static extern uint avformat_version();
+
+        [DllImport(libpostprocFilename)]
+        public static extern string postproc_configuration();
+
+        [DllImport(libswscaleFilename)]
+        public static extern AVClass* sws_get_class();
+
+        [DllImport(libavfilterFilename)]
+        public static extern int av_buffersink_get_frame_flags(AVFilterContext* @ctx, AVFrame* @frame, int @flags);
+
+        [DllImport(libavformatFilename)]
+        public static extern int av_write_uncoded_frame(AVFormatContext* @s, int @stream_index, AVFrame* @frame);
+
+        [DllImport(libavutilFilename)]
+        public static extern int av_frame_get_channels(AVFrame* @frame);
+
+        [DllImport(libswresampleFilename)]
+        public static extern int swr_set_matrix(SwrContext* @s, double* @matrix, int @stride);
+
+        [DllImport(libavcodecFilename)]
+        public static extern int av_parser_parse2(AVCodecParserContext* @s, AVCodecContext* @avctx, byte** @poutbuf,
+            int* @poutbuf_size, byte* @buf, int @buf_size, long @pts, long @dts, long @pos);
+
+        [DllImport(libavutilFilename)]
+        public static extern int av_opt_query_ranges(AVOptionRanges** @p0, void* @obj,
+            [MarshalAs(UnmanagedType.LPStr)] string @key, int @flags);
+
+        [DllImport(libavutilFilename)]
+        public static extern string av_chroma_location_name(AVChromaLocation @location);
+
+        [DllImport(libswscaleFilename)]
+        public static extern void sws_addVec(SwsVector* @a, SwsVector* @b);
+
+        [DllImport(libavcodecFilename)]
+        public static extern int avcodec_default_get_buffer2(AVCodecContext* @s, AVFrame* @frame, int @flags);
+
+        [DllImport(libavutilFilename)]
+        public static extern int av_parse_cpu_caps(uint* @flags, [MarshalAs(UnmanagedType.LPStr)] string @s);
+
+        [DllImport(libavutilFilename)]
+        public static extern int av_opt_get_key_value(byte** @ropts,
+            [MarshalAs(UnmanagedType.LPStr)] string @key_val_sep, [MarshalAs(UnmanagedType.LPStr)] string @pairs_sep,
+            uint @flags, byte** @rkey, byte** @rval);
+
+        [DllImport(libavformatFilename)]
+        public static extern long avio_seek(AVIOContext* @s, long @offset, int @whence);
+
+        [DllImport(libavutilFilename)]
+        public static extern AVPixelFormat av_find_best_pix_fmt_of_2(AVPixelFormat @dst_pix_fmt1,
+            AVPixelFormat @dst_pix_fmt2, AVPixelFormat @src_pix_fmt, int @has_alpha, int* @loss_ptr);
+
+        [DllImport(libavutilFilename)]
+        public static extern string avutil_license();
+
+        [DllImport(libavutilFilename)]
+        public static extern int av_opt_eval_q(void* @obj, AVOption* @o, [MarshalAs(UnmanagedType.LPStr)] string @val,
+            AVRational* @q_out);
+
+        [DllImport(libavformatFilename)]
+        public static extern uint av_codec_get_tag(AVCodecTag** @tags, AVCodecID @id);
+
+        [DllImport(libavutilFilename)]
+        public static extern string av_default_item_name(void* @ctx);
+
+        [DllImport(libavutilFilename)]
+        public static extern int av_opt_get(void* @obj, [MarshalAs(UnmanagedType.LPStr)] string @name,
+            int @search_flags, byte** @out_val);
+
+        [DllImport(libavutilFilename)]
+        public static extern int av_image_get_linesize(AVPixelFormat @pix_fmt, int @width, int @plane);
+
+        [DllImport(libavformatFilename)]
+        public static extern int av_stream_add_side_data(AVStream* @st, AVPacketSideDataType @type, byte* @data,
+            ulong @size);
+
+        [DllImport(libavutilFilename)]
+        public static extern int av_buffer_get_ref_count(AVBufferRef* @buf);
+
+        [DllImport(libavdeviceFilename)]
+        public static extern void avdevice_free_list_devices(AVDeviceInfoList** @device_list);
+
+        [DllImport(libavfilterFilename)]
+        public static extern AVFilter** av_filter_next(AVFilter** @filter);
+
+        [DllImport(libavcodecFilename)]
+        public static extern int av_copy_packet_side_data(AVPacket* @dst, AVPacket* @src);
+
+        [DllImport(libavfilterFilename)]
+        public static extern AVBufferSinkParams* av_buffersink_params_alloc();
+
+        [DllImport(libavformatFilename)]
+        public static extern int avformat_write_header(AVFormatContext* @s, AVDictionary** @options);
+
+        [DllImport(libavutilFilename)]
+        public static extern AVBufferRef* av_buffer_alloc(int @size);
+
+        [DllImport(libavcodecFilename)]
+        public static extern int av_bsf_list_append2(AVBSFList* @lst, [MarshalAs(UnmanagedType.LPStr)] string @bsf_name,
+            AVDictionary** @options);
+
+        [DllImport(libavutilFilename)]
+        public static extern AVDictionary** avpriv_frame_get_metadatap(AVFrame* @frame);
+
+        [DllImport(libavutilFilename)]
+        public static extern int av_pix_fmt_get_chroma_sub_sample(AVPixelFormat @pix_fmt, int* @h_shift, int* @v_shift);
+
+        [DllImport(libavutilFilename)]
+        public static extern int av_opt_get_dict_val(void* @obj, [MarshalAs(UnmanagedType.LPStr)] string @name,
+            int @search_flags, AVDictionary** @out_val);
+
+        [DllImport(libavutilFilename)]
+        public static extern int av_fifo_size(AVFifoBuffer* @f);
+
+        [DllImport(libavformatFilename)]
+        public static extern int av_get_frame_filename2(byte* @buf, int @buf_size,
+            [MarshalAs(UnmanagedType.LPStr)] string @path, int @number, int @flags);
+
+        [DllImport(libavutilFilename)]
+        public static extern long av_frame_get_channel_layout(AVFrame* @frame);
+
+        [DllImport(libavcodecFilename)]
+        public static extern AVCodecDescriptor* avcodec_descriptor_next(AVCodecDescriptor* @prev);
+
+        [DllImport(libswresampleFilename)]
+        public static extern void swr_close(SwrContext* @s);
+
+        [DllImport(libavutilFilename)]
+        public static extern void av_buffer_default_free(void* @opaque, byte* @data);
+
+        [DllImport(libavformatFilename)]
+        public static extern AVProgram* av_find_program_from_stream(AVFormatContext* @ic, AVProgram* @last, int @s);
+
+        [DllImport(libavformatFilename)]
+        public static extern void av_hex_dump(_iobuf* @f, byte* @buf, int @size);
+
+        [DllImport(libavformatFilename)]
+        public static extern void avio_wl16(AVIOContext* @s, uint @val);
+
+        [DllImport(libavcodecFilename)]
+        public static extern int av_bsf_list_finalize(AVBSFList** @lst, AVBSFContext** @bsf);
+
+        [DllImport(libavformatFilename)]
+        public static extern uint avio_rb16(AVIOContext* @s);
+
+        [DllImport(libavutilFilename)]
+        public static extern long av_frame_get_pkt_pos(AVFrame* @frame);
+
+        [DllImport(libavutilFilename)]
+        public static extern int av_opt_set_video_rate(void* @obj, [MarshalAs(UnmanagedType.LPStr)] string @name,
+            AVRational @val, int @search_flags);
+
+        [DllImport(libavcodecFilename)]
+        public static extern void av_resample_compensate(AVResampleContext* @c, int @sample_delta,
+            int @compensation_distance);
+
+        [DllImport(libavcodecFilename)]
+        public static extern void av_packet_free_side_data(AVPacket* @pkt);
+
+        [DllImport(libavformatFilename)]
+        public static extern int avio_open_dir(AVIODirContext** @s, [MarshalAs(UnmanagedType.LPStr)] string @url,
+            AVDictionary** @options);
+
+        [DllImport(libavutilFilename)]
+        public static extern long av_add_stable(AVRational @ts_tb, long @ts, AVRational @inc_tb, long @inc);
+
+        [DllImport(libswresampleFilename)]
+        public static extern int swr_is_initialized(SwrContext* @s);
+
+        [DllImport(libavcodecFilename)]
+        public static extern int av_copy_packet(AVPacket* @dst, AVPacket* @src);
+
+        [DllImport(libavfilterFilename)]
+        public static extern AVClass* avfilter_get_class();
+
+        [DllImport(libavcodecFilename)]
+        public static extern AVCodecID av_get_pcm_codec(AVSampleFormat @fmt, int @be);
+
+        [DllImport(libavutilFilename)]
+        public static extern int av_reallocp_array(void* @ptr, ulong @nmemb, ulong @size);
+
+        [DllImport(libavcodecFilename)]
+        public static extern AVBitStreamFilter* av_bsf_next(void** @opaque);
+
+        [DllImport(libavcodecFilename)]
+        public static extern int av_bsf_receive_packet(AVBSFContext* @ctx, AVPacket* @pkt);
+
+        [DllImport(libavutilFilename)]
+        public static extern string avutil_configuration();
+
+        [DllImport(libavutilFilename)]
+        public static extern void av_image_fill_max_pixsteps(ref int_array4 @max_pixsteps,
+            ref int_array4 @max_pixstep_comps, AVPixFmtDescriptor* @pixdesc);
+
+        [DllImport(libavfilterFilename)]
+        public static extern int avfilter_link_get_channels(AVFilterLink* @link);
+
+        [DllImport(libavformatFilename)]
+        public static extern AVDurationEstimationMethod
+            av_fmt_ctx_get_duration_estimation_method(AVFormatContext* @ctx);
+
+        [DllImport(libavutilFilename)]
+        public static extern string av_frame_side_data_name(AVFrameSideDataType @type);
+
+        [DllImport(libavutilFilename)]
+        public static extern void av_log_set_level(int @level);
+
+        [DllImport(libavutilFilename)]
+        public static extern void* av_opt_child_next(void* @obj, void* @prev);
+
+        [DllImport(libavfilterFilename)]
+        public static extern AVFilterContext* avfilter_graph_get_filter(AVFilterGraph* @graph,
+            [MarshalAs(UnmanagedType.LPStr)] string @name);
+
+        [DllImport(libavutilFilename)]
+        public static extern int av_frame_get_decode_error_flags(AVFrame* @frame);
+
+        [DllImport(libswscaleFilename)]
+        public static extern void sws_printVec2(SwsVector* @a, AVClass* @log_ctx, int @log_level);
+
+        [DllImport(libavutilFilename)]
+        public static extern int av_audio_fifo_space(AVAudioFifo* @af);
+
+        [DllImport(libavformatFilename)]
+        public static extern int av_match_ext([MarshalAs(UnmanagedType.LPStr)] string @filename,
+            [MarshalAs(UnmanagedType.LPStr)] string @extensions);
+
+        [DllImport(libavformatFilename)]
+        public static extern int avio_check([MarshalAs(UnmanagedType.LPStr)] string @url, int @flags);
+
+        [DllImport(libavformatFilename)]
+        public static extern AVInputFormat* av_iformat_next(AVInputFormat* @f);
+
+        [DllImport(libavutilFilename)]
+        public static extern long av_rescale_rnd(long @a, long @b, long @c, AVRounding @rnd);
+
+        [DllImport(libavutilFilename)]
+        public static extern void av_fast_mallocz(void* @ptr, uint* @size, ulong @min_size);
+
+        [DllImport(libswresampleFilename)]
+        public static extern int swr_build_matrix(ulong @in_layout, ulong @out_layout, double @center_mix_level,
+            double @surround_mix_level, double @lfe_mix_level, double @rematrix_maxval, double @rematrix_volume,
+            double* @matrix, int @stride, AVMatrixEncoding @matrix_encoding, void* @log_ctx);
+
+        [DllImport(libavcodecFilename)]
+        public static extern int avcodec_receive_frame(AVCodecContext* @avctx, AVFrame* @frame);
+
+        [DllImport(libavutilFilename)]
+        public static extern int av_frame_ref(AVFrame* @dst, AVFrame* @src);
+
+        [DllImport(libavcodecFilename)]
+        public static extern uint av_xiphlacing(byte* @s, uint @v);
+
+        [DllImport(libavutilFilename)]
+        public static extern byte* av_strdup([MarshalAs(UnmanagedType.LPStr)] string @s);
+
+        [DllImport(libswresampleFilename)]
+        public static extern int swr_drop_output(SwrContext* @s, int @count);
+
+        [DllImport(libavcodecFilename)]
+        public static extern void avpicture_free(AVPicture* @picture);
+
+        [DllImport(libavformatFilename)]
+        public static extern void avformat_free_context(AVFormatContext* @s);
+
+        [DllImport(libavcodecFilename)]
+        public static extern void audio_resample_close(ReSampleContext* @s);
+
+        [DllImport(libavcodecFilename)]
+        public static extern uint avcodec_version();
+
+        [DllImport(libavutilFilename)]
+        public static extern void av_max_alloc(ulong @max);
+
+        [DllImport(libavfilterFilename)]
+        public static extern string avfilter_configuration();
+
+        [DllImport(libavformatFilename)]
+        public static extern int avio_r8(AVIOContext* @s);
+
+        [DllImport(libavutilFilename)]
+        public static extern string av_get_media_type_string(AVMediaType @media_type);
+
+        [DllImport(libavformatFilename)]
+        public static extern int avio_accept(AVIOContext* @s, AVIOContext** @c);
+
+        [DllImport(libavutilFilename)]
+        public static extern void av_frame_set_pkt_duration(AVFrame* @frame, long @val);
+
+        [DllImport(libavutilFilename)]
+        public static extern AVDictionary* av_frame_get_metadata(AVFrame* @frame);
+
+        [DllImport(libavutilFilename)]
+        public static extern byte* av_timecode_make_string(AVTimecode* @tc, byte* @buf, int @framenum);
+
+        [DllImport(libavutilFilename)]
+        public static extern AVBufferRef* av_buffer_create(byte* @data, int @size, av_buffer_create_free_func @free,
+            void* @opaque, int @flags);
+
+        [DllImport(libswresampleFilename)]
+        public static extern long swr_get_delay(SwrContext* @s, long @base);
+
+        [DllImport(libavformatFilename)]
+        public static extern AVOutputFormat* av_guess_format([MarshalAs(UnmanagedType.LPStr)] string @short_name,
+            [MarshalAs(UnmanagedType.LPStr)] string @filename, [MarshalAs(UnmanagedType.LPStr)] string @mime_type);
+
+        [DllImport(libavcodecFilename)]
+        public static extern int av_bsf_list_parse_str([MarshalAs(UnmanagedType.LPStr)] string @str,
+            AVBSFContext** @bsf);
+
+        [DllImport(libavcodecFilename)]
+        public static extern AVCodecParameters* avcodec_parameters_alloc();
+
+        [DllImport(libavutilFilename)]
+        public static extern byte* av_fourcc_make_string(byte* @buf, uint @fourcc);
+
+        [DllImport(libavcodecFilename)]
+        public static extern int avpicture_layout(AVPicture* @src, AVPixelFormat @pix_fmt, int @width, int @height,
+            byte* @dest, int @dest_size);
+
+        [DllImport(libavdeviceFilename)]
+        public static extern AVOutputFormat* av_output_audio_device_next(AVOutputFormat* @d);
+
+        [DllImport(libavcodecFilename)]
+        public static extern int av_packet_merge_side_data(AVPacket* @pkt);
+
+        [DllImport(libavformatFilename)]
+        public static extern void av_format_set_video_codec(AVFormatContext* @s, AVCodec* @c);
+
+        [DllImport(libavcodecFilename)]
+        public static extern AVCodec* avcodec_find_decoder(AVCodecID @id);
+
+        [DllImport(libavutilFilename)]
+        public static extern void* av_realloc_array(void* @ptr, ulong @nmemb, ulong @size);
+
+        [DllImport(libavutilFilename)]
+        public static extern int av_opt_copy(void* @dest, void* @src);
+
+        [DllImport(libavformatFilename)]
+        public static extern int avformat_seek_file(AVFormatContext* @s, int @stream_index, long @min_ts, long @ts,
+            long @max_ts, int @flags);
+
+        [DllImport(libavformatFilename)]
+        public static extern AVInputFormat* av_find_input_format([MarshalAs(UnmanagedType.LPStr)] string @short_name);
+
+        [DllImport(libavutilFilename)]
+        public static extern void av_buffer_pool_uninit(AVBufferPool** @pool);
+
+        [DllImport(libavutilFilename)]
+        public static extern int av_audio_fifo_peek_at(AVAudioFifo* @af, void** @data, int @nb_samples, int @offset);
+
+        [DllImport(libavformatFilename)]
+        public static extern int avio_get_dyn_buf(AVIOContext* @s, byte** @pbuffer);
+
+        [DllImport(libavutilFilename)]
+        public static extern AVPixelFormat av_pix_fmt_swap_endianness(AVPixelFormat @pix_fmt);
+
+        [DllImport(libavformatFilename)]
+        public static extern int avio_read_dir(AVIODirContext* @s, AVIODirEntry** @next);
+
+        [DllImport(libavutilFilename)]
+        public static extern int av_frame_get_pkt_size(AVFrame* @frame);
+
+        [DllImport(libavutilFilename)]
+        public static extern int av_frame_is_writable(AVFrame* @frame);
+
+        [DllImport(libavutilFilename)]
+        public static extern uint av_timecode_get_smpte_from_framenum(AVTimecode* @tc, int @framenum);
+
+        [DllImport(libavcodecFilename)]
+        public static extern int av_get_audio_frame_duration2(AVCodecParameters* @par, int @frame_bytes);
+
+        [DllImport(libavutilFilename)]
+        public static extern ulong av_get_channel_layout([MarshalAs(UnmanagedType.LPStr)] string @name);
+
+        [DllImport(libavutilFilename)]
+        public static extern int av_opt_set_double(void* @obj, [MarshalAs(UnmanagedType.LPStr)] string @name,
+            double @val, int @search_flags);
+
+        [DllImport(libavcodecFilename)]
+        public static extern void av_codec_set_seek_preroll(AVCodecContext* @avctx, int @val);
+
+        [DllImport(libavcodecFilename)]
+        public static extern string avcodec_get_name(AVCodecID @id);
+
+        [DllImport(libavformatFilename)]
+        public static extern void avio_write_marker(AVIOContext* @s, long @time, AVIODataMarkerType @type);
+
+        [DllImport(libavformatFilename)]
+        public static extern int avformat_network_deinit();
+
+        [DllImport(libavformatFilename)]
+        public static extern int av_append_packet(AVIOContext* @s, AVPacket* @pkt, int @size);
+
+        [DllImport(libavcodecFilename)]
+        public static extern int av_codec_get_lowres(AVCodecContext* @avctx);
+
+        [DllImport(libavcodecFilename)]
+        public static extern AVCodecParser* av_parser_next(AVCodecParser* @c);
+
+        [DllImport(libavutilFilename)]
+        public static extern AVClassCategory av_default_get_category(void* @ptr);
+
+        [DllImport(libavfilterFilename)]
+        public static extern int avfilter_graph_request_oldest(AVFilterGraph* @graph);
+
+        [DllImport(libavcodecFilename)]
+        public static extern int av_codec_get_seek_preroll(AVCodecContext* @avctx);
+
+        [DllImport(libavutilFilename)]
+        public static extern int av_fifo_generic_peek(AVFifoBuffer* @f, void* @dest, int @buf_size,
+            av_fifo_generic_peek_func_func @func);
+
+        [DllImport(libavutilFilename)]
+        public static extern byte* av_get_pix_fmt_string(byte* @buf, int @buf_size, AVPixelFormat @pix_fmt);
+
+        [DllImport(libavformatFilename)]
+        public static extern void av_format_set_data_codec(AVFormatContext* @s, AVCodec* @c);
+
+        [DllImport(libavcodecFilename)]
+        public static extern int avcodec_parameters_from_context(AVCodecParameters* @par, AVCodecContext* @codec);
+
+        [DllImport(libavutilFilename)]
+        public static extern int av_image_check_sar(uint @w, uint @h, AVRational @sar);
+
+        [DllImport(libavformatFilename)]
+        public static extern void avio_flush(AVIOContext* @s);
+
+        [DllImport(libavdeviceFilename)]
+        public static extern int avdevice_list_devices(AVFormatContext* @s, AVDeviceInfoList** @device_list);
+
+        [DllImport(libavformatFilename)]
+        public static extern int avpriv_io_delete([MarshalAs(UnmanagedType.LPStr)] string @url);
+
+        [DllImport(libavfilterFilename)]
+        public static extern int av_buffersrc_write_frame(AVFilterContext* @ctx, AVFrame* @frame);
+
+        [DllImport(libavcodecFilename)]
+        public static extern int av_bsf_get_null_filter(AVBSFContext** @bsf);
+
+        [DllImport(libavformatFilename)]
+        public static extern int avio_get_str(AVIOContext* @pb, int @maxlen, byte* @buf, int @buflen);
+
+        [DllImport(libavcodecFilename)]
+        public static extern int avcodec_get_context_defaults3(AVCodecContext* @s, AVCodec* @codec);
+
+        [DllImport(libavutilFilename)]
+        public static extern string av_get_sample_fmt_name(AVSampleFormat @sample_fmt);
+
+        [DllImport(libavcodecFilename)]
+        public static extern AVPixelFormat avcodec_find_best_pix_fmt_of_2(AVPixelFormat @dst_pix_fmt1,
+            AVPixelFormat @dst_pix_fmt2, AVPixelFormat @src_pix_fmt, int @has_alpha, int* @loss_ptr);
+
+        [DllImport(libswscaleFilename)]
+        public static extern SwsVector* sws_allocVec(int @length);
+
+        [DllImport(libavdeviceFilename)]
+        public static extern int avdevice_list_input_sources(AVInputFormat* @device,
+            [MarshalAs(UnmanagedType.LPStr)] string @device_name, AVDictionary* @device_options,
+            AVDeviceInfoList** @device_list);
+
+        [DllImport(libavutilFilename)]
+        public static extern int av_frame_copy(AVFrame* @dst, AVFrame* @src);
+
+        [DllImport(libavcodecFilename)]
+        public static extern byte* av_packet_pack_dictionary(AVDictionary* @dict, int* @size);
+
+        [DllImport(libavformatFilename)]
+        public static extern int avio_closep(AVIOContext** @s);
+
+        [DllImport(libavcodecFilename)]
+        public static extern AVHWAccel* av_hwaccel_next(AVHWAccel* @hwaccel);
+
+        [DllImport(libavformatFilename)]
+        public static extern av_format_get_open_cb_func av_format_get_open_cb(AVFormatContext* @s);
+
+        [DllImport(libswscaleFilename)]
+        public static extern void sws_freeFilter(SwsFilter* @filter);
+
+        [DllImport(libavformatFilename)]
+        public static extern int av_seek_frame(AVFormatContext* @s, int @stream_index, long @timestamp, int @flags);
+
+        [DllImport(libavformatFilename)]
+        public static extern int avformat_match_stream_specifier(AVFormatContext* @s, AVStream* @st,
+            [MarshalAs(UnmanagedType.LPStr)] string @spec);
+
+        [DllImport(libavcodecFilename)]
+        public static extern int av_codec_get_max_lowres(AVCodec* @codec);
+
+        [DllImport(libavfilterFilename)]
+        public static extern void avfilter_link_set_closed(AVFilterLink* @link, int @closed);
+
+        [DllImport(libavutilFilename)]
+        public static extern byte* av_get_sample_fmt_string(byte* @buf, int @buf_size, AVSampleFormat @sample_fmt);
+
+        [DllImport(libavfilterFilename)]
+        public static extern int avfilter_pad_count(AVFilterPad* @pads);
+
+        [DllImport(libavformatFilename)]
+        public static extern AVCodecID av_guess_codec(AVOutputFormat* @fmt,
+            [MarshalAs(UnmanagedType.LPStr)] string @short_name, [MarshalAs(UnmanagedType.LPStr)] string @filename,
+            [MarshalAs(UnmanagedType.LPStr)] string @mime_type, AVMediaType @type);
+
+        [DllImport(libavcodecFilename)]
+        public static extern AVCodecParserContext* av_parser_init(int @codec_id);
+
+        [DllImport(libavutilFilename)]
+        public static extern int av_get_padded_bits_per_pixel(AVPixFmtDescriptor* @pixdesc);
+
+        [DllImport(libavutilFilename)]
+        public static extern int av_opt_get_video_rate(void* @obj, [MarshalAs(UnmanagedType.LPStr)] string @name,
+            int @search_flags, AVRational* @out_val);
+
+        [DllImport(libavfilterFilename)]
+        public static extern int avfilter_register(AVFilter* @filter);
+
+        [DllImport(libavformatFilename)]
+        public static extern int av_apply_bitstream_filters(AVCodecContext* @codec, AVPacket* @pkt,
+            AVBitStreamFilterContext* @bsfc);
+
+        [DllImport(libavutilFilename)]
+        public static extern void av_fifo_reset(AVFifoBuffer* @f);
+
+        [DllImport(libavcodecFilename)]
+        public static extern void av_bitstream_filter_close(AVBitStreamFilterContext* @bsf);
+
+        [DllImport(libavutilFilename)]
+        public static extern void* av_realloc(void* @ptr, ulong @size);
+
+        [DllImport(libavutilFilename)]
+        public static extern int av_fifo_generic_read(AVFifoBuffer* @f, void* @dest, int @buf_size,
+            av_fifo_generic_read_func_func @func);
+
+        [DllImport(libavformatFilename)]
+        public static extern AVProgram* av_new_program(AVFormatContext* @s, int @id);
+
+        [DllImport(libavfilterFilename)]
+        public static extern int avfilter_graph_config(AVFilterGraph* @graphctx, void* @log_ctx);
+
+        [DllImport(libavcodecFilename)]
+        public static extern void av_init_packet(AVPacket* @pkt);
+
+        [DllImport(libavutilFilename)]
+        public static extern int av_image_fill_pointers(ref byte_ptrArray4 @data, AVPixelFormat @pix_fmt, int @height,
+            byte* @ptr, int_array4 @linesizes);
+
+        [DllImport(libavutilFilename)]
+        public static extern AVPixFmtDescriptor* av_pix_fmt_desc_get(AVPixelFormat @pix_fmt);
+
+        [DllImport(libavdeviceFilename)]
+        public static extern int avdevice_app_to_dev_control_message(AVFormatContext* @s, AVAppToDevMessageType @type,
+            void* @data, ulong @data_size);
+
+        [DllImport(libavformatFilename)]
+        public static extern AVRational av_guess_frame_rate(AVFormatContext* @ctx, AVStream* @stream, AVFrame* @frame);
+
+        [DllImport(libavutilFilename)]
+        public static extern long av_frame_get_pkt_duration(AVFrame* @frame);
+
+        [DllImport(libavutilFilename)]
+        public static extern int av_fifo_grow(AVFifoBuffer* @f, uint @additional_space);
+
+        [DllImport(libavformatFilename)]
+        public static extern int avio_feof(AVIOContext* @s);
+
+        [DllImport(libavformatFilename)]
+        public static extern ulong avio_rb64(AVIOContext* @s);
+
+        [DllImport(libavutilFilename)]
+        public static extern int av_opt_set_image_size(void* @obj, [MarshalAs(UnmanagedType.LPStr)] string @name,
+            int @w, int @h, int @search_flags);
+
+        [DllImport(libavcodecFilename)]
+        public static extern AVCodecDescriptor* av_codec_get_codec_descriptor(AVCodecContext* @avctx);
+
+        [DllImport(libavformatFilename)]
+        public static extern AVCodec* av_format_get_video_codec(AVFormatContext* @s);
+
+        [DllImport(libavcodecFilename)]
+        public static extern AVClass* av_bsf_get_class();
+
+        [DllImport(libswresampleFilename)]
+        public static extern SwrContext* swr_alloc();
+
+        [DllImport(libavutilFilename)]
+        public static extern void av_image_copy_plane(byte* @dst, int @dst_linesize, byte* @src, int @src_linesize,
+            int @bytewidth, int @height);
+
+        [DllImport(libavfilterFilename)]
+        public static extern int avfilter_graph_add_filter(AVFilterGraph* @graphctx, AVFilterContext* @filter);
+
+        [DllImport(libavfilterFilename)]
+        public static extern AVRational av_buffersink_get_sample_aspect_ratio(AVFilterContext* @ctx);
+
+        [DllImport(libavutilFilename)]
+        public static extern string av_get_pix_fmt_name(AVPixelFormat @pix_fmt);
+
+        [DllImport(libavformatFilename)]
+        public static extern int av_find_default_stream_index(AVFormatContext* @s);
+
+        [DllImport(libavutilFilename)]
+        public static extern int av_opt_flag_is_set(void* @obj, [MarshalAs(UnmanagedType.LPStr)] string @field_name,
+            [MarshalAs(UnmanagedType.LPStr)] string @flag_name);
+
+        [DllImport(libavutilFilename)]
+        public static extern void* av_buffer_get_opaque(AVBufferRef* @buf);
+
+        [DllImport(libavutilFilename)]
+        public static extern int av_log2(uint @v);
+
+        [DllImport(libavcodecFilename)]
+        public static extern void avcodec_register_all();
+
+        [DllImport(libavutilFilename)]
+        public static extern int av_reallocp(void* @ptr, ulong @size);
+
+        [DllImport(libavformatFilename)]
+        public static extern AVCodecID av_codec_get_id(AVCodecTag** @tags, uint @tag);
+
+        [DllImport(libavutilFilename)]
+        public static extern int av_image_alloc(ref byte_ptrArray4 @pointers, ref int_array4 @linesizes, int @w, int @h,
+            AVPixelFormat @pix_fmt, int @align);
+
+        [DllImport(libavcodecFilename)]
+        public static extern void avcodec_string(byte* @buf, int @buf_size, AVCodecContext* @enc, int @encode);
+
+        [DllImport(libswscaleFilename)]
+        public static extern int* sws_getCoefficients(int @colorspace);
+
+        [DllImport(libavutilFilename)]
+        public static extern void av_frame_unref(AVFrame* @frame);
+
+        [DllImport(libavutilFilename)]
+        public static extern int av_dynarray_add_nofree(void* @tab_ptr, int* @nb_ptr, void* @elem);
+
+        [DllImport(libavcodecFilename)]
+        public static extern int av_packet_copy_props(AVPacket* @dst, AVPacket* @src);
+
+        [DllImport(libavformatFilename)]
+        public static extern int avpriv_io_move([MarshalAs(UnmanagedType.LPStr)] string @url_src,
+            [MarshalAs(UnmanagedType.LPStr)] string @url_dst);
+
+        [DllImport(libavcodecFilename)]
+        public static extern int av_get_exact_bits_per_sample(AVCodecID @codec_id);
+
+        [DllImport(libavutilFilename)]
+        public static extern int av_opt_eval_flags(void* @obj, AVOption* @o,
+            [MarshalAs(UnmanagedType.LPStr)] string @val, int* @flags_out);
+
+        [DllImport(libavcodecFilename)]
+        public static extern int av_get_bits_per_sample(AVCodecID @codec_id);
+
+        [DllImport(libavutilFilename)]
+        public static extern int av_get_pix_fmt_loss(AVPixelFormat @dst_pix_fmt, AVPixelFormat @src_pix_fmt,
+            int @has_alpha);
+
+        [DllImport(libavcodecFilename)]
+        public static extern int av_bitstream_filter_filter(AVBitStreamFilterContext* @bsfc, AVCodecContext* @avctx,
+            [MarshalAs(UnmanagedType.LPStr)] string @args, byte** @poutbuf, int* @poutbuf_size, byte* @buf,
+            int @buf_size, int @keyframe);
+
+        [DllImport(libavutilFilename)]
+        public static extern int av_strerror(int @errnum, byte* @errbuf, ulong @errbuf_size);
+
+        [DllImport(libavutilFilename)]
+        public static extern AVBufferPool* av_buffer_pool_init(int @size, av_buffer_pool_init_alloc_func @alloc);
+
+        [DllImport(libavformatFilename)]
+        public static extern int avio_put_str16be(AVIOContext* @s, [MarshalAs(UnmanagedType.LPStr)] string @str);
+
+        [DllImport(libswscaleFilename)]
+        public static extern SwsVector* sws_getIdentityVec();
+
+        [DllImport(libavfilterFilename)]
+        public static extern void av_buffersink_set_frame_size(AVFilterContext* @ctx, uint @frame_size);
+
+        [DllImport(libavcodecFilename)]
+        public static extern int avcodec_default_execute(AVCodecContext* @c, avcodec_default_execute_func_func @func,
+            void* @arg, int* @ret, int @count, int @size);
+
+        [DllImport(libavutilFilename)]
+        public static extern int av_dict_count(AVDictionary* @m);
+
+        [DllImport(libavformatFilename)]
+        public static extern uint avio_rl16(AVIOContext* @s);
+
+        [DllImport(libswscaleFilename)]
+        public static extern void
+            sws_convertPalette8ToPacked32(byte* @src, byte* @dst, int @num_pixels, byte* @palette);
+
+        [DllImport(libavcodecFilename)]
+        public static extern AVBitStreamFilter* av_bitstream_filter_next(AVBitStreamFilter* @f);
+
+        [DllImport(libavutilFilename)]
+        public static extern void av_audio_fifo_reset(AVAudioFifo* @af);
+
+        [DllImport(libavcodecFilename)]
+        public static extern int avcodec_receive_packet(AVCodecContext* @avctx, AVPacket* @avpkt);
+
+        [DllImport(libavcodecFilename)]
+        public static extern int avcodec_encode_subtitle(AVCodecContext* @avctx, byte* @buf, int @buf_size,
+            AVSubtitle* @sub);
+
+        [DllImport(libavformatFilename)]
+        public static extern void av_pkt_dump2(_iobuf* @f, AVPacket* @pkt, int @dump_payload, AVStream* @st);
+
+        [DllImport(libavutilFilename)]
+        public static extern int av_opt_eval_float(void* @obj, AVOption* @o,
+            [MarshalAs(UnmanagedType.LPStr)] string @val, float* @float_out);
+
+        [DllImport(libavformatFilename)]
+        public static extern int av_index_search_timestamp(AVStream* @st, long @timestamp, int @flags);
+
+        [DllImport(libavfilterFilename)]
+        public static extern int av_buffersink_get_format(AVFilterContext* @ctx);
+
+        [DllImport(libavformatFilename)]
+        public static extern AVCodecTag* avformat_get_mov_video_tags();
+
+        [DllImport(libavfilterFilename)]
+        public static extern int av_buffersrc_add_frame(AVFilterContext* @ctx, AVFrame* @frame);
+
+        [DllImport(libavutilFilename)]
+        public static extern string av_color_range_name(AVColorRange @range);
+
+        [DllImport(libavfilterFilename)]
+        public static extern void avfilter_free(AVFilterContext* @filter);
+
+        [DllImport(libavcodecFilename)]
+        public static extern AVCodec* avcodec_find_decoder_by_name([MarshalAs(UnmanagedType.LPStr)] string @name);
+
+        [DllImport(libavcodecFilename)]
+        public static extern void av_fast_padded_malloc(void* @ptr, uint* @size, ulong @min_size);
+
+        [DllImport(libavcodecFilename)]
+        public static extern int av_packet_ref(AVPacket* @dst, AVPacket* @src);
+
+        [DllImport(libavutilFilename)]
+        public static extern byte* av_timecode_make_mpeg_tc_string(byte* @buf, uint @tc25bit);
+
+        [DllImport(libavutilFilename)]
+        public static extern AVAudioFifo* av_audio_fifo_alloc(AVSampleFormat @sample_fmt, int @channels,
+            int @nb_samples);
+
+        [DllImport(libavutilFilename)]
+        public static extern int av_opt_set_dict(void* @obj, AVDictionary** @options);
+
+        [DllImport(libavutilFilename)]
+        public static extern AVOption* av_opt_find2(void* @obj, [MarshalAs(UnmanagedType.LPStr)] string @name,
+            [MarshalAs(UnmanagedType.LPStr)] string @unit, int @opt_flags, int @search_flags, void** @target_obj);
+
+        [DllImport(libavutilFilename)]
+        public static extern ulong av_channel_layout_extract_channel(ulong @channel_layout, int @index);
+
+        [DllImport(libavdeviceFilename)]
+        public static extern AVInputFormat* av_input_video_device_next(AVInputFormat* @d);
+
+        [DllImport(libavcodecFilename)]
+        public static extern int avcodec_open2(AVCodecContext* @avctx, AVCodec* @codec, AVDictionary** @options);
+
+        [DllImport(libswscaleFilename)]
+        public static extern void sws_normalizeVec(SwsVector* @a, double @height);
+
+        [DllImport(libavutilFilename)]
+        public static extern AVSampleFormat av_get_sample_fmt([MarshalAs(UnmanagedType.LPStr)] string @name);
+
+        [DllImport(libswresampleFilename)]
+        public static extern int swr_init(SwrContext* @s);
+
+        [DllImport(libavutilFilename)]
+        public static extern int av_samples_fill_arrays(byte** @audio_data, int* @linesize, byte* @buf,
+            int @nb_channels, int @nb_samples, AVSampleFormat @sample_fmt, int @align);
+
+        [DllImport(libavfilterFilename)]
+        public static extern AVMediaType av_buffersink_get_type(AVFilterContext* @ctx);
+
+        [DllImport(libavcodecFilename)]
+        public static extern AVPacket* av_packet_alloc();
+
+        [DllImport(libavcodecFilename)]
+        public static extern AVChromaLocation avcodec_chroma_pos_to_enum(int @xpos, int @ypos);
+
+        [DllImport(libavcodecFilename)]
+        public static extern void av_free_packet(AVPacket* @pkt);
+
+        [DllImport(libavformatFilename)]
+        public static extern ulong avio_rl64(AVIOContext* @s);
+
+        [DllImport(libavutilFilename)]
+        public static extern AVBufferRef* av_buffer_allocz(int @size);
+
+        [DllImport(libswscaleFilename)]
+        public static extern void sws_scaleVec(SwsVector* @a, double @scalar);
+
+        [DllImport(libavfilterFilename)]
+        public static extern AVMediaType avfilter_pad_get_type(AVFilterPad* @pads, int @pad_idx);
+
+        [DllImport(libavcodecFilename)]
+        public static extern AVPacket* av_packet_clone(AVPacket* @src);
+
+        [DllImport(libavformatFilename)]
+        public static extern int av_find_best_stream(AVFormatContext* @ic, AVMediaType @type, int @wanted_stream_nb,
+            int @related_stream, AVCodec** @decoder_ret, int @flags);
+
+        [DllImport(libpostprocFilename)]
+        public static extern void* pp_get_mode_by_name_and_quality([MarshalAs(UnmanagedType.LPStr)] string @name,
+            int @quality);
+
+        [DllImport(libavcodecFilename)]
+        public static extern byte* av_packet_get_side_data(AVPacket* @pkt, AVPacketSideDataType @type, int* @size);
+
+        [DllImport(libavutilFilename)]
+        public static extern byte* av_timecode_make_smpte_tc_string(byte* @buf, uint @tcsmpte, int @prevent_df);
+
+        [DllImport(libavutilFilename)]
+        public static extern void av_frame_free(AVFrame** @frame);
+
+        [DllImport(libavcodecFilename)]
+        public static extern int avcodec_send_packet(AVCodecContext* @avctx, AVPacket* @avpkt);
+
+        [DllImport(libavfilterFilename)]
+        public static extern void avfilter_inout_free(AVFilterInOut** @inout);
+
+        [DllImport(libavutilFilename)]
+        public static extern void* av_dynarray2_add(void** @tab_ptr, int* @nb_ptr, ulong @elem_size, byte* @elem_data);
+
+        [DllImport(libavutilFilename)]
+        public static extern int av_get_extended_channel_layout([MarshalAs(UnmanagedType.LPStr)] string @name,
+            ulong* @channel_layout, int* @nb_channels);
+
+        [DllImport(libavutilFilename)]
+        public static extern int av_opt_set_from_string(void* @ctx, [MarshalAs(UnmanagedType.LPStr)] string @opts,
+            byte** @shorthand, [MarshalAs(UnmanagedType.LPStr)] string @key_val_sep,
+            [MarshalAs(UnmanagedType.LPStr)] string @pairs_sep);
+
+        [DllImport(libavformatFilename)]
+        public static extern int av_interleaved_write_uncoded_frame(AVFormatContext* @s, int @stream_index,
+            AVFrame* @frame);
+
+        [DllImport(libavfilterFilename)]
+        public static extern string avfilter_pad_get_name(AVFilterPad* @pads, int @pad_idx);
+
+        [DllImport(libavutilFilename)]
+        public static extern int av_nearer_q(AVRational @q, AVRational @q1, AVRational @q2);
+
+        [DllImport(libavcodecFilename)]
+        public static extern int av_picture_pad(AVPicture* @dst, AVPicture* @src, int @height, int @width,
+            AVPixelFormat @pix_fmt, int @padtop, int @padbottom, int @padleft, int @padright, int* @color);
+
+        [DllImport(libavfilterFilename)]
+        public static extern int avfilter_init_dict(AVFilterContext* @ctx, AVDictionary** @options);
+
+        [DllImport(libavutilFilename)]
+        public static extern byte* av_strndup([MarshalAs(UnmanagedType.LPStr)] string @s, ulong @len);
+
+        [DllImport(libavformatFilename)]
+        public static extern int av_read_frame(AVFormatContext* @s, AVPacket* @pkt);
+
+        [DllImport(libavcodecFilename)]
+        public static extern void av_register_bitstream_filter(AVBitStreamFilter* @bsf);
+
+        [DllImport(libavutilFilename)]
+        public static extern void av_dict_free(AVDictionary** @m);
+
+        [DllImport(libavformatFilename)]
+        public static extern void av_url_split(byte* @proto, int @proto_size, byte* @authorization,
+            int @authorization_size, byte* @hostname, int @hostname_size, int* @port_ptr, byte* @path, int @path_size,
+            [MarshalAs(UnmanagedType.LPStr)] string @url);
+
+        [DllImport(libavutilFilename)]
+        public static extern void av_opt_free(void* @obj);
+
+        [DllImport(libavformatFilename)]
+        public static extern int avformat_transfer_internal_stream_timing_info(AVOutputFormat* @ofmt, AVStream* @ost,
+            AVStream* @ist, AVTimebaseSource @copy_tb);
+
+        [DllImport(libavutilFilename)]
+        public static extern int av_buffer_realloc(AVBufferRef** @buf, int @size);
+
+        [DllImport(libavutilFilename)]
+        public static extern int av_opt_set_q(void* @obj, [MarshalAs(UnmanagedType.LPStr)] string @name,
+            AVRational @val, int @search_flags);
+
+        [DllImport(libavutilFilename)]
+        public static extern long av_gcd(long @a, long @b);
+
+        [DllImport(libavutilFilename)]
+        public static extern int av_log_get_flags();
+
+        [DllImport(libavutilFilename)]
+        public static extern int av_samples_copy(byte** @dst, byte** @src, int @dst_offset, int @src_offset,
+            int @nb_samples, int @nb_channels, AVSampleFormat @sample_fmt);
+
+        [DllImport(libavformatFilename)]
+        public static extern void av_format_set_opaque(AVFormatContext* @s, void* @opaque);
+
+        [DllImport(libavutilFilename)]
+        public static extern long av_rescale_delta(AVRational @in_tb, long @in_ts, AVRational @fs_tb, int @duration,
+            long* @last, AVRational @out_tb);
+
+        [DllImport(libavcodecFilename)]
+        public static extern int av_bsf_init(AVBSFContext* @ctx);
+
+        [DllImport(libavutilFilename)]
+        public static extern int av_get_channel_layout_channel_index(ulong @channel_layout, ulong @channel);
+
+        [DllImport(libavformatFilename)]
+        public static extern int avio_close(AVIOContext* @s);
+
+        [DllImport(libavcodecFilename)]
+        public static extern string avcodec_license();
+
+        [DllImport(libavutilFilename)]
+        public static extern void av_read_image_line(ushort* @dst, ref byte_ptrArray4 @data, int_array4 @linesize,
+            AVPixFmtDescriptor* @desc, int @x, int @y, int @c, int @w, int @read_pal_component);
+
+        [DllImport(libavfilterFilename)]
+        public static extern int avfilter_graph_send_command(AVFilterGraph* @graph,
+            [MarshalAs(UnmanagedType.LPStr)] string @target, [MarshalAs(UnmanagedType.LPStr)] string @cmd,
+            [MarshalAs(UnmanagedType.LPStr)] string @arg, byte* @res, int @res_len, int @flags);
+
+        [DllImport(libavutilFilename)]
+        public static extern void av_frame_set_color_range(AVFrame* @frame, AVColorRange @val);
+
+        [DllImport(libavutilFilename)]
+        public static extern void av_frame_set_pkt_pos(AVFrame* @frame, long @val);
+
+        [DllImport(libavcodecFilename)]
+        public static extern int av_parser_change(AVCodecParserContext* @s, AVCodecContext* @avctx, byte** @poutbuf,
+            int* @poutbuf_size, byte* @buf, int @buf_size, int @keyframe);
+
+        [DllImport(libavcodecFilename)]
+        public static extern int av_bsf_alloc(AVBitStreamFilter* @filter, AVBSFContext** @ctx);
+
+        [DllImport(libavutilFilename)]
+        public static extern int av_dict_copy(AVDictionary** @dst, AVDictionary* @src, int @flags);
+
+        [DllImport(libavutilFilename)]
+        public static extern int av_timecode_adjust_ntsc_framenum2(int @framenum, int @fps);
+
+        [DllImport(libavformatFilename)]
+        public static extern void av_dump_format(AVFormatContext* @ic, int @index,
+            [MarshalAs(UnmanagedType.LPStr)] string @url, int @is_output);
+
+        [DllImport(libswresampleFilename)]
+        public static extern int swr_convert(SwrContext* @s, byte** @out, int @out_count, byte** @in, int @in_count);
+
+        [DllImport(libavutilFilename)]
+        public static extern int av_set_options_string(void* @ctx, [MarshalAs(UnmanagedType.LPStr)] string @opts,
+            [MarshalAs(UnmanagedType.LPStr)] string @key_val_sep, [MarshalAs(UnmanagedType.LPStr)] string @pairs_sep);
+
+        [DllImport(libavformatFilename)]
+        public static extern int avformat_open_input(AVFormatContext** @ps,
+            [MarshalAs(UnmanagedType.LPStr)] string @url, AVInputFormat* @fmt, AVDictionary** @options);
+
+        [DllImport(libavfilterFilename)]
+        public static extern int av_buffersink_get_samples(AVFilterContext* @ctx, AVFrame* @frame, int @nb_samples);
+
+        [DllImport(libavutilFilename)]
+        public static extern int av_audio_fifo_drain(AVAudioFifo* @af, int @nb_samples);
+
+        [DllImport(libavcodecFilename)]
+        public static extern void av_parser_close(AVCodecParserContext* @s);
+
+        [DllImport(libavcodecFilename)]
+        public static extern void av_packet_unref(AVPacket* @pkt);
+
+        [DllImport(libpostprocFilename)]
+        public static extern void pp_free_mode(void* @mode);
+
+        [DllImport(libavutilFilename)]
+        public static extern void av_memcpy_backptr(byte* @dst, int @back, int @cnt);
+
+        [DllImport(libavutilFilename)]
+        public static extern string av_version_info();
+
+        [DllImport(libavcodecFilename)]
+        public static extern AVCodec* avcodec_find_encoder_by_name([MarshalAs(UnmanagedType.LPStr)] string @name);
+
+        [DllImport(libavutilFilename)]
+        public static extern int av_parse_cpu_flags([MarshalAs(UnmanagedType.LPStr)] string @s);
+
+        [DllImport(libavcodecFilename)]
+        public static extern int av_grow_packet(AVPacket* @pkt, int @grow_by);
+
+        [DllImport(libavcodecFilename)]
+        public static extern int av_bsf_send_packet(AVBSFContext* @ctx, AVPacket* @pkt);
+
+        [DllImport(libavfilterFilename)]
+        public static extern int avfilter_graph_queue_command(AVFilterGraph* @graph,
+            [MarshalAs(UnmanagedType.LPStr)] string @target, [MarshalAs(UnmanagedType.LPStr)] string @cmd,
+            [MarshalAs(UnmanagedType.LPStr)] string @arg, int @flags, double @ts);
+
+        [DllImport(libavutilFilename)]
+        public static extern string av_get_channel_description(ulong @channel);
+
+        [DllImport(libavfilterFilename)]
+        public static extern int av_buffersink_get_sample_rate(AVFilterContext* @ctx);
+
+        [DllImport(libavformatFilename)]
+        public static extern void avio_wb32(AVIOContext* @s, uint @val);
+
+        [DllImport(libswresampleFilename)]
+        public static extern AVClass* swr_get_class();
+
+        [DllImport(libavutilFilename)]
+        public static extern int av_timecode_init(AVTimecode* @tc, AVRational @rate, int @flags, int @frame_start,
+            void* @log_ctx);
+
+        [DllImport(libavutilFilename)]
+        public static extern void av_log_set_flags(int @arg);
+
+        [DllImport(libavutilFilename)]
+        public static extern int av_image_check_size(uint @w, uint @h, int @log_offset, void* @log_ctx);
+
+        [DllImport(libavutilFilename)]
+        public static extern int av_opt_get_q(void* @obj, [MarshalAs(UnmanagedType.LPStr)] string @name,
+            int @search_flags, AVRational* @out_val);
+
+        [DllImport(libavformatFilename)]
+        public static extern uint avio_rb24(AVIOContext* @s);
+
+        [DllImport(libavutilFilename)]
+        public static extern void av_image_copy_uc_from(ref byte_ptrArray4 @dst_data, long_array4 @dst_linesizes,
+            ref byte_ptrArray4 @src_data, long_array4 @src_linesizes, AVPixelFormat @pix_fmt, int @width, int @height);
+
+        [DllImport(libavcodecFilename)]
+        public static extern AVMediaType avcodec_get_type(AVCodecID @codec_id);
+
+        [DllImport(libavutilFilename)]
+        public static extern AVColorSpace av_frame_get_colorspace(AVFrame* @frame);
+
+        [DllImport(libavfilterFilename)]
+        public static extern AVFilterGraph* avfilter_graph_alloc();
+
+        [DllImport(libavutilFilename)]
+        public static extern int av_frame_get_buffer(AVFrame* @frame, int @align);
+
+        [DllImport(libavutilFilename)]
+        public static extern AVRational av_mul_q(AVRational @b, AVRational @c);
+
+        [DllImport(libavcodecFilename)]
+        public static extern string avcodec_configuration();
+
+        [DllImport(libavfilterFilename)]
+        public static extern void avfilter_link_free(AVFilterLink** @link);
+
+        [DllImport(libavfilterFilename)]
+        public static extern byte* avfilter_graph_dump(AVFilterGraph* @graph,
+            [MarshalAs(UnmanagedType.LPStr)] string @options);
+
+        [DllImport(libavformatFilename)]
+        public static extern int av_read_pause(AVFormatContext* @s);
+
+        [DllImport(libswscaleFilename)]
+        public static extern SwsContext* sws_getContext(int @srcW, int @srcH, AVPixelFormat @srcFormat, int @dstW,
+            int @dstH, AVPixelFormat @dstFormat, int @flags, SwsFilter* @srcFilter, SwsFilter* @dstFilter,
+            double* @param);
+
+        [DllImport(libavcodecFilename)]
+        public static extern int av_new_packet(AVPacket* @pkt, int @size);
+
+        [DllImport(libavcodecFilename)]
+        public static extern int avcodec_decode_subtitle2(AVCodecContext* @avctx, AVSubtitle* @sub, int* @got_sub_ptr,
+            AVPacket* @avpkt);
+
+        [DllImport(libavdeviceFilename)]
+        public static extern void avdevice_register_all();
+
+        [DllImport(libavfilterFilename)]
+        public static extern int av_buffersrc_parameters_set(AVFilterContext* @ctx, AVBufferSrcParameters* @param);
+
+        [DllImport(libavutilFilename)]
+        public static extern AVFifoBuffer* av_fifo_alloc(uint @size);
+
+        [DllImport(libavcodecFilename)]
+        public static extern int av_picture_crop(AVPicture* @dst, AVPicture* @src, AVPixelFormat @pix_fmt,
+            int @top_band, int @left_band);
+
+        [DllImport(libavformatFilename)]
+        public static extern uint avio_rl24(AVIOContext* @s);
+
+        [DllImport(libavcodecFilename)]
+        public static extern void avcodec_get_chroma_sub_sample(AVPixelFormat @pix_fmt, int* @h_shift, int* @v_shift);
+
+        [DllImport(libavutilFilename)]
+        public static extern void av_get_channel_layout_string(byte* @buf, int @buf_size, int @nb_channels,
+            ulong @channel_layout);
+
+        [DllImport(libavutilFilename)]
+        public static extern int av_audio_fifo_read(AVAudioFifo* @af, void** @data, int @nb_samples);
+
+        [DllImport(libavutilFilename)]
+        public static extern void av_fast_malloc(void* @ptr, uint* @size, ulong @min_size);
+
+        [DllImport(libavutilFilename)]
+        public static extern int av_cpu_count();
+
+        [DllImport(libavcodecFilename)]
+        public static extern int av_packet_split_side_data(AVPacket* @pkt);
+
+        [DllImport(libavutilFilename)]
+        public static extern void av_image_copy(ref byte_ptrArray4 @dst_data, ref int_array4 @dst_linesizes,
+            ref byte_ptrArray4 @src_data, int_array4 @src_linesizes, AVPixelFormat @pix_fmt, int @width, int @height);
+
+        [DllImport(libavutilFilename)]
+        public static extern AVFrameSideData* av_frame_new_side_data(AVFrame* @frame, AVFrameSideDataType @type,
+            int @size);
+
+        [DllImport(libavcodecFilename)]
+        public static extern int av_packet_from_data(AVPacket* @pkt, byte* @data, int @size);
+
+        [DllImport(libavformatFilename)]
+        public static extern long avio_size(AVIOContext* @s);
+
+        [DllImport(libavformatFilename)]
+        public static extern AVRational av_guess_sample_aspect_ratio(AVFormatContext* @format, AVStream* @stream,
+            AVFrame* @frame);
+
+        [DllImport(libavcodecFilename)]
+        public static extern void av_bsf_free(AVBSFContext** @ctx);
+
+        [DllImport(libavformatFilename)]
+        public static extern int av_write_uncoded_frame_query(AVFormatContext* @s, int @stream_index);
+
+        [DllImport(libavformatFilename)]
+        public static extern int avio_printf(AVIOContext* @s, [MarshalAs(UnmanagedType.LPStr)] string @fmt);
+
+        [DllImport(libavformatFilename)]
+        public static extern void av_register_output_format(AVOutputFormat* @format);
+
+        [DllImport(libavcodecFilename)]
+        public static extern AVCodecDescriptor* avcodec_descriptor_get_by_name(
+            [MarshalAs(UnmanagedType.LPStr)] string @name);
+
+        [DllImport(libavformatFilename)]
+        public static extern AVIOContext* avio_alloc_context(byte* @buffer, int @buffer_size, int @write_flag,
+            void* @opaque, avio_alloc_context_read_packet_func @read_packet,
+            avio_alloc_context_write_packet_func @write_packet, avio_alloc_context_seek_func @seek);
+
+        [DllImport(libavutilFilename)]
+        public static extern long av_rescale_q_rnd(long @a, AVRational @bq, AVRational @cq, AVRounding @rnd);
+
+        [DllImport(libavfilterFilename)]
+        public static extern AVFilterInOut* avfilter_inout_alloc();
+
+        [DllImport(libavutilFilename)]
+        public static extern void av_log_default_callback(void* @avcl, int @level,
+            [MarshalAs(UnmanagedType.LPStr)] string @fmt, byte* @vl);
+
+        [DllImport(libavutilFilename)]
+        public static extern void av_audio_fifo_free(AVAudioFifo* @af);
+
+        [DllImport(libavcodecFilename)]
+        public static extern void av_codec_set_pkt_timebase(AVCodecContext* @avctx, AVRational @val);
+
+        [DllImport(libavformatFilename)]
+        public static extern void av_hex_dump_log(void* @avcl, int @level, byte* @buf, int @size);
+
+        [DllImport(libavutilFilename)]
+        public static extern int av_opt_get_image_size(void* @obj, [MarshalAs(UnmanagedType.LPStr)] string @name,
+            int @search_flags, int* @w_out, int* @h_out);
+
+        [DllImport(libavutilFilename)]
+        public static extern int av_find_nearest_q_idx(AVRational @q, AVRational* @q_list);
+
+        [DllImport(libavutilFilename)]
+        public static extern int av_dict_set_int(AVDictionary** @pm, [MarshalAs(UnmanagedType.LPStr)] string @key,
+            long @value, int @flags);
+
+        [DllImport(libavutilFilename)]
+        public static extern AVSampleFormat av_get_planar_sample_fmt(AVSampleFormat @sample_fmt);
+
+        [DllImport(libavutilFilename)]
+        public static extern AVRational av_sub_q(AVRational @b, AVRational @c);
+
+        [DllImport(libavcodecFilename)]
+        public static extern int audio_resample(ReSampleContext* @s, short* @output, short* @input, int @nb_samples);
+
+        [DllImport(libswresampleFilename)]
+        public static extern string swresample_license();
+
+        [DllImport(libavcodecFilename)]
+        public static extern int av_packet_add_side_data(AVPacket* @pkt, AVPacketSideDataType @type, byte* @data,
+            ulong @size);
+
+        [DllImport(libavformatFilename)]
+        public static extern string avio_enum_protocols(void** @opaque, int @output);
+
+        [DllImport(libavformatFilename)]
+        public static extern int avio_put_str16le(AVIOContext* @s, [MarshalAs(UnmanagedType.LPStr)] string @str);
+
+        [DllImport(libavcodecFilename)]
+        public static extern AVCodecContext* avcodec_alloc_context3(AVCodec* @codec);
+
+        [DllImport(libavutilFilename)]
+        public static extern int av_image_get_buffer_size(AVPixelFormat @pix_fmt, int @width, int @height, int @align);
+
+        [DllImport(libavutilFilename)]
+        public static extern sbyte* av_frame_get_qp_table(AVFrame* @f, int* @stride, int* @type);
+
+        [DllImport(libavutilFilename)]
+        public static extern AVClass* av_opt_child_class_next(AVClass* @parent, AVClass* @prev);
+
+        [DllImport(libswresampleFilename)]
+        public static extern int swr_config_frame(SwrContext* @swr, AVFrame* @out, AVFrame* @in);
+
+        [DllImport(libavutilFilename)]
+        public static extern AVPixelFormat av_pix_fmt_desc_get_id(AVPixFmtDescriptor* @desc);
+
+        [DllImport(libavdeviceFilename)]
+        public static extern int avdevice_dev_to_app_control_message(AVFormatContext* @s, AVDevToAppMessageType @type,
+            void* @data, ulong @data_size);
+
+        [DllImport(libswresampleFilename)]
+        public static extern int swr_set_compensation(SwrContext* @s, int @sample_delta, int @compensation_distance);
+
+        [DllImport(libavutilFilename)]
+        public static extern void av_log_format_line(void* @ptr, int @level,
+            [MarshalAs(UnmanagedType.LPStr)] string @fmt, byte* @vl, byte* @line, int @line_size, int* @print_prefix);
+
+        [DllImport(libavformatFilename)]
+        public static extern void av_pkt_dump_log2(void* @avcl, int @level, AVPacket* @pkt, int @dump_payload,
+            AVStream* @st);
+
+        [DllImport(libavformatFilename)]
+        public static extern void av_format_set_control_message_cb(AVFormatContext* @s,
+            av_format_set_control_message_cb_callback_func @callback);
+
+        [DllImport(libavutilFilename)]
+        public static extern void av_log_set_callback(av_log_set_callback_callback_func @callback);
+
+        [DllImport(libavutilFilename)]
+        public static extern int av_opt_eval_int(void* @obj, AVOption* @o, [MarshalAs(UnmanagedType.LPStr)] string @val,
+            int* @int_out);
+
+        [DllImport(libavcodecFilename)]
+        public static extern uint avcodec_get_edge_width();
+
+        [DllImport(libavutilFilename)]
+        public static extern int av_opt_set_dict_val(void* @obj, [MarshalAs(UnmanagedType.LPStr)] string @name,
+            AVDictionary* @val, int @search_flags);
+
+        [DllImport(libavformatFilename)]
+        public static extern void* av_format_get_opaque(AVFormatContext* @s);
+
+        [DllImport(libavfilterFilename)]
+        public static extern uint avfilter_version();
+
+        [DllImport(libpostprocFilename)]
+        public static extern string postproc_license();
+
+        [DllImport(libavfilterFilename)]
+        public static extern int avfilter_insert_filter(AVFilterLink* @link, AVFilterContext* @filt,
+            uint @filt_srcpad_idx, uint @filt_dstpad_idx);
+
+        [DllImport(libavcodecFilename)]
+        public static extern int av_codec_is_encoder(AVCodec* @codec);
+
+        [DllImport(libavutilFilename)]
+        public static extern int av_frame_make_writable(AVFrame* @frame);
+
+        [DllImport(libavutilFilename)]
+        public static extern int av_image_check_size2(uint @w, uint @h, long @max_pixels, AVPixelFormat @pix_fmt,
+            int @log_offset, void* @log_ctx);
+
+        [DllImport(libavcodecFilename)]
+        public static extern int av_bsf_list_append(AVBSFList* @lst, AVBSFContext* @bsf);
+
+        [DllImport(libavformatFilename)]
+        public static extern void avio_wl32(AVIOContext* @s, uint @val);
+
+        [DllImport(libswscaleFilename)]
+        public static extern void sws_freeContext(SwsContext* @swsContext);
+
+        [DllImport(libavutilFilename)]
+        public static extern int av_dict_get_string(AVDictionary* @m, byte** @buffer, byte @key_val_sep,
+            byte @pairs_sep);
+
+        [DllImport(libavutilFilename)]
+        public static extern int av_get_standard_channel_layout(uint @index, ulong* @layout, byte** @name);
+
+        [DllImport(libavutilFilename)]
+        public static extern AVRational av_div_q(AVRational @b, AVRational @c);
+
+        [DllImport(libavutilFilename)]
+        public static extern string av_color_space_name(AVColorSpace @space);
+
+        [DllImport(libavcodecFilename)]
+        public static extern AVCodec* av_codec_next(AVCodec* @c);
+
+        [DllImport(libavfilterFilename)]
+        public static extern int avfilter_graph_parse(AVFilterGraph* @graph,
+            [MarshalAs(UnmanagedType.LPStr)] string @filters, AVFilterInOut* @inputs, AVFilterInOut* @outputs,
+            void* @log_ctx);
+
+        [DllImport(libavutilFilename)]
+        public static extern void av_dynarray_add(void* @tab_ptr, int* @nb_ptr, void* @elem);
+
+        [DllImport(libavcodecFilename)]
+        public static extern AVBSFList* av_bsf_list_alloc();
+
+        [DllImport(libavformatFilename)]
+        public static extern int av_demuxer_open(AVFormatContext* @ic);
+
+        [DllImport(libavdeviceFilename)]
+        public static extern string avdevice_license();
+
+        [DllImport(libavutilFilename)]
+        public static extern void av_force_cpu_flags(int @flags);
+
+        [DllImport(libavformatFilename)]
+        public static extern int avio_handshake(AVIOContext* @c);
+
+        [DllImport(libavutilFilename)]
+        public static extern void* av_fast_realloc(void* @ptr, uint* @size, ulong @min_size);
+
+        [DllImport(libavcodecFilename)]
+        public static extern void av_bsf_list_free(AVBSFList** @lst);
+
+        [DllImport(libavcodecFilename)]
+        public static extern void av_log_missing_feature(void* @avc, [MarshalAs(UnmanagedType.LPStr)] string @feature,
+            int @want_sample);
+
+        [DllImport(libavfilterFilename)]
+        public static extern AVRational av_buffersink_get_time_base(AVFilterContext* @ctx);
+
+        [DllImport(libavfilterFilename)]
+        public static extern int av_buffersink_get_w(AVFilterContext* @ctx);
+
+        [DllImport(libswresampleFilename)]
+        public static extern long swr_next_pts(SwrContext* @s, long @pts);
+
+        [DllImport(libavcodecFilename)]
+        public static extern string av_packet_side_data_name(AVPacketSideDataType @type);
+
+        [DllImport(libavdeviceFilename)]
+        public static extern void avdevice_capabilities_free(AVDeviceCapabilitiesQuery** @caps, AVFormatContext* @s);
+
+        [DllImport(libavutilFilename)]
+        public static extern void* av_memdup(void* @p, ulong @size);
+
+        [DllImport(libavformatFilename)]
+        public static extern void av_format_inject_global_side_data(AVFormatContext* @s);
+
+        [DllImport(libavutilFilename)]
+        public static extern int av_timecode_check_frame_rate(AVRational @rate);
+
+        [DllImport(libavcodecFilename)]
+        public static extern int avpicture_alloc(AVPicture* @picture, AVPixelFormat @pix_fmt, int @width, int @height);
+
+        [DllImport(libavutilFilename)]
+        public static extern int av_opt_get_double(void* @obj, [MarshalAs(UnmanagedType.LPStr)] string @name,
+            int @search_flags, double* @out_val);
+
+        [DllImport(libavformatFilename)]
+        public static extern int av_probe_input_buffer(AVIOContext* @pb, AVInputFormat** @fmt,
+            [MarshalAs(UnmanagedType.LPStr)] string @url, void* @logctx, uint @offset, uint @max_probe_size);
+
+        [DllImport(libavformatFilename)]
+        public static extern int avformat_queue_attached_pictures(AVFormatContext* @s);
+
+        [DllImport(libswscaleFilename)]
+        public static extern void sws_convVec(SwsVector* @a, SwsVector* @b);
+
+        [DllImport(libavutilFilename)]
+        public static extern AVRational av_d2q(double @d, int @max);
+
+        [DllImport(libavformatFilename)]
+        public static extern long avio_seek_time(AVIOContext* @h, int @stream_index, long @timestamp, int @flags);
+
+        [DllImport(libavfilterFilename)]
+        public static extern int avfilter_graph_parse_ptr(AVFilterGraph* @graph,
+            [MarshalAs(UnmanagedType.LPStr)] string @filters, AVFilterInOut** @inputs, AVFilterInOut** @outputs,
+            void* @log_ctx);
+
+        [DllImport(libavfilterFilename)]
+        public static extern AVFilter* avfilter_get_by_name([MarshalAs(UnmanagedType.LPStr)] string @name);
+
+        [DllImport(libswscaleFilename)]
+        public static extern void
+            sws_convertPalette8ToPacked24(byte* @src, byte* @dst, int @num_pixels, byte* @palette);
+
+        [DllImport(libavformatFilename)]
+        public static extern AVFormatContext* avformat_alloc_context();
+
+        [DllImport(libavutilFilename)]
+        public static extern void av_frame_set_pkt_size(AVFrame* @frame, int @val);
+
+        [DllImport(libavdeviceFilename)]
+        public static extern uint avdevice_version();
+
+        [DllImport(libavcodecFilename)]
+        public static extern int av_resample(AVResampleContext* @c, short* @dst, short* @src, int* @consumed,
+            int @src_size, int @dst_size, int @update_ctx);
+
+        [DllImport(libavformatFilename)]
+        public static extern int avformat_init_output(AVFormatContext* @s, AVDictionary** @options);
+
+        [DllImport(libavutilFilename)]
+        public static extern int av_get_bytes_per_sample(AVSampleFormat @sample_fmt);
+
+        [DllImport(libavutilFilename)]
+        public static extern void* av_calloc(ulong @nmemb, ulong @size);
+
+        [DllImport(libavfilterFilename)]
+        public static extern void avfilter_register_all();
+
+        [DllImport(libavformatFilename)]
+        public static extern void avio_wb64(AVIOContext* @s, ulong @val);
+
+        [DllImport(libavutilFilename)]
+        public static extern void* av_opt_ptr(AVClass* @avclass, void* @obj,
+            [MarshalAs(UnmanagedType.LPStr)] string @name);
+
+        [DllImport(libavformatFilename)]
+        public static extern AVInputFormat* av_probe_input_format(AVProbeData* @pd, int @is_opened);
+
+        [DllImport(libavformatFilename)]
+        public static extern int avio_pause(AVIOContext* @h, int @pause);
+
+        [DllImport(libavfilterFilename)]
+        public static extern AVFilter* avfilter_next(AVFilter* @prev);
+
+        [DllImport(libavformatFilename)]
+        public static extern void av_stream_set_r_frame_rate(AVStream* @s, AVRational @r);
+
+        [DllImport(libavcodecFilename)]
+        public static extern int avcodec_encode_video2(AVCodecContext* @avctx, AVPacket* @avpkt, AVFrame* @frame,
+            int* @got_packet_ptr);
+
+        [DllImport(libavcodecFilename)]
+        public static extern void av_packet_rescale_ts(AVPacket* @pkt, AVRational @tb_src, AVRational @tb_dst);
+
+        [DllImport(libavutilFilename)]
+        public static extern void av_vlog(void* @avcl, int @level, [MarshalAs(UnmanagedType.LPStr)] string @fmt,
+            byte* @vl);
+
+        [DllImport(libswresampleFilename)]
+        public static extern int swr_get_out_samples(SwrContext* @s, int @in_samples);
+
+        [DllImport(libavutilFilename)]
+        public static extern AVColorRange av_frame_get_color_range(AVFrame* @frame);
+
+        [DllImport(libavcodecFilename)]
+        public static extern void av_resample_close(AVResampleContext* @c);
+
+        [DllImport(libavutilFilename)]
+        public static extern AVFrame* av_frame_clone(AVFrame* @src);
+
+        [DllImport(libswscaleFilename)]
+        public static extern int sws_setColorspaceDetails(SwsContext* @c, int_array4 @inv_table, int @srcRange,
+            int_array4 @table, int @dstRange, int @brightness, int @contrast, int @saturation);
+
+        [DllImport(libavutilFilename)]
+        public static extern void av_fifo_free(AVFifoBuffer* @f);
+
+        [DllImport(libavutilFilename)]
+        public static extern int av_opt_eval_int64(void* @obj, AVOption* @o,
+            [MarshalAs(UnmanagedType.LPStr)] string @val, long* @int64_out);
+
+        [DllImport(libavformatFilename)]
+        public static extern void av_program_add_stream_index(AVFormatContext* @ac, int @progid, uint @idx);
+
+        [DllImport(libavfilterFilename)]
+        public static extern int av_buffersink_get_h(AVFilterContext* @ctx);
+
+        [DllImport(libavfilterFilename)]
+        public static extern AVABufferSinkParams* av_abuffersink_params_alloc();
+
+        [DllImport(libavformatFilename)]
+        public static extern int avio_put_str(AVIOContext* @s, [MarshalAs(UnmanagedType.LPStr)] string @str);
+
+        [DllImport(libavformatFilename)]
+        public static extern string avformat_license();
+
+        [DllImport(libavutilFilename)]
+        public static extern int av_samples_alloc_array_and_samples(byte*** @audio_data, int* @linesize,
+            int @nb_channels, int @nb_samples, AVSampleFormat @sample_fmt, int @align);
+
+        [DllImport(libavcodecFilename)]
+        public static extern void av_picture_copy(AVPicture* @dst, AVPicture* @src, AVPixelFormat @pix_fmt, int @width,
+            int @height);
+
+        [DllImport(libavformatFilename)]
+        public static extern void av_format_set_metadata_header_padding(AVFormatContext* @s, int @c);
+
+        [DllImport(libswresampleFilename)]
+        public static extern uint swresample_version();
+
+        [DllImport(libavcodecFilename)]
+        public static extern uint avcodec_pix_fmt_to_codec_tag(AVPixelFormat @pix_fmt);
+
+        [DllImport(libswscaleFilename)]
+        public static extern SwsFilter* sws_getDefaultFilter(float @lumaGBlur, float @chromaGBlur, float @lumaSharpen,
+            float @chromaSharpen, float @chromaHShift, float @chromaVShift, int @verbose);
+
+        [DllImport(libavformatFilename)]
+        public static extern int url_feof(AVIOContext* @s);
+
+        [DllImport(libavutilFilename)]
+        public static extern int av_image_fill_linesizes(ref int_array4 @linesizes, AVPixelFormat @pix_fmt, int @width);
+
+        [DllImport(libavcodecFilename)]
+        public static extern AVCodec* avcodec_find_encoder(AVCodecID @id);
+
+        [DllImport(libavutilFilename)]
+        public static extern long av_rescale_q(long @a, AVRational @bq, AVRational @cq);
+
+        [DllImport(libavcodecFilename)]
+        public static extern void av_register_hwaccel(AVHWAccel* @hwaccel);
+
+        [DllImport(libavformatFilename)]
+        public static extern AVOutputFormat* av_oformat_next(AVOutputFormat* @f);
+
+        [DllImport(libavcodecFilename)]
+        public static extern int avcodec_default_execute2(AVCodecContext* @c, avcodec_default_execute2_func_func @func,
+            void* @arg, int* @ret, int @count);
+
+        [DllImport(libavutilFilename)]
+        public static extern int av_audio_fifo_write(AVAudioFifo* @af, void** @data, int @nb_samples);
+
+        [DllImport(libavutilFilename)]
+        public static extern void av_frame_set_decode_error_flags(AVFrame* @frame, int @val);
+
+        [DllImport(libavcodecFilename)]
+        public static extern int avpicture_get_size(AVPixelFormat @pix_fmt, int @width, int @height);
+
+        [DllImport(libavcodecFilename)]
+        public static extern void avsubtitle_free(AVSubtitle* @sub);
+
+        [DllImport(libavutilFilename)]
+        public static extern AVSampleFormat av_get_alt_sample_fmt(AVSampleFormat @sample_fmt, int @planar);
+
+        [DllImport(libavcodecFilename)]
+        public static extern int avcodec_parameters_to_context(AVCodecContext* @codec, AVCodecParameters* @par);
+
+        [DllImport(libavformatFilename)]
+        public static extern void avio_wb16(AVIOContext* @s, uint @val);
+
+        [DllImport(libavformatFilename)]
+        public static extern int avio_open_dyn_buf(AVIOContext** @s);
+
+        [DllImport(libavcodecFilename)]
+        public static extern int avcodec_get_pix_fmt_loss(AVPixelFormat @dst_pix_fmt, AVPixelFormat @src_pix_fmt,
+            int @has_alpha);
+
+        [DllImport(libavutilFilename)]
+        public static extern int av_frame_get_sample_rate(AVFrame* @frame);
+
+        [DllImport(libavdeviceFilename)]
+        public static extern AVOutputFormat* av_output_video_device_next(AVOutputFormat* @d);
+
+        [DllImport(libavutilFilename)]
+        public static extern AVBufferRef* av_buffer_ref(AVBufferRef* @buf);
+
+        [DllImport(libswscaleFilename)]
+        public static extern SwsVector* sws_cloneVec(SwsVector* @a);
+
+        [DllImport(libavutilFilename)]
+        public static extern AVPixelFormat av_get_pix_fmt([MarshalAs(UnmanagedType.LPStr)] string @name);
+
+        [DllImport(libavutilFilename)]
+        public static extern int av_opt_set_bin(void* @obj, [MarshalAs(UnmanagedType.LPStr)] string @name, byte* @val,
+            int @size, int @search_flags);
+
+        [DllImport(libswresampleFilename)]
+        public static extern string swresample_configuration();
+
+        [DllImport(libavformatFilename)]
+        public static extern int avformat_query_codec(AVOutputFormat* @ofmt, AVCodecID @codec_id, int @std_compliance);
+
+        [DllImport(libavcodecFilename)]
+        public static extern int avcodec_enum_to_chroma_pos(int* @xpos, int* @ypos, AVChromaLocation @pos);
+
+        [DllImport(libavutilFilename)]
+        public static extern int av_pix_fmt_count_planes(AVPixelFormat @pix_fmt);
+
+        [DllImport(libavutilFilename)]
+        public static extern void av_opt_set_defaults(void* @s);
+
+        [DllImport(libavutilFilename)]
+        public static extern void av_fifo_freep(AVFifoBuffer** @f);
+
+        [DllImport(libswscaleFilename)]
+        public static extern SwsContext* sws_getCachedContext(SwsContext* @context, int @srcW, int @srcH,
+            AVPixelFormat @srcFormat, int @dstW, int @dstH, AVPixelFormat @dstFormat, int @flags, SwsFilter* @srcFilter,
+            SwsFilter* @dstFilter, double* @param);
+
+        [DllImport(libavutilFilename)]
+        public static extern AVOption* av_opt_next(void* @obj, AVOption* @prev);
+
+        [DllImport(libavutilFilename)]
+        public static extern string av_color_primaries_name(AVColorPrimaries @primaries);
+
+        [DllImport(libavutilFilename)]
+        public static extern AVFifoBuffer* av_fifo_alloc_array(ulong @nmemb, ulong @size);
+
+        [DllImport(libpostprocFilename)]
+        public static extern uint postproc_version();
+
+        [DllImport(libswscaleFilename)]
+        public static extern string swscale_configuration();
+
+        [DllImport(libavformatFilename)]
+        public static extern void avio_free_directory_entry(AVIODirEntry** @entry);
+
+        [DllImport(libavutilFilename)]
+        public static extern int av_opt_show2(void* @obj, void* @av_log_obj, int @req_flags, int @rej_flags);
+
+        [DllImport(libswscaleFilename)]
+        public static extern void sws_subVec(SwsVector* @a, SwsVector* @b);
+
+        [DllImport(libavformatFilename)]
+        public static extern AVCodecTag* avformat_get_riff_video_tags();
+
+        [DllImport(libswscaleFilename)]
+        public static extern SwsContext* sws_alloc_context();
+
+        [DllImport(libavcodecFilename)]
+        public static extern void av_packet_free(AVPacket** @pkt);
+
+        [DllImport(libavformatFilename)]
+        public static extern void avformat_close_input(AVFormatContext** @s);
+
+        [DllImport(libavutilFilename)]
+        public static extern void av_set_cpu_flags_mask(int @mask);
+
+        [DllImport(libavutilFilename)]
+        public static extern int av_samples_alloc(byte** @audio_data, int* @linesize, int @nb_channels, int @nb_samples,
+            AVSampleFormat @sample_fmt, int @align);
+
+        [DllImport(libavfilterFilename)]
+        public static extern void avfilter_uninit();
+
+        [DllImport(libavutilFilename)]
+        public static extern AVRational av_add_q(AVRational @b, AVRational @c);
+
+        [DllImport(libavformatFilename)]
+        public static extern void avio_w8(AVIOContext* @s, int @b);
+
+        [DllImport(libswscaleFilename)]
+        public static extern int sws_isSupportedInput(AVPixelFormat @pix_fmt);
+
+        [DllImport(libavformatFilename)]
+        public static extern AVCodecTag* avformat_get_mov_audio_tags();
+
+        [DllImport(libavformatFilename)]
+        public static extern int avio_open2(AVIOContext** @s, [MarshalAs(UnmanagedType.LPStr)] string @url, int @flags,
+            AVIOInterruptCB* @int_cb, AVDictionary** @options);
+
+        [DllImport(libavutilFilename)]
+        public static extern int av_get_cpu_flags();
+
+        [DllImport(libavformatFilename)]
+        public static extern AVClass* avformat_get_class();
+
+        [DllImport(libavutilFilename)]
+        public static extern string av_get_channel_name(ulong @channel);
+
+        [DllImport(libavformatFilename)]
+        public static extern int avformat_find_stream_info(AVFormatContext* @ic, AVDictionary** @options);
+
+        [DllImport(libavformatFilename)]
+        public static extern byte* av_stream_get_recommended_encoder_configuration(AVStream* @s);
+
+        [DllImport(libavcodecFilename)]
+        public static extern int avcodec_send_frame(AVCodecContext* @avctx, AVFrame* @frame);
+
+        [DllImport(libavcodecFilename)]
+        public static extern int avcodec_fill_audio_frame(AVFrame* @frame, int @nb_channels, AVSampleFormat @sample_fmt,
+            byte* @buf, int @buf_size, int @align);
+
+        [DllImport(libavutilFilename)]
+        public static extern int av_opt_set_int(void* @obj, [MarshalAs(UnmanagedType.LPStr)] string @name, long @val,
+            int @search_flags);
+
+        [DllImport(libavformatFilename)]
+        public static extern int av_codec_get_tag2(AVCodecTag** @tags, AVCodecID @id, uint* @tag);
+
+        [DllImport(libavfilterFilename)]
+        public static extern void avfilter_graph_set_auto_convert(AVFilterGraph* @graph, uint @flags);
+
+        [DllImport(libavutilFilename)]
+        public static extern long av_get_default_channel_layout(int @nb_channels);
+
+        [DllImport(libavformatFilename)]
+        public static extern void avio_wb24(AVIOContext* @s, uint @val);
+
+        [DllImport(libavutilFilename)]
+        public static extern int av_opt_set_pixel_fmt(void* @obj, [MarshalAs(UnmanagedType.LPStr)] string @name,
+            AVPixelFormat @fmt, int @search_flags);
+
+        [DllImport(libavutilFilename)]
+        public static extern string av_color_transfer_name(AVColorTransferCharacteristic @transfer);
+
+        [DllImport(libavformatFilename)]
+        public static extern uint avio_rb32(AVIOContext* @s);
+
+        [DllImport(libavformatFilename)]
+        public static extern int av_filename_number_test([MarshalAs(UnmanagedType.LPStr)] string @filename);
     }
 }
- 
