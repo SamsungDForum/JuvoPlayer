@@ -181,17 +181,17 @@ namespace JuvoPlayer.DataProviders.HLS
 
         public IObservable<string> StreamError()
         {
-            throw new NotImplementedException();
+            return Observable.Empty<string>();
         }
 
         public IObservable<Unit> BufferingStarted()
         {
-            throw new NotImplementedException();
+            return Observable.Empty<Unit>();
         }
 
         public IObservable<Unit> BufferingCompleted()
         {
-            throw new NotImplementedException();
+            return Observable.Empty<Unit>();
         }
 
         private List<StreamDescription> GetSubtitleStreamsDescription()
