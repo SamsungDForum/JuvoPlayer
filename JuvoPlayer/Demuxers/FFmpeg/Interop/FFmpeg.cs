@@ -11,8 +11,6 @@
 // damages suffered by licensee as a result of using, modifying or distributing
 // this software or its derivatives.
 
-using System;
-using System.IO;
 using System.Runtime.InteropServices;
 using JuvoLogger;
 
@@ -25,11 +23,9 @@ namespace JuvoPlayer.Demuxers.FFmpeg.Interop
         #region filenames
 
         const string libavcodecFilename = @"libavcodec-juvo.so.57";
-        const string libavdeviceFilename = @"libavdevice-juvo.so";
         const string libavfilterFilename = @"libavfilter-juvo.so.6";
         const string libavformatFilename = @"libavformat-juvo.so.57";
         const string libavutilFilename = @"libavutil-juvo.so.55";
-        const string libpostprocFilename = @"libpostproc-juvo.so";
         const string libswresampleFilename = @"libswresample-juvo.so.2";
         const string libswscaleFilename = @"libswscale-juvo.so.4";
 
@@ -146,9 +142,6 @@ namespace JuvoPlayer.Demuxers.FFmpeg.Interop
         [DllImport(libavutilFilename)]
         public static extern int av_buffer_is_writable(AVBufferRef* @buf);
 
-        [DllImport(libavdeviceFilename)]
-        public static extern string avdevice_configuration();
-
         [DllImport(libavcodecFilename)]
         public static extern AVBitStreamFilter* av_bsf_get_by_name([MarshalAs(UnmanagedType.LPStr)] string @name);
 
@@ -194,9 +187,6 @@ namespace JuvoPlayer.Demuxers.FFmpeg.Interop
 
         [DllImport(libavcodecFilename)]
         public static extern int avcodec_close(AVCodecContext* @avctx);
-
-        [DllImport(libpostprocFilename)]
-        public static extern void pp_free_context(void* @ppContext);
 
         [DllImport(libavcodecFilename)]
         public static extern int av_get_audio_frame_duration(AVCodecContext* @avctx, int @frame_bytes);
@@ -332,10 +322,6 @@ namespace JuvoPlayer.Demuxers.FFmpeg.Interop
         [DllImport(libavformatFilename)]
         public static extern AVCodecParserContext* av_stream_get_parser(AVStream* @s);
 
-        [DllImport(libavdeviceFilename)]
-        public static extern int avdevice_capabilities_create(AVDeviceCapabilitiesQuery** @caps, AVFormatContext* @s,
-            AVDictionary** @device_options);
-
         [DllImport(libavutilFilename)]
         public static extern void av_frame_set_channels(AVFrame* @frame, int @val);
 
@@ -450,11 +436,6 @@ namespace JuvoPlayer.Demuxers.FFmpeg.Interop
 
         [DllImport(libavfilterFilename)]
         public static extern int av_buffersink_get_channels(AVFilterContext* @ctx);
-
-        [DllImport(libpostprocFilename)]
-        public static extern void pp_postprocess(ref byte_ptrArray3 @src, int_array3 @srcStride,
-            ref byte_ptrArray3 @dst, int_array3 @dstStride, int @horizontalSize, int @verticalSize, sbyte* @QP_store,
-            int @QP_stride, void* @mode, void* @ppContext, int @pict_type);
 
         [DllImport(libavcodecFilename)]
         public static extern void av_packet_move_ref(AVPacket* @dst, AVPacket* @src);
@@ -633,9 +614,6 @@ namespace JuvoPlayer.Demuxers.FFmpeg.Interop
         public static extern int avcodec_decode_video2(AVCodecContext* @avctx, AVFrame* @picture, int* @got_picture_ptr,
             AVPacket* @avpkt);
 
-        [DllImport(libavdeviceFilename)]
-        public static extern AVInputFormat* av_input_audio_device_next(AVInputFormat* @d);
-
         [DllImport(libswresampleFilename)]
         public static extern SwrContext* swr_alloc_set_opts(SwrContext* @s, long @out_ch_layout,
             AVSampleFormat @out_sample_fmt, int @out_sample_rate, long @in_ch_layout, AVSampleFormat @in_sample_fmt,
@@ -647,11 +625,6 @@ namespace JuvoPlayer.Demuxers.FFmpeg.Interop
         [DllImport(libswscaleFilename)]
         public static extern int sws_scale(SwsContext* @c, byte*[] @srcSlice, int[] @srcStride, int @srcSliceY,
             int @srcSliceH, byte*[] @dst, int[] @dstStride);
-
-        [DllImport(libavdeviceFilename)]
-        public static extern int avdevice_list_output_sinks(AVOutputFormat* @device,
-            [MarshalAs(UnmanagedType.LPStr)] string @device_name, AVDictionary* @device_options,
-            AVDeviceInfoList** @device_list);
 
         [DllImport(libavcodecFilename)]
         public static extern ReSampleContext* av_audio_resample_init(int @output_channels, int @input_channels,
@@ -742,17 +715,11 @@ namespace JuvoPlayer.Demuxers.FFmpeg.Interop
         public static extern int av_samples_set_silence(byte** @audio_data, int @offset, int @nb_samples,
             int @nb_channels, AVSampleFormat @sample_fmt);
 
-        [DllImport(libpostprocFilename)]
-        public static extern void* pp_get_context(int @width, int @height, int @flags);
-
         [DllImport(libavcodecFilename)]
         public static extern void avcodec_align_dimensions(AVCodecContext* @s, int* @width, int* @height);
 
         [DllImport(libavformatFilename)]
         public static extern uint avformat_version();
-
-        [DllImport(libpostprocFilename)]
-        public static extern string postproc_configuration();
 
         [DllImport(libswscaleFilename)]
         public static extern AVClass* sws_get_class();
@@ -827,9 +794,6 @@ namespace JuvoPlayer.Demuxers.FFmpeg.Interop
 
         [DllImport(libavutilFilename)]
         public static extern int av_buffer_get_ref_count(AVBufferRef* @buf);
-
-        [DllImport(libavdeviceFilename)]
-        public static extern void avdevice_free_list_devices(AVDeviceInfoList** @device_list);
 
         [DllImport(libavfilterFilename)]
         public static extern AVFilter** av_filter_next(AVFilter** @filter);
@@ -1069,9 +1033,6 @@ namespace JuvoPlayer.Demuxers.FFmpeg.Interop
         public static extern int avpicture_layout(AVPicture* @src, AVPixelFormat @pix_fmt, int @width, int @height,
             byte* @dest, int @dest_size);
 
-        [DllImport(libavdeviceFilename)]
-        public static extern AVOutputFormat* av_output_audio_device_next(AVOutputFormat* @d);
-
         [DllImport(libavcodecFilename)]
         public static extern int av_packet_merge_side_data(AVPacket* @pkt);
 
@@ -1177,9 +1138,6 @@ namespace JuvoPlayer.Demuxers.FFmpeg.Interop
         [DllImport(libavformatFilename)]
         public static extern void avio_flush(AVIOContext* @s);
 
-        [DllImport(libavdeviceFilename)]
-        public static extern int avdevice_list_devices(AVFormatContext* @s, AVDeviceInfoList** @device_list);
-
         [DllImport(libavformatFilename)]
         public static extern int avpriv_io_delete([MarshalAs(UnmanagedType.LPStr)] string @url);
 
@@ -1204,11 +1162,6 @@ namespace JuvoPlayer.Demuxers.FFmpeg.Interop
 
         [DllImport(libswscaleFilename)]
         public static extern SwsVector* sws_allocVec(int @length);
-
-        [DllImport(libavdeviceFilename)]
-        public static extern int avdevice_list_input_sources(AVInputFormat* @device,
-            [MarshalAs(UnmanagedType.LPStr)] string @device_name, AVDictionary* @device_options,
-            AVDeviceInfoList** @device_list);
 
         [DllImport(libavutilFilename)]
         public static extern int av_frame_copy(AVFrame* @dst, AVFrame* @src);
@@ -1297,10 +1250,6 @@ namespace JuvoPlayer.Demuxers.FFmpeg.Interop
 
         [DllImport(libavutilFilename)]
         public static extern AVPixFmtDescriptor* av_pix_fmt_desc_get(AVPixelFormat @pix_fmt);
-
-        [DllImport(libavdeviceFilename)]
-        public static extern int avdevice_app_to_dev_control_message(AVFormatContext* @s, AVAppToDevMessageType @type,
-            void* @data, ulong @data_size);
 
         [DllImport(libavformatFilename)]
         public static extern AVRational av_guess_frame_rate(AVFormatContext* @ctx, AVStream* @stream, AVFrame* @frame);
@@ -1503,9 +1452,6 @@ namespace JuvoPlayer.Demuxers.FFmpeg.Interop
         [DllImport(libavutilFilename)]
         public static extern ulong av_channel_layout_extract_channel(ulong @channel_layout, int @index);
 
-        [DllImport(libavdeviceFilename)]
-        public static extern AVInputFormat* av_input_video_device_next(AVInputFormat* @d);
-
         [DllImport(libavcodecFilename)]
         public static extern int avcodec_open2(AVCodecContext* @avctx, AVCodec* @codec, AVDictionary** @options);
 
@@ -1552,10 +1498,6 @@ namespace JuvoPlayer.Demuxers.FFmpeg.Interop
         [DllImport(libavformatFilename)]
         public static extern int av_find_best_stream(AVFormatContext* @ic, AVMediaType @type, int @wanted_stream_nb,
             int @related_stream, AVCodec** @decoder_ret, int @flags);
-
-        [DllImport(libpostprocFilename)]
-        public static extern void* pp_get_mode_by_name_and_quality([MarshalAs(UnmanagedType.LPStr)] string @name,
-            int @quality);
 
         [DllImport(libavcodecFilename)]
         public static extern byte* av_packet_get_side_data(AVPacket* @pkt, AVPacketSideDataType @type, int* @size);
@@ -1716,9 +1658,6 @@ namespace JuvoPlayer.Demuxers.FFmpeg.Interop
         [DllImport(libavcodecFilename)]
         public static extern void av_packet_unref(AVPacket* @pkt);
 
-        [DllImport(libpostprocFilename)]
-        public static extern void pp_free_mode(void* @mode);
-
         [DllImport(libavutilFilename)]
         public static extern void av_memcpy_backptr(byte* @dst, int @back, int @cnt);
 
@@ -1814,9 +1753,6 @@ namespace JuvoPlayer.Demuxers.FFmpeg.Interop
         [DllImport(libavcodecFilename)]
         public static extern int avcodec_decode_subtitle2(AVCodecContext* @avctx, AVSubtitle* @sub, int* @got_sub_ptr,
             AVPacket* @avpkt);
-
-        [DllImport(libavdeviceFilename)]
-        public static extern void avdevice_register_all();
 
         [DllImport(libavfilterFilename)]
         public static extern int av_buffersrc_parameters_set(AVFilterContext* @ctx, AVBufferSrcParameters* @param);
@@ -1959,10 +1895,6 @@ namespace JuvoPlayer.Demuxers.FFmpeg.Interop
         [DllImport(libavutilFilename)]
         public static extern AVPixelFormat av_pix_fmt_desc_get_id(AVPixFmtDescriptor* @desc);
 
-        [DllImport(libavdeviceFilename)]
-        public static extern int avdevice_dev_to_app_control_message(AVFormatContext* @s, AVDevToAppMessageType @type,
-            void* @data, ulong @data_size);
-
         [DllImport(libswresampleFilename)]
         public static extern int swr_set_compensation(SwrContext* @s, int @sample_delta, int @compensation_distance);
 
@@ -1997,9 +1929,6 @@ namespace JuvoPlayer.Demuxers.FFmpeg.Interop
 
         [DllImport(libavfilterFilename)]
         public static extern uint avfilter_version();
-
-        [DllImport(libpostprocFilename)]
-        public static extern string postproc_license();
 
         [DllImport(libavfilterFilename)]
         public static extern int avfilter_insert_filter(AVFilterLink* @link, AVFilterContext* @filt,
@@ -2054,9 +1983,6 @@ namespace JuvoPlayer.Demuxers.FFmpeg.Interop
         [DllImport(libavformatFilename)]
         public static extern int av_demuxer_open(AVFormatContext* @ic);
 
-        [DllImport(libavdeviceFilename)]
-        public static extern string avdevice_license();
-
         [DllImport(libavutilFilename)]
         public static extern void av_force_cpu_flags(int @flags);
 
@@ -2084,9 +2010,6 @@ namespace JuvoPlayer.Demuxers.FFmpeg.Interop
 
         [DllImport(libavcodecFilename)]
         public static extern string av_packet_side_data_name(AVPacketSideDataType @type);
-
-        [DllImport(libavdeviceFilename)]
-        public static extern void avdevice_capabilities_free(AVDeviceCapabilitiesQuery** @caps, AVFormatContext* @s);
 
         [DllImport(libavutilFilename)]
         public static extern void* av_memdup(void* @p, ulong @size);
@@ -2137,9 +2060,6 @@ namespace JuvoPlayer.Demuxers.FFmpeg.Interop
 
         [DllImport(libavutilFilename)]
         public static extern void av_frame_set_pkt_size(AVFrame* @frame, int @val);
-
-        [DllImport(libavdeviceFilename)]
-        public static extern uint avdevice_version();
 
         [DllImport(libavcodecFilename)]
         public static extern int av_resample(AVResampleContext* @c, short* @dst, short* @src, int* @consumed,
@@ -2299,9 +2219,6 @@ namespace JuvoPlayer.Demuxers.FFmpeg.Interop
         [DllImport(libavutilFilename)]
         public static extern int av_frame_get_sample_rate(AVFrame* @frame);
 
-        [DllImport(libavdeviceFilename)]
-        public static extern AVOutputFormat* av_output_video_device_next(AVOutputFormat* @d);
-
         [DllImport(libavutilFilename)]
         public static extern AVBufferRef* av_buffer_ref(AVBufferRef* @buf);
 
@@ -2346,9 +2263,6 @@ namespace JuvoPlayer.Demuxers.FFmpeg.Interop
 
         [DllImport(libavutilFilename)]
         public static extern AVFifoBuffer* av_fifo_alloc_array(ulong @nmemb, ulong @size);
-
-        [DllImport(libpostprocFilename)]
-        public static extern uint postproc_version();
 
         [DllImport(libswscaleFilename)]
         public static extern string swscale_configuration();
