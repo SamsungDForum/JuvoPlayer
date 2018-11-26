@@ -117,12 +117,7 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
 
         private static IDemuxer CreateFFmpegDemuxer(ISharedBuffer sharedBuffer = null)
         {
-            return new FFmpegDemuxer(ResolveFFmpegLibDir(), sharedBuffer);
-        }
-
-        private static string ResolveFFmpegLibDir()
-        {
-            return Path.Combine(Paths.ApplicationPath, "lib");
+            return new FFmpegDemuxer(sharedBuffer);
         }
     }
 }
