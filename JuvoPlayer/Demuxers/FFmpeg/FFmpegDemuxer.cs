@@ -64,7 +64,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg
         private bool isDisposed;
         private bool flushing;
 
-        public unsafe FFmpegDemuxer(string libPath, ISharedBuffer dataBuffer = null)
+        public unsafe FFmpegDemuxer(ISharedBuffer dataBuffer = null)
         {
             this.dataBuffer = dataBuffer;
             try
