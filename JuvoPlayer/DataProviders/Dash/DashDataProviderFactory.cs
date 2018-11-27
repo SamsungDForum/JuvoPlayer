@@ -54,7 +54,7 @@ namespace JuvoPlayer.DataProviders.Dash
             var sharedBuffer = new ChunksSharedBuffer();
             var throughputHistory = new ThroughputHistory();
             var dashClient = new DashClient(throughputHistory, sharedBuffer, streamType);
-            var demuxer = new FFmpegDemuxer(sharedBuffer);
+            var demuxer = new FFmpegDemuxerRefactor(sharedBuffer);
 
             return new DashMediaPipeline(dashClient, demuxer, throughputHistory, streamType);
         }
