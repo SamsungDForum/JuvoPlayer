@@ -393,6 +393,7 @@ namespace JuvoPlayer.DataProviders.Dash
         {
             lastSeek = dashClient.Seek(time);
             packetReadySubject.OnNext(SeekPacket.CreatePacket(StreamType, seekId));
+            demuxerClock.Reset();
         }
 
         public void ChangeStream(StreamDescription stream)
@@ -444,6 +445,9 @@ namespace JuvoPlayer.DataProviders.Dash
             // Stop demuxer and dashclient
             // Stop demuxer first so old incoming data will ignored
             demuxer.Reset();
+            DisposeDemuxerSubscriptions();
+            SubscribeDemuxerEvents();
+
             dashClient.Reset();
 
             pipelineStarted = false;
