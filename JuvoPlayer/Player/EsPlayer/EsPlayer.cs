@@ -12,6 +12,9 @@
 // this software or its derivatives.
 
 using System;
+using System.Reactive;
+using System.Reactive.Disposables;
+using System.Threading;
 using ElmSharp;
 using JuvoPlayer.Common;
 using JuvoLogger;
@@ -28,21 +31,14 @@ namespace JuvoPlayer.Player.EsPlayer
             Paused
         }
 
-        public event PlaybackCompleted PlaybackCompleted;
-        public event PlaybackError PlaybackError;
-        public event PlayerInitialized PlayerInitialized;
-        public event SeekCompleted SeekCompleted;
-        public event TimeUpdated TimeUpdated;
-        public event BufferStatus BufferStatus;
-
         private static readonly ILogger logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
 
         private EsPlayerPacketStorage packetStorage;
         private EsStreamController streamControl;
 
-        private TimeSpan currentTime;
-
         private EsPlayerState playerState;
+
+        private readonly CompositeDisposable subscriptions;
 
         public EsPlayer()
             : this(WindowUtils.CreateElmSharpWindow())
@@ -61,14 +57,15 @@ namespace JuvoPlayer.Player.EsPlayer
                 streamControl.Initialize(StreamType.Audio);
                 streamControl.Initialize(StreamType.Video);
 
-                // Attach event handlers
-                streamControl.TimeUpdated += OnTimeUpdate;
-                streamControl.PlayerInitialized += OnStreamInitialized;
-                streamControl.PlaybackCompleted += OnPlaybackCompleted;
-                streamControl.PlaybackError += OnPlaybackError;
-                streamControl.SeekCompleted += OnSeekCompleted;
-                streamControl.BufferStatus += OnBufferStatusChange;
-
+                subscriptions = new CompositeDisposable
+                {
+                    streamControl.PlayerInitialized().Subscribe(unit => playerState = EsPlayerState.Playing,
+                        SynchronizationContext.Current),
+                    streamControl.PlaybackCompleted().Subscribe(unit => playerState = EsPlayerState.Stopped,
+                        SynchronizationContext.Current),
+                    streamControl.ErrorOccured().Subscribe(msg => playerState = EsPlayerState.Stopped,
+                        SynchronizationContext.Current)
+                };
 
                 // Initialize player state
                 playerState = EsPlayerState.Stopped;
@@ -102,7 +99,6 @@ namespace JuvoPlayer.Player.EsPlayer
             }
 
             playerState = EsPlayerState.Paused;
-
         }
 
         public void Play()
@@ -143,10 +139,10 @@ namespace JuvoPlayer.Player.EsPlayer
             playerState = EsPlayerState.Stopped;
         }
 
-        public uint Seek(TimeSpan time)
+        public void Seek(TimeSpan time)
         {
             logger.Info("");
-            return streamControl.Seek(time);
+            streamControl.Seek(time);
         }
 
         public void SetDuration(TimeSpan duration)
@@ -172,50 +168,49 @@ namespace JuvoPlayer.Player.EsPlayer
 
         #region IPlayer Interface event callbacks
 
-        private void OnBufferStatusChange(StreamType stream, BufferState state)
+        public IObservable<string> PlaybackError()
         {
-            logger.Info($"{stream}: {state}");
-
-            BufferStatus?.Invoke(stream, state);
+            return streamControl.ErrorOccured();
         }
 
-        private void OnTimeUpdate(TimeSpan clock)
+        public IObservable<Unit> Initialized()
         {
-            logger.Info(clock.ToString());
-
-            currentTime = clock;
-            TimeUpdated?.Invoke(currentTime);
+            return streamControl.PlayerInitialized();
         }
 
-        private void OnStreamInitialized()
+        public IObservable<TimeSpan> TimeUpdated()
         {
-            logger.Info("");
-
-            // ESPlayer is already receiving data at this point, with play called.
-            // Change state to playing to prevent CB from invoking play again.
-
-            playerState = EsPlayerState.Playing;
-
-            PlayerInitialized?.Invoke();
+            return streamControl.TimeUpdated();
         }
 
-        private void OnPlaybackCompleted()
+        public IObservable<Unit> Paused()
         {
-            logger.Info("");
-            PlaybackCompleted?.Invoke();
-            playerState = EsPlayerState.Stopped;
+            return streamControl.Paused();
         }
 
-        private void OnPlaybackError(string error)
+        public IObservable<Unit> Played()
         {
-            logger.Info("");
-            PlaybackError?.Invoke(error);
-            playerState = EsPlayerState.Stopped;
+            return streamControl.Played();
         }
 
-        private void OnSeekCompleted()
+        public IObservable<SeekArgs> SeekStarted()
         {
-            SeekCompleted?.Invoke();
+            return streamControl.SeekStarted();
+        }
+
+        public IObservable<Unit> SeekCompleted()
+        {
+            return streamControl.SeekCompleted();
+        }
+
+        public IObservable<Unit> Stopped()
+        {
+            return streamControl.Stopped();
+        }
+
+        public IObservable<Unit> PlaybackCompleted()
+        {
+            return streamControl.PlaybackCompleted();
         }
 
         #endregion
@@ -232,12 +227,7 @@ namespace JuvoPlayer.Player.EsPlayer
                 {
                     // Detach event handlers
                     logger.Info("Detach event handlers");
-                    streamControl.TimeUpdated -= OnTimeUpdate;
-                    streamControl.PlayerInitialized -= OnStreamInitialized;
-                    streamControl.PlaybackCompleted -= OnPlaybackCompleted;
-                    streamControl.PlaybackError -= OnPlaybackError;
-                    streamControl.SeekCompleted -= OnSeekCompleted;
-                    streamControl.BufferStatus -= OnBufferStatusChange;
+                    subscriptions.Dispose();
 
                     // Clean packet storage and stream controller
                     logger.Info("StreamController and PacketStorage shutdown");

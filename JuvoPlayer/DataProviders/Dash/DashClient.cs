@@ -1,5 +1,7 @@
 using System;
-using System.Collections.Concurrent;
+using System.Reactive;
+using System.Reactive.Linq;
+using System.Reactive.Subjects;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
@@ -42,7 +44,7 @@ namespace JuvoPlayer.DataProviders.Dash
         private Task<DownloadResponse> downloadDataTask;
         private Task processDataTask;
         private CancellationTokenSource cancellationTokenSource;
-        private Task scheduleNextTask;
+        private Task downloadCompletedTask;
 
         private bool buffering;
         private TimeSpan startTime;
@@ -75,15 +77,6 @@ namespace JuvoPlayer.DataProviders.Dash
         /// </summary>
         private bool IsDynamic => currentStreams.GetDocumentParameters().Document.IsDynamic;
 
-
-        /// <summary>
-        /// Notification event for informing dash pipeline that unrecoverable error
-        /// has occured.
-        /// </summary>
-        public event Error Error;
-
-        public event DownloadCompleted DownloadCompleted;
-
         /// <summary>
         /// Storage holders for initial packets PTS/DTS values.
         /// Used in Trimming Packet Handler to truncate down PTS/DTS values.
@@ -97,8 +90,10 @@ namespace JuvoPlayer.DataProviders.Dash
         /// </summary>
         private bool initInProgress;
 
-        public event BufferingStarted BufferingStarted;
-        public event BufferingCompleted BufferingCompleted;
+        private readonly Subject<string> errorSubject = new Subject<string>();
+        private readonly Subject<Unit> downloadCompletedSubject = new Subject<Unit>();
+        private readonly Subject<Unit> bufferingStartedSubject = new Subject<Unit>();
+        private readonly Subject<Unit> bufferingCompletedSubject = new Subject<Unit>();
 
         public DashClient(IThroughputHistory throughputHistory, ISharedBuffer sharedBuffer, StreamType streamType)
         {
@@ -165,7 +160,12 @@ namespace JuvoPlayer.DataProviders.Dash
             sharedBuffer?.ClearData();
 
             bufferTime = currentTime;
-            buffering = false;
+            if (buffering)
+            {
+                SendBufferingCompletedEvent();
+                buffering = false;
+            }
+
             startTime = currentTime;
 
             if (currentSegmentId.HasValue == false)
@@ -198,7 +198,7 @@ namespace JuvoPlayer.DataProviders.Dash
                     // DashClient termination. This may be happening as part of scheduleDownloadNextTask.
                     // Clear referce held in scheduleDownloadNextTask to prevent Stop() from trying to wait
                     // for itself. Otherwise DashClient will try to chase its own tail (deadlock)
-                    scheduleNextTask = null;
+                    downloadCompletedTask = null;
                     Stop();
                     return;
                 }
@@ -236,16 +236,6 @@ namespace JuvoPlayer.DataProviders.Dash
             }
         }
 
-        private Task CreateScheduleNextTask(CancellationToken token)
-        {
-            Task newScheduleNext;
-
-            newScheduleNext = processDataTask.ContinueWith(_ => ScheduleNextSegDownload(),
-                token, TaskContinuationOptions.OnlyOnRanToCompletion, TaskScheduler.Default);
-
-            return newScheduleNext;
-        }
-
         private void DownloadSegment(Segment segment)
         {
             // Grab a copy (its a struct) of cancellation token, so one token is used throughout entire operation
@@ -255,8 +245,10 @@ namespace JuvoPlayer.DataProviders.Dash
             processDataTask = downloadDataTask.ContinueWith(response =>
             {
                 bool shouldContinue;
-                if (response.IsCanceled)
-                    shouldContinue = HandleCancelledDownload();
+                if (cancelToken.IsCancellationRequested)
+                    shouldContinue = false;
+                else if (response.IsCanceled)
+                    shouldContinue = HandleCancelledDownload(cancelToken);
                 else if (response.IsFaulted)
                     shouldContinue = HandleFailedDownload(response);
                 else // always continue on successful download
@@ -265,18 +257,19 @@ namespace JuvoPlayer.DataProviders.Dash
                 // throw exception so continuation wont run
                 if (!shouldContinue)
                     throw new Exception();
-
-                Task.Run(() => DownloadCompleted?.Invoke());
             }, TaskScheduler.Default);
 
+            downloadCompletedTask = processDataTask.ContinueWith(
+                _ => downloadCompletedSubject.OnNext(Unit.Default),
+                TaskContinuationOptions.OnlyOnRanToCompletion);
         }
 
-        private bool HandleCancelledDownload()
+        private bool HandleCancelledDownload(CancellationToken token)
         {
             LogInfo($"Segment: download cancelled. Continue? {!cancellationTokenSource.IsCancellationRequested}");
 
             // if download was cancelled by timeout cancellation token than reschedule download
-            return !cancellationTokenSource.IsCancellationRequested;
+            return !token.IsCancellationRequested;
         }
 
         private void DownloadInitSegment(Segment segment, bool initReloadRequired)
@@ -292,7 +285,9 @@ namespace JuvoPlayer.DataProviders.Dash
                 processDataTask = downloadDataTask.ContinueWith(response =>
                 {
                     var shouldContinue = true;
-                    if (response.IsFaulted)
+                    if (cancelToken.IsCancellationRequested)
+                        shouldContinue = false;
+                    else if (response.IsFaulted)
                     {
                         HandleFailedInitDownload(GetErrorMessage(response));
                         shouldContinue = false;
@@ -305,8 +300,11 @@ namespace JuvoPlayer.DataProviders.Dash
                     // throw exception so continuation wont run
                     if (!shouldContinue)
                         throw new Exception();
-                    Task.Run(() => DownloadCompleted?.Invoke());
                 }, TaskScheduler.Default);
+
+                downloadCompletedTask = processDataTask.ContinueWith(
+                    _ => downloadCompletedSubject.OnNext(Unit.Default),
+                    TaskContinuationOptions.OnlyOnRanToCompletion);
             }
             else
             {
@@ -319,7 +317,7 @@ namespace JuvoPlayer.DataProviders.Dash
 
                 LogInfo("Segment: INIT Reusing already downloaded data");
                 InitDataDownloaded(initData);
-                ScheduleNextSegDownload();
+                downloadCompletedSubject.OnNext(Unit.Default);
             }
         }
 
@@ -362,7 +360,7 @@ namespace JuvoPlayer.DataProviders.Dash
         {
             if (buffering)
                 return;
-            Task.Run(() => BufferingStarted?.Invoke());
+            bufferingStartedSubject.OnNext(Unit.Default);
             buffering = true;
         }
 
@@ -375,7 +373,7 @@ namespace JuvoPlayer.DataProviders.Dash
         {
             if (!buffering)
                 return;
-            Task.Run(() => BufferingCompleted?.Invoke());
+            bufferingCompletedSubject.OnNext(Unit.Default);
             buffering = false;
         }
 
@@ -439,7 +437,7 @@ namespace JuvoPlayer.DataProviders.Dash
 
             StopAsync();
 
-            Error?.Invoke(message);
+            errorSubject.OnNext(message);
         }
 
         private void StopAsync()
@@ -457,7 +455,7 @@ namespace JuvoPlayer.DataProviders.Dash
             // may happen during FF/REW operations.
             // If received after client start may result in lack of further download requests
             // being issued. Once download handler are serialized, should be safe to remove.
-            WaitForTaskCompletionNoError(scheduleNextTask);
+            WaitForTaskCompletionNoError(downloadCompletedTask);
             WaitForTaskCompletionNoError(downloadDataTask);
             WaitForTaskCompletionNoError(processDataTask);
 
@@ -579,32 +577,35 @@ namespace JuvoPlayer.DataProviders.Dash
             return time >= endTime;
         }
 
-        private async Task<DownloadResponse> CreateDownloadTask(Segment segment, bool ignoreError, uint? segmentId,
+        private Task<DownloadResponse> CreateDownloadTask(Segment segment, bool ignoreError, uint? segmentId,
             CancellationToken cancelToken)
         {
-            var timeout = CalculateDownloadTimeout(segment);
-
-            Logger.Info($"Calculated download timeout is {timeout.TotalMilliseconds}");
-
-            var requestData = new DownloadRequest
+            return Task.Run(async () =>
             {
-                DownloadSegment = segment,
-                IgnoreError = ignoreError,
-                SegmentId = segmentId,
-                StreamType = streamType
-            };
+                var timeout = CalculateDownloadTimeout(segment);
 
-            var timeoutCancellationTokenSource = new CancellationTokenSource();
-            if (timeout != TimeSpan.MaxValue)
-                timeoutCancellationTokenSource.CancelAfter(timeout);
+                Logger.Info($"Calculated download timeout is {timeout.TotalMilliseconds}");
 
-            using (timeoutCancellationTokenSource)
-            using (var downloadCancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(
-                cancelToken, timeoutCancellationTokenSource.Token))
-            {
-                return await DashDownloader.DownloadDataAsync(requestData, downloadCancellationTokenSource.Token,
-                    throughputHistory);
-            }
+                var requestData = new DownloadRequest
+                {
+                    DownloadSegment = segment,
+                    IgnoreError = ignoreError,
+                    SegmentId = segmentId,
+                    StreamType = streamType
+                };
+
+                var timeoutCancellationTokenSource = new CancellationTokenSource();
+                if (timeout != TimeSpan.MaxValue)
+                    timeoutCancellationTokenSource.CancelAfter(timeout);
+
+                using (timeoutCancellationTokenSource)
+                using (var downloadCancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(
+                    cancelToken, timeoutCancellationTokenSource.Token))
+                {
+                    return await DashDownloader.DownloadDataAsync(requestData, downloadCancellationTokenSource.Token,
+                        throughputHistory);
+                }
+            });
         }
 
         private TimeSpan CalculateDownloadTimeout(Segment segment)
@@ -635,7 +636,7 @@ namespace JuvoPlayer.DataProviders.Dash
             // Start Segment = First Available + 1/4 of Time Shift Buffer.
             // Use max 1/2 of TimeShiftBufferDepth.
             //
-            var tsBuffer = (int)(currentStreams.GetDocumentParameters().Document.TimeShiftBufferDepth?.TotalSeconds ??
+            var tsBuffer = (int) (currentStreams.GetDocumentParameters().Document.TimeShiftBufferDepth?.TotalSeconds ??
                                   0);
             tsBuffer = tsBuffer / 2;
 
@@ -699,6 +700,26 @@ namespace JuvoPlayer.DataProviders.Dash
             return !initInProgress && bufferTime >= minBufferTime;
         }
 
+        public IObservable<string> ErrorOccurred()
+        {
+            return errorSubject.AsObservable();
+        }
+
+        public IObservable<Unit> DownloadCompleted()
+        {
+            return downloadCompletedSubject.AsObservable();
+        }
+
+        public IObservable<Unit> BufferingStarted()
+        {
+            return bufferingStartedSubject.AsObservable();
+        }
+
+        public IObservable<Unit> BufferingCompleted()
+        {
+            return bufferingCompletedSubject.AsObservable();
+        }
+
         #region Logging Functions
 
         private void LogInfo(string logMessage, [CallerFilePath] string file = "",
@@ -743,11 +764,14 @@ namespace JuvoPlayer.DataProviders.Dash
                 return;
 
             cancellationTokenSource?.Dispose();
+            errorSubject.Dispose();
+            bufferingStartedSubject.Dispose();
+            bufferingCompletedSubject.Dispose();
+            downloadCompletedSubject.Dispose();
 
             disposedValue = true;
         }
 
         #endregion
     }
-
 }

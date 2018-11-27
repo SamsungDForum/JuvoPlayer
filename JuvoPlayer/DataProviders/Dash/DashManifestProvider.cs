@@ -17,13 +17,14 @@ using MpdParser;
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reactive;
+using System.Reactive.Linq;
+using System.Reactive.Subjects;
 using System.Threading;
 using System.Threading.Tasks;
 
 namespace JuvoPlayer.DataProviders.Dash
 {
-    public delegate void ManifestReady();
-
     internal class DashManifestException : Exception
     {
         public DashManifestException(string message) : base(message) { }
@@ -34,9 +35,9 @@ namespace JuvoPlayer.DataProviders.Dash
         private const string Tag = "JuvoPlayer";
         private readonly ILogger logger = LoggerManager.GetInstance().GetLogger(Tag);
 
-        public event StreamError StreamError;
-        public event ClipDurationChanged ClipDurationChanged;
-        public event ManifestReady ManifestReady;
+        private readonly Subject<string> streamErrorSubject = new Subject<string>();
+        private readonly Subject<TimeSpan> clipDurationSubject = new Subject<TimeSpan>();
+        private readonly Subject<Unit> manifestReadySubject = new Subject<Unit>();
 
         public DashManifest Manifest { get; internal set; }
         private Task manifestFeedTask;
@@ -162,7 +163,7 @@ namespace JuvoPlayer.DataProviders.Dash
             NotifyDurationChange();
             BuildSubtitleInfos(tmpPeriod);
             token.ThrowIfCancellationRequested();
-            ManifestReady?.Invoke();
+            manifestReadySubject.OnNext(Unit.Default);
         }
 
         private void NotifyDurationChange()
@@ -171,7 +172,7 @@ namespace JuvoPlayer.DataProviders.Dash
 
             logger.Info($"{duration}");
             if (duration.HasValue && duration.Value > TimeSpan.Zero)
-                ClipDurationChanged?.Invoke(duration.Value);
+                clipDurationSubject.OnNext(duration.Value);
         }
 
         public void Stop()
@@ -233,7 +234,7 @@ namespace JuvoPlayer.DataProviders.Dash
                     repeatFeed = Manifest?.CurrentDocument?.IsDynamic ?? false;
 
                     if (!repeatFeed)
-                        StreamError?.Invoke(dme.Message);
+                        streamErrorSubject.OnNext(dme.Message);
 
                     Manifest.ForceHasChangedOnNextReload();
                 }
@@ -250,7 +251,7 @@ namespace JuvoPlayer.DataProviders.Dash
                     repeatFeed = Manifest?.CurrentDocument.IsDynamic ?? false;
 
                     if (!repeatFeed)
-                        StreamError?.Invoke(ae.Message);
+                        streamErrorSubject.OnNext(ae.Message);
 
                     logger.Warn("Failed to apply Manifest. Retrying. Failure: " + ae.Message);
 
@@ -350,12 +351,31 @@ namespace JuvoPlayer.DataProviders.Dash
             }
         }
 
+        public IObservable<string> StreamError()
+        {
+            return streamErrorSubject.AsObservable();
+        }
+
+        public IObservable<TimeSpan> ClipDurationChanged()
+        {
+            return clipDurationSubject.AsObservable();
+        }
+
+        public IObservable<Unit> ManifestReady()
+        {
+            return manifestReadySubject.AsObservable();
+        }
+
         public void Dispose()
         {
             if (isDisposed)
                 return;
 
             isDisposed = true;
+
+            streamErrorSubject.Dispose();
+            clipDurationSubject.Dispose();
+            manifestReadySubject.Dispose();
 
             // Stop handles clearing of task/cancellation tokens.
             Stop();
