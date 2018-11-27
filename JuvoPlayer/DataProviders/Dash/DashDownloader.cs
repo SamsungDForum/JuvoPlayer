@@ -14,11 +14,11 @@
 using JuvoLogger;
 using JuvoPlayer.Common;
 using System;
+using System.Diagnostics;
 using System.Net;
 using System.Runtime.ExceptionServices;
 using System.Threading;
 using System.Threading.Tasks;
-using JuvoPlayer.Utils;
 
 namespace JuvoPlayer.DataProviders.Dash
 {
@@ -220,22 +220,27 @@ namespace JuvoPlayer.DataProviders.Dash
                 Logger.Info(
                     $"{request.StreamType}: Segment: {SegmentId(request.SegmentId)} Requested. URL: {request.DownloadSegment.Url} Range: {downloadRange}");
 
-                TimeSpan time;
-                byte[] data;
-                using (new TimeCounter(t => time = t))
+                long bytesReceived = 0;
+                dataDownloader.DownloadProgressChanged += (sender, args) => { bytesReceived = args.BytesReceived; };
+
+                Stopwatch watch = null;
+                try
                 {
-                    data = await dataDownloader.DownloadDataTaskAsync(request.DownloadSegment.Url).ConfigureAwait(false);
+                    watch = Stopwatch.StartNew();
+                    var data = await dataDownloader.DownloadDataTaskAsync(request.DownloadSegment.Url).ConfigureAwait(false);
+                    return new DownloadResponse
+                    {
+                        StreamType = request.StreamType,
+                        DownloadSegment = request.DownloadSegment,
+                        SegmentId = request.SegmentId,
+                        Data = data
+                    };
                 }
-
-                throughputHistory.Push(data.Length, time);
-
-                return new DownloadResponse
+                finally
                 {
-                    StreamType = request.StreamType,
-                    DownloadSegment = request.DownloadSegment,
-                    SegmentId = request.SegmentId,
-                    Data = data
-                };
+                    if (watch != null)
+                        throughputHistory.Push((int) bytesReceived, watch.Elapsed);
+                }
             }
         }
 

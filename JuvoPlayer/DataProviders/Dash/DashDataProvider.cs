@@ -1,9 +1,14 @@
 using System;
 using System.Collections.Generic;
+using System.Reactive;
+using System.Reactive.Linq;
+using System.Reactive.Subjects;
+using System.Threading;
 using System.Threading.Tasks;
 using JuvoLogger;
 using JuvoPlayer.Common;
 using JuvoPlayer.Subtitles;
+using Tizen;
 
 
 namespace JuvoPlayer.DataProviders.Dash
@@ -20,91 +25,75 @@ namespace JuvoPlayer.DataProviders.Dash
         private CuesMap cuesMap;
         private TimeSpan currentTime = TimeSpan.Zero;
 
-        public event ClipDurationChanged ClipDurationChanged;
-        public event DRMInitDataFound DRMInitDataFound;
-        public event SetDrmConfiguration SetDrmConfiguration;
-        public event StreamConfigReady StreamConfigReady;
-        public event PacketReady PacketReady;
-        public event StreamError StreamError;
-        public event BufferingStarted BufferingStarted;
-        public event BufferingCompleted BufferingCompleted;
-
         private readonly DashManifestProvider manifestProvider;
 
         private bool disposed;
+        private bool ignoreTimeUpdates;
+        private readonly IDisposable manifestReadySub;
 
         public DashDataProvider(
             DashManifest manifest,
             DashMediaPipeline audioPipeline,
             DashMediaPipeline videoPipeline)
         {
-
             this.audioPipeline = audioPipeline ?? throw new ArgumentNullException(nameof(audioPipeline), "audioPipeline cannot be null");
             this.videoPipeline = videoPipeline ?? throw new ArgumentNullException(nameof(videoPipeline), "videoPipeline cannot be null");
 
             manifestProvider = new DashManifestProvider(manifest, audioPipeline, videoPipeline);
-            manifestProvider.StreamError += OnStreamError;
-            manifestProvider.ClipDurationChanged += OnClipDurationChanged;
-            manifestProvider.ManifestReady += OnManifestReady;
-
-            audioPipeline.DRMInitDataFound += OnDRMInitDataFound;
-            audioPipeline.SetDrmConfiguration += OnSetDrmConfiguration;
-            audioPipeline.StreamConfigReady += OnStreamConfigReady;
-            audioPipeline.PacketReady += OnPacketReady;
-            audioPipeline.StreamError += OnStreamError;
-
-            videoPipeline.DRMInitDataFound += OnDRMInitDataFound;
-            videoPipeline.SetDrmConfiguration += OnSetDrmConfiguration;
-            videoPipeline.StreamConfigReady += OnStreamConfigReady;
-            videoPipeline.PacketReady += OnPacketReady;
-            videoPipeline.StreamError += OnStreamError;
-            videoPipeline.BufferingStarted += OnBufferingStarted;
-            videoPipeline.BufferingCompleted += OnBufferingCompleted;
-        }
-
-
-
-        private void OnClipDurationChanged(TimeSpan clipDuration)
-        {
-            ClipDurationChanged?.Invoke(clipDuration);
+            manifestReadySub = manifestProvider.ManifestReady().Subscribe(unit => OnManifestReady(), SynchronizationContext.Current);
         }
 
         private void OnManifestReady()
         {
             Logger.Info("");
-            Parallel.Invoke(() => audioPipeline.SwitchStreamIfNeeded(),
-                            () => videoPipeline.SwitchStreamIfNeeded());
-
+            audioPipeline.SwitchStreamIfNeeded();
+            videoPipeline.SwitchStreamIfNeeded();
         }
 
-        private void OnDRMInitDataFound(DRMInitData drmData)
+        public IObservable<TimeSpan> ClipDurationChanged()
         {
-            DRMInitDataFound?.Invoke(drmData);
+            return manifestProvider.ClipDurationChanged();
         }
 
-        private void OnSetDrmConfiguration(DRMDescription description)
+        public IObservable<DRMInitData> DRMInitDataFound()
         {
-            SetDrmConfiguration?.Invoke(description);
+            return audioPipeline.OnDRMInitDataFound()
+                .Merge(videoPipeline.OnDRMInitDataFound());
         }
 
-        private void OnStreamConfigReady(StreamConfig config)
+        public IObservable<DRMDescription> SetDrmConfiguration()
         {
-            StreamConfigReady?.Invoke(config);
+            return audioPipeline.SetDrmConfiguration()
+                .Merge(videoPipeline.SetDrmConfiguration());
         }
 
-        private void OnPacketReady(Packet packet)
+        public IObservable<StreamConfig> StreamConfigReady()
         {
-            PacketReady?.Invoke(packet);
+            return audioPipeline.StreamConfigReady()
+                .Merge(videoPipeline.StreamConfigReady());
         }
 
-        private void OnBufferingCompleted()
+        public IObservable<Packet> PacketReady()
         {
-            BufferingCompleted?.Invoke();
+            return audioPipeline.PacketReady()
+                .Merge(videoPipeline.PacketReady());
         }
 
-        private void OnBufferingStarted()
+        public IObservable<string> StreamError()
         {
-            BufferingStarted?.Invoke();
+            return manifestProvider.StreamError()
+                .Merge(audioPipeline.StreamError())
+                .Merge(videoPipeline.StreamError());
+        }
+
+        public IObservable<Unit> BufferingStarted()
+        {
+            return videoPipeline.BufferingStarted().Merge(audioPipeline.BufferingStarted());
+        }
+
+        public IObservable<Unit> BufferingCompleted()
+        {
+            return videoPipeline.BufferingCompleted().Merge(audioPipeline.BufferingCompleted());
         }
 
         public void OnChangeActiveStream(StreamDescription stream)
@@ -153,14 +142,25 @@ namespace JuvoPlayer.DataProviders.Dash
         {
         }
 
-        public void OnSeek(TimeSpan time, uint seekId)
+        public void OnSeekStarted(TimeSpan time, uint seekId)
         {
             if (!IsSeekingSupported())
                 return;
 
-            Parallel.Invoke(() => videoPipeline.Pause(), () => audioPipeline.Pause());
-            Parallel.Invoke(() => videoPipeline.Seek(time, seekId), () => audioPipeline.Seek(time, seekId));
-            Parallel.Invoke(() => videoPipeline.Resume(), () => audioPipeline.Resume());
+            ignoreTimeUpdates = true;
+
+            var pipelines = new[] {videoPipeline, audioPipeline};
+            foreach (var pipeline in pipelines)
+            {
+                pipeline.Pause();
+                pipeline.Seek(time, seekId);
+                pipeline.Resume();
+            }
+        }
+
+        public void OnSeekCompleted()
+        {
+            ignoreTimeUpdates = false;
         }
 
         public void OnStopped()
@@ -168,8 +168,8 @@ namespace JuvoPlayer.DataProviders.Dash
             Logger.Info("");
 
             manifestProvider.Stop();
-
-            Parallel.Invoke(() => videoPipeline.Stop(), () => audioPipeline.Stop());
+            videoPipeline.Stop();
+            audioPipeline.Stop();
         }
 
         public bool IsSeekingSupported()
@@ -205,34 +205,14 @@ namespace JuvoPlayer.DataProviders.Dash
 
         public void OnTimeUpdated(TimeSpan time)
         {
-            if (disposed)
+            if (disposed || ignoreTimeUpdates)
                 return;
 
             currentTime = time;
             manifestProvider.CurrentTime = time;
 
-            Parallel.Invoke(
-                () =>
-                {
-                    audioPipeline.OnTimeUpdated(time);
-
-                    // Do not do bandwidth adaptation on audio.
-                    // ESPlayer - all audio changes will result in destructive
-                    // stream change.
-                },
-                () =>
-                {
-                    videoPipeline.OnTimeUpdated(time);
-                });
-        }
-
-        private void OnStreamError(string errorMessage)
-        {
-            Logger.Error($"Stream Error: {errorMessage}. Terminating pipelines.");
-
-            // Bubble up stream error info up to PlayerController which will shut down
-            // underlying player
-            StreamError?.Invoke(errorMessage);
+            audioPipeline.OnTimeUpdated(time);
+            videoPipeline.OnTimeUpdated(time);
         }
 
         public void Dispose()
@@ -244,11 +224,7 @@ namespace JuvoPlayer.DataProviders.Dash
 
             OnStopped();
 
-            // Detach event handlers from manifest provider before disposing
-            manifestProvider.StreamError -= OnStreamError;
-            manifestProvider.ClipDurationChanged -= ClipDurationChanged;
-            manifestProvider.ManifestReady -= OnManifestReady;
-
+            manifestReadySub.Dispose();
             manifestProvider.Dispose();
 
             audioPipeline?.Dispose();

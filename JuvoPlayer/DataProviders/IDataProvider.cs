@@ -14,23 +14,19 @@
 using JuvoPlayer.Common;
 using System;
 using System.Collections.Generic;
+using System.Reactive;
 using JuvoPlayer.Subtitles;
 
 namespace JuvoPlayer.DataProviders
 {
-    public delegate void SetDrmConfiguration(DRMDescription description);
-    public delegate void StreamError(string errorMessage);
-
-    public delegate void BufferingStarted();
-    public delegate void BufferingCompleted();
-
     public interface IDataProvider : IDisposable
     {
         void OnChangeActiveStream(StreamDescription stream);
         void OnDeactivateStream(StreamType streamType);
         void OnPaused();
         void OnPlayed();
-        void OnSeek(TimeSpan time, uint seekId);
+        void OnSeekStarted(TimeSpan time, uint seekId);
+        void OnSeekCompleted();
         void OnStopped();
         void OnTimeUpdated(TimeSpan time);
 
@@ -39,13 +35,14 @@ namespace JuvoPlayer.DataProviders
         Cue CurrentCue { get; }
         List<StreamDescription> GetStreamsDescription(StreamType streamType);
 
-        event ClipDurationChanged ClipDurationChanged;
-        event DRMInitDataFound DRMInitDataFound;
-        event SetDrmConfiguration SetDrmConfiguration;
-        event StreamConfigReady StreamConfigReady;
-        event PacketReady PacketReady;
-        event StreamError StreamError;
-        event BufferingStarted BufferingStarted;
-        event BufferingCompleted BufferingCompleted;
+        IObservable<TimeSpan> ClipDurationChanged();
+        IObservable<DRMInitData> DRMInitDataFound();
+        IObservable<DRMDescription> SetDrmConfiguration();
+        IObservable<StreamConfig> StreamConfigReady();
+        IObservable<Packet> PacketReady();
+        IObservable<string> StreamError();
+        IObservable<Unit> BufferingStarted();
+        IObservable<Unit> BufferingCompleted();
+
     }
 }

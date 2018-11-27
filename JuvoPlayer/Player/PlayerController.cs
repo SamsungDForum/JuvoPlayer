@@ -13,6 +13,11 @@
 
 using System;
 using System.Collections.Generic;
+using System.Reactive;
+using System.Reactive.Disposables;
+using System.Reactive.Linq;
+using System.Reactive.Subjects;
+using System.Threading;
 using JuvoLogger;
 using JuvoPlayer.Common;
 using JuvoPlayer.Drms;
@@ -32,7 +37,7 @@ namespace JuvoPlayer.Player
             set
             {
                 state = value;
-                StateChanged?.Invoke(this, new StateChangedEventArgs {State = value});
+                stateChangedSubject.OnNext(value);
             }
         }
 
@@ -40,17 +45,8 @@ namespace JuvoPlayer.Player
         private readonly IPlayer player;
         private readonly Dictionary<StreamType, IPacketStream> streams = new Dictionary<StreamType, IPacketStream>();
 
-        public event Pause Paused;
-        public event Play Played;
-        public event Seek Seek;
-        public event Stop Stopped;
-
-        public event PlaybackCompleted PlaybackCompleted;
-        public event PlaybackError PlaybackError;
-        public event PlayerInitialized PlayerInitialized;
-        public event TimeUpdated TimeUpdated;
-        public event SeekCompleted SeekCompleted;
-        public event EventHandler<StateChangedEventArgs> StateChanged;
+        private readonly CompositeDisposable subscriptions;
+        private readonly Subject<PlayerState> stateChangedSubject = new Subject<PlayerState>();
 
         private readonly ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
 
@@ -60,11 +56,15 @@ namespace JuvoPlayer.Player
                               throw new ArgumentNullException(nameof(drmManager), "drmManager cannot be null");
             this.player = player ?? throw new ArgumentNullException(nameof(player), "player cannot be null");
 
-            this.player.PlaybackCompleted += OnPlaybackCompleted;
-            this.player.PlaybackError += OnPlaybackError;
-            this.player.PlayerInitialized += OnPlayerInitialized;
-            this.player.SeekCompleted += OnSeekCompleted;
-            this.player.TimeUpdated += OnTimeUpdated;
+            subscriptions = new CompositeDisposable
+            {
+                TimeUpdated().Subscribe(time => currentTime = time, SynchronizationContext.Current),
+                SeekCompleted().Subscribe(unit => seeking = false, SynchronizationContext.Current),
+                Initialized()
+                    .Subscribe(unit => state = PlayerState.Ready, SynchronizationContext.Current),
+                PlaybackCompleted()
+                    .Subscribe(unit => state = PlayerState.Finished, SynchronizationContext.Current)
+            };
 
             var audioCodecExtraDataHandler = new AudioCodecExtraDataHandler(player);
             var videoCodecExtraDataHandler = new VideoCodecExtraDataHandler(player);
@@ -75,34 +75,54 @@ namespace JuvoPlayer.Player
                 new PacketStream(StreamType.Video, this.player, drmManager, videoCodecExtraDataHandler);
         }
 
-
-
-        private void OnPlaybackCompleted()
+        public IObservable<string> PlaybackError()
         {
-            Logger.Info("");
-
-            State = PlayerState.Finished;
-
-            PlaybackCompleted?.Invoke();
+            return player.PlaybackError();
         }
 
-        private void OnPlaybackError(string error)
+        public IObservable<Unit> Initialized()
         {
-            PlaybackError?.Invoke(error);
+            return player.Initialized();
         }
 
-        private void OnPlayerInitialized()
+        public IObservable<TimeSpan> TimeUpdated()
         {
-            State = PlayerState.Ready;
-
-            PlayerInitialized?.Invoke();
+            return player.TimeUpdated();
         }
 
-        private void OnTimeUpdated(TimeSpan time)
+        public IObservable<Unit> Paused()
         {
-            currentTime = time;
+            return player.Paused();
+        }
 
-            TimeUpdated?.Invoke(time);
+        public IObservable<Unit> Played()
+        {
+            return player.Played();
+        }
+
+        public IObservable<SeekArgs> SeekStarted()
+        {
+            return player.SeekStarted();
+        }
+
+        public IObservable<Unit> SeekCompleted()
+        {
+            return player.SeekCompleted();
+        }
+
+        public IObservable<Unit> Stopped()
+        {
+            return player.Stopped();
+        }
+
+        public IObservable<PlayerState> StateChanged()
+        {
+            return stateChangedSubject.AsObservable();
+        }
+
+        public IObservable<Unit> PlaybackCompleted()
+        {
+            return player.PlaybackCompleted();
         }
 
         public void OnClipDurationChanged(TimeSpan duration)
@@ -131,8 +151,6 @@ namespace JuvoPlayer.Player
             player.Pause();
 
             State = PlayerState.Paused;
-
-            Paused?.Invoke();
         }
 
         public void OnPlay()
@@ -143,8 +161,6 @@ namespace JuvoPlayer.Player
             player.Play();
 
             State = PlayerState.Playing;
-
-            Played?.Invoke();
         }
 
         public void OnSeek(TimeSpan time)
@@ -157,24 +173,15 @@ namespace JuvoPlayer.Player
 
             try
             {
-                var id = player.Seek(time);
+                player.Seek(time);
 
                 // prevent simultaneously seeks
                 seeking = true;
-
-                Seek?.Invoke(time, id);
             }
             catch (OperationCanceledException)
             {
                 Logger.Info("Operation Canceled");
             }
-        }
-
-        public void OnSeekCompleted()
-        {
-            seeking = false;
-
-            SeekCompleted?.Invoke();
         }
 
         public void OnStop()
@@ -187,8 +194,6 @@ namespace JuvoPlayer.Player
             player.Stop();
 
             State = PlayerState.Finished;
-
-            Stopped?.Invoke();
         }
 
         public void OnStreamConfigReady(StreamConfig config)
@@ -207,14 +212,14 @@ namespace JuvoPlayer.Player
             streams[packet.StreamType].OnAppendPacket(packet);
         }
 
+        public void OnStreamError(string errorMessage)
+        {
+            // TODO: Implement or remove
+        }
+
         public void OnSetPlaybackRate(float rate)
         {
             player.SetPlaybackRate(rate);
-        }
-
-        public void OnStreamError(string errorMessage)
-        {
-            OnPlaybackError(errorMessage);
         }
 
         public void OnBufferingStarted()
@@ -233,10 +238,6 @@ namespace JuvoPlayer.Player
 
             player.Play();
             State = PlayerState.Playing;
-
-            // TODO: Get rid of the Played event
-            // We can notify UI via StateChanged event
-            Played?.Invoke();
         }
 
         #region getters
@@ -256,6 +257,8 @@ namespace JuvoPlayer.Player
             // Remember to firstly dispose streams and later player
             foreach (var stream in streams.Values)
                 stream.Dispose();
+
+            subscriptions.Dispose();
 
             player?.Dispose();
         }

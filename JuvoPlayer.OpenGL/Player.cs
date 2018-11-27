@@ -1,5 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Reactive.Disposables;
+using System.Threading;
 using JuvoLogger;
 using JuvoPlayer.Common;
 using JuvoPlayer.DataProviders;
@@ -11,18 +13,23 @@ using JuvoPlayer.Drms.Cenc;
 using JuvoPlayer.Drms.DummyDrm;
 using JuvoPlayer.Player;
 using JuvoPlayer.Player.EsPlayer;
+using StreamType = JuvoPlayer.Common.StreamType;
 
 namespace JuvoPlayer.OpenGL
 {
     public delegate void PlayerStateChangedEventHandler(object sender, PlayerStateChangedEventArgs e);
 
+    public delegate void SeekCompleted();
+
     class Player
     {
         private IDataProvider dataProvider;
         private IPlayerController playerController;
+        private DataProviderConnector connector;
         private readonly DataProviderFactoryManager dataProviders;
         private PlayerState playerState = PlayerState.Idle;
         private string playerStateMessage;
+        private readonly CompositeDisposable subscriptions;
         private readonly ILogger logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
 
         public event PlayerStateChangedEventHandler StateChanged;
@@ -63,20 +70,31 @@ namespace JuvoPlayer.OpenGL
 
             var player = new EsPlayer();
             playerController = new PlayerController(player, drmManager);
-            playerController.PlaybackError += message => { playerStateMessage = message; State = PlayerState.Error; };
-            playerController.SeekCompleted += () => { SeekCompleted?.Invoke(); };
-            playerController.StateChanged += (sender, args) =>
+
+            subscriptions = new CompositeDisposable
             {
-                try
+                playerController.SeekCompleted()
+                    .Subscribe(unit => SeekCompleted?.Invoke(), SynchronizationContext.Current),
+
+                playerController.PlaybackError().Subscribe(msg =>
                 {
-                    var state = ToPlayerState(args.State);
-                    State = state;
-                }
-                catch (ArgumentOutOfRangeException ex)
-                {
-                    logger.Warn($"Unsupported state: {ex.Message}");
-                    logger.Warn($"{ex.StackTrace}");
-                }
+                    playerStateMessage = msg;
+                    State = PlayerState.Error;
+                }, SynchronizationContext.Current),
+
+                playerController.StateChanged()
+                    .Subscribe(state =>
+                    {
+                        try
+                        {
+                            State = ToPlayerState(state);
+                        }
+                        catch (ArgumentOutOfRangeException ex)
+                        {
+                            logger.Warn($"Unsupported state: {ex.Message}");
+                            logger.Warn($"{ex.StackTrace}");
+                        }
+                    }, SynchronizationContext.Current)
             };
         }
 
@@ -138,7 +156,7 @@ namespace JuvoPlayer.OpenGL
 
         public void SetSource(ClipDefinition clip)
         {
-            DataProviderConnector.Disconnect(playerController, dataProvider);
+            connector?.Dispose();
 
             dataProvider = dataProviders.CreateDataProvider(clip);
 
@@ -148,7 +166,7 @@ namespace JuvoPlayer.OpenGL
                     playerController.OnSetDrmConfiguration(drm);
             }
 
-            DataProviderConnector.Connect(playerController, dataProvider);
+            connector = new DataProviderConnector(playerController, dataProvider);
 
             dataProvider.Start();
         }
@@ -176,7 +194,8 @@ namespace JuvoPlayer.OpenGL
         {
             if (disposing)
             {
-                DataProviderConnector.Disconnect(playerController, dataProvider);
+                subscriptions.Dispose();
+                connector?.Dispose();
                 playerController?.Dispose();
                 playerController = null;
                 dataProvider?.Dispose();

@@ -1,5 +1,5 @@
 ﻿// Copyright (c) 2018 Samsung Electronics Co., Ltd All Rights Reserved
-// PROPRIETARY/CONFIDENTIAL 
+// PROPRIETARY/CONFIDENTIAL
 // This software is the confidential and proprietary
 // information of SAMSUNG ELECTRONICS ("Confidential Information"). You shall
 // not disclose such Confidential Information and shall use it only in
@@ -58,7 +58,8 @@ namespace JuvoPlayer.SharedBuffers
                     buffer.AddLast(data);
                 }
 
-                EndOfData = endOfData;
+                if (endOfData)
+                    EndOfData = true;
                 Monitor.PulseAll(locker);
             }
         }

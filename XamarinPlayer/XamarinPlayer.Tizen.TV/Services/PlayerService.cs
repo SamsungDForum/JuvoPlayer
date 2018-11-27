@@ -1,6 +1,8 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reactive.Disposables;
+using System.Threading;
 using JuvoLogger;
 using JuvoPlayer.Common;
 using JuvoPlayer.DataProviders;
@@ -11,8 +13,6 @@ using JuvoPlayer.Drms;
 using JuvoPlayer.Drms.Cenc;
 using JuvoPlayer.Drms.DummyDrm;
 using JuvoPlayer.Player;
-using JuvoPlayer.Player.MMPlayer;
-using JuvoPlayer.Player.SMPlayer;
 using JuvoPlayer.Player.EsPlayer;
 using Xamarin.Forms;
 using XamarinPlayer.Services;
@@ -22,6 +22,7 @@ using StreamDefinition = XamarinPlayer.Services.StreamDescription;
 using StreamType = XamarinPlayer.Services.StreamDescription.StreamType;
 
 [assembly: Dependency(typeof(PlayerService))]
+
 namespace XamarinPlayer.Tizen.Services
 {
     sealed class PlayerService : IPlayerService
@@ -32,6 +33,9 @@ namespace XamarinPlayer.Tizen.Services
         private PlayerState playerState = PlayerState.Idle;
         private string playerStateMessage;
         private readonly ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
+        private readonly CompositeDisposable subscriptions;
+
+        private DataProviderConnector connector;
 
         public event PlayerStateChangedEventHandler StateChanged;
 
@@ -73,29 +77,34 @@ namespace XamarinPlayer.Tizen.Services
             var player = new EsPlayer();
 
             playerController = new PlayerController(player, drmManager);
-            playerController.StateChanged += (sender, args) =>
+            subscriptions = new CompositeDisposable
             {
-                try
+                playerController.StateChanged().Subscribe(state =>
                 {
-                    var state = args.State;
-                    State = ToPlayerState(state);
-                }
-                catch (ArgumentOutOfRangeException ex)
-                {
-                    Logger.Warn($"Unsupported state: {ex.Message}");
-                    Logger.Warn($"{ex.StackTrace}");
-                }
-            };
+                    try
+                    {
+                        State = ToPlayerState(state);
+                    }
+                    catch (ArgumentOutOfRangeException ex)
+                    {
+                        Logger.Warn($"Unsupported state: {ex.Message}");
+                        Logger.Warn($"{ex.StackTrace}");
+                    }
+                }, SynchronizationContext.Current),
 
-            playerController.PlaybackError += (message) =>
-            {
-                lock (playerController)
+                playerController.Initialized()
+                    .Subscribe(unit => { State = PlayerState.Prepared; }, SynchronizationContext.Current),
+
+                playerController.PlaybackError().Subscribe(message =>
                 {
                     if (State == PlayerState.Error)
                         return;
                     playerStateMessage = message;
                     State = PlayerState.Error;
-                }
+                }, SynchronizationContext.Current),
+
+                playerController.PlaybackCompleted()
+                    .Subscribe(unit => State = PlayerState.Completed, SynchronizationContext.Current)
             };
         }
 
@@ -201,7 +210,8 @@ namespace XamarinPlayer.Tizen.Services
                 return;
             var clip = o as ClipDefinition;
 
-            DataProviderConnector.Disconnect(playerController, dataProvider);
+            connector?.Dispose();
+
             dataProvider?.Dispose();
 
             if (State != PlayerState.Idle)
@@ -218,7 +228,7 @@ namespace XamarinPlayer.Tizen.Services
                     playerController.OnSetDrmConfiguration(drm);
             }
 
-            DataProviderConnector.Connect(playerController, dataProvider);
+            connector = new DataProviderConnector(playerController, dataProvider);
 
             dataProvider.Start();
         }
@@ -255,7 +265,8 @@ namespace XamarinPlayer.Tizen.Services
         {
             Logger.Info("");
 
-            DataProviderConnector.Disconnect(playerController, dataProvider);
+            connector?.Dispose();
+            subscriptions.Dispose();
 
             // Stop Data provider during dispose AFTER disconnecting data privider and controller.
             // Events propagated during stop (when disposing) are no longer needed nor required.
