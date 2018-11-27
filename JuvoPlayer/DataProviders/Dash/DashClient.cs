@@ -285,7 +285,9 @@ namespace JuvoPlayer.DataProviders.Dash
                 processDataTask = downloadDataTask.ContinueWith(response =>
                 {
                     var shouldContinue = true;
-                    if (response.IsFaulted)
+                    if (cancelToken.IsCancellationRequested)
+                        shouldContinue = false;
+                    else if (response.IsFaulted)
                     {
                         HandleFailedInitDownload(GetErrorMessage(response));
                         shouldContinue = false;
@@ -298,8 +300,11 @@ namespace JuvoPlayer.DataProviders.Dash
                     // throw exception so continuation wont run
                     if (!shouldContinue)
                         throw new Exception();
-                    downloadCompletedSubject.OnNext(Unit.Default);
                 }, TaskScheduler.Default);
+
+                downloadCompletedTask = processDataTask.ContinueWith(
+                    _ => downloadCompletedSubject.OnNext(Unit.Default),
+                    TaskContinuationOptions.OnlyOnRanToCompletion);
             }
             else
             {
