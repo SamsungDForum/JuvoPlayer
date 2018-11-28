@@ -1,1 +1,1 @@
-#define VERSION 0x689088f
+#define VERSION 0xcbe7930
