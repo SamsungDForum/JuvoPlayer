@@ -73,6 +73,9 @@ namespace JuvoPlayer.OpenGL
 
             subscriptions = new CompositeDisposable
             {
+                playerController.Initialized()
+                    .Subscribe(unit => { State = PlayerState.Prepared; }, SynchronizationContext.Current),
+
                 playerController.SeekCompleted()
                     .Subscribe(unit => SeekCompleted?.Invoke(), SynchronizationContext.Current),
 
