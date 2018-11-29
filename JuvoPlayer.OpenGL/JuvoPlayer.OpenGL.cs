@@ -32,20 +32,16 @@ namespace JuvoPlayer.OpenGL
         private const string Tag = "JuvoPlayer";
         private static readonly ILogger Logger = LoggerManager.GetInstance().GetLogger(Tag);
 
-        private MenuAction _selectedAction = MenuAction.None;
-
         private OptionsMenu _options;
         private ResourceLoader _resourceLoader;
         private MetricsHandler _metricsHandler;
-
         private TimeSpan _accumulatedSeekTime;
         private Task _seekDelay;
         private CancellationTokenSource _seekCancellationTokenSource;
+
         private bool _seekBufferingInProgress;
         private bool _seekInProgress;
-
         private bool _isAlertShown;
-
         private bool _startedFromDeeplink;
 
         private readonly SystemMemoryUsage _systemMemoryUsage = new SystemMemoryUsage();
@@ -684,12 +680,6 @@ namespace JuvoPlayer.OpenGL
             UpdatePlaybackCompleted();
             UpdatePlaybackControls();
             UpdateMetrics();
-        }
-
-        private void SelectMenuAction(MenuAction menuAction)
-        {
-            _selectedAction = menuAction;
-            DllImports.SelectAction((int)_selectedAction);
         }
     }
 }
