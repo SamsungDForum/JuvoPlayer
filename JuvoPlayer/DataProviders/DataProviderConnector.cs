@@ -1,56 +1,62 @@
 ﻿using System;
+using System.Reactive.Disposables;
+using System.Threading;
 using JuvoPlayer.Player;
+using JuvoPlayer.Common;
 
 namespace JuvoPlayer.DataProviders
 {
-    public static class DataProviderConnector
+    public class DataProviderConnector : IDisposable
     {
-        public static void Connect(IPlayerController controller, IDataProvider newDataProvider)
+        private CompositeDisposable subscriptions;
+
+        public DataProviderConnector(IPlayerController playerController, IDataProvider dataProvider,
+            SynchronizationContext context = null)
         {
-            if (controller == null)
-                throw new ArgumentNullException(nameof(controller), "Player controller cannot be null");
-
-            if (newDataProvider == null)
-                return;
-
-            newDataProvider.ClipDurationChanged += controller.OnClipDurationChanged;
-            newDataProvider.DRMInitDataFound += controller.OnDRMInitDataFound;
-            newDataProvider.SetDrmConfiguration += controller.OnSetDrmConfiguration;
-            newDataProvider.StreamConfigReady += controller.OnStreamConfigReady;
-            newDataProvider.PacketReady += controller.OnPacketReady;
-            newDataProvider.StreamError += controller.OnStreamError;
-            newDataProvider.BufferingCompleted += controller.OnBufferingCompleted;
-            newDataProvider.BufferingStarted += controller.OnBufferingStarted;
-
-            controller.TimeUpdated += newDataProvider.OnTimeUpdated;
-            controller.Paused += newDataProvider.OnPaused;
-            controller.Played += newDataProvider.OnPlayed;
-            controller.Seek += newDataProvider.OnSeek;
-            controller.Stopped += newDataProvider.OnStopped;
+            Connect(playerController, dataProvider, context);
         }
 
-        public static void Disconnect(IPlayerController controller, IDataProvider oldDataProvider)
+        private void Connect(IPlayerController controller, IDataProvider dataProvider,
+            SynchronizationContext context)
         {
             if (controller == null)
                 throw new ArgumentNullException(nameof(controller), "Player controller cannot be null");
 
-            if (oldDataProvider == null)
+            if (dataProvider == null)
                 return;
 
-            oldDataProvider.ClipDurationChanged -= controller.OnClipDurationChanged;
-            oldDataProvider.DRMInitDataFound -= controller.OnDRMInitDataFound;
-            oldDataProvider.SetDrmConfiguration -= controller.OnSetDrmConfiguration;
-            oldDataProvider.StreamConfigReady -= controller.OnStreamConfigReady;
-            oldDataProvider.PacketReady -= controller.OnPacketReady;
-            oldDataProvider.StreamError -= controller.OnStreamError;
-            oldDataProvider.BufferingCompleted -= controller.OnBufferingCompleted;
-            oldDataProvider.BufferingStarted -= controller.OnBufferingStarted;
+            subscriptions = new CompositeDisposable
+            {
+                dataProvider.ClipDurationChanged()
+                    .Subscribe(controller.OnClipDurationChanged, context),
+                dataProvider.DRMInitDataFound()
+                    .Subscribe(controller.OnDRMInitDataFound, context),
+                dataProvider.SetDrmConfiguration()
+                    .Subscribe(controller.OnSetDrmConfiguration, context),
+                dataProvider.StreamConfigReady()
+                    .Subscribe(controller.OnStreamConfigReady, context),
+                dataProvider.PacketReady()
+                    .Subscribe(controller.OnPacketReady, context),
+                dataProvider.BufferingStarted()
+                    .Subscribe(unit => controller.OnBufferingStarted(), context),
+                dataProvider.BufferingCompleted()
+                    .Subscribe(unit => controller.OnBufferingCompleted(), context),
+                dataProvider.StreamError()
+                    .Subscribe(controller.OnStreamError, SynchronizationContext.Current),
+                controller.TimeUpdated().Subscribe(dataProvider.OnTimeUpdated, context),
+                controller.Paused().Subscribe(unit => dataProvider.OnPaused(), context),
+                controller.Played().Subscribe(unit => dataProvider.OnPlayed(), context),
+                controller.SeekStarted()
+                    .Subscribe(args => dataProvider.OnSeekStarted(args.Position, args.Id), context),
+                controller.SeekCompleted()
+                    .Subscribe(unit => dataProvider.OnSeekCompleted(), context),
+                controller.Stopped().Subscribe(unit => dataProvider.OnStopped(), context)
+            };
+        }
 
-            controller.TimeUpdated -= oldDataProvider.OnTimeUpdated;
-            controller.Paused -= oldDataProvider.OnPaused;
-            controller.Played -= oldDataProvider.OnPlayed;
-            controller.Seek -= oldDataProvider.OnSeek;
-            controller.Stopped -= oldDataProvider.OnStopped;
+        public void Dispose()
+        {
+            subscriptions?.Dispose();
         }
     }
 }

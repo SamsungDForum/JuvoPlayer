@@ -12,6 +12,9 @@
 // this software or its derivatives.
 
 using System;
+using System.Reactive;
+using System.Reactive.Linq;
+using System.Reactive.Subjects;
 using System.Threading;
 using System.Threading.Tasks;
 using JuvoLogger;
@@ -43,12 +46,6 @@ namespace JuvoPlayer.Player.EsPlayer
             SubmitStatus = status;
         }
     }
-
-    /// <summary>
-    /// Internal EsPlayer events:
-    /// Stream Reconfiguration & chunk transfer completion.
-    /// </summary>
-    internal delegate void StreamReconfigure();
 
     /// <summary>
     /// Class representing and individual stream being transferred
@@ -97,8 +94,18 @@ namespace JuvoPlayer.Player.EsPlayer
         private readonly object syncLock = new object();
 
         // Events
-        public event StreamReconfigure ReconfigureStream;
-        public event PlaybackError PlaybackError;
+        private readonly Subject<string> playbackErrorSubject = new Subject<string>();
+        private readonly Subject<Unit> streamReconfigureSubject = new Subject<Unit>();
+
+        public IObservable<string> PlaybackError()
+        {
+            return playbackErrorSubject.AsObservable();
+        }
+
+        public IObservable<Unit> StreamReconfigure()
+        {
+            return streamReconfigureSubject.AsObservable();
+        }
 
 
         #region Public API
@@ -383,7 +390,7 @@ namespace JuvoPlayer.Player.EsPlayer
 
         private bool ProcessPacket(Packet packet, CancellationToken transferToken)
         {
-            bool continueProcessing = true;
+            var continueProcessing = true;
 
             switch (packet)
             {
@@ -398,7 +405,7 @@ namespace JuvoPlayer.Player.EsPlayer
                     if (CurrentConfig.StreamType == StreamType.Audio && !CurrentConfig.Compatible(bufferConfigPacket))
                     {
                         logger.Info($"{streamType}: Incompatible Stream config change.");
-                        ReconfigureStream?.Invoke();
+                        streamReconfigureSubject.OnNext(Unit.Default);
 
                         // exit transfer task. This will prevent further transfers
                         // Stops/Restarts will be called by reconfiguration handler.
@@ -540,7 +547,7 @@ namespace JuvoPlayer.Player.EsPlayer
                 $"{streamType}: Transfer task terminated. {currentTransfer}/{(float)dataLength / 1024} kB pushed");
 
             if (invokeError)
-                PlaybackError?.Invoke("Playback Error");
+                playbackErrorSubject.OnNext("Playback Error");
 
         }
 
@@ -680,16 +687,12 @@ namespace JuvoPlayer.Player.EsPlayer
             DisableInput();
             DisableTransfer();
 
-            if (transferCts != null)
-            {
-                logger.Info($"{streamType}: Waiting for cancellation to be signaled");
-                WaitHandle.WaitAll(new WaitHandle[] { transferCts.Token.WaitHandle });
-                transferCts.Dispose();
-                transferCts = null;
-            }
+            playbackErrorSubject.Dispose();
+            streamReconfigureSubject.Dispose();
+
+            transferCts?.Dispose();
 
             wakeup.Dispose();
-            wakeup = null;
 
             isDisposed = true;
         }

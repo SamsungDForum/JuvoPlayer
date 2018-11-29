@@ -1,5 +1,7 @@
 using System;
 using System.IO;
+using System.Reactive.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using JuvoPlayer.Common;
 using JuvoPlayer.Demuxers;
@@ -13,7 +15,8 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
     [TestFixture]
     class TSFFmpegDemuxer
     {
-        private static string BigBuckBunnyUrl = "http://distribution.bbb3d.renderfarming.net/video/mp4/bbb_sunflower_1080p_30fps_normal.mp4";
+        private static string BigBuckBunnyUrl =
+            "http://distribution.bbb3d.renderfarming.net/video/mp4/bbb_sunflower_1080p_30fps_normal.mp4";
 
         [Test]
         public void StartForUrl_ContentWithAudioAndVideo_CallsStreamConfigReady()
@@ -23,13 +26,13 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
 
             using (var demuxer = CreateFFmpegDemuxer())
             {
-                demuxer.StreamConfigReady += config =>
+                demuxer.StreamConfigReady().Subscribe(config =>
                 {
                     if (config.StreamType() == StreamType.Audio)
                         foundAudio = true;
                     else if (config.StreamType() == StreamType.Video)
                         foundVideo = true;
-                };
+                }, SynchronizationContext.Current);
 
                 demuxer.StartForUrl(BigBuckBunnyUrl);
 
@@ -47,13 +50,13 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
 
             using (var demuxer = CreateFFmpegDemuxer())
             {
-                demuxer.ClipDuration += duration =>
+                demuxer.ClipDurationChanged().Subscribe(duration =>
                 {
                     if (isDurationFound)
                         return;
                     receivedDuration = duration;
                     isDurationFound = true;
-                };
+                }, SynchronizationContext.Current);
 
                 demuxer.StartForUrl(BigBuckBunnyUrl);
 
@@ -63,59 +66,42 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
         }
 
         [Test]
-        public void StartForUrl_ContentWithAudioAndVideo_CallsPacketReady()
+        public async Task StartForUrl_ContentWithAudioAndVideo_CallsPacketReady()
         {
-            var packetReceived = false;
-
             using (var demuxer = CreateFFmpegDemuxer())
             {
-                demuxer.PacketReady += packet => { packetReceived = true; };
                 demuxer.StartForUrl(BigBuckBunnyUrl);
-
-                Assert.That(() => packetReceived, Is.True.After(2).Seconds.PollEvery(50).MilliSeconds);
+                await demuxer.PacketReady().FirstAsync().Timeout(TimeSpan.FromSeconds(2));
             }
         }
 
         [Test]
         public async Task Pause_CalledAfterStart_ShouldntCallPacketReady()
         {
-            var packetReceived = false;
-
             using (var demuxer = CreateFFmpegDemuxer())
             {
-                demuxer.PacketReady += packet => {
-                    packetReceived = true;
-                };
                 demuxer.StartForUrl(BigBuckBunnyUrl);
 
-                Assert.That(() => packetReceived, Is.True.After(2).Seconds.PollEvery(50).MilliSeconds);
+                await demuxer.PacketReady().FirstAsync().Timeout(TimeSpan.FromSeconds(2));
 
                 demuxer.Pause();
                 await Task.Delay(TimeSpan.FromMilliseconds(100)); // give demuxer so time to pause itself
 
-                packetReceived = false;
-                await Task.Delay(TimeSpan.FromMilliseconds(100));
-
-                Assert.That(() => packetReceived, Is.False);
+                Assert.ThrowsAsync<TimeoutException>(async () =>
+                    await demuxer.PacketReady().FirstAsync().Timeout(TimeSpan.FromMilliseconds(100)));
             }
         }
 
         [Test]
-        public void Resume_CalledAfterPause_CallsPacketReady()
+        public async Task Resume_CalledAfterPause_CallsPacketReady()
         {
-            var packetReceived = false;
-
             using (var demuxer = CreateFFmpegDemuxer())
             {
-                demuxer.PacketReady += packet => {
-                    packetReceived = true;
-                };
-
                 demuxer.Pause();
                 demuxer.StartForUrl(BigBuckBunnyUrl);
                 demuxer.Resume();
 
-                Assert.That(() => packetReceived, Is.True.After(2).Seconds.PollEvery(50).MilliSeconds);
+                await demuxer.PacketReady().FirstAsync().Timeout(TimeSpan.FromSeconds(2));
             }
         }
 
@@ -131,12 +117,7 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
 
         private static IDemuxer CreateFFmpegDemuxer(ISharedBuffer sharedBuffer = null)
         {
-            return new FFmpegDemuxer(ResolveFFmpegLibDir(), sharedBuffer);
-        }
-
-        private static string ResolveFFmpegLibDir()
-        {
-            return Path.Combine(Paths.ApplicationPath, "lib");
+            return new FFmpegDemuxer(sharedBuffer);
         }
     }
 }

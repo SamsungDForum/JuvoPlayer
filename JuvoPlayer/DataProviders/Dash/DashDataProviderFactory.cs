@@ -26,34 +26,20 @@ namespace JuvoPlayer.DataProviders.Dash
                 throw new ArgumentException("Unsupported clip type.");
             }
 
-            string libPath = null;
-            try
-            {
-                libPath = Path.Combine(
-                    Path.GetDirectoryName(Path.GetDirectoryName(
-                        Application.Current.ApplicationInfo.ExecutablePath)),
-                    "lib");
-            }
-            catch (NullReferenceException)
-            {
-                Logger.Error(
-                    "Cannot find application executable path.");
-            }
-
             var manifest = new DashManifest(clip.Url);
-            var audioPipeline = CreateMediaPipeline(StreamType.Audio, libPath);
+            var audioPipeline = CreateMediaPipeline(StreamType.Audio);
             audioPipeline.DisableAdaptiveStreaming = true;
-            var videoPipeline = CreateMediaPipeline(StreamType.Video, libPath);
+            var videoPipeline = CreateMediaPipeline(StreamType.Video);
 
             return new DashDataProvider(manifest, audioPipeline, videoPipeline);
         }
 
-        private static DashMediaPipeline CreateMediaPipeline(StreamType streamType, string libPath)
+        private static DashMediaPipeline CreateMediaPipeline(StreamType streamType)
         {
             var sharedBuffer = new ChunksSharedBuffer();
             var throughputHistory = new ThroughputHistory();
             var dashClient = new DashClient(throughputHistory, sharedBuffer, streamType);
-            var demuxer = new FFmpegDemuxer(libPath, sharedBuffer);
+            var demuxer = new FFmpegDemuxer(sharedBuffer);
 
             return new DashMediaPipeline(dashClient, demuxer, throughputHistory, streamType);
         }
