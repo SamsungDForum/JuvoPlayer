@@ -16,8 +16,6 @@ using System;
 
 namespace JuvoPlayer.Demuxers
 {
-    public delegate void DemuxerError(string errorMessage);
-
     public enum InitializationMode
     {
         // Stream has been already initialized so preparing StreamConfig is not needed
@@ -37,10 +35,10 @@ namespace JuvoPlayer.Demuxers
         void Flush();
         bool IsPaused { get; }
 
-        event ClipDurationChanged ClipDuration;
-        event DRMInitDataFound DRMInitDataFound;
-        event StreamConfigReady StreamConfigReady;
-        event PacketReady PacketReady;
-        event DemuxerError DemuxerError;
+        IObservable<TimeSpan> ClipDurationChanged();
+        IObservable<DRMInitData> DRMInitDataFound();
+        IObservable<StreamConfig> StreamConfigReady();
+        IObservable<Packet> PacketReady();
+        IObservable<string> DemuxerError();
     }
 }
