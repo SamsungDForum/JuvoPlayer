@@ -52,13 +52,13 @@
     <PackageReference Include="Tizen.NET.TV" Version="4.4.0.1341">
       <ExcludeAssets>Runtime</ExcludeAssets>
     </PackageReference>
+    <PackageReference Include="Tizen.TV.Multimedia.ESPlayer" Version="1.0.0" />
 
     <!-- Tizen.TV.Security is hijacked, as such it is included in assets. Add exclusion once released -->
     <PackageReference Include="Tizen.TV.Security" Version="1.0.3" />
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\csapi-tv-multimedia\Tizen.TV.Multimedia.ESPlayer\Tizen.TV.Multimedia.ESPlayer.csproj" />
     <ProjectReference Include="..\JuvoLogger\JuvoLogger.csproj" />
     <ProjectReference Include="..\MpdParser\MpdParser.csproj" />
     <ProjectReference Include="..\thirdparty\RTSP\RTSP.csproj" />

@@ -334,7 +334,6 @@ namespace XamarinPlayer.Views
 
                 return false;
             });
-
             MessagingCenter.Unsubscribe<IKeyEventSender, string>(this, "KeyDown");
                        
 

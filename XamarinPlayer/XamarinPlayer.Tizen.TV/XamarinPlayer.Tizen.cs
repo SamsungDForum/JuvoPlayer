@@ -58,14 +58,12 @@ namespace XamarinPlayer.Tizen
             // Smart Hub Preview function requires the below code to identify which deeplink have to be launched            
             ReceivedAppControl receivedAppControl = e.ReceivedAppControl;
             //fetch the JSON metadata defined on the smart Hub preview web server            
-            receivedAppControl.ExtraData.TryGet("PAYLOAD", out string payload);
-            //Logger.Info("The PAYLOAD value: " + payload);
-
+            receivedAppControl.ExtraData.TryGet("PAYLOAD", out string payload);            
             //If launched without the SmartHub Preview tile, the message string is null. 
             if (!string.IsNullOrEmpty(payload))
             {
                 char[] charSeparator = new char[] { '&' };
-                string[] result = payload.Split(charSeparator, StringSplitOptions.None);
+                string[] result = payload.Split(charSeparator, StringSplitOptions.RemoveEmptyEntries);
                 if (result.Length > 0)
                     Xamarin.Forms.MessagingCenter.Send<IPreviewPayloadEventSender, string>(this, "PayloadSent", result[0]);
             }
