@@ -95,34 +95,32 @@ namespace JuvoPlayer.OpenGL
 
         protected override void OnPause()
         {
-            Logger.Info("APP PAUSED!");
-            if (_player != null && _player.State == PlayerState.Playing)
-            {
-                _appPausedOnPosition = _player.CurrentPosition;
-                _appPaused = true;
-                ClosePlayer();
-            }
+            if (_player == null || _player.State != PlayerState.Playing)
+                return;
+
+            _appPausedOnPosition = _player.CurrentPosition;
+            _appPaused = true;
+            ClosePlayer();
         }
 
         protected override void OnResume()
         {
-            Logger.Info("APP RESUMED!");
-            if (_appPaused)
+            if (!_appPaused)
+                return;
+
+            _appPaused = false;
+
+            if (_player != null)
+                return;
+
+            if (_selectedTile >= _resourceLoader.TilesCount)
             {
-                _appPaused = false;
-
-                if (_player != null)
-                    return;
-
-                if (_selectedTile >= _resourceLoader.TilesCount)
-                {
-                    ShowMenu(true);
-                    return;
-                }
-                ShowMenu(false);
-                KeyPressedMenuUpdate(); // Playback UI should be visible when starting playback after app execution is resumed
-                HandlePlaybackStart();
+                ShowMenu(true);
+                return;
             }
+            ShowMenu(false);
+            KeyPressedMenuUpdate(); // Playback UI should be visible when starting playback after app execution is resumed
+            HandlePlaybackStart();
         }
 
         private void InitMenu()
@@ -161,15 +159,11 @@ namespace JuvoPlayer.OpenGL
                     try { _systemCpuUsage.Update(); } catch { /* ignore */ } // underlying code is broken - it takes only one sample from /proc/stat, so it's giving average load from system boot till now (like "top -n1" => us + sy + ni)
                     return (float)(_systemCpuUsage.User + _systemCpuUsage.Nice + _systemCpuUsage.System);
                 });
-
-            //_metricsHandler.AddMetric("ABF", 0, 100, 100, () => (float)((Math.Sin((double)Stopwatch.GetTimestamp() / Stopwatch.Frequency) + 1.0) * 50.0));
-
-            //_metricsHandler.AddMetric("VBF", 0, 100, 100, () => (float)((Math.Cos((double)Stopwatch.GetTimestamp() / Stopwatch.Frequency) + 1.0) * 50.0));
         }
 
         private static unsafe void SetMenuFooter()
         {
-            string footer = "JuvoPlayer Prealpha, OpenGL UI #" + DllImports.OpenGLLibVersion().ToString("x") + ", Samsung R&D Poland 2017-2018";
+            string footer = $"JuvoPlayer {typeof(Program).Assembly.GetName().Version}, OpenGL UI #{DllImports.OpenGLLibVersion():x}, Samsung R&D Poland 2017-{DateTime.Now.Year}";
             fixed (byte* f = ResourceLoader.GetBytes(footer))
                 DllImports.SetFooter(f, footer.Length);
         }
