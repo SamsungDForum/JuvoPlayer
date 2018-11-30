@@ -159,7 +159,7 @@ namespace JuvoPlayer.OpenGL
 
         private static unsafe void SetMenuFooter()
         {
-            string footer = $"JuvoPlayer {typeof(Program).Assembly.GetName().Version}, OpenGL UI #{DllImports.OpenGLLibVersion():x}, Samsung R&D Poland 2017-{DateTime.Now.Year}";
+            string footer = $"JuvoPlayer {typeof(Program).Assembly.GetName().Version}, OpenGL Native #{DllImports.OpenGLLibVersion():x}, Samsung R&D Poland 2017-{DateTime.Now.Year}";
             fixed (byte* f = ResourceLoader.GetBytes(footer))
                 DllImports.SetFooter(f, footer.Length);
         }
