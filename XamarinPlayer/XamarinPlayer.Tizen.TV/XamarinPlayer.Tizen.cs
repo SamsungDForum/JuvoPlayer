@@ -57,12 +57,16 @@ namespace XamarinPlayer.Tizen
             // Handle the launch request, show the user the task requested through the "AppControlReceivedEventArgs" parameter
             // Smart Hub Preview function requires the below code to identify which deeplink have to be launched            
             ReceivedAppControl receivedAppControl = e.ReceivedAppControl;
-
-            //fetch the JSON metadata defined on the smart Hub preview web server
-            string payload = "";
-            receivedAppControl.ExtraData.TryGet("PAYLOAD", out payload);   
-            // Send key event to the portable project using MessagingCenter           
-            Xamarin.Forms.MessagingCenter.Send<IPreviewPayloadEventSender, string>(this, "PayloadSent", payload);            
+            //fetch the JSON metadata defined on the smart Hub preview web server            
+            receivedAppControl.ExtraData.TryGet("PAYLOAD", out string payload);            
+            //If launched without the SmartHub Preview tile, the message string is null. 
+            if (!string.IsNullOrEmpty(payload))
+            {
+                char[] charSeparator = new char[] { '&' };
+                string[] result = payload.Split(charSeparator, StringSplitOptions.RemoveEmptyEntries);
+                if (result.Length > 0)
+                    Xamarin.Forms.MessagingCenter.Send<IPreviewPayloadEventSender, string>(this, "PayloadSent", result[0]);
+            }
 
             base.OnAppControlReceived(e);
         }
