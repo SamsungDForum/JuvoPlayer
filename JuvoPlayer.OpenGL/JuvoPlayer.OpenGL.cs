@@ -7,6 +7,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
 using Tizen.Applications;
+using Tizen.System;
 
 namespace JuvoPlayer.OpenGL
 {
@@ -31,21 +32,24 @@ namespace JuvoPlayer.OpenGL
         private const string Tag = "JuvoPlayer";
         private static readonly ILogger Logger = LoggerManager.GetInstance().GetLogger(Tag);
 
-        private MenuAction _selectedAction = MenuAction.None;
-
         private OptionsMenu _options;
         private ResourceLoader _resourceLoader;
         private MetricsHandler _metricsHandler;
-
         private TimeSpan _accumulatedSeekTime;
         private Task _seekDelay;
         private CancellationTokenSource _seekCancellationTokenSource;
-        private bool _seekBufferingInProgress = false;
-        private bool _seekInProgress = false;
 
-        private bool _isAlertShown = false;
+        private bool _seekBufferingInProgress;
+        private bool _seekInProgress;
+        private bool _isAlertShown;
+        private bool _startedFromDeeplink;
 
-        private bool _startedFromDeeplink = false;
+        private readonly SystemMemoryUsage _systemMemoryUsage = new SystemMemoryUsage();
+        private int _systemMemoryUsageGraphId;
+        private float _systemMemoryBottom;
+        private float _systemMemoryTop;
+
+        private readonly SystemCpuUsage _systemCpuUsage = new SystemCpuUsage();
 
         private static void Main(string[] args)
         {
@@ -61,16 +65,19 @@ namespace JuvoPlayer.OpenGL
             InitMenu();
         }
 
+        protected override void OnTerminate()
+        {
+            DllImports.Terminate();
+        }
+
         protected override void OnUpdate(IntPtr eglDisplay, IntPtr eglSurface)
         {
             UpdateUI();
             DllImports.Draw(eglDisplay, eglSurface);
         }
 
-        protected override void OnAppControlReceived(AppControlReceivedEventArgs e)
+        protected override void OnAppControlReceived(AppControlReceivedEventArgs e) // Launch request handling via Smart Hub Preview (deeplinks) functionality
         {
-            // Handle the launch request, show the user the task requested through the "AppControlReceivedEventArgs" parameter
-            // Smart Hub Preview function requires the below code to identify which deeplink have to be launched
             ReceivedAppControl receivedAppControl = e.ReceivedAppControl;
             receivedAppControl.ExtraData.TryGet("PAYLOAD", out string payload); // Fetch the JSON metadata defined on the smart Hub preview web server
 
@@ -85,6 +92,39 @@ namespace JuvoPlayer.OpenGL
             base.OnAppControlReceived(e);
         }
 
+        private TimeSpan _appPausedOnPosition;
+        private bool _appPaused;
+
+        protected override void OnPause()
+        {
+            if (_player == null || _player.State != PlayerState.Playing)
+                return;
+
+            _appPausedOnPosition = _player.CurrentPosition;
+            _appPaused = true;
+            ClosePlayer();
+        }
+
+        protected override void OnResume()
+        {
+            if (!_appPaused)
+                return;
+
+            _appPaused = false;
+
+            if (_player != null)
+                return;
+
+            if (_selectedTile >= _resourceLoader.TilesCount)
+            {
+                ShowMenu(true);
+                return;
+            }
+            ShowMenu(false);
+            KeyPressedMenuUpdate(); // Playback UI should be visible when starting playback after app execution is resumed
+            HandlePlaybackStart();
+        }
+
         private void InitMenu()
         {
             _resourceLoader = new ResourceLoader
@@ -93,15 +133,39 @@ namespace JuvoPlayer.OpenGL
             };
             _resourceLoader.LoadResources(Path.GetDirectoryName(Path.GetDirectoryName(Current.ApplicationInfo.ExecutablePath)), HandleLoadingFinished);
             _metricsHandler = new MetricsHandler();
+            SetMetrics();
             SetMenuFooter();
             SetupOptionsMenu();
             SetDefaultMenuState();
         }
 
+        private void SetMetrics()
+        {
+            _systemMemoryBottom = (float)_systemMemoryUsage.Used / 1024;
+            _systemMemoryTop = (float)_systemMemoryUsage.Total / 1024;
+            _systemMemoryUsageGraphId = _metricsHandler.AddMetric("MEM", (float)_systemMemoryUsage.Used / 1024, (float)_systemMemoryUsage.Total / 1024, 100,
+                () =>
+                {
+                    try { _systemMemoryUsage.Update(); } catch { /* ignore */ }
+                    if (_systemMemoryBottom > (float)_systemMemoryUsage.Used / 1024)
+                    {
+                        _systemMemoryBottom = (float)_systemMemoryUsage.Used / 1024;
+                        _metricsHandler.UpdateGraphRange(_systemMemoryUsageGraphId, _systemMemoryBottom, _systemMemoryTop);
+                    }
+                    return (float)_systemMemoryUsage.Used / 1024;
+                });
+
+            _metricsHandler.AddMetric("CPU", 0, 100, 100,
+                () =>
+                {
+                    try { _systemCpuUsage.Update(); } catch { /* ignore */ } // underlying code is broken - it takes only one sample from /proc/stat, so it's giving average load from system boot till now (like "top -n1" => us + sy + ni)
+                    return (float)(_systemCpuUsage.User + _systemCpuUsage.Nice + _systemCpuUsage.System);
+                });
+        }
+
         private static unsafe void SetMenuFooter()
         {
-            var footer = "JuvoPlayer Prealpha, OpenGL UI #" + DllImports.OpenGLLibVersion().ToString("x") +
-                            ", Samsung R&D Poland 2017-2018";
+            string footer = $"JuvoPlayer {typeof(Program).Assembly.GetName().Version}, OpenGL Native #{DllImports.OpenGLLibVersion():x}, Samsung R&D Poland 2017-{DateTime.Now.Year}";
             fixed (byte* f = ResourceLoader.GetBytes(footer))
                 DllImports.SetFooter(f, footer.Length);
         }
@@ -249,7 +313,7 @@ namespace JuvoPlayer.OpenGL
                 return;
             }
             ShowMenu(false);
-            KeyPressedMenuUpdate(); // Playback UI should be visible
+            KeyPressedMenuUpdate(); // Playback UI should be visible when starting playback from deeplink
             HandlePlaybackStart();
         }
 
@@ -283,7 +347,7 @@ namespace JuvoPlayer.OpenGL
         private void KeyPressedMenuUpdate()
         {
             _lastKeyPressTime = DateTime.Now;
-            _progressBarShown = !_isMenuShown;
+            _progressBarShown = !_isMenuShown && _resourceLoader.IsLoadingFinished;
             if (!_progressBarShown && _options.Visible)
                 _options.Hide();
         }
@@ -621,12 +685,6 @@ namespace JuvoPlayer.OpenGL
             UpdatePlaybackCompleted();
             UpdatePlaybackControls();
             UpdateMetrics();
-        }
-
-        private void SelectMenuAction(MenuAction menuAction)
-        {
-            _selectedAction = menuAction;
-            DllImports.SelectAction((int)_selectedAction);
         }
     }
 }

@@ -1,5 +1,4 @@
 ﻿<Project Sdk="Microsoft.NET.Sdk">
-
   <!-- Property Group for Tizen40 Project -->
   <PropertyGroup>
     <OutputType>Exe</OutputType>
@@ -7,7 +6,8 @@
     <SignAssembly>false</SignAssembly>
     <AssemblyOriginatorKeyFile />
     <AssemblyName>JuvoPlayerXamarin.Tizen.TV</AssemblyName>
-    <StartupObject></StartupObject>
+    <StartupObject>
+    </StartupObject>
     <ApplicationIcon />
     <Win32Resource />
     <NoWin32Manifest>true</NoWin32Manifest>
@@ -17,7 +17,6 @@
     <Description>JuvoPlayerXamarin.Tizen.TV</Description>
     <Version>1.0.8</Version>
   </PropertyGroup>
-
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugType>portable</DebugType>
   </PropertyGroup>
@@ -38,15 +37,10 @@
     <EmbeddedResource Include="res\subs\media_player_subs_windows-1250.srt" />
     <EmbeddedResource Include="res\subs\media_player_subs_windows-1252.srt" />
   </ItemGroup>
-
-  
   <!-- If solution already has PCL project, will reference -->
-  
-
   <!-- Include Nuget Package for Tizen Project building -->
   <ItemGroup>
     <PackageReference Include="Xamarin.Forms" Version="3.0.0.482510" />
-    
     <!-- Tizen.* packages are excluded from runtime -->
     <PackageReference Include="Tizen.NET" Version="5.0.0.14572">
       <ExcludeAssets>Runtime</ExcludeAssets>
@@ -73,5 +67,11 @@
       <LastGenOutput>Resources.Designer.cs</LastGenOutput>
     </EmbeddedResource>
   </ItemGroup>
-
+  <Target Name="UpdateVersion" BeforeTargets="PrepareForBuild">
+    <XmlPeek XmlInputPath="..\..\JuvoPlayer\JuvoPlayer.csproj" Query="/Project/PropertyGroup/Version[1]/text()">
+      <Output TaskParameter="Result" ItemName="JuvoPlayerVersion" />
+    </XmlPeek>
+    <XmlPoke XmlInputPath="XamarinPlayer.Tizen.TV.csproj" Query="/Project/PropertyGroup/Version" Value="@(JuvoPlayerVersion)" />
+    <XmlPoke XmlInputPath="tizen-manifest.xml" Query="/x:manifest/@version" Value="@(JuvoPlayerVersion)" Namespaces="&lt;Namespace Prefix='x' Uri='http://tizen.org/ns/packages' /&gt;" />
+  </Target>
 </Project>
