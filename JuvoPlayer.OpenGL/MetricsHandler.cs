@@ -1,36 +1,43 @@
-﻿using Tizen.System;
+﻿using System;
+using System.Collections.Generic;
 
 namespace JuvoPlayer.OpenGL
 {
     class MetricsHandler
     {
-        private readonly SystemMemoryUsage _systemMemoryUsage = new SystemMemoryUsage();
-        private readonly int _systemMemoryUsageGraphId;
-        private float _systemMemoryBottom;
-        private readonly float _systemMemoryTop;
-
-        private readonly SystemCpuUsage _systemCpuUsage = new SystemCpuUsage();
-        private readonly int _systemCpuUsageGraphId;
-
+        public class Metric
+        {
+            public int Id { get; set; }
+            public Func<float> Update { get; set; }
+        }
+        private readonly List<Metric> _metrics = new List<Metric>();
         private bool _metricsShown;
 
-        public unsafe MetricsHandler()
+        public unsafe int AddMetric(string tag, float minimumValue, float maximumValue, int sampleCount, Func<float> getCurrentValue)
         {
-            string tag = "MEM";
-            _systemMemoryBottom = (float) _systemMemoryUsage.Used / 1024;
-            _systemMemoryTop = (float)_systemMemoryUsage.Total / 1024;
-            fixed (byte* name = ResourceLoader.GetBytes(tag))
-                _systemMemoryUsageGraphId = DllImports.AddGraph(name, tag.Length, _systemMemoryBottom, _systemMemoryTop, 100);
-            if (_systemMemoryUsageGraphId > DllImports.fpsGraphId)
-                DllImports.SetGraphVisibility(_systemMemoryUsageGraphId, _metricsShown ? 1 : 0);
+            int id;
+            fixed (byte* tagBytes = ResourceLoader.GetBytes(tag))
+                id = DllImports.AddGraph(tagBytes, tag.Length, minimumValue, maximumValue, sampleCount);
+            if (id <= DllImports.fpsGraphId)
+                return DllImports.wrongGraphId;
+            _metrics.Add(new Metric
+            {
+                Id = id,
+                Update = getCurrentValue
+            });
+            DllImports.SetGraphVisibility(id, _metricsShown ? 1 : 0);
+            return id;
+        }
 
-            tag = "CPU";
-            fixed (byte* name = ResourceLoader.GetBytes(tag))
-                _systemCpuUsageGraphId = DllImports.AddGraph(name, tag.Length, 0, 100, 100);
-            if (_systemCpuUsageGraphId > DllImports.fpsGraphId)
-                DllImports.SetGraphVisibility(_systemCpuUsageGraphId, _metricsShown ? 1 : 0);
+        public void Update()
+        {
+            foreach (Metric metric in _metrics)
+                DllImports.UpdateGraphValue(metric.Id, metric.Update());
+        }
 
-            _metricsShown = false;
+        public void UpdateGraphRange(int id, float minimum, float maximum)
+        {
+            DllImports.UpdateGraphRange(id, minimum, maximum);
         }
 
         public void SwitchVisibility()
@@ -61,40 +68,9 @@ namespace JuvoPlayer.OpenGL
         private void UpdateState()
         {
             DllImports.SetGraphVisibility(DllImports.fpsGraphId, _metricsShown ? 1 : 0);
-
-            if (_systemMemoryUsageGraphId > DllImports.fpsGraphId)
-                DllImports.SetGraphVisibility(_systemMemoryUsageGraphId, _metricsShown ? 1 : 0);
-            
-            if (_systemCpuUsageGraphId > DllImports.fpsGraphId)
-                DllImports.SetGraphVisibility(_systemCpuUsageGraphId, _metricsShown ? 1 : 0);
-
+            foreach(Metric metric in _metrics)
+                DllImports.SetGraphVisibility(metric.Id, _metricsShown ? 1 : 0);
             DllImports.SetLogConsoleVisibility(_metricsShown ? 1 : 0);
-        }
-
-        public void Update()
-        {
-            try // updates throw exceptions on failure
-            {
-                if (_systemMemoryUsageGraphId > DllImports.fpsGraphId)
-                {
-                    _systemMemoryUsage.Update();
-                    if (_systemMemoryBottom > (float) _systemMemoryUsage.Used / 1024)
-                    {
-                        _systemMemoryBottom = (float) _systemMemoryUsage.Used / 1024;
-                        DllImports.UpdateGraphRange(_systemMemoryUsageGraphId, _systemMemoryBottom, _systemMemoryTop);
-                    }
-                    DllImports.UpdateGraphValue(_systemMemoryUsageGraphId, (float) _systemMemoryUsage.Used / 1024);
-                }
-
-                if (_systemCpuUsageGraphId > DllImports.fpsGraphId)
-                {
-                    _systemCpuUsage.Update(); // underlying code is broken - it takes only one sample from /proc/stat, so it's giving average load from system boot till now (like "top -n1" => us + sy + ni)
-                    DllImports.UpdateGraphValue(_systemCpuUsageGraphId, (float) (_systemCpuUsage.User + _systemCpuUsage.Nice + _systemCpuUsage.System));
-                }
-            }
-            catch
-            {
-            }
         }
     }
 }
