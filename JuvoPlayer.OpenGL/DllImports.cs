@@ -12,6 +12,9 @@ namespace JuvoPlayer.OpenGL
         [DllImport(GlDemoLib, EntryPoint = "Create")]
         public static extern void Create();
 
+        [DllImport(GlDemoLib, EntryPoint = "Terminate")]
+        public static extern void Terminate();
+
         [DllImport(GlDemoLib, EntryPoint = "Draw")]
         public static extern void Draw(IntPtr eglDisplay, IntPtr eglSurface);
 
@@ -80,6 +83,7 @@ namespace JuvoPlayer.OpenGL
 
         // Metrics
 
+        public const int wrongGraphId = -1;
         public const int fpsGraphId = 0; // computations handled by C lib
 
         [DllImport(GlDemoLib, EntryPoint = "AddGraph")]
