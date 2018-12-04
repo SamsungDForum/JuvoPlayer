@@ -1,13 +1,11 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
-
+<Project Sdk="Microsoft.NET.Sdk">
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <TargetFramework>netcoreapp2.0</TargetFramework>
     <AssemblyName>JuvoPlayerOpenGLNative.Tizen.TV</AssemblyName>
-    <Version>1.0.3</Version>
+    <Version>1.3.1</Version>
     <Description>C++ native GUI for the JuvoPlayer backend. For animation peformance optimization the Open GL framework has been used.</Description>
   </PropertyGroup>
-
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugType>portable</DebugType>
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
@@ -29,16 +27,13 @@
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </Content>
   </ItemGroup>
-
   <ItemGroup>
     <Folder Include="lib\" />
     <Folder Include="res\fonts\" />
     <Folder Include="res\icons\" />
   </ItemGroup>
-
   <ItemGroup>
     <PackageReference Include="RevStackCore-ImageSharp" Version="0.9.0" />
-
     <!-- Tizen.* packages are excluded from runtime -->
     <PackageReference Include="Tizen.NET" Version="5.0.0.14545">
       <ExcludeAssets>Runtime</ExcludeAssets>
@@ -50,10 +45,15 @@
       <ExcludeAssets>Runtime</ExcludeAssets>
     </PackageReference>
   </ItemGroup>
-
   <ItemGroup>
     <ProjectReference Include="..\JuvoLogger.Tizen\JuvoLogger.Tizen.csproj" />
     <ProjectReference Include="..\JuvoPlayer\JuvoPlayer.csproj" />
   </ItemGroup>
-
+  <Target Name="UpdateVersion" BeforeTargets="PrepareForBuild">
+    <XmlPeek XmlInputPath="..\JuvoPlayer\JuvoPlayer.csproj" Query="/Project/PropertyGroup/Version[1]/text()">
+      <Output TaskParameter="Result" ItemName="JuvoPlayerVersion" />
+    </XmlPeek>
+    <XmlPoke XmlInputPath="JuvoPlayer.OpenGL.csproj" Query="/Project/PropertyGroup/Version" Value="@(JuvoPlayerVersion)" />
+    <XmlPoke XmlInputPath="tizen-manifest.xml" Query="/x:manifest/@version" Value="@(JuvoPlayerVersion)" Namespaces="&lt;Namespace Prefix='x' Uri='http://tizen.org/ns/packages' /&gt;" />
+  </Target>
 </Project>
