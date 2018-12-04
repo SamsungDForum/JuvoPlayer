@@ -34,7 +34,7 @@ namespace XamarinPlayer.Views
             InitializeComponent();
 
             AppMainPage = page;
-
+                        
             UpdateItem();
 
             NavigationPage.SetHasNavigationBar(this, false);
@@ -47,26 +47,23 @@ namespace XamarinPlayer.Views
 
         
         private void PreviewPayloadHandler(string message)
-        {               
-            //This method is being executed always. If launched without the SmartHub Preview tail, the message string is null.            
-            if (!string.IsNullOrEmpty(message))
+        {   
+            if (!message.Contains("values"))
+                return;                           
+            try
             {
-                var definition = new { values = "" };                
-                var payload = JsonConvert.DeserializeAnonymousType(message, definition);              
-                                
+                var definition = new { values = "" };
+                var payload = JsonConvert.DeserializeAnonymousType(message, definition);
                 int index = 0;
-                try
-                {
-                    //In this case the payload has to be an integer - index value.
-                    index = int.Parse(payload.values);
-                    ContentItem item = ContentListView.GetItem(index);
-                    ContentListView.FocusedContent = item;
-                    ContentSelected(item);
-                } catch (System.Exception exc)
-                {                    
-                    throw new System.Exception("PreviewPayloadHandler exception " + exc.Message);
-                }               
-            }
+                //In this case the payload has to be an integer - index value.
+                index = int.Parse(payload.values);
+                ContentItem item = ContentListView.GetItem(index);                
+                ContentSelected(item);                
+            } catch (System.Exception exc)
+            {                    
+                throw new System.Exception("PreviewPayloadHandler exception " + exc.Message);
+            }               
+            
         }
                 
 
@@ -80,24 +77,28 @@ namespace XamarinPlayer.Views
 
         private void ContentSelected(ContentItem item)
         {
+            ContentListView.FocusedContent = item;
             var playerView = new PlayerView()
             {
                 BindingContext = item.BindingContext
-            };
+            };            
             AppMainPage.PushAsync(playerView);
         }
 
         private void UpdateItem()
         {
+            
             foreach (DetailContentData content in ((ContentListPageViewModel)BindingContext).ContentList)
             {
                 ContentItem item = new ContentItem()
                 {
                     BindingContext = content
                 };
-                item.OnContentSelect += new ContentSelectHandler(ContentSelected);
+                item.OnContentSelect += new ContentSelectHandler(ContentSelected);                
                 ContentListView.Add(item);
             }
+
+            
         }
 
         protected async void UpdateContentInfo()
@@ -113,7 +114,7 @@ namespace XamarinPlayer.Views
         protected override void OnAppearing()
         {
             base.OnAppearing();
-
+            
             ContentListView.SetFocus();
         }
 

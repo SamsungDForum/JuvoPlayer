@@ -5,7 +5,7 @@
     <OutputType>Library</OutputType>
     <TargetFramework>netstandard2.0</TargetFramework>
     <TizenCreateTpkOnBuild>false</TizenCreateTpkOnBuild>
-    <Version>1.3.1</Version>
+    <Version>1.4.2</Version>
     <PackageReleaseNotes>Release of first beta to be presented to the public. It will be uploaded to the Samsung Seller Office site</PackageReleaseNotes>
     <Company>SRPOL MVS</Company>
     <Description>Refrence application of video streaming Tizen .Net Tv applications</Description>
@@ -43,7 +43,7 @@
     <PackageReference Include="System.Text.Encoding.CodePages" Version="4.5.0" />
 
     <!-- Tizen.* packages are excluded from runtime -->
-    <PackageReference Include="Tizen.NET" Version="5.0.0.14545">
+    <PackageReference Include="Tizen.NET" Version="5.0.0.14572">
       <ExcludeAssets>Runtime</ExcludeAssets>
     </PackageReference>
     <PackageReference Include="Tizen.NET.Sdk" Version="1.0.1">
@@ -52,13 +52,12 @@
     <PackageReference Include="Tizen.NET.TV" Version="4.4.0.1341">
       <ExcludeAssets>Runtime</ExcludeAssets>
     </PackageReference>
-
+    <PackageReference Include="Tizen.TV.Multimedia.ESPlayer" Version="1.0.0" />
     <!-- Tizen.TV.Security is hijacked, as such it is included in assets. Add exclusion once released -->
-    <PackageReference Include="Tizen.TV.Security" Version="1.0.2" />
+    <PackageReference Include="Tizen.TV.Security" Version="1.0.3" />
   </ItemGroup>
 
   <ItemGroup>
-    <ProjectReference Include="..\csapi-tv-multimedia\Tizen.TV.Multimedia.ESPlayer\Tizen.TV.Multimedia.ESPlayer.csproj" />
     <ProjectReference Include="..\JuvoLogger\JuvoLogger.csproj" />
     <ProjectReference Include="..\MpdParser\MpdParser.csproj" />
     <ProjectReference Include="..\thirdparty\RTSP\RTSP.csproj" />
