@@ -1,15 +1,19 @@
-// Copyright (c) 2017 Samsung Electronics Co., Ltd All Rights Reserved
-// PROPRIETARY/CONFIDENTIAL 
-// This software is the confidential and proprietary
-// information of SAMSUNG ELECTRONICS ("Confidential Information"). You shall
-// not disclose such Confidential Information and shall use it only in
-// accordance with the terms of the license agreement you entered into with
-// SAMSUNG ELECTRONICS. SAMSUNG make no representations or warranties about the
-// suitability of the software, either express or implied, including but not
-// limited to the implied warranties of merchantability, fitness for a
-// particular purpose, or non-infringement. SAMSUNG shall not be liable for any
-// damages suffered by licensee as a result of using, modifying or distributing
-// this software or its derivatives.
+/*!
+ * https://github.com/SamsungDForum/JuvoPlayer
+ * Copyright 2018, Samsung Electronics Co., Ltd
+ * Licensed under the MIT license
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER BE LIABLE FOR ANY
+ * DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+ * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+ * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+ * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+ * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
 
 using System;
 using JuvoPlayer.Common;
