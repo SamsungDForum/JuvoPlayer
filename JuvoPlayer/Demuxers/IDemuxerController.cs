@@ -18,12 +18,25 @@
  */
 
 using System;
+using System.Threading.Tasks;
+using JuvoPlayer.Common;
 
-namespace JuvoPlayer.Demuxers.FFmpeg
+namespace JuvoPlayer.Demuxers
 {
-    public interface IAVIOContext : IDisposable
+    public interface IDemuxerController : IDisposable
     {
-        bool Seekable { get; set; }
-        bool WriteFlag { get; set; }
+        void SetDataSource(IObservable<byte[]> dataSource);
+        void StartForUrl(string url);
+        void StartForEs(InitializationMode mode);
+        void Reset();
+        Task Flush();
+        void Pause();
+        void Resume();
+
+        IObservable<StreamConfig> StreamConfigReady();
+        IObservable<TimeSpan> ClipDurationFound();
+        IObservable<DRMInitData> DrmInitDataFound();
+        IObservable<Packet> PacketReady();
+        IObservable<string> DemuxerError();
     }
 }

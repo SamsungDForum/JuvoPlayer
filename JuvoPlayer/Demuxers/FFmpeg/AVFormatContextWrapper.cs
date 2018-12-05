@@ -1,3 +1,22 @@
+/*!
+ *
+ * ([https://github.com/SamsungDForum/JuvoPlayer])
+ * Copyright 2018, Samsung Electronics Co., Ltd
+ * Licensed under the MIT license
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER BE LIABLE FOR ANY
+ * DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+ * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+ * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+ * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+ * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
+ */
+
 using System;
 using System.Collections.Generic;
 using System.Drawing;
@@ -54,17 +73,18 @@ namespace JuvoPlayer.Demuxers.FFmpeg
             }
         }
 
-        public TimeSpan Duration => TimeSpan.FromMilliseconds(formatContext->duration / 1000);
+        public TimeSpan Duration => formatContext->duration > 0
+            ? TimeSpan.FromMilliseconds(formatContext->duration / 1000)
+            : TimeSpan.Zero;
+
 
         public DRMInitData[] DRMInitData => GetDRMInitData();
 
         private DRMInitData[] GetDRMInitData()
         {
             var result = new List<DRMInitData>();
-
             if (formatContext->protection_system_data_count <= 0)
                 return result.ToArray();
-
             for (uint i = 0; i < formatContext->protection_system_data_count; ++i)
             {
                 var systemData = formatContext->protection_system_data[i];
@@ -87,10 +107,15 @@ namespace JuvoPlayer.Demuxers.FFmpeg
         public void Open()
         {
             formatContext->flags |= FFmpegMacros.AVFMT_FLAG_CUSTOM_IO;
+            Open(null);
+        }
 
-            fixed (AVFormatContext** formatContextPointer = &formatContext)
+        public void Open(string url)
+        {
+            fixed
+                (AVFormatContext** formatContextPointer = &formatContext)
             {
-                var ret = Interop.FFmpeg.avformat_open_input(formatContextPointer, null, null, null);
+                var ret = Interop.FFmpeg.avformat_open_input(formatContextPointer, url, null, null);
                 if (ret != 0)
                     throw new FFmpegException("Cannot open AVFormatContext");
             }
@@ -116,15 +141,12 @@ namespace JuvoPlayer.Demuxers.FFmpeg
             {
                 if (formatContext->streams[i]->codecpar->codec_type != mediaType)
                     continue;
-
                 var dict = Interop.FFmpeg.av_dict_get(formatContext->streams[i]->metadata, "variant_bitrate", null, 0);
                 if (dict == null)
                     return -1;
-
                 var stringValue = Marshal.PtrToStringAnsi((IntPtr) dict->value);
                 if (!ulong.TryParse(stringValue, out var value))
                     return -1;
-
                 if (bandwidth >= value) continue;
                 streamId = i;
                 bandwidth = value;
@@ -133,7 +155,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg
             return streamId;
         }
 
-        public void SetStreams(int audioIdx, int videoIdx)
+        public void EnableStreams(int audioIdx, int videoIdx)
         {
             for (var i = 0; i < formatContext->nb_streams; ++i)
             {
@@ -146,9 +168,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg
         {
             if (idx < 0 || idx >= formatContext->nb_streams)
                 throw new FFmpegException($"Wrong stream index! nb_streams = {formatContext->nb_streams}, idx = {idx}");
-
             var stream = formatContext->streams[idx];
-
             switch (stream->codec->codec_type)
             {
                 case AVMediaType.AVMEDIA_TYPE_AUDIO:
@@ -171,39 +191,30 @@ namespace JuvoPlayer.Demuxers.FFmpeg
                     pkt.data = null;
                     pkt.size = 0;
                     var ret = Interop.FFmpeg.av_read_frame(formatContext, &pkt);
-
                     if (ret == -541478725)
                         return null;
-
                     if (ret < 0)
                         throw new FFmpegException($"Cannot get next packet. Cause {GetErrorText(ret)}");
-
                     var streamIndex = pkt.stream_index;
                     if (streamIndexes.All(index => index != streamIndex))
                         continue;
-
                     var stream = formatContext->streams[streamIndex];
                     var data = pkt.data;
                     var dataSize = pkt.size;
                     var pts = Interop.FFmpeg.av_rescale_q(pkt.pts, stream->time_base, microsBase) / 1000;
                     var dts = Interop.FFmpeg.av_rescale_q(pkt.dts, stream->time_base, microsBase) / 1000;
                     var duration = Interop.FFmpeg.av_rescale_q(pkt.duration, stream->time_base, microsBase) / 1000;
-
                     var sideData = Interop.FFmpeg.av_packet_get_side_data(&pkt,
                         AVPacketSideDataType.AV_PKT_DATA_ENCRYPT_INFO, null);
-
                     var packet = sideData != null ? CreateEncryptedPacket(sideData) : new Packet();
-
                     packet.StreamType = stream->codec->codec_type == AVMediaType.AVMEDIA_TYPE_AUDIO
                         ? StreamType.Audio
                         : StreamType.Video;
                     packet.Pts = TimeSpan.FromMilliseconds(pts >= 0 ? pts : 0);
                     packet.Dts = TimeSpan.FromMilliseconds(dts >= 0 ? dts : 0);
                     packet.Duration = TimeSpan.FromMilliseconds(duration);
-
                     packet.Data = new byte[dataSize];
                     packet.IsKeyFrame = pkt.flags == 1;
-
                     CopyPacketData(data, dataSize, packet, sideData == null);
                     return packet;
                 }
@@ -217,21 +228,17 @@ namespace JuvoPlayer.Demuxers.FFmpeg
         private static Packet CreateEncryptedPacket(byte* sideData)
         {
             var encInfo = (AVEncInfo*) sideData;
-
             int subsampleCount = encInfo->subsample_count;
             var keyId = encInfo->kid.ToArray();
             var iv = new byte[encInfo->iv_size];
             Buffer.BlockCopy(encInfo->iv.ToArray(), 0, iv, 0, encInfo->iv_size);
-
             var packet = new EncryptedPacket
             {
                 KeyId = keyId,
                 Iv = iv
             };
-
             if (subsampleCount <= 0)
                 return packet;
-
             packet.Subsamples = new EncryptedPacket.Subsample[subsampleCount];
 
             // structure has sequential layout and the last element is an array
@@ -280,10 +287,8 @@ namespace JuvoPlayer.Demuxers.FFmpeg
         private StreamConfig ReadAudioConfig(AVStream* stream)
         {
             var config = new AudioStreamConfig();
-
             var sampleFormat = (AVSampleFormat) stream->codecpar->format;
             config.Codec = ConvertAudioCodec(stream->codecpar->codec_id);
-
             if (stream->codecpar->bits_per_coded_sample > 0)
                 config.BitsPerChannel = stream->codecpar->bits_per_coded_sample;
             else
@@ -294,7 +299,6 @@ namespace JuvoPlayer.Demuxers.FFmpeg
 
             config.ChannelLayout = stream->codecpar->channels;
             config.SampleRate = stream->codecpar->sample_rate;
-
             if (stream->codecpar->extradata_size > 0)
             {
                 config.CodecExtraData = new byte[stream->codecpar->extradata_size];
@@ -315,7 +319,6 @@ namespace JuvoPlayer.Demuxers.FFmpeg
                 FrameRateNum = stream->r_frame_rate.num,
                 FrameRateDen = stream->r_frame_rate.den
             };
-
             if (stream->codecpar->extradata_size > 0)
             {
                 config.CodecExtraData = new byte[stream->codecpar->extradata_size];
@@ -354,7 +357,6 @@ namespace JuvoPlayer.Demuxers.FFmpeg
         private void ReleaseUnmanagedResources()
         {
             if (formatContext == null) return;
-
             fixed (AVFormatContext** formatContextPointer = &formatContext)
             {
                 Interop.FFmpeg.avformat_close_input(formatContextPointer);

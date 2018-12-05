@@ -31,7 +31,7 @@ namespace JuvoPlayer.Tests.UnitTests
         [Test]
         public void GetStreamsDescription_ClipWithNoSubtitles_ReturnsEmptyList()
         {
-            var demuxerMock = Substitute.For<IDemuxer>();
+            var demuxerMock = Substitute.For<IDemuxerController>();
             var clipDefinition = new ClipDefinition();
             var dataProvider = new HLSDataProvider(demuxerMock, clipDefinition);
 
@@ -43,7 +43,7 @@ namespace JuvoPlayer.Tests.UnitTests
         [Test]
         public void OnChangeActiveStream_UnknownSubtitles_ThrowsArgumentException()
         {
-            var demuxerMock = Substitute.For<IDemuxer>();
+            var demuxerMock = Substitute.For<IDemuxerController>();
             var clipDefinition = new ClipDefinition();
             var dataProvider = new HLSDataProvider(demuxerMock, clipDefinition);
             var streamDescription = new StreamDescription

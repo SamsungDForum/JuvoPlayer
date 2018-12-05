@@ -17,6 +17,7 @@
 
 using System;
 using JuvoPlayer.Common;
+using JuvoPlayer.Demuxers;
 using JuvoPlayer.Demuxers.FFmpeg;
 using JuvoPlayer.SharedBuffers;
 
@@ -41,11 +42,12 @@ namespace JuvoPlayer.DataProviders.RTSP
                 throw new ArgumentException("unsupported clip type");
             }
 
-            var sharedBuffer = new FramesSharedBuffer();
-            var rtspClient = new RTSPClient(sharedBuffer);
-            var demuxer = new FFmpegDemuxer(sharedBuffer);
+            var rtspClient = new RTSPClient();
+            var demuxer = new FFmpegDemuxer(new FFmpegGlue());
+            var demuxerController = new DemuxerController(demuxer);
+            demuxerController.SetDataSource(rtspClient.ChunkReady());
 
-            return new RTSPDataProvider(demuxer, rtspClient, clip);
+            return new RTSPDataProvider(demuxerController, rtspClient, clip);
         }
 
         public bool SupportsClip(ClipDefinition clip)

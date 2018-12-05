@@ -16,6 +16,7 @@
  */
 
 using System;
+using System.IO;
 using System.Reactive;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
@@ -24,7 +25,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using JuvoLogger;
 using JuvoPlayer.Common;
-using JuvoPlayer.SharedBuffers;
 using MpdParser.Node;
 using MpdParser.Node.Dynamic;
 using Representation = MpdParser.Representation;
@@ -43,7 +43,6 @@ namespace JuvoPlayer.DataProviders.Dash
         private TimeSpan timeBufferDepth = timeBufferDepthDefault;
 
         private readonly IThroughputHistory throughputHistory;
-        private readonly ISharedBuffer sharedBuffer;
         private readonly StreamType streamType;
 
         private Representation currentRepresentation;
@@ -111,22 +110,24 @@ namespace JuvoPlayer.DataProviders.Dash
         private readonly Subject<Unit> downloadCompletedSubject = new Subject<Unit>();
         private readonly Subject<Unit> bufferingStartedSubject = new Subject<Unit>();
         private readonly Subject<Unit> bufferingCompletedSubject = new Subject<Unit>();
+        private readonly Subject<byte[]> chunkReadySubject = new Subject<byte[]>();
 
         private readonly object clientLock = new object();
 
-        public DashClient(IThroughputHistory throughputHistory, ISharedBuffer sharedBuffer, StreamType streamType)
+        public DashClient(IThroughputHistory throughputHistory, StreamType streamType)
         {
             this.throughputHistory = throughputHistory ??
                                      throw new ArgumentNullException(nameof(throughputHistory),
                                          "throughputHistory cannot be null");
-            this.sharedBuffer = sharedBuffer ??
-                                throw new ArgumentNullException(nameof(sharedBuffer), "sharedBuffer cannot be null");
             this.streamType = streamType;
         }
 
         public TimeSpan Seek(TimeSpan position)
         {
             currentSegmentId = currentStreams.SegmentId(position);
+            var previousSegmentId = currentStreams.PreviousSegmentId(currentSegmentId);
+            lastDownloadSegmentTimeRange = currentStreams.SegmentTimeRange(previousSegmentId);
+
             var seekToTimeRange = currentStreams.SegmentTimeRange(currentSegmentId);
 
             // We are not expecting NULL segments after seek.
@@ -174,9 +175,6 @@ namespace JuvoPlayer.DataProviders.Dash
                 cancellationTokenSource?.Dispose();
                 cancellationTokenSource = new CancellationTokenSource();
             }
-
-            // clear garbage before appending new data
-            sharedBuffer?.ClearData();
 
             bufferTime = currentTime;
             if (buffering)
@@ -350,7 +348,7 @@ namespace JuvoPlayer.DataProviders.Dash
             if (cancellationTokenSource.IsCancellationRequested)
                 return false;
 
-            sharedBuffer.WriteData(responseResult.Data);
+            chunkReadySubject.OnNext(responseResult.Data);
 
             var segment = responseResult.DownloadSegment;
             lastDownloadSegmentTimeRange = segment.Period.Copy();
@@ -399,7 +397,7 @@ namespace JuvoPlayer.DataProviders.Dash
         private void InitDataDownloaded(DownloadResponse responseResult)
         {
             if (responseResult.Data != null)
-                sharedBuffer.WriteData(responseResult.Data);
+                chunkReadySubject.OnNext(responseResult.Data);
 
             // Assign initStreamBytes AFTER it has been pushed down the shared buffer.
             // When issuing EOS, initStreamBytes will be checked for NULLnes.
@@ -582,7 +580,7 @@ namespace JuvoPlayer.DataProviders.Dash
             if (initStreamBytes == null)
                 return;
 
-            sharedBuffer.WriteData(null, true);
+            chunkReadySubject.OnCompleted();
 
             isEosSent = true;
         }
@@ -739,6 +737,11 @@ namespace JuvoPlayer.DataProviders.Dash
             return bufferingCompletedSubject.AsObservable();
         }
 
+        public IObservable<byte[]> ChunkReady()
+        {
+            return chunkReadySubject.AsObservable();
+        }
+
         #region Logging Functions
 
         private void LogInfo(string logMessage, [CallerFilePath] string file = "",
@@ -787,6 +790,7 @@ namespace JuvoPlayer.DataProviders.Dash
             bufferingStartedSubject.Dispose();
             bufferingCompletedSubject.Dispose();
             downloadCompletedSubject.Dispose();
+            chunkReadySubject.Dispose();
 
             disposedValue = true;
         }
