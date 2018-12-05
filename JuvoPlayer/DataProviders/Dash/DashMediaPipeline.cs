@@ -617,7 +617,7 @@ namespace JuvoPlayer.DataProviders.Dash
                         packet.Dts = TimeSpan.Zero;
                     }
 
-                    Logger.Info($"{streamType} {packet.Pts}");
+                    Logger.Debug($"{streamType} {packet.Pts}");
 
                     // Don't convert packet here, use assignment (less costly)
                     lastPushedClock.SetClock(packet);
