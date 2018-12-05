@@ -18,6 +18,7 @@
 using System;
 using JuvoPlayer.Common;
 using JuvoLogger;
+using JuvoPlayer.Demuxers;
 using JuvoPlayer.Demuxers.FFmpeg;
 using JuvoPlayer.SharedBuffers;
 
@@ -51,12 +52,12 @@ namespace JuvoPlayer.DataProviders.Dash
 
         private static DashMediaPipeline CreateMediaPipeline(StreamType streamType)
         {
-            var sharedBuffer = new ChunksSharedBuffer();
             var throughputHistory = new ThroughputHistory();
-            var dashClient = new DashClient(throughputHistory, sharedBuffer, streamType);
-            var demuxer = new FFmpegDemuxerRefactor(sharedBuffer);
+            var dashClient = new DashClient(throughputHistory, streamType);
+            var controller = new DemuxerController(new FFmpegDemuxer(new FFmpegGlue()));
+            controller.SetDataSource(dashClient.ChunkReady());
 
-            return new DashMediaPipeline(dashClient, demuxer, throughputHistory, streamType);
+            return new DashMediaPipeline(dashClient, controller, throughputHistory, streamType);
         }
 
         public bool SupportsClip(ClipDefinition clip)

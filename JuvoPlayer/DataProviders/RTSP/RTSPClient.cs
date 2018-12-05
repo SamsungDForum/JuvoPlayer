@@ -19,11 +19,12 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Net.Sockets;
+using System.Reactive.Linq;
+using System.Reactive.Subjects;
 using System.Threading;
 using System.Threading.Tasks;
 using JuvoPlayer.Common;
 using JuvoLogger;
-using JuvoPlayer.SharedBuffers;
 using Rtsp.Messages;
 
 namespace JuvoPlayer.DataProviders.RTSP
@@ -39,8 +40,6 @@ namespace JuvoPlayer.DataProviders.RTSP
         int videoDataChannel = -1;     // RTP Channel Number used for the video stream or the UDP port number
         int videoRTCPChannel = -1;     // RTP Channel Number used for the rtcp status report messages OR the UDP port number
 
-        readonly ISharedBuffer buffer;
-
         Timer timer = null;
         AutoResetEvent timerResetEvent = null;
 
@@ -49,9 +48,11 @@ namespace JuvoPlayer.DataProviders.RTSP
 
         int videoPayloadType = -1;          // Payload Type for the Video. (often 96 which is the first dynamic payload value)
 
-        public RTSPClient(ISharedBuffer buffer)
+        private readonly Subject<byte[]> chunkReadySubject = new Subject<byte[]>();
+
+        public IObservable<byte[]> ChunkReady()
         {
-            this.buffer = buffer ?? throw new ArgumentNullException(nameof(buffer), "buffer cannot be null");
+            return chunkReadySubject.AsObservable();
         }
 
         public void Pause()
@@ -222,7 +223,7 @@ namespace JuvoPlayer.DataProviders.RTSP
 
             byte[] rtp_payload = new byte[e.Message.Data.Length - rtpPayloadStart]; // payload with RTP header removed
             Array.Copy(e.Message.Data, rtpPayloadStart, rtp_payload, 0, rtp_payload.Length); // copy payload
-            buffer.WriteData(rtp_payload);
+            chunkReadySubject.OnNext(rtp_payload);
         }
 
         // RTSP Messages are OPTIONS, DESCRIBE, SETUP, PLAY etc
@@ -445,8 +446,8 @@ namespace JuvoPlayer.DataProviders.RTSP
         {
             foreach (byte[] nalUnit in nalUnits)
             {
-                buffer.WriteData(new byte[] { 0x00, 0x00, 0x00, 0x01 });  // Write Start Code
-                buffer.WriteData(nalUnit);           // Write NAL
+                chunkReadySubject.OnNext(new byte[] { 0x00, 0x00, 0x00, 0x01 });  // Write Start Code
+                chunkReadySubject.OnNext(nalUnit);           // Write NAL
             }
         }
     }
