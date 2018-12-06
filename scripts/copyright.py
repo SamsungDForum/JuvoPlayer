@@ -1,10 +1,14 @@
 import os
 import re
 
+def readBlacklist(path):
+    with open(path, 'r') as f:
+        data = f.readlines()
+        return data
+
 def readCopyright(path):
     with open(path, 'r') as f:
         data = f.read()
-        print(data)
         return data
 
 def writeCopyright(path, copyright):
@@ -25,11 +29,14 @@ def processFile(path, copyright):
         else:
             print("[ ] %s" % path)
 
-def processDir(rootDir, copyright):
+def isApplicable(path, blacklist):
+    return fname.endswith(".cs") and all(not fname.endswith(extension) for extension in blacklist) and "thirdparty/" not in path
+
+def processDir(rootDir, copyright, blacklist):
     for dirName, subdirList, fileList in os.walk(rootDir):
         for fname in fileList:
-            if fname.endswith(".cs") and fname.count('.') == 1:
+            if isApplicable(dirName + '/' + fname, blacklist):
                 processFile(dirName + '/' + fname, copyright)
 
 if __name__ == "__main__":
-    processDir('..', readCopyright("copyright.txt"))
+    processDir('..', readCopyright("copyright_notice.txt"), readBlacklist("extension_blacklist.txt"))
