@@ -52,9 +52,13 @@
     <PackageReference Include="Tizen.NET.TV" Version="4.4.0.1341">
       <ExcludeAssets>Runtime</ExcludeAssets>
     </PackageReference>
-    <PackageReference Include="Tizen.TV.Multimedia.ESPlayer" Version="1.0.0" />
+    <PackageReference Include="Tizen.TV.Multimedia.ESPlayer" Version="1.0.0">
+      <ExcludeAssets>Runtime</ExcludeAssets>
+    </PackageReference>
     <!-- Tizen.TV.Security is hijacked, as such it is included in assets. Add exclusion once released -->
-    <PackageReference Include="Tizen.TV.Security" Version="1.0.3" />
+    <PackageReference Include="Tizen.TV.Security" Version="1.0.3">
+      <ExcludeAssets>Runtime</ExcludeAssets>
+    </PackageReference>
   </ItemGroup>
 
   <ItemGroup>
@@ -83,6 +87,8 @@
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
   </ItemGroup>
-
+  <ItemGroup>
+    <TizenTpkUserExcludeFiles Include="Tizen.TV.Multimedia.ESPlayer.dll" />
+  </ItemGroup>
 </Project>
 
