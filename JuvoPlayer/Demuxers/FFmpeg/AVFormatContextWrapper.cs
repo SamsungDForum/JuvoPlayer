@@ -25,6 +25,7 @@ using System.Runtime.InteropServices;
 using System.Text;
 using JuvoPlayer.Common;
 using JuvoPlayer.Demuxers.FFmpeg.Interop;
+using JuvoPlayer.Drms;
 
 namespace JuvoPlayer.Demuxers.FFmpeg
 {
