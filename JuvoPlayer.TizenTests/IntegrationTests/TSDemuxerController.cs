@@ -141,7 +141,7 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
                         Assert.That(config, Is.Not.Null);
                     }
                 }
-                catch (Exception ex)
+                catch (Exception)
                 {
                     Assert.Fail();
                 }
