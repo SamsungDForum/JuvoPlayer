@@ -12,7 +12,6 @@ using JuvoPlayer.DataProviders.HLS;
 using JuvoPlayer.DataProviders.RTSP;
 using JuvoPlayer.Drms;
 using JuvoPlayer.Drms.Cenc;
-using JuvoPlayer.Drms.DummyDrm;
 using JuvoPlayer.Player;
 using JuvoPlayer.Player.EsPlayer;
 using JuvoPlayer.Utils;
@@ -74,7 +73,6 @@ namespace JuvoPlayer.TizenTests.Utils
 
             var drmManager = new DrmManager();
             drmManager.RegisterDrmHandler(new CencHandler());
-            drmManager.RegisterDrmHandler(new DummyDrmHandler());
 
             if (window == null)
                 window = WindowUtils.CreateElmSharpWindow();
