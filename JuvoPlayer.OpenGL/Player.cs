@@ -64,7 +64,6 @@ namespace JuvoPlayer.OpenGL
             dataProviders.RegisterDataProviderFactory(new RTSPDataProviderFactory());
 
             var drmManager = new DrmManager();
-
             drmManager.RegisterDrmHandler(new CencHandler());            
 
             var player = new EsPlayer();
