@@ -35,7 +35,7 @@ namespace JuvoPlayer.Tests.UnitTests
         }
 
         [Test]
-        public void ParseTime_WhenTimeExceedesADay_ParsesSuccessfully()
+        public void ParseTime_WhenTimeExceedsADay_ParsesSuccessfully()
         {
             var parser = CreateSrtParser();
 
@@ -64,7 +64,7 @@ namespace JuvoPlayer.Tests.UnitTests
         {
             var parser = CreateSrtParser();
 
-            (var begin, var end) = parser.ParseTimeLine("00:02:17,440 --> 00:02:20,375");
+            var (begin, end) = parser.ParseTimeLine("00:02:17,440 --> 00:02:20,375");
 
             Assert.That(begin, Is.EqualTo(new TimeSpan(0, 0, 2, 17, 440)));
             Assert.That(end, Is.EqualTo(new TimeSpan(0, 0, 2, 20, 375)));

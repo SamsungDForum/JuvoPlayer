@@ -26,13 +26,13 @@ namespace JuvoPlayer.Subtitles
     /// Implementation is based on Binary Search Symbol Table.</summary>
     internal class CuesMap : IEnumerable<Cue>
     {
-        private List<Cue> cues = new List<Cue>();
+        private readonly List<Cue> cues = new List<Cue>();
 
         public int Count => cues.Count;
 
         /// <summary>Puts a given <see cref="T:JuvoPlayer.Subtitles.Cue"></see> in a map.
         /// If a map doesn't contain a cue with a overlapping range (NewCue.Begin is not
-        /// in range [OldQue.Begin, OldQue.End)), then a given cue in instered in a map.
+        /// in range [OldQue.Begin, OldQue.End)), then a given cue in inserted in a map.
         /// If a map contains a cue with a overlapping range, then a given cue replaces
         /// a old cue.</summary>
         /// <param name="cue">A cue to put in a map</param>

@@ -17,7 +17,7 @@
 
 using System;
 
-namespace JuvoPlayer.Common.Utils
+namespace JuvoPlayer.Utils
 {
     // HexDump - Wheel reinvented.
     // was not too happy with "ready made" solutions... kind of an overkill...
@@ -29,9 +29,9 @@ namespace JuvoPlayer.Common.Utils
         /// <summary>
         /// Dumps last N bytes from byte array in human readable format.
         /// Method internally calls HexDump() method
-        /// 
+        ///
         /// Can be used as standalone method or extension method
-        /// 
+        ///
         /// </summary>
         /// <param name="bytes">Byte array to be displayed</param>
         /// <param name="length">Number of bytes to display from beginning of the buffer. First {length} bytes
@@ -58,9 +58,9 @@ namespace JuvoPlayer.Common.Utils
         /// <summary>
         /// Dumps first N bytes from byte array in human readable format.
         /// Method internally calls HexDump() method
-        /// 
+        ///
         /// Can be used as standalone method or extension method
-        /// 
+        ///
         /// </summary>
         /// <param name="bytes">Byte array to be displayed</param>
         /// <param name="length">Number of bytes to display from beginning of the buffer. First {length} bytes
@@ -76,15 +76,15 @@ namespace JuvoPlayer.Common.Utils
 
         /// <summary>
         /// Dumps byte array in a human readable form
-        /// 
+        ///
         /// RRRRRR: DD... | Printable Characters or .
-        /// 
+        ///
         /// RRRRR       - Offset Value
         /// DD          - Hex Data
         /// Printables  - Printable characters only
-        /// 
+        ///
         /// Can be used as standalone method or extension method
-        /// 
+        ///
         /// </summary>
         /// <param name="bytes">Byte array to be displayed</param>
         /// <param name="index">Optional. Start Index from which byte array is to be dumped.</param>
@@ -98,21 +98,21 @@ namespace JuvoPlayer.Common.Utils
             if (bytes == null) return "<null>";
 
             // compute default start index and byte range
-            int startindex = index ?? 0;
+            int startIndex = index ?? 0;
             int bytesLength = length ?? bytes.Length;
 
             // Adjust bytes to process based on start index and requested length.
             // If size of input is less then startindex + requested range, adjust it so data till end is
             // displayed from start.
-            bytesLength = (bytes.Length < (startindex + bytesLength)) ? bytes.Length - startindex : bytesLength;
+            bytesLength = (bytes.Length < (startIndex + bytesLength)) ? bytes.Length - startIndex : bytesLength;
 
             // Validate if we are not requesting bytes beyond input array size
-            if (bytesLength <= 0) return "<No Data Reqested or Index/Length out of input byte[] range>";
+            if (bytesLength <= 0) return "<No Data Requested or Index/Length out of input byte[] range>";
 
             string[] results = new string[((int)(bytesLength / bytesPerLine)) + 1];
             int idx = 0;
 
-            for (int i = startindex; i < bytesLength;)
+            for (int i = startIndex; i < bytesLength;)
             {
                 int bytesToDo = (bytesPerLine <= (bytesLength - i)) ? bytesPerLine : (bytesLength - i);
                 int fill = bytesPerLine - bytesToDo;
@@ -127,7 +127,7 @@ namespace JuvoPlayer.Common.Utils
 
                     for (int j = i; j < bytesToDo + i; j++)
                     {
-                        // Dump only "printable" characters. Range 0x20 to 0x7E inclusive 
+                        // Dump only "printable" characters. Range 0x20 to 0x7E inclusive
                         // All else is replaced with a '.'
                         if ((byte)bytes[j] > (byte)0x1F && (byte)bytes[j] < (byte)0x7F)
                         {

@@ -135,7 +135,7 @@ namespace JuvoPlayer.Tests.UnitTests
             var validTimePattern = @"^\d+:\d+\.\d+$";
             parser.ParseTime(Arg.Is<string>(arg => Regex.IsMatch(arg, validTimePattern))).Returns(passTimeSpan);
 
-            (var begin, var end) = parser.ParseTimeLine(validTimeLine);
+            var (begin, end) = parser.ParseTimeLine(validTimeLine);
 
             Assert.That(begin, Is.EqualTo(passTimeSpan));
             Assert.That(end, Is.EqualTo(passTimeSpan));

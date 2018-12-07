@@ -247,7 +247,7 @@ namespace MpdParser.Node.Dynamic
             return new TimeRange(Scaled(item.Time), Scaled(item.Duration));
         }
 
-        public bool PrepeareStream()
+        public bool PrepareStream()
         {
             // So far... nothing to prepare for list representations...
             return true;

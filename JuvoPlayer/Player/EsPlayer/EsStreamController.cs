@@ -53,12 +53,12 @@ namespace JuvoPlayer.Player.EsPlayer
 
         // Reference to all data streams representing transfer of individual
         // stream data and data storage
-        private DataStream[] dataStreams;
-        private EsPlayerPacketStorage packetStorage;
+        private readonly DataStream[] dataStreams;
+        private readonly EsPlayerPacketStorage packetStorage;
 
         // Reference to ESPlayer & associated window
         private ESPlayer.ESPlayer player;
-        private ElmSharp.Window displayWindow;
+        private readonly ElmSharp.Window displayWindow;
         private readonly bool usesExternalWindow = true;
 
         // event callbacks
@@ -85,16 +85,16 @@ namespace JuvoPlayer.Player.EsPlayer
             streamEntry?.Stream.IsConfigured ?? true);
 
         // Termination & serialization objects for async operations.
-        private CancellationTokenSource activeTaskCts = new CancellationTokenSource();
-        private AsyncLock asyncOpSerializer = new AsyncLock();
+        private readonly CancellationTokenSource activeTaskCts = new CancellationTokenSource();
+        private readonly AsyncLock asyncOpSerializer = new AsyncLock();
 
         // Seek ID. Holds seek ID Request starting from one.
         // Used for munching stale packets in data queue until "seek packet" with
         // matching ID is received. This
         private uint seekID;
 
-        private IDisposable[] streamReconfigureSubs;
-        private IDisposable[] playbackErrorSubs;
+        private readonly IDisposable[] streamReconfigureSubs;
+        private readonly IDisposable[] playbackErrorSubs;
 
         #region Public API
 

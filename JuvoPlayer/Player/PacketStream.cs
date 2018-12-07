@@ -16,7 +16,6 @@
  */
 
 ﻿using System;
-using System.Threading;
 using JuvoLogger;
 using JuvoPlayer.Common;
 using JuvoPlayer.Common.Utils.IReferenceCountableExtensions;
@@ -26,10 +25,10 @@ namespace JuvoPlayer.Player
 {
     internal class PacketStream : IPacketStream
     {
-        protected ICodecExtraDataHandler codecExtraDataHandler;
-        protected IDrmManager drmManager;
-        protected IPlayer player;
-        private IDrmSession drmSession = null;
+        private readonly ICodecExtraDataHandler codecExtraDataHandler;
+        private readonly IDrmManager drmManager;
+        private readonly IPlayer player;
+        private IDrmSession drmSession;
         private StreamConfig config;
         private readonly StreamType streamType;
         private readonly ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");

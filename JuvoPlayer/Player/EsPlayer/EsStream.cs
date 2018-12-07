@@ -581,7 +581,7 @@ namespace JuvoPlayer.Player.EsPlayer
 
         private void PushEncryptedPacket(EncryptedPacket dataPacket, CancellationToken token)
         {
-            using (Common.DecryptedEMEPacket decryptedPacket = dataPacket.Decrypt() as Common.DecryptedEMEPacket)
+            using (var decryptedPacket = dataPacket.Decrypt() as DecryptedEMEPacket)
             {
                 if (decryptedPacket == null)
                 {

@@ -17,12 +17,13 @@
 
 using System;
 using JuvoLogger;
+using JuvoPlayer.Common;
 using Nito.AsyncEx;
 using Tizen.TV.Security.DrmDecrypt;
 
-namespace JuvoPlayer.Common
+namespace JuvoPlayer.Drms
 {
-    internal unsafe sealed class DecryptedEMEPacket : Packet
+    internal sealed class DecryptedEMEPacket : Packet
     {
         private readonly ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
         private readonly AsyncContextThread releaseThread;
