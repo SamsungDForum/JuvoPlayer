@@ -11,7 +11,6 @@ using JuvoPlayer.DataProviders.HLS;
 using JuvoPlayer.DataProviders.RTSP;
 using JuvoPlayer.Drms;
 using JuvoPlayer.Drms.Cenc;
-using JuvoPlayer.Drms.DummyDrm;
 using JuvoPlayer.Player;
 using JuvoPlayer.Player.EsPlayer;
 using Xamarin.Forms;
@@ -72,8 +71,7 @@ namespace XamarinPlayer.Tizen.Services
 
             var drmManager = new DrmManager();
             drmManager.RegisterDrmHandler(new CencHandler());
-            drmManager.RegisterDrmHandler(new DummyDrmHandler());
-
+            
             var player = new EsPlayer();
 
             playerController = new PlayerController(player, drmManager);
