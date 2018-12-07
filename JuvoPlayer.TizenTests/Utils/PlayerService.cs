@@ -89,7 +89,7 @@ namespace JuvoPlayer.TizenTests.Utils
             dataProviders.RegisterDataProviderFactory(new RTSPDataProviderFactory());
 
             var drmManager = new DrmManager();
-            drmManager.RegisterDrmHandler(new CencHandler());
+            drmManager.RegisterDrmHandler(new CencHandler());            
 
             if (window == null)
                 window = WindowUtils.CreateElmSharpWindow();
