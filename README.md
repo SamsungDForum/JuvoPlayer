@@ -6,16 +6,16 @@ The reference for developers of streaming live TV and VOD Tizen .Net application
 
    [ffmpeglink]:https://www.ffmpeg.org/download.html#release_3.3
    
- * HLS protocol scenarios downloader and demuxer
- * RTP/RTSP protocol based scenarios demuxer. 
- * MPEG DASH protocol based scenarios demuxer. * 
+ * HLS protocol scenario's downloader and demuxer
+ * RTP/RTSP protocol based scenario's demuxer. 
+ * MPEG DASH protocol based scenario's demuxer.  
 2. [https://github.com/ngraziano/SharpRTSP][rtsplink] . (RTSP module, 2nd March 2017 ) - RTP/RTSP protocol scenarios downloader
 
   [rtsplink]: https://github.com/ngraziano/SharpRTSP
   
-3. Samsung TV 2019 models FW build - **This component comes with a Samsung 2019 TV set device**
+3. Samsung TV firmware - **This component comes with a Samsung 2019 TV device**
 4. Video content URLs embeded in videoclips.json files. See in the project tree:
-* _XamarinPlayer\XamarinPlayer.Tizen.TV\shared\res\videoclips.json_
+* _XamarinPlayer.Tizen.TV\shared\res\videoclips.json_
 * _JuvoPlayer.OpenGL\shared\res\videoclips.json_
 
 [smarthubprevlink]: https://developer.samsung.com/tv/develop/guides/smart-hub-preview
