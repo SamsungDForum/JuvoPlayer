@@ -71,7 +71,11 @@ namespace XamarinPlayer.Tizen.Services
 
             var drmManager = new DrmManager();
             drmManager.RegisterDrmHandler(new CencHandler());
+<<<<<<< HEAD
             
+=======
+
+>>>>>>> 2f49dcada22e3c2168a865039ab89d572e0e854d
             var player = new EsPlayer();
 
             playerController = new PlayerController(player, drmManager);
