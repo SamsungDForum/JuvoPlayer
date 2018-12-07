@@ -60,7 +60,7 @@ namespace XamarinPlayer.Views
 
             PropertyChanged += PlayerViewPropertyChanged;
 
-            MessagingCenter.Subscribe<IKeyEventSender, string>(this, "KeyDown", (s, e) => { KeyEventHandler(e); });            
+            MessagingCenter.Subscribe<IKeyEventSender, string>(this, "KeyDown", (s, e) => { KeyEventHandler(e); });
 
         }
 
@@ -73,12 +73,12 @@ namespace XamarinPlayer.Views
             else
                 _playerService.Start();
         }
-               
+
 
         private void KeyEventHandler(string e)
         {
-            // TODO: This is a workaround for alertbox & lost focus
-            // Prevents key handling & fous change in Show().
+            // TODO: This is a workaround for alertBox & lost focus
+            // Prevents key handling & focus change in Show().
             // Consider adding a call Focus(Focusable Object) where focus would be set in one place
             // and error status could be handled.
 
@@ -336,10 +336,10 @@ namespace XamarinPlayer.Views
         protected override void OnDisappearing()
         {
             // Moved marking _isPageDisappeared flag to very beginning.
-            // OnPlayerStateChanged event handler may recieve events accessing
+            // OnPlayerStateChanged event handler may receive events accessing
             // _playerService while _playerService is being disposed/nullified
             // Not something we want...
-            // Reproducable with fast playback start/exit before start completes.
+            // Reproducible with fast playback start/exit before start completes.
             //
             _isPageDisappeared = true;
 
@@ -351,7 +351,7 @@ namespace XamarinPlayer.Views
                 return false;
             });
             MessagingCenter.Unsubscribe<IKeyEventSender, string>(this, "KeyDown");
-                       
+
 
             base.OnDisappearing();
         }
@@ -387,10 +387,10 @@ namespace XamarinPlayer.Views
         /// <summary>
         /// This re-router through main thread has been added in order
         /// to accomodate AsyncPrepare for ESPlayer.
-        /// AsyncPrepare cannot be awiaited in any form (none found).
-        /// If awiated - does not complete. Issuing prepared event from thread
+        /// AsyncPrepare cannot be awaited in any form (none found).
+        /// If awaited - does not complete. Issuing prepared event from thread
         /// other then UI causes load file exceptions.
-        /// If this redirector will cause issues, more selective approach may need
+        /// If this re-router will cause issues, more selective approach may need
         /// to be applied - i.e. prepare event only
         /// </summary>
         /// <param name="sender"></param>
@@ -429,14 +429,14 @@ namespace XamarinPlayer.Views
             }
             else if (e.State == PlayerState.Error)
             {
-                // Prevent multiple popups from occouring, display them only
+                // Prevent multiple popups from occuring, display them only
                 // if it is a very first error event.
                 if (_hasFinished == false)
                 {
                     _hasFinished = true;
                     _errorMessage = (e as PlayerStateChangedStreamError)?.Message ?? "Unknown Error";
 
-                    // Terminate player to prevent any futher error events.
+                    // Terminate player to prevent any further error events.
                     // This will issue a player.stopped event during which
                     // error message will be displayed.(if error flag is set).
                     // Hide controls. If not hidden, a timeouts take away focus rendering alert

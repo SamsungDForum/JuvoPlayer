@@ -73,7 +73,7 @@ namespace JuvoPlayer.DataProviders.Dash
         /// <summary>
         /// Holds smaller of the two (PTS/DTS) from the initial packet.
         /// </summary>
-        private TimeSpan? trimmOffset;
+        private TimeSpan? trimOffset;
 
         private readonly IDashClient dashClient;
         private readonly IDemuxer demuxer;
@@ -143,7 +143,7 @@ namespace JuvoPlayer.DataProviders.Dash
 
             // TODO: Make PrepareStream async or async with delayed status notification
             //
-            if (newStream.Representation.Segments.PrepeareStream())
+            if (newStream.Representation.Segments.PrepareStream())
                 return newStream;
 
             Logger.Warn($"{StreamType}: Stream preparation failed! Content will not be played.");
@@ -171,7 +171,7 @@ namespace JuvoPlayer.DataProviders.Dash
             myRepresentation.AlignStartSegmentsWith(syncRepresentation);
 
             Logger.Info(
-                $"Segment Alignment: {streamType}={myRepresentation.AlignedStartSegmentID} {synchronizeWith.StreamType}={syncRepresentation.AlignedStartSegmentID} TrimmOffset={myRepresentation.AlignedTrimmOffset}");
+                $"Segment Alignment: {streamType}={myRepresentation.AlignedStartSegmentID} {synchronizeWith.StreamType}={syncRepresentation.AlignedStartSegmentID} TrimOffset={myRepresentation.AlignedTrimOffset}");
         }
 
         public void UpdateMedia(Period period)
@@ -248,7 +248,7 @@ namespace JuvoPlayer.DataProviders.Dash
             // passed pendingStream null check.
             //
             // Stream switching does not need to be serialized. If stream switch is already
-            // in progress, next stream switch can safly be ignored, thus use of monitor
+            // in progress, next stream switch can safely be ignored, thus use of monitor
             // rather then lock.
             //
 
@@ -338,8 +338,8 @@ namespace JuvoPlayer.DataProviders.Dash
                     ParseDrms(currentStream.Media);
                 }
 
-                if (!trimmOffset.HasValue)
-                    trimmOffset = currentStream.Representation.AlignedTrimmOffset;
+                if (!trimOffset.HasValue)
+                    trimOffset = currentStream.Representation.AlignedTrimOffset;
 
                 var fullInitRequired = (newStream != null);
 
@@ -396,7 +396,7 @@ namespace JuvoPlayer.DataProviders.Dash
             demuxer.Reset();
             dashClient.Stop();
 
-            trimmOffset = null;
+            trimOffset = null;
 
             pipelineStarted = false;
         }
@@ -602,7 +602,7 @@ namespace JuvoPlayer.DataProviders.Dash
                     // eg during encrypted content seek or live video.
                     // Adjust timestamps to avoid playback problems
                     packet += demuxerClock;
-                    packet -= trimmOffset.Value;
+                    packet -= trimOffset.Value;
 
                     if (packet.Pts < TimeSpan.Zero || packet.Dts < TimeSpan.Zero)
                     {
@@ -664,9 +664,9 @@ namespace JuvoPlayer.DataProviders.Dash
                 {
                     // This IS NOT ideal solution to work around reset of PTS/DTS after
                     demuxerClock = lastPushedClock;
-                    trimmOffset = TimeSpan.Zero;
+                    trimOffset = TimeSpan.Zero;
                     Logger.Info(
-                        $"{StreamType}: Zero timestamped packet. Adjusting demuxerClock: {demuxerClock} trimmOffset: {trimmOffset.Value}");
+                        $"{StreamType}: Zero timestamped packet. Adjusting demuxerClock: {demuxerClock} trimOffset: {trimOffset.Value}");
                 }
             }
             else

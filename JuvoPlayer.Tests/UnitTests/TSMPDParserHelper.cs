@@ -43,10 +43,10 @@ namespace JuvoPlayer.Tests.UnitTests
             {
                 // Read value
                 object value = pi.GetValue(baseInstance, null);
-                
+
                 // Get Property of target class
                 PropertyInfo pi_target = t.GetProperty(pi.Name);
-                
+
                 // Write value to target
                 pi_target.SetValue(target, value, null);
             }
@@ -97,9 +97,9 @@ namespace JuvoPlayer.Tests.UnitTests
 
     }
 
-    
+
     /// <remarks>
-    ///  While it may be tempting to run converter in paralles (with anything else)
+    ///  While it may be tempting to run converter in parallel (with anything else)
     ///  this is not possible right now due to way currDoc is passed down to Period/AdaptationSet/etc.
     ///  creation
     /// </remarks>
@@ -107,26 +107,26 @@ namespace JuvoPlayer.Tests.UnitTests
     {
         // This is bit of a hack to work around the following problem:
         // Period have only a getter of internal field Document. As such
-        // it can only be set at Period Creation. Simple passing of args to converter 
+        // it can only be set at Period Creation. Simple passing of args to converter
         // method was not found so use this approach for now...
         //
         protected static DASH currDoc;
         protected static Period currPeriod;
         protected static AdaptationSet currAdaptationSet;
 
-        // Dictionary for storing 
+        // Dictionary for storing
         // "special case comparison functions" - where normal comparison
         // fails short. i.e. Xmlns is an example. Upper/Lower casing.
         //
-        protected static Dictionary<string, 
+        protected static Dictionary<string,
             Func<object[], object[],string, string, PropertyInfo, Type, Type, bool>> CustomComparers =
           new Dictionary<string, Func<object[], object[], string, string, PropertyInfo, Type, Type, bool>>()
           {
               {"Xmlns", new  Func<object[], object[], string, string, PropertyInfo, Type, Type, bool>(CompareXmlns) }
               ,{"StartWithSAP", new  Func<object[], object[], string, string, PropertyInfo, Type, Type, bool>(CompareXXXWithSAP) }
               ,{"SubsegmentStartsWithSAP", new  Func<object[], object[], string, string, PropertyInfo, Type, Type, bool>(CompareXXXWithSAP) }
-              ,{"NumChannels", new  Func<object[], object[], string, string, PropertyInfo, Type, Type, bool>(CompareObsoloteAtttrib) }
-              ,{"SampleRate", new  Func<object[], object[], string, string, PropertyInfo, Type, Type, bool>(CompareObsoloteAtttrib) }
+              ,{"NumChannels", new  Func<object[], object[], string, string, PropertyInfo, Type, Type, bool>(CompareObsoleteAttrib) }
+              ,{"SampleRate", new  Func<object[], object[], string, string, PropertyInfo, Type, Type, bool>(CompareObsoleteAttrib) }
             //  ,{"Ss", new  Func<object[], object[], string, string, PropertyInfo, Type, Type, bool>(CompareSs) }
 
           };
@@ -136,11 +136,11 @@ namespace JuvoPlayer.Tests.UnitTests
         {
             if (a.Length != a.Length)
             {
-                // Panic only if array is not completly empty
-                bool allnull = true;
-                allnull &= Array.TrueForAll(a, v => { return (v == null); });
-                allnull &= Array.TrueForAll(b, v => { return (v == null); });
-                if (allnull)
+                // Panic only if array is not completely empty
+                bool allNull = true;
+                allNull &= Array.TrueForAll(a, v => { return (v == null); });
+                allNull &= Array.TrueForAll(b, v => { return (v == null); });
+                if (allNull)
                     return true;
 
                 System.Diagnostics.Debug.WriteLine($"ERROR: Array length mismatch {property.Name}");
@@ -163,11 +163,11 @@ namespace JuvoPlayer.Tests.UnitTests
 
                 res = false;
             }
-            
+
             return res;
         }
 
-        protected static bool CompareObsoloteAtttrib(object[] a, object[] b, string adesc, string bdesc,
+        protected static bool CompareObsoleteAttrib(object[] a, object[] b, string adesc, string bdesc,
            PropertyInfo property, Type ta, Type tb)
         {
             if(a.Length != b.Length)
@@ -178,7 +178,7 @@ namespace JuvoPlayer.Tests.UnitTests
                 return true;
             }
 
-            
+
             for (int i = 0; i < a.Length; i++)
             {
                 if (Equals(a[i], b[i]))
@@ -191,9 +191,9 @@ namespace JuvoPlayer.Tests.UnitTests
 
             return true;
         }
-        
+
         //MpdParser.Node.Representation.SampleRate
-        protected static bool CompareXmlns(object[] a, object[] b, string adesc, string bdesc, 
+        protected static bool CompareXmlns(object[] a, object[] b, string adesc, string bdesc,
             PropertyInfo property, Type ta, Type tb)
         {
             bool res = true;
@@ -226,7 +226,7 @@ namespace JuvoPlayer.Tests.UnitTests
         protected static bool CompareXXXWithSAP(object[] a, object[] b, string adesc, string bdesc,
             PropertyInfo property, Type ta, Type tb)
         {
-            
+
             if (a[0] == a[0])
                 return true;
 
@@ -273,7 +273,7 @@ namespace JuvoPlayer.Tests.UnitTests
                 {
                     result &= DASHConverterHelper.IsSetToDefault(b?.GetType(), b);
                 }
-                
+
                 if (result)
                 {
                     System.Diagnostics.Debug.WriteLine($"Information: Null / Default(T) combination is treated as valid {property.Name}");
@@ -288,14 +288,14 @@ namespace JuvoPlayer.Tests.UnitTests
 
                 return result;
             }
-            
+
             // Check if underlying type is array.
             // Equals does not check array content.
-            bool isarra = a.GetType().IsArray;
-            bool isarrb = b.GetType().IsArray;
+            bool isArrayA = a.GetType().IsArray;
+            bool isArrayB = b.GetType().IsArray;
 
             // Check for Array/Non Array mismatch
-            if(isarra != isarrb)
+            if(isArrayA != isArrayB)
             {
                 System.Diagnostics.Debug.WriteLine($"ERROR: Data Storage Mismatch Array/Non Array! {property.Name}");
                 System.Diagnostics.Debug.WriteLine($"     {adesc} = '{a}' {ta.Namespace}.{ta.Name}");
@@ -305,13 +305,13 @@ namespace JuvoPlayer.Tests.UnitTests
 
             bool res = true;
 
-            if (!isarra && !isarrb)
+            if (!isArrayA && !isArrayB)
             {
                 // Non Array case - can be compared "as is"
                 res = Equals(a, b);
 
                 if (!res)
-                { 
+                {
                     System.Diagnostics.Debug.WriteLine($"ERROR: Data Mismatch! {property.Name}");
                     System.Diagnostics.Debug.WriteLine($"     {adesc} = '{a}' {ta.Namespace}.{ta.Name}");
                     System.Diagnostics.Debug.WriteLine($"     {bdesc} = '{b}' {tb.Namespace}.{tb.Name}");
@@ -320,31 +320,31 @@ namespace JuvoPlayer.Tests.UnitTests
             }
             else
             {
-                //Array case. We'll need to check all elements indivudally
+                //Array case. We'll need to check all elements individually
                 //Do so via recursion to this function in case of
-                //inception - arrays inside arrays... 
-                object[] arra = (object[])a;
-                object[] arrb = (object[])b;
+                //inception - arrays inside arrays...
+                object[] arrayA = (object[])a;
+                object[] arrayB = (object[])b;
 
                 // But first check array sizes
-                if(arra.Length != arrb.Length)
+                if(arrayA.Length != arrayB.Length)
                 {
                     // Do not panic just yet. If arrays are full of nulls - we do not care
-                    bool allnulla = Array.TrueForAll(arra, v => { return (v == null); });
-                    bool allnullb = Array.TrueForAll(arrb, v => { return (v == null); });
+                    var arrayAContainsOnlyNulls = Array.TrueForAll(arrayA, v => v == null);
+                    var arrayBContainsOnlyNulls = Array.TrueForAll(arrayB, v => v == null);
 
-                    if (allnulla == true && allnullb == true)
+                    if (arrayAContainsOnlyNulls && arrayBContainsOnlyNulls)
                         return true;
 
                     System.Diagnostics.Debug.WriteLine($"ERROR: Data Array Length Mismatch! {property.Name}");
-                    System.Diagnostics.Debug.WriteLine($"     {adesc} = '{a}' Length={arra.Length} {ta.Namespace}.{ta.Name}");
-                    System.Diagnostics.Debug.WriteLine($"     {bdesc} = '{b}' Length={arrb.Length} {tb.Namespace}.{tb.Name}");
+                    System.Diagnostics.Debug.WriteLine($"     {adesc} = '{a}' Length={arrayA.Length} {ta.Namespace}.{ta.Name}");
+                    System.Diagnostics.Debug.WriteLine($"     {bdesc} = '{b}' Length={arrayB.Length} {tb.Namespace}.{tb.Name}");
                     return false;
                 }
 
-                for(int i =0; i < arra.Length; i++)
+                for(int i =0; i < arrayA.Length; i++)
                 {
-                    res &= CompareGeneric(arra[i], arrb[i], adesc, bdesc, property, ta, tb);
+                    res &= CompareGeneric(arrayA[i], arrayB[i], adesc, bdesc, property, ta, tb);
                 }
 
             }
@@ -352,12 +352,12 @@ namespace JuvoPlayer.Tests.UnitTests
             return res;
         }
 
-     
+
         public static bool Same(object a, string adesc, object b, string bdesc)
         {
             // DASH Objects contain "circular references" to parent object
             // This requires to check what we already have processed or
-            // we'll loop forver (or until stack is out)...
+            // we'll loop forever (or until stack is out)...
             //
             HashSet<Tuple<object, object>> Processed = new HashSet<Tuple<object, object>>();
 
@@ -391,16 +391,6 @@ namespace JuvoPlayer.Tests.UnitTests
             Type ta = a.GetType();
             Type tb = b.GetType();
 
-            if(ta == null || tb == null)
-            {
-                System.Diagnostics.Debug.WriteLine($"Could not get type for objects:");
-                System.Diagnostics.Debug.WriteLine($"{adesc}={ta}");
-                System.Diagnostics.Debug.WriteLine($"{bdesc}={tb}");
-                System.Diagnostics.Debug.WriteLine($"Cause... deamon possesion?");
-
-                return false;
-            }
-
             PropertyInfo[] pa = ta.GetProperties();
             PropertyInfo[] pb = ta.GetProperties();
 
@@ -418,7 +408,7 @@ namespace JuvoPlayer.Tests.UnitTests
                 object[] bdata;
 
                 // Return all data in a form of an array
-                // Simpliefies handling for arrayed/non arrayed data
+                // Simplifies handling for arrayed/non arrayed data
                 try
                 {
                     if (property.PropertyType.IsArray)
@@ -438,8 +428,8 @@ namespace JuvoPlayer.Tests.UnitTests
                     continue;
                 }
 
-                // Handle nullishish returns
-                // res=null, res[0]= 
+                // Handle null returns
+                // res=null, res[0]=
                 // Treat them all same as "no value/empty"
                 if (adata?.Length == 0 || bdata?.Length == 0 ||
                     adata?.Length == null || bdata?.Length == null)
@@ -462,16 +452,16 @@ namespace JuvoPlayer.Tests.UnitTests
                 }
                 else
                 {
-                    // Defualt Comparer
+                    // Default Comparer
                     for (int i = 0; i < adata.Length; i++)
                     {
                         if (adata[i] == null && bdata[i] == null)
                             continue;
 
-                        // Is there a better way to differentiate "system" datatypes from
-                        // application defined datatypes? 
-                        // Assaumption being - system datatypes are compareable with each other
-                        // "as is", while user defined datatypes need to be decomposed into
+                        // Is there a better way to differentiate "system" data types from
+                        // application defined data types?
+                        // Assumption being - system data types are comparable with each other
+                        // "as is", while user defined data types need to be decomposed into
                         // individual system elements
                         if (property.PropertyType.Namespace.StartsWith("System", StringComparison.OrdinalIgnoreCase))
                         {
@@ -507,14 +497,12 @@ namespace JuvoPlayer.Tests.UnitTests
                     continue;
 
                 Type t = o.GetType();
-                if (t == null)
-                    continue;
-                
+
                 if (t.IsArray)
                 {
                     System.Diagnostics.Debug.WriteLine($"     Name: {t.Namespace}.{t.Name}");
-                    object[] oarr = o as object[];
-                    foreach(var subo in oarr)
+                    object[] array = o as object[];
+                    foreach(var subo in array)
                     {
                         var val = subo?.GetType().GetProperty("Value")?.GetValue(subo, null);
                         System.Diagnostics.Debug.WriteLine($"     Data: {val}");
@@ -532,13 +520,13 @@ namespace JuvoPlayer.Tests.UnitTests
             DASHWriter dw = new DASHWriter(url);
 
             // System Parsed XML do not have Xmlns in them.
-            // Well, they do but in class attibutes (if there is a mismatch, nothing will parse)
+            // Well, they do but in class attributes (if there is a mismatch, nothing will parse)
             // so if we are here... assume correct one.
             dw.Xmlns = "urn:mpeg:dash:schema:mpd:2011";
 
             if (mpd.ProgramInformation != null)
                 dw.ProgramInformations = Array.ConvertAll(mpd.ProgramInformation,
-                    new Converter<ProgramInformationType, ProgramInformation>(ConvertProgramInformations));
+                    new Converter<ProgramInformationType, ProgramInformation>(ConvertProgramInformation));
 
             if (mpd.BaseURL != null)
                 dw.BaseURLs = Array.ConvertAll(mpd.BaseURL,
@@ -560,7 +548,7 @@ namespace JuvoPlayer.Tests.UnitTests
             dw.Id = mpd.id;
             dw.Profiles = mpd.profiles;
             dw.Type = mpd.type.ToString();
-            
+
 
             if (mpd.availabilityStartTimeSpecified)
                 dw.AvailabilityStartTime = mpd.availabilityStartTime;
@@ -602,10 +590,10 @@ namespace JuvoPlayer.Tests.UnitTests
             DisplayMissingFields(mpd.GetType(), dw.GetType(), new object[]
                 {mpd.EssentialProperty, mpd.SupplementalProperty, mpd.UTCTiming});
             return (dw as DASH);
-            
+
         }
 
-        protected static ProgramInformation ConvertProgramInformations(ProgramInformationType input)
+        protected static ProgramInformation ConvertProgramInformation(ProgramInformationType input)
         {
             ProgramInformationWriter item = new ProgramInformationWriter();
 
@@ -645,7 +633,7 @@ namespace JuvoPlayer.Tests.UnitTests
             RangeWriter item = new RangeWriter();
 
             if(input.starttime != null)
-                item.Starttime = XmlConvert.ToTimeSpan(input.starttime);
+                item.StartTime = XmlConvert.ToTimeSpan(input.starttime);
 
             if(input.duration != null)
                 item.Duration = XmlConvert.ToTimeSpan(input.duration);
@@ -665,7 +653,7 @@ namespace JuvoPlayer.Tests.UnitTests
 
             if (input.availabilityTimeCompleteSpecified)
                 item.AvailabilityTimeComplete = item.AvailabilityTimeComplete;
-            
+
             return item;
         }
 
@@ -674,7 +662,7 @@ namespace JuvoPlayer.Tests.UnitTests
             PeriodWriter item = new PeriodWriter(currDoc);
 
             if (input.BaseURL != null)
-                item.BaseURLs = Array.ConvertAll(input.BaseURL, 
+                item.BaseURLs = Array.ConvertAll(input.BaseURL,
                     new Converter<BaseURLType, BaseURL>(ConvertBaseURLs));
 
             if (input.SegmentBase != null)
@@ -691,7 +679,7 @@ namespace JuvoPlayer.Tests.UnitTests
             if (input.AssetIdentifier != null)
                 item.AssetIdentifiers = Array.ConvertAll(new DescriptorType[] { input.AssetIdentifier },
                     new Converter<DescriptorType, Descriptor>(ConvertDescriptors));
-            
+
             if(input.EventStream != null)
                 item.EventStreams = Array.ConvertAll(input.EventStream,
                     new Converter<EventStreamType, EventStream>(ConvertEventStreams));
@@ -766,7 +754,7 @@ namespace JuvoPlayer.Tests.UnitTests
         protected static URL ConvertURLs(URLType input)
         {
             URLWriter item = new URLWriter();
-            
+
             item.SourceURL = input.sourceURL;
             item.Range = input.range;
 
@@ -840,7 +828,7 @@ namespace JuvoPlayer.Tests.UnitTests
             EventWriter item = new EventWriter();
 
             // Odd. Presentation time filed in our case seems "optional" while
-            // xsd generated datastructures treat this as mandatory...
+            // xsd generated data structures treat this as mandatory...
             item.PresentationTime = input.presentationTime;
 
             if (input.durationSpecified)
@@ -849,9 +837,9 @@ namespace JuvoPlayer.Tests.UnitTests
             if (input.idSpecified)
                 item.Id = input.id;
 
- 
+
             item.EventValue = input.messageData;
-            
+
             return item;
         }
         protected static AdaptationSet ConvertAdaptationSets(AdaptationSetType input)
@@ -879,7 +867,7 @@ namespace JuvoPlayer.Tests.UnitTests
                     new Converter<ContentComponentType, ContentComponent>(ConvertContentComponents));
 
             if (input.BaseURL != null)
-                item.BaseURLs = Array.ConvertAll(input.BaseURL, 
+                item.BaseURLs = Array.ConvertAll(input.BaseURL,
                     new Converter<BaseURLType, BaseURL>(ConvertBaseURLs));
 
             if (input.SegmentBase != null)
@@ -901,7 +889,7 @@ namespace JuvoPlayer.Tests.UnitTests
                 item.Representations = Array.ConvertAll(input.Representation,
                     new Converter<RepresentationType, Representation>(ConvertRepresentations));
 
-                currAdaptationSet = null;              
+                currAdaptationSet = null;
             }
 
 
@@ -936,23 +924,23 @@ namespace JuvoPlayer.Tests.UnitTests
 
             if (input.maxHeightSpecified)
                 item.MaxHeight = input.maxHeight;
-            
+
             item.MinFrameRate = input.minFrameRate;
             item.MaxFrameRate = input.maxFrameRate;
             item.SegmentAlignment = input.segmentAlignment;
             item.SubsegmentAlignment = input.subsegmentAlignment;
 
             // Again = subsegmentStartsWithSAP is always present...
-            // and int/uint datatype conversion...
+            // and int/uint data type conversion...
             item.SubsegmentStartsWithSAP = (int)input.subsegmentStartsWithSAP;
 
             if (input.bitstreamSwitchingSpecified)
                 item.BitstreamSwitching = input.bitstreamSwitching;
 
             // All the bases are belong to us...
-            var subitem = item as RepresentationBase;
+            var subItem = item as RepresentationBase;
             var tmp = ConvertRepresentationBases(input);
-            subitem.FillProperties(tmp);
+            subItem.FillProperties(tmp);
 
             // Missing
             // input.href
@@ -998,7 +986,7 @@ namespace JuvoPlayer.Tests.UnitTests
 
             if (input.heightSpecified)
                 item.Height = input.height;
- 
+
             item.Sar = input.sar;
             item.FrameRate = input.frameRate;
             item.AudioSamplingRate = input.audioSamplingRate;
@@ -1020,14 +1008,14 @@ namespace JuvoPlayer.Tests.UnitTests
 
             if (input.scanTypeSpecified)
                 item.ScanType = input.scanType.ToString();
-  
+
             return item;
         }
 
         protected static Descriptor ConvertInbandEvent(EventStreamType input)
         {
             DescriptorWriter item = new DescriptorWriter();
-                        
+
             item.SchemeIdUri = input.schemeIdUri;
             item.Value = input.value;
 
@@ -1036,8 +1024,8 @@ namespace JuvoPlayer.Tests.UnitTests
             // input.Event;
             // input.href;
             // input.actuate
-            
-            // Unmapped 
+
+            // Unmapped
             // MpdParser.Node.Descriptor.Id
 
             DisplayMissingFields(input.GetType(), item.GetType(), new object[]
@@ -1052,13 +1040,13 @@ namespace JuvoPlayer.Tests.UnitTests
         {
             ContentProtectionWriter item = new ContentProtectionWriter();
 
-   
+
             if (input.schemeIdUri != null)
                 item.SchemeIdUri = input.schemeIdUri;
 
             if (input.value != null)
                 item.Value = input.value;
-            
+
             if (input.Any != null)
             {
                 item.Data = "<xml>";
@@ -1068,7 +1056,7 @@ namespace JuvoPlayer.Tests.UnitTests
                 }
                 item.Data += "</xml>";
             }
-            
+
             if(input.AnyAttr != null)
             {
                 foreach(var attrib in input.AnyAttr)
@@ -1080,12 +1068,12 @@ namespace JuvoPlayer.Tests.UnitTests
                 }
             }
              return item;
-            
+
         }
         protected static Representation ConvertRepresentations(RepresentationType input)
         {
             RepresentationWriter item = new RepresentationWriter(currAdaptationSet);
-            
+
             if (input.BaseURL != null)
                 item.BaseURLs = Array.ConvertAll(input.BaseURL,
                     new Converter<BaseURLType, BaseURL>(ConvertBaseURLs));
@@ -1105,7 +1093,7 @@ namespace JuvoPlayer.Tests.UnitTests
             if (input.SegmentTemplate != null)
                 item.SegmentTemplates = Array.ConvertAll(new SegmentTemplateType[] { input.SegmentTemplate },
                     new Converter<SegmentTemplateType, SegmentTemplate>(ConvertSegmentTemplates));
-                        
+
             item.Id = input.id;
             item.Bandwidth = input.bandwidth;
 
@@ -1140,7 +1128,7 @@ namespace JuvoPlayer.Tests.UnitTests
 
             if (input.levelSpecified)
                 item.Level = input.level;
-            
+
             item.DependencyLevel = input.dependencyLevel;
 
             if (input.bandwidthSpecified)
@@ -1230,10 +1218,10 @@ namespace JuvoPlayer.Tests.UnitTests
             if (input.startNumberSpecified)
                 item.StartNumber = input.startNumber;
 
-            var subitem = ((item as MultipleSegmentBase) as SegmentBase);
+            var subItem = ((SegmentBase) item);
             var tmp = ConvertSegmentBases(input);
-            subitem.FillProperties(tmp);
-            
+            subItem.FillProperties(tmp);
+
 
             return item;
         }
@@ -1262,7 +1250,7 @@ namespace JuvoPlayer.Tests.UnitTests
 
             //Missing
             //
-            
+
             // input.nSpecified
             // input.n
             DisplayMissingFields(input.GetType(), item.GetType(), new object[]
@@ -1270,7 +1258,7 @@ namespace JuvoPlayer.Tests.UnitTests
             return item;
         }
 
-        
+
     }
-   
+
 }

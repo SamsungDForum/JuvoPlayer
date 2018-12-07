@@ -34,7 +34,7 @@ namespace MpdParser.Node.Atom
             T res = default(T);
 
             // sizeof(T) on template does not work
-            // SizeOf(T) (dynamic) apparently is not reliable - may return size of entire 
+            // SizeOf(T) (dynamic) apparently is not reliable - may return size of entire
             // container ther then storage size...
             // ...Surely, there must be more more sensible way of doing this...
             switch (Type.GetTypeCode(res.GetType()))
@@ -90,7 +90,7 @@ namespace MpdParser.Node.Atom
                 case TypeCode.Byte:
                     res = (T)Convert.ChangeType(adata[idx++], res.GetType());
                     break;
-                // fallthroghs are intentional here...
+                // fallthrough are intentional here...
                 case TypeCode.Boolean:
                 case TypeCode.Char:
                 case TypeCode.DateTime:
@@ -103,7 +103,7 @@ namespace MpdParser.Node.Atom
                 case TypeCode.Single:
                 case TypeCode.String:
                 default:
-                    Logger.Warn(string.Format("{0} Unsupported read type.", res.GetType().ToString()));
+                    Logger.Warn($"{res.GetType()} Unsupported read type.");
                     break;
             }
 
@@ -119,7 +119,7 @@ namespace MpdParser.Node.Atom
                 return false;
             }
 
-            // Check signature.   
+            // Check signature.
             if (!(name[0] == adata[idx++] &&
                     name[1] == adata[idx++] &&
                     name[2] == adata[idx++] &&
@@ -226,28 +226,28 @@ namespace MpdParser.Node.Atom
 
             UInt64 rl = 0;
             UInt64 rh = 0;
-            TimeSpan starttime = default(TimeSpan);
+            TimeSpan startTime = default(TimeSpan);
             TimeSpan duration = default(TimeSpan);
 
             if (idx < MovieIndexCount)
             {
                 rl = Movieidx[(int)idx].Offset;
                 rh = rl + Movieidx[(int)idx].RawRefsize;
-                starttime = Movieidx[(int)idx].TimeIndex;
+                startTime = Movieidx[(int)idx].TimeIndex;
                 duration = Movieidx[(int)idx].SegmentDuration;
             }
 
 
-            return (rl, rh, starttime, duration);
+            return (rl, rh, startTime, duration);
         }
 
         public void DumpMovieIndex(TimeSpan curr = default(TimeSpan))
         {
-            Logger.Debug(string.Format("SIDX DB dump {0} entries:", Movieidx.Count));
+            Logger.Debug($"SIDX DB dump {Movieidx.Count} entries:");
             foreach (Movie_index_entry mie in Movieidx)
             {
-                Logger.Debug(string.Format("Requested Time={0} Index Start Time={1} Index Duration={2} Total={3}",
-                    curr, mie.TimeIndex, mie.SegmentDuration, mie.TimeIndex + mie.SegmentDuration));
+                Logger.Debug(
+                    $"Requested Time={curr} Index Start Time={mie.TimeIndex} Index Duration={mie.SegmentDuration} Total={mie.TimeIndex + mie.SegmentDuration}");
             }
         }
 
@@ -325,10 +325,10 @@ namespace MpdParser.Node.Atom
                 UInt32 sseg_duration = Read<UInt32>(adata, ref idx);
                 UInt32 SAPdata = Read<UInt32>(adata, ref idx);
 
-                double currdurr = ToSeconds(sseg_duration, Timescale);
-                double currttimeidx = ToSeconds(pts, Timescale);
+                double currentDuration = ToSeconds(sseg_duration, Timescale);
+                double currentTimeIdx = ToSeconds(pts, Timescale);
 
-                AvgSegDur = (currdurr - AvgSegDur) / i;
+                AvgSegDur = (currentDuration - AvgSegDur) / i;
                 i++;
 
                 // When storing sizes (ref_size), we need to store value -1 byte,
@@ -347,7 +347,7 @@ namespace MpdParser.Node.Atom
                 {
                     Movieidx.Add(
                         new Movie_index_entry(ref_size - 1, sseg_duration, SAPdata, offset,
-                                                TimeSpan.FromSeconds(currdurr),
+                                                TimeSpan.FromSeconds(currentDuration),
                                                 TimeSpan.FromSeconds(ToSeconds(pts, Timescale)),
                                                 MovieIndexCount++
                                              )

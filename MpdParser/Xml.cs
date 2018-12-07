@@ -407,8 +407,8 @@ namespace MpdParser.Xml
 
             public void Store<T>(T result)
             {
-                var value = container == null 
-                    ? Activator.CreateInstance(type.MakeArrayType(), 0) 
+                var value = container == null
+                    ? Activator.CreateInstance(type.MakeArrayType(), 0)
                     : toArray.Invoke(container, new object[] { });
 
                 Internal.SetValue(prop, result, value);
@@ -423,19 +423,19 @@ namespace MpdParser.Xml
         /// </summary>
         /// <param name="reader">System.Xml.XmlReader processing current document</param>
         /// <param name="result">Template object which will collected parsed data</param>
-        /// <param name="parent">String containing name of the parent object. Return to higher 
+        /// <param name="parent">String containing name of the parent object. Return to higher
         /// will only be performed for a given node if </current node> tag is found</param>
         /// <returns>
-        /// bool 
+        /// bool
         /// true -  rescan at same level as current operation gobbled up
         ///         all end tags.
         /// false - continue on current level looking for matching </end tag>
         /// </returns>
         /// <remarks>
         /// Return value is a "hack" to work around internal behaviour of certain
-        /// XMLReader methods which gobble up end tags.  
+        /// XMLReader methods which gobble up end tags.
         /// </remarks>
-        /// 
+        ///
         private static async Task<bool> Children<T>(XmlReader reader, T result, string parent = null)
         {
             Dictionary<string, Property> elems = new Dictionary<string, Property>();
@@ -452,9 +452,9 @@ namespace MpdParser.Xml
                     else if (attr is InnerText)
                     {
                         // Note:
-                        // Behaviour of exit (false/true) may require adjusting, 
+                        // Behaviour of exit (false/true) may require adjusting,
                         // depending where reader will be after InnerText() exits.
-                        // 
+                        //
                         Internal.SetValue(prop, result, await InnerText(reader));
                         return false;
                     }
@@ -465,7 +465,7 @@ namespace MpdParser.Xml
                         // on current level is performed
                         //
 
-                        // "cleanup" of retrieved data is necessary in order to comapre 
+                        // "cleanup" of retrieved data is necessary in order to compare
                         // content protection data. ReadInnerXML() will read data with any white chars
                         // in between, while system reader (used in unit tests for comparison purposes)
                         // cleans internal data (due to different internal representation)
@@ -544,10 +544,10 @@ namespace MpdParser.Xml
 
                     case XmlNodeType.EndElement:
                         //
-                        // Exit to an upper level ONLY if end element 
+                        // Exit to an upper level ONLY if end element
                         // is a "matching" one.
                         // i.e. When processing node <X>, end element is </X>
-                        // otherwise keep on processing all stuff inside current 
+                        // otherwise keep on processing all stuff inside current
                         // node without bailing up.
                         //
                         if (parent == reader.Name)

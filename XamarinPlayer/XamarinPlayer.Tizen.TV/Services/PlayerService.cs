@@ -283,7 +283,7 @@ namespace XamarinPlayer.Tizen.Services
             connector?.Dispose();
             subscriptions.Dispose();
 
-            // Stop Data provider during dispose AFTER disconnecting data privider and controller.
+            // Stop Data provider during dispose AFTER disconnecting data provider and controller.
             // Events propagated during stop (when disposing) are no longer needed nor required.
             // Stop is issued here as exit without prior content end does not invoke Stop() method.
             dataProvider.OnStopped();

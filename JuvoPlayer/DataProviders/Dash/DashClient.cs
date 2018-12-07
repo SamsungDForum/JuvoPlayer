@@ -73,7 +73,7 @@ namespace JuvoPlayer.DataProviders.Dash
 
         /// <summary>
         /// Buffer full accessor.
-        /// true - Underlying player received MagicBufferTime ammount of data
+        /// true - Underlying player received MagicBufferTime amount of data
         /// false - Underlying player has at least some portion of MagicBufferTime left and can
         /// continue to accept data.
         ///
@@ -112,6 +112,8 @@ namespace JuvoPlayer.DataProviders.Dash
         private readonly Subject<Unit> bufferingStartedSubject = new Subject<Unit>();
         private readonly Subject<Unit> bufferingCompletedSubject = new Subject<Unit>();
 
+        private readonly object clientLock = new object();
+
         public DashClient(IThroughputHistory throughputHistory, ISharedBuffer sharedBuffer, StreamType streamType)
         {
             this.throughputHistory = throughputHistory ??
@@ -128,7 +130,7 @@ namespace JuvoPlayer.DataProviders.Dash
             var seekToTimeRange = currentStreams.SegmentTimeRange(currentSegmentId);
 
             // We are not expecting NULL segments after seek.
-            // Termination will occour after restarting
+            // Termination will occur after restarting
             if (seekToTimeRange == null)
             {
                 LogError($"Seek Pos Req: {position} failed. No segment/TimeRange found");
@@ -139,12 +141,12 @@ namespace JuvoPlayer.DataProviders.Dash
             {
                 // Set "current time" to end time of segment which will be downloaded.
                 // Rational: In case of long segment duration and short buffer times we may buffer just one segment.
-                // If IFrame is at the very end of downloaded segment, underlaying player may NOT have enough
+                // If IFrame is at the very end of downloaded segment, underlying player may NOT have enough
                 // data to generate OnTime events, effectively stopping playback
                 //
                 // TODO: Add to SMPlayer.cs generation of OnCurrentTime for packets discarded during IFrame seek operation
-                // This will allow DashClient to recieve info on consumed data releasing buffer for further downloads.
-                // Such change will be more consistant and not require modification of current time during seek as it is done
+                // This will allow DashClient to receive info on consumed data releasing buffer for further downloads.
+                // Such change will be more consistent and not require modification of current time during seek as it is done
                 // now.
 
                 currentTime = seekToTimeRange.Start + seekToTimeRange.Duration;
@@ -189,7 +191,7 @@ namespace JuvoPlayer.DataProviders.Dash
                 currentSegmentId = currentRepresentation.AlignedStartSegmentID;
 
             if (!trimmOffset.HasValue)
-                trimmOffset = currentRepresentation.AlignedTrimmOffset;
+                trimmOffset = currentRepresentation.AlignedTrimOffset;
 
             var initSegment = currentStreams.InitSegment;
             if (initSegment != null)
@@ -205,7 +207,7 @@ namespace JuvoPlayer.DataProviders.Dash
 
         public void ScheduleNextSegDownload()
         {
-            if (!Monitor.TryEnter(this))
+            if (!Monitor.TryEnter(clientLock))
                 return;
 
             try
@@ -213,7 +215,7 @@ namespace JuvoPlayer.DataProviders.Dash
                 if (IsEndOfContent(bufferTime))
                 {
                     // DashClient termination. This may be happening as part of scheduleDownloadNextTask.
-                    // Clear referce held in scheduleDownloadNextTask to prevent Stop() from trying to wait
+                    // Clear reference held in scheduleDownloadNextTask to prevent Stop() from trying to wait
                     // for itself. Otherwise DashClient will try to chase its own tail (deadlock)
                     downloadCompletedTask = null;
                     Stop();
@@ -249,7 +251,7 @@ namespace JuvoPlayer.DataProviders.Dash
             }
             finally
             {
-                Monitor.Exit(this);
+                Monitor.Exit(clientLock);
             }
         }
 
@@ -269,7 +271,7 @@ namespace JuvoPlayer.DataProviders.Dash
                 else if (response.IsFaulted)
                     shouldContinue = HandleFailedDownload(response);
                 else // always continue on successful download
-                    shouldContinue = HandleSuccessfullDownload(response.Result);
+                    shouldContinue = HandleSuccessfulDownload(response.Result);
 
                 // throw exception so continuation wont run
                 if (!shouldContinue)
@@ -343,7 +345,7 @@ namespace JuvoPlayer.DataProviders.Dash
             return response.Exception?.Flatten().InnerExceptions[0].Message;
         }
 
-        private bool HandleSuccessfullDownload(DownloadResponse responseResult)
+        private bool HandleSuccessfulDownload(DownloadResponse responseResult)
         {
             if (cancellationTokenSource.IsCancellationRequested)
                 return false;
@@ -631,13 +633,13 @@ namespace JuvoPlayer.DataProviders.Dash
                 return TimeSpan.MaxValue;
 
             var timeout = timeBufferDepthDefault;
-            var avarageThroughput = throughputHistory.GetAverageThroughput();
-            if (avarageThroughput > 0 && currentRepresentation.Bandwidth.HasValue && segment.Period != null)
+            var averageThroughput = throughputHistory.GetAverageThroughput();
+            if (averageThroughput > 0 && currentRepresentation.Bandwidth.HasValue && segment.Period != null)
             {
-                var bandwith = currentRepresentation.Bandwidth.Value;
+                var bandwidth = currentRepresentation.Bandwidth.Value;
                 var duration = segment.Period.Duration.TotalSeconds;
-                var segmentSize = bandwith * duration;
-                var calculatedTimeNeeded = TimeSpan.FromSeconds(segmentSize / avarageThroughput * 1.5);
+                var segmentSize = bandwidth * duration;
+                var calculatedTimeNeeded = TimeSpan.FromSeconds(segmentSize / averageThroughput * 1.5);
                 var manifestMinBufferDepth =
                     currentStreams.GetDocumentParameters().Document.MinBufferTime ?? TimeSpan.Zero;
                 timeout = calculatedTimeNeeded > manifestMinBufferDepth ? calculatedTimeNeeded : manifestMinBufferDepth;

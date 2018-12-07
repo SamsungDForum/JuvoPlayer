@@ -62,7 +62,7 @@ namespace MpdParser
 
         public uint? AlignedStartSegmentID { get; set; }
 
-        public TimeSpan? AlignedTrimmOffset { get; set; }
+        public TimeSpan? AlignedTrimOffset { get; set; }
 
         public void SetDocumentParameters(ManifestParameters docParams)
         {
@@ -71,36 +71,36 @@ namespace MpdParser
 
         /// <summary>
         /// Function aligns Audio & Video Start Segments for dynamic & static content content.
-        /// Static content no alignment is done, just selection of start segments and trimm offsets
+        /// Static content no alignment is done, just selection of start segments and trim offsets
         /// </summary>
         /// <remarks>
         /// Video Segment is picked as start point. Segment Time Range (Start-Duration) is split
         /// into 4 separate time points between Segment.Start and Segment.Duration.
         /// For each of those points, audio segment is selected and its start time recorded.
-        /// Such list is recorded for 
-        /// 
+        /// Such list is recorded for
+        ///
         /// {Prev. Video Segment}.{Start Video Segment}.{Next Video Segment}
-        /// 
+        ///
         /// if prev video segment is unavailable, then video segment source list is as following:
-        /// 
+        ///
         /// {Start Video Segment}.{Next Video Segment}.{Next Video Segment}
-        /// 
+        ///
         /// Once a list of {VideoSegmentId}.{Video Start Time}.{AudioSegmentID}.{Audio Start Time}
         /// is created, it is scanned for smallest differences between Video Start Time & Audio Start Time.
-        /// Audio segment ID and Video Segment ID selected for aligned start parameters will have 
+        /// Audio segment ID and Video Segment ID selected for aligned start parameters will have
         /// that difference smallest.
-        /// 
+        ///
         /// After selecting start IDs for audio & video, associated start times of each segment are chosen as
-        /// aligned trimm Offsets.
-        /// 
-        /// Reason for scanning mutiple time points of video segment: A & V segments do not have to be aligned,
+        /// aligned trim Offsets.
+        ///
+        /// Reason for scanning multiple time points of video segment: A & V segments do not have to be aligned,
         /// as such there may be overlaps.
-        /// 
-        /// Representation order (audio/video) is irrelavant, however, it is recommended to align audio TO video
+        ///
+        /// Representation order (audio/video) is irrelevant, however, it is recommended to align audio TO video
         /// i.e.
-        /// 
+        ///
         /// audioRepresentation.AlightStartSegmentWith( videoRepresentation )
-        /// 
+        ///
         /// </remarks>
         /// <param name="alignTo">representation to align with (video)</param>
         public void AlignStartSegmentsWith(Representation alignTo)
@@ -132,13 +132,13 @@ namespace MpdParser
             var videoStartSegment = video.Segments.StartSegmentId();
             var videoTimeRange = video.Segments.SegmentTimeRange(videoStartSegment);
 
-            var trimmOffset = audioTimeRange.Start < videoTimeRange.Start ? audioTimeRange.Start : videoTimeRange.Start;
+            var trimOffset = audioTimeRange.Start < videoTimeRange.Start ? audioTimeRange.Start : videoTimeRange.Start;
 
             //Set aligned start data
             AlignedStartSegmentID = audioStartSegment;
-            AlignedTrimmOffset = trimmOffset;
+            AlignedTrimOffset = trimOffset;
             video.AlignedStartSegmentID = videoStartSegment;
-            video.AlignedTrimmOffset = trimmOffset;
+            video.AlignedTrimOffset = trimOffset;
         }
 
         private void AlignDynamicStartParameters(Representation video)
@@ -201,9 +201,9 @@ namespace MpdParser
 
             //Set aligned start data
             AlignedStartSegmentID = audioStartSegment;
-            AlignedTrimmOffset = trimmOffset;
+            AlignedTrimOffset = trimmOffset;
             video.AlignedStartSegmentID = videoStartSegment;
-            video.AlignedTrimmOffset = trimmOffset;
+            video.AlignedTrimOffset = trimmOffset;
         }
 
         public Representation(Node.Representation repr)
@@ -223,7 +223,7 @@ namespace MpdParser
 
             Segments = repr.SegmentsStream();
 
-            // Check if repr. is valid - Entries without representation 
+            // Check if repr. is valid - Entries without representation
             // specification are valid too.
             if (NumChannels == null && repr.AudioChannelConfigurations != null)
             {
@@ -309,13 +309,12 @@ namespace MpdParser
             result += " / " + (GetMimeType(MimeType, Codecs) ?? "-");
 
             string size = Size(Width, Height);
-            string frate = FrameRate;
 
-            if (size != null || frate != null)
+            if (size != null || FrameRate != null)
             {
                 result += " [" + (size ?? "");
-                if (frate != null)
-                    result += "@" + frate;
+                if (FrameRate != null)
+                    result += "@" + FrameRate;
                 result += "]";
             }
 
@@ -530,12 +529,12 @@ namespace MpdParser
         private string GuessFromRepresentations()
         {
             string guessed = null;
-            foreach (Representation r in Representations)
+            foreach (var r in Representations)
             {
-                string cand = GuessFromMimeType(r.MimeType);
-                if (cand == null) continue;
-                if (guessed == null) guessed = cand;
-                else if (guessed != cand) return null; // At least two different types
+                var candidate = GuessFromMimeType(r.MimeType);
+                if (candidate == null) continue;
+                if (guessed == null) guessed = candidate;
+                else if (guessed != candidate) return null; // At least two different types
             }
             return guessed;
         }
@@ -543,7 +542,7 @@ namespace MpdParser
         public TimeSpan? Longest()
         {
             TimeSpan? current = null;
-            foreach (Representation repr in Representations)
+            foreach (var repr in Representations)
             {
                 TimeSpan? length = repr.Segments?.Duration;
                 if (length == null) continue;
@@ -626,7 +625,7 @@ namespace MpdParser
         /// </summary>
         /// <param name="periods"> Table of raw dash periods</param>
         /// <param name="aDoc">DASH Document</param>
-        /// <returns>Array of Periods (MpdParser.Perdiod[]) derived from periods argument</returns>
+        /// <returns>Array of Periods (MpdParser.Period[]) derived from periods argument</returns>
         public static Period[] BuildPeriods(Node.Period[] periods, Document aDoc)
         {
             var res = periods.Select(o => new Period(o)).ToArray();
@@ -652,21 +651,21 @@ namespace MpdParser
             // reflecting spec wording and its interpretation
             if (periods.Length > 0)
             {
-                // If the attribute @start is present in the Period, then the Period is a regular Period 
+                // If the attribute @start is present in the Period, then the Period is a regular Period
                 // and the PeriodStart is equal to the value of this attribute.
                 //
                 // This spec leaves me puzzled. If period is not missing, type is regular.
                 // If period is missing, but it is static and first in file, create StartTime=0.
                 // should this imply type = regular? Local DASH experts:
                 // k.kluczek@samsung.com j.wasikowski@samsung.com j.gabryel@samsung.com
-                // state that all periods are "regular" by default, unless 
+                // state that all periods are "regular" by default, unless
                 // period[n].start=null && period[n-1].duration == null
                 //
                 periods[0].Type = Types.Regular;
 
-                // If (i) @start attribute is absent, 
-                // and(ii) the Period element is the first in the MPD, 
-                // and (iii) the MPD@type is 'static', then the PeriodStart time shall be set to 
+                // If (i) @start attribute is absent,
+                // and(ii) the Period element is the first in the MPD,
+                // and (iii) the MPD@type is 'static', then the PeriodStart time shall be set to
                 // zero.
                 if (periods[0].Start == null && aDoc.Type == DocumentType.Static)
                     periods[0].Start = new TimeSpan(0);
@@ -675,19 +674,19 @@ namespace MpdParser
             for (int i = 1; i < periods.Length - 1; i++)
             {
                 // A.3.2 ISO ISEC 23009-1:2014
-                // the Period end time referred as PeriodEnd is determined as follows: 
-                // For any Period in the MPD except for the last one, the PeriodEnd is 
+                // the Period end time referred as PeriodEnd is determined as follows:
+                // For any Period in the MPD except for the last one, the PeriodEnd is
                 // obtained as the value of the PeriodStart of the next Period.
-                // For the last Period in the MPD:... 
+                // For the last Period in the MPD:...
                 // (this will be described "after" this loop)
                 if (periods[i - 1].Duration == null && periods[i].Start != null)
                 {
                     periods[i - 1].Duration = periods[i].Start - periods[i - 1].Start;
                 }
-                // If the @start attribute is absent, but the previous Period element contains 
-                // a @duration attribute then this new Period is also a regular Period. 
-                // The start time of the new Period PeriodStart is the sum of the start time of 
-                // the previous Period PeriodStart and the value of the attribute @duration of 
+                // If the @start attribute is absent, but the previous Period element contains
+                // a @duration attribute then this new Period is also a regular Period.
+                // The start time of the new Period PeriodStart is the sum of the start time of
+                // the previous Period PeriodStart and the value of the attribute @duration of
                 // the previous Period.
                 if (periods[i].Start == null && periods[i - 1].Duration != null)
                 {
@@ -695,9 +694,9 @@ namespace MpdParser
                     periods[i].Start = periods[i - 1].Start + periods[i - 1].Duration;
                 }
 
-                // If(i) @start attribute is absent, and(ii) the previous Period element does not 
-                // contains a @duration attribute or the Period element is the first in the MPD, 
-                // and (iii) the MPD@type is 'dynamic', then this Period is an 
+                // If(i) @start attribute is absent, and(ii) the previous Period element does not
+                // contains a @duration attribute or the Period element is the first in the MPD,
+                // and (iii) the MPD@type is 'dynamic', then this Period is an
                 // Early Available Period
                 if (periods[i].Start == null && periods[i - 1].Duration == null &&
                     aDoc.Type == DocumentType.Dynamic)
@@ -705,10 +704,10 @@ namespace MpdParser
             }
 
             //Last Period Fixup based on A.3.2 ISO ISEC 23009-1:2014
-            var lastp = periods.Length - 1;
+            var lastPeriod = periods.Length - 1;
             if (aDoc.MinimumUpdatePeriod.HasValue == false)
             {
-                periods[lastp].PeriodEnd = aDoc.AvailabilityStartTime + aDoc.MediaPresentationDuration;
+                periods[lastPeriod].PeriodEnd = aDoc.AvailabilityStartTime + aDoc.MediaPresentationDuration;
             }
             else
             {
@@ -716,7 +715,7 @@ namespace MpdParser
                 var v2 = aDoc.AvailabilityStartTime ?? DateTime.MinValue;
                 v2 += aDoc.MediaPresentationDuration ?? TimeSpan.Zero;
 
-                periods[lastp].PeriodEnd = new DateTime(Math.Min(v1.Ticks, v2.Ticks));
+                periods[lastPeriod].PeriodEnd = new DateTime(Math.Min(v1.Ticks, v2.Ticks));
             }
 
             return periods;
@@ -782,7 +781,7 @@ namespace MpdParser
         }
 
         /// <summary>
-        /// 
+        ///
         /// </summary>
         /// <param name="manifestParams"></param>
         public void SetManifestParameters(ManifestParameters manifestParams)
@@ -791,7 +790,7 @@ namespace MpdParser
         }
 
         /// <summary>
-        /// 
+        ///
         /// </summary>
         /// <param name="type"></param>
         /// <returns></returns>
@@ -907,7 +906,7 @@ namespace MpdParser
                 }
             }
 
-            foreach (Node.ProgramInformation info in dash.ProgramInformations)
+            foreach (Node.ProgramInformation info in dash.ProgramInformation)
             {
                 foreach (string title in info.Titles)
                 {
@@ -974,8 +973,8 @@ namespace MpdParser
                 case "dynamic":
                     return DocumentType.Dynamic;
                 case "static":
-                default:        // ISO IEC 23009-1 Section 5.3.1.2 Table 3. 
-                                // Type is optional with default value of "static"  
+                default:        // ISO IEC 23009-1 Section 5.3.1.2 Table 3.
+                                // Type is optional with default value of "static"
                     return DocumentType.Static;
             }
         }

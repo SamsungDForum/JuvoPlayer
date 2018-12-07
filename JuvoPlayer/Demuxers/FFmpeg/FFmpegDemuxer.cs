@@ -29,6 +29,8 @@ using System.Diagnostics;
 using System.Drawing;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
+using JuvoPlayer.Drms;
+using JuvoPlayer.Utils;
 
 namespace JuvoPlayer.Demuxers.FFmpeg
 {

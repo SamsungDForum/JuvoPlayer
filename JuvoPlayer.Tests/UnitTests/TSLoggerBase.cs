@@ -55,7 +55,7 @@ namespace JuvoPlayer.Tests.UnitTests
         }
 
         [Test]
-        [Description("Convinient test for ConsoleLogger class. Tester must check logs manually.")]
+        [Description("Convenient test for ConsoleLogger class. Tester must check logs manually.")]
         public void TestConsoleLogger()
         {
             var dummyChannel = "channel";
