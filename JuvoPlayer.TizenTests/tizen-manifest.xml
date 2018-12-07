@@ -7,8 +7,7 @@
     </ui-application>
     <provides-appdefined-privileges />
     <privileges>
-      <privilege>http://tizen.org/privilege/internet</privilege>
-      <privilege>http://tizen.org/privilege/tee.client</privilege>
+      <privilege>http://tizen.org/privilege/internet</privilege>      
       <privilege>http://developer.samsung.com/privilege/drmplay</privilege>
       <privilege>http://developer.samsung.com/privilege/drminfo</privilege>
     </privileges>
