@@ -2,9 +2,11 @@
 
 echo "Running build_and_test.sh"
 
-dotnet sln remove NUIPlayer/NUIPlayer.csproj
+yell() { echo "$0: $*" >&2; }
+die() { yell "$*"; exit 111; }
+try() { "$@" || die "cannot $*"; }
 
 ACTIVE_PROFILE=`tizen security-profiles list | grep "O.*$" | awk -F "[ ]+" '{ print $1 }'`
-tizen build-cs -C Release -s ${ACTIVE_PROFILE}
+try tizen build-cs -C Release -s ${ACTIVE_PROFILE}
 
-dotnet test JuvoPlayer.Tests/JuvoPlayer.Tests.csproj --logger:trx -f netcoreapp2.0
+try dotnet test JuvoPlayer.Tests/JuvoPlayer.Tests.csproj --logger:trx -f netcoreapp2.0
