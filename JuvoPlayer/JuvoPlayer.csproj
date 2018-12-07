@@ -5,11 +5,13 @@
     <OutputType>Library</OutputType>
     <TargetFramework>netstandard2.0</TargetFramework>
     <TizenCreateTpkOnBuild>false</TizenCreateTpkOnBuild>
-    <Version>1.4.2</Version>
+    <Version>1.4.3</Version>
     <PackageReleaseNotes>Release of first beta to be presented to the public. It will be uploaded to the Samsung Seller Office site</PackageReleaseNotes>
     <Company>SRPOL MVS</Company>
     <Description>Refrence application of video streaming Tizen .Net Tv applications</Description>
     <Copyright>Samung Electronics</Copyright>
+    <AssemblyVersion>1.4.3.204</AssemblyVersion>
+    <FileVersion>1.4.3.204</FileVersion>
   </PropertyGroup>
 
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
