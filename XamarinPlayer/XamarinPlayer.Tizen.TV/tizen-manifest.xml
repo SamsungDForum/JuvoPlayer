@@ -1,4 +1,3 @@
-<<<<<<< HEAD
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <manifest package="JuvoPlayerXamarin.Tizen.TV" version="1.4.3" api-version="5" xmlns="http://tizen.org/ns/packages">
   <feature name="http://tizen.org/feature/screen.size.normal.1080.1920">true</feature>
@@ -23,29 +22,4 @@
     <privilege>http://developer.samsung.com/privilege/esplay</privilege>
   </privileges>
   <provides-appdefined-privileges />
-=======
-﻿<?xml version="1.0" encoding="utf-8"?>
-<manifest package="JuvoPlayerXamarin.Tizen.TV" version="1.4.2" api-version="4" xmlns="http://tizen.org/ns/packages">
-  <feature name="http://tizen.org/feature/screen.size.normal.1080.1920">true</feature>
-  <profile name="tv" />
-  <app-control>
-    <src name="index.html" reload="disable" />
-    <operation name="http://samsung.com/appcontrol/operation/eden_resume" />
-  </app-control>
-  <ui-application appid="JuvoPlayerXamarin.Tizen.TV" exec="JuvoPlayerXamarin.Tizen.TV.dll" multiple="false" nodisplay="false" taskmanage="true" splash-screen-display="true" type="dotnet" launch_mode="single">
-    <label>JuvoPlayerXamarin.Tizen.TV</label>
-    <icon>JuvoPlayerXamarinTizenTV.png</icon>
-    <metadata key="http://samsung.com/tv/metadata/mountinstall" value="false" />
-    <metadata key="http://samsung.com/tv/metadata/devel.api.version" value="2.4" />
-    <metadata key="http://samsung.com/tv/metadata/use.preview" value="endpoint_URL=http://serwer1852815.home.pl/juvoplayer/smarthubpreview/juvoplayerclipsJSON.json" />
-    <splash-screens />
-  </ui-application>
-  <shortcut-list />
-  <privileges>
-    <privilege>http://tizen.org/privilege/internet</privilege>
-    <privilege>http://developer.samsung.com/privilege/drmplay</privilege>
-    <privilege>http://developer.samsung.com/privilege/drminfo</privilege>
-  </privileges>
-  <provides-appdefined-privileges />
->>>>>>> 2f49dcada22e3c2168a865039ab89d572e0e854d
 </manifest>
