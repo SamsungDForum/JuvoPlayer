@@ -6,7 +6,7 @@
     <src name="index.html" reload="disable" />
     <operation name="http://samsung.com/appcontrol/operation/eden_resume" />
   </app-control>
-  <ui-application appid="JuvoPlayerXamarin.Tizen.TV" exec="JuvoPlayerXamarin.Tizen.TV.dll" multiple="false" nodisplay="false" taskmanage="true" splash-screen-display="true" type="dotnet-inhouse" launch_mode="single">
+  <ui-application appid="JuvoPlayerXamarin.Tizen.TV" exec="JuvoPlayerXamarin.Tizen.TV.dll" multiple="false" nodisplay="false" taskmanage="true" splash-screen-display="true" type="dotnet" launch_mode="single">
     <label>JuvoPlayerXamarin.Tizen.TV</label>
     <icon>JuvoPlayerXamarinTizenTV.png</icon>
     <metadata key="http://samsung.com/tv/metadata/mountinstall" value="false" />
