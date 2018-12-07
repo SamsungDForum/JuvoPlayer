@@ -13,7 +13,7 @@
 # (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
 # SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 
-import os, re
+import os, re, sys
 
 def readBlacklist(path):
     with open(path, 'r') as f:
@@ -25,12 +25,6 @@ def readCopyright(path):
         data = f.read()
         return data.strip()
 
-def writeCopyright(path, copyright):
-    with open(path, 'r+') as f:
-        data = f.read()
-        f.seek(0)
-        f.write(copyright + "\n" + data)
-
 def containsCopyright(data, regex):
     return regex.match(data) != None
 
@@ -38,10 +32,9 @@ def processFile(path, copyright, regex):
     with open(path) as open_file:
         data = open_file.read()
         if not containsCopyright(data, regex):
-            print("[+] %s" % path)
-            writeCopyright(path, copyright)
-        else:
-            print("[ ] %s" % path)
+            print(path)
+            return True
+        return False
 
 def prepareRegex(copyright):
     return re.compile("\s*" + re.sub(r'\n', '\r?\n', re.escape(copyright)), re.MULTILINE)
@@ -51,10 +44,16 @@ def isApplicable(path, blacklist):
 
 def processDir(rootDir, copyright, blacklist):
     regex = prepareRegex(copyright)
+    someFilesLackingCopyright = False
     for dirName, subdirList, fileList in os.walk(rootDir):
         for fname in fileList:
             if isApplicable(dirName + '/' + fname, blacklist):
-                processFile(dirName + '/' + fname, copyright, regex)
+                if processFile(dirName + '/' + fname, copyright, regex):
+                    someFilesLackingCopyright = True
+    return someFilesLackingCopyright
 
 if __name__ == "__main__":
-    processDir('..', readCopyright("copyright_notice.txt"), readBlacklist("extension_blacklist.txt"))
+    if processDir('..', readCopyright("copyright_notice.txt"), readBlacklist("extension_blacklist.txt")):
+        sys.exit(-1)
+    sys.exit(0)
+
