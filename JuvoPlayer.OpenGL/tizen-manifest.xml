@@ -1,5 +1,9 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
+<<<<<<< HEAD
 <manifest package="JuvoPlayerOpenGLNative.Tizen.TV" version="1.4.3" api-version="5" xmlns="http://tizen.org/ns/packages">
+=======
+<manifest package="JuvoPlayerOpenGLNative.Tizen.TV" version="1.4.2" api-version="4" xmlns="http://tizen.org/ns/packages">
+>>>>>>> 2f49dcada22e3c2168a865039ab89d572e0e854d
   <feature name="http://tizen.org/feature/screen.size.normal.1080.1920">true</feature>
   <profile name="tv" />
   <app-control>
@@ -19,7 +23,10 @@
     <privilege>http://tizen.org/privilege/internet</privilege>
     <privilege>http://developer.samsung.com/privilege/drmplay</privilege>
     <privilege>http://developer.samsung.com/privilege/drminfo</privilege>
+<<<<<<< HEAD
     <privilege>http://developer.samsung.com/privilege/esplay</privilege>
+=======
+>>>>>>> 2f49dcada22e3c2168a865039ab89d572e0e854d
   </privileges>
   <provides-appdefined-privileges />
 </manifest>

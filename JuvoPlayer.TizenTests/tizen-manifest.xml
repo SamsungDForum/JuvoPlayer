@@ -7,7 +7,11 @@
     </ui-application>
     <provides-appdefined-privileges />
     <privileges>
+<<<<<<< HEAD
       <privilege>http://tizen.org/privilege/internet</privilege>      
+=======
+      <privilege>http://tizen.org/privilege/internet</privilege>
+>>>>>>> 2f49dcada22e3c2168a865039ab89d572e0e854d
       <privilege>http://developer.samsung.com/privilege/drmplay</privilege>
       <privilege>http://developer.samsung.com/privilege/drminfo</privilege>
     </privileges>
