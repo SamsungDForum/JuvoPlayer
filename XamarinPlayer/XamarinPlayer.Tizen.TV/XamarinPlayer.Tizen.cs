@@ -26,7 +26,7 @@ using XamarinPlayer.Services;
 
 namespace XamarinPlayer.Tizen
 {
-    
+
 
     class Program : global::Xamarin.Forms.Platform.Tizen.FormsApplication, IKeyEventSender, IPreviewPayloadEventSender
     {
@@ -44,13 +44,13 @@ namespace XamarinPlayer.Tizen
             _keyDown = new EcoreEvent<EcoreKeyEventArgs>(EcoreEventType.KeyDown, EcoreKeyEventArgs.Create);
             _keyDown.On += (s, e) =>
             {
-                // Send key event to the portable project using MessagingCenter                
+                // Send key event to the portable project using MessagingCenter
                 Xamarin.Forms.MessagingCenter.Send<IKeyEventSender, string>(this, "KeyDown", e.KeyName);
-            };            
-            
+            };
+
             LoadApplication(new App());
         }
-               
+
 
         static void UnhandledException(object sender, UnhandledExceptionEventArgs evt)
         {
@@ -71,11 +71,11 @@ namespace XamarinPlayer.Tizen
         protected override void OnAppControlReceived(AppControlReceivedEventArgs e)
         {
             // Handle the launch request, show the user the task requested through the "AppControlReceivedEventArgs" parameter
-            // Smart Hub Preview function requires the below code to identify which deeplink have to be launched            
+            // Smart Hub Preview function requires the below code to identify which deepLink have to be launched
             ReceivedAppControl receivedAppControl = e.ReceivedAppControl;
-            //fetch the JSON metadata defined on the smart Hub preview web server            
-            receivedAppControl.ExtraData.TryGet("PAYLOAD", out string payload);            
-            //If launched without the SmartHub Preview tile, the message string is null. 
+            //fetch the JSON metadata defined on the smart Hub preview web server
+            receivedAppControl.ExtraData.TryGet("PAYLOAD", out string payload);
+            //If launched without the SmartHub Preview tile, the message string is null.
             if (!string.IsNullOrEmpty(payload))
             {
                 char[] charSeparator = new char[] { '&' };
@@ -92,11 +92,11 @@ namespace XamarinPlayer.Tizen
         {
             TizenLoggerManager.Configure();
             AppDomain.CurrentDomain.UnhandledException += UnhandledException;
-            
+
             var app = new Program();
-            
-            global::Xamarin.Forms.Platform.Tizen.Forms.Init(app);            
-            app.Run(args);            
+
+            global::Xamarin.Forms.Platform.Tizen.Forms.Init(app);
+            app.Run(args);
         }
     }
 }

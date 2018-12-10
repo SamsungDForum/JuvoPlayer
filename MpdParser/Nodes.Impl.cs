@@ -252,15 +252,15 @@ namespace MpdParser.Node
 
             // Live content elements from Segment Base...
             var presentationTimeOffset = seg.PresentationTimeOffset ?? 0;
-            TimeSpan avaliabilityTimeOffset = seg.AvailabilityTimeOffset.HasValue ? 
+            TimeSpan availabilityTimeOffset = seg.AvailabilityTimeOffset.HasValue ?
                 TimeSpan.FromSeconds(seg.AvailabilityTimeOffset.Value) : TimeSpan.MaxValue;
-          
+
 
             URI media_uri = CalcURL();
             URI init_uri = null;
 
             // If the init_url.SourceUrl is present,
-            // it is relative to AdpativeSet, not Representation.
+            // it is relative to AdaptiveSet, not Representation.
             // Representation's BaseURI is for media only.
             if (init_url?.SourceURL != null)
                 init_uri = AdaptationSet.CalcURL()?.With(init_url.SourceURL);
@@ -274,9 +274,9 @@ namespace MpdParser.Node
 
                 Dynamic.Segment media = new Dynamic.Segment(media_uri.Uri, null, periodRange);
                 Dynamic.Segment index = index_range.Length != 0 ? new Dynamic.Segment(media_uri.Uri, index_range) : null;
-                return new Dynamic.BaseRepresentationStream(null, media, 
+                return new Dynamic.BaseRepresentationStream(null, media,
                     presentationTimeOffset, seg.TimeShiftBufferDepth,
-                    avaliabilityTimeOffset, seg.AvailabilityTimeComplete, 
+                    availabilityTimeOffset, seg.AvailabilityTimeComplete,
                     index );
             }
 
@@ -286,8 +286,8 @@ namespace MpdParser.Node
             return new Dynamic.BaseRepresentationStream(
                 new Dynamic.Segment(init_uri.Uri, init_url?.Range),
                 new Dynamic.Segment(media_uri.Uri, null, periodRange),
-                presentationTimeOffset, seg.TimeShiftBufferDepth, 
-                avaliabilityTimeOffset,seg.AvailabilityTimeComplete,
+                presentationTimeOffset, seg.TimeShiftBufferDepth,
+                availabilityTimeOffset,seg.AvailabilityTimeComplete,
                 index_range.Length !=0? new Dynamic.Segment(init_uri.Uri, index_range):null);
         }
 
@@ -306,7 +306,7 @@ namespace MpdParser.Node
 
             Dynamic.SegmentBase segBase = SegmentBase();
             var presentationTimeOffset = segBase.PresentationTimeOffset ?? 0;
-            TimeSpan avaliabilityTimeOffset = segBase.AvailabilityTimeOffset.HasValue ?
+            TimeSpan availabilityTimeOffset = segBase.AvailabilityTimeOffset.HasValue ?
                 TimeSpan.FromSeconds(segBase.AvailabilityTimeOffset.Value) : TimeSpan.MaxValue;
             // Live content elements from Segment Base...
             // Can we have this changing dynamically and available at given time?
@@ -316,7 +316,7 @@ namespace MpdParser.Node
                 null,
                 new Dynamic.Segment(media_uri.Uri, null, periodRange),
                presentationTimeOffset, segBase.TimeShiftBufferDepth,
-                    avaliabilityTimeOffset, segBase.AvailabilityTimeComplete);
+                    availabilityTimeOffset, segBase.AvailabilityTimeComplete);
         }
 
         private IRepresentationStream CreateListRepresentationStream()
@@ -340,7 +340,7 @@ namespace MpdParser.Node
 
             // Live content elements from Segment Base...
             var presentationTimeOffset = seg.PresentationTimeOffset ?? 0;
-            TimeSpan avaliabilityTimeOffset = seg.AvailabilityTimeOffset.HasValue ?
+            TimeSpan availabilityTimeOffset = seg.AvailabilityTimeOffset.HasValue ?
                 TimeSpan.FromSeconds(seg.AvailabilityTimeOffset.Value) : TimeSpan.MaxValue;
 
             Dynamic.ListItem[] items = Dynamic.ListItem.FromXml(
@@ -350,10 +350,10 @@ namespace MpdParser.Node
                 seg.Duration ?? 0,
                 seg.SegmentURLs,
                 this.BaseURL);
-            return new Dynamic.ListRepresentationStream(CalcURL().Uri, init, seg.Timescale ?? 1, 
+            return new Dynamic.ListRepresentationStream(CalcURL().Uri, init, seg.Timescale ?? 1,
                 items,
                 presentationTimeOffset, seg.TimeShiftBufferDepth,
-                avaliabilityTimeOffset, seg.AvailabilityTimeComplete);
+                availabilityTimeOffset, seg.AvailabilityTimeComplete);
         }
 
         private Dynamic.TimelineItem[] FromDuration(uint startNumber, Dynamic.SegmentTemplate seg)
@@ -407,15 +407,15 @@ namespace MpdParser.Node
 
             // Live content elements from Segment Base...
             var presentationTimeOffset = seg.PresentationTimeOffset ?? 0;
-            TimeSpan avaliabilityTimeOffset = seg.AvailabilityTimeOffset.HasValue ?
+            TimeSpan availabilityTimeOffset = seg.AvailabilityTimeOffset.HasValue ?
                 TimeSpan.FromSeconds(seg.AvailabilityTimeOffset.Value) : TimeSpan.Zero;
-          
-           
+
+
             return new Dynamic.TemplateRepresentationStream(CalcURL().Uri,
                 seg.Initialization, seg.Media, Bandwidth, Id,
                 seg.Timescale ?? 1, timeline,
                 presentationTimeOffset,seg.TimeShiftBufferDepth,
-                avaliabilityTimeOffset,seg.AvailabilityTimeComplete,(segTimeline != null),
+                availabilityTimeOffset,seg.AvailabilityTimeComplete,(segTimeline != null),
                 seg.StartNumber??0,seg.Duration );
         }
 

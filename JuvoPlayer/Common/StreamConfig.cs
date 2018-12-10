@@ -16,6 +16,7 @@
  */
 
 using JuvoPlayer.Common.Utils;
+using JuvoPlayer.Utils;
 
 namespace JuvoPlayer.Common
 {

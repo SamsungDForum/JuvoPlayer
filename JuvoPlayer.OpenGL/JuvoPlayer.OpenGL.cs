@@ -58,7 +58,7 @@ namespace JuvoPlayer.OpenGL
         private bool _seekBufferingInProgress;
         private bool _seekInProgress;
         private bool _isAlertShown;
-        private bool _startedFromDeeplink;
+        private bool _startedFromDeepLink;
 
         private readonly SystemMemoryUsage _systemMemoryUsage = new SystemMemoryUsage();
         private int _systemMemoryUsageGraphId;
@@ -92,7 +92,7 @@ namespace JuvoPlayer.OpenGL
             DllImports.Draw(eglDisplay, eglSurface);
         }
 
-        protected override void OnAppControlReceived(AppControlReceivedEventArgs e) // Launch request handling via Smart Hub Preview (deeplinks) functionality
+        protected override void OnAppControlReceived(AppControlReceivedEventArgs e) // Launch request handling via Smart Hub Preview (deep links) functionality
         {
             ReceivedAppControl receivedAppControl = e.ReceivedAppControl;
             receivedAppControl.ExtraData.TryGet("PAYLOAD", out string payload); // Fetch the JSON metadata defined on the smart Hub preview web server
@@ -103,7 +103,7 @@ namespace JuvoPlayer.OpenGL
                 string[] result = payload.Split(charSeparator, StringSplitOptions.RemoveEmptyEntries);
                 if (result.Length > 0)
                     PreviewPayloadHandler(result[0]);
-            }           
+            }
 
             base.OnAppControlReceived(e);
         }
@@ -300,7 +300,7 @@ namespace JuvoPlayer.OpenGL
 
         private void HandleExternalTileSelection(int tileNo)
         {
-            _startedFromDeeplink = true;
+            _startedFromDeepLink = true;
             if (tileNo >= 0 && tileNo < _resourceLoader.TilesCount)
             {
                 _selectedTile = tileNo;
@@ -312,7 +312,7 @@ namespace JuvoPlayer.OpenGL
 
         private void HandleLoadingFinished()
         {
-            if (_startedFromDeeplink)
+            if (_startedFromDeepLink)
                 HandleExternalPlaybackStart();
             else
                 ShowMenu(true);
@@ -329,7 +329,7 @@ namespace JuvoPlayer.OpenGL
                 return;
             }
             ShowMenu(false);
-            KeyPressedMenuUpdate(); // Playback UI should be visible when starting playback from deeplink
+            KeyPressedMenuUpdate(); // Playback UI should be visible when starting playback from deep link
             HandlePlaybackStart();
         }
 

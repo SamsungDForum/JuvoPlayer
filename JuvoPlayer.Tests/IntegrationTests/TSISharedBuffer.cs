@@ -38,7 +38,7 @@ namespace JuvoPlayer.Tests.IntegrationTests
         public abstract ISharedBuffer CreateSharedBuffer();
 
         [Test]
-        [Description("Test SharedBuffer singlethreaded usage (write everything, then read everything; nondeterministic).")]
+        [Description("Test SharedBuffer single threaded usage (write everything, then read everything; nondeterministic).")]
         [Ignore("This test hangs sometimes")]
         public void TestSharedBuffer()
         {
@@ -53,7 +53,7 @@ namespace JuvoPlayer.Tests.IntegrationTests
         }
 
         [Test]
-        [Description("Test SharedBuffer multithreaded usage (one writer, one reader; multiple write/read operations; nondeterministic).")]
+        [Description("Test SharedBuffer multi threaded usage (one writer, one reader; multiple write/read operations; nondeterministic).")]
         public void TestSharedBufferAsync()
         {
             Assert.NotNull(buffer);

@@ -18,14 +18,14 @@
 using System;
 
 /// <summary>
-/// 
+///
 /// MpdParser.Node.Writer contains "Write Accessors" to MpdParser.Node namespace classes.
 /// Classes included in MpdParser.Node namespace have properties defined with internal set.
-/// By inheriting from those classes, dervied class have access to internal set properties 
+/// By inheriting from those classes, dervied class have access to internal set properties
 /// (as by inheritance they become part of derived class). New setters do need to be defined though
 /// for access from outside of the derived class. Due to MpdParser.Node classes implementation,
 /// they cannot be overriden.
-/// 
+///
 /// </summary>
 
 namespace MpdParser.Node.Writers
@@ -59,7 +59,7 @@ namespace MpdParser.Node.Writers
     }
     public class RangeWriter : Range
     {
-        [Xml.Attribute] public new TimeSpan? Starttime { get => base.Starttime; set => base.Starttime = value; }
+        [Xml.Attribute] public new TimeSpan? StartTime { get => base.StartTime; set => base.StartTime = value; }
         [Xml.Attribute] public new TimeSpan? Duration { get => base.Duration; set => base.Duration = value; }
     }
     public class SegmentURLWriter : SegmentURL
@@ -201,7 +201,7 @@ namespace MpdParser.Node.Writers
     {
         public AdaptationSetWriter(Period period)
             : base(period) { }
-        
+
         [Xml.Attribute] public new uint? Id { get => base.Id; set => base.Id = value; }
         [Xml.Attribute] public new uint? Group { get => base.Group; set => base.Group = value; }
         [Xml.Attribute] public new string Lang { get => base.Lang; set => base.Lang = value; }
@@ -257,12 +257,12 @@ namespace MpdParser.Node.Writers
         [Xml.Element] public new AdaptationSet[] AdaptationSets { get => base.AdaptationSets; set => base.AdaptationSets = value; }
         [Xml.Element] public new Subset[] Subsets { get => base.Subsets; set => base.Subsets = value; }
 }
-   
+
     public partial class DASHWriter : DASH
     {
         public DASHWriter(string manifestURL)
             : base(manifestURL) { }
-        [Xml.Attribute] public new string Xmlns { get => base.Xmlns;  set => base.Xmlns = value; } 
+        [Xml.Attribute] public new string Xmlns { get => base.Xmlns;  set => base.Xmlns = value; }
         [Xml.Attribute] public new string Id { get => base.Id; set => base.Id = value;  }
         [Xml.Attribute] public new string Type { get => base.Type;  set => base.Type = value;  }
         [Xml.Attribute] public new string Profiles { get => base.Profiles;  set => base.Profiles = value;  }
@@ -276,11 +276,11 @@ namespace MpdParser.Node.Writers
         [Xml.Attribute] public new TimeSpan? SuggestedPresentationDelay { get => base.SuggestedPresentationDelay; set => base.SuggestedPresentationDelay = value; }
         [Xml.Attribute] public new TimeSpan? MaxSegmentDuration { get => base.MaxSegmentDuration; set => base.MaxSegmentDuration = value; }
         [Xml.Attribute] public new TimeSpan? MaxSubsegmentDuration { get => base.MaxSubsegmentDuration; set => base.MaxSubsegmentDuration = value; }
-        [Xml.Element] public new ProgramInformation[] ProgramInformations { get => base.ProgramInformations;  set => base.ProgramInformations = value;  }
+        [Xml.Element] public new ProgramInformation[] ProgramInformations { get => base.ProgramInformation;  set => base.ProgramInformation = value;  }
         [Xml.Element] public new BaseURL[] BaseURLs { get => base.BaseURLs; set => base.BaseURLs = value; }
         [Xml.Element] public new string[] Locations { get => base.Locations; set => base.Locations = value; }
         [Xml.Element] public new Period[] Periods { get => base.Periods; set => base.Periods = value; }
         [Xml.Element] public new Metrics[] Metrics { get => base.Metrics; set => base.Metrics = value; }
     }
-    
+
 }

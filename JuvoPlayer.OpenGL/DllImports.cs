@@ -90,10 +90,10 @@ namespace JuvoPlayer.OpenGL
         public static extern int AddOption(int id, byte* text, int textLen);
 
         [DllImport(GlDemoLib, EntryPoint = "AddSuboption")]
-        public static extern int AddSuboption(int parentId, int id, byte* text, int textLen);
+        public static extern int AddSubOption(int parentId, int id, byte* text, int textLen);
 
         [DllImport(GlDemoLib, EntryPoint = "UpdateSelection")]
-        public static extern int UpdateSelection(int show, int activeOptionId, int activeSuboptionId, int selectedOptionId, int selectedSuboptionId);
+        public static extern int UpdateSelection(int show, int activeOptionId, int activeSubOptionId, int selectedOptionId, int selectedSubOptionId);
 
         [DllImport(GlDemoLib, EntryPoint = "ClearOptions")]
         public static extern void ClearOptions();

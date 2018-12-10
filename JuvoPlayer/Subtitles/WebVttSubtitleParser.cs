@@ -53,10 +53,10 @@ namespace JuvoPlayer.Subtitles
                 var line = MoveToTimeLine(reader);
                 if (line == null) yield break;
 
-                (var begin, var end) = ParseTimeLine(line);
+                var (begin, end) = ParseTimeLine(line);
                 var text = ParseText(reader);
 
-                yield return new Cue()
+                yield return new Cue
                 {
                     Begin = begin,
                     End = end,
@@ -83,7 +83,7 @@ namespace JuvoPlayer.Subtitles
             string[] parts = timeLine.Split(new char[0], StringSplitOptions.RemoveEmptyEntries);
 
             if (parts.Length < 3 || !parts[1].Equals(TimeSeparator))
-                throw new FormatException(string.Format("Invalid time line format [{0}]", timeLine));
+                throw new FormatException($"Invalid time line format [{timeLine}]");
 
             return (ParseTime(parts[0]), ParseTime(parts[2]));
         }
@@ -99,7 +99,7 @@ namespace JuvoPlayer.Subtitles
                 throw new FormatException("Time string cannot be null");
 
             if (!Regex.IsMatch(timeString, @"^\d+:\d+:\d+\.\d+$") && !Regex.IsMatch(timeString, @"^\d+:\d+\.\d+$"))
-                throw new FormatException(string.Format("Invalid time format [{0}]", timeString));
+                throw new FormatException($"Invalid time format [{timeString}]");
 
             timeString = timeString.Replace('.', ':');
             string[] parts = timeString.Split(':');

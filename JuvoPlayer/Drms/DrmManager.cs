@@ -45,7 +45,7 @@ namespace JuvoPlayer.Drms
                     clipDrmConfiguration.Add(drmDescription);
                     return;
                 }
-            
+
                 if (drmDescription.KeyRequestProperties != null)
                     currentDescription.KeyRequestProperties = drmDescription.KeyRequestProperties;
                 if (drmDescription.LicenceUrl != null)
@@ -63,7 +63,7 @@ namespace JuvoPlayer.Drms
 
         public IDrmSession CreateDRMSession(DRMInitData data)
         {
-            Logger.Info("Create Drmsession");
+            Logger.Info("Create DrmSession");
 
             lock (drmHandlers)
             {

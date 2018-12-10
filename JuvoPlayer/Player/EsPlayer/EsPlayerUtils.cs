@@ -23,6 +23,8 @@ using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using JuvoPlayer.Common.Utils;
+using JuvoPlayer.Drms;
+using JuvoPlayer.Utils;
 using ESPlayer = Tizen.TV.Multimedia;
 using StreamType = JuvoPlayer.Common.StreamType;
 
@@ -57,7 +59,7 @@ namespace JuvoPlayer.Player.EsPlayer
             };
         }
 
-        internal static ESPlayer.ESHandlePacket ESDecryptedPacket(this Common.DecryptedEMEPacket packet)
+        internal static ESPlayer.ESHandlePacket ESDecryptedPacket(this DecryptedEMEPacket packet)
         {
             return new ESPlayer.ESHandlePacket
             {

@@ -54,7 +54,7 @@ namespace MpdParser.Node
 
     public class Range
     {
-        [Xml.Attribute] public TimeSpan? Starttime { get; internal set; }
+        [Xml.Attribute] public TimeSpan? StartTime { get; internal set; }
         [Xml.Attribute] public TimeSpan? Duration { get; internal set; }
     }
 
@@ -231,24 +231,6 @@ namespace MpdParser.Node
         Segment InitSegment { get; }
 
         /// <summary>
-        /// Presentation Time Offset (Raw Value)
-        /// May be null if not specified in manifest
-        /// </summary>
-        ulong PresentationTimeOffset { get; }
-
-        /// <summary>
-        /// TimeShiftBufferDepth value.
-        /// May be null if not present in manifest
-        /// </summary>
-        TimeSpan? TimeShiftBufferDepth { get; }
-
-        /// <summary>
-        /// AvailabilityTimeOffset
-        /// May be null if not present in manifest
-        /// </summary>
-        TimeSpan AvaliabilityTimeOffset { get; }
-
-        /// <summary>
         /// Number of playable media segments contained in stream. May be 0
         /// Dynamic streams - number reflects segments available for playback, not all
         /// segments in stream.
@@ -264,7 +246,7 @@ namespace MpdParser.Node
         IEnumerable<Segment> MediaSegments();
 
         /// <summary>
-        /// Returns plyable media segment based on provided segment identifier.
+        /// Returns playable media segment based on provided segment identifier.
         /// </summary>
         /// <param name="segmentId">Internal segment identifier</param>
         /// <returns>Playable media segment. May be null if provided segment Id has no corresponding media</returns>
@@ -323,7 +305,7 @@ namespace MpdParser.Node
         /// TimeRange contains data on segment start time and its duration
         /// </summary>
         /// <param name="segmentId">Segment Identifier for which TimeRange is to be retrieved</param>
-        /// <returns>TimeRange data. Null if specified segment ID does not 
+        /// <returns>TimeRange data. Null if specified segment ID does not
         /// correspond to a playable segment</returns>
         TimeRange SegmentTimeRange(uint? segmentId);
 
@@ -331,10 +313,10 @@ namespace MpdParser.Node
         /// Method prepares stream for usage by the client.
         /// Performs all task consuming actions which for performance reasons should not be done
         /// during stream construction, especially in multi representation content.
-        /// Has to be called before stream usage, otherewise, there will be dragons!
+        /// Has to be called before stream usage, otherwise, there will be dragons!
         /// </summary>
         /// <returns> True - Stream Ready. False - Stream cannot be used due to failures.</returns>
-        bool PrepeareStream();
+        bool PrepareStream();
     }
 
     public enum SegmentType
@@ -502,7 +484,7 @@ namespace MpdParser.Node
         [Xml.Attribute] public TimeSpan? MaxSegmentDuration { get; internal set; }
         [Xml.Attribute] public TimeSpan? MaxSubsegmentDuration { get; internal set; }
 
-        [Xml.Element] public ProgramInformation[] ProgramInformations { get; internal set; }
+        [Xml.Element] public ProgramInformation[] ProgramInformation { get; internal set; }
         [Xml.Element] public BaseURL[] BaseURLs { get; internal set; }
         [Xml.Element] public string[] Locations { get; internal set; }
         [Xml.Element] public Period[] Periods { get; internal set; }

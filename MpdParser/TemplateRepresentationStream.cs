@@ -27,11 +27,11 @@ namespace MpdParser.Node.Dynamic
         /// <summary>
         /// Custom IComparer for searching TimelineItemRep[] array
         /// by start time only.
-        /// 
+        ///
         /// TimelineItemRep.TimeScaled = Time to look for
-        /// 
+        ///
         /// Time to look for has to match exactly segment start time
-        /// 
+        ///
         /// </summary>
         internal class TimelineSearchStartTime : IComparer<TimelineItemRep>
         {
@@ -48,11 +48,11 @@ namespace MpdParser.Node.Dynamic
         /// <summary>
         /// Custom IComparer for searching TimelineItemRep[] array
         /// by start time and duration.
-        /// 
+        ///
         /// TimelineItemRep.TimeScaled = Time to look for
-        /// 
+        ///
         /// Time To Look for has to fall withing Segment Start and its duration
-        /// 
+        ///
         /// </summary>
         internal class TimelineSearchStartTimeDuration : IComparer<TimelineItemRep>
         {
@@ -72,11 +72,11 @@ namespace MpdParser.Node.Dynamic
         /// <summary>
         /// Custom IComparer for searching TimelineItemRep[] array
         /// by segment number
-        /// 
+        ///
         /// TimelineItemRep.Number = Segment ID to find
-        /// 
+        ///
         /// Segment ID to find has to match exactly segment number in timelineItemRe[] array
-        /// 
+        ///
         /// </summary>
         internal class TimelineSearchSegmentNumber : IComparer<TimelineItemRep>
         {
@@ -142,7 +142,7 @@ namespace MpdParser.Node.Dynamic
 
         /// <summary>
         /// Segment of timelineAll_ containing a range of segments available for playback
-        /// In case of static content, this containes entire definition of timelineAll.
+        /// In case of static content, this contains entire definition of timelineAll.
         /// For dynamic reloadable content, it will contain currently available segments.
         /// </summary>
         private ArraySegment<TimelineItemRep> timelineAvailable;
@@ -172,7 +172,7 @@ namespace MpdParser.Node.Dynamic
 
         /// <summary>
         /// For dynamic content, representationWallClock contains base time used for availability
-        /// in time calculations. Currently available segments may be varified against availability
+        /// in time calculations. Currently available segments may be verified against availability
         /// by adding a difference between:
         /// Now.UTC - DocumentParameters.DownloadCompleteTime
         /// </summary>
@@ -219,7 +219,7 @@ namespace MpdParser.Node.Dynamic
 
             uint entryCount = (uint)timeline.Length;
 
-            // Get the number of elements after unwinding all repeats.    
+            // Get the number of elements after unwinding all repeats.
             foreach (TimelineItem item in timeline)
                 entryCount += (uint)item.Repeats;
 
@@ -257,7 +257,7 @@ namespace MpdParser.Node.Dynamic
             this.timeline = timelineAvailable;
 
             // Compute average segment duration by taking start time of first segment
-            // and start + duration of last segment. Divison of this by number of elements
+            // and start + duration of last segment. Division of this by number of elements
             // gives an approximation of individual segment duration
             if (Count > 0)
             {
@@ -396,10 +396,10 @@ namespace MpdParser.Node.Dynamic
             var timeShiftBufferDepth = parameters.Document.TimeShiftBufferDepth ?? TimeSpan.Zero;
 
             // Start by Time is calculated as:
-            // Start Segment Time = Representation Start Time + 
+            // Start Segment Time = Representation Start Time +
             //                      First available segment - First segment in playlist +
             //                      1/4*timeShiftBufferDepth
-            // 
+            //
             // This implies that MAX buffer time for dynamic content is 3/4*timeShiftBufferDepth
             //
             var startTime = timeline[0].TimeScaled;
@@ -445,7 +445,7 @@ namespace MpdParser.Node.Dynamic
             int endIndex = -1;
 
             // Data is sorted (timewise) in timelineAll_ As such it should be cheaper to run from start
-            // excluding timedout segments and once again from the back, excluding not yet available segments
+            // excluding timed out segments and once again from the back, excluding not yet available segments
             var dataLength = timelineAll.Length - 1;
             var timeshiftBuffer = parameters.Document.TimeShiftBufferDepth ?? TimeSpan.Zero;
 
@@ -612,7 +612,7 @@ namespace MpdParser.Node.Dynamic
                 Logger.Info($"Failed to find segment @pos. FA={timeline[0].Number} Pos={segmentId} LA={timeline[(int)Count - 1].Number}");
 
 
-            // Index Search is based on timelineAll. Access is done on timeline thus offset substraction
+            // Index Search is based on timelineAll. Access is done on timeline thus offset subtraction
             // In fail case, simply larger negative value will be returned.
             //
             return (idx - timelineAvailable.Offset);
@@ -636,13 +636,13 @@ namespace MpdParser.Node.Dynamic
                 Logger.Info($"Failed to find segment in @time. FA={timeline[0].TimeScaled} Req={pointInTime} LA={timeline[(int)Count - 1].TimeScaled}");
 
 
-            // Index Search is based on timelineAll. Access is done on timeline thus offset substraction
+            // Index Search is based on timelineAll. Access is done on timeline thus offset subtraction
             // In fail case, simply larger negative value will be returned.
             //
             return (idx - timelineAvailable.Offset);
         }
 
-        public bool PrepeareStream()
+        public bool PrepareStream()
         {
             if (!parameters.Document.IsDynamic)
                 return true;
