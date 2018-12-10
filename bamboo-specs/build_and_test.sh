@@ -10,3 +10,6 @@ ACTIVE_PROFILE=`tizen security-profiles list | grep "O.*$" | awk -F "[ ]+" '{ pr
 try tizen build-cs -C Release -s ${ACTIVE_PROFILE}
 
 try dotnet test JuvoPlayer.Tests/JuvoPlayer.Tests.csproj --logger:trx -f netcoreapp2.0
+
+echo "Cyclomatic complexity results:"
+CCM.exe bamboo-specs/ccm.config | tee CyclomaticComplexityReport.log

@@ -4,4 +4,4 @@ bin
 obj
 *.lock.json
 *.user
-
+CyclomaticComplexityReport.log
