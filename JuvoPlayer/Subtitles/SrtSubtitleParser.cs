@@ -51,11 +51,11 @@ namespace JuvoPlayer.Subtitles
                 if (!IsCounterLine(line)) yield break;
 
                 var timeLine = reader.ReadLine();
-                (var begin, var end) = ParseTimeLine(timeLine);
+                var (begin, end) = ParseTimeLine(timeLine);
 
                 var text = ParserUtils.ParseText(reader);
 
-                yield return new Cue() {Text = text, Begin = begin, End = end};
+                yield return new Cue {Text = text, Begin = begin, End = end};
             }
         }
 

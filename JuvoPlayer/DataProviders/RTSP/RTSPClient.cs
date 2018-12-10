@@ -317,7 +317,7 @@ namespace JuvoPlayer.DataProviders.RTSP
                     if (videoPayloadType != -1)
                         return;
 
-                    // seach the atributes for control, fmtp and rtpmap
+                    // search the attributes for control, fmtp and rtpmap
                     ParseAttributes(sdpData, x, out string control, out Rtsp.Sdp.AttributFmtp fmtp, out Rtsp.Sdp.AttributRtpMap rtpmap);
 
                     // Split the fmtp to get the sprop-parameter-sets which hold the SPS and PPS in base64

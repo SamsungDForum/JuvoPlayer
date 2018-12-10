@@ -19,9 +19,10 @@ using JuvoPlayer.Drms;
 using System;
 using System.Runtime.ExceptionServices;
 using System.Xml.Serialization;
+using JuvoPlayer.Common;
 using JuvoPlayer.Common.Utils.IReferenceCountableExtensions;
 
-namespace JuvoPlayer.Common
+namespace JuvoPlayer.Drms
 {
     [Serializable]
     public class EncryptedPacket : Packet

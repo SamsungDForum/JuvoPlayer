@@ -29,11 +29,11 @@ namespace MpdParser.Node.Dynamic
         /// <summary>
         /// Custom IComparer for searching Segment array array
         /// by start & Duration
-        /// 
+        ///
         /// Segment.Period.Start = Time to look for
-        /// 
+        ///
         /// Time to look for has to match exactly segment start time
-        /// 
+        ///
         /// </summary>
         internal class IndexSearchStartTime : IComparer<Segment>
         {
@@ -52,7 +52,7 @@ namespace MpdParser.Node.Dynamic
 
         public BaseRepresentationStream(Segment init, Segment media_,
           ulong presentationTimeOffset, TimeSpan? timeShiftBufferDepth,
-          TimeSpan avaliabilityTimeOffset, bool? avaliabilityTimeComplete,
+          TimeSpan availabilityTimeOffset, bool? availabilityTimeComplete,
           Segment index = null)
         {
             media = media_;
@@ -61,8 +61,8 @@ namespace MpdParser.Node.Dynamic
 
             PresentationTimeOffset = presentationTimeOffset;
             TimeShiftBufferDepth = timeShiftBufferDepth;
-            AvaliabilityTimeOffset = avaliabilityTimeOffset;
-            AvaliabilityTimeComplete = avaliabilityTimeComplete;
+            AvailabilityTimeOffset = availabilityTimeOffset;
+            AvailabilityTimeComplete = availabilityTimeComplete;
 
             // For indexed segments, this value will be updated during preparation
             // after obtaining index information.
@@ -86,18 +86,10 @@ namespace MpdParser.Node.Dynamic
 
         public ulong PresentationTimeOffset { get; }
         public TimeSpan? TimeShiftBufferDepth { get; }
-        public TimeSpan AvaliabilityTimeOffset { get; }
-        public bool? AvaliabilityTimeComplete { get; }
+        public TimeSpan AvailabilityTimeOffset { get; }
+        public bool? AvailabilityTimeComplete { get; }
 
-        public uint Count
-        {
-            get
-            {
-                // Non indexed segments have just one element - media.
-                // Indexed segments have segments defined by index entry count
-                return (uint)(IndexSegment == null ? 1 : segments_.Count);
-            }
-        }
+        public uint Count => (uint)(IndexSegment == null ? 1 : segments_.Count);
         private List<Segment> segments_ = new List<Segment>();
 
         public void SetDocumentParameters(ManifestParameters docParams)
@@ -133,7 +125,7 @@ namespace MpdParser.Node.Dynamic
                     var lastEntry = segments_.Count - 1;
 
                     // Update duration with information from index segment data.
-                    // Index segment data is used for seeks. If variaes from Manifest Duration
+                    // Index segment data is used for seeks. If varies from Manifest Duration
                     // especially if it is shorter, this will cause missing segments.
                     //
                     Duration = segments_[lastEntry].Period.Start + segments_[lastEntry].Period.Duration;
@@ -178,15 +170,15 @@ namespace MpdParser.Node.Dynamic
             {
                 UInt64 lb;
                 UInt64 hb;
-                TimeSpan starttime;
+                TimeSpan startTime;
                 TimeSpan duration;
 
-                (lb, hb, starttime, duration) = sidx.GetRangeData(i);
+                (lb, hb, startTime, duration) = sidx.GetRangeData(i);
                 if (lb != hb)
                 {
-                    string rng = lb.ToString() + "-" + hb.ToString();
+                    string rng = lb + "-" + hb;
 
-                    segments_.Add(new Segment(media.Url, rng, new TimeRange(starttime, duration)));
+                    segments_.Add(new Segment(media.Url, rng, new TimeRange(startTime, duration)));
                 }
             }
         }
@@ -250,7 +242,7 @@ namespace MpdParser.Node.Dynamic
             if (IndexSegment == null)
                 return 0;
 
-            // Index Case. 
+            // Index Case.
             // Prepare stream had to be called first.
             return 0;
 
@@ -278,7 +270,7 @@ namespace MpdParser.Node.Dynamic
         public uint? NextSegmentId(uint? segmentId)
         {
             // Non Index case has no next segment. Just one - start
-            // so return no index. 
+            // so return no index.
             // Sanity check included (all ORs)
             if (IndexSegment == null || media == null || !segmentId.HasValue)
                 return null;
@@ -294,7 +286,7 @@ namespace MpdParser.Node.Dynamic
         public uint? PreviousSegmentId(uint? segmentId)
         {
             // Non Index case has no next segment. Just one - start
-            // so return no index. 
+            // so return no index.
             // Sanity check included (all ORs)
             if (IndexSegment == null || media == null || !segmentId.HasValue)
                 return null;
@@ -330,14 +322,14 @@ namespace MpdParser.Node.Dynamic
                 return null;
 
             // Returned TimeRange via a copy. Intentional.
-            // If Manifest gets updated it is undesired to have wierd values in it.
+            // If Manifest gets updated it is undesired to have weird values in it.
             //
             return segments_[(int)segmentId].Period.Copy();
         }
 
         private int GetIndexSegmentIndex(TimeSpan pointInTime)
         {
-            // TODO: Verify lower bound limit where iterative search will be faster then 
+            // TODO: Verify lower bound limit where iterative search will be faster then
             // binary search with associated object creation.
             //
             var searcher = new IndexSearchStartTime();
@@ -350,7 +342,7 @@ namespace MpdParser.Node.Dynamic
             return idx;
         }
 
-        public bool PrepeareStream()
+        public bool PrepareStream()
         {
             // Index case - search index data for segment information. Ignore media information.
             //
@@ -372,7 +364,7 @@ namespace MpdParser.Node.Dynamic
             catch (WebException)
             { /* Ignore HTTP errors. If failed, segments_.Count == 0 */}
 
-            // If there are no segments, signall as not ready
+            // If there are no segments, signal as not ready
             return (segments_.Count > 0);
         }
     }

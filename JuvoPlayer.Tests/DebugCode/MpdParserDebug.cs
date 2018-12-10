@@ -57,6 +57,7 @@ namespace JuvoPlayer.Tests.DebugCode
         }
 
         [Test]
+        [Ignore("Disabled temporarily")]
         public async Task DEBUG_MpdParser()
         {
             LoggerBase CreateLogger(string channel, LogLevel level) => new DummyLogger(channel, level);
@@ -68,10 +69,6 @@ namespace JuvoPlayer.Tests.DebugCode
             String xml;
             Document doc;
 
-            // To ignore this TC (internally) keep url=null :)
-
-            if (url == null) return;
-
             try
             {
                 xml = wc.DownloadString(url);
@@ -80,7 +77,6 @@ namespace JuvoPlayer.Tests.DebugCode
 
                 foreach (var period in doc.Periods)
                 {
-                   
 
                     Media audio = Find(period, "en", MediaType.Audio) ??
                             Find(period, "und", MediaType.Audio);
@@ -91,12 +87,6 @@ namespace JuvoPlayer.Tests.DebugCode
                     // TODO(p.galiszewsk): is it possible to have period without audio/video?
                     if (audio != null && video != null)
                     {
-                        
-
-                        // TODO(p.galiszewsk): unify time management
-                        //if (period.Duration.HasValue)
-                        //    ClipDurationChanged?.Invoke(period.Duration.Value);
-
                         return;
                     }
                 }
@@ -104,12 +94,12 @@ namespace JuvoPlayer.Tests.DebugCode
             }
             catch (Exception ex)
             {
-               
+
                 return;
             }
 
             return;
- 
+
         }
     }
 }

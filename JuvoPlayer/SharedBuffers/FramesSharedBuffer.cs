@@ -189,8 +189,8 @@ namespace JuvoPlayer.SharedBuffers
             }
         }
 
-        // FramesSharedBuffer::ReadData(int size) is blocking - it will block until buffor has enaugh data or if EOF is reached.
-        // It may return less data then requested if there is not enough data in the buffor and EOF is reached.
+        // FramesSharedBuffer::ReadData(int size) is blocking - it will block until buffer has enough data or if EOF is reached.
+        // It may return less data then requested if there is not enough data in the buffer and EOF is reached.
         public ArraySegment<byte>? ReadData(int size)
         {
             lock (locker)

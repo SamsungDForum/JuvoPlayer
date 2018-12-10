@@ -34,8 +34,8 @@ namespace JuvoPlayer.DataProviders.RTSP
         private Thread dataReadThread = null;
         private Thread controlReadThread = null;
 
-        public int DataPort;
-        public int ControlPort;
+        public readonly int DataPort;
+        public readonly int ControlPort;
 
         readonly IPAddress dataMulticastAddr;
         readonly IPAddress controlMulticastAddr;
@@ -132,7 +132,7 @@ namespace JuvoPlayer.DataProviders.RTSP
         {
             if (dataSocket == null || controlSocket == null)
             {
-                throw new InvalidOperationException("UDP Forwader host was not initialized, can't continue");
+                throw new InvalidOperationException("UDP Forwarder host was not initialized, can't continue");
             }
 
             if (dataReadThread != null)

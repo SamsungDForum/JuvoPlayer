@@ -50,12 +50,14 @@ namespace JuvoPlayer.Drms.Cenc
         private TaskCompletionSource<byte[]> requestDataCompletionSource;
 
         private int counter;
-        ref int IReferenceCoutable.Count => ref counter;
+        ref int IReferenceCountable.Count => ref counter;
 
-        //Additional error code returned by drm_decrypt api when there is no space in trustzone
+        //Additional error code returned by drm_decrypt api when there is no space in TrustZone
         private const int E_DECRYPT_BUFFER_FULL = 2;
         private const int MaxDecryptRetries = 5;
         private static readonly TimeSpan DecryptBufferFullSleepTime = TimeSpan.FromMilliseconds(1000);
+
+        private readonly object sessionLock = new object();
 
         private CencSession(DRMInitData initData, DRMDescription drmDescription)
         {
@@ -87,7 +89,7 @@ namespace JuvoPlayer.Drms.Cenc
         public override void Dispose()
         {
             Logger.Info($"Disposing CencSession: {currentSessionId}");
-            lock (this)
+            lock (sessionLock)
             {
                 if (isDisposed)
                     return;
@@ -99,7 +101,7 @@ namespace JuvoPlayer.Drms.Cenc
                 }
                 catch (Exception)
                 {
-                    // ignored, client can be notified about failures by awaiting task returned in Initialize() 
+                    // ignored, client can be notified about failures by awaiting task returned in Initialize()
                 }
 
                 thread.Factory.Run(() => DestroyCDM()).Wait(); //will do nothing on a disposed AsyncContextThread
@@ -131,7 +133,7 @@ namespace JuvoPlayer.Drms.Cenc
                 throw new InvalidOperationException("CencSession Uninitialized");
             }
 
-            lock (this)
+            lock (sessionLock)
             {
                 ThrowIfDisposed();
                 if (!licenceInstalled)
@@ -318,7 +320,7 @@ namespace JuvoPlayer.Drms.Cenc
         public Task Initialize()
         {
             Logger.Info("");
-            lock (this)
+            lock (sessionLock)
             {
                 if (initializationTask != null)
                 {

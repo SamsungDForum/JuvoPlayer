@@ -28,9 +28,9 @@ namespace JuvoPlayer.OpenGL
         public bool SubtitlesOn { get; private set; } = false;
 
         private int _activeOption = -1;
-        private int _activeSuboption = -1;
+        private int _activeSubOption = -1;
         private int _selectedOption = -1;
-        private int _selectedSuboption = -1;
+        private int _selectedSubOption = -1;
 
         private class StreamDescriptionsList
         {
@@ -100,24 +100,24 @@ namespace JuvoPlayer.OpenGL
                         SubtitlesOn = true;
                 }
                 fixed (byte* text = ResourceLoader.GetBytes(s.Description))
-                    DllImports.AddSuboption(streamDescriptionsList.Id, id, text, s.Description.Length);
+                    DllImports.AddSubOption(streamDescriptionsList.Id, id, text, s.Description.Length);
             }
     }
 
         private void UpdateOptionsSelection()
         {
-            Logger?.Info($"activeOption={_activeOption}, activeSuboption={_activeSuboption}, selectedOption={_selectedOption}, selectedSuboption={_selectedSuboption}");
+            Logger?.Info($"activeOption={_activeOption}, activeSubOption={_activeSubOption}, selectedOption={_selectedOption}, selectedSubOption={_selectedSubOption}");
             if (_selectedOption >= 0 && _selectedOption < _streams.Count)
-                _activeSuboption = _streams[_selectedOption].Active;
-            DllImports.UpdateSelection(Visible ? 1 : 0, _activeOption, _activeSuboption, _selectedOption, _selectedSuboption);
+                _activeSubOption = _streams[_selectedOption].Active;
+            DllImports.UpdateSelection(Visible ? 1 : 0, _activeOption, _activeSubOption, _selectedOption, _selectedSubOption);
         }
 
         private void SetDefaultState()
         {
             _activeOption = -1;
-            _activeSuboption = -1;
+            _activeSubOption = -1;
             _selectedOption = 0;
-            _selectedSuboption = -1;
+            _selectedSubOption = -1;
             Visible = false;
             SubtitlesOn = false;
             UpdateOptionsSelection();
@@ -126,9 +126,9 @@ namespace JuvoPlayer.OpenGL
         public void ClearOptionsMenu()
         {
             _activeOption = -1;
-            _activeSuboption = -1;
+            _activeSubOption = -1;
             _selectedOption = -1;
-            _selectedSuboption = -1;
+            _selectedSubOption = -1;
             Visible = false;
             SubtitlesOn = false;
             _streams = new List<StreamDescriptionsList>();
@@ -137,19 +137,19 @@ namespace JuvoPlayer.OpenGL
 
         public void ControlLeft()
         {
-            if (_selectedSuboption == -1)
+            if (_selectedSubOption == -1)
                 Hide();
             else
             {
-                _selectedSuboption = -1;
+                _selectedSubOption = -1;
                 UpdateOptionsSelection();
             }
         }
 
         public void ControlRight()
         {
-            if (_selectedSuboption == -1 && _selectedOption >= 0 && _selectedOption < _streams.Count && _streams[_selectedOption].Descriptions.Count > 0)
-                _selectedSuboption =
+            if (_selectedSubOption == -1 && _selectedOption >= 0 && _selectedOption < _streams.Count && _streams[_selectedOption].Descriptions.Count > 0)
+                _selectedSubOption =
                     _streams[_selectedOption].Active >= 0 && _streams[_selectedOption].Active <
                     _streams[_selectedOption].Descriptions.Count
                         ? _streams[_selectedOption].Active
@@ -159,15 +159,15 @@ namespace JuvoPlayer.OpenGL
 
         public void ControlUp()
         {
-            if (_selectedSuboption == -1)
+            if (_selectedSubOption == -1)
             {
                 if (_selectedOption > 0)
                     --_selectedOption;
             }
             else
             {
-                if (_selectedSuboption > 0)
-                    --_selectedSuboption;
+                if (_selectedSubOption > 0)
+                    --_selectedSubOption;
             }
 
             UpdateOptionsSelection();
@@ -175,7 +175,7 @@ namespace JuvoPlayer.OpenGL
 
         public void ControlDown()
         {
-            if (_selectedSuboption == -1)
+            if (_selectedSubOption == -1)
             {
                 if (_selectedOption < _streams.Count - 1)
                     ++_selectedOption;
@@ -184,8 +184,8 @@ namespace JuvoPlayer.OpenGL
             }
             else
             {
-                if (_selectedSuboption < _streams[_selectedOption].Descriptions.Count - 1)
-                    ++_selectedSuboption;
+                if (_selectedSubOption < _streams[_selectedOption].Descriptions.Count - 1)
+                    ++_selectedSubOption;
             }
 
             UpdateOptionsSelection();
@@ -194,7 +194,7 @@ namespace JuvoPlayer.OpenGL
         public bool ProperSelection()
         {
             int selectedStreamTypeIndex = _selectedOption;
-            int selectedStreamIndex = _selectedSuboption;
+            int selectedStreamIndex = _selectedSubOption;
             return selectedStreamIndex >= 0 && selectedStreamIndex < _streams[selectedStreamTypeIndex].Descriptions.Count;
         }
 
@@ -204,11 +204,11 @@ namespace JuvoPlayer.OpenGL
                 return;
 
             int selectedStreamTypeIndex = _selectedOption;
-            int selectedStreamIndex = _selectedSuboption;
+            int selectedStreamIndex = _selectedSubOption;
 
             if (selectedStreamIndex >= 0 && selectedStreamIndex < _streams[selectedStreamTypeIndex].Descriptions.Count)
             {
-                if (_streams[selectedStreamTypeIndex].Descriptions[selectedStreamIndex].StreamType == StreamType.Subtitle && selectedStreamIndex == 0) // special subtitles:off suboption
+                if (_streams[selectedStreamTypeIndex].Descriptions[selectedStreamIndex].StreamType == StreamType.Subtitle && selectedStreamIndex == 0) // special subtitles:off sub option
                 {
                     SubtitlesOn = false;
                     player.DeactivateStream(StreamType.Subtitle);
@@ -234,7 +234,7 @@ namespace JuvoPlayer.OpenGL
                 }
 
                 _streams[selectedStreamTypeIndex].Active = selectedStreamIndex;
-                _activeSuboption = selectedStreamIndex;
+                _activeSubOption = selectedStreamIndex;
             }
 
             UpdateOptionsSelection();
@@ -243,7 +243,7 @@ namespace JuvoPlayer.OpenGL
         public void Show()
         {
             _selectedOption = _streams.Count - 1;
-            _selectedSuboption = -1;
+            _selectedSubOption = -1;
             Visible = true;
             UpdateOptionsSelection();
         }

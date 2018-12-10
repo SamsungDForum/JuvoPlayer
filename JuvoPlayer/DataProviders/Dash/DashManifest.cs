@@ -53,7 +53,7 @@ namespace JuvoPlayer.DataProviders.Dash
         }
 
         /// <summary>
-        /// Function resets document publish time, effectively forcing next reloaded document to be 
+        /// Function resets document publish time, effectively forcing next reloaded document to be
         /// processed regardless of publishTime change.
         /// </summary>
         public void ForceHasChangedOnNextReload()
@@ -126,7 +126,7 @@ namespace JuvoPlayer.DataProviders.Dash
 
             } while (downloadRetries-- > 0);
 
-            // If doc is null, max # of retries have been reached with no sucess
+            // If doc is null, max # of retries have been reached with no success
             if (newDoc == null)
                 return false;
 

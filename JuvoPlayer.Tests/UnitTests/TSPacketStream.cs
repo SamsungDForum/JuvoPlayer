@@ -28,12 +28,12 @@ namespace JuvoPlayer.Tests.UnitTests
 {
     /// <summary>
     /// Dummy IDrmSession. Due to reference counting, simple interface replacement
-    /// does not do the trick - Static methods do not seem to be replacable by Unit Tests
+    /// does not do the trick - Static methods do not seem to be replaceable by Unit Tests
     /// </summary>
     public class TestDrmSession : IDrmSession
     {
         private int Counter;
-        ref int IReferenceCoutable.Count => ref Counter;
+        ref int IReferenceCountable.Count => ref Counter;
 
         public void Dispose() { }
 
@@ -154,7 +154,7 @@ namespace JuvoPlayer.Tests.UnitTests
         }
 
         [Test]
-        public void OnStreamConfigChanged_WhenStreamConfigIsNull_ThrowsArgumentNullExceptionn()
+        public void OnStreamConfigChanged_WhenStreamConfigIsNull_ThrowsArgumentNullException()
         {
             using (var stream = CreatePacketStream(StreamType.Audio))
             {
@@ -190,7 +190,7 @@ namespace JuvoPlayer.Tests.UnitTests
         private static IDrmSession CreateDrmSessionFake()
         {
             var drmSessionFake = new TestDrmSession();
-            
+
             return drmSessionFake;
         }
     }

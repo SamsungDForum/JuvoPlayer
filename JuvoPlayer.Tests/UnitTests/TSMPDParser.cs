@@ -61,14 +61,13 @@ namespace JuvoPlayer.Tests.UnitTests
         )]
     class TSMPDParser
     {
-        
+
         private static List<MPDData> mpds = null;
-        private static List<DOCData> parsedmpds = new List<DOCData>();
+        private static List<DOCData> parsedMpds = new List<DOCData>();
 
         public TSMPDParser()
         {
-            string jsonText = null;
-            jsonText = ReadEmbeddedFile("mpddata.json");
+            var jsonText = ReadEmbeddedFile("mpddata.json");
 
             Assert.IsNotNull(jsonText);
 
@@ -77,7 +76,7 @@ namespace JuvoPlayer.Tests.UnitTests
             Assert.AreNotEqual(mpds.Count, 0, "No data found");
         }
 
-        private static string ReadEmbeddedFile(string fname)
+        private static string ReadEmbeddedFile(string fName)
         {
             string data = null;
 
@@ -85,7 +84,7 @@ namespace JuvoPlayer.Tests.UnitTests
             string[] names = assembly.GetManifestResourceNames();
             foreach (var name in names)
             {
-                if (!name.Contains(fname)) continue;
+                if (!name.Contains(fName)) continue;
                 var stream = assembly.GetManifestResourceStream(name);
                 var reader = new StreamReader(stream);
                 data = reader.ReadToEnd();
@@ -136,7 +135,7 @@ namespace JuvoPlayer.Tests.UnitTests
         {
             foreach(var tc in mpds)
             {
-               
+
                 DOCData item = new DOCData();
 
                 item.audioMedia = null;
@@ -149,8 +148,8 @@ namespace JuvoPlayer.Tests.UnitTests
                 item.ignore_mpd_comparison = false;
 
                 item.rawXML = ReadEmbeddedFile(tc.file);
-                
-                Assert.DoesNotThrowAsync(async () => 
+
+                Assert.DoesNotThrowAsync(async () =>
                     item.parsedmpd = await Document.FromText(item.rawXML, tc.url)
                     );
                 Assert.IsNotNull(item.parsedmpd);
@@ -158,7 +157,7 @@ namespace JuvoPlayer.Tests.UnitTests
                 item.url = tc.url;
                 item.ignore_mpd_comparison = tc.ignore_mpd_comparison;
 
-                parsedmpds.Add(item);
+                parsedMpds.Add(item);
 
             }
         }
@@ -168,12 +167,12 @@ namespace JuvoPlayer.Tests.UnitTests
         [Property("SPEC", "MpdParser.Document.Periods M")]
         public static void HasAVMedia_OK()
         {
-            if(parsedmpds.Count == 0 )
+            if(parsedMpds.Count == 0 )
             {
                 AppParser_OK();
             }
 
-            foreach (var item in parsedmpds)
+            foreach (var item in parsedMpds)
             {
                 foreach (var period in item.parsedmpd.Periods)
                 {
@@ -199,20 +198,20 @@ namespace JuvoPlayer.Tests.UnitTests
             }
         }
 
-        
-     
+
+
 
         [Test]
         [Description("Audio & Video Streams extractable from mpd (Document) OK")]
         [Property("SPEC", "MpdParser.Media.Representation M")]
         public static void HasRepresentation_OK()
         {
-            if (parsedmpds.Count == 0)
+            if (parsedMpds.Count == 0)
             {
                 HasAVMedia_OK();
             }
 
-            foreach (var item in parsedmpds)
+            foreach (var item in parsedMpds)
             {
 
                 Assert.DoesNotThrow(() =>
@@ -250,32 +249,33 @@ namespace JuvoPlayer.Tests.UnitTests
         [Property("SPEC", "MpdParser.DASH M")]
         public static async Task XMLData_AppParserSysParser_same_OK()
         {
-            if (parsedmpds.Count == 0)
+            if (parsedMpds.Count == 0)
             {
                 HasRepresentation_OK();
             }
 
-            bool alltestresult = true;
-            foreach (var item in parsedmpds)
+            bool allTestsResult = true;
+            foreach (var item in parsedMpds)
             {
 
                 // Schema Name replacement is done in "raw XML string".
-                // Schema/namespace modifications seem to work... oddly and throwing 
+                // Schema/namespace modifications seem to work... oddly and throwing
                 // exception if schema name already exists in XSD file (WTF?)
                 // so the simplest way is to perform checks on raw XML string.
-                // Ugly... 
-                string tmpxml = String.Copy(item.rawXML);
-                if (tmpxml.IndexOf(schema) == -1)
+                // Ugly...
+                string tmpXml = string.Copy(item.rawXML);
+                if (tmpXml.IndexOf(schema, StringComparison.Ordinal) == -1)
                 {
-                    int idx = tmpxml.IndexOf(schema, StringComparison.OrdinalIgnoreCase);
+                    int idx = tmpXml.IndexOf(schema, StringComparison.OrdinalIgnoreCase);
                     if (idx == -1)
                     {
-                        System.Diagnostics.Debug.WriteLine(String.Format("Incorrect input schema in {0}. caseless urn:mpeg:dash:schema:mpd:2011 not found. Ignoring TC", item.url));
+                        System.Diagnostics.Debug.WriteLine(
+                            $"Incorrect input schema in {item.url}. caseless urn:mpeg:dash:schema:mpd:2011 not found. Ignoring TC");
                         continue;
                     }
 
                     //Case mismatch. Move everything to lower case
-                    tmpxml = tmpxml.Replace(tmpxml.Substring(idx, schema.Length), schema);
+                    tmpXml = tmpXml.Replace(tmpXml.Substring(idx, schema.Length), schema);
                 }
 
                 // ok... so we are "re-parsing" internal xml here...
@@ -283,7 +283,7 @@ namespace JuvoPlayer.Tests.UnitTests
                 MpdParser.Node.DASH IntMPD = await Document.FromTextInternal(item.rawXML, item.url);
 
                 XmlSerializer serializer = new XmlSerializer(typeof(MPDtype));
-                System.IO.StringReader reader = new System.IO.StringReader(tmpxml);
+                System.IO.StringReader reader = new System.IO.StringReader(tmpXml);
                 //Stream XMLStream = GenerateStreamFromString(tmpxml);
                 XmlReader XReader = XmlReader.Create(reader);
 
@@ -300,33 +300,33 @@ namespace JuvoPlayer.Tests.UnitTests
                     System.Diagnostics.Debug.WriteLine($"Exception: {e.Message} {e.Source}");
                     System.Diagnostics.Debug.WriteLine($"Exception: {e.InnerException}");
                     System.Diagnostics.Debug.WriteLine($"Unparsable MPD will NOT influence final result as comparison is not possible");
-                    
+
                     continue;
                 }
 
-                MpdParser.Node.DASH IntfromExtMPD = DASHConverter.Convert(ExtMPD,item.url);
-                
+                MpdParser.Node.DASH itemFromExtMPD = DASHConverter.Convert(ExtMPD,item.url);
+
                 System.Diagnostics.Debug.WriteLine($"Checking URL: {item.url} ...");
-                bool res = DASHConverter.Same(IntfromExtMPD, "Sys Parser", IntMPD, "App Parser");
+                bool res = DASHConverter.Same(itemFromExtMPD, "Sys Parser", IntMPD, "App Parser");
                 if (item.ignore_mpd_comparison)
                 {
-                    System.Diagnostics.Debug.WriteLine($"Same: {res} (Result is ignored by JSON specfication");
+                    System.Diagnostics.Debug.WriteLine($"Same: {res} (Result is ignored by JSON specification");
                 }
                 else
                 {
-                    alltestresult &= res;
+                    allTestsResult &= res;
                     System.Diagnostics.Debug.WriteLine($"Same: {res}");
                 }
                 System.Diagnostics.Debug.WriteLine($"Done URL: {item.url}");
             }
 
-            System.Diagnostics.Debug.WriteLine($"All MPDs same: {alltestresult}");
+            System.Diagnostics.Debug.WriteLine($"All MPDs same: {allTestsResult}");
 
-            Assert.IsTrue(alltestresult);
+            Assert.IsTrue(allTestsResult);
         }
-        
+
     }
 
 
-    
+
 }
