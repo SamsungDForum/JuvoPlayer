@@ -199,7 +199,7 @@ namespace JuvoPlayer.Demuxers
 
         private void MaybePublishError(Task task)
         {
-            if (task.IsFaulted && task.Exception != null)
+            if (task.IsFaulted)
                 demuxerErrorSubject.OnNext(task.Exception.Message);
         }
 
