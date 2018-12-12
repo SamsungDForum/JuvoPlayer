@@ -463,6 +463,7 @@ namespace JuvoPlayer.Player.EsPlayer
             catch (TaskCanceledException)
             {
                 logger.Info("Operation cancelled");
+                throw new OperationCanceledException();
             }
         }
 

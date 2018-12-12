@@ -42,6 +42,9 @@ namespace JuvoPlayer.DataProviders
             if (dataProvider == null)
                 return;
 
+            if (context == null)
+                context = SynchronizationContext.Current;
+
             subscriptions = new CompositeDisposable
             {
                 dataProvider.ClipDurationChanged()
@@ -53,13 +56,13 @@ namespace JuvoPlayer.DataProviders
                 dataProvider.StreamConfigReady()
                     .Subscribe(controller.OnStreamConfigReady, context),
                 dataProvider.PacketReady()
-                    .Subscribe(controller.OnPacketReady, context),
+                    .Subscribe(controller.OnPacketReady, controller.OnStreamsCompleted, context),
                 dataProvider.BufferingStarted()
                     .Subscribe(unit => controller.OnBufferingStarted(), context),
                 dataProvider.BufferingCompleted()
                     .Subscribe(unit => controller.OnBufferingCompleted(), context),
                 dataProvider.StreamError()
-                    .Subscribe(controller.OnStreamError, SynchronizationContext.Current),
+                    .Subscribe(controller.OnStreamError, context),
                 controller.TimeUpdated().Subscribe(dataProvider.OnTimeUpdated, context),
                 controller.StateChanged().Subscribe(dataProvider.OnStateChanged, context),
                 controller.SeekStarted()

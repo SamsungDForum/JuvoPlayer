@@ -714,7 +714,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg.Interop
         @AV_MATRIX_ENCODING_NB = 7,
     }
 
-    internal enum AVMediaType : int
+    public enum AVMediaType : int
     {
         @AVMEDIA_TYPE_UNKNOWN = -1,
         @AVMEDIA_TYPE_VIDEO = 0,

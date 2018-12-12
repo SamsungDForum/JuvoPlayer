@@ -169,6 +169,16 @@ namespace JuvoPlayer.Player
             streams[packet.StreamType].OnAppendPacket(packet);
         }
 
+        public void OnStreamsCompleted()
+        {
+            foreach (var pair in streams)
+            {
+                var streamType = pair.Key;
+                var stream = pair.Value;
+                stream.OnAppendPacket(Packet.CreateEOS(streamType));
+            }
+        }
+
         public void OnStreamError(string errorMessage)
         {
             // TODO: Implement or remove

@@ -17,16 +17,13 @@
 
 using System;
 using JuvoPlayer.Common;
+using JuvoPlayer.Demuxers;
 using JuvoPlayer.Demuxers.FFmpeg;
 
 namespace JuvoPlayer.DataProviders.HLS
 {
     public class HLSDataProviderFactory : IDataProviderFactory
     {
-        public HLSDataProviderFactory()
-        {
-        }
-
         public IDataProvider Create(ClipDefinition clip)
         {
             if (clip == null)
@@ -39,9 +36,10 @@ namespace JuvoPlayer.DataProviders.HLS
                 throw new ArgumentException("unsupported clip type");
             }
 
-            var demuxer = new FFmpegDemuxer();
+            var demuxer = new FFmpegDemuxer(new FFmpegGlue());
+            var demuxerController = new DemuxerController(demuxer);
 
-            return new HLSDataProvider(demuxer, clip);
+            return new HLSDataProvider(demuxerController, clip);
         }
 
         public bool SupportsClip(ClipDefinition clip)
