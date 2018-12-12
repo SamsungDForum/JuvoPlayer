@@ -16,64 +16,17 @@
  */
 
 using System;
-using System.Collections.Generic;
-using System.Reactive;
-using System.Reactive.Disposables;
 using System.Reactive.Linq;
-using System.Threading;
-using JuvoLogger;
-using JuvoPlayer.Common;
-using JuvoPlayer.DataProviders;
-using JuvoPlayer.DataProviders.Dash;
-using JuvoPlayer.DataProviders.HLS;
-using JuvoPlayer.DataProviders.RTSP;
-using JuvoPlayer.Drms;
-using JuvoPlayer.Drms.Cenc;
-using JuvoPlayer.Player;
-using JuvoPlayer.Player.EsPlayer;
-using StreamType = JuvoPlayer.Common.StreamType;
 
 namespace JuvoPlayer.OpenGL
 {
-    class Player
+    class Player : PlayerService
     {
-        private IDataProvider dataProvider;
-        private IPlayerController playerController;
-        private DataProviderConnector connector;
-        private readonly DataProviderFactoryManager dataProviders;
-        private readonly CompositeDisposable subscriptions;
-        private readonly ILogger logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
+        public new PlayerState State => ToPlayerState(base.State);
 
-        public TimeSpan Duration => playerController?.ClipDuration ?? TimeSpan.FromSeconds(0);
-
-        public TimeSpan CurrentPosition =>
-            dataProvider == null ? TimeSpan.FromSeconds(0) : playerController.CurrentTime;
-
-        public bool IsSeekingSupported => dataProvider?.IsSeekingSupported() ?? false;
-
-        public PlayerState State { get; private set; } = PlayerState.Idle;
-
-        public string CurrentCueText => dataProvider?.CurrentCue?.Text;
-
-        public Player()
+        public new IObservable<PlayerState> StateChanged()
         {
-            dataProviders = new DataProviderFactoryManager();
-            dataProviders.RegisterDataProviderFactory(new DashDataProviderFactory());
-            dataProviders.RegisterDataProviderFactory(new HLSDataProviderFactory());
-            dataProviders.RegisterDataProviderFactory(new RTSPDataProviderFactory());
-
-            var drmManager = new DrmManager();
-            drmManager.RegisterDrmHandler(new CencHandler());
-
-            var player = new EsPlayer();
-            playerController = new PlayerController(player, drmManager);
-
-            subscriptions = new CompositeDisposable
-            {
-                playerController.StateChanged()
-                    .Select(ToPlayerState)
-                    .Subscribe(state => { State = state; }, SynchronizationContext.Current)
-            };
+            return base.StateChanged().Select(ToPlayerState);
         }
 
         private PlayerState ToPlayerState(Common.PlayerState state)
@@ -91,105 +44,6 @@ namespace JuvoPlayer.OpenGL
                 default:
                     throw new ArgumentOutOfRangeException(nameof(state), state, null);
             }
-        }
-
-        public void Pause()
-        {
-            playerController.OnPause();
-        }
-
-        public void SeekTo(TimeSpan to)
-        {
-            playerController.OnSeek(to);
-        }
-
-        public void ChangeActiveStream(StreamDescription stream)
-        {
-            var streamDescription = new StreamDescription
-            {
-                Id = stream.Id,
-                Description = stream.Description,
-                StreamType = stream.StreamType
-            };
-
-            dataProvider.OnChangeActiveStream(streamDescription);
-        }
-
-        public void DeactivateStream(StreamType streamType)
-        {
-            dataProvider.OnDeactivateStream(streamType);
-        }
-
-        public List<StreamDescription> GetStreamsDescription(StreamType streamType)
-        {
-            return dataProvider.GetStreamsDescription(streamType);
-        }
-
-        public void SetSource(ClipDefinition clip)
-        {
-            connector?.Dispose();
-
-            dataProvider = dataProviders.CreateDataProvider(clip);
-
-            if (clip.DRMDatas != null)
-            {
-                foreach (var drm in clip.DRMDatas)
-                    playerController.OnSetDrmConfiguration(drm);
-            }
-
-            connector = new DataProviderConnector(playerController, dataProvider);
-
-            dataProvider.Start();
-        }
-
-        public void Start()
-        {
-            playerController.OnPlay();
-        }
-
-        public void Stop()
-        {
-            dataProvider.OnStopped();
-            playerController.OnStop();
-        }
-
-        public void Dispose()
-        {
-            Dispose(true);
-        }
-
-        protected virtual void Dispose(bool disposing)
-        {
-            if (disposing)
-            {
-                subscriptions.Dispose();
-                connector?.Dispose();
-                playerController?.Dispose();
-                playerController = null;
-                dataProvider?.Dispose();
-                dataProvider = null;
-                GC.Collect();
-            }
-        }
-
-        public IObservable<PlayerState> StateChanged()
-        {
-            return playerController.StateChanged().Select(ToPlayerState);
-        }
-
-        public IObservable<string> PlaybackError()
-        {
-            return playerController.PlaybackError();
-        }
-
-        public IObservable<Unit> SeekCompleted()
-        {
-            return playerController.SeekCompleted();
-        }
-
-        public IObservable<double> BufferingProgress()
-        {
-            return playerController.BufferingProgress();
         }
     }
 }
