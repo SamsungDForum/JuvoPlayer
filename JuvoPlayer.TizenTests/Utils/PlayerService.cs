@@ -1,4 +1,4 @@
-/*!
+﻿/*!
  * https://github.com/SamsungDForum/JuvoPlayer
  * Copyright 2018, Samsung Electronics Co., Ltd
  * Licensed under the MIT license
@@ -37,18 +37,6 @@ namespace JuvoPlayer.TizenTests.Utils
 {
     public class PlayerService : IDisposable
     {
-        public enum PlayerState
-        {
-            Error = -1,
-            Idle,
-            Prepared,
-            Stopped,
-            Playing,
-            Buffering,
-            Paused,
-            Completed
-        }
-
         private static Window window;
 
         public static void SetWindow(Window w)
@@ -89,7 +77,7 @@ namespace JuvoPlayer.TizenTests.Utils
             dataProviders.RegisterDataProviderFactory(new RTSPDataProviderFactory());
 
             var drmManager = new DrmManager();
-            drmManager.RegisterDrmHandler(new CencHandler());            
+            drmManager.RegisterDrmHandler(new CencHandler());
 
             if (window == null)
                 window = WindowUtils.CreateElmSharpWindow();
@@ -100,43 +88,13 @@ namespace JuvoPlayer.TizenTests.Utils
             subscriptions = new CompositeDisposable
             {
                 playerController.StateChanged()
-                    .Subscribe(state => State = FromJuvoState(state), SynchronizationContext.Current),
-                playerController.Initialized()
-                    .Subscribe(unit => { State = PlayerState.Prepared; }, SynchronizationContext.Current),
-                playerController.PlaybackCompleted()
-                    .Subscribe(unit => State = PlayerState.Completed, SynchronizationContext.Current),
-                playerController.PlaybackError()
-                    .Subscribe(unit => State = PlayerState.Error, SynchronizationContext.Current)
+                    .Subscribe(state => State = state, SynchronizationContext.Current)
             };
-        }
-
-        private PlayerState FromJuvoState(JuvoPlayer.Player.PlayerState juvoState)
-        {
-            switch (juvoState)
-            {
-                case Player.PlayerState.Uninitialized:
-                    return PlayerState.Idle;
-                case Player.PlayerState.Ready:
-                    return PlayerState.Prepared;
-                case Player.PlayerState.Buffering:
-                    return PlayerState.Buffering;
-                case Player.PlayerState.Paused:
-                    return PlayerState.Paused;
-                case Player.PlayerState.Playing:
-                    return PlayerState.Playing;
-                case Player.PlayerState.Finished:
-                    return PlayerState.Completed;
-                case Player.PlayerState.Error:
-                    return PlayerState.Error;
-                default:
-                    throw new ArgumentOutOfRangeException(nameof(juvoState), juvoState, null);
-            }
         }
 
         public void Pause()
         {
             playerController.OnPause();
-            State = PlayerState.Paused;
         }
 
         public void SeekTo(TimeSpan to)
@@ -174,15 +132,12 @@ namespace JuvoPlayer.TizenTests.Utils
         public void Start()
         {
             playerController.OnPlay();
-
-            State = PlayerState.Playing;
         }
 
         public void Stop()
         {
+            dataProvider.OnStopped();
             playerController.OnStop();
-
-            State = PlayerState.Stopped;
         }
 
         public void Dispose()

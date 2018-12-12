@@ -19,6 +19,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reactive.Disposables;
+using System.Reactive.Linq;
 using System.Threading;
 using JuvoLogger;
 using JuvoPlayer.Common;
@@ -46,37 +47,17 @@ namespace XamarinPlayer.Tizen.Services
         private IDataProvider dataProvider;
         private IPlayerController playerController;
         private readonly DataProviderFactoryManager dataProviders = new DataProviderFactoryManager();
-        private PlayerState playerState = PlayerState.Idle;
-        private string playerStateMessage;
         private readonly ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
         private readonly CompositeDisposable subscriptions;
 
         private DataProviderConnector connector;
-
-        public event PlayerStateChangedEventHandler StateChanged;
 
         public TimeSpan Duration => playerController.ClipDuration;
 
         public TimeSpan CurrentPosition => playerController.CurrentTime;
 
         public bool IsSeekingSupported => dataProvider.IsSeekingSupported();
-
-        public PlayerState State
-        {
-            get => playerState;
-            private set
-            {
-                playerState = value;
-                if (playerState == PlayerState.Error)
-                {
-                    StateChanged?.Invoke(this, new PlayerStateChangedStreamError(playerState, playerStateMessage));
-                }
-                else
-                {
-                    StateChanged?.Invoke(this, new PlayerStateChangedEventArgs(playerState));
-                }
-            }
-        }
+        public PlayerState State { get; private set; }
 
         public string CurrentCueText => dataProvider.CurrentCue?.Text;
 
@@ -94,39 +75,14 @@ namespace XamarinPlayer.Tizen.Services
             playerController = new PlayerController(player, drmManager);
             subscriptions = new CompositeDisposable
             {
-                playerController.StateChanged().Subscribe(state =>
-                {
-                    try
-                    {
-                        State = ToPlayerState(state);
-                    }
-                    catch (ArgumentOutOfRangeException ex)
-                    {
-                        Logger.Warn($"Unsupported state: {ex.Message}");
-                        Logger.Warn($"{ex.StackTrace}");
-                    }
-                }, SynchronizationContext.Current),
-
-                playerController.Initialized()
-                    .Subscribe(unit => { State = PlayerState.Prepared; }, SynchronizationContext.Current),
-
-                playerController.PlaybackError().Subscribe(message =>
-                {
-                    if (State == PlayerState.Error)
-                        return;
-                    playerStateMessage = message;
-                    State = PlayerState.Error;
-                }, SynchronizationContext.Current),
-
-                playerController.PlaybackCompleted()
-                    .Subscribe(unit => State = PlayerState.Completed, SynchronizationContext.Current)
+                playerController.StateChanged().Select(ToPlayerState)
+                    .Subscribe(state => { State = state; }, SynchronizationContext.Current)
             };
         }
 
         public void Pause()
         {
             playerController.OnPause();
-            State = PlayerState.Paused;
         }
 
         public void SeekTo(TimeSpan to)
@@ -155,7 +111,7 @@ namespace XamarinPlayer.Tizen.Services
         {
             var streams = dataProvider.GetStreamsDescription(ToJuvoStreamType(streamType));
             return streams.Select(o =>
-                new StreamDefinition()
+                new StreamDefinition
                 {
                     Id = o.Id,
                     Description = o.Description,
@@ -194,24 +150,18 @@ namespace XamarinPlayer.Tizen.Services
             }
         }
 
-        private PlayerState ToPlayerState(JuvoPlayer.Player.PlayerState state)
+        private PlayerState ToPlayerState(JuvoPlayer.Common.PlayerState state)
         {
             switch (state)
             {
-                case JuvoPlayer.Player.PlayerState.Uninitialized:
+                case JuvoPlayer.Common.PlayerState.Idle:
                     return PlayerState.Idle;
-                case JuvoPlayer.Player.PlayerState.Ready:
+                case JuvoPlayer.Common.PlayerState.Prepared:
                     return PlayerState.Prepared;
-                case JuvoPlayer.Player.PlayerState.Buffering:
-                    return PlayerState.Buffering;
-                case JuvoPlayer.Player.PlayerState.Paused:
+                case JuvoPlayer.Common.PlayerState.Paused:
                     return PlayerState.Paused;
-                case JuvoPlayer.Player.PlayerState.Playing:
+                case JuvoPlayer.Common.PlayerState.Playing:
                     return PlayerState.Playing;
-                case JuvoPlayer.Player.PlayerState.Finished:
-                    return PlayerState.Completed;
-                case JuvoPlayer.Player.PlayerState.Error:
-                    return PlayerState.Error;
                 default:
                     Logger.Warn($"Unsupported state {state}");
                     throw new ArgumentOutOfRangeException(nameof(state), state, null);
@@ -232,8 +182,6 @@ namespace XamarinPlayer.Tizen.Services
             if (State != PlayerState.Idle)
                 Stop();
 
-            State = PlayerState.Preparing;
-
             dataProvider = dataProviders.CreateDataProvider(clip);
 
             // TODO(p.galiszewsk) rethink!
@@ -253,15 +201,10 @@ namespace XamarinPlayer.Tizen.Services
             Logger.Info("");
 
             playerController.OnPlay();
-
-            State = PlayerState.Playing;
         }
 
         public void Stop()
         {
-            if (State == PlayerState.Stopped)
-                return;
-
             Logger.Info("");
 
             // Stop data provider first so no new data is fed to player while
@@ -270,10 +213,21 @@ namespace XamarinPlayer.Tizen.Services
             dataProvider.OnStopped();
 
             playerController.OnStop();
+        }
 
-            //prevent the callback from firing multiple times
-            if (State != PlayerState.Stopped)
-                State = PlayerState.Stopped;
+        public IObservable<PlayerState> StateChanged()
+        {
+            return playerController.StateChanged().Select(ToPlayerState);
+        }
+
+        public IObservable<string> PlaybackError()
+        {
+            return playerController.PlaybackError();
+        }
+
+        public IObservable<double> BufferingProgress()
+        {
+            return playerController.BufferingProgress();
         }
 
         public void Dispose()

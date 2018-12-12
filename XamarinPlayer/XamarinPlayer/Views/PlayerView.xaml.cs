@@ -14,9 +14,13 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-﻿using System;
+
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.Reactive.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 using JuvoLogger;
 using Xamarin.Forms;
 using Xamarin.Forms.Xaml;
@@ -37,9 +41,9 @@ namespace XamarinPlayer.Views
         private bool _isPageDisappeared;
         private bool _isShowing;
         private bool _hasFinished;
-        private string _errorMessage;
 
-        public static readonly BindableProperty ContentSourceProperty = BindableProperty.Create("ContentSource", typeof(object), typeof(PlayerView), null);
+        public static readonly BindableProperty ContentSourceProperty =
+            BindableProperty.Create("ContentSource", typeof(object), typeof(PlayerView), null);
 
         public object ContentSource
         {
@@ -54,17 +58,25 @@ namespace XamarinPlayer.Views
             NavigationPage.SetHasNavigationBar(this, false);
 
             _playerService = DependencyService.Get<IPlayerService>(DependencyFetchTarget.NewInstance);
-            _playerService.StateChanged += OnPlayerStateChanged;
+
+            _playerService.StateChanged()
+                .ObserveOn(SynchronizationContext.Current)
+                .Subscribe(OnPlayerStateChanged, OnPlayerCompleted);
+
+            _playerService.PlaybackError()
+                .ObserveOn(SynchronizationContext.Current)
+                .Subscribe(async message => await OnPlaybackError(message));
+
+            _playerService.BufferingProgress()
+                .ObserveOn(SynchronizationContext.Current)
+                .Subscribe(OnBufferingProgress);
 
             PlayButton.Clicked += (s, e) => { Play(); };
 
             PropertyChanged += PlayerViewPropertyChanged;
 
             MessagingCenter.Subscribe<IKeyEventSender, string>(this, "KeyDown", (s, e) => { KeyEventHandler(e); });
-
         }
-
-
 
         private void Play()
         {
@@ -74,6 +86,33 @@ namespace XamarinPlayer.Views
                 _playerService.Start();
         }
 
+        private async Task OnPlaybackError(string message)
+        {
+            // Prevent multiple popups from occuring, display them only
+            // if it is a very first error event.
+            if (_hasFinished == false)
+            {
+                _hasFinished = true;
+
+                Hide();
+                _playerService.Stop();
+                if (!string.IsNullOrEmpty(message))
+                    await DisplayAlert("Playback Error", message, "OK");
+
+                Navigation.RemovePage(this);
+            }
+        }
+
+        private void OnBufferingProgress(double progress)
+        {
+            if (Math.Abs(progress - 1.0f) < 0.001f)
+                InfoTextLabel.IsVisible = false;
+            else
+            {
+                InfoTextLabel.Text = "Buffering...";
+                InfoTextLabel.IsVisible = true;
+            }
+        }
 
         private void KeyEventHandler(string e)
         {
@@ -110,7 +149,6 @@ namespace XamarinPlayer.Views
             }
             else
             {
-
                 if (Settings.IsVisible)
                 {
                     return;
@@ -118,11 +156,13 @@ namespace XamarinPlayer.Views
 
                 if (_isShowing)
                 {
-                    if ((e.Contains("Play") || e.Contains("XF86PlayBack")) && _playerService.State == PlayerState.Paused)
+                    if ((e.Contains("Play") || e.Contains("XF86PlayBack")) &&
+                        _playerService.State == PlayerState.Paused)
                     {
                         _playerService.Start();
                     }
-                    else if ((e.Contains("Pause") || e.Contains("XF86PlayBack")) && _playerService.State == PlayerState.Playing)
+                    else if ((e.Contains("Pause") || e.Contains("XF86PlayBack")) &&
+                             _playerService.State == PlayerState.Playing)
                     {
                         _playerService.Pause();
                     }
@@ -155,7 +195,6 @@ namespace XamarinPlayer.Views
                         Show();
                     }
                 }
-
             }
         }
 
@@ -218,7 +257,7 @@ namespace XamarinPlayer.Views
                     return;
                 }
 
-                var stream = (StreamDescription)Subtitles.ItemsSource[Subtitles.SelectedIndex];
+                var stream = (StreamDescription) Subtitles.ItemsSource[Subtitles.SelectedIndex];
                 try
                 {
                     _playerService.ChangeActiveStream(stream);
@@ -257,7 +296,7 @@ namespace XamarinPlayer.Views
             {
                 if (picker.SelectedIndex != -1)
                 {
-                    var stream = (StreamDescription)picker.ItemsSource[picker.SelectedIndex];
+                    var stream = (StreamDescription) picker.ItemsSource[picker.SelectedIndex];
 
                     _playerService.ChangeActiveStream(stream);
                 }
@@ -302,6 +341,7 @@ namespace XamarinPlayer.Views
                 PlayButton.Focus();
                 _isShowing = true;
             }
+
             TopBar.IsVisible = true;
             BottomBar.IsVisible = true;
             _hideTime = timeout;
@@ -371,120 +411,50 @@ namespace XamarinPlayer.Views
             return true;
         }
 
-        void OnPlaybackFinished()
+        private void OnPlayerStateChanged(PlayerState state)
         {
-            // DisplayAlert seems emotionally unstable
-            // if not called from main thread.
-            Device.BeginInvokeOnMainThread(async () =>
-            {
-                if (!string.IsNullOrEmpty(_errorMessage))
-                    await DisplayAlert("Playback Error", _errorMessage, "OK");
-
-                Navigation.RemovePage(this);
-            });
-        }
-
-        /// <summary>
-        /// This re-router through main thread has been added in order
-        /// to accomodate AsyncPrepare for ESPlayer.
-        /// AsyncPrepare cannot be awaited in any form (none found).
-        /// If awaited - does not complete. Issuing prepared event from thread
-        /// other then UI causes load file exceptions.
-        /// If this re-router will cause issues, more selective approach may need
-        /// to be applied - i.e. prepare event only
-        /// </summary>
-        /// <param name="sender"></param>
-        /// <param name="e"></param>
-        private void OnPlayerStateChanged(object sender, PlayerStateChangedEventArgs e)
-        {
-            Device.BeginInvokeOnMainThread(() =>
-            {
-                HandleStateChanged(sender, e);
-            });
-        }
-        private void HandleStateChanged(object sender, PlayerStateChangedEventArgs e)
-        {
-            Logger.Info($"Player State Changed: {e.State}");
+            Logger.Info($"Player State Changed: {state}");
 
             if (_isPageDisappeared)
             {
-                Logger.Warn($"Page scheduled for disappearing or already disappeared. Stale Event? Not Processed.");
+                Logger.Warn("Page scheduled for disappearing or already disappeared. Stale Event? Not Processed.");
                 return;
             }
 
-            if (e.State == PlayerState.Stopped)
+            switch (state)
             {
-                if (_hasFinished)
-                    OnPlaybackFinished();
-            }
-            if (e.State == PlayerState.Completed)
-            {
-                // Do not remove any screens in case of error. Will be done as part
-                // of error handling during Stopped event.
-                if (_hasFinished == false)
+                case PlayerState.Prepared:
                 {
-                    _hasFinished = true;
-                    OnPlaybackFinished();
-                }
-            }
-            else if (e.State == PlayerState.Error)
-            {
-                // Prevent multiple popups from occuring, display them only
-                // if it is a very first error event.
-                if (_hasFinished == false)
-                {
-                    _hasFinished = true;
-                    _errorMessage = (e as PlayerStateChangedStreamError)?.Message ?? "Unknown Error";
-
-                    // Terminate player to prevent any further error events.
-                    // This will issue a player.stopped event during which
-                    // error message will be displayed.(if error flag is set).
-                    // Hide controls. If not hidden, a timeouts take away focus rendering alert
-                    // unclosable.
-                    //
-                    Device.StartTimer(TimeSpan.FromMilliseconds(0), () =>
+                    if (_playerService.IsSeekingSupported)
                     {
-                        Hide();
-                        _playerService.Stop();
-                        return false;
-                    });
+                        BackButton.IsEnabled = true;
+                        ForwardButton.IsEnabled = true;
+                    }
+
+                    PlayButton.IsEnabled = true;
+                    SettingsButton.IsEnabled = true;
+                    PlayButton.Focus();
+
+                    _playerService.Start();
+                    Show();
+                    break;
                 }
+                case PlayerState.Playing:
+                    PlayImage.Source = ImageSource.FromFile("btn_viewer_control_pause_normal.png");
+                    break;
+                case PlayerState.Paused:
+                    PlayImage.Source = ImageSource.FromFile("btn_viewer_control_play_normal.png");
+                    break;
             }
-            else if (e.State == PlayerState.Prepared)
-            {
-                if (_playerService.IsSeekingSupported)
-                {
-                    BackButton.IsEnabled = true;
-                    ForwardButton.IsEnabled = true;
-                }
+        }
 
-                PlayButton.IsEnabled = true;
-                SettingsButton.IsEnabled = true;
-                PlayButton.Focus();
+        private void OnPlayerCompleted()
+        {
+            if (_hasFinished)
+                return;
 
-                _playerService.Start();
-                Show();
-            }
-            else if (e.State == PlayerState.Playing)
-            {
-                PlayImage.Source = ImageSource.FromFile("btn_viewer_control_pause_normal.png");
-            }
-            else if (e.State == PlayerState.Paused)
-            {
-                PlayImage.Source = ImageSource.FromFile("btn_viewer_control_play_normal.png");
-            }
-            else if (e.State == PlayerState.Stopped)
-            {
-                PlayImage.Source = ImageSource.FromFile("btn_viewer_control_play_normal.png");
-            }
-
-            if (e.State == PlayerState.Buffering)
-            {
-                InfoTextLabel.Text = "Buffering...";
-                InfoTextLabel.IsVisible = true;
-            }
-            else
-                InfoTextLabel.IsVisible = false;
+            _hasFinished = true;
+            Navigation.RemovePage(this);
         }
 
         private string GetFormattedTime(TimeSpan time)
@@ -514,7 +484,7 @@ namespace XamarinPlayer.Views
 
                 if (_hideTime > 0)
                 {
-                    _hideTime -= (int)UpdateInterval.TotalMilliseconds;
+                    _hideTime -= (int) UpdateInterval.TotalMilliseconds;
                     if (_hideTime <= 0)
                     {
                         Hide();
@@ -531,7 +501,8 @@ namespace XamarinPlayer.Views
             TotalTime.Text = GetFormattedTime(_playerService.Duration);
 
             if (_playerService.Duration.TotalMilliseconds > 0)
-                Progressbar.Progress = _playerService.CurrentPosition.TotalMilliseconds / _playerService.Duration.TotalMilliseconds;
+                Progressbar.Progress = _playerService.CurrentPosition.TotalMilliseconds /
+                                       _playerService.Duration.TotalMilliseconds;
             else
                 Progressbar.Progress = 0;
         }
@@ -544,6 +515,7 @@ namespace XamarinPlayer.Views
                 CueTextLabel.IsVisible = false;
                 return;
             }
+
             CueTextLabel.Text = cueText;
             CueTextLabel.IsVisible = true;
         }

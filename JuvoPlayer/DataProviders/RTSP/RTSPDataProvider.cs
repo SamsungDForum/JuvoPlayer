@@ -97,14 +97,17 @@ namespace JuvoPlayer.DataProviders.RTSP
             throw new NotImplementedException();
         }
 
-        public void OnPaused()
+        public void OnStateChanged(PlayerState state)
         {
-            rtpClient?.Pause();
-        }
-
-        public void OnPlayed()
-        {
-            rtpClient?.Play();
+            switch (state)
+            {
+                case PlayerState.Paused:
+                    rtpClient?.Pause();
+                    break;
+                case PlayerState.Playing:
+                    rtpClient?.Play();
+                    break;
+            }
         }
 
         public void OnSeekStarted(TimeSpan time, uint seekId)

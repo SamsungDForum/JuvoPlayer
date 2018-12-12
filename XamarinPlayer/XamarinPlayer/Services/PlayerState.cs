@@ -15,18 +15,13 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-﻿namespace XamarinPlayer.Services
+ namespace XamarinPlayer.Services
 {
     public enum PlayerState
     {
-        Error = -1,
         Idle,
-        Preparing,
         Prepared,
-        Stopped,
         Playing,
-        Paused,
-        Completed,
-        Buffering
+        Paused
     }
 }

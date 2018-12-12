@@ -31,26 +31,15 @@ namespace JuvoPlayer.Player
     public class PlayerController : IPlayerController
     {
         private bool seeking;
-        private PlayerState state = PlayerState.Uninitialized;
         private TimeSpan currentTime;
         private TimeSpan duration;
-
-        private PlayerState State
-        {
-            get => state;
-            set
-            {
-                state = value;
-                stateChangedSubject.OnNext(value);
-            }
-        }
 
         private readonly IDrmManager drmManager;
         private readonly IPlayer player;
         private readonly Dictionary<StreamType, IPacketStream> streams = new Dictionary<StreamType, IPacketStream>();
 
         private readonly CompositeDisposable subscriptions;
-        private readonly Subject<PlayerState> stateChangedSubject = new Subject<PlayerState>();
+        private readonly Subject<double> bufferingProgressSubject = new Subject<double>();
 
         private readonly ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
 
@@ -63,11 +52,7 @@ namespace JuvoPlayer.Player
             subscriptions = new CompositeDisposable
             {
                 TimeUpdated().Subscribe(time => currentTime = time, SynchronizationContext.Current),
-                SeekCompleted().Subscribe(unit => seeking = false, SynchronizationContext.Current),
-                Initialized()
-                    .Subscribe(unit => state = PlayerState.Ready, SynchronizationContext.Current),
-                PlaybackCompleted()
-                    .Subscribe(unit => state = PlayerState.Finished, SynchronizationContext.Current)
+                SeekCompleted().Subscribe(unit => seeking = false, SynchronizationContext.Current)
             };
 
             var audioCodecExtraDataHandler = new AudioCodecExtraDataHandler(player);
@@ -79,29 +64,19 @@ namespace JuvoPlayer.Player
                 new PacketStream(StreamType.Video, this.player, drmManager, videoCodecExtraDataHandler);
         }
 
+        public IObservable<double> BufferingProgress()
+        {
+            return bufferingProgressSubject.AsObservable();
+        }
+
         public IObservable<string> PlaybackError()
         {
             return player.PlaybackError();
         }
 
-        public IObservable<Unit> Initialized()
-        {
-            return player.Initialized();
-        }
-
         public IObservable<TimeSpan> TimeUpdated()
         {
             return player.TimeUpdated();
-        }
-
-        public IObservable<Unit> Paused()
-        {
-            return player.Paused();
-        }
-
-        public IObservable<Unit> Played()
-        {
-            return player.Played();
         }
 
         public IObservable<SeekArgs> SeekStarted()
@@ -114,19 +89,9 @@ namespace JuvoPlayer.Player
             return player.SeekCompleted();
         }
 
-        public IObservable<Unit> Stopped()
-        {
-            return player.Stopped();
-        }
-
         public IObservable<PlayerState> StateChanged()
         {
-            return stateChangedSubject.AsObservable();
-        }
-
-        public IObservable<Unit> PlaybackCompleted()
-        {
-            return player.PlaybackCompleted();
+            return player.StateChanged();
         }
 
         public void OnClipDurationChanged(TimeSpan duration)
@@ -149,22 +114,12 @@ namespace JuvoPlayer.Player
 
         public void OnPause()
         {
-            if (State != PlayerState.Playing)
-                return;
-
             player.Pause();
-
-            State = PlayerState.Paused;
         }
 
         public void OnPlay()
         {
-            if (State < PlayerState.Ready)
-                return;
-
             player.Play();
-
-            State = PlayerState.Playing;
         }
 
         public void OnSeek(TimeSpan time)
@@ -196,8 +151,6 @@ namespace JuvoPlayer.Player
                 stream.OnClearStream();
 
             player.Stop();
-
-            State = PlayerState.Finished;
         }
 
         public void OnStreamConfigReady(StreamConfig config)
@@ -228,20 +181,14 @@ namespace JuvoPlayer.Player
 
         public void OnBufferingStarted()
         {
-            if (State != PlayerState.Playing)
-                return;
-
+            bufferingProgressSubject.OnNext(0);
             player.Pause();
-            State = PlayerState.Buffering;
         }
 
         public void OnBufferingCompleted()
         {
-            if (State != PlayerState.Buffering)
-                return;
-
             player.Play();
-            State = PlayerState.Playing;
+            bufferingProgressSubject.OnNext(1.0);
         }
 
         #region getters
@@ -265,6 +212,7 @@ namespace JuvoPlayer.Player
             subscriptions.Dispose();
 
             player?.Dispose();
+            bufferingProgressSubject.Dispose();
         }
     }
 }

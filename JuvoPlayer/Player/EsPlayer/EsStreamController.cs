@@ -58,19 +58,15 @@ namespace JuvoPlayer.Player.EsPlayer
 
         // Reference to ESPlayer & associated window
         private ESPlayer.ESPlayer player;
-        private readonly ElmSharp.Window displayWindow;
+        private readonly Window displayWindow;
         private readonly bool usesExternalWindow = true;
 
         // event callbacks
         private readonly Subject<TimeSpan> timeUpdatedSubject = new Subject<TimeSpan>();
         private readonly Subject<string> playbackErrorSubject = new Subject<string>();
         private readonly Subject<Unit> seekCompletedSubject = new Subject<Unit>();
-        private readonly Subject<Unit> playbackCompletedSubject = new Subject<Unit>();
-        private readonly Subject<Unit> playerInitializedSubject = new Subject<Unit>();
         private readonly Subject<SeekArgs> seekStartedSubject = new Subject<SeekArgs>();
-        private readonly Subject<Unit> pausedSubject = new Subject<Unit>();
-        private readonly Subject<Unit> playedSubject = new Subject<Unit>();
-        private readonly Subject<Unit> stoppedSubject = new Subject<Unit>();
+        private readonly Subject<PlayerState> stateChangedSubject = new Subject<PlayerState>();
 
         // Timer process and supporting cancellation elements for clock extraction
         // and generation
@@ -222,37 +218,24 @@ namespace JuvoPlayer.Player.EsPlayer
 
             try
             {
-                if (player.GetState() == ESPlayer.ESPlayerState.Playing)
+                var state = player.GetState();
+                switch (state)
                 {
-                    logger.Info("Already playing");
-                    return;
+                    case ESPlayer.ESPlayerState.Playing:
+                        return;
+                    case ESPlayer.ESPlayerState.Ready:
+                        player.Start();
+                        break;
+                    case ESPlayer.ESPlayerState.Paused:
+                        player.Resume();
+                        break;
+                    default:
+                        throw new InvalidOperationException($"Play called in invalid state: {state}");
                 }
 
-                player.Start();
                 EnableTransfer();
                 StartClockGenerator();
-                playedSubject.OnNext(Unit.Default);
-            }
-            catch (InvalidOperationException ioe)
-            {
-                logger.Error(ioe.Message);
-            }
-        }
-
-        /// <summary>
-        /// Resumes playback on all initialized streams. Playback had to be
-        /// paused.
-        /// </summary>
-        public void Resume()
-        {
-            logger.Info("");
-
-            try
-            {
-                player.Resume();
-                EnableTransfer();
-                StartClockGenerator();
-                playedSubject.OnNext(Unit.Default);
+                stateChangedSubject.OnNext(PlayerState.Playing);
             }
             catch (InvalidOperationException ioe)
             {
@@ -272,7 +255,7 @@ namespace JuvoPlayer.Player.EsPlayer
                 DisableTransfer();
                 player.Pause();
                 StopClockGenerator();
-                pausedSubject.OnNext(Unit.Default);
+                stateChangedSubject.OnNext(PlayerState.Paused);
             }
             catch (InvalidOperationException ioe)
             {
@@ -287,12 +270,16 @@ namespace JuvoPlayer.Player.EsPlayer
         {
             logger.Info("");
 
+            var state = player.GetState();
+            if (state != ESPlayer.ESPlayerState.Paused && state != ESPlayer.ESPlayerState.Playing)
+                return;
+
             try
             {
                 DisableTransfer();
                 player.Stop();
                 StopClockGenerator();
-                stoppedSubject.OnNext(Unit.Default);
+                stateChangedSubject.OnNext(PlayerState.Idle);
             }
             catch (InvalidOperationException ioe)
             {
@@ -370,7 +357,7 @@ namespace JuvoPlayer.Player.EsPlayer
             DisableTransfer();
             DisableInput();
 
-            playbackCompletedSubject.OnNext(Unit.Default);
+            stateChangedSubject.OnCompleted();
         }
 
         /// <summary>
@@ -412,11 +399,6 @@ namespace JuvoPlayer.Player.EsPlayer
             return playbackErrorSubject.AsObservable();
         }
 
-        public IObservable<Unit> PlaybackCompleted()
-        {
-            return playbackCompletedSubject.AsObservable();
-        }
-
         /// <summary>
         /// ESPlayer event handler. Issued after calling AsyncPrepare. Stream type
         /// passed as an argument indicates stream for which data transfer has be started.
@@ -449,11 +431,6 @@ namespace JuvoPlayer.Player.EsPlayer
         public IObservable<TimeSpan> TimeUpdated()
         {
             return timeUpdatedSubject.AsObservable();
-        }
-
-        public IObservable<Unit> PlayerInitialized()
-        {
-            return playerInitializedSubject.AsObservable();
         }
 
         public IObservable<Unit> SeekCompleted()
@@ -510,10 +487,9 @@ namespace JuvoPlayer.Player.EsPlayer
                     await player.PrepareAsync(OnReadyToStartStream).WithCancellation(token);
 
                     logger.Info("Starting Playback");
-                    player.Start();
                     StartClockGenerator();
 
-                    playerInitializedSubject.OnNext(Unit.Default);
+                    stateChangedSubject.OnNext(PlayerState.Prepared);
                 }
             }
             catch (InvalidOperationException ioe)
@@ -596,8 +572,8 @@ namespace JuvoPlayer.Player.EsPlayer
 
                     logger.Info("Player.PrepareAsync() Completed");
 
-                    player.Start();
-                    StartClockGenerator();
+                    // TODO: Do we always want to start player after restart?
+                    Play();
                 }
             }
             catch (OperationCanceledException)
@@ -890,12 +866,7 @@ namespace JuvoPlayer.Player.EsPlayer
 
         private void DisposeAllSubjects()
         {
-            pausedSubject.Dispose();
-            playedSubject.Dispose();
-            stoppedSubject.Dispose();
-            playbackCompletedSubject.Dispose();
             playbackErrorSubject.Dispose();
-            playerInitializedSubject.Dispose();
             seekCompletedSubject.Dispose();
             seekStartedSubject.Dispose();
             timeUpdatedSubject.Dispose();
@@ -916,19 +887,9 @@ namespace JuvoPlayer.Player.EsPlayer
             return seekStartedSubject.AsObservable();
         }
 
-        public IObservable<Unit> Paused()
+        public IObservable<PlayerState> StateChanged()
         {
-            return pausedSubject.AsObservable();
-        }
-
-        public IObservable<Unit> Played()
-        {
-            return playedSubject.AsObservable();
-        }
-
-        public IObservable<Unit> Stopped()
-        {
-            return stoppedSubject.AsObservable();
+            return stateChangedSubject.AsObservable();
         }
     }
 }

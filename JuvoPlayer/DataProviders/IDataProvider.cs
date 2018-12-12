@@ -27,8 +27,7 @@ namespace JuvoPlayer.DataProviders
     {
         void OnChangeActiveStream(StreamDescription stream);
         void OnDeactivateStream(StreamType streamType);
-        void OnPaused();
-        void OnPlayed();
+        void OnStateChanged(PlayerState state);
         void OnSeekStarted(TimeSpan time, uint seekId);
         void OnSeekCompleted();
         void OnStopped();
@@ -47,6 +46,5 @@ namespace JuvoPlayer.DataProviders
         IObservable<string> StreamError();
         IObservable<Unit> BufferingStarted();
         IObservable<Unit> BufferingCompleted();
-
     }
 }
