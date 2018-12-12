@@ -1,5 +1,6 @@
 /*!
- * https://github.com/SamsungDForum/JuvoPlayer
+ *
+ * ([https://github.com/SamsungDForum/JuvoPlayer])
  * Copyright 2018, Samsung Electronics Co., Ltd
  * Licensed under the MIT license
  *
@@ -13,30 +14,19 @@
  * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
  */
 
 using System;
-using System.Reactive.Linq;
-using System.Threading;
 
-namespace JuvoPlayer.Common
+namespace JuvoPlayer.Demuxers.FFmpeg
 {
-    public static class ObservableExtensions
-    {
-        public static IDisposable Subscribe<T>(this IObservable<T> observable, Action<T> onNext,
-            SynchronizationContext context)
-        {
-            if (context != null)
-                observable = observable.ObserveOn(context);
-            return observable.Subscribe(onNext);
-        }
+    public delegate ArraySegment<byte> ReadPacket(int size);
 
-        public static IDisposable Subscribe<T>(this IObservable<T> observable, Action<T> onNext, Action onCompleted,
-            SynchronizationContext context)
-        {
-            if (context != null)
-                observable = observable.ObserveOn(context);
-            return observable.Subscribe(onNext, onCompleted);
-        }
+    public interface IFFmpegGlue
+    {
+        void Initialize();
+        IAVIOContext AllocIOContext(ulong bufferSize, ReadPacket readPacket);
+        IAVFormatContext AllocFormatContext();
     }
 }

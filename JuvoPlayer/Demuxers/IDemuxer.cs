@@ -15,11 +15,20 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-using JuvoPlayer.Common;
 using System;
+using System.Collections.Generic;
+using System.Threading.Tasks;
+using JuvoPlayer.Common;
 
 namespace JuvoPlayer.Demuxers
 {
+    public struct ClipConfiguration
+    {
+        public IList<StreamConfig> StreamConfigs { get; set; }
+        public IList<DRMInitData> DrmInitDatas { get; set; }
+        public TimeSpan Duration { get; set; }
+    }
+
     public enum InitializationMode
     {
         // Stream has been already initialized so preparing StreamConfig is not needed
@@ -30,19 +39,13 @@ namespace JuvoPlayer.Demuxers
 
     public interface IDemuxer : IDisposable
     {
-        void StartForExternalSource(InitializationMode initMode);
-        void StartForUrl(string url);
-        void ChangePID(int pid);
+        bool IsInitialized();
+        Task<ClipConfiguration> InitForUrl(string url);
+        Task<ClipConfiguration> InitForEs(InitializationMode mode);
+        Task<Packet> NextPacket();
+        void PushChunk(byte[] chunk);
+        Task Completion { get; }
+        void Complete();
         void Reset();
-        void Pause();
-        void Resume();
-        void Flush();
-        bool IsPaused { get; }
-
-        IObservable<TimeSpan> ClipDurationChanged();
-        IObservable<DRMInitData> DRMInitDataFound();
-        IObservable<StreamConfig> StreamConfigReady();
-        IObservable<Packet> PacketReady();
-        IObservable<string> DemuxerError();
     }
 }

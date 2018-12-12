@@ -56,7 +56,7 @@ namespace JuvoPlayer.Player.EsPlayer
         {
             logger.Info(stream.ToString());
 
-            // Grab "old" queue 
+            // Grab "old" queue
             //
             var storage = packetQueues[(int)stream];
 
@@ -106,9 +106,9 @@ namespace JuvoPlayer.Player.EsPlayer
         }
 
         /// <summary>
-        /// 
+        ///
         /// Retrieves a packet from internal storage for a given stream type
-        /// 
+        ///
         /// </summary>
         /// <param name="stream">stream for which packet is to be retrieved</param>
         /// <param name="extStopToken">external cancellation token for stopping retrieval</param>
@@ -176,7 +176,7 @@ namespace JuvoPlayer.Player.EsPlayer
         /// </summary>
         /// <param name="queue">BlockingCollection(packet)></param>
         /// <param name="stream">Stream to be emptied</param>
-        /// 
+        ///
         private void EmptyQueue(Common.StreamType stream, ref BlockingCollection<Packet> queue)
         {
             if (queue == null)
@@ -184,7 +184,7 @@ namespace JuvoPlayer.Player.EsPlayer
 
             var queueData = queue.ToArray();
 
-            // We do not care about order of execution nor have to wait for its 
+            // We do not care about order of execution nor have to wait for its
             // completion
             //
             logger.Info($"{stream}: Disposing of {queueData.Length} packets");
