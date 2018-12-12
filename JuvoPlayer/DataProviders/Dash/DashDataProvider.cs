@@ -136,6 +136,10 @@ namespace JuvoPlayer.DataProviders.Dash
             throw new NotImplementedException();
         }
 
+        public void OnStateChanged(PlayerState state)
+        {
+        }
+
         private void OnDeactivateSubtitleStream()
         {
             cuesMap = null;
@@ -145,15 +149,6 @@ namespace JuvoPlayer.DataProviders.Dash
         {
             var subtitleInfo = manifestProvider.GetSubtitleInfo(description);
             cuesMap = new SubtitleFacade().LoadSubtitles(subtitleInfo);
-        }
-
-        public void OnPaused()
-        {
-            Logger.Info("");
-        }
-
-        public void OnPlayed()
-        {
         }
 
         public void OnSeekStarted(TimeSpan time, uint seekId)

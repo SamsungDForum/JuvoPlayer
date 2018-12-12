@@ -15,7 +15,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-﻿using System;
+ using System;
 using System.Reactive.Disposables;
 using System.Threading;
 using JuvoPlayer.Player;
@@ -61,13 +61,11 @@ namespace JuvoPlayer.DataProviders
                 dataProvider.StreamError()
                     .Subscribe(controller.OnStreamError, SynchronizationContext.Current),
                 controller.TimeUpdated().Subscribe(dataProvider.OnTimeUpdated, context),
-                controller.Paused().Subscribe(unit => dataProvider.OnPaused(), context),
-                controller.Played().Subscribe(unit => dataProvider.OnPlayed(), context),
+                controller.StateChanged().Subscribe(dataProvider.OnStateChanged, context),
                 controller.SeekStarted()
                     .Subscribe(args => dataProvider.OnSeekStarted(args.Position, args.Id), context),
                 controller.SeekCompleted()
                     .Subscribe(unit => dataProvider.OnSeekCompleted(), context),
-                controller.Stopped().Subscribe(unit => dataProvider.OnStopped(), context)
             };
         }
 

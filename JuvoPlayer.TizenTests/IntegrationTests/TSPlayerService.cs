@@ -17,6 +17,8 @@
 
 using System;
 using System.Threading.Tasks;
+using JuvoPlayer.Common;
+using JuvoPlayer.Player;
 using JuvoPlayer.TizenTests.Utils;
 using NUnit.Framework;
 
@@ -106,7 +108,7 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
 
             service.SetClipDefinition(clip);
 
-            Assert.That(() => service.State, Is.EqualTo(PlayerService.PlayerState.Prepared)
+            Assert.That(() => service.State, Is.EqualTo(PlayerState.Prepared)
                 .After(10).Seconds
                 .PollEvery(100).MilliSeconds);
 
