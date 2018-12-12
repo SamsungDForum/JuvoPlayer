@@ -27,24 +27,29 @@ namespace JuvoPlayer.DataProviders.RTSP
 {
     internal class RTSPDataProvider : IDataProvider
     {
-        private readonly IDemuxer demuxer;
+        private readonly IDemuxerController demuxerController;
         private readonly IRTSPClient rtpClient;
         private readonly ClipDefinition currentClip;
-        public RTSPDataProvider(IDemuxer demuxer, IRTSPClient rtpClient, ClipDefinition currentClip)
+
+        public RTSPDataProvider(IDemuxerController demuxerController, IRTSPClient rtpClient, ClipDefinition currentClip)
         {
-            this.demuxer = demuxer ?? throw new ArgumentNullException(nameof(demuxer), "demuxer cannot be null");
-            this.rtpClient = rtpClient ?? throw new ArgumentNullException(nameof(rtpClient), "rtpClient cannot be null");
-            this.currentClip = currentClip ?? throw new ArgumentNullException(nameof(currentClip), "clip cannot be null");
+            this.demuxerController = demuxerController ??
+                                     throw new ArgumentNullException(nameof(demuxerController),
+                                         "demuxerController cannot be null");
+            this.rtpClient =
+                rtpClient ?? throw new ArgumentNullException(nameof(rtpClient), "rtpClient cannot be null");
+            this.currentClip =
+                currentClip ?? throw new ArgumentNullException(nameof(currentClip), "clip cannot be null");
         }
 
         public IObservable<TimeSpan> ClipDurationChanged()
         {
-            return demuxer.ClipDurationChanged();
+            return demuxerController.ClipDurationFound();
         }
 
         public IObservable<DRMInitData> DRMInitDataFound()
         {
-            return demuxer.DRMInitDataFound();
+            return demuxerController.DrmInitDataFound();
         }
 
         public IObservable<DRMDescription> SetDrmConfiguration()
@@ -54,27 +59,17 @@ namespace JuvoPlayer.DataProviders.RTSP
 
         public IObservable<StreamConfig> StreamConfigReady()
         {
-            return demuxer.StreamConfigReady();
+            return demuxerController.StreamConfigReady();
         }
 
         public IObservable<Packet> PacketReady()
         {
-            return demuxer.PacketReady()
-                .SelectMany(packet =>
-                {
-                    if (packet != null)
-                        return Observable.Return(packet);
-
-                    // found empty packet which means EOS. We need to send two fake
-                    // eos packets, one for audio and one for video
-                    return Observable.Return(Packet.CreateEOS(StreamType.Audio))
-                        .Merge(Observable.Return(Packet.CreateEOS(StreamType.Video)));
-                });
+            return demuxerController.PacketReady();
         }
 
         public IObservable<string> StreamError()
         {
-            return demuxer.DemuxerError();
+            return demuxerController.DemuxerError();
         }
 
         public IObservable<Unit> BufferingStarted()
@@ -124,7 +119,6 @@ namespace JuvoPlayer.DataProviders.RTSP
 
         public void Stop()
         {
-
         }
 
         public void Start()
@@ -135,7 +129,7 @@ namespace JuvoPlayer.DataProviders.RTSP
             // Start demuxer before client. Demuxer start clears
             // underlying buffer. We do not want that to happen after client
             // puts something in there.
-            demuxer.StartForExternalSource(InitializationMode.Full);
+            demuxerController.StartForEs(InitializationMode.Full);
             rtpClient.Start(currentClip);
         }
 
@@ -152,7 +146,7 @@ namespace JuvoPlayer.DataProviders.RTSP
         public void Dispose()
         {
             rtpClient?.Stop();
-            demuxer.Dispose();
+            demuxerController.Dispose();
         }
 
         public List<StreamDescription> GetStreamsDescription(StreamType streamType)

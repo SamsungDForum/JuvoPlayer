@@ -30,7 +30,7 @@ namespace JuvoPlayer.DataProviders.HLS
     {
         private static readonly TimeSpan MaxBufferHealth = TimeSpan.FromSeconds(10);
 
-        private readonly IDemuxer demuxer;
+        private readonly IDemuxerController demuxerController;
         private readonly ClipDefinition currentClip;
 
         private TimeSpan lastReceivedPts;
@@ -38,9 +38,11 @@ namespace JuvoPlayer.DataProviders.HLS
 
         private CuesMap cuesMap;
 
-        public HLSDataProvider(IDemuxer demuxer, ClipDefinition currentClip)
+        public HLSDataProvider(IDemuxerController demuxerController, ClipDefinition currentClip)
         {
-            this.demuxer = demuxer ?? throw new ArgumentNullException(nameof(demuxer), "demuxer cannot be null");
+            this.demuxerController = demuxerController ??
+                                     throw new ArgumentNullException(nameof(demuxerController),
+                                         "demuxerController cannot be null");
             this.currentClip =
                 currentClip ?? throw new ArgumentNullException(nameof(currentClip), "clip cannot be null");
         }
@@ -79,12 +81,12 @@ namespace JuvoPlayer.DataProviders.HLS
 
         public void OnPaused()
         {
-            demuxer.Pause();
+            demuxerController.Pause();
         }
 
         public void OnPlayed()
         {
-            demuxer.Resume();
+            demuxerController.Resume();
         }
 
         public void OnSeekStarted(TimeSpan time, uint seekId)
@@ -112,7 +114,7 @@ namespace JuvoPlayer.DataProviders.HLS
 
         public void Start()
         {
-            demuxer.StartForUrl(currentClip.Url);
+            demuxerController.StartForUrl(currentClip.Url);
         }
 
         public Cue CurrentCue => cuesMap?.Get(currentTime);
@@ -125,15 +127,15 @@ namespace JuvoPlayer.DataProviders.HLS
 
         private void ResumeDemuxerIfNecessary()
         {
-            if (demuxer.IsPaused && !ShouldPauseDemuxer())
+            if (!ShouldPauseDemuxer())
             {
-                demuxer.Resume();
+                demuxerController.Resume();
             }
         }
 
         public void Dispose()
         {
-            demuxer.Dispose();
+            demuxerController.Dispose();
         }
 
         public List<StreamDescription> GetStreamsDescription(StreamType streamType)
@@ -145,12 +147,12 @@ namespace JuvoPlayer.DataProviders.HLS
 
         public IObservable<TimeSpan> ClipDurationChanged()
         {
-            return demuxer.ClipDurationChanged();
+            return demuxerController.ClipDurationFound();
         }
 
         public IObservable<DRMInitData> DRMInitDataFound()
         {
-            return demuxer.DRMInitDataFound();
+            return demuxerController.DrmInitDataFound();
         }
 
         public IObservable<DRMDescription> SetDrmConfiguration()
@@ -160,26 +162,18 @@ namespace JuvoPlayer.DataProviders.HLS
 
         public IObservable<StreamConfig> StreamConfigReady()
         {
-            return demuxer.StreamConfigReady();
+            return demuxerController.StreamConfigReady();
         }
 
         public IObservable<Packet> PacketReady()
         {
-            return demuxer.PacketReady()
+            return demuxerController.PacketReady()
                 .Do(packet =>
                 {
                     if (packet == null) return;
                     lastReceivedPts = packet.Pts;
                     if (ShouldPauseDemuxer())
-                        demuxer.Pause();
-                }).SelectMany(packet =>
-                {
-                    if (packet != null)
-                        return Observable.Return(packet);
-                    // found empty packet which means EOS. We need to send two fake
-                    // eos packets, one for audio and one for video
-                    return Observable.Return(Packet.CreateEOS(StreamType.Audio))
-                        .Merge(Observable.Return(Packet.CreateEOS(StreamType.Video)));
+                        demuxerController.Pause();
                 });
         }
 
