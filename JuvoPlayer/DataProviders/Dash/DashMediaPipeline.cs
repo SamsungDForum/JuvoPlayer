@@ -29,6 +29,8 @@ using JuvoPlayer.Demuxers;
 using JuvoPlayer.Drms.Cenc;
 using MpdParser;
 using System.Threading;
+using System.Threading.Tasks;
+using Nito.AsyncEx;
 
 namespace JuvoPlayer.DataProviders.Dash
 {
@@ -76,7 +78,7 @@ namespace JuvoPlayer.DataProviders.Dash
         private TimeSpan? trimOffset;
 
         private readonly IDashClient dashClient;
-        private readonly IDemuxer demuxer;
+        private readonly IDemuxerController demuxerController;
         private readonly IThroughputHistory throughputHistory;
         private readonly StreamType streamType;
         public StreamType StreamType => streamType;
@@ -111,26 +113,28 @@ namespace JuvoPlayer.DataProviders.Dash
         private IDisposable demuxerStreamConfigReadySub;
         private IDisposable downloadCompletedSub;
 
-        public DashMediaPipeline(IDashClient dashClient, IDemuxer demuxer, IThroughputHistory throughputHistory,
+        public DashMediaPipeline(IDashClient dashClient, IDemuxerController demuxerController,
+            IThroughputHistory throughputHistory,
             StreamType streamType)
         {
             this.dashClient = dashClient ??
                               throw new ArgumentNullException(nameof(dashClient), "dashClient cannot be null");
-            this.demuxer = demuxer ?? throw new ArgumentNullException(nameof(dashClient), "demuxer cannot be null");
+            this.demuxerController = demuxerController ??
+                                     throw new ArgumentNullException(nameof(demuxerController), "cannot be null");
             this.throughputHistory = throughputHistory ??
                                      throw new ArgumentNullException(nameof(throughputHistory),
                                          "throughputHistory cannot be null");
             this.streamType = streamType;
 
             downloadCompletedSub = dashClient.DownloadCompleted()
-                .Subscribe(unit => OnDownloadCompleted(), SynchronizationContext.Current);
+                .Subscribe(async unit => await OnDownloadCompleted(), SynchronizationContext.Current);
             SubscribeDemuxerEvents();
         }
 
-        private void OnDownloadCompleted()
+        private async Task OnDownloadCompleted()
         {
             AdaptToNetConditions();
-            SwitchStreamIfNeeded();
+            await SwitchStreamIfNeeded();
             dashClient.ScheduleNextSegDownload();
         }
 
@@ -239,7 +243,7 @@ namespace JuvoPlayer.DataProviders.Dash
             PendingStream = stream;
         }
 
-        public void SwitchStreamIfNeeded()
+        public async Task SwitchStreamIfNeeded()
         {
             // Access serialization is needed.
             // SwitchStreamIfNeeded can be called from DashDataProvider or
@@ -272,7 +276,7 @@ namespace JuvoPlayer.DataProviders.Dash
                 if (!CanSwitchStream())
                     return;
 
-                FlushPipeline();
+                await FlushPipeline();
                 StartPipeline(PendingStream);
 
                 PendingStream = null;
@@ -343,7 +347,7 @@ namespace JuvoPlayer.DataProviders.Dash
 
                 var fullInitRequired = (newStream != null);
 
-                demuxer.StartForExternalSource(fullInitRequired ? InitializationMode.Full : InitializationMode.Minimal);
+                demuxerController.StartForEs(fullInitRequired ? InitializationMode.Full : InitializationMode.Minimal);
                 dashClient.Start(fullInitRequired);
 
                 pipelineStarted = true;
@@ -393,7 +397,7 @@ namespace JuvoPlayer.DataProviders.Dash
             if (!pipelineStarted)
                 return;
 
-            demuxer.Reset();
+            demuxerController.Reset();
             dashClient.Stop();
 
             trimOffset = null;
@@ -449,8 +453,12 @@ namespace JuvoPlayer.DataProviders.Dash
 
                 DisableAdaptiveStreaming = true;
 
-                FlushPipeline();
-                StartPipeline(newStream);
+                FlushPipeline().ContinueWith(task =>
+                    {
+                        if (task.Status == TaskStatus.RanToCompletion)
+                            StartPipeline(newStream);
+                    },
+                    TaskScheduler.FromCurrentSynchronizationContext());
             }
         }
 
@@ -461,7 +469,7 @@ namespace JuvoPlayer.DataProviders.Dash
 
             // Stop demuxer and dashclient
             // Stop demuxer first so old incoming data will ignored
-            demuxer.Reset();
+            demuxerController.Reset();
             DisposeDemuxerSubscriptions();
             SubscribeDemuxerEvents();
 
@@ -470,14 +478,14 @@ namespace JuvoPlayer.DataProviders.Dash
             pipelineStarted = false;
         }
 
-        private void FlushPipeline()
+        private async Task FlushPipeline()
         {
             if (!pipelineStarted)
                 return;
 
             // Stop demuxer and dashclient
             dashClient.Reset();
-            demuxer.Flush();
+            await demuxerController.Flush();
 
             pipelineStarted = false;
         }
@@ -578,7 +586,7 @@ namespace JuvoPlayer.DataProviders.Dash
 
         public IObservable<DRMInitData> OnDRMInitDataFound()
         {
-            return demuxer.DRMInitDataFound()
+            return demuxerController.DrmInitDataFound()
                 .Merge(drmInitDataSubject.AsObservable())
                 .Select(data =>
                 {
@@ -592,7 +600,6 @@ namespace JuvoPlayer.DataProviders.Dash
             return packetReadySubject.AsObservable()
                 .Select(packet =>
                 {
-                    if (packet == null) return Packet.CreateEOS(streamType);
                     if (packet is SeekPacket)
                         return packet;
 
@@ -610,6 +617,8 @@ namespace JuvoPlayer.DataProviders.Dash
                         packet.Dts = TimeSpan.Zero;
                     }
 
+                    Logger.Debug($"{streamType} {packet.Pts}");
+
                     // Don't convert packet here, use assignment (less costly)
                     lastPushedClock.SetClock(packet);
                     return packet;
@@ -623,7 +632,7 @@ namespace JuvoPlayer.DataProviders.Dash
 
         public IObservable<string> StreamError()
         {
-            return dashClient.ErrorOccurred().Merge(demuxer.DemuxerError());
+            return dashClient.ErrorOccurred().Merge(demuxerController.DemuxerError());
         }
 
         public IObservable<Unit> BufferingStarted()
@@ -649,10 +658,12 @@ namespace JuvoPlayer.DataProviders.Dash
 
         private void SubscribeDemuxerEvents()
         {
-            demuxerPacketReadySub = demuxer.PacketReady()
-                .Subscribe(packet => packetReadySubject.OnNext(packet), SynchronizationContext.Current);
+            demuxerPacketReadySub = demuxerController.PacketReady()
+                .Subscribe(packet => packetReadySubject.OnNext(packet),
+                    () => packetReadySubject.OnCompleted(),
+                    SynchronizationContext.Current);
 
-            demuxerStreamConfigReadySub = demuxer.StreamConfigReady()
+            demuxerStreamConfigReadySub = demuxerController.StreamConfigReady()
                 .Subscribe(config => demuxerStreamConfigReadySubject.OnNext(config), SynchronizationContext.Current);
         }
 
@@ -695,7 +706,7 @@ namespace JuvoPlayer.DataProviders.Dash
 
         public void Dispose()
         {
-            demuxer.Dispose();
+            demuxerController.Dispose();
             dashClient.Dispose();
 
             DisposeAllSubjects();

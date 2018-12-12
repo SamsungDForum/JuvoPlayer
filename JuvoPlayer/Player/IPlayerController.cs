@@ -37,6 +37,7 @@ namespace JuvoPlayer.Player
         void OnSetDrmConfiguration(DRMDescription description);
         void OnStreamConfigReady(StreamConfig config);
         void OnPacketReady(Packet packet);
+        void OnStreamsCompleted();
         void OnStreamError(string errorMessage);
         void OnBufferingStarted();
         void OnBufferingCompleted();

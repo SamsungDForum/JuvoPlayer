@@ -20,6 +20,7 @@ using System.Collections.Generic;
 using System.Reactive;
 using System.Reactive.Linq;
 using System.Threading;
+using System.Threading.Tasks;
 using JuvoLogger;
 using JuvoPlayer.Common;
 using JuvoPlayer.Subtitles;
@@ -27,7 +28,6 @@ using JuvoPlayer.Subtitles;
 
 namespace JuvoPlayer.DataProviders.Dash
 {
-
     internal class DashDataProvider : IDataProvider
     {
         private const string Tag = "JuvoPlayer";
@@ -50,18 +50,21 @@ namespace JuvoPlayer.DataProviders.Dash
             DashMediaPipeline audioPipeline,
             DashMediaPipeline videoPipeline)
         {
-            this.audioPipeline = audioPipeline ?? throw new ArgumentNullException(nameof(audioPipeline), "audioPipeline cannot be null");
-            this.videoPipeline = videoPipeline ?? throw new ArgumentNullException(nameof(videoPipeline), "videoPipeline cannot be null");
+            this.audioPipeline = audioPipeline ??
+                                 throw new ArgumentNullException(nameof(audioPipeline), "audioPipeline cannot be null");
+            this.videoPipeline = videoPipeline ??
+                                 throw new ArgumentNullException(nameof(videoPipeline), "videoPipeline cannot be null");
 
             manifestProvider = new DashManifestProvider(manifest, audioPipeline, videoPipeline);
-            manifestReadySub = manifestProvider.ManifestReady().Subscribe(unit => OnManifestReady(), SynchronizationContext.Current);
+            manifestReadySub = manifestProvider.ManifestReady()
+                .Subscribe(async unit => await OnManifestReady(), SynchronizationContext.Current);
         }
 
-        private void OnManifestReady()
+        private async Task OnManifestReady()
         {
             Logger.Info("");
-            audioPipeline.SwitchStreamIfNeeded();
-            videoPipeline.SwitchStreamIfNeeded();
+            await audioPipeline.SwitchStreamIfNeeded();
+            await videoPipeline.SwitchStreamIfNeeded();
         }
 
         public IObservable<TimeSpan> ClipDurationChanged()
@@ -133,6 +136,7 @@ namespace JuvoPlayer.DataProviders.Dash
                 OnDeactivateSubtitleStream();
                 return;
             }
+
             throw new NotImplementedException();
         }
 
@@ -246,8 +250,6 @@ namespace JuvoPlayer.DataProviders.Dash
 
             videoPipeline?.Dispose();
             videoPipeline = null;
-
         }
     }
 }
-

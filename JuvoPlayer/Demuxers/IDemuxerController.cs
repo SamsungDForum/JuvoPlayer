@@ -1,5 +1,6 @@
 /*!
- * https://github.com/SamsungDForum/JuvoPlayer
+ *
+ * ([https://github.com/SamsungDForum/JuvoPlayer])
  * Copyright 2018, Samsung Electronics Co., Ltd
  * Licensed under the MIT license
  *
@@ -13,30 +14,29 @@
  * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
  */
 
 using System;
-using System.Reactive.Linq;
-using System.Threading;
+using System.Threading.Tasks;
+using JuvoPlayer.Common;
 
-namespace JuvoPlayer.Common
+namespace JuvoPlayer.Demuxers
 {
-    public static class ObservableExtensions
+    public interface IDemuxerController : IDisposable
     {
-        public static IDisposable Subscribe<T>(this IObservable<T> observable, Action<T> onNext,
-            SynchronizationContext context)
-        {
-            if (context != null)
-                observable = observable.ObserveOn(context);
-            return observable.Subscribe(onNext);
-        }
+        void SetDataSource(IObservable<byte[]> dataSource);
+        void StartForUrl(string url);
+        void StartForEs(InitializationMode mode);
+        void Reset();
+        Task Flush();
+        void Pause();
+        void Resume();
 
-        public static IDisposable Subscribe<T>(this IObservable<T> observable, Action<T> onNext, Action onCompleted,
-            SynchronizationContext context)
-        {
-            if (context != null)
-                observable = observable.ObserveOn(context);
-            return observable.Subscribe(onNext, onCompleted);
-        }
+        IObservable<StreamConfig> StreamConfigReady();
+        IObservable<TimeSpan> ClipDurationFound();
+        IObservable<DRMInitData> DrmInitDataFound();
+        IObservable<Packet> PacketReady();
+        IObservable<string> DemuxerError();
     }
 }
