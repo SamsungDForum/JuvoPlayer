@@ -19,17 +19,11 @@ using System;
 using JuvoPlayer.Common;
 using JuvoPlayer.Demuxers;
 using JuvoPlayer.Demuxers.FFmpeg;
-using JuvoPlayer.SharedBuffers;
 
 namespace JuvoPlayer.DataProviders.RTSP
 {
     public class RTSPDataProviderFactory : IDataProviderFactory
     {
-
-        public RTSPDataProviderFactory()
-        {
-        }
-
         public IDataProvider Create(ClipDefinition clip)
         {
             if (clip == null)
