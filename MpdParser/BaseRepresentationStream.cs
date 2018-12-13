@@ -133,17 +133,14 @@ namespace MpdParser.Node.Dynamic
             }
             catch (WebException e)
             {
-                Logger.Error($"Downloading Index Segment FAILED {IndexSegment.Url} ({e.Status}):\n{e}");
+                Logger.Error(e, $"Downloading Index Segment FAILED {IndexSegment.Url} ({e.Status})");
                 // todo(m.rybinski): what now? Retry? How many times? Show an error to the user?
                 // No need to add any special error handling for failed downloads. Indexed content
                 // will return null segments if no index data is present.
             }
             catch (Exception e)
             {
-                Logger.Error($"Downloading Index Segment FAILED {IndexSegment.Url}");
-                Logger.Error(e.Message);
-                Logger.Error(e.Source);
-                Logger.Error(e.StackTrace);
+                Logger.Error(e, $"Downloading Index Segment FAILED {IndexSegment.Url}");
             }
         }
 
@@ -337,7 +334,7 @@ namespace MpdParser.Node.Dynamic
             var idx = segments_.BinarySearch(0, segments_.Count, searchFor, searcher);
 
             if (idx < 0)
-                Logger.Info($"Failed to find index segment in @time. FA={segments_[0].Period.Start} Req={pointInTime} LA={segments_[segments_.Count - 1].Period.Start}");
+                Logger.Error($"Failed to find index segment in @time. FA={segments_[0].Period.Start} Req={pointInTime} LA={segments_[segments_.Count - 1].Period.Start}");
 
             return idx;
         }

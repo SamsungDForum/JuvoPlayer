@@ -187,7 +187,7 @@ namespace JuvoPlayer.DataProviders.Dash
                 if (manifestFeedTask == null)
                     return;
 
-                logger.Info("Terminating DashManifestProvider");
+                logger.Info("Terminating");
                 manifestFeedCts?.Cancel();
 
                 try
@@ -206,7 +206,7 @@ namespace JuvoPlayer.DataProviders.Dash
                     manifestFeedCts?.Dispose();
                     manifestFeedCts = null;
                     manifestFeedTask = null;
-                    logger.Info("DashManifestProvider terminated.");
+                    logger.Info("Terminated.");
                 }
             }
         }
@@ -257,7 +257,7 @@ namespace JuvoPlayer.DataProviders.Dash
                     if (!repeatFeed)
                         streamErrorSubject.OnNext(ae.Message);
 
-                    logger.Warn("Failed to apply Manifest. Retrying. Failure: " + ae.Message);
+                    logger.Warn(ae, "Failed to apply Manifest. Retrying.");
 
                     Manifest.ForceHasChangedOnNextReload();
                 }
@@ -266,7 +266,7 @@ namespace JuvoPlayer.DataProviders.Dash
                     // Report all other exceptions to screen
                     // as they silently terminate task to fail state
                     //
-                    logger.Error(e.ToString());
+                    logger.Error(e);
                     repeatFeed = false;
                 }
 

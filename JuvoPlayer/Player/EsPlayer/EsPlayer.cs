@@ -50,7 +50,7 @@ namespace JuvoPlayer.Player.EsPlayer
             }
             catch (InvalidOperationException ioe)
             {
-                logger.Error("EsPlayer failure: " + ioe.Message);
+                logger.Error(ioe, "EsPlayer failure");
                 throw ioe;
             }
         }

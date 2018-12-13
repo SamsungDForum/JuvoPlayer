@@ -141,8 +141,7 @@ namespace JuvoPlayer.DataProviders.Dash
             }
             catch (TaskCanceledException ex)
             {
-                Logger.Warn($"{ex.Message}");
-                Logger.Warn("Scheduling next segment to download is cancelled");
+                Logger.Warn(ex, "Doesn't schedule next segment to download");
             }
         }
 
@@ -158,7 +157,7 @@ namespace JuvoPlayer.DataProviders.Dash
             if (newStream.Representation.Segments.PrepareStream())
                 return newStream;
 
-            Logger.Warn($"{StreamType}: Stream preparation failed! Content will not be played.");
+            Logger.Error($"{StreamType}: Stream preparation failed! Content will not be played.");
 
             return null;
         }
@@ -696,7 +695,7 @@ namespace JuvoPlayer.DataProviders.Dash
                     //
                     demuxerClock = (PacketTimeStamp) packet + lastSeek.Value;
 
-                    Logger.Info($"{StreamType}: Badly timestamped packet. Adjusting demuxerClock to: {demuxerClock}");
+                    Logger.Warn($"{StreamType}: Badly timestamped packet. Adjusting demuxerClock to: {demuxerClock}");
                 }
 
                 lastSeek = null;

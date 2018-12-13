@@ -113,7 +113,7 @@ namespace JuvoPlayer.DataProviders.Dash
                 }
                 else
                 {
-                    Logger.Info($"Manifest download failure {Uri}");
+                    Logger.Warn($"Manifest download failure {Uri}");
                 }
 
                 cancelToken.ThrowIfCancellationRequested();
@@ -169,8 +169,7 @@ namespace JuvoPlayer.DataProviders.Dash
             }
             catch (Exception ex)
             {
-                Logger.Error(
-                    "Cannot download manifest file. Error: " + ex.Message);
+                Logger.Error(ex, "Cannot download manifest file");
                 return null;
             }
 
@@ -191,8 +190,7 @@ namespace JuvoPlayer.DataProviders.Dash
             }
             catch (Exception ex)
             {
-                Logger.Error(
-                    "Cannot parse manifest file. Error: " + ex.Message);
+                Logger.Error(ex, "Cannot parse manifest file");
                 return null;
             }
         }

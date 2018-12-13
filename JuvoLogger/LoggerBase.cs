@@ -57,14 +57,39 @@ namespace JuvoLogger
             PrintLogIfEnabled(LogLevel.Warn, message, file, method, line);
         }
 
+        public void Warn(Exception ex, string message, string file = "", string method = "", int line = 0)
+        {
+            if (!string.IsNullOrEmpty(message))
+                PrintLogIfEnabled(LogLevel.Warn, message, file, method, line);
+            PrintLogIfEnabled(LogLevel.Warn, ex.Message, file, method, line);
+        }
+
         public void Error(string message, string file = "", string method = "", int line = 0)
         {
             PrintLogIfEnabled(LogLevel.Error, message, file, method, line);
         }
 
+        public void Error(Exception ex, string message, string file = "", string method = "", int line = 0)
+        {
+            if (!string.IsNullOrEmpty(message))
+                PrintLogIfEnabled(LogLevel.Error, message, file, method, line);
+            PrintLogIfEnabled(LogLevel.Error, ex.Message, file, method, line);
+            PrintLogIfEnabled(LogLevel.Error, ex.Source, file, method, line);
+            PrintLogIfEnabled(LogLevel.Error, ex.StackTrace, file, method, line);
+        }
+
         public void Fatal(string message, string file = "", string method = "", int line = 0)
         {
             PrintLogIfEnabled(LogLevel.Fatal, message, file, method, line);
+        }
+
+        public void Fatal(Exception ex, string message, string file = "", string method = "", int line = 0)
+        {
+            if (!string.IsNullOrEmpty(message))
+                PrintLogIfEnabled(LogLevel.Fatal, message, file, method, line);
+            PrintLogIfEnabled(LogLevel.Fatal, ex.Message, file, method, line);
+            PrintLogIfEnabled(LogLevel.Fatal, ex.Source, file, method, line);
+            PrintLogIfEnabled(LogLevel.Fatal, ex.StackTrace, file, method, line);
         }
 
         private void PrintLogIfEnabled(LogLevel level, string message, string file, string method, int line)

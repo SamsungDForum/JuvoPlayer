@@ -417,7 +417,7 @@ namespace MpdParser.Node.Dynamic
             if (idx < 0)
             {
                 var last = timelineAll.Length - 1;
-                Logger.Info($"Failed to find start segment @time. FAll={timelineAll[0].Number}/{timelineAll[0].TimeScaled} T={startTime} LAll={timelineAll[last].Number}/{timelineAll[last].TimeScaled}");
+                Logger.Error($"Failed to find start segment @time. FAll={timelineAll[0].Number}/{timelineAll[0].TimeScaled} T={startTime} LAll={timelineAll[last].Number}/{timelineAll[last].TimeScaled}");
                 return null;
             }
 
@@ -425,7 +425,7 @@ namespace MpdParser.Node.Dynamic
             if (timelineAll[idx].TimeToLive == TimeSpan.Zero)
             {
                 var last = timelineAll.Length - 1;
-                Logger.Info($"Start segment found {timelineAll[idx].Number} is unavailable FAll={timelineAll[0].Number}/{timelineAll[0].TimeScaled} T={startTime} TTL={timelineAll[idx].TimeToLive} LAll={timelineAll[last].Number}/{timelineAll[last].TimeScaled}");
+                Logger.Error($"Start segment found {timelineAll[idx].Number} is unavailable FAll={timelineAll[0].Number}/{timelineAll[0].TimeScaled} T={startTime} TTL={timelineAll[idx].TimeToLive} LAll={timelineAll[last].Number}/{timelineAll[last].TimeScaled}");
                 return null;
             }
             return (uint?)timelineAll[idx].Number;
@@ -609,7 +609,7 @@ namespace MpdParser.Node.Dynamic
                 lookFor, searcher);
 
             if (idx < 0)
-                Logger.Info($"Failed to find segment @pos. FA={timeline[0].Number} Pos={segmentId} LA={timeline[(int)Count - 1].Number}");
+                Logger.Error($"Failed to find segment @pos. FA={timeline[0].Number} Pos={segmentId} LA={timeline[(int)Count - 1].Number}");
 
 
             // Index Search is based on timelineAll. Access is done on timeline thus offset subtraction
@@ -633,7 +633,7 @@ namespace MpdParser.Node.Dynamic
                 lookFor, searcher);
 
             if (idx < 0)
-                Logger.Info($"Failed to find segment in @time. FA={timeline[0].TimeScaled} Req={pointInTime} LA={timeline[(int)Count - 1].TimeScaled}");
+                Logger.Error($"Failed to find segment in @time. FA={timeline[0].TimeScaled} Req={pointInTime} LA={timeline[(int)Count - 1].TimeScaled}");
 
 
             // Index Search is based on timelineAll. Access is done on timeline thus offset subtraction

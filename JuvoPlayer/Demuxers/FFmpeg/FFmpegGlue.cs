@@ -54,7 +54,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg
             }
             catch (Exception e)
             {
-                Logger.Info("Could not load and register FFmpeg library");
+                Logger.Error(e, "Could not load and register FFmpeg library");
                 throw new DemuxerException("Could not load and register FFmpeg library", e);
             }
         }
