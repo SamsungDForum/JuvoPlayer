@@ -133,9 +133,17 @@ namespace JuvoPlayer.DataProviders.Dash
 
         private async Task OnDownloadCompleted()
         {
-            AdaptToNetConditions();
-            await SwitchStreamIfNeeded();
-            dashClient.ScheduleNextSegDownload();
+            try
+            {
+                AdaptToNetConditions();
+                await SwitchStreamIfNeeded();
+                dashClient.ScheduleNextSegDownload();
+            }
+            catch (TaskCanceledException ex)
+            {
+                Logger.Warn($"{ex.Message}");
+                Logger.Warn("Scheduling next segment to download is cancelled");
+            }
         }
 
         private DashStream InitializePendingStream(DashStream newStream)
@@ -254,7 +262,6 @@ namespace JuvoPlayer.DataProviders.Dash
             // Stream switching does not need to be serialized. If stream switch is already
             // in progress, next stream switch can safely be ignored, thus use of monitor
             // rather then lock.
-            //
 
             if (!Monitor.TryEnter(switchStreamLock))
                 return;
