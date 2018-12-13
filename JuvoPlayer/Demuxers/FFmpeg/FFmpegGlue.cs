@@ -32,8 +32,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg
         {
             try
             {
-                Interop.FFmpeg
-                    .av_register_all(); // TODO(g.skowinski): Is registering multiple times unwanted or doesn't it matter?
+                Interop.FFmpeg.av_register_all();
                 Interop.FFmpeg.avformat_network_init();
                 unsafe
                 {
