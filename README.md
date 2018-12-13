@@ -1,6 +1,6 @@
 JuvoPlayer
 =======
-The reference for developers of streaming live TV and VOD Tizen .Net applications. The GUIs (optional) are built on XamarinForms framework and Tizen Native with OpenGL. This sample illustrates how to utilize the elementary streams data source API (demuxed audio and video). The DRMed (MS PlayReady by CENC interface) and clean content can be played. MPEG DASH and RTP/RTSP content delivery protocols clients are integrated with the app (no TV platform dependency). The HLS protocol and demuxing of the streams are handled by the FFMPEG library incorporated as .so binary files.
+The reference for developers of streaming live TV and VOD Tizen .Net applications. The GUIs (alternative) are built on XamarinForms framework and Tizen Native with OpenGL. This sample illustrates how to utilize the elementary streams data source API (demuxed audio and video). The DRMed (MS PlayReady by CENC interface) and clean content can be played. MPEG DASH and RTP/RTSP content delivery protocols clients are integrated with the app (no TV platform dependency). The HLS protocol and demuxing of the streams are handled by the FFMPEG library incorporated as .so binary files.
 ## Dependencies
 1. [FFmpeg 3.3.6 'Hilbert'][ffmpeglink] - library (binaries) acting:
 
