@@ -70,7 +70,7 @@ namespace JuvoPlayer.DataProviders.Dash
             }
             catch (TaskCanceledException ex)
             {
-                Logger.Warn($"{ex.Message}");
+                Logger.Warn(ex);
             }
         }
 
@@ -216,7 +216,7 @@ namespace JuvoPlayer.DataProviders.Dash
 
         public void Start()
         {
-            Logger.Info("Dash Data Provider start");
+            Logger.Info("");
 
             manifestProvider.Start();
         }

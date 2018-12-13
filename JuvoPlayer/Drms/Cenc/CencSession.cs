@@ -258,7 +258,7 @@ namespace JuvoPlayer.Drms.Cenc
 
                 if (ret == E_DECRYPT_BUFFER_FULL && errorCount < MaxDecryptRetries)
                 {
-                    Logger.Info($"{type}: E_DECRYPT_BUFFER_FULL ({errorCount}/{MaxDecryptRetries})");
+                    Logger.Warn($"{type}: E_DECRYPT_BUFFER_FULL ({errorCount}/{MaxDecryptRetries})");
                     ++errorCount;
                     Thread.Sleep(DecryptBufferFullSleepTime);
                     continue;
@@ -302,7 +302,7 @@ namespace JuvoPlayer.Drms.Cenc
                         break;
                     }
                 default:
-                    Logger.Info("unknown message");
+                    Logger.Warn($"unknown message: {messageType}");
                     break;
             }
         }

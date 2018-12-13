@@ -260,14 +260,14 @@ namespace MpdParser.Node.Atom
             //Sanity Check
             if (AtomSize > adata.Length)
             {
-                Logger.Warn(string.Format("SIDX buffer shorter then indicated by atom size."));
+                Logger.Warn("SIDX buffer shorter then indicated by atom size.");
                 return;
             }
 
             // Check signature
             if (CheckName(adata, ref idx, AtomName) == false)
             {
-                Logger.Warn(string.Format("Missing SIDX atom header."));
+                Logger.Warn("Missing SIDX atom header.");
                 return;
             }
 

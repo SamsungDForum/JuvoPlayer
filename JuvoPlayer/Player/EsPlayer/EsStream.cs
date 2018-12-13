@@ -280,20 +280,17 @@ namespace JuvoPlayer.Player.EsPlayer
                 }
                 catch (InvalidOperationException)
                 {
-                    logger.Info($"{streamType}: Stream completed");
+                    logger.Warn($"{streamType}: Stream completed");
                     return SeekResult.Ok;
                 }
                 catch (OperationCanceledException)
                 {
-                    logger.Info($"{streamType}: Seek cancelled");
+                    logger.Warn($"{streamType}: Seek cancelled");
                     return SeekResult.Ok;
                 }
                 catch (Exception e)
                 {
-                    logger.Error($"{streamType}: {e.Message}");
-                    logger.Error($"{streamType}: {e.Source}");
-                    logger.Error($"{streamType}: {e.StackTrace}");
-
+                    logger.Error(e, $"{streamType}");
                     throw;
                 }
             }
@@ -408,7 +405,7 @@ namespace JuvoPlayer.Player.EsPlayer
 
                     if (CurrentConfig.StreamType == StreamType.Audio && !CurrentConfig.Compatible(bufferConfigPacket))
                     {
-                        logger.Info($"{streamType}: Incompatible Stream config change.");
+                        logger.Warn($"{streamType}: Incompatible Stream config change.");
                         streamReconfigureSubject.OnNext(Unit.Default);
 
                         // exit transfer task. This will prevent further transfers
@@ -519,23 +516,19 @@ namespace JuvoPlayer.Player.EsPlayer
             }
             catch (PacketSubmitException pse)
             {
-                logger.Error($"{streamType}: Submit Error " + pse.SubmitStatus);
+                logger.Error(pse, $"{streamType}: Submit Error " + pse.SubmitStatus);
                 disableInput = true;
-
             }
             catch (DrmException drme)
             {
-                logger.Error($"{streamType}: Decrypt Error: " + drme.Message);
+                logger.Error(drme, $"{streamType}: Decrypt Error");
                 disableInput = true;
                 invokeError = true;
-
             }
             catch (Exception e)
             {
                 // Dump unhandled exception. Running as a task so they will not be reported.
-                logger.Error($"{streamType}: {e.Message}");
-                logger.Error($"{streamType}: {e.Source}");
-                logger.Error($"{streamType}: {e.StackTrace}");
+                logger.Error(e, $"{streamType}");
                 disableInput = true;
                 invokeError = true;
             }

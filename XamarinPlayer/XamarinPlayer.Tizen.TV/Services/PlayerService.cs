@@ -123,7 +123,7 @@ namespace XamarinPlayer.Tizen.Services
                 case JuvoPlayer.Common.PlayerState.Playing:
                     return PlayerState.Playing;
                 default:
-                    Logger.Warn($"Unsupported state {state}");
+                    Logger.Error($"Unsupported state {state}");
                     throw new ArgumentOutOfRangeException(nameof(state), state, null);
             }
         }
