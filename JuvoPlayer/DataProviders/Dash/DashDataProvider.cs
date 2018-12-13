@@ -63,8 +63,15 @@ namespace JuvoPlayer.DataProviders.Dash
         private async Task OnManifestReady()
         {
             Logger.Info("");
-            await audioPipeline.SwitchStreamIfNeeded();
-            await videoPipeline.SwitchStreamIfNeeded();
+            try
+            {
+                await audioPipeline.SwitchStreamIfNeeded();
+                await videoPipeline.SwitchStreamIfNeeded();
+            }
+            catch (TaskCanceledException ex)
+            {
+                Logger.Warn($"{ex.Message}");
+            }
         }
 
         public IObservable<TimeSpan> ClipDurationChanged()
