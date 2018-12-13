@@ -23,6 +23,7 @@ using System.Drawing;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
+using JuvoLogger;
 using JuvoPlayer.Common;
 using JuvoPlayer.Demuxers.FFmpeg.Interop;
 using JuvoPlayer.Drms;
@@ -31,6 +32,8 @@ namespace JuvoPlayer.Demuxers.FFmpeg
 {
     public unsafe class AVFormatContextWrapper : IAVFormatContext
     {
+        private ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoLogger");
+
         private AVFormatContext* formatContext;
         private AVIOContextWrapper avioContext;
 
@@ -66,11 +69,15 @@ namespace JuvoPlayer.Demuxers.FFmpeg
             get => avioContext;
             set
             {
-                if (value != null && value.GetType() != typeof(AVIOContextWrapper))
-                    throw new FFmpegException($"Unexpected context type. Got {value.GetType()}");
-                if (value == null) return;
-                avioContext = (AVIOContextWrapper) value;
-                formatContext->pb = avioContext.Context;
+                if (value == null)
+                    formatContext->pb = null;
+                else
+                {
+                    if (value.GetType() != typeof(AVIOContextWrapper))
+                        throw new FFmpegException($"Unexpected context type. Got {value.GetType()}");
+                    avioContext = (AVIOContextWrapper) value;
+                    formatContext->pb = avioContext.Context;
+                }
             }
         }
 
@@ -147,7 +154,11 @@ namespace JuvoPlayer.Demuxers.FFmpeg
                     return -1;
                 var stringValue = Marshal.PtrToStringAnsi((IntPtr) dict->value);
                 if (!ulong.TryParse(stringValue, out var value))
-                    return -1;
+                {
+                    Logger.Error($"Expected to received an ulong, but got {stringValue}");
+                    continue;
+                }
+
                 if (bandwidth >= value) continue;
                 streamId = i;
                 bandwidth = value;
