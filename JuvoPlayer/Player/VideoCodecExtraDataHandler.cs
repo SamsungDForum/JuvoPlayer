@@ -43,7 +43,7 @@ namespace JuvoPlayer.Player
             if (packet.StreamType != StreamType.Video)
                 throw new ArgumentException("invalid packet type");
 
-            if (parsedExtraData.Count() == 0)
+            if (!parsedExtraData.Any())
                 return;
 
             if (!packet.IsKeyFrame)
@@ -81,8 +81,6 @@ namespace JuvoPlayer.Player
                     break;
                 case VideoCodec.H265:
                     ExtractH265ExtraData(videoConfig);
-                    break;
-                default:
                     break;
             }
         }
@@ -170,7 +168,7 @@ namespace JuvoPlayer.Player
             var extraData = new byte[videoConfig.CodecExtraData.Length];
             Buffer.BlockCopy(videoConfig.CodecExtraData, 0, extraData, 0, videoConfig.CodecExtraData.Length);
 
-            int idx = 0;
+            var idx = 0;
             var version = ReadByte(extraData, ref idx);
             var profileIndication = ReadByte(extraData, ref idx);
             var profileCompatibility = ReadByte(extraData, ref idx);
@@ -227,7 +225,7 @@ namespace JuvoPlayer.Player
         private List<byte[]> ReadH264ParameterSets(byte[] extraData, uint count, ref int idx)
         {
             var sets = new List<byte[]>();
-            for (int i = 0; i < count; i++)
+            for (var i = 0; i < count; i++)
             {
                 if (extraData.Length < idx + 2)
                 {
@@ -254,7 +252,7 @@ namespace JuvoPlayer.Player
         {
             foreach (var pps in nals)
             {
-                var len = AsBytesMSB((uint)pps.Length, lengthSize);
+                var len = AsBytesMSB((uint) pps.Length, (int) lengthSize);
                 Buffer.BlockCopy(len, 0, parsedExtraData, offset, len.Length);
                 offset += len.Length;
                 Buffer.BlockCopy(pps, 0, parsedExtraData, offset, pps.Length);
@@ -327,7 +325,7 @@ namespace JuvoPlayer.Player
             var extraData = new byte[videoConfig.CodecExtraData.Length];
             Buffer.BlockCopy(videoConfig.CodecExtraData, 0, extraData, 0, videoConfig.CodecExtraData.Length);
 
-            int idx = 21;
+            var idx = 21;
             var lengthSize = (ReadByte(extraData, ref idx) & 0x3u) + 1;
             var numOfArrays = ReadByte(extraData, ref idx);
 
@@ -340,8 +338,8 @@ namespace JuvoPlayer.Player
                     return;
                 }
 
-                var nalUnitType = (ReadByte(extraData, ref idx) & 0x3Fu);
-                UInt16 numNalus = ReadUInt16(extraData, ref idx);
+                var nalUnitType = ReadByte(extraData, ref idx) & 0x3Fu;
+                var numNalus = ReadUInt16(extraData, ref idx);
                 for (var i = 0; i < numNalus; ++i)
                 {
                     if (extraData.Length < idx + 2)
@@ -349,7 +347,7 @@ namespace JuvoPlayer.Player
                         Logger.Error("extra data too short");
                         return;
                     }
-                    UInt16 nalUnitLength = ReadUInt16(extraData, ref idx);
+                    var nalUnitLength = ReadUInt16(extraData, ref idx);
                     if (extraData.Length < idx + nalUnitLength)
                     {
                         Logger.Error("extra data too short");
@@ -377,7 +375,7 @@ namespace JuvoPlayer.Player
 
         private UInt16 ReadUInt16(byte[] adata, ref int idx)
         {
-            UInt16 res = 0;
+            ushort res = 0;
             for (var i = 0; i < 2; ++i)
             {
                 res <<= 8;
@@ -387,7 +385,7 @@ namespace JuvoPlayer.Player
             return res;
         }
 
-        private byte[] AsBytesMSB(uint val, uint maxBytes)
+        private byte[] AsBytesMSB(uint val, int maxBytes)
         {
             var ret = new byte[maxBytes];
 
