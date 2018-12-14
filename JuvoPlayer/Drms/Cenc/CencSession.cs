@@ -44,9 +44,9 @@ namespace JuvoPlayer.Drms.Cenc
 
         private readonly DRMDescription drmDescription;
         private readonly AsyncContextThread thread = new AsyncContextThread();
-        private Task initializationTask;
+        private readonly AsyncLock threadLock = new AsyncLock();
         private bool isDisposed;
-        private CancellationTokenSource cancellationTokenSource;
+        private readonly CancellationTokenSource cancellationTokenSource;
         private TaskCompletionSource<byte[]> requestDataCompletionSource;
 
         private int counter;
@@ -57,8 +57,6 @@ namespace JuvoPlayer.Drms.Cenc
         private const int MaxDecryptRetries = 5;
         private static readonly TimeSpan DecryptBufferFullSleepTime = TimeSpan.FromMilliseconds(1000);
 
-        private readonly object sessionLock = new object();
-
         private CencSession(DRMInitData initData, DRMDescription drmDescription)
         {
             if (string.IsNullOrEmpty(drmDescription?.LicenceUrl))
@@ -66,8 +64,10 @@ namespace JuvoPlayer.Drms.Cenc
                 Logger.Error("Licence url is null");
                 throw new NullReferenceException("Licence url is null");
             }
+
             this.initData = initData;
             this.drmDescription = drmDescription;
+            cancellationTokenSource = new CancellationTokenSource();
         }
 
         private void DestroyCDM()
@@ -89,30 +89,19 @@ namespace JuvoPlayer.Drms.Cenc
         public override void Dispose()
         {
             Logger.Info($"Disposing CencSession: {currentSessionId}");
-            lock (sessionLock)
-            {
-                if (isDisposed)
-                    return;
+            if (isDisposed)
+                return;
 
-                cancellationTokenSource?.Cancel();
-                try
-                {
-                    initializationTask?.Wait();
-                }
-                catch (Exception)
-                {
-                    // ignored, client can be notified about failures by awaiting task returned in Initialize()
-                }
+            cancellationTokenSource?.Cancel();
 
-                thread.Factory.Run(() => DestroyCDM()).Wait(); //will do nothing on a disposed AsyncContextThread
-                // thread.dispose is not waiting until thread ends. thread Join waits and calls dispose
-                thread.Join();
-                base.Dispose();
+            thread.Factory.Run(() => DestroyCDM()); //will do nothing on a disposed AsyncContextThread
+            // thread.dispose is not waiting until thread ends. thread Join waits and calls dispose
+            thread.Join();
+            base.Dispose();
 
-                GC.SuppressFinalize(this);
+            GC.SuppressFinalize(this);
 
-                isDisposed = true;
-            }
+            isDisposed = true;
         }
 
         private static string Encode(byte[] initData)
@@ -127,123 +116,104 @@ namespace JuvoPlayer.Drms.Cenc
 
         public Task<Packet> DecryptPacket(EncryptedPacket packet)
         {
-            if (initializationTask == null)
-            {
-                Logger.Error("No License requested. Calling Initialize() helps");
-                throw new InvalidOperationException("CencSession Uninitialized");
-            }
-
-            lock (sessionLock)
-            {
-                ThrowIfDisposed();
-                if (!licenceInstalled)
-                {
-                    Logger.Warn("Getting old waiting for license");
-                    initializationTask.Wait();
-                }
-
-                // Don't start additional tasks if no license
-                if (licenceInstalled)
-                {
-                    return thread.Factory.Run(() => DecryptPacketOnIemeThread(packet));
-                }
-                else
-                {
-                    Logger.Error("Failed to obtain license");
-                    throw new InvalidOperationException("Failed to obtain license");
-                }
-            }
+            ThrowIfDisposed();
+            return thread.Factory.Run(() => DecryptPacketOnIemeThread(packet));
         }
 
-        private unsafe Packet DecryptPacketOnIemeThread(EncryptedPacket packet)
+        private async Task<Packet> DecryptPacketOnIemeThread(EncryptedPacket packet)
         {
-            if (licenceInstalled == false)
-            {
-                Logger.Error("No licence installed");
-                throw new DrmException("No licence installed");
-            }
-
-            HandleSize[] pHandleArray = new HandleSize[1];
-            var numofparam = 1;
-
-            sMsdCipherParam[] param = new sMsdCipherParam[1];
-            param[0].algorithm = eMsdCipherAlgorithm.MSD_AES128_CTR;
-            param[0].format = eMsdMediaFormat.MSD_FORMAT_FMP4;
-            param[0].phase = eMsdCipherPhase.MSD_PHASE_NONE;
-            param[0].buseoutbuf = false;
-
-            fixed (byte* pdata = packet.Data, piv = packet.Iv, pkid = packet.KeyId)
-            {
-                param[0].pdata = pdata;
-                param[0].udatalen = (uint)packet.Data.Length;
-                param[0].poutbuf = null;
-                param[0].uoutbuflen = 0;
-                param[0].piv = piv;
-                param[0].uivlen = (uint)packet.Iv.Length;
-                param[0].pkid = pkid;
-                param[0].ukidlen = (uint)packet.KeyId.Length;
-
-                var subsamplePointer = IntPtr.Zero;
-
-                MSD_FMP4_DATA subData;
-                if (packet.Subsamples != null)
+            using (await threadLock.LockAsync(cancellationTokenSource.Token))
+                unsafe
                 {
-                    var subsamples = packet.Subsamples.Select(o =>
-                            new MSD_SUBSAMPLE_INFO { uBytesOfClearData = o.ClearData, uBytesOfEncryptedData = o.EncData })
-                        .ToArray();
-
-                    subsamplePointer = MarshalSubsampleArray(subsamples);
-
-                    subData = new MSD_FMP4_DATA
+                    if (licenceInstalled == false)
                     {
-                        uSubSampleCount = (uint)packet.Subsamples.Length,
-                        pSubSampleInfo = subsamplePointer
-                    };
-                }
-                else
-                {
-                    subData = new MSD_FMP4_DATA
-                    {
-                        uSubSampleCount = 0,
-                        pSubSampleInfo = IntPtr.Zero
-                    };
-                }
+                        Logger.Error("No licence installed");
+                        throw new DrmException("No licence installed");
+                    }
 
-                var subdataPointer = Marshal.AllocHGlobal(Marshal.SizeOf(subData));
-                Marshal.StructureToPtr(subData, subdataPointer, false);
-                param[0].psubdata = subdataPointer;
-                param[0].psplitoffsets = IntPtr.Zero;
+                    HandleSize[] pHandleArray = new HandleSize[1];
+                    var numofparam = 1;
 
-                try
-                {
-                    var ret = DecryptData(param, numofparam, ref pHandleArray, packet.StreamType);
-                    if (ret == (int)eCDMReturnType.E_SUCCESS)
+                    sMsdCipherParam[] param = new sMsdCipherParam[1];
+                    param[0].algorithm = eMsdCipherAlgorithm.MSD_AES128_CTR;
+                    param[0].format = eMsdMediaFormat.MSD_FORMAT_FMP4;
+                    param[0].phase = eMsdCipherPhase.MSD_PHASE_NONE;
+                    param[0].buseoutbuf = false;
+
+                    fixed (byte* pdata = packet.Data, piv = packet.Iv, pkid = packet.KeyId)
                     {
-                        return new DecryptedEMEPacket(thread)
+                        param[0].pdata = pdata;
+                        param[0].udatalen = (uint) packet.Data.Length;
+                        param[0].poutbuf = null;
+                        param[0].uoutbuflen = 0;
+                        param[0].piv = piv;
+                        param[0].uivlen = (uint) packet.Iv.Length;
+                        param[0].pkid = pkid;
+                        param[0].ukidlen = (uint) packet.KeyId.Length;
+
+                        var subsamplePointer = IntPtr.Zero;
+
+                        MSD_FMP4_DATA subData;
+                        if (packet.Subsamples != null)
                         {
-                            Dts = packet.Dts,
-                            Pts = packet.Pts,
-                            StreamType = packet.StreamType,
-                            IsEOS = packet.IsEOS,
-                            IsKeyFrame = packet.IsKeyFrame,
-                            Duration = packet.Duration,
-                            HandleSize = pHandleArray[0]
-                        };
-                    }
-                    else
-                    {
-                        Logger.Error($"Decryption failed: {packet.StreamType} - {ret}");
-                        throw new DrmException($"Decryption failed: {packet.StreamType} - {ret}");
-                    }
-                }
-                finally
-                {
-                    if (subsamplePointer != IntPtr.Zero)
-                        Marshal.FreeHGlobal(subsamplePointer);
+                            var subsamples = packet.Subsamples.Select(o =>
+                                    new MSD_SUBSAMPLE_INFO
+                                        {uBytesOfClearData = o.ClearData, uBytesOfEncryptedData = o.EncData})
+                                .ToArray();
 
-                    Marshal.FreeHGlobal(subdataPointer);
+                            subsamplePointer = MarshalSubsampleArray(subsamples);
+
+                            subData = new MSD_FMP4_DATA
+                            {
+                                uSubSampleCount = (uint) packet.Subsamples.Length,
+                                pSubSampleInfo = subsamplePointer
+                            };
+                        }
+                        else
+                        {
+                            subData = new MSD_FMP4_DATA
+                            {
+                                uSubSampleCount = 0,
+                                pSubSampleInfo = IntPtr.Zero
+                            };
+                        }
+
+                        var subdataPointer = Marshal.AllocHGlobal(Marshal.SizeOf(subData));
+                        Marshal.StructureToPtr(subData, subdataPointer, false);
+                        param[0].psubdata = subdataPointer;
+                        param[0].psplitoffsets = IntPtr.Zero;
+
+                        try
+                        {
+                            var ret = DecryptData(param, numofparam, ref pHandleArray, packet.StreamType);
+                            if (ret == (int) eCDMReturnType.E_SUCCESS)
+                            {
+                                return new DecryptedEMEPacket(thread)
+                                {
+                                    Dts = packet.Dts,
+                                    Pts = packet.Pts,
+                                    StreamType = packet.StreamType,
+                                    IsEOS = packet.IsEOS,
+                                    IsKeyFrame = packet.IsKeyFrame,
+                                    Duration = packet.Duration,
+                                    HandleSize = pHandleArray[0]
+                                };
+                            }
+                            else
+                            {
+                                Logger.Error($"Decryption failed: {packet.StreamType} - {ret}");
+                                throw new DrmException($"Decryption failed: {packet.StreamType} - {ret}");
+                            }
+                        }
+                        finally
+                        {
+                            if (subsamplePointer != IntPtr.Zero)
+                                Marshal.FreeHGlobal(subsamplePointer);
+
+                            Marshal.FreeHGlobal(subdataPointer);
+                        }
+                    }
                 }
-            }
         }
 
         private int DecryptData(sMsdCipherParam[] param, int numofparam, ref HandleSize[] pHandleArray, StreamType type)
@@ -253,7 +223,8 @@ namespace JuvoPlayer.Drms.Cenc
 
             while (true)
             {
-                ret = (int)API.EmeDecryptarray((eCDMReturnType)CDMInstance.getDecryptor(), ref param, numofparam, IntPtr.Zero,
+                ret = (int) API.EmeDecryptarray((eCDMReturnType) CDMInstance.getDecryptor(), ref param, numofparam,
+                    IntPtr.Zero,
                     0, ref pHandleArray);
 
                 if (ret == E_DECRYPT_BUFFER_FULL && errorCount < MaxDecryptRetries)
@@ -275,7 +246,7 @@ namespace JuvoPlayer.Drms.Cenc
             int sizeOfSubsample = Marshal.SizeOf(typeof(MSD_SUBSAMPLE_INFO));
             int totalSize = sizeOfSubsample * subsamples.Length;
             var resultPointer = Marshal.AllocHGlobal(totalSize);
-            byte* subsamplePointer = (byte*)(resultPointer.ToPointer());
+            byte* subsamplePointer = (byte*) (resultPointer.ToPointer());
 
             for (var i = 0; i < subsamples.Length; i++, subsamplePointer += (sizeOfSubsample))
             {
@@ -297,10 +268,10 @@ namespace JuvoPlayer.Drms.Cenc
             {
                 case MessageType.kLicenseRequest:
                 case MessageType.kIndividualizationRequest:
-                    {
-                        requestDataCompletionSource?.TrySetResult(Encoding.GetEncoding(437).GetBytes(message));
-                        break;
-                    }
+                {
+                    requestDataCompletionSource?.TrySetResult(Encoding.GetEncoding(437).GetBytes(message));
+                    break;
+                }
                 default:
                     Logger.Warn($"unknown message: {messageType}");
                     break;
@@ -320,20 +291,8 @@ namespace JuvoPlayer.Drms.Cenc
         public Task Initialize()
         {
             Logger.Info("");
-            lock (sessionLock)
-            {
-                if (initializationTask != null)
-                {
-                    Logger.Error("Initialize in progress");
-                    throw new InvalidOperationException("Initialize in progress");
-                }
-
-                ThrowIfDisposed();
-
-                cancellationTokenSource = new CancellationTokenSource();
-                initializationTask = thread.Factory.Run(DoLicenceChallengeOnIemeThread);
-                return initializationTask;
-            }
+            ThrowIfDisposed();
+            return thread.Factory.Run(InitializeOnIemeThread);
         }
 
         private void ThrowIfDisposed()
@@ -342,25 +301,27 @@ namespace JuvoPlayer.Drms.Cenc
                 throw new ObjectDisposedException("CencSession is already disposed");
         }
 
-        private async Task DoLicenceChallengeOnIemeThread()
+        private async Task InitializeOnIemeThread()
         {
             var cancellationToken = cancellationTokenSource.Token;
+            using (await threadLock.LockAsync(cancellationToken))
+            {
+                CreateIeme();
+                cancellationToken.ThrowIfCancellationRequested();
 
-            CreateIeme();
-            cancellationToken.ThrowIfCancellationRequested();
+                currentSessionId = CreateSession();
+                Logger.Info($"CencSession ID {currentSessionId}");
+                cancellationToken.ThrowIfCancellationRequested();
 
-            currentSessionId = CreateSession();
-            Logger.Info($"CencSession ID {currentSessionId}");
-            cancellationToken.ThrowIfCancellationRequested();
+                var requestData = await GetRequestData();
+                cancellationToken.ThrowIfCancellationRequested();
 
-            var requestData = await GetRequestData();
-            cancellationToken.ThrowIfCancellationRequested();
+                var responseText = await AcquireLicenceFromServer(requestData);
+                cancellationToken.ThrowIfCancellationRequested();
 
-            var responseText = await AcquireLicenceFromServer(requestData);
-            cancellationToken.ThrowIfCancellationRequested();
-
-            InstallLicence(responseText);
-            licenceInstalled = true;
+                InstallLicence(responseText);
+                licenceInstalled = true;
+            }
         }
 
         private void CreateIeme()
@@ -388,7 +349,8 @@ namespace JuvoPlayer.Drms.Cenc
 
             requestDataCompletionSource = new TaskCompletionSource<byte[]>();
 
-            var status = CDMInstance.session_generateRequest(currentSessionId, InitDataType.kCenc, Encode(initData.InitData));
+            var status =
+                CDMInstance.session_generateRequest(currentSessionId, InitDataType.kCenc, Encode(initData.InitData));
             if (status != Status.kSuccess)
                 throw new DrmException(EmeStatusConverter.Convert(status));
 
@@ -447,7 +409,8 @@ namespace JuvoPlayer.Drms.Cenc
             {
                 //Something went wrong i.e. communication with the license server failed
                 //TODO Show to the user as 'DRM license session error!' on the screen.
-                throw new DrmException(EmeStatusConverter.Convert(Status.kUnexpectedError) + " - Exception message: " + e.Message);
+                throw new DrmException(EmeStatusConverter.Convert(Status.kUnexpectedError) + " - Exception message: " +
+                                       e.Message);
             }
         }
 
@@ -455,6 +418,5 @@ namespace JuvoPlayer.Drms.Cenc
         {
             return currentSessionId;
         }
-
     }
 }

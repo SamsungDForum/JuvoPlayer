@@ -45,9 +45,6 @@ namespace JuvoPlayer.Player.EsPlayer
 
         private readonly ILogger logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
 
-        // Instance reference & creation lock
-        private readonly object dataStreamLock = new object();
-
         // Prebuffer duration
         private static readonly TimeSpan PreBufferDuration = TimeSpan.FromSeconds(2);
 
@@ -96,29 +93,26 @@ namespace JuvoPlayer.Player.EsPlayer
 
         public void Initialize(Common.StreamType stream)
         {
-            lock (dataStreamLock)
+            logger.Info(stream.ToString());
+
+            if (dataStreams[(int) stream] != null)
             {
-                logger.Info(stream.ToString());
-
-                if (dataStreams[(int) stream] != null)
-                {
-                    throw new ArgumentException($"Stream {stream} already initialized");
-                }
-
-                // Create new data stream & chunk state entry
-                //
-                dataStreams[(int) stream] = new DataStream
-                {
-                    Stream = new EsStream(stream, packetStorage),
-                    StreamType = stream
-                };
-
-                dataStreams[(int) stream].Stream.SetPlayer(player);
-                streamReconfigureSubs[(int) stream] = dataStreams[(int) stream].Stream.StreamReconfigure()
-                    .Subscribe(unit => OnStreamReconfigure(), SynchronizationContext.Current);
-                playbackErrorSubs[(int) stream] = dataStreams[(int) stream].Stream.PlaybackError()
-                    .Subscribe(OnEsStreamError, SynchronizationContext.Current);
+                throw new ArgumentException($"Stream {stream} already initialized");
             }
+
+            // Create new data stream & chunk state entry
+            //
+            dataStreams[(int) stream] = new DataStream
+            {
+                Stream = new EsStream(stream, packetStorage),
+                StreamType = stream
+            };
+
+            dataStreams[(int) stream].Stream.SetPlayer(player);
+            streamReconfigureSubs[(int) stream] = dataStreams[(int) stream].Stream.StreamReconfigure()
+                .Subscribe(unit => OnStreamReconfigure(), SynchronizationContext.Current);
+            playbackErrorSubs[(int) stream] = dataStreams[(int) stream].Stream.PlaybackError()
+                .Subscribe(OnEsStreamError, SynchronizationContext.Current);
         }
 
         public EsStreamController(EsPlayerPacketStorage storage)
@@ -163,18 +157,15 @@ namespace JuvoPlayer.Player.EsPlayer
 
             try
             {
-                lock (dataStreamLock)
-                {
-                    var pushResult = dataStreams[(int) streamType].Stream.SetStreamConfig(configPacket);
+                var pushResult = dataStreams[(int) streamType].Stream.SetStreamConfig(configPacket);
 
-                    // Configuration queued. Do not prepare stream :)
-                    if (pushResult == EsStream.SetStreamConfigResult.ConfigQueued)
-                        return;
+                // Configuration queued. Do not prepare stream :)
+                if (pushResult == EsStream.SetStreamConfigResult.ConfigQueued)
+                    return;
 
-                    // Check if all initialized streams are configured
-                    if (!AllStreamsConfigured)
-                        return;
-                }
+                // Check if all initialized streams are configured
+                if (!AllStreamsConfigured)
+                    return;
 
                 var token = activeTaskCts.Token;
                 StreamPrepare(token);
