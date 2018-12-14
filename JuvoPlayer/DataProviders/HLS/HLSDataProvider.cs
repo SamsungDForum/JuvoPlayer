@@ -74,19 +74,22 @@ namespace JuvoPlayer.DataProviders.HLS
             throw new NotImplementedException();
         }
 
+        public void OnStateChanged(PlayerState state)
+        {
+            switch (state)
+            {
+                case PlayerState.Paused:
+                    demuxerController.Pause();
+                    break;
+                case PlayerState.Playing:
+                    demuxerController.Resume();
+                    break;
+            }
+        }
+
         private void OnDeactivateSubtitleStream()
         {
             cuesMap = null;
-        }
-
-        public void OnPaused()
-        {
-            demuxerController.Pause();
-        }
-
-        public void OnPlayed()
-        {
-            demuxerController.Resume();
         }
 
         public void OnSeekStarted(TimeSpan time, uint seekId)

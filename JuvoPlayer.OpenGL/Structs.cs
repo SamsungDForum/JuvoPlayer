@@ -15,19 +15,14 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-﻿namespace JuvoPlayer.OpenGL
+ namespace JuvoPlayer.OpenGL
 {
     public enum PlayerState // int values are passed down to native code
     {
-        Error = -1,
         Idle = 0,
-        Preparing = 1,
         Prepared = 2,
-        Stopped = 3,
         Playing = 4,
-        Paused = 5,
-        Completed = 6,
-        Buffering = 7
+        Paused = 5
     }
 
     internal struct ImageData
@@ -61,12 +56,5 @@
     {
         RGB,
         RGBA
-    }
-
-    internal enum MenuAction
-    {
-        None = 0,
-        PlaybackControl = 1,
-        OptionsMenu = 2
     }
 }

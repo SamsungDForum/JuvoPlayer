@@ -23,15 +23,11 @@ namespace JuvoPlayer.Player
 {
     public interface IPlayer : IDisposable
     {
-        IObservable<Unit> PlaybackCompleted();
         IObservable<string> PlaybackError();
-        IObservable<Unit> Initialized();
         IObservable<TimeSpan> TimeUpdated();
-        IObservable<Unit> Paused();
-        IObservable<Unit> Played();
         IObservable<SeekArgs> SeekStarted();
         IObservable<Unit> SeekCompleted();
-        IObservable<Unit> Stopped();
+        IObservable<PlayerState> StateChanged();
 
         void Pause();
         void Play();

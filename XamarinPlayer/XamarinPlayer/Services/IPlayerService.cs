@@ -15,16 +15,16 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-﻿using System;
+ using System;
 using System.Collections.Generic;
 
 namespace XamarinPlayer.Services
 {
-    public delegate void PlayerStateChangedEventHandler(object sender, PlayerStateChangedEventArgs e);
-
     public interface IPlayerService : IDisposable
     {
-        event PlayerStateChangedEventHandler StateChanged;
+        IObservable<PlayerState> StateChanged();
+        IObservable<string> PlaybackError();
+        IObservable<double> BufferingProgress();
 
         TimeSpan Duration { get; }
 

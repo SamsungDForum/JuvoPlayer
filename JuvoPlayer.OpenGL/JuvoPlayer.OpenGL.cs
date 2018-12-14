@@ -14,11 +14,13 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-﻿using System;
+
+using System;
 using System.IO;
 using JuvoLogger;
 using Tizen.TV.NUI.GLApplication;
 using System.Linq;
+using System.Reactive.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using Newtonsoft.Json;
@@ -95,11 +97,12 @@ namespace JuvoPlayer.OpenGL
         protected override void OnAppControlReceived(AppControlReceivedEventArgs e) // Launch request handling via Smart Hub Preview (deep links) functionality
         {
             ReceivedAppControl receivedAppControl = e.ReceivedAppControl;
-            receivedAppControl.ExtraData.TryGet("PAYLOAD", out string payload); // Fetch the JSON metadata defined on the smart Hub preview web server
+            receivedAppControl.ExtraData.TryGet("PAYLOAD",
+                out string payload); // Fetch the JSON metadata defined on the smart Hub preview web server
 
             if (!string.IsNullOrEmpty(payload))
             {
-                char[] charSeparator = new char[] { '&' };
+                char[] charSeparator = new char[] {'&'};
                 string[] result = payload.Split(charSeparator, StringSplitOptions.RemoveEmptyEntries);
                 if (result.Length > 0)
                     PreviewPayloadHandler(result[0]);
@@ -136,6 +139,7 @@ namespace JuvoPlayer.OpenGL
                 ShowMenu(true);
                 return;
             }
+
             ShowMenu(false);
             KeyPressedMenuUpdate(); // Playback UI should be visible when starting playback after app execution is resumed
             HandlePlaybackStart();
@@ -147,7 +151,9 @@ namespace JuvoPlayer.OpenGL
             {
                 Logger = Logger
             };
-            _resourceLoader.LoadResources(Path.GetDirectoryName(Path.GetDirectoryName(Current.ApplicationInfo.ExecutablePath)), HandleLoadingFinished);
+            _resourceLoader.LoadResources(
+                Path.GetDirectoryName(Path.GetDirectoryName(Current.ApplicationInfo.ExecutablePath)),
+                HandleLoadingFinished);
             _metricsHandler = new MetricsHandler();
             SetMetrics();
             SetMenuFooter();
@@ -157,31 +163,51 @@ namespace JuvoPlayer.OpenGL
 
         private void SetMetrics()
         {
-            _systemMemoryBottom = (float)_systemMemoryUsage.Used / 1024;
-            _systemMemoryTop = (float)_systemMemoryUsage.Total / 1024;
-            _systemMemoryUsageGraphId = _metricsHandler.AddMetric("MEM", (float)_systemMemoryUsage.Used / 1024, (float)_systemMemoryUsage.Total / 1024, 100,
+            _systemMemoryBottom = (float) _systemMemoryUsage.Used / 1024;
+            _systemMemoryTop = (float) _systemMemoryUsage.Total / 1024;
+            _systemMemoryUsageGraphId = _metricsHandler.AddMetric("MEM", (float) _systemMemoryUsage.Used / 1024,
+                (float) _systemMemoryUsage.Total / 1024, 100,
                 () =>
                 {
-                    try { _systemMemoryUsage.Update(); } catch { /* ignore */ }
-                    if (_systemMemoryBottom > (float)_systemMemoryUsage.Used / 1024)
+                    try
                     {
-                        _systemMemoryBottom = (float)_systemMemoryUsage.Used / 1024;
-                        _metricsHandler.UpdateGraphRange(_systemMemoryUsageGraphId, _systemMemoryBottom, _systemMemoryTop);
+                        _systemMemoryUsage.Update();
                     }
-                    return (float)_systemMemoryUsage.Used / 1024;
+                    catch
+                    {
+                        /* ignore */
+                    }
+
+                    if (_systemMemoryBottom > (float) _systemMemoryUsage.Used / 1024)
+                    {
+                        _systemMemoryBottom = (float) _systemMemoryUsage.Used / 1024;
+                        _metricsHandler.UpdateGraphRange(_systemMemoryUsageGraphId, _systemMemoryBottom,
+                            _systemMemoryTop);
+                    }
+
+                    return (float) _systemMemoryUsage.Used / 1024;
                 });
 
             _metricsHandler.AddMetric("CPU", 0, 100, 100,
                 () =>
                 {
-                    try { _systemCpuUsage.Update(); } catch { /* ignore */ } // underlying code is broken - it takes only one sample from /proc/stat, so it's giving average load from system boot till now (like "top -n1" => us + sy + ni)
-                    return (float)(_systemCpuUsage.User + _systemCpuUsage.Nice + _systemCpuUsage.System);
+                    try
+                    {
+                        _systemCpuUsage.Update();
+                    }
+                    catch
+                    {
+                        /* ignore */
+                    } // underlying code is broken - it takes only one sample from /proc/stat, so it's giving average load from system boot till now (like "top -n1" => us + sy + ni)
+
+                    return (float) (_systemCpuUsage.User + _systemCpuUsage.Nice + _systemCpuUsage.System);
                 });
         }
 
         private static unsafe void SetMenuFooter()
         {
-            string footer = $"JuvoPlayer {typeof(Program).Assembly.GetName().Version}, OpenGL Native #{DllImports.OpenGLLibVersion():x}, Samsung R&D Poland 2017-{DateTime.Now.Year}";
+            string footer =
+                $"JuvoPlayer {typeof(Program).Assembly.GetName().Version}, OpenGL Native #{DllImports.OpenGLLibVersion():x}, Samsung R&D Poland 2017-{DateTime.Now.Year}";
             fixed (byte* f = ResourceLoader.GetBytes(footer))
                 DllImports.SetFooter(f, footer.Length);
         }
@@ -219,47 +245,47 @@ namespace JuvoPlayer.OpenGL
             if (_isAlertShown && !key.KeyPressedName.Contains("Return") && !key.KeyPressedName.Contains("Exit"))
                 return;
 
-            if(key.KeyPressedName.Contains("Right"))
+            if (key.KeyPressedName.Contains("Right"))
             {
                 HandleKeyRight();
             }
-            else if(key.KeyPressedName.Contains("Left"))
+            else if (key.KeyPressedName.Contains("Left"))
             {
                 HandleKeyLeft();
             }
-            else if(key.KeyPressedName.Contains("Up"))
+            else if (key.KeyPressedName.Contains("Up"))
             {
                 HandleKeyUp();
             }
-            else if(key.KeyPressedName.Contains("Down"))
+            else if (key.KeyPressedName.Contains("Down"))
             {
                 HandleKeyDown();
             }
-            else if(key.KeyPressedName.Contains("Return"))
+            else if (key.KeyPressedName.Contains("Return"))
             {
                 HandleKeyReturn();
             }
-            else if(key.KeyPressedName.Contains("Back"))
+            else if (key.KeyPressedName.Contains("Back"))
             {
                 HandleKeyBack();
             }
-            else if(key.KeyPressedName.Contains("Exit"))
+            else if (key.KeyPressedName.Contains("Exit"))
             {
                 HandleKeyExit();
             }
-            else if(key.KeyPressedName.Contains("Play") || key.KeyPressedName.Contains("3XSpeed"))
+            else if (key.KeyPressedName.Contains("Play") || key.KeyPressedName.Contains("3XSpeed"))
             {
                 HandleKeyPlay();
             }
-            else if(key.KeyPressedName.Contains("Pause"))
+            else if (key.KeyPressedName.Contains("Pause"))
             {
                 HandleKeyPause();
             }
-            else if(key.KeyPressedName.Contains("Stop") || key.KeyPressedName.Contains("3D"))
+            else if (key.KeyPressedName.Contains("Stop") || key.KeyPressedName.Contains("3D"))
             {
                 HandleKeyStop();
             }
-            else if(key.KeyPressedName.Contains("Rewind"))
+            else if (key.KeyPressedName.Contains("Rewind"))
             {
                 HandleKeyRewind();
             }
@@ -267,11 +293,11 @@ namespace JuvoPlayer.OpenGL
             {
                 HandleKeySeekForward();
             }
-            else if(key.KeyPressedName.Contains("Red"))
+            else if (key.KeyPressedName.Contains("Red"))
             {
                 _metricsHandler.SwitchVisibility();
             }
-            else if(key.KeyPressedName.Contains("Green"))
+            else if (key.KeyPressedName.Contains("Green"))
             {
                 GC.Collect();
             }
@@ -289,7 +315,7 @@ namespace JuvoPlayer.OpenGL
                 return;
             try
             {
-                var payload = JsonConvert.DeserializeAnonymousType(message, new { values = "" });
+                var payload = JsonConvert.DeserializeAnonymousType(message, new {values = ""});
                 HandleExternalTileSelection(int.Parse(payload.values));
             }
             catch (Exception e)
@@ -328,6 +354,7 @@ namespace JuvoPlayer.OpenGL
                 ShowMenu(true);
                 return;
             }
+
             ShowMenu(false);
             KeyPressedMenuUpdate(); // Playback UI should be visible when starting playback from deep link
             HandlePlaybackStart();
@@ -380,7 +407,7 @@ namespace JuvoPlayer.OpenGL
             {
                 _options.ControlRight();
             }
-            else if(_progressBarShown)
+            else if (_progressBarShown)
             {
                 Seek(_defaultSeekTime);
             }
@@ -462,39 +489,45 @@ namespace JuvoPlayer.OpenGL
             if (_player == null)
             {
                 _player = new Player();
-                _player.StateChanged += (object sender, PlayerStateChangedEventArgs e) =>
-                {
-                    _uiContext.Post(state =>
-                        {
-                            Logger?.Info($"Player state changed: {e.State.ToString() ?? "Unknown state"}");
-                            if (e.State == PlayerState.Prepared)
-                            {
-                                if (_player == null)
-                                    return;
-                                _options.LoadStreamLists(_player);
-                                _player.Start();
-                            }
-                            else if (e.State == PlayerState.Completed)
-                            {
-                                _playbackCompletedNeedsHandling = true;
-                            }
-                            else if (e.State == PlayerState.Error)
-                            {
-                                Logger?.Info($"Playback Error: {(e as PlayerStateChangedStreamError)?.Message ?? "Unknown Error"}");
-                                ReturnToMainMenu();
-                                DisplayAlert("Playback Error", (e as PlayerStateChangedStreamError)?.Message ?? "Unknown Error", "OK");
-                            }
-                        },
-                        null);
-            };
-                _player.SeekCompleted += () =>
-                {
-                    Logger?.Info("Seek completed.");
-                    _seekInProgress = false;
-                };
+                _player.StateChanged()
+                    .ObserveOn(SynchronizationContext.Current)
+                    .Where(state => state == PlayerState.Prepared)
+                    .Subscribe(state =>
+                    {
+                        Logger?.Info($"Player state changed: {state}");
+                        if (_player == null)
+                            return;
+                        _options.LoadStreamLists(_player);
+                        _player.Start();
+                    }, () => { _playbackCompletedNeedsHandling = true; });
+
+                _player.PlaybackError()
+                    .ObserveOn(SynchronizationContext.Current)
+                    .Subscribe(message =>
+                    {
+                        Logger?.Info($"Playback Error: {message}");
+                        ReturnToMainMenu();
+                        DisplayAlert("Playback Error", message, "OK");
+                    });
+
+                _player.SeekCompleted()
+                    .ObserveOn(SynchronizationContext.Current)
+                    .Subscribe(unit =>
+                    {
+                        Logger?.Info("Seek completed.");
+                        _seekInProgress = false;
+                    });
+
+                _player.BufferingProgress()
+                    .ObserveOn(SynchronizationContext.Current)
+                    .Subscribe(percent =>
+                    {
+                        // TODO: Handle buffering
+                    });
             }
 
-            Logger?.Info($"Playing {_resourceLoader.ContentList[_selectedTile].Title} ({_resourceLoader.ContentList[_selectedTile].Url})");
+            Logger?.Info(
+                $"Playing {_resourceLoader.ContentList[_selectedTile].Title} ({_resourceLoader.ContentList[_selectedTile].Url})");
             _player.SetSource(_resourceLoader.ContentList[_selectedTile]);
             _options.ClearOptionsMenu();
             _seekInProgress = false;
@@ -534,7 +567,7 @@ namespace JuvoPlayer.OpenGL
 
         private void HandleKeyPlay()
         {
-            if(_player?.State == PlayerState.Playing)
+            if (_player?.State == PlayerState.Playing)
                 _player?.Pause();
             else
                 _player?.Start();
@@ -576,6 +609,7 @@ namespace JuvoPlayer.OpenGL
             {
                 _accumulatedSeekTime += seekTime;
             }
+
             _playerTimeCurrentPosition += seekTime;
             UpdatePlaybackControls();
 
@@ -602,7 +636,7 @@ namespace JuvoPlayer.OpenGL
 
         private static bool IsStateSeekable(PlayerState state)
         {
-            var seekableStates = new[] { PlayerState.Playing, PlayerState.Paused };
+            var seekableStates = new[] {PlayerState.Playing, PlayerState.Paused};
             return seekableStates.Contains(state);
         }
 
@@ -652,7 +686,8 @@ namespace JuvoPlayer.OpenGL
             if (_player?.CurrentCueText != null && _options.SubtitlesOn)
             {
                 fixed (byte* cueText = ResourceLoader.GetBytes(_player.CurrentCueText))
-                    DllImports.ShowSubtitle(0, cueText, _player.CurrentCueText.Length); // 0ms duration - special value just for next frame
+                    DllImports.ShowSubtitle(0, cueText,
+                        _player.CurrentCueText.Length); // 0ms duration - special value just for next frame
             }
         }
 
@@ -683,16 +718,20 @@ namespace JuvoPlayer.OpenGL
             if (_seekBufferingInProgress == false && _seekInProgress == false)
                 _playerTimeCurrentPosition = _player?.CurrentPosition ?? TimeSpan.Zero;
             _playerTimeDuration = _player?.Duration ?? TimeSpan.Zero;
-            if (_progressBarShown && _player?.State == PlayerState.Playing && (DateTime.Now - _lastKeyPressTime).TotalMilliseconds >= _progressBarFadeout.TotalMilliseconds)
+            if (_progressBarShown && _player?.State == PlayerState.Playing &&
+                (DateTime.Now - _lastKeyPressTime).TotalMilliseconds >= _progressBarFadeout.TotalMilliseconds)
             {
                 _progressBarShown = false;
                 _options.Hide();
-                Logger?.Info($"{(DateTime.Now - _lastKeyPressTime).TotalMilliseconds} ms of inactivity, hiding progress bar.");
+                Logger?.Info(
+                    $"{(DateTime.Now - _lastKeyPressTime).TotalMilliseconds} ms of inactivity, hiding progress bar.");
             }
 
             fixed (byte* name = ResourceLoader.GetBytes(_resourceLoader.ContentList[_selectedTile].Title))
-                DllImports.UpdatePlaybackControls(_progressBarShown ? 1 : 0, (int)(_player?.State ?? PlayerState.Idle), (int)_playerTimeCurrentPosition.TotalMilliseconds,
-                    (int)_playerTimeDuration.TotalMilliseconds, name, _resourceLoader.ContentList[_selectedTile].Title.Length);
+                DllImports.UpdatePlaybackControls(_progressBarShown ? 1 : 0, (int) (_player?.State ?? PlayerState.Idle),
+                    (int) _playerTimeCurrentPosition.TotalMilliseconds,
+                    (int) _playerTimeDuration.TotalMilliseconds, name,
+                    _resourceLoader.ContentList[_selectedTile].Title.Length);
         }
 
         private void UpdateUI()

@@ -50,15 +50,11 @@ namespace JuvoPlayer.Player
 
         #endregion
 
-        IObservable<Unit> PlaybackCompleted();
+        IObservable<double> BufferingProgress();
         IObservable<string> PlaybackError();
-        IObservable<Unit> Initialized();
         IObservable<TimeSpan> TimeUpdated();
-        IObservable<Unit> Paused();
-        IObservable<Unit> Played();
         IObservable<SeekArgs> SeekStarted();
         IObservable<Unit> SeekCompleted();
-        IObservable<Unit> Stopped();
         IObservable<PlayerState> StateChanged();
     }
 }

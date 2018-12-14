@@ -51,7 +51,7 @@ namespace JuvoPlayer.OpenGL
             var clipsFilePath = Path.Combine(fullExecutablePath, "shared", "res", "videoclips.json");
             LoadContentList(clipsFilePath);
 
-            var resourcesDirPath = Path.Combine(fullExecutablePath, "res"); 
+            var resourcesDirPath = Path.Combine(fullExecutablePath, "res");
 
             LoadFonts(resourcesDirPath);
             LoadIcons(resourcesDirPath);
@@ -111,8 +111,8 @@ namespace JuvoPlayer.OpenGL
         private void LoadIcons(string dirPath)
         {
             _resourcesTargetCount += Icons.Length;
-            for (var i = 0; i < Icons.Length; ++i)
-                LoadAndSchedule(new IconResource((IconType)i, Path.Combine(dirPath, "icons", Icons[i].Image.Path)));
+            foreach (var icon in Icons)
+                LoadAndSchedule(new IconResource(icon.Id, Path.Combine(dirPath, "icons", icon.Image.Path)));
         }
 
         private void LoadFonts(string dirPath)

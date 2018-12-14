@@ -17,7 +17,7 @@
 
 using System;
 using System.Threading.Tasks;
-using JuvoPlayer.TizenTests.Utils;
+using JuvoPlayer.Common;
 using NUnit.Framework;
 
 namespace JuvoPlayer.TizenTests.IntegrationTests
@@ -35,7 +35,7 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
         [TestCase("Clean HEVC 4k MPEG DASH")]
         public async Task Playback_Basic_PreparesAndStarts(string clipTitle)
         {
-            using (var service = new PlayerService())
+            using (var service = new JuvoPlayer.TizenTests.Utils.PlayerService())
             {
                 PrepareAndStart(service, clipTitle);
 
@@ -53,7 +53,7 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
         public void Seek_Random10Times_SeeksWithin500Milliseconds(string clipTitle)
         {
             var rand = new Random();
-            using (var service = new PlayerService())
+            using (var service = new JuvoPlayer.TizenTests.Utils.PlayerService())
             {
                 PrepareAndStart(service, clipTitle);
 
@@ -79,7 +79,7 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
         [TestCase("Encrypted 4K MPEG DASH")]
         public void Seek_Backward_SeeksWithin500Milliseconds(string clipTitle)
         {
-            using (var service = new PlayerService())
+            using (var service = new JuvoPlayer.TizenTests.Utils.PlayerService())
             {
                 PrepareAndStart(service, clipTitle);
 
@@ -97,16 +97,16 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
             }
         }
 
-        private static void PrepareAndStart(PlayerService service, string clipTitle)
+        private static void PrepareAndStart(JuvoPlayer.TizenTests.Utils.PlayerService service, string clipTitle)
         {
             var clips = service.ReadClips();
             var clip = clips.Find(_ => _.Title.Equals(clipTitle));
 
             Assert.That(clip, Is.Not.Null);
 
-            service.SetClipDefinition(clip);
+            service.SetSource(clip);
 
-            Assert.That(() => service.State, Is.EqualTo(PlayerService.PlayerState.Prepared)
+            Assert.That(() => service.State, Is.EqualTo(PlayerState.Prepared)
                 .After(10).Seconds
                 .PollEvery(100).MilliSeconds);
 

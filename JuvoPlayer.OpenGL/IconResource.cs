@@ -15,7 +15,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-﻿namespace JuvoPlayer.OpenGL
+ namespace JuvoPlayer.OpenGL
 {
     class IconResource : Resource
     {
