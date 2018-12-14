@@ -15,28 +15,13 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-﻿using System;
-
-namespace JuvoPlayer.OpenGL
+namespace JuvoPlayer.Common
 {
-    public class PlayerStateChangedEventArgs : EventArgs
+    public enum PlayerState
     {
-        public PlayerStateChangedEventArgs(PlayerState state)
-        {
-            State = state;
-        }
-       
-        public PlayerState State { get; }
-    }
-
-    public class PlayerStateChangedStreamError : PlayerStateChangedEventArgs
-    {
-        public PlayerStateChangedStreamError(PlayerState state, string message)
-            :base( state )
-        {
-            Message = message;
-        }
-
-        public string Message { get; }
+        Idle,
+        Prepared,
+        Paused,
+        Playing
     }
 }
