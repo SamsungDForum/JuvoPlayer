@@ -31,7 +31,9 @@ namespace JuvoPlayer.DataProviders.Dash
 {
     internal class DashManifestException : Exception
     {
-        public DashManifestException(string message) : base(message) { }
+        public DashManifestException(string message) : base(message)
+        {
+        }
     }
 
     internal class DashManifestProvider : IDisposable
@@ -46,7 +48,6 @@ namespace JuvoPlayer.DataProviders.Dash
         public DashManifest Manifest { get; internal set; }
         private Task manifestFeedTask;
         private CancellationTokenSource manifestFeedCts;
-        private readonly Object startStopLock = new Object();
 
         private readonly List<SubtitleInfo> subtitleInfos = new List<SubtitleInfo>();
 
@@ -57,7 +58,8 @@ namespace JuvoPlayer.DataProviders.Dash
 
         private bool isDisposed;
 
-        public DashManifestProvider(DashManifest manifest, DashMediaPipeline audioPipeline, DashMediaPipeline videoPipeline)
+        public DashManifestProvider(DashManifest manifest, DashMediaPipeline audioPipeline,
+            DashMediaPipeline videoPipeline)
         {
             this.Manifest = manifest ?? throw new ArgumentNullException(nameof(manifest), "manifest cannot be null");
 
@@ -181,39 +183,36 @@ namespace JuvoPlayer.DataProviders.Dash
 
         public void Stop()
         {
-            lock (startStopLock)
+            // Don't do double termination. Nothing  bad will happen but there is no point :)
+            if (manifestFeedTask == null)
+                return;
+
+            logger.Info("Terminating");
+            manifestFeedCts?.Cancel();
+
+            try
             {
-                // Don't do double termination. Nothing  bad will happen but there is no point :)
-                if (manifestFeedTask == null)
-                    return;
-
-                logger.Info("Terminating");
-                manifestFeedCts?.Cancel();
-
-                try
+                if (manifestFeedTask?.Status > TaskStatus.Created)
                 {
-                    if (manifestFeedTask?.Status > TaskStatus.Created)
-                    {
-                        logger.Info($"Awaiting manifestTask completion {manifestFeedTask?.Status}");
-                        manifestFeedTask?.Wait();
-                    }
+                    logger.Info($"Awaiting manifestTask completion {manifestFeedTask?.Status}");
+                    manifestFeedTask?.Wait();
                 }
-                catch (AggregateException)
-                {
-                }
-                finally
-                {
-                    manifestFeedCts?.Dispose();
-                    manifestFeedCts = null;
-                    manifestFeedTask = null;
-                    logger.Info("Terminated.");
-                }
+            }
+            catch (AggregateException)
+            {
+            }
+            finally
+            {
+                manifestFeedCts?.Dispose();
+                manifestFeedCts = null;
+                manifestFeedTask = null;
+                logger.Info("Terminated.");
             }
         }
 
         private async Task ManifestFeedProcess(CancellationToken token, TimeSpan delay)
         {
-            var repeatFeed = false;
+            bool repeatFeed;
             var currentDelay = delay;
 
             do
@@ -226,7 +225,6 @@ namespace JuvoPlayer.DataProviders.Dash
                     // Dynamic content - Keep on reloading manifest
                     //
                     repeatFeed = Manifest.CurrentDocument.IsDynamic;
-
                 }
                 catch (DashManifestException dme)
                 {
@@ -271,7 +269,6 @@ namespace JuvoPlayer.DataProviders.Dash
                 }
 
                 currentDelay = Manifest.GetReloadDueTime();
-
             } while (repeatFeed);
         }
 
@@ -283,23 +280,19 @@ namespace JuvoPlayer.DataProviders.Dash
 
         public void Start()
         {
-            lock (startStopLock)
-            {
-                // Double start prevention.
-                if (manifestFeedTask != null)
-                    return;
+            // Double start prevention.
+            if (manifestFeedTask != null)
+                return;
 
-                logger.Info("Starting DashManifestProvider");
+            logger.Info("Starting DashManifestProvider");
 
-                // Start reloader.
-                //
-                manifestFeedCts?.Dispose();
-                manifestFeedCts = new CancellationTokenSource();
-                var cancelToken = manifestFeedCts.Token;
+            // Start reloader.
+            manifestFeedCts?.Dispose();
+            manifestFeedCts = new CancellationTokenSource();
+            var cancelToken = manifestFeedCts.Token;
 
-                // Starts manifest download on manifestTask
-                StartManifestTask(cancelToken, TimeSpan.Zero);
-            }
+            // Starts manifest download on manifestTask
+            StartManifestTask(cancelToken, TimeSpan.Zero);
         }
 
         private void SetMediaFromPeriod(Period period, CancellationToken token)
