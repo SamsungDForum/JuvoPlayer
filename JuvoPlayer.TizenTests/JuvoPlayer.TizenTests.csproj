@@ -56,4 +56,12 @@
     <Service Include="{82a7f48d-3b50-4b1e-b82e-3ada8210c358}" />
   </ItemGroup>
 
+  <Target Name="UpdateVersion" BeforeTargets="PrepareForBuild">
+    <XmlPeek XmlInputPath="..\JuvoPlayer\JuvoPlayer.csproj" Query="/Project/PropertyGroup/Version[1]/text()">
+      <Output TaskParameter="Result" ItemName="JuvoPlayerVersion" />
+    </XmlPeek>
+    <XmlPoke XmlInputPath="JuvoPlayer.TizenTests.csproj" Query="/Project/PropertyGroup/Version" Value="@(JuvoPlayerVersion)" />
+    <XmlPoke XmlInputPath="tizen-manifest.xml" Query="/x:manifest/@version" Value="@(JuvoPlayerVersion)" Namespaces="&lt;Namespace Prefix='x' Uri='http://tizen.org/ns/packages' /&gt;" />
+  </Target>
+
 </Project>
