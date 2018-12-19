@@ -33,7 +33,6 @@ namespace JuvoPlayer.Player.EsPlayer
     {
         public UnsupportedStreamException(string message) : base(message)
         {
-
         }
     }
 
@@ -72,6 +71,7 @@ namespace JuvoPlayer.Player.EsPlayer
 
         /// Delegate holding PushConfigMethod. Different for Audio and Video
         private delegate void StreamConfigure(Common.StreamConfig streamConfig);
+
         private readonly StreamConfigure PushStreamConfig;
 
         // Reference to internal EsPlayer objects
@@ -92,10 +92,6 @@ namespace JuvoPlayer.Player.EsPlayer
         // Buffer configuration and supporting info
         public BufferConfigurationPacket CurrentConfig { get; internal set; }
         public bool IsConfigured => (CurrentConfig != null);
-
-        // lock object used for serialization of internal operations
-        // that can be externally accessed
-        private readonly object syncLock = new object();
 
         // Events
         private readonly Subject<string> playbackErrorSubject = new Subject<string>();
@@ -157,21 +153,18 @@ namespace JuvoPlayer.Player.EsPlayer
             // directly to player or queued in packet queue.
             // To make sure current state is known, sync this operation.
             //
-            lock (syncLock)
+            logger.Info($"{streamType}: Already Configured: {IsConfigured}");
+
+            if (IsConfigured)
             {
-                logger.Info($"{streamType}: Already Configured: {IsConfigured}");
-
-                if (IsConfigured)
-                {
-                    packetStorage.AddPacket(bufferConfig);
-                    logger.Info($"{streamType}: New configuration queued");
-                    return SetStreamConfigResult.ConfigQueued;
-                }
-
-                CurrentConfig = bufferConfig;
-                PushStreamConfig(CurrentConfig.Config);
-                return SetStreamConfigResult.ConfigPushed;
+                packetStorage.AddPacket(bufferConfig);
+                logger.Info($"{streamType}: New configuration queued");
+                return SetStreamConfigResult.ConfigQueued;
             }
+
+            CurrentConfig = bufferConfig;
+            PushStreamConfig(CurrentConfig.Config);
+            return SetStreamConfigResult.ConfigPushed;
         }
 
         /// <summary>
@@ -183,10 +176,7 @@ namespace JuvoPlayer.Player.EsPlayer
         {
             logger.Info($"{streamType}:");
 
-            lock (syncLock)
-            {
-                PushStreamConfig(CurrentConfig.Config);
-            }
+            PushStreamConfig(CurrentConfig.Config);
         }
 
         /// <summary>
@@ -200,7 +190,6 @@ namespace JuvoPlayer.Player.EsPlayer
         /// <summary>
         /// Public API for stopping data transfer
         /// </summary>
-
         public void Stop()
         {
             DisableTransfer();
@@ -234,7 +223,6 @@ namespace JuvoPlayer.Player.EsPlayer
         {
             return Task.Factory.StartNew(() => SeekTask(seekId, seekPosition, token), token);
         }
-
 
         #endregion
 
@@ -276,24 +264,20 @@ namespace JuvoPlayer.Player.EsPlayer
                             packet.Dispose();
                             break;
                     }
-
                 }
                 catch (InvalidOperationException)
                 {
-                    logger.Info($"{streamType}: Stream completed");
+                    logger.Warn($"{streamType}: Stream completed");
                     return SeekResult.Ok;
                 }
                 catch (OperationCanceledException)
                 {
-                    logger.Info($"{streamType}: Seek cancelled");
+                    logger.Warn($"{streamType}: Seek cancelled");
                     return SeekResult.Ok;
                 }
                 catch (Exception e)
                 {
-                    logger.Error($"{streamType}: {e.Message}");
-                    logger.Error($"{streamType}: {e.Source}");
-                    logger.Error($"{streamType}: {e.StackTrace}");
-
+                    logger.Error(e, $"{streamType}");
                     throw;
                 }
             }
@@ -314,7 +298,6 @@ namespace JuvoPlayer.Player.EsPlayer
             player.SetStream(streamInfo);
 
             logger.Info($"{streamType}: Stream configuration set");
-
         }
 
         /// <summary>
@@ -332,7 +315,6 @@ namespace JuvoPlayer.Player.EsPlayer
             player.SetStream(streamInfo);
 
             logger.Info($"{streamType}: Stream configuration set");
-
         }
 
         /// <summary>
@@ -343,26 +325,23 @@ namespace JuvoPlayer.Player.EsPlayer
         {
             logger.Info($"{streamType}:");
 
-            lock (syncLock)
+            // No cancellation requested = task not stopped
+            if (!activeTask.IsCompleted)
             {
-                // No cancellation requested = task not stopped
-                if (!activeTask.IsCompleted)
-                {
-                    logger.Info($"{streamType}: Already running: {activeTask.Status}");
-                    return;
-                }
-
-                if (!IsConfigured)
-                {
-                    throw new InvalidOperationException($"{streamType}: Not Configured");
-                }
-
-                transferCts?.Dispose();
-                transferCts = new CancellationTokenSource();
-                var token = transferCts.Token;
-
-                activeTask = Task.Factory.StartNew(() => TransferTask(token), token);
+                logger.Info($"{streamType}: Already running: {activeTask.Status}");
+                return;
             }
+
+            if (!IsConfigured)
+            {
+                throw new InvalidOperationException($"{streamType}: Not Configured");
+            }
+
+            transferCts?.Dispose();
+            transferCts = new CancellationTokenSource();
+            var token = transferCts.Token;
+
+            activeTask = Task.Factory.StartNew(() => TransferTask(token), token);
         }
 
         /// <summary>
@@ -371,13 +350,8 @@ namespace JuvoPlayer.Player.EsPlayer
         private void DisableTransfer()
         {
             logger.Info($"{streamType}:");
-
-            lock (syncLock)
-            {
-                transferCts?.Cancel();
-
-                logger.Info($"{streamType}: Stopping transfer");
-            }
+            transferCts?.Cancel();
+            logger.Info($"{streamType}: Stopping transfer");
         }
 
         /// <summary>
@@ -387,7 +361,6 @@ namespace JuvoPlayer.Player.EsPlayer
         private void DisableInput()
         {
             logger.Info($"{streamType}:");
-
             packetStorage.Disable(streamType);
         }
 
@@ -408,13 +381,14 @@ namespace JuvoPlayer.Player.EsPlayer
 
                     if (CurrentConfig.StreamType == StreamType.Audio && !CurrentConfig.Compatible(bufferConfigPacket))
                     {
-                        logger.Info($"{streamType}: Incompatible Stream config change.");
+                        logger.Warn($"{streamType}: Incompatible Stream config change.");
                         streamReconfigureSubject.OnNext(Unit.Default);
 
                         // exit transfer task. This will prevent further transfers
                         // Stops/Restarts will be called by reconfiguration handler.
                         continueProcessing = false;
                     }
+
                     break;
 
                 case EncryptedPacket encryptedPacket:
@@ -443,7 +417,6 @@ namespace JuvoPlayer.Player.EsPlayer
 
             wakeup.Reset();
             logger.Info($"{streamType}: Transfer restarted");
-
         }
 
         /// <summary>
@@ -473,7 +446,7 @@ namespace JuvoPlayer.Player.EsPlayer
                         var delay = currentTransfer - (DateTime.Now - startTime);
 
                         logger.Info(
-                            $"{streamType}: Transfer task halted. {currentTransfer}/{(float)dataLength / 1024} kB pushed");
+                            $"{streamType}: Transfer task halted. {currentTransfer}/{(float) dataLength / 1024} kB pushed");
 
                         DelayTransfer(delay, token);
 
@@ -488,7 +461,7 @@ namespace JuvoPlayer.Player.EsPlayer
                     // Ignore non data packets (EOS/BufferChange/etc.)
                     if (packet.Data != null)
                     {
-                        dataLength += (ulong)packet.Data.Length;
+                        dataLength += (ulong) packet.Data.Length;
 
                         if (firstPts.HasValue)
                         {
@@ -507,7 +480,6 @@ namespace JuvoPlayer.Player.EsPlayer
                     repeat = ProcessPacket(packet, token);
                     repeat &= !token.IsCancellationRequested;
                 } while (repeat);
-
             }
             catch (InvalidOperationException)
             {
@@ -519,23 +491,19 @@ namespace JuvoPlayer.Player.EsPlayer
             }
             catch (PacketSubmitException pse)
             {
-                logger.Error($"{streamType}: Submit Error " + pse.SubmitStatus);
+                logger.Error(pse, $"{streamType}: Submit Error " + pse.SubmitStatus);
                 disableInput = true;
-
             }
             catch (DrmException drme)
             {
-                logger.Error($"{streamType}: Decrypt Error: " + drme.Message);
+                logger.Error(drme, $"{streamType}: Decrypt Error");
                 disableInput = true;
                 invokeError = true;
-
             }
             catch (Exception e)
             {
                 // Dump unhandled exception. Running as a task so they will not be reported.
-                logger.Error($"{streamType}: {e.Message}");
-                logger.Error($"{streamType}: {e.Source}");
-                logger.Error($"{streamType}: {e.StackTrace}");
+                logger.Error(e, $"{streamType}");
                 disableInput = true;
                 invokeError = true;
             }
@@ -548,11 +516,10 @@ namespace JuvoPlayer.Player.EsPlayer
             }
 
             logger.Info(
-                $"{streamType}: Transfer task terminated. {currentTransfer}/{(float)dataLength / 1024} kB pushed");
+                $"{streamType}: Transfer task terminated. {currentTransfer}/{(float) dataLength / 1024} kB pushed");
 
             if (invokeError)
                 playbackErrorSubject.OnNext("Playback Error");
-
         }
 
         /// <summary>
@@ -575,7 +542,6 @@ namespace JuvoPlayer.Player.EsPlayer
                 var res = player.SubmitPacket(esPacket);
                 doRetry = ShouldRetry(res, token);
                 logger.Debug($"{esPacket.type}: ({!doRetry}/{res}) PTS: {esPacket.pts} Duration: {esPacket.duration}");
-
             } while (doRetry && !token.IsCancellationRequested);
         }
 
@@ -605,7 +571,6 @@ namespace JuvoPlayer.Player.EsPlayer
 
                     logger.Debug(
                         $"{esPacket.type}: ({!doRetry}/{res}) PTS: {esPacket.pts} Duration: {esPacket.duration} Handle: {esPacket.handle} HandleSize: {esPacket.handleSize}");
-
                 } while (doRetry && !token.IsCancellationRequested);
             }
         }
@@ -629,7 +594,6 @@ namespace JuvoPlayer.Player.EsPlayer
             {
                 var res = player.SubmitEosPacket(streamType.ESStreamType());
                 doRetry = ShouldRetry(res, token);
-
             } while (doRetry && !token.IsCancellationRequested);
         }
 
@@ -680,7 +644,9 @@ namespace JuvoPlayer.Player.EsPlayer
         #endregion
 
         #region IDisposable Support
+
         private bool isDisposed;
+
         public void Dispose()
         {
             if (isDisposed)
@@ -700,6 +666,7 @@ namespace JuvoPlayer.Player.EsPlayer
 
             isDisposed = true;
         }
+
         #endregion
     }
 }

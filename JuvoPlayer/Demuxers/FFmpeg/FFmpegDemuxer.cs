@@ -78,8 +78,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg
             catch (FFmpegException ex)
             {
                 DeallocFFmpeg();
-                Logger.Error(ex.Message);
-                Logger.Error(ex.StackTrace);
+                Logger.Error(ex);
                 throw new DemuxerException("Cannot open formatContext", ex);
             }
         }
@@ -149,8 +148,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg
             catch (FFmpegException ex)
             {
                 DeallocFFmpeg();
-                Logger.Error(ex.Message);
-                Logger.Error(ex.StackTrace);
+                Logger.Error(ex);
                 throw new DemuxerException("Cannot open formatContext", ex);
             }
         }
@@ -164,8 +162,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg
             }
             catch (FFmpegException ex)
             {
-                Logger.Error(ex.Message);
-                Logger.Error(ex.StackTrace);
+                Logger.Error(ex);
                 DeallocFFmpeg();
                 throw new DemuxerException("Cannot find streams info", ex);
             }
@@ -264,13 +261,11 @@ namespace JuvoPlayer.Demuxers.FFmpeg
             }
             catch (InvalidOperationException ex)
             {
-                Logger.Warn(ex.Message);
+                Logger.Warn(ex);
             }
             catch (Exception ex)
             {
-                Logger.Error($"Unexpected exception: {ex.GetType()}");
-                Logger.Error(ex.Message);
-                Logger.Error(ex.StackTrace);
+                Logger.Error(ex, $"Unexpected exception: {ex.GetType()}");
             }
             return new ArraySegment<byte>();
         }

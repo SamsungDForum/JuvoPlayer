@@ -42,8 +42,7 @@ namespace XamarinPlayer.Views
         private bool _isShowing;
         private bool _hasFinished;
 
-        public static readonly BindableProperty ContentSourceProperty =
-            BindableProperty.Create("ContentSource", typeof(object), typeof(PlayerView), null);
+        public static readonly BindableProperty ContentSourceProperty = BindableProperty.Create("ContentSource", typeof(object), typeof(PlayerView));
 
         public object ContentSource
         {
@@ -264,8 +263,7 @@ namespace XamarinPlayer.Views
                 }
                 catch (Exception ex)
                 {
-                    Logger.Error(ex.Message);
-                    Logger.Error(ex.StackTrace);
+                    Logger.Error(ex);
                     Subtitles.SelectedIndex = 0;
                 }
             };

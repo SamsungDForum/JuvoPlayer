@@ -102,7 +102,7 @@ namespace JuvoPlayer.DataProviders.RTSP
                 rtspSocket = new Rtsp.RtspTcpTransport(tcpClient);
                 if (rtspSocket.Connected == false)
                 {
-                    Logger.Info("Error - did not connect");
+                    Logger.Error("Did not connect");
                     return;
                 }
 
@@ -123,8 +123,7 @@ namespace JuvoPlayer.DataProviders.RTSP
             }
             catch (Exception e)
             {
-                Logger.Info("Error - did not connect: " + e.Message);
-                return;
+                Logger.Error(e, "Did not connect");
             }
         }
 
