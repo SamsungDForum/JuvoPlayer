@@ -15,8 +15,9 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
- using System;
+using System;
 using System.Collections.Generic;
+using System.Threading.Tasks;
 
 namespace XamarinPlayer.Services
 {
@@ -44,7 +45,7 @@ namespace XamarinPlayer.Services
 
         void Pause();
 
-        void SeekTo(TimeSpan position);
+        Task SeekTo(TimeSpan position);
 
         List<StreamDescription> GetStreamsDescription(StreamDescription.StreamType streamType);
         void ChangeActiveStream(StreamDescription stream);

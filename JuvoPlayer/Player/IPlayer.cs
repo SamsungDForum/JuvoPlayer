@@ -17,6 +17,7 @@
 
 using System;
 using System.Reactive;
+using System.Threading.Tasks;
 using JuvoPlayer.Common;
 
 namespace JuvoPlayer.Player
@@ -31,7 +32,7 @@ namespace JuvoPlayer.Player
 
         void Pause();
         void Play();
-        void Seek(TimeSpan time);
+        Task Seek(TimeSpan time);
         void SetDuration(TimeSpan duration);
         void SetPlaybackRate(float rate);
         void Stop();
