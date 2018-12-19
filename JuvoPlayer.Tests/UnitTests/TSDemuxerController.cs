@@ -200,13 +200,13 @@ namespace JuvoPlayer.Tests.UnitTests
                 {
                     controller.SetDataSource(dataSource);
                     var packetReadyTask = controller.PacketReady()
-                        .IsEmpty()
+                        .FirstAsync()
                         .ToTask();
 
-                    dataSource.OnCompleted();
+                    dataSource.OnNext(null);
 
                     var isEmpty = await packetReadyTask;
-                    Assert.That(isEmpty, Is.True);
+                    Assert.That(isEmpty, Is.Null);
                 }
             });
         }
