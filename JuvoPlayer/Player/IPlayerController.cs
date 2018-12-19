@@ -17,6 +17,7 @@
 
 using System;
 using System.Reactive;
+using System.Threading.Tasks;
 using JuvoPlayer.Common;
 
 namespace JuvoPlayer.Player
@@ -26,7 +27,7 @@ namespace JuvoPlayer.Player
         #region ui_slots
         void OnPause();
         void OnPlay();
-        void OnSeek(TimeSpan time);
+        Task OnSeek(TimeSpan time);
         void OnSetPlaybackRate(float rate);
         void OnStop();
         #endregion
@@ -37,7 +38,6 @@ namespace JuvoPlayer.Player
         void OnSetDrmConfiguration(DRMDescription description);
         void OnStreamConfigReady(StreamConfig config);
         void OnPacketReady(Packet packet);
-        void OnStreamsCompleted();
         void OnStreamError(string errorMessage);
         void OnBufferingStarted();
         void OnBufferingCompleted();
