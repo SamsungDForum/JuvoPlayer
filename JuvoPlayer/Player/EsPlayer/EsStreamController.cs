@@ -45,9 +45,6 @@ namespace JuvoPlayer.Player.EsPlayer
 
         private readonly ILogger logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
 
-        // Instance reference & creation lock
-        private readonly object dataStreamLock = new object();
-
         // Prebuffer duration
         private static readonly TimeSpan PreBufferDuration = TimeSpan.FromSeconds(2);
 
@@ -96,29 +93,26 @@ namespace JuvoPlayer.Player.EsPlayer
 
         public void Initialize(Common.StreamType stream)
         {
-            lock (dataStreamLock)
+            logger.Info(stream.ToString());
+
+            if (dataStreams[(int) stream] != null)
             {
-                logger.Info(stream.ToString());
-
-                if (dataStreams[(int) stream] != null)
-                {
-                    throw new ArgumentException($"Stream {stream} already initialized");
-                }
-
-                // Create new data stream & chunk state entry
-                //
-                dataStreams[(int) stream] = new DataStream
-                {
-                    Stream = new EsStream(stream, packetStorage),
-                    StreamType = stream
-                };
-
-                dataStreams[(int) stream].Stream.SetPlayer(player);
-                streamReconfigureSubs[(int) stream] = dataStreams[(int) stream].Stream.StreamReconfigure()
-                    .Subscribe(unit => OnStreamReconfigure(), SynchronizationContext.Current);
-                playbackErrorSubs[(int) stream] = dataStreams[(int) stream].Stream.PlaybackError()
-                    .Subscribe(OnEsStreamError, SynchronizationContext.Current);
+                throw new ArgumentException($"Stream {stream} already initialized");
             }
+
+            // Create new data stream & chunk state entry
+            //
+            dataStreams[(int) stream] = new DataStream
+            {
+                Stream = new EsStream(stream, packetStorage),
+                StreamType = stream
+            };
+
+            dataStreams[(int) stream].Stream.SetPlayer(player);
+            streamReconfigureSubs[(int) stream] = dataStreams[(int) stream].Stream.StreamReconfigure()
+                .Subscribe(unit => OnStreamReconfigure(), SynchronizationContext.Current);
+            playbackErrorSubs[(int) stream] = dataStreams[(int) stream].Stream.PlaybackError()
+                .Subscribe(OnEsStreamError, SynchronizationContext.Current);
         }
 
         public EsStreamController(EsPlayerPacketStorage storage)
@@ -163,18 +157,15 @@ namespace JuvoPlayer.Player.EsPlayer
 
             try
             {
-                lock (dataStreamLock)
-                {
-                    var pushResult = dataStreams[(int) streamType].Stream.SetStreamConfig(configPacket);
+                var pushResult = dataStreams[(int) streamType].Stream.SetStreamConfig(configPacket);
 
-                    // Configuration queued. Do not prepare stream :)
-                    if (pushResult == EsStream.SetStreamConfigResult.ConfigQueued)
-                        return;
+                // Configuration queued. Do not prepare stream :)
+                if (pushResult == EsStream.SetStreamConfigResult.ConfigQueued)
+                    return;
 
-                    // Check if all initialized streams are configured
-                    if (!AllStreamsConfigured)
-                        return;
-                }
+                // Check if all initialized streams are configured
+                if (!AllStreamsConfigured)
+                    return;
 
                 var token = activeTaskCts.Token;
                 StreamPrepare(token);
@@ -200,7 +191,7 @@ namespace JuvoPlayer.Player.EsPlayer
             }
             catch (UnsupportedStreamException use)
             {
-                logger.Error($"{streamType}: " + use.Message);
+                logger.Error(use, $"{streamType}");
                 OnEsStreamError(use.Message);
             }
         }
@@ -239,7 +230,7 @@ namespace JuvoPlayer.Player.EsPlayer
             }
             catch (InvalidOperationException ioe)
             {
-                logger.Error(ioe.Message);
+                logger.Error(ioe);
             }
         }
 
@@ -259,7 +250,7 @@ namespace JuvoPlayer.Player.EsPlayer
             }
             catch (InvalidOperationException ioe)
             {
-                logger.Error(ioe.Message);
+                logger.Error(ioe);
             }
         }
 
@@ -283,7 +274,7 @@ namespace JuvoPlayer.Player.EsPlayer
             }
             catch (InvalidOperationException ioe)
             {
-                logger.Error(ioe.Message);
+                logger.Error(ioe);
             }
         }
 
@@ -351,7 +342,7 @@ namespace JuvoPlayer.Player.EsPlayer
         /// <param name="eosArgs">ESPlayer.EosArgs</param>
         private void OnEos(object sender, ESPlayer.EOSEventArgs eosArgs)
         {
-            logger.Error(eosArgs.ToString());
+            logger.Info(eosArgs.ToString());
 
             // Stop and disable all initialized data streams.
             DisableTransfer();
@@ -495,7 +486,7 @@ namespace JuvoPlayer.Player.EsPlayer
             }
             catch (InvalidOperationException ioe)
             {
-                logger.Error(ioe.Message);
+                logger.Error(ioe);
                 playbackErrorSubject.OnNext(ioe.Message);
             }
             catch (OperationCanceledException)
@@ -505,9 +496,7 @@ namespace JuvoPlayer.Player.EsPlayer
             }
             catch (Exception e)
             {
-                logger.Error(e.Message);
-                logger.Error(e.Source);
-                logger.Error(e.StackTrace);
+                logger.Error(e);
                 playbackErrorSubject.OnNext("Start Failed");
             }
         }
@@ -584,9 +573,7 @@ namespace JuvoPlayer.Player.EsPlayer
             }
             catch (Exception e)
             {
-                logger.Error(e.Message);
-                logger.Error(e.Source);
-                logger.Error(e.StackTrace);
+                logger.Error(e);
                 playbackErrorSubject.OnNext("Restart Error");
             }
         }
@@ -651,9 +638,7 @@ namespace JuvoPlayer.Player.EsPlayer
             }
             catch (Exception e)
             {
-                logger.Error(e.Message);
-                logger.Error(e.Source);
-                logger.Error(e.StackTrace);
+                logger.Error(e);
                 playbackErrorSubject.OnNext("Seek Failed");
             }
             finally
@@ -730,7 +715,7 @@ namespace JuvoPlayer.Player.EsPlayer
                     }
                     catch (InvalidOperationException ioe)
                     {
-                        logger.Warn("Cannot obtain play time from player: " + ioe.Message);
+                        logger.Warn(ioe, "Cannot obtain play time from player");
                     }
 
                     await Task.Delay(500, token);

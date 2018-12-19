@@ -37,7 +37,7 @@ namespace JuvoPlayer.Drms.Cenc
             var iemeKeySystemName = CencUtils.GetKeySystemName(initData.SystemId);
             if (IEME.isKeySystemSupported(iemeKeySystemName) != Status.kSupported)
             {
-                Logger.Info($"Key System: {iemeKeySystemName} is not supported");
+                Logger.Warn($"Key System: {iemeKeySystemName} is not supported");
                 return null;
             }
             return CencSession.Create(initData, drmDescription);

@@ -15,6 +15,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+using System;
 using System.Runtime.CompilerServices;
 
 namespace JuvoLogger
@@ -33,10 +34,19 @@ namespace JuvoLogger
         void Warn(string message, [CallerFilePath] string file = "", [CallerMemberName] string method = "",
             [CallerLineNumber] int line = 0);
 
+        void Warn(Exception ex, string message = "", [CallerFilePath] string file = "", [CallerMemberName] string method = "",
+            [CallerLineNumber] int line = 0);
+
         void Error(string message, [CallerFilePath] string file = "", [CallerMemberName] string method = "",
             [CallerLineNumber] int line = 0);
 
+        void Error(Exception ex, string message = "", [CallerFilePath] string file = "", [CallerMemberName] string method = "",
+            [CallerLineNumber] int line = 0);
+
         void Fatal(string message, [CallerFilePath] string file = "", [CallerMemberName] string method = "",
+            [CallerLineNumber] int line = 0);
+
+        void Fatal(Exception ex, string message = "", [CallerFilePath] string file = "", [CallerMemberName] string method = "",
             [CallerLineNumber] int line = 0);
 
         bool IsLevelEnabled(LogLevel level);

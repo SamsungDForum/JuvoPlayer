@@ -303,7 +303,7 @@ namespace JuvoPlayer.OpenGL
             }
             else
             {
-                Logger?.Info($"Unknown key pressed: {key.KeyPressedName}");
+                Logger?.Warn($"Unknown key pressed: {key.KeyPressedName}");
             }
 
             KeyPressedMenuUpdate();
@@ -320,7 +320,7 @@ namespace JuvoPlayer.OpenGL
             }
             catch (Exception e)
             {
-                Logger.Error("PreviewPayloadHandler exception " + e.Message);
+                Logger.Error(e);
             }
         }
 
