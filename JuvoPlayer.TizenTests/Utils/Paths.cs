@@ -15,17 +15,14 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-﻿using System;
-using System.Collections.Generic;
 using System.IO;
-using System.Linq;
-using System.Text;
+using Tizen.Applications;
 
 namespace JuvoPlayer.TizenTests.Utils
 {
     class Paths
     {
         public static string ApplicationPath => Path.GetDirectoryName(
-            Path.GetDirectoryName(Tizen.Applications.Application.Current.ApplicationInfo.ExecutablePath));
+            Path.GetDirectoryName(Application.Current.ApplicationInfo.ExecutablePath));
     }
 }
