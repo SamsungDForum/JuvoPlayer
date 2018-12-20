@@ -34,7 +34,17 @@ namespace JuvoPlayer.OpenGL
         {
             int id;
             fixed (byte* tagBytes = ResourceLoader.GetBytes(tag))
-                id = DllImports.AddGraph(tagBytes, tag.Length, minimumValue, maximumValue, sampleCount);
+            {
+                id = DllImports.AddGraph(new DllImports.GraphInfo()
+                {
+                    tag = tagBytes,
+                    tagLen = tag.Length,
+                    minVal = minimumValue,
+                    maxVal = maximumValue,
+                    valuesCount = sampleCount
+                });
+            }
+
             if (id <= DllImports.fpsGraphId)
                 return DllImports.wrongGraphId;
             _metrics.Add(new Metric

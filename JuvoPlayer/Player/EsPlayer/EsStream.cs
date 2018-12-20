@@ -226,7 +226,7 @@ namespace JuvoPlayer.Player.EsPlayer
 
         public void Wakeup()
         {
-            logger.Info($"{streamType}:");
+            //logger.Info($"{streamType}:");
             wakeup.Set();
         }
 
