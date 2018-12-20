@@ -67,6 +67,10 @@ namespace JuvoPlayer.OpenGL
         private float _systemMemoryBottom;
         private float _systemMemoryTop;
 
+        private bool _bufferingInProgress = false;
+        private float _bufferingProgress = 0;
+
+
         private readonly SystemCpuUsage _systemCpuUsage = new SystemCpuUsage();
 
         private static void Main(string[] args)
@@ -102,7 +106,7 @@ namespace JuvoPlayer.OpenGL
 
             if (!string.IsNullOrEmpty(payload))
             {
-                char[] charSeparator = new char[] {'&'};
+                char[] charSeparator = {'&'};
                 string[] result = payload.Split(charSeparator, StringSplitOptions.RemoveEmptyEntries);
                 if (result.Length > 0)
                     PreviewPayloadHandler(result[0]);
@@ -374,10 +378,18 @@ namespace JuvoPlayer.OpenGL
 
         private unsafe void ShowAlert(string title, string body, string button)
         {
-            fixed (byte* titleBytes = ResourceLoader.GetBytes(title))
-            fixed (byte* bodyBytes = ResourceLoader.GetBytes(body))
-            fixed (byte* buttonBytes = ResourceLoader.GetBytes(button))
-                DllImports.ShowAlert(titleBytes, title.Length, bodyBytes, body.Length, buttonBytes, button.Length);
+            fixed (byte* titleBytes = ResourceLoader.GetBytes(title), bodyBytes = ResourceLoader.GetBytes(body), buttonBytes = ResourceLoader.GetBytes(button))
+            {
+                DllImports.ShowAlert(new DllImports.AlertInfo()
+                {
+                    title = titleBytes,
+                    titleLen = title.Length,
+                    body = bodyBytes,
+                    bodyLen = body.Length,
+                    button = buttonBytes,
+                    buttonLen = button.Length
+                });
+            }
             _isAlertShown = true;
         }
 
@@ -494,7 +506,6 @@ namespace JuvoPlayer.OpenGL
                     .Where(state => state == PlayerState.Prepared)
                     .Subscribe(state =>
                     {
-                        Logger?.Info($"Player state changed: {state}");
                         if (_player == null)
                             return;
                         _options.LoadStreamLists(_player);
@@ -520,10 +531,7 @@ namespace JuvoPlayer.OpenGL
 
                 _player.BufferingProgress()
                     .ObserveOn(SynchronizationContext.Current)
-                    .Subscribe(percent =>
-                    {
-                        // TODO: Handle buffering
-                    });
+                    .Subscribe(UpdateBufferingProgress);
             }
 
             Logger?.Info(
@@ -531,6 +539,14 @@ namespace JuvoPlayer.OpenGL
             _player.SetSource(_resourceLoader.ContentList[_selectedTile]);
             _options.ClearOptionsMenu();
             _seekInProgress = false;
+            _bufferingInProgress = false;
+            _bufferingProgress = 0;
+        }
+
+        private void UpdateBufferingProgress(double percent)
+        {
+            _bufferingProgress = (float)percent;
+            _bufferingInProgress = percent < 1.0;
         }
 
         private void ReturnToMainMenu()
@@ -664,9 +680,18 @@ namespace JuvoPlayer.OpenGL
                 _player.SeekTo(_player.CurrentPosition - seekTime);
         }
 
-        private static unsafe void ResetPlaybackControls()
+        private static void ResetPlaybackControls()
         {
-            DllImports.UpdatePlaybackControls(0, 0, 0, 0, null, 0);
+            DllImports.UpdatePlaybackControls(new DllImports.PlaybackInfo() {
+                show = 0,
+                state = 0,
+                currentTime = 0,
+                totalTime = 0,
+                text = null,
+                textLen = 0,
+                buffering = 0,
+                bufferingProgress = 0
+            });
         }
 
         private void ShowMenu(bool show)
@@ -728,10 +753,19 @@ namespace JuvoPlayer.OpenGL
             }
 
             fixed (byte* name = ResourceLoader.GetBytes(_resourceLoader.ContentList[_selectedTile].Title))
-                DllImports.UpdatePlaybackControls(_progressBarShown ? 1 : 0, (int) (_player?.State ?? PlayerState.Idle),
-                    (int) _playerTimeCurrentPosition.TotalMilliseconds,
-                    (int) _playerTimeDuration.TotalMilliseconds, name,
-                    _resourceLoader.ContentList[_selectedTile].Title.Length);
+            {
+                DllImports.UpdatePlaybackControls(new DllImports.PlaybackInfo()
+                {
+                    show = _progressBarShown ? 1 : 0,
+                    state = (int) (_player?.State ?? PlayerState.Idle),
+                    currentTime = (int) _playerTimeCurrentPosition.TotalMilliseconds,
+                    totalTime = (int) _playerTimeDuration.TotalMilliseconds,
+                    text = name,
+                    textLen = _resourceLoader.ContentList[_selectedTile].Title.Length,
+                    buffering = _bufferingInProgress ? 1 : 0,
+                    bufferingProgress = _bufferingProgress
+                });
+            }
         }
 
         private void UpdateUI()

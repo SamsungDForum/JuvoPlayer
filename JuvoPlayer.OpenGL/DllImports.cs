@@ -24,6 +24,64 @@ namespace JuvoPlayer.OpenGL
     {
         private const string GlDemoLib = "libgles.so";
 
+        // Structures
+
+        [StructLayout(LayoutKind.Sequential)]
+        public struct TileInfo
+        {
+            public int tileId;
+            public byte* pixels;
+            public int width;
+            public int height;
+            public byte* name;
+            public int nameLen;
+            public byte* desc;
+            public int descLen;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        public struct ImageInfo
+        {
+            public int id;
+            public byte* pixels;
+            public int width;
+            public int height;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        public struct PlaybackInfo
+        {
+            public int show;
+            public int state;
+            public int currentTime;
+            public int totalTime;
+            public byte* text;
+            public int textLen;
+            public int buffering;
+            public float bufferingProgress;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        public struct GraphInfo
+        {
+            public byte* tag;
+            public int tagLen;
+            public float minVal;
+            public float maxVal;
+            public int valuesCount;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        public struct AlertInfo
+        {
+            public byte* title;
+            public int titleLen;
+            public byte* body;
+            public int bodyLen;
+            public byte* button;
+            public int buttonLen;
+        }
+
         // Main functions
 
         [DllImport(GlDemoLib, EntryPoint = "Create")]
@@ -41,19 +99,19 @@ namespace JuvoPlayer.OpenGL
         public static extern int AddTile();
 
         [DllImport(GlDemoLib, EntryPoint = "SetTileData")]
-        public static extern void SetTileData(int tileId, byte* pixels, int w, int h, byte* name, int nameLen, byte* desc, int descLen);
+        public static extern void SetTileData(TileInfo tileInfo);
 
         [DllImport(GlDemoLib, EntryPoint = "AddEmptyTile")]
         public static extern int AddEmptyTile();
 
         [DllImport(GlDemoLib, EntryPoint = "SetTileTexture")]
-        public static extern int SetTileTexture(int tileNo, byte* pixels, int w, int h);
+        public static extern int SetTileTexture(ImageInfo image);
 
         [DllImport(GlDemoLib, EntryPoint = "AddFont")]
         public static extern int AddFont(byte* data, int size);
 
         [DllImport(GlDemoLib, EntryPoint = "SetIcon")]
-        public static extern void SetIcon(int id, byte* pixels, int w, int h);
+        public static extern void SetIcon(ImageInfo image);
 
         [DllImport(GlDemoLib, EntryPoint = "SwitchTextRenderingMode")]
         public static extern void SwitchTextRenderingMode();
@@ -73,7 +131,7 @@ namespace JuvoPlayer.OpenGL
         public static extern void SelectTile(int tileNo);
 
         [DllImport(GlDemoLib, EntryPoint = "UpdatePlaybackControls")]
-        public static extern void UpdatePlaybackControls(int show, int state, int currentTime, int totalTime, byte* text, int textLen);
+        public static extern void UpdatePlaybackControls(PlaybackInfo playbackInfo);
 
         [DllImport(GlDemoLib, EntryPoint = "SetFooter")]
         public static extern void SetFooter(byte* footer, int footerLen);
@@ -104,7 +162,7 @@ namespace JuvoPlayer.OpenGL
         public const int fpsGraphId = 0; // computations handled by C lib
 
         [DllImport(GlDemoLib, EntryPoint = "AddGraph")]
-        public static extern int AddGraph(byte* tag, int tagLen, float minVal, float maxVal, int valuesCount);
+        public static extern int AddGraph(GraphInfo graphInfo);
 
         [DllImport(GlDemoLib, EntryPoint = "SetGraphVisibility")]
         public static extern void SetGraphVisibility(int graphId, int visible);
@@ -125,7 +183,7 @@ namespace JuvoPlayer.OpenGL
         public static extern void PushLog(byte* log, int logLen);
 
         [DllImport(GlDemoLib, EntryPoint = "ShowAlert")]
-        public static extern void ShowAlert(byte *title, int titleLen, byte* body, int bodyLen, byte* button, int buttonLen);
+        public static extern void ShowAlert(AlertInfo alertInfo);
 
         [DllImport(GlDemoLib, EntryPoint = "HideAlert")]
         public static extern void HideAlert();
