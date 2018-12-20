@@ -45,8 +45,6 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
         [Test]
         public void StartForUrl_ContentWithAudioAndVideo_CallsStreamConfigReady()
         {
-            Tizen.Log.Info("UT", "Starts");
-
             AsyncContext.Run(async () =>
             {
                 using (var controller = CreateDemuxerController())
@@ -69,14 +67,11 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
                     await videoFoundTask;
                 }
             });
-
-            Tizen.Log.Info("UT", "Ends");
         }
 
         [Test]
         public void StartForUrl_ContentWithDuration_CallsClipDurationChanged()
         {
-            Tizen.Log.Info("UT", "Starts");
             AsyncContext.Run(async () =>
             {
                 using (var controller = CreateDemuxerController())
@@ -89,13 +84,11 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
                     Assert.That(receivedDuration, Is.EqualTo(expectedDuration));
                 }
             });
-            Tizen.Log.Info("UT", "Ends");
         }
 
         [Test]
         public void StartForUrl_ContentWithAudioAndVideo_CallsPacketReady()
         {
-            Tizen.Log.Info("UT", "Starts");
             AsyncContext.Run(async () =>
             {
                 using (var controller = CreateDemuxerController())
@@ -104,25 +97,21 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
                     await controller.PacketReady().FirstAsync().Timeout(TimeSpan.FromSeconds(2));
                 }
             });
-            Tizen.Log.Info("UT", "Ends");
         }
 
         [Test]
         public void Dispose_CalledTwice_ShouldntThrow()
         {
-            Tizen.Log.Info("UT", "Starts");
             var controller = CreateDemuxerController();
 
             controller.Dispose();
 
             Assert.DoesNotThrow(() => { controller.Dispose(); });
-            Tizen.Log.Info("UT", "Ends");
         }
 
         [Test]
         public void StartForEs_ChunksPushed_DemuxesStreamConfig()
         {
-            Tizen.Log.Info("UT", "Starts");
             AsyncContext.Run(async () =>
             {
                 try
@@ -146,13 +135,11 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
                     Assert.Fail();
                 }
             });
-            Tizen.Log.Info("UT", "Ends");
         }
 
         [Test]
         public void StartForEs_ChunksPushed_DemuxesPackets()
         {
-            Tizen.Log.Info("UT", "Starts");
             AsyncContext.Run(async () =>
             {
                 var chunkReady = new Subject<byte[]>();
@@ -171,7 +158,6 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
                     Assert.That(packet.StreamType, Is.EqualTo(StreamType.Video));
                 }
             });
-            Tizen.Log.Info("UT", "Ends");
         }
 
         private static IDemuxerController CreateDemuxerController(IObservable<byte[]> chunkReady = null)

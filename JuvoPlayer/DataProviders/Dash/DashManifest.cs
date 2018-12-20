@@ -33,14 +33,11 @@ namespace JuvoPlayer.DataProviders.Dash
 
         private readonly HttpClient httpClient = new HttpClient { Timeout = TimeSpan.FromSeconds(3) };
 
-        private DateTime lastReloadTime = DateTime.MinValue;
-        private TimeSpan minimumReloadPeriod = TimeSpan.Zero;
-
         public Document CurrentDocument { get; private set; }
 
         public bool HasChanged { get; private set; }
 
-        private DateTime? publishTime = null;
+        private DateTime? publishTime;
         private static readonly int maxManifestDownloadRetries = 3;
         private static readonly TimeSpan manifestDownloadDelay = TimeSpan.FromMilliseconds(1000);
         private static readonly TimeSpan manifestReloadDelay = TimeSpan.FromMilliseconds(1500);
@@ -89,7 +86,6 @@ namespace JuvoPlayer.DataProviders.Dash
             do
             {
                 cancelToken.ThrowIfCancellationRequested();
-                lastReloadTime = DateTime.UtcNow;
 
                 requestTime = DateTime.UtcNow;
                 var xmlManifest = await DownloadManifest(cancelToken);
@@ -106,14 +102,12 @@ namespace JuvoPlayer.DataProviders.Dash
                     {
                         break;
                     }
-                    else
-                    {
-                        Logger.Error($"Manifest parse error {Uri}");
-                    }
+
+                    Logger.Error($"Manifest parse error {Uri}");
                 }
                 else
                 {
-                    Logger.Info($"Manifest download failure {Uri}");
+                    Logger.Warn($"Manifest download failure {Uri}");
                 }
 
                 cancelToken.ThrowIfCancellationRequested();
@@ -133,8 +127,6 @@ namespace JuvoPlayer.DataProviders.Dash
             newDoc.DownloadRequestTime = requestTime;
             newDoc.DownloadCompleteTime = downloadTime;
             newDoc.ParseCompleteTime = parseTime;
-
-            minimumReloadPeriod = newDoc.MinimumUpdatePeriod ?? TimeSpan.MaxValue;
 
             CurrentDocument = newDoc;
 
@@ -169,8 +161,7 @@ namespace JuvoPlayer.DataProviders.Dash
             }
             catch (Exception ex)
             {
-                Logger.Error(
-                    "Cannot download manifest file. Error: " + ex.Message);
+                Logger.Error(ex, "Cannot download manifest file");
                 return null;
             }
 
@@ -191,8 +182,7 @@ namespace JuvoPlayer.DataProviders.Dash
             }
             catch (Exception ex)
             {
-                Logger.Error(
-                    "Cannot parse manifest file. Error: " + ex.Message);
+                Logger.Error(ex, "Cannot parse manifest file");
                 return null;
             }
         }

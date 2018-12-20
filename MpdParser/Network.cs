@@ -49,7 +49,7 @@ namespace MpdParser.Network
             }
             catch (Exception ex)
             {
-                Logger.Error($"Cannot parse range \"{range}\": {ex}");
+                Logger.Error(ex, $"Cannot parse range \"{range}\"");
             }
         }
 

@@ -141,8 +141,7 @@ namespace JuvoPlayer.DataProviders.Dash
             }
             catch (TaskCanceledException ex)
             {
-                Logger.Warn($"{ex.Message}");
-                Logger.Warn("Scheduling next segment to download is cancelled");
+                Logger.Warn(ex, "Doesn't schedule next segment to download");
             }
         }
 
@@ -158,7 +157,7 @@ namespace JuvoPlayer.DataProviders.Dash
             if (newStream.Representation.Segments.PrepareStream())
                 return newStream;
 
-            Logger.Warn($"{StreamType}: Stream preparation failed! Content will not be played.");
+            Logger.Error($"{StreamType}: Stream preparation failed! Content will not be played.");
 
             return null;
         }
@@ -327,38 +326,30 @@ namespace JuvoPlayer.DataProviders.Dash
 
         private void StartPipeline(DashStream newStream = null)
         {
-            // There may be multiple calls here.
-            // AdaptiveStreaming, OnStreamChange and Resume.
-            // We must assure there are no multiple calls to Start Client. Blocking at client
-            // won't do the trick.
-            //
-            lock (dashClient)
+            if (pipelineStarted)
+                return;
+
+            if (newStream != null)
             {
-                if (pipelineStarted)
-                    return;
+                currentStream = newStream;
 
-                if (newStream != null)
-                {
-                    currentStream = newStream;
+                Logger.Info($"{StreamType}: Dash pipeline start.");
+                Logger.Info($"{StreamType}: Media: {currentStream.Media}");
+                Logger.Info($"{StreamType}: {currentStream.Representation}");
 
-                    Logger.Info($"{StreamType}: Dash pipeline start.");
-                    Logger.Info($"{StreamType}: Media: {currentStream.Media}");
-                    Logger.Info($"{StreamType}: {currentStream.Representation}");
-
-                    dashClient.UpdateRepresentation(currentStream.Representation);
-                    ParseDrms(currentStream.Media);
-                }
-
-                if (!trimOffset.HasValue)
-                    trimOffset = currentStream.Representation.AlignedTrimOffset;
-
-                var fullInitRequired = (newStream != null);
-
-                demuxerController.StartForEs(fullInitRequired ? InitializationMode.Full : InitializationMode.Minimal);
-                dashClient.Start(fullInitRequired);
-
-                pipelineStarted = true;
+                dashClient.UpdateRepresentation(currentStream.Representation);
+                ParseDrms(currentStream.Media);
             }
+
+            if (!trimOffset.HasValue)
+                trimOffset = currentStream.Representation.AlignedTrimOffset;
+
+            var fullInitRequired = (newStream != null);
+
+            demuxerController.StartForEs(fullInitRequired ? InitializationMode.Full : InitializationMode.Minimal);
+            dashClient.Start(fullInitRequired);
+
+            pipelineStarted = true;
         }
 
         private static Media GetDefaultMedia(ICollection<Media> medias)
@@ -696,7 +687,7 @@ namespace JuvoPlayer.DataProviders.Dash
                     //
                     demuxerClock = (PacketTimeStamp) packet + lastSeek.Value;
 
-                    Logger.Info($"{StreamType}: Badly timestamped packet. Adjusting demuxerClock to: {demuxerClock}");
+                    Logger.Warn($"{StreamType}: Badly timestamped packet. Adjusting demuxerClock to: {demuxerClock}");
                 }
 
                 lastSeek = null;
