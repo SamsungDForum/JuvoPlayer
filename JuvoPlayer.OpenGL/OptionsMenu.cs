@@ -109,7 +109,14 @@ namespace JuvoPlayer.OpenGL
             Logger?.Info($"activeOption={_activeOption}, activeSubOption={_activeSubOption}, selectedOption={_selectedOption}, selectedSubOption={_selectedSubOption}");
             if (_selectedOption >= 0 && _selectedOption < _streams.Count)
                 _activeSubOption = _streams[_selectedOption].Active;
-            DllImports.UpdateSelection(Visible ? 1 : 0, _activeOption, _activeSubOption, _selectedOption, _selectedSubOption);
+            DllImports.UpdateSelection(new DllImports.SelectionData()
+                {
+                    show = Visible ? 1 : 0,
+                    activeOptionId = _activeOption,
+                    activeSubOptionId = _activeSubOption,
+                    selectedOptionId = _selectedOption,
+                    selectedSubOptionId = _selectedSubOption
+                });
         }
 
         private void SetDefaultState()

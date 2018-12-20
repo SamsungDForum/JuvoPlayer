@@ -41,7 +41,7 @@
         {
             fixed (byte* p = _image.Pixels, name = GetBytes(_name), desc = GetBytes(_description))
             {
-                DllImports.SetTileData(new DllImports.TileInfo()
+                DllImports.SetTileData(new DllImports.TileData()
                 {
                     tileId = _id,
                     pixels = p,

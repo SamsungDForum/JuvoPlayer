@@ -20,9 +20,9 @@
     public enum PlayerState // int values are passed down to native code
     {
         Idle = 0,
-        Prepared = 2,
-        Playing = 4,
-        Paused = 5
+        Prepared = 1,
+        Playing = 2,
+        Paused = 3
     }
 
     internal struct ImageData
