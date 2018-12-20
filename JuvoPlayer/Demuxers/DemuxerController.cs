@@ -63,9 +63,9 @@ namespace JuvoPlayer.Demuxers
                 TaskScheduler.FromCurrentSynchronizationContext());
         }
 
-        public void StartForEs(InitializationMode mode)
+        public void StartForEs()
         {
-            demuxer.InitForEs(mode)
+            demuxer.InitForEs()
                 .ContinueWith(OnDemuxerInitialized,
                     cancelTokenSource.Token,
                     TaskContinuationOptions.None,

@@ -38,7 +38,7 @@ namespace JuvoPlayer.Tests.UnitTests
 
             using (var demuxer = CreateFFmpegDemuxer(glueStub))
             {
-                await demuxer.InitForEs(InitializationMode.Full);
+                await demuxer.InitForEs();
                 var readPacket = await retrieveReadPacketTask;
 
                 var expected = AsByteArray(1);
@@ -57,7 +57,7 @@ namespace JuvoPlayer.Tests.UnitTests
 
             using (var demuxer = CreateFFmpegDemuxer(glueStub))
             {
-                await demuxer.InitForEs(InitializationMode.Full);
+                await demuxer.InitForEs();
                 var readPacket = await retrieveReadPacketTask;
 
                 var fourBytes = AsByteArray(1);
@@ -139,19 +139,6 @@ namespace JuvoPlayer.Tests.UnitTests
             }
         }
 
-        [Test]
-        public async Task Init_MinimalInitialization_ReturnsEmptyClipConfig()
-        {
-            using (var demuxer = CreateFFmpegDemuxer())
-            {
-                var config = await demuxer.InitForEs(InitializationMode.Minimal);
-
-                Assert.That(config.Duration, Is.EqualTo(TimeSpan.Zero));
-                Assert.That(config.StreamConfigs, Is.Null);
-                Assert.That(config.DrmInitDatas, Is.Null);
-            }
-        }
-
         [TestCase(InitType.ForEs)]
         [TestCase(InitType.ForUrl)]
         public async Task Init_CalledSecondTime_ThrowsInvalidOperationException(InitType initType)
@@ -200,7 +187,7 @@ namespace JuvoPlayer.Tests.UnitTests
 
             using (var demuxer = CreateFFmpegDemuxer(glueStub))
             {
-                await demuxer.InitForEs(InitializationMode.Minimal);
+                await demuxer.InitForEs();
                 demuxer.Reset();
 
                 ioContextMock.Received().Dispose();
@@ -224,7 +211,7 @@ namespace JuvoPlayer.Tests.UnitTests
             var glueStub = Substitute.For<IFFmpegGlue>();
             using (var demuxer = CreateFFmpegDemuxer(glueStub))
             {
-                await demuxer.InitForEs(InitializationMode.Full);
+                await demuxer.InitForEs();
 
                 demuxer.Reset();
 
@@ -244,7 +231,7 @@ namespace JuvoPlayer.Tests.UnitTests
             switch (initType)
             {
                 case InitType.ForEs:
-                    return demuxer.InitForEs(InitializationMode.Full);
+                    return demuxer.InitForEs();
                 case InitType.ForUrl:
                     return demuxer.InitForUrl("dummy_url");
                 default:
