@@ -35,7 +35,7 @@ namespace JuvoPlayer.Drms
 
         public void UpdateDrmConfiguration(DRMDescription drmDescription)
         {
-            Logger.Info("UpdateDrmConfiguration");
+            Logger.Info("");
 
             lock (clipDrmConfiguration)
             {
@@ -70,7 +70,7 @@ namespace JuvoPlayer.Drms
                 var handler = drmHandlers.FirstOrDefault(o => o.SupportsSystemId(data.SystemId));
                 if (handler == null)
                 {
-                    Logger.Info("unknown drm init data");
+                    Logger.Warn("unknown drm init data");
                     return null;
                 }
 
@@ -81,7 +81,7 @@ namespace JuvoPlayer.Drms
                     var drmConfiguration = clipDrmConfiguration.FirstOrDefault(o => SchemeEquals(o.Scheme, scheme));
                     if (drmConfiguration == null)
                     {
-                        Logger.Info("drm not configured");
+                        Logger.Warn("drm not configured");
                         return null;
                     }
 

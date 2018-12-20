@@ -51,7 +51,7 @@ namespace JuvoPlayer.DataProviders.Dash
             }
             catch (Exception ex)
             {
-                Logger.Error(ex + " Cannot parse range.");
+                Logger.Error(ex, "Cannot parse range");
             }
         }
 
@@ -182,7 +182,7 @@ namespace JuvoPlayer.DataProviders.Dash
                 }
                 catch (WebException e)
                 {
-                    Logger.Warn($"{request.StreamType}: Segment: {segmentId} NetError: {e.Message}");
+                    Logger.Warn(e, $"{request.StreamType}: Segment: {segmentId}");
 
                     lastException = e;
                     cancellationToken.ThrowIfCancellationRequested();
@@ -199,7 +199,7 @@ namespace JuvoPlayer.DataProviders.Dash
                 catch (Exception e)
                 {
                     lastException = e;
-                    Logger.Warn($"{request.StreamType}: Segment: {segmentId} Error: {e.Message}");
+                    Logger.Warn(e, $"{request.StreamType}: Segment: {segmentId}");
                     ++downloadErrorCount;
                 }
             } while (!request.IgnoreError && downloadErrorCount < 3);

@@ -15,7 +15,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-﻿using System;
+ using System;
 using System.Collections.Generic;
 using JuvoLogger;
 using JuvoPlayer.Common;
@@ -68,7 +68,7 @@ namespace JuvoPlayer.OpenGL
 
             if (player == null)
             {
-                Logger?.Info($"player null, cannot load stream lists");
+                Logger?.Error("player null, cannot load stream lists");
                 return;
             }
             Logger?.Info($"loading stream lists");
@@ -223,7 +223,7 @@ namespace JuvoPlayer.OpenGL
                     }
                     catch (Exception e)
                     {
-                        Logger.Error(e.Message);
+                        Logger.Error(e);
                         if (_streams[selectedStreamTypeIndex].Descriptions[selectedStreamIndex].StreamType ==
                             StreamType.Subtitle)
                         {

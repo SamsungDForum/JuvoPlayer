@@ -98,7 +98,7 @@ namespace JuvoPlayer.DataProviders.Dash
         /// Used in Trimming Packet Handler to truncate down PTS/DTS values.
         /// First packet seen acts as flip switch. Fill initial values or not.
         /// </summary>
-        private TimeSpan? trimmOffset;
+        private TimeSpan? trimOffset;
 
         /// <summary>
         /// Flag indicating if DashClient is initializing. During INIT, adaptive bitrate switching is not
@@ -111,8 +111,6 @@ namespace JuvoPlayer.DataProviders.Dash
         private readonly Subject<Unit> bufferingStartedSubject = new Subject<Unit>();
         private readonly Subject<Unit> bufferingCompletedSubject = new Subject<Unit>();
         private readonly Subject<byte[]> chunkReadySubject = new Subject<byte[]>();
-
-        private readonly object clientLock = new object();
 
         public DashClient(IThroughputHistory throughputHistory, StreamType streamType)
         {
@@ -188,8 +186,8 @@ namespace JuvoPlayer.DataProviders.Dash
             if (currentSegmentId.HasValue == false)
                 currentSegmentId = currentRepresentation.AlignedStartSegmentID;
 
-            if (!trimmOffset.HasValue)
-                trimmOffset = currentRepresentation.AlignedTrimOffset;
+            if (!trimOffset.HasValue)
+                trimOffset = currentRepresentation.AlignedTrimOffset;
 
             var initSegment = currentStreams.InitSegment;
             if (initSegment != null)
@@ -205,59 +203,48 @@ namespace JuvoPlayer.DataProviders.Dash
 
         public void ScheduleNextSegDownload()
         {
-            if (!Monitor.TryEnter(clientLock))
+            if (IsEndOfContent(bufferTime))
+            {
+                // DashClient termination. This may be happening as part of scheduleDownloadNextTask.
+                // Clear reference held in scheduleDownloadNextTask to prevent Stop() from trying to wait
+                // for itself. Otherwise DashClient will try to chase its own tail (deadlock)
+                downloadCompletedTask = null;
+                Stop();
+                return;
+            }
+
+            if (!processDataTask.IsCompleted || cancellationTokenSource.IsCancellationRequested)
                 return;
 
-            try
+            if (BufferFull)
             {
-                if (IsEndOfContent(bufferTime))
-                {
-                    // DashClient termination. This may be happening as part of scheduleDownloadNextTask.
-                    // Clear reference held in scheduleDownloadNextTask to prevent Stop() from trying to wait
-                    // for itself. Otherwise DashClient will try to chase its own tail (deadlock)
-                    downloadCompletedTask = null;
-                    Stop();
-                    return;
-                }
-
-                if (!processDataTask.IsCompleted || cancellationTokenSource.IsCancellationRequested)
-                    return;
-
-                if (BufferFull)
-                {
-                    LogInfo(
-                        $"Full buffer: ({bufferTime}-{currentTime}) {bufferTime - currentTime} > {timeBufferDepth}.");
-                    return;
-                }
-
-                SwapRepresentation();
-
-                var segment = currentStreams.MediaSegment(currentSegmentId);
-                if (segment == null)
-                {
-                    LogInfo($"Segment: [{currentSegmentId}] NULL stream");
-                    if (IsDynamic)
-                        return;
-
-                    LogWarn("Stopping player");
-
-                    Stop();
-                    return;
-                }
-
-                DownloadSegment(segment);
+                LogInfo(
+                    $"Full buffer: ({bufferTime}-{currentTime}) {bufferTime - currentTime} > {timeBufferDepth}.");
+                return;
             }
-            finally
+
+            SwapRepresentation();
+
+            var segment = currentStreams.MediaSegment(currentSegmentId);
+            if (segment == null)
             {
-                Monitor.Exit(clientLock);
+                LogInfo($"Segment: [{currentSegmentId}] NULL stream");
+                if (IsDynamic)
+                    return;
+
+                LogWarn("Stopping player");
+
+                Stop();
+                return;
             }
+
+            DownloadSegment(segment);
         }
 
         private void DownloadSegment(Segment segment)
         {
             // Grab a copy (its a struct) of cancellation token, so one token is used throughout entire operation
             var cancelToken = cancellationTokenSource.Token;
-
             downloadDataTask = CreateDownloadTask(segment, IsDynamic, currentSegmentId, cancelToken);
             processDataTask = downloadDataTask.ContinueWith(response =>
             {
@@ -275,7 +262,6 @@ namespace JuvoPlayer.DataProviders.Dash
                 if (!shouldContinue)
                     throw new Exception();
             }, TaskScheduler.Default);
-
             downloadCompletedTask = processDataTask.ContinueWith(
                 _ => downloadCompletedSubject.OnNext(Unit.Default),
                 TaskContinuationOptions.OnlyOnRanToCompletion);
@@ -295,7 +281,6 @@ namespace JuvoPlayer.DataProviders.Dash
 
             // Grab a copy (its a struct) of cancellation token so it is not referenced through cancellationTokenSource each time.
             var cancelToken = cancellationTokenSource.Token;
-
             if (initStreamBytes == null || initReloadRequired)
             {
                 downloadDataTask = CreateDownloadTask(segment, true, null, cancelToken);
@@ -347,22 +332,15 @@ namespace JuvoPlayer.DataProviders.Dash
         {
             if (cancellationTokenSource.IsCancellationRequested)
                 return false;
-
             chunkReadySubject.OnNext(responseResult.Data);
-
             var segment = responseResult.DownloadSegment;
             lastDownloadSegmentTimeRange = segment.Period.Copy();
-            bufferTime = segment.Period.Start + segment.Period.Duration - (trimmOffset ?? TimeSpan.Zero);
-
+            bufferTime = segment.Period.Start + segment.Period.Duration - (trimOffset ?? TimeSpan.Zero);
             currentSegmentId = currentStreams.NextSegmentId(currentSegmentId);
-
             var timeInfo = segment.Period.ToString();
-
             LogInfo($"Segment: {responseResult.SegmentId} enqueued {timeInfo}");
-
             if (IsBufferingCompleted())
                 SendBufferingCompletedEvent();
-
             return true;
         }
 
@@ -411,9 +389,7 @@ namespace JuvoPlayer.DataProviders.Dash
         {
             var errorMessage = GetErrorMessage(response);
             LogError(errorMessage);
-
             var exception = response.Exception?.Flatten().InnerExceptions[0] as DashDownloaderException;
-
             if (IsDynamic)
             {
                 // Http 404 Not Found. Increment Segment ID
@@ -429,13 +405,11 @@ namespace JuvoPlayer.DataProviders.Dash
             }
 
             StopAsync();
-
             if (exception != null)
             {
                 var segmentTime = exception.DownloadRequest.DownloadSegment.Period.Start;
                 var segmentDuration = exception.DownloadRequest.DownloadSegment.Period.Duration;
-
-                var segmentEndTime = segmentTime + segmentDuration - (trimmOffset ?? TimeSpan.Zero);
+                var segmentEndTime = segmentTime + segmentDuration - (trimOffset ?? TimeSpan.Zero);
                 if (IsEndOfContent(segmentEndTime))
                     return false;
             }
@@ -451,9 +425,7 @@ namespace JuvoPlayer.DataProviders.Dash
         {
             LogError(message);
             initInProgress = false;
-
             StopAsync();
-
             errorSubject.OnNext(message);
         }
 
@@ -475,7 +447,6 @@ namespace JuvoPlayer.DataProviders.Dash
             WaitForTaskCompletionNoError(downloadCompletedTask);
             WaitForTaskCompletionNoError(downloadDataTask);
             WaitForTaskCompletionNoError(processDataTask);
-
             LogInfo("Data downloader stopped");
         }
 
@@ -521,16 +492,12 @@ namespace JuvoPlayer.DataProviders.Dash
             // Update internals with new representation if exists.
             if (newRep == null)
                 return;
-
             currentRepresentation = newRep;
             currentStreams = currentRepresentation.Segments;
-
             currentStreamDuration = IsDynamic
                 ? currentStreams.GetDocumentParameters().Document.MediaPresentationDuration
                 : currentStreams.Duration;
-
             UpdateTimeBufferDepth();
-
             if (lastDownloadSegmentTimeRange == null)
             {
                 currentSegmentId = currentRepresentation.AlignedStartSegmentID;
@@ -540,7 +507,6 @@ namespace JuvoPlayer.DataProviders.Dash
 
             var newSeg = currentStreams.NextSegmentId(lastDownloadSegmentTimeRange.Start);
             string message;
-
             if (newSeg.HasValue)
             {
                 var segmentTimeRange = currentStreams.SegmentTimeRange(newSeg);
@@ -553,9 +519,7 @@ namespace JuvoPlayer.DataProviders.Dash
 
             LogInfo(
                 $"Rep. Swap. Last Seg: {currentSegmentId}/{lastDownloadSegmentTimeRange.Start}-{lastDownloadSegmentTimeRange.Duration} {message}");
-
             currentSegmentId = newSeg;
-
             LogInfo("Representations swapped.");
         }
 
@@ -564,12 +528,9 @@ namespace JuvoPlayer.DataProviders.Dash
             // Ignore time updated events when EOS is already sent
             if (isEosSent)
                 return;
-
             currentTime = time;
-
             if (IsBufferingNeeded())
                 SendBufferingStartedEvent();
-
             ScheduleNextSegDownload();
         }
 
@@ -579,9 +540,7 @@ namespace JuvoPlayer.DataProviders.Dash
             // Stops demuxer being blown to high heavens.
             if (initStreamBytes == null)
                 return;
-
             chunkReadySubject.OnCompleted();
-
             isEosSent = true;
         }
 
@@ -590,7 +549,6 @@ namespace JuvoPlayer.DataProviders.Dash
             var endTime = !currentStreamDuration.HasValue || currentStreamDuration.Value == TimeSpan.Zero
                 ? TimeSpan.MaxValue
                 : currentStreamDuration.Value;
-
             return time >= endTime;
         }
 
@@ -600,9 +558,7 @@ namespace JuvoPlayer.DataProviders.Dash
             return Task.Run(async () =>
             {
                 var timeout = CalculateDownloadTimeout(segment);
-
                 Logger.Info($"Calculated download timeout is {timeout.TotalMilliseconds}");
-
                 var requestData = new DownloadRequest
                 {
                     DownloadSegment = segment,
@@ -610,11 +566,9 @@ namespace JuvoPlayer.DataProviders.Dash
                     SegmentId = segmentId,
                     StreamType = streamType
                 };
-
                 var timeoutCancellationTokenSource = new CancellationTokenSource();
                 if (timeout != TimeSpan.MaxValue)
                     timeoutCancellationTokenSource.CancelAfter(timeout);
-
                 using (timeoutCancellationTokenSource)
                 using (var downloadCancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(
                     cancelToken, timeoutCancellationTokenSource.Token))
@@ -629,7 +583,6 @@ namespace JuvoPlayer.DataProviders.Dash
         {
             if (!IsDynamic)
                 return TimeSpan.MaxValue;
-
             var timeout = timeBufferDepthDefault;
             var averageThroughput = throughputHistory.GetAverageThroughput();
             if (averageThroughput > 0 && currentRepresentation.Bandwidth.HasValue && segment.Period != null)
@@ -652,7 +605,6 @@ namespace JuvoPlayer.DataProviders.Dash
             // 1/4 of the buffer is "used up" when selecting start segment.
             // Start Segment = First Available + 1/4 of Time Shift Buffer.
             // Use max 1/2 of TimeShiftBufferDepth.
-            //
             var tsBuffer = (int) (currentStreams.GetDocumentParameters().Document.TimeShiftBufferDepth?.TotalSeconds ??
                                   0);
             tsBuffer = tsBuffer / 2;
@@ -671,11 +623,8 @@ namespace JuvoPlayer.DataProviders.Dash
             //Get average segment duration = Total Duration / number of segments.
             var avgSegmentDuration = TimeSpan.FromSeconds(
                 duration.Value.TotalSeconds / segments);
-
             var portionOfSegmentDuration = TimeSpan.FromSeconds(avgSegmentDuration.TotalSeconds * 0.15);
-
             var safeTimeBufferDepth = TimeSpan.FromTicks(avgSegmentDuration.Ticks * 3) + portionOfSegmentDuration;
-
             if (safeTimeBufferDepth >= manifestMinBufferDepth)
             {
                 timeBufferDepth = safeTimeBufferDepth;
@@ -683,7 +632,6 @@ namespace JuvoPlayer.DataProviders.Dash
             else
             {
                 timeBufferDepth = manifestMinBufferDepth;
-
                 var bufferLeft = manifestMinBufferDepth - portionOfSegmentDuration;
                 if (bufferLeft < portionOfSegmentDuration)
                     timeBufferDepth += portionOfSegmentDuration;
@@ -699,12 +647,10 @@ namespace JuvoPlayer.DataProviders.Dash
                 TimeBufferDepthDynamic();
             else
                 TimeBufferDepthStatic();
-
             if (timeBufferDepth > maxBufferTime)
                 timeBufferDepth = maxBufferTime;
             else if (timeBufferDepth < minBufferTime)
                 timeBufferDepth = minBufferTime;
-
             LogInfo($"TimeBufferDepth: {timeBufferDepth}");
         }
 
@@ -713,7 +659,6 @@ namespace JuvoPlayer.DataProviders.Dash
             // Allow stream change ONLY if not performing initialization.
             // If needed, initInProgress flag could be used to delay stream switching
             // i.e. reset not after INIT segment but INIT + whatever number of data segments.
-            //
             return !initInProgress && bufferTime >= minBufferTime;
         }
 
@@ -784,14 +729,12 @@ namespace JuvoPlayer.DataProviders.Dash
         {
             if (disposedValue)
                 return;
-
             cancellationTokenSource?.Dispose();
             errorSubject.Dispose();
             bufferingStartedSubject.Dispose();
             bufferingCompletedSubject.Dispose();
             downloadCompletedSubject.Dispose();
             chunkReadySubject.Dispose();
-
             disposedValue = true;
         }
 
