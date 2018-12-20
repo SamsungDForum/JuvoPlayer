@@ -23,7 +23,7 @@ using NBench;
 using Nito.AsyncEx;
 using NUnit.Framework;
 
-namespace JuvoPlayer.TizenTests.IntegrationTests
+namespace JuvoPlayer.TizenTests.PerformanceTests
 {
     public class TSFFmpegDemuxer : PerformanceTestSuite<TSFFmpegDemuxer>
     {
