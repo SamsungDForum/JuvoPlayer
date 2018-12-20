@@ -346,7 +346,7 @@ namespace JuvoPlayer.DataProviders.Dash
 
             var fullInitRequired = (newStream != null);
 
-            demuxerController.StartForEs(InitializationMode.Full);
+            demuxerController.StartForEs();
             dashClient.Start(fullInitRequired);
 
             pipelineStarted = true;

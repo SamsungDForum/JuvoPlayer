@@ -324,8 +324,7 @@ namespace JuvoPlayer.Tests.UnitTests
             switch (startType)
             {
                 case StartType.StartForEs:
-                    demuxerStub.InitForEs(Arg.Any<InitializationMode>())
-                        .Returns(configuration);
+                    demuxerStub.InitForEs().Returns(configuration);
                     break;
                 case StartType.StartForUrl:
                     demuxerStub.InitForUrl(Arg.Any<string>())
@@ -346,8 +345,7 @@ namespace JuvoPlayer.Tests.UnitTests
             switch (startType)
             {
                 case StartType.StartForEs:
-                    demuxerStub.InitForEs(Arg.Any<InitializationMode>())
-                        .Returns(initException);
+                    demuxerStub.InitForEs().Returns(initException);
                     break;
                 case StartType.StartForUrl:
                     demuxerStub.InitForUrl(Arg.Any<string>())
@@ -371,7 +369,7 @@ namespace JuvoPlayer.Tests.UnitTests
             switch (startType)
             {
                 case StartType.StartForEs:
-                    controller.StartForEs(InitializationMode.Full);
+                    controller.StartForEs();
                     break;
                 case StartType.StartForUrl:
                     controller.StartForUrl("dummy_url");

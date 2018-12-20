@@ -39,26 +39,14 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
 
         [PerfBenchmark]
         [TimingMeasurement]
-        public void StartForEs_MinimalInitialization_MeasuresPerformance()
-        {
-            RunInitTest(InitializationMode.Minimal);
-        }
-
-        [PerfBenchmark]
-        [TimingMeasurement]
-        public void StartForEs_FullInitialization_MeasuresPerformance()
-        {
-            RunInitTest(InitializationMode.Full);
-        }
-
-        private void RunInitTest(InitializationMode initMode)
+        public void InitForEs_Called_MeasuresPerformance()
         {
             AsyncContext.Run(async () =>
             {
                 var demuxer = CreateDemuxer();
                 using (demuxer)
                 {
-                    var initTask = demuxer.InitForEs(initMode);
+                    var initTask = demuxer.InitForEs();
 
                     demuxer.PushChunk(content.InitSegment);
                     foreach (var segment in content.Segments)

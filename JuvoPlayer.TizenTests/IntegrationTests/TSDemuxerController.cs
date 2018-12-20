@@ -122,7 +122,7 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
                     var controller = CreateDemuxerController(chunkReady.AsObservable());
                     using (controller)
                     {
-                        controller.StartForEs(InitializationMode.Full);
+                        controller.StartForEs();
                         var configReadyTask = controller.StreamConfigReady().FirstAsync().ToTask();
 
                         chunkReady.OnNext(content.InitSegment);
@@ -149,14 +149,13 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
                 var controller = CreateDemuxerController(chunkReady.AsObservable());
                 using (controller)
                 {
-                    controller.StartForEs(InitializationMode.Full);
+                    controller.StartForEs();
 
                     var packetReadyTask = controller.PacketReady().FirstAsync().ToTask();
 
                     chunkReady.OnNext(content.InitSegment);
                     foreach (var segment in content.Segments)
                         chunkReady.OnNext(segment);
-
 
                     var packet = await packetReadyTask;
                     Assert.That(packet, Is.Not.Null);
