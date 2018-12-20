@@ -35,7 +35,7 @@ namespace JuvoPlayer.OpenGL
             int id;
             fixed (byte* tagBytes = ResourceLoader.GetBytes(tag))
             {
-                id = DllImports.AddGraph(new DllImports.GraphInfo()
+                id = DllImports.AddGraph(new DllImports.GraphData()
                 {
                     tag = tagBytes,
                     tagLen = tag.Length,

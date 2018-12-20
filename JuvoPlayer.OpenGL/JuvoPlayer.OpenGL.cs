@@ -68,7 +68,7 @@ namespace JuvoPlayer.OpenGL
         private float _systemMemoryTop;
 
         private bool _bufferingInProgress = false;
-        private float _bufferingProgress = 0;
+        private int _bufferingProgress = 0;
 
 
         private readonly SystemCpuUsage _systemCpuUsage = new SystemCpuUsage();
@@ -380,7 +380,7 @@ namespace JuvoPlayer.OpenGL
         {
             fixed (byte* titleBytes = ResourceLoader.GetBytes(title), bodyBytes = ResourceLoader.GetBytes(body), buttonBytes = ResourceLoader.GetBytes(button))
             {
-                DllImports.ShowAlert(new DllImports.AlertInfo()
+                DllImports.ShowAlert(new DllImports.AlertData()
                 {
                     title = titleBytes,
                     titleLen = title.Length,
@@ -543,10 +543,11 @@ namespace JuvoPlayer.OpenGL
             _bufferingProgress = 0;
         }
 
-        private void UpdateBufferingProgress(double percent)
+        private void UpdateBufferingProgress(double percent) // TODO: change argument to int and remove casting as soon as BufferingProgress observable changes it's definition
         {
-            _bufferingProgress = (float)percent;
-            _bufferingInProgress = percent < 1.0;
+            _bufferingProgress = (int)percent;
+            _bufferingInProgress = percent < 100;
+            Logger.Info($"Buffering {(_bufferingInProgress ? $"in progress: {percent}%" : "ended")}.");
         }
 
         private void ReturnToMainMenu()
@@ -682,7 +683,7 @@ namespace JuvoPlayer.OpenGL
 
         private static void ResetPlaybackControls()
         {
-            DllImports.UpdatePlaybackControls(new DllImports.PlaybackInfo() {
+            DllImports.UpdatePlaybackControls(new DllImports.PlaybackData() {
                 show = 0,
                 state = 0,
                 currentTime = 0,
@@ -690,7 +691,7 @@ namespace JuvoPlayer.OpenGL
                 text = null,
                 textLen = 0,
                 buffering = 0,
-                bufferingProgress = 0
+                bufferingPercent = 0
             });
         }
 
@@ -754,7 +755,7 @@ namespace JuvoPlayer.OpenGL
 
             fixed (byte* name = ResourceLoader.GetBytes(_resourceLoader.ContentList[_selectedTile].Title))
             {
-                DllImports.UpdatePlaybackControls(new DllImports.PlaybackInfo()
+                DllImports.UpdatePlaybackControls(new DllImports.PlaybackData()
                 {
                     show = _progressBarShown ? 1 : 0,
                     state = (int) (_player?.State ?? PlayerState.Idle),
@@ -763,7 +764,7 @@ namespace JuvoPlayer.OpenGL
                     text = name,
                     textLen = _resourceLoader.ContentList[_selectedTile].Title.Length,
                     buffering = _bufferingInProgress ? 1 : 0,
-                    bufferingProgress = _bufferingProgress
+                    bufferingPercent = _bufferingProgress
                 });
             }
         }

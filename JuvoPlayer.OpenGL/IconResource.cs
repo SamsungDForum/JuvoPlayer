@@ -37,7 +37,7 @@
         {
             fixed (byte* p = _image.Pixels)
             {
-                DllImports.SetIcon(new DllImports.ImageInfo()
+                DllImports.SetIcon(new DllImports.ImageData()
                     {
                         id = (int)_type,
                         pixels = p,
