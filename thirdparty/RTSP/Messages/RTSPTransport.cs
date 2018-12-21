@@ -248,7 +248,7 @@ mode                =    <"> *Method <"> | Method
                         returnValue.Mode = subPart[1];
                         break;
                     default:
-                        // TODO log invalid part
+                        // TODO(g.skowinski): Log this
                         break;
                 }
             }
