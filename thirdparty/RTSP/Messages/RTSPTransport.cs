@@ -248,7 +248,6 @@ mode                =    <"> *Method <"> | Method
                         returnValue.Mode = subPart[1];
                         break;
                     default:
-                        // TODO(g.skowinski): Log this
                         break;
                 }
             }
