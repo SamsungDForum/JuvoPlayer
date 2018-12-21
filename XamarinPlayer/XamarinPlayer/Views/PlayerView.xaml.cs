@@ -102,9 +102,9 @@ namespace XamarinPlayer.Views
             }
         }
 
-        private void OnBufferingProgress(double progress)
+        private void OnBufferingProgress(int progress)
         {
-            if (Math.Abs(progress - 1.0f) < 0.001f)
+            if (progress >= 100)
                 InfoTextLabel.IsVisible = false;
             else
             {
