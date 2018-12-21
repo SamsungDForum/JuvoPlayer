@@ -24,6 +24,74 @@ namespace JuvoPlayer.OpenGL
     {
         private const string GlDemoLib = "libgles.so";
 
+        // Structures
+
+        [StructLayout(LayoutKind.Sequential)]
+        public struct TileData
+        {
+            public int tileId;
+            public byte* pixels;
+            public int width;
+            public int height;
+            public byte* name;
+            public int nameLen;
+            public byte* desc;
+            public int descLen;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        public struct ImageData
+        {
+            public int id;
+            public byte* pixels;
+            public int width;
+            public int height;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        public struct PlaybackData
+        {
+            public int show;
+            public int state;
+            public int currentTime;
+            public int totalTime;
+            public byte* text;
+            public int textLen;
+            public int buffering;
+            public int bufferingPercent;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        public struct GraphData
+        {
+            public byte* tag;
+            public int tagLen;
+            public float minVal;
+            public float maxVal;
+            public int valuesCount;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        public struct AlertData
+        {
+            public byte* title;
+            public int titleLen;
+            public byte* body;
+            public int bodyLen;
+            public byte* button;
+            public int buttonLen;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        public struct SelectionData
+        {
+            public int show;
+            public int activeOptionId;
+            public int activeSubOptionId;
+            public int selectedOptionId;
+            public int selectedSubOptionId;
+        }
+
         // Main functions
 
         [DllImport(GlDemoLib, EntryPoint = "Create")]
@@ -41,19 +109,19 @@ namespace JuvoPlayer.OpenGL
         public static extern int AddTile();
 
         [DllImport(GlDemoLib, EntryPoint = "SetTileData")]
-        public static extern void SetTileData(int tileId, byte* pixels, int w, int h, byte* name, int nameLen, byte* desc, int descLen);
+        public static extern void SetTileData(TileData tileData);
 
         [DllImport(GlDemoLib, EntryPoint = "AddEmptyTile")]
         public static extern int AddEmptyTile();
 
         [DllImport(GlDemoLib, EntryPoint = "SetTileTexture")]
-        public static extern int SetTileTexture(int tileNo, byte* pixels, int w, int h);
+        public static extern int SetTileTexture(ImageData image);
 
         [DllImport(GlDemoLib, EntryPoint = "AddFont")]
         public static extern int AddFont(byte* data, int size);
 
         [DllImport(GlDemoLib, EntryPoint = "SetIcon")]
-        public static extern void SetIcon(int id, byte* pixels, int w, int h);
+        public static extern void SetIcon(ImageData image);
 
         [DllImport(GlDemoLib, EntryPoint = "SwitchTextRenderingMode")]
         public static extern void SwitchTextRenderingMode();
@@ -73,7 +141,7 @@ namespace JuvoPlayer.OpenGL
         public static extern void SelectTile(int tileNo);
 
         [DllImport(GlDemoLib, EntryPoint = "UpdatePlaybackControls")]
-        public static extern void UpdatePlaybackControls(int show, int state, int currentTime, int totalTime, byte* text, int textLen);
+        public static extern void UpdatePlaybackControls(PlaybackData playbackData);
 
         [DllImport(GlDemoLib, EntryPoint = "SetFooter")]
         public static extern void SetFooter(byte* footer, int footerLen);
@@ -93,7 +161,7 @@ namespace JuvoPlayer.OpenGL
         public static extern int AddSubOption(int parentId, int id, byte* text, int textLen);
 
         [DllImport(GlDemoLib, EntryPoint = "UpdateSelection")]
-        public static extern int UpdateSelection(int show, int activeOptionId, int activeSubOptionId, int selectedOptionId, int selectedSubOptionId);
+        public static extern int UpdateSelection(SelectionData selectionData);
 
         [DllImport(GlDemoLib, EntryPoint = "ClearOptions")]
         public static extern void ClearOptions();
@@ -104,7 +172,7 @@ namespace JuvoPlayer.OpenGL
         public const int fpsGraphId = 0; // computations handled by C lib
 
         [DllImport(GlDemoLib, EntryPoint = "AddGraph")]
-        public static extern int AddGraph(byte* tag, int tagLen, float minVal, float maxVal, int valuesCount);
+        public static extern int AddGraph(GraphData graphData);
 
         [DllImport(GlDemoLib, EntryPoint = "SetGraphVisibility")]
         public static extern void SetGraphVisibility(int graphId, int visible);
@@ -125,7 +193,7 @@ namespace JuvoPlayer.OpenGL
         public static extern void PushLog(byte* log, int logLen);
 
         [DllImport(GlDemoLib, EntryPoint = "ShowAlert")]
-        public static extern void ShowAlert(byte *title, int titleLen, byte* body, int bodyLen, byte* button, int buttonLen);
+        public static extern void ShowAlert(AlertData alertData);
 
         [DllImport(GlDemoLib, EntryPoint = "HideAlert")]
         public static extern void HideAlert();

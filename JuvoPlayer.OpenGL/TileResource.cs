@@ -41,7 +41,17 @@
         {
             fixed (byte* p = _image.Pixels, name = GetBytes(_name), desc = GetBytes(_description))
             {
-                DllImports.SetTileData(_id, p, _image.Width, _image.Height, name, _name.Length, desc, _description.Length);
+                DllImports.SetTileData(new DllImports.TileData()
+                {
+                    tileId = _id,
+                    pixels = p,
+                    width = _image.Width,
+                    height = _image.Height,
+                    name = name,
+                    nameLen = _name.Length,
+                    desc = desc,
+                    descLen = _description.Length
+                });
             }
         }
     }
