@@ -39,7 +39,7 @@ namespace JuvoPlayer.Player
         private readonly Dictionary<StreamType, IPacketStream> streams = new Dictionary<StreamType, IPacketStream>();
 
         private readonly CompositeDisposable subscriptions;
-        private readonly Subject<double> bufferingProgressSubject = new Subject<double>();
+        private readonly Subject<int> bufferingProgressSubject = new Subject<int>();
 
         private readonly ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
 
@@ -64,7 +64,7 @@ namespace JuvoPlayer.Player
                 new PacketStream(StreamType.Video, this.player, drmManager, videoCodecExtraDataHandler);
         }
 
-        public IObservable<double> BufferingProgress()
+        public IObservable<int> BufferingProgress()
         {
             return bufferingProgressSubject.AsObservable();
         }
@@ -198,7 +198,7 @@ namespace JuvoPlayer.Player
         public void OnBufferingCompleted()
         {
             player.Play();
-            bufferingProgressSubject.OnNext(1.0);
+            bufferingProgressSubject.OnNext(100);
         }
 
         #region getters

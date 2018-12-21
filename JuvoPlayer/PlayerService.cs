@@ -169,7 +169,7 @@ namespace JuvoPlayer
             return playerController.SeekCompleted();
         }
 
-        public IObservable<double> BufferingProgress()
+        public IObservable<int> BufferingProgress()
         {
             return playerController.BufferingProgress();
         }

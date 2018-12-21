@@ -543,9 +543,9 @@ namespace JuvoPlayer.OpenGL
             _bufferingProgress = 0;
         }
 
-        private void UpdateBufferingProgress(double percent) // TODO: change argument to int and remove casting as soon as BufferingProgress observable changes it's definition
+        private void UpdateBufferingProgress(int percent)
         {
-            _bufferingProgress = (int)percent;
+            _bufferingProgress = percent;
             _bufferingInProgress = percent < 100;
             Logger.Info($"Buffering {(_bufferingInProgress ? $"in progress: {percent}%" : "ended")}.");
         }
@@ -683,16 +683,7 @@ namespace JuvoPlayer.OpenGL
 
         private static void ResetPlaybackControls()
         {
-            DllImports.UpdatePlaybackControls(new DllImports.PlaybackData() {
-                show = 0,
-                state = 0,
-                currentTime = 0,
-                totalTime = 0,
-                text = null,
-                textLen = 0,
-                buffering = 0,
-                bufferingPercent = 0
-            });
+            DllImports.UpdatePlaybackControls(new DllImports.PlaybackData());
         }
 
         private void ShowMenu(bool show)
