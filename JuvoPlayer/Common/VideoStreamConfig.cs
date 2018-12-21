@@ -58,7 +58,6 @@ namespace JuvoPlayer.Common
 
         public VideoCodec Codec { get; set; }
 
-        //TODO(p.galiszewsk)
         public int CodecProfile { get; set; }
         public Size Size { get; set; }
         public int FrameRateNum { get; set; }

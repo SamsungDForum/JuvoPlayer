@@ -134,7 +134,6 @@ namespace MpdParser.Node.Dynamic
             catch (WebException e)
             {
                 Logger.Error(e, $"Downloading Index Segment FAILED {IndexSegment.Url} ({e.Status})");
-                // todo(m.rybinski): what now? Retry? How many times? Show an error to the user?
                 // No need to add any special error handling for failed downloads. Indexed content
                 // will return null segments if no index data is present.
             }
@@ -150,7 +149,6 @@ namespace MpdParser.Node.Dynamic
             var sidx = new SIDXAtom();
             sidx.ParseAtom(data, dataStart + 1);
 
-            //TODO:
             //SIDXAtom.SIDX_index_entry should contain a list of other sidx atoms containing
             //with index information. They could be loaded by updating range info in current
             //streamSegment and recursively calling DownloadIndexSegment - but about that we can worry later...
@@ -250,8 +248,7 @@ namespace MpdParser.Node.Dynamic
             if (media == null)
                 return null;
 
-            //TODO: Take into account @startNumber if available
-            if (parameters.Document.IsDynamic == true)
+            if (parameters.Document.IsDynamic)
                 return GetStartSegmentDynamic();
 
             return GetStartSegmentStatic();
@@ -326,9 +323,6 @@ namespace MpdParser.Node.Dynamic
 
         private int GetIndexSegmentIndex(TimeSpan pointInTime)
         {
-            // TODO: Verify lower bound limit where iterative search will be faster then
-            // binary search with associated object creation.
-            //
             var searcher = new IndexSearchStartTime();
             var searchFor = new Segment(null, null, new TimeRange(pointInTime, TimeSpan.Zero));
             var idx = segments_.BinarySearch(0, segments_.Count, searchFor, searcher);
