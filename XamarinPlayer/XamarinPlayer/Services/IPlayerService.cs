@@ -24,7 +24,7 @@ namespace XamarinPlayer.Services
     {
         IObservable<PlayerState> StateChanged();
         IObservable<string> PlaybackError();
-        IObservable<double> BufferingProgress();
+        IObservable<int> BufferingProgress();
 
         TimeSpan Duration { get; }
 
