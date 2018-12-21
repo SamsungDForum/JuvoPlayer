@@ -50,7 +50,7 @@ namespace JuvoPlayer.Player
 
         #endregion
 
-        IObservable<double> BufferingProgress();
+        IObservable<int> BufferingProgress();
         IObservable<string> PlaybackError();
         IObservable<TimeSpan> TimeUpdated();
         IObservable<SeekArgs> SeekStarted();
