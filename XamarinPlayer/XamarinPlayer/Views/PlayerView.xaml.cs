@@ -115,7 +115,6 @@ namespace XamarinPlayer.Views
 
         private void KeyEventHandler(string e)
         {
-            // TODO: This is a workaround for alertBox & lost focus
             // Prevents key handling & focus change in Show().
             // Consider adding a call Focus(Focusable Object) where focus would be set in one place
             // and error status could be handled.
