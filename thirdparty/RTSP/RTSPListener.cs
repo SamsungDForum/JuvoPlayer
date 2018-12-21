@@ -223,7 +223,6 @@
 
             // if it it a request  we store the original message
             // and we renumber it.
-            //TODO handle lost message (for example every minute cleanup old message)
             if (message is RtspRequest)
             {
                 RtspMessage originalMessage = message;

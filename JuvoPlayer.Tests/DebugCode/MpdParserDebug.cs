@@ -84,7 +84,6 @@ namespace JuvoPlayer.Tests.DebugCode
                     Media video = Find(period, "en", MediaType.Video) ??
                             Find(period, "und", MediaType.Video);
 
-                    // TODO(p.galiszewsk): is it possible to have period without audio/video?
                     if (audio != null && video != null)
                     {
                         return;

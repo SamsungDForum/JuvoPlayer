@@ -299,7 +299,7 @@ namespace JuvoPlayer.DataProviders.Dash
             // check if default media has many representations. if yes, return as available streams
             // list of default media representation + representations from any media from the same group
             // if no, return all available medias
-            // TODO: add support for: SupplementalProperty schemeIdUri="urn:mpeg:dash:adaptation-set-switching:2016"
+            // TODO(p.galiszewski): add support for: SupplementalProperty schemeIdUri="urn:mpeg:dash:adaptation-set-switching:2016"
             if (defaultMedia.Representations.Length > 1)
             {
                 if (defaultMedia.Group.HasValue)
@@ -515,7 +515,6 @@ namespace JuvoPlayer.DataProviders.Dash
 
         private void ParseDrms(Media newMedia)
         {
-            // TODO(p.galiszewsk): make it extensible
             foreach (var descriptor in newMedia.ContentProtections)
             {
                 var schemeIdUri = descriptor.SchemeIdUri;

@@ -167,8 +167,7 @@ namespace MpdParser.Node.Dynamic
 
         public uint? StartSegmentId()
         {
-            //TODO: Take into account @startNumber if available
-            if (Parameters.Document.IsDynamic == true)
+            if (Parameters.Document.IsDynamic)
                 return GetStartSegmentDynamic();
 
             return GetStartSegmentStatic();
