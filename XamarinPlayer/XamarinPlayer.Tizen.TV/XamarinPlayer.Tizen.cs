@@ -22,6 +22,7 @@ using JuvoLogger;
 using Tizen;
 using Tizen.Applications;
 using XamarinPlayer.Services;
+using XamarinPlayer.Tizen.Services;
 
 
 namespace XamarinPlayer.Tizen
@@ -40,6 +41,7 @@ namespace XamarinPlayer.Tizen
 
             Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
             System.Net.ServicePointManager.DefaultConnectionLimit = 100;
+            PlayerWindowProvider.Window = MainWindow;
 
             _keyDown = new EcoreEvent<EcoreKeyEventArgs>(EcoreEventType.KeyDown, EcoreKeyEventArgs.Create);
             _keyDown.On += (s, e) =>
