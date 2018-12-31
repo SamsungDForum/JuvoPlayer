@@ -17,12 +17,18 @@
 
 using System;
 using System.Reactive.Linq;
+using ElmSharp;
 
 namespace JuvoPlayer.OpenGL
 {
     class Player : PlayerService
     {
         public new PlayerState State => ToPlayerState(base.State);
+
+        public Player(Window playerWindow)
+            : base(playerWindow)
+        {
+        }
 
         public new IObservable<PlayerState> StateChanged()
         {
