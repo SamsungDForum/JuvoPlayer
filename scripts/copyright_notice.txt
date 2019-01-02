@@ -14,27 +14,3 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-
-using System;
-using System.Threading.Tasks;
-using JuvoPlayer.Common;
-
-namespace JuvoPlayer.Demuxers
-{
-    public interface IDemuxerController : IDisposable
-    {
-        void SetDataSource(IObservable<byte[]> dataSource);
-        void StartForUrl(string url);
-        void StartForEs(InitializationMode mode);
-        void Reset();
-        Task Flush();
-        void Pause();
-        void Resume();
-
-        IObservable<StreamConfig> StreamConfigReady();
-        IObservable<TimeSpan> ClipDurationFound();
-        IObservable<DRMInitData> DrmInitDataFound();
-        IObservable<Packet> PacketReady();
-        IObservable<string> DemuxerError();
-    }
-}
