@@ -15,7 +15,7 @@
 
 import os, re, difflib
 
-def readBlacklist(path):
+def readList(path):
     with open(path, 'r') as f:
         lines = [l for l in (line.strip() for line in f) if l]
         return lines
@@ -25,41 +25,62 @@ def readCopyright(path):
         data = f.read()
         return data.strip()
 
-def writeCopyright(path, copyright):
+def prependWithCopyright(path, copyright):
+    return
     with open(path, 'r+') as f:
         data = f.read()
         f.seek(0)
         f.write(copyright + "\n" + data)
 
+def fixCopyright(path, copyright, sequenceMatcher):
+    print sequenceMatcher.get_matching_blocks()
+    return
+
 def containsCopyright(data, regex):
     return regex.match(data) != None
-
-def checkClose(data, copyright):
-    out = difflib.get_close_matches(data, copyright)
-    print(out)
 
 def processFile(path, copyright, regex):
     with open(path) as open_file:
         data = open_file.read()
         if not containsCopyright(data, regex):
-            print("[+] %s" % path)
-        checkClose(data, copyright)
-            #writeCopyright(path, copyright)
-#        else:
-#            print("[ ] %s" % path)
+            sequenceMatcher = difflib.SequenceMatcher(isjunk=None, a=copyright, b=data[:len(copyright)])
+            ratio = sequenceMatcher.ratio()
+            closeEnough = ratio >= 0.6
+            print("[%s] %f - %s" % ("-+" if closeEnough else "++", ratio, path))
+            if closeEnough:
+                fixCopyright(path, copyright, sequenceMatcher)
+            else:
+                prependWithCopyright(path, copyright)
 
 def prepareRegex(copyright):
     return re.compile("\s*" + re.sub(r'\r', '\r?\n?', re.escape(copyright)), re.MULTILINE)
 
-def isApplicable(path, blacklist):
-    return path.endswith(".cs") and all(not path.endswith(extension) for extension in blacklist) and "thirdparty/" not in path
+def isWhitelisted(path, extensionList):
+    return isListed(path, extensionList) or not extensionList
 
-def processDir(rootDir, copyright, blacklist):
+def isBlacklisted(path, extensionList):
+    return isListed(path, extensionList)
+
+def isListed(path, extensionList):
+    return any(path.endswith(extension) for extension in extensionList)
+
+def processDir(rootDir, copyright, whitelist, blacklist):
     regex = prepareRegex(copyright)
     for dirName, subdirList, fileList in os.walk(rootDir):
+        if "thirdparty" in dirName or ".git" in dirName:
+            continue
         for fname in fileList:
-            if isApplicable(dirName + '/' + fname, blacklist):
-                processFile(dirName + '/' + fname, copyright, regex)
+            path = dirName + '/' + fname
+            if isWhitelisted(path, whitelist) and not isBlacklisted(path, blacklist):
+                processFile(path, copyright, regex)
 
 if __name__ == "__main__":
-    processDir('..', readCopyright("copyright_notice.txt"), readBlacklist("extension_blacklist.txt"))
+    directory = ".."
+    print "[!] directory=%s\n" % directory
+    copyright = readCopyright("copyright_notice.txt")
+    print "[!] copyright=%s\n" % copyright
+    whitelist = readList("extension_whitelist.txt")
+    print "[!] whitelist=%s\n" % whitelist
+    blacklist = readList("extension_blacklist.txt")
+    print "[!] blacklist=%s\n" % blacklist
+    processDir(directory, copyright, whitelist, blacklist)
