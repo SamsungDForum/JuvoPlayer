@@ -56,7 +56,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg
                 throw new InvalidOperationException("Initialization already started");
 
             InitThreadingPrimitives();
-            return thread.Factory.StartNew(() => InitDemuxer(() => InitUrl(url), InitializationMode.Full));
+            return thread.Factory.StartNew(() => InitDemuxer(() => InitUrl(url)));
         }
 
         private void InitThreadingPrimitives()
@@ -83,25 +83,23 @@ namespace JuvoPlayer.Demuxers.FFmpeg
             }
         }
 
-        public Task<ClipConfiguration> InitForEs(InitializationMode initMode)
+        public Task<ClipConfiguration> InitForEs()
         {
             if (IsInitialized())
                 throw new InvalidOperationException("Initialization already started");
 
             InitThreadingPrimitives();
             buffer = new ChunksBuffer();
-            return thread.Factory.StartNew(() => InitDemuxer(InitEs, initMode));
+            return thread.Factory.StartNew(() => InitDemuxer(InitEs));
         }
 
-        private ClipConfiguration InitDemuxer(Action initAction, InitializationMode initMode)
+        private ClipConfiguration InitDemuxer(Action initAction)
         {
             ffmpegGlue.Initialize();
 
             initAction();
 
             var clipConfiguration = new ClipConfiguration();
-            if (initMode != InitializationMode.Full)
-                return clipConfiguration;
 
             FindStreamsInfo();
             ReadDuration(ref clipConfiguration);

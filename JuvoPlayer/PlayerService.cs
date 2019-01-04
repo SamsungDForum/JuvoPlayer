@@ -22,6 +22,7 @@ using System.Collections.Generic;
 using System.Reactive;
 using System.Reactive.Disposables;
 using System.Threading;
+using System.Threading.Tasks;
 using ElmSharp;
 using JuvoPlayer.Common;
 using JuvoPlayer.DataProviders;
@@ -87,9 +88,9 @@ namespace JuvoPlayer
             playerController.OnPause();
         }
 
-        public void SeekTo(TimeSpan to)
+        public Task SeekTo(TimeSpan to)
         {
-            playerController.OnSeek(to);
+            return playerController.OnSeek(to);
         }
 
         public void ChangeActiveStream(StreamDescription streamDescription)

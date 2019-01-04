@@ -56,7 +56,7 @@ namespace JuvoPlayer.DataProviders
                 dataProvider.StreamConfigReady()
                     .Subscribe(controller.OnStreamConfigReady, context),
                 dataProvider.PacketReady()
-                    .Subscribe(controller.OnPacketReady, controller.OnStreamsCompleted, context),
+                    .Subscribe(controller.OnPacketReady, context),
                 dataProvider.BufferingStarted()
                     .Subscribe(unit => controller.OnBufferingStarted(), context),
                 dataProvider.BufferingCompleted()

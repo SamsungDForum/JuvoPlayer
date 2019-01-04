@@ -22,6 +22,7 @@ using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
 using System.Threading;
+using System.Threading.Tasks;
 using JuvoLogger;
 using JuvoPlayer.Common;
 using JuvoPlayer.Drms;
@@ -122,24 +123,28 @@ namespace JuvoPlayer.Player
             player.Play();
         }
 
-        public void OnSeek(TimeSpan time)
+        public async Task OnSeek(TimeSpan time)
         {
             if (seeking)
-                return;
-
-            if (time > duration)
-                time = duration;
+                throw new InvalidOperationException("Seek already in progress");
 
             try
             {
-                player.Seek(time);
-
                 // prevent simultaneously seeks
                 seeking = true;
+
+                if (time > duration)
+                    time = duration;
+
+                await player.Seek(time);
             }
             catch (OperationCanceledException)
             {
                 Logger.Info("Operation Canceled");
+            }
+            finally
+            {
+                seeking = false;
             }
         }
 
@@ -167,16 +172,6 @@ namespace JuvoPlayer.Player
                 return;
 
             streams[packet.StreamType].OnAppendPacket(packet);
-        }
-
-        public void OnStreamsCompleted()
-        {
-            foreach (var pair in streams)
-            {
-                var streamType = pair.Key;
-                var stream = pair.Value;
-                stream.OnAppendPacket(Packet.CreateEOS(streamType));
-            }
         }
 
         public void OnStreamError(string errorMessage)

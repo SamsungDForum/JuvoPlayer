@@ -75,7 +75,8 @@ namespace JuvoPlayer.TizenTests
                 new AutoRun(assembly).Execute(finalNunitArgs, writer, Console.In);
             }
 
-            Logger.Info(sb.ToString());
+            foreach (var line in sb.ToString().Split("\n"))
+                Logger.Info(line);
         }
 
         private void RunJuvoPlayerTizenTests()

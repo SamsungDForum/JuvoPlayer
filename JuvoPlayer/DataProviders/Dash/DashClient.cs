@@ -122,6 +122,11 @@ namespace JuvoPlayer.DataProviders.Dash
 
         public TimeSpan Seek(TimeSpan position)
         {
+            // A workaround for a case when we seek to the end of a content while audio and video streams have
+            // a slightly different duration.
+            if (position > currentStreams.Duration)
+                position = (TimeSpan) currentStreams.Duration;
+
             currentSegmentId = currentStreams.SegmentId(position);
             var previousSegmentId = currentStreams.PreviousSegmentId(currentSegmentId);
             lastDownloadSegmentTimeRange = currentStreams.SegmentTimeRange(previousSegmentId);
@@ -136,25 +141,13 @@ namespace JuvoPlayer.DataProviders.Dash
                 currentTime = position;
                 return currentTime;
             }
-            else
-            {
-                // Set "current time" to end time of segment which will be downloaded.
-                // Rational: In case of long segment duration and short buffer times we may buffer just one segment.
-                // If IFrame is at the very end of downloaded segment, underlying player may NOT have enough
-                // data to generate OnTime events, effectively stopping playback
-                //
-                // TODO: Add to SMPlayer.cs generation of OnCurrentTime for packets discarded during IFrame seek operation
-                // This will allow DashClient to receive info on consumed data releasing buffer for further downloads.
-                // Such change will be more consistent and not require modification of current time during seek as it is done
-                // now.
 
-                currentTime = seekToTimeRange.Start + seekToTimeRange.Duration;
+            currentTime = seekToTimeRange.Start;
 
-                LogInfo(
-                    $"Seek Pos Req: {position} Seek to: ({seekToTimeRange.Start}/{currentTime}) SegId: {currentSegmentId}");
+            LogInfo(
+                $"Seek Pos Req: {position} Seek to: ({seekToTimeRange.Start}/{currentTime}) SegId: {currentSegmentId}");
 
-                return seekToTimeRange.Start;
-            }
+            return seekToTimeRange.Start;
         }
 
         public void Start(bool initReloadRequired)
@@ -492,6 +485,9 @@ namespace JuvoPlayer.DataProviders.Dash
             // Update internals with new representation if exists.
             if (newRep == null)
                 return;
+
+            initStreamBytes = null;
+
             currentRepresentation = newRep;
             currentStreams = currentRepresentation.Segments;
             currentStreamDuration = IsDynamic
@@ -540,7 +536,9 @@ namespace JuvoPlayer.DataProviders.Dash
             // Stops demuxer being blown to high heavens.
             if (initStreamBytes == null)
                 return;
-            chunkReadySubject.OnCompleted();
+
+            chunkReadySubject.OnNext(null);
+
             isEosSent = true;
         }
 

@@ -51,9 +51,9 @@ namespace MpdParser.Node.Dynamic
         }
 
         public BaseRepresentationStream(Segment init, Segment media_,
-          ulong presentationTimeOffset, TimeSpan? timeShiftBufferDepth,
-          TimeSpan availabilityTimeOffset, bool? availabilityTimeComplete,
-          Segment index = null)
+            ulong presentationTimeOffset, TimeSpan? timeShiftBufferDepth,
+            TimeSpan availabilityTimeOffset, bool? availabilityTimeComplete,
+            Segment index = null)
         {
             media = media_;
             InitSegment = init;
@@ -89,7 +89,7 @@ namespace MpdParser.Node.Dynamic
         public TimeSpan AvailabilityTimeOffset { get; }
         public bool? AvailabilityTimeComplete { get; }
 
-        public uint Count => (uint)(IndexSegment == null ? 1 : segments_.Count);
+        public uint Count => (uint) (IndexSegment == null ? 1 : segments_.Count);
         private List<Segment> segments_ = new List<Segment>();
 
         public void SetDocumentParameters(ManifestParameters docParams)
@@ -117,7 +117,7 @@ namespace MpdParser.Node.Dynamic
                 Logger.Debug($"Downloading Index Segment {IndexSegment.Url} {range}");
                 byte[] data = Downloader.DownloadData(IndexSegment.Url, range);
                 Logger.Debug($"Downloaded successfully Index Segment {IndexSegment.Url} {range}");
-                ProcessIndexData(data, (UInt64)range.High);
+                ProcessIndexData(data, (UInt64) range.High);
 
                 // Update Duration to correspond to what's contained in index data
                 if (segments_.Count > 0)
@@ -194,7 +194,7 @@ namespace MpdParser.Node.Dynamic
             // Count - Segment ID Argument shall handle index validation
             //
             if (segments_.Count - segmentId > 0)
-                return segments_[(int)segmentId];
+                return segments_[(int) segmentId];
 
             return null;
         }
@@ -219,7 +219,7 @@ namespace MpdParser.Node.Dynamic
             if (idx < 0)
                 return null;
 
-            return (uint)idx;
+            return (uint) idx;
         }
 
         private uint? GetStartSegmentDynamic()
@@ -240,7 +240,6 @@ namespace MpdParser.Node.Dynamic
             // Index Case.
             // Prepare stream had to be called first.
             return 0;
-
         }
 
         public uint? StartSegmentId()
@@ -257,7 +256,7 @@ namespace MpdParser.Node.Dynamic
         public IEnumerable<Segment> MediaSegments()
         {
             if (segments_.Count == 0 && media != null)
-                return new List<Segment>() { media };
+                return new List<Segment>() {media};
             return segments_;
         }
 
@@ -285,12 +284,12 @@ namespace MpdParser.Node.Dynamic
             if (IndexSegment == null || media == null || !segmentId.HasValue)
                 return null;
 
-            var prevSegmentId = (int)segmentId - 1;
+            var prevSegmentId = (int) segmentId - 1;
 
             if (prevSegmentId < 0)
                 return null;
 
-            return (uint?)prevSegmentId;
+            return (uint?) prevSegmentId;
         }
 
         public uint? NextSegmentId(TimeSpan pointInTime)
@@ -318,7 +317,7 @@ namespace MpdParser.Node.Dynamic
             // Returned TimeRange via a copy. Intentional.
             // If Manifest gets updated it is undesired to have weird values in it.
             //
-            return segments_[(int)segmentId].Period.Copy();
+            return segments_[(int) segmentId].Period.Copy();
         }
 
         private int GetIndexSegmentIndex(TimeSpan pointInTime)
@@ -327,8 +326,12 @@ namespace MpdParser.Node.Dynamic
             var searchFor = new Segment(null, null, new TimeRange(pointInTime, TimeSpan.Zero));
             var idx = segments_.BinarySearch(0, segments_.Count, searchFor, searcher);
 
+            if (idx < 0 && pointInTime == Duration)
+                idx = segments_.Count - 1;
+
             if (idx < 0)
-                Logger.Error($"Failed to find index segment in @time. FA={segments_[0].Period.Start} Req={pointInTime} LA={segments_[segments_.Count - 1].Period.Start}");
+                Logger.Warn(
+                    $"Failed to find index segment in @time. FA={segments_[0].Period.Start} Req={pointInTime} LA={segments_[segments_.Count - 1].Period.Start}, Duration={Duration}");
 
             return idx;
         }
@@ -353,7 +356,9 @@ namespace MpdParser.Node.Dynamic
                 }
             }
             catch (WebException)
-            { /* Ignore HTTP errors. If failed, segments_.Count == 0 */}
+            {
+                /* Ignore HTTP errors. If failed, segments_.Count == 0 */
+            }
 
             // If there are no segments, signal as not ready
             return (segments_.Count > 0);
