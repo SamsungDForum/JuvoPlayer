@@ -71,7 +71,6 @@ namespace JuvoPlayer.OpenGL
         private bool _bufferingInProgress = false;
         private int _bufferingProgress = 0;
 
-
         private readonly SystemCpuUsage _systemCpuUsage = new SystemCpuUsage();
 
         private static void Main(string[] args)
@@ -86,12 +85,6 @@ namespace JuvoPlayer.OpenGL
             OpenGLLoggerManager.Configure(_uiContext);
             DllImports.Create();
             InitMenu();
-
-            _playerWindow = new Window("JuvoPlayer")
-            {
-                Geometry = new Rect(0, 0, 1920, 1080)
-            };
-            _playerWindow.Show();
         }
 
         protected override void OnTerminate()
@@ -350,6 +343,13 @@ namespace JuvoPlayer.OpenGL
 
         private void HandleLoadingFinished()
         {
+            _playerWindow = new Window("JuvoPlayer")
+            {
+                Geometry = new Rect(0, 0, 1920, 1080)
+            };
+            _playerWindow.Show();
+            _playerWindow.Lower();
+
             if (_startedFromDeepLink)
                 HandleExternalPlaybackStart();
             else
