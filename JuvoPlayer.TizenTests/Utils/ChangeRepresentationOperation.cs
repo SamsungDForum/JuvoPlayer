@@ -1,4 +1,4 @@
-﻿/*!
+/*!
  * https://github.com/SamsungDForum/JuvoPlayer
  * Copyright 2018, Samsung Electronics Co., Ltd
  * Licensed under the MIT license
@@ -15,34 +15,39 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using ElmSharp;
+using System;
+using System.Threading.Tasks;
 using JuvoPlayer.Common;
-using JuvoPlayer.Utils;
 
 namespace JuvoPlayer.TizenTests.Utils
 {
-    public class PlayerService : JuvoPlayer.PlayerService
+    public class ChangeRepresentationOperation : TestOperation
     {
-        private static Window window;
-
-        public PlayerService()
-            : base(window)
+        public Task Execute(TestContext context)
         {
+            var service = context.Service;
+            var type = GetRandomStreamType();
+            var description = GetRandomStreamDescription(service, type);
+            if (description != null)
+                service.ChangeActiveStream(description);
+            return Task.CompletedTask;
         }
 
-        public static void SetWindow(Window w)
+        private StreamType GetRandomStreamType()
         {
-            window = w;
+            var values = Enum.GetValues(typeof(StreamType));
+            var random = new Random();
+            return (StreamType) values.GetValue(random.Next(values.Length));
         }
 
-        public List<ClipDefinition> ReadClips()
+        private StreamDescription GetRandomStreamDescription(PlayerService service, StreamType streamType)
         {
-            var applicationPath = Paths.ApplicationPath;
-            var clipsPath = Path.Combine(applicationPath, "res", "videoclips.json");
-            return JSONFileReader.DeserializeJsonFile<List<ClipDefinition>>(clipsPath).ToList();
+            var descriptions = service.GetStreamsDescription(streamType);
+            if (descriptions.Count == 0)
+                return null;
+
+            var random = new Random();
+            return descriptions[random.Next(descriptions.Count)];
         }
     }
 }

@@ -1,4 +1,4 @@
-﻿/*!
+/*!
  * https://github.com/SamsungDForum/JuvoPlayer
  * Copyright 2018, Samsung Electronics Co., Ltd
  * Licensed under the MIT license
@@ -16,33 +16,15 @@
  */
 
 using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using ElmSharp;
-using JuvoPlayer.Common;
-using JuvoPlayer.Utils;
 
 namespace JuvoPlayer.TizenTests.Utils
 {
-    public class PlayerService : JuvoPlayer.PlayerService
+    public struct DashContent
     {
-        private static Window window;
+        public string Title { get; set; }
+        public byte[] InitSegment { get; set; }
+        public IEnumerable<byte[]> Segments { get; set; }
 
-        public PlayerService()
-            : base(window)
-        {
-        }
-
-        public static void SetWindow(Window w)
-        {
-            window = w;
-        }
-
-        public List<ClipDefinition> ReadClips()
-        {
-            var applicationPath = Paths.ApplicationPath;
-            var clipsPath = Path.Combine(applicationPath, "res", "videoclips.json");
-            return JSONFileReader.DeserializeJsonFile<List<ClipDefinition>>(clipsPath).ToList();
-        }
+        public bool IsInitialized => string.IsNullOrEmpty(Title) == false && InitSegment != null && Segments != null;
     }
 }

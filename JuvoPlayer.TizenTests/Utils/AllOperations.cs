@@ -1,4 +1,4 @@
-﻿/*!
+/*!
  * https://github.com/SamsungDForum/JuvoPlayer
  * Copyright 2018, Samsung Electronics Co., Ltd
  * Licensed under the MIT license
@@ -15,34 +15,22 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+using System;
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
-using ElmSharp;
-using JuvoPlayer.Common;
-using JuvoPlayer.Utils;
+using System.Reflection;
 
 namespace JuvoPlayer.TizenTests.Utils
 {
-    public class PlayerService : JuvoPlayer.PlayerService
+    public class AllOperations
     {
-        private static Window window;
-
-        public PlayerService()
-            : base(window)
+        public static IEnumerable<Type> GetAll()
         {
-        }
+            var assembly = typeof(TestOperation).GetTypeInfo().Assembly;
 
-        public static void SetWindow(Window w)
-        {
-            window = w;
-        }
-
-        public List<ClipDefinition> ReadClips()
-        {
-            var applicationPath = Paths.ApplicationPath;
-            var clipsPath = Path.Combine(applicationPath, "res", "videoclips.json");
-            return JSONFileReader.DeserializeJsonFile<List<ClipDefinition>>(clipsPath).ToList();
+            return from type in assembly.GetTypes()
+                where typeof(TestOperation).IsAssignableFrom(type) && type != typeof(TestOperation)
+                select type;
         }
     }
 }

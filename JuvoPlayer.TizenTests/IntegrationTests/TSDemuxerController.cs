@@ -1,12 +1,28 @@
+/*!
+ * https://github.com/SamsungDForum/JuvoPlayer
+ * Copyright 2018, Samsung Electronics Co., Ltd
+ * Licensed under the MIT license
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER BE LIABLE FOR ANY
+ * DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+ * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+ * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+ * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+ * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
+
 using System;
-using System.IO;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
 using System.Reactive.Threading.Tasks;
-using System.Reflection;
 using JuvoPlayer.Common;
 using JuvoPlayer.Demuxers;
 using JuvoPlayer.Demuxers.FFmpeg;
+using JuvoPlayer.TizenTests.Utils;
 using Nito.AsyncEx;
 using NUnit.Framework;
 
@@ -15,31 +31,17 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
     [TestFixture]
     public class TSDemuxerController
     {
-        private byte[] initSegment;
-
-        private byte[] dataSegment;
-
         private static string BigBuckBunnyUrl =
             "http://distribution.bbb3d.renderfarming.net/video/mp4/bbb_sunflower_1080p_30fps_normal.mp4";
+
+        private DashContent content;
 
         [OneTimeSetUp]
         public void OneTimeSetUp()
         {
-            initSegment = ReadAllBytes("JuvoPlayer.TizenTests.res.googlecar.car-20120827-89.mp4-init-segment");
-            Assert.That(initSegment, Is.Not.Null);
-
-            dataSegment = ReadAllBytes("JuvoPlayer.TizenTests.res.googlecar.car-20120827-89.mp4-3901498-7700066");
-            Assert.That(dataSegment, Is.Not.Null);
-        }
-
-        private static byte[] ReadAllBytes(string resourceName)
-        {
-            var assembly = Assembly.GetExecutingAssembly();
-            var stream = assembly.GetManifestResourceStream(resourceName);
-            using (var reader = new BinaryReader(stream))
-            {
-                return reader.ReadBytes((int) stream.Length);
-            }
+            var provider = new DashContentProvider();
+            content = provider.GetGoogleCar();
+            Assert.That(content.IsInitialized, Is.True);
         }
 
         [Test]
@@ -120,11 +122,12 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
                     var controller = CreateDemuxerController(chunkReady.AsObservable());
                     using (controller)
                     {
-                        controller.StartForEs(InitializationMode.Full);
+                        controller.StartForEs();
                         var configReadyTask = controller.StreamConfigReady().FirstAsync().ToTask();
 
-                        chunkReady.OnNext(initSegment);
-                        chunkReady.OnNext(dataSegment);
+                        chunkReady.OnNext(content.InitSegment);
+                        foreach (var segment in content.Segments)
+                            chunkReady.OnNext(segment);
 
                         var config = await configReadyTask;
                         Assert.That(config, Is.Not.Null);
@@ -146,12 +149,13 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
                 var controller = CreateDemuxerController(chunkReady.AsObservable());
                 using (controller)
                 {
-                    controller.StartForEs(InitializationMode.Full);
+                    controller.StartForEs();
 
                     var packetReadyTask = controller.PacketReady().FirstAsync().ToTask();
 
-                    chunkReady.OnNext(initSegment);
-                    chunkReady.OnNext(dataSegment);
+                    chunkReady.OnNext(content.InitSegment);
+                    foreach (var segment in content.Segments)
+                        chunkReady.OnNext(segment);
 
                     var packet = await packetReadyTask;
                     Assert.That(packet, Is.Not.Null);

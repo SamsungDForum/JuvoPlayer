@@ -27,7 +27,7 @@ namespace JuvoPlayer.Demuxers
     {
         void SetDataSource(IObservable<byte[]> dataSource);
         void StartForUrl(string url);
-        void StartForEs(InitializationMode mode);
+        void StartForEs();
         void Reset();
         Task Flush();
         void Pause();

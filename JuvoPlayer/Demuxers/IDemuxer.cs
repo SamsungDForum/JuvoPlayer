@@ -29,19 +29,11 @@ namespace JuvoPlayer.Demuxers
         public TimeSpan Duration { get; set; }
     }
 
-    public enum InitializationMode
-    {
-        // Stream has been already initialized so preparing StreamConfig is not needed
-        Minimal,
-        // Stream needs full initialization
-        Full
-    };
-
     public interface IDemuxer : IDisposable
     {
         bool IsInitialized();
         Task<ClipConfiguration> InitForUrl(string url);
-        Task<ClipConfiguration> InitForEs(InitializationMode mode);
+        Task<ClipConfiguration> InitForEs();
         Task<Packet> NextPacket();
         void PushChunk(byte[] chunk);
         Task Completion { get; }

@@ -17,6 +17,7 @@
 
 using System;
 using System.Reactive;
+using System.Threading.Tasks;
 using ElmSharp;
 using JuvoPlayer.Common;
 using JuvoLogger;
@@ -87,10 +88,10 @@ namespace JuvoPlayer.Player.EsPlayer
             streamControl.Stop();
         }
 
-        public void Seek(TimeSpan time)
+        public Task Seek(TimeSpan time)
         {
             logger.Info("");
-            streamControl.Seek(time);
+            return streamControl.Seek(time);
         }
 
         public void SetDuration(TimeSpan duration)

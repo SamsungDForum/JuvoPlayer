@@ -132,7 +132,7 @@ namespace JuvoPlayer.DataProviders.RTSP
             // Start demuxer before client. Demuxer start clears
             // underlying buffer. We do not want that to happen after client
             // puts something in there.
-            demuxerController.StartForEs(InitializationMode.Full);
+            demuxerController.StartForEs();
             rtpClient.Start(currentClip);
         }
 

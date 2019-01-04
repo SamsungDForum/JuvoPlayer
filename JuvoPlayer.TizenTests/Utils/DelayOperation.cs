@@ -1,4 +1,4 @@
-﻿/*!
+/*!
  * https://github.com/SamsungDForum/JuvoPlayer
  * Copyright 2018, Samsung Electronics Co., Ltd
  * Licensed under the MIT license
@@ -15,34 +15,16 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using ElmSharp;
-using JuvoPlayer.Common;
-using JuvoPlayer.Utils;
+using System.Threading.Tasks;
 
 namespace JuvoPlayer.TizenTests.Utils
 {
-    public class PlayerService : JuvoPlayer.PlayerService
+    public class DelayOperation : TestOperation
     {
-        private static Window window;
-
-        public PlayerService()
-            : base(window)
+        public Task Execute(TestContext context)
         {
-        }
-
-        public static void SetWindow(Window w)
-        {
-            window = w;
-        }
-
-        public List<ClipDefinition> ReadClips()
-        {
-            var applicationPath = Paths.ApplicationPath;
-            var clipsPath = Path.Combine(applicationPath, "res", "videoclips.json");
-            return JSONFileReader.DeserializeJsonFile<List<ClipDefinition>>(clipsPath).ToList();
+            var delay = context.DelayTime;
+            return Task.Delay(delay);
         }
     }
 }
