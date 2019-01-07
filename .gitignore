@@ -4,4 +4,5 @@ bin
 obj
 *.lock.json
 *.user
+*.swp
 CyclomaticComplexityReport.log
