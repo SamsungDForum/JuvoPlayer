@@ -21,8 +21,6 @@ import difflib
 import unittest
 import shutil
 
-# TODO: test backup function
-
 ###################
 # global settings #
 ###################
@@ -69,13 +67,9 @@ def printf(s):
 
 def printBanner(banner):
     length = len(banner) + 2
-    printf("\n+" +
-           (length * "=") +
-           "+\n| " +
+    printf("\n+" + (length * "=") + "+\n| " +
            banner +
-           " |\n+" +
-           (length * "=") +
-           "+\n")
+           " |\n+" + (length * "=") + "+\n")
 
 
 def readList(path):
@@ -163,7 +157,7 @@ def prependWithCopyright(path, copyright):
     with open(path, 'r') as f:
         content = f.read()
     with open(path, 'w') as f:
-        f.write(copyright + "\n" + content.lstrip())
+        f.write(copyright + '\n\n' + content.lstrip())
 
 
 # generates string of content with copyright prefix it contained
@@ -306,38 +300,38 @@ class TestMethods(unittest.TestCase):
 
     def test_correct1(self):
         self.genericTest(prefix="12345",
-                         content="12345\nasddfg",
-                         expected="12345\nasddfg",
+                         content="12345\n\nasddfg",
+                         expected="12345\n\nasddfg",
                          changes=0)
 
     def test_correct2(self):
-        self.genericTest(prefix="12345\n",
-                         content="12345\n12345",
-                         expected="12345\n12345",
+        self.genericTest(prefix="12345",
+                         content="12345\n\n12345",
+                         expected="12345\n\n12345",
                          changes=0)
 
     def test_prepend1(self):
         self.genericTest(prefix="12345",
                          content="asddfg",
-                         expected="12345\nasddfg",
+                         expected="12345\n\nasddfg",
                          changes=1)
 
     def test_prepend2(self):
         self.genericTest(prefix="12345",
                          content="\nasddfg",
-                         expected="12345\nasddfg",
+                         expected="12345\n\nasddfg",
                          changes=1)
 
     def test_replace1(self):
         self.genericTest(prefix="12345",
-                         content="1245\nasddfg",
-                         expected="12345\nasddfg",
+                         content="1245\n\nasddfg",
+                         expected="12345\n\nasddfg",
                          changes=1)
 
     def test_replace2(self):
         self.genericTest(prefix="12345",
-                         content="ad1245\nasddfg",
-                         expected="12345\nasddfg",
+                         content="ad1245\n\nasddfg",
+                         expected="12345\n\nasddfg",
                          changes=1)
 
 
