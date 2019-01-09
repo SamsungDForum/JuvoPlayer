@@ -263,6 +263,8 @@ def processFiles(paths, copyright, whitelist, blacklist):
                " run with --wetrun argument to alter files).")
     else:
         printf("\n%d files have been changed." % (fixCnt + prepCnt))
+        if settings.backup:
+            printf("\nThey have been backed up.")
     return fixCnt + prepCnt
 
 ##############
