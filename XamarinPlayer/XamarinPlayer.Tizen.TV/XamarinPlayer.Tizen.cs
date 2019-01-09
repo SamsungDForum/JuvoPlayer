@@ -22,6 +22,7 @@ using JuvoLogger;
 using Tizen;
 using Tizen.Applications;
 using XamarinPlayer.Services;
+using XamarinPlayer.Tizen.Services;
 
 
 namespace XamarinPlayer.Tizen
@@ -50,7 +51,6 @@ namespace XamarinPlayer.Tizen
 
             LoadApplication(new App());
         }
-
 
         static void UnhandledException(object sender, UnhandledExceptionEventArgs evt)
         {
