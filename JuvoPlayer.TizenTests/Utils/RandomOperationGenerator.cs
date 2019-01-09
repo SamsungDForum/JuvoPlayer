@@ -16,39 +16,24 @@
  */
 
 using System;
-using System.Collections.Generic;
-using System.Threading.Tasks;
+using System.Linq;
 
-namespace XamarinPlayer.Services
+namespace JuvoPlayer.TizenTests.Utils
 {
-    public interface IPlayerService : IDisposable
+    public class RandomOperationGenerator : TestOperationGenerator
     {
-        IObservable<PlayerState> StateChanged();
-        IObservable<string> PlaybackError();
-        IObservable<int> BufferingProgress();
+        private readonly Random _random;
 
-        TimeSpan Duration { get; }
+        public RandomOperationGenerator()
+        {
+            _random = new Random();
+        }
 
-        TimeSpan CurrentPosition { get; }
-
-        bool IsSeekingSupported { get; }
-
-        PlayerState State { get; }
-
-        string CurrentCueText { get; }
-
-        void SetSource(object clip);
-
-        void Start();
-
-        void Stop();
-
-        void Pause();
-
-        Task SeekTo(TimeSpan position);
-
-        List<StreamDescription> GetStreamsDescription(StreamDescription.StreamType streamType);
-        void ChangeActiveStream(StreamDescription stream);
-        void DeactivateStream(StreamDescription.StreamType streamType);
+        public TestOperation NextOperation()
+        {
+            var operations = AllOperations.GetAll().ToList();
+            var type = operations[_random.Next(operations.Count)];
+            return (TestOperation) type.GetConstructor(Type.EmptyTypes).Invoke(null);
+        }
     }
 }

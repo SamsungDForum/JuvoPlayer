@@ -15,40 +15,27 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-using System;
-using System.Collections.Generic;
 using System.Threading.Tasks;
+using JuvoPlayer.Common;
+using NUnit.Framework;
 
-namespace XamarinPlayer.Services
+namespace JuvoPlayer.TizenTests.Utils
 {
-    public interface IPlayerService : IDisposable
+    public class PrepareOperation : TestOperation
     {
-        IObservable<PlayerState> StateChanged();
-        IObservable<string> PlaybackError();
-        IObservable<int> BufferingProgress();
+        public Task Execute(TestContext context)
+        {
+            var service = context.Service;
+            var clipTitle = context.ClipTitle;
 
-        TimeSpan Duration { get; }
+            var clips = service.ReadClips();
+            var clip = clips.Find(_ => _.Title.Equals(clipTitle));
 
-        TimeSpan CurrentPosition { get; }
+            Assert.That(clip, Is.Not.Null);
 
-        bool IsSeekingSupported { get; }
+            service.SetSource(clip);
 
-        PlayerState State { get; }
-
-        string CurrentCueText { get; }
-
-        void SetSource(object clip);
-
-        void Start();
-
-        void Stop();
-
-        void Pause();
-
-        Task SeekTo(TimeSpan position);
-
-        List<StreamDescription> GetStreamsDescription(StreamDescription.StreamType streamType);
-        void ChangeActiveStream(StreamDescription stream);
-        void DeactivateStream(StreamDescription.StreamType streamType);
+            return StateChangedTask.Observe(service, PlayerState.Prepared, context.Token, context.Timeout);
+        }
     }
 }

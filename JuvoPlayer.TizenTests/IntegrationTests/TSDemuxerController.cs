@@ -16,14 +16,13 @@
  */
 
 using System;
-using System.IO;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
 using System.Reactive.Threading.Tasks;
-using System.Reflection;
 using JuvoPlayer.Common;
 using JuvoPlayer.Demuxers;
 using JuvoPlayer.Demuxers.FFmpeg;
+using JuvoPlayer.TizenTests.Utils;
 using Nito.AsyncEx;
 using NUnit.Framework;
 
@@ -32,31 +31,17 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
     [TestFixture]
     public class TSDemuxerController
     {
-        private byte[] initSegment;
-
-        private byte[] dataSegment;
-
         private static string BigBuckBunnyUrl =
             "http://distribution.bbb3d.renderfarming.net/video/mp4/bbb_sunflower_1080p_30fps_normal.mp4";
+
+        private DashContent content;
 
         [OneTimeSetUp]
         public void OneTimeSetUp()
         {
-            initSegment = ReadAllBytes("JuvoPlayer.TizenTests.res.googlecar.car-20120827-89.mp4-init-segment");
-            Assert.That(initSegment, Is.Not.Null);
-
-            dataSegment = ReadAllBytes("JuvoPlayer.TizenTests.res.googlecar.car-20120827-89.mp4-3901498-7700066");
-            Assert.That(dataSegment, Is.Not.Null);
-        }
-
-        private static byte[] ReadAllBytes(string resourceName)
-        {
-            var assembly = Assembly.GetExecutingAssembly();
-            var stream = assembly.GetManifestResourceStream(resourceName);
-            using (var reader = new BinaryReader(stream))
-            {
-                return reader.ReadBytes((int) stream.Length);
-            }
+            var provider = new DashContentProvider();
+            content = provider.GetGoogleCar();
+            Assert.That(content.IsInitialized, Is.True);
         }
 
         [Test]
@@ -137,11 +122,12 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
                     var controller = CreateDemuxerController(chunkReady.AsObservable());
                     using (controller)
                     {
-                        controller.StartForEs(InitializationMode.Full);
+                        controller.StartForEs();
                         var configReadyTask = controller.StreamConfigReady().FirstAsync().ToTask();
 
-                        chunkReady.OnNext(initSegment);
-                        chunkReady.OnNext(dataSegment);
+                        chunkReady.OnNext(content.InitSegment);
+                        foreach (var segment in content.Segments)
+                            chunkReady.OnNext(segment);
 
                         var config = await configReadyTask;
                         Assert.That(config, Is.Not.Null);
@@ -163,12 +149,13 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
                 var controller = CreateDemuxerController(chunkReady.AsObservable());
                 using (controller)
                 {
-                    controller.StartForEs(InitializationMode.Full);
+                    controller.StartForEs();
 
                     var packetReadyTask = controller.PacketReady().FirstAsync().ToTask();
 
-                    chunkReady.OnNext(initSegment);
-                    chunkReady.OnNext(dataSegment);
+                    chunkReady.OnNext(content.InitSegment);
+                    foreach (var segment in content.Segments)
+                        chunkReady.OnNext(segment);
 
                     var packet = await packetReadyTask;
                     Assert.That(packet, Is.Not.Null);

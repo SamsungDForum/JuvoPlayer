@@ -17,38 +17,20 @@
 
 using System;
 using System.Collections.Generic;
-using System.Threading.Tasks;
+using System.Linq;
+using System.Reflection;
 
-namespace XamarinPlayer.Services
+namespace JuvoPlayer.TizenTests.Utils
 {
-    public interface IPlayerService : IDisposable
+    public class AllOperations
     {
-        IObservable<PlayerState> StateChanged();
-        IObservable<string> PlaybackError();
-        IObservable<int> BufferingProgress();
+        public static IEnumerable<Type> GetAll()
+        {
+            var assembly = typeof(TestOperation).GetTypeInfo().Assembly;
 
-        TimeSpan Duration { get; }
-
-        TimeSpan CurrentPosition { get; }
-
-        bool IsSeekingSupported { get; }
-
-        PlayerState State { get; }
-
-        string CurrentCueText { get; }
-
-        void SetSource(object clip);
-
-        void Start();
-
-        void Stop();
-
-        void Pause();
-
-        Task SeekTo(TimeSpan position);
-
-        List<StreamDescription> GetStreamsDescription(StreamDescription.StreamType streamType);
-        void ChangeActiveStream(StreamDescription stream);
-        void DeactivateStream(StreamDescription.StreamType streamType);
+            return from type in assembly.GetTypes()
+                where typeof(TestOperation).IsAssignableFrom(type) && type != typeof(TestOperation)
+                select type;
+        }
     }
 }

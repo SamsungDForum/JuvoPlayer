@@ -16,15 +16,40 @@
  */
 
 using System;
+using System.Threading;
 using System.Threading.Tasks;
-using JuvoPlayer.Common;
+using JuvoPlayer.TizenTests.Utils;
+using Nito.AsyncEx;
 using NUnit.Framework;
+using TestContext = JuvoPlayer.TizenTests.Utils.TestContext;
 
 namespace JuvoPlayer.TizenTests.IntegrationTests
 {
     [TestFixture]
     class TSPlayerService
     {
+        private void RunPlayerTest(string clipTitle, Func<TestContext, Task> testImpl)
+        {
+            AsyncContext.Run(async () =>
+            {
+                using (var service = new JuvoPlayer.TizenTests.Utils.PlayerService())
+                using (var cts = new CancellationTokenSource())
+                {
+                    var context = new TestContext
+                    {
+                        Service = service,
+                        ClipTitle = clipTitle,
+                        Token = cts.Token,
+                        Timeout = TimeSpan.FromSeconds(20)
+                    };
+                    await new PrepareOperation().Execute(context);
+                    await new StartOperation().Execute(context);
+
+                    await testImpl(context);
+                }
+            });
+        }
+
         [TestCase("Clean MP4 over HTTP")]
         [TestCase("Clean byte range MPEG DASH")]
         [TestCase("Clean fMP4 MPEG DASH")]
@@ -33,16 +58,14 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
         [TestCase("Encrypted 4K MPEG DASH")]
         [TestCase("Clean HLS")]
         [TestCase("Clean HEVC 4k MPEG DASH")]
-        public async Task Playback_Basic_PreparesAndStarts(string clipTitle)
+        public void Playback_Basic_PreparesAndStarts(string clipTitle)
         {
-            using (var service = new JuvoPlayer.TizenTests.Utils.PlayerService())
+            RunPlayerTest(clipTitle, async context =>
             {
-                PrepareAndStart(service, clipTitle);
-
                 await Task.Delay(TimeSpan.FromSeconds(1));
 
-                Assert.That(service.CurrentPosition, Is.GreaterThan(TimeSpan.Zero));
-            }
+                Assert.That(context.Service.CurrentPosition, Is.GreaterThan(TimeSpan.Zero));
+            });
         }
 
         [TestCase("Clean byte range MPEG DASH")]
@@ -50,26 +73,13 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
         [TestCase("Sintel - Clean fMP4 MPEG DASH - multiple languages")]
         [TestCase("Encrypted MPEG DASH")]
         [TestCase("Encrypted 4K MPEG DASH")]
-        public void Seek_Random10Times_SeeksWithin500Milliseconds(string clipTitle)
+        public void Seek_Random10Times_Seeks(string clipTitle)
         {
-            var rand = new Random();
-            using (var service = new JuvoPlayer.TizenTests.Utils.PlayerService())
+            RunPlayerTest(clipTitle, async context =>
             {
-                PrepareAndStart(service, clipTitle);
-
                 for (var i = 0; i < 10; ++i)
-                {
-                    var seekTime = TimeSpan.FromSeconds(rand.Next((int) service.Duration.TotalSeconds));
-
-                    service.SeekTo(seekTime);
-
-                    Assert.That(() => service.CurrentPosition,
-                        Is.EqualTo(seekTime)
-                            .Within(500).Milliseconds
-                            .After(10).Seconds
-                            .PollEvery(100).MilliSeconds);
-                }
-            }
+                    await new SeekOperation().Execute(context);
+            });
         }
 
         [TestCase("Clean byte range MPEG DASH")]
@@ -77,40 +87,95 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
         [TestCase("Sintel - Clean fMP4 MPEG DASH - multiple languages")]
         [TestCase("Encrypted MPEG DASH")]
         [TestCase("Encrypted 4K MPEG DASH")]
-        public void Seek_Backward_SeeksWithin500Milliseconds(string clipTitle)
+        public void Seek_DisposeDuringSeek_Disposes(string clipTitle)
         {
-            using (var service = new JuvoPlayer.TizenTests.Utils.PlayerService())
+            RunPlayerTest(clipTitle, async context =>
             {
-                PrepareAndStart(service, clipTitle);
-
-                for (var nextSeekTime = service.Duration - TimeSpan.FromSeconds(5); nextSeekTime > TimeSpan.Zero; nextSeekTime -= TimeSpan.FromSeconds(20))
-                {
-                    service.SeekTo(nextSeekTime);
-
-                    Assert.That(() => service.CurrentPosition,
-                        Is.EqualTo(nextSeekTime)
-                            .Within(500).Milliseconds
-                            .After(10).Seconds
-                            .PollEvery(100).MilliSeconds
-                        );
-                }
-            }
+#pragma warning disable 4014
+                new SeekOperation().Execute(context);
+#pragma warning restore 4014
+                await Task.Delay(250);
+            });
         }
 
-        private static void PrepareAndStart(JuvoPlayer.TizenTests.Utils.PlayerService service, string clipTitle)
+        [TestCase("Clean byte range MPEG DASH")]
+        [TestCase("Clean fMP4 MPEG DASH")]
+        [TestCase("Sintel - Clean fMP4 MPEG DASH - multiple languages")]
+        [TestCase("Encrypted MPEG DASH")]
+        [TestCase("Encrypted 4K MPEG DASH")]
+        public void Seek_Forward_Seeks(string clipTitle)
         {
-            var clips = service.ReadClips();
-            var clip = clips.Find(_ => _.Title.Equals(clipTitle));
+            RunPlayerTest(clipTitle, async context =>
+            {
+                var service = context.Service;
 
-            Assert.That(clip, Is.Not.Null);
+                for (var nextSeekTime = TimeSpan.Zero;
+                    nextSeekTime < service.Duration - TimeSpan.FromSeconds(5);
+                    nextSeekTime += TimeSpan.FromSeconds(10))
+                {
+                    context.SeekTime = nextSeekTime;
+                    await new SeekOperation().Execute(context);
+                }
+            });
+        }
 
-            service.SetSource(clip);
+        [TestCase("Clean byte range MPEG DASH")]
+        [TestCase("Clean fMP4 MPEG DASH")]
+        [TestCase("Sintel - Clean fMP4 MPEG DASH - multiple languages")]
+        [TestCase("Encrypted MPEG DASH")]
+        [TestCase("Encrypted 4K MPEG DASH")]
+        public void Seek_Backward_Seeks(string clipTitle)
+        {
+            RunPlayerTest(clipTitle, async context =>
+            {
+                var service = context.Service;
 
-            Assert.That(() => service.State, Is.EqualTo(PlayerState.Prepared)
-                .After(10).Seconds
-                .PollEvery(100).MilliSeconds);
+                for (var nextSeekTime = service.Duration - TimeSpan.FromSeconds(15);
+                    nextSeekTime > TimeSpan.Zero;
+                    nextSeekTime -= TimeSpan.FromSeconds(20))
+                {
+                    context.SeekTime = nextSeekTime;
+                    await new SeekOperation().Execute(context);
+                }
+            });
+        }
 
-            service.Start();
+        [TestCase("Clean byte range MPEG DASH")]
+        [TestCase("Clean fMP4 MPEG DASH")]
+        [TestCase("Sintel - Clean fMP4 MPEG DASH - multiple languages")]
+        [TestCase("Encrypted MPEG DASH")]
+        [TestCase("Encrypted 4K MPEG DASH")]
+        public void Seek_ToTheEnd_Seeks(string clipTitle)
+        {
+            RunPlayerTest(clipTitle, async context =>
+            {
+                var service = context.Service;
+                context.SeekTime = service.Duration;
+                await new SeekOperation().Execute(context);
+            });
+        }
+
+        [TestCase("Clean byte range MPEG DASH")]
+        public void Random_20RandomOperations_ExecutedCorrectly(string clipTitle)
+        {
+            RunPlayerTest(clipTitle, async context =>
+            {
+                context.RandomMaxDelayTime = TimeSpan.FromSeconds(3);
+                context.DelayTime = TimeSpan.FromSeconds(2);
+
+                var generator = new RandomOperationGenerator();
+                for (var i = 0; i < 20; i++)
+                {
+                    TestOperation operation;
+                    do
+                    {
+                        operation = generator.NextOperation();
+                    } while (operation.GetType() == typeof(StopOperation) ||
+                             operation.GetType() == typeof(PrepareOperation));
+
+                    await operation.Execute(context);
+                }
+            });
         }
     }
 }

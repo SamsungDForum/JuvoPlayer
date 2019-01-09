@@ -16,39 +16,18 @@
  */
 
 using System;
-using System.Collections.Generic;
 using System.Threading.Tasks;
 
-namespace XamarinPlayer.Services
+namespace JuvoPlayer.TizenTests.Utils
 {
-    public interface IPlayerService : IDisposable
+    public class RandomDelayOperation : TestOperation
     {
-        IObservable<PlayerState> StateChanged();
-        IObservable<string> PlaybackError();
-        IObservable<int> BufferingProgress();
-
-        TimeSpan Duration { get; }
-
-        TimeSpan CurrentPosition { get; }
-
-        bool IsSeekingSupported { get; }
-
-        PlayerState State { get; }
-
-        string CurrentCueText { get; }
-
-        void SetSource(object clip);
-
-        void Start();
-
-        void Stop();
-
-        void Pause();
-
-        Task SeekTo(TimeSpan position);
-
-        List<StreamDescription> GetStreamsDescription(StreamDescription.StreamType streamType);
-        void ChangeActiveStream(StreamDescription stream);
-        void DeactivateStream(StreamDescription.StreamType streamType);
+        public Task Execute(TestContext context)
+        {
+            var maxDelayTime = context.RandomMaxDelayTime;
+            var rand = new Random();
+            var next = rand.Next((int) maxDelayTime.TotalMilliseconds);
+            return Task.Delay(TimeSpan.FromMilliseconds(next));
+        }
     }
 }
