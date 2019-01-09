@@ -89,6 +89,9 @@ namespace JuvoPlayer.Player.EsPlayer
         private readonly IDisposable[] streamReconfigureSubs;
         private readonly IDisposable[] playbackErrorSubs;
 
+        private bool isDisposed;
+        private bool resourceConflict;
+
         #region Public API
 
         public void Initialize(Common.StreamType stream)
@@ -126,11 +129,7 @@ namespace JuvoPlayer.Player.EsPlayer
         {
             displayWindow = window;
 
-            player = new ESPlayer.ESPlayer();
-
-            player.Open();
-            player.SetTrustZoneUse(true);
-            player.SetDisplay(displayWindow);
+            CreatePlayer();
 
             packetStorage = storage;
 
@@ -139,25 +138,40 @@ namespace JuvoPlayer.Player.EsPlayer
             streamReconfigureSubs = new IDisposable[(int) StreamType.Count];
             playbackErrorSubs = new IDisposable[(int) StreamType.Count];
 
-            //attach event handlers
+            AttachEventHandlers();
+        }
+
+        private void CreatePlayer()
+        {
+            player = new ESPlayer.ESPlayer();
+
+            player.Open();
+            player.SetTrustZoneUse(true);
+            player.SetDisplay(displayWindow);
+            resourceConflict = false;
+        }
+
+        private void AttachEventHandlers()
+        {
             player.EOSEmitted += OnEos;
             player.ErrorOccurred += OnESPlayerError;
             player.BufferStatusChanged += OnBufferStatusChanged;
+            player.ResourceConflicted += OnResourceConflicted;
         }
 
         /// <summary>
         /// Sets provided configuration to appropriate stream.
         /// </summary>
         /// <param name="config">StreamConfig</param>
-        public void SetStreamConfiguration(BufferConfigurationPacket configPacket)
+        public void SetStreamConfiguration(BufferConfigurationPacket config)
         {
-            var streamType = configPacket.StreamType;
+            var streamType = config.StreamType;
 
             logger.Info($"{streamType}:");
 
             try
             {
-                var pushResult = dataStreams[(int) streamType].Stream.SetStreamConfig(configPacket);
+                var pushResult = dataStreams[(int) streamType].Stream.SetStreamConfig(config);
 
                 // Configuration queued. Do not prepare stream :)
                 if (pushResult == EsStream.SetStreamConfigResult.ConfigQueued)
@@ -200,15 +214,26 @@ namespace JuvoPlayer.Player.EsPlayer
         /// Starts playback on all initialized streams. Streams do have to be
         /// configured in order for the call to start playback.
         /// </summary>
-        public void Play()
+        public async void Play()
         {
             logger.Info("");
 
             if (!AllStreamsConfigured)
-                throw new InvalidOperationException("Initialized streams are not configured. Play Aborted");
+            {
+                logger.Info("Initialized streams are not configured. Start will occur after receiving configurations");
+                return;
+            }
 
             try
             {
+                if (resourceConflict)
+                {
+                    logger.Info("Player Resource conflict. Trying to restart");
+                    var token = activeTaskCts.Token;
+                    await RestartPlayer(token);
+                    return;
+                }
+
                 var state = player.GetState();
                 switch (state)
                 {
@@ -371,6 +396,12 @@ namespace JuvoPlayer.Player.EsPlayer
 
             // Perform error notification
             playbackErrorSubject.OnNext(error);
+        }
+
+        private void OnResourceConflicted(object sender, ESPlayer.ResourceConflictEventArgs e)
+        {
+            logger.Info("");
+            resourceConflict = true;
         }
 
         private void OnEsStreamError(string error)
@@ -540,22 +571,7 @@ namespace JuvoPlayer.Player.EsPlayer
 
                     token.ThrowIfCancellationRequested();
 
-                    logger.Info("Restarting ESPlayer");
-                    player.Stop();
-                    player.Dispose();
-
-                    player = new ESPlayer.ESPlayer();
-                    player.Open();
-                    player.SetTrustZoneUse(true);
-                    player.SetDisplay(displayWindow);
-
-                    logger.Info("Setting new stream configuration");
-
-                    foreach (var esStream in dataStreams.Where(esStream => esStream != null))
-                    {
-                        esStream.Stream.SetPlayer(player);
-                        esStream.Stream.ResetStreamConfig();
-                    }
+                    RecreatePlayer();
 
                     logger.Info("Player.PrepareAsync()");
                     await player.PrepareAsync(OnReadyToStartStream).WithCancellation(token);
@@ -575,6 +591,26 @@ namespace JuvoPlayer.Player.EsPlayer
             {
                 logger.Error(e);
                 playbackErrorSubject.OnNext("Restart Error");
+            }
+        }
+
+        private void RecreatePlayer()
+        {
+            logger.Info("");
+
+            DetachEventHandlers();
+
+            player.Stop();
+            player.Dispose();
+
+            CreatePlayer();
+
+            AttachEventHandlers();
+
+            foreach (var esStream in dataStreams.Where(esStream => esStream != null))
+            {
+                esStream.Stream.SetPlayer(player);
+                esStream.Stream.ResetStreamConfig();
             }
         }
 
@@ -777,8 +813,6 @@ namespace JuvoPlayer.Player.EsPlayer
 
         #region Dispose support
 
-        private bool isDisposed;
-
         private void TerminateAsyncOperations()
         {
             // Stop clock & async operations
@@ -848,6 +882,7 @@ namespace JuvoPlayer.Player.EsPlayer
             player.EOSEmitted -= OnEos;
             player.ErrorOccurred -= OnESPlayerError;
             player.BufferStatusChanged -= OnBufferStatusChanged;
+            player.ResourceConflicted -= OnResourceConflicted;
         }
 
         private void DisposeAllSubjects()

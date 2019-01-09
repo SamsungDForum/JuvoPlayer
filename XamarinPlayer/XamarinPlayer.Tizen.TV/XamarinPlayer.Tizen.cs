@@ -14,42 +14,94 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-using System;
-using System.Text;
-using ElmSharp;
-using JuvoLogger.Tizen;
-using JuvoLogger;
-using Tizen;
-using Tizen.Applications;
-using XamarinPlayer.Services;
-using XamarinPlayer.Tizen.Services;
 
+using System;
+using System.Net;
+using System.Text;
+using System.Threading.Tasks;
+using ElmSharp;
+using JuvoLogger;
+using JuvoLogger.Tizen;
+using Newtonsoft.Json;
+using Tizen.Applications;
+using Tizen.System;
+using Xamarin.Forms;
+using Xamarin.Forms.Platform.Tizen;
+using XamarinPlayer.Services;
+using ILogger = JuvoLogger.ILogger;
+using Log = Tizen.Log;
+using Size = ElmSharp.Size;
 
 namespace XamarinPlayer.Tizen
 {
 
 
-    class Program : global::Xamarin.Forms.Platform.Tizen.FormsApplication, IKeyEventSender, IPreviewPayloadEventSender
+    class Program : FormsApplication, IKeyEventSender
     {
         EcoreEvent<EcoreKeyEventArgs> _keyDown;
         private static ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
         public static readonly string Tag = "JuvoPlayer";
+        private App app;
+
+        private class PayloadParser
+        {
+            private readonly ReceivedAppControl receivedAppControl;
+            private string payload;
+            private string json;
+
+            public PayloadParser(ReceivedAppControl receivedAppControl)
+            {
+                this.receivedAppControl = receivedAppControl;
+            }
+
+            public bool TryGetUrl(out string url)
+            {
+                url = string.Empty;
+
+                if (!TryGetPayload()) return false;
+                if (!TryGetJson()) return false;
+                url = ParseJson();
+                return true;
+            }
+
+            private bool TryGetPayload()
+            {
+                return receivedAppControl.ExtraData.TryGet("PAYLOAD", out payload);
+            }
+
+            private bool TryGetJson()
+            {
+                char[] charSeparator = { '&' };
+                var result = payload.Split(charSeparator, StringSplitOptions.RemoveEmptyEntries);
+                if (result.Length <= 1)
+                    return false;
+                json = result[0];
+                return true;
+            }
+
+            private string ParseJson()
+            {
+                var definition = new {values = ""};
+                return JsonConvert.DeserializeAnonymousType(json, definition).values;
+            }
+        }
 
         protected override void OnCreate()
         {
             base.OnCreate();
 
             Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
-            System.Net.ServicePointManager.DefaultConnectionLimit = 100;
+            ServicePointManager.DefaultConnectionLimit = 100;
 
             _keyDown = new EcoreEvent<EcoreKeyEventArgs>(EcoreEventType.KeyDown, EcoreKeyEventArgs.Create);
             _keyDown.On += (s, e) =>
             {
                 // Send key event to the portable project using MessagingCenter
-                Xamarin.Forms.MessagingCenter.Send<IKeyEventSender, string>(this, "KeyDown", e.KeyName);
+                MessagingCenter.Send<IKeyEventSender, string>(this, "KeyDown", e.KeyName);
             };
 
-            LoadApplication(new App());
+            app = new App();
+            LoadApplication(app);
         }
 
         static void UnhandledException(object sender, UnhandledExceptionEventArgs evt)
@@ -68,25 +120,54 @@ namespace XamarinPlayer.Tizen
             }
         }
 
-        protected override void OnAppControlReceived(AppControlReceivedEventArgs e)
+        private Task WaitForMainWindowResize()
         {
-            // Handle the launch request, show the user the task requested through the "AppControlReceivedEventArgs" parameter
-            // Smart Hub Preview function requires the below code to identify which deepLink have to be launched
-            ReceivedAppControl receivedAppControl = e.ReceivedAppControl;
-            //fetch the JSON metadata defined on the smart Hub preview web server
-            receivedAppControl.ExtraData.TryGet("PAYLOAD", out string payload);
-            //If launched without the SmartHub Preview tile, the message string is null.
-            if (!string.IsNullOrEmpty(payload))
+            var tcs = new TaskCompletionSource<bool>();
+
+            var screenSize = GetScreenSize();
+
+            if (MainWindow.Geometry.Size != screenSize)
             {
-                char[] charSeparator = new char[] { '&' };
-                string[] result = payload.Split(charSeparator, StringSplitOptions.RemoveEmptyEntries);
-                if (result.Length > 0)
-                    Xamarin.Forms.MessagingCenter.Send<IPreviewPayloadEventSender, string>(this, "PayloadSent", result[0]);
+                void Handler(object sender, EventArgs e)
+                {
+                    if (MainWindow.Geometry.Size != screenSize)
+                        return;
+                    MainWindow.Resized -= Handler;
+                    tcs.SetResult(true);
+                }
+
+                MainWindow.Resized += Handler;
+            }
+            else
+            {
+                tcs.SetResult(true);
             }
 
-            base.OnAppControlReceived(e);
+            return tcs.Task;
         }
 
+        private static Size GetScreenSize()
+        {
+            var screenSize = new Size();
+
+            if (!Information.TryGetValue("http://tizen.org/feature/screen.width", out int width))
+                return screenSize;
+            if (!Information.TryGetValue("http://tizen.org/feature/screen.height", out int height))
+                return screenSize;
+
+            screenSize.Width = width;
+            screenSize.Height = height;
+            return screenSize;
+        }
+
+        protected override async void OnAppControlReceived(AppControlReceivedEventArgs e)
+        {
+            var payloadParser = new PayloadParser(e.ReceivedAppControl);
+            if (!payloadParser.TryGetUrl(out var url))
+                return;
+            await WaitForMainWindowResize();
+            await app.LoadUrl(url);
+        }
 
         static void Main(string[] args)
         {
@@ -95,7 +176,7 @@ namespace XamarinPlayer.Tizen
 
             var app = new Program();
 
-            global::Xamarin.Forms.Platform.Tizen.Forms.Init(app);
+            Forms.Init(app);
             app.Run(args);
         }
     }

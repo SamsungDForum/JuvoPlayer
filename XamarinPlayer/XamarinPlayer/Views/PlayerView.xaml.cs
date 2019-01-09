@@ -24,12 +24,13 @@ using System.Threading.Tasks;
 using JuvoLogger;
 using Xamarin.Forms;
 using Xamarin.Forms.Xaml;
+using XamarinPlayer.Models;
 using XamarinPlayer.Services;
 
 namespace XamarinPlayer.Views
 {
     [XamlCompilation(XamlCompilationOptions.Compile)]
-    public partial class PlayerView : ContentPage
+    public partial class PlayerView : ContentPage, IContentPayloadHandler, ISuspendable
     {
         private static ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
         private readonly int DefaultTimeout = 5000;
@@ -43,6 +44,7 @@ namespace XamarinPlayer.Views
         private bool _hasFinished;
 
         public static readonly BindableProperty ContentSourceProperty = BindableProperty.Create("ContentSource", typeof(object), typeof(PlayerView));
+        private PlayerState? suspendedPlayerState;
 
         public object ContentSource
         {
@@ -73,8 +75,6 @@ namespace XamarinPlayer.Views
             PlayButton.Clicked += (s, e) => { Play(); };
 
             PropertyChanged += PlayerViewPropertyChanged;
-
-            MessagingCenter.Subscribe<IKeyEventSender, string>(this, "KeyDown", (s, e) => { KeyEventHandler(e); });
         }
 
         private void Play()
@@ -365,6 +365,8 @@ namespace XamarinPlayer.Views
         protected override void OnAppearing()
         {
             base.OnAppearing();
+            _isPageDisappeared = false;
+            MessagingCenter.Subscribe<IKeyEventSender, string>(this, "KeyDown", (s, e) => { KeyEventHandler(e); });
 
             PlayButton.Focus();
             Device.StartTimer(UpdateInterval, UpdatePlayerControl);
@@ -372,6 +374,7 @@ namespace XamarinPlayer.Views
 
         protected override void OnDisappearing()
         {
+            base.OnDisappearing();
             // Moved marking _isPageDisappeared flag to very beginning.
             // OnPlayerStateChanged event handler may receive events accessing
             // _playerService while _playerService is being disposed/nullified
@@ -382,15 +385,14 @@ namespace XamarinPlayer.Views
 
             Device.StartTimer(TimeSpan.FromMilliseconds(0), () =>
             {
+                if (!_isPageDisappeared)
+                    return false;
                 _playerService?.Dispose();
                 _playerService = null;
 
                 return false;
             });
             MessagingCenter.Unsubscribe<IKeyEventSender, string>(this, "KeyDown");
-
-
-            base.OnDisappearing();
         }
 
         void OnTapGestureRecognizerControllerTapped(object sender, EventArgs args)
@@ -515,6 +517,24 @@ namespace XamarinPlayer.Views
 
             CueTextLabel.Text = cueText;
             CueTextLabel.IsVisible = true;
+        }
+
+        public bool HandleUrl(string url)
+        {
+            var currentClipUrl = (BindingContext as DetailContentData)?.Source;
+            return currentClipUrl?.Equals(url) ?? false;
+        }
+
+        public void Suspend()
+        {
+            suspendedPlayerState = _playerService?.State;
+            _playerService?.Pause();
+        }
+
+        public void Resume()
+        {
+            if (suspendedPlayerState == PlayerState.Playing)
+                _playerService?.Start();
         }
     }
 }
