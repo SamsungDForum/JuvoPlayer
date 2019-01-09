@@ -278,7 +278,7 @@ namespace JuvoPlayer.Player.EsPlayer
             }
         }
 
-        public async void Seek(TimeSpan time)
+        public async Task Seek(TimeSpan time)
         {
             logger.Info("");
 

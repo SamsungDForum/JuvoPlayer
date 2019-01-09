@@ -61,9 +61,9 @@ namespace JuvoPlayer.Demuxers
                 TaskScheduler.FromCurrentSynchronizationContext());
         }
 
-        public void StartForEs(InitializationMode mode)
+        public void StartForEs()
         {
-            demuxer.InitForEs(mode)
+            demuxer.InitForEs()
                 .ContinueWith(OnDemuxerInitialized,
                     cancelTokenSource.Token,
                     TaskContinuationOptions.None,
@@ -217,11 +217,16 @@ namespace JuvoPlayer.Demuxers
             dataSourceSub?.Dispose();
             if (dataSource != null)
                 dataSourceSub =
-                    dataSource.Subscribe(OnChunkReady, OnDataSourceCompleted, SynchronizationContext.Current);
+                    dataSource.Subscribe(OnChunkReady, SynchronizationContext.Current);
         }
 
         private void OnChunkReady(byte[] chunk)
         {
+            if (chunk == null)
+            {
+                OnDataSourceCompleted();
+                return;
+            }
             demuxer.PushChunk(chunk);
         }
 
@@ -234,7 +239,7 @@ namespace JuvoPlayer.Demuxers
         private void OnEos(Task _)
         {
             demuxer.Reset();
-            packetReadySubject.OnCompleted();
+            packetReadySubject.OnNext(null);
         }
     }
 }

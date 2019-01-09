@@ -346,7 +346,7 @@ namespace JuvoPlayer.DataProviders.Dash
 
             var fullInitRequired = (newStream != null);
 
-            demuxerController.StartForEs(fullInitRequired ? InitializationMode.Full : InitializationMode.Minimal);
+            demuxerController.StartForEs();
             dashClient.Start(fullInitRequired);
 
             pipelineStarted = true;
@@ -466,12 +466,10 @@ namespace JuvoPlayer.DataProviders.Dash
                 return;
 
             // Stop demuxer and dashclient
-            // Stop demuxer first so old incoming data will ignored
+            dashClient.Reset();
             demuxerController.Reset();
             DisposeDemuxerSubscriptions();
             SubscribeDemuxerEvents();
-
-            dashClient.Reset();
 
             pipelineStarted = false;
         }
@@ -597,6 +595,8 @@ namespace JuvoPlayer.DataProviders.Dash
             return packetReadySubject.AsObservable()
                 .Select(packet =>
                 {
+                    if (packet == null)
+                        return Packet.CreateEOS(StreamType);
                     if (packet is SeekPacket)
                         return packet;
 
