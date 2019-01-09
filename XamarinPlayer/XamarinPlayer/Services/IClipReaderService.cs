@@ -15,13 +15,12 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-﻿using System;
 using System.Collections.Generic;
 
 namespace XamarinPlayer.Services
 {
     public interface IClipReaderService
     {
-        List<Clip> ReadClips(string path);
+        List<Clip> ReadClips();
     }
 }

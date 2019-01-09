@@ -15,11 +15,11 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-﻿using System.Windows.Input;
+using System.Windows.Input;
 
 namespace XamarinPlayer.Models
 {
-    class DetailContentData
+    public class DetailContentData
     {
         public string Image { get; set; }
         public string Bg { get; set; }

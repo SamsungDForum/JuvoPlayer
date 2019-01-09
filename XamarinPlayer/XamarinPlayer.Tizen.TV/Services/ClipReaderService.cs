@@ -15,29 +15,36 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-﻿using JuvoPlayer;
-using JuvoPlayer.Common;
-using JuvoPlayer.Utils;
-using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using JuvoPlayer.Common;
+using JuvoPlayer.Utils;
 using Xamarin.Forms;
 using XamarinPlayer.Services;
 using XamarinPlayer.Tizen.TV.Services;
+using Application = Tizen.Applications.Application;
 
 [assembly: Dependency(typeof(ClipReaderService))]
+
 namespace XamarinPlayer.Tizen.TV.Services
 {
     class ClipReaderService : IClipReaderService
     {
-        public List<Clip> ReadClips(string path)
-        {
-            var clips = JSONFileReader.DeserializeJsonFile<List<ClipDefinition>>(path).Select(
-                o => new Clip() { Image = o.Poster, Description = o.Description, Source = o.Description, Title = o.Title, ClipDetailsHandle = o }
-                ).ToList();
+        private string ApplicationPath => Path.GetDirectoryName(
+            Path.GetDirectoryName(Application.Current.ApplicationInfo.ExecutablePath));
 
-            return clips;
+        public List<Clip> ReadClips()
+        {
+            var clipsPath = Path.Combine(ApplicationPath, "shared", "res", "videoclips.json");
+
+            return JSONFileReader.DeserializeJsonFile<List<ClipDefinition>>(clipsPath).Select(
+                o => new Clip
+                {
+                    Image = o.Poster, Description = o.Description, Source = o.Url, Title = o.Title,
+                    ClipDetailsHandle = o
+                }
+            ).ToList();
         }
     }
 }

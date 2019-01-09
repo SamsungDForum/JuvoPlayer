@@ -15,7 +15,10 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+using System.Threading.Tasks;
+using JuvoLogger;
 using Xamarin.Forms;
+using XamarinPlayer.Services;
 using XamarinPlayer.Views;
 
 namespace XamarinPlayer
@@ -23,6 +26,8 @@ namespace XamarinPlayer
     public class App : Application
     {
         public static NavigationPage AppMainPage { get; private set; }
+
+        private static readonly ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
 
         public App()
         {
@@ -38,12 +43,29 @@ namespace XamarinPlayer
 
         protected override void OnSleep()
         {
-            // Handle when your app sleeps
+            Logger.Info("");
+            if (AppMainPage.CurrentPage is ISuspendable suspendable)
+                suspendable.Suspend();
         }
 
         protected override void OnResume()
         {
-            // Handle when your app resumes
+            Logger.Info("");
+            if (AppMainPage.CurrentPage is ISuspendable suspendable)
+                suspendable.Resume();
+        }
+
+        public async Task LoadUrl(string url)
+        {
+            Logger.Info("");
+            while (true)
+            {
+                if (AppMainPage.CurrentPage is IContentPayloadHandler handler && handler.HandleUrl(url))
+                    return;
+                var page = await AppMainPage.PopAsync();
+                if (page == null)
+                    return;
+            }
         }
     }
 }

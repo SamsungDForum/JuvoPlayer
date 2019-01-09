@@ -89,8 +89,5 @@
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
   </ItemGroup>
-  <ItemGroup>
-    <TizenTpkUserExcludeFiles Include="Tizen.TV.Multimedia.ESPlayer.dll" />
-  </ItemGroup>
 </Project>
 
