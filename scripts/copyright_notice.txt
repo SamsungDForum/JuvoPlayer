@@ -14,21 +14,3 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-
-using System;
-
-namespace JuvoPlayer.Demuxers.FFmpeg
-{
-    public class FFmpegException : Exception
-    {
-        public FFmpegException(string message)
-            : base(message)
-        {
-        }
-
-        public FFmpegException(string message, Exception ex)
-            : base(message, ex)
-        {
-        }
-    }
-}
