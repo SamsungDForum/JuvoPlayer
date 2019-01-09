@@ -45,6 +45,10 @@ namespace JuvoPlayer.Drms.Cenc
         private readonly DRMDescription drmDescription;
         private readonly AsyncContextThread thread = new AsyncContextThread();
         private readonly AsyncLock threadLock = new AsyncLock();
+
+        // Cross CencSession license installation lock.
+        private static readonly AsyncLock licenseLock = new AsyncLock();
+
         private bool isDisposed;
         private readonly CancellationTokenSource cancellationTokenSource;
         private TaskCompletionSource<byte[]> requestDataCompletionSource;
@@ -57,6 +61,8 @@ namespace JuvoPlayer.Drms.Cenc
         private const int MaxDecryptRetries = 5;
         private static readonly TimeSpan DecryptBufferFullSleepTime = TimeSpan.FromMilliseconds(1000);
 
+        private CencUtils.DrmType drmType;
+
         private CencSession(DRMInitData initData, DRMDescription drmDescription)
         {
             if (string.IsNullOrEmpty(drmDescription?.LicenceUrl))
@@ -68,6 +74,7 @@ namespace JuvoPlayer.Drms.Cenc
             this.initData = initData;
             this.drmDescription = drmDescription;
             cancellationTokenSource = new CancellationTokenSource();
+            drmType = CencUtils.GetDrmType(this.drmDescription.Scheme);
         }
 
         private void DestroyCDM()
@@ -114,15 +121,29 @@ namespace JuvoPlayer.Drms.Cenc
             return new CencSession(initData, drmDescription);
         }
 
-        public Task<Packet> DecryptPacket(EncryptedPacket packet)
+        public Task<Packet> DecryptPacket(EncryptedPacket packet, CancellationToken token)
         {
             ThrowIfDisposed();
-            return thread.Factory.Run(() => DecryptPacketOnIemeThread(packet));
+            return thread.Factory.Run(() => DecryptPacketOnIemeThread(packet, token));
         }
 
-        private async Task<Packet> DecryptPacketOnIemeThread(EncryptedPacket packet)
+        private static byte[] PadIv(byte[] iv)
         {
-            using (await threadLock.LockAsync(cancellationTokenSource.Token))
+            var paddedIv = new byte[]
+            {
+                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
+                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
+            };
+
+            Buffer.BlockCopy(iv, 0, paddedIv, 0, iv.Length);
+
+            return paddedIv;
+        }
+
+        private async Task<Packet> DecryptPacketOnIemeThread(EncryptedPacket packet, CancellationToken token)
+        {
+            using (var linkedToken = CancellationTokenSource.CreateLinkedTokenSource(cancellationTokenSource.Token, token))
+            using (await threadLock.LockAsync(linkedToken.Token))
                 unsafe
                 {
                     if (licenceInstalled == false)
@@ -139,6 +160,12 @@ namespace JuvoPlayer.Drms.Cenc
                     param[0].format = eMsdMediaFormat.MSD_FORMAT_FMP4;
                     param[0].phase = eMsdCipherPhase.MSD_PHASE_NONE;
                     param[0].buseoutbuf = false;
+
+                    // Do padding only for Widevine with keys shorter then 16 bytes
+                    // Shorter keys need to be zero padded, not PCKS#7
+
+                    if (drmType == CencUtils.DrmType.Widevine && packet.Iv.Length < 16)
+                        packet.Iv = PadIv(packet.Iv);
 
                     fixed (byte* pdata = packet.Data, piv = packet.Iv, pkid = packet.KeyId)
                     {
@@ -185,7 +212,7 @@ namespace JuvoPlayer.Drms.Cenc
 
                         try
                         {
-                            var ret = DecryptData(param, numofparam, ref pHandleArray, packet.StreamType);
+                            var ret = DecryptData(param, numofparam, ref pHandleArray, packet.StreamType, linkedToken.Token);
                             if (ret == (int) eCDMReturnType.E_SUCCESS)
                             {
                                 return new DecryptedEMEPacket(thread)
@@ -216,29 +243,34 @@ namespace JuvoPlayer.Drms.Cenc
                 }
         }
 
-        private int DecryptData(sMsdCipherParam[] param, int numofparam, ref HandleSize[] pHandleArray, StreamType type)
+        private eCDMReturnType DecryptData(sMsdCipherParam[] param, int numofparam, ref HandleSize[] pHandleArray, StreamType type, CancellationToken token)
         {
-            int ret;
             var errorCount = 0;
+            eCDMReturnType res;
 
             while (true)
             {
-                ret = (int) API.EmeDecryptarray((eCDMReturnType) CDMInstance.getDecryptor(), ref param, numofparam,
-                    IntPtr.Zero,
-                    0, ref pHandleArray);
+                token.ThrowIfCancellationRequested();
 
-                if (ret == E_DECRYPT_BUFFER_FULL && errorCount < MaxDecryptRetries)
+                res = API.EmeDecryptarray((eCDMReturnType)CDMInstance.getDecryptor(), ref param, numofparam, IntPtr.Zero,
+                   0, ref pHandleArray);
+
+                if ((int)res == E_DECRYPT_BUFFER_FULL && errorCount < MaxDecryptRetries)
                 {
                     Logger.Warn($"{type}: E_DECRYPT_BUFFER_FULL ({errorCount}/{MaxDecryptRetries})");
+
+                    token.ThrowIfCancellationRequested();
+
                     ++errorCount;
-                    Thread.Sleep(DecryptBufferFullSleepTime);
+                    Task.Delay(DecryptBufferFullSleepTime, token).Wait(token);
+
                     continue;
                 }
 
                 break;
             }
 
-            return ret;
+            return res;
         }
 
         private static unsafe IntPtr MarshalSubsampleArray(MSD_SUBSAMPLE_INFO[] subsamples)
@@ -319,7 +351,7 @@ namespace JuvoPlayer.Drms.Cenc
                 var responseText = await AcquireLicenceFromServer(requestData);
                 cancellationToken.ThrowIfCancellationRequested();
 
-                InstallLicence(responseText);
+                await InstallLicence(responseText);
                 licenceInstalled = true;
             }
         }
@@ -393,12 +425,20 @@ namespace JuvoPlayer.Drms.Cenc
             return responseText;
         }
 
-        private void InstallLicence(string responseText)
+        private async Task InstallLicence(string responseText)
         {
             Logger.Info($"Installing CencSession: {currentSessionId}");
             try
             {
-                var status = CDMInstance.session_update(currentSessionId, responseText);
+                var cancellationToken = cancellationTokenSource.Token;
+                Status status;
+                using (await licenseLock.LockAsync(cancellationToken))
+                {
+                    status = CDMInstance.session_update(currentSessionId, responseText);
+                }
+
+                Logger.Info($"Install CencSession ${currentSessionId} result: {status}");
+
                 if (status != Status.kSuccess)
                 {
                     Logger.Error($"License Installation failure {EmeStatusConverter.Convert(status)}");

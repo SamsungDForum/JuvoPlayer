@@ -15,6 +15,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+using System.Threading;
 using System.Threading.Tasks;
 using JuvoPlayer.Common;
 using JuvoPlayer.Common.Utils.IReferenceCountable;
@@ -33,6 +34,6 @@ namespace JuvoPlayer.Drms
         /// <param name="packet">Packet to decrypt.</param>
         /// <returns>A task, which will produce decrypted <see cref="T:JuvoPlayer.Common.Packet"></see>.</returns>
         /// <exception cref="T:JuvoPlayer.Drms.DRMException">Session is not initialized or packet couldn't be decrypted.</exception>
-        Task<Packet> DecryptPacket(EncryptedPacket packet);
+        Task<Packet> DecryptPacket(EncryptedPacket packet, CancellationToken token);
     }
 }
