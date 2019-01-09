@@ -23,6 +23,7 @@ using System.Linq;
 using System.Reactive.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using ElmSharp;
 using Newtonsoft.Json;
 using Tizen.Applications;
 using Tizen.System;
@@ -70,7 +71,6 @@ namespace JuvoPlayer.OpenGL
         private bool _bufferingInProgress = false;
         private int _bufferingProgress = 0;
 
-
         private readonly SystemCpuUsage _systemCpuUsage = new SystemCpuUsage();
 
         private static void Main(string[] args)
@@ -117,6 +117,7 @@ namespace JuvoPlayer.OpenGL
 
         private TimeSpan _appPausedOnPosition;
         private bool _appPaused;
+        private Window _playerWindow;
 
         protected override void OnPause()
         {
@@ -342,6 +343,13 @@ namespace JuvoPlayer.OpenGL
 
         private void HandleLoadingFinished()
         {
+            _playerWindow = new Window("JuvoPlayer")
+            {
+                Geometry = new Rect(0, 0, 1920, 1080)
+            };
+            _playerWindow.Show();
+            _playerWindow.Lower();
+
             if (_startedFromDeepLink)
                 HandleExternalPlaybackStart();
             else
@@ -500,7 +508,7 @@ namespace JuvoPlayer.OpenGL
         {
             if (_player == null)
             {
-                _player = new Player();
+                _player = new Player(_playerWindow);
                 _player.StateChanged()
                     .ObserveOn(SynchronizationContext.Current)
                     .Where(state => state == PlayerState.Prepared)
