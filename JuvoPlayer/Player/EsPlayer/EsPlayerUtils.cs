@@ -36,6 +36,10 @@ namespace JuvoPlayer.Player.EsPlayer
     /// </summary>
     internal static class TimeSpanExtensions
     {
+        internal static TimeSpan FromNano(this ulong nanoTime)
+        {
+            return TimeSpan.FromMilliseconds(nanoTime/(double)1000000);
+        }
         internal static ulong TotalNanoseconds(this TimeSpan clock)
         {
             return (ulong)(clock.TotalMilliseconds * 1000000);

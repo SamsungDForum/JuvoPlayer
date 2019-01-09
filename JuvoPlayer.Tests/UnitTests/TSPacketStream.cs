@@ -16,6 +16,7 @@
  */
 
 ﻿using System;
+using System.Threading;
 using System.Threading.Tasks;
 using JuvoPlayer.Common;
 using JuvoPlayer.Common.Utils.IReferenceCountable;
@@ -39,7 +40,7 @@ namespace JuvoPlayer.Tests.UnitTests
 
         public Task Initialize() { return Task.CompletedTask; }
 
-        public Task<Packet> DecryptPacket(EncryptedPacket packet) { return Task.FromResult(new Packet()); }
+        public Task<Packet> DecryptPacket(EncryptedPacket packet, CancellationToken token) { return Task.FromResult(new Packet()); }
     }
 
     [TestFixture]

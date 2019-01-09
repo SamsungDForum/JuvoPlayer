@@ -19,6 +19,7 @@ using JuvoPlayer.Drms;
 using System;
 using System.Runtime.ExceptionServices;
 using System.Xml.Serialization;
+using System.Threading;
 using JuvoPlayer.Common;
 using JuvoPlayer.Common.Utils.IReferenceCountableExtensions;
 
@@ -40,14 +41,14 @@ namespace JuvoPlayer.Drms
         [XmlIgnore]
         public IDrmSession DrmSession;
 
-        public Packet Decrypt()
+        public Packet Decrypt(CancellationToken token)
         {
             if (DrmSession == null)
                 throw new InvalidOperationException("Decrypt called without DrmSession");
 
             try
             {
-                return DrmSession.DecryptPacket(this).Result;
+                return DrmSession.DecryptPacket(this, token).Result;
             }
             catch (AggregateException ex)
             {

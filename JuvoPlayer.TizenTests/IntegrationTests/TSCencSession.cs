@@ -21,6 +21,7 @@ using System.IO;
 using System.Linq;
 using System.Reflection;
 using System.Text;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Xml.Serialization;
 using JuvoLogger;
@@ -71,7 +72,7 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
             var drmInitDataStream = assembly.GetManifestResourceStream("JuvoPlayer.TizenTests.res.drm.google_dash_encrypted_init_data");
             using (var reader = new BinaryReader(drmInitDataStream))
             {
-                initData = reader.ReadBytes((int) drmInitDataStream.Length);
+                initData = reader.ReadBytes((int)drmInitDataStream.Length);
             }
 
             Assert.That(initData, Is.Not.Null);
@@ -80,8 +81,8 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
                 assembly.GetManifestResourceStream(
                     "JuvoPlayer.TizenTests.res.drm.google_dash_encrypted_video_packet_pts_10_01.xml");
             XmlSerializer serializer = new XmlSerializer(typeof(EncryptedPacket));
-            encryptedPacket = (EncryptedPacket) serializer.Deserialize(encryptedPacketStream);
-            
+            encryptedPacket = (EncryptedPacket)serializer.Deserialize(encryptedPacketStream);
+
             Assert.That(encryptedPacket, Is.Not.Null);
         }
 
@@ -104,7 +105,7 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
             {
                 Scheme = CencUtils.GetScheme(PlayreadySystemId),
                 LicenceUrl = licenceUrl,
-                KeyRequestProperties = new Dictionary<string, string>() {{"Content-Type", "text/xml; charset=utf-8"}},
+                KeyRequestProperties = new Dictionary<string, string>() { { "Content-Type", "text/xml; charset=utf-8" } },
             };
             return configuration;
         }
@@ -172,7 +173,7 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
             using (var drmSession = CencSession.Create(drmInitData, configuration))
             {
                 await drmSession.Initialize();
-                using (var decrypted = await drmSession.DecryptPacket(encryptedPacket))
+                using (var decrypted = await drmSession.DecryptPacket(encryptedPacket, CancellationToken.None))
                 {
                     Assert.That(decrypted, Is.Not.Null);
                     Assert.That(decrypted, Is.InstanceOf<DecryptedEMEPacket>());

@@ -58,6 +58,7 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
         [TestCase("Encrypted 4K MPEG DASH")]
         [TestCase("Clean HLS")]
         [TestCase("Clean HEVC 4k MPEG DASH")]
+        [TestCase("Art Of Motion")]
         public void Playback_Basic_PreparesAndStarts(string clipTitle)
         {
             RunPlayerTest(clipTitle, async context =>
@@ -73,6 +74,7 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
         [TestCase("Sintel - Clean fMP4 MPEG DASH - multiple languages")]
         [TestCase("Encrypted MPEG DASH")]
         [TestCase("Encrypted 4K MPEG DASH")]
+        [TestCase("Art Of Motion")]
         public void Seek_Random10Times_Seeks(string clipTitle)
         {
             RunPlayerTest(clipTitle, async context =>
@@ -87,6 +89,7 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
         [TestCase("Sintel - Clean fMP4 MPEG DASH - multiple languages")]
         [TestCase("Encrypted MPEG DASH")]
         [TestCase("Encrypted 4K MPEG DASH")]
+        [TestCase("Art Of Motion")]
         public void Seek_DisposeDuringSeek_Disposes(string clipTitle)
         {
             RunPlayerTest(clipTitle, async context =>
@@ -103,6 +106,7 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
         [TestCase("Sintel - Clean fMP4 MPEG DASH - multiple languages")]
         [TestCase("Encrypted MPEG DASH")]
         [TestCase("Encrypted 4K MPEG DASH")]
+        [TestCase("Art Of Motion")]
         public void Seek_Forward_Seeks(string clipTitle)
         {
             RunPlayerTest(clipTitle, async context =>
@@ -124,6 +128,7 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
         [TestCase("Sintel - Clean fMP4 MPEG DASH - multiple languages")]
         [TestCase("Encrypted MPEG DASH")]
         [TestCase("Encrypted 4K MPEG DASH")]
+        [TestCase("Art Of Motion")]
         public void Seek_Backward_Seeks(string clipTitle)
         {
             RunPlayerTest(clipTitle, async context =>
@@ -145,6 +150,7 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
         [TestCase("Sintel - Clean fMP4 MPEG DASH - multiple languages")]
         [TestCase("Encrypted MPEG DASH")]
         [TestCase("Encrypted 4K MPEG DASH")]
+        [TestCase("Art Of Motion")]
         public void Seek_ToTheEnd_Seeks(string clipTitle)
         {
             RunPlayerTest(clipTitle, async context =>

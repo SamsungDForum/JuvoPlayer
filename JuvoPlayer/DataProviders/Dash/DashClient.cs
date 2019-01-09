@@ -36,9 +36,10 @@ namespace JuvoPlayer.DataProviders.Dash
         private const string Tag = "JuvoPlayer";
 
         private static readonly ILogger Logger = LoggerManager.GetInstance().GetLogger(Tag);
-        private static readonly TimeSpan timeBufferDepthDefault = TimeSpan.FromSeconds(10);
-        private static readonly TimeSpan maxBufferTime = TimeSpan.FromSeconds(15);
-        private static readonly TimeSpan minBufferTime = TimeSpan.FromSeconds(5);
+        private static readonly TimeSpan timeBufferDepthDefault = TimeSpan.FromSeconds(6);
+        private static readonly TimeSpan maxBufferTime = TimeSpan.FromSeconds(8);
+        private static readonly TimeSpan minBufferTime = TimeSpan.FromSeconds(0.5);
+        private static readonly TimeSpan minBufferDownloadTime = TimeSpan.FromSeconds(4);
 
         private TimeSpan timeBufferDepth = timeBufferDepthDefault;
 
@@ -194,6 +195,27 @@ namespace JuvoPlayer.DataProviders.Dash
             }
         }
 
+        private bool BufferSpaceAvailable()
+        {
+            if (BufferFull)
+            {
+                LogInfo($"Full buffer: ({bufferTime}-{currentTime}) {bufferTime - currentTime} > {timeBufferDepth}.");
+                return false;
+            }
+
+            var bufferSpace = bufferTime - currentTime;
+            if (lastDownloadSegmentTimeRange?.Duration > bufferSpace)
+            {
+                if (bufferSpace > minBufferDownloadTime)
+                {
+                    LogInfo($"Buffer not empty: {bufferSpace}/{minBufferDownloadTime}");
+                    return false;
+                }
+            }
+
+            return true;
+        }
+
         public void ScheduleNextSegDownload()
         {
             if (IsEndOfContent(bufferTime))
@@ -209,12 +231,8 @@ namespace JuvoPlayer.DataProviders.Dash
             if (!processDataTask.IsCompleted || cancellationTokenSource.IsCancellationRequested)
                 return;
 
-            if (BufferFull)
-            {
-                LogInfo(
-                    $"Full buffer: ({bufferTime}-{currentTime}) {bufferTime - currentTime} > {timeBufferDepth}.");
+            if (!BufferSpaceAvailable())
                 return;
-            }
 
             SwapRepresentation();
 
