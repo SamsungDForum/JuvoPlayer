@@ -74,7 +74,4 @@
     <XmlPoke XmlInputPath="XamarinPlayer.Tizen.TV.csproj" Query="/Project/PropertyGroup/Version" Value="@(JuvoPlayerVersion)" />
     <XmlPoke XmlInputPath="tizen-manifest.xml" Query="/x:manifest/@version" Value="@(JuvoPlayerVersion)" Namespaces="&lt;Namespace Prefix='x' Uri='http://tizen.org/ns/packages' /&gt;" />
   </Target>
-  <ItemGroup>
-    <TizenTpkUserExcludeFiles Include="Tizen.TV.Multimedia.ESPlayer.dll" />
-  </ItemGroup>
 </Project>

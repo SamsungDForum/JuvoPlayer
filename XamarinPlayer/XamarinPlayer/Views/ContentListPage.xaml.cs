@@ -14,23 +14,21 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-﻿using System.ComponentModel;
+
+using System.ComponentModel;
 using Xamarin.Forms;
 using Xamarin.Forms.Xaml;
 using XamarinPlayer.Controls;
-using XamarinPlayer.Models;
 using XamarinPlayer.Services;
 using XamarinPlayer.ViewModels;
-using Newtonsoft.Json;
-
 
 namespace XamarinPlayer.Views
 {
     [XamlCompilation(XamlCompilationOptions.Compile)]
 
-    public partial class ContentListPage : ContentPage
+    public partial class ContentListPage : ContentPage, IContentPayloadHandler
     {
-        NavigationPage AppMainPage;        
+        NavigationPage AppMainPage;
 
         public static readonly BindableProperty FocusedContentProperty = BindableProperty.Create("FocusedContent", typeof(ContentItem), typeof(ContentListPage), default(ContentItem));
         public ContentItem FocusedContent
@@ -50,38 +48,13 @@ namespace XamarinPlayer.Views
             InitializeComponent();
 
             AppMainPage = page;
-                        
+
             UpdateItem();
 
             NavigationPage.SetHasNavigationBar(this, false);
 
             PropertyChanged += ContentChanged;
-
-            MessagingCenter.Subscribe<IPreviewPayloadEventSender, string>(this, "PayloadSent", (s, e) => { PreviewPayloadHandler(e); });
         }
-        
-
-        
-        private void PreviewPayloadHandler(string message)
-        {   
-            if (!message.Contains("values"))
-                return;                           
-            try
-            {
-                var definition = new { values = "" };
-                var payload = JsonConvert.DeserializeAnonymousType(message, definition);
-                int index = 0;
-                //In this case the payload has to be an integer - index value.
-                index = int.Parse(payload.values);
-                ContentItem item = ContentListView.GetItem(index);                
-                ContentSelected(item);                
-            } catch (System.Exception exc)
-            {                    
-                throw new System.Exception("PreviewPayloadHandler exception " + exc.Message);
-            }               
-            
-        }
-                
 
         private void ContentChanged(object sender, PropertyChangedEventArgs e)
         {
@@ -94,27 +67,27 @@ namespace XamarinPlayer.Views
         private void ContentSelected(ContentItem item)
         {
             ContentListView.FocusedContent = item;
-            var playerView = new PlayerView()
+            var playerView = new PlayerView
             {
                 BindingContext = item.BindingContext
-            };            
+            };
             AppMainPage.PushAsync(playerView);
         }
 
         private void UpdateItem()
         {
-            
-            foreach (DetailContentData content in ((ContentListPageViewModel)BindingContext).ContentList)
+
+            foreach (var content in ((ContentListPageViewModel)BindingContext).ContentList)
             {
-                ContentItem item = new ContentItem()
+                var item = new ContentItem
                 {
                     BindingContext = content
                 };
-                item.OnContentSelect += new ContentSelectHandler(ContentSelected);                
+                item.OnContentSelect += ContentSelected;
                 ContentListView.Add(item);
             }
 
-            
+
         }
 
         protected async void UpdateContentInfo()
@@ -130,7 +103,7 @@ namespace XamarinPlayer.Views
         protected override void OnAppearing()
         {
             base.OnAppearing();
-            
+
             ContentListView.SetFocus();
         }
 
@@ -145,6 +118,17 @@ namespace XamarinPlayer.Views
             // Sometimes height of list is calculated as wrong
             // Set the height explicitly for fixing this issue
             ContentListView.SetHeight(height * 0.21);
+        }
+
+        public bool HandleUrl(string url)
+        {
+            var contentList = ((ContentListPageViewModel) BindingContext).ContentList;
+            var index = contentList.FindIndex(content => content.Source.Equals(url));
+            if (index == -1)
+                return false;
+            var item = ContentListView.GetItem(index);
+            ContentSelected(item);
+            return true;
         }
     }
 }
