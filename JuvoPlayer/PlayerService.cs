@@ -54,11 +54,6 @@ namespace JuvoPlayer
 
         public string CurrentCueText => dataProvider?.CurrentCue?.Text;
 
-        public PlayerService()
-            : this(null)
-        {
-        }
-
         public PlayerService(Window window)
         {
             dataProviders = new DataProviderFactoryManager();

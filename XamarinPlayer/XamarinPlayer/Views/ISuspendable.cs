@@ -15,12 +15,11 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-using System.Collections.Generic;
-
-namespace XamarinPlayer.Services
+namespace XamarinPlayer.Views
 {
-    public interface IClipReaderService
+    public interface ISuspendable
     {
-        List<Clip> ReadClips();
+        void Suspend();
+        void Resume();
     }
 }

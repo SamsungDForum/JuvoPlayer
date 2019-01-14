@@ -115,7 +115,6 @@ namespace JuvoPlayer.OpenGL
             base.OnAppControlReceived(e);
         }
 
-        private TimeSpan _appPausedOnPosition;
         private bool _appPaused;
         private Window _playerWindow;
 
@@ -124,9 +123,8 @@ namespace JuvoPlayer.OpenGL
             if (_player == null || _player.State != PlayerState.Playing)
                 return;
 
-            _appPausedOnPosition = _player.CurrentPosition;
             _appPaused = true;
-            ClosePlayer();
+            _player.Pause();
         }
 
         protected override void OnResume()
@@ -137,17 +135,14 @@ namespace JuvoPlayer.OpenGL
             _appPaused = false;
 
             if (_player != null)
-                return;
-
-            if (_selectedTile >= _resourceLoader.TilesCount)
             {
-                ShowMenu(true);
+                ShowMenu(false);
+                KeyPressedMenuUpdate(); // Playback UI should be visible when starting playback after app execution is resumed
+                _player.Start();
                 return;
             }
 
-            ShowMenu(false);
-            KeyPressedMenuUpdate(); // Playback UI should be visible when starting playback after app execution is resumed
-            HandlePlaybackStart();
+            ShowMenu(true);
         }
 
         private void InitMenu()
@@ -321,7 +316,7 @@ namespace JuvoPlayer.OpenGL
             try
             {
                 var payload = JsonConvert.DeserializeAnonymousType(message, new {values = ""});
-                HandleExternalTileSelection(int.Parse(payload.values));
+                HandleExternalTileSelection(payload.values);
             }
             catch (Exception e)
             {
@@ -329,16 +324,21 @@ namespace JuvoPlayer.OpenGL
             }
         }
 
-        private void HandleExternalTileSelection(int tileNo)
+        private void HandleExternalTileSelection(string url)
         {
             _startedFromDeepLink = true;
-            if (tileNo >= 0 && tileNo < _resourceLoader.TilesCount)
-            {
-                _selectedTile = tileNo;
-                DllImports.SelectTile(_selectedTile);
-                if (_resourceLoader.IsLoadingFinished)
-                    HandleExternalPlaybackStart();
-            }
+            var tileNo = _resourceLoader.ContentList.FindIndex(content =>
+                string.Equals(content.Url, url, StringComparison.OrdinalIgnoreCase));
+            if (tileNo < 0)
+                return;
+            if (tileNo == _selectedTile)
+                return;
+            if (_player != null)
+                ClosePlayer();
+            _selectedTile = tileNo;
+            DllImports.SelectTile(_selectedTile);
+            if (_resourceLoader.IsLoadingFinished)
+                HandleExternalPlaybackStart();
         }
 
         private void HandleLoadingFinished()
