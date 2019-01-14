@@ -82,7 +82,7 @@
     "title": "FHD H264 MPEG-4 looped 20 hours playback",
     "url": "http://stream-srv.sprc.samsung.pl/pnacl/MediaFramework/content/DASH_streams/ToS-4k-1920p-20hrs/stream.mpd",
     "type": "dash",
-    "poster": "tos-poster.jpg",    
+    "poster": "tos-poster.jpg",
     "description": "1920x800 H264 MPEG-4 AVC video AAC audio 20h 23' of playback. URI: http://stream-srv.sprc.samsung.pl/pnacl/MediaFramework/content/DASH_streams/ToS-4k-1920p-20hrs/stream.mpd"
   },
   {
@@ -105,5 +105,21 @@
     "type": "dash",
     "poster": "elephantsdream.jpg",
     "description": "Microsoft Azure Media Services Live Stream. For more info, visit http://aka.ms/LiveStreamBlog. URI: http://b028.wpc.azureedge.net/80B028/Samples/a38e6323-95e9-4f1f-9b38-75eba91704e4/5f2ce531-d508-49fb-8152-647eba422aec.ism/Manifest(format=mpd-time-csf)"
-  }  
+  },
+  {
+    "title": "Art Of Motion",
+    "url": "https://bitmovin-a.akamaihd.net/content/art-of-motion_drm/mpds/11331.mpd",
+    "type": "dash",
+    "description": "CENC Widevine, HD URI: https://bitmovin-a.akamaihd.net/content/art-of-motion_drm/mpds/11331.mpd)",
+    "poster": "artofwalking.jpg",
+    "drmDatas": [
+      {
+        "scheme": "widevine",
+        "licenceUrl": "https://widevine-proxy.appspot.com/proxy",
+        "keyRequestProperties": {
+          "Content-Type": "text/xml; charset=utf-8"
+        }
+      }
+    ]
+  }
 ]

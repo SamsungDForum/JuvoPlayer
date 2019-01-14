@@ -47,7 +47,7 @@
     "title": "Art Of Motion",
     "url": "https://bitmovin-a.akamaihd.net/content/art-of-motion_drm/mpds/11331.mpd",
     "type": "dash",
-    "description": "CENC Widevine, Tears Of Steel, HD URI: https://bitmovin-a.akamaihd.net/content/art-of-motion_drm/mpds/11331.mpd)",
+    "description": "CENC Widevine, HD URI: https://bitmovin-a.akamaihd.net/content/art-of-motion_drm/mpds/11331.mpd)",
     "poster": "artofwalking.jpg",
     "drmDatas": [
       {
