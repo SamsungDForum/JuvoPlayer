@@ -52,8 +52,7 @@ namespace JuvoPlayer.Player
 
             subscriptions = new CompositeDisposable
             {
-                TimeUpdated().Subscribe(time => currentTime = time, SynchronizationContext.Current),
-                SeekCompleted().Subscribe(unit => seeking = false, SynchronizationContext.Current)
+                TimeUpdated().Subscribe(time => currentTime = time, SynchronizationContext.Current)
             };
 
             var audioCodecExtraDataHandler = new AudioCodecExtraDataHandler(player);

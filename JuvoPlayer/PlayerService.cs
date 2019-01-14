@@ -127,6 +127,7 @@ namespace JuvoPlayer
         {
             dataProvider.OnStopped();
             playerController.OnStop();
+            connector.Dispose();
         }
 
         public void Dispose()
