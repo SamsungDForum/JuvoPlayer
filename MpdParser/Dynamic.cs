@@ -321,14 +321,14 @@ namespace MpdParser.Node.Dynamic
         public ulong Number;
         public ulong Time;
         public ulong Duration;
-        public int Repeats;
+        public ulong Repeats;
 
         internal TimeRelation RepeatFor(ulong point, out uint repeat)
         {
             repeat = 0;
             if (point < Time)
                 return TimeRelation.LATER;
-            if (point > Time + Duration * (ulong)(Repeats + 1))
+            if (point > Time + Duration * (Repeats + 1))
                 return TimeRelation.EARLIER;
             point -= Time;
             repeat = (uint)(point / Duration);
