@@ -624,8 +624,11 @@ namespace JuvoPlayer.DataProviders.Dash
         {
             var duration = currentStreams.Duration;
             var segments = currentStreams.Count;
+            var docParams = currentStreams.GetDocumentParameters();
+            if (docParams == null)
+                throw new ArgumentNullException("currentStreams.GetDocumentParameters() returns null");
             var manifestMinBufferDepth =
-                currentStreams.GetDocumentParameters().Document.MinBufferTime ?? timeBufferDepthDefault;
+                docParams.Document.MinBufferTime ?? timeBufferDepthDefault;
 
             //Get average segment duration = Total Duration / number of segments.
             var avgSegmentDuration = TimeSpan.FromSeconds(
