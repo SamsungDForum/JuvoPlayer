@@ -592,8 +592,11 @@ namespace JuvoPlayer.DataProviders.Dash
                 var duration = segment.Period.Duration.TotalSeconds;
                 var segmentSize = bandwidth * duration;
                 var calculatedTimeNeeded = TimeSpan.FromSeconds(segmentSize / averageThroughput * 1.5);
+                var docParams = currentStreams.GetDocumentParameters();
+                if (docParams == null)
+                    throw new ArgumentNullException("currentStreams.GetDocumentParameters() returns null");
                 var manifestMinBufferDepth =
-                    currentStreams.GetDocumentParameters().Document.MinBufferTime ?? TimeSpan.Zero;
+                    docParams.Document.MinBufferTime ?? TimeSpan.Zero;
                 timeout = calculatedTimeNeeded > manifestMinBufferDepth ? calculatedTimeNeeded : manifestMinBufferDepth;
             }
 
