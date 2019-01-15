@@ -37,6 +37,7 @@ namespace JuvoPlayer.Drms.Cenc
     {
         private readonly ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
 
+        private HttpClient httpClient;
         private IEME CDMInstance;
         private readonly DRMInitData initData;
         private string currentSessionId;
@@ -56,6 +57,7 @@ namespace JuvoPlayer.Drms.Cenc
         private const int E_DECRYPT_BUFFER_FULL = 2;
         private const int MaxDecryptRetries = 5;
         private static readonly TimeSpan DecryptBufferFullSleepTime = TimeSpan.FromMilliseconds(1000);
+        
 
         private CencSession(DRMInitData initData, DRMDescription drmDescription)
         {
@@ -65,6 +67,7 @@ namespace JuvoPlayer.Drms.Cenc
                 throw new NullReferenceException("Licence url is null");
             }
 
+            this.httpClient = new HttpClient();
             this.initData = initData;
             this.drmDescription = drmDescription;
             cancellationTokenSource = new CancellationTokenSource();
@@ -92,6 +95,7 @@ namespace JuvoPlayer.Drms.Cenc
             if (isDisposed)
                 return;
 
+            this.httpClient.Dispose();
             cancellationTokenSource?.Cancel();
 
             thread.Factory.Run(() => DestroyCDM()); //will do nothing on a disposed AsyncContextThread
@@ -361,10 +365,11 @@ namespace JuvoPlayer.Drms.Cenc
 
         private async Task<string> AcquireLicenceFromServer(byte[] requestData)
         {
-            HttpClient client = new HttpClient();
+            //HttpClient client = new HttpClient();
             var licenceUrl = new Uri(drmDescription.LicenceUrl);
-
-            client.BaseAddress = licenceUrl;
+            if (this.httpClient == null)
+                throw new ArgumentNullException("httpClient object is null");
+            this.httpClient.BaseAddress = licenceUrl;
             Logger.Info(licenceUrl.AbsoluteUri);
             HttpContent content = new ByteArrayContent(requestData);
             content.Headers.ContentLength = requestData.Length;
@@ -374,13 +379,13 @@ namespace JuvoPlayer.Drms.Cenc
                 foreach (var property in drmDescription.KeyRequestProperties)
                 {
                     if (!property.Key.ToLowerInvariant().Equals("content-type"))
-                        client.DefaultRequestHeaders.Add(property.Key, property.Value);
+                        this.httpClient.DefaultRequestHeaders.Add(property.Key, property.Value);
                     else if (MediaTypeHeaderValue.TryParse(property.Value, out var mediaType))
                         content.Headers.ContentType = mediaType;
                 }
             }
 
-            var responseTask = await client.PostAsync(licenceUrl, content, cancellationTokenSource.Token);
+            var responseTask = await this.httpClient.PostAsync(licenceUrl, content, cancellationTokenSource.Token);
 
             // TODO: Add retries. Net failures are expected
 
