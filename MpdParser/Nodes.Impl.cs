@@ -332,7 +332,9 @@ namespace MpdParser.Node
             // If we still have no init URI, construct one based on BaseURL
             // for that purpose, index range from URL is required. Don't even try without it
             if (init_uri == null && init_url?.Range != null)
-            {
+            {                
+                if (this.BaseURL == null)
+                    throw new ArgumentNullException("the BaseURL is null");
                 init_uri = new URI(this.BaseURL);
             }
 
