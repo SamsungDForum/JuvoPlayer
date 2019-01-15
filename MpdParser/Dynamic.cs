@@ -351,7 +351,7 @@ namespace MpdParser.Node.Dynamic
             result[0].Number = startNumber;
             result[0].Time = totalStart;
             result[0].Duration = segDuration;
-            result[0].Repeats = (int)count - 1;
+            result[0].Repeats = (count - 1);
 
             if (totalDuration != end)
             {
@@ -402,7 +402,7 @@ namespace MpdParser.Node.Dynamic
                 result[i].Number = startNumber;
                 result[i].Time = start + offset;
                 result[i].Duration = s.D.Value;
-                result[i].Repeats = (int)count - 1;
+                result[i].Repeats = (ulong)count - 1;
 
                 start += s.D.Value * count;
                 startNumber += count;
