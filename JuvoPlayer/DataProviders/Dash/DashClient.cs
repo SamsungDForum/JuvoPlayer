@@ -490,8 +490,11 @@ namespace JuvoPlayer.DataProviders.Dash
 
             currentRepresentation = newRep;
             currentStreams = currentRepresentation.Segments;
+            var docParams = currentStreams.GetDocumentParameters();
+            if (docParams == null)
+                throw new ArgumentNullException("currentStreams.GetDocumentParameters() returns null");
             currentStreamDuration = IsDynamic
-                ? currentStreams.GetDocumentParameters().Document.MediaPresentationDuration
+                ? docParams.Document.MediaPresentationDuration
                 : currentStreams.Duration;
             UpdateTimeBufferDepth();
             if (lastDownloadSegmentTimeRange == null)
