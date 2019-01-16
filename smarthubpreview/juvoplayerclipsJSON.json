@@ -1,219 +1,110 @@
 {
-
     "sections": [
-
                     {
-
                         "title": "Live streams",
-
                         "tiles":[
-
                                     {
-
                                         "title": "Clock",
-
                                         "subtitle": "Time measure",
-
                                         "image_ratio": "16by9",
-
-                                        "image_url": "http://serwer1852815.home.pl/juvoplayer/smarthubpreview/pictures/testwatchscreen.jpg",
-
-                                        "action_data": "10",
-
+                                        "image_url": "http://106.120.45.49/smarthubpreview/pictures/testwatchscreen.jpg",
+                                        "action_data": "http://vm2.dashif.org/livesim-dev/segtimeline_1/testpic_2s/Manifest.mpd",
                                         "is_playable": true
-
                                     },
-
  {
-
                                         "title": "Movies",
-
                                         "subtitle": "Elephant's Dream, Sintel, Big Bug Bunny",
-
                                         "image_ratio": "16by9",
-
-                                        "image_url": "http://serwer1852815.home.pl/juvoplayer/smarthubpreview/pictures/elephantsdream.jpg",
-
-                                        "action_data": "11",
-
+                                        "image_url": "http://106.120.45.49/smarthubpreview/pictures/elephantsdream.jpg",
+                                        "action_data": "http://b028.wpc.azureedge.net/80B028/Samples/a38e6323-95e9-4f1f-9b38-75eba91704e4/5f2ce531-d508-49fb-8152-647eba422aec.ism/Manifest\u0028format=mpd-time-csf\u0029",
                                         "is_playable": true
-
                                     }
-
                                 ]
-
                     },
-
                     {
-
                         "title": "VOD recommended",
-
                         "tiles": [
-
                                     {
-
                                         "title": "Google Car",
-
                                         "subtitle": "FHD, Clean, Byte range MPEG DASH",
-
                                         "image_ratio": "16by9",
-
-                                        "image_url": "http://serwer1852815.home.pl/juvoplayer/smarthubpreview/pictures/car.jpg",
-
-                                        "action_data": "0",
-
+                                        "image_url": "http://106.120.45.49/smarthubpreview/pictures/car.jpg",
+                                        "action_data": "http://yt-dash-mse-test.commondatastorage.googleapis.com/media/car-20120827-manifest.mpd",
                                         "is_playable": true
-
                                     },
-
                                     {
-
                                         "title": "Formula One",
-
                                         "subtitle": "FHD, Clean, Fragmented MPEG DASH",
-
                                         "image_ratio": "16by9",
-
-                                        "image_url": "http://serwer1852815.home.pl/juvoplayer/smarthubpreview/pictures/bolid.jpg",
-
-                                        "action_data": "1",
-
+                                        "image_url": "http://106.120.45.49/smarthubpreview/pictures/bolid.jpg",
+                                        "action_data": "http://dash.edgesuite.net/envivio/dashpr/clear/Manifest.mpd",
                                         "is_playable": true
-
                                     },
-
                                     {
-
                                         "title": "Sintel",
-
                                         "subtitle": "FHD, Clean, Fragmented MPEG DASH",
-
                                         "image_ratio": "16by9",
-
-                                        "image_url": "http://serwer1852815.home.pl/juvoplayer/smarthubpreview/pictures/sintel.jpg",
-
-                                        "action_data": "2",
-
+                                        "image_url": "http://106.120.45.49/smarthubpreview/pictures/sintel.jpg",
+                                        "action_data": "https://bitdash-a.akamaihd.net/content/sintel/sintel.mpd",
                                         "is_playable": true
-
                                     },
-
                                     {
-
                                         "title": "Nexus Q",
-
                                         "subtitle": "PlayReady DRM, Fragmented MPEG DASH",
-
                                         "image_ratio": "16by9",
-
-                                        "image_url": "http://serwer1852815.home.pl/juvoplayer/smarthubpreview/pictures/oops.jpg",
-
-                                        "action_data": "3",
-
+                                        "image_url": "http://106.120.45.49/smarthubpreview/pictures/oops.jpg",
+                                        "action_data": "http://yt-dash-mse-test.commondatastorage.googleapis.com/media/oops_cenc-20121114-signedlicenseurl-manifest.mpd",
                                         "is_playable": true
-
                                     },
-
 				    {
-
                                         "title": "Tears of Steel",
-
                                         "subtitle": "4K, PlayReady DRM, Fragmented MPEG DASH",
-
                                         "image_ratio": "16by9",
-
-                                        "image_url": "http://serwer1852815.home.pl/juvoplayer/smarthubpreview/pictures/tosactionsmall.jpg",
-
-                                        "action_data": "4",
-
+                                        "image_url": "http://106.120.45.49/smarthubpreview/pictures/tosactionsmall.jpg",
+                                        "action_data": "http://profficialsite.origin.mediaservices.windows.net/c51358ea-9a5e-4322-8951-897d640fdfd7/tearsofsteel_4k.ism/manifest\u0028format=mpd-time-csf\u0029",
                                         "is_playable": true
-
                                     },
-
 				    {
-
                                         "title": "Big Bug Bunny",
-
                                         "subtitle": "FHD, Clean, Http Progressive MP4",
-
                                         "image_ratio": "16by9",
-
-                                        "image_url": "http://serwer1852815.home.pl/juvoplayer/smarthubpreview/pictures/bunny.jpg",
-
-                                        "action_data": "5",
-
+                                        "image_url": "http://106.120.45.49/smarthubpreview/pictures/bunny.jpg",
+                                        "action_data": "http://distribution.bbb3d.renderfarming.net/video/mp4/bbb_sunflower_1080p_30fps_normal.mp4",
                                         "is_playable": true
-
                                     },
-
 				    {
-
                                         "title": "Sintel",
-
                                         "subtitle": "FHD, Clean, HLS",
-
                                         "image_ratio": "16by9",
-
-                                        "image_url": "http://serwer1852815.home.pl/juvoplayer/smarthubpreview/pictures/sintel.jpg",
-
-                                        "action_data": "6",
-
+                                        "image_url": "http://106.120.45.49/smarthubpreview/pictures/sintel.jpg",
+                                        "action_data": "http://multiplatform-f.akamaihd.net/i/multi/april11/sintel/sintel-hd_,512x288_450_b,640x360_700_b,768x432_1000_b,1024x576_1400_m,.mp4.csmil/master.m3u8",
                                         "is_playable": true
-
                                     },
-
 				    {
-
                                         "title": "France",
-
                                         "subtitle": "4K HEVC, Clean, Fragmented MPEG DASH",
-
                                         "image_ratio": "16by9",
-
-                                        "image_url": "http://serwer1852815.home.pl/juvoplayer/smarthubpreview/pictures/sacrecoeursmall.jpg",
-
-                                        "action_data": "7",
-
+                                        "image_url": "http://106.120.45.49/smarthubpreview/pictures/sacrecoeursmall.jpg",
+                                        "action_data": "http://download.tsi.telecom-paristech.fr/gpac/dataset/dash/uhd/dashevc-live-2s/dashevc-live-2s-4k.mpd",
                                         "is_playable": true
-
                                     },
-
 				    {
-
                                         "title": "Tears of Steel - 20h long",
-
                                         "subtitle": "FHD, Clean, Fragmented MPEG DASH",
-
                                         "image_ratio": "16by9",
-
-                                        "image_url": "http://serwer1852815.home.pl/juvoplayer/smarthubpreview/pictures/tosactionsmall.jpg",
-
-                                        "action_data": "8",
-
+                                        "image_url": "http://106.120.45.49/smarthubpreview/pictures/tosactionsmall.jpg",
+                                        "action_data": "http://stream-srv.sprc.samsung.pl/pnacl/MediaFramework/content/DASH_streams/ToS-4k-1920p-20hrs/stream.mpd",
                                         "is_playable": true
-
                                     },
-
 {
-
                                         "title": "Canimals",
-
                                         "subtitle": "FHD, Clean, RTSP multicast",
-
                                         "image_ratio": "16by9",
-
-                                        "image_url": "http://serwer1852815.home.pl/juvoplayer/smarthubpreview/pictures/canimals.jpg",
-
-                                        "action_data": "9",
-
+                                        "image_url": "http://106.120.45.49/smarthubpreview/pictures/canimals.jpg",
+                                        "action_data": "rtsp://10.88.91.96/canimals.ts",
                                         "is_playable": true
-
                                     }
-
                                 ]
-
                     }
-
                 ]
-
 }
