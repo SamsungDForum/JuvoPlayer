@@ -46,7 +46,7 @@ namespace JuvoPlayer.DataProviders.Dash
         private readonly IDisposable manifestReadySub;
 
         public DashDataProvider(
-            DashManifest manifest,
+            string clipUrl,
             DashMediaPipeline audioPipeline,
             DashMediaPipeline videoPipeline)
         {
@@ -55,7 +55,7 @@ namespace JuvoPlayer.DataProviders.Dash
             this.videoPipeline = videoPipeline ??
                                  throw new ArgumentNullException(nameof(videoPipeline), "videoPipeline cannot be null");
 
-            manifestProvider = new DashManifestProvider(manifest, audioPipeline, videoPipeline);
+            manifestProvider = new DashManifestProvider(clipUrl, audioPipeline, videoPipeline);
             manifestReadySub = manifestProvider.ManifestReady()
                 .Subscribe(async unit => await OnManifestReady(), SynchronizationContext.Current);
         }
