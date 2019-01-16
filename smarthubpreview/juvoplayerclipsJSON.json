@@ -1,110 +1,219 @@
 {
+
     "sections": [
+
                     {
+
                         "title": "Live streams",
+
                         "tiles":[
+
                                     {
+
                                         "title": "Clock",
+
                                         "subtitle": "Time measure",
+
                                         "image_ratio": "16by9",
-                                        "image_url": "http://106.120.45.49/smarthubpreview/pictures/testwatchscreen.jpg",
+
+                                        "image_url": "http://serwer1852815.home.pl/juvoplayer/smarthubpreview/pictures/testwatchscreen.jpg",
+
                                         "action_data": "10",
+
                                         "is_playable": true
+
                                     },
+
  {
+
                                         "title": "Movies",
+
                                         "subtitle": "Elephant's Dream, Sintel, Big Bug Bunny",
+
                                         "image_ratio": "16by9",
-                                        "image_url": "http://106.120.45.49/smarthubpreview/pictures/elephantsdream.jpg",
+
+                                        "image_url": "http://serwer1852815.home.pl/juvoplayer/smarthubpreview/pictures/elephantsdream.jpg",
+
                                         "action_data": "11",
+
                                         "is_playable": true
+
                                     }
+
                                 ]
+
                     },
+
                     {
+
                         "title": "VOD recommended",
+
                         "tiles": [
+
                                     {
+
                                         "title": "Google Car",
+
                                         "subtitle": "FHD, Clean, Byte range MPEG DASH",
+
                                         "image_ratio": "16by9",
-                                        "image_url": "http://106.120.45.49/smarthubpreview/pictures/car.jpg",
+
+                                        "image_url": "http://serwer1852815.home.pl/juvoplayer/smarthubpreview/pictures/car.jpg",
+
                                         "action_data": "0",
+
                                         "is_playable": true
+
                                     },
+
                                     {
+
                                         "title": "Formula One",
+
                                         "subtitle": "FHD, Clean, Fragmented MPEG DASH",
+
                                         "image_ratio": "16by9",
-                                        "image_url": "http://106.120.45.49/smarthubpreview/pictures/bolid.jpg",
+
+                                        "image_url": "http://serwer1852815.home.pl/juvoplayer/smarthubpreview/pictures/bolid.jpg",
+
                                         "action_data": "1",
+
                                         "is_playable": true
+
                                     },
+
                                     {
+
                                         "title": "Sintel",
+
                                         "subtitle": "FHD, Clean, Fragmented MPEG DASH",
+
                                         "image_ratio": "16by9",
-                                        "image_url": "http://106.120.45.49/smarthubpreview/pictures/sintel.jpg",
+
+                                        "image_url": "http://serwer1852815.home.pl/juvoplayer/smarthubpreview/pictures/sintel.jpg",
+
                                         "action_data": "2",
+
                                         "is_playable": true
+
                                     },
+
                                     {
+
                                         "title": "Nexus Q",
+
                                         "subtitle": "PlayReady DRM, Fragmented MPEG DASH",
+
                                         "image_ratio": "16by9",
-                                        "image_url": "http://106.120.45.49/smarthubpreview/pictures/oops.jpg",
+
+                                        "image_url": "http://serwer1852815.home.pl/juvoplayer/smarthubpreview/pictures/oops.jpg",
+
                                         "action_data": "3",
+
                                         "is_playable": true
+
                                     },
+
 				    {
+
                                         "title": "Tears of Steel",
+
                                         "subtitle": "4K, PlayReady DRM, Fragmented MPEG DASH",
+
                                         "image_ratio": "16by9",
-                                        "image_url": "http://106.120.45.49/smarthubpreview/pictures/tosactionsmall.jpg",
+
+                                        "image_url": "http://serwer1852815.home.pl/juvoplayer/smarthubpreview/pictures/tosactionsmall.jpg",
+
                                         "action_data": "4",
+
                                         "is_playable": true
+
                                     },
+
 				    {
+
                                         "title": "Big Bug Bunny",
+
                                         "subtitle": "FHD, Clean, Http Progressive MP4",
+
                                         "image_ratio": "16by9",
-                                        "image_url": "http://106.120.45.49/smarthubpreview/pictures/bunny.jpg",
+
+                                        "image_url": "http://serwer1852815.home.pl/juvoplayer/smarthubpreview/pictures/bunny.jpg",
+
                                         "action_data": "5",
+
                                         "is_playable": true
+
                                     },
+
 				    {
+
                                         "title": "Sintel",
+
                                         "subtitle": "FHD, Clean, HLS",
+
                                         "image_ratio": "16by9",
-                                        "image_url": "http://106.120.45.49/smarthubpreview/pictures/sintel.jpg",
+
+                                        "image_url": "http://serwer1852815.home.pl/juvoplayer/smarthubpreview/pictures/sintel.jpg",
+
                                         "action_data": "6",
+
                                         "is_playable": true
+
                                     },
+
 				    {
+
                                         "title": "France",
+
                                         "subtitle": "4K HEVC, Clean, Fragmented MPEG DASH",
+
                                         "image_ratio": "16by9",
-                                        "image_url": "http://106.120.45.49/smarthubpreview/pictures/sacrecoeursmall.jpg",
+
+                                        "image_url": "http://serwer1852815.home.pl/juvoplayer/smarthubpreview/pictures/sacrecoeursmall.jpg",
+
                                         "action_data": "7",
+
                                         "is_playable": true
+
                                     },
+
 				    {
+
                                         "title": "Tears of Steel - 20h long",
+
                                         "subtitle": "FHD, Clean, Fragmented MPEG DASH",
+
                                         "image_ratio": "16by9",
-                                        "image_url": "http://106.120.45.49/smarthubpreview/pictures/tosactionsmall.jpg",
+
+                                        "image_url": "http://serwer1852815.home.pl/juvoplayer/smarthubpreview/pictures/tosactionsmall.jpg",
+
                                         "action_data": "8",
+
                                         "is_playable": true
+
                                     },
+
 {
+
                                         "title": "Canimals",
+
                                         "subtitle": "FHD, Clean, RTSP multicast",
+
                                         "image_ratio": "16by9",
-                                        "image_url": "http://106.120.45.49/smarthubpreview/pictures/canimals.jpg",
+
+                                        "image_url": "http://serwer1852815.home.pl/juvoplayer/smarthubpreview/pictures/canimals.jpg",
+
                                         "action_data": "9",
+
                                         "is_playable": true
+
                                     }
+
                                 ]
+
                     }
+
                 ]
+
 }
