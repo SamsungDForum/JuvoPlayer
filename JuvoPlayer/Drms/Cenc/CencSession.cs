@@ -364,8 +364,7 @@ namespace JuvoPlayer.Drms.Cenc
         }
 
         private async Task<string> AcquireLicenceFromServer(byte[] requestData)
-        {
-            //HttpClient client = new HttpClient();
+        {            
             var licenceUrl = new Uri(drmDescription.LicenceUrl);
             if (this.httpClient == null)
                 throw new ArgumentNullException("httpClient object is null");
