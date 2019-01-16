@@ -11,7 +11,7 @@
     <icon>JuvoPlayerXamarinTizenTV.png</icon>
     <metadata key="http://samsung.com/tv/metadata/mountinstall" value="false" />
     <metadata key="http://samsung.com/tv/metadata/devel.api.version" value="2.4" />
-    <metadata key="http://samsung.com/tv/metadata/use.preview" value="endpoint_URL=http://serwer1852815.home.pl/juvoplayer/smarthubpreview/juvoplayerclipsJSONb.json" />
+    <metadata key="http://samsung.com/tv/metadata/use.preview" value="endpoint_URL=https://raw.githubusercontent.com/SamsungDForum/JuvoPlayer/master/smarthubpreview/juvoplayerclipsJSON.json" />
     <metadata key="http://samsung.com/tv/metadata/appbootingsupport" />
     <splash-screens />
   </ui-application>
