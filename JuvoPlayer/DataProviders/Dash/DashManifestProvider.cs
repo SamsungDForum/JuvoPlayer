@@ -58,11 +58,10 @@ namespace JuvoPlayer.DataProviders.Dash
 
         private bool isDisposed;
 
-        public DashManifestProvider(DashManifest manifest, DashMediaPipeline audioPipeline,
+        public DashManifestProvider(String clipUrl, DashMediaPipeline audioPipeline,
             DashMediaPipeline videoPipeline)
         {
-            this.Manifest = manifest ?? throw new ArgumentNullException(nameof(manifest), "manifest cannot be null");
-
+            this.Manifest = new DashManifest(clipUrl);
             this.audioPipeline = audioPipeline;
             this.videoPipeline = videoPipeline;
         }
