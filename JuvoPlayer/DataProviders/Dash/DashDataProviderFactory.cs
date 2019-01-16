@@ -41,7 +41,6 @@ namespace JuvoPlayer.DataProviders.Dash
                 throw new ArgumentException("Unsupported clip type.");
             }
 
-//          var manifest = new DashManifest(clip.Url);
             var audioPipeline = CreateMediaPipeline(StreamType.Audio);
             audioPipeline.DisableAdaptiveStreaming = true;
             var videoPipeline = CreateMediaPipeline(StreamType.Video);
