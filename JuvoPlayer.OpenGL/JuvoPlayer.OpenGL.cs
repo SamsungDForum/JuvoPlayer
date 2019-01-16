@@ -17,6 +17,7 @@
 
 using System;
 using System.IO;
+using JuvoPlayer.Common;
 using JuvoLogger;
 using Tizen.TV.NUI.GLApplication;
 using System.Linq;
@@ -100,17 +101,10 @@ namespace JuvoPlayer.OpenGL
 
         protected override void OnAppControlReceived(AppControlReceivedEventArgs e) // Launch request handling via Smart Hub Preview (deep links) functionality
         {
-            ReceivedAppControl receivedAppControl = e.ReceivedAppControl;
-            receivedAppControl.ExtraData.TryGet("PAYLOAD",
-                out string payload); // Fetch the JSON metadata defined on the smart Hub preview web server
-
-            if (!string.IsNullOrEmpty(payload))
-            {
-                char[] charSeparator = {'&'};
-                string[] result = payload.Split(charSeparator, StringSplitOptions.RemoveEmptyEntries);
-                if (result.Length > 0)
-                    PreviewPayloadHandler(result[0]);
-            }
+            var payloadParser = new PayloadParser(e.ReceivedAppControl);
+            if (!payloadParser.TryGetUrl(out var url))
+                return;
+            HandleExternalTileSelection(url);     
 
             base.OnAppControlReceived(e);
         }
@@ -308,22 +302,7 @@ namespace JuvoPlayer.OpenGL
 
             KeyPressedMenuUpdate();
         }
-
-        private void PreviewPayloadHandler(string message)
-        {
-            if (string.IsNullOrEmpty(message))
-                return;
-            try
-            {
-                var payload = JsonConvert.DeserializeAnonymousType(message, new {values = ""});
-                HandleExternalTileSelection(payload.values);
-            }
-            catch (Exception e)
-            {
-                Logger.Error(e);
-            }
-        }
-
+        
         private void HandleExternalTileSelection(string url)
         {
             _startedFromDeepLink = true;

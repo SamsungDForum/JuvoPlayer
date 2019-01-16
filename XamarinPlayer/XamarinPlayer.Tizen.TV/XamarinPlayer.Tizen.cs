@@ -20,9 +20,9 @@ using System.Net;
 using System.Text;
 using System.Threading.Tasks;
 using ElmSharp;
+using JuvoPlayer.Common;
 using JuvoLogger;
 using JuvoLogger.Tizen;
-using Newtonsoft.Json;
 using Tizen.Applications;
 using Tizen.System;
 using Xamarin.Forms;
@@ -34,58 +34,13 @@ using Size = ElmSharp.Size;
 
 namespace XamarinPlayer.Tizen
 {
-
-
     class Program : FormsApplication, IKeyEventSender
     {
         EcoreEvent<EcoreKeyEventArgs> _keyDown;
         private static ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
         public static readonly string Tag = "JuvoPlayer";
         private App app;
-
-        private class PayloadParser
-        {
-            private readonly ReceivedAppControl receivedAppControl;
-            private string payload;
-            private string json;
-
-            public PayloadParser(ReceivedAppControl receivedAppControl)
-            {
-                this.receivedAppControl = receivedAppControl;
-            }
-
-            public bool TryGetUrl(out string url)
-            {
-                url = string.Empty;
-
-                if (!TryGetPayload()) return false;
-                if (!TryGetJson()) return false;
-                url = ParseJson();
-                return true;
-            }
-
-            private bool TryGetPayload()
-            {
-                return receivedAppControl.ExtraData.TryGet("PAYLOAD", out payload);
-            }
-
-            private bool TryGetJson()
-            {
-                char[] charSeparator = { '&' };
-                var result = payload.Split(charSeparator, StringSplitOptions.RemoveEmptyEntries);
-                if (result.Length <= 1)
-                    return false;
-                json = result[0];
-                return true;
-            }
-
-            private string ParseJson()
-            {
-                var definition = new {values = ""};
-                return JsonConvert.DeserializeAnonymousType(json, definition).values;
-            }
-        }
-
+        
         protected override void OnCreate()
         {
             base.OnCreate();
@@ -161,10 +116,11 @@ namespace XamarinPlayer.Tizen
         }
 
         protected override async void OnAppControlReceived(AppControlReceivedEventArgs e)
-        {
-            var payloadParser = new PayloadParser(e.ReceivedAppControl);
+        {            
+            var payloadParser = new PayloadParser(e.ReceivedAppControl);          
+            
             if (!payloadParser.TryGetUrl(out var url))
-                return;
+                return;         
             await WaitForMainWindowResize();
             await app.LoadUrl(url);
         }
