@@ -113,7 +113,7 @@ namespace MpdParser.Node.Dynamic
                 get { return Item.Duration; }
                 set { Item.Duration = value; }
             }
-            public int Repeats
+            public ulong Repeats
             {
                 get { return Item.Repeats; }
                 set { Item.Repeats = value; }
