@@ -38,7 +38,6 @@ namespace JuvoPlayer
     public class PlayerService : IDisposable
     {
         private IDataProvider dataProvider;
-        private readonly EsPlayer esPlayer;
         private IPlayerController playerController;
         private DataProviderConnector connector;
         private readonly DataProviderFactoryManager dataProviders;
@@ -67,8 +66,8 @@ namespace JuvoPlayer
 
             if (window == null)
                 window = WindowUtils.CreateElmSharpWindow();
-            this.esPlayer = new EsPlayer(window);
-            playerController = new PlayerController(this.esPlayer, drmManager);
+            var player = new EsPlayer(window);
+            playerController = new PlayerController(player, drmManager);
 
             subscriptions = new CompositeDisposable
             {
@@ -132,7 +131,6 @@ namespace JuvoPlayer
 
         public void Dispose()
         {
-            this.esPlayer?.Dispose();
             Dispose(true);
         }
 
