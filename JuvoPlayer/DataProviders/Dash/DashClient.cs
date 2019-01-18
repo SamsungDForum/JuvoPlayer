@@ -16,7 +16,7 @@
  */
 
 using System;
-using System.IO;
+using System.Net;
 using System.Reactive;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
@@ -403,15 +403,9 @@ namespace JuvoPlayer.DataProviders.Dash
             var exception = response.Exception?.Flatten().InnerExceptions[0] as DashDownloaderException;
             if (IsDynamic)
             {
-                // Http 404 Not Found. Increment Segment ID
-                // TODO: Use Response Codes rather then text search
-                //
-                if (exception != null)
-                {
-                    if (exception.InnerException.Message.Contains("(404)") == true)
-                        currentSegmentId = currentStreams.NextSegmentId(currentSegmentId);
-                }
-
+                var statusCode = ((exception?.InnerException as WebException)?.Response as HttpWebResponse)?.StatusCode;
+                if (statusCode == HttpStatusCode.NotFound)
+                    currentSegmentId = currentStreams.NextSegmentId(currentSegmentId);
                 return true;
             }
 

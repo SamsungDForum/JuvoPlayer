@@ -16,6 +16,8 @@
  */
 
 using System;
+using System.Reactive.Linq;
+using System.Reactive.Threading.Tasks;
 using System.Threading;
 using System.Threading.Tasks;
 using JuvoPlayer.TizenTests.Utils;
@@ -158,6 +160,27 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
                 var service = context.Service;
                 context.SeekTime = service.Duration;
                 await new SeekOperation().Execute(context);
+            });
+        }
+
+        [TestCase("Clean byte range MPEG DASH")]
+        [TestCase("Clean fMP4 MPEG DASH")]
+        [TestCase("Sintel - Clean fMP4 MPEG DASH - multiple languages")]
+        [TestCase("Encrypted MPEG DASH")]
+        [TestCase("Encrypted 4K MPEG DASH")]
+        [TestCase("Art Of Motion")]
+        [TestCase("Encrypted 4K MPEG DASH UHD")]
+        public void Seek_EOSReached_StateChangedCompletes(string clipTitle)
+        {
+            RunPlayerTest(clipTitle, async context =>
+            {
+                var service = context.Service;
+                context.SeekTime = service.Duration - TimeSpan.FromSeconds(5);
+                await new SeekOperation().Execute(context);
+                await service.StateChanged()
+                    .AsCompletion()
+                    .Timeout(TimeSpan.FromSeconds(10))
+                    .ToTask();
             });
         }
 
