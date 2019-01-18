@@ -92,7 +92,7 @@ namespace JuvoPlayer.DataProviders.Dash
                 request.Accept = "*/*";
                 if (to != null && from != null)
                 {
-                    request.AddRange((int) from, (int) to);
+                    request.AddRange(from.Value, to.Value);
                 }
             }
 
