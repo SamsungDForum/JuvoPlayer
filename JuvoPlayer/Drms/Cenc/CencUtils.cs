@@ -65,7 +65,8 @@ namespace JuvoPlayer.Drms.Cenc
 
         public static bool SupportsType(string type)
         {
-            return string.Equals(type, PlayReadyType, StringComparison.CurrentCultureIgnoreCase);
+            return string.Equals(type, PlayReadyType, StringComparison.CurrentCultureIgnoreCase)
+                || string.Equals(type, WidevineType, StringComparison.CurrentCultureIgnoreCase);
         }
 
         public static string GetKeySystemName(byte[] systemId)

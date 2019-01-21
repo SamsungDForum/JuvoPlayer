@@ -22,6 +22,7 @@ using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Runtime.InteropServices;
 using System.Text;
+using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using JuvoPlayer.Common;
@@ -142,7 +143,8 @@ namespace JuvoPlayer.Drms.Cenc
 
         private async Task<Packet> DecryptPacketOnIemeThread(EncryptedPacket packet, CancellationToken token)
         {
-            using (var linkedToken = CancellationTokenSource.CreateLinkedTokenSource(cancellationTokenSource.Token, token))
+            using (var linkedToken =
+                CancellationTokenSource.CreateLinkedTokenSource(cancellationTokenSource.Token, token))
             using (await threadLock.LockAsync(linkedToken.Token))
                 unsafe
                 {
@@ -212,7 +214,8 @@ namespace JuvoPlayer.Drms.Cenc
 
                         try
                         {
-                            var ret = DecryptData(param, numofparam, ref pHandleArray, packet.StreamType, linkedToken.Token);
+                            var ret = DecryptData(param, numofparam, ref pHandleArray, packet.StreamType,
+                                linkedToken.Token);
                             if (ret == (int) eCDMReturnType.E_SUCCESS)
                             {
                                 return new DecryptedEMEPacket(thread)
@@ -243,7 +246,8 @@ namespace JuvoPlayer.Drms.Cenc
                 }
         }
 
-        private eCDMReturnType DecryptData(sMsdCipherParam[] param, int numofparam, ref HandleSize[] pHandleArray, StreamType type, CancellationToken token)
+        private eCDMReturnType DecryptData(sMsdCipherParam[] param, int numofparam, ref HandleSize[] pHandleArray,
+            StreamType type, CancellationToken token)
         {
             var errorCount = 0;
             eCDMReturnType res;
@@ -252,10 +256,11 @@ namespace JuvoPlayer.Drms.Cenc
             {
                 token.ThrowIfCancellationRequested();
 
-                res = API.EmeDecryptarray((eCDMReturnType)CDMInstance.getDecryptor(), ref param, numofparam, IntPtr.Zero,
-                   0, ref pHandleArray);
+                res = API.EmeDecryptarray((eCDMReturnType) CDMInstance.getDecryptor(), ref param, numofparam,
+                    IntPtr.Zero,
+                    0, ref pHandleArray);
 
-                if ((int)res == E_DECRYPT_BUFFER_FULL && errorCount < MaxDecryptRetries)
+                if ((int) res == E_DECRYPT_BUFFER_FULL && errorCount < MaxDecryptRetries)
                 {
                     Logger.Warn($"{type}: E_DECRYPT_BUFFER_FULL ({errorCount}/{MaxDecryptRetries})");
 
@@ -420,8 +425,13 @@ namespace JuvoPlayer.Drms.Cenc
             var receiveStream = responseTask.Content.ReadAsStreamAsync();
             var readStream = new StreamReader(await receiveStream, Encoding.GetEncoding(437));
             var responseText = await readStream.ReadToEndAsync();
-            if (responseText.IndexOf("<?xml", StringComparison.Ordinal) > 0)
-                responseText = responseText.Substring(responseText.IndexOf("<?xml", StringComparison.Ordinal));
+            if (!responseText.StartsWith("GLS/1.0 0 OK"))
+                return responseText;
+
+            var lines = Regex.Split(responseText, "\r\n\r\n");
+            if (lines.Length == 2)
+                responseText = lines[1];
+
             return responseText;
         }
 
