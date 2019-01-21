@@ -398,41 +398,43 @@ namespace JuvoPlayer.Drms.Cenc
 
         private async Task<string> AcquireLicenceFromServer(byte[] requestData)
         {
-            HttpClient client = new HttpClient();
-            var licenceUrl = new Uri(drmDescription.LicenceUrl);
-
-            client.BaseAddress = licenceUrl;
-            Logger.Info(licenceUrl.AbsoluteUri);
-            HttpContent content = new ByteArrayContent(requestData);
-            content.Headers.ContentLength = requestData.Length;
-
-            if (drmDescription.KeyRequestProperties != null)
+            using (var client = new HttpClient())
             {
-                foreach (var property in drmDescription.KeyRequestProperties)
+                var licenceUrl = new Uri(drmDescription.LicenceUrl);
+
+                client.BaseAddress = licenceUrl;
+                Logger.Info(licenceUrl.AbsoluteUri);
+                HttpContent content = new ByteArrayContent(requestData);
+                content.Headers.ContentLength = requestData.Length;
+
+                if (drmDescription.KeyRequestProperties != null)
                 {
-                    if (!property.Key.ToLowerInvariant().Equals("content-type"))
-                        client.DefaultRequestHeaders.Add(property.Key, property.Value);
-                    else if (MediaTypeHeaderValue.TryParse(property.Value, out var mediaType))
-                        content.Headers.ContentType = mediaType;
+                    foreach (var property in drmDescription.KeyRequestProperties)
+                    {
+                        if (!property.Key.ToLowerInvariant().Equals("content-type"))
+                            client.DefaultRequestHeaders.Add(property.Key, property.Value);
+                        else if (MediaTypeHeaderValue.TryParse(property.Value, out var mediaType))
+                            content.Headers.ContentType = mediaType;
+                    }
                 }
-            }
 
-            var responseTask = await client.PostAsync(licenceUrl, content, cancellationTokenSource.Token);
+                var responseTask = await client.PostAsync(licenceUrl, content, cancellationTokenSource.Token);
 
-            // TODO: Add retries. Net failures are expected
+                // TODO: Add retries. Net failures are expected
 
-            Logger.Info("Response: " + responseTask);
-            var receiveStream = responseTask.Content.ReadAsStreamAsync();
-            var readStream = new StreamReader(await receiveStream, Encoding.GetEncoding(437));
-            var responseText = await readStream.ReadToEndAsync();
-            if (!responseText.StartsWith("GLS/1.0 0 OK"))
+                Logger.Info("Response: " + responseTask);
+                var receiveStream = responseTask.Content.ReadAsStreamAsync();
+                var readStream = new StreamReader(await receiveStream, Encoding.GetEncoding(437));
+                var responseText = await readStream.ReadToEndAsync();
+                if (!responseText.StartsWith("GLS/1.0 0 OK"))
+                    return responseText;
+
+                var lines = Regex.Split(responseText, "\r\n\r\n");
+                if (lines.Length == 2)
+                    responseText = lines[1];
+
                 return responseText;
-
-            var lines = Regex.Split(responseText, "\r\n\r\n");
-            if (lines.Length == 2)
-                responseText = lines[1];
-
-            return responseText;
+            }
         }
 
         private async Task InstallLicence(string responseText)

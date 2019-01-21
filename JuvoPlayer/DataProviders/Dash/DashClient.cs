@@ -502,8 +502,11 @@ namespace JuvoPlayer.DataProviders.Dash
 
             currentRepresentation = newRep;
             currentStreams = currentRepresentation.Segments;
+            var docParams = currentStreams.GetDocumentParameters();
+            if (docParams == null)
+                throw new ArgumentNullException("currentStreams.GetDocumentParameters() returns null");
             currentStreamDuration = IsDynamic
-                ? currentStreams.GetDocumentParameters().Document.MediaPresentationDuration
+                ? docParams.Document.MediaPresentationDuration
                 : currentStreams.Duration;
             UpdateTimeBufferDepth();
             if (lastDownloadSegmentTimeRange == null)
@@ -601,8 +604,11 @@ namespace JuvoPlayer.DataProviders.Dash
                 var duration = segment.Period.Duration.TotalSeconds;
                 var segmentSize = bandwidth * duration;
                 var calculatedTimeNeeded = TimeSpan.FromSeconds(segmentSize / averageThroughput * 1.5);
+                var docParams = currentStreams.GetDocumentParameters();
+                if (docParams == null)
+                    throw new ArgumentNullException("currentStreams.GetDocumentParameters() returns null");
                 var manifestMinBufferDepth =
-                    currentStreams.GetDocumentParameters().Document.MinBufferTime ?? TimeSpan.Zero;
+                    docParams.Document.MinBufferTime ?? TimeSpan.Zero;
                 timeout = calculatedTimeNeeded > manifestMinBufferDepth ? calculatedTimeNeeded : manifestMinBufferDepth;
             }
 
@@ -615,7 +621,10 @@ namespace JuvoPlayer.DataProviders.Dash
             // 1/4 of the buffer is "used up" when selecting start segment.
             // Start Segment = First Available + 1/4 of Time Shift Buffer.
             // Use max 1/2 of TimeShiftBufferDepth.
-            var tsBuffer = (int) (currentStreams.GetDocumentParameters().Document.TimeShiftBufferDepth?.TotalSeconds ??
+            var docParams = currentStreams.GetDocumentParameters();
+            if (docParams == null)
+                throw new ArgumentNullException("currentStreams.GetDocumentParameters() returns null");
+            var tsBuffer = (int) (docParams.Document.TimeShiftBufferDepth?.TotalSeconds ??
                                   0);
             tsBuffer = tsBuffer / 2;
 
@@ -627,8 +636,11 @@ namespace JuvoPlayer.DataProviders.Dash
         {
             var duration = currentStreams.Duration;
             var segments = currentStreams.Count;
+            var docParams = currentStreams.GetDocumentParameters();
+            if (docParams == null)
+                throw new ArgumentNullException("currentStreams.GetDocumentParameters() returns null");
             var manifestMinBufferDepth =
-                currentStreams.GetDocumentParameters().Document.MinBufferTime ?? timeBufferDepthDefault;
+                docParams.Document.MinBufferTime ?? timeBufferDepthDefault;
 
             //Get average segment duration = Total Duration / number of segments.
             var avgSegmentDuration = TimeSpan.FromSeconds(
