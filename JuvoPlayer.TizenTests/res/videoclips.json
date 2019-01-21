@@ -44,6 +44,38 @@
         ]
     },
     {
+        "title": "Art Of Motion",
+        "url": "https://bitmovin-a.akamaihd.net/content/art-of-motion_drm/mpds/11331.mpd",
+        "type": "dash",
+        "description": "CENC Widevine, HD URI: https://bitmovin-a.akamaihd.net/content/art-of-motion_drm/mpds/11331.mpd)",
+        "poster": "artofwalking.jpg",
+        "drmDatas": [
+            {
+                "scheme": "widevine",
+                "licenceUrl": "https://widevine-proxy.appspot.com/proxy",
+                "keyRequestProperties": {
+                    "Content-Type": "text/xml; charset=utf-8"
+                }
+            }
+        ]
+    },
+    {
+        "title": "Encrypted 4K MPEG DASH UHD",
+        "url": "https://storage.googleapis.com/wvmedia/cenc/h264/tears/tears_uhd.mpd",
+        "type": "dash",
+        "description": "CENC Widevine, Tears Of Steel, UHD. URI: https://storage.googleapis.com/wvmedia/cenc/h264/tears/tears_uhd.mpd",
+        "poster": "tos-poster.jpg",
+        "drmDatas": [
+            {
+                "scheme": "widevine",
+                "licenceUrl": "https://proxy.uat.widevine.com/proxy?provider=widevine_test",
+                "keyRequestProperties": {
+                    "Content-Type": "text/xml; charset=utf-8"
+                }
+            }
+        ]
+    },
+    {
         "title": "Clean MP4 over HTTP",
         "url": "http://distribution.bbb3d.renderfarming.net/video/mp4/bbb_sunflower_1080p_30fps_normal.mp4",
         "type": "url",

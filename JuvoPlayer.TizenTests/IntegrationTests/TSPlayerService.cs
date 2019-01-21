@@ -16,6 +16,8 @@
  */
 
 using System;
+using System.Reactive.Linq;
+using System.Reactive.Threading.Tasks;
 using System.Threading;
 using System.Threading.Tasks;
 using JuvoPlayer.TizenTests.Utils;
@@ -58,6 +60,7 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
         [TestCase("Encrypted 4K MPEG DASH")]
         [TestCase("Clean HLS")]
         [TestCase("Clean HEVC 4k MPEG DASH")]
+        [TestCase("Art Of Motion")]
         public void Playback_Basic_PreparesAndStarts(string clipTitle)
         {
             RunPlayerTest(clipTitle, async context =>
@@ -73,6 +76,7 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
         [TestCase("Sintel - Clean fMP4 MPEG DASH - multiple languages")]
         [TestCase("Encrypted MPEG DASH")]
         [TestCase("Encrypted 4K MPEG DASH")]
+        [TestCase("Art Of Motion")]
         public void Seek_Random10Times_Seeks(string clipTitle)
         {
             RunPlayerTest(clipTitle, async context =>
@@ -87,6 +91,7 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
         [TestCase("Sintel - Clean fMP4 MPEG DASH - multiple languages")]
         [TestCase("Encrypted MPEG DASH")]
         [TestCase("Encrypted 4K MPEG DASH")]
+        [TestCase("Art Of Motion")]
         public void Seek_DisposeDuringSeek_Disposes(string clipTitle)
         {
             RunPlayerTest(clipTitle, async context =>
@@ -103,6 +108,7 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
         [TestCase("Sintel - Clean fMP4 MPEG DASH - multiple languages")]
         [TestCase("Encrypted MPEG DASH")]
         [TestCase("Encrypted 4K MPEG DASH")]
+        [TestCase("Art Of Motion")]
         public void Seek_Forward_Seeks(string clipTitle)
         {
             RunPlayerTest(clipTitle, async context =>
@@ -124,6 +130,7 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
         [TestCase("Sintel - Clean fMP4 MPEG DASH - multiple languages")]
         [TestCase("Encrypted MPEG DASH")]
         [TestCase("Encrypted 4K MPEG DASH")]
+        [TestCase("Art Of Motion")]
         public void Seek_Backward_Seeks(string clipTitle)
         {
             RunPlayerTest(clipTitle, async context =>
@@ -145,6 +152,7 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
         [TestCase("Sintel - Clean fMP4 MPEG DASH - multiple languages")]
         [TestCase("Encrypted MPEG DASH")]
         [TestCase("Encrypted 4K MPEG DASH")]
+        [TestCase("Art Of Motion")]
         public void Seek_ToTheEnd_Seeks(string clipTitle)
         {
             RunPlayerTest(clipTitle, async context =>
@@ -152,6 +160,27 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
                 var service = context.Service;
                 context.SeekTime = service.Duration;
                 await new SeekOperation().Execute(context);
+            });
+        }
+
+        [TestCase("Clean byte range MPEG DASH")]
+        [TestCase("Clean fMP4 MPEG DASH")]
+        [TestCase("Sintel - Clean fMP4 MPEG DASH - multiple languages")]
+        [TestCase("Encrypted MPEG DASH")]
+        [TestCase("Encrypted 4K MPEG DASH")]
+        [TestCase("Art Of Motion")]
+        [TestCase("Encrypted 4K MPEG DASH UHD")]
+        public void Seek_EOSReached_StateChangedCompletes(string clipTitle)
+        {
+            RunPlayerTest(clipTitle, async context =>
+            {
+                var service = context.Service;
+                context.SeekTime = service.Duration - TimeSpan.FromSeconds(5);
+                await new SeekOperation().Execute(context);
+                await service.StateChanged()
+                    .AsCompletion()
+                    .Timeout(TimeSpan.FromSeconds(10))
+                    .ToTask();
             });
         }
 

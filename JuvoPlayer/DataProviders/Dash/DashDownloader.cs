@@ -92,7 +92,7 @@ namespace JuvoPlayer.DataProviders.Dash
                 request.Accept = "*/*";
                 if (to != null && from != null)
                 {
-                    request.AddRange((int) from, (int) to);
+                    request.AddRange(from.Value, to.Value);
                 }
             }
 
@@ -176,7 +176,9 @@ namespace JuvoPlayer.DataProviders.Dash
             {
                 try
                 {
-                    await Task.Delay(CalculateSleepTime(), cancellationToken);
+                    var sleepTime = CalculateSleepTime();
+                    if (sleepTime > 0)
+                        await Task.Delay(sleepTime, cancellationToken);
 
                     return await DownloadDataTaskAsync();
                 }
@@ -250,9 +252,8 @@ namespace JuvoPlayer.DataProviders.Dash
 
         private int CalculateSleepTime()
         {
-            // sleep at least 1ms to make delay async
             if (!request.IgnoreError || downloadErrorCount == 0)
-                return 1;
+                return 0;
 
             // Exponential backoff
             // Sleep:
