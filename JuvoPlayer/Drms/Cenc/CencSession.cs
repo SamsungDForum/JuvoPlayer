@@ -130,14 +130,8 @@ namespace JuvoPlayer.Drms.Cenc
 
         private static byte[] PadIv(byte[] iv)
         {
-            var paddedIv = new byte[]
-            {
-                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00,
-                0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00
-            };
-
+            var paddedIv = new byte[16];
             Buffer.BlockCopy(iv, 0, paddedIv, 0, iv.Length);
-
             return paddedIv;
         }
 
@@ -429,11 +423,11 @@ namespace JuvoPlayer.Drms.Cenc
                 if (!responseText.StartsWith("GLS/1.0 0 OK"))
                     return responseText;
 
-                var lines = Regex.Split(responseText, "\r\n\r\n");
-                if (lines.Length == 2)
-                    responseText = lines[1];
-
-                return responseText;
+                const string headerMark = "\r\n\r\n";
+                var headerMarkIndex = responseText.IndexOf(headerMark, StringComparison.Ordinal);
+                return headerMarkIndex == -1
+                    ? responseText
+                    : responseText.Substring(headerMarkIndex + headerMark.Length);
             }
         }
 

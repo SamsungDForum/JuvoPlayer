@@ -195,7 +195,7 @@ namespace JuvoPlayer.DataProviders.Dash
             }
         }
 
-        private bool BufferSpaceAvailable()
+        private bool IsBufferSpaceAvailable()
         {
             if (BufferFull)
             {
@@ -231,7 +231,7 @@ namespace JuvoPlayer.DataProviders.Dash
             if (!processDataTask.IsCompleted || cancellationTokenSource.IsCancellationRequested)
                 return;
 
-            if (!BufferSpaceAvailable())
+            if (!IsBufferSpaceAvailable())
                 return;
 
             SwapRepresentation();
