@@ -86,7 +86,7 @@ namespace JuvoPlayer.Player.EsPlayer
         private readonly Common.StreamType streamType;
 
         // chunk transfer support elements. Max chunk size & wakeup object
-        private static readonly TimeSpan transferChunk = TimeSpan.FromSeconds(4);
+        private static readonly TimeSpan transferChunk = TimeSpan.FromSeconds(2);
         private ManualResetEventSlim wakeup;
 
         // Buffer configuration and supporting info
@@ -287,7 +287,7 @@ namespace JuvoPlayer.Player.EsPlayer
         /// Audio Configuration push method.
         /// </summary>
         /// <param name="streamConfig">Common.StreamConfig</param>
-        private void PushAudioConfig(Common.StreamConfig streamConfig)
+        private void PushAudioConfig(StreamConfig streamConfig)
         {
             logger.Info($"{streamType}:");
 
@@ -304,7 +304,7 @@ namespace JuvoPlayer.Player.EsPlayer
         /// Video Configuration push method.
         /// </summary>
         /// <param name="streamConfig">Common.StreamConfig</param>
-        private void PushVideoConfig(Common.StreamConfig streamConfig)
+        private void PushVideoConfig(StreamConfig streamConfig)
         {
             logger.Info($"{streamType}:");
 
@@ -341,7 +341,7 @@ namespace JuvoPlayer.Player.EsPlayer
             transferCts = new CancellationTokenSource();
             var token = transferCts.Token;
 
-            activeTask = Task.Factory.StartNew(() => TransferTask(token), token);
+            activeTask = Task.Factory.StartNew(() => TransferTask(token));
         }
 
         /// <summary>
@@ -481,9 +481,9 @@ namespace JuvoPlayer.Player.EsPlayer
                     repeat &= !token.IsCancellationRequested;
                 } while (repeat);
             }
-            catch (InvalidOperationException)
+            catch (InvalidOperationException e)
             {
-                logger.Info($"{streamType}: Stream completed");
+                logger.Error(e, $"{streamType}: Stream completed");
             }
             catch (OperationCanceledException)
             {
@@ -507,7 +507,6 @@ namespace JuvoPlayer.Player.EsPlayer
                 disableInput = true;
                 invokeError = true;
             }
-
 
             if (disableInput)
             {
@@ -547,7 +546,7 @@ namespace JuvoPlayer.Player.EsPlayer
 
         private void PushEncryptedPacket(EncryptedPacket dataPacket, CancellationToken token)
         {
-            using (var decryptedPacket = dataPacket.Decrypt() as DecryptedEMEPacket)
+            using (var decryptedPacket = dataPacket.Decrypt(token) as DecryptedEMEPacket)
             {
                 if (decryptedPacket == null)
                 {
@@ -570,7 +569,7 @@ namespace JuvoPlayer.Player.EsPlayer
                     doRetry = ShouldRetry(res, token);
 
                     logger.Debug(
-                        $"{esPacket.type}: ({!doRetry}/{res}) PTS: {esPacket.pts} Duration: {esPacket.duration} Handle: {esPacket.handle} HandleSize: {esPacket.handleSize}");
+                        $"{esPacket.type}: ({!doRetry}/{res}) PTS: {esPacket.pts.FromNano()} Duration: {esPacket.duration.FromNano()} Handle: {esPacket.handle} HandleSize: {esPacket.handleSize}");
                 } while (doRetry && !token.IsCancellationRequested);
             }
         }

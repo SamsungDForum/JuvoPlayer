@@ -22,6 +22,13 @@ namespace JuvoPlayer.Drms.Cenc
 {
     internal static class CencUtils
     {
+        public enum DrmType
+        {
+            PlayReady,
+            Widevine,
+            Unknown
+        }
+
         public static readonly string PlayReadyType = "playready";
         public static readonly string PlayReadySchemeIdUri = "urn:uuid:9a04f079-9840-4286-ab92-e65be0885f95";
         public static readonly byte[] PlayReadySystemId = {0x9a, 0x04, 0xf0, 0x79, 0x98, 0x40, 0x42, 0x86,
@@ -47,19 +54,19 @@ namespace JuvoPlayer.Drms.Cenc
         public static bool SupportsSchemeIdUri(string uri)
         {
             return string.Equals(uri, PlayReadySchemeIdUri, StringComparison.CurrentCultureIgnoreCase)
-                /*|| string.Equals(uri, WidevineSchemeIdUri, StringComparison.CurrentCultureIgnoreCase)*/;
+                || string.Equals(uri, WidevineSchemeIdUri, StringComparison.CurrentCultureIgnoreCase);
         }
 
         public static bool SupportsSystemId(byte[] uuid)
         {
             return uuid.SequenceEqual(PlayReadySystemId)
-               /* || uuid.SequenceEqual(WidevineSystemId)*/;
+                || uuid.SequenceEqual(WidevineSystemId);
         }
 
         public static bool SupportsType(string type)
         {
             return string.Equals(type, PlayReadyType, StringComparison.CurrentCultureIgnoreCase)
-                /*|| string.Equals(type, WidevineType, StringComparison.CurrentCultureIgnoreCase)*/;
+                || string.Equals(type, WidevineType, StringComparison.CurrentCultureIgnoreCase);
         }
 
         public static string GetKeySystemName(byte[] systemId)
@@ -75,11 +82,22 @@ namespace JuvoPlayer.Drms.Cenc
         public static string GetScheme(byte[] systemId)
         {
             if (systemId.SequenceEqual(PlayReadySystemId))
-                return "playready";
+                return PlayReadyType;
             if (systemId.SequenceEqual(WidevineSystemId))
-                return "widevine";
+                return WidevineType;
 
             return null;
+        }
+
+        public static DrmType GetDrmType(string schemeName)
+        {
+            if (PlayReadyType == schemeName)
+                return DrmType.PlayReady;
+
+            if (WidevineType == schemeName)
+                return DrmType.Widevine;
+
+            return DrmType.Unknown;
         }
     }
 }
