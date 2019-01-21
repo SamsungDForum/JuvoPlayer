@@ -127,11 +127,18 @@ namespace MpdParser
         private void AlignStaticStartParameters(Representation video)
         {
             var audioStartSegment = Segments.StartSegmentId();
+            if (audioStartSegment == null)
+                throw new ArgumentNullException("audio StartSegmentId is null");
             var audioTimeRange = Segments.SegmentTimeRange(audioStartSegment);
+            if (audioTimeRange == null)
+                throw new ArgumentNullException("audio SegmentTimeRange is null");
 
             var videoStartSegment = video.Segments.StartSegmentId();
+            if (videoStartSegment == null)
+                throw new ArgumentNullException("video StartSegmentId is null");
             var videoTimeRange = video.Segments.SegmentTimeRange(videoStartSegment);
-
+            if (videoTimeRange == null)
+                throw new ArgumentNullException("vdeo SegmentTimeRange is null");
             var trimOffset = audioTimeRange.Start < videoTimeRange.Start ? audioTimeRange.Start : videoTimeRange.Start;
 
             //Set aligned start data
