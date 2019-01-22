@@ -1,0 +1,4 @@
+# Those file types will have line endings normalized to CRLF
+*.cs text eol=crlf
+*.sln text eol=crlf
+*.csproj text eol=crlf
