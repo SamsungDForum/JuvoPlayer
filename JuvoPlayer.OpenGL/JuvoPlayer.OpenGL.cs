@@ -16,6 +16,7 @@
  */
 
 using System;
+using System.Diagnostics;
 using System.IO;
 using JuvoPlayer.Common;
 using JuvoLogger;
@@ -25,7 +26,6 @@ using System.Reactive.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using ElmSharp;
-using Newtonsoft.Json;
 using Tizen.Applications;
 using Tizen.System;
 
@@ -36,8 +36,17 @@ namespace JuvoPlayer.OpenGL
         private SynchronizationContext _uiContext = null; // needs to be initialized in OnCreate!
 
         private readonly TimeSpan _progressBarFadeout = TimeSpan.FromMilliseconds(5000);
-        private readonly TimeSpan _defaultSeekTime = TimeSpan.FromSeconds(30);
-        private readonly TimeSpan _defaultSeekAccumulateTime = TimeSpan.FromMilliseconds(1000);
+
+        private readonly TimeSpan _defaultSeekInterval = TimeSpan.FromMilliseconds(5000);
+        private readonly TimeSpan _defaultSeekAccumulateInterval = TimeSpan.FromMilliseconds(1000);
+        private readonly double _defaultMaximumSeekIntervalPercentOfContentTotalTime = 1.0;
+        private readonly TimeSpan _defaultSeekIntervalValueThreshold = TimeSpan.FromMilliseconds(200); // time between key events when key is being hold is ~100ms
+        private readonly Stopwatch _seekStopwatch = new Stopwatch();
+        private TimeSpan _accumulatedSeekTime;
+        private Task _seekDelay;
+        private CancellationTokenSource _seekCancellationTokenSource;
+        private bool _seekBufferingInProgress;
+        private bool _seekInProgress;
 
         private DateTime _lastKeyPressTime;
         private int _selectedTile;
@@ -55,12 +64,7 @@ namespace JuvoPlayer.OpenGL
         private OptionsMenu _options;
         private ResourceLoader _resourceLoader;
         private MetricsHandler _metricsHandler;
-        private TimeSpan _accumulatedSeekTime;
-        private Task _seekDelay;
-        private CancellationTokenSource _seekCancellationTokenSource;
-
-        private bool _seekBufferingInProgress;
-        private bool _seekInProgress;
+        
         private bool _isAlertShown;
         private bool _startedFromDeepLink;
 
@@ -408,7 +412,7 @@ namespace JuvoPlayer.OpenGL
             }
             else if (_progressBarShown)
             {
-                Seek(_defaultSeekTime);
+                SeekForward();
             }
         }
 
@@ -426,7 +430,7 @@ namespace JuvoPlayer.OpenGL
             }
             else if (_progressBarShown)
             {
-                Seek(-_defaultSeekTime);
+                SeekBackward();
             }
         }
 
@@ -589,12 +593,44 @@ namespace JuvoPlayer.OpenGL
 
         private void HandleKeyRewind()
         {
-            Seek(-_defaultSeekTime);
+            SeekBackward();
         }
 
         private void HandleKeySeekForward()
         {
-            Seek(_defaultSeekTime);
+            SeekForward();
+        }
+
+        private void SeekForward()
+        {
+            Seek(_defaultSeekInterval);
+        }
+
+        private void SeekBackward()
+        {
+            Seek(-_defaultSeekInterval);
+        }
+
+        private TimeSpan SeekInterval(TimeSpan intervalSinceLastSeek, TimeSpan contentLength, TimeSpan defaultSeekInterval)
+        {
+            TimeSpan seekInterval = defaultSeekInterval;
+            if (intervalSinceLastSeek < _defaultSeekIntervalValueThreshold) // key is being hold
+                seekInterval = TimeSpan.FromMilliseconds(Math.Max(
+                    0.01 * _defaultMaximumSeekIntervalPercentOfContentTotalTime * contentLength.TotalMilliseconds,
+                    defaultSeekInterval.TotalMilliseconds));
+            return seekInterval;
+        }
+
+        private TimeSpan IntervalSinceLastSeek()
+        {
+            TimeSpan timeInterval = TimeSpan.MaxValue;
+            if (_seekStopwatch.IsRunning)
+            {
+                _seekStopwatch.Stop();
+                timeInterval = _seekStopwatch.Elapsed;
+            }
+            _seekStopwatch.Restart();
+            return timeInterval;
         }
 
         private async void Seek(TimeSpan seekTime)
@@ -603,6 +639,8 @@ namespace JuvoPlayer.OpenGL
                 return;
 
             _seekCancellationTokenSource?.Cancel();
+
+            seekTime = Math.Sign(seekTime.TotalMilliseconds) * SeekInterval(IntervalSinceLastSeek(), _playerTimeDuration, seekTime);
 
             if (_seekBufferingInProgress == false)
             {
@@ -618,7 +656,7 @@ namespace JuvoPlayer.OpenGL
             UpdatePlaybackControls();
 
             _seekCancellationTokenSource = new CancellationTokenSource();
-            _seekDelay = Task.Delay(_defaultSeekAccumulateTime, _seekCancellationTokenSource.Token);
+            _seekDelay = Task.Delay(_defaultSeekAccumulateInterval, _seekCancellationTokenSource.Token);
             try
             {
                 await _seekDelay;
@@ -626,6 +664,12 @@ namespace JuvoPlayer.OpenGL
             catch (TaskCanceledException)
             {
                 return;
+            }
+
+            if (_seekStopwatch.IsRunning)
+            {
+                _seekStopwatch.Stop();
+                _seekStopwatch.Reset();
             }
 
             if (_accumulatedSeekTime > TimeSpan.Zero)
@@ -676,10 +720,7 @@ namespace JuvoPlayer.OpenGL
         private void ShowMenu(bool show)
         {
             if (show == _isMenuShown)
-            {
-                Logger.Info($"ShowMenu({show}) dupe, ignoring.");
                 return;
-            }
 
             _isMenuShown = show;
             DllImports.ShowMenu(_isMenuShown ? 1 : 0);
