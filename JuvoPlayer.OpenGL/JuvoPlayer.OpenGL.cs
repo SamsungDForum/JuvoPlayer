@@ -635,7 +635,7 @@ namespace JuvoPlayer.OpenGL
             ResetPlaybackControls();
             ShowMenu(true);
             ClosePlayer();
-            _seekLogic.IsBufferingInProgress = false;
+            _seekLogic.IsSeekAccumulationInProgress = false;
         }
 
         private void UpdateMetrics()
@@ -645,7 +645,7 @@ namespace JuvoPlayer.OpenGL
 
         private unsafe void UpdatePlaybackControls()
         {
-            if (_seekLogic.IsBufferingInProgress == false && _seekLogic.IsSeekInProgress == false)
+            if (_seekLogic.IsSeekAccumulationInProgress == false && _seekLogic.IsSeekInProgress == false)
                 _playerTimeCurrentPosition = PlayerHandle?.CurrentPosition ?? TimeSpan.Zero;
             _playerTimeDuration = PlayerHandle?.Duration ?? TimeSpan.Zero;
             if (_progressBarShown && PlayerHandle?.State == PlayerState.Playing &&
