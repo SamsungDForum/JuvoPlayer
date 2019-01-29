@@ -21,14 +21,12 @@ using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 
-namespace JuvoPlayer.OpenGL
+namespace JuvoPlayer.Common
 {
-    class SeekLogic
+    public class SeekLogic
     {
         public bool IsSeekInProgress { get; set; }
         public bool IsSeekAccumulationInProgress { get; set; }
-
-        private readonly Program _ui;
 
         private readonly TimeSpan _defaultSeekInterval = TimeSpan.FromMilliseconds(5000);
         private readonly TimeSpan _defaultSeekAccumulateInterval = TimeSpan.FromMilliseconds(2000);
@@ -39,9 +37,16 @@ namespace JuvoPlayer.OpenGL
         private Task _seekDelay;
         private CancellationTokenSource _seekCancellationTokenSource;
 
-        public SeekLogic(Program ui)
+        public delegate PlayerService GetPlayer();
+        private readonly GetPlayer _getPlayer;
+
+        public delegate void PlayerTimeCurrentPositionUpdate(TimeSpan seekTime);
+        private readonly PlayerTimeCurrentPositionUpdate _playerTimeCurrentPositionUpdate;
+
+        public SeekLogic(GetPlayer getPlayer, PlayerTimeCurrentPositionUpdate playerTimeCurrentPositionUpdate)
         {
-            _ui = ui;
+            _getPlayer = getPlayer;
+            _playerTimeCurrentPositionUpdate = playerTimeCurrentPositionUpdate;
         }
 
         public void Reset()
@@ -65,7 +70,7 @@ namespace JuvoPlayer.OpenGL
         private TimeSpan SeekInterval()
         {
             TimeSpan seekInterval = _defaultSeekInterval;
-            TimeSpan contentLength = _ui.PlayerHandle?.Duration ?? TimeSpan.Zero;
+            TimeSpan contentLength = _getPlayer()?.Duration ?? TimeSpan.Zero;
             TimeSpan intervalSinceLastSeek = IntervalSinceLastSeek();
 
             if (intervalSinceLastSeek < _defaultSeekIntervalValueThreshold) // key is being hold
@@ -90,11 +95,23 @@ namespace JuvoPlayer.OpenGL
 
         private async void Seek(TimeSpan seekInterval)
         {
-            if (_ui.PlayerHandle.IsSeekingSupported == false)
+            if (_getPlayer().IsSeekingSupported == false)
                 return;
 
             _seekCancellationTokenSource?.Cancel();
 
+            AccumulateSeekInterval(seekInterval);
+
+            _seekCancellationTokenSource = new CancellationTokenSource();
+            _seekDelay = Task.Delay(_defaultSeekAccumulateInterval, _seekCancellationTokenSource.Token);
+
+            try { await _seekDelay; } catch (TaskCanceledException) { return; }
+
+            ExecuteSeek();
+        }
+
+        private void AccumulateSeekInterval(TimeSpan seekInterval)
+        {
             if (IsSeekAccumulationInProgress)
             {
                 _accumulatedSeekInterval += seekInterval;
@@ -104,26 +121,18 @@ namespace JuvoPlayer.OpenGL
                 _accumulatedSeekInterval = seekInterval;
                 IsSeekAccumulationInProgress = true;
             }
-            _ui.PlayerTimeCurrentPositionUpdate(seekInterval);
+            _playerTimeCurrentPositionUpdate(seekInterval);
+        }
 
-            _seekCancellationTokenSource = new CancellationTokenSource();
-            _seekDelay = Task.Delay(_defaultSeekAccumulateInterval, _seekCancellationTokenSource.Token);
-            try
-            {
-                await _seekDelay;
-            }
-            catch (TaskCanceledException)
-            {
-                return;
-            }
-
+        private void ExecuteSeek()
+        {
             _seekStopwatch.Reset();
 
-            if (_ui.PlayerHandle != null && _ui.PlayerHandle.IsSeekingSupported && IsStateSeekable(_ui.PlayerHandle.State))
+            if (_getPlayer() != null && _getPlayer().IsSeekingSupported && IsStateSeekable(_getPlayer().State))
             {
                 IsSeekInProgress = true;
-                TimeSpan seekTargetTime = Clamp(_ui.PlayerHandle.CurrentPosition + _accumulatedSeekInterval, TimeSpan.Zero, _ui.PlayerHandle.Duration);
-                _ = _ui.PlayerHandle.SeekTo(seekTargetTime); // discarding result to suppress 'await' warning
+                TimeSpan seekTargetTime = Clamp(_getPlayer().CurrentPosition + _accumulatedSeekInterval, TimeSpan.Zero, _getPlayer().Duration);
+                _ = _getPlayer().SeekTo(seekTargetTime); // discarding result to suppress 'await' warning
                 IsSeekAccumulationInProgress = false;
             }
 
