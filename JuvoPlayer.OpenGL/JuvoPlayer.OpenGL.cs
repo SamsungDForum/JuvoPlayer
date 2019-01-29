@@ -35,7 +35,7 @@ namespace JuvoPlayer.OpenGL
 
         private readonly TimeSpan _progressBarFadeout = TimeSpan.FromMilliseconds(5000);
 
-        private SeekLogic _seekLogic = null; // needs to be initialized with 'this' as a parameter
+        private SeekLogic _seekLogic = null; // needs to be initialized in OnCreate!
 
         private DateTime _lastKeyPressTime;
         private int _selectedTile;

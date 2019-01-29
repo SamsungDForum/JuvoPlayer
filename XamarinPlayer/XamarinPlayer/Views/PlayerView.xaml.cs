@@ -35,7 +35,30 @@ namespace XamarinPlayer.Views
         private static ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
         private readonly int DefaultTimeout = 5000;
         private readonly TimeSpan UpdateInterval = TimeSpan.FromMilliseconds(100);
-        private readonly TimeSpan DefaultSeekTime = TimeSpan.FromSeconds(20);
+
+        private JuvoPlayer.Common.SeekLogic _seekLogic = null; // needs to be initialized in OnCreate!
+        private TimeSpan _playerTimeCurrentPosition;
+        private TimeSpan PlayerTimeCurrentPosition
+        {
+            get
+            {
+                if (_seekLogic.IsSeekAccumulationInProgress == false && _seekLogic.IsSeekInProgress == false)
+                    _playerTimeCurrentPosition = _playerService?.CurrentPosition ?? TimeSpan.Zero;
+                return _playerTimeCurrentPosition;
+            }
+            set => _playerTimeCurrentPosition = value;
+        }
+        private TimeSpan _playerTimeDuration;
+        private TimeSpan PlayerTimeDuration
+        {
+            get
+            {
+                _playerTimeDuration = _playerService?.Duration ?? TimeSpan.Zero;
+                return _playerTimeDuration;
+            }
+            set => _playerTimeDuration = value;
+        }
+        
 
         private IPlayerService _playerService;
         private int _hideTime;
@@ -75,6 +98,8 @@ namespace XamarinPlayer.Views
             PlayButton.Clicked += (s, e) => { Play(); };
 
             PropertyChanged += PlayerViewPropertyChanged;
+
+            _seekLogic = new JuvoPlayer.Common.SeekLogic(GetPlayer, PlayerTimeCurrentPositionUpdate);
         }
 
         private void Play()
@@ -300,28 +325,6 @@ namespace XamarinPlayer.Views
             };
         }
 
-        private void Forward()
-        {
-            if (!_playerService.IsSeekingSupported || _playerService.State < PlayerState.Playing)
-                return;
-
-            if (_playerService.Duration - _playerService.CurrentPosition < DefaultSeekTime)
-                _playerService.SeekTo(_playerService.Duration);
-            else
-                _playerService.SeekTo(_playerService.CurrentPosition + DefaultSeekTime);
-        }
-
-        private void Rewind()
-        {
-            if (!_playerService.IsSeekingSupported || _playerService.State < PlayerState.Playing)
-                return;
-
-            if (_playerService.CurrentPosition < DefaultSeekTime)
-                _playerService.SeekTo(TimeSpan.Zero);
-            else
-                _playerService.SeekTo(_playerService.CurrentPosition - DefaultSeekTime);
-        }
-
         public void Show()
         {
             Show(DefaultTimeout);
@@ -496,12 +499,12 @@ namespace XamarinPlayer.Views
 
         private void UpdatePlayTime()
         {
-            CurrentTime.Text = GetFormattedTime(_playerService.CurrentPosition);
-            TotalTime.Text = GetFormattedTime(_playerService.Duration);
+            CurrentTime.Text = GetFormattedTime(PlayerTimeCurrentPosition);
+            TotalTime.Text = GetFormattedTime(PlayerTimeDuration);
 
-            if (_playerService.Duration.TotalMilliseconds > 0)
-                Progressbar.Progress = _playerService.CurrentPosition.TotalMilliseconds /
-                                       _playerService.Duration.TotalMilliseconds;
+            if (PlayerTimeDuration.TotalMilliseconds > 0)
+                Progressbar.Progress = PlayerTimeCurrentPosition.TotalMilliseconds /
+                                       PlayerTimeDuration.TotalMilliseconds;
             else
                 Progressbar.Progress = 0;
         }
@@ -535,6 +538,26 @@ namespace XamarinPlayer.Views
         {
             if (suspendedPlayerState == PlayerState.Playing)
                 _playerService?.Start();
+        }
+
+        private void Forward()
+        {
+            _seekLogic.SeekForward();
+        }
+
+        private void Rewind()
+        {
+            _seekLogic.SeekBackward();
+        }
+
+        public JuvoPlayer.PlayerService GetPlayer()
+        {
+            return (JuvoPlayer.PlayerService)_playerService;
+        }
+
+        public void PlayerTimeCurrentPositionUpdate(TimeSpan seekTime)
+        {
+            PlayerTimeCurrentPosition += seekTime;
         }
     }
 }
