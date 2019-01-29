@@ -73,11 +73,16 @@ namespace JuvoPlayer.OpenGL
             myProgram.Run(args);
         }
 
+        public Player GetPlayer()
+        {
+            return PlayerHandle;
+        }
+
         protected override void OnCreate()
         {
             _uiContext = SynchronizationContext.Current;
             OpenGLLoggerManager.Configure(_uiContext);
-            _seekLogic = new SeekLogic(this);
+            _seekLogic = new SeekLogic(GetPlayer, PlayerTimeCurrentPositionUpdate);
             DllImports.Create();
             InitMenu();
         }
