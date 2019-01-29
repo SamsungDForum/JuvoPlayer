@@ -77,7 +77,7 @@
                                         "subtitle": "4K, Widevine DRM, Fragmented MPEG DASH",
                                         "image_ratio": "16by9",
                                         "image_url": "https://raw.githubusercontent.com/SamsungDForum/JuvoPlayer/master/smarthubpreview/pictures/tosactionsmall.jpg",
-                                        "action_data": "http://profficialsite.origin.mediaservices.windows.net/c51358ea-9a5e-4322-8951-897d640fdfd7/tearsofsteel_4k.ism/manifest\u0028format=mpd-time-csf\u0029",
+                                        "action_data": "https://storage.googleapis.com/wvmedia/cenc/h264/tears/tears_uhd.mpd",
                                         "is_playable": true
                                     },
 									{
