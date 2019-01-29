@@ -177,7 +177,15 @@ namespace JuvoPlayer.DataProviders.HLS
                     lastReceivedPts = packet.Pts;
                     if (ShouldPauseDemuxer())
                         demuxerController.Pause();
-                });
+                }).SelectMany(packet =>
+                {
+                    if (packet != null)
+                        return Observable.Return(packet);
+                    // found empty packet which means EOS. We need to send two fake
+                    // eos packets, one for audio and one for video
+                    return Observable.Return(Packet.CreateEOS(StreamType.Audio))
+                        .Merge(Observable.Return(Packet.CreateEOS(StreamType.Video)));
+                }); 
         }
 
         public IObservable<string> StreamError()
