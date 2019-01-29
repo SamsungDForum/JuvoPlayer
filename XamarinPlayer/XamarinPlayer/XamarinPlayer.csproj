@@ -12,6 +12,7 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\JuvoLogger\JuvoLogger.csproj" />
+    <ProjectReference Include="..\..\JuvoPlayer\JuvoPlayer.csproj" />
   </ItemGroup>
 
 </Project>
