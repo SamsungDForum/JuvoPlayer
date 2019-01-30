@@ -111,6 +111,7 @@ namespace JuvoPlayer
         {
             playerThread.Factory.StartNew(() => { proxied.Dispose(); });
             playerThread.Join();
+            playerThread.Dispose();
         }
     }
 }
