@@ -20,10 +20,10 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reactive.Linq;
 using JuvoLogger;
+using JuvoPlayer;
 using JuvoPlayer.Common;
 using Xamarin.Forms;
 using Xamarin.Forms.Platform.Tizen;
-using XamarinPlayer.Services;
 using XamarinPlayer.Tizen.Services;
 using ILogger = JuvoLogger.ILogger;
 using PlayerState = XamarinPlayer.Services.PlayerState;
@@ -34,14 +34,14 @@ using StreamDescription = JuvoPlayer.Common.StreamDescription;
 
 namespace XamarinPlayer.Tizen.Services
 {
-    sealed class PlayerService : JuvoPlayer.PlayerService, IPlayerService
+    sealed class PlayerService : JuvoPlayer.PlayerServiceProxy, XamarinPlayer.Services.IPlayerService
     {
         private readonly ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
 
         public new PlayerState State => ToPlayerState(base.State);
 
         public PlayerService()
-            : base(((FormsApplication) Forms.Context).MainWindow)
+            : base(new PlayerServiceImpl (((FormsApplication) Forms.Context).MainWindow))
         {
         }
 
