@@ -24,7 +24,7 @@ using JuvoPlayer.Utils;
 
 namespace JuvoPlayer.TizenTests.Utils
 {
-    public class PlayerService : JuvoPlayer.PlayerService
+    public class PlayerService : JuvoPlayer.PlayerServiceImpl
     {
         private static Window window;
 
