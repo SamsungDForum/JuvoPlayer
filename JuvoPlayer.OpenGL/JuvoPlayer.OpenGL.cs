@@ -29,7 +29,7 @@ using Tizen.System;
 
 namespace JuvoPlayer.OpenGL
 {
-    internal class Program : TVGLApplication
+    internal class Program : TVGLApplication, ISeekLogicClient
     {
         private SynchronizationContext _uiContext = null; // needs to be initialized in OnCreate!
 
@@ -42,10 +42,16 @@ namespace JuvoPlayer.OpenGL
         private bool _isMenuShown;
         private bool _progressBarShown;
 
-        public Player PlayerHandle { get; private set; }
-        private TimeSpan _playerTimeCurrentPosition;
-        private TimeSpan _playerTimeDuration;
+        private Player PlayerHandle { get; set; }
+
         private bool _playbackCompletedNeedsHandling;
+
+        public TimeSpan CurrentPosition { get; set; }
+        public TimeSpan Duration { get; set; }
+        public TimeSpan PlayerCurrentPosition => PlayerHandle?.CurrentPosition ?? TimeSpan.Zero;
+        public TimeSpan PlayerDuration => PlayerHandle?.Duration ?? TimeSpan.Zero;
+        public Common.PlayerState State => ((PlayerService)PlayerHandle)?.State ?? Common.PlayerState.Idle;
+        public bool IsSeekingSupported => PlayerHandle?.IsSeekingSupported ?? false;
 
         private const string Tag = "JuvoPlayer";
         private static readonly ILogger Logger = LoggerManager.GetInstance().GetLogger(Tag);
@@ -73,16 +79,11 @@ namespace JuvoPlayer.OpenGL
             myProgram.Run(args);
         }
 
-        public Player GetPlayer()
-        {
-            return PlayerHandle;
-        }
-
         protected override void OnCreate()
         {
             _uiContext = SynchronizationContext.Current;
             OpenGLLoggerManager.Configure(_uiContext);
-            _seekLogic = new SeekLogic(GetPlayer, PlayerTimeCurrentPositionUpdate);
+            _seekLogic = new SeekLogic(this);
             DllImports.Create();
             InitMenu();
         }
@@ -215,8 +216,8 @@ namespace JuvoPlayer.OpenGL
             _lastKeyPressTime = DateTime.Now;
             _seekLogic.Reset();
 
-            _playerTimeCurrentPosition = TimeSpan.Zero;
-            _playerTimeDuration = TimeSpan.Zero;
+            CurrentPosition = TimeSpan.Zero;
+            Duration = TimeSpan.Zero;
             _playbackCompletedNeedsHandling = false;
 
             _metricsHandler.Hide();
@@ -596,12 +597,6 @@ namespace JuvoPlayer.OpenGL
             _seekLogic.SeekForward();
         }
 
-        public void PlayerTimeCurrentPositionUpdate(TimeSpan seekTime)
-        {
-            _playerTimeCurrentPosition += seekTime;
-            UpdatePlaybackControls();
-        }
-
         private static void ResetPlaybackControls()
         {
             DllImports.UpdatePlaybackControls(new DllImports.PlaybackData());
@@ -651,8 +646,8 @@ namespace JuvoPlayer.OpenGL
         private unsafe void UpdatePlaybackControls()
         {
             if (_seekLogic.IsSeekAccumulationInProgress == false && _seekLogic.IsSeekInProgress == false)
-                _playerTimeCurrentPosition = PlayerHandle?.CurrentPosition ?? TimeSpan.Zero;
-            _playerTimeDuration = PlayerHandle?.Duration ?? TimeSpan.Zero;
+                CurrentPosition = PlayerCurrentPosition;
+            Duration = PlayerDuration;
             if (_progressBarShown && PlayerHandle?.State == PlayerState.Playing &&
                 (DateTime.Now - _lastKeyPressTime).TotalMilliseconds >= _progressBarFadeout.TotalMilliseconds)
             {
@@ -668,14 +663,19 @@ namespace JuvoPlayer.OpenGL
                 {
                     show = _progressBarShown ? 1 : 0,
                     state = (int) (PlayerHandle?.State ?? PlayerState.Idle),
-                    currentTime = (int) _playerTimeCurrentPosition.TotalMilliseconds,
-                    totalTime = (int) _playerTimeDuration.TotalMilliseconds,
+                    currentTime = (int) CurrentPosition.TotalMilliseconds,
+                    totalTime = (int) Duration.TotalMilliseconds,
                     text = name,
                     textLen = _resourceLoader.ContentList[_selectedTile].Title.Length,
                     buffering = _bufferingInProgress ? 1 : 0,
                     bufferingPercent = _bufferingProgress
                 });
             }
+        }
+
+        public void Seek(TimeSpan to)
+        {
+            PlayerHandle?.SeekTo(to);
         }
 
         private void UpdateUI()

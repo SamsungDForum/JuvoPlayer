@@ -30,35 +30,13 @@ using XamarinPlayer.Services;
 namespace XamarinPlayer.Views
 {
     [XamlCompilation(XamlCompilationOptions.Compile)]
-    public partial class PlayerView : ContentPage, IContentPayloadHandler, ISuspendable
+    public partial class PlayerView : ContentPage, IContentPayloadHandler, ISuspendable, JuvoPlayer.Common.ISeekLogicClient
     {
         private static ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
         private readonly int DefaultTimeout = 5000;
         private readonly TimeSpan UpdateInterval = TimeSpan.FromMilliseconds(100);
 
-        private JuvoPlayer.Common.SeekLogic _seekLogic = null; // needs to be initialized in OnCreate!
-        private TimeSpan _playerTimeCurrentPosition;
-        private TimeSpan PlayerTimeCurrentPosition
-        {
-            get
-            {
-                if (_seekLogic.IsSeekAccumulationInProgress == false && _seekLogic.IsSeekInProgress == false)
-                    _playerTimeCurrentPosition = _playerService?.CurrentPosition ?? TimeSpan.Zero;
-                return _playerTimeCurrentPosition;
-            }
-            set => _playerTimeCurrentPosition = value;
-        }
-        private TimeSpan _playerTimeDuration;
-        private TimeSpan PlayerTimeDuration
-        {
-            get
-            {
-                _playerTimeDuration = _playerService?.Duration ?? TimeSpan.Zero;
-                return _playerTimeDuration;
-            }
-            set => _playerTimeDuration = value;
-        }
-        
+        private JuvoPlayer.Common.SeekLogic _seekLogic = null; // needs to be initialized in constructor!
 
         private IPlayerService _playerService;
         private int _hideTime;
@@ -74,6 +52,37 @@ namespace XamarinPlayer.Views
             set { SetValue(ContentSourceProperty, value); }
             get { return GetValue(ContentSourceProperty); }
         }
+
+        public TimeSpan CurrentPosition
+        {
+            get
+            {
+                if (_seekLogic.IsSeekAccumulationInProgress == false && _seekLogic.IsSeekInProgress == false)
+                    _currentPosition = _playerService?.CurrentPosition ?? TimeSpan.Zero;
+                return _currentPosition;
+            }
+            set => _currentPosition = value;
+        }
+        private TimeSpan _currentPosition;
+
+        public TimeSpan Duration
+        {
+            get
+            {
+                _duration = _playerService?.Duration ?? TimeSpan.Zero;
+                return _duration;
+            }
+            set => _duration = value;
+        }
+        private TimeSpan _duration;
+
+        public TimeSpan PlayerCurrentPosition => _playerService?.CurrentPosition ?? TimeSpan.Zero;
+
+        public TimeSpan PlayerDuration => _playerService?.Duration ?? TimeSpan.Zero;
+
+        public JuvoPlayer.Common.PlayerState State => ((JuvoPlayer.PlayerService)_playerService)?.State ?? JuvoPlayer.Common.PlayerState.Idle;
+
+        public bool IsSeekingSupported => _playerService?.IsSeekingSupported ?? false;
 
         public PlayerView()
         {
@@ -99,7 +108,7 @@ namespace XamarinPlayer.Views
 
             PropertyChanged += PlayerViewPropertyChanged;
 
-            _seekLogic = new JuvoPlayer.Common.SeekLogic(GetPlayer, PlayerTimeCurrentPositionUpdate);
+            _seekLogic = new JuvoPlayer.Common.SeekLogic(this);
         }
 
         private void Play()
@@ -499,12 +508,12 @@ namespace XamarinPlayer.Views
 
         private void UpdatePlayTime()
         {
-            CurrentTime.Text = GetFormattedTime(PlayerTimeCurrentPosition);
-            TotalTime.Text = GetFormattedTime(PlayerTimeDuration);
+            CurrentTime.Text = GetFormattedTime(CurrentPosition);
+            TotalTime.Text = GetFormattedTime(Duration);
 
-            if (PlayerTimeDuration.TotalMilliseconds > 0)
-                Progressbar.Progress = PlayerTimeCurrentPosition.TotalMilliseconds /
-                                       PlayerTimeDuration.TotalMilliseconds;
+            if (Duration.TotalMilliseconds > 0)
+                Progressbar.Progress = CurrentPosition.TotalMilliseconds /
+                                       Duration.TotalMilliseconds;
             else
                 Progressbar.Progress = 0;
         }
@@ -550,14 +559,9 @@ namespace XamarinPlayer.Views
             _seekLogic.SeekBackward();
         }
 
-        public JuvoPlayer.PlayerService GetPlayer()
+        public void Seek(TimeSpan to)
         {
-            return (JuvoPlayer.PlayerService)_playerService;
-        }
-
-        public void PlayerTimeCurrentPositionUpdate(TimeSpan seekTime)
-        {
-            PlayerTimeCurrentPosition += seekTime;
+            _playerService?.SeekTo(to);
         }
     }
 }
