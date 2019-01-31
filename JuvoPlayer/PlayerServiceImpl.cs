@@ -35,7 +35,7 @@ using JuvoPlayer.Utils;
 
 namespace JuvoPlayer
 {
-    public class PlayerService : IDisposable
+    public class PlayerServiceImpl : IPlayerService
     {
         private IDataProvider dataProvider;
         private IPlayerController playerController;
@@ -54,7 +54,7 @@ namespace JuvoPlayer
 
         public string CurrentCueText => dataProvider?.CurrentCue?.Text;
 
-        public PlayerService(Window window)
+        public PlayerServiceImpl(Window window)
         {
             dataProviders = new DataProviderFactoryManager();
             dataProviders.RegisterDataProviderFactory(new DashDataProviderFactory());
@@ -135,7 +135,7 @@ namespace JuvoPlayer
             Dispose(true);
         }
 
-        protected virtual void Dispose(bool disposing)
+        public virtual void Dispose(bool disposing)
         {
             if (disposing)
             {
