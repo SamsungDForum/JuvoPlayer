@@ -25,7 +25,6 @@ using JuvoPlayer;
 using JuvoPlayer.Common;
 using Xamarin.Forms;
 using Xamarin.Forms.Platform.Tizen;
-using XamarinPlayer.Services;
 using XamarinPlayer.Tizen.Services;
 using ILogger = JuvoLogger.ILogger;
 using PlayerState = XamarinPlayer.Services.PlayerState;
@@ -36,13 +35,13 @@ using StreamDescription = JuvoPlayer.Common.StreamDescription;
 
 namespace XamarinPlayer.Tizen.Services
 {
-    sealed class PlayerService : JuvoPlayer.PlayerServiceProxy, XamarinPlayer.Services.IPlayerService, ISeekLogicClient
+    sealed class PlayerService : PlayerServiceProxy, XamarinPlayer.Services.IPlayerService, ISeekLogicClient
     {
         private readonly ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
 
         public new PlayerState State => ToPlayerState(base.State);
 
-        private SeekLogic _seekLogic = null; // needs to be initialized in constructor!
+        private readonly SeekLogic _seekLogic = null; // needs to be initialized
 
         public new TimeSpan CurrentPosition
         {
@@ -167,12 +166,12 @@ namespace XamarinPlayer.Tizen.Services
             }
         }
 
-        public void Seek(TimeSpan to)
+        public void Seek(TimeSpan to) // to be called by SeekLogic, not by PlayerView
         {
             base.SeekTo(to);
         }
 
-        public new Task SeekTo(TimeSpan to)
+        public new Task SeekTo(TimeSpan to) // to be called by PlayerView
         {
             if(to < TimeSpan.Zero)
                 _seekLogic.SeekBackward();
