@@ -36,6 +36,17 @@ The reference for developers of streaming live TV and VOD Tizen .Net application
 2. Start the select GUI project by pressing F5 (debug) or ctrl+F5 (release)
 
 ## Features and release notes
+**JuvoPlayer 1.4.4 (beta)** 
+1. Features:
+* All features of the JuvoPlayer 1.4.3
+* The Smart Hub Preview related modifications (deep links backend change)
+* Multitasking requirement implementation (https://developer.samsung.com/tv/develop/guides/fundamentals/multitasking)
+* Widevine DRMed content playback (unstable)
+2. Known issues:
+* RTP/RTSP playback does not start (regresion)
+* Not enoght memory for UHD Widevine DRMed video (Tears of steel)
+* Multitasking - switching between runing apps - video sometimes do not recover 
+
 **JuvoPlayer 1.4.3 (beta)** includes:
 1. Xamarin Forms and Tizen OpenGL Native based user interface capable to:
 * Select video clip from a list
