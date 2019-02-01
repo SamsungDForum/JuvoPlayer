@@ -50,7 +50,7 @@ namespace JuvoPlayer.OpenGL
         public TimeSpan Duration { get; set; }
         public TimeSpan PlayerCurrentPosition => PlayerHandle?.CurrentPosition ?? TimeSpan.Zero;
         public TimeSpan PlayerDuration => PlayerHandle?.Duration ?? TimeSpan.Zero;
-        public Common.PlayerState State => ((PlayerService)PlayerHandle)?.State ?? Common.PlayerState.Idle;
+        public Common.PlayerState State => ((IPlayerService)PlayerHandle)?.State ?? Common.PlayerState.Idle;
         public bool IsSeekingSupported => PlayerHandle?.IsSeekingSupported ?? false;
 
         private const string Tag = "JuvoPlayer";

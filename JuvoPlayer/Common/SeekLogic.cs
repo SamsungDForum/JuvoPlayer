@@ -37,7 +37,7 @@ namespace JuvoPlayer.Common
         private Task _seekDelay;
         private CancellationTokenSource _seekCancellationTokenSource;
 
-        private ISeekLogicClient _client;
+        private readonly ISeekLogicClient _client;
 
         public SeekLogic(ISeekLogicClient client)
         {
@@ -123,7 +123,7 @@ namespace JuvoPlayer.Common
         {
             _seekStopwatch.Reset();
 
-            if (_client.IsSeekingSupported && IsStateSeekable(_client.State))
+            if (IsStateSeekable(_client.State))
             {
                 IsSeekInProgress = true;
                 TimeSpan seekTargetTime = Clamp(_client.PlayerCurrentPosition + _accumulatedSeekInterval, TimeSpan.Zero, _client.PlayerDuration);
