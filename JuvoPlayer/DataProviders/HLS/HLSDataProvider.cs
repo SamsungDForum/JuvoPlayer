@@ -130,7 +130,9 @@ namespace JuvoPlayer.DataProviders.HLS
 
         private void ResumeDemuxerIfNecessary()
         {
-            if (!ShouldPauseDemuxer())
+            var shouldResumeDemuxer = lastReceivedPts - currentTime <
+                                      MaxBufferHealth - TimeSpan.FromTicks(MaxBufferHealth.Ticks / 2);
+            if (shouldResumeDemuxer)
             {
                 demuxerController.Resume();
             }

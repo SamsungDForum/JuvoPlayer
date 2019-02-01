@@ -224,6 +224,25 @@ namespace JuvoPlayer.Tests.UnitTests
             });
         }
 
+        [Test]
+        public void Flush_CalledWhileChunkIsPending_ChunkIsDeliveredToDemuxer()
+        {
+            AsyncContext.Run(async () => {
+                var demuxerMock = Substitute.For<IDemuxer>();
+                using (var controller = new DemuxerController(demuxerMock))
+                {
+                    var subject = new Subject<byte[]>();
+                    controller.SetDataSource(subject.AsObservable());
+                    subject.OnNext(new byte[0]);
+
+                    demuxerMock.When(demuxer => demuxer.Complete())
+                        .Do(_ => demuxerMock.Received().PushChunk(Arg.Any<byte[]>()));
+
+                    await controller.Flush();
+                }
+            });
+        }
+
         [TestCase(StartType.StartForEs)]
         [TestCase(StartType.StartForUrl)]
         public void Reset_Called_NextPacketNotCalledAfter(StartType startType)
