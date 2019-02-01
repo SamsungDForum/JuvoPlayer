@@ -21,6 +21,7 @@ using System.Linq;
 using System.Reactive.Linq;
 using System.Threading.Tasks;
 using JuvoLogger;
+using JuvoPlayer;
 using JuvoPlayer.Common;
 using Xamarin.Forms;
 using Xamarin.Forms.Platform.Tizen;
@@ -35,7 +36,7 @@ using StreamDescription = JuvoPlayer.Common.StreamDescription;
 
 namespace XamarinPlayer.Tizen.Services
 {
-    sealed class PlayerService : JuvoPlayer.PlayerService, IPlayerService, ISeekLogicClient
+    sealed class PlayerService : JuvoPlayer.PlayerServiceProxy, XamarinPlayer.Services.IPlayerService, ISeekLogicClient
     {
         private readonly ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
 
@@ -71,7 +72,7 @@ namespace XamarinPlayer.Tizen.Services
         public TimeSpan PlayerDuration => base.Duration;
 
         public PlayerService()
-            : base(((FormsApplication) Forms.Context).MainWindow)
+            : base(new PlayerServiceImpl (((FormsApplication) Forms.Context).MainWindow))
         {
             _seekLogic = new SeekLogic(this);
         }

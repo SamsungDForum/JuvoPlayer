@@ -21,12 +21,12 @@ using ElmSharp;
 
 namespace JuvoPlayer.OpenGL
 {
-    class Player : PlayerService
+    class Player : PlayerServiceProxy
     {
         public new PlayerState State => ToPlayerState(base.State);
 
         public Player(Window playerWindow)
-            : base(playerWindow)
+            : base(new PlayerServiceImpl(playerWindow))
         {
         }
 

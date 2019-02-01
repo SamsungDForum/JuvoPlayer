@@ -15,7 +15,7 @@
     <Company>Samsung Electronics VD</Company>
     <NeutralLanguage>en</NeutralLanguage>
     <Description>JuvoPlayerXamarin.Tizen.TV</Description>
-    <Version>1.4.3</Version>
+    <Version>1.4.4</Version>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugType>portable</DebugType>

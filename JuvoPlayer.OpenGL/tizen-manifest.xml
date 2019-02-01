@@ -1,5 +1,5 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<manifest package="JuvoPlayerOpenGLNative.Tizen.TV" version="1.4.3" api-version="5" xmlns="http://tizen.org/ns/packages">
+<manifest package="JuvoPlayerOpenGLNative.Tizen.TV" version="1.4.4" api-version="5" xmlns="http://tizen.org/ns/packages">
   <feature name="http://tizen.org/feature/screen.size.normal.1080.1920">true</feature>
   <profile name="tv" />
   <app-control>

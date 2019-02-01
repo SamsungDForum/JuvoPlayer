@@ -15,34 +15,32 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+using System;
 using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using ElmSharp;
+using System.Reactive;
+using System.Threading.Tasks;
 using JuvoPlayer.Common;
-using JuvoPlayer.Utils;
 
-namespace JuvoPlayer.TizenTests.Utils
+namespace JuvoPlayer
 {
-    public class PlayerService : JuvoPlayer.PlayerServiceImpl
+    public interface IPlayerService : IDisposable
     {
-        private static Window window;
-
-        public PlayerService()
-            : base(window)
-        {
-        }
-
-        public static void SetWindow(Window w)
-        {
-            window = w;
-        }
-
-        public List<ClipDefinition> ReadClips()
-        {
-            var applicationPath = Paths.ApplicationPath;
-            var clipsPath = Path.Combine(applicationPath, "res", "videoclips.json");
-            return JSONFileReader.DeserializeJsonFile<List<ClipDefinition>>(clipsPath).ToList();
-        }
+        TimeSpan Duration { get; }
+        TimeSpan CurrentPosition { get; }
+        bool IsSeekingSupported { get; }
+        PlayerState State { get; }
+        string CurrentCueText { get; }
+        void Pause();
+        Task SeekTo(TimeSpan to);
+        void ChangeActiveStream(StreamDescription streamDescription);
+        void DeactivateStream(StreamType streamType);
+        List<StreamDescription> GetStreamsDescription(StreamType streamType);
+        void SetSource(ClipDefinition clip);
+        void Start();
+        void Stop();
+        IObservable<PlayerState> StateChanged();
+        IObservable<string> PlaybackError();
+        IObservable<Unit> SeekCompleted();
+        IObservable<int> BufferingProgress();
     }
 }

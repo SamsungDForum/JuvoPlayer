@@ -21,14 +21,14 @@
     "description": "1920x818 (adaptive) Codecs: H264 - MPEG4 AVC, MPEG AAC, The Blender Foundation - Sintel. Origin https://bitmovin.com/multi-language-multi-audio/. URI: https://bitdash-a.akamaihd.net/content/sintel/sintel.mpd"
   },
   {
-    "title": "Encrypted MPEG DASH",
+    "title": "FHD PLAY READY Encrypted MPEG DASH",
     "url": "http://yt-dash-mse-test.commondatastorage.googleapis.com/media/oops_cenc-20121114-signedlicenseurl-manifest.mpd",
     "type": "dash",
     "poster": "oops.jpg",
     "description": "1920x1080 (adptive) Codecs: H264 - MPEG4 AVC, MPEG AAC. Google Nexus Q video. Origin http://dash-mse-test.appspot.com/media.html. URI: http://yt-dash-mse-test.commondatastorage.googleapis.com/media/oops_cenc-20121114-signedlicenseurl-manifest.mpd"
   },
   {
-    "title": "Encrypted 4K MPEG DASH",
+    "title": "4K PLAY READY Encrypted MPEG DASH",
     "url": "http://profficialsite.origin.mediaservices.windows.net/c51358ea-9a5e-4322-8951-897d640fdfd7/tearsofsteel_4k.ism/manifest(format=mpd-time-csf)",
     "type": "dash",
     "description": "1280x572 AZURE MEDIA SERVICES ON DEMAND H264 AAC 4K CENC PLAYREADY 2.0. Origin https://test.playready.microsoft.com/Content/Content2X. URI: http://profficialsite.origin.mediaservices.windows.net/c51358ea-9a5e-4322-8951-897d640fdfd7/tearsofsteel_4k.ism/manifest(format=mpd-time-csf)",
@@ -44,10 +44,10 @@
     ]
   },
   {
-    "title": "Art Of Motion",
+    "title": "FHD Widevine Encrypted MPEG DASH",
     "url": "https://bitmovin-a.akamaihd.net/content/art-of-motion_drm/mpds/11331.mpd",
     "type": "dash",
-    "description": "CENC Widevine, HD URI: https://bitmovin-a.akamaihd.net/content/art-of-motion_drm/mpds/11331.mpd)",
+    "description": "CENC Widevine, Art Of Motion, HD URI: https://bitmovin-a.akamaihd.net/content/art-of-motion_drm/mpds/11331.mpd)",
     "poster": "artofwalking.jpg",
     "drmDatas": [
       {
@@ -60,7 +60,7 @@
     ]
   },
   {
-    "title": "Encrypted 4K MPEG DASH UHD",
+    "title": "4K Widevine Encrypted MPEG DASH",
     "url": "https://storage.googleapis.com/wvmedia/cenc/h264/tears/tears_uhd.mpd",
     "type": "dash",
     "description": "CENC Widevine, Tears Of Steel, UHD. URI: https://storage.googleapis.com/wvmedia/cenc/h264/tears/tears_uhd.mpd",
@@ -97,14 +97,14 @@
     ]
   },
   {
-    "title": "Clean HLS",
+    "title": "FHD Clean HLS",
     "url": "http://multiplatform-f.akamaihd.net/i/multi/april11/sintel/sintel-hd_,512x288_450_b,640x360_700_b,768x432_1000_b,1024x576_1400_m,.mp4.csmil/master.m3u8",
     "type": "hls",
     "poster": "sintel.jpg",
     "description": "1024x576 Codecs: H264 - MPEG4 AVC. The Blender Foundation - Sintel. URI: http://multiplatform-f.akamaihd.net/i/multi/april11/sintel/sintel-hd_,512x288_450_b,640x360_700_b,768x432_1000_b,1024x576_1400_m,.mp4.csmil/master.m3u8.  Origin https://players.akamai.com/hls/"
   },
   {
-    "title": "Clean HEVC 4k MPEG DASH",
+    "title": "4K Clean HEVC MPEG DASH",
     "url": "http://download.tsi.telecom-paristech.fr/gpac/dataset/dash/uhd/dashevc-live-2s/dashevc-live-2s-4k.mpd",
     "type": "dash",
     "poster": "sacrecoeur.jpg",
@@ -122,7 +122,7 @@
     "url": "rtsp://10.88.91.96/canimals.ts",
     "type": "rtsp",
     "poster": "canimals.jpg",
-    "description": "Fixed URI rtsp://192.168.137.200/canimals.ts!!! IPTV multicast protocol H264 + AAC. RTSP streaming, 1920x1080 MPEG1/2 video (mpgv) + AC3 codecs."
+    "description": "Fixed URI rtsp://xxx.xxx.xxx.xxx/canimals.ts!!! IPTV multicast protocol H264 + AAC. RTSP streaming, 1920x1080 MPEG1/2 video (mpgv) + AC3 codecs."
   },
   {
     "title": "Live Clock MPEG DASH Stream",

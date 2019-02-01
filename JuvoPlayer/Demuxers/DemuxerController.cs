@@ -23,6 +23,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using JuvoLogger;
 using JuvoPlayer.Common;
+using Nito.AsyncEx;
 
 namespace JuvoPlayer.Demuxers
 {
@@ -78,14 +79,15 @@ namespace JuvoPlayer.Demuxers
             ResetDataSourceSubscription();
         }
 
-        public Task Flush()
+        public async Task Flush()
         {
-            var flushCompleted = demuxer.Completion.ContinueWith(OnFlushCompleted,
-                cancelTokenSource.Token,
-                TaskContinuationOptions.None,
-                TaskScheduler.FromCurrentSynchronizationContext());
+            // Make sure that all pending chunks are delivered before calling Complete
+            await Task.Yield();
+
             demuxer.Complete();
-            return flushCompleted;
+            await demuxer.Completion.WaitAsync(cancelTokenSource.Token);
+
+            demuxer.Reset();
         }
 
         public void Pause()
@@ -205,11 +207,6 @@ namespace JuvoPlayer.Demuxers
         {
             cancelTokenSource.Cancel();
             cancelTokenSource = new CancellationTokenSource();
-        }
-
-        private void OnFlushCompleted(Task _)
-        {
-            demuxer.Reset();
         }
 
         private void ResetDataSourceSubscription()
