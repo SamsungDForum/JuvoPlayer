@@ -19,6 +19,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reactive.Linq;
+using System.Threading.Tasks;
 using JuvoLogger;
 using JuvoPlayer.Common;
 using Xamarin.Forms;
@@ -34,15 +35,45 @@ using StreamDescription = JuvoPlayer.Common.StreamDescription;
 
 namespace XamarinPlayer.Tizen.Services
 {
-    sealed class PlayerService : JuvoPlayer.PlayerService, IPlayerService
+    sealed class PlayerService : JuvoPlayer.PlayerService, IPlayerService, ISeekLogicClient
     {
         private readonly ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
 
         public new PlayerState State => ToPlayerState(base.State);
 
+        private SeekLogic _seekLogic = null; // needs to be initialized in constructor!
+
+        public new TimeSpan CurrentPosition
+        {
+            get
+            {
+                if (_seekLogic.IsSeekAccumulationInProgress == false && _seekLogic.IsSeekInProgress == false)
+                    _currentPosition = base.CurrentPosition;
+                return _currentPosition;
+            }
+            set => _currentPosition = value;
+        }
+        private TimeSpan _currentPosition;
+
+        public new TimeSpan Duration
+        {
+            get
+            {
+                _duration = base.Duration;
+                return _duration;
+            }
+            set => _duration = value;
+        }
+        private TimeSpan _duration;
+
+        public TimeSpan PlayerCurrentPosition => base.CurrentPosition;
+
+        public TimeSpan PlayerDuration => base.Duration;
+
         public PlayerService()
             : base(((FormsApplication) Forms.Context).MainWindow)
         {
+            _seekLogic = new SeekLogic(this);
         }
 
         public void ChangeActiveStream(StreamDefinition stream)
@@ -133,6 +164,20 @@ namespace XamarinPlayer.Tizen.Services
                     Logger.Error($"Unsupported state {state}");
                     throw new ArgumentOutOfRangeException(nameof(state), state, null);
             }
+        }
+
+        public void Seek(TimeSpan to)
+        {
+            base.SeekTo(to);
+        }
+
+        public new Task SeekTo(TimeSpan to)
+        {
+            if(to < TimeSpan.Zero)
+                _seekLogic.SeekBackward();
+            else if(to > TimeSpan.Zero)
+                _seekLogic.SeekForward();
+            return Task.CompletedTask;
         }
     }
 }
