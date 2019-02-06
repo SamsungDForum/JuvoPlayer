@@ -65,7 +65,7 @@ namespace JuvoPlayer.Common
         private TimeSpan SeekInterval()
         {
             TimeSpan seekInterval = _defaultSeekInterval;
-            TimeSpan contentLength = _client.PlayerDuration;
+            TimeSpan contentLength = _client.Duration;
             TimeSpan intervalSinceLastSeek = IntervalSinceLastSeek();
 
             if (intervalSinceLastSeek < _defaultSeekIntervalValueThreshold) // key is being hold
@@ -116,7 +116,7 @@ namespace JuvoPlayer.Common
                 _accumulatedSeekInterval = seekInterval;
                 IsSeekAccumulationInProgress = true;
             }
-            _client.CurrentPosition += seekInterval;
+            _client.CurrentPositionUI += seekInterval;
         }
 
         private void ExecuteSeek()
@@ -126,7 +126,7 @@ namespace JuvoPlayer.Common
             if (IsStateSeekable(_client.State))
             {
                 IsSeekInProgress = true;
-                TimeSpan seekTargetTime = Clamp(_client.PlayerCurrentPosition + _accumulatedSeekInterval, TimeSpan.Zero, _client.PlayerDuration);
+                TimeSpan seekTargetTime = Clamp(_client.CurrentPositionPlayer + _accumulatedSeekInterval, TimeSpan.Zero, _client.Duration);
                 _client.Seek(seekTargetTime);
                 IsSeekAccumulationInProgress = false;
             }
@@ -148,6 +148,11 @@ namespace JuvoPlayer.Common
         {
             var seekableStates = new[] { PlayerState.Playing, PlayerState.Paused };
             return seekableStates.Contains(state);
+        }
+
+        public void OnSeekCompleted()
+        {
+            IsSeekInProgress = false;
         }
     }
 }

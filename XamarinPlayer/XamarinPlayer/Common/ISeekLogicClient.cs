@@ -22,10 +22,9 @@ namespace XamarinPlayer.Common
 {
     public interface ISeekLogicClient
     {
-        TimeSpan CurrentPosition { get; set; }
-        TimeSpan Duration { get; set; }
-        TimeSpan PlayerCurrentPosition { get; }
-        TimeSpan PlayerDuration { get; }
+        TimeSpan CurrentPositionUI { get; set; }
+        TimeSpan CurrentPositionPlayer { get; }
+        TimeSpan Duration { get; }
         void Seek(TimeSpan to);
         PlayerState State { get; }
         bool IsSeekingSupported { get; }

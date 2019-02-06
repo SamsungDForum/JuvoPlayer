@@ -46,10 +46,9 @@ namespace JuvoPlayer.OpenGL
 
         private bool _playbackCompletedNeedsHandling;
 
-        public TimeSpan CurrentPosition { get; set; }
-        public TimeSpan Duration { get; set; }
-        public TimeSpan PlayerCurrentPosition => PlayerHandle?.CurrentPosition ?? TimeSpan.Zero;
-        public TimeSpan PlayerDuration => PlayerHandle?.Duration ?? TimeSpan.Zero;
+        public TimeSpan CurrentPositionUI { get; set; }
+        public TimeSpan CurrentPositionPlayer => PlayerHandle?.CurrentPosition ?? TimeSpan.Zero;
+        public TimeSpan Duration => PlayerHandle?.Duration ?? TimeSpan.Zero;
         public Common.PlayerState State => ((IPlayerService)PlayerHandle)?.State ?? Common.PlayerState.Idle;
         public bool IsSeekingSupported => PlayerHandle?.IsSeekingSupported ?? false;
 
@@ -216,8 +215,7 @@ namespace JuvoPlayer.OpenGL
             _lastKeyPressTime = DateTime.Now;
             _seekLogic.Reset();
 
-            CurrentPosition = TimeSpan.Zero;
-            Duration = TimeSpan.Zero;
+            CurrentPositionUI = TimeSpan.Zero;
             _playbackCompletedNeedsHandling = false;
 
             _metricsHandler.Hide();
@@ -513,7 +511,7 @@ namespace JuvoPlayer.OpenGL
                     .Subscribe(unit =>
                     {
                         Logger?.Info("Seek completed.");
-                        _seekLogic.IsSeekInProgress = false;
+                        _seekLogic.OnSeekCompleted();
                     });
 
                 PlayerHandle.BufferingProgress()
@@ -646,8 +644,7 @@ namespace JuvoPlayer.OpenGL
         private unsafe void UpdatePlaybackControls()
         {
             if (_seekLogic.IsSeekAccumulationInProgress == false && _seekLogic.IsSeekInProgress == false)
-                CurrentPosition = PlayerCurrentPosition;
-            Duration = PlayerDuration;
+                CurrentPositionUI = CurrentPositionPlayer;
             if (_progressBarShown && PlayerHandle?.State == PlayerState.Playing &&
                 (DateTime.Now - _lastKeyPressTime).TotalMilliseconds >= _progressBarFadeout.TotalMilliseconds)
             {
@@ -663,7 +660,7 @@ namespace JuvoPlayer.OpenGL
                 {
                     show = _progressBarShown ? 1 : 0,
                     state = (int) (PlayerHandle?.State ?? PlayerState.Idle),
-                    currentTime = (int) CurrentPosition.TotalMilliseconds,
+                    currentTime = (int) CurrentPositionUI.TotalMilliseconds,
                     totalTime = (int) Duration.TotalMilliseconds,
                     text = name,
                     textLen = _resourceLoader.ContentList[_selectedTile].Title.Length,

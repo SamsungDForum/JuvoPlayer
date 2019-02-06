@@ -54,32 +54,21 @@ namespace XamarinPlayer.Views
             get { return GetValue(ContentSourceProperty); }
         }
 
-        public TimeSpan CurrentPosition
+        public TimeSpan CurrentPositionUI
         {
             get
             {
                 if (_seekLogic.IsSeekAccumulationInProgress == false && _seekLogic.IsSeekInProgress == false)
-                    _currentPosition = _playerService?.CurrentPosition ?? TimeSpan.Zero;
+                    _currentPosition = CurrentPositionPlayer;
                 return _currentPosition;
             }
             set => _currentPosition = value;
         }
         private TimeSpan _currentPosition;
 
-        public TimeSpan Duration
-        {
-            get
-            {
-                _duration = _playerService?.Duration ?? TimeSpan.Zero;
-                return _duration;
-            }
-            set => _duration = value;
-        }
-        private TimeSpan _duration;
+        public TimeSpan CurrentPositionPlayer => _playerService?.CurrentPosition ?? TimeSpan.Zero;
 
-        public TimeSpan PlayerCurrentPosition => _playerService?.CurrentPosition ?? TimeSpan.Zero;
-
-        public TimeSpan PlayerDuration => _playerService?.Duration ?? TimeSpan.Zero;
+        public TimeSpan Duration => _playerService?.Duration ?? TimeSpan.Zero;
 
         public PlayerState State => _playerService?.State ?? PlayerState.Idle;
 
@@ -104,6 +93,14 @@ namespace XamarinPlayer.Views
             _playerService.BufferingProgress()
                 .ObserveOn(SynchronizationContext.Current)
                 .Subscribe(OnBufferingProgress);
+
+            _playerService.SeekCompleted()
+                .ObserveOn(SynchronizationContext.Current)
+                .Subscribe(unit =>
+                {
+                    Logger?.Info("Seek completed.");
+                    _seekLogic.OnSeekCompleted();
+                });
 
             PlayButton.Clicked += (s, e) => { Play(); };
 
@@ -509,11 +506,11 @@ namespace XamarinPlayer.Views
 
         private void UpdatePlayTime()
         {
-            CurrentTime.Text = GetFormattedTime(CurrentPosition);
+            CurrentTime.Text = GetFormattedTime(CurrentPositionUI);
             TotalTime.Text = GetFormattedTime(Duration);
 
             if (Duration.TotalMilliseconds > 0)
-                Progressbar.Progress = CurrentPosition.TotalMilliseconds /
+                Progressbar.Progress = CurrentPositionUI.TotalMilliseconds /
                                        Duration.TotalMilliseconds;
             else
                 Progressbar.Progress = 0;

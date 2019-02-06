@@ -18,6 +18,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reactive;
 using System.Reactive.Linq;
 using JuvoLogger;
 using JuvoPlayer;
@@ -85,6 +86,11 @@ namespace XamarinPlayer.Tizen.Services
         public new IObservable<PlayerState> StateChanged()
         {
             return base.StateChanged().Select(ToPlayerState);
+        }
+
+        public IObservable<Unit> SeekCompleted()
+        {
+            return base.SeekCompleted();
         }
 
         private StreamType ToJuvoStreamType(StreamDefinition.StreamType streamType)
