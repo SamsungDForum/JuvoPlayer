@@ -17,6 +17,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Reactive;
 using System.Threading.Tasks;
 
 namespace XamarinPlayer.Services
@@ -26,6 +27,7 @@ namespace XamarinPlayer.Services
         IObservable<PlayerState> StateChanged();
         IObservable<string> PlaybackError();
         IObservable<int> BufferingProgress();
+        IObservable<Unit> SeekCompleted();
 
         TimeSpan Duration { get; }
 
