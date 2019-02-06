@@ -24,17 +24,20 @@ using System.Threading.Tasks;
 using JuvoLogger;
 using Xamarin.Forms;
 using Xamarin.Forms.Xaml;
+using XamarinPlayer.Common;
 using XamarinPlayer.Models;
 using XamarinPlayer.Services;
 
 namespace XamarinPlayer.Views
 {
     [XamlCompilation(XamlCompilationOptions.Compile)]
-    public partial class PlayerView : ContentPage, IContentPayloadHandler, ISuspendable
+    public partial class PlayerView : ContentPage, IContentPayloadHandler, ISuspendable, ISeekLogicClient
     {
         private static ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
         private readonly int DefaultTimeout = 5000;
         private readonly TimeSpan UpdateInterval = TimeSpan.FromMilliseconds(100);
+
+        private SeekLogic _seekLogic = null; // needs to be initialized in constructor!
 
         private IPlayerService _playerService;
         private int _hideTime;
@@ -50,6 +53,37 @@ namespace XamarinPlayer.Views
             set { SetValue(ContentSourceProperty, value); }
             get { return GetValue(ContentSourceProperty); }
         }
+
+        public TimeSpan CurrentPosition
+        {
+            get
+            {
+                if (_seekLogic.IsSeekAccumulationInProgress == false && _seekLogic.IsSeekInProgress == false)
+                    _currentPosition = _playerService?.CurrentPosition ?? TimeSpan.Zero;
+                return _currentPosition;
+            }
+            set => _currentPosition = value;
+        }
+        private TimeSpan _currentPosition;
+
+        public TimeSpan Duration
+        {
+            get
+            {
+                _duration = _playerService?.Duration ?? TimeSpan.Zero;
+                return _duration;
+            }
+            set => _duration = value;
+        }
+        private TimeSpan _duration;
+
+        public TimeSpan PlayerCurrentPosition => _playerService?.CurrentPosition ?? TimeSpan.Zero;
+
+        public TimeSpan PlayerDuration => _playerService?.Duration ?? TimeSpan.Zero;
+
+        public PlayerState State => _playerService?.State ?? PlayerState.Idle;
+
+        public bool IsSeekingSupported => _playerService?.IsSeekingSupported ?? false;
 
         public PlayerView()
         {
@@ -74,6 +108,8 @@ namespace XamarinPlayer.Views
             PlayButton.Clicked += (s, e) => { Play(); };
 
             PropertyChanged += PlayerViewPropertyChanged;
+
+            _seekLogic = new SeekLogic(this);
         }
 
         private void Play()
@@ -299,16 +335,6 @@ namespace XamarinPlayer.Views
             };
         }
 
-        private void Forward()
-        {
-            _playerService.SeekTo(TimeSpan.MaxValue);
-        }
-
-        private void Rewind()
-        {
-            _playerService.SeekTo(TimeSpan.MinValue);
-        }
-
         public void Show()
         {
             Show(DefaultTimeout);
@@ -483,12 +509,12 @@ namespace XamarinPlayer.Views
 
         private void UpdatePlayTime()
         {
-            CurrentTime.Text = GetFormattedTime(_playerService.CurrentPosition);
-            TotalTime.Text = GetFormattedTime(_playerService.Duration);
+            CurrentTime.Text = GetFormattedTime(CurrentPosition);
+            TotalTime.Text = GetFormattedTime(Duration);
 
-            if (_playerService.Duration.TotalMilliseconds > 0)
-                Progressbar.Progress = _playerService.CurrentPosition.TotalMilliseconds /
-                                       _playerService.Duration.TotalMilliseconds;
+            if (Duration.TotalMilliseconds > 0)
+                Progressbar.Progress = CurrentPosition.TotalMilliseconds /
+                                       Duration.TotalMilliseconds;
             else
                 Progressbar.Progress = 0;
         }
@@ -522,6 +548,21 @@ namespace XamarinPlayer.Views
         {
             if (suspendedPlayerState == PlayerState.Playing)
                 _playerService?.Start();
+        }
+
+        private void Forward()
+        {
+            _seekLogic.SeekForward();
+        }
+
+        private void Rewind()
+        {
+            _seekLogic.SeekBackward();
+        }
+
+        public void Seek(TimeSpan to)
+        {
+            _playerService?.SeekTo(to);
         }
     }
 }
