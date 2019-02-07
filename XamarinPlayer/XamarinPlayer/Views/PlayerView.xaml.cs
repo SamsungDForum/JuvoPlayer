@@ -19,23 +19,26 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Reactive.Linq;
+using System.Reactive.Threading.Tasks;
 using System.Threading;
 using System.Threading.Tasks;
 using JuvoLogger;
 using Xamarin.Forms;
 using Xamarin.Forms.Xaml;
+using XamarinPlayer.Common;
 using XamarinPlayer.Models;
 using XamarinPlayer.Services;
 
 namespace XamarinPlayer.Views
 {
     [XamlCompilation(XamlCompilationOptions.Compile)]
-    public partial class PlayerView : ContentPage, IContentPayloadHandler, ISuspendable
+    public partial class PlayerView : ContentPage, IContentPayloadHandler, ISuspendable, ISeekLogicClient
     {
         private static ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
         private readonly int DefaultTimeout = 5000;
         private readonly TimeSpan UpdateInterval = TimeSpan.FromMilliseconds(100);
-        private readonly TimeSpan DefaultSeekTime = TimeSpan.FromSeconds(20);
+
+        private SeekLogic _seekLogic = null; // needs to be initialized in constructor!
 
         private IPlayerService _playerService;
         private int _hideTime;
@@ -51,6 +54,22 @@ namespace XamarinPlayer.Views
             set { SetValue(ContentSourceProperty, value); }
             get { return GetValue(ContentSourceProperty); }
         }
+
+        public TimeSpan CurrentPositionUI
+        {
+            get
+            {
+                if (_seekLogic.IsSeekAccumulationInProgress == false && _seekLogic.IsSeekInProgress == false)
+                    _currentPosition = CurrentPositionPlayer;
+                return _currentPosition;
+            }
+            set => _currentPosition = value;
+        }
+        private TimeSpan _currentPosition;
+        public TimeSpan CurrentPositionPlayer => _playerService?.CurrentPosition ?? TimeSpan.Zero;
+        public TimeSpan Duration => _playerService?.Duration ?? TimeSpan.Zero;
+        public PlayerState State => _playerService?.State ?? PlayerState.Idle;
+        public bool IsSeekingSupported => _playerService?.IsSeekingSupported ?? false;
 
         public PlayerView()
         {
@@ -75,6 +94,8 @@ namespace XamarinPlayer.Views
             PlayButton.Clicked += (s, e) => { Play(); };
 
             PropertyChanged += PlayerViewPropertyChanged;
+
+            _seekLogic = new SeekLogic(this);
         }
 
         private void Play()
@@ -300,28 +321,6 @@ namespace XamarinPlayer.Views
             };
         }
 
-        private void Forward()
-        {
-            if (!_playerService.IsSeekingSupported || _playerService.State < PlayerState.Playing)
-                return;
-
-            if (_playerService.Duration - _playerService.CurrentPosition < DefaultSeekTime)
-                _playerService.SeekTo(_playerService.Duration);
-            else
-                _playerService.SeekTo(_playerService.CurrentPosition + DefaultSeekTime);
-        }
-
-        private void Rewind()
-        {
-            if (!_playerService.IsSeekingSupported || _playerService.State < PlayerState.Playing)
-                return;
-
-            if (_playerService.CurrentPosition < DefaultSeekTime)
-                _playerService.SeekTo(TimeSpan.Zero);
-            else
-                _playerService.SeekTo(_playerService.CurrentPosition - DefaultSeekTime);
-        }
-
         public void Show()
         {
             Show(DefaultTimeout);
@@ -496,12 +495,12 @@ namespace XamarinPlayer.Views
 
         private void UpdatePlayTime()
         {
-            CurrentTime.Text = GetFormattedTime(_playerService.CurrentPosition);
-            TotalTime.Text = GetFormattedTime(_playerService.Duration);
+            CurrentTime.Text = GetFormattedTime(CurrentPositionUI);
+            TotalTime.Text = GetFormattedTime(Duration);
 
-            if (_playerService.Duration.TotalMilliseconds > 0)
-                Progressbar.Progress = _playerService.CurrentPosition.TotalMilliseconds /
-                                       _playerService.Duration.TotalMilliseconds;
+            if (Duration.TotalMilliseconds > 0)
+                Progressbar.Progress = CurrentPositionUI.TotalMilliseconds /
+                                       Duration.TotalMilliseconds;
             else
                 Progressbar.Progress = 0;
         }
@@ -535,6 +534,21 @@ namespace XamarinPlayer.Views
         {
             if (suspendedPlayerState == PlayerState.Playing)
                 _playerService?.Start();
+        }
+
+        private void Forward()
+        {
+            _seekLogic.SeekForward();
+        }
+
+        private void Rewind()
+        {
+            _seekLogic.SeekBackward();
+        }
+
+        public Task Seek(TimeSpan to)
+        {
+            return _playerService.SeekTo(to);
         }
     }
 }

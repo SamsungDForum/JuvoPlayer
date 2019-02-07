@@ -54,7 +54,7 @@ namespace JuvoPlayer
 
         public Task SeekTo(TimeSpan time)
         {
-            return playerThread.Factory.StartNew(async () => await proxied.SeekTo(time));
+            return playerThread.Factory.StartNew(async () => await proxied.SeekTo(time)).Unwrap();
         }
 
         public void ChangeActiveStream(StreamDescription streamDescription)
