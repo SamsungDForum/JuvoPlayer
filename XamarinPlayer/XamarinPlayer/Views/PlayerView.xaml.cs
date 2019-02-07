@@ -19,6 +19,7 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Reactive.Linq;
+using System.Reactive.Threading.Tasks;
 using System.Threading;
 using System.Threading.Tasks;
 using JuvoLogger;
@@ -93,14 +94,6 @@ namespace XamarinPlayer.Views
             _playerService.BufferingProgress()
                 .ObserveOn(SynchronizationContext.Current)
                 .Subscribe(OnBufferingProgress);
-
-            _playerService.SeekCompleted()
-                .ObserveOn(SynchronizationContext.Current)
-                .Subscribe(unit =>
-                {
-                    Logger?.Info("Seek completed.");
-                    _seekLogic.OnSeekCompleted();
-                });
 
             PlayButton.Clicked += (s, e) => { Play(); };
 
@@ -557,9 +550,9 @@ namespace XamarinPlayer.Views
             _seekLogic.SeekBackward();
         }
 
-        public void Seek(TimeSpan to)
+        public Task Seek(TimeSpan to)
         {
-            _playerService?.SeekTo(to);
+            return _playerService.SeekTo(to);
         }
     }
 }

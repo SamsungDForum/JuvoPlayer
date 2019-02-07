@@ -16,6 +16,7 @@
  */
 
 using System;
+using System.Diagnostics;
 using System.IO;
 using JuvoPlayer.Common;
 using JuvoLogger;
@@ -506,14 +507,6 @@ namespace JuvoPlayer.OpenGL
                         DisplayAlert("Playback Error", message, "OK");
                     });
 
-                PlayerHandle.SeekCompleted()
-                    .ObserveOn(SynchronizationContext.Current)
-                    .Subscribe(unit =>
-                    {
-                        Logger?.Info("Seek completed.");
-                        _seekLogic.OnSeekCompleted();
-                    });
-
                 PlayerHandle.BufferingProgress()
                     .ObserveOn(SynchronizationContext.Current)
                     .Subscribe(UpdateBufferingProgress);
@@ -670,9 +663,9 @@ namespace JuvoPlayer.OpenGL
             }
         }
 
-        public void Seek(TimeSpan to)
+        public Task Seek(TimeSpan to)
         {
-            PlayerHandle?.SeekTo(to);
+            return PlayerHandle?.SeekTo(to);
         }
 
         private void UpdateUI()
