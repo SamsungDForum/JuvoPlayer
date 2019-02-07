@@ -66,13 +66,9 @@ namespace XamarinPlayer.Views
             set => _currentPosition = value;
         }
         private TimeSpan _currentPosition;
-
         public TimeSpan CurrentPositionPlayer => _playerService?.CurrentPosition ?? TimeSpan.Zero;
-
         public TimeSpan Duration => _playerService?.Duration ?? TimeSpan.Zero;
-
         public PlayerState State => _playerService?.State ?? PlayerState.Idle;
-
         public bool IsSeekingSupported => _playerService?.IsSeekingSupported ?? false;
 
         public PlayerView()
