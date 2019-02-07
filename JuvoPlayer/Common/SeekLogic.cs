@@ -102,7 +102,7 @@ namespace JuvoPlayer.Common
 
             try { await _seekDelay; } catch (TaskCanceledException) { return; }
 
-            ExecuteSeek();
+            await ExecuteSeek();
         }
 
         private void AccumulateSeekInterval(TimeSpan seekInterval)
@@ -119,7 +119,7 @@ namespace JuvoPlayer.Common
             _client.CurrentPositionUI += seekInterval;
         }
 
-        private void ExecuteSeek()
+        private async Task ExecuteSeek()
         {
             _seekStopwatch.Reset();
 
@@ -127,8 +127,9 @@ namespace JuvoPlayer.Common
             {
                 IsSeekInProgress = true;
                 TimeSpan seekTargetTime = Clamp(_client.CurrentPositionPlayer + _accumulatedSeekInterval, TimeSpan.Zero, _client.Duration);
-                _client.Seek(seekTargetTime);
+                await _client.Seek(seekTargetTime);
                 IsSeekAccumulationInProgress = false;
+                IsSeekInProgress = false;
             }
 
             _seekDelay = null;
@@ -148,11 +149,6 @@ namespace JuvoPlayer.Common
         {
             var seekableStates = new[] { PlayerState.Playing, PlayerState.Paused };
             return seekableStates.Contains(state);
-        }
-
-        public void OnSeekCompleted()
-        {
-            IsSeekInProgress = false;
         }
     }
 }

@@ -16,6 +16,7 @@
  */
 
 using System;
+using System.Threading.Tasks;
 
 namespace JuvoPlayer.Common
 {
@@ -24,7 +25,7 @@ namespace JuvoPlayer.Common
         TimeSpan CurrentPositionUI { get; set; }
         TimeSpan CurrentPositionPlayer { get; }
         TimeSpan Duration { get; }
-        void Seek(TimeSpan to);
+        Task Seek(TimeSpan to);
         PlayerState State { get; }
         bool IsSeekingSupported { get; }
     }
