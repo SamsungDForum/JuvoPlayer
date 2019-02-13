@@ -47,9 +47,6 @@ namespace JuvoPlayer.Drms.Cenc
         private readonly AsyncContextThread thread = new AsyncContextThread();
         private readonly AsyncLock threadLock = new AsyncLock();
 
-        // Cross CencSession license installation lock.
-        private static readonly AsyncLock licenseLock = new AsyncLock();
-
         private bool isDisposed;
         private readonly CancellationTokenSource cancellationTokenSource;
         private TaskCompletionSource<byte[]> requestDataCompletionSource;
@@ -350,7 +347,7 @@ namespace JuvoPlayer.Drms.Cenc
                 var responseText = await AcquireLicenceFromServer(requestData);
                 cancellationToken.ThrowIfCancellationRequested();
 
-                await InstallLicence(responseText);
+                InstallLicence(responseText);
                 licenceInstalled = true;
             }
         }
@@ -431,17 +428,12 @@ namespace JuvoPlayer.Drms.Cenc
             }
         }
 
-        private async Task InstallLicence(string responseText)
+        private void InstallLicence(string responseText)
         {
             Logger.Info($"Installing CencSession: {currentSessionId}");
             try
             {
-                var cancellationToken = cancellationTokenSource.Token;
-                Status status;
-                using (await licenseLock.LockAsync(cancellationToken))
-                {
-                    status = CDMInstance.session_update(currentSessionId, responseText);
-                }
+                var status = CDMInstance.session_update(currentSessionId, responseText);
 
                 Logger.Info($"Install CencSession ${currentSessionId} result: {status}");
 
