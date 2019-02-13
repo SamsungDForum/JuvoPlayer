@@ -536,13 +536,27 @@ namespace XamarinPlayer.Views
                 _playerService?.Start();
         }
 
+        private void ShowSeekInfo(bool makeVisible)
+        {
+            if (makeVisible)
+            {
+                InfoTextLabel.Text = "Seeking...";
+                InfoTextLabel.IsVisible = true;
+            } else {
+                InfoTextLabel.Text = "";
+                InfoTextLabel.IsVisible = false;
+            }            
+        }        
+
         private void Forward()
         {
+            ShowSeekInfo(true);
             _seekLogic.SeekForward();
         }
 
         private void Rewind()
         {
+            ShowSeekInfo(false);
             _seekLogic.SeekBackward();
         }
 
