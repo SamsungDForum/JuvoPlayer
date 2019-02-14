@@ -44,7 +44,7 @@ namespace XamarinPlayer.Views
         private int _hideTime;
         private bool _isPageDisappeared;
         private bool _isShowing;
-        private bool _hasFinished;
+        private bool _hasFinished;        
 
         public static readonly BindableProperty ContentSourceProperty = BindableProperty.Create("ContentSource", typeof(object), typeof(PlayerView));
         private PlayerState? suspendedPlayerState;
@@ -69,7 +69,7 @@ namespace XamarinPlayer.Views
         public TimeSpan CurrentPositionPlayer => _playerService?.CurrentPosition ?? TimeSpan.Zero;
         public TimeSpan Duration => _playerService?.Duration ?? TimeSpan.Zero;
         public PlayerState State => _playerService?.State ?? PlayerState.Idle;
-        public bool IsSeekingSupported => _playerService?.IsSeekingSupported ?? false;
+        public bool IsSeekingSupported => _playerService?.IsSeekingSupported ?? false;        
 
         public PlayerView()
         {
@@ -476,6 +476,7 @@ namespace XamarinPlayer.Views
 
                 UpdatePlayTime();
                 UpdateCueTextLabel();
+                ShowSeekInfo();
 
                 if (Settings.IsVisible)
                     return;
@@ -535,28 +536,28 @@ namespace XamarinPlayer.Views
             if (suspendedPlayerState == PlayerState.Playing)
                 _playerService?.Start();
         }
-
-        private void ShowSeekInfo(bool makeVisible)
+   
+        private void ShowSeekInfo()
         {
-            if (makeVisible)
+            if (_seekLogic.IsSeekInProgress || _seekLogic.IsSeekAccumulationInProgress)
             {
                 InfoTextLabel.Text = "Seeking...";
                 InfoTextLabel.IsVisible = true;
-            } else {
+            }
+            else
+            {   
                 InfoTextLabel.Text = "";
-                InfoTextLabel.IsVisible = false;
-            }            
-        }        
+                InfoTextLabel.IsVisible = false;                                   
+            }
+        }
 
         private void Forward()
-        {
-            ShowSeekInfo(true);
+        {            
             _seekLogic.SeekForward();
         }
 
         private void Rewind()
-        {
-            ShowSeekInfo(false);
+        {         
             _seekLogic.SeekBackward();
         }
 
