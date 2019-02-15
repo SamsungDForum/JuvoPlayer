@@ -59,6 +59,7 @@ namespace JuvoPlayer.OpenGL
             public int textLen;
             public int buffering;
             public int bufferingPercent;
+            public bool seeking;
         }
 
         [StructLayout(LayoutKind.Sequential)]

@@ -645,8 +645,7 @@ namespace JuvoPlayer.OpenGL
                 _options.Hide();
                 Logger?.Info(
                     $"{(DateTime.Now - _lastKeyPressTime).TotalMilliseconds} ms of inactivity, hiding progress bar.");
-            }
-
+            }            
             fixed (byte* name = ResourceLoader.GetBytes(_resourceLoader.ContentList[_selectedTile].Title))
             {
                 DllImports.UpdatePlaybackControls(new DllImports.PlaybackData()
@@ -658,7 +657,8 @@ namespace JuvoPlayer.OpenGL
                     text = name,
                     textLen = _resourceLoader.ContentList[_selectedTile].Title.Length,
                     buffering = _bufferingInProgress ? 1 : 0,
-                    bufferingPercent = _bufferingProgress
+                    bufferingPercent = _bufferingProgress,
+                    seeking = (_seekLogic.IsSeekInProgress || _seekLogic.IsSeekAccumulationInProgress)
                 });
             }
         }
@@ -668,12 +668,29 @@ namespace JuvoPlayer.OpenGL
             return PlayerHandle?.SeekTo(to);
         }
 
+        private void ShowSeekInfo()
+        {
+            if (_seekLogic.IsSeekInProgress || _seekLogic.IsSeekAccumulationInProgress)
+            {
+                _bufferingInProgress = true;
+                _bufferingProgress = 100;
+            } else
+            {
+                _bufferingInProgress = false;
+                _bufferingProgress = 0;
+            }
+
+            _bufferingInProgress = true;
+            _bufferingProgress = 100;
+        }
+
         private void UpdateUI()
         {
             UpdateSubtitles();
-            UpdatePlaybackCompleted();
+            UpdatePlaybackCompleted();            
             UpdatePlaybackControls();
             UpdateMetrics();
+            ShowSeekInfo();
         }
     }
 }
