@@ -28,6 +28,7 @@
     </Content>
   </ItemGroup>
   <ItemGroup>
+    <Folder Include="lib\" />
     <Folder Include="res\fonts\" />
     <Folder Include="res\icons\" />
   </ItemGroup>
