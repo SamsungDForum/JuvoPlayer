@@ -69,7 +69,7 @@ namespace XamarinPlayer.Views
         public TimeSpan CurrentPositionPlayer => _playerService?.CurrentPosition ?? TimeSpan.Zero;
         public TimeSpan Duration => _playerService?.Duration ?? TimeSpan.Zero;
         public PlayerState State => _playerService?.State ?? PlayerState.Idle;
-        public bool IsSeekingSupported => _playerService?.IsSeekingSupported ?? false;        
+        public bool IsSeekingSupported => _playerService?.IsSeekingSupported ?? false;
 
         public PlayerView()
         {
@@ -536,7 +536,7 @@ namespace XamarinPlayer.Views
             if (suspendedPlayerState == PlayerState.Playing)
                 _playerService?.Start();
         }
-   
+
         private void ShowSeekInfo()
         {
             if (_seekLogic.IsSeekInProgress || _seekLogic.IsSeekAccumulationInProgress)
@@ -547,7 +547,7 @@ namespace XamarinPlayer.Views
             else
             {   
                 InfoTextLabel.Text = "";
-                InfoTextLabel.IsVisible = false;                                   
+                InfoTextLabel.IsVisible = false;
             }
         }
 

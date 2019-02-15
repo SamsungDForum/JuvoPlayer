@@ -651,14 +651,14 @@ namespace JuvoPlayer.OpenGL
                 DllImports.UpdatePlaybackControls(new DllImports.PlaybackData()
                 {
                     show = _progressBarShown ? 1 : 0,
-                    state = (int) (PlayerHandle?.State ?? PlayerState.Idle),
-                    currentTime = (int) CurrentPositionUI.TotalMilliseconds,
-                    totalTime = (int) Duration.TotalMilliseconds,
+                    state = (int)(PlayerHandle?.State ?? PlayerState.Idle),
+                    currentTime = (int)CurrentPositionUI.TotalMilliseconds,
+                    totalTime = (int)Duration.TotalMilliseconds,
                     text = name,
                     textLen = _resourceLoader.ContentList[_selectedTile].Title.Length,
                     buffering = _bufferingInProgress ? 1 : 0,
                     bufferingPercent = _bufferingProgress,
-                    seeking = (_seekLogic.IsSeekInProgress || _seekLogic.IsSeekAccumulationInProgress)
+                    seeking = (_seekLogic.IsSeekInProgress || _seekLogic.IsSeekAccumulationInProgress) ? 1 : 0
                 });
             }
         }
