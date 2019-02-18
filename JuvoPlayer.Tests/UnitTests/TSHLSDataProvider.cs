@@ -15,7 +15,11 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-﻿using System;
+using System;
+using System.Linq;
+using System.Reactive.Linq;
+using System.Reactive.Threading.Tasks;
+using System.Threading.Tasks;
 using JuvoPlayer.Common;
 using JuvoPlayer.DataProviders.HLS;
 using JuvoPlayer.Demuxers;
@@ -27,7 +31,6 @@ namespace JuvoPlayer.Tests.UnitTests
     [TestFixture]
     class TSHLSDataProvider
     {
-
         [Test]
         public void GetStreamsDescription_ClipWithNoSubtitles_ReturnsEmptyList()
         {
@@ -52,6 +55,23 @@ namespace JuvoPlayer.Tests.UnitTests
             };
 
             Assert.Throws<ArgumentException>(() => dataProvider.OnChangeActiveStream(streamDescription));
+        }
+
+        [Test]
+        public async Task PacketReady_DemuxerSendsNullPacket_ProducesEOSPackets()
+        {
+            var demuxerStub = Substitute.For<IDemuxerController>();
+            demuxerStub.PacketReady()
+                .Returns(Observable.Return<Packet>(null));
+            var clipDefinition = new ClipDefinition();
+            var dataProvider = new HLSDataProvider(demuxerStub, clipDefinition);
+
+            var packets = await dataProvider.PacketReady()
+                .ToList()
+                .ToTask();
+
+            Assert.That(packets.Count, Is.EqualTo(2));
+            Assert.That(packets.All(p => p.IsEOS), Is.True);
         }
     }
 }
