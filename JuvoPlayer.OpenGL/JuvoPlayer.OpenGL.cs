@@ -104,7 +104,7 @@ namespace JuvoPlayer.OpenGL
             var payloadParser = new PayloadParser(e.ReceivedAppControl);
             if (!payloadParser.TryGetUrl(out var url))
                 return;
-            HandleExternalTileSelection(url);     
+            HandleExternalTileSelection(url);
 
             base.OnAppControlReceived(e);
         }
@@ -646,19 +646,19 @@ namespace JuvoPlayer.OpenGL
                 Logger?.Info(
                     $"{(DateTime.Now - _lastKeyPressTime).TotalMilliseconds} ms of inactivity, hiding progress bar.");
             }
-
             fixed (byte* name = ResourceLoader.GetBytes(_resourceLoader.ContentList[_selectedTile].Title))
             {
                 DllImports.UpdatePlaybackControls(new DllImports.PlaybackData()
                 {
                     show = _progressBarShown ? 1 : 0,
-                    state = (int) (PlayerHandle?.State ?? PlayerState.Idle),
-                    currentTime = (int) CurrentPositionUI.TotalMilliseconds,
-                    totalTime = (int) Duration.TotalMilliseconds,
+                    state = (int)(PlayerHandle?.State ?? PlayerState.Idle),
+                    currentTime = (int)CurrentPositionUI.TotalMilliseconds,
+                    totalTime = (int)Duration.TotalMilliseconds,
                     text = name,
                     textLen = _resourceLoader.ContentList[_selectedTile].Title.Length,
                     buffering = _bufferingInProgress ? 1 : 0,
-                    bufferingPercent = _bufferingProgress
+                    bufferingPercent = _bufferingProgress,
+                    seeking = (_seekLogic.IsSeekInProgress || _seekLogic.IsSeekAccumulationInProgress) ? 1 : 0
                 });
             }
         }

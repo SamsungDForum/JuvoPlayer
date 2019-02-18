@@ -44,7 +44,7 @@ namespace XamarinPlayer.Views
         private int _hideTime;
         private bool _isPageDisappeared;
         private bool _isShowing;
-        private bool _hasFinished;
+        private bool _hasFinished;        
 
         public static readonly BindableProperty ContentSourceProperty = BindableProperty.Create("ContentSource", typeof(object), typeof(PlayerView));
         private PlayerState? suspendedPlayerState;
@@ -476,6 +476,7 @@ namespace XamarinPlayer.Views
 
                 UpdatePlayTime();
                 UpdateCueTextLabel();
+                ShowSeekInfo();
 
                 if (Settings.IsVisible)
                     return;
@@ -536,13 +537,27 @@ namespace XamarinPlayer.Views
                 _playerService?.Start();
         }
 
-        private void Forward()
+        private void ShowSeekInfo()
         {
+            if (_seekLogic.IsSeekInProgress || _seekLogic.IsSeekAccumulationInProgress)
+            {
+                InfoTextLabel.Text = "Seeking...";
+                InfoTextLabel.IsVisible = true;
+            }
+            else
+            {   
+                InfoTextLabel.Text = "";
+                InfoTextLabel.IsVisible = false;
+            }
+        }
+
+        private void Forward()
+        {            
             _seekLogic.SeekForward();
         }
 
         private void Rewind()
-        {
+        {         
             _seekLogic.SeekBackward();
         }
 
