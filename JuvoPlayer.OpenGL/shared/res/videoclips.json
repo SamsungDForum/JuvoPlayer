@@ -132,10 +132,10 @@
     "description": "Media Presentation from DASH-IF live simulator. URI: http://vm2.dashif.org/livesim-dev/segtimeline_1/testpic_2s/Manifest.mpd "
   },
   {
-    "title": "Live streamed movies",
-    "url": "http://b028.wpc.azureedge.net/80B028/Samples/a38e6323-95e9-4f1f-9b38-75eba91704e4/5f2ce531-d508-49fb-8152-647eba422aec.ism/Manifest(format=mpd-time-csf)",
+    "title": "Live streamed movie",
+    "url": "http://wowzaec2demo.streamlock.net/live/bigbuckbunny/manifest_mvtime.mpd",
     "type": "dash",
-    "poster": "elephantsdream.jpg",
-    "description": "Microsoft Azure Media Services Live Stream. For more info, visit http://aka.ms/LiveStreamBlog. URI: http://b028.wpc.azureedge.net/80B028/Samples/a38e6323-95e9-4f1f-9b38-75eba91704e4/5f2ce531-d508-49fb-8152-647eba422aec.ism/Manifest(format=mpd-time-csf)"
+    "poster": "bunny.jpg",
+    "description": "Wowza Streaming Engine 4 Subscription Edition 4.7.5.01 build21752. For more info, visit https://www.wowza.com/. URI: http://wowzaec2demo.streamlock.net/live/bigbuckbunny/manifest_mvtime.mpd"
   }
 ]
