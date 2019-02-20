@@ -20,7 +20,6 @@ using System.Collections.Generic;
 using System.Reactive;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
-using JuvoLogger;
 using JuvoPlayer.Common;
 using JuvoPlayer.Demuxers;
 using JuvoPlayer.Subtitles;
@@ -29,8 +28,6 @@ namespace JuvoPlayer.DataProviders.RTSP
 {
     internal class RTSPDataProvider : IDataProvider
     {
-        private static readonly ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
-
         private readonly IDemuxerController demuxerController;
         private readonly IRTSPClient rtspClient;
         private readonly ClipDefinition currentClip;
