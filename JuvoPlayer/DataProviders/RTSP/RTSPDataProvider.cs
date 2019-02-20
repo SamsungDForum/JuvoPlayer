@@ -19,6 +19,8 @@ using System;
 using System.Collections.Generic;
 using System.Reactive;
 using System.Reactive.Linq;
+using System.Reactive.Subjects;
+using JuvoLogger;
 using JuvoPlayer.Common;
 using JuvoPlayer.Demuxers;
 using JuvoPlayer.Subtitles;
@@ -27,16 +29,19 @@ namespace JuvoPlayer.DataProviders.RTSP
 {
     internal class RTSPDataProvider : IDataProvider
     {
+        private static readonly ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
+
         private readonly IDemuxerController demuxerController;
-        private readonly IRTSPClient rtpClient;
+        private readonly IRTSPClient rtspClient;
         private readonly ClipDefinition currentClip;
+        private readonly Subject<string> rtspErrorSubject = new Subject<string>();
 
         public RTSPDataProvider(IDemuxerController demuxerController, IRTSPClient rtpClient, ClipDefinition currentClip)
         {
             this.demuxerController = demuxerController ??
                                      throw new ArgumentNullException(nameof(demuxerController),
                                          "demuxerController cannot be null");
-            this.rtpClient =
+            this.rtspClient =
                 rtpClient ?? throw new ArgumentNullException(nameof(rtpClient), "rtpClient cannot be null");
             this.currentClip =
                 currentClip ?? throw new ArgumentNullException(nameof(currentClip), "clip cannot be null");
@@ -69,7 +74,8 @@ namespace JuvoPlayer.DataProviders.RTSP
 
         public IObservable<string> StreamError()
         {
-            return demuxerController.DemuxerError();
+            return demuxerController.DemuxerError()
+                .Merge(rtspErrorSubject.AsObservable());
         }
 
         public IObservable<Unit> BufferingStarted()
@@ -97,10 +103,10 @@ namespace JuvoPlayer.DataProviders.RTSP
             switch (state)
             {
                 case PlayerState.Paused:
-                    rtpClient?.Pause();
+                    rtspClient?.Pause();
                     break;
                 case PlayerState.Playing:
-                    rtpClient?.Play();
+                    rtspClient?.Play();
                     break;
             }
         }
@@ -126,14 +132,21 @@ namespace JuvoPlayer.DataProviders.RTSP
 
         public void Start()
         {
-            if (rtpClient == null)
+            if (rtspClient == null)
                 return;
 
             // Start demuxer before client. Demuxer start clears
             // underlying buffer. We do not want that to happen after client
             // puts something in there.
             demuxerController.StartForEs();
-            rtpClient.Start(currentClip);
+            try
+            {
+                rtspClient.Start(currentClip);
+            }
+            catch (Exception e)
+            {
+                rtspErrorSubject.OnNext(e.Message);
+            }
         }
 
         public Cue CurrentCue { get; }
@@ -148,7 +161,7 @@ namespace JuvoPlayer.DataProviders.RTSP
 
         public void Dispose()
         {
-            rtpClient?.Stop();
+            rtspClient?.Stop();
             demuxerController.Dispose();
         }
 

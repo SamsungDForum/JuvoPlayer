@@ -22,7 +22,6 @@ using System.Net.Sockets;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
 using System.Threading;
-using System.Threading.Tasks;
 using JuvoPlayer.Common;
 using JuvoLogger;
 using Rtsp.Messages;
@@ -92,39 +91,44 @@ namespace JuvoPlayer.DataProviders.RTSP
 
             url = clip.Url;
 
+            Uri uri = new Uri(url);
+            TcpClient tcpClient = new TcpClient();
+
+            IAsyncResult asyncResult = tcpClient.BeginConnect(uri.Host, uri.Port > 0 ? uri.Port : 554, null, null);
+            WaitHandle waitHandle = asyncResult.AsyncWaitHandle;
             try
             {
-                Uri uri = new Uri(url);
-                TcpClient tcpClient = new TcpClient();
-                var task = Task.Run(async () => { await tcpClient.ConnectAsync(uri.Host, uri.Port > 0 ? uri.Port : 554); });
-                task.Wait();
-
-                rtspSocket = new Rtsp.RtspTcpTransport(tcpClient);
-                if (rtspSocket.Connected == false)
+                if (!asyncResult.AsyncWaitHandle.WaitOne(TimeSpan.FromSeconds(2), false))
                 {
-                    Logger.Error("Did not connect");
-                    return;
+                    tcpClient.Close();
+                    throw new TimeoutException();
                 }
 
-                // Connect a RTSP Listener to the RTSP Socket (or other Stream) to send RTSP messages and listen for RTSP replies
-                rtspListener = new Rtsp.RtspListener(rtspSocket);
-
-                rtspListener.MessageReceived += RtspMessageReceived;
-                rtspListener.DataReceived += RtpDataReceived;
-
-                rtspListener.Start();
-
-                RtspRequest optionsMessage = new RtspRequestOptions
-                {
-                    RtspUri = new Uri(url)
-                };
-
-                rtspListener.SendMessage(optionsMessage);
+                tcpClient.EndConnect(asyncResult);
             }
-            catch (Exception e)
+            finally
             {
-                Logger.Error(e, "Did not connect");
+                waitHandle.Close();
             }
+
+            rtspSocket = new Rtsp.RtspTcpTransport(tcpClient);
+
+            if (rtspSocket.Connected == false)
+                throw new Exception("RTSP server not available at this time.");
+
+            rtspListener = new Rtsp.RtspListener(rtspSocket);
+
+            rtspListener.MessageReceived += RtspMessageReceived;
+            rtspListener.DataReceived += RtpDataReceived;
+
+            rtspListener.Start();
+
+            RtspRequest optionsMessage = new RtspRequestOptions
+            {
+                RtspUri = new Uri(url)
+            };
+
+            rtspListener.SendMessage(optionsMessage);
         }
 
         public void Stop()
@@ -152,18 +156,18 @@ namespace JuvoPlayer.DataProviders.RTSP
 
         public void RtpDataReceived(object sender, Rtsp.RtspChunkEventArgs e)
         {
-            RtspData rtpData = e.Message as RtspData;
+            RtspData rtspData = e.Message as RtspData;
 
             // Check which channel the Data was received on.
             // eg the Video Channel, the Video Control Channel (RTCP)
             // In the future would also check the Audio Channel and Audio Control Channel
-            if (rtpData.Channel == videoRTCPChannel)
+            if (rtspData.Channel == videoRTCPChannel)
             {
-                Logger.Info("Received a RTCP message on channel " + rtpData.Channel);
+                Logger.Info("Received a RTCP message on channel " + rtspData.Channel);
                 return;
             }
 
-            if (rtpData.Channel == videoDataChannel)
+            if (rtspData.Channel == videoDataChannel)
                 ProcessRTPVideo(e);
         }
 
@@ -229,10 +233,10 @@ namespace JuvoPlayer.DataProviders.RTSP
         private void RtspMessageReceived(object sender, Rtsp.RtspChunkEventArgs e)
         {
             RtspResponse message = e.Message as RtspResponse;
-            if (message.OriginalRequest == null)
+            if (message?.OriginalRequest == null)
                 return;
 
-            Logger.Info("Received " + message.OriginalRequest.ToString());
+            Logger.Info("Received " + message.OriginalRequest);
 
             if (message.OriginalRequest is RtspRequestOptions)
             {

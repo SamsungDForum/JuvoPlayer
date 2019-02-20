@@ -41,6 +41,7 @@ namespace JuvoPlayer.Player
 
         private readonly CompositeDisposable subscriptions;
         private readonly Subject<int> bufferingProgressSubject = new Subject<int>();
+        private readonly Subject<string> streamErrorSubject = new Subject<string>();
 
         private readonly ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
 
@@ -71,7 +72,7 @@ namespace JuvoPlayer.Player
 
         public IObservable<string> PlaybackError()
         {
-            return player.PlaybackError();
+            return player.PlaybackError().Merge(streamErrorSubject);
         }
 
         public IObservable<TimeSpan> TimeUpdated()
@@ -175,7 +176,7 @@ namespace JuvoPlayer.Player
 
         public void OnStreamError(string errorMessage)
         {
-            // TODO: Implement or remove
+            streamErrorSubject.OnNext(errorMessage);
         }
 
         public void OnSetPlaybackRate(float rate)
