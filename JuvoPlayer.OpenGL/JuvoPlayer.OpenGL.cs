@@ -16,7 +16,6 @@
  */
 
 using System;
-using System.Diagnostics;
 using System.IO;
 using JuvoPlayer.Common;
 using JuvoLogger;
@@ -201,7 +200,7 @@ namespace JuvoPlayer.OpenGL
         private static unsafe void SetMenuFooter()
         {
             string footer =
-                $"JuvoPlayer {typeof(Program).Assembly.GetName().Version}, OpenGL Native #{DllImports.OpenGLLibVersion():x}, Samsung R&D Poland 2017-{DateTime.Now.Year}";
+                $"JuvoPlayer v{typeof(Program).Assembly.GetName().Version.Major}.{typeof(Program).Assembly.GetName().Version.Minor}.{typeof(Program).Assembly.GetName().Version.Build}, OpenGL Native #{DllImports.OpenGLLibVersion():x}, Samsung R&D Poland 2017-{DateTime.Now.Year}";
             fixed (byte* f = ResourceLoader.GetBytes(footer))
                 DllImports.SetFooter(f, footer.Length);
         }

@@ -33,6 +33,8 @@ namespace JuvoPlayer.DataProviders.RTSP
         private readonly ClipDefinition currentClip;
         private readonly Subject<string> rtspErrorSubject = new Subject<string>();
 
+        public Cue CurrentCue { get; }
+
         public RTSPDataProvider(IDemuxerController demuxerController, IRTSPClient rtpClient, ClipDefinition currentClip)
         {
             this.demuxerController = demuxerController ??
@@ -66,7 +68,16 @@ namespace JuvoPlayer.DataProviders.RTSP
 
         public IObservable<Packet> PacketReady()
         {
-            return demuxerController.PacketReady();
+            return demuxerController.PacketReady()
+                .SelectMany(packet =>
+                {
+                    if (packet != null)
+                        return Observable.Return(packet);
+                    // found empty packet which means EOS. We need to send two fake
+                    // eos packets, one for audio and one for video
+                    return Observable.Return(Packet.CreateEOS(StreamType.Audio))
+                        .Merge(Observable.Return(Packet.CreateEOS(StreamType.Video)));
+                });
         }
 
         public IObservable<string> StreamError()
@@ -145,8 +156,6 @@ namespace JuvoPlayer.DataProviders.RTSP
                 rtspErrorSubject.OnNext(e.Message);
             }
         }
-
-        public Cue CurrentCue { get; }
 
         public void OnStopped()
         {
