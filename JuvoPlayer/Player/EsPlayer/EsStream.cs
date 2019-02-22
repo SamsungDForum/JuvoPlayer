@@ -365,7 +365,7 @@ namespace JuvoPlayer.Player.EsPlayer
         }
 
 
-        private bool ProcessPacket(Packet packet, CancellationToken transferToken)
+        private async Task<bool> ProcessPacket(Packet packet, CancellationToken transferToken)
         {
             var continueProcessing = true;
 
@@ -392,7 +392,7 @@ namespace JuvoPlayer.Player.EsPlayer
                     break;
 
                 case EncryptedPacket encryptedPacket:
-                    PushEncryptedPacket(encryptedPacket, transferToken);
+                    await PushEncryptedPacket(encryptedPacket, transferToken);
                     break;
 
                 case Packet dataPacket when packet.IsEOS == false:
@@ -424,7 +424,7 @@ namespace JuvoPlayer.Player.EsPlayer
         /// to ESPlayer
         /// </summary>
         /// <param name="token">CancellationToken</param>
-        private void TransferTask(CancellationToken token)
+        private async void TransferTask(CancellationToken token)
         {
             logger.Info($"{streamType}: Transfer task started");
 
@@ -438,7 +438,7 @@ namespace JuvoPlayer.Player.EsPlayer
 
             try
             {
-                bool repeat;
+                Packet packet;
                 do
                 {
                     if (haltTransfer)
@@ -446,7 +446,7 @@ namespace JuvoPlayer.Player.EsPlayer
                         var delay = currentTransfer - (DateTime.Now - startTime);
 
                         logger.Info(
-                            $"{streamType}: Transfer task halted. {currentTransfer}/{(float) dataLength / 1024} kB pushed");
+                            $"{streamType}: Transfer task halted. {currentTransfer}/{(float)dataLength / 1024} kB pushed");
 
                         DelayTransfer(delay, token);
 
@@ -456,12 +456,12 @@ namespace JuvoPlayer.Player.EsPlayer
                         currentTransfer = TimeSpan.Zero;
                     }
 
-                    var packet = packetStorage.GetPacket(streamType, token);
+                    packet = packetStorage.GetPacket(streamType, token);
 
                     // Ignore non data packets (EOS/BufferChange/etc.)
                     if (packet.Data != null)
                     {
-                        dataLength += (ulong) packet.Data.Length;
+                        dataLength += (ulong)packet.Data.Length;
 
                         if (firstPts.HasValue)
                         {
@@ -477,9 +477,7 @@ namespace JuvoPlayer.Player.EsPlayer
                         }
                     }
 
-                    repeat = ProcessPacket(packet, token);
-                    repeat &= !token.IsCancellationRequested;
-                } while (repeat);
+                } while (await ProcessPacket(packet, token));
             }
             catch (InvalidOperationException e)
             {
@@ -515,19 +513,22 @@ namespace JuvoPlayer.Player.EsPlayer
             }
 
             logger.Info(
-                $"{streamType}: Transfer task terminated. {currentTransfer}/{(float) dataLength / 1024} kB pushed");
+                $"{streamType}: Transfer task terminated. {currentTransfer}/{(float)dataLength / 1024} kB pushed");
 
             if (invokeError)
                 playbackErrorSubject.OnNext("Playback Error");
         }
 
         /// <summary>
-        /// Pushes data packet to ESPlayer
+        /// Pushes unencrypted data packet to ESPlayer
         /// </summary>
         /// <param name="dataPacket">Packet</param>
         /// <param name="token">CancellationToken</param>
         /// <exception cref="PacketSubmitException">
         /// Exception thrown on submit error
+        /// </exception>
+        /// <exception cref="OperationCanceledException">
+        /// Exception thrown on submit cancellation
         /// </exception>
         private void PushUnencryptedPacket(Packet dataPacket, CancellationToken token)
         {
@@ -541,12 +542,23 @@ namespace JuvoPlayer.Player.EsPlayer
                 var res = player.SubmitPacket(esPacket);
                 doRetry = ShouldRetry(res, token);
                 logger.Debug($"{esPacket.type}: ({!doRetry}/{res}) PTS: {esPacket.pts} Duration: {esPacket.duration}");
-            } while (doRetry && !token.IsCancellationRequested);
+            } while (doRetry);
         }
 
-        private void PushEncryptedPacket(EncryptedPacket dataPacket, CancellationToken token)
+        /// <summary>
+        /// Pushes encrypted data packet to ESPlayer.
+        /// Decryption is performed prior to packet push.
+        /// </summary>
+        /// <param name="dataPacket">Packet</param>
+        /// <param name="token">CancellationToken</param>
+        /// <exception cref="PacketSubmitException">
+        /// Exception thrown on submit error
+        /// </exception>
+        /// <exception cref="OperationCanceledException">
+        /// Exception thrown on submit cancellation
+        private async Task PushEncryptedPacket(EncryptedPacket dataPacket, CancellationToken token)
         {
-            using (var decryptedPacket = dataPacket.Decrypt(token) as DecryptedEMEPacket)
+            using (var decryptedPacket = await dataPacket.Decrypt(token) as DecryptedEMEPacket)
             {
                 if (decryptedPacket == null)
                 {
@@ -561,16 +573,15 @@ namespace JuvoPlayer.Player.EsPlayer
                 do
                 {
                     var res = player.SubmitPacket(esPacket);
-
-                    // reset unmanaged handle on successful submit
-                    if (res == ESPlayer.SubmitStatus.Success)
-                        decryptedPacket.CleanHandle();
-
                     doRetry = ShouldRetry(res, token);
-
-                    logger.Debug(
+                    logger.Info(
                         $"{esPacket.type}: ({!doRetry}/{res}) PTS: {esPacket.pts.FromNano()} Duration: {esPacket.duration.FromNano()} Handle: {esPacket.handle} HandleSize: {esPacket.handleSize}");
-                } while (doRetry && !token.IsCancellationRequested);
+                } while (doRetry);
+
+                // Handle passed to player. Mark it as clean so it does not
+                // get released during dispose process.
+                // Terminal submit failures will throw exception
+                decryptedPacket.CleanHandle();
             }
         }
 
