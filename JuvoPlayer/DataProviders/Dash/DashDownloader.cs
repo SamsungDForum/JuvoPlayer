@@ -20,9 +20,12 @@ using JuvoPlayer.Common;
 using System;
 using System.Diagnostics;
 using System.Net;
+using System.Net.Http;
+using System.Net.Http.Headers;
 using System.Runtime.ExceptionServices;
 using System.Threading;
 using System.Threading.Tasks;
+using Overby.Extensions.AsyncBinaryReaderWriter;
 
 namespace JuvoPlayer.DataProviders.Dash
 {
@@ -110,6 +113,7 @@ namespace JuvoPlayer.DataProviders.Dash
         public bool IgnoreError { get; set; }
         public uint? SegmentId { get; set; }
         public StreamType StreamType { get; set; }
+        public Action<byte[]> DataDownloaded { get; set; }
     }
 
     internal class DownloadResponse
@@ -117,7 +121,6 @@ namespace JuvoPlayer.DataProviders.Dash
         public MpdParser.Node.Dynamic.Segment DownloadSegment { get; set; }
         public uint? SegmentId { get; set; }
         public StreamType StreamType { get; set; }
-        public byte[] Data { get; set; }
     }
 
     internal class DashDownloaderException : Exception
@@ -146,6 +149,8 @@ namespace JuvoPlayer.DataProviders.Dash
         private readonly IThroughputHistory throughputHistory;
 
         private int downloadErrorCount;
+
+        private static readonly HttpClient client = new HttpClient();
 
         private DashDownloader(DownloadRequest downloadRequest, CancellationToken cancellationToken,
             IThroughputHistory throughputHistory)
@@ -215,39 +220,70 @@ namespace JuvoPlayer.DataProviders.Dash
         {
             cancellationToken.ThrowIfCancellationRequested();
 
-            using (var dataDownloader = new WebClientEx())
-            using (cancellationToken.Register(dataDownloader.CancelAsync))
+            Logger.Info(
+                $"{request.StreamType}: Segment: {SegmentId(request.SegmentId)} Requested. URL: {request.DownloadSegment.Url} Range: {downloadRange}");
+
+            using (var httpRequest = CreateHttpRequest())
             {
-                if (downloadRange != null)
-                    dataDownloader.SetRange(downloadRange.Low, downloadRange.High);
-
-                cancellationToken.ThrowIfCancellationRequested();
-
-                Logger.Info(
-                    $"{request.StreamType}: Segment: {SegmentId(request.SegmentId)} Requested. URL: {request.DownloadSegment.Url} Range: {downloadRange}");
-
-                long bytesReceived = 0;
-                dataDownloader.DownloadProgressChanged += (sender, args) => { bytesReceived = args.BytesReceived; };
-
-                Stopwatch watch = null;
+                var watch = Stopwatch.StartNew();
+                long totalBytesReceived = 0;
                 try
                 {
-                    watch = Stopwatch.StartNew();
-                    var data = await dataDownloader.DownloadDataTaskAsync(request.DownloadSegment.Url).ConfigureAwait(false);
-                    return new DownloadResponse
+                    using (var response = await client.SendAsync(httpRequest, HttpCompletionOption.ResponseHeadersRead,
+                        cancellationToken))
                     {
-                        StreamType = request.StreamType,
-                        DownloadSegment = request.DownloadSegment,
-                        SegmentId = request.SegmentId,
-                        Data = data
-                    };
+                        response.EnsureSuccessStatusCode();
+
+                        using (var stream = await response.Content.ReadAsStreamAsync())
+                        using (var reader = new AsyncBinaryReader(stream))
+                        {
+                            byte[] buffer;
+                            do
+                            {
+                                buffer = await ReadChunk(reader);
+                                PushChunk(buffer);
+                                totalBytesReceived += buffer.Length;
+                            } while (buffer.Length != 0);
+
+                            return CreateDownloadResponse();
+                        }
+                    }
                 }
                 finally
                 {
-                    if (watch != null)
-                        throughputHistory.Push((int) bytesReceived, watch.Elapsed);
+                    throughputHistory.Push((int) totalBytesReceived, watch.Elapsed);
                 }
             }
+        }
+
+        private HttpRequestMessage CreateHttpRequest()
+        {
+            var httpRequest = new HttpRequestMessage(HttpMethod.Get, request.DownloadSegment.Url);
+            if (downloadRange != null)
+                httpRequest.Headers.Range = new RangeHeaderValue(downloadRange.Low, downloadRange.High);
+            return httpRequest;
+        }
+
+        private async Task<byte[]> ReadChunk(AsyncBinaryReader reader)
+        {
+            const int chunkSize = 64 * 1024;
+            return await reader.ReadBytesAsync(chunkSize, cancellationToken);
+        }
+
+        private void PushChunk(byte[] buffer)
+        {
+            if (buffer.Length > 0)
+                request.DataDownloaded?.Invoke(buffer);
+        }
+
+        private DownloadResponse CreateDownloadResponse()
+        {
+            return new DownloadResponse
+            {
+                StreamType = request.StreamType,
+                DownloadSegment = request.DownloadSegment,
+                SegmentId = request.SegmentId
+            };
         }
 
         private int CalculateSleepTime()
