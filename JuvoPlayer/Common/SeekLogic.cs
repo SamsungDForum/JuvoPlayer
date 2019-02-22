@@ -33,7 +33,7 @@ namespace JuvoPlayer.Common
         private readonly double _defaultMaximumSeekIntervalPercentOfContentTotalTime = 1.0;
         private readonly TimeSpan _defaultSeekIntervalValueThreshold = TimeSpan.FromMilliseconds(200); // time between key events when key is being hold is ~100ms
         private readonly Stopwatch _seekStopwatch = new Stopwatch();
-        private TimeSpan _accumulatedSeekInterval;
+        private TimeSpan _targetSeekTime;
         private Task _seekDelay;
         private CancellationTokenSource _seekCancellationTokenSource;
 
@@ -49,7 +49,7 @@ namespace JuvoPlayer.Common
             IsSeekInProgress = false;
             IsSeekAccumulationInProgress = false;
             _seekStopwatch.Reset();
-            _accumulatedSeekInterval = TimeSpan.Zero;
+            _targetSeekTime = TimeSpan.Zero;
         }
 
         public void SeekForward()
@@ -90,7 +90,7 @@ namespace JuvoPlayer.Common
 
         private async void Seek(TimeSpan seekInterval)
         {
-            if (_client.IsSeekingSupported == false)
+            if (_client.IsSeekingSupported == false || IsSeekInProgress)
                 return;
 
             _seekCancellationTokenSource?.Cancel();
@@ -109,14 +109,15 @@ namespace JuvoPlayer.Common
         {
             if (IsSeekAccumulationInProgress)
             {
-                _accumulatedSeekInterval += seekInterval;
+                _targetSeekTime += seekInterval;
             }
             else
             {
-                _accumulatedSeekInterval = seekInterval;
+                _targetSeekTime = _client.CurrentPositionPlayer + seekInterval;
                 IsSeekAccumulationInProgress = true;
             }
-            _client.CurrentPositionUI += seekInterval;
+            _targetSeekTime = Clamp(_targetSeekTime, TimeSpan.Zero, _client.Duration);
+            _client.CurrentPositionUI = Clamp(_client.CurrentPositionUI + seekInterval, TimeSpan.Zero, _client.Duration);
         }
 
         private async Task ExecuteSeek()
@@ -126,8 +127,7 @@ namespace JuvoPlayer.Common
             if (IsStateSeekable(_client.State))
             {
                 IsSeekInProgress = true;
-                TimeSpan seekTargetTime = Clamp(_client.CurrentPositionPlayer + _accumulatedSeekInterval, TimeSpan.Zero, _client.Duration);
-                await _client.Seek(seekTargetTime);
+                await _client.Seek(_targetSeekTime);
                 IsSeekAccumulationInProgress = false;
                 IsSeekInProgress = false;
             }
