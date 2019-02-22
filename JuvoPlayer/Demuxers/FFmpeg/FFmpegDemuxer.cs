@@ -132,7 +132,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg
         {
             try
             {
-                const int bufferSize = 128 * 1024;
+                const int bufferSize = 32 * 1024;
                 ioContext = ffmpegGlue.AllocIOContext(bufferSize, ReadPacket);
                 ioContext.Seekable = false;
                 ioContext.WriteFlag = false;

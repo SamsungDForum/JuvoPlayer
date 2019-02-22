@@ -256,7 +256,9 @@ namespace JuvoPlayer.DataProviders.Dash
         {
             // Grab a copy (its a struct) of cancellation token, so one token is used throughout entire operation
             var cancelToken = cancellationTokenSource.Token;
-            downloadDataTask = CreateDownloadTask(segment, IsDynamic, currentSegmentId, cancelToken);
+            var chunkDownloadedHandler = new Action<byte[]>(bytes => { chunkReadySubject.OnNext(bytes); });
+            downloadDataTask = CreateDownloadTask(segment, IsDynamic, currentSegmentId, chunkDownloadedHandler,
+                cancelToken);
             processDataTask = downloadDataTask.ContinueWith(response =>
             {
                 bool shouldContinue;
@@ -294,7 +296,14 @@ namespace JuvoPlayer.DataProviders.Dash
             var cancelToken = cancellationTokenSource.Token;
             if (initStreamBytes == null || initReloadRequired)
             {
-                downloadDataTask = CreateDownloadTask(segment, true, null, cancelToken);
+                initStreamBytes = null;
+                var chunkDownloadedHandler = new Action<byte[]>(bytes =>
+                {
+                    AppendInitStreamBytes(bytes);
+                    chunkReadySubject.OnNext(bytes);
+                });
+
+                downloadDataTask = CreateDownloadTask(segment, true, null, chunkDownloadedHandler, cancelToken);
                 processDataTask = downloadDataTask.ContinueWith(response =>
                 {
                     var shouldContinue = true;
@@ -306,9 +315,12 @@ namespace JuvoPlayer.DataProviders.Dash
                         shouldContinue = false;
                     }
                     else if (response.IsCanceled)
+                    {
+                        initStreamBytes = null;
                         shouldContinue = false;
+                    }
                     else // always continue on successful download
-                        InitDataDownloaded(response.Result);
+                        InitDataDownloaded();
 
                     // throw exception so continuation wont run
                     if (!shouldContinue)
@@ -322,15 +334,26 @@ namespace JuvoPlayer.DataProviders.Dash
             else
             {
                 // Already have init segment. Push it down the pipeline & schedule next download
-                var initData = new DownloadResponse
-                {
-                    Data = initStreamBytes,
-                    SegmentId = null
-                };
-
                 LogInfo("Segment: INIT Reusing already downloaded data");
-                InitDataDownloaded(initData);
+                chunkReadySubject.OnNext(initStreamBytes);
+                InitDataDownloaded();
                 downloadCompletedSubject.OnNext(Unit.Default);
+            }
+        }
+
+        private void AppendInitStreamBytes(byte[] bytes)
+        {
+            if (initStreamBytes != null)
+            {
+                var newSize = initStreamBytes.Length + bytes.Length;
+                var newInitStreamBytes = new byte[newSize];
+                Buffer.BlockCopy(initStreamBytes, 0, newInitStreamBytes, 0, initStreamBytes.Length);
+                Buffer.BlockCopy(bytes, 0, newInitStreamBytes, initStreamBytes.Length, bytes.Length);
+                initStreamBytes = newInitStreamBytes;
+            }
+            else
+            {
+                initStreamBytes = bytes;
             }
         }
 
@@ -343,7 +366,6 @@ namespace JuvoPlayer.DataProviders.Dash
         {
             if (cancellationTokenSource.IsCancellationRequested)
                 return false;
-            chunkReadySubject.OnNext(responseResult.Data);
             var segment = responseResult.DownloadSegment;
             lastDownloadSegmentTimeRange = segment.Period.Copy();
             bufferTime = segment.Period.Start + segment.Period.Duration - (trimOffset ?? TimeSpan.Zero);
@@ -383,15 +405,11 @@ namespace JuvoPlayer.DataProviders.Dash
             buffering = false;
         }
 
-        private void InitDataDownloaded(DownloadResponse responseResult)
+        private void InitDataDownloaded()
         {
-            if (responseResult.Data != null)
-                chunkReadySubject.OnNext(responseResult.Data);
-
             // Assign initStreamBytes AFTER it has been pushed down the shared buffer.
             // When issuing EOS, initStreamBytes will be checked for NULLnes.
             // We do not want to send EOS before init data - will kill demuxer.
-            initStreamBytes = responseResult.Data;
             initInProgress = false;
             LogInfo("Segment: INIT enqueued.");
         }
@@ -566,7 +584,7 @@ namespace JuvoPlayer.DataProviders.Dash
         }
 
         private Task<DownloadResponse> CreateDownloadTask(Segment segment, bool ignoreError, uint? segmentId,
-            CancellationToken cancelToken)
+            Action<byte[]> chunkDownloadedHandler, CancellationToken cancelToken)
         {
             return Task.Run(async () =>
             {
@@ -577,7 +595,8 @@ namespace JuvoPlayer.DataProviders.Dash
                     DownloadSegment = segment,
                     IgnoreError = ignoreError,
                     SegmentId = segmentId,
-                    StreamType = streamType
+                    StreamType = streamType,
+                    DataDownloaded = chunkDownloadedHandler
                 };
                 var timeoutCancellationTokenSource = new CancellationTokenSource();
                 if (timeout != TimeSpan.MaxValue)
