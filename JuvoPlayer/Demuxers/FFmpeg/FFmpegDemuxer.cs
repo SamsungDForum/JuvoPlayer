@@ -40,6 +40,9 @@ namespace JuvoPlayer.Demuxers.FFmpeg
         private ChunksBuffer buffer;
         private TaskCompletionSource<bool> completionSource;
 
+        private const int BufferSize = 64 * 1024; // 32kB seems to be "low level standard", but content downloading pipeline works better for 64kB
+        private const int ProbeSize = 32 * 1024; // higher values may cause problems when probing certain kinds of content (assert "len >= s->orig_buffer_size" in aviobuf)
+
         public FFmpegDemuxer(IFFmpegGlue ffmpegGlue)
         {
             this.ffmpegGlue = ffmpegGlue;
@@ -71,7 +74,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg
             try
             {
                 formatContext = ffmpegGlue.AllocFormatContext();
-                formatContext.ProbeSize = 128 * 1024;
+                formatContext.ProbeSize = ProbeSize;
                 formatContext.MaxAnalyzeDuration = TimeSpan.FromSeconds(10);
                 formatContext.Open(url);
             }
@@ -132,13 +135,12 @@ namespace JuvoPlayer.Demuxers.FFmpeg
         {
             try
             {
-                const int bufferSize = 32 * 1024;
-                ioContext = ffmpegGlue.AllocIOContext(bufferSize, ReadPacket);
+                ioContext = ffmpegGlue.AllocIOContext(BufferSize, ReadPacket);
                 ioContext.Seekable = false;
                 ioContext.WriteFlag = false;
 
                 formatContext = ffmpegGlue.AllocFormatContext();
-                formatContext.ProbeSize = bufferSize;
+                formatContext.ProbeSize = ProbeSize;
                 formatContext.MaxAnalyzeDuration = TimeSpan.FromSeconds(10);
                 formatContext.AVIOContext = ioContext;
                 formatContext.Open();
