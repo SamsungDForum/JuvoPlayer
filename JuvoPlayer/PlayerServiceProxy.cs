@@ -19,7 +19,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Reactive;
 using System.Threading.Tasks;
 using JuvoPlayer.Common;
 using Nito.AsyncEx;
@@ -95,11 +94,6 @@ namespace JuvoPlayer
         public IObservable<string> PlaybackError()
         {
             return proxied.PlaybackError();
-        }
-
-        public IObservable<Unit> SeekCompleted()
-        {
-            return proxied.SeekCompleted();
         }
 
         public IObservable<int> BufferingProgress()

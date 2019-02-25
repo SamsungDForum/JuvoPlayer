@@ -61,7 +61,6 @@ namespace JuvoPlayer.Player.EsPlayer
         // event callbacks
         private readonly Subject<TimeSpan> timeUpdatedSubject = new Subject<TimeSpan>();
         private readonly Subject<string> playbackErrorSubject = new Subject<string>();
-        private readonly Subject<Unit> seekCompletedSubject = new Subject<Unit>();
         private readonly Subject<SeekArgs> seekStartedSubject = new Subject<SeekArgs>();
         private readonly Subject<PlayerState> stateChangedSubject = new Subject<PlayerState>();
 
@@ -455,11 +454,6 @@ namespace JuvoPlayer.Player.EsPlayer
             return timeUpdatedSubject.AsObservable();
         }
 
-        public IObservable<Unit> SeekCompleted()
-        {
-            return seekCompletedSubject.AsObservable();
-        }
-
         private async Task Prebuffer(CancellationToken token)
         {
             try
@@ -674,14 +668,6 @@ namespace JuvoPlayer.Player.EsPlayer
                 logger.Error(e);
                 playbackErrorSubject.OnNext("Seek Failed");
             }
-            finally
-            {
-                // Always notify UI on seek end regardless of seek status
-                // to unblock it for further seeks ops.
-                // TODO: Remove SeekCompleted event. Return Task to PlayerController/PlayerService.
-                if (!token.IsCancellationRequested)
-                    seekCompletedSubject.OnNext(Unit.Default);
-            }
         }
 
         /// <summary>
@@ -883,7 +869,6 @@ namespace JuvoPlayer.Player.EsPlayer
         private void DisposeAllSubjects()
         {
             playbackErrorSubject.Dispose();
-            seekCompletedSubject.Dispose();
             seekStartedSubject.Dispose();
             timeUpdatedSubject.Dispose();
         }
