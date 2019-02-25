@@ -16,7 +16,6 @@
  */
 
 using System;
-using System.Reactive;
 using System.Threading.Tasks;
 using JuvoPlayer.Common;
 
@@ -27,7 +26,6 @@ namespace JuvoPlayer.Player
         IObservable<string> PlaybackError();
         IObservable<TimeSpan> TimeUpdated();
         IObservable<SeekArgs> SeekStarted();
-        IObservable<Unit> SeekCompleted();
         IObservable<PlayerState> StateChanged();
 
         void Pause();
