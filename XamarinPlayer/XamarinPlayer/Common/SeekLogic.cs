@@ -118,7 +118,7 @@ namespace XamarinPlayer.Common
                 IsSeekAccumulationInProgress = true;
             }
             _targetSeekTime = Clamp(_targetSeekTime, TimeSpan.Zero, _client.Duration);
-            _client.CurrentPositionUI = Clamp(_client.CurrentPositionUI + seekInterval, TimeSpan.Zero, _client.Duration);
+            _client.CurrentPositionUI = _targetSeekTime;
         }
 
         private async Task ExecuteSeek()
