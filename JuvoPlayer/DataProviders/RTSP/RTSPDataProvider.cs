@@ -110,11 +110,6 @@ namespace JuvoPlayer.DataProviders.RTSP
             throw new NotImplementedException();
         }
 
-        public void OnSeekCompleted()
-        {
-            throw new NotImplementedException();
-        }
-
         public bool IsSeekingSupported()
         {
             return false;
