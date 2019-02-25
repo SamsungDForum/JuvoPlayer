@@ -568,12 +568,6 @@ namespace JuvoPlayer.Player.EsPlayer
         {
             using (var decryptedPacket = await dataPacket.Decrypt(token) as DecryptedEMEPacket)
             {
-                if (decryptedPacket == null)
-                {
-                    logger.Error($"{dataPacket.StreamType}: Non an EME Packet!");
-                    return;
-                }
-
                 var esPacket = decryptedPacket.ESDecryptedPacket();
 
                 // Continue pushing packet till success or terminal failure
