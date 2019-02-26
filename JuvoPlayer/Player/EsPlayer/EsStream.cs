@@ -365,7 +365,7 @@ namespace JuvoPlayer.Player.EsPlayer
         }
 
 
-        private bool ProcessPacket(Packet packet, CancellationToken transferToken)
+        private async Task<bool> ProcessPacket(Packet packet, CancellationToken transferToken)
         {
             var continueProcessing = true;
 
@@ -392,7 +392,7 @@ namespace JuvoPlayer.Player.EsPlayer
                     break;
 
                 case EncryptedPacket encryptedPacket:
-                    PushEncryptedPacket(encryptedPacket, transferToken);
+                    await PushEncryptedPacket(encryptedPacket, transferToken);
                     break;
 
                 case Packet dataPacket when packet.IsEOS == false:
@@ -424,7 +424,7 @@ namespace JuvoPlayer.Player.EsPlayer
         /// to ESPlayer
         /// </summary>
         /// <param name="token">CancellationToken</param>
-        private void TransferTask(CancellationToken token)
+        private async void TransferTask(CancellationToken token)
         {
             logger.Info($"{streamType}: Transfer task started");
 
@@ -438,7 +438,7 @@ namespace JuvoPlayer.Player.EsPlayer
 
             try
             {
-                bool repeat;
+                Packet packet;
                 do
                 {
                     if (haltTransfer)
@@ -446,7 +446,7 @@ namespace JuvoPlayer.Player.EsPlayer
                         var delay = currentTransfer - (DateTime.Now - startTime);
 
                         logger.Info(
-                            $"{streamType}: Transfer task halted. {currentTransfer}/{(float) dataLength / 1024} kB pushed");
+                            $"{streamType}: Transfer task halted. {currentTransfer}/{(float)dataLength / 1024} kB pushed");
 
                         DelayTransfer(delay, token);
 
@@ -456,12 +456,12 @@ namespace JuvoPlayer.Player.EsPlayer
                         currentTransfer = TimeSpan.Zero;
                     }
 
-                    var packet = packetStorage.GetPacket(streamType, token);
+                    packet = packetStorage.GetPacket(streamType, token);
 
                     // Ignore non data packets (EOS/BufferChange/etc.)
                     if (packet.Data != null)
                     {
-                        dataLength += (ulong) packet.Data.Length;
+                        dataLength += (ulong)packet.Data.Length;
 
                         if (firstPts.HasValue)
                         {
@@ -477,9 +477,7 @@ namespace JuvoPlayer.Player.EsPlayer
                         }
                     }
 
-                    repeat = ProcessPacket(packet, token);
-                    repeat &= !token.IsCancellationRequested;
-                } while (repeat);
+                } while (await ProcessPacket(packet, token));
             }
             catch (InvalidOperationException e)
             {
@@ -515,62 +513,83 @@ namespace JuvoPlayer.Player.EsPlayer
             }
 
             logger.Info(
-                $"{streamType}: Transfer task terminated. {currentTransfer}/{(float) dataLength / 1024} kB pushed");
+                $"{streamType}: Transfer task terminated. {currentTransfer}/{(float)dataLength / 1024} kB pushed");
 
             if (invokeError)
                 playbackErrorSubject.OnNext("Playback Error");
         }
 
         /// <summary>
-        /// Pushes data packet to ESPlayer
+        /// Pushes unencrypted data packet to ESPlayer
         /// </summary>
         /// <param name="dataPacket">Packet</param>
         /// <param name="token">CancellationToken</param>
         /// <exception cref="PacketSubmitException">
         /// Exception thrown on submit error
         /// </exception>
+        /// <exception cref="OperationCanceledException">
+        /// Exception thrown on submit cancellation
+        /// </exception>
         private void PushUnencryptedPacket(Packet dataPacket, CancellationToken token)
         {
             // Convert Juvo packet to ESPlayer packet
             var esPacket = dataPacket.ESUnencryptedPacket();
 
-            // Continue pushing packet till success or terminal failure
-            bool doRetry;
-            do
+            for (; ; )
             {
-                var res = player.SubmitPacket(esPacket);
-                doRetry = ShouldRetry(res, token);
-                logger.Debug($"{esPacket.type}: ({!doRetry}/{res}) PTS: {esPacket.pts} Duration: {esPacket.duration}");
-            } while (doRetry && !token.IsCancellationRequested);
+                var submitStatus = player.SubmitPacket(esPacket);
+
+                logger.Debug($"{esPacket.type}: ({submitStatus}) PTS: {esPacket.pts} Duration: {esPacket.duration}");
+
+                if (submitStatus == ESPlayer.SubmitStatus.Success)
+                    return;
+
+                if (!ShouldRetry(submitStatus))
+                    throw new PacketSubmitException("Packet Submit Error", submitStatus);
+
+                var delay = CalculateDelay(submitStatus);
+                Wait(delay, token);
+            }
         }
 
-        private void PushEncryptedPacket(EncryptedPacket dataPacket, CancellationToken token)
+        /// <summary>
+        /// Pushes encrypted data packet to ESPlayer.
+        /// Decryption is performed prior to packet push.
+        /// </summary>
+        /// <param name="dataPacket">Packet</param>
+        /// <param name="token">CancellationToken</param>
+        /// <exception cref="PacketSubmitException">
+        /// Exception thrown on submit error
+        /// </exception>
+        /// <exception cref="OperationCanceledException">
+        /// Exception thrown on submit cancellation
+        /// </exception>
+        private async Task PushEncryptedPacket(EncryptedPacket dataPacket, CancellationToken token)
         {
-            using (var decryptedPacket = dataPacket.Decrypt(token) as DecryptedEMEPacket)
+            using (var decryptedPacket = await dataPacket.Decrypt(token) as DecryptedEMEPacket)
             {
-                if (decryptedPacket == null)
-                {
-                    logger.Error($"{dataPacket.StreamType}: Non an EME Packet!");
-                    return;
-                }
-
                 var esPacket = decryptedPacket.ESDecryptedPacket();
 
                 // Continue pushing packet till success or terminal failure
-                bool doRetry;
-                do
+                for (; ; )
                 {
-                    var res = player.SubmitPacket(esPacket);
-
-                    // reset unmanaged handle on successful submit
-                    if (res == ESPlayer.SubmitStatus.Success)
-                        decryptedPacket.CleanHandle();
-
-                    doRetry = ShouldRetry(res, token);
+                    var submitStatus = player.SubmitPacket(esPacket);
 
                     logger.Debug(
-                        $"{esPacket.type}: ({!doRetry}/{res}) PTS: {esPacket.pts.FromNano()} Duration: {esPacket.duration.FromNano()} Handle: {esPacket.handle} HandleSize: {esPacket.handleSize}");
-                } while (doRetry && !token.IsCancellationRequested);
+                        $"{esPacket.type}: ({submitStatus}) PTS: {esPacket.pts.FromNano()} Duration: {esPacket.duration.FromNano()} Handle: {esPacket.handle} HandleSize: {esPacket.handleSize}");
+
+                    if (submitStatus == ESPlayer.SubmitStatus.Success)
+                    {
+                        decryptedPacket.CleanHandle();
+                        return;
+                    }
+
+                    if (!ShouldRetry(submitStatus))
+                        throw new PacketSubmitException("Packet Submit Error", submitStatus);
+
+                    var delay = CalculateDelay(submitStatus);
+                    Wait(delay, token);
+                }
             }
         }
 
@@ -586,58 +605,44 @@ namespace JuvoPlayer.Player.EsPlayer
         {
             logger.Info("");
 
-            bool doRetry;
-
             // Continue pushing packet till success or terminal failure
-            do
+            for (; ; )
             {
-                var res = player.SubmitEosPacket(streamType.ESStreamType());
-                doRetry = ShouldRetry(res, token);
-            } while (doRetry && !token.IsCancellationRequested);
+                var submitStatus = player.SubmitEosPacket(streamType.ESStreamType());
+                if (submitStatus == ESPlayer.SubmitStatus.Success)
+                    return;
+
+                if (!ShouldRetry(submitStatus))
+                    throw new PacketSubmitException("Packet Submit Error", submitStatus);
+
+                var delay = CalculateDelay(submitStatus);
+                Wait(delay, token);
+            }
         }
 
-        /// <summary>
-        /// Processes packet push result. Returned is an indication if retry
-        /// should take place or not
-        /// </summary>
-        /// <param name="status">ESPlayer.SubmitStatus</param>
-        /// <param name="token">CancellationToken</param>
-        /// <returns>
-        /// True - retry packet push
-        /// False - do not retry packet push
-        /// </returns>
-        /// <exception cref="PacketSubmitException">
-        /// Exception thrown on submit error
-        /// </exception>
-        private bool ShouldRetry(ESPlayer.SubmitStatus status, CancellationToken token)
+        private bool ShouldRetry(ESPlayer.SubmitStatus status)
         {
-            TimeSpan delay;
+            return status == ESPlayer.SubmitStatus.NotPrepared || status == ESPlayer.SubmitStatus.Full;
+        }
 
+        private TimeSpan CalculateDelay(ESPlayer.SubmitStatus status)
+        {
+            // calculate delay
             switch (status)
             {
-                case ESPlayer.SubmitStatus.Success:
-                    return false;
-
                 case ESPlayer.SubmitStatus.NotPrepared:
-                    logger.Info(streamType + ": " + status);
-                    delay = TimeSpan.FromSeconds(1);
-                    break;
-
+                    return TimeSpan.FromSeconds(1);
                 case ESPlayer.SubmitStatus.Full:
-                    delay = TimeSpan.FromMilliseconds(500);
-                    break;
-
+                    return TimeSpan.FromMilliseconds(500);
                 default:
-                    throw new PacketSubmitException("Packet Submit Error", status);
+                    return TimeSpan.Zero;
             }
+        }
 
-            // We are left with Status.Full
-            // For now sleep, however, once buffer events will be
-            // emitted from ESPlayer, they could be used here
-            using (var napTime = new ManualResetEventSlim(false))
-                napTime.Wait(delay, token);
-
-            return true;
+        private void Wait(TimeSpan delay, CancellationToken token)
+        {
+            using (var @event = new ManualResetEventSlim(false))
+                @event.Wait(delay, token);
         }
 
         #endregion
