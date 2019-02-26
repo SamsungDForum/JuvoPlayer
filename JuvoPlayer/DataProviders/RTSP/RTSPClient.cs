@@ -151,7 +151,23 @@ namespace JuvoPlayer.DataProviders.RTSP
 
         private bool IsRtcpGoodbye(RtspData rtspData)
         {
-            return rtspData.Data.Length > 29 && rtspData.Data[1] == 200 && rtspData.Data[29] == 203; // RTCP.PT=SR=200, RTCP.PT=BYE=203; RFC3550
+            int RTCPSenderReport = 200; // RTCP.PT=SR=200  ; RFC3550
+            int RTCPGoodbye = 203;      // RTCP.PT=BYE=203 ; RFC3550
+
+            int firstPacketType = rtspData.Data[1];
+            if (firstPacketType != RTCPSenderReport)
+                return false;
+
+            int firstPacketLength = 4 * ((rtspData.Data[2] << 8) + rtspData.Data[3]) + 4;
+            bool isThisACompoundPacket = rtspData.Data.Length > firstPacketLength;
+            if (!isThisACompoundPacket)
+                return false;
+
+            int secondPacketType = rtspData.Data[firstPacketLength + 1];
+            if (secondPacketType != RTCPGoodbye)
+                return false;
+
+            return true; // It's a RTCP Sender Report Goodbye compound packet, EoS.
         }
 
         private void HandleRtcpGoodbye()
@@ -161,21 +177,21 @@ namespace JuvoPlayer.DataProviders.RTSP
 
         public void RtpDataReceived(object sender, Rtsp.RtspChunkEventArgs e)
         {
-            RtspData rtspData = e.Message as RtspData;
+            RtspData rtpData = e.Message as RtspData;
 
-            if(IsRtcpGoodbye(rtspData))
+            if(IsRtcpGoodbye(rtpData))
                 HandleRtcpGoodbye();
 
             // Check which channel the Data was received on.
             // eg the Video Channel, the Video Control Channel (RTCP)
             // In the future would also check the Audio Channel and Audio Control Channel
-            if (rtspData.Channel == videoRTCPChannel)
+            if (rtpData.Channel == videoRTCPChannel)
             {
-                Logger.Info("Received a RTCP message on channel " + rtspData.Channel);
+                Logger.Info("Received a RTCP message on channel " + rtpData.Channel);
                 return;
             }
 
-            if (rtspData.Channel == videoDataChannel)
+            if (rtpData.Channel == videoDataChannel)
                 ProcessRTPVideo(e);
         }
 
