@@ -42,7 +42,6 @@ namespace JuvoPlayer.DataProviders.Dash
         private readonly DashManifestProvider manifestProvider;
 
         private bool disposed;
-        private bool ignoreTimeUpdates;
         private readonly IDisposable manifestReadySub;
 
         public DashDataProvider(
@@ -167,20 +166,13 @@ namespace JuvoPlayer.DataProviders.Dash
             if (!IsSeekingSupported())
                 return;
 
-            ignoreTimeUpdates = true;
-
-            var pipelines = new[] {videoPipeline, audioPipeline};
+            var pipelines = new[] { videoPipeline, audioPipeline };
             foreach (var pipeline in pipelines)
             {
                 pipeline.Pause();
                 pipeline.Seek(time, seekId);
                 pipeline.Resume();
             }
-        }
-
-        public void OnSeekCompleted()
-        {
-            ignoreTimeUpdates = false;
         }
 
         public void OnStopped()
@@ -225,8 +217,11 @@ namespace JuvoPlayer.DataProviders.Dash
 
         public void OnTimeUpdated(TimeSpan time)
         {
-            if (disposed || ignoreTimeUpdates)
+            if (disposed)
+            {
+                Logger.Info("Ignoring Time Updates");
                 return;
+            }
 
             currentTime = time;
             manifestProvider.CurrentTime = time;
