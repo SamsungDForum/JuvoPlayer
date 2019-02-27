@@ -341,7 +341,7 @@ namespace JuvoPlayer.Player.EsPlayer
             transferCts = new CancellationTokenSource();
             var token = transferCts.Token;
 
-            activeTask = Task.Factory.StartNew(() => TransferTask(token));
+            activeTask = Task.Factory.StartNew(async () => await TransferTask(token)).Unwrap();
         }
 
         /// <summary>
@@ -424,7 +424,7 @@ namespace JuvoPlayer.Player.EsPlayer
         /// to ESPlayer
         /// </summary>
         /// <param name="token">CancellationToken</param>
-        private async void TransferTask(CancellationToken token)
+        private async Task TransferTask(CancellationToken token)
         {
             logger.Info($"{streamType}: Transfer task started");
 
