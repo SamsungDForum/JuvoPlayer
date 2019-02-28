@@ -16,6 +16,7 @@
  */
 
 using System;
+using System.Collections.Generic;
 using System.Net;
 using System.Reactive;
 using System.Reactive.Linq;
@@ -56,7 +57,7 @@ namespace JuvoPlayer.DataProviders.Dash
         private IRepresentationStream currentStreams;
         private TimeSpan? currentStreamDuration;
 
-        private byte[] initStreamBytes;
+        private readonly IList<byte[]> initStreamBytes = new List<byte[]>();
 
         private Task<DownloadResponse> downloadDataTask;
         private Task processDataTask;
@@ -294,12 +295,12 @@ namespace JuvoPlayer.DataProviders.Dash
 
             // Grab a copy (its a struct) of cancellation token so it is not referenced through cancellationTokenSource each time.
             var cancelToken = cancellationTokenSource.Token;
-            if (initStreamBytes == null || initReloadRequired)
+            if (initStreamBytes.Count == 0 || initReloadRequired)
             {
-                initStreamBytes = null;
+                initStreamBytes.Clear();
                 var chunkDownloadedHandler = new Action<byte[]>(bytes =>
                 {
-                    AppendInitStreamBytes(bytes);
+                    initStreamBytes.Add(bytes);
                     chunkReadySubject.OnNext(bytes);
                 });
 
@@ -316,7 +317,7 @@ namespace JuvoPlayer.DataProviders.Dash
                     }
                     else if (response.IsCanceled)
                     {
-                        initStreamBytes = null;
+                        initStreamBytes.Clear();
                         shouldContinue = false;
                     }
                     else // always continue on successful download
@@ -335,25 +336,10 @@ namespace JuvoPlayer.DataProviders.Dash
             {
                 // Already have init segment. Push it down the pipeline & schedule next download
                 LogInfo("Segment: INIT Reusing already downloaded data");
-                chunkReadySubject.OnNext(initStreamBytes);
+                foreach (var chunk in initStreamBytes)
+                    chunkReadySubject.OnNext(chunk);
                 InitDataDownloaded();
                 downloadCompletedSubject.OnNext(Unit.Default);
-            }
-        }
-
-        private void AppendInitStreamBytes(byte[] bytes)
-        {
-            if (initStreamBytes != null)
-            {
-                var newSize = initStreamBytes.Length + bytes.Length;
-                var newInitStreamBytes = new byte[newSize];
-                Buffer.BlockCopy(initStreamBytes, 0, newInitStreamBytes, 0, initStreamBytes.Length);
-                Buffer.BlockCopy(bytes, 0, newInitStreamBytes, initStreamBytes.Length, bytes.Length);
-                initStreamBytes = newInitStreamBytes;
-            }
-            else
-            {
-                initStreamBytes = bytes;
             }
         }
 
@@ -407,9 +393,6 @@ namespace JuvoPlayer.DataProviders.Dash
 
         private void InitDataDownloaded()
         {
-            // Assign initStreamBytes AFTER it has been pushed down the shared buffer.
-            // When issuing EOS, initStreamBytes will be checked for NULLnes.
-            // We do not want to send EOS before init data - will kill demuxer.
             initInProgress = false;
             LogInfo("Segment: INIT enqueued.");
         }
@@ -516,7 +499,7 @@ namespace JuvoPlayer.DataProviders.Dash
             if (newRep == null)
                 return;
 
-            initStreamBytes = null;
+            initStreamBytes.Clear();
 
             currentRepresentation = newRep;
             currentStreams = currentRepresentation.Segments;
@@ -567,7 +550,7 @@ namespace JuvoPlayer.DataProviders.Dash
         {
             // Send EOS only when init data has been processed.
             // Stops demuxer being blown to high heavens.
-            if (initStreamBytes == null)
+            if (initStreamBytes.Count == 0)
                 return;
 
             chunkReadySubject.OnNext(null);
