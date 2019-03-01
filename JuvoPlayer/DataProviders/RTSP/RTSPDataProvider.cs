@@ -20,6 +20,7 @@ using System.Collections.Generic;
 using System.Reactive;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
+using System.Threading;
 using JuvoPlayer.Common;
 using JuvoPlayer.Demuxers;
 using JuvoPlayer.Subtitles;
@@ -32,6 +33,8 @@ namespace JuvoPlayer.DataProviders.RTSP
         private readonly IRTSPClient rtspClient;
         private readonly ClipDefinition currentClip;
         private readonly Subject<string> rtspErrorSubject = new Subject<string>();
+        private CancellationTokenSource _startCancellationTokenSource;
+        private TimeSpan _connectionTimeout = TimeSpan.FromSeconds(2);
 
         public Cue CurrentCue { get; }
 
@@ -136,6 +139,7 @@ namespace JuvoPlayer.DataProviders.RTSP
 
         public void Stop()
         {
+            _startCancellationTokenSource?.Cancel();
         }
 
         public void Start()
@@ -147,11 +151,23 @@ namespace JuvoPlayer.DataProviders.RTSP
             // underlying buffer. We do not want that to happen after client
             // puts something in there.
             demuxerController.StartForEs();
+
+            // start RTSP client
             try
             {
-                rtspClient.Start(currentClip);
+                rtspClient.GetErrorSubject().Subscribe(reason => { rtspErrorSubject.OnNext(reason); });
+                _startCancellationTokenSource = new CancellationTokenSource();
+                _startCancellationTokenSource.CancelAfter(_connectionTimeout);
+                currentClip.Url = "rtsp://192.168.137.3/2.ts";
+                rtspClient.Start(currentClip, _startCancellationTokenSource.Token).ContinueWith(task =>
+                {
+                    if(task.IsFaulted)
+                        rtspErrorSubject.OnNext("Connection fault.");
+                    else if(task.IsCanceled)
+                        rtspErrorSubject.OnNext("Connection timeout.");
+                });
             }
-            catch (Exception e)
+            catch(Exception e)
             {
                 rtspErrorSubject.OnNext(e.Message);
             }

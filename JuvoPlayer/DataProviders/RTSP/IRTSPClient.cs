@@ -15,6 +15,9 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+using System.Reactive.Subjects;
+using System.Threading;
+using System.Threading.Tasks;
 using JuvoPlayer.Common;
 
 namespace JuvoPlayer.DataProviders.RTSP
@@ -24,7 +27,8 @@ namespace JuvoPlayer.DataProviders.RTSP
         void Pause();
         void Play();
         void Seek(int position);
-        void Start(ClipDefinition clip);
+        Task Start(ClipDefinition clip, CancellationToken ct);
         void Stop();
+        Subject<string> GetErrorSubject();
     }
 }
