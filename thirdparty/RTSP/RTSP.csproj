@@ -23,5 +23,8 @@
       <ExcludeAssets>Runtime</ExcludeAssets>
     </PackageReference>
   </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\..\JuvoLogger\JuvoLogger.csproj" />
+  </ItemGroup>
 
 </Project>
