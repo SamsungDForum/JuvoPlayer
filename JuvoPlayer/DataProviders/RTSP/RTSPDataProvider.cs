@@ -158,7 +158,6 @@ namespace JuvoPlayer.DataProviders.RTSP
                 rtspClient.GetErrorSubject().Subscribe(reason => { rtspErrorSubject.OnNext(reason); });
                 _startCancellationTokenSource = new CancellationTokenSource();
                 _startCancellationTokenSource.CancelAfter(_connectionTimeout);
-                currentClip.Url = "rtsp://192.168.137.3/2.ts";
                 rtspClient.Start(currentClip, _startCancellationTokenSource.Token).ContinueWith(task =>
                 {
                     if(task.IsFaulted)
