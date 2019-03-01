@@ -27,6 +27,7 @@ using JuvoPlayer.Common;
 using JuvoLogger;
 using Nito.AsyncEx;
 using Rtsp.Messages;
+using Rtsp.Sdp;
 
 namespace JuvoPlayer.DataProviders.RTSP
 {
@@ -315,7 +316,7 @@ namespace JuvoPlayer.DataProviders.RTSP
             if (message.Headers.ContainsKey(RtspHeaderNames.Transport))
             {
                 RtspTransport transport = RtspTransport.Parse(message.Headers[RtspHeaderNames.Transport]);
-                
+
                 if (transport.IsMulticast)
                 {
                     string multicastAddress = transport.Destination;
@@ -353,7 +354,7 @@ namespace JuvoPlayer.DataProviders.RTSP
             // Only do this for the first Video attribute in case there is more than one in the SDP
             for (int x = 0; x < sdpData.Medias.Count; x++)
             {
-                if (sdpData.Medias[x].GetMediaType() == Rtsp.Sdp.Media.MediaType.video)
+                if (sdpData.Medias[x].MediaType == Media.MediaTypes.video)
                 {
                     // We only want the first video sub-stream
                     if (videoPayloadType != -1)

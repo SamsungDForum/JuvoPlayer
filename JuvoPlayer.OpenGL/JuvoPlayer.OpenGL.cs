@@ -58,7 +58,7 @@ namespace JuvoPlayer.OpenGL
         private OptionsMenu _options;
         private ResourceLoader _resourceLoader;
         private MetricsHandler _metricsHandler;
-        
+
         private bool _isAlertShown;
         private bool _startedFromDeepLink;
 
@@ -300,7 +300,7 @@ namespace JuvoPlayer.OpenGL
 
             KeyPressedMenuUpdate();
         }
-        
+
         private void HandleExternalTileSelection(string url)
         {
             _startedFromDeepLink = true;
