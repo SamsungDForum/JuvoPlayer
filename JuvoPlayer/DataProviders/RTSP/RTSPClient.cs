@@ -39,7 +39,6 @@ namespace JuvoPlayer.DataProviders.RTSP
         UDPSocketPair udpSocketPair; // Pair of UDP ports used in RTP over UDP mode or in MULTICAST mode
         Rtsp.RtspListener rtspListener;
         Rtsp.RtspTcpTransport rtspSocket;
-        private readonly Subject<string> rtspErrorSubject = new Subject<string>();
 
         string rtspUrl = "";
         string rtspSession = "";
@@ -51,13 +50,14 @@ namespace JuvoPlayer.DataProviders.RTSP
         AutoResetEvent timerResetEvent;
 
         private readonly Subject<byte[]> chunkReadySubject = new Subject<byte[]>();
+        private readonly Subject<string> rtspErrorSubject = new Subject<string>();
 
         public IObservable<byte[]> ChunkReady()
         {
             return chunkReadySubject.AsObservable();
         }
 
-        public Subject<string> GetErrorSubject()
+        public IObservable<string> GetErrorSubject()
         {
             return rtspErrorSubject;
         }
@@ -114,9 +114,10 @@ namespace JuvoPlayer.DataProviders.RTSP
             if (rtspSocket.Connected == false)
                 throw new Exception("RTSP server not available at this time.");
 
-            rtspListener = new Rtsp.RtspListener(rtspSocket);
+            rtspListener = new Rtsp.RtspListener(rtspSocket, rtspErrorSubject);
             rtspListener.MessageReceived += RtspMessageReceived;
             rtspListener.DataReceived += RtpDataReceived;
+            rtspListener.AutoReconnect = true;
             rtspListener.Start();
 
             RtspRequest optionsMessage = new RtspRequestOptions
@@ -474,7 +475,16 @@ namespace JuvoPlayer.DataProviders.RTSP
                 RtspUri = new Uri(rtspUrl)
             };
 
-            rtspListener.SendMessage(optionsMessage);
+            try
+            {
+                if (rtspListener.SendMessage(optionsMessage) == false)
+                    rtspErrorSubject.OnNext("Connection timeout.");
+            }
+            catch (Exception e)
+            {
+                Logger.Info(e.ToString());
+                rtspErrorSubject.OnNext("Connection timeout.");
+            }
         }
 
         // Output an array of NAL Units.

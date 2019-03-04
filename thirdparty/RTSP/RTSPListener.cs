@@ -1,4 +1,7 @@
-﻿using JuvoLogger;
+﻿using System.Security.Cryptography.X509Certificates;
+using System.Threading.Tasks;
+using JuvoLogger;
+using System.Reactive.Subjects;
 
 namespace Rtsp
 {
@@ -9,7 +12,6 @@ namespace Rtsp
     using System.IO;
     using System.Net.Sockets;
     using System.Text;
-    using System.Threading;
     using Rtsp.Messages;
 
     /// <summary>
@@ -21,18 +23,19 @@ namespace Rtsp
 
         private IRtspTransport _transport;
 
-        private Thread _listenTread;
+        private Task _listenTask;
         private Stream _stream;
 
         private int _sequenceNumber;
 
         private Dictionary<int, RtspRequest> _sentMessage = new Dictionary<int, RtspRequest>();
+        private Subject<string> _rtspErrorSubject;
 
         /// <summary>
         /// Initializes a new instance of the <see cref="RtspListener"/> class from a TCP connection.
         /// </summary>
         /// <param name="connection">The connection.</param>
-        public RtspListener(IRtspTransport connection)
+        public RtspListener(IRtspTransport connection, Subject<string> rtspErrorSubject)
         {
             if (connection == null)
                 throw new ArgumentNullException("connection");
@@ -40,6 +43,8 @@ namespace Rtsp
 
             _transport = connection;
             _stream = connection.GetStream();
+
+            _rtspErrorSubject = rtspErrorSubject;
         }
 
         /// <summary>
@@ -59,9 +64,16 @@ namespace Rtsp
         /// </summary>
         public void Start()
         {
-            _listenTread = new Thread(new ThreadStart(DoJob));
-            _listenTread.Name = "DoJob";
-            _listenTread.Start();
+            _listenTask = new Task(DoJob);
+            _listenTask.ContinueWith((task) =>
+            {
+                if (task.Exception != null)
+                {
+                    _rtspErrorSubject?.OnNext(task.Exception.Message);
+                }
+                _logger.Info("RTPS Listen Task completed.");
+            });
+            _listenTask.Start();
         }
 
         /// <summary>
@@ -276,18 +288,17 @@ namespace Rtsp
                 return;
 
             // If it is not connected listenthread should have die.
-            if (_listenTread != null && _listenTread.IsAlive)
-                _listenTread.Join();
+            if (_listenTask != null && !_listenTask.IsCompleted)
+                _listenTask.Wait();
 
-            if (_stream != null)
-                _stream.Dispose();
+            _stream?.Dispose();
 
             // reconnect
             _transport.Reconnect();
             _stream = _transport.GetStream();
 
             // If listen thread exist restart it
-            if (_listenTread != null)
+            if(_listenTask != null)
                 Start();
         }
 
