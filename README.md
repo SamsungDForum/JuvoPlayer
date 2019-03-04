@@ -64,14 +64,14 @@ The reference for developers of streaming live TV and VOD Tizen .Net application
 * Pause of video playback
 * Stop of video playback
 * Fast Forward & Rewind (MPEG-DASH only) 
-2. MPEG DASH streaming protocol - fragmented and chunked mp4 (byte range)containers support.
+2. MPEG DASH streaming protocol - fragmented and chunked mp4 (byte range) containers support.
 3. MPEG DASH + PlayReady DRM decryption and playbackof FHD and UHD content.
 4. MP4 over HTTP protocol (download and demuxing by FFMPEG lib)
 5. HLS (downloading and demuxing by FFMPEG)
 6. RTP/RTSP (download by third party RTP library demuxing with FFMPEG)
-7. SRT subtitles rendered in the clean HD, FHD, UHD VOD content streamed overMPEG-DASH protocol.
-8. Web VTT subtitles rendered in the clean HD, FHD, UHD VOD content streamedover MPEG-DASH protocol.
-9. Picture quality manual selection on VOD content streamed over the MPEG-DASHprotocol.
+7. SRT subtitles rendered in the clean HD, FHD, UHD VOD content streamed over MPEG-DASH protocol.
+8. Web VTT subtitles rendered in the clean HD, FHD, UHD VOD content streamed over MPEG-DASH protocol.
+9. Picture quality manual selection on VOD content streamed over the MPEG-DASH protocol.
 10. Live MPEG DASH streams playback
 11. Adaptive playback quality depending on the available bandwidth
 12. The [Smart Hub Preview][smarthubprevlink] including deeplink launch
