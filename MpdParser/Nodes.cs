@@ -17,6 +17,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Threading;
 using MpdParser.Node.Dynamic;
 
 namespace MpdParser.Node
@@ -310,13 +311,17 @@ namespace MpdParser.Node
         TimeRange SegmentTimeRange(uint? segmentId);
 
         /// <summary>
-        /// Method prepares stream for usage by the client.
-        /// Performs all task consuming actions which for performance reasons should not be done
-        /// during stream construction, especially in multi representation content.
-        /// Has to be called before stream usage, otherwise, there will be dragons!
+        /// Methods indicates if stream completed all preparation operations and is
+        /// ready for usage with valid data.
         /// </summary>
-        /// <returns> True - Stream Ready. False - Stream cannot be used due to failures.</returns>
-        bool PrepareStream();
+        /// <returns>True - Ready. False - Not ready or preparation failed</returns>
+        bool IsReady();
+
+        /// <summary>
+        /// Initializes representation stream.
+        /// </summary>
+        /// <param name="token">Cancellation token</param>
+        void Initialize(CancellationToken token);
     }
 
     public enum SegmentType
@@ -359,8 +364,8 @@ namespace MpdParser.Node
         }
 
         public AdaptationSet AdaptationSet { get; internal set; }
-        public Period Period { get { return this.AdaptationSet.Period; } }
-        public DASH Document { get { return this.AdaptationSet.Document; } }
+        public Period Period => this.AdaptationSet.Period;
+        public DASH Document => this.AdaptationSet.Document;
 
         public Representation(AdaptationSet set)
         {
@@ -424,7 +429,7 @@ namespace MpdParser.Node
         }
 
         public Period Period { get; }
-        public DASH Document { get { return this.Period.Document; } }
+        public DASH Document => this.Period.Document;
 
         public static string UrnRole2011 = "urn:mpeg:dash:role:2011";
         public static string UrnRole = "urn:mpeg:dash:role";
