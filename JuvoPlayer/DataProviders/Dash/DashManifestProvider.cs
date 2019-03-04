@@ -121,9 +121,17 @@ namespace JuvoPlayer.DataProviders.Dash
             return tmpPeriod;
         }
 
+        private void ApplyPeriod(CancellationToken token, Period newPeriod)
+        {
+            // Set new media from obtained period information
+            SetMediaFromPeriod(newPeriod, token);
+        }
+
         private void ProcessManifest(CancellationToken token)
         {
             logger.Info("");
+
+            token.ThrowIfCancellationRequested();
 
             var tmpPeriod = GetPeriod(token);
             if (tmpPeriod == null)
@@ -205,7 +213,7 @@ namespace JuvoPlayer.DataProviders.Dash
         private async Task ManifestFeedProcess(CancellationToken token, TimeSpan delay)
         {
             bool repeatFeed;
-            var currentDelay = delay;
+            var currentDelay = delay;            
             if (Manifest == null)
                 throw new ArgumentNullException("Manifest object is null");
             do

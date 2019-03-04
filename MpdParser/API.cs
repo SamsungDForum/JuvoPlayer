@@ -440,7 +440,7 @@ namespace MpdParser
     }
 
     // a.k.a. AdaptationSet
-    public class Media
+    public class AdaptationSet
     {
         public uint? Id { get; }
         public uint? Group { get; }
@@ -458,7 +458,7 @@ namespace MpdParser
             }
         }
 
-        public Media(Node.AdaptationSet set)
+        public AdaptationSet(Node.AdaptationSet set)
         {
             Id = set.Id;
             Group = set.Group;
@@ -551,20 +551,36 @@ namespace MpdParser
             return guessed;
         }
 
-        public TimeSpan? Longest(bool onlyReady = true)
+        public TimeSpan? LongestSegment()
         {
             TimeSpan? current = null;
             foreach (var repr in Representations)
             {
                 TimeSpan? length;
-                if (onlyReady)
+
+                length = repr.Segments?.Duration;
+
+                if (length == null) continue;
+                if (current == null)
                 {
-                    length = repr.Segments?.Duration;
+                    current = length.Value;
+                    continue;
                 }
-                else
-                {
-                    length = repr.Segments?.IsReady() == true ? repr.Segments?.Duration : null;
-                }
+                if (length.Value > current.Value)
+                    current = length.Value;
+            }
+            return current;
+        }
+
+        public TimeSpan? LongestReadySegment()
+        {
+            TimeSpan? current = null;
+            foreach (var repr in Representations)
+            {
+                TimeSpan? length;
+
+                length = repr.Segments?.IsReady() == true ?
+                    repr.Segments?.Duration : null;
 
                 if (length == null) continue;
                 if (current == null)
@@ -634,7 +650,7 @@ namespace MpdParser
         public TimeSpan? Duration { get; internal set; }
         public Types Type { get; internal set; }
 
-        public Media[] Sets { get; }
+        public AdaptationSet[] Sets { get; }
 
         public DateTime? PeriodEnd;
 
@@ -747,9 +763,9 @@ namespace MpdParser
             Start = period.Start;
             Duration = period.Duration;
             Type = Types.Unknown;
-            Sets = new Media[period.AdaptationSets.Length];
+            Sets = new AdaptationSet[period.AdaptationSets.Length];
             for (int i = 0; i < Sets.Length; ++i)
-                Sets[i] = new Media(period.AdaptationSets[i]);
+                Sets[i] = new AdaptationSet(period.AdaptationSets[i]);
         }
 
         public override string ToString()
@@ -757,12 +773,30 @@ namespace MpdParser
             return $"{Type}: ({Start})-({Duration})";
         }
 
-        public TimeSpan? Longest()
+        public TimeSpan? LongestAdaptationSet()
         {
             TimeSpan? current = null;
-            foreach (Media set in Sets)
+            foreach (var set in Sets)
             {
-                TimeSpan? length = set.Longest();
+                TimeSpan? length = set.LongestSegment();
+                if (length == null) continue;
+                if (current == null)
+                {
+                    current = length.Value;
+                    continue;
+                }
+                if (length.Value > current.Value)
+                    current = length.Value;
+            }
+            return current;
+        }
+
+        public TimeSpan? LongestReadyAdaptationSet()
+        {
+            TimeSpan? current = null;
+            foreach (var set in Sets)
+            {
+                TimeSpan? length = set.LongestReadySegment();
                 if (length == null) continue;
                 if (current == null)
                 {
@@ -815,7 +849,7 @@ namespace MpdParser
         /// </summary>
         /// <param name="type"></param>
         /// <returns></returns>
-        public List<Media> GetMedia(MediaType type)
+        public List<AdaptationSet> GetAdaptationSets(MediaType type)
         {
             return Sets.Where(o => o.Type.Value == type).ToList();
         }

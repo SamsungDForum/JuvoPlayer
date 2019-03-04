@@ -15,7 +15,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-﻿using System;
+using System;
 using System.Net;
 using System.Threading.Tasks;
 using JuvoLogger;
@@ -28,9 +28,9 @@ namespace JuvoPlayer.Tests.DebugCode
     [TestFixture]
     public class MpdParserDebug
     {
-        private static Media Find(Period p, string language, MediaType type, MediaRole role = MediaRole.Main)
+        private static AdaptationSet Find(Period p, string language, MediaType type, MediaRole role = MediaRole.Main)
         {
-            Media missingRole = null;
+            AdaptationSet missingRole = null;
             foreach (var set in p.Sets)
             {
                 if (set.Type.Value != type)
@@ -78,10 +78,10 @@ namespace JuvoPlayer.Tests.DebugCode
                 foreach (var period in doc.Periods)
                 {
 
-                    Media audio = Find(period, "en", MediaType.Audio) ??
+                    AdaptationSet audio = Find(period, "en", MediaType.Audio) ??
                             Find(period, "und", MediaType.Audio);
 
-                    Media video = Find(period, "en", MediaType.Video) ??
+                    AdaptationSet video = Find(period, "en", MediaType.Video) ??
                             Find(period, "und", MediaType.Video);
 
                     if (audio != null && video != null)
