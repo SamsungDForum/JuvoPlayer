@@ -30,7 +30,6 @@ using JuvoPlayer.Drms.Cenc;
 using MpdParser;
 using System.Threading;
 using System.Threading.Tasks;
-using Nito.AsyncEx;
 
 namespace JuvoPlayer.DataProviders.Dash
 {
@@ -89,11 +88,7 @@ namespace JuvoPlayer.DataProviders.Dash
         private DashStream currentStream;
         private DashStream _pendingStreamStorage;
 
-        private DashStream PendingStream
-        {
-            get => _pendingStreamStorage;
-            set => _pendingStreamStorage = InitializePendingStream(value);
-        }
+        private DashStream PendingStream;
 
         private readonly Object switchStreamLock = new Object();
         private List<DashStream> availableStreams = new List<DashStream>();
@@ -143,23 +138,6 @@ namespace JuvoPlayer.DataProviders.Dash
             {
                 Logger.Warn(ex, "Doesn't schedule next segment to download");
             }
-        }
-
-        private DashStream InitializePendingStream(DashStream newStream)
-        {
-            if (newStream == null)
-                return null;
-
-            Logger.Info($"{StreamType}: Preparing stream for playback.");
-
-            // TODO: Make PrepareStream async or async with delayed status notification
-            //
-            if (newStream.Representation.Segments.PrepareStream())
-                return newStream;
-
-            Logger.Error($"{StreamType}: Stream preparation failed! Content will not be played.");
-
-            return null;
         }
 
         public Representation GetRepresentation()
@@ -435,16 +413,7 @@ namespace JuvoPlayer.DataProviders.Dash
             //
             lock (switchStreamLock)
             {
-                // Stream needs manual preparation as it is NOT passed through pendingStream
-                //
-                var newStream = InitializePendingStream(new DashStream(newMedia, newRepresentation));
-
-                if (newStream == null)
-                {
-                    Logger.Warn(
-                        $"{StreamType}: Failed to prepare stream. New stream IS NOT set. Continuing playing previous");
-                    return;
-                }
+                var newStream = new DashStream(newMedia, newRepresentation);
 
                 if (currentStream.Media.Type.Value != newMedia.Type.Value)
                     throw new ArgumentException("wrong media type");
@@ -684,7 +653,7 @@ namespace JuvoPlayer.DataProviders.Dash
                     // Add last seek value to packet clock. Forcing last seek value looses
                     // PTS/DTS differences causing lip sync issues.
                     //
-                    demuxerClock = (PacketTimeStamp) packet + lastSeek.Value;
+                    demuxerClock = (PacketTimeStamp)packet + lastSeek.Value;
 
                     Logger.Warn($"{StreamType}: Badly timestamped packet. Adjusting demuxerClock to: {demuxerClock}");
                 }

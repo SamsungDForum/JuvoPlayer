@@ -18,6 +18,7 @@
 using System;
 using System.Collections.Generic;
 using System.Text;
+using System.Threading;
 using JuvoLogger;
 
 namespace MpdParser.Node.Dynamic
@@ -126,8 +127,8 @@ namespace MpdParser.Node.Dynamic
         public ulong PresentationTimeOffset { get; }
         private TimeSpan presentationTimeOffsetScaled;
         public TimeSpan? TimeShiftBufferDepth { get; }
-        public TimeSpan AvaliabilityTimeOffset { get; }
-        public bool? AvaliabilityTimeComplete { get; }
+        public TimeSpan AvailabilityTimeOffset { get; }
+        public bool? AvailabilityTimeComplete { get; }
 
         private Uri baseUrl;
         private Template media;
@@ -168,7 +169,6 @@ namespace MpdParser.Node.Dynamic
 
         public TimeSpan? Duration { get; }
         public Segment InitSegment { get; }
-        public Segment IndexSegment { get; }
 
         /// <summary>
         /// For dynamic content, representationWallClock contains base time used for availability
@@ -181,23 +181,16 @@ namespace MpdParser.Node.Dynamic
         /// <summary>
         /// Returns number of time available for segments in representation
         /// </summary>
-        public uint Count
-        {
-            get { return (uint)timeline.Count; }
-        }
+        public uint Count => (uint)timeline.Count;
 
         private uint? templateDuration;
-        private ulong averageSegmentDuration;
 
         private static readonly ILogger Logger = LoggerManager.GetInstance().GetLogger(MpdParser.LogTag);
-
-        private ILogger customLogger;
-        public void SetLogger(ILogger log) { customLogger = log; }
 
         public TemplateRepresentationStream(Uri baseUrl, Template init, Template media, uint? bandwidth,
             string reprId, uint timescale, TimelineItem[] timeline,
             ulong presentationTimeOffset, TimeSpan? timeShiftBufferDepth,
-            TimeSpan avaliabilityTimeOffset, bool? avaliabilityTimeComplete, bool aFromTimeline,
+            TimeSpan availabilityTimeOffset, bool? availabilityTimeComplete, bool aFromTimeline,
             uint startSegment, uint? aTemplateDuration)
         {
             this.baseUrl = baseUrl;
@@ -213,8 +206,8 @@ namespace MpdParser.Node.Dynamic
             PresentationTimeOffset = presentationTimeOffset;
             presentationTimeOffsetScaled = Scaled(PresentationTimeOffset);
             TimeShiftBufferDepth = timeShiftBufferDepth;
-            AvaliabilityTimeOffset = avaliabilityTimeOffset;
-            AvaliabilityTimeComplete = avaliabilityTimeComplete;
+            AvailabilityTimeOffset = availabilityTimeOffset;
+            AvailabilityTimeComplete = availabilityTimeComplete;
 
 
             uint entryCount = (uint)timeline.Length;
@@ -263,12 +256,10 @@ namespace MpdParser.Node.Dynamic
             {
                 var justDurations = this.timeline[this.timeline.Count - 1].Time + this.timeline[this.timeline.Count - 1].Duration - this.timeline[0].Time;
                 Duration = Scaled(justDurations);
-                averageSegmentDuration = justDurations / Count;
             }
             else
             {
                 Duration = null;
-                averageSegmentDuration = 1;
             }
 
             InitSegment = init == null ? null : MakeSegment(init.Get(bandwidth, reprId), null);
@@ -277,6 +268,10 @@ namespace MpdParser.Node.Dynamic
         public void SetDocumentParameters(ManifestParameters docParams)
         {
             parameters = docParams;
+
+            // Dynamic Streams. Purge unavailable data.
+            if (parameters.Document.IsDynamic)
+                PurgeUnavailableSegments();
         }
 
         public ManifestParameters GetDocumentParameters()
@@ -388,11 +383,9 @@ namespace MpdParser.Node.Dynamic
 
         private uint? GetStartSegmentDynamicFromTimeline()
         {
-            var maxRange = timeline.Count;
-            if (maxRange == 0)
+            if (timeline.Count == 0)
                 return null;
 
-            maxRange -= 1;
             var timeShiftBufferDepth = parameters.Document.TimeShiftBufferDepth ?? TimeSpan.Zero;
 
             // Start by Time is calculated as:
@@ -642,17 +635,25 @@ namespace MpdParser.Node.Dynamic
             return (idx - timelineAvailable.Offset);
         }
 
-        public bool PrepareStream()
+        public bool IsReady()
         {
+            if (parameters == null)
+                return false;
+
             if (!parameters.Document.IsDynamic)
                 return true;
-
-            // Dynamic Streams. Purge unavailable data.
-            PurgeUnavailableSegments();
 
             // Have content to play = OK.
             // No content = Not OK.
             return (Count > 0);
+        }
+
+        public void Initialize(CancellationToken token)
+        {
+            // Initialization for TemplateRepresentationStream constitutes purge
+            // of unavailable segments. Currently performed in SetDocumentParameters
+            // If needed, can be moved to "in background based" initialization called
+            // through this method.
         }
     }
 }
