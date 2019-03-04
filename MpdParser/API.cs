@@ -18,6 +18,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using MpdParser.Node;
 
@@ -520,7 +521,11 @@ namespace MpdParser
             string result = Lang + " / " + Type;
             if (Roles.Length > 0)
                 result += " [" + string.Join(", ", (IEnumerable<Role>)Roles) + "]";
-            return result + " (length:" + (Longest()?.ToString() ?? "-") + ")";
+
+            // When querying for longest representation, ignore those that are not
+            // yet prepared yet in an async way. If all data is needed, assure this call
+            // is made on ready representations.
+            return result + " (length:" + (Longest(false)?.ToString() ?? "-") + ")";
         }
 
         private string GuessFromMimeType(string mimeType)
@@ -546,12 +551,21 @@ namespace MpdParser
             return guessed;
         }
 
-        public TimeSpan? Longest()
+        public TimeSpan? Longest(bool onlyReady = true)
         {
             TimeSpan? current = null;
             foreach (var repr in Representations)
             {
-                TimeSpan? length = repr.Segments?.Duration;
+                TimeSpan? length;
+                if (onlyReady)
+                {
+                    length = repr.Segments?.Duration;
+                }
+                else
+                {
+                    length = repr.Segments?.IsReady() == true ? repr.Segments?.Duration : null;
+                }
+
                 if (length == null) continue;
                 if (current == null)
                 {
@@ -804,7 +818,21 @@ namespace MpdParser
         public List<Media> GetMedia(MediaType type)
         {
             return Sets.Where(o => o.Type.Value == type).ToList();
+        }
 
+        /// <summary>
+        /// Initializes media components in Period
+        /// </summary>
+        public void InitializeMedia(CancellationToken token)
+        {
+            foreach (var set in Sets)
+            {
+                foreach (var rep in set.Representations)
+                {
+                    if (!rep.Segments.IsReady())
+                        rep.Segments.Initialize(token);
+                }
+            }
         }
     }
 
@@ -820,7 +848,6 @@ namespace MpdParser
 
         public TimeSpan? MediaPresentationDuration { get; }
         public TimeSpan? MinBufferTime { get; }
-        public TimeSpan? MinimumUpdatePeriod { get; }
         public DateTime? AvailabilityStartTime { get; }
         public DateTime? PublishTime { get; }
         public DateTime? AvailabilityEndTime { get; }
@@ -884,7 +911,7 @@ namespace MpdParser
         public DateTime DownloadCompleteTime { get; set; }
         public DateTime ParseCompleteTime { get; set; }
 
-        public bool IsDynamic { get { return (Type == DocumentType.Dynamic); } }
+        public bool IsDynamic => (Type == DocumentType.Dynamic);
 
         private Document(Node.DASH dash)
         {

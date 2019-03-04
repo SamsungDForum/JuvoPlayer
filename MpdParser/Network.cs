@@ -17,15 +17,13 @@
 
 using System;
 using System.Net;
-using System.IO;
 using JuvoLogger;
 
 namespace MpdParser.Network
 {
     public class ByteRange
     {
-        protected static LoggerManager LogManager = LoggerManager.GetInstance();
-        protected static ILogger Logger = LoggerManager.GetInstance().GetLogger(MpdParser.LogTag);
+        protected static ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
 
         public long Low { get; }
         public long High { get; }
@@ -65,35 +63,45 @@ namespace MpdParser.Network
         public override string ToString() { return $"{Low}-{High}"; }
     }
 
-    public class Downloader
+    // TODO: This class is a copy of WebClientEx in DashDownloader
+    // TODO: Consider moving cross application common classes to a separate project
+    // TODO: so they can be used across application without too much dependency hell.
+    internal class WebClientEx : WebClient
     {
-        public static byte[] DownloadData(Uri address, ByteRange range = null)
+        private long? from;
+        private long? to;
+
+        public void SetRange(long from, long to)
         {
-            var request = HttpWebRequest.CreateDefault(address) as HttpWebRequest;
-
-            request.AllowAutoRedirect = true;
-            request.Timeout = _timeoutMs;
-            if (range != null)
-            {
-                request.AddRange(range.Low, range.High);
-            }
-
-            var response = request.GetResponse() as HttpWebResponse;
-            if (response.StatusCode != HttpStatusCode.OK && response.StatusCode != HttpStatusCode.PartialContent)
-            {
-                throw new WebException($"{address} [{range}] returned HTTP {response.StatusCode}");
-            }
-
-            var len = Convert.ToInt32(response.Headers["Content-Length"]);
-            using (Stream stream = response.GetResponseStream(), mem = new MemoryStream(len != 0 ? len : avgDownloadSize))
-            {
-                stream.CopyTo(mem);
-                return ((MemoryStream) mem).ToArray();
-            }
+            this.from = from;
+            this.to = to;
         }
 
-        //seems like a good default that won't drop data on slow-ish connections, yet not frustrate the user with wait times
-        private static int _timeoutMs = (int)TimeSpan.FromSeconds(3).TotalMilliseconds;
-        private const Int32 avgDownloadSize = 1024;
+        public void ClearRange()
+        {
+            from = null;
+            to = null;
+        }
+
+        public ulong GetBytes(Uri address)
+        {
+            OpenRead(address.ToString());
+            return Convert.ToUInt64(ResponseHeaders["Content-Length"]);
+        }
+
+        protected override WebRequest GetWebRequest(Uri address)
+        {
+            var request = (HttpWebRequest)base.GetWebRequest(address);
+            if (request != null)
+            {
+                request.Accept = "*/*";
+                if (to != null && from != null)
+                {
+                    request.AddRange(from.Value, to.Value);
+                }
+            }
+
+            return request;
+        }
     }
 }
