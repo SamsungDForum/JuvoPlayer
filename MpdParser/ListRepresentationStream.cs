@@ -17,6 +17,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Threading;
 
 namespace MpdParser.Node.Dynamic
 {
@@ -84,8 +85,8 @@ namespace MpdParser.Node.Dynamic
         private ManifestParameters Parameters;
         public ulong PresentationTimeOffset { get; }
         public TimeSpan? TimeShiftBufferDepth { get; }
-        public TimeSpan AvaliabilityTimeOffset { get; }
-        public bool? AvaliabilityTimeComplete { get; }
+        public TimeSpan AvailabilityTimeOffset { get; }
+        public bool? AvailabilityTimeComplete { get; }
 
         private Uri baseURL_;
         private uint timescale_;
@@ -98,7 +99,7 @@ namespace MpdParser.Node.Dynamic
 
         public ListRepresentationStream(Uri baseURL, Segment init, uint timescale, ListItem[] uris,
             ulong presentationTimeOffset, TimeSpan? timeShiftBufferDepth,
-            TimeSpan avaliabilityTimeOffset, bool? avaliabilityTimeComplete)
+            TimeSpan availabilityTimeOffset, bool? availabilityTimeComplete)
         {
             baseURL_ = baseURL;
             timescale_ = timescale;
@@ -118,8 +119,8 @@ namespace MpdParser.Node.Dynamic
 
             PresentationTimeOffset = presentationTimeOffset;
             TimeShiftBufferDepth = timeShiftBufferDepth;
-            AvaliabilityTimeOffset = avaliabilityTimeOffset;
-            AvaliabilityTimeComplete = avaliabilityTimeComplete;
+            AvailabilityTimeOffset = availabilityTimeOffset;
+            AvailabilityTimeComplete = availabilityTimeComplete;
         }
 
         public void SetDocumentParameters(ManifestParameters docParams)
@@ -246,11 +247,13 @@ namespace MpdParser.Node.Dynamic
             return new TimeRange(Scaled(item.Time), Scaled(item.Duration));
         }
 
-        public bool PrepareStream()
+        public bool IsReady()
         {
-            // So far... nothing to prepare for list representations...
             return true;
         }
 
+        public void Initialize(CancellationToken token)
+        {
+        }
     }
 }

@@ -30,7 +30,6 @@ using JuvoPlayer.Drms.Cenc;
 using MpdParser;
 using System.Threading;
 using System.Threading.Tasks;
-using Nito.AsyncEx;
 
 namespace JuvoPlayer.DataProviders.Dash
 {
@@ -38,13 +37,13 @@ namespace JuvoPlayer.DataProviders.Dash
     {
         private class DashStream : IEquatable<DashStream>
         {
-            public DashStream(Media media, Representation representation)
+            public DashStream(AdaptationSet media, Representation representation)
             {
                 Media = media;
                 Representation = representation;
             }
 
-            public Media Media { get; }
+            public AdaptationSet Media { get; }
             public Representation Representation { get; }
 
             public override bool Equals(object obj)
@@ -54,7 +53,7 @@ namespace JuvoPlayer.DataProviders.Dash
 
             public bool Equals(DashStream other)
             {
-                return other != null && (EqualityComparer<Media>.Default.Equals(Media, other.Media) &&
+                return other != null && (EqualityComparer<AdaptationSet>.Default.Equals(Media, other.Media) &&
                                          EqualityComparer<Representation>.Default.Equals(Representation,
                                              other.Representation));
             }
@@ -63,7 +62,7 @@ namespace JuvoPlayer.DataProviders.Dash
             {
                 var hashCode = 1768762187;
                 hashCode = hashCode * -1521134295 + base.GetHashCode();
-                hashCode = hashCode * -1521134295 + EqualityComparer<Media>.Default.GetHashCode(Media);
+                hashCode = hashCode * -1521134295 + EqualityComparer<AdaptationSet>.Default.GetHashCode(Media);
                 hashCode = hashCode * -1521134295 +
                            EqualityComparer<Representation>.Default.GetHashCode(Representation);
                 return hashCode;
@@ -89,11 +88,7 @@ namespace JuvoPlayer.DataProviders.Dash
         private DashStream currentStream;
         private DashStream _pendingStreamStorage;
 
-        private DashStream PendingStream
-        {
-            get => _pendingStreamStorage;
-            set => _pendingStreamStorage = InitializePendingStream(value);
-        }
+        private DashStream PendingStream;
 
         private readonly Object switchStreamLock = new Object();
         private List<DashStream> availableStreams = new List<DashStream>();
@@ -145,23 +140,6 @@ namespace JuvoPlayer.DataProviders.Dash
             }
         }
 
-        private DashStream InitializePendingStream(DashStream newStream)
-        {
-            if (newStream == null)
-                return null;
-
-            Logger.Info($"{StreamType}: Preparing stream for playback.");
-
-            // TODO: Make PrepareStream async or async with delayed status notification
-            //
-            if (newStream.Representation.Segments.PrepareStream())
-                return newStream;
-
-            Logger.Error($"{StreamType}: Stream preparation failed! Content will not be played.");
-
-            return null;
-        }
-
         public Representation GetRepresentation()
         {
             return PendingStream?.Representation ?? currentStream?.Representation;
@@ -187,7 +165,7 @@ namespace JuvoPlayer.DataProviders.Dash
 
         public void UpdateMedia(Period period)
         {
-            var media = period.GetMedia(ToMediaType(StreamType));
+            var media = period.GetAdaptationSets(ToMediaType(StreamType));
             if (!media.Any())
                 throw new ArgumentOutOfRangeException($"{StreamType}: No media in period {period}");
 
@@ -293,7 +271,7 @@ namespace JuvoPlayer.DataProviders.Dash
             }
         }
 
-        private void GetAvailableStreams(IEnumerable<Media> media, Media defaultMedia)
+        private void GetAvailableStreams(IEnumerable<AdaptationSet> media, AdaptationSet defaultMedia)
         {
             // Not perfect algorithm.
             // check if default media has many representations. if yes, return as available streams
@@ -352,9 +330,9 @@ namespace JuvoPlayer.DataProviders.Dash
             pipelineStarted = true;
         }
 
-        private static Media GetDefaultMedia(ICollection<Media> medias)
+        private static AdaptationSet GetDefaultMedia(ICollection<AdaptationSet> medias)
         {
-            Media media = null;
+            AdaptationSet media = null;
             if (medias.Count == 1)
                 media = medias.First();
             if (media == null)
@@ -435,16 +413,7 @@ namespace JuvoPlayer.DataProviders.Dash
             //
             lock (switchStreamLock)
             {
-                // Stream needs manual preparation as it is NOT passed through pendingStream
-                //
-                var newStream = InitializePendingStream(new DashStream(newMedia, newRepresentation));
-
-                if (newStream == null)
-                {
-                    Logger.Warn(
-                        $"{StreamType}: Failed to prepare stream. New stream IS NOT set. Continuing playing previous");
-                    return;
-                }
+                var newStream = new DashStream(newMedia, newRepresentation);
 
                 if (currentStream.Media.Type.Value != newMedia.Type.Value)
                     throw new ArgumentException("wrong media type");
@@ -511,7 +480,7 @@ namespace JuvoPlayer.DataProviders.Dash
             return description;
         }
 
-        private void ParseDrms(Media newMedia)
+        private void ParseDrms(AdaptationSet newMedia)
         {
             foreach (var descriptor in newMedia.ContentProtections)
             {
@@ -684,7 +653,7 @@ namespace JuvoPlayer.DataProviders.Dash
                     // Add last seek value to packet clock. Forcing last seek value looses
                     // PTS/DTS differences causing lip sync issues.
                     //
-                    demuxerClock = (PacketTimeStamp) packet + lastSeek.Value;
+                    demuxerClock = (PacketTimeStamp)packet + lastSeek.Value;
 
                     Logger.Warn($"{StreamType}: Badly timestamped packet. Adjusting demuxerClock to: {demuxerClock}");
                 }
