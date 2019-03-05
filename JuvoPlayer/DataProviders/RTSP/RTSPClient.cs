@@ -52,6 +52,8 @@ namespace JuvoPlayer.DataProviders.RTSP
         private readonly Subject<byte[]> chunkReadySubject = new Subject<byte[]>();
         private readonly Subject<string> rtspErrorSubject = new Subject<string>();
 
+        public bool IsStarted { get; private set; }
+
         public IObservable<byte[]> ChunkReady()
         {
             return chunkReadySubject.AsObservable();
@@ -91,6 +93,8 @@ namespace JuvoPlayer.DataProviders.RTSP
 
         public async Task Start(ClipDefinition clip, CancellationToken ctx)
         {
+            IsStarted = false;
+
             if (clip == null)
                 throw new ArgumentNullException(nameof(clip), "clip cannot be null");
 
@@ -99,14 +103,16 @@ namespace JuvoPlayer.DataProviders.RTSP
 
             rtspUrl = clip.Url;
 
-            TcpClient tcpClient;
+            TcpClient tcpClient = new TcpClient();
             try
             {
-                tcpClient = await Connect(ctx);
+                Uri uri = new Uri(rtspUrl);
+                await tcpClient.ConnectAsync(uri.Host, uri.Port > 0 ? uri.Port : 554).WaitAsync(ctx);
             }
             catch (Exception e)
             {
                 Logger.Info(e.ToString());
+                tcpClient.Dispose();
                 throw;
             }
 
@@ -126,18 +132,14 @@ namespace JuvoPlayer.DataProviders.RTSP
             };
 
             rtspListener.SendMessage(optionsMessage);
-        }
 
-        private async Task<TcpClient> Connect(CancellationToken ctx)
-        {
-            Uri uri = new Uri(rtspUrl);
-            TcpClient tcpClient = new TcpClient();
-            await tcpClient.ConnectAsync(uri.Host, uri.Port > 0 ? uri.Port : 554).WaitAsync(ctx); // may throw
-            return tcpClient;
+            IsStarted = true;
         }
 
         public void Stop()
         {
+            IsStarted = false;
+
             if (rtspListener != null)
             {
                 RtspRequest teardownMessage = new RtspRequestTeardown

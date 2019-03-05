@@ -35,6 +35,7 @@ namespace JuvoPlayer.DataProviders.RTSP
         private readonly Subject<string> rtspErrorSubject = new Subject<string>();
         private CancellationTokenSource _startCancellationTokenSource;
         private TimeSpan _connectionTimeout = TimeSpan.FromSeconds(2);
+        private IDisposable rtspClientErrorSubscription;
 
         public Cue CurrentCue { get; }
 
@@ -111,13 +112,16 @@ namespace JuvoPlayer.DataProviders.RTSP
 
         public void OnStateChanged(PlayerState state)
         {
+            if (rtspClient == null || rtspClient.IsStarted == false)
+                return;
+
             switch (state)
             {
                 case PlayerState.Paused:
-                    rtspClient?.Pause();
+                    rtspClient.Pause();
                     break;
                 case PlayerState.Playing:
-                    rtspClient?.Play();
+                    rtspClient.Play();
                     break;
             }
         }
@@ -155,9 +159,7 @@ namespace JuvoPlayer.DataProviders.RTSP
             // start RTSP client
             try
             {
-                currentClip.Url = "rtsp://192.168.137.3/2.ts"; // TODO: REMOVE BEFORE COMMITING!!!
-
-                rtspClient.GetErrorSubject().Subscribe(reason => { rtspErrorSubject.OnNext(reason); });
+                rtspClientErrorSubscription = rtspClient.GetErrorSubject().Subscribe(reason => { rtspErrorSubject.OnNext(reason); });
                 _startCancellationTokenSource = new CancellationTokenSource();
                 _startCancellationTokenSource.CancelAfter(_connectionTimeout);
                 rtspClient.Start(currentClip, _startCancellationTokenSource.Token).ContinueWith(task =>
@@ -170,6 +172,7 @@ namespace JuvoPlayer.DataProviders.RTSP
             }
             catch(Exception e)
             {
+                rtspClientErrorSubscription?.Dispose();
                 rtspErrorSubject.OnNext(e.Message);
             }
         }
@@ -184,6 +187,7 @@ namespace JuvoPlayer.DataProviders.RTSP
 
         public void Dispose()
         {
+            rtspClientErrorSubscription?.Dispose();
             rtspClient?.Stop();
             demuxerController.Dispose();
         }

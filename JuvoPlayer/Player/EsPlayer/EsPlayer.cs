@@ -16,7 +16,6 @@
  */
 
 using System;
-using System.Reactive;
 using System.Threading.Tasks;
 using ElmSharp;
 using JuvoPlayer.Common;
@@ -130,11 +129,6 @@ namespace JuvoPlayer.Player.EsPlayer
         public IObservable<SeekArgs> SeekStarted()
         {
             return streamControl.SeekStarted();
-        }
-
-        public IObservable<Unit> SeekCompleted()
-        {
-            return streamControl.SeekCompleted();
         }
 
         #endregion
