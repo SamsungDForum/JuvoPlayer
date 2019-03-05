@@ -11,12 +11,12 @@
                                         "action_data": "http://vm2.dashif.org/livesim-dev/segtimeline_1/testpic_2s/Manifest.mpd",
                                         "is_playable": true
                                     },
- {
-                                        "title": "Movies",
-                                        "subtitle": "Elephant's Dream, Sintel, Big Bug Bunny",
+                                    {
+                                        "title": "Movie",
+                                        "subtitle": "SD, Clean, Live Stream",
                                         "image_ratio": "16by9",
-                                        "image_url": "https://raw.githubusercontent.com/SamsungDForum/JuvoPlayer/master/smarthubpreview/pictures/elephantsdream.jpg",
-                                        "action_data": "http://b028.wpc.azureedge.net/80B028/Samples/a38e6323-95e9-4f1f-9b38-75eba91704e4/5f2ce531-d508-49fb-8152-647eba422aec.ism/Manifest\u0028format=mpd-time-csf\u0029",
+                                        "image_url": "https://raw.githubusercontent.com/SamsungDForum/JuvoPlayer/master/smarthubpreview/pictures/bunny.jpg",
+                                        "action_data": "http://wowzaec2demo.streamlock.net/live/bigbuckbunny/manifest_mvtime.mpd",
                                         "is_playable": true
                                     }
                                 ]

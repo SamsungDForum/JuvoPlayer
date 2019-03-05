@@ -118,7 +118,7 @@
     "description": "1920x800 H264 MPEG-4 AVC video AAC audio 20h 23' of playback. URI: http://stream-srv.sprc.samsung.pl/pnacl/MediaFramework/content/DASH_streams/ToS-4k-1920p-20hrs/stream.mpd"
   },
   {
-    "title": "RTSP multicast streamming",
+    "title": "RTSP multicast streaming",
     "url": "rtsp://10.88.91.96/canimals.ts",
     "type": "rtsp",
     "poster": "canimals.jpg",
