@@ -17,7 +17,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Reactive;
 using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
@@ -83,11 +82,6 @@ namespace JuvoPlayer.Player
         public IObservable<SeekArgs> SeekStarted()
         {
             return player.SeekStarted();
-        }
-
-        public IObservable<Unit> SeekCompleted()
-        {
-            return player.SeekCompleted();
         }
 
         public IObservable<PlayerState> StateChanged()

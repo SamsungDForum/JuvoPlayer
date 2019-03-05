@@ -17,7 +17,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Reactive;
 using System.Threading.Tasks;
 using JuvoPlayer.Common;
 
@@ -40,7 +39,6 @@ namespace JuvoPlayer
         void Stop();
         IObservable<PlayerState> StateChanged();
         IObservable<string> PlaybackError();
-        IObservable<Unit> SeekCompleted();
         IObservable<int> BufferingProgress();
     }
 }

@@ -5,13 +5,13 @@
     <OutputType>Library</OutputType>
     <TargetFramework>netstandard2.0</TargetFramework>
     <TizenCreateTpkOnBuild>false</TizenCreateTpkOnBuild>
-    <Version>1.4.4</Version>
+    <Version>1.4.5</Version>
     <PackageReleaseNotes>Release of first beta to be presented to the public. It will be uploaded to the Samsung Seller Office site</PackageReleaseNotes>
     <Company>SRPOL MVS</Company>
     <Description>Refrence application of video streaming Tizen .Net Tv applications</Description>
     <Copyright>Samung Electronics</Copyright>
-    <AssemblyVersion>1.4.4.204</AssemblyVersion>
-    <FileVersion>1.4.4.204</FileVersion>
+    <AssemblyVersion>1.4.5.204</AssemblyVersion>
+    <FileVersion>1.4.5.204</FileVersion>
   </PropertyGroup>
 
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
@@ -41,6 +41,7 @@
   <ItemGroup>
     <PackageReference Include="Nito.AsyncEx" Version="5.0.0-pre-05" />
     <PackageReference Include="Nito.AsyncEx.Context" Version="5.0.0-pre-05" />
+    <PackageReference Include="Overby.Extensions.AsyncBinaryReaderWriter" Version="1.0.39" />
     <PackageReference Include="System.Reactive" Version="4.1.2" />
     <PackageReference Include="System.Text.Encoding.CodePages" Version="4.5.0" />
 

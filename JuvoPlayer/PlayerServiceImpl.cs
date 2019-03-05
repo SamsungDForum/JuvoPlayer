@@ -17,7 +17,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Reactive;
 using System.Reactive.Disposables;
 using System.Threading;
 using System.Threading.Tasks;
@@ -157,11 +156,6 @@ namespace JuvoPlayer
         public IObservable<string> PlaybackError()
         {
             return playerController.PlaybackError();
-        }
-
-        public IObservable<Unit> SeekCompleted()
-        {
-            return playerController.SeekCompleted();
         }
 
         public IObservable<int> BufferingProgress()

@@ -16,7 +16,6 @@
  */
 
 using System;
-using System.Reactive.Subjects;
 using System.Threading;
 using System.Threading.Tasks;
 using JuvoPlayer.Common;
@@ -31,5 +30,6 @@ namespace JuvoPlayer.DataProviders.RTSP
         Task Start(ClipDefinition clip, CancellationToken ct);
         void Stop();
         IObservable<string> GetErrorSubject();
+        bool IsStarted { get; }
     }
 }

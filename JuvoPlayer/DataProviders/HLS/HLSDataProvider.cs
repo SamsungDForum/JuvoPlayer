@@ -97,11 +97,6 @@ namespace JuvoPlayer.DataProviders.HLS
             throw new NotImplementedException();
         }
 
-        public void OnSeekCompleted()
-        {
-            throw new NotImplementedException();
-        }
-
         public void OnStopped()
         {
         }
@@ -187,7 +182,7 @@ namespace JuvoPlayer.DataProviders.HLS
                     // eos packets, one for audio and one for video
                     return Observable.Return(Packet.CreateEOS(StreamType.Audio))
                         .Merge(Observable.Return(Packet.CreateEOS(StreamType.Video)));
-                }); 
+                });
         }
 
         public IObservable<string> StreamError()

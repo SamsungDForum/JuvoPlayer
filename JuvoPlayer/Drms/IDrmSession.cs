@@ -32,6 +32,7 @@ namespace JuvoPlayer.Drms
 
         /// <summary>Asynchronously decrypts a single <see cref="T:JuvoPlayer.Common.EncryptedPacket"></see>.</summary>
         /// <param name="packet">Packet to decrypt.</param>
+        /// <param name="token">Cancellation token.</param>
         /// <returns>A task, which will produce decrypted <see cref="T:JuvoPlayer.Common.Packet"></see>.</returns>
         /// <exception cref="T:JuvoPlayer.Drms.DRMException">Session is not initialized or packet couldn't be decrypted.</exception>
         Task<Packet> DecryptPacket(EncryptedPacket packet, CancellationToken token);
