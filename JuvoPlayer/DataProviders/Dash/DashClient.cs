@@ -16,6 +16,7 @@
  */
 
 using System;
+using System.Collections.Generic;
 using System.Net;
 using System.Reactive;
 using System.Reactive.Linq;
@@ -56,7 +57,7 @@ namespace JuvoPlayer.DataProviders.Dash
         private IRepresentationStream currentStreams;
         private TimeSpan? currentStreamDuration;
 
-        private byte[] initStreamBytes;
+        private readonly IList<byte[]> initStreamBytes = new List<byte[]>();
 
         private Task<DownloadResponse> downloadDataTask;
         private Task processDataTask;
@@ -256,7 +257,9 @@ namespace JuvoPlayer.DataProviders.Dash
         {
             // Grab a copy (its a struct) of cancellation token, so one token is used throughout entire operation
             var cancelToken = cancellationTokenSource.Token;
-            downloadDataTask = CreateDownloadTask(segment, IsDynamic, currentSegmentId, cancelToken);
+            var chunkDownloadedHandler = new Action<byte[]>(bytes => { chunkReadySubject.OnNext(bytes); });
+            downloadDataTask = CreateDownloadTask(segment, IsDynamic, currentSegmentId, chunkDownloadedHandler,
+                cancelToken);
             processDataTask = downloadDataTask.ContinueWith(response =>
             {
                 bool shouldContinue;
@@ -292,9 +295,16 @@ namespace JuvoPlayer.DataProviders.Dash
 
             // Grab a copy (its a struct) of cancellation token so it is not referenced through cancellationTokenSource each time.
             var cancelToken = cancellationTokenSource.Token;
-            if (initStreamBytes == null || initReloadRequired)
+            if (initStreamBytes.Count == 0 || initReloadRequired)
             {
-                downloadDataTask = CreateDownloadTask(segment, true, null, cancelToken);
+                initStreamBytes.Clear();
+                var chunkDownloadedHandler = new Action<byte[]>(bytes =>
+                {
+                    initStreamBytes.Add(bytes);
+                    chunkReadySubject.OnNext(bytes);
+                });
+
+                downloadDataTask = CreateDownloadTask(segment, true, null, chunkDownloadedHandler, cancelToken);
                 processDataTask = downloadDataTask.ContinueWith(response =>
                 {
                     var shouldContinue = true;
@@ -306,9 +316,12 @@ namespace JuvoPlayer.DataProviders.Dash
                         shouldContinue = false;
                     }
                     else if (response.IsCanceled)
+                    {
+                        initStreamBytes.Clear();
                         shouldContinue = false;
+                    }
                     else // always continue on successful download
-                        InitDataDownloaded(response.Result);
+                        InitDataDownloaded();
 
                     // throw exception so continuation wont run
                     if (!shouldContinue)
@@ -322,14 +335,10 @@ namespace JuvoPlayer.DataProviders.Dash
             else
             {
                 // Already have init segment. Push it down the pipeline & schedule next download
-                var initData = new DownloadResponse
-                {
-                    Data = initStreamBytes,
-                    SegmentId = null
-                };
-
                 LogInfo("Segment: INIT Reusing already downloaded data");
-                InitDataDownloaded(initData);
+                foreach (var chunk in initStreamBytes)
+                    chunkReadySubject.OnNext(chunk);
+                InitDataDownloaded();
                 downloadCompletedSubject.OnNext(Unit.Default);
             }
         }
@@ -343,7 +352,6 @@ namespace JuvoPlayer.DataProviders.Dash
         {
             if (cancellationTokenSource.IsCancellationRequested)
                 return false;
-            chunkReadySubject.OnNext(responseResult.Data);
             var segment = responseResult.DownloadSegment;
             lastDownloadSegmentTimeRange = segment.Period.Copy();
             bufferTime = segment.Period.Start + segment.Period.Duration - (trimOffset ?? TimeSpan.Zero);
@@ -383,15 +391,8 @@ namespace JuvoPlayer.DataProviders.Dash
             buffering = false;
         }
 
-        private void InitDataDownloaded(DownloadResponse responseResult)
+        private void InitDataDownloaded()
         {
-            if (responseResult.Data != null)
-                chunkReadySubject.OnNext(responseResult.Data);
-
-            // Assign initStreamBytes AFTER it has been pushed down the shared buffer.
-            // When issuing EOS, initStreamBytes will be checked for NULLnes.
-            // We do not want to send EOS before init data - will kill demuxer.
-            initStreamBytes = responseResult.Data;
             initInProgress = false;
             LogInfo("Segment: INIT enqueued.");
         }
@@ -498,7 +499,7 @@ namespace JuvoPlayer.DataProviders.Dash
             if (newRep == null)
                 return;
 
-            initStreamBytes = null;
+            initStreamBytes.Clear();
 
             currentRepresentation = newRep;
             currentStreams = currentRepresentation.Segments;
@@ -549,7 +550,7 @@ namespace JuvoPlayer.DataProviders.Dash
         {
             // Send EOS only when init data has been processed.
             // Stops demuxer being blown to high heavens.
-            if (initStreamBytes == null)
+            if (initStreamBytes.Count == 0)
                 return;
 
             chunkReadySubject.OnNext(null);
@@ -566,7 +567,7 @@ namespace JuvoPlayer.DataProviders.Dash
         }
 
         private Task<DownloadResponse> CreateDownloadTask(Segment segment, bool ignoreError, uint? segmentId,
-            CancellationToken cancelToken)
+            Action<byte[]> chunkDownloadedHandler, CancellationToken cancelToken)
         {
             return Task.Run(async () =>
             {
@@ -577,7 +578,8 @@ namespace JuvoPlayer.DataProviders.Dash
                     DownloadSegment = segment,
                     IgnoreError = ignoreError,
                     SegmentId = segmentId,
-                    StreamType = streamType
+                    StreamType = streamType,
+                    DataDownloaded = chunkDownloadedHandler
                 };
                 var timeoutCancellationTokenSource = new CancellationTokenSource();
                 if (timeout != TimeSpan.MaxValue)
