@@ -29,7 +29,7 @@ namespace JuvoPlayer.DataProviders.RTSP
         void Seek(int position);
         Task Start(ClipDefinition clip, CancellationToken ct);
         void Stop();
-        IObservable<string> GetErrorSubject();
+        IObservable<string> RTSPError();
         bool IsStarted { get; }
     }
 }

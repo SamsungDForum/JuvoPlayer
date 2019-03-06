@@ -19,7 +19,6 @@ using System;
 using System.Collections.Generic;
 using System.Reactive;
 using System.Reactive.Linq;
-using System.Reactive.Subjects;
 using System.Threading;
 using JuvoPlayer.Common;
 using JuvoPlayer.Demuxers;
@@ -32,10 +31,8 @@ namespace JuvoPlayer.DataProviders.RTSP
         private readonly IDemuxerController demuxerController;
         private readonly IRTSPClient rtspClient;
         private readonly ClipDefinition currentClip;
-        private readonly Subject<string> rtspErrorSubject = new Subject<string>();
         private CancellationTokenSource _startCancellationTokenSource;
         private TimeSpan _connectionTimeout = TimeSpan.FromSeconds(2);
-        private IDisposable rtspClientErrorSubscription;
 
         public Cue CurrentCue { get; }
 
@@ -87,7 +84,7 @@ namespace JuvoPlayer.DataProviders.RTSP
         public IObservable<string> StreamError()
         {
             return demuxerController.DemuxerError()
-                .Merge(rtspErrorSubject.AsObservable());
+                .Merge(rtspClient.RTSPError());
         }
 
         public IObservable<Unit> BufferingStarted()
@@ -157,24 +154,9 @@ namespace JuvoPlayer.DataProviders.RTSP
             demuxerController.StartForEs();
 
             // start RTSP client
-            try
-            {
-                rtspClientErrorSubscription = rtspClient.GetErrorSubject().Subscribe(reason => { rtspErrorSubject.OnNext(reason); });
-                _startCancellationTokenSource = new CancellationTokenSource();
-                _startCancellationTokenSource.CancelAfter(_connectionTimeout);
-                rtspClient.Start(currentClip, _startCancellationTokenSource.Token).ContinueWith(task =>
-                {
-                    if(task.IsFaulted)
-                        rtspErrorSubject.OnNext("Connection fault.");
-                    else if(task.IsCanceled)
-                        rtspErrorSubject.OnNext("Connection timeout.");
-                });
-            }
-            catch(Exception e)
-            {
-                rtspClientErrorSubscription?.Dispose();
-                rtspErrorSubject.OnNext(e.Message);
-            }
+            _startCancellationTokenSource = new CancellationTokenSource();
+            _startCancellationTokenSource.CancelAfter(_connectionTimeout);
+            rtspClient.Start(currentClip, _startCancellationTokenSource.Token);
         }
 
         public void OnStopped()
@@ -187,7 +169,6 @@ namespace JuvoPlayer.DataProviders.RTSP
 
         public void Dispose()
         {
-            rtspClientErrorSubscription?.Dispose();
             rtspClient?.Stop();
             demuxerController.Dispose();
         }

@@ -59,7 +59,7 @@ namespace JuvoPlayer.DataProviders.RTSP
             return chunkReadySubject.AsObservable();
         }
 
-        public IObservable<string> GetErrorSubject()
+        public IObservable<string> RTSPError()
         {
             return rtspErrorSubject;
         }
@@ -93,16 +93,34 @@ namespace JuvoPlayer.DataProviders.RTSP
 
         public async Task Start(ClipDefinition clip, CancellationToken ctx)
         {
-            IsStarted = false;
+            try
+            {
+                IsStarted = false;
+                await ExecuteStart(clip, ctx);
+            }
+            catch (TaskCanceledException)
+            {
+                rtspErrorSubject.OnNext("Connection timeout.");
+            }
+            catch (Exception e)
+            {
+                rtspErrorSubject.OnNext(e.Message);
+            }
+            finally
+            {
+                IsStarted = true;
+            }
+        }
 
+        private async Task ExecuteStart(ClipDefinition clip, CancellationToken ctx)
+        {
             if (clip == null)
-                throw new ArgumentNullException(nameof(clip), "clip cannot be null");
+                throw new ArgumentNullException(nameof(clip), "Clip cannot be null.");
 
-            if (clip.Url.Length  < 7)
-                throw new ArgumentException("clip url cannot be empty");
+            if (clip.Url.Length < 7)
+                throw new ArgumentException("Clip URL cannot be empty.");
 
             rtspUrl = clip.Url;
-
             TcpClient tcpClient = new TcpClient();
             try
             {
@@ -132,8 +150,6 @@ namespace JuvoPlayer.DataProviders.RTSP
             };
 
             rtspListener.SendMessage(optionsMessage);
-
-            IsStarted = true;
         }
 
         public void Stop()
