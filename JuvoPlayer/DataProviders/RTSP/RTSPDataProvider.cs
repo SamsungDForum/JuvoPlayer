@@ -19,6 +19,8 @@ using System;
 using System.Collections.Generic;
 using System.Reactive;
 using System.Reactive.Linq;
+using System.Reactive.Subjects;
+using System.Threading;
 using JuvoPlayer.Common;
 using JuvoPlayer.Demuxers;
 using JuvoPlayer.Subtitles;
@@ -28,15 +30,19 @@ namespace JuvoPlayer.DataProviders.RTSP
     internal class RTSPDataProvider : IDataProvider
     {
         private readonly IDemuxerController demuxerController;
-        private readonly IRTSPClient rtpClient;
+        private readonly IRTSPClient rtspClient;
         private readonly ClipDefinition currentClip;
+        private CancellationTokenSource _startCancellationTokenSource;
+        private TimeSpan _connectionTimeout = TimeSpan.FromSeconds(2);
+
+        public Cue CurrentCue { get; }
 
         public RTSPDataProvider(IDemuxerController demuxerController, IRTSPClient rtpClient, ClipDefinition currentClip)
         {
             this.demuxerController = demuxerController ??
                                      throw new ArgumentNullException(nameof(demuxerController),
                                          "demuxerController cannot be null");
-            this.rtpClient =
+            this.rtspClient =
                 rtpClient ?? throw new ArgumentNullException(nameof(rtpClient), "rtpClient cannot be null");
             this.currentClip =
                 currentClip ?? throw new ArgumentNullException(nameof(currentClip), "clip cannot be null");
@@ -64,12 +70,22 @@ namespace JuvoPlayer.DataProviders.RTSP
 
         public IObservable<Packet> PacketReady()
         {
-            return demuxerController.PacketReady();
+            return demuxerController.PacketReady()
+                .SelectMany(packet =>
+                {
+                    if (packet != null)
+                        return Observable.Return(packet);
+                    // found empty packet which means EOS. We need to send two fake
+                    // eos packets, one for audio and one for video
+                    return Observable.Return(Packet.CreateEOS(StreamType.Audio))
+                        .Merge(Observable.Return(Packet.CreateEOS(StreamType.Video)));
+                });
         }
 
         public IObservable<string> StreamError()
         {
-            return demuxerController.DemuxerError();
+            return demuxerController.DemuxerError()
+                .Merge(rtspClient.RTSPError().AsObservable());
         }
 
         public IObservable<Unit> BufferingStarted()
@@ -94,13 +110,16 @@ namespace JuvoPlayer.DataProviders.RTSP
 
         public void OnStateChanged(PlayerState state)
         {
+            if (rtspClient == null || rtspClient.IsStarted == false)
+                return;
+
             switch (state)
             {
                 case PlayerState.Paused:
-                    rtpClient?.Pause();
+                    rtspClient.Pause();
                     break;
                 case PlayerState.Playing:
-                    rtpClient?.Play();
+                    rtspClient.Play();
                     break;
             }
         }
@@ -117,21 +136,24 @@ namespace JuvoPlayer.DataProviders.RTSP
 
         public void Stop()
         {
+            _startCancellationTokenSource?.Cancel();
         }
 
         public void Start()
         {
-            if (rtpClient == null)
+            if (rtspClient == null)
                 return;
 
             // Start demuxer before client. Demuxer start clears
             // underlying buffer. We do not want that to happen after client
             // puts something in there.
             demuxerController.StartForEs();
-            rtpClient.Start(currentClip);
-        }
 
-        public Cue CurrentCue { get; }
+            // start RTSP client
+            _startCancellationTokenSource = new CancellationTokenSource();
+            _startCancellationTokenSource.CancelAfter(_connectionTimeout);
+            rtspClient.Start(currentClip, _startCancellationTokenSource.Token);
+        }
 
         public void OnStopped()
         {
@@ -143,7 +165,7 @@ namespace JuvoPlayer.DataProviders.RTSP
 
         public void Dispose()
         {
-            rtpClient?.Stop();
+            rtspClient?.Stop();
             demuxerController.Dispose();
         }
 

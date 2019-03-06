@@ -25,6 +25,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using JuvoPlayer.Common;
 using JuvoLogger;
+using Nito.AsyncEx;
 using Rtsp.Messages;
 
 namespace JuvoPlayer.DataProviders.RTSP
@@ -34,33 +35,40 @@ namespace JuvoPlayer.DataProviders.RTSP
         private static readonly ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
 
         RTPTransportType rtpTransportType = RTPTransportType.TCP; // Mode, either RTP over UDP or RTP over TCP using the RTSP socket
-        UDPSocketPair udpPair = null;       // Pair of UDP ports used in RTP over UDP mode or in MULTICAST mode
-        String url = "";                 // RTSP URL
-        string session = "";             // RTSP Session
-        int videoDataChannel = -1;     // RTP Channel Number used for the video stream or the UDP port number
-        int videoRTCPChannel = -1;     // RTP Channel Number used for the rtcp status report messages OR the UDP port number
+        UDPSocketPair udpSocketPair; // Pair of UDP ports used in RTP over UDP mode or in MULTICAST mode
+        Rtsp.RtspListener rtspListener;
+        Rtsp.RtspTcpTransport rtspSocket;
+        private readonly Subject<string> rtspErrorSubject = new Subject<string>();
 
-        Timer timer = null;
-        AutoResetEvent timerResetEvent = null;
+        string rtspUrl = "";
+        string rtspSession = "";
+        int videoDataChannel = -1; // RTP Channel Number used for the video stream or the UDP port number
+        int videoRTCPChannel = -1; // RTP Channel Number used for the rtcp status report messages OR the UDP port number
+        int videoPayloadType = -1; // Payload Type for the Video. (often 96 which is the first dynamic payload value)
 
-        Rtsp.RtspListener rtspListener = null;
-        Rtsp.RtspTcpTransport rtspSocket = null; // RTSP connection
-
-        int videoPayloadType = -1;          // Payload Type for the Video. (often 96 which is the first dynamic payload value)
+        Timer timer;
+        AutoResetEvent timerResetEvent;
 
         private readonly Subject<byte[]> chunkReadySubject = new Subject<byte[]>();
+
+        public bool IsStarted { get; private set; }
 
         public IObservable<byte[]> ChunkReady()
         {
             return chunkReadySubject.AsObservable();
         }
 
+        public IObservable<string> RTSPError()
+        {
+            return rtspErrorSubject;
+        }
+
         public void Pause()
         {
             RtspRequest pauseMessage = new RtspRequestPause
             {
-                RtspUri = new Uri(url),
-                Session = session
+                RtspUri = new Uri(rtspUrl),
+                Session = rtspSession
             };
 
             rtspListener.SendMessage(pauseMessage);
@@ -70,8 +78,8 @@ namespace JuvoPlayer.DataProviders.RTSP
         {
             RtspRequest playMessage = new RtspRequestPlay
             {
-                RtspUri = new Uri(url),
-                Session = session
+                RtspUri = new Uri(rtspUrl),
+                Session = rtspSession
             };
 
             rtspListener.SendMessage(playMessage);
@@ -82,89 +90,137 @@ namespace JuvoPlayer.DataProviders.RTSP
             throw new NotImplementedException();
         }
 
-        public void Start(ClipDefinition clip)
+        public async Task Start(ClipDefinition clip, CancellationToken ctx)
         {
-            if (clip == null)
-                throw new ArgumentNullException(nameof(clip), "clip cannot be null");
-
-            if (clip.Url.Length  < 7)
-                throw new ArgumentException("clip url cannot be empty");
-
-            url = clip.Url;
-
             try
             {
-                Uri uri = new Uri(url);
-                TcpClient tcpClient = new TcpClient();
-                var task = Task.Run(async () => { await tcpClient.ConnectAsync(uri.Host, uri.Port > 0 ? uri.Port : 554); });
-                task.Wait();
-
-                rtspSocket = new Rtsp.RtspTcpTransport(tcpClient);
-                if (rtspSocket.Connected == false)
-                {
-                    Logger.Error("Did not connect");
-                    return;
-                }
-
-                // Connect a RTSP Listener to the RTSP Socket (or other Stream) to send RTSP messages and listen for RTSP replies
-                rtspListener = new Rtsp.RtspListener(rtspSocket);
-
-                rtspListener.MessageReceived += RtspMessageReceived;
-                rtspListener.DataReceived += RtpDataReceived;
-
-                rtspListener.Start();
-
-                RtspRequest optionsMessage = new RtspRequestOptions
-                {
-                    RtspUri = new Uri(url)
-                };
-
-                rtspListener.SendMessage(optionsMessage);
+                IsStarted = false;
+                await ExecuteStart(clip, ctx);
+            }
+            catch (TaskCanceledException)
+            {
+                rtspErrorSubject.OnNext("Connection timeout.");
             }
             catch (Exception e)
             {
-                Logger.Error(e, "Did not connect");
+                rtspErrorSubject.OnNext(e.Message);
             }
+            finally
+            {
+                IsStarted = true;
+            }
+        }
+
+        private async Task ExecuteStart(ClipDefinition clip, CancellationToken ctx)
+        {
+            if (clip == null)
+                throw new ArgumentNullException(nameof(clip), "Clip cannot be null.");
+
+            if (clip.Url.Length < 7)
+                throw new ArgumentException("Clip URL cannot be empty.");
+
+            rtspUrl = clip.Url;
+            TcpClient tcpClient = new TcpClient();
+            try
+            {
+                Uri uri = new Uri(rtspUrl);
+                await tcpClient.ConnectAsync(uri.Host, uri.Port > 0 ? uri.Port : 554).WaitAsync(ctx);
+            }
+            catch (Exception e)
+            {
+                Logger.Info(e.ToString());
+                tcpClient.Dispose();
+                throw;
+            }
+
+            rtspSocket = new Rtsp.RtspTcpTransport(tcpClient);
+            if (rtspSocket.Connected == false)
+                throw new Exception("RTSP server not available at this time.");
+
+            rtspListener = new Rtsp.RtspListener(rtspSocket);
+            rtspListener.MessageReceived += RtspMessageReceived;
+            rtspListener.DataReceived += RtpDataReceived;
+            rtspListener.Start();
+
+            RtspRequest optionsMessage = new RtspRequestOptions
+            {
+                RtspUri = new Uri(rtspUrl)
+            };
+
+            rtspListener.SendMessage(optionsMessage);
         }
 
         public void Stop()
         {
+            IsStarted = false;
+
             if (rtspListener != null)
             {
                 RtspRequest teardownMessage = new RtspRequestTeardown
                 {
-                    RtspUri = new Uri(url),
-                    Session = session
+                    RtspUri = new Uri(rtspUrl),
+                    Session = rtspSession
                 };
-
                 rtspListener.SendMessage(teardownMessage);
             }
 
-            // clear up any UDP sockets
-            udpPair?.Stop();
-
-            // Stop the keepalive timer
-            timer?.Dispose();
-
-            // Drop the RTSP session
-            rtspListener?.Stop();
+            udpSocketPair?.Stop(); // clear up any UDP sockets
+            timer?.Dispose(); // Stop the keepalive timer
+            rtspListener?.Stop(); // Drop the RTSP session
         }
 
-        public void RtpDataReceived(object sender, Rtsp.RtspChunkEventArgs e)
+        private bool IsRtcpGoodbye(RtspData rtspData)
         {
-            RtspData rtpData = e.Message as RtspData;
+            int RTCPSenderReport = 200; // RTCP.PT=SR=200  ; RFC3550
+            int RTCPGoodbye = 203;      // RTCP.PT=BYE=203 ; RFC3550
 
-            // Check which channel the Data was received on.
-            // eg the Video Channel, the Video Control Channel (RTCP)
-            // In the future would also check the Audio Channel and Audio Control Channel
-            if (rtpData.Channel == videoRTCPChannel)
+            int firstPacketType = rtspData.Data[1];
+            if (firstPacketType != RTCPSenderReport)
+                return false;
+
+            int firstPacketLength = 4 * ((rtspData.Data[2] << 8) + rtspData.Data[3]) + 4;
+            bool isThisACompoundPacket = rtspData.Data.Length > firstPacketLength;
+            if (!isThisACompoundPacket)
+                return false;
+
+            int secondPacketType = rtspData.Data[firstPacketLength + 1];
+            if (secondPacketType != RTCPGoodbye)
+                return false;
+
+            return true; // It's a RTCP Sender Report Goodbye compound packet, EoS.
+        }
+
+        private void HandleRtcpGoodbye()
+        {
+            chunkReadySubject.OnNext(null);
+        }
+
+        public void RtpDataReceived(object sender, Rtsp.RtspChunkEventArgs chunkEventArgs)
+        {
+            try
             {
-                Logger.Info("Received a RTCP message on channel " + rtpData.Channel);
-                return;
-            }
+                RtspData rtpData = chunkEventArgs.Message as RtspData;
 
-            if (rtpData.Channel == videoDataChannel)
-                ProcessRTPVideo(e);
+                if (IsRtcpGoodbye(rtpData))
+                    HandleRtcpGoodbye();
+
+                // Check which channel the Data was received on.
+                // eg the Video Channel, the Video Control Channel (RTCP)
+                // In the future would also check the Audio Channel and Audio Control Channel
+                if (rtpData.Channel == videoRTCPChannel)
+                {
+                    Logger.Info("Received a RTCP message on channel " + rtpData.Channel);
+                    return;
+                }
+
+                if (rtpData.Channel == videoDataChannel)
+                    ProcessRTPVideo(chunkEventArgs);
+            }
+            catch (Exception e)
+            {
+                Logger.Info(e.ToString());
+                rtspErrorSubject.OnNext(e.Message);
+            }
         }
 
         private void ProcessRTPVideo(Rtsp.RtspChunkEventArgs e)
@@ -226,29 +282,37 @@ namespace JuvoPlayer.DataProviders.RTSP
         }
 
         // RTSP Messages are OPTIONS, DESCRIBE, SETUP, PLAY etc
-        private void RtspMessageReceived(object sender, Rtsp.RtspChunkEventArgs e)
+        private void RtspMessageReceived(object sender, Rtsp.RtspChunkEventArgs chunkEventArgs)
         {
-            RtspResponse message = e.Message as RtspResponse;
-            if (message.OriginalRequest == null)
+            RtspResponse message = chunkEventArgs.Message as RtspResponse;
+            if (message?.OriginalRequest == null)
                 return;
 
-            Logger.Info("Received " + message.OriginalRequest.ToString());
+            Logger.Info("Received " + message.OriginalRequest);
 
-            if (message.OriginalRequest is RtspRequestOptions)
+            try
             {
-                ProcessOptionsRequest(message);
+                if (message.OriginalRequest is RtspRequestOptions)
+                {
+                    ProcessOptionsRequest(message);
+                }
+                else if (message.OriginalRequest is RtspRequestDescribe)
+                {
+                    ProcessDescribeRequest(message);
+                }
+                else if (message.OriginalRequest is RtspRequestSetup)
+                {
+                    ProcessSetupRequest(message);
+                }
+                else if (message.OriginalRequest is RtspRequestPlay)
+                {
+                    ProcessPlayRequest(message);
+                }
             }
-            else if (message.OriginalRequest is RtspRequestDescribe)
+            catch (Exception e)
             {
-                ProcessDescribeRequest(message);
-            }
-            else if (message.OriginalRequest is RtspRequestSetup)
-            {
-                ProcessSetupRequest(message);
-            }
-            else if (message.OriginalRequest is RtspRequestPlay)
-            {
-                ProcessPlayRequest(message);
+                Logger.Info(e.ToString());
+                rtspErrorSubject.OnNext("RTSP error occured.");
             }
         }
 
@@ -262,36 +326,32 @@ namespace JuvoPlayer.DataProviders.RTSP
         {
             // If we get a reply to SETUP (which was our third command), then process then send PLAY
 
-            // Got Reply to SETUP
             Logger.Info("Got reply from Setup. Session is " + message.Session);
 
-            session = message.Session; // Session value used with Play, Pause, Teardown
+            rtspSession = message.Session; // Session value used with Play, Pause, Teardown
 
-            // Check the Transport header
             if (message.Headers.ContainsKey(RtspHeaderNames.Transport))
             {
                 RtspTransport transport = RtspTransport.Parse(message.Headers[RtspHeaderNames.Transport]);
-                // Check if Transport header includes Multicast
+
                 if (transport.IsMulticast)
                 {
-                    String multicastAddress = transport.Destination;
+                    string multicastAddress = transport.Destination;
                     videoDataChannel = transport.Port.First;
                     videoRTCPChannel = transport.Port.Second;
 
                     // Create the Pair of UDP Sockets in Multicast mode
-                    udpPair = new UDPSocketPair(multicastAddress, videoDataChannel, multicastAddress, videoRTCPChannel);
-                    udpPair.DataReceived += RtpDataReceived;
-                    udpPair.Start();
+                    udpSocketPair = new UDPSocketPair(multicastAddress, videoDataChannel, multicastAddress, videoRTCPChannel);
+                    udpSocketPair.DataReceived += RtpDataReceived;
+                    udpSocketPair.Start();
                 }
             }
 
-            RtspRequest play_message = new RtspRequestPlay
+            rtspListener.SendMessage(new RtspRequestPlay
             {
-                RtspUri = new Uri(url),
-                Session = session
-            };
-
-            rtspListener.SendMessage(play_message);
+                RtspUri = new Uri(rtspUrl),
+                Session = rtspSession
+            });
         }
 
         private void ProcessDescribeRequest(RtspResponse message)
@@ -324,7 +384,7 @@ namespace JuvoPlayer.DataProviders.RTSP
                     if (fmtp != null)
                     {
                         var param = Rtsp.Sdp.H264Parameters.Parse(fmtp.FormatParameter);
-                        OutputNAL(param.SpropParameterSets); // output SPS and PPS
+                        OutputNal(param.SpropParameterSets); // output SPS and PPS
                     }
 
                     // Split the rtpmap to get the Payload Type
@@ -333,7 +393,7 @@ namespace JuvoPlayer.DataProviders.RTSP
                         videoPayloadType = rtpmap.PayloadNumber;
 
                     RtspRequestSetup setupMessage = new RtspRequestSetup();
-                    setupMessage.RtspUri = new Uri(url + "/" + control);
+                    setupMessage.RtspUri = new Uri(rtspUrl + "/" + control);
 
                     var transport = GetRTSPTransport();
                     setupMessage.AddTransport(transport);
@@ -363,8 +423,8 @@ namespace JuvoPlayer.DataProviders.RTSP
                 {
                     // Server sends the RTP packets to a Pair of UDP Ports (one for data, one for rtcp control messages)
                     // Example for UDP mode                   Transport: RTP/AVP;unicast;client_port=8000-8001
-                    videoDataChannel = udpPair.DataPort;     // Used in DataReceived event handler
-                    videoRTCPChannel = udpPair.ControlPort;  // Used in DataReceived event handler
+                    videoDataChannel = udpSocketPair.DataPort;     // Used in DataReceived event handler
+                    videoRTCPChannel = udpSocketPair.ControlPort;  // Used in DataReceived event handler
                     return new RtspTransport()
                     {
                         LowerTransport = RtspTransport.LowerTransportType.UDP,
@@ -415,23 +475,23 @@ namespace JuvoPlayer.DataProviders.RTSP
             timer = new Timer(Timeout, timerResetEvent, 20 * 1000, 20 * 1000);
 
             // send the Describe
-            RtspRequest describe_message = new RtspRequestDescribe
+            RtspRequest describeMessage = new RtspRequestDescribe
             {
-                RtspUri = new Uri(url)
+                RtspUri = new Uri(rtspUrl)
             };
 
-            rtspListener.SendMessage(describe_message);
+            rtspListener.SendMessage(describeMessage);
         }
 
-        void Timeout(Object stateInfo)
+        void Timeout(object stateInfo)
         {
             // Send Keepalive message
-            RtspRequest options_message = new RtspRequestOptions
+            RtspRequest optionsMessage = new RtspRequestOptions
             {
-                RtspUri = new Uri(url)
+                RtspUri = new Uri(rtspUrl)
             };
 
-            rtspListener.SendMessage(options_message);
+            rtspListener.SendMessage(optionsMessage);
         }
 
         // Output an array of NAL Units.
@@ -441,7 +501,7 @@ namespace JuvoPlayer.DataProviders.RTSP
 
         // When writing to a .264 file we will add the Start Code 0x00 0x00 0x00 0x01 before each NAL unit
         // when outputting data for H264 decoders, please note that some decoders require a 32 bit size length header before each NAL unit instead of the Start Code
-        private void OutputNAL(List<byte[]> nalUnits)
+        private void OutputNal(List<byte[]> nalUnits)
         {
             foreach (byte[] nalUnit in nalUnits)
             {
