@@ -439,7 +439,6 @@ namespace MpdParser
         }
     }
 
-    // a.k.a. AdaptationSet
     public class AdaptationSet
     {
         public uint? Id { get; }
