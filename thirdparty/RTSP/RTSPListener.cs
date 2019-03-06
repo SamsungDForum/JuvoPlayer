@@ -182,7 +182,6 @@ namespace Rtsp
                         {
                             OnDataReceived(new RtspChunkEventArgs(currentMessage));
                         }
-
                     }
                     else
                     {
@@ -196,21 +195,24 @@ namespace Rtsp
                 _logger.Warn("IO Error" + error);
                 _stream.Close();
                 _transport.Close();
+                throw;
             }
             catch (SocketException error)
             {
                 _logger.Warn("Socket Error" + error);
                 _stream.Close();
                 _transport.Close();
+                throw;
             }
             catch (ObjectDisposedException error)
             {
                 _logger.Warn("Object Disposed" + error);
+                throw;
             }
             catch (Exception error)
             {
                 _logger.Warn("Unknow Error" + error);
-//                throw;
+                throw;
             }
 
             _logger.Debug("Connection Close");

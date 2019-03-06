@@ -32,7 +32,7 @@ namespace JuvoPlayer.DataProviders.RTSP
         private readonly IRTSPClient rtspClient;
         private readonly ClipDefinition currentClip;
         private CancellationTokenSource _startCancellationTokenSource;
-        private TimeSpan _connectionTimeout = TimeSpan.FromSeconds(2);
+        private readonly TimeSpan _connectionTimeout = TimeSpan.FromSeconds(2);
 
         public Cue CurrentCue { get; }
 
