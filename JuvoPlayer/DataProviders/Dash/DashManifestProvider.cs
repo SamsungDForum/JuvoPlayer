@@ -205,7 +205,7 @@ namespace JuvoPlayer.DataProviders.Dash
         private async Task ManifestFeedProcess(CancellationToken token, TimeSpan delay)
         {
             bool repeatFeed;
-            var currentDelay = delay;
+            var currentDelay = delay;            
             if (Manifest == null)
                 throw new ArgumentNullException("Manifest object is null");
             do
