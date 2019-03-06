@@ -97,6 +97,7 @@ namespace JuvoPlayer.DataProviders.RTSP
             {
                 IsStarted = false;
                 await ExecuteStart(clip, ctx);
+                IsStarted = true;
             }
             catch (TaskCanceledException)
             {
@@ -105,10 +106,6 @@ namespace JuvoPlayer.DataProviders.RTSP
             catch (Exception e)
             {
                 rtspErrorSubject.OnNext(e.Message);
-            }
-            finally
-            {
-                IsStarted = true;
             }
         }
 
@@ -122,6 +119,8 @@ namespace JuvoPlayer.DataProviders.RTSP
 
             rtspUrl = clip.Url;
             TcpClient tcpClient = new TcpClient();
+            tcpClient.SendTimeout = 10000;
+            tcpClient.ReceiveTimeout = 10000;
             try
             {
                 Uri uri = new Uri(rtspUrl);
@@ -141,7 +140,7 @@ namespace JuvoPlayer.DataProviders.RTSP
             rtspListener = new Rtsp.RtspListener(rtspSocket, rtspErrorSubject);
             rtspListener.MessageReceived += RtspMessageReceived;
             rtspListener.DataReceived += RtpDataReceived;
-            rtspListener.AutoReconnect = true;
+            rtspListener.AutoReconnect = false;
             rtspListener.Start();
 
             RtspRequest optionsMessage = new RtspRequestOptions
@@ -156,15 +155,11 @@ namespace JuvoPlayer.DataProviders.RTSP
         {
             IsStarted = false;
 
-            if (rtspListener != null)
+            rtspListener?.SendMessage(new RtspRequestTeardown
             {
-                RtspRequest teardownMessage = new RtspRequestTeardown
-                {
-                    RtspUri = new Uri(rtspUrl),
-                    Session = rtspSession
-                };
-                rtspListener.SendMessage(teardownMessage);
-            }
+                RtspUri = new Uri(rtspUrl),
+                Session = rtspSession
+            });
 
             udpSocketPair?.Stop(); // clear up any UDP sockets
             timer?.Dispose(); // Stop the keepalive timer
