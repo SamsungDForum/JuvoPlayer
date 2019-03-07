@@ -268,10 +268,6 @@ namespace MpdParser.Node.Dynamic
         public void SetDocumentParameters(ManifestParameters docParams)
         {
             parameters = docParams;
-
-            // Dynamic Streams. Purge unavailable data.
-            if (parameters.Document.IsDynamic)
-                PurgeUnavailableSegments();
         }
 
         public ManifestParameters GetDocumentParameters()
@@ -650,10 +646,9 @@ namespace MpdParser.Node.Dynamic
 
         public void Initialize(CancellationToken token)
         {
-            // Initialization for TemplateRepresentationStream constitutes purge
-            // of unavailable segments. Currently performed in SetDocumentParameters
-            // If needed, can be moved to "in background based" initialization called
-            // through this method.
+            // Dynamic Streams. Purge unavailable data.
+            if (parameters.Document.IsDynamic)
+                PurgeUnavailableSegments();
         }
     }
 }

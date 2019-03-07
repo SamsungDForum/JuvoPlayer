@@ -79,7 +79,7 @@ namespace MpdParser.Node.Dynamic
         public TimeSpan AvailabilityTimeOffset { get; }
         public bool? AvailabilityTimeComplete { get; }
 
-        private Task<SegmentIndexer> segmentIndexer;
+        private Task<fMP4Index> indexingTask;
         private static readonly List<Segment> EmptySegment = new List<Segment>();
 
         public uint Count => (uint)(indexSegment == null ? 1 : Segments.Count);
@@ -94,7 +94,7 @@ namespace MpdParser.Node.Dynamic
 
         private async Task<List<Segment>> GetSegments()
         {
-            var indexer = await segmentIndexer.ConfigureAwait(false);
+            var indexer = await indexingTask.ConfigureAwait(false);
             return indexer.Segments;
         }
 
@@ -102,10 +102,10 @@ namespace MpdParser.Node.Dynamic
         {
             // API Media.Longest scans ALL representations, including uninitialized.
             // Treat them same way as those without index data.
-            if (segmentIndexer == null)
+            if (indexingTask == null)
                 return media?.Period?.Duration;
 
-            var indexer = await segmentIndexer.ConfigureAwait(false);
+            var indexer = await indexingTask.ConfigureAwait(false);
             return indexer.Duration;
         }
 
@@ -283,10 +283,10 @@ namespace MpdParser.Node.Dynamic
             if (indexSegment == null)
                 return true;
 
-            if (segmentIndexer?.IsCanceled == true || segmentIndexer?.IsFaulted == true)
+            if (indexingTask?.IsCanceled == true || indexingTask?.IsFaulted == true)
                 return false;
 
-            return segmentIndexer?.IsCompleted == true;
+            return indexingTask?.IsCompleted == true;
         }
 
         public void Initialize(CancellationToken token)
@@ -299,8 +299,8 @@ namespace MpdParser.Node.Dynamic
 
             lock (initLock)
             {
-                if (segmentIndexer == null || segmentIndexer.Status >= TaskStatus.Canceled)
-                    segmentIndexer = SegmentIndexer.Initialize(indexSegment, media.Url, token);
+                if (indexingTask == null || indexingTask.Status >= TaskStatus.Canceled)
+                    indexingTask = fMP4Indexer.Download(indexSegment, media.Url, token);
             }
         }
     }

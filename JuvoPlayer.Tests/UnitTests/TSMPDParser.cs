@@ -41,8 +41,8 @@ namespace JuvoPlayer.Tests.UnitTests
         public string url { get; set; }
         public string rawXML { get; set; }
         public Document parsedmpd { get; set; }
-        public AdaptationSet audioMedia { get; set; }
-        public AdaptationSet videoMedia { get; set; }
+        public AdaptationSet audioAdaptationSet { get; set; }
+        public AdaptationSet videoAdaptationSet { get; set; }
         public Representation audioRepresentation { get; set; }
         public Representation videoRepresentation { get; set; }
 
@@ -138,8 +138,8 @@ namespace JuvoPlayer.Tests.UnitTests
 
                 DOCData item = new DOCData();
 
-                item.audioMedia = null;
-                item.videoMedia = null;
+                item.audioAdaptationSet = null;
+                item.videoAdaptationSet = null;
                 item.audioRepresentation = null;
                 item.videoRepresentation = null;
                 item.audioStream = null;
@@ -178,7 +178,7 @@ namespace JuvoPlayer.Tests.UnitTests
                 {
                     Assert.DoesNotThrow(() =>
                     {
-                        item.videoMedia = Find(period, "en", MediaType.Audio) ??
+                        item.videoAdaptationSet = Find(period, "en", MediaType.Audio) ??
                         Find(period, "und", MediaType.Audio) ??
                         Find(period, null, MediaType.Audio);
                     }
@@ -186,14 +186,14 @@ namespace JuvoPlayer.Tests.UnitTests
 
                     Assert.DoesNotThrow(() =>
                     {
-                        item.audioMedia = Find(period, "en", MediaType.Video) ??
+                        item.audioAdaptationSet = Find(period, "en", MediaType.Video) ??
                         Find(period, "und", MediaType.Video) ??
                         Find(period, null, MediaType.Video);
                     }
                         );
 
-                    Assert.IsNotNull(item.videoMedia);
-                    Assert.IsNotNull(item.audioMedia);
+                    Assert.IsNotNull(item.videoAdaptationSet);
+                    Assert.IsNotNull(item.audioAdaptationSet);
                 }
             }
         }
@@ -216,13 +216,13 @@ namespace JuvoPlayer.Tests.UnitTests
 
                 Assert.DoesNotThrow(() =>
                         {
-                            item.audioRepresentation = item.audioMedia.Representations.First();
+                            item.audioRepresentation = item.audioAdaptationSet.Representations.First();
                         }
                      );
 
                 Assert.DoesNotThrow(() =>
                         {
-                            item.videoRepresentation = item.videoMedia.Representations.First();
+                            item.videoRepresentation = item.videoAdaptationSet.Representations.First();
                         }
                     );
 
