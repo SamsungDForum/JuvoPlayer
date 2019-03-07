@@ -16,8 +16,11 @@
  */
 
 using System;
+using System.Linq;
 using System.Net;
+using System.Net.Http;
 using JuvoLogger;
+using Polly;
 
 namespace MpdParser.Network
 {
@@ -63,45 +66,41 @@ namespace MpdParser.Network
         public override string ToString() { return $"{Low}-{High}"; }
     }
 
-    // TODO: This class is a copy of WebClientEx in DashDownloader
-    // TODO: Consider moving cross application common classes to a separate project
-    // TODO: so they can be used across application without too much dependency hell.
-    internal class WebClientEx : WebClient
+    internal static class HttpClientProvider
     {
-        private long? from;
-        private long? to;
+        public static HttpClient NetClient { get; }
 
-        public void SetRange(long from, long to)
+        private static readonly HttpStatusCode[] RetryHttpCodes =
         {
-            this.from = from;
-            this.to = to;
-        }
+            HttpStatusCode.RequestTimeout, // 408
+            HttpStatusCode.InternalServerError, // 500
+            HttpStatusCode.BadGateway, // 502
+            HttpStatusCode.ServiceUnavailable, // 503
+            HttpStatusCode.GatewayTimeout // 504
+        };
 
-        public void ClearRange()
-        {
-            from = null;
-            to = null;
-        }
+        private static readonly Random Jitter;
 
-        public ulong GetBytes(Uri address)
+        static HttpClientProvider()
         {
-            OpenRead(address.ToString());
-            return Convert.ToUInt64(ResponseHeaders["Content-Length"]);
-        }
-
-        protected override WebRequest GetWebRequest(Uri address)
-        {
-            var request = (HttpWebRequest)base.GetWebRequest(address);
-            if (request != null)
+            NetClient = new HttpClient
             {
-                request.Accept = "*/*";
-                if (to != null && from != null)
-                {
-                    request.AddRange(from.Value, to.Value);
-                }
-            }
+                Timeout = TimeSpan.FromMilliseconds(10)
+            };
 
-            return request;
+            Jitter = new Random();
+        }
+        public static IAsyncPolicy<HttpResponseMessage> GetPolicySendAsync(Func<Exception, bool> exceptionHandler)
+        {
+
+            return Policy
+                .Handle(exceptionHandler)
+                .OrResult<HttpResponseMessage>(hrm => RetryHttpCodes.Contains(hrm.StatusCode))
+                .WaitAndRetryAsync(
+                    3,
+                    attempt => (TimeSpan.FromMilliseconds(Jitter.Next(0, 250)) +
+                                TimeSpan.FromMilliseconds(50 * attempt))
+                );
         }
     }
 }

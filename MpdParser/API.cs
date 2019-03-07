@@ -553,45 +553,12 @@ namespace MpdParser
 
         public TimeSpan? LongestSegment()
         {
-            TimeSpan? current = null;
-            foreach (var repr in Representations)
-            {
-                TimeSpan? length;
-
-                length = repr.Segments?.Duration;
-
-                if (length == null) continue;
-                if (current == null)
-                {
-                    current = length.Value;
-                    continue;
-                }
-                if (length.Value > current.Value)
-                    current = length.Value;
-            }
-            return current;
+            return Representations.Max(repr => repr.Segments?.Duration);
         }
 
         public TimeSpan? LongestReadySegment()
         {
-            TimeSpan? current = null;
-            foreach (var repr in Representations)
-            {
-                TimeSpan? length;
-
-                length = repr.Segments?.IsReady() == true ?
-                    repr.Segments?.Duration : null;
-
-                if (length == null) continue;
-                if (current == null)
-                {
-                    current = length.Value;
-                    continue;
-                }
-                if (length.Value > current.Value)
-                    current = length.Value;
-            }
-            return current;
+            return Representations.Max(repr => repr?.Segments.IsReady() == true ? repr.Segments?.Duration : null);
         }
     }
 
@@ -775,38 +742,12 @@ namespace MpdParser
 
         public TimeSpan? LongestAdaptationSet()
         {
-            TimeSpan? current = null;
-            foreach (var set in Sets)
-            {
-                TimeSpan? length = set.LongestSegment();
-                if (length == null) continue;
-                if (current == null)
-                {
-                    current = length.Value;
-                    continue;
-                }
-                if (length.Value > current.Value)
-                    current = length.Value;
-            }
-            return current;
+            return Sets.Max(set => set?.LongestSegment());
         }
 
         public TimeSpan? LongestReadyAdaptationSet()
         {
-            TimeSpan? current = null;
-            foreach (var set in Sets)
-            {
-                TimeSpan? length = set.LongestReadySegment();
-                if (length == null) continue;
-                if (current == null)
-                {
-                    current = length.Value;
-                    continue;
-                }
-                if (length.Value > current.Value)
-                    current = length.Value;
-            }
-            return current;
+            return Sets.Max(set => set?.LongestReadySegment());
         }
 
         public int CompareTo(object obj)

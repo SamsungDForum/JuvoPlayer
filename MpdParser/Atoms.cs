@@ -17,6 +17,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.IO;
 using JuvoLogger;
 
 namespace MpdParser.Node.Atom
@@ -24,7 +25,6 @@ namespace MpdParser.Node.Atom
     public abstract class AtomBase
     {
         protected UInt32 AtomSize;
-        protected static LoggerManager LogManager = LoggerManager.GetInstance();
         protected static ILogger Logger = LoggerManager.GetInstance().GetLogger(MpdParser.LogTag);
 
         public abstract void ParseAtom(byte[] adata, ulong dataStart);
@@ -180,16 +180,9 @@ namespace MpdParser.Node.Atom
         private List<Movie_index_entry> Movieidx { get; }
         private List<SIDX_index_entry> Sidxidx { get; }
 
-        public uint MovieIndexCount
-        {
-            get { return (uint)Movieidx.Count; }
+        public uint MovieIndexCount => (uint)Movieidx.Count;
 
-        }
-        public uint SIDXIndexCount
-        {
-            get { return (uint)Sidxidx.Count; }
-
-        }
+        public uint SIDXIndexCount => (uint)Sidxidx.Count;
 
         protected static byte[] AtomName = { (byte)'s', (byte)'i', (byte)'d', (byte)'x' };
         protected byte Version;
@@ -259,16 +252,13 @@ namespace MpdParser.Node.Atom
 
             //Sanity Check
             if (AtomSize > adata.Length)
-            {
-                Logger.Warn("SIDX buffer shorter then indicated by atom size.");
-                return;
-            }
+                throw new InvalidDataException("SIDX buffer shorter then indicated by atom size.");
+
 
             // Check signature
             if (CheckName(adata, ref idx, AtomName) == false)
             {
-                Logger.Warn("Missing SIDX atom header.");
-                return;
+                throw new InvalidDataException("Missing SIDX atom header.");
             }
 
             Version = Read<byte>(adata, ref idx);
@@ -304,9 +294,9 @@ namespace MpdParser.Node.Atom
 
             UInt16 reference_count = Read<UInt16>(adata, ref idx);
 
-            double AvgSegDur = 0.0;
+            double avgSegDur = 0.0;
             int i = 1;
-            uint MovieIndexCount = 0;
+            uint indexCount = 0;
 
             Movieidx.Clear();
             Sidxidx.Clear();
@@ -326,9 +316,8 @@ namespace MpdParser.Node.Atom
                 UInt32 SAPdata = Read<UInt32>(adata, ref idx);
 
                 double currentDuration = ToSeconds(sseg_duration, Timescale);
-                double currentTimeIdx = ToSeconds(pts, Timescale);
 
-                AvgSegDur = (currentDuration - AvgSegDur) / i;
+                avgSegDur = (currentDuration - avgSegDur) / i;
                 i++;
 
                 // When storing sizes (ref_size), we need to store value -1 byte,
@@ -349,7 +338,7 @@ namespace MpdParser.Node.Atom
                         new Movie_index_entry(ref_size - 1, sseg_duration, SAPdata, offset,
                                                 TimeSpan.FromSeconds(currentDuration),
                                                 TimeSpan.FromSeconds(ToSeconds(pts, Timescale)),
-                                                MovieIndexCount++
+                                                indexCount++
                                              )
                                 );
                 }
@@ -365,7 +354,7 @@ namespace MpdParser.Node.Atom
 
             }
 
-            AverageSegmentDuration = TimeSpan.FromSeconds(AvgSegDur);
+            AverageSegmentDuration = TimeSpan.FromSeconds(avgSegDur);
 
         }
     }

@@ -165,7 +165,7 @@ namespace JuvoPlayer.DataProviders.Dash
             //
             // Manageable errors will be notified by ArgumentException and handled by the caller.
             //
-            SetMediaFromPeriod(tmpPeriod, token);
+            SetAdaptationSetFromPeriod(tmpPeriod, token);
             NotifyDurationChange();
             BuildSubtitleInfos(tmpPeriod);
             token.ThrowIfCancellationRequested();
@@ -213,7 +213,7 @@ namespace JuvoPlayer.DataProviders.Dash
         private async Task ManifestFeedProcess(CancellationToken token, TimeSpan delay)
         {
             bool repeatFeed;
-            var currentDelay = delay;            
+            var currentDelay = delay;
             if (Manifest == null)
                 throw new ArgumentNullException("Manifest object is null");
             do
@@ -296,7 +296,7 @@ namespace JuvoPlayer.DataProviders.Dash
             StartManifestTask(cancelToken, TimeSpan.Zero);
         }
 
-        private void SetMediaFromPeriod(Period period, CancellationToken token)
+        private void SetAdaptationSetFromPeriod(Period period, CancellationToken token)
         {
             logger.Info(period.ToString());
 
