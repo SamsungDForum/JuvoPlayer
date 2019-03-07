@@ -26,7 +26,9 @@ namespace Rtsp.Messages
                 return new RtspTransport[] { new RtspTransport() };
 
             string[] items = Headers[RtspHeaderNames.Transport].Split(',');
-            return items.Select(o => RtspTransport.Parse(o)).ToArray();
+            return Array.ConvertAll<string, RtspTransport>(items,
+                new Converter<string, RtspTransport>(RtspTransport.Parse));
+
         }
 
         public void AddTransport(RtspTransport newTransport)

@@ -8,21 +8,12 @@ namespace Rtsp.Messages
     /// <summary>
     /// Class wich represent each message echanged on Rtsp socket.
     /// </summary>
-    public abstract class RtspChunk
+    public abstract class RtspChunk : ICloneable
     {
         /// <summary>
-        /// Logs the message to debug.
+        /// Logs the message.
         /// </summary>
-        public void LogMessage()
-        {
-            //LogMessage(NLog.LogLevel.Debug);
-        }
-
-        ///// <summary>
-        ///// Logs the message.
-        ///// </summary>
-        ///// <param name="alevel">The log level.</param>
-        //public abstract void LogMessage(NLog.LogLevel aLevel);
+        public abstract void LogMessage();
 
         /// <summary>
         /// Gets or sets the data associate with the message.
@@ -46,7 +37,7 @@ namespace Rtsp.Messages
         /// Nouvel objet qui est une copie de cette instance.
         /// </returns>
         public abstract object Clone();
-        
+
         #endregion
     }
 }

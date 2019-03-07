@@ -1,4 +1,8 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Diagnostics.Contracts;
 
 namespace Rtsp.Sdp
 {
@@ -12,6 +16,7 @@ namespace Rtsp.Sdp
         {
             if (value == null)
                 throw new ArgumentNullException("value");
+            Contract.EndContractBlock();
 
             SdpTimeZone returnValue = new SdpTimeZone();
 

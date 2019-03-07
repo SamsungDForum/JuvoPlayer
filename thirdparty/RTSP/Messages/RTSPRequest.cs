@@ -80,13 +80,13 @@ namespace Rtsp.Messages
                 case RequestType.GET_PARAMETER:
                     returnValue = new RtspRequestGetParameter();
                     break;
-
-                    /*
                 case RequestType.ANNOUNCE:
+                    returnValue = new RtspRequestAnnounce();
                     break;
-
                 case RequestType.RECORD:
+                    returnValue = new RtspRequestRecord();
                     break;
+                    /*
                 case RequestType.REDIRECT:
                     break;
                 
@@ -168,7 +168,7 @@ namespace Rtsp.Messages
                 {
                     Array.Resize(ref commandArray, 3);
                 }
-                commandArray[1] = value != null ? value.ToString():"*";
+                commandArray[1] = (value != null ? value.ToString().TrimEnd('/') : "*");
             }
         }
 

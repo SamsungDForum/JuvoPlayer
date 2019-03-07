@@ -1,6 +1,8 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Text;
+using System.Diagnostics.Contracts;
 
 namespace Rtsp.Sdp
 {
@@ -18,8 +20,8 @@ namespace Rtsp.Sdp
 
         public static void RegisterNewAttributeType(string key, Type attributType)
         {
-            //if(!attributType.IsSubclassOf(typeof(Attribut)))
-            //    throw new ArgumentException("Type must be subclass of Rtsp.Sdp.Attribut","attributType");
+            if(!attributType.IsSubclassOf(typeof(Attribut)))
+                throw new ArgumentException("Type must be subclass of Rtsp.Sdp.Attribut","attributType");
 
             attributMap[key] = attributType;
         }
@@ -41,7 +43,7 @@ namespace Rtsp.Sdp
             if(value == null)
                 throw new ArgumentNullException("value");
 
-            //Contract.EndContractBlock();
+            Contract.EndContractBlock();
 
             var listValues = value.Split(new char[] {':'}, 2);
             
@@ -53,18 +55,8 @@ namespace Rtsp.Sdp
             attributMap.TryGetValue(listValues[0], out childType);
             if (childType != null)
             {
-                if (listValues[0] == AttributRtpMap.NAME)
-                {
-                    returnValue = new AttributRtpMap();
-                }
-                else if (listValues[0] == AttributFmtp.NAME)
-                {
-                    returnValue = new AttributFmtp();
-                }
-                else
-                {
-                    returnValue = new Attribut(listValues[0]);
-                }
+                var defaultContructor = childType.GetConstructor(Type.EmptyTypes);
+                returnValue = defaultContructor.Invoke(Type.EmptyTypes) as Attribut;
             }
             else
             {
