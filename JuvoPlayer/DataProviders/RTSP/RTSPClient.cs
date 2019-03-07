@@ -27,6 +27,7 @@ using JuvoPlayer.Common;
 using JuvoLogger;
 using Nito.AsyncEx;
 using Rtsp.Messages;
+using Rtsp.Sdp;
 
 namespace JuvoPlayer.DataProviders.RTSP
 {
@@ -38,7 +39,6 @@ namespace JuvoPlayer.DataProviders.RTSP
         UDPSocketPair udpSocketPair; // Pair of UDP ports used in RTP over UDP mode or in MULTICAST mode
         Rtsp.RtspListener rtspListener;
         Rtsp.RtspTcpTransport rtspSocket;
-        private readonly Subject<string> rtspErrorSubject = new Subject<string>();
 
         string rtspUrl = "";
         string rtspSession = "";
@@ -50,6 +50,7 @@ namespace JuvoPlayer.DataProviders.RTSP
         AutoResetEvent timerResetEvent;
 
         private readonly Subject<byte[]> chunkReadySubject = new Subject<byte[]>();
+        private readonly Subject<string> rtspErrorSubject = new Subject<string>();
 
         public bool IsStarted { get; private set; }
 
@@ -96,6 +97,7 @@ namespace JuvoPlayer.DataProviders.RTSP
             {
                 IsStarted = false;
                 await ExecuteStart(clip, ctx);
+                IsStarted = true;
             }
             catch (TaskCanceledException)
             {
@@ -104,10 +106,6 @@ namespace JuvoPlayer.DataProviders.RTSP
             catch (Exception e)
             {
                 rtspErrorSubject.OnNext(e.Message);
-            }
-            finally
-            {
-                IsStarted = true;
             }
         }
 
@@ -121,6 +119,8 @@ namespace JuvoPlayer.DataProviders.RTSP
 
             rtspUrl = clip.Url;
             TcpClient tcpClient = new TcpClient();
+            tcpClient.SendTimeout = 10000;
+            tcpClient.ReceiveTimeout = 10000;
             try
             {
                 Uri uri = new Uri(rtspUrl);
@@ -137,9 +137,10 @@ namespace JuvoPlayer.DataProviders.RTSP
             if (rtspSocket.Connected == false)
                 throw new Exception("RTSP server not available at this time.");
 
-            rtspListener = new Rtsp.RtspListener(rtspSocket);
+            rtspListener = new Rtsp.RtspListener(rtspSocket, rtspErrorSubject);
             rtspListener.MessageReceived += RtspMessageReceived;
             rtspListener.DataReceived += RtpDataReceived;
+            rtspListener.AutoReconnect = false;
             rtspListener.Start();
 
             RtspRequest optionsMessage = new RtspRequestOptions
@@ -154,15 +155,11 @@ namespace JuvoPlayer.DataProviders.RTSP
         {
             IsStarted = false;
 
-            if (rtspListener != null)
+            rtspListener?.SendMessage(new RtspRequestTeardown
             {
-                RtspRequest teardownMessage = new RtspRequestTeardown
-                {
-                    RtspUri = new Uri(rtspUrl),
-                    Session = rtspSession
-                };
-                rtspListener.SendMessage(teardownMessage);
-            }
+                RtspUri = new Uri(rtspUrl),
+                Session = rtspSession
+            });
 
             udpSocketPair?.Stop(); // clear up any UDP sockets
             timer?.Dispose(); // Stop the keepalive timer
@@ -371,7 +368,7 @@ namespace JuvoPlayer.DataProviders.RTSP
             // Only do this for the first Video attribute in case there is more than one in the SDP
             for (int x = 0; x < sdpData.Medias.Count; x++)
             {
-                if (sdpData.Medias[x].GetMediaType() == Rtsp.Sdp.Media.MediaType.video)
+                if (sdpData.Medias[x].MediaType == Media.MediaTypes.video)
                 {
                     // We only want the first video sub-stream
                     if (videoPayloadType != -1)
@@ -491,7 +488,16 @@ namespace JuvoPlayer.DataProviders.RTSP
                 RtspUri = new Uri(rtspUrl)
             };
 
-            rtspListener.SendMessage(optionsMessage);
+            try
+            {
+                if (rtspListener.SendMessage(optionsMessage) == false)
+                    rtspErrorSubject.OnNext("Connection timeout.");
+            }
+            catch (Exception e)
+            {
+                Logger.Info(e.ToString());
+                rtspErrorSubject.OnNext("Connection timeout.");
+            }
         }
 
         // Output an array of NAL Units.

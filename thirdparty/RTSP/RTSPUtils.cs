@@ -12,10 +12,8 @@ namespace Rtsp
         /// </summary>
         public static void RegisterUri()
         {
-            //Uri url;
-
-            //if (!UriParser.IsKnownScheme("rtsp"))
-            //    UriParser.Register(new HttpStyleUriParser(), "rtsp", 554);
+            if (!UriParser.IsKnownScheme("rtsp"))
+                UriParser.Register(new HttpStyleUriParser(), "rtsp", 554);
         }
     }
 }

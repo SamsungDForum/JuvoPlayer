@@ -1,7 +1,10 @@
-﻿namespace Rtsp.Messages
+﻿using JuvoLogger;
+
+namespace Rtsp.Messages
 {
     using System;
     using System.Collections.Generic;
+    using System.Diagnostics.Contracts;
     using System.Globalization;
     using System.IO;
     using System.Text;
@@ -9,7 +12,7 @@
 
     public class RtspMessage : RtspChunk
     {
-        //private static NLog.Logger _logger = NLog.LogManager.GetCurrentClassLogger();
+        private static readonly ILogger _logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
 
         /// <summary>
         /// The regex to validate the Rtsp message.
@@ -22,7 +25,7 @@
         /// <returns>An Rtsp message</returns>
         public static RtspMessage GetRtspMessage(string aRequestLine)
         {
-            // We can't determine the message 
+            // We can't determine the message
             if (string.IsNullOrEmpty(aRequestLine))
                 return new RtspMessage();
             string[] requestParts = aRequestLine.Split(new char[] { ' ' }, 3);
@@ -38,13 +41,13 @@
                     returnValue = new RtspResponse();
                 else
                 {
-                    //_logger.Warn(CultureInfo.InvariantCulture, "Got a strange message {0}", aRequestLine);
+                    _logger.Warn($"Got a strange message {aRequestLine}");
                     returnValue = new RtspMessage();
                 }
             }
             else
             {
-                //_logger.Warn(CultureInfo.InvariantCulture, "Got a strange message {0}", aRequestLine);
+                _logger.Warn($"Got a strange message {aRequestLine}");
                 returnValue = new RtspMessage();
             }
             returnValue.Command = aRequestLine;
@@ -92,6 +95,20 @@
         }
 
 
+		/// <summary>
+        /// Gets the Method of the message (eg OPTIONS, DESCRIBE, SETUP, PLAY).
+        /// </summary>
+        /// <value>The Method</value>
+        public string Method
+		{
+			get
+			{
+				if (commandArray == null)
+					return string.Empty;
+				return commandArray[0];
+			}
+		}
+
 
         /// <summary>
         /// Gets the headers of the message.
@@ -123,7 +140,7 @@
             }
             else
             {
-                //_logger.Warn(CultureInfo.InvariantCulture, "Invalid Header received : -{0}-", line);
+                _logger.Warn($"Invalid Header received : -{line}-");
             }
         }
 
@@ -168,7 +185,7 @@
                 _headers["Session"] = value;
             }
         }
-        
+
         /// <summary>
         /// Initialises the length of the data byte array from content lenth header.
         /// </summary>
@@ -213,7 +230,7 @@
                 throw
                   new ArgumentException("Stream CanWrite == false, can't send message to it", "stream");
             // </pex>
-            //Contract.EndContractBlock();
+            Contract.EndContractBlock();
 
             Encoding encoder = ASCIIEncoding.UTF8;
             StringBuilder outputString = new StringBuilder();
@@ -229,12 +246,14 @@
             }
             outputString.Append("\r\n");
             byte[] buffer = encoder.GetBytes(outputString.ToString());
-            stream.Write(buffer, 0, buffer.Length);
+            lock(stream) {
+                stream.Write(buffer, 0, buffer.Length);
 
-            // Output data
-            if (Data.Length > 0)
-                stream.Write(Data, 0, Data.Length);
+                // Output data
+                if (Data.Length > 0)
+                    stream.Write(Data, 0, Data.Length);
 
+                }
             stream.Flush();
         }
 
@@ -244,26 +263,19 @@
         /// Logs the message.
         /// </summary>
         /// <param name="aLevel">A log level.</param>
-        //public override void LogMessage(NLog.LogLevel aLevel)
-        //{
-        //    // Default value to debug
-        //    if (aLevel == null)
-        //        aLevel = NLog.LogLevel.Debug;
-        //    // if the level is not logged directly return
-        //    if (!_logger.IsEnabled(aLevel))
-        //        return;
+        public override void LogMessage()
+        {
+            _logger.Debug($"Commande : {Command}");
+            foreach (KeyValuePair<string, string> item in _headers)
+            {
+                _logger.Debug($"Header : {item.Key}: {item.Value}");
+            }
 
-        //    _logger.Log(aLevel, "Commande : {0}", Command);
-        //    foreach (KeyValuePair<string, string> item in _headers)
-        //    {
-        //        _logger.Log(aLevel, "Header : {0}: {1}", item.Key, item.Value);
-        //    }
-
-        //    if (Data.Length > 0)
-        //    {
-        //        _logger.Log(aLevel, "Data :-{0}-", ASCIIEncoding.ASCII.GetString(Data));
-        //    }
-        //}
+            if (Data.Length > 0)
+            {
+                _logger.Debug($"Data :-{ASCIIEncoding.ASCII.GetString(Data)}-");
+            }
+        }
 
         /// <summary>
         /// Crée un nouvel objet qui est une copie de l'instance en cours.
@@ -277,7 +289,10 @@
 
             foreach (var item in this.Headers)
             {
-                returnValue.Headers.Add(item.Key, item.Value);
+                if (item.Value == null)
+                    returnValue.Headers.Add(item.Key.Clone() as string, null);
+                else
+                    returnValue.Headers.Add(item.Key.Clone() as string, item.Value.Clone() as string);
             }
             returnValue.Data = this.Data.Clone() as byte[];
             returnValue.SourcePort = this.SourcePort;

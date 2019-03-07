@@ -1,6 +1,7 @@
 ﻿namespace Rtsp.Messages
 {
     using System;
+    using System.Diagnostics.Contracts;
     using System.Globalization;
 
     /// <summary>
@@ -65,6 +66,7 @@
         {
             if (stringValue == null)
                 throw new ArgumentNullException("stringValue");
+            Contract.Requires(!string.IsNullOrEmpty(stringValue));
 
             string[] values = stringValue.Split('-');
 

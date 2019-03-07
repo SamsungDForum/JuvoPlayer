@@ -2,6 +2,7 @@
 using System.Collections.Generic;
 using System.Linq;
 using System.Text;
+using JuvoLogger;
 
 namespace Rtsp.Messages
 {
@@ -11,24 +12,20 @@ namespace Rtsp.Messages
     public class RtspData : RtspChunk
     {
         //private static NLog.Logger _logger = NLog.LogManager.GetCurrentClassLogger();
+        private static readonly ILogger _logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
+
 
         /// <summary>
         /// Logs the message to debug.
         /// </summary>
-        //public override void LogMessage(NLog.LogLevel aLevel)
-        //{
-        //    // Default value to debug
-        //    if (aLevel == null)
-        //        aLevel = NLog.LogLevel.Debug;
-        //    // if the level is not logged directly return
-        //    if (!_logger.IsEnabled(aLevel))
-        //        return;
-        //    _logger.Log(aLevel, "Data message");
-        //    if (Data == null)
-        //        _logger.Log(aLevel, "Data : null");
-        //    else
-        //        _logger.Log(aLevel, "Data length :-{0}-", Data.Length);
-        //}
+        public override void LogMessage()
+        {
+            _logger.Debug("Data message");
+            if (Data == null)
+                _logger.Debug("Data : null");
+            else
+                _logger.Debug($"Data length :-{Data.Length}-");
+        }
 
         public int Channel { get; set; }
 

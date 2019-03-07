@@ -1,5 +1,9 @@
 ﻿using System;
+using System.Collections.Generic;
+using System.Linq;
 using System.Text;
+using System.Diagnostics.Contracts;
+using System.Globalization;
 
 namespace Rtsp.Messages
 {
@@ -43,7 +47,7 @@ mode                =    <"> *Method <"> | Method
         /// <summary>
         /// List of transport
         /// </summary>
-        //[Serializable]
+        [Serializable]
         public enum TransportType
         {
             /// <summary>
@@ -55,7 +59,7 @@ mode                =    <"> *Method <"> | Method
         /// <summary>
         /// Profile type
         /// </summary>
-        //[Serializable]
+        [Serializable]
         public enum ProfileType
         {
             /// <summary>
@@ -67,7 +71,7 @@ mode                =    <"> *Method <"> | Method
         /// <summary>
         /// Transport type.
         /// </summary>
-        //[Serializable]
+        [Serializable]
         public enum LowerTransportType
         {
             /// <summary>
@@ -169,7 +173,7 @@ mode                =    <"> *Method <"> | Method
         {
             if (aTransportString == null)
                 throw new ArgumentNullException("aTransportString");
-            //Contract.EndContractBlock();
+            Contract.EndContractBlock();
 
             RtspTransport returnValue = new RtspTransport();
 
@@ -248,6 +252,7 @@ mode                =    <"> *Method <"> | Method
                         returnValue.Mode = subPart[1];
                         break;
                     default:
+                        // TODO log invalid part
                         break;
                 }
             }
@@ -295,7 +300,11 @@ mode                =    <"> *Method <"> | Method
             transportString.Append(Profile.ToString());
             transportString.Append('/');
             transportString.Append(LowerTransport.ToString());
-            if(LowerTransport != LowerTransportType.TCP)
+            if (LowerTransport == LowerTransportType.TCP)
+            {
+                transportString.Append(";unicast");
+            }
+            if (LowerTransport == LowerTransportType.UDP)
             {
                 transportString.Append(';');
                 transportString.Append(IsMulticast ? "multicast" : "unicast");
@@ -352,7 +361,7 @@ mode                =    <"> *Method <"> | Method
             if (Mode != null && Mode != "PLAY")
             {
                 transportString.Append(";mode=");
-                transportString.Append(SSrc);
+                transportString.Append(Mode);
             }
             return transportString.ToString();
         }

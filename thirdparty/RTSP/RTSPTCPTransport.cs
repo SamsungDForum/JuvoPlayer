@@ -2,8 +2,8 @@
 using System.IO;
 using System.Net;
 using System.Net.Sockets;
+using System.Diagnostics.Contracts;
 using System.Globalization;
-using System.Threading.Tasks;
 
 namespace Rtsp
 {
@@ -23,20 +23,21 @@ namespace Rtsp
         {
             if (tcpConnection == null)
                 throw new ArgumentNullException("tcpConnection");
+            Contract.EndContractBlock();
 
             _currentEndPoint = (IPEndPoint)tcpConnection.Client.RemoteEndPoint;
             _RtspServerClient = tcpConnection;
         }
 
-        ///// <summary>
-        ///// Initializes a new instance of the <see cref="RtspTcpTransport"/> class.
-        ///// </summary>
-        ///// <param name="aHost">A host.</param>
-        ///// <param name="aPortNumber">A port number.</param>
-        //public RtspTcpTransport(string aHost, int aPortNumber)
-        //    : this(new TcpClient(aHost, aPortNumber))
-        //{
-        //}
+        /// <summary>
+        /// Initializes a new instance of the <see cref="RtspTcpTransport"/> class.
+        /// </summary>
+        /// <param name="aHost">A host.</param>
+        /// <param name="aPortNumber">A port number.</param>
+        public RtspTcpTransport(string aHost, int aPortNumber)
+            : this(new TcpClient(aHost, aPortNumber))
+        {
+        }
 
 
         #region IRtspTransport Membres
@@ -67,7 +68,7 @@ namespace Rtsp
         /// </summary>
         public void Close()
         {
-            Dispose();
+            Dispose(true);
         }
 
         /// <summary>
@@ -89,15 +90,29 @@ namespace Rtsp
             if (Connected)
                 return;
             _RtspServerClient = new TcpClient();
-            var task = Task.Run(async () => { await _RtspServerClient.ConnectAsync(_currentEndPoint.Address, _currentEndPoint.Port); });
-            task.Wait();
+            _RtspServerClient.Connect(_currentEndPoint);
         }
 
         #endregion
 
         public void Dispose()
         {
-            _RtspServerClient.Dispose();
+            Dispose(true);
+            GC.SuppressFinalize(this);
+        }
+
+        protected virtual void Dispose(bool disposing)
+        {
+            if (disposing)
+            {
+                _RtspServerClient.Close();
+                /*   // free managed resources
+                   if (managedResource != null)
+                   {
+                       managedResource.Dispose();
+                       managedResource = null;
+                   }*/
+            }
         }
     }
 }
