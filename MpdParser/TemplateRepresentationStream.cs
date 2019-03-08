@@ -135,6 +135,7 @@ namespace MpdParser.Node.Dynamic
         private uint? bandwidth;
         private string reprId;
         private uint timescale;
+        private bool timelinePurged;
 
         /// <summary>
         /// Holds all timeline data as defined in dash manifest in an unwinded form.
@@ -268,6 +269,10 @@ namespace MpdParser.Node.Dynamic
         public void SetDocumentParameters(ManifestParameters docParams)
         {
             parameters = docParams;
+
+            // Setting new doc parameters for dynamic content require
+            // data purge.
+            timelinePurged = !parameters.Document.IsDynamic;
         }
 
         public ManifestParameters GetDocumentParameters()
@@ -480,8 +485,6 @@ namespace MpdParser.Node.Dynamic
             }
 
             timeline = timelineAvailable;
-
-
         }
 
         private uint GetStartSegmentStatic()
@@ -634,21 +637,21 @@ namespace MpdParser.Node.Dynamic
         public bool IsReady()
         {
             if (parameters == null)
-                return false;
+                throw new ArgumentNullException(nameof(parameters));
 
-            if (!parameters.Document.IsDynamic)
-                return true;
-
-            // Have content to play = OK.
-            // No content = Not OK.
-            return (Count > 0);
+            return timelinePurged;
         }
 
         public void Initialize(CancellationToken token)
         {
-            // Dynamic Streams. Purge unavailable data.
-            if (parameters.Document.IsDynamic)
-                PurgeUnavailableSegments();
+            if (parameters == null)
+                throw new ArgumentNullException(nameof(parameters));
+
+            // If purged - no need to initialize
+            if (timelinePurged) return;
+
+            PurgeUnavailableSegments();
+            timelinePurged = true;
         }
     }
 }

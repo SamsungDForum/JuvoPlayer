@@ -27,18 +27,18 @@ using MpdParser.Node.Atom;
 
 namespace MpdParser.Node.Dynamic
 {
-    public class fMP4IndexerException : Exception
+    public class FMp4IndexerException : Exception
     {
-        public fMP4IndexerException(string message) : base(message)
+        public FMp4IndexerException(string message) : base(message)
         {
         }
 
-        public fMP4IndexerException(string message, Exception cause) : base(message, cause)
+        public FMp4IndexerException(string message, Exception cause) : base(message, cause)
         {
         }
     }
 
-    internal class fMP4Indexer
+    internal class FMp4Indexer
     {
         private static readonly ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
 
@@ -46,7 +46,7 @@ namespace MpdParser.Node.Dynamic
         {
             var policy = HttpClientProvider.GetPolicySendAsync((e) =>
             {
-                
+
                 // All exception other then Cancellation due to timeout
                 // result in termination
                 if (!(e is OperationCanceledException))
@@ -87,7 +87,7 @@ namespace MpdParser.Node.Dynamic
                 {
                     Logger.Info($"Download {indexSource.Url} {rangeLow}-{rangeHigh} {rangeHigh - rangeLow}");
 
-                    // Workaround for https://github.com/App-vNext/Polly/issues/313
+                    // Watch out for https://github.com/App-vNext/Polly/issues/313
                     using (var request = new HttpRequestMessage(HttpMethod.Get, indexSource.Url))
                     {
                         if (ranges != null)
@@ -100,7 +100,7 @@ namespace MpdParser.Node.Dynamic
                     rawIndexData = await response.Content.ReadAsByteArrayAsync();
                 }
 
-                var index = ProcessIndexData(rawIndexData, (ulong) rangeHigh, mediaUrl);
+                var index = ProcessIndexData(rawIndexData, (ulong)rangeHigh, mediaUrl);
 
                 Logger.Info($"{index.Count} indexes {indexSource.Url}");
 
@@ -108,7 +108,7 @@ namespace MpdParser.Node.Dynamic
             }
             catch (Exception e)
             {
-                throw new fMP4IndexerException($"Index {indexSource.Url} failed", e);
+                throw new FMp4IndexerException($"Index {indexSource.Url} failed", e);
             }
         }
 

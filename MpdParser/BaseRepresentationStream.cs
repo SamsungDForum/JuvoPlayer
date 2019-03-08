@@ -81,8 +81,8 @@ namespace MpdParser.Node.Dynamic
 
         private Task indexingTask;
         private static readonly List<Segment> EmptyIndex = new List<Segment>();
-        private List<Segment> fMP4Index;
-        private TimeSpan fMP4IndexDuration;
+        private List<Segment> fMp4Index;
+        private TimeSpan fMp4IndexDuration;
 
         public uint Count => (uint)(indexSegment == null ? 1 : Segments.Count);
 
@@ -97,13 +97,13 @@ namespace MpdParser.Node.Dynamic
         private async Task<IList<Segment>> GetSegments()
         {
             await indexingTask.ConfigureAwait(false);
-            return fMP4Index;
+            return fMp4Index;
         }
 
         private async Task<TimeSpan?> GetDuration()
         {
             await indexingTask.ConfigureAwait(false);
-            return fMP4IndexDuration;
+            return fMp4IndexDuration;
         }
 
         public void SetDocumentParameters(ManifestParameters docParams)
@@ -262,7 +262,7 @@ namespace MpdParser.Node.Dynamic
         {
             var searcher = new IndexSearchStartTime();
             var searchFor = new Segment(null, null, new TimeRange(pointInTime, TimeSpan.Zero));
-            var idx = fMP4Index.BinarySearch(0, Segments.Count, searchFor, searcher);
+            var idx = fMp4Index.BinarySearch(0, Segments.Count, searchFor, searcher);
 
             if (idx < 0 && pointInTime == Duration)
                 idx = Segments.Count - 1;
@@ -302,14 +302,14 @@ namespace MpdParser.Node.Dynamic
                 indexingTask = Task.Factory.StartNew(
                         async () =>
                         {
-                            fMP4Index = (await fMP4Indexer.Download(indexSegment, media.Url, token)) as List<Segment>;
-                            
-                            if (fMP4Index?.Count > 0)
+                            fMp4Index = (await FMp4Indexer.Download(indexSegment, media.Url, token)) as List<Segment>;
+
+                            if (fMp4Index?.Count > 0)
                             {
-                                var lastPeriod = fMP4Index[fMP4Index.Count - 1].Period;
-                                fMP4IndexDuration = lastPeriod.Start + lastPeriod.Duration;
+                                var lastPeriod = fMp4Index[fMp4Index.Count - 1].Period;
+                                fMp4IndexDuration = lastPeriod.Start + lastPeriod.Duration;
                             }
-                            
+
                         }, token).Unwrap();
             }
         }
