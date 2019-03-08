@@ -125,8 +125,6 @@ namespace JuvoPlayer.DataProviders.Dash
         {
             logger.Info("");
 
-            token.ThrowIfCancellationRequested();
-
             var tmpPeriod = GetPeriod(token);
             if (tmpPeriod == null)
             {
