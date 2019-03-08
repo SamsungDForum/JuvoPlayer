@@ -27,32 +27,26 @@ using MpdParser.Node.Atom;
 
 namespace MpdParser.Node.Dynamic
 {
-    public class fMP4Index
+    public class fMP4IndexerException : Exception
     {
-        public List<Segment> Segments { get; set; } = new List<Segment>();
-        public TimeSpan Duration { get; set; } = TimeSpan.Zero;
+        public fMP4IndexerException(string message) : base(message)
+        {
+        }
+
+        public fMP4IndexerException(string message, Exception cause) : base(message, cause)
+        {
+        }
     }
 
     internal class fMP4Indexer
     {
         private static readonly ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
 
-        public static Task<fMP4Index> Download(Segment indexSource, Uri mediaUrl, CancellationToken token)
-        {
-            if (indexSource == null)
-                throw new ArgumentNullException(nameof(indexSource));
-
-            return Task.Factory.StartNew(
-               async () =>
-                   await fMP4Indexer.ProcessIndex(indexSource, mediaUrl, token)
-                       .ConfigureAwait(false), token)
-                       .Unwrap();
-        }
-
-        private static async Task<fMP4Index> ProcessIndex(Segment indexSource, Uri mediaUrl, CancellationToken token)
+        public static async Task<IList<Segment>> Download(Segment indexSource, Uri mediaUrl, CancellationToken token)
         {
             var policy = HttpClientProvider.GetPolicySendAsync((e) =>
             {
+                
                 // All exception other then Cancellation due to timeout
                 // result in termination
                 if (!(e is OperationCanceledException))
@@ -75,7 +69,6 @@ namespace MpdParser.Node.Dynamic
 
             long rangeHigh = 0;
             long rangeLow = 0;
-            byte[] rawIndexData;
             RangeHeaderValue ranges = null;
 
             if (indexSource.ByteRange.Length > 0)
@@ -86,29 +79,40 @@ namespace MpdParser.Node.Dynamic
                 rangeLow = byteRanges.Low;
             }
 
-            using (var request = new HttpRequestMessage(HttpMethod.Get, indexSource.Url))
+            try
             {
-                if (ranges != null)
-                    request.Headers.Range = ranges;
+                byte[] rawIndexData;
 
                 using (var response = await policy.ExecuteAsync(() =>
-                    {
-                        Logger.Info($"Download {indexSource.Url} {rangeLow}-{rangeHigh} {rangeHigh - rangeLow}");
-                        return HttpClientProvider.NetClient.SendAsync(request, token);
-                    }))
                 {
-                    rawIndexData = await response.Content.ReadAsByteArrayAsync().ConfigureAwait(false);
+                    Logger.Info($"Download {indexSource.Url} {rangeLow}-{rangeHigh} {rangeHigh - rangeLow}");
+
+                    // Workaround for https://github.com/App-vNext/Polly/issues/313
+                    using (var request = new HttpRequestMessage(HttpMethod.Get, indexSource.Url))
+                    {
+                        if (ranges != null)
+                            request.Headers.Range = ranges;
+
+                        return HttpClientProvider.NetClient.SendAsync(request, token);
+                    }
+                }))
+                {
+                    rawIndexData = await response.Content.ReadAsByteArrayAsync();
                 }
+
+                var index = ProcessIndexData(rawIndexData, (ulong) rangeHigh, mediaUrl);
+
+                Logger.Info($"{index.Count} indexes {indexSource.Url}");
+
+                return index;
             }
-
-            var index = ProcessIndexData(rawIndexData, (ulong)rangeHigh, mediaUrl);
-
-            Logger.Info($"{index.Segments.Count} indexes {indexSource.Url}");
-
-            return index;
+            catch (Exception e)
+            {
+                throw new fMP4IndexerException($"Index {indexSource.Url} failed", e);
+            }
         }
 
-        private static fMP4Index ProcessIndexData(byte[] data, ulong dataStart, Uri mediaUrl)
+        private static IList<Segment> ProcessIndexData(byte[] data, ulong dataStart, Uri mediaUrl)
         {
             var sidx = new SIDXAtom();
             sidx.ParseAtom(data, dataStart + 1);
@@ -125,7 +129,7 @@ namespace MpdParser.Node.Dynamic
                 throw new NotImplementedException("Daisy chained / Hierarchical chunks not implemented...");
             }
 
-            var indexData = new fMP4Index();
+            var indexData = new List<Segment>();
             for (uint i = 0; i < sidx.MovieIndexCount; ++i)
             {
                 ulong lb;
@@ -138,14 +142,8 @@ namespace MpdParser.Node.Dynamic
                 {
                     string rng = lb + "-" + hb;
 
-                    indexData.Segments.Add(new Segment(mediaUrl, rng, new TimeRange(startTime, duration)));
+                    indexData.Add(new Segment(mediaUrl, rng, new TimeRange(startTime, duration)));
                 }
-            }
-
-            if (indexData.Segments.Count > 0)
-            {
-                var lastPeriod = indexData.Segments[indexData.Segments.Count - 1].Period;
-                indexData.Duration = lastPeriod.Start + lastPeriod.Duration;
             }
 
             return indexData;

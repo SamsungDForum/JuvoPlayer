@@ -85,7 +85,7 @@ namespace MpdParser.Network
         {
             NetClient = new HttpClient
             {
-                Timeout = TimeSpan.FromMilliseconds(10)
+                Timeout = TimeSpan.FromSeconds(3)
             };
 
             Jitter = new Random();
