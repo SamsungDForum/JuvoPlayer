@@ -525,7 +525,7 @@ namespace MpdParser
             // When querying for longest representation, ignore those that are not
             // yet prepared yet in an async way. If all data is needed, assure this call
             // is made on ready representations.
-            return result + " (length:" + (Longest(false)?.ToString() ?? "-") + ")";
+            return result + " (length:" + (LongestReadySegment()?.ToString() ?? "-") + ")";
         }
 
         private string GuessFromMimeType(string mimeType)
@@ -798,7 +798,7 @@ namespace MpdParser
         /// <summary>
         /// Initializes media components in Period
         /// </summary>
-        public void InitializeMedia(CancellationToken token)
+        public void Initialize(CancellationToken token)
         {
             foreach (var set in Sets)
             {

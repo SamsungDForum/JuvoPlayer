@@ -79,34 +79,31 @@ namespace MpdParser.Node.Dynamic
         public TimeSpan AvailabilityTimeOffset { get; }
         public bool? AvailabilityTimeComplete { get; }
 
-        private Task<fMP4Index> indexingTask;
-        private static readonly List<Segment> EmptySegment = new List<Segment>();
+        private Task indexingTask;
+        private static readonly List<Segment> EmptyIndex = new List<Segment>();
+        private List<Segment> fMP4Index;
+        private TimeSpan fMP4IndexDuration;
 
         public uint Count => (uint)(indexSegment == null ? 1 : Segments.Count);
 
-        private List<Segment> Segments => indexSegment == null ?
-            EmptySegment : GetSegments().Result;
+        private IList<Segment> Segments => indexSegment == null ?
+            EmptyIndex : GetSegments().Result;
 
         public TimeSpan? Duration => indexSegment == null ?
             media?.Period?.Duration : GetDuration().Result;
 
         private readonly object initLock = new object();
 
-        private async Task<List<Segment>> GetSegments()
+        private async Task<IList<Segment>> GetSegments()
         {
-            var indexer = await indexingTask.ConfigureAwait(false);
-            return indexer.Segments;
+            await indexingTask.ConfigureAwait(false);
+            return fMP4Index;
         }
 
         private async Task<TimeSpan?> GetDuration()
         {
-            // API Media.Longest scans ALL representations, including uninitialized.
-            // Treat them same way as those without index data.
-            if (indexingTask == null)
-                return media?.Period?.Duration;
-
-            var indexer = await indexingTask.ConfigureAwait(false);
-            return indexer.Duration;
+            await indexingTask.ConfigureAwait(false);
+            return fMP4IndexDuration;
         }
 
         public void SetDocumentParameters(ManifestParameters docParams)
@@ -265,7 +262,7 @@ namespace MpdParser.Node.Dynamic
         {
             var searcher = new IndexSearchStartTime();
             var searchFor = new Segment(null, null, new TimeRange(pointInTime, TimeSpan.Zero));
-            var idx = Segments.BinarySearch(0, Segments.Count, searchFor, searcher);
+            var idx = fMP4Index.BinarySearch(0, Segments.Count, searchFor, searcher);
 
             if (idx < 0 && pointInTime == Duration)
                 idx = Segments.Count - 1;
@@ -299,8 +296,21 @@ namespace MpdParser.Node.Dynamic
 
             lock (initLock)
             {
-                if (indexingTask == null || indexingTask.Status >= TaskStatus.Canceled)
-                    indexingTask = fMP4Indexer.Download(indexSegment, media.Url, token);
+                if (!(indexingTask == null || indexingTask.Status >= TaskStatus.Canceled))
+                    return;
+
+                indexingTask = Task.Factory.StartNew(
+                        async () =>
+                        {
+                            fMP4Index = (await fMP4Indexer.Download(indexSegment, media.Url, token)) as List<Segment>;
+                            
+                            if (fMP4Index?.Count > 0)
+                            {
+                                var lastPeriod = fMP4Index[fMP4Index.Count - 1].Period;
+                                fMP4IndexDuration = lastPeriod.Start + lastPeriod.Duration;
+                            }
+                            
+                        }, token).Unwrap();
             }
         }
     }

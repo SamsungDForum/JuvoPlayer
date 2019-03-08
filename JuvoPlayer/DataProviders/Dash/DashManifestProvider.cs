@@ -121,12 +121,6 @@ namespace JuvoPlayer.DataProviders.Dash
             return tmpPeriod;
         }
 
-        private void ApplyPeriod(CancellationToken token, Period newPeriod)
-        {
-            // Set new media from obtained period information
-            SetMediaFromPeriod(newPeriod, token);
-        }
-
         private void ProcessManifest(CancellationToken token)
         {
             logger.Info("");
@@ -154,7 +148,7 @@ namespace JuvoPlayer.DataProviders.Dash
             };
 
             tmpPeriod.SetManifestParameters(manifestParams);
-            tmpPeriod.InitializeMedia(token);
+            tmpPeriod.Initialize(token);
 
             // Apply new manifest
             //
