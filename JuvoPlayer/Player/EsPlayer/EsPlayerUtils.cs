@@ -80,20 +80,6 @@ namespace JuvoPlayer.Player.EsPlayer
             };
         }
 
-        internal static unsafe ESNativePacket ToESNativePacket(this Packet packet)
-        {
-            Debug.Assert(packet.Storage is INativeDataStorage);
-            var storage = (INativeDataStorage) packet.Storage;
-            return new ESNativePacket
-            {
-                type = packet.StreamType.ESStreamType(),
-                pts = packet.Pts.TotalNanoseconds(),
-                duration = packet.Duration.TotalNanoseconds(),
-                buffer = (IntPtr) storage.Data,
-                bufferSize = (uint) storage.Length
-            };
-        }
-
         internal static ESHandlePacket ToESHandlePacket(this DecryptedEMEPacket packet)
         {
             return new ESHandlePacket
@@ -128,7 +114,7 @@ namespace JuvoPlayer.Player.EsPlayer
 
         static PushPacketStrategies()
         {
-            dispatchMap[(typeof(Packet), typeof(INativeDataStorage))] = SubmitNativePriv;
+            dispatchMap[(typeof(Packet), typeof(INativeDataStorage))] = SubmitManagedPriv;
             dispatchMap[(typeof(Packet), typeof(IManagedDataStorage))] = SubmitManagedPriv;
             dispatchMap[(typeof(DecryptedEMEPacket), null)] = (player, packet) =>
                 SubmitDecryptedPriv(player, (DecryptedEMEPacket) packet);
@@ -138,12 +124,6 @@ namespace JuvoPlayer.Player.EsPlayer
         internal static SubmitStatus Submit(this ESPlayer player, Packet packet)
         {
             return dispatchMap[(packet.GetType(), GetStorageType(packet.Storage))].Invoke(player, packet);
-        }
-
-        private static SubmitStatus SubmitNativePriv(ESPlayer player, Packet packet)
-        {
-            var esNativePacket = packet.ToESNativePacket();
-            return player.SubmitPacket(esNativePacket);
         }
 
         private static SubmitStatus SubmitManagedPriv(ESPlayer player, Packet packet)
