@@ -264,10 +264,10 @@ namespace JuvoPlayer.DataProviders.Dash
             return httpRequest;
         }
 
-        private async Task<byte[]> ReadChunk(AsyncBinaryReader reader)
+        private Task<byte[]> ReadChunk(AsyncBinaryReader reader)
         {
             const int chunkSize = 64 * 1024;
-            return await reader.ReadBytesAsync(chunkSize, cancellationToken);
+            return reader.ReadBytesAsync(chunkSize, cancellationToken);
         }
 
         private void PushChunk(byte[] buffer)
