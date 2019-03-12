@@ -17,6 +17,8 @@
  *
  */
 
+#if NBENCH_TESTS
+
 using System;
 using System.Collections;
 using System.Linq;
@@ -70,3 +72,5 @@ namespace JuvoPlayer.TizenTests.NUnitPerformanceTesting
         }
     }
 }
+
+#endif
