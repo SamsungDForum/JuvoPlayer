@@ -81,11 +81,13 @@ namespace JuvoPlayer.Demuxers
 
         public async Task Flush()
         {
+            var token = cancelTokenSource.Token;
+
             // Make sure that all pending chunks are delivered before calling Complete
             await Task.Yield();
 
             demuxer.Complete();
-            await demuxer.Completion.WaitAsync(cancelTokenSource.Token);
+            await demuxer.Completion.WaitAsync(token);
 
             demuxer.Reset();
         }

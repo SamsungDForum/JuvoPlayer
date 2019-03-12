@@ -227,7 +227,8 @@ namespace JuvoPlayer.Tests.UnitTests
         [Test]
         public void Flush_CalledWhileChunkIsPending_ChunkIsDeliveredToDemuxer()
         {
-            AsyncContext.Run(async () => {
+            AsyncContext.Run(async () =>
+            {
                 var demuxerMock = Substitute.For<IDemuxer>();
                 using (var controller = new DemuxerController(demuxerMock))
                 {
@@ -263,7 +264,7 @@ namespace JuvoPlayer.Tests.UnitTests
                     tcs.SetResult(new Packet());
 
                     await Task.Yield(); // first Demuxer.NextPacket completes and another Demuxer.NextPacket is
-                                        // not called
+                    // not called
                     await demuxerMock.Received(1).NextPacket();
                 }
             });
@@ -317,7 +318,8 @@ namespace JuvoPlayer.Tests.UnitTests
         [Test]
         public void Reset_CalledWhileDataSourcePublishedChunk_SkipsPublishedChunk()
         {
-            AsyncContext.Run(async () => {
+            AsyncContext.Run(async () =>
+            {
                 var demuxerMock = Substitute.For<IDemuxer>();
 
                 using (var dataSource = new Subject<byte[]>())
@@ -330,6 +332,33 @@ namespace JuvoPlayer.Tests.UnitTests
                     await Task.Yield();
 
                     demuxerMock.DidNotReceive().PushChunk(Arg.Any<byte[]>());
+                }
+            });
+        }
+
+        [Test]
+        public void Reset_CalledWhileFlushIsInProgress_CancelsFlush()
+        {
+            AsyncContext.Run(async () =>
+            {
+                var demuxerStub = Substitute.For<IDemuxer>();
+                demuxerStub.Completion.Returns(Task.Delay(-1));
+
+                using (var controller = new DemuxerController(demuxerStub))
+                {
+                    var flushTask = controller.Flush();
+
+                    controller.Reset();
+
+                    try
+                    {
+                        await flushTask;
+                        Assert.Fail();
+                    }
+                    catch (TaskCanceledException)
+                    {
+                        // ignored
+                    }
                 }
             });
         }
