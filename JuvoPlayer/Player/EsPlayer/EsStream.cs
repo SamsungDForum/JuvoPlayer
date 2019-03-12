@@ -576,7 +576,9 @@ namespace JuvoPlayer.Player.EsPlayer
                     var submitStatus = player.Submit(decryptedPacket);
 
                     logger.Debug(
-                        $"{decryptedPacket.StreamType}: ({submitStatus}) PTS: {decryptedPacket.Pts} Duration: {decryptedPacket.Duration} Handle: {decryptedPacket.HandleSize.handle} HandleSize: {decryptedPacket.HandleSize.size}");
+                        $"{decryptedPacket.StreamType}: ({submitStatus}) PTS: {decryptedPacket.Pts} Duration:" +
+                        $"{decryptedPacket.Duration} Handle: {decryptedPacket.HandleSize.handle}" +
+                        $"HandleSize: {decryptedPacket.HandleSize.size}");
 
                     if (submitStatus == ESPlayer.SubmitStatus.Success)
                     {
