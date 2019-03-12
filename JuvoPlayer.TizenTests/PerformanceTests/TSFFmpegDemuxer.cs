@@ -15,6 +15,8 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+#if NBENCH_TESTS
+
 using JuvoPlayer.Demuxers;
 using JuvoPlayer.Demuxers.FFmpeg;
 using JuvoPlayer.TizenTests.NUnitPerformanceTesting;
@@ -63,3 +65,5 @@ namespace JuvoPlayer.TizenTests.PerformanceTests
         }
     }
 }
+
+#endif
