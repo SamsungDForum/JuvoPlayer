@@ -28,6 +28,7 @@
     <ItemGroup>
         <EmbeddedResource Include="res\drm\google_dash_encrypted_init_data" />
         <EmbeddedResource Include="res\drm\google_dash_encrypted_video_packet_pts_10_01.xml" />
+        <EmbeddedResource Include="res\drm\google_dash_encrypted_video_packet_pts_10_01_storage.xml" />
         <EmbeddedResource Include="res\googlecar\car-20120827-89.mp4-init-segment" />
         <EmbeddedResource Include="res\googlecar\car-20120827-89.mp4-3901498-7700066" />
     </ItemGroup>

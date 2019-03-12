@@ -76,8 +76,8 @@ namespace JuvoPlayer.DataProviders.RTSP
                         return Observable.Return(packet);
                     // found empty packet which means EOS. We need to send two fake
                     // eos packets, one for audio and one for video
-                    return Observable.Return(Packet.CreateEOS(StreamType.Audio))
-                        .Merge(Observable.Return(Packet.CreateEOS(StreamType.Video)));
+                    return Observable.Return(EOSPacket.Create(StreamType.Audio))
+                        .Merge(Observable.Return(EOSPacket.Create(StreamType.Video)));
                 });
         }
 
