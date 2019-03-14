@@ -459,7 +459,7 @@ namespace JuvoPlayer.Player.EsPlayer
                     packet = packetStorage.GetPacket(streamType, token);
 
                     // Ignore non data packets (EOS/BufferChange/etc.)
-                    if (packet.Storage != null)
+                    if (packet.ContainsData())
                     {
                         dataLength += (ulong) packet.Storage.Length;
 
@@ -577,7 +577,7 @@ namespace JuvoPlayer.Player.EsPlayer
 
                     logger.Debug(
                         $"{decryptedPacket.StreamType}: ({submitStatus}) PTS: {decryptedPacket.Pts} Duration:" +
-                        $"{decryptedPacket.Duration} Handle: {decryptedPacket.HandleSize.handle}" +
+                        $"{decryptedPacket.Duration} Handle: {decryptedPacket.HandleSize.handle} " +
                         $"HandleSize: {decryptedPacket.HandleSize.size}");
 
                     if (submitStatus == ESPlayer.SubmitStatus.Success)
