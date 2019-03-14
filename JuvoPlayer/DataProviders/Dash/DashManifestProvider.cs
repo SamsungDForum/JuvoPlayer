@@ -121,17 +121,9 @@ namespace JuvoPlayer.DataProviders.Dash
             return tmpPeriod;
         }
 
-        private void ApplyPeriod(CancellationToken token, Period newPeriod)
-        {
-            // Set new media from obtained period information
-            SetMediaFromPeriod(newPeriod, token);
-        }
-
         private void ProcessManifest(CancellationToken token)
         {
             logger.Info("");
-
-            token.ThrowIfCancellationRequested();
 
             var tmpPeriod = GetPeriod(token);
             if (tmpPeriod == null)
@@ -154,6 +146,7 @@ namespace JuvoPlayer.DataProviders.Dash
             };
 
             tmpPeriod.SetManifestParameters(manifestParams);
+            tmpPeriod.Initialize(token);
 
             // Apply new manifest
             //
@@ -164,7 +157,7 @@ namespace JuvoPlayer.DataProviders.Dash
             //
             // Manageable errors will be notified by ArgumentException and handled by the caller.
             //
-            ApplyPeriod(token, tmpPeriod);
+            SetAdaptationSetFromPeriod(tmpPeriod, token);
             NotifyDurationChange();
             BuildSubtitleInfos(tmpPeriod);
             token.ThrowIfCancellationRequested();
@@ -212,7 +205,7 @@ namespace JuvoPlayer.DataProviders.Dash
         private async Task ManifestFeedProcess(CancellationToken token, TimeSpan delay)
         {
             bool repeatFeed;
-            var currentDelay = delay;            
+            var currentDelay = delay;
             if (Manifest == null)
                 throw new ArgumentNullException("Manifest object is null");
             do
@@ -295,17 +288,10 @@ namespace JuvoPlayer.DataProviders.Dash
             StartManifestTask(cancelToken, TimeSpan.Zero);
         }
 
-        private void SetMediaFromPeriod(Period period, CancellationToken token)
+        private void SetAdaptationSetFromPeriod(Period period, CancellationToken token)
         {
             logger.Info(period.ToString());
 
-            // NOTE: UpdateMedia is potentially a time consuming operation
-            // Case: BaseRepresentation with downloadable index data.
-            // Index download is synchronous now and blocking.
-            //
-            // Possible workarounds (not to be mistaken with solution) would
-            // be use of Parallel.Invoke() to improve performance of UpdateMedia calls
-            //
             audioPipeline.UpdateMedia(period);
             token.ThrowIfCancellationRequested();
 

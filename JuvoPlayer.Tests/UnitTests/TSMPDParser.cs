@@ -15,7 +15,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
@@ -41,15 +41,15 @@ namespace JuvoPlayer.Tests.UnitTests
         public string url { get; set; }
         public string rawXML { get; set; }
         public Document parsedmpd { get; set; }
-        public Media audioMedia { get; set; }
-        public Media videoMedia { get; set; }
+        public AdaptationSet audioAdaptationSet { get; set; }
+        public AdaptationSet videoAdaptationSet { get; set; }
         public Representation audioRepresentation { get; set; }
         public Representation videoRepresentation { get; set; }
 
         public MpdParser.Node.IRepresentationStream audioStream { get; set; }
         public MpdParser.Node.IRepresentationStream videoStream { get; set; }
 
-        public bool ignore_mpd_comparison {get;set;}
+        public bool ignore_mpd_comparison { get; set; }
 
 
     }
@@ -94,9 +94,9 @@ namespace JuvoPlayer.Tests.UnitTests
 
             return data;
         }
-        private static Media Find(MpdParser.Period p, string language, MediaType type, MediaRole role = MediaRole.Main)
+        private static AdaptationSet Find(MpdParser.Period p, string language, MediaType type, MediaRole role = MediaRole.Main)
         {
-            Media res = null;
+            AdaptationSet res = null;
             for (int i = 0; i < p.Sets.Length; i++)
             {
                 if (p.Sets[i].Type.Value != type)
@@ -133,13 +133,13 @@ namespace JuvoPlayer.Tests.UnitTests
         [Property("SPEC", "MpdParser.Document.FromText M")]
         public static void AppParser_OK()
         {
-            foreach(var tc in mpds)
+            foreach (var tc in mpds)
             {
 
                 DOCData item = new DOCData();
 
-                item.audioMedia = null;
-                item.videoMedia = null;
+                item.audioAdaptationSet = null;
+                item.videoAdaptationSet = null;
                 item.audioRepresentation = null;
                 item.videoRepresentation = null;
                 item.audioStream = null;
@@ -167,7 +167,7 @@ namespace JuvoPlayer.Tests.UnitTests
         [Property("SPEC", "MpdParser.Document.Periods M")]
         public static void HasAVMedia_OK()
         {
-            if(parsedMpds.Count == 0 )
+            if (parsedMpds.Count == 0)
             {
                 AppParser_OK();
             }
@@ -178,7 +178,7 @@ namespace JuvoPlayer.Tests.UnitTests
                 {
                     Assert.DoesNotThrow(() =>
                     {
-                        item.videoMedia = Find(period, "en", MediaType.Audio) ??
+                        item.videoAdaptationSet = Find(period, "en", MediaType.Audio) ??
                         Find(period, "und", MediaType.Audio) ??
                         Find(period, null, MediaType.Audio);
                     }
@@ -186,14 +186,14 @@ namespace JuvoPlayer.Tests.UnitTests
 
                     Assert.DoesNotThrow(() =>
                     {
-                        item.audioMedia = Find(period, "en", MediaType.Video) ??
+                        item.audioAdaptationSet = Find(period, "en", MediaType.Video) ??
                         Find(period, "und", MediaType.Video) ??
                         Find(period, null, MediaType.Video);
                     }
                         );
 
-                    Assert.IsNotNull(item.videoMedia);
-                    Assert.IsNotNull(item.audioMedia);
+                    Assert.IsNotNull(item.videoAdaptationSet);
+                    Assert.IsNotNull(item.audioAdaptationSet);
                 }
             }
         }
@@ -216,13 +216,13 @@ namespace JuvoPlayer.Tests.UnitTests
 
                 Assert.DoesNotThrow(() =>
                         {
-                            item.audioRepresentation = item.audioMedia.Representations.First();
+                            item.audioRepresentation = item.audioAdaptationSet.Representations.First();
                         }
                      );
 
                 Assert.DoesNotThrow(() =>
                         {
-                            item.videoRepresentation = item.videoMedia.Representations.First();
+                            item.videoRepresentation = item.videoAdaptationSet.Representations.First();
                         }
                     );
 
@@ -294,7 +294,7 @@ namespace JuvoPlayer.Tests.UnitTests
                 {
                     ExtMPD = (MPDtype)serializer.Deserialize(XReader);
                 }
-                catch(Exception e)
+                catch (Exception e)
                 {
                     System.Diagnostics.Debug.WriteLine($"Unparsable MPD (System Parser): {item.url}");
                     System.Diagnostics.Debug.WriteLine($"Exception: {e.Message} {e.Source}");
@@ -304,7 +304,7 @@ namespace JuvoPlayer.Tests.UnitTests
                     continue;
                 }
 
-                MpdParser.Node.DASH itemFromExtMPD = DASHConverter.Convert(ExtMPD,item.url);
+                MpdParser.Node.DASH itemFromExtMPD = DASHConverter.Convert(ExtMPD, item.url);
 
                 System.Diagnostics.Debug.WriteLine($"Checking URL: {item.url} ...");
                 bool res = DASHConverter.Same(itemFromExtMPD, "Sys Parser", IntMPD, "App Parser");
