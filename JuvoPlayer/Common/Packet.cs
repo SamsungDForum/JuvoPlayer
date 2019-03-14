@@ -48,6 +48,11 @@ namespace JuvoPlayer.Common
             return data;
         }
 
+        public bool ContainsData()
+        {
+            return Storage != null;
+        }
+
         #region Disposable Support
 
         public void Dispose()
