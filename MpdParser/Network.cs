@@ -16,16 +16,17 @@
  */
 
 using System;
+using System.Linq;
 using System.Net;
-using System.IO;
+using System.Net.Http;
 using JuvoLogger;
+using Polly;
 
 namespace MpdParser.Network
 {
     public class ByteRange
     {
-        protected static LoggerManager LogManager = LoggerManager.GetInstance();
-        protected static ILogger Logger = LoggerManager.GetInstance().GetLogger(MpdParser.LogTag);
+        protected static ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
 
         public long Low { get; }
         public long High { get; }
@@ -65,35 +66,41 @@ namespace MpdParser.Network
         public override string ToString() { return $"{Low}-{High}"; }
     }
 
-    public class Downloader
+    internal static class HttpClientProvider
     {
-        public static byte[] DownloadData(Uri address, ByteRange range = null)
+        public static HttpClient NetClient { get; }
+
+        private static readonly HttpStatusCode[] RetryHttpCodes =
         {
-            var request = HttpWebRequest.CreateDefault(address) as HttpWebRequest;
+            HttpStatusCode.RequestTimeout, // 408
+            HttpStatusCode.InternalServerError, // 500
+            HttpStatusCode.BadGateway, // 502
+            HttpStatusCode.ServiceUnavailable, // 503
+            HttpStatusCode.GatewayTimeout // 504
+        };
 
-            request.AllowAutoRedirect = true;
-            request.Timeout = _timeoutMs;
-            if (range != null)
-            {
-                request.AddRange(range.Low, range.High);
-            }
+        private static readonly Random Jitter;
 
-            var response = request.GetResponse() as HttpWebResponse;
-            if (response.StatusCode != HttpStatusCode.OK && response.StatusCode != HttpStatusCode.PartialContent)
+        static HttpClientProvider()
+        {
+            NetClient = new HttpClient
             {
-                throw new WebException($"{address} [{range}] returned HTTP {response.StatusCode}");
-            }
+                Timeout = TimeSpan.FromSeconds(3)
+            };
 
-            var len = Convert.ToInt32(response.Headers["Content-Length"]);
-            using (Stream stream = response.GetResponseStream(), mem = new MemoryStream(len != 0 ? len : avgDownloadSize))
-            {
-                stream.CopyTo(mem);
-                return ((MemoryStream) mem).ToArray();
-            }
+            Jitter = new Random();
         }
+        public static IAsyncPolicy<HttpResponseMessage> GetPolicySendAsync(Func<Exception, bool> exceptionHandler)
+        {
 
-        //seems like a good default that won't drop data on slow-ish connections, yet not frustrate the user with wait times
-        private static int _timeoutMs = (int)TimeSpan.FromSeconds(3).TotalMilliseconds;
-        private const Int32 avgDownloadSize = 1024;
+            return Policy
+                .Handle(exceptionHandler)
+                .OrResult<HttpResponseMessage>(hrm => RetryHttpCodes.Contains(hrm.StatusCode))
+                .WaitAndRetryAsync(
+                    3,
+                    attempt => (TimeSpan.FromMilliseconds(Jitter.Next(0, 250)) +
+                                TimeSpan.FromMilliseconds(50 * attempt))
+                );
+        }
     }
 }

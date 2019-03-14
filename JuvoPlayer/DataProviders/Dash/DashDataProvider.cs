@@ -25,7 +25,6 @@ using JuvoLogger;
 using JuvoPlayer.Common;
 using JuvoPlayer.Subtitles;
 
-
 namespace JuvoPlayer.DataProviders.Dash
 {
     internal class DashDataProvider : IDataProvider
