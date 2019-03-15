@@ -569,7 +569,7 @@ namespace JuvoPlayer.DataProviders.Dash
         private Task<DownloadResponse> CreateDownloadTask(Segment segment, bool ignoreError, uint? segmentId,
             Action<byte[]> chunkDownloadedHandler, CancellationToken cancelToken)
         {
-            return Task.Run(() =>
+            return Task.Run(async () =>
             {
                 var timeout = CalculateDownloadTimeout(segment);
                 Logger.Info($"Calculated download timeout is {timeout.TotalMilliseconds}");
@@ -588,7 +588,7 @@ namespace JuvoPlayer.DataProviders.Dash
                 using (var downloadCancellationTokenSource = CancellationTokenSource.CreateLinkedTokenSource(
                     cancelToken, timeoutCancellationTokenSource.Token))
                 {
-                    return DashDownloader.DownloadDataAsync(requestData, downloadCancellationTokenSource.Token,
+                    return await DashDownloader.DownloadDataAsync(requestData, downloadCancellationTokenSource.Token,
                         throughputHistory);
                 }
             }, cancelToken);
