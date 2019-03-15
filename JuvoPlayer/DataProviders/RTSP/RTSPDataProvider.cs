@@ -23,7 +23,7 @@ using System.Threading;
 using JuvoPlayer.Common;
 using JuvoPlayer.Demuxers;
 using JuvoPlayer.Subtitles;
-
+using static Configuration.RTSPDataProvider;
 namespace JuvoPlayer.DataProviders.RTSP
 {
     internal class RTSPDataProvider : IDataProvider
@@ -32,7 +32,6 @@ namespace JuvoPlayer.DataProviders.RTSP
         private readonly IRTSPClient rtspClient;
         private readonly ClipDefinition currentClip;
         private CancellationTokenSource _startCancellationTokenSource;
-        private readonly TimeSpan _connectionTimeout = TimeSpan.FromSeconds(2);
 
         public Cue CurrentCue { get; }
 
@@ -150,7 +149,7 @@ namespace JuvoPlayer.DataProviders.RTSP
 
             // start RTSP client
             _startCancellationTokenSource = new CancellationTokenSource();
-            _startCancellationTokenSource.CancelAfter(_connectionTimeout);
+            _startCancellationTokenSource.CancelAfter(ConnectionTimeout);
             rtspClient.Start(currentClip, _startCancellationTokenSource.Token);
         }
 

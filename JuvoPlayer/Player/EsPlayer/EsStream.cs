@@ -26,6 +26,7 @@ using JuvoPlayer.Common;
 using JuvoPlayer.Drms;
 using ESPlayer = Tizen.TV.Multimedia;
 using StreamType = JuvoPlayer.Common.StreamType;
+using static Configuration.EsStream;
 
 namespace JuvoPlayer.Player.EsPlayer
 {
@@ -85,8 +86,6 @@ namespace JuvoPlayer.Player.EsPlayer
         // Stream type for this instance to EsStream.
         private readonly Common.StreamType streamType;
 
-        // chunk transfer support elements. Max chunk size & wakeup object
-        private static readonly TimeSpan transferChunk = TimeSpan.FromSeconds(2);
         private ManualResetEventSlim wakeup;
 
         // Buffer configuration and supporting info
@@ -467,7 +466,7 @@ namespace JuvoPlayer.Player.EsPlayer
                         {
                             currentTransfer = packet.Pts - firstPts.Value;
 
-                            if (currentTransfer >= transferChunk)
+                            if (currentTransfer >= TransferChunk)
                                 haltTransfer = true;
                         }
                         else

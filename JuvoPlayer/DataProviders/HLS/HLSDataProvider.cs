@@ -23,13 +23,12 @@ using System.Reactive.Linq;
 using JuvoPlayer.Common;
 using JuvoPlayer.Demuxers;
 using JuvoPlayer.Subtitles;
+using static Configuration.HLSDataProvider;
 
 namespace JuvoPlayer.DataProviders.HLS
 {
     internal class HLSDataProvider : IDataProvider
     {
-        private static readonly TimeSpan MaxBufferHealth = TimeSpan.FromSeconds(10);
-
         private readonly IDemuxerController demuxerController;
         private readonly ClipDefinition currentClip;
 

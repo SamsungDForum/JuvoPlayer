@@ -28,10 +28,11 @@ namespace JuvoPlayer.Common
         public bool IsSeekInProgress { get; set; }
         public bool IsSeekAccumulationInProgress { get; set; }
 
-        private readonly TimeSpan _defaultSeekInterval = TimeSpan.FromSeconds(5);
-        private readonly TimeSpan _defaultSeekAccumulateInterval = TimeSpan.FromSeconds(2);
-        private readonly double _defaultMaximumSeekIntervalPercentOfContentTotalTime = 1.0;
-        private readonly TimeSpan _defaultSeekIntervalValueThreshold = TimeSpan.FromMilliseconds(200); // time between key events when key is being hold is ~100ms
+        private readonly TimeSpan _defaultSeekInterval = Configuration.SeekLogic.DefaultSeekInterval;
+        private readonly TimeSpan _defaultSeekAccumulateInterval = Configuration.SeekLogic.DefaultSeekAccumulateInterval;
+        private readonly double _defaultMaximumSeekIntervalPercentOfContentTotalTime = Configuration.SeekLogic.DefaultMaximumSeekIntervalPercentOfContentTotalTime;
+        private readonly TimeSpan _defaultSeekIntervalValueThreshold = Configuration.SeekLogic.DefaultSeekIntervalValueThreshold; // time between key events when key is being hold is ~100ms
+
         private readonly Stopwatch _seekStopwatch = new Stopwatch();
         private TimeSpan _targetSeekTime;
         private Task _seekDelay;

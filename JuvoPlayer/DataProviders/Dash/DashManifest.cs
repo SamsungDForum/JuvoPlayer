@@ -22,6 +22,8 @@ using System.Threading.Tasks;
 using JuvoLogger;
 using MpdParser;
 
+using static Configuration.DashManifest;
+
 namespace JuvoPlayer.DataProviders.Dash
 {
     internal class DashManifest : IDisposable
@@ -31,16 +33,16 @@ namespace JuvoPlayer.DataProviders.Dash
 
         private Uri Uri { get; }
 
-        private readonly HttpClient httpClient = new HttpClient { Timeout = TimeSpan.FromSeconds(3) };
+        private readonly HttpClient httpClient = new HttpClient
+        {
+            Timeout = DownloadTimeout
+        };
 
         public Document CurrentDocument { get; private set; }
 
         public bool HasChanged { get; private set; }
 
         private DateTime? publishTime;
-        private static readonly int maxManifestDownloadRetries = 3;
-        private static readonly TimeSpan manifestDownloadDelay = TimeSpan.FromMilliseconds(1000);
-        private static readonly TimeSpan manifestReloadDelay = TimeSpan.FromMilliseconds(1500);
 
         public DashManifest(string url)
         {
@@ -62,20 +64,20 @@ namespace JuvoPlayer.DataProviders.Dash
         {
             // No doc, use default
             if (CurrentDocument == null)
-                return manifestReloadDelay;
+                return ManifestReloadDelay;
 
-            var reloadTime = CurrentDocument.MinimumUpdatePeriod ?? manifestReloadDelay;
+            var reloadTime = CurrentDocument.MinimumUpdatePeriod ?? ManifestReloadDelay;
 
             // For zero minimum update periods (aka, after every chunk) use default reload.
             if (reloadTime == TimeSpan.Zero)
-                reloadTime = manifestReloadDelay;
+                reloadTime = ManifestReloadDelay;
 
             return reloadTime;
         }
 
         public async Task<bool> ReloadManifestTask(CancellationToken cancelToken)
         {
-            var downloadRetries = maxManifestDownloadRetries;
+            var downloadRetries = MaxManifestDownloadRetries;
             Document newDoc = null;
             DateTime requestTime = DateTime.MinValue;
             DateTime downloadTime = DateTime.MinValue;
@@ -114,7 +116,7 @@ namespace JuvoPlayer.DataProviders.Dash
 
                 if (downloadRetries > 0)
                 {
-                    await Task.Delay(manifestDownloadDelay, cancelToken);
+                    await Task.Delay(ManifestDownloadDelay, cancelToken);
                     cancelToken.ThrowIfCancellationRequested();
                 }
 
