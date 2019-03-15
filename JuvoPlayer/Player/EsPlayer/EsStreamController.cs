@@ -29,6 +29,7 @@ using System.Threading.Tasks;
 using ElmSharp;
 using JuvoPlayer.Utils;
 using Nito.AsyncEx;
+using static Configuration.EsStreamController;
 
 namespace JuvoPlayer.Player.EsPlayer
 {
@@ -44,9 +45,6 @@ namespace JuvoPlayer.Player.EsPlayer
         }
 
         private readonly ILogger logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
-
-        // Prebuffer duration
-        private static readonly TimeSpan PreBufferDuration = TimeSpan.FromSeconds(2);
 
         // Reference to all data streams representing transfer of individual
         // stream data and data storage

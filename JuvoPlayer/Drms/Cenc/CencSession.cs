@@ -22,7 +22,6 @@ using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Runtime.InteropServices;
 using System.Text;
-using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using JuvoPlayer.Common;
@@ -31,6 +30,7 @@ using Nito.AsyncEx;
 using Tizen.TV.Security.DrmDecrypt;
 using Tizen.TV.Security.DrmDecrypt.emeCDM;
 using JuvoPlayer.Common.Utils.IReferenceCountable;
+using static Configuration.CencSession;
 
 namespace JuvoPlayer.Drms.Cenc
 {
@@ -56,8 +56,6 @@ namespace JuvoPlayer.Drms.Cenc
 
         //Additional error code returned by drm_decrypt api when there is no space in TrustZone
         private const int E_DECRYPT_BUFFER_FULL = 2;
-        private const int MaxDecryptRetries = 5;
-        private static readonly TimeSpan DecryptBufferFullSleepTime = TimeSpan.FromMilliseconds(1000);
 
         private CencUtils.DrmType drmType;
 
@@ -163,13 +161,13 @@ namespace JuvoPlayer.Drms.Cenc
                     fixed (byte* pdata = packet.Data, piv = packet.Iv, pkid = packet.KeyId)
                     {
                         param[0].pdata = pdata;
-                        param[0].udatalen = (uint) packet.Data.Length;
+                        param[0].udatalen = (uint)packet.Data.Length;
                         param[0].poutbuf = null;
                         param[0].uoutbuflen = 0;
                         param[0].piv = piv;
-                        param[0].uivlen = (uint) packet.Iv.Length;
+                        param[0].uivlen = (uint)packet.Iv.Length;
                         param[0].pkid = pkid;
-                        param[0].ukidlen = (uint) packet.KeyId.Length;
+                        param[0].ukidlen = (uint)packet.KeyId.Length;
 
                         var subsamplePointer = IntPtr.Zero;
 
@@ -178,14 +176,14 @@ namespace JuvoPlayer.Drms.Cenc
                         {
                             var subsamples = packet.Subsamples.Select(o =>
                                     new MSD_SUBSAMPLE_INFO
-                                        {uBytesOfClearData = o.ClearData, uBytesOfEncryptedData = o.EncData})
+                                    { uBytesOfClearData = o.ClearData, uBytesOfEncryptedData = o.EncData })
                                 .ToArray();
 
                             subsamplePointer = MarshalSubsampleArray(subsamples);
 
                             subData = new MSD_FMP4_DATA
                             {
-                                uSubSampleCount = (uint) packet.Subsamples.Length,
+                                uSubSampleCount = (uint)packet.Subsamples.Length,
                                 pSubSampleInfo = subsamplePointer
                             };
                         }
@@ -207,7 +205,7 @@ namespace JuvoPlayer.Drms.Cenc
                         {
                             var ret = DecryptData(param, numofparam, ref pHandleArray, packet.StreamType,
                                 linkedToken.Token);
-                            if (ret == (int) eCDMReturnType.E_SUCCESS)
+                            if (ret == (int)eCDMReturnType.E_SUCCESS)
                             {
                                 return new DecryptedEMEPacket(thread)
                                 {
@@ -247,11 +245,11 @@ namespace JuvoPlayer.Drms.Cenc
             {
                 token.ThrowIfCancellationRequested();
 
-                res = API.EmeDecryptarray((eCDMReturnType) CDMInstance.getDecryptor(), ref param, numofparam,
+                res = API.EmeDecryptarray((eCDMReturnType)CDMInstance.getDecryptor(), ref param, numofparam,
                     IntPtr.Zero,
                     0, ref pHandleArray);
 
-                if ((int) res == E_DECRYPT_BUFFER_FULL && errorCount < MaxDecryptRetries)
+                if ((int)res == E_DECRYPT_BUFFER_FULL && errorCount < MaxDecryptRetries)
                 {
                     Logger.Warn($"{type}: E_DECRYPT_BUFFER_FULL ({errorCount}/{MaxDecryptRetries})");
 
@@ -274,7 +272,7 @@ namespace JuvoPlayer.Drms.Cenc
             int sizeOfSubsample = Marshal.SizeOf(typeof(MSD_SUBSAMPLE_INFO));
             int totalSize = sizeOfSubsample * subsamples.Length;
             var resultPointer = Marshal.AllocHGlobal(totalSize);
-            byte* subsamplePointer = (byte*) (resultPointer.ToPointer());
+            byte* subsamplePointer = (byte*)(resultPointer.ToPointer());
 
             for (var i = 0; i < subsamples.Length; i++, subsamplePointer += (sizeOfSubsample))
             {
@@ -296,10 +294,10 @@ namespace JuvoPlayer.Drms.Cenc
             {
                 case MessageType.kLicenseRequest:
                 case MessageType.kIndividualizationRequest:
-                {
-                    requestDataCompletionSource?.TrySetResult(Encoding.GetEncoding(437).GetBytes(message));
-                    break;
-                }
+                    {
+                        requestDataCompletionSource?.TrySetResult(Encoding.GetEncoding(437).GetBytes(message));
+                        break;
+                    }
                 default:
                     Logger.Warn($"unknown message: {messageType}");
                     break;

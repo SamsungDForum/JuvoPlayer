@@ -5,11 +5,6 @@
   </PropertyGroup>
 
   <ItemGroup>
-    <PackageReference Include="Polly" Version="7.0.3" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <ProjectReference Include="..\Configuration\Configuration.csproj" />
     <ProjectReference Include="..\JuvoLogger\JuvoLogger.csproj" />
   </ItemGroup>
 

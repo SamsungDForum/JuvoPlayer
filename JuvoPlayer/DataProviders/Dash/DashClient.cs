@@ -29,6 +29,7 @@ using JuvoPlayer.Common;
 using MpdParser.Node;
 using MpdParser.Node.Dynamic;
 using Representation = MpdParser.Representation;
+using static Configuration.DashClient;
 
 namespace JuvoPlayer.DataProviders.Dash
 {
@@ -37,12 +38,14 @@ namespace JuvoPlayer.DataProviders.Dash
         private const string Tag = "JuvoPlayer";
 
         private static readonly ILogger Logger = LoggerManager.GetInstance().GetLogger(Tag);
-        private static readonly TimeSpan timeBufferDepthDefault = TimeSpan.FromSeconds(10);
-        private static readonly TimeSpan maxBufferTime = TimeSpan.FromSeconds(15);
-        private static readonly TimeSpan minBufferTime = TimeSpan.FromSeconds(5);
-        private static readonly TimeSpan minBufferDownloadTime = TimeSpan.FromSeconds(4);
 
-        private TimeSpan timeBufferDepth = timeBufferDepthDefault;
+        /*
+        private static readonly TimeSpan timeBufferDepthDefault = TimeBufferDepthDefault;
+        private static readonly TimeSpan maxBufferTime = MaxBufferTime;
+        private static readonly TimeSpan minBufferTime = MinBufferTime;
+        private static readonly TimeSpan minBufferDownloadTime = MinBufferDownloadTime;
+        */
+        private TimeSpan timeBufferDepth = TimeBufferDepthDefault;
 
         private readonly IThroughputHistory throughputHistory;
         private readonly StreamType streamType;
@@ -127,7 +130,7 @@ namespace JuvoPlayer.DataProviders.Dash
             // A workaround for a case when we seek to the end of a content while audio and video streams have
             // a slightly different duration.
             if (position > currentStreams.Duration)
-                position = (TimeSpan) currentStreams.Duration;
+                position = (TimeSpan)currentStreams.Duration;
 
             currentSegmentId = currentStreams.SegmentId(position);
             var previousSegmentId = currentStreams.PreviousSegmentId(currentSegmentId);
@@ -207,9 +210,9 @@ namespace JuvoPlayer.DataProviders.Dash
             var bufferSpace = bufferTime - currentTime;
             if (lastDownloadSegmentTimeRange?.Duration > bufferSpace)
             {
-                if (bufferSpace > minBufferDownloadTime)
+                if (bufferSpace > MinBufferDownloadTime)
                 {
-                    LogInfo($"Buffer not empty: {bufferSpace}/{minBufferDownloadTime}");
+                    LogInfo($"Buffer not empty: {bufferSpace}/{MinBufferDownloadTime}");
                     return false;
                 }
             }
@@ -598,7 +601,7 @@ namespace JuvoPlayer.DataProviders.Dash
         {
             if (!IsDynamic)
                 return TimeSpan.MaxValue;
-            var timeout = timeBufferDepthDefault;
+            var timeout = TimeBufferDepthDefault;
             var averageThroughput = throughputHistory.GetAverageThroughput();
             if (averageThroughput > 0 && currentRepresentation.Bandwidth.HasValue && segment.Period != null)
             {
@@ -626,12 +629,12 @@ namespace JuvoPlayer.DataProviders.Dash
             var docParams = currentStreams.GetDocumentParameters();
             if (docParams == null)
                 throw new ArgumentNullException("currentStreams.GetDocumentParameters() returns null");
-            var tsBuffer = (int) (docParams.Document.TimeShiftBufferDepth?.TotalSeconds ??
+            var tsBuffer = (int)(docParams.Document.TimeShiftBufferDepth?.TotalSeconds ??
                                   0);
             tsBuffer = tsBuffer / 2;
 
             // If value is out of range, truncate to max 15 seconds.
-            timeBufferDepth = (tsBuffer == 0) ? timeBufferDepthDefault : TimeSpan.FromSeconds(tsBuffer);
+            timeBufferDepth = (tsBuffer == 0) ? TimeBufferDepthDefault : TimeSpan.FromSeconds(tsBuffer);
         }
 
         private void TimeBufferDepthStatic()
@@ -642,7 +645,7 @@ namespace JuvoPlayer.DataProviders.Dash
             if (docParams == null)
                 throw new ArgumentNullException("currentStreams.GetDocumentParameters() returns null");
             var manifestMinBufferDepth =
-                docParams.Document.MinBufferTime ?? timeBufferDepthDefault;
+                docParams.Document.MinBufferTime ?? TimeBufferDepthDefault;
 
             //Get average segment duration = Total Duration / number of segments.
             var avgSegmentDuration = TimeSpan.FromSeconds(
@@ -671,10 +674,10 @@ namespace JuvoPlayer.DataProviders.Dash
                 TimeBufferDepthDynamic();
             else
                 TimeBufferDepthStatic();
-            if (timeBufferDepth > maxBufferTime)
-                timeBufferDepth = maxBufferTime;
-            else if (timeBufferDepth < minBufferTime)
-                timeBufferDepth = minBufferTime;
+            if (timeBufferDepth > MaxBufferTime)
+                timeBufferDepth = MaxBufferTime;
+            else if (timeBufferDepth < MinBufferTime)
+                timeBufferDepth = MinBufferTime;
             LogInfo($"TimeBufferDepth: {timeBufferDepth}");
         }
 
@@ -683,7 +686,7 @@ namespace JuvoPlayer.DataProviders.Dash
             // Allow stream change ONLY if not performing initialization.
             // If needed, initInProgress flag could be used to delay stream switching
             // i.e. reset not after INIT segment but INIT + whatever number of data segments.
-            return !initInProgress && bufferTime >= minBufferTime;
+            return !initInProgress && bufferTime >= MinBufferTime;
         }
 
         public IObservable<string> ErrorOccurred()

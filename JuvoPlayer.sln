@@ -22,6 +22,8 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "JuvoLogger.Tizen", "JuvoLog
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "JuvoPlayer.OpenGL", "JuvoPlayer.OpenGL\JuvoPlayer.OpenGL.csproj", "{81B4F92B-0168-4B86-9CA4-1472DDCEFEF0}"
 EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Configuration", "Configuration\Configuration.csproj", "{EEC056FC-078B-45C9-A781-4C37DD86E82F}"
+EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
 		Debug|Any CPU = Debug|Any CPU
@@ -152,6 +154,18 @@ Global
 		{81B4F92B-0168-4B86-9CA4-1472DDCEFEF0}.Release|x64.Build.0 = Release|Any CPU
 		{81B4F92B-0168-4B86-9CA4-1472DDCEFEF0}.Release|x86.ActiveCfg = Release|Any CPU
 		{81B4F92B-0168-4B86-9CA4-1472DDCEFEF0}.Release|x86.Build.0 = Release|Any CPU
+		{EEC056FC-078B-45C9-A781-4C37DD86E82F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{EEC056FC-078B-45C9-A781-4C37DD86E82F}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{EEC056FC-078B-45C9-A781-4C37DD86E82F}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{EEC056FC-078B-45C9-A781-4C37DD86E82F}.Debug|x64.Build.0 = Debug|Any CPU
+		{EEC056FC-078B-45C9-A781-4C37DD86E82F}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{EEC056FC-078B-45C9-A781-4C37DD86E82F}.Debug|x86.Build.0 = Debug|Any CPU
+		{EEC056FC-078B-45C9-A781-4C37DD86E82F}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{EEC056FC-078B-45C9-A781-4C37DD86E82F}.Release|Any CPU.Build.0 = Release|Any CPU
+		{EEC056FC-078B-45C9-A781-4C37DD86E82F}.Release|x64.ActiveCfg = Release|Any CPU
+		{EEC056FC-078B-45C9-A781-4C37DD86E82F}.Release|x64.Build.0 = Release|Any CPU
+		{EEC056FC-078B-45C9-A781-4C37DD86E82F}.Release|x86.ActiveCfg = Release|Any CPU
+		{EEC056FC-078B-45C9-A781-4C37DD86E82F}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
