@@ -103,7 +103,14 @@ namespace XamarinPlayer.Common
 
             try { await _seekDelay; } catch (TaskCanceledException) { return; }
 
-            await ExecuteSeek();
+            try
+            {
+                await ExecuteSeek();
+            }
+            catch (Exception)
+            {
+                // ignored
+            }
         }
 
         private void AccumulateSeekInterval(TimeSpan seekInterval)

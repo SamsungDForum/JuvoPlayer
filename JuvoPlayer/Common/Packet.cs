@@ -74,6 +74,8 @@ namespace JuvoPlayer.Common
     {
         public uint SeekId { get; internal set; }
 
+        public SeekException Exception { get; set; }
+
         public static SeekPacket CreatePacket(StreamType streamType, uint seekId)
         {
             return new SeekPacket
