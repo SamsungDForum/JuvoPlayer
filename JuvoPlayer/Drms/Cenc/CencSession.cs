@@ -137,129 +137,109 @@ namespace JuvoPlayer.Drms.Cenc
             using (var linkedToken =
                 CancellationTokenSource.CreateLinkedTokenSource(cancellationTokenSource.Token, token))
             using (await threadLock.LockAsync(linkedToken.Token))
-                unsafe
+            {
+                if (licenceInstalled == false)
                 {
-                    if (licenceInstalled == false)
-                    {
-                        Logger.Error("No licence installed");
-                        throw new DrmException("No licence installed");
-                    }
-
-                    HandleSize[] pHandleArray = new HandleSize[1];
-                    var numofparam = 1;
-
-                    sMsdCipherParam[] param = new sMsdCipherParam[1];
-                    param[0].algorithm = eMsdCipherAlgorithm.MSD_AES128_CTR;
-                    param[0].format = eMsdMediaFormat.MSD_FORMAT_FMP4;
-                    param[0].phase = eMsdCipherPhase.MSD_PHASE_NONE;
-                    param[0].buseoutbuf = false;
-
-                    // Do padding only for Widevine with keys shorter then 16 bytes
-                    // Shorter keys need to be zero padded, not PCKS#7
-
-                    if (drmType == CencUtils.DrmType.Widevine && packet.Iv.Length < 16)
-                        packet.Iv = PadIv(packet.Iv);
-
-                    fixed (byte* pdata = packet.Data, piv = packet.Iv, pkid = packet.KeyId)
-                    {
-                        param[0].pdata = pdata;
-                        param[0].udatalen = (uint) packet.Data.Length;
-                        param[0].poutbuf = null;
-                        param[0].uoutbuflen = 0;
-                        param[0].piv = piv;
-                        param[0].uivlen = (uint) packet.Iv.Length;
-                        param[0].pkid = pkid;
-                        param[0].ukidlen = (uint) packet.KeyId.Length;
-
-                        var subsamplePointer = IntPtr.Zero;
-
-                        MSD_FMP4_DATA subData;
-                        if (packet.Subsamples != null)
-                        {
-                            var subsamples = packet.Subsamples.Select(o =>
-                                    new MSD_SUBSAMPLE_INFO
-                                        {uBytesOfClearData = o.ClearData, uBytesOfEncryptedData = o.EncData})
-                                .ToArray();
-
-                            subsamplePointer = MarshalSubsampleArray(subsamples);
-
-                            subData = new MSD_FMP4_DATA
-                            {
-                                uSubSampleCount = (uint) packet.Subsamples.Length,
-                                pSubSampleInfo = subsamplePointer
-                            };
-                        }
-                        else
-                        {
-                            subData = new MSD_FMP4_DATA
-                            {
-                                uSubSampleCount = 0,
-                                pSubSampleInfo = IntPtr.Zero
-                            };
-                        }
-
-                        var subdataPointer = Marshal.AllocHGlobal(Marshal.SizeOf(subData));
-                        Marshal.StructureToPtr(subData, subdataPointer, false);
-                        param[0].psubdata = subdataPointer;
-                        param[0].psplitoffsets = IntPtr.Zero;
-
-                        try
-                        {
-                            var ret = DecryptData(param, numofparam, ref pHandleArray, packet.StreamType,
-                                linkedToken.Token);
-                            if (ret == (int) eCDMReturnType.E_SUCCESS)
-                            {
-                                return new DecryptedEMEPacket(thread)
-                                {
-                                    Dts = packet.Dts,
-                                    Pts = packet.Pts,
-                                    StreamType = packet.StreamType,
-                                    IsEOS = packet.IsEOS,
-                                    IsKeyFrame = packet.IsKeyFrame,
-                                    Duration = packet.Duration,
-                                    HandleSize = pHandleArray[0]
-                                };
-                            }
-                            else
-                            {
-                                Logger.Error($"Decryption failed: {packet.StreamType} - {ret}");
-                                throw new DrmException($"Decryption failed: {packet.StreamType} - {ret}");
-                            }
-                        }
-                        finally
-                        {
-                            if (subsamplePointer != IntPtr.Zero)
-                                Marshal.FreeHGlobal(subsamplePointer);
-
-                            Marshal.FreeHGlobal(subdataPointer);
-                        }
-                    }
+                    Logger.Error("No licence installed");
+                    throw new DrmException("No licence installed");
                 }
+
+                // Do padding only for Widevine with keys shorter then 16 bytes
+                // Shorter keys need to be zero padded, not PCKS#7
+                if (drmType == CencUtils.DrmType.Widevine && packet.Iv.Length < 16)
+                    packet.Iv = PadIv(packet.Iv);
+
+                var pHandleArray = new HandleSize[1];
+                var ret = CreateParamsAndDecryptData(packet, ref pHandleArray, linkedToken.Token);
+                if (ret == (int) eCDMReturnType.E_SUCCESS)
+                {
+                    return new DecryptedEMEPacket(thread)
+                    {
+                        Dts = packet.Dts,
+                        Pts = packet.Pts,
+                        StreamType = packet.StreamType,
+                        IsKeyFrame = packet.IsKeyFrame,
+                        Duration = packet.Duration,
+                        HandleSize = pHandleArray[0]
+                    };
+                }
+
+                Logger.Error($"Decryption failed: {packet.StreamType} - {ret}");
+                throw new DrmException($"Decryption failed: {packet.StreamType} - {ret}");
+            }
         }
 
-        private eCDMReturnType DecryptData(sMsdCipherParam[] param, int numofparam, ref HandleSize[] pHandleArray,
+        private unsafe eCDMReturnType CreateParamsAndDecryptData(EncryptedPacket packet, ref HandleSize[] pHandleArray,
+            CancellationToken token)
+        {
+            switch (packet.Storage)
+            {
+                case IManagedDataStorage managedStorage:
+                {
+                    fixed
+                        (byte* data = managedStorage.Data)
+                    {
+                        var dataLen = managedStorage.Data.Length;
+                        return CreateParamsAndDecryptData(packet, data, dataLen, ref pHandleArray, token);
+                    }
+                }
+                case INativeDataStorage nativeStorage:
+                    return CreateParamsAndDecryptData(packet, nativeStorage.Data, nativeStorage.Length,
+                        ref pHandleArray, token);
+                default:
+                    throw new DrmException($"Unsupported packet storage: {packet.Storage?.GetType()}");
+            }
+        }
+
+        private unsafe eCDMReturnType CreateParamsAndDecryptData(EncryptedPacket packet, byte* data, int dataLen,
+            ref HandleSize[] pHandleArray, CancellationToken token)
+        {
+            fixed (byte* iv = packet.Iv, kId = packet.KeyId)
+            {
+                var subdataPointer = MarshalSubsampleArray(packet);
+                var subsampleInfoPointer = ((MSD_FMP4_DATA*) subdataPointer.ToPointer())->pSubSampleInfo;
+                try
+                {
+                    var param = new sMsdCipherParam
+                    {
+                        algorithm = eMsdCipherAlgorithm.MSD_AES128_CTR,
+                        format = eMsdMediaFormat.MSD_FORMAT_FMP4,
+                        pdata = data,
+                        udatalen = (uint) dataLen,
+                        piv = iv,
+                        uivlen = (uint) packet.Iv.Length,
+                        pkid = kId,
+                        ukidlen = (uint) packet.KeyId.Length,
+                        psubdata = subdataPointer
+                    };
+                    return DecryptData(new[] {param}, ref pHandleArray, packet.StreamType, token);
+                }
+                finally
+                {
+                    if (subsampleInfoPointer != IntPtr.Zero)
+                        Marshal.FreeHGlobal(subsampleInfoPointer);
+                    Marshal.FreeHGlobal(subdataPointer);
+                }
+            }
+        }
+
+        private eCDMReturnType DecryptData(sMsdCipherParam[] param, ref HandleSize[] pHandleArray,
             StreamType type, CancellationToken token)
         {
             var errorCount = 0;
             eCDMReturnType res;
-
             while (true)
             {
                 token.ThrowIfCancellationRequested();
-
-                res = API.EmeDecryptarray((eCDMReturnType) CDMInstance.getDecryptor(), ref param, numofparam,
+                res = API.EmeDecryptarray((eCDMReturnType) CDMInstance.getDecryptor(), ref param, param.Length,
                     IntPtr.Zero,
                     0, ref pHandleArray);
-
                 if ((int) res == E_DECRYPT_BUFFER_FULL && errorCount < MaxDecryptRetries)
                 {
                     Logger.Warn($"{type}: E_DECRYPT_BUFFER_FULL ({errorCount}/{MaxDecryptRetries})");
-
                     token.ThrowIfCancellationRequested();
-
                     ++errorCount;
                     Task.Delay(DecryptBufferFullSleepTime, token).Wait(token);
-
                     continue;
                 }
 
@@ -269,29 +249,38 @@ namespace JuvoPlayer.Drms.Cenc
             return res;
         }
 
-        private static unsafe IntPtr MarshalSubsampleArray(MSD_SUBSAMPLE_INFO[] subsamples)
+        private static unsafe IntPtr MarshalSubsampleArray(EncryptedPacket packet)
         {
-            int sizeOfSubsample = Marshal.SizeOf(typeof(MSD_SUBSAMPLE_INFO));
-            int totalSize = sizeOfSubsample * subsamples.Length;
-            var resultPointer = Marshal.AllocHGlobal(totalSize);
-            byte* subsamplePointer = (byte*) (resultPointer.ToPointer());
-
-            for (var i = 0; i < subsamples.Length; i++, subsamplePointer += (sizeOfSubsample))
+            var subsamplePointer = IntPtr.Zero;
+            if (packet.Subsamples != null)
             {
-                IntPtr subsamplePointerIntPtr = new IntPtr(subsamplePointer);
-                Marshal.StructureToPtr(subsamples[i], subsamplePointerIntPtr, false);
+                var subsamples = packet.Subsamples.Select(o =>
+                        new MSD_SUBSAMPLE_INFO
+                            {uBytesOfClearData = o.ClearData, uBytesOfEncryptedData = o.EncData})
+                    .ToArray();
+                var totalSize = Marshal.SizeOf(typeof(MSD_SUBSAMPLE_INFO)) * subsamples.Length;
+                var array = Marshal.AllocHGlobal(totalSize);
+                var pointer = (MSD_SUBSAMPLE_INFO*) array.ToPointer();
+                for (var i = 0; i < subsamples.Length; i++)
+                    pointer[i] = subsamples[i];
+                subsamplePointer = (IntPtr) pointer;
             }
 
-            return resultPointer;
+            var subData = new MSD_FMP4_DATA
+            {
+                uSubSampleCount = (uint) (packet.Subsamples?.Length ?? 0),
+                pSubSampleInfo = subsamplePointer
+            };
+            var subdataPointer = Marshal.AllocHGlobal(Marshal.SizeOf(subData));
+            Marshal.StructureToPtr(subData, subdataPointer, false);
+            return subdataPointer;
         }
 
         public override void onMessage(string sessionId, MessageType messageType, string message)
         {
             Logger.Info("Got Ieme message: " + sessionId);
-
             if (!sessionId.Equals(currentSessionId))
                 return;
-
             switch (messageType)
             {
                 case MessageType.kLicenseRequest:
@@ -336,17 +325,13 @@ namespace JuvoPlayer.Drms.Cenc
             {
                 CreateIeme();
                 cancellationToken.ThrowIfCancellationRequested();
-
                 currentSessionId = CreateSession();
                 Logger.Info($"CencSession ID {currentSessionId}");
                 cancellationToken.ThrowIfCancellationRequested();
-
                 var requestData = await GetRequestData();
                 cancellationToken.ThrowIfCancellationRequested();
-
                 var responseText = await AcquireLicenceFromServer(requestData);
                 cancellationToken.ThrowIfCancellationRequested();
-
                 InstallLicence(responseText);
                 licenceInstalled = true;
             }
@@ -374,14 +359,11 @@ namespace JuvoPlayer.Drms.Cenc
         {
             if (initData.InitData == null)
                 throw new DrmException(ErrorMessage.InvalidArgument);
-
             requestDataCompletionSource = new TaskCompletionSource<byte[]>();
-
             var status =
                 CDMInstance.session_generateRequest(currentSessionId, InitDataType.kCenc, Encode(initData.InitData));
             if (status != Status.kSuccess)
                 throw new DrmException(EmeStatusConverter.Convert(status));
-
             var requestData = await requestDataCompletionSource.Task.WaitAsync(cancellationTokenSource.Token);
             requestDataCompletionSource = null;
             return requestData;
@@ -392,12 +374,10 @@ namespace JuvoPlayer.Drms.Cenc
             using (var client = new HttpClient())
             {
                 var licenceUrl = new Uri(drmDescription.LicenceUrl);
-
                 client.BaseAddress = licenceUrl;
                 Logger.Info(licenceUrl.AbsoluteUri);
                 HttpContent content = new ByteArrayContent(requestData);
                 content.Headers.ContentLength = requestData.Length;
-
                 if (drmDescription.KeyRequestProperties != null)
                 {
                     foreach (var property in drmDescription.KeyRequestProperties)
@@ -412,14 +392,12 @@ namespace JuvoPlayer.Drms.Cenc
                 var responseTask = await client.PostAsync(licenceUrl, content, cancellationTokenSource.Token);
 
                 // TODO: Add retries. Net failures are expected
-
                 Logger.Info("Response: " + responseTask);
                 var receiveStream = responseTask.Content.ReadAsStreamAsync();
                 var readStream = new StreamReader(await receiveStream, Encoding.GetEncoding(437));
                 var responseText = await readStream.ReadToEndAsync();
                 if (!responseText.StartsWith("GLS/1.0 0 OK"))
                     return responseText;
-
                 const string headerMark = "\r\n\r\n";
                 var headerMarkIndex = responseText.IndexOf(headerMark, StringComparison.Ordinal);
                 return headerMarkIndex == -1
@@ -434,9 +412,7 @@ namespace JuvoPlayer.Drms.Cenc
             try
             {
                 var status = CDMInstance.session_update(currentSessionId, responseText);
-
                 Logger.Info($"Install CencSession ${currentSessionId} result: {status}");
-
                 if (status != Status.kSuccess)
                 {
                     Logger.Error($"License Installation failure {EmeStatusConverter.Convert(status)}");

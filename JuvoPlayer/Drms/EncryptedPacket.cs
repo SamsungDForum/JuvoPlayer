@@ -42,12 +42,12 @@ namespace JuvoPlayer.Drms
         [XmlIgnore]
         public IDrmSession DrmSession;
 
-        public async Task<Packet> Decrypt(CancellationToken token)
+        public Task<Packet> Decrypt(CancellationToken token)
         {
             if (DrmSession == null)
                 throw new InvalidOperationException("Decrypt called without DrmSession");
 
-            return await DrmSession.DecryptPacket(this, token);
+            return DrmSession.DecryptPacket(this, token);
         }
 
         #region Disposable support
@@ -56,14 +56,19 @@ namespace JuvoPlayer.Drms
         //
         protected override void Dispose(bool disposing)
         {
-            if (IsDisposed)
-                return;
+            if (!IsDisposed)
+            {
+                if (disposing)
+                    DrmSession?.Release();
 
-            if (disposing)
-                DrmSession?.Release();
+                IsDisposed = true;
+            }
 
-            IsDisposed = true;
+            base.Dispose(disposing);
         }
+
+        private bool IsDisposed { get; set; }
+
         #endregion
     }
 }

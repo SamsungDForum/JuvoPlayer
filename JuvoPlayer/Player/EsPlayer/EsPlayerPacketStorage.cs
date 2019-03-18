@@ -29,13 +29,10 @@ namespace JuvoPlayer.Player.EsPlayer
     /// </summary>
     internal sealed class EsPlayerPacketStorage : IDisposable
     {
-
         private class DataStorage
         {
             public BlockingCollection<Packet> packetQueue;
             public StreamType StreamType;
-            public TimeSpan PtsIn;
-            public TimeSpan PtsOut;
         }
 
         private readonly ILogger logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
@@ -63,9 +60,7 @@ namespace JuvoPlayer.Player.EsPlayer
             packetQueues[(int)stream] = new DataStorage
             {
                 packetQueue = new BlockingCollection<Packet>(),
-                StreamType = stream,
-                PtsIn = TimeSpan.Zero,
-                PtsOut = TimeSpan.Zero
+                StreamType = stream
             };
 
             if (storage == null)
@@ -84,21 +79,13 @@ namespace JuvoPlayer.Player.EsPlayer
             try
             {
                 var storage = packetQueues[(int)packet.StreamType];
-
-                if (packet.Pts != TimeSpan.MaxValue && packet.Pts != TimeSpan.MinValue)
-                    storage.PtsIn = packet.Pts;
-
                 storage.packetQueue.Add(packet);
-
-                return;
-
             }
             catch (InvalidOperationException)
             {
                 logger.Warn($"Packet storage for {packet.StreamType} is stopped");
+                packet.Dispose();
             }
-
-            packet.Dispose();
         }
 
         /// <summary>
@@ -122,24 +109,9 @@ namespace JuvoPlayer.Player.EsPlayer
         public Packet GetPacket(StreamType stream, CancellationToken extStopToken)
         {
             var storage = packetQueues[(int)stream];
-            var packet = storage.packetQueue.Take(extStopToken);
-
-            if (packet.Pts != TimeSpan.MaxValue && packet.Pts != TimeSpan.MinValue)
-                storage.PtsOut = packet.Pts;
-
-            return packet;
+            return storage.packetQueue.Take(extStopToken);
         }
 
-        public TimeSpan Duration(StreamType stream)
-        {
-            var storage = packetQueues[(int)stream];
-            var duration = storage.PtsIn - storage.PtsOut;
-
-            // packets pts order IS randomish, thus duration may be negative
-            // In those cases, return zero.
-            return duration < TimeSpan.Zero ? TimeSpan.Zero : duration;
-
-        }
         /// <summary>
         /// Disables storage. No further addition of data will be possible.
         /// Extraction of already contained data is still possible.
