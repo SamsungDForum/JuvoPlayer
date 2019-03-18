@@ -58,14 +58,18 @@ namespace JuvoPlayer.Drms
         }
 
         #region Disposable Support
+
+        private bool IsDisposed { get; set; }
+
         protected override void Dispose(bool disposing)
         {
-            if (IsDisposed)
-                return;
+            if (!IsDisposed)
+            {
+                ReleaseUnmanagedResources();
+                IsDisposed = true;
+            }
 
-            ReleaseUnmanagedResources();
-
-            IsDisposed = true;
+            base.Dispose(disposing);
         }
 
         ~DecryptedEMEPacket()

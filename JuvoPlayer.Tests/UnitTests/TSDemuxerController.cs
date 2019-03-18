@@ -108,7 +108,7 @@ namespace JuvoPlayer.Tests.UnitTests
             AsyncContext.Run(async () =>
             {
                 var demuxerStub = Substitute.For<IDemuxer>();
-                var packet = new Packet {StreamType = StreamType.Video, IsEOS = false, IsKeyFrame = true};
+                var packet = new Packet {StreamType = StreamType.Video, IsKeyFrame = true};
                 demuxerStub.NextPacket().Returns(Task.FromResult(packet));
                 demuxerStub.IsInitialized().Returns(true);
                 demuxerStub.Completion.Returns(Task.Delay(500));
@@ -134,7 +134,7 @@ namespace JuvoPlayer.Tests.UnitTests
             AsyncContext.Run(async () =>
             {
                 var demuxerStub = Substitute.For<IDemuxer>();
-                var packet = new Packet {StreamType = StreamType.Video, IsEOS = false, IsKeyFrame = true};
+                var packet = new Packet {StreamType = StreamType.Video, IsKeyFrame = true};
                 demuxerStub.NextPacket().Returns(Task.FromResult(packet));
                 demuxerStub.IsInitialized().Returns(true);
                 demuxerStub.Completion.Returns(Task.Delay(500));

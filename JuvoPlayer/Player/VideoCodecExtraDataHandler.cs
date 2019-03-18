@@ -49,12 +49,14 @@ namespace JuvoPlayer.Player
             if (!packet.IsKeyFrame)
                 return;
 
-            var configPacket = new Packet()
+            var configPacket = new Packet
             {
-                Data = parsedExtraData.ToArray(),
+                Storage = new ManagedDataStorage
+                {
+                    Data = parsedExtraData.ToArray()
+                },
                 Dts = packet.Dts,
                 Pts = packet.Pts,
-                IsEOS = false,
                 IsKeyFrame = true,
                 StreamType = StreamType.Video
             };

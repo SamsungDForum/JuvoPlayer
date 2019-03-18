@@ -16,31 +16,25 @@
  */
 
 using System;
+using System.Xml.Serialization;
 
 namespace JuvoPlayer.Common
 {
     [Serializable]
     public class Packet : IDisposable
     {
-        public byte[] Data = null;
-        public StreamType StreamType { get; set; }
-        public TimeSpan Dts { get; set; }
-        public TimeSpan Pts { get; set; }
-        public bool IsEOS { get; set; }
-        public bool IsKeyFrame { get; set; }
-        public TimeSpan Duration { get; set; }
+        [XmlIgnore]
+        public IDataStorage Storage { get; set; }
 
-        public static Packet CreateEOS(StreamType streamType)
-        {
-            return new Packet
-            {
-                StreamType = streamType,
-                Dts = TimeSpan.MaxValue,
-                Pts = TimeSpan.MaxValue,
-                Duration = TimeSpan.Zero,
-                IsEOS = true
-            };
-        }
+        public StreamType StreamType { get; set; }
+
+        public TimeSpan Dts { get; set; }
+
+        public TimeSpan Pts { get; set; }
+
+        public bool IsKeyFrame { get; set; }
+
+        public TimeSpan Duration { get; set; }
 
         public bool IsZeroClock()
         {
@@ -54,8 +48,13 @@ namespace JuvoPlayer.Common
             return data;
         }
 
+        public bool ContainsData()
+        {
+            return Storage != null;
+        }
+
         #region Disposable Support
-        protected bool IsDisposed = false;
+
         public void Dispose()
         {
             Dispose(true);
@@ -64,7 +63,10 @@ namespace JuvoPlayer.Common
 
         protected virtual void Dispose(bool disposing)
         {
+            if (disposing)
+                Storage?.Dispose();
         }
+
         #endregion
     }
 
