@@ -257,6 +257,9 @@ namespace JuvoPlayer.Player.EsPlayer
                             if (seekPacket.SeekId != seekId)
                                 break;
 
+                            if (seekPacket.Exception != null)
+                                throw seekPacket.Exception;
+
                             logger.Info($"{streamType}: Seek Id {seekId} found. Looking for time {seekPosition}");
                             return SeekResult.Ok;
                         default:
@@ -267,11 +270,6 @@ namespace JuvoPlayer.Player.EsPlayer
                 catch (InvalidOperationException)
                 {
                     logger.Warn($"{streamType}: Stream completed");
-                    return SeekResult.Ok;
-                }
-                catch (OperationCanceledException)
-                {
-                    logger.Warn($"{streamType}: Seek cancelled");
                     return SeekResult.Ok;
                 }
                 catch (Exception e)

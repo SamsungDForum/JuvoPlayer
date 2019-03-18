@@ -631,6 +631,12 @@ namespace JuvoPlayer.Player.EsPlayer
             {
                 logger.Info("Operation Cancelled");
             }
+            catch (SeekException e)
+            {
+                logger.Error(e);
+                playbackErrorSubject.OnNext($"Seek Failed, reason \"{e.Message}\"");
+                throw;
+            }
             catch (Exception e)
             {
                 logger.Error(e);

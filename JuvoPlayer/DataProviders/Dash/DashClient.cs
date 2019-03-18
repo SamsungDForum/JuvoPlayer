@@ -137,8 +137,7 @@ namespace JuvoPlayer.DataProviders.Dash
             if (seekToTimeRange == null)
             {
                 LogError($"Seek Pos Req: {position} failed. No segment/TimeRange found");
-                currentTime = position;
-                return currentTime;
+                throw new ArgumentOutOfRangeException();
             }
 
             currentTime = seekToTimeRange.Start;
