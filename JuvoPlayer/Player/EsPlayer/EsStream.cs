@@ -466,7 +466,7 @@ namespace JuvoPlayer.Player.EsPlayer
                         {
                             currentTransfer = packet.Pts - firstPts.Value;
 
-                            if (currentTransfer >= TransferChunk)
+                            if (currentTransfer >= Config.TransferChunk)
                                 haltTransfer = true;
                         }
                         else

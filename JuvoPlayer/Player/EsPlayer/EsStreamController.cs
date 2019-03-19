@@ -468,8 +468,8 @@ namespace JuvoPlayer.Player.EsPlayer
                     foreach (var esStream in dataStreams.Where(esStream => esStream != null))
                     {
                         var storedDuration = packetStorage.Duration(esStream.StreamType);
-                        logger.Info($"{esStream.StreamType}: Prebuffering {storedDuration}/{PreBufferDuration}");
-                        if (storedDuration < PreBufferDuration)
+                        logger.Info($"{esStream.StreamType}: Prebuffering {storedDuration}/{Config.PreBufferDuration}");
+                        if (storedDuration < Config.PreBufferDuration)
                             prebuffer = true;
                     }
 

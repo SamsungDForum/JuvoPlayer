@@ -37,10 +37,10 @@ namespace JuvoPlayer.DataProviders
 
         private int GetSamplesCount()
         {
-            if (throughputs.Count < MinimumThroughputSampleAmount)
+            if (throughputs.Count < Config.MinimumThroughputSampleAmount)
                 return 0;
 
-            var sampleSize = AverageThroughputSampleAmount;
+            var sampleSize = Config.AverageThroughputSampleAmount;
             if (sampleSize >= throughputs.Count)
                 return throughputs.Count;
 
@@ -51,7 +51,7 @@ namespace JuvoPlayer.DataProviders
             {
                 var ratio = first.Value / second.Value;
 
-                if (ratio >= ThroughputIncreaseScale || ratio <= 1 / ThroughputDecreaseScale)
+                if (ratio >= Config.ThroughputIncreaseScale || ratio <= 1 / Config.ThroughputDecreaseScale)
                 {
                     if (++sampleSize == throughputs.Count)
                         break;
@@ -69,7 +69,7 @@ namespace JuvoPlayer.DataProviders
                 var throughput = 8 * sizeInBytes / duration.TotalMilliseconds;
                 throughputs.AddFirst(throughput * 1000); // we want throughputs in bps
 
-                if (throughputs.Count > MaxMeasurementsToKeep)
+                if (throughputs.Count > Config.MaxMeasurementsToKeep)
                     throughputs.RemoveLast();
             }
         }

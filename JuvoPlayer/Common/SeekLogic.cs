@@ -20,6 +20,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using static Configuration.SeekLogic;
 
 namespace JuvoPlayer.Common
 {
@@ -27,11 +28,6 @@ namespace JuvoPlayer.Common
     {
         public bool IsSeekInProgress { get; set; }
         public bool IsSeekAccumulationInProgress { get; set; }
-
-        private readonly TimeSpan _defaultSeekInterval = Configuration.SeekLogic.DefaultSeekInterval;
-        private readonly TimeSpan _defaultSeekAccumulateInterval = Configuration.SeekLogic.DefaultSeekAccumulateInterval;
-        private readonly double _defaultMaximumSeekIntervalPercentOfContentTotalTime = Configuration.SeekLogic.DefaultMaximumSeekIntervalPercentOfContentTotalTime;
-        private readonly TimeSpan _defaultSeekIntervalValueThreshold = Configuration.SeekLogic.DefaultSeekIntervalValueThreshold; // time between key events when key is being hold is ~100ms
 
         private readonly Stopwatch _seekStopwatch = new Stopwatch();
         private TimeSpan _targetSeekTime;
@@ -65,14 +61,14 @@ namespace JuvoPlayer.Common
 
         private TimeSpan SeekInterval()
         {
-            TimeSpan seekInterval = _defaultSeekInterval;
+            TimeSpan seekInterval = Config.DefaultSeekInterval;
             TimeSpan contentLength = _client.Duration;
             TimeSpan intervalSinceLastSeek = IntervalSinceLastSeek();
 
-            if (intervalSinceLastSeek < _defaultSeekIntervalValueThreshold) // key is being hold
+            if (intervalSinceLastSeek < Config.DefaultSeekIntervalValueThreshold) // key is being hold
                 seekInterval = TimeSpan.FromMilliseconds(Math.Max(
-                    0.01 * _defaultMaximumSeekIntervalPercentOfContentTotalTime * contentLength.TotalMilliseconds,
-                    _defaultSeekInterval.TotalMilliseconds));
+                    0.01 * Config.DefaultMaximumSeekIntervalPercentOfContentTotalTime * contentLength.TotalMilliseconds,
+                    Config.DefaultSeekInterval.TotalMilliseconds));
 
             return seekInterval;
         }
@@ -99,7 +95,7 @@ namespace JuvoPlayer.Common
             AccumulateSeekInterval(seekInterval);
 
             _seekCancellationTokenSource = new CancellationTokenSource();
-            _seekDelay = Task.Delay(_defaultSeekAccumulateInterval, _seekCancellationTokenSource.Token);
+            _seekDelay = Task.Delay(Config.DefaultSeekAccumulateInterval, _seekCancellationTokenSource.Token);
 
             try { await _seekDelay; } catch (TaskCanceledException) { return; }
 

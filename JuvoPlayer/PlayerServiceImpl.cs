@@ -31,7 +31,7 @@ using JuvoPlayer.Drms.Cenc;
 using JuvoPlayer.Player;
 using JuvoPlayer.Player.EsPlayer;
 using JuvoPlayer.Utils;
-using Configuration;
+
 namespace JuvoPlayer
 {
     public class PlayerServiceImpl : IPlayerService
@@ -55,8 +55,6 @@ namespace JuvoPlayer
 
         public PlayerServiceImpl(Window window)
         {
-            ConfigurationValidation.Validate();
-
             dataProviders = new DataProviderFactoryManager();
             dataProviders.RegisterDataProviderFactory(new DashDataProviderFactory());
             dataProviders.RegisterDataProviderFactory(new HLSDataProviderFactory());
