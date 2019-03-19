@@ -1,0 +1,100 @@
+﻿<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Property Group for Tizen40 Project -->
+  <PropertyGroup>
+    <OutputType>Library</OutputType>
+    <TargetFramework>netstandard2.0</TargetFramework>
+    <TizenCreateTpkOnBuild>false</TizenCreateTpkOnBuild>
+    <Version>1.4.5</Version>
+    <PackageReleaseNotes>Release of first beta to be presented to the public. It will be uploaded to the Samsung Seller Office site</PackageReleaseNotes>
+    <Company>SRPOL MVS</Company>
+    <Description>Refrence application of video streaming Tizen .Net Tv applications</Description>
+    <Copyright>Samung Electronics</Copyright>
+    <AssemblyVersion>1.4.5.204</AssemblyVersion>
+    <FileVersion>1.4.5.204</FileVersion>
+  </PropertyGroup>
+
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugType>portable</DebugType>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    <NoWarn>;1701;1702;</NoWarn>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugType>None</DebugType>
+    <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Remove="res\**" />
+    <EmbeddedResource Remove="res\**" />
+    <None Remove="res\**" />
+  </ItemGroup>
+  <ItemGroup>
+    <Compile Remove="Common\UI.cs" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="lib\">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </Folder>
+  </ItemGroup>
+
+  <ItemGroup>
+    <PackageReference Include="Nito.AsyncEx" Version="5.0.0-pre-05" />
+    <PackageReference Include="Nito.AsyncEx.Context" Version="5.0.0-pre-05" />
+    <PackageReference Include="Overby.Extensions.AsyncBinaryReaderWriter" Version="1.0.39" />
+    <PackageReference Include="System.Reactive" Version="4.1.2" />
+    <PackageReference Include="System.Text.Encoding.CodePages" Version="4.5.0" />
+
+    <!-- Tizen.* packages are excluded from runtime -->
+    <PackageReference Include="Tizen.NET" Version="5.0.0.14572">
+      <ExcludeAssets>Runtime</ExcludeAssets>
+    </PackageReference>
+    <PackageReference Include="Tizen.NET.Sdk" Version="1.0.1">
+      <ExcludeAssets>Runtime</ExcludeAssets>
+    </PackageReference>
+    <PackageReference Include="Tizen.NET.TV" Version="4.4.0.1341">
+      <ExcludeAssets>Runtime</ExcludeAssets>
+    </PackageReference>
+    <PackageReference Include="Tizen.TV.Multimedia.ESPlayer" Version="1.0.0">
+      <ExcludeAssets>Runtime</ExcludeAssets>
+    </PackageReference>
+    <!-- Tizen.TV.Security is hijacked, as such it is included in assets. Add exclusion once released -->
+    <PackageReference Include="Tizen.TV.Security" Version="1.0.3">
+      <ExcludeAssets>Runtime</ExcludeAssets>
+    </PackageReference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="JuvoLogger">
+      <HintPath>bin\Release\netstandard2.0\JuvoLogger.dll</HintPath>
+    </Reference>
+    <Reference Include="MpdParser">
+      <HintPath>bin\Release\netstandard2.0\MpdParser.dll</HintPath>
+    </Reference>
+    <Reference Include="RTSP">
+      <HintPath>bin\Release\netstandard2.0\RTSP.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <None Update="lib\libavcodec-juvo.so.57">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="lib\libavfilter-juvo.so.6">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="lib\libavformat-juvo.so.57">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="lib\libavutil-juvo.so.55">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="lib\libswresample-juvo.so.2">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+    <None Update="lib\libswscale-juvo.so.4">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </None>
+  </ItemGroup>
+</Project>
+
