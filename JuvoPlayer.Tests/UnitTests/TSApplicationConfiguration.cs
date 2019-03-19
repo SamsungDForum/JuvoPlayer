@@ -204,17 +204,6 @@ namespace JuvoPlayer.Tests.IntegrationTests
             }
         }
 
-        public class TestEsStreamController : Configuration.Defaults.EsStreamController
-        {
-            public new readonly TimeSpan PreBufferDuration = TimeSpan.FromSeconds(2);
-
-            public bool SameAs(object obj)
-            {
-                return obj is TestEsStreamController controller &&
-                       PreBufferDuration == controller.PreBufferDuration;
-            }
-        }
-
         public static void SetDefaultConfiguration()
         {
             SeekLogic.Config = new Configuration.Defaults.SeekLogic();
@@ -229,7 +218,6 @@ namespace JuvoPlayer.Tests.IntegrationTests
             FFmpegDemuxer.Config = new Configuration.Defaults.FFmpegDemuxer();
             CencSession.Config = new Configuration.Defaults.CencSession();
             EsStream.Config = new Configuration.Defaults.EsStream();
-            EsStreamController.Config = new Configuration.Defaults.EsStreamController();
         }
 
         [Test]
@@ -250,7 +238,6 @@ namespace JuvoPlayer.Tests.IntegrationTests
             Assert.IsNotNull(FFmpegDemuxer.Config);
             Assert.IsNotNull(CencSession.Config);
             Assert.IsNotNull(EsStream.Config);
-            Assert.IsNotNull(EsStreamController.Config);
         }
 
         [Test]
@@ -269,7 +256,6 @@ namespace JuvoPlayer.Tests.IntegrationTests
             FFmpegDemuxer.Config = null;
             CencSession.Config = null;
             EsStream.Config = null;
-            EsStreamController.Config = null;
 
             Assert.IsNull(SeekLogic.Config);
             Assert.IsNull(DashClient.Config);
@@ -283,7 +269,6 @@ namespace JuvoPlayer.Tests.IntegrationTests
             Assert.IsNull(FFmpegDemuxer.Config);
             Assert.IsNull(CencSession.Config);
             Assert.IsNull(EsStream.Config);
-            Assert.IsNull(EsStreamController.Config);
 
             TestSeekLogic seekLogic = new TestSeekLogic();
             TestDashClient dashConfig = new TestDashClient();
@@ -297,7 +282,6 @@ namespace JuvoPlayer.Tests.IntegrationTests
             TestFFmpegDemuxer ffmpegDemuxer = new TestFFmpegDemuxer();
             TestCencSession cencSession = new TestCencSession();
             TestEsStream esStream = new TestEsStream();
-            TestEsStreamController esStreamController = new TestEsStreamController();
 
             SeekLogic.Config = seekLogic;
             DashClient.Config = dashConfig;
@@ -311,7 +295,6 @@ namespace JuvoPlayer.Tests.IntegrationTests
             FFmpegDemuxer.Config = ffmpegDemuxer;
             CencSession.Config = cencSession;
             EsStream.Config = esStream;
-            EsStreamController.Config = esStreamController;
 
             Assert.IsNotNull(SeekLogic.Config);
             Assert.IsNotNull(DashClient.Config);
@@ -325,7 +308,6 @@ namespace JuvoPlayer.Tests.IntegrationTests
             Assert.IsNotNull(FFmpegDemuxer.Config);
             Assert.IsNotNull(CencSession.Config);
             Assert.IsNotNull(EsStream.Config);
-            Assert.IsNotNull(EsStreamController.Config);
 
             Assert.IsTrue(seekLogic.SameAs(SeekLogic.Config));
             Assert.IsTrue(dashConfig.SameAs(DashClient.Config));
@@ -339,7 +321,6 @@ namespace JuvoPlayer.Tests.IntegrationTests
             Assert.IsTrue(ffmpegDemuxer.SameAs(FFmpegDemuxer.Config));
             Assert.IsTrue(cencSession.SameAs(CencSession.Config));
             Assert.IsTrue(esStream.SameAs(EsStream.Config));
-            Assert.IsTrue(esStreamController.SameAs(EsStreamController.Config));
         }
     }
 }
