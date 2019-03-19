@@ -460,13 +460,13 @@ namespace JuvoPlayer.Player.EsPlayer
                     // Ignore non data packets (EOS/BufferChange/etc.)
                     if (packet.ContainsData())
                     {
-                        dataLength += (ulong) packet.Storage.Length;
+                        dataLength += (ulong)packet.Storage.Length;
 
                         if (firstPts.HasValue)
                         {
                             currentTransfer = packet.Pts - firstPts.Value;
 
-                            if (currentTransfer >= Config.TransferChunk)
+                            if (currentTransfer >= TransferChunk)
                                 haltTransfer = true;
                         }
                         else

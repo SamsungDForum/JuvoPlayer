@@ -34,7 +34,7 @@ namespace JuvoPlayer.DataProviders.Dash
 
         private readonly HttpClient httpClient = new HttpClient
         {
-            Timeout = Config.DownloadTimeout
+            Timeout = DownloadTimeout
         };
 
         public Document CurrentDocument { get; private set; }
@@ -63,20 +63,20 @@ namespace JuvoPlayer.DataProviders.Dash
         {
             // No doc, use default
             if (CurrentDocument == null)
-                return Config.ManifestReloadDelay;
+                return ManifestReloadDelay;
 
-            var reloadTime = CurrentDocument.MinimumUpdatePeriod ?? Config.ManifestReloadDelay;
+            var reloadTime = CurrentDocument.MinimumUpdatePeriod ?? ManifestReloadDelay;
 
             // For zero minimum update periods (aka, after every chunk) use default reload.
             if (reloadTime == TimeSpan.Zero)
-                reloadTime = Config.ManifestReloadDelay;
+                reloadTime = ManifestReloadDelay;
 
             return reloadTime;
         }
 
         public async Task<bool> ReloadManifestTask(CancellationToken cancelToken)
         {
-            var downloadRetries = Config.MaxManifestDownloadRetries;
+            var downloadRetries = MaxManifestDownloadRetries;
             Document newDoc = null;
             DateTime requestTime = DateTime.MinValue;
             DateTime downloadTime = DateTime.MinValue;
@@ -115,7 +115,7 @@ namespace JuvoPlayer.DataProviders.Dash
 
                 if (downloadRetries > 0)
                 {
-                    await Task.Delay(Config.ManifestDownloadDelay, cancelToken);
+                    await Task.Delay(ManifestDownloadDelay, cancelToken);
                     cancelToken.ThrowIfCancellationRequested();
                 }
 
