@@ -149,7 +149,7 @@ namespace JuvoPlayer.DataProviders.RTSP
 
             // start RTSP client
             _startCancellationTokenSource = new CancellationTokenSource();
-            _startCancellationTokenSource.CancelAfter(ConnectionTimeout);
+            _startCancellationTokenSource.CancelAfter(Config.ConnectionTimeout);
             rtspClient.Start(currentClip, _startCancellationTokenSource.Token);
         }
 

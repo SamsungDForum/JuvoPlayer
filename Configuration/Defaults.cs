@@ -19,87 +19,100 @@ using System;
 
 namespace Configuration
 {
-    public static class SeekLogic
+    namespace Defaults
     {
-        public static readonly TimeSpan DefaultSeekInterval = TimeSpan.FromSeconds(5);
-        public static readonly TimeSpan DefaultSeekAccumulateInterval = TimeSpan.FromSeconds(2);
-        public const double DefaultMaximumSeekIntervalPercentOfContentTotalTime = 1.0;
-        public static readonly TimeSpan DefaultSeekIntervalValueThreshold = TimeSpan.FromMilliseconds(200); // time between key events when key is being hold is ~100ms
-    }
+        public class SeekLogic
+        {
+            public readonly TimeSpan DefaultSeekInterval = TimeSpan.FromSeconds(5);
+            public readonly TimeSpan DefaultSeekAccumulateInterval = TimeSpan.FromSeconds(2);
+            public readonly double DefaultMaximumSeekIntervalPercentOfContentTotalTime = 1.0;
 
-    public static class DashClient
-    {
-        public static readonly TimeSpan TimeBufferDepthDefault = TimeSpan.FromSeconds(10);
-        public static readonly TimeSpan MaxBufferTime = TimeSpan.FromSeconds(15);
-        public static readonly TimeSpan MinBufferTime = TimeSpan.FromSeconds(5);
-        public static readonly TimeSpan MinBufferDownloadTime = TimeSpan.FromSeconds(4);
-    }
+            public readonly TimeSpan
+                DefaultSeekIntervalValueThreshold =
+                    TimeSpan.FromMilliseconds(200); // time between key events when key is being hold is ~100ms   
+        }
 
-    public static class DashDownloader
-    {
-        public const int ChunkSize = 64 * 1024;
-    }
+        public class DashClient
+        {
+            public readonly TimeSpan TimeBufferDepthDefault = TimeSpan.FromSeconds(10);
+            public readonly TimeSpan MaxBufferTime = TimeSpan.FromSeconds(15);
+            public readonly TimeSpan MinBufferTime = TimeSpan.FromSeconds(5);
+            public readonly TimeSpan MinBufferDownloadTime = TimeSpan.FromSeconds(4);
+        }
 
-    public static class DashManifest
-    {
-        public static readonly TimeSpan DownloadTimeout = TimeSpan.FromSeconds(3);
-        public const int MaxManifestDownloadRetries = 3;
-        public static readonly TimeSpan ManifestDownloadDelay = TimeSpan.FromMilliseconds(1000);
-        public static readonly TimeSpan ManifestReloadDelay = TimeSpan.FromMilliseconds(1500);
-    }
+        public class DashDownloader
+        {
+            public readonly int ChunkSize = 64 * 1024;
+        }
 
-    public static class DashMediaPipeline
-    {
-        public static readonly TimeSpan SegmentEps = TimeSpan.FromSeconds(0.5);
-    }
+        public class DashManifest
+        {
+            public readonly TimeSpan DownloadTimeout = TimeSpan.FromSeconds(3);
+            public readonly int MaxManifestDownloadRetries = 3;
+            public readonly TimeSpan ManifestDownloadDelay = TimeSpan.FromMilliseconds(1000);
+            public readonly TimeSpan ManifestReloadDelay = TimeSpan.FromMilliseconds(1500);
+        }
 
-    public static class HLSDataProvider
-    {
-        public static readonly TimeSpan MaxBufferHealth = TimeSpan.FromSeconds(10);
-    }
+        public class DashMediaPipeline
+        {
+            public readonly TimeSpan SegmentEps = TimeSpan.FromSeconds(0.5);
+        }
 
-    public static class RTSPDataProvider
-    {
-        public static readonly TimeSpan ConnectionTimeout = TimeSpan.FromSeconds(2);
-    }
+        public class HLSDataProvider
+        {
+            public readonly TimeSpan MaxBufferHealth = TimeSpan.FromSeconds(10);
+        }
 
-    public static class EWMAThroughputHistory
-    {
-        public const double SlowEWMACoeff = 0.99;
-        public const double FastEWMACoeff = 0.98;
-        public const double SlowBandwidth = 20000000;
-        public const double FastBandwidth = 20000000;
-    }
+        public class RTSPDataProvider
+        {
+            public readonly TimeSpan ConnectionTimeout = TimeSpan.FromSeconds(2);
+        }
 
-    public static class ThroughputHistory
-    {
-        public const int MaxMeasurementsToKeep = 20;
-        public const int AverageThroughputSampleAmount = 4;
-        public const int MinimumThroughputSampleAmount = 2;
+        public class EWMAThroughputHistory
+        {
+            public readonly double SlowEWMACoeff = 0.99;
+            public readonly double FastEWMACoeff = 0.98;
+            public readonly double SlowBandwidth = 20000000;
+            public readonly double FastBandwidth = 20000000;
+        }
 
-        public const double ThroughputDecreaseScale = 1.3;
-        public const double ThroughputIncreaseScale = 1.3;
-    }
+        public class ThroughputHistory
+        {
+            public readonly int MaxMeasurementsToKeep = 20;
+            public readonly int AverageThroughputSampleAmount = 4;
+            public readonly int MinimumThroughputSampleAmount = 2;
 
-    public static class FFmpegDemuxer
-    {
-        public const int BufferSize = 64 * 1024; // 32kB seems to be "low level standard", but content downloading pipeline works better for 64kB
-        public const int ProbeSize = 32 * 1024; // higher values may cause problems when probing certain kinds of content (assert "len >= s->orig_buffer_size" in aviobuf)
-    }
+            public readonly double ThroughputDecreaseScale = 1.3;
+            public readonly double ThroughputIncreaseScale = 1.3;
+        }
 
-    public static class CencSession
-    {
-        public const int MaxDecryptRetries = 5;
-        public static readonly TimeSpan DecryptBufferFullSleepTime = TimeSpan.FromMilliseconds(1000);
-    }
+        public class FFmpegDemuxer
+        {
+            public readonly ulong
+                BufferSize =
+                    64 * 1024; // 32kB seems to be "low level standard", but content downloading pipeline works better for 64kB
 
-    public static class EsStream
-    {
-        public static readonly TimeSpan TransferChunk = TimeSpan.FromSeconds(2);
-    }
+            public readonly int
+                ProbeSize =
+                    32 * 1024; // higher values may cause problems when probing certain kinds of content (assert "len >= s->orig_buffer_size" in aviobuf)
 
-    public static class EsStreamController
-    {
-        public static readonly TimeSpan PreBufferDuration = TimeSpan.FromSeconds(2);
+            public readonly TimeSpan MaxAnalyzeDuration = TimeSpan.FromSeconds(10);
+        }
+
+        public class CencSession
+        {
+            public readonly int MaxDecryptRetries = 5;
+            public readonly TimeSpan DecryptBufferFullSleepTime = TimeSpan.FromMilliseconds(1000);
+        }
+
+        public class EsStream
+        {
+            public readonly TimeSpan TransferChunk = TimeSpan.FromSeconds(2);
+        }
+
+        public class EsStreamController
+        {
+            public readonly TimeSpan PreBufferDuration = TimeSpan.FromSeconds(2);
+        }
     }
 }

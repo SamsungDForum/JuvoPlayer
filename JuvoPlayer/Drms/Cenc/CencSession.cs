@@ -249,14 +249,14 @@ namespace JuvoPlayer.Drms.Cenc
                     IntPtr.Zero,
                     0, ref pHandleArray);
 
-                if ((int)res == E_DECRYPT_BUFFER_FULL && errorCount < MaxDecryptRetries)
+                if ((int)res == E_DECRYPT_BUFFER_FULL && errorCount < Config.MaxDecryptRetries)
                 {
-                    Logger.Warn($"{type}: E_DECRYPT_BUFFER_FULL ({errorCount}/{MaxDecryptRetries})");
+                    Logger.Warn($"{type}: E_DECRYPT_BUFFER_FULL ({errorCount}/{Config.MaxDecryptRetries})");
 
                     token.ThrowIfCancellationRequested();
 
                     ++errorCount;
-                    Task.Delay(DecryptBufferFullSleepTime, token).Wait(token);
+                    Task.Delay(Config.DecryptBufferFullSleepTime, token).Wait(token);
 
                     continue;
                 }

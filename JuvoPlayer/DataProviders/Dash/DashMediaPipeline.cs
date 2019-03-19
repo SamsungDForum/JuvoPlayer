@@ -648,7 +648,7 @@ namespace JuvoPlayer.DataProviders.Dash
             }
             else
             {
-                if (packet.Pts + SegmentEps < lastSeek)
+                if (packet.Pts + Config.SegmentEps < lastSeek)
                 {
                     // Add last seek value to packet clock. Forcing last seek value looses
                     // PTS/DTS differences causing lip sync issues.

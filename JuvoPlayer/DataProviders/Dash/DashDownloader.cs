@@ -266,7 +266,7 @@ namespace JuvoPlayer.DataProviders.Dash
 
         private Task<byte[]> ReadChunk(AsyncBinaryReader reader)
         {
-            return reader.ReadBytesAsync(ChunkSize, cancellationToken);
+            return reader.ReadBytesAsync(Config.ChunkSize, cancellationToken);
         }
 
         private void PushChunk(byte[] buffer)

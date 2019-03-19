@@ -25,7 +25,6 @@
     </PackageReference>
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\Configuration\Configuration.csproj" />
     <ProjectReference Include="..\..\JuvoLogger\JuvoLogger.csproj" />
   </ItemGroup>
 

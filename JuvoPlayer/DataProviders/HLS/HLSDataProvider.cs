@@ -48,7 +48,7 @@ namespace JuvoPlayer.DataProviders.HLS
 
         private bool ShouldPauseDemuxer()
         {
-            return lastReceivedPts - currentTime > MaxBufferHealth;
+            return lastReceivedPts - currentTime > Config.MaxBufferHealth;
         }
 
         public void OnChangeActiveStream(StreamDescription stream)
@@ -125,7 +125,7 @@ namespace JuvoPlayer.DataProviders.HLS
         private void ResumeDemuxerIfNecessary()
         {
             var shouldResumeDemuxer = lastReceivedPts - currentTime <
-                                      MaxBufferHealth - TimeSpan.FromTicks(MaxBufferHealth.Ticks / 2);
+                                      Config.MaxBufferHealth - TimeSpan.FromTicks(Config.MaxBufferHealth.Ticks / 2);
             if (shouldResumeDemuxer)
             {
                 demuxerController.Resume();
