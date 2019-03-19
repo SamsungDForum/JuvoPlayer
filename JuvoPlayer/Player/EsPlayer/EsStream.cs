@@ -370,8 +370,8 @@ namespace JuvoPlayer.Player.EsPlayer
 
             switch (packet)
             {
-                case Packet eosPacket when eosPacket.IsEOS:
-                    PushEosPacket(transferToken);
+                case EOSPacket eosPacket:
+                    PushEosPacket(eosPacket, transferToken);
                     continueProcessing = false;
                     break;
 
@@ -394,7 +394,7 @@ namespace JuvoPlayer.Player.EsPlayer
                     await PushEncryptedPacket(encryptedPacket, transferToken);
                     break;
 
-                case Packet dataPacket when packet.IsEOS == false:
+                case Packet dataPacket:
                     PushUnencryptedPacket(dataPacket, transferToken);
                     break;
 
@@ -458,9 +458,9 @@ namespace JuvoPlayer.Player.EsPlayer
                     packet = packetStorage.GetPacket(streamType, token);
 
                     // Ignore non data packets (EOS/BufferChange/etc.)
-                    if (packet.Data != null)
+                    if (packet.ContainsData())
                     {
-                        dataLength += (ulong)packet.Data.Length;
+                        dataLength += (ulong) packet.Storage.Length;
 
                         if (firstPts.HasValue)
                         {
@@ -531,23 +531,24 @@ namespace JuvoPlayer.Player.EsPlayer
         /// </exception>
         private void PushUnencryptedPacket(Packet dataPacket, CancellationToken token)
         {
-            // Convert Juvo packet to ESPlayer packet
-            var esPacket = dataPacket.ESUnencryptedPacket();
-
-            for (; ; )
+            using (dataPacket)
             {
-                var submitStatus = player.SubmitPacket(esPacket);
+                for (; ; )
+                {
+                    var submitStatus = player.Submit(dataPacket);
 
-                logger.Debug($"{esPacket.type}: ({submitStatus}) PTS: {esPacket.pts} Duration: {esPacket.duration}");
+                    logger.Debug(
+                        $"{dataPacket.StreamType}: ({submitStatus} )PTS: {dataPacket.Pts} Duration: {dataPacket.Duration}");
 
-                if (submitStatus == ESPlayer.SubmitStatus.Success)
-                    return;
+                    if (submitStatus == ESPlayer.SubmitStatus.Success)
+                        return;
 
-                if (!ShouldRetry(submitStatus))
-                    throw new PacketSubmitException("Packet Submit Error", submitStatus);
+                    if (!ShouldRetry(submitStatus))
+                        throw new PacketSubmitException("Packet Submit Error", submitStatus);
 
-                var delay = CalculateDelay(submitStatus);
-                Wait(delay, token);
+                    var delay = CalculateDelay(submitStatus);
+                    Wait(delay, token);
+                }
             }
         }
 
@@ -565,17 +566,18 @@ namespace JuvoPlayer.Player.EsPlayer
         /// </exception>
         private async Task PushEncryptedPacket(EncryptedPacket dataPacket, CancellationToken token)
         {
+            using (dataPacket)
             using (var decryptedPacket = await dataPacket.Decrypt(token) as DecryptedEMEPacket)
             {
-                var esPacket = decryptedPacket.ESDecryptedPacket();
-
                 // Continue pushing packet till success or terminal failure
                 for (; ; )
                 {
-                    var submitStatus = player.SubmitPacket(esPacket);
+                    var submitStatus = player.Submit(decryptedPacket);
 
                     logger.Debug(
-                        $"{esPacket.type}: ({submitStatus}) PTS: {esPacket.pts.FromNano()} Duration: {esPacket.duration.FromNano()} Handle: {esPacket.handle} HandleSize: {esPacket.handleSize}");
+                        $"{decryptedPacket.StreamType}: ({submitStatus}) PTS: {decryptedPacket.Pts} Duration:" +
+                        $"{decryptedPacket.Duration} Handle: {decryptedPacket.HandleSize.handle} " +
+                        $"HandleSize: {decryptedPacket.HandleSize.size}");
 
                     if (submitStatus == ESPlayer.SubmitStatus.Success)
                     {
@@ -600,14 +602,14 @@ namespace JuvoPlayer.Player.EsPlayer
         /// <exception cref="PacketSubmitException">
         /// Exception thrown on submit error
         /// </exception>
-        private void PushEosPacket(CancellationToken token)
+        private void PushEosPacket(EOSPacket packet, CancellationToken token)
         {
             logger.Info("");
 
             // Continue pushing packet till success or terminal failure
             for (; ; )
             {
-                var submitStatus = player.SubmitEosPacket(streamType.ESStreamType());
+                var submitStatus = player.Submit(packet);
                 if (submitStatus == ESPlayer.SubmitStatus.Success)
                     return;
 

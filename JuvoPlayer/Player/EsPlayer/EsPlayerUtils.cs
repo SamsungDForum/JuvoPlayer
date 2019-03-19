@@ -18,15 +18,19 @@
 using JuvoPlayer.Common;
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
+using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using JuvoPlayer.Common.Utils;
 using JuvoPlayer.Drms;
 using JuvoPlayer.Utils;
-using ESPlayer = Tizen.TV.Multimedia;
-using StreamType = JuvoPlayer.Common.StreamType;
+using Tizen.TV.Multimedia;
+using StreamType = Tizen.TV.Multimedia.StreamType;
+
+using PacketAndStorageType = System.ValueTuple<System.Type, System.Type>;
+using PushFunc = System.Func<Tizen.TV.Multimedia.ESPlayer, JuvoPlayer.Common.Packet, Tizen.TV.Multimedia.SubmitStatus>;
 
 namespace JuvoPlayer.Player.EsPlayer
 {
@@ -38,11 +42,12 @@ namespace JuvoPlayer.Player.EsPlayer
     {
         internal static TimeSpan FromNano(this ulong nanoTime)
         {
-            return TimeSpan.FromMilliseconds(nanoTime/(double)1000000);
+            return TimeSpan.FromMilliseconds(nanoTime / (double) 1000000);
         }
+
         internal static ulong TotalNanoseconds(this TimeSpan clock)
         {
-            return (ulong)(clock.TotalMilliseconds * 1000000);
+            return (ulong) (clock.TotalMilliseconds * 1000000);
         }
     }
 
@@ -52,34 +57,97 @@ namespace JuvoPlayer.Player.EsPlayer
     /// </summary>
     internal static class PacketConversionExtensions
     {
-        internal static ESPlayer.ESPacket ESUnencryptedPacket(this Common.Packet packet)
+        private static unsafe byte[] ToManagedBuffer(this INativeDataStorage storage)
         {
-            return new ESPlayer.ESPacket
+            var managedBuffer = new byte[storage.Length];
+            Marshal.Copy((IntPtr) storage.Data, managedBuffer, 0, storage.Length);
+            return managedBuffer;
+        }
+
+        internal static ESPacket ToESPacket(this Packet packet)
+        {
+            byte[] buffer;
+            if (packet.Storage is IManagedDataStorage dataStorage)
+                buffer = dataStorage.Data;
+            else
+                buffer = ((INativeDataStorage) packet.Storage).ToManagedBuffer();
+            return new ESPacket
             {
                 type = packet.StreamType.ESStreamType(),
                 pts = packet.Pts.TotalNanoseconds(),
                 duration = packet.Duration.TotalNanoseconds(),
-                buffer = packet.Data
+                buffer = buffer
             };
         }
 
-        internal static ESPlayer.ESHandlePacket ESDecryptedPacket(this DecryptedEMEPacket packet)
+        internal static ESHandlePacket ToESHandlePacket(this DecryptedEMEPacket packet)
         {
-            return new ESPlayer.ESHandlePacket
+            return new ESHandlePacket
             {
                 type = packet.StreamType.ESStreamType(),
                 pts = packet.Pts.TotalNanoseconds(),
                 duration = packet.Duration.TotalNanoseconds(),
-
                 handle = packet.HandleSize.handle,
                 handleSize = packet.HandleSize.size
             };
         }
     }
 
+    internal static class PushPacketStrategies
+    {
+        private static readonly IDictionary<PacketAndStorageType, PushFunc> dispatchMap = new Dictionary<PacketAndStorageType, PushFunc>();
+
+        private static Type GetStorageType(IDataStorage storage)
+        {
+            switch (storage)
+            {
+                case null:
+                    return null;
+                case IManagedDataStorage _:
+                    return typeof(IManagedDataStorage);
+                case INativeDataStorage _:
+                    return typeof(INativeDataStorage);
+                default:
+                    throw new InvalidOperationException($"Unsupported type: {storage.GetType()}");
+            }
+        }
+
+        static PushPacketStrategies()
+        {
+            dispatchMap[(typeof(Packet), typeof(INativeDataStorage))] = SubmitManagedPriv;
+            dispatchMap[(typeof(Packet), typeof(IManagedDataStorage))] = SubmitManagedPriv;
+            dispatchMap[(typeof(DecryptedEMEPacket), null)] = (player, packet) =>
+                SubmitDecryptedPriv(player, (DecryptedEMEPacket) packet);
+            dispatchMap[(typeof(EOSPacket), null)] = (player, packet) => SubmitEOSPriv(player, (EOSPacket) packet);
+        }
+
+        internal static SubmitStatus Submit(this ESPlayer player, Packet packet)
+        {
+            return dispatchMap[(packet.GetType(), GetStorageType(packet.Storage))].Invoke(player, packet);
+        }
+
+        private static SubmitStatus SubmitManagedPriv(ESPlayer player, Packet packet)
+        {
+            var esPacket = packet.ToESPacket();
+            return player.SubmitPacket(esPacket);
+        }
+
+        private static SubmitStatus SubmitDecryptedPriv(ESPlayer player, DecryptedEMEPacket packet)
+        {
+            var esHandle = packet.ToESHandlePacket();
+            return player.SubmitPacket(esHandle);
+        }
+
+        private static SubmitStatus SubmitEOSPriv(ESPlayer player, EOSPacket packet)
+        {
+            var esStreamType = packet.StreamType.ESStreamType();
+            return player.SubmitEosPacket(esStreamType);
+        }
+    }
+
     internal static class ESPlayerStreamInfoExtensions
     {
-        internal static string DumpConfig(this ESPlayer.VideoStreamInfo videoConf)
+        internal static string DumpConfig(this VideoStreamInfo videoConf)
         {
             StringBuilder sb = new StringBuilder();
 
@@ -104,7 +172,7 @@ namespace JuvoPlayer.Player.EsPlayer
             return sb.ToString();
         }
 
-        internal static string DumpConfig(this ESPlayer.AudioStreamInfo audioConf)
+        internal static string DumpConfig(this AudioStreamInfo audioConf)
         {
             StringBuilder sb = new StringBuilder();
 
@@ -136,7 +204,7 @@ namespace JuvoPlayer.Player.EsPlayer
         {
             var tcs = new TaskCompletionSource<bool>();
             using (token.Register(
-                s => ((TaskCompletionSource<bool>)s).TrySetResult(true), tcs))
+                s => ((TaskCompletionSource<bool>) s).TrySetResult(true), tcs))
             {
                 if (nonCancellable != await Task.WhenAny(nonCancellable, tcs.Task).ConfigureAwait(false))
                     throw new OperationCanceledException(token.ToString());
@@ -149,7 +217,7 @@ namespace JuvoPlayer.Player.EsPlayer
         {
             var tcs = new TaskCompletionSource<bool>();
             using (token.Register(
-                s => ((TaskCompletionSource<bool>)s).TrySetResult(true), tcs))
+                s => ((TaskCompletionSource<bool>) s).TrySetResult(true), tcs))
             {
                 if (nonCancellable != await Task.WhenAny(nonCancellable, tcs.Task).ConfigureAwait(false))
                     throw new OperationCanceledException(token.ToString());
@@ -158,6 +226,7 @@ namespace JuvoPlayer.Player.EsPlayer
             await nonCancellable;
         }
     }
+
     /// <summary>
     /// Buffer configuration data storage in Common.Packet type.
     /// </summary>
@@ -229,34 +298,33 @@ namespace JuvoPlayer.Player.EsPlayer
             new VideoConfiguration{Codec = VideoCodec.WMV3,   Fps = 60, Bps = 20*1000000, Width=1920, Height = 1080, Supported = true}
         };
 
-        internal static Common.StreamType JuvoStreamType(this ESPlayer.StreamType esStreamType)
+        internal static Common.StreamType JuvoStreamType(this StreamType esStreamType)
         {
-            return esStreamType == ESPlayer.StreamType.Video ?
-                StreamType.Video : StreamType.Audio;
+            return esStreamType == StreamType.Video ? Common.StreamType.Video : Common.StreamType.Audio;
         }
 
-        internal static ESPlayer.StreamType ESStreamType(this Common.StreamType juvoStreamType)
+        internal static StreamType ESStreamType(this Common.StreamType juvoStreamType)
         {
-            return juvoStreamType == Common.StreamType.Video ?
-                ESPlayer.StreamType.Video : ESPlayer.StreamType.Audio;
+            return juvoStreamType == Common.StreamType.Video ? StreamType.Video : StreamType.Audio;
         }
 
-        internal static ESPlayer.VideoStreamInfo ESVideoStreamInfo(this Common.StreamConfig streamConfig)
+        internal static VideoStreamInfo ESVideoStreamInfo(this Common.StreamConfig streamConfig)
         {
             if (!(streamConfig is Common.VideoStreamConfig))
                 throw new ArgumentException("StreamConfig is not of VideoStreamConfig Type");
 
-            var videoConfig = (Common.VideoStreamConfig)streamConfig;
+            var videoConfig = (Common.VideoStreamConfig) streamConfig;
 
             // Sort configuration by FPS (lowest first) & get an entry matching codec & FPS
             var fpsOrderedConfigs = VideoConfigurations.OrderBy(entry => entry.Fps);
-            var configParameters = fpsOrderedConfigs.FirstOrDefault(entry => videoConfig.Codec == entry.Codec && entry.Fps >= videoConfig.FrameRate) ??
+            var configParameters = fpsOrderedConfigs.FirstOrDefault(entry =>
+                                       videoConfig.Codec == entry.Codec && entry.Fps >= videoConfig.FrameRate) ??
                                    fpsOrderedConfigs.LastOrDefault(entry => videoConfig.Codec == entry.Codec);
 
             if (configParameters == null)
                 throw new UnsupportedStreamException($"Unsupported codec {videoConfig.Codec}");
 
-            return new ESPlayer.VideoStreamInfo
+            return new VideoStreamInfo
             {
                 codecData = videoConfig.CodecExtraData,
                 mimeType = EsPlayerUtils.GetCodecMimeType(videoConfig.Codec),
@@ -269,14 +337,14 @@ namespace JuvoPlayer.Player.EsPlayer
             };
         }
 
-        internal static ESPlayer.AudioStreamInfo ESAudioStreamInfo(this Common.StreamConfig streamConfig)
+        internal static AudioStreamInfo ESAudioStreamInfo(this Common.StreamConfig streamConfig)
         {
             if (!(streamConfig is Common.AudioStreamConfig))
                 throw new ArgumentException("StreamConfig is not of AudioStreamConfig Type");
 
-            var audioConfig = (Common.AudioStreamConfig)streamConfig;
+            var audioConfig = (Common.AudioStreamConfig) streamConfig;
 
-            return new ESPlayer.AudioStreamInfo
+            return new AudioStreamInfo
             {
                 codecData = audioConfig.CodecExtraData,
                 mimeType = EsPlayerUtils.GetCodecMimeType(audioConfig.Codec),
@@ -285,54 +353,55 @@ namespace JuvoPlayer.Player.EsPlayer
             };
         }
 
-        internal static ESPlayer.VideoMimeType GetCodecMimeType(VideoCodec videoCodec)
+        internal static VideoMimeType GetCodecMimeType(VideoCodec videoCodec)
         {
             switch (videoCodec)
             {
                 case VideoCodec.H263:
-                    return ESPlayer.VideoMimeType.H263;
+                    return VideoMimeType.H263;
                 case VideoCodec.H264:
-                    return ESPlayer.VideoMimeType.H264;
+                    return VideoMimeType.H264;
                 case VideoCodec.H265:
-                    return ESPlayer.VideoMimeType.Hevc;
+                    return VideoMimeType.Hevc;
                 case VideoCodec.MPEG2:
-                    return ESPlayer.VideoMimeType.Mpeg2;
+                    return VideoMimeType.Mpeg2;
                 case VideoCodec.MPEG4:
-                    return ESPlayer.VideoMimeType.Mpeg4;
+                    return VideoMimeType.Mpeg4;
                 case VideoCodec.VP8:
-                    return ESPlayer.VideoMimeType.Vp8;
+                    return VideoMimeType.Vp8;
                 case VideoCodec.VP9:
-                    return ESPlayer.VideoMimeType.Vp9;
+                    return VideoMimeType.Vp9;
                 case VideoCodec.WMV3:
-                    return ESPlayer.VideoMimeType.Wmv3;
+                    return VideoMimeType.Wmv3;
                 case VideoCodec.WMV1:
                 case VideoCodec.WMV2:
                 default:
-                    throw new ArgumentOutOfRangeException($"No mapping from Juvo video codec {videoCodec} to ESPlayer aideo codec");
+                    throw new ArgumentOutOfRangeException(
+                        $"No mapping from Juvo video codec {videoCodec} to ESPlayer aideo codec");
             }
         }
 
-        internal static ESPlayer.AudioMimeType GetCodecMimeType(AudioCodec audioCodec)
+        internal static AudioMimeType GetCodecMimeType(AudioCodec audioCodec)
         {
             switch (audioCodec)
             {
                 case AudioCodec.AAC:
-                    return ESPlayer.AudioMimeType.Aac;
+                    return AudioMimeType.Aac;
                 case AudioCodec.MP2:
-                    return ESPlayer.AudioMimeType.Mp2;
+                    return AudioMimeType.Mp2;
                 case AudioCodec.MP3:
-                    return ESPlayer.AudioMimeType.Mp3;
+                    return AudioMimeType.Mp3;
                 case AudioCodec.VORBIS:
-                    return ESPlayer.AudioMimeType.Vorbis;
+                    return AudioMimeType.Vorbis;
                 case AudioCodec.PCM_S16BE:
-                    return ESPlayer.AudioMimeType.PcmS16be;
+                    return AudioMimeType.PcmS16be;
                 case AudioCodec.PCM_S24BE:
-                    return ESPlayer.AudioMimeType.PcmS24be;
+                    return AudioMimeType.PcmS24be;
                 case AudioCodec.EAC3:
-                    return ESPlayer.AudioMimeType.Eac3;
+                    return AudioMimeType.Eac3;
 
                 case AudioCodec.AC3:
-                    return ESPlayer.AudioMimeType.Ac3;
+                    return AudioMimeType.Ac3;
                 case AudioCodec.PCM:
                 case AudioCodec.FLAC:
                 case AudioCodec.AMR_NB:
@@ -343,10 +412,9 @@ namespace JuvoPlayer.Player.EsPlayer
                 case AudioCodec.WMAV1:
                 case AudioCodec.WMAV2:
                 default:
-                    throw new ArgumentOutOfRangeException($"No mapping from Juvo audio codec {audioCodec} to ESPlayer audio codec");
+                    throw new ArgumentOutOfRangeException(
+                        $"No mapping from Juvo audio codec {audioCodec} to ESPlayer audio codec");
             }
         }
     }
-
-
 }
