@@ -77,10 +77,4 @@ namespace Configuration
     {
         public static Defaults.EsStream Config { get; set; } = new Defaults.EsStream();
     }
-
-    public static class EsStreamController
-    {
-        public static Defaults.EsStreamController Config { get; set; } = new Defaults.EsStreamController();
-    }
-
 }

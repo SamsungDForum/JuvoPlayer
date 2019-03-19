@@ -109,10 +109,5 @@ namespace Configuration
         {
             public readonly TimeSpan TransferChunk = TimeSpan.FromSeconds(2);
         }
-
-        public class EsStreamController
-        {
-            public readonly TimeSpan PreBufferDuration = TimeSpan.FromSeconds(2);
-        }
     }
 }

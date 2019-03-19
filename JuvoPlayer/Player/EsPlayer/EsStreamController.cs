@@ -29,7 +29,6 @@ using System.Threading.Tasks;
 using ElmSharp;
 using JuvoPlayer.Utils;
 using Nito.AsyncEx;
-using static Configuration.EsStreamController;
 
 namespace JuvoPlayer.Player.EsPlayer
 {
