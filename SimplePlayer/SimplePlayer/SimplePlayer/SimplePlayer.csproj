@@ -16,7 +16,7 @@
     <PackageReference Include="Xamarin.Forms" Version="4.0.0.169046-pre5" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\JuvoPlayer\JuvoPlayer.csproj" />
+    <ProjectReference Include="..\..\..\JuvoPlayer\JuvoPlayer.csproj" />
   </ItemGroup>
 
 </Project>

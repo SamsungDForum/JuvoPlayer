@@ -117,12 +117,12 @@ namespace SimplePlayer
                 window.Show();
 
                 //////Common TV platform MediaPlayer using the URL Data source only
-                //platformPlayer = new Tizen.TV.Multimedia.Player { Display = new Tizen.Multimedia.Display(window) };
+                platformPlayer = new Tizen.TV.Multimedia.Player { Display = new Tizen.Multimedia.Display(window) };
 
                 /////////////Clean//////////////////////////////
                 var url = "http://yt-dash-mse-test.commondatastorage.googleapis.com/media/car-20120827-manifest.mpd";
                 //"http://distribution.bbb3d.renderfarming.net/video/mp4/bbb_sunflower_1080p_30fps_normal.mp4"
-               // await PlayPlatformMediaClean(url, platformPlayer);
+                await PlayPlatformMediaClean(url, platformPlayer);
 
                 /////////////Play Ready//////////////////////////
                 //"http://profficialsite.origin.mediaservices.windows.net/c51358ea-9a5e-4322-8951-897d640fdfd7/tearsofsteel_4k.ism/manifest(format=mpd-time-csf)"
@@ -130,7 +130,7 @@ namespace SimplePlayer
                 //await PlayPlatformMediaDRMed(url, license, platformPlayer);
 
                 ////////////The JuvoPlayer backend using Url and Elementary Stream data sources.
-                PlayJuvoPlayerClean(url, window);               
+                //PlayJuvoPlayerClean(url, window);               
             }
 
             //GUI contents initialization lines below
