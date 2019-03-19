@@ -80,8 +80,13 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
             var encryptedPacketStream =
                 assembly.GetManifestResourceStream(
                     "JuvoPlayer.TizenTests.res.drm.google_dash_encrypted_video_packet_pts_10_01.xml");
-            XmlSerializer serializer = new XmlSerializer(typeof(EncryptedPacket));
-            encryptedPacket = (EncryptedPacket)serializer.Deserialize(encryptedPacketStream);
+            var packetSerializer = new XmlSerializer(typeof(EncryptedPacket));
+            encryptedPacket = (EncryptedPacket) packetSerializer.Deserialize(encryptedPacketStream);
+            var storageSerializer = new XmlSerializer(typeof(ManagedDataStorage));
+            var encryptedPacketStorageStream =
+                assembly.GetManifestResourceStream(
+                    "JuvoPlayer.TizenTests.res.drm.google_dash_encrypted_video_packet_pts_10_01_storage.xml");
+            encryptedPacket.Storage = (IDataStorage) storageSerializer.Deserialize(encryptedPacketStorageStream);
 
             Assert.That(encryptedPacket, Is.Not.Null);
         }
@@ -182,12 +187,11 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
 
                     Assert.That(decryptedEme.Dts, Is.EqualTo(encryptedPacket.Dts));
                     Assert.That(decryptedEme.Pts, Is.EqualTo(encryptedPacket.Pts));
-                    Assert.That(decryptedEme.IsEOS, Is.EqualTo(encryptedPacket.IsEOS));
                     Assert.That(decryptedEme.IsKeyFrame, Is.EqualTo(encryptedPacket.IsKeyFrame));
                     Assert.That(decryptedEme.StreamType, Is.EqualTo(encryptedPacket.StreamType));
                     Assert.That(decryptedEme.HandleSize, Is.Not.Null);
                     Assert.That(decryptedEme.HandleSize.handle, Is.GreaterThan(0));
-                    Assert.That(decryptedEme.HandleSize.size, Is.EqualTo(encryptedPacket.Data.Length));
+                    Assert.That(decryptedEme.HandleSize.size, Is.EqualTo(encryptedPacket.Storage.Length));
                 }
             }
         }

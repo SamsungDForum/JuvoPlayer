@@ -30,7 +30,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg
 {
     public unsafe class AVFormatContextWrapper : IAVFormatContext
     {
-        private ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoLogger");
+        private static ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
 
         private AVFormatContext* formatContext;
         private AVIOContextWrapper avioContext;
@@ -195,43 +195,33 @@ namespace JuvoPlayer.Demuxers.FFmpeg
             do
             {
                 var pkt = new AVPacket();
-                try
-                {
-                    Interop.FFmpeg.av_init_packet(&pkt);
-                    pkt.data = null;
-                    pkt.size = 0;
-                    var ret = Interop.FFmpeg.av_read_frame(formatContext, &pkt);
-                    if (ret == -541478725)
-                        return null;
-                    if (ret < 0)
-                        throw new FFmpegException($"Cannot get next packet. Cause {GetErrorText(ret)}");
-                    var streamIndex = pkt.stream_index;
-                    if (streamIndexes.All(index => index != streamIndex))
-                        continue;
-                    var stream = formatContext->streams[streamIndex];
-                    var data = pkt.data;
-                    var dataSize = pkt.size;
-                    var pts = Interop.FFmpeg.av_rescale_q(pkt.pts, stream->time_base, microsBase) / 1000;
-                    var dts = Interop.FFmpeg.av_rescale_q(pkt.dts, stream->time_base, microsBase) / 1000;
-                    var duration = Interop.FFmpeg.av_rescale_q(pkt.duration, stream->time_base, microsBase) / 1000;
-                    var sideData = Interop.FFmpeg.av_packet_get_side_data(&pkt,
-                        AVPacketSideDataType.AV_PKT_DATA_ENCRYPT_INFO, null);
-                    var packet = sideData != null ? CreateEncryptedPacket(sideData) : new Packet();
-                    packet.StreamType = stream->codec->codec_type == AVMediaType.AVMEDIA_TYPE_AUDIO
-                        ? StreamType.Audio
-                        : StreamType.Video;
-                    packet.Pts = TimeSpan.FromMilliseconds(pts >= 0 ? pts : 0);
-                    packet.Dts = TimeSpan.FromMilliseconds(dts >= 0 ? dts : 0);
-                    packet.Duration = TimeSpan.FromMilliseconds(duration);
-                    packet.Data = new byte[dataSize];
-                    packet.IsKeyFrame = pkt.flags == 1;
-                    CopyPacketData(data, dataSize, packet, sideData == null);
-                    return packet;
-                }
-                finally
-                {
-                    Interop.FFmpeg.av_packet_unref(&pkt);
-                }
+                Interop.FFmpeg.av_init_packet(&pkt);
+                pkt.data = null;
+                pkt.size = 0;
+                var ret = Interop.FFmpeg.av_read_frame(formatContext, &pkt);
+                if (ret == -541478725)
+                    return null;
+                if (ret < 0)
+                    throw new FFmpegException($"Cannot get next packet. Cause {GetErrorText(ret)}");
+                var streamIndex = pkt.stream_index;
+                if (streamIndexes.All(index => index != streamIndex))
+                    continue;
+                var stream = formatContext->streams[streamIndex];
+                var pts = Interop.FFmpeg.av_rescale_q(pkt.pts, stream->time_base, microsBase) / 1000;
+                var dts = Interop.FFmpeg.av_rescale_q(pkt.dts, stream->time_base, microsBase) / 1000;
+                var duration = Interop.FFmpeg.av_rescale_q(pkt.duration, stream->time_base, microsBase) / 1000;
+                var sideData = Interop.FFmpeg.av_packet_get_side_data(&pkt,
+                    AVPacketSideDataType.AV_PKT_DATA_ENCRYPT_INFO, null);
+                var packet = sideData != null ? CreateEncryptedPacket(sideData) : new Packet();
+                packet.StreamType = stream->codec->codec_type == AVMediaType.AVMEDIA_TYPE_AUDIO
+                    ? StreamType.Audio
+                    : StreamType.Video;
+                packet.Pts = TimeSpan.FromMilliseconds(pts >= 0 ? pts : 0);
+                packet.Dts = TimeSpan.FromMilliseconds(dts >= 0 ? dts : 0);
+                packet.Duration = TimeSpan.FromMilliseconds(duration);
+                packet.IsKeyFrame = pkt.flags == 1;
+                packet.Storage = new FFmpegDataStorage {Packet = pkt};
+                return packet;
             } while (true);
         }
 
@@ -262,36 +252,6 @@ namespace JuvoPlayer.Demuxers.FFmpeg
             }
 
             return packet;
-        }
-
-        private static void CopyPacketData(byte* source, int size, Packet packet, bool removeSuffixPES = true)
-        {
-            byte[] suffixPES
-                =
-                packet.StreamType == StreamType.Audio
-                    ? new byte[] {0xC0, 0x00, 0x00, 0x00, 0x01, 0xCE, 0x8C, 0x4D, 0x9D, 0x10, 0x8E, 0x25, 0xE9, 0xFE}
-                    : new byte[] {0xE0, 0x00, 0x00, 0x00, 0x01, 0xCE, 0x8C, 0x4D, 0x9D, 0x10, 0x8E, 0x25, 0xE9, 0xFE};
-            var suffixPresent = false;
-            if (removeSuffixPES && size >= suffixPES.Length)
-            {
-                suffixPresent = true;
-                for (int i = 0, dataOffset = size - suffixPES.Length;
-                    i < suffixPES.Length && i + dataOffset < size;
-                    ++i)
-                {
-                    if (source[i + dataOffset] == suffixPES[i]) continue;
-                    suffixPresent = false;
-                    break;
-                }
-            }
-
-            if (removeSuffixPES && suffixPresent)
-            {
-                packet.Data = new byte[size - suffixPES.Length];
-                Marshal.Copy((IntPtr) source, packet.Data, 0, size - suffixPES.Length);
-            }
-            else
-                Marshal.Copy((IntPtr) source, packet.Data, 0, size);
         }
 
         private StreamConfig ReadAudioConfig(AVStream* stream)

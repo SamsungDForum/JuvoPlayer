@@ -565,7 +565,7 @@ namespace JuvoPlayer.DataProviders.Dash
                 .Select(packet =>
                 {
                     if (packet == null)
-                        return Packet.CreateEOS(StreamType);
+                        return EOSPacket.Create(StreamType);
                     if (packet is SeekPacket)
                         return packet;
 

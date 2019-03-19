@@ -71,7 +71,7 @@ namespace JuvoPlayer.Tests.UnitTests
                 .ToTask();
 
             Assert.That(packets.Count, Is.EqualTo(2));
-            Assert.That(packets.All(p => p.IsEOS), Is.True);
+            Assert.That(packets.All(p => p.GetType() == typeof(EOSPacket)), Is.True);
         }
     }
 }

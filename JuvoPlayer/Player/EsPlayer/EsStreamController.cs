@@ -455,35 +455,6 @@ namespace JuvoPlayer.Player.EsPlayer
             return timeUpdatedSubject.AsObservable();
         }
 
-        private async Task Prebuffer(CancellationToken token)
-        {
-            try
-            {
-                bool prebuffer;
-
-                do
-                {
-                    prebuffer = false;
-
-                    foreach (var esStream in dataStreams.Where(esStream => esStream != null))
-                    {
-                        var storedDuration = packetStorage.Duration(esStream.StreamType);
-                        logger.Info($"{esStream.StreamType}: Prebuffering {storedDuration}/{Config.PreBufferDuration}");
-                        if (storedDuration < Config.PreBufferDuration)
-                            prebuffer = true;
-                    }
-
-                    if (prebuffer)
-                        await Task.Delay(TimeSpan.FromSeconds(1), token);
-                } while (prebuffer);
-            }
-            catch (TaskCanceledException)
-            {
-                logger.Info("Operation cancelled");
-                throw new OperationCanceledException();
-            }
-        }
-
         /// <summary>
         /// Method executes PrepareAsync on ESPlayer. On success, notifies
         /// event PlayerInitialized. At this time player is ALREADY PLAYING
@@ -499,8 +470,6 @@ namespace JuvoPlayer.Player.EsPlayer
             {
                 using (await asyncOpSerializer.LockAsync(token))
                 {
-                    await Prebuffer(token);
-
                     logger.Info("Player.PrepareAsync()");
                     await player.PrepareAsync(OnReadyToStartStream).WithCancellation(token);
 
@@ -548,9 +517,6 @@ namespace JuvoPlayer.Player.EsPlayer
                 {
                     // Stop data streams & clock
                     DisableTransfer();
-
-                    // Collect enough data to restart transfer
-                    await Prebuffer(token);
 
                     StopClockGenerator();
 
@@ -649,8 +615,6 @@ namespace JuvoPlayer.Player.EsPlayer
                         await RestartPlayer(token);
                         return;
                     }
-
-                    await Prebuffer(token);
 
                     logger.Info("Player.SeekAsync()");
 
