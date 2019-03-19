@@ -19,100 +19,90 @@ using System;
 
 namespace Configuration
 {
-    namespace Defaults
+    public static class SeekLogic
     {
-        public class SeekLogic
-        {
-            public readonly TimeSpan DefaultSeekInterval = TimeSpan.FromSeconds(5);
-            public readonly TimeSpan DefaultSeekAccumulateInterval = TimeSpan.FromSeconds(2);
-            public readonly double DefaultMaximumSeekIntervalPercentOfContentTotalTime = 1.0;
+        public static TimeSpan DefaultSeekInterval { get; set; } = TimeSpan.FromSeconds(5);
+        public static TimeSpan DefaultSeekAccumulateInterval { get; set; } = TimeSpan.FromSeconds(2);
+        public static double DefaultMaximumSeekIntervalPercentOfContentTotalTime { get; set; } = 1.0;
 
-            public readonly TimeSpan
-                DefaultSeekIntervalValueThreshold =
-                    TimeSpan.FromMilliseconds(200); // time between key events when key is being hold is ~100ms   
-        }
-
-        public class DashClient
-        {
-            public readonly TimeSpan TimeBufferDepthDefault = TimeSpan.FromSeconds(10);
-            public readonly TimeSpan MaxBufferTime = TimeSpan.FromSeconds(15);
-            public readonly TimeSpan MinBufferTime = TimeSpan.FromSeconds(5);
-            public readonly TimeSpan MinBufferDownloadTime = TimeSpan.FromSeconds(4);
-        }
-
-        public class DashDownloader
-        {
-            public readonly int ChunkSize = 64 * 1024;
-        }
-
-        public class DashManifest
-        {
-            public readonly TimeSpan DownloadTimeout = TimeSpan.FromSeconds(3);
-            public readonly int MaxManifestDownloadRetries = 3;
-            public readonly TimeSpan ManifestDownloadDelay = TimeSpan.FromMilliseconds(1000);
-            public readonly TimeSpan ManifestReloadDelay = TimeSpan.FromMilliseconds(1500);
-        }
-
-        public class DashMediaPipeline
-        {
-            public readonly TimeSpan SegmentEps = TimeSpan.FromSeconds(0.5);
-        }
-
-        public class HLSDataProvider
-        {
-            public readonly TimeSpan MaxBufferHealth = TimeSpan.FromSeconds(10);
-        }
-
-        public class RTSPDataProvider
-        {
-            public readonly TimeSpan ConnectionTimeout = TimeSpan.FromSeconds(2);
-        }
-
-        public class EWMAThroughputHistory
-        {
-            public readonly double SlowEWMACoeff = 0.99;
-            public readonly double FastEWMACoeff = 0.98;
-            public readonly double SlowBandwidth = 20000000;
-            public readonly double FastBandwidth = 20000000;
-        }
-
-        public class ThroughputHistory
-        {
-            public readonly int MaxMeasurementsToKeep = 20;
-            public readonly int AverageThroughputSampleAmount = 4;
-            public readonly int MinimumThroughputSampleAmount = 2;
-
-            public readonly double ThroughputDecreaseScale = 1.3;
-            public readonly double ThroughputIncreaseScale = 1.3;
-        }
-
-        public class FFmpegDemuxer
-        {
-            public readonly ulong
-                BufferSize =
-                    64 * 1024; // 32kB seems to be "low level standard", but content downloading pipeline works better for 64kB
-
-            public readonly int
-                ProbeSize =
-                    32 * 1024; // higher values may cause problems when probing certain kinds of content (assert "len >= s->orig_buffer_size" in aviobuf)
-
-            public readonly TimeSpan MaxAnalyzeDuration = TimeSpan.FromSeconds(10);
-        }
-
-        public class CencSession
-        {
-            public readonly int MaxDecryptRetries = 5;
-            public readonly TimeSpan DecryptBufferFullSleepTime = TimeSpan.FromMilliseconds(1000);
-        }
-
-        public class EsStream
-        {
-            public readonly TimeSpan TransferChunk = TimeSpan.FromSeconds(2);
-        }
-
-        public class EsStreamController
-        {
-            public readonly TimeSpan PreBufferDuration = TimeSpan.FromSeconds(2);
-        }
+        public static TimeSpan
+            DefaultSeekIntervalValueThreshold
+        { get; set; } =
+                TimeSpan.FromMilliseconds(200); // time between key events when key is being hold is ~100ms   
     }
+
+    public static class DashClient
+    {
+        public static TimeSpan TimeBufferDepthDefault { get; set; } = TimeSpan.FromSeconds(10);
+        public static TimeSpan MaxBufferTime { get; set; } = TimeSpan.FromSeconds(15);
+        public static TimeSpan MinBufferTime { get; set; } = TimeSpan.FromSeconds(5);
+        public static TimeSpan MinBufferDownloadTime { get; set; } = TimeSpan.FromSeconds(4);
+    }
+
+    public static class DashDownloader
+    {
+        public static int ChunkSize { get; set; } = 64 * 1024;
+    }
+
+    public static class DashManifest
+    {
+        public static TimeSpan DownloadTimeout { get; set; } = TimeSpan.FromSeconds(3);
+        public static int MaxManifestDownloadRetries { get; set; } = 3;
+        public static TimeSpan ManifestDownloadDelay { get; set; } = TimeSpan.FromMilliseconds(1000);
+        public static TimeSpan ManifestReloadDelay { get; set; } = TimeSpan.FromMilliseconds(1500);
+    }
+
+    public static class DashMediaPipeline
+    {
+        public static TimeSpan SegmentEps { get; set; } = TimeSpan.FromSeconds(0.5);
+    }
+
+    public static class HLSDataProvider
+    {
+        public static TimeSpan MaxBufferHealth { get; set; } = TimeSpan.FromSeconds(10);
+    }
+
+    public static class RTSPDataProvider
+    {
+        public static TimeSpan ConnectionTimeout { get; set; } = TimeSpan.FromSeconds(2);
+    }
+
+    public static class EWMAThroughputHistory
+    {
+        public static double SlowEWMACoeff { get; set; } = 0.99;
+        public static double FastEWMACoeff { get; set; } = 0.98;
+        public static double SlowBandwidth { get; set; } = 20000000;
+        public static double FastBandwidth { get; set; } = 20000000;
+    }
+
+    public static class ThroughputHistory
+    {
+        public static int MaxMeasurementsToKeep { get; set; } = 20;
+        public static int AverageThroughputSampleAmount { get; set; } = 4;
+        public static int MinimumThroughputSampleAmount { get; set; } = 2;
+
+        public static double ThroughputDecreaseScale { get; set; } = 1.3;
+        public static double ThroughputIncreaseScale { get; set; } = 1.3;
+    }
+
+    public static class FFmpegDemuxer
+    {
+        public static ulong BufferSize { get; set; } = 64 * 1024; // 32kB seems to be "low level standard", but content downloading pipeline works better for 64kB
+
+        public static int ProbeSize { get; set; } = 32 * 1024; // higher values may cause problems when probing certain kinds of content (assert "len >= s->orig_buffer_size" in aviobuf)
+
+        public static TimeSpan MaxAnalyzeDuration { get; set; } = TimeSpan.FromSeconds(10);
+    }
+
+    public static class CencSession
+    {
+        public static int MaxDecryptRetries { get; set; } = 5;
+        public static TimeSpan DecryptBufferFullSleepTime { get; set; } = TimeSpan.FromMilliseconds(1000);
+    }
+
+    public static class EsStream
+    {
+        public static TimeSpan TransferChunk { get; set; } = TimeSpan.FromSeconds(2);
+    }
+
 }

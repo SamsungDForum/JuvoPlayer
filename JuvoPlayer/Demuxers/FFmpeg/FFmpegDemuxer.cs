@@ -72,7 +72,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg
             try
             {
                 formatContext = ffmpegGlue.AllocFormatContext();
-                formatContext.ProbeSize = Config.ProbeSize;
+                formatContext.ProbeSize = ProbeSize;
                 formatContext.MaxAnalyzeDuration = TimeSpan.FromSeconds(10);
                 formatContext.Open(url);
             }
@@ -133,13 +133,13 @@ namespace JuvoPlayer.Demuxers.FFmpeg
         {
             try
             {
-                ioContext = ffmpegGlue.AllocIOContext(Config.BufferSize, ReadPacket);
+                ioContext = ffmpegGlue.AllocIOContext(BufferSize, ReadPacket);
                 ioContext.Seekable = false;
                 ioContext.WriteFlag = false;
 
                 formatContext = ffmpegGlue.AllocFormatContext();
-                formatContext.ProbeSize = Config.ProbeSize;
-                formatContext.MaxAnalyzeDuration = Config.MaxAnalyzeDuration;
+                formatContext.ProbeSize = ProbeSize;
+                formatContext.MaxAnalyzeDuration = MaxAnalyzeDuration;
                 formatContext.AVIOContext = ioContext;
                 formatContext.Open();
             }

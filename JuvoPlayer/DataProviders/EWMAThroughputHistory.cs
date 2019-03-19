@@ -22,8 +22,8 @@ namespace JuvoPlayer.DataProviders
 {
     public class EWMAThroughputHistory : IThroughputHistory
     {
-        private double slowBandwidth = Config.SlowBandwidth;
-        private double fastBandwidth = Config.FastBandwidth;
+        private double slowBandwidth = SlowBandwidth;
+        private double fastBandwidth = FastBandwidth;
 
         private readonly object throughputLock = new object();
 
@@ -40,8 +40,8 @@ namespace JuvoPlayer.DataProviders
             lock (throughputLock)
             {
                 var bw = 8.0 * sizeInBytes / duration.TotalSeconds;
-                slowBandwidth = Config.SlowEWMACoeff * slowBandwidth + (1 - Config.SlowEWMACoeff) * bw;
-                fastBandwidth = Config.FastEWMACoeff * fastBandwidth + (1 - Config.FastEWMACoeff) * bw;
+                slowBandwidth = SlowEWMACoeff * slowBandwidth + (1 - SlowEWMACoeff) * bw;
+                fastBandwidth = FastEWMACoeff * fastBandwidth + (1 - FastEWMACoeff) * bw;
             }
         }
 
@@ -49,8 +49,8 @@ namespace JuvoPlayer.DataProviders
         {
             lock (throughputLock)
             {
-                slowBandwidth = Config.SlowBandwidth;
-                fastBandwidth = Config.FastBandwidth;
+                slowBandwidth = SlowBandwidth;
+                fastBandwidth = FastBandwidth;
             }
         }
     }
