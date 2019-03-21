@@ -3,17 +3,16 @@ using System.Reactive.Linq;
 using System.Threading.Tasks;
 using System.Threading;
 using Xamarin.Forms;
-using JuvoPlayer.Common;
 using JuvoPlayer;
-
-
+using JuvoPlayer.Common;
+using System.Collections.Generic;
 
 namespace SimplePlayer
 {
     class PlayerService : PlayerServiceProxy
     {
         /// <summary>
-        /// his class is required by the JuvoPlayer backend only
+        /// This class is required by the JuvoPlayer backend
         /// </summary>
         public new PlayerState State => ToPlayerState(base.State);
         public PlayerService(ElmSharp.Window window)
@@ -28,26 +27,25 @@ namespace SimplePlayer
         {
             switch (state)
             {
-                case JuvoPlayer.Common.PlayerState.Idle:
+                case PlayerState.Idle:
                     return PlayerState.Idle;
-                case JuvoPlayer.Common.PlayerState.Prepared:
+                case PlayerState.Prepared:
                     return PlayerState.Prepared;
-                case JuvoPlayer.Common.PlayerState.Paused:
+                case PlayerState.Paused:
                     return PlayerState.Paused;
-                case JuvoPlayer.Common.PlayerState.Playing:
+                case PlayerState.Playing:
                     return PlayerState.Playing;
                 default:
                     throw new ArgumentOutOfRangeException(nameof(state), state, null);
             }
         }
-
     }
 
     public class CodeButtonClickPage : ContentPage, IDisposable
     {
         private Tizen.TV.Multimedia.Player platformPlayer;
         private Tizen.TV.Multimedia.DRMManager platformDrmMgr;
-        private PlayerService juvoPlayerService;
+        private PlayerService juvoPlayer;
 
         public CodeButtonClickPage()
         {
@@ -72,72 +70,102 @@ namespace SimplePlayer
                 await PlayPlatformMediaClean(URL, player);
             }
 
-            void PlayJuvoPlayerClean(String URL, ElmSharp.Window window)
+            void PlayJuvoPlayerClean(String URL, PlayerService player)
             {
-                juvoPlayerService = new PlayerService(window);
-
-                juvoPlayerService.StateChanged()
-                    .ObserveOn(SynchronizationContext.Current)
-                    .Where(state => state == PlayerState.Prepared)
-                    .Subscribe(state =>
-                    {
-                        juvoPlayerService.Start();
-                    });
-
-                juvoPlayerService.SetSource(new ClipDefinition
+                player.SetSource(new ClipDefinition
                 {
-                    Title = "Google Car",
+                    Title = "Title",
                     Type = "dash",
                     Url = URL,
                     Subtitles = new System.Collections.Generic.List<SubtitleInfo>(),
                     Poster = "Poster",
                     Description = "Descritption",
                     DRMDatas = new System.Collections.Generic.List<DRMDescription>()
-                });                
+                });
+
+                player.StateChanged()
+                    .ObserveOn(SynchronizationContext.Current)
+                    .Where(state => state == PlayerState.Prepared)
+                    .Subscribe(state =>
+                    {
+                        player.Start();
+                    });
             }
 
-            //private static PlayJuvoPlayerDRMed(String URL, String licenceUrl, ElmSharp.Window window)
-            //{
-            //    licenceUrl =
-            //   "http://dash-mse-test.appspot.com/api/drm/playready?drm_system=playready&source=YOUTUBE&video_id=03681262dc412c06&ip=0.0.0.0&ipbits=0&expire=19000000000&sparams=ip,ipbits,expire,drm_system,source,video_id&signature=3BB038322E72D0B027F7233A733CD67D518AF675.2B7C39053DA46498D23F3BCB87596EF8FD8B1669&key=test_key1";
-            //    var configuration = new DRMDescription()
-            //    {
-            //        Scheme = CencUtils.GetScheme(PlayreadySystemId),
-            //        LicenceUrl = licenceUrl,
-            //        KeyRequestProperties = new Dictionary<string, string>() { { "Content-Type", "text/xml; charset=utf-8" } },
-            //    };
-            //}
+            void PlayJuvoPlayerDRMed(String URL, String licenceUrl, String drmScheme, PlayerService player)
+            {
+                var drmData = new System.Collections.Generic.List<DRMDescription>();
+                drmData.Add(new DRMDescription
+                {
+                    Scheme = drmScheme,
+                    LicenceUrl = licenceUrl,
+                    KeyRequestProperties = new Dictionary<string, string>() { { "Content-Type", "text/xml; charset=utf-8" } },
+                });
+
+                player.SetSource(new ClipDefinition
+                {
+                    Title = "Title",
+                    Type = "dash",
+                    Url = URL,
+                    Subtitles = new System.Collections.Generic.List<SubtitleInfo>(),
+                    Poster = "Poster",
+                    Description = "Descritption",
+                    DRMDatas = drmData
+                });
+
+                player.StateChanged()
+                   .ObserveOn(SynchronizationContext.Current)
+                   .Where(state => state == PlayerState.Prepared)
+                   .Subscribe(state =>
+                   {
+                       player.Start();
+                   });
+            }
 
             async Task Play()
-            {                
+            {
                 var window = new ElmSharp.Window("SimplePlayer")
                 {
                     Geometry = new ElmSharp.Rect(0, 0, 1920, 1080)
                 };
                 window.Show();
 
-                //////Common TV platform MediaPlayer using the URL Data source only
-                platformPlayer = new Tizen.TV.Multimedia.Player { Display = new Tizen.Multimedia.Display(window) };
+                /////////////Clean contents////////////////////
+                //var url = "http://yt-dash-mse-test.commondatastorage.googleapis.com/media/car-20120827-manifest.mpd";
+                //var url = "https://bitdash-a.akamaihd.net/content/sintel/sintel.mpd";
+                //var url = "http://distribution.bbb3d.renderfarming.net/video/mp4/bbb_sunflower_1080p_30fps_normal.mp4";
+                var url = "http://wowzaec2demo.streamlock.net/live/bigbuckbunny/manifest_mvtime.mpd";
 
-                /////////////Clean//////////////////////////////
-                var url = "http://yt-dash-mse-test.commondatastorage.googleapis.com/media/car-20120827-manifest.mpd";
-                //"http://distribution.bbb3d.renderfarming.net/video/mp4/bbb_sunflower_1080p_30fps_normal.mp4"
-                await PlayPlatformMediaClean(url, platformPlayer);
+                /////////////Play Ready encrypted content//////
+                //var url = "http://profficialsite.origin.mediaservices.windows.net/c51358ea-9a5e-4322-8951-897d640fdfd7/tearsofsteel_4k.ism/manifest(format=mpd-time-csf)";
+                //var license = "http://playready-testserver.azurewebsites.net/rightsmanager.asmx?PlayRight=1&UseSimpleNonPersistentLicense=1";
+                //var url = "http://yt-dash-mse-test.commondatastorage.googleapis.com/media/oops_cenc-20121114-signedlicenseurl-manifest.mpd";
+                //var license = "";
 
-                /////////////Play Ready//////////////////////////
-                //"http://profficialsite.origin.mediaservices.windows.net/c51358ea-9a5e-4322-8951-897d640fdfd7/tearsofsteel_4k.ism/manifest(format=mpd-time-csf)"
-                //license = "http://playready-testserver.azurewebsites.net/rightsmanager.asmx?PlayRight=1&UseSimpleNonPersistentLicense=1"
+                /////////////Widevine encrypted content////////
+                //var url = "https://bitmovin-a.akamaihd.net/content/art-of-motion_drm/mpds/11331.mpd";
+                //var license = "https://widevine-proxy.appspot.com/proxy";
+                //var url = "https://storage.googleapis.com/wvmedia/cenc/h264/tears/tears_uhd.mpd";
+                //var license = "https://proxy.uat.widevine.com/proxy?provider=widevine_test";
+
+
+                //////The TV platform MediaPlayer (URL data source only).
+                //platformPlayer = new Tizen.TV.Multimedia.Player { Display = new Tizen.Multimedia.Display(window) };
+                //await PlayPlatformMediaClean(url, platformPlayer);
                 //await PlayPlatformMediaDRMed(url, license, platformPlayer);
 
-                ////////////The JuvoPlayer backend using Url and Elementary Stream data sources.
-                //PlayJuvoPlayerClean(url, window);               
+                //////The JuvoPlayer backend (elementary stream data source).
+                juvoPlayer = new PlayerService(window);
+                PlayJuvoPlayerClean(url, juvoPlayer);
+                //PlayJuvoPlayerDRMed(url, license, "playready", juvoPlayer);
+                //PlayJuvoPlayerDRMed(url, license, "widevine", juvoPlayer);
             }
 
             //GUI contents initialization lines below
             Title = "Simple video player app";
             Label label = new Label
             {
-                Text = "Press 'down key' followed by the 'enter key'",
+                Text = "Please, press the 'enter' key",
                 FontSize = Device.GetNamedSize(NamedSize.Large, typeof(Label)),
                 VerticalOptions = LayoutOptions.CenterAndExpand,
                 HorizontalOptions = LayoutOptions.Center
@@ -148,7 +176,6 @@ namespace SimplePlayer
                 VerticalOptions = LayoutOptions.CenterAndExpand,
                 HorizontalOptions = LayoutOptions.Center
             };
-            button.Clicked += async (sender, args) => await Play();
             Content = new StackLayout
             {
                 Children =
@@ -157,10 +184,12 @@ namespace SimplePlayer
                     button
                 }
             };
-        }
 
+            button.Clicked += async (sender, args) => await Play();
+            this.Appearing += (object sender, System.EventArgs e) => button.Focus();
+        }
         public void Dispose()
-        {            
+        {
             platformPlayer.Stop();
             platformPlayer.Unprepare();
             platformPlayer.Dispose();
@@ -168,11 +197,11 @@ namespace SimplePlayer
             platformDrmMgr.Close();
             platformDrmMgr.Dispose();
 
-            juvoPlayerService.Dispose();
+            juvoPlayer.Stop();
+            juvoPlayer.Dispose();
         }
     }
-
-
+    
     public class App : Application
     {
         public App()
@@ -182,17 +211,14 @@ namespace SimplePlayer
 
         protected override void OnStart()
         {
-
         }
 
         protected override void OnSleep()
         {
-            // Handle when your app sleeps
         }
 
         protected override void OnResume()
         {
-            // Handle when your app resumes
         }
     }
 }
