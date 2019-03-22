@@ -18,33 +18,33 @@ namespace SimplePlayer
         public CodeButtonClickPage()
         {
             //Playback launching functions
-            async Task PlayPlatformMediaClean(String URL, Tizen.TV.Multimedia.Player player)
+            async Task PlayPlatformMediaClean(String videoSourceURL, Tizen.TV.Multimedia.Player player)
             {
-                player.SetSource(new Tizen.Multimedia.MediaUriSource(URL));
+                player.SetSource(new Tizen.Multimedia.MediaUriSource(videoSourceURL));
                 await player.PrepareAsync();
                 player.Start();
             }
 
-            async Task PlayPlatformMediaDRMed(String URL, String licenseServerUrl, Tizen.TV.Multimedia.Player player)
+            async Task PlayPlatformMediaDRMed(String videoSourceURL, String licenseServerURL, Tizen.TV.Multimedia.Player player)
             {
                 platformDrmMgr = Tizen.TV.Multimedia.DRMManager.CreateDRMManager(Tizen.TV.Multimedia.DRMType.Playready);
 
                 platformDrmMgr.Init($"org.tizen.example.SimplePlayer.Tizen.TV");
-                platformDrmMgr.AddProperty("LicenseServer", licenseServerUrl);
-                platformDrmMgr.Url = URL;
+                platformDrmMgr.AddProperty("LicenseServer", licenseServerURL);
+                platformDrmMgr.Url = videoSourceURL;
                 platformDrmMgr.Open();
                 player.SetDrm(platformDrmMgr);
 
-                await PlayPlatformMediaClean(URL, player);
+                await PlayPlatformMediaClean(videoSourceURL, player);
             }
 
-            void PlayJuvoPlayerClean(String URL, PlayerServiceProxy player)
+            void PlayJuvoPlayerClean(String videoSourceURL, PlayerServiceProxy player)
             {
                 player.SetSource(new ClipDefinition
                 {
                     Title = "Title",
                     Type = "dash",
-                    Url = URL,
+                    Url = videoSourceURL,
                     Subtitles = new System.Collections.Generic.List<SubtitleInfo>(),
                     Poster = "Poster",
                     Description = "Descritption",
@@ -60,13 +60,13 @@ namespace SimplePlayer
                     });
             }
 
-            void PlayJuvoPlayerDRMed(String URL, String licenceUrl, String drmScheme, PlayerServiceProxy player)
+            void PlayJuvoPlayerDRMed(String videoSourceURL, String licenseServerURL, String drmScheme, PlayerServiceProxy player)
             {
                 var drmData = new System.Collections.Generic.List<DRMDescription>();
                 drmData.Add(new DRMDescription
                 {
                     Scheme = drmScheme,
-                    LicenceUrl = licenceUrl,
+                    LicenceUrl = licenseServerURL,
                     KeyRequestProperties = new Dictionary<string, string>() { { "Content-Type", "text/xml; charset=utf-8" } },
                 });
 
@@ -74,7 +74,7 @@ namespace SimplePlayer
                 {
                     Title = "Title",
                     Type = "dash",
-                    Url = URL,
+                    Url = videoSourceURL,
                     Subtitles = new System.Collections.Generic.List<SubtitleInfo>(),
                     Poster = "Poster",
                     Description = "Descritption",
