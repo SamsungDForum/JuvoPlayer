@@ -9,43 +9,11 @@ using System.Collections.Generic;
 
 namespace SimplePlayer
 {
-    class PlayerService : PlayerServiceProxy
-    {
-        /// <summary>
-        /// This class is required by the JuvoPlayer backend
-        /// </summary>
-        public new PlayerState State => ToPlayerState(base.State);
-        public PlayerService(ElmSharp.Window window)
-           : base(new PlayerServiceImpl(window))
-        {
-        }
-        public new IObservable<PlayerState> StateChanged()
-        {
-            return base.StateChanged().Select(ToPlayerState);
-        }
-        private PlayerState ToPlayerState(PlayerState state)
-        {
-            switch (state)
-            {
-                case PlayerState.Idle:
-                    return PlayerState.Idle;
-                case PlayerState.Prepared:
-                    return PlayerState.Prepared;
-                case PlayerState.Paused:
-                    return PlayerState.Paused;
-                case PlayerState.Playing:
-                    return PlayerState.Playing;
-                default:
-                    throw new ArgumentOutOfRangeException(nameof(state), state, null);
-            }
-        }
-    }
-
     public class CodeButtonClickPage : ContentPage, IDisposable
     {
         private Tizen.TV.Multimedia.Player platformPlayer;
         private Tizen.TV.Multimedia.DRMManager platformDrmMgr;
-        private PlayerService juvoPlayer;
+        private PlayerServiceProxy juvoPlayer;
 
         public CodeButtonClickPage()
         {
@@ -70,7 +38,7 @@ namespace SimplePlayer
                 await PlayPlatformMediaClean(URL, player);
             }
 
-            void PlayJuvoPlayerClean(String URL, PlayerService player)
+            void PlayJuvoPlayerClean(String URL, PlayerServiceProxy player)
             {
                 player.SetSource(new ClipDefinition
                 {
@@ -92,7 +60,7 @@ namespace SimplePlayer
                     });
             }
 
-            void PlayJuvoPlayerDRMed(String URL, String licenceUrl, String drmScheme, PlayerService player)
+            void PlayJuvoPlayerDRMed(String URL, String licenceUrl, String drmScheme, PlayerServiceProxy player)
             {
                 var drmData = new System.Collections.Generic.List<DRMDescription>();
                 drmData.Add(new DRMDescription
@@ -154,8 +122,8 @@ namespace SimplePlayer
                 //await PlayPlatformMediaClean(url, platformPlayer);
                 //await PlayPlatformMediaDRMed(url, license, platformPlayer);
 
-                //////The JuvoPlayer backend (elementary stream data source).
-                juvoPlayer = new PlayerService(window);
+                //////The JuvoPlayer backend (elementary stream data source).                
+                juvoPlayer = new PlayerServiceProxy(new PlayerServiceImpl(window));
                 PlayJuvoPlayerClean(url, juvoPlayer);
                 //PlayJuvoPlayerDRMed(url, license, "playready", juvoPlayer);
                 //PlayJuvoPlayerDRMed(url, license, "widevine", juvoPlayer);
@@ -201,7 +169,7 @@ namespace SimplePlayer
             juvoPlayer.Dispose();
         }
     }
-    
+
     public class App : Application
     {
         public App()
