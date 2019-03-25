@@ -11,8 +11,6 @@ namespace SimplePlayer.Tizen.TV
             LoadApplication(new App());
         }
 
-        
-
         static void Main(string[] args)
         {
             var app = new Program();

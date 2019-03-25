@@ -6,28 +6,30 @@ using Xamarin.Forms;
 using JuvoPlayer;
 using JuvoPlayer.Common;
 using System.Collections.Generic;
+using TVMultimedia = Tizen.TV.Multimedia;
+using Tizen.Multimedia;
 
 namespace SimplePlayer
 {
     public class CodeButtonClickPage : ContentPage, IDisposable
     {
-        private Tizen.TV.Multimedia.Player platformPlayer;
-        private Tizen.TV.Multimedia.DRMManager platformDrmMgr;
+        private TVMultimedia.Player platformPlayer;
+        private TVMultimedia.DRMManager platformDrmMgr;
         private PlayerServiceProxy juvoPlayer;
 
         public CodeButtonClickPage()
         {
             //Playback launching functions
-            async Task PlayPlatformMediaClean(String videoSourceURL, Tizen.TV.Multimedia.Player player)
+            async Task PlayPlatformMediaClean(String videoSourceURL, TVMultimedia.Player player)
             {
-                player.SetSource(new Tizen.Multimedia.MediaUriSource(videoSourceURL));
+                player.SetSource(new MediaUriSource(videoSourceURL));
                 await player.PrepareAsync();
                 player.Start();
             }
 
-            async Task PlayPlatformMediaDRMed(String videoSourceURL, String licenseServerURL, Tizen.TV.Multimedia.Player player)
+            async Task PlayPlatformMediaDRMed(String videoSourceURL, String licenseServerURL, TVMultimedia.Player player)
             {
-                platformDrmMgr = Tizen.TV.Multimedia.DRMManager.CreateDRMManager(Tizen.TV.Multimedia.DRMType.Playready);
+                platformDrmMgr = TVMultimedia.DRMManager.CreateDRMManager(TVMultimedia.DRMType.Playready);
 
                 platformDrmMgr.Init($"org.tizen.example.SimplePlayer.Tizen.TV");
                 platformDrmMgr.AddProperty("LicenseServer", licenseServerURL);
@@ -45,15 +47,15 @@ namespace SimplePlayer
                     Title = "Title",
                     Type = "dash",
                     Url = videoSourceURL,
-                    Subtitles = new System.Collections.Generic.List<SubtitleInfo>(),
+                    Subtitles = new List<SubtitleInfo>(),
                     Poster = "Poster",
                     Description = "Descritption",
-                    DRMDatas = new System.Collections.Generic.List<DRMDescription>()
+                    DRMDatas = new List<DRMDescription>()
                 });
 
                 player.StateChanged()
                     .ObserveOn(SynchronizationContext.Current)
-                    .Where(state => state == PlayerState.Prepared)
+                    .Where(state => state == JuvoPlayer.Common.PlayerState.Prepared)
                     .Subscribe(state =>
                     {
                         player.Start();
@@ -62,7 +64,7 @@ namespace SimplePlayer
 
             void PlayJuvoPlayerDRMed(String videoSourceURL, String licenseServerURL, String drmScheme, PlayerServiceProxy player)
             {
-                var drmData = new System.Collections.Generic.List<DRMDescription>();
+                var drmData = new List<DRMDescription>();
                 drmData.Add(new DRMDescription
                 {
                     Scheme = drmScheme,
@@ -75,7 +77,7 @@ namespace SimplePlayer
                     Title = "Title",
                     Type = "dash",
                     Url = videoSourceURL,
-                    Subtitles = new System.Collections.Generic.List<SubtitleInfo>(),
+                    Subtitles = new List<SubtitleInfo>(),
                     Poster = "Poster",
                     Description = "Descritption",
                     DRMDatas = drmData
@@ -83,7 +85,7 @@ namespace SimplePlayer
 
                 player.StateChanged()
                    .ObserveOn(SynchronizationContext.Current)
-                   .Where(state => state == PlayerState.Prepared)
+                   .Where(state => state == JuvoPlayer.Common.PlayerState.Prepared)
                    .Subscribe(state =>
                    {
                        player.Start();
@@ -108,7 +110,7 @@ namespace SimplePlayer
                 //var url = "http://profficialsite.origin.mediaservices.windows.net/c51358ea-9a5e-4322-8951-897d640fdfd7/tearsofsteel_4k.ism/manifest(format=mpd-time-csf)";
                 //var license = "http://playready-testserver.azurewebsites.net/rightsmanager.asmx?PlayRight=1&UseSimpleNonPersistentLicense=1";
                 //var url = "http://yt-dash-mse-test.commondatastorage.googleapis.com/media/oops_cenc-20121114-signedlicenseurl-manifest.mpd";
-                //var license = "";
+                //var license = ""; //The license url is embeded in the video source .mpd file above
 
                 /////////////Widevine encrypted content////////
                 //var url = "https://bitmovin-a.akamaihd.net/content/art-of-motion_drm/mpds/11331.mpd";
@@ -118,11 +120,11 @@ namespace SimplePlayer
 
 
                 //////The TV platform MediaPlayer (URL data source only).
-                //platformPlayer = new Tizen.TV.Multimedia.Player { Display = new Tizen.Multimedia.Display(window) };
+                //platformPlayer = new TVMultimedia.Player { Display = new Display(window) };
                 //await PlayPlatformMediaClean(url, platformPlayer);
                 //await PlayPlatformMediaDRMed(url, license, platformPlayer);
 
-                //////The JuvoPlayer backend (elementary stream data source).                
+                //////The JuvoPlayer backend (elementary stream data source).
                 juvoPlayer = new PlayerServiceProxy(new PlayerServiceImpl(window));
                 PlayJuvoPlayerClean(url, juvoPlayer);
                 //PlayJuvoPlayerDRMed(url, license, "playready", juvoPlayer);
@@ -154,7 +156,7 @@ namespace SimplePlayer
             };
 
             button.Clicked += async (sender, args) => await Play();
-            this.Appearing += (object sender, System.EventArgs e) => button.Focus();
+            Appearing += (sender, e) => button.Focus(); 
         }
         public void Dispose()
         {
