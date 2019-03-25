@@ -40,6 +40,7 @@ namespace JuvoPlayer.Player
         void OnStreamError(string errorMessage);
         void OnBufferingStarted();
         void OnBufferingCompleted();
+        IPlayerClient Client { set; }
         #endregion
 
         #region getters
@@ -52,7 +53,6 @@ namespace JuvoPlayer.Player
         IObservable<int> BufferingProgress();
         IObservable<string> PlaybackError();
         IObservable<TimeSpan> TimeUpdated();
-        IObservable<SeekArgs> SeekStarted();
         IObservable<PlayerState> StateChanged();
     }
 }

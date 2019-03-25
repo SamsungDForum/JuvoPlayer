@@ -19,6 +19,7 @@ using System;
 using System.Collections.Concurrent;
 using System.Linq;
 using System.Threading;
+using System.Threading.Tasks;
 using JuvoLogger;
 using JuvoPlayer.Common;
 
@@ -67,7 +68,6 @@ namespace JuvoPlayer.Player.EsPlayer
                 return;
             // Remove previous data if existed in first place...
             EmptyQueue(stream, ref storage.packetQueue);
-            storage.packetQueue.Dispose();
         }
 
         /// <summary>
@@ -123,6 +123,12 @@ namespace JuvoPlayer.Player.EsPlayer
             storage.packetQueue.CompleteAdding();
         }
 
+        public void Empty(StreamType stream)
+        {
+            var storage = packetQueues[(int)stream];
+            EmptyQueue(stream, ref storage.packetQueue);
+        }
+
         #endregion
 
         #region Private Methods
@@ -138,13 +144,18 @@ namespace JuvoPlayer.Player.EsPlayer
             if (queue == null)
                 return;
 
-            var queueData = queue.ToArray();
-
             // We do not care about order of execution nor have to wait for its
             // completion.
-            logger.Info($"{stream}: Disposing of {queueData.Length} packets");
+            logger.Info($"{stream}: Disposing of {queue.Count} packets");
 
-            queueData.AsParallel().ForAll(aPacket => aPacket.Dispose());
+            var queueRef = queue;
+            Task.Run(() =>
+            {
+                foreach (var packet in queueRef)
+                    packet.Dispose();
+                queueRef.Dispose();
+            });
+            queue = new BlockingCollection<Packet>();
         }
 
         #endregion
@@ -165,8 +176,6 @@ namespace JuvoPlayer.Player.EsPlayer
                     return;
 
                 EmptyQueue(storage.StreamType, ref storage.packetQueue);
-                storage.packetQueue?.Dispose();
-                storage.packetQueue = null;
 
                 logger.Info($"{storage.StreamType}: Disposed.");
             });

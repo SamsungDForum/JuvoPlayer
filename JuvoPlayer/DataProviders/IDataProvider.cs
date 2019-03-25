@@ -19,6 +19,8 @@ using JuvoPlayer.Common;
 using System;
 using System.Collections.Generic;
 using System.Reactive;
+using System.Threading;
+using System.Threading.Tasks;
 using JuvoPlayer.Subtitles;
 
 namespace JuvoPlayer.DataProviders
@@ -28,9 +30,10 @@ namespace JuvoPlayer.DataProviders
         void OnChangeActiveStream(StreamDescription stream);
         void OnDeactivateStream(StreamType streamType);
         void OnStateChanged(PlayerState state);
-        void OnSeekStarted(TimeSpan time, uint seekId);
         void OnStopped();
         void OnTimeUpdated(TimeSpan time);
+
+        Task Seek(TimeSpan time, CancellationToken token);
 
         bool IsSeekingSupported();
         void Start();
