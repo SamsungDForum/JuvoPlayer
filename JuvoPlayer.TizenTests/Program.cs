@@ -26,7 +26,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using JuvoLogger;
 using JuvoLogger.Tizen;
-using JuvoPlayer.TizenTests.Utils;
 using Tizen.Applications;
 using Path = System.IO.Path;
 using Window = ElmSharp.Window;
@@ -90,18 +89,19 @@ namespace JuvoPlayer.TizenTests
             RunTests(GetAssemblyByName("JuvoPlayer.Tests"));
         }
 
-        protected override void OnAppControlReceived(AppControlReceivedEventArgs e)
+        protected override async void OnAppControlReceived(AppControlReceivedEventArgs e)
         {
             receivedAppControl = e.ReceivedAppControl;
             ExtractNunitArgs();
-            SynchronizationContext.SetSynchronizationContext(new SynchronizationContext());
 
-            Task.Factory.StartNew(() =>
+            await Task.Factory.StartNew(() =>
             {
+                SynchronizationContext.SetSynchronizationContext(new SynchronizationContext());
                 RunJuvoPlayerTizenTests();
                 RunJuvoPlayerTests();
-                Environment.Exit(0);
             }, TaskCreationOptions.LongRunning);
+
+            Exit();
         }
 
         static void Main(string[] args)

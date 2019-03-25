@@ -20,6 +20,7 @@ using System.Collections.Generic;
 using System.Reactive;
 using System.Reactive.Linq;
 using System.Threading;
+using System.Threading.Tasks;
 using JuvoPlayer.Common;
 using JuvoPlayer.Demuxers;
 using JuvoPlayer.Subtitles;
@@ -122,7 +123,7 @@ namespace JuvoPlayer.DataProviders.RTSP
             }
         }
 
-        public void OnSeekStarted(TimeSpan time, uint seekId)
+        public Task Seek(TimeSpan time, CancellationToken token)
         {
             throw new NotImplementedException();
         }

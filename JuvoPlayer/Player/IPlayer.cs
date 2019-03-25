@@ -25,8 +25,9 @@ namespace JuvoPlayer.Player
     {
         IObservable<string> PlaybackError();
         IObservable<TimeSpan> TimeUpdated();
-        IObservable<SeekArgs> SeekStarted();
         IObservable<PlayerState> StateChanged();
+
+        IPlayerClient Client { get; set; }
 
         void Pause();
         void Play();

@@ -386,9 +386,8 @@ namespace JuvoPlayer.DataProviders.Dash
             dashClient.OnTimeUpdated(time);
         }
 
-        public void Seek(TimeSpan time, uint seekId)
+        public void Seek(TimeSpan time)
         {
-            var seekPacket = SeekPacket.CreatePacket(StreamType, seekId);
             try
             {
                 lastSeek = dashClient.Seek(time);
@@ -396,11 +395,7 @@ namespace JuvoPlayer.DataProviders.Dash
             }
             catch (ArgumentOutOfRangeException ex)
             {
-                seekPacket.Exception = new SeekException("Invalid content", ex);
-            }
-            finally
-            {
-                packetReadySubject.OnNext(seekPacket);
+                throw new SeekException("Invalid content", ex);
             }
         }
 
@@ -577,8 +572,6 @@ namespace JuvoPlayer.DataProviders.Dash
                 {
                     if (packet == null)
                         return EOSPacket.Create(StreamType);
-                    if (packet is SeekPacket)
-                        return packet;
 
                     AdjustDemuxerTimeStampIfNeeded(packet);
 
