@@ -29,6 +29,8 @@ using System.Threading.Tasks;
 using ElmSharp;
 using JuvoPlayer.Utils;
 using Nito.AsyncEx;
+using System.Runtime.InteropServices;
+
 
 namespace JuvoPlayer.Player.EsPlayer
 {
@@ -140,9 +142,11 @@ namespace JuvoPlayer.Player.EsPlayer
         private void CreatePlayer()
         {
             player = new ESPlayer.ESPlayer();
-
             player.Open();
-            player.SetTrustZoneUse(true);
+            
+            //The Tizen TV emulator is based on the x86 architecture. Using trust zone (DRM'ed content playback) is not supported by the emulator.
+            if (RuntimeInformation.ProcessArchitecture != Architecture.X86) player.SetTrustZoneUse(true);
+            
             player.SetDisplay(displayWindow);
             resourceConflict = false;
         }
