@@ -66,6 +66,12 @@ namespace JuvoPlayer.Player.EsPlayer
             return streamControl.StateChanged();
         }
 
+        public IPlayerClient Client
+        {
+            get => streamControl.Client;
+            set => streamControl.Client = value;
+        }
+
         public void Pause()
         {
             logger.Info("");
@@ -124,11 +130,6 @@ namespace JuvoPlayer.Player.EsPlayer
         public IObservable<TimeSpan> TimeUpdated()
         {
             return streamControl.TimeUpdated();
-        }
-
-        public IObservable<SeekArgs> SeekStarted()
-        {
-            return streamControl.SeekStarted();
         }
 
         #endregion
