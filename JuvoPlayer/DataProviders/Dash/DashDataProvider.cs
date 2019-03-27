@@ -169,20 +169,22 @@ namespace JuvoPlayer.DataProviders.Dash
             audioPipeline.Stop();
         }
 
-        public Task Seek(TimeSpan time, CancellationToken token)
+        public Task<TimeSpan> Seek(TimeSpan time, CancellationToken token)
         {
             if (!IsSeekingSupported())
                 throw new SeekException("Seeking is not supported");
 
-            var pipelines = new[] { videoPipeline, audioPipeline };
-            foreach (var pipeline in pipelines)
-            {
-                pipeline.Pause();
-                pipeline.Seek(time);
-                pipeline.Resume();
-            }
+            videoPipeline.Pause();
+            audioPipeline.Pause();
 
-            return Task.CompletedTask;
+            var videoSegmentStart = videoPipeline.Seek(time);
+            audioPipeline.Seek(videoSegmentStart);
+            audioPipeline.PacketPredicate = packet => !packet.ContainsData() || packet.Pts >= videoSegmentStart;
+
+            videoPipeline.Resume();
+            audioPipeline.Resume();
+
+            return Task.FromResult(videoSegmentStart);
         }
 
         public bool IsSeekingSupported()
