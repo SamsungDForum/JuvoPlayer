@@ -26,6 +26,7 @@ using JuvoPlayer.Common;
 using JuvoPlayer.Drms;
 using ESPlayer = Tizen.TV.Multimedia;
 using StreamType = JuvoPlayer.Common.StreamType;
+using static Configuration.EsStream;
 
 namespace JuvoPlayer.Player.EsPlayer
 {
@@ -61,12 +62,6 @@ namespace JuvoPlayer.Player.EsPlayer
             ConfigQueued
         }
 
-        internal enum SeekResult
-        {
-            Ok,
-            RestartRequired
-        }
-
         private readonly ILogger logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
 
         /// Delegate holding PushConfigMethod. Different for Audio and Video
@@ -85,8 +80,6 @@ namespace JuvoPlayer.Player.EsPlayer
         // Stream type for this instance to EsStream.
         private readonly Common.StreamType streamType;
 
-        // chunk transfer support elements. Max chunk size & wakeup object
-        private static readonly TimeSpan transferChunk = TimeSpan.FromSeconds(2);
         private ManualResetEventSlim wakeup;
 
         // Buffer configuration and supporting info
@@ -97,6 +90,8 @@ namespace JuvoPlayer.Player.EsPlayer
         private readonly Subject<string> playbackErrorSubject = new Subject<string>();
         private readonly Subject<Unit> streamReconfigureSubject = new Subject<Unit>();
 
+        private Packet currentPacket;
+        private PacketBarrier barrier;
         private readonly BufferControl bufferControl;
 
         public IObservable<string> PlaybackError()
@@ -108,7 +103,6 @@ namespace JuvoPlayer.Player.EsPlayer
         {
             return streamReconfigureSubject.AsObservable();
         }
-
 
         #region Public API
 
@@ -131,6 +125,7 @@ namespace JuvoPlayer.Player.EsPlayer
             }
 
             wakeup = new ManualResetEventSlim(false);
+            barrier = new PacketBarrier(TransferChunk);
         }
 
         /// <summary>
@@ -222,71 +217,16 @@ namespace JuvoPlayer.Player.EsPlayer
             wakeup.Set();
         }
 
-        public Task<SeekResult> Seek(uint seekId, TimeSpan seekPosition, CancellationToken token)
+        public void EmptyStorage()
         {
-            return Task.Factory.StartNew(() => SeekTask(seekId, seekPosition, token), token);
+            packetStorage.Empty(streamType);
+            currentPacket?.Dispose();
+            currentPacket = null;
         }
 
         #endregion
 
         #region Private Methods
-
-        /// <summary>
-        /// Seek Task. Performs seek to specified seekId, followed by seek to specified
-        /// seek position
-        /// </summary>
-        /// <param name="seekId">Seek ID to seek to</param>
-        /// <param name="seekPosition">seek position to seek to</param>
-        /// <param name="token">cancel token</param>
-        /// <returns></returns>
-        private SeekResult SeekTask(uint seekId, TimeSpan seekPosition, CancellationToken token)
-        {
-            logger.Info($"{streamType}: {seekId} {seekPosition}");
-
-            while (true)
-            {
-                try
-                {
-                    var packet = packetStorage.GetPacket(streamType, token);
-
-                    switch (packet)
-                    {
-                        case BufferConfigurationPacket bufferConfigPacket:
-                            var isCompatible = CurrentConfig.Compatible(bufferConfigPacket);
-                            CurrentConfig = bufferConfigPacket;
-                            if (CurrentConfig.StreamType == StreamType.Audio && !isCompatible)
-                                return SeekResult.RestartRequired;
-                            break;
-                        case SeekPacket seekPacket:
-                            if (seekPacket.SeekId != seekId)
-                                break;
-
-                            logger.Info($"{streamType}: Seek Id {seekId} found. Looking for time {seekPosition}");
-                            
-                            return SeekResult.Ok;
-                        default:
-                            packet.Dispose();
-                            bufferControl.DataOut(packet);
-                            break;
-                    }
-                }
-                catch (InvalidOperationException)
-                {
-                    logger.Warn($"{streamType}: Stream completed");
-                    return SeekResult.Ok;
-                }
-                catch (OperationCanceledException)
-                {
-                    logger.Warn($"{streamType}: Seek cancelled");
-                    return SeekResult.Ok;
-                }
-                catch (Exception e)
-                {
-                    logger.Error(e, $"{streamType}");
-                    throw;
-                }
-            }
-        }
 
         /// <summary>
         /// Audio Configuration push method.
@@ -369,7 +309,6 @@ namespace JuvoPlayer.Player.EsPlayer
             packetStorage.Disable(streamType);
         }
 
-
         private async Task<bool> ProcessPacket(Packet packet, CancellationToken transferToken)
         {
             var continueProcessing = true;
@@ -407,7 +346,7 @@ namespace JuvoPlayer.Player.EsPlayer
                     break;
 
                 default:
-                    throw new ArgumentException($"{streamType}: Unsupported packet type");
+                    throw new ArgumentException($"{streamType}: Unsupported packet type {packet.GetType()}");
             }
 
             return continueProcessing;
@@ -416,6 +355,7 @@ namespace JuvoPlayer.Player.EsPlayer
         private void DelayTransfer(TimeSpan delay, CancellationToken token)
         {
             logger.Info($"{streamType}: Transfer task restart in {delay}");
+            wakeup.Reset();
             if (delay > TimeSpan.Zero)
             {
                 logger.Info($"{streamType}: {delay}");
@@ -435,56 +375,27 @@ namespace JuvoPlayer.Player.EsPlayer
         {
             logger.Info($"{streamType}: Transfer task started");
 
-            var disableInput = false;
-            TimeSpan currentTransfer = TimeSpan.Zero;
-            var haltTransfer = false;
-            ulong dataLength = 0;
-            TimeSpan? firstPts = null;
-            DateTime startTime = DateTime.Now;
-            bool invokeError = false;
+            barrier.Reset();
 
             try
             {
-                Packet packet;
-                do
+                while (true)
                 {
-                    if (haltTransfer)
-                    {
-                        var delay = currentTransfer - (DateTime.Now - startTime);
+                    var shouldContinue = await ProcessNextPacket(token);
+                    if (!shouldContinue)
+                        break;
+                    if (!barrier.Reached())
+                        continue;
 
-                        logger.Info(
-                            $"{streamType}: Halted: {currentTransfer}/{(float)dataLength / 1024} kB. Buffered: {bufferControl.CurrentBufferSize} {bufferControl.BufferFill}%");
+                    var delay = barrier.TimeToNextFrame();
 
-                        DelayTransfer(delay, token);
+                    logger.Info(
+                        $"{streamType}: Transfer task halted.");
 
-                        firstPts = null;
-                        dataLength = 0;
-                        haltTransfer = false;
-                        currentTransfer = TimeSpan.Zero;
-                    }
+                    DelayTransfer(delay, token);
 
-                    packet = packetStorage.GetPacket(streamType, token);
-
-                    // Ignore non data packets (EOS/BufferChange/etc.)
-                    if (packet.ContainsData())
-                    {
-                        dataLength += (ulong) packet.Storage.Length;
-
-                        if (firstPts.HasValue)
-                        {
-                            currentTransfer = packet.Pts - firstPts.Value;
-
-                            if (currentTransfer >= transferChunk)
-                                haltTransfer = true;
-                        }
-                        else
-                        {
-                            firstPts = packet.Pts;
-                            startTime = DateTime.Now;
-                        }
-                    }
-
-                } while (await ProcessPacket(packet, token));
+                    barrier.Reset();
+                }
             }
             catch (InvalidOperationException e)
             {
@@ -497,33 +408,37 @@ namespace JuvoPlayer.Player.EsPlayer
             catch (PacketSubmitException pse)
             {
                 logger.Error(pse, $"{streamType}: Submit Error " + pse.SubmitStatus);
-                disableInput = true;
+                DisableInput();
             }
             catch (DrmException drme)
             {
                 logger.Error(drme, $"{streamType}: Decrypt Error");
-                disableInput = true;
-                invokeError = true;
+                DisableInput();
+                playbackErrorSubject.OnNext("Playback Error");
             }
             catch (Exception e)
             {
                 // Dump unhandled exception. Running as a task so they will not be reported.
                 logger.Error(e, $"{streamType}");
-                disableInput = true;
-                invokeError = true;
-            }
-
-            if (disableInput)
-            {
-                logger.Info($"{streamType}: Disabling Input");
                 DisableInput();
+                playbackErrorSubject.OnNext("Playback Error");
             }
 
             logger.Info(
-                $"{streamType}: Terminated: {currentTransfer}/{(float)dataLength / 1024} kB. Buffered: {bufferControl.CurrentBufferSize} {bufferControl.BufferFill}%");
+                $"{streamType}: Transfer task terminated.");
+        }
 
-            if (invokeError)
-                playbackErrorSubject.OnNext("Playback Error");
+        private async Task<bool> ProcessNextPacket(CancellationToken token)
+        {
+            if (currentPacket == null)
+                currentPacket = packetStorage.GetPacket(streamType, token);
+
+            var shouldContinue = await ProcessPacket(currentPacket, token);
+
+            barrier.PacketPushed(currentPacket);
+            currentPacket.Dispose();
+            currentPacket = null;
+            return shouldContinue;
         }
 
         /// <summary>
@@ -539,24 +454,21 @@ namespace JuvoPlayer.Player.EsPlayer
         /// </exception>
         private void PushUnencryptedPacket(Packet dataPacket, CancellationToken token)
         {
-            using (dataPacket)
+            for (;;)
             {
-                for (; ; )
-                {
-                    var submitStatus = player.Submit(dataPacket);
+                var submitStatus = player.Submit(dataPacket);
 
-                    logger.Debug(
-                        $"{dataPacket.StreamType}: ({submitStatus} )PTS: {dataPacket.Pts} Duration: {dataPacket.Duration}");
+                logger.Debug(
+                    $"{dataPacket.StreamType}: ({submitStatus} )PTS: {dataPacket.Pts} Duration: {dataPacket.Duration}");
 
-                    if (submitStatus == ESPlayer.SubmitStatus.Success)
-                        return;
+                if (submitStatus == ESPlayer.SubmitStatus.Success)
+                    return;
 
-                    if (!ShouldRetry(submitStatus))
-                        throw new PacketSubmitException("Packet Submit Error", submitStatus);
+                if (!ShouldRetry(submitStatus))
+                    throw new PacketSubmitException("Packet Submit Error", submitStatus);
 
-                    var delay = CalculateDelay(submitStatus);
-                    Wait(delay, token);
-                }
+                var delay = CalculateDelay(submitStatus);
+                Wait(delay, token);
             }
         }
 
@@ -574,11 +486,10 @@ namespace JuvoPlayer.Player.EsPlayer
         /// </exception>
         private async Task PushEncryptedPacket(EncryptedPacket dataPacket, CancellationToken token)
         {
-            using (dataPacket)
             using (var decryptedPacket = await dataPacket.Decrypt(token) as DecryptedEMEPacket)
             {
                 // Continue pushing packet till success or terminal failure
-                for (; ; )
+                for (;;)
                 {
                     var submitStatus = player.Submit(decryptedPacket);
 
@@ -615,7 +526,7 @@ namespace JuvoPlayer.Player.EsPlayer
             logger.Info("");
 
             // Continue pushing packet till success or terminal failure
-            for (; ; )
+            for (;;)
             {
                 var submitStatus = player.Submit(packet);
                 if (submitStatus == ESPlayer.SubmitStatus.Success)
@@ -676,6 +587,8 @@ namespace JuvoPlayer.Player.EsPlayer
             transferCts?.Dispose();
 
             wakeup.Dispose();
+
+            currentPacket?.Dispose();
 
             isDisposed = true;
         }

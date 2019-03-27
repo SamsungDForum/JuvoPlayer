@@ -24,6 +24,7 @@ using JuvoLogger;
 using JuvoPlayer.Common;
 using JuvoPlayer.Demuxers.FFmpeg.Interop;
 using Nito.AsyncEx;
+using static Configuration.FFmpegDemuxer;
 
 namespace JuvoPlayer.Demuxers.FFmpeg
 {
@@ -39,9 +40,6 @@ namespace JuvoPlayer.Demuxers.FFmpeg
         private CancellationTokenSource cancellationTokenSource;
         private ChunksBuffer buffer;
         private TaskCompletionSource<bool> completionSource;
-
-        private const int BufferSize = 64 * 1024; // 32kB seems to be "low level standard", but content downloading pipeline works better for 64kB
-        private const int ProbeSize = 32 * 1024; // higher values may cause problems when probing certain kinds of content (assert "len >= s->orig_buffer_size" in aviobuf)
 
         public FFmpegDemuxer(IFFmpegGlue ffmpegGlue)
         {
@@ -141,7 +139,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg
 
                 formatContext = ffmpegGlue.AllocFormatContext();
                 formatContext.ProbeSize = ProbeSize;
-                formatContext.MaxAnalyzeDuration = TimeSpan.FromSeconds(10);
+                formatContext.MaxAnalyzeDuration = MaxAnalyzeDuration;
                 formatContext.AVIOContext = ioContext;
                 formatContext.Open();
             }
@@ -190,7 +188,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg
 
             return thread.Factory.StartNew(() =>
             {
-                var streamIndexes = new[] {audioIdx, videoIdx};
+                var streamIndexes = new[] { audioIdx, videoIdx };
                 var packet = formatContext.NextPacket(streamIndexes);
                 if (packet == null)
                     completionSource?.SetResult(true);

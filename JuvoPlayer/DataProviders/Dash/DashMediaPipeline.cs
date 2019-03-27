@@ -30,6 +30,7 @@ using JuvoPlayer.Drms.Cenc;
 using MpdParser;
 using System.Threading;
 using System.Threading.Tasks;
+using static Configuration.DashMediaPipeline;
 using MpdParser.Node;
 using AdaptationSet = MpdParser.AdaptationSet;
 using ContentProtection = MpdParser.ContentProtection;
@@ -96,7 +97,6 @@ namespace JuvoPlayer.DataProviders.Dash
         private readonly Object switchStreamLock = new Object();
         private List<DashStream> availableStreams = new List<DashStream>();
 
-        private static readonly TimeSpan SegmentEps = TimeSpan.FromSeconds(0.5);
         private TimeSpan? lastSeek = TimeSpan.Zero;
 
         private PacketTimeStamp demuxerClock;
@@ -113,6 +113,7 @@ namespace JuvoPlayer.DataProviders.Dash
         private IDisposable demuxerStreamConfigReadySub;
         private IDisposable downloadCompletedSub;
 
+        public Func<Packet, bool> PacketPredicate { get; set; }
         private static readonly TimeSpan timeBufferDepthDefault = TimeSpan.FromSeconds(10);
         private static readonly TimeSpan maxBufferTime = TimeSpan.FromSeconds(15);
         private static readonly TimeSpan minBufferTime = TimeSpan.FromSeconds(5);
@@ -404,8 +405,8 @@ namespace JuvoPlayer.DataProviders.Dash
             if (!pipelineStarted)
                 return;
 
-            demuxerController.Reset();
             dashClient.Stop();
+            demuxerController.Reset();
 
             trimOffset = null;
 
@@ -417,11 +418,18 @@ namespace JuvoPlayer.DataProviders.Dash
             dashClient.OnTimeUpdated(time);
         }
 
-        public void Seek(TimeSpan time, uint seekId)
+        public TimeSpan Seek(TimeSpan time)
         {
-            lastSeek = dashClient.Seek(time);
-            packetReadySubject.OnNext(SeekPacket.CreatePacket(StreamType, seekId));
-            demuxerClock.Reset();
+            try
+            {
+                lastSeek = dashClient.Seek(time);
+                demuxerClock.Reset();
+                return lastSeek.Value;
+            }
+            catch (ArgumentOutOfRangeException ex)
+            {
+                throw new SeekException("Invalid content", ex);
+            }
         }
 
         public void ChangeStream(StreamDescription stream)
@@ -597,8 +605,6 @@ namespace JuvoPlayer.DataProviders.Dash
                 {
                     if (packet == null)
                         return EOSPacket.Create(StreamType);
-                    if (packet is SeekPacket)
-                        return packet;
 
                     AdjustDemuxerTimeStampIfNeeded(packet);
 
@@ -619,7 +625,7 @@ namespace JuvoPlayer.DataProviders.Dash
                     // Don't convert packet here, use assignment (less costly)
                     lastPushedClock.SetClock(packet);
                     return packet;
-                });
+                }).Where(packet => PacketPredicate == null || PacketPredicate.Invoke(packet));
         }
 
         public IObservable<DRMDescription> SetDrmConfiguration()

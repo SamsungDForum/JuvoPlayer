@@ -16,7 +16,6 @@
  */
 
 using System;
-using System.Net.Http.Headers;
 using System.Reactive.Linq;
 using System.Threading.Tasks;
 using ElmSharp;
@@ -67,6 +66,12 @@ namespace JuvoPlayer.Player.EsPlayer
         public IObservable<PlayerState> StateChanged()
         {
             return streamControl.StateChanged();
+        }
+
+        public IPlayerClient Client
+        {
+            get => streamControl.Client;
+            set => streamControl.Client = value;
         }
 
         public void Pause()
@@ -127,11 +132,6 @@ namespace JuvoPlayer.Player.EsPlayer
         public IObservable<TimeSpan> TimeUpdated()
         {
             return streamControl.TimeUpdated();
-        }
-
-        public IObservable<SeekArgs> SeekStarted()
-        {
-            return streamControl.SeekStarted();
         }
 
         public IObservable<bool> BufferingStateChanged()

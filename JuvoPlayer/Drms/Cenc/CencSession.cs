@@ -31,6 +31,7 @@ using Nito.AsyncEx;
 using Tizen.TV.Security.DrmDecrypt;
 using Tizen.TV.Security.DrmDecrypt.emeCDM;
 using JuvoPlayer.Common.Utils.IReferenceCountable;
+using static Configuration.CencSession;
 
 namespace JuvoPlayer.Drms.Cenc
 {
@@ -54,10 +55,10 @@ namespace JuvoPlayer.Drms.Cenc
         private int counter;
         ref int IReferenceCountable.Count => ref counter;
 
+        private static readonly AsyncLock sessionLock = new AsyncLock();
+
         //Additional error code returned by drm_decrypt api when there is no space in TrustZone
         private const int E_DECRYPT_BUFFER_FULL = 2;
-        private const int MaxDecryptRetries = 5;
-        private static readonly TimeSpan DecryptBufferFullSleepTime = TimeSpan.FromMilliseconds(1000);
 
         private CencUtils.DrmType drmType;
 
@@ -82,7 +83,8 @@ namespace JuvoPlayer.Drms.Cenc
 
             if (currentSessionId != null)
             {
-                CDMInstance.session_close(currentSessionId);
+                using (sessionLock.Lock())
+                    CDMInstance.session_close(currentSessionId);
                 Logger.Info($"CencSession: {currentSessionId} closed");
                 currentSessionId = null;
             }
@@ -151,7 +153,7 @@ namespace JuvoPlayer.Drms.Cenc
 
                 var pHandleArray = new HandleSize[1];
                 var ret = CreateParamsAndDecryptData(packet, ref pHandleArray, linkedToken.Token);
-                if (ret == (int) eCDMReturnType.E_SUCCESS)
+                if (ret == (int)eCDMReturnType.E_SUCCESS)
                 {
                     return new DecryptedEMEPacket(thread)
                     {
@@ -175,14 +177,14 @@ namespace JuvoPlayer.Drms.Cenc
             switch (packet.Storage)
             {
                 case IManagedDataStorage managedStorage:
-                {
-                    fixed
-                        (byte* data = managedStorage.Data)
                     {
-                        var dataLen = managedStorage.Data.Length;
-                        return CreateParamsAndDecryptData(packet, data, dataLen, ref pHandleArray, token);
+                        fixed
+                            (byte* data = managedStorage.Data)
+                        {
+                            var dataLen = managedStorage.Data.Length;
+                            return CreateParamsAndDecryptData(packet, data, dataLen, ref pHandleArray, token);
+                        }
                     }
-                }
                 case INativeDataStorage nativeStorage:
                     return CreateParamsAndDecryptData(packet, nativeStorage.Data, nativeStorage.Length,
                         ref pHandleArray, token);
@@ -197,7 +199,7 @@ namespace JuvoPlayer.Drms.Cenc
             fixed (byte* iv = packet.Iv, kId = packet.KeyId)
             {
                 var subdataPointer = MarshalSubsampleArray(packet);
-                var subsampleInfoPointer = ((MSD_FMP4_DATA*) subdataPointer.ToPointer())->pSubSampleInfo;
+                var subsampleInfoPointer = ((MSD_FMP4_DATA*)subdataPointer.ToPointer())->pSubSampleInfo;
                 try
                 {
                     var param = new sMsdCipherParam
@@ -205,14 +207,14 @@ namespace JuvoPlayer.Drms.Cenc
                         algorithm = eMsdCipherAlgorithm.MSD_AES128_CTR,
                         format = eMsdMediaFormat.MSD_FORMAT_FMP4,
                         pdata = data,
-                        udatalen = (uint) dataLen,
+                        udatalen = (uint)dataLen,
                         piv = iv,
-                        uivlen = (uint) packet.Iv.Length,
+                        uivlen = (uint)packet.Iv.Length,
                         pkid = kId,
-                        ukidlen = (uint) packet.KeyId.Length,
+                        ukidlen = (uint)packet.KeyId.Length,
                         psubdata = subdataPointer
                     };
-                    return DecryptData(new[] {param}, ref pHandleArray, packet.StreamType, token);
+                    return DecryptData(new[] { param }, ref pHandleArray, packet.StreamType, token);
                 }
                 finally
                 {
@@ -231,10 +233,10 @@ namespace JuvoPlayer.Drms.Cenc
             while (true)
             {
                 token.ThrowIfCancellationRequested();
-                res = API.EmeDecryptarray((eCDMReturnType) CDMInstance.getDecryptor(), ref param, param.Length,
+                res = API.EmeDecryptarray((eCDMReturnType)CDMInstance.getDecryptor(), ref param, param.Length,
                     IntPtr.Zero,
                     0, ref pHandleArray);
-                if ((int) res == E_DECRYPT_BUFFER_FULL && errorCount < MaxDecryptRetries)
+                if ((int)res == E_DECRYPT_BUFFER_FULL && errorCount < MaxDecryptRetries)
                 {
                     Logger.Warn($"{type}: E_DECRYPT_BUFFER_FULL ({errorCount}/{MaxDecryptRetries})");
                     token.ThrowIfCancellationRequested();
@@ -256,19 +258,19 @@ namespace JuvoPlayer.Drms.Cenc
             {
                 var subsamples = packet.Subsamples.Select(o =>
                         new MSD_SUBSAMPLE_INFO
-                            {uBytesOfClearData = o.ClearData, uBytesOfEncryptedData = o.EncData})
+                        { uBytesOfClearData = o.ClearData, uBytesOfEncryptedData = o.EncData })
                     .ToArray();
                 var totalSize = Marshal.SizeOf(typeof(MSD_SUBSAMPLE_INFO)) * subsamples.Length;
                 var array = Marshal.AllocHGlobal(totalSize);
-                var pointer = (MSD_SUBSAMPLE_INFO*) array.ToPointer();
+                var pointer = (MSD_SUBSAMPLE_INFO*)array.ToPointer();
                 for (var i = 0; i < subsamples.Length; i++)
                     pointer[i] = subsamples[i];
-                subsamplePointer = (IntPtr) pointer;
+                subsamplePointer = (IntPtr)pointer;
             }
 
             var subData = new MSD_FMP4_DATA
             {
-                uSubSampleCount = (uint) (packet.Subsamples?.Length ?? 0),
+                uSubSampleCount = (uint)(packet.Subsamples?.Length ?? 0),
                 pSubSampleInfo = subsamplePointer
             };
             var subdataPointer = Marshal.AllocHGlobal(Marshal.SizeOf(subData));
@@ -285,10 +287,10 @@ namespace JuvoPlayer.Drms.Cenc
             {
                 case MessageType.kLicenseRequest:
                 case MessageType.kIndividualizationRequest:
-                {
-                    requestDataCompletionSource?.TrySetResult(Encoding.GetEncoding(437).GetBytes(message));
-                    break;
-                }
+                    {
+                        requestDataCompletionSource?.TrySetResult(Encoding.GetEncoding(437).GetBytes(message));
+                        break;
+                    }
                 default:
                     Logger.Warn($"unknown message: {messageType}");
                     break;
@@ -325,14 +327,14 @@ namespace JuvoPlayer.Drms.Cenc
             {
                 CreateIeme();
                 cancellationToken.ThrowIfCancellationRequested();
-                currentSessionId = CreateSession();
+                currentSessionId = await CreateSession();
                 Logger.Info($"CencSession ID {currentSessionId}");
                 cancellationToken.ThrowIfCancellationRequested();
                 var requestData = await GetRequestData();
                 cancellationToken.ThrowIfCancellationRequested();
                 var responseText = await AcquireLicenceFromServer(requestData);
                 cancellationToken.ThrowIfCancellationRequested();
-                InstallLicence(responseText);
+                await InstallLicence(responseText);
                 licenceInstalled = true;
             }
         }
@@ -345,14 +347,17 @@ namespace JuvoPlayer.Drms.Cenc
                 throw new DrmException(ErrorMessage.Generic);
         }
 
-        private string CreateSession()
+        private async Task<string> CreateSession()
         {
-            string sessionId = null;
-            var status = CDMInstance.session_create(SessionType.kTemporary, ref sessionId);
-            if (status != Status.kSuccess)
-                throw new DrmException(EmeStatusConverter.Convert(status));
-            Logger.Info("Created session: " + sessionId);
-            return sessionId;
+            using (await sessionLock.LockAsync(cancellationTokenSource.Token))
+            {
+                string sessionId = null;
+                var status = CDMInstance.session_create(SessionType.kTemporary, ref sessionId);
+                if (status != Status.kSuccess)
+                    throw new DrmException(EmeStatusConverter.Convert(status));
+                Logger.Info("Created session: " + sessionId);
+                return sessionId;
+            }
         }
 
         private async Task<byte[]> GetRequestData()
@@ -360,8 +365,14 @@ namespace JuvoPlayer.Drms.Cenc
             if (initData.InitData == null)
                 throw new DrmException(ErrorMessage.InvalidArgument);
             requestDataCompletionSource = new TaskCompletionSource<byte[]>();
-            var status =
-                CDMInstance.session_generateRequest(currentSessionId, InitDataType.kCenc, Encode(initData.InitData));
+            Status status;
+            using (await sessionLock.LockAsync(cancellationTokenSource.Token))
+            {
+                status =
+                    CDMInstance.session_generateRequest(currentSessionId, InitDataType.kCenc,
+                        Encode(initData.InitData));
+            }
+
             if (status != Status.kSuccess)
                 throw new DrmException(EmeStatusConverter.Convert(status));
             var requestData = await requestDataCompletionSource.Task.WaitAsync(cancellationTokenSource.Token);
@@ -406,12 +417,14 @@ namespace JuvoPlayer.Drms.Cenc
             }
         }
 
-        private void InstallLicence(string responseText)
+        private async Task InstallLicence(string responseText)
         {
             Logger.Info($"Installing CencSession: {currentSessionId}");
             try
             {
-                var status = CDMInstance.session_update(currentSessionId, responseText);
+                Status status;
+                using (await sessionLock.LockAsync(cancellationTokenSource.Token))
+                    status = CDMInstance.session_update(currentSessionId, responseText);
                 Logger.Info($"Install CencSession ${currentSessionId} result: {status}");
                 if (status != Status.kSuccess)
                 {

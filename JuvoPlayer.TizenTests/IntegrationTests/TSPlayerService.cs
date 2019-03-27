@@ -20,6 +20,7 @@ using System.Reactive.Linq;
 using System.Reactive.Threading.Tasks;
 using System.Threading;
 using System.Threading.Tasks;
+using JuvoPlayer.Common;
 using JuvoPlayer.TizenTests.Utils;
 using Nito.AsyncEx;
 using NUnit.Framework;
@@ -61,6 +62,7 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
         [TestCase("Clean HLS")]
         [TestCase("Clean HEVC 4k MPEG DASH")]
         [TestCase("Art Of Motion")]
+        [TestCase("Encrypted 4K MPEG DASH UHD")]
         public void Playback_Basic_PreparesAndStarts(string clipTitle)
         {
             RunPlayerTest(clipTitle, async context =>
@@ -77,6 +79,7 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
         [TestCase("Encrypted MPEG DASH")]
         [TestCase("Encrypted 4K MPEG DASH")]
         [TestCase("Art Of Motion")]
+        [TestCase("Encrypted 4K MPEG DASH UHD")]
         public void Seek_Random10Times_Seeks(string clipTitle)
         {
             RunPlayerTest(clipTitle, async context =>
@@ -159,7 +162,14 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
             {
                 var service = context.Service;
                 context.SeekTime = service.Duration;
-                await new SeekOperation().Execute(context);
+                try
+                {
+                    await new SeekOperation().Execute(context);
+                }
+                catch (SeekException)
+                {
+                    // ignored
+                }
             });
         }
 
