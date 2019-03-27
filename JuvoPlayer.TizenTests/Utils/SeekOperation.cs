@@ -41,7 +41,7 @@ namespace JuvoPlayer.TizenTests.Utils
 
                 await service.SeekTo(position).WithCancellation(linkedCts.Token);
 
-                for (var i = 0; i < 50; i++)
+                for (var i = 0; i < 100; i++)
                 {
                     var seekPos = position;
                     var curPos = service.CurrentPosition;
