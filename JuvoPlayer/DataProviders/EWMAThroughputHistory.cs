@@ -16,16 +16,12 @@
  */
 
 using System;
+using static Configuration.EWMAThroughputHistory;
 
 namespace JuvoPlayer.DataProviders
 {
     public class EWMAThroughputHistory : IThroughputHistory
     {
-        private const double SlowEWMACoeff = 0.99;
-        private const double FastEWMACoeff = 0.98;
-        private const double SlowBandwidth = 20000000;
-        private const double FastBandwidth = 20000000;
-
         private double slowBandwidth = SlowBandwidth;
         private double fastBandwidth = FastBandwidth;
 

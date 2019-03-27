@@ -26,7 +26,7 @@ using System.Runtime.ExceptionServices;
 using System.Threading;
 using System.Threading.Tasks;
 using Overby.Extensions.AsyncBinaryReaderWriter;
-
+using static Configuration.DashDownloader;
 namespace JuvoPlayer.DataProviders.Dash
 {
     internal class ByteRange
@@ -89,7 +89,7 @@ namespace JuvoPlayer.DataProviders.Dash
 
         protected override WebRequest GetWebRequest(Uri address)
         {
-            var request = (HttpWebRequest) base.GetWebRequest(address);
+            var request = (HttpWebRequest)base.GetWebRequest(address);
             if (request != null)
             {
                 request.Accept = "*/*";
@@ -251,7 +251,7 @@ namespace JuvoPlayer.DataProviders.Dash
                 }
                 finally
                 {
-                    throughputHistory.Push((int) totalBytesReceived, watch.Elapsed);
+                    throughputHistory.Push((int)totalBytesReceived, watch.Elapsed);
                 }
             }
         }
@@ -266,8 +266,7 @@ namespace JuvoPlayer.DataProviders.Dash
 
         private Task<byte[]> ReadChunk(AsyncBinaryReader reader)
         {
-            const int chunkSize = 64 * 1024;
-            return reader.ReadBytesAsync(chunkSize, cancellationToken);
+            return reader.ReadBytesAsync(ChunkSize, cancellationToken);
         }
 
         private void PushChunk(byte[] buffer)

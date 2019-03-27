@@ -30,6 +30,7 @@ using JuvoPlayer.Drms.Cenc;
 using MpdParser;
 using System.Threading;
 using System.Threading.Tasks;
+using static Configuration.DashMediaPipeline;
 
 namespace JuvoPlayer.DataProviders.Dash
 {
@@ -93,7 +94,6 @@ namespace JuvoPlayer.DataProviders.Dash
         private readonly Object switchStreamLock = new Object();
         private List<DashStream> availableStreams = new List<DashStream>();
 
-        private static readonly TimeSpan SegmentEps = TimeSpan.FromSeconds(0.5);
         private TimeSpan? lastSeek = TimeSpan.Zero;
 
         private PacketTimeStamp demuxerClock;
