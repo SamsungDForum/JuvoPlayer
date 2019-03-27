@@ -373,8 +373,8 @@ namespace JuvoPlayer.DataProviders.Dash
             if (!pipelineStarted)
                 return;
 
-            demuxerController.Reset();
             dashClient.Stop();
+            demuxerController.Reset();
 
             trimOffset = null;
 
@@ -386,11 +386,17 @@ namespace JuvoPlayer.DataProviders.Dash
             dashClient.OnTimeUpdated(time);
         }
 
-        public void Seek(TimeSpan time, uint seekId)
+        public void Seek(TimeSpan time)
         {
-            lastSeek = dashClient.Seek(time);
-            packetReadySubject.OnNext(SeekPacket.CreatePacket(StreamType, seekId));
-            demuxerClock.Reset();
+            try
+            {
+                lastSeek = dashClient.Seek(time);
+                demuxerClock.Reset();
+            }
+            catch (ArgumentOutOfRangeException ex)
+            {
+                throw new SeekException("Invalid content", ex);
+            }
         }
 
         public void ChangeStream(StreamDescription stream)
@@ -566,8 +572,6 @@ namespace JuvoPlayer.DataProviders.Dash
                 {
                     if (packet == null)
                         return EOSPacket.Create(StreamType);
-                    if (packet is SeekPacket)
-                        return packet;
 
                     AdjustDemuxerTimeStampIfNeeded(packet);
 

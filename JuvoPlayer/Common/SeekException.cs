@@ -1,5 +1,6 @@
 /*!
- * https://github.com/SamsungDForum/JuvoPlayer
+ *
+ * [https://github.com/SamsungDForum/JuvoPlayer])
  * Copyright 2018, Samsung Electronics Co., Ltd
  * Licensed under the MIT license
  *
@@ -13,30 +14,25 @@
  * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
  */
 
 using System;
-using System.Threading.Tasks;
-using JuvoPlayer.Common;
 
-namespace JuvoPlayer.Player
+namespace JuvoPlayer.Common
 {
-    public interface IPlayer : IDisposable
+    public class SeekException : Exception
     {
-        IObservable<string> PlaybackError();
-        IObservable<TimeSpan> TimeUpdated();
-        IObservable<PlayerState> StateChanged();
+        public SeekException()
+        {
+        }
 
-        IPlayerClient Client { get; set; }
+        public SeekException(string message) : base(message)
+        {
+        }
 
-        void Pause();
-        void Play();
-        Task Seek(TimeSpan time);
-        void SetDuration(TimeSpan duration);
-        void SetPlaybackRate(float rate);
-        void Stop();
-
-        void SetStreamConfig(StreamConfig config);
-        void AppendPacket(Packet packet);
+        public SeekException(string message, Exception innerException) : base(message, innerException)
+        {
+        }
     }
 }

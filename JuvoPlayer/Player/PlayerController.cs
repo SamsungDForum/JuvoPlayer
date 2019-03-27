@@ -79,11 +79,6 @@ namespace JuvoPlayer.Player
             return player.TimeUpdated();
         }
 
-        public IObservable<SeekArgs> SeekStarted()
-        {
-            return player.SeekStarted();
-        }
-
         public IObservable<PlayerState> StateChanged()
         {
             return player.StateChanged();
@@ -188,6 +183,12 @@ namespace JuvoPlayer.Player
         {
             player.Play();
             bufferingProgressSubject.OnNext(100);
+        }
+
+        public IPlayerClient Client
+        {
+            get => player.Client;
+            set => player.Client = value;
         }
 
         #region getters

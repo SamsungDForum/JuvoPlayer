@@ -1,6 +1,6 @@
 /*!
  * https://github.com/SamsungDForum/JuvoPlayer
- * Copyright 2018, Samsung Electronics Co., Ltd
+ * Copyright 2019, Samsung Electronics Co., Ltd
  * Licensed under the MIT license
  *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
@@ -16,12 +16,13 @@
  */
 
 using System;
+using System.Threading;
+using System.Threading.Tasks;
 
-namespace JuvoPlayer.Common
+namespace JuvoPlayer.Player
 {
-    public struct SeekArgs
+    public interface IPlayerClient
     {
-        public TimeSpan Position { get; set; }
-        public uint Id { get; set; }
+        Task Seek(TimeSpan position, CancellationToken token);
     }
 }

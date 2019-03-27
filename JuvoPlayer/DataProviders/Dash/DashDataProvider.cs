@@ -160,20 +160,6 @@ namespace JuvoPlayer.DataProviders.Dash
             cuesMap = new SubtitleFacade().LoadSubtitles(subtitleInfo);
         }
 
-        public void OnSeekStarted(TimeSpan time, uint seekId)
-        {
-            if (!IsSeekingSupported())
-                return;
-
-            var pipelines = new[] { videoPipeline, audioPipeline };
-            foreach (var pipeline in pipelines)
-            {
-                pipeline.Pause();
-                pipeline.Seek(time, seekId);
-                pipeline.Resume();
-            }
-        }
-
         public void OnStopped()
         {
             Logger.Info("");
@@ -181,6 +167,22 @@ namespace JuvoPlayer.DataProviders.Dash
             manifestProvider.Stop();
             videoPipeline.Stop();
             audioPipeline.Stop();
+        }
+
+        public Task Seek(TimeSpan time, CancellationToken token)
+        {
+            if (!IsSeekingSupported())
+                throw new SeekException("Seeking is not supported");
+
+            var pipelines = new[] { videoPipeline, audioPipeline };
+            foreach (var pipeline in pipelines)
+            {
+                pipeline.Pause();
+                pipeline.Seek(time);
+                pipeline.Resume();
+            }
+
+            return Task.CompletedTask;
         }
 
         public bool IsSeekingSupported()
