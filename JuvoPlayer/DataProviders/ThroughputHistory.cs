@@ -15,21 +15,15 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
+using static Configuration.ThroughputHistory;
 
 namespace JuvoPlayer.DataProviders
 {
     public class ThroughputHistory : IThroughputHistory
     {
-        private const int MaxMeasurementsToKeep = 20;
-        private const int AverageThroughputSampleAmount = 4;
-        private const int MinimumThroughputSampleAmount = 2;
-
-        private const double ThroughputDecreaseScale = 1.3;
-        private const double ThroughputIncreaseScale = 1.3;
-
         private readonly LinkedList<double> throughputs = new LinkedList<double>();
 
         public double GetAverageThroughput()

@@ -86,6 +86,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <ProjectReference Include="..\Configuration\Configuration.csproj" />
     <ProjectReference Include="..\JuvoPlayer\JuvoPlayer.csproj" />
     <ProjectReference Include="..\MpdParser\MpdParser.csproj" />
   </ItemGroup>

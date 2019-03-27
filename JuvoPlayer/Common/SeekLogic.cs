@@ -20,6 +20,7 @@ using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using static Configuration.SeekLogic;
 
 namespace JuvoPlayer.Common
 {
@@ -28,10 +29,6 @@ namespace JuvoPlayer.Common
         public bool IsSeekInProgress { get; set; }
         public bool IsSeekAccumulationInProgress { get; set; }
 
-        private readonly TimeSpan _defaultSeekInterval = TimeSpan.FromSeconds(5);
-        private readonly TimeSpan _defaultSeekAccumulateInterval = TimeSpan.FromSeconds(2);
-        private readonly double _defaultMaximumSeekIntervalPercentOfContentTotalTime = 1.0;
-        private readonly TimeSpan _defaultSeekIntervalValueThreshold = TimeSpan.FromMilliseconds(200); // time between key events when key is being hold is ~100ms
         private readonly Stopwatch _seekStopwatch = new Stopwatch();
         private TimeSpan _targetSeekTime;
         private Task _seekDelay;
@@ -64,14 +61,14 @@ namespace JuvoPlayer.Common
 
         private TimeSpan SeekInterval()
         {
-            TimeSpan seekInterval = _defaultSeekInterval;
+            TimeSpan seekInterval = DefaultSeekInterval;
             TimeSpan contentLength = _client.Duration;
             TimeSpan intervalSinceLastSeek = IntervalSinceLastSeek();
 
-            if (intervalSinceLastSeek < _defaultSeekIntervalValueThreshold) // key is being hold
+            if (intervalSinceLastSeek < DefaultSeekIntervalValueThreshold) // key is being hold
                 seekInterval = TimeSpan.FromMilliseconds(Math.Max(
-                    0.01 * _defaultMaximumSeekIntervalPercentOfContentTotalTime * contentLength.TotalMilliseconds,
-                    _defaultSeekInterval.TotalMilliseconds));
+                    0.01 * DefaultMaximumSeekIntervalPercentOfContentTotalTime * contentLength.TotalMilliseconds,
+                    DefaultSeekInterval.TotalMilliseconds));
 
             return seekInterval;
         }
@@ -98,7 +95,7 @@ namespace JuvoPlayer.Common
             AccumulateSeekInterval(seekInterval);
 
             _seekCancellationTokenSource = new CancellationTokenSource();
-            _seekDelay = Task.Delay(_defaultSeekAccumulateInterval, _seekCancellationTokenSource.Token);
+            _seekDelay = Task.Delay(DefaultSeekAccumulateInterval, _seekCancellationTokenSource.Token);
 
             try { await _seekDelay; } catch (TaskCanceledException) { return; }
 
