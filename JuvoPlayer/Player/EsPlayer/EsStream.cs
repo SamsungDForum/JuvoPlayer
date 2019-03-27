@@ -103,7 +103,6 @@ namespace JuvoPlayer.Player.EsPlayer
             return streamReconfigureSubject.AsObservable();
         }
 
-
         #region Public API
 
         public EsStream(Common.StreamType type, EsPlayerPacketStorage storage)
@@ -352,6 +351,7 @@ namespace JuvoPlayer.Player.EsPlayer
         private void DelayTransfer(TimeSpan delay, CancellationToken token)
         {
             logger.Info($"{streamType}: Transfer task restart in {delay}");
+            wakeup.Reset();
             if (delay > TimeSpan.Zero)
             {
                 logger.Info($"{streamType}: {delay}");

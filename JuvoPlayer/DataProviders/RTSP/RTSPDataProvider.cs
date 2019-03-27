@@ -123,7 +123,7 @@ namespace JuvoPlayer.DataProviders.RTSP
             }
         }
 
-        public Task Seek(TimeSpan time, CancellationToken token)
+        public Task<TimeSpan> Seek(TimeSpan time, CancellationToken token)
         {
             throw new NotImplementedException();
         }

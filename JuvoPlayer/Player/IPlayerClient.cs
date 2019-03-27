@@ -23,6 +23,6 @@ namespace JuvoPlayer.Player
 {
     public interface IPlayerClient
     {
-        Task Seek(TimeSpan position, CancellationToken token);
+        Task<TimeSpan> Seek(TimeSpan position, CancellationToken token);
     }
 }

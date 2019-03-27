@@ -37,13 +37,13 @@ namespace JuvoPlayer.DataProviders
                 dataProvider = provider;
             }
 
-            public async Task Seek(TimeSpan position, CancellationToken token)
+            public async Task<TimeSpan> Seek(TimeSpan position, CancellationToken token)
             {
                 try
                 {
                     connector.DisconnectPlayerController();
                     connector.DisconnectDataProvider();
-                    await dataProvider.Seek(position, token);
+                    return await dataProvider.Seek(position, token);
                 }
                 finally
                 {
