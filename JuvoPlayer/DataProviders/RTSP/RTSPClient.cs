@@ -405,49 +405,49 @@ namespace JuvoPlayer.DataProviders.RTSP
             switch (rtpTransportType)
             {
                 case RTPTransportType.TCP:
-                {
-                    // Server interleaves the RTP packets over the RTSP connection
-                    // Example for TCP mode (RTP over RTSP)   Transport: RTP/AVP/TCP;interleaved=0-1
-                    videoDataChannel = 0;  // Used in DataReceived event handler
-                    videoRTCPChannel = 1;  // Used in DataReceived event handler
-                    return new RtspTransport()
                     {
-                        LowerTransport = RtspTransport.LowerTransportType.TCP,
-                        Interleaved = new PortCouple(videoDataChannel, videoRTCPChannel), // Channel 0 for video. Channel 1 for RTCP status reports
-                    };
-                }
+                        // Server interleaves the RTP packets over the RTSP connection
+                        // Example for TCP mode (RTP over RTSP)   Transport: RTP/AVP/TCP;interleaved=0-1
+                        videoDataChannel = 0;  // Used in DataReceived event handler
+                        videoRTCPChannel = 1;  // Used in DataReceived event handler
+                        return new RtspTransport()
+                        {
+                            LowerTransport = RtspTransport.LowerTransportType.TCP,
+                            Interleaved = new PortCouple(videoDataChannel, videoRTCPChannel), // Channel 0 for video. Channel 1 for RTCP status reports
+                        };
+                    }
                 case RTPTransportType.UDP:
-                {
-                    // Server sends the RTP packets to a Pair of UDP Ports (one for data, one for rtcp control messages)
-                    // Example for UDP mode                   Transport: RTP/AVP;unicast;client_port=8000-8001
-                    videoDataChannel = udpSocketPair.DataPort;     // Used in DataReceived event handler
-                    videoRTCPChannel = udpSocketPair.ControlPort;  // Used in DataReceived event handler
-                    return new RtspTransport()
                     {
-                        LowerTransport = RtspTransport.LowerTransportType.UDP,
-                        IsMulticast = false,
-                        ClientPort = new PortCouple(videoDataChannel, videoRTCPChannel), // a Channel for video. a Channel for RTCP status reports
-                    };
-                }
+                        // Server sends the RTP packets to a Pair of UDP Ports (one for data, one for rtcp control messages)
+                        // Example for UDP mode                   Transport: RTP/AVP;unicast;client_port=8000-8001
+                        videoDataChannel = udpSocketPair.DataPort;     // Used in DataReceived event handler
+                        videoRTCPChannel = udpSocketPair.ControlPort;  // Used in DataReceived event handler
+                        return new RtspTransport()
+                        {
+                            LowerTransport = RtspTransport.LowerTransportType.UDP,
+                            IsMulticast = false,
+                            ClientPort = new PortCouple(videoDataChannel, videoRTCPChannel), // a Channel for video. a Channel for RTCP status reports
+                        };
+                    }
                 case RTPTransportType.MULTICAST:
-                {
-                    // Server sends the RTP packets to a Pair of UDP ports (one for data, one for rtcp control messages)
-                    // using Multicast Address and Ports that are in the reply to the SETUP message
-                    // Example for MULTICAST mode     Transport: RTP/AVP;multicast
-                    videoDataChannel = 0; // we get this information in the SETUP message reply
-                    videoRTCPChannel = 0; // we get this information in the SETUP message reply
-                    return new RtspTransport()
                     {
-                        LowerTransport = RtspTransport.LowerTransportType.UDP,
-                        IsMulticast = true
-                    };
-                }
+                        // Server sends the RTP packets to a Pair of UDP ports (one for data, one for rtcp control messages)
+                        // using Multicast Address and Ports that are in the reply to the SETUP message
+                        // Example for MULTICAST mode     Transport: RTP/AVP;multicast
+                        videoDataChannel = 0; // we get this information in the SETUP message reply
+                        videoRTCPChannel = 0; // we get this information in the SETUP message reply
+                        return new RtspTransport()
+                        {
+                            LowerTransport = RtspTransport.LowerTransportType.UDP,
+                            IsMulticast = true
+                        };
+                    }
                 default:
                     throw new Exception();
+            }
         }
-    }
 
-    private static void ParseAttributes(Rtsp.Sdp.SdpFile sdpData, int x, out string control, out Rtsp.Sdp.AttributFmtp fmtp, out Rtsp.Sdp.AttributRtpMap rtpmap)
+        private static void ParseAttributes(Rtsp.Sdp.SdpFile sdpData, int x, out string control, out Rtsp.Sdp.AttributFmtp fmtp, out Rtsp.Sdp.AttributRtpMap rtpmap)
         {
             control = "";
             fmtp = null;

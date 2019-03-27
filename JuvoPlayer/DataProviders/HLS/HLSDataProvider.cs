@@ -20,16 +20,17 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reactive;
 using System.Reactive.Linq;
+using System.Threading;
+using System.Threading.Tasks;
 using JuvoPlayer.Common;
 using JuvoPlayer.Demuxers;
 using JuvoPlayer.Subtitles;
+using static Configuration.HLSDataProvider;
 
 namespace JuvoPlayer.DataProviders.HLS
 {
     internal class HLSDataProvider : IDataProvider
     {
-        private static readonly TimeSpan MaxBufferHealth = TimeSpan.FromSeconds(10);
-
         private readonly IDemuxerController demuxerController;
         private readonly ClipDefinition currentClip;
 
@@ -97,13 +98,13 @@ namespace JuvoPlayer.DataProviders.HLS
             cuesMap = null;
         }
 
-        public void OnSeekStarted(TimeSpan time, uint seekId)
-        {
-            throw new NotImplementedException();
-        }
-
         public void OnStopped()
         {
+        }
+
+        public Task<TimeSpan> Seek(TimeSpan time, CancellationToken token)
+        {
+            throw new NotImplementedException();
         }
 
         public bool IsSeekingSupported()

@@ -116,7 +116,7 @@ namespace JuvoPlayer.DataProviders.Dash
             // A workaround for a case when we seek to the end of a content while audio and video streams have
             // a slightly different duration.
             if (position > currentStreams.Duration)
-                position = (TimeSpan) currentStreams.Duration;
+                position = (TimeSpan)currentStreams.Duration;
 
             currentSegmentId = currentStreams.SegmentId(position);
             var previousSegmentId = currentStreams.PreviousSegmentId(currentSegmentId);
@@ -129,8 +129,7 @@ namespace JuvoPlayer.DataProviders.Dash
             if (seekToTimeRange == null)
             {
                 LogError($"Seek Pos Req: {position} failed. No segment/TimeRange found");
-                currentTime = position;
-                return currentTime;
+                throw new ArgumentOutOfRangeException();
             }
 
             currentTime = seekToTimeRange.Start;
@@ -173,7 +172,7 @@ namespace JuvoPlayer.DataProviders.Dash
             }
             else
             {
-                downloadCompletedSubject.OnNext(Unit.Default);
+                ScheduleNextSegDownload();
             }
         }
 
@@ -206,7 +205,6 @@ namespace JuvoPlayer.DataProviders.Dash
             if (!processDataTask.IsCompleted || cancellationTokenSource.IsCancellationRequested)
                 return;
 
-            
             if (!IsBufferSpaceAvailable())
                 return;
 
@@ -342,7 +340,6 @@ namespace JuvoPlayer.DataProviders.Dash
             currentSegmentId = currentStreams.NextSegmentId(currentSegmentId);
             var timeInfo = segment.Period.ToString();
             LogInfo($"Segment: {responseResult.SegmentId} enqueued {timeInfo}");
-      
             return true;
         }
 
@@ -496,7 +493,6 @@ namespace JuvoPlayer.DataProviders.Dash
             // Ignore time updated events when EOS is already sent
             if (isEosSent)
                 return;
-
             currentTime = time;
         }
 
@@ -571,7 +567,6 @@ namespace JuvoPlayer.DataProviders.Dash
             return timeout;
         }
 
-        
 
         public bool CanStreamSwitch()
         {

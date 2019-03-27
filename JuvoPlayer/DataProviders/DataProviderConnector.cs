@@ -18,6 +18,7 @@
 using System;
 using System.Reactive.Disposables;
 using System.Threading;
+using System.Threading.Tasks;
 using JuvoPlayer.Player;
 using JuvoPlayer.Common;
 
@@ -25,52 +26,104 @@ namespace JuvoPlayer.DataProviders
 {
     public class DataProviderConnector : IDisposable
     {
-        private CompositeDisposable subscriptions;
+        private class PlayerClient : IPlayerClient
+        {
+            private readonly IDataProvider dataProvider;
+            private readonly DataProviderConnector connector;
+
+            public PlayerClient(DataProviderConnector owner, IDataProvider provider)
+            {
+                connector = owner;
+                dataProvider = provider;
+            }
+
+            public async Task<TimeSpan> Seek(TimeSpan position, CancellationToken token)
+            {
+                try
+                {
+                    connector.DisconnectPlayerController();
+                    connector.DisconnectDataProvider();
+                    return await dataProvider.Seek(position, token);
+                }
+                finally
+                {
+                    connector.ConnectPlayerController();
+                    connector.ConnectDataProvider();
+                }
+            }
+        }
+
+        private CompositeDisposable dataProviderSubscriptions;
+        private CompositeDisposable playerControllerSubscriptions;
+        private IPlayerClient client;
+        private readonly IPlayerController playerController;
+        private readonly IDataProvider dataProvider;
+        private readonly SynchronizationContext context;
 
         public DataProviderConnector(IPlayerController playerController, IDataProvider dataProvider,
             SynchronizationContext context = null)
         {
-            Connect(playerController, dataProvider, context);
+            this.playerController = playerController ?? throw new ArgumentNullException(nameof(playerController), "Player controller cannot be null");
+            this.dataProvider = dataProvider ?? throw new ArgumentNullException(nameof(dataProvider), "Data provider cannot be null");
+            this.context = context ?? SynchronizationContext.Current;
+            Connect();
         }
 
-        private void Connect(IPlayerController controller, IDataProvider dataProvider,
-            SynchronizationContext context)
+        private void Connect()
         {
-            if (controller == null)
-                throw new ArgumentNullException(nameof(controller), "Player controller cannot be null");
+            ConnectDataProvider();
+            ConnectPlayerController();
+            InstallPlayerClient();
+        }
 
-            if (dataProvider == null)
-                return;
+        private void InstallPlayerClient()
+        {
+            client = new PlayerClient(this, dataProvider);
+            playerController.Client = client;
+        }
 
-            if (context == null)
-                context = SynchronizationContext.Current;
+        private void ConnectDataProvider()
+        {
+            dataProviderSubscriptions = new CompositeDisposable
+            {
+                playerController.TimeUpdated().Subscribe(dataProvider.OnTimeUpdated, context),
+                playerController.StateChanged().Subscribe(dataProvider.OnStateChanged, context),
+            };
+        }
 
-            subscriptions = new CompositeDisposable
+        private void DisconnectDataProvider()
+        {
+            dataProviderSubscriptions?.Dispose();
+        }
+
+        private void ConnectPlayerController()
+        {
+            playerControllerSubscriptions = new CompositeDisposable
             {
                 dataProvider.ClipDurationChanged()
-                    .Subscribe(controller.OnClipDurationChanged, context),
+                    .Subscribe(playerController.OnClipDurationChanged, context),
                 dataProvider.DRMInitDataFound()
-                    .Subscribe(controller.OnDRMInitDataFound, context),
+                    .Subscribe(playerController.OnDRMInitDataFound, context),
                 dataProvider.SetDrmConfiguration()
-                    .Subscribe(controller.OnSetDrmConfiguration, context),
+                    .Subscribe(playerController.OnSetDrmConfiguration, context),
                 dataProvider.StreamConfigReady()
-                    .Subscribe(controller.OnStreamConfigReady, context),
+                    .Subscribe(playerController.OnStreamConfigReady, context),
                 dataProvider.PacketReady()
-                    .Subscribe(controller.OnPacketReady, context),
+                    .Subscribe(playerController.OnPacketReady, context),
                 dataProvider.StreamError()
-                    .Subscribe(controller.OnStreamError, context),
-                controller.TimeUpdated().Subscribe(dataProvider.OnTimeUpdated, context),
-                controller.StateChanged().Subscribe(dataProvider.OnStateChanged, context),
-                controller.SeekStarted()
-                    .Subscribe(args => dataProvider.OnSeekStarted(args.Position, args.Id), context),
-                controller.DataStateChanged().Subscribe(dataProvider.OnDataStateChanged,context)
-
+                    .Subscribe(playerController.OnStreamError, context)
             };
+        }
+
+        private void DisconnectPlayerController()
+        {
+            playerControllerSubscriptions?.Dispose();
         }
 
         public void Dispose()
         {
-            subscriptions?.Dispose();
+            DisconnectPlayerController();
+            DisconnectDataProvider();
         }
     }
 }
