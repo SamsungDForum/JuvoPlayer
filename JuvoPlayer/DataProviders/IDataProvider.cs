@@ -33,7 +33,7 @@ namespace JuvoPlayer.DataProviders
         void OnStopped();
         void OnTimeUpdated(TimeSpan time);
 
-        Task Seek(TimeSpan time, CancellationToken token);
+        Task<TimeSpan> Seek(TimeSpan time, CancellationToken token);
 
         bool IsSeekingSupported();
         void Start();

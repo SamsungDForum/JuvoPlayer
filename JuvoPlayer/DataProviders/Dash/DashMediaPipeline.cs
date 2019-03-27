@@ -108,6 +108,8 @@ namespace JuvoPlayer.DataProviders.Dash
         private IDisposable demuxerStreamConfigReadySub;
         private IDisposable downloadCompletedSub;
 
+        public Func<Packet, bool> PacketPredicate { get; set; }
+
         public DashMediaPipeline(IDashClient dashClient, IDemuxerController demuxerController,
             IThroughputHistory throughputHistory,
             StreamType streamType)
@@ -386,12 +388,13 @@ namespace JuvoPlayer.DataProviders.Dash
             dashClient.OnTimeUpdated(time);
         }
 
-        public void Seek(TimeSpan time)
+        public TimeSpan Seek(TimeSpan time)
         {
             try
             {
                 lastSeek = dashClient.Seek(time);
                 demuxerClock.Reset();
+                return lastSeek.Value;
             }
             catch (ArgumentOutOfRangeException ex)
             {
@@ -592,7 +595,7 @@ namespace JuvoPlayer.DataProviders.Dash
                     // Don't convert packet here, use assignment (less costly)
                     lastPushedClock.SetClock(packet);
                     return packet;
-                });
+                }).Where(packet => PacketPredicate == null || PacketPredicate.Invoke(packet));
         }
 
         public IObservable<DRMDescription> SetDrmConfiguration()

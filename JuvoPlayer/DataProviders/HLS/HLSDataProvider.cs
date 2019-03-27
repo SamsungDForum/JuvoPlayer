@@ -97,7 +97,7 @@ namespace JuvoPlayer.DataProviders.HLS
         {
         }
 
-        public Task Seek(TimeSpan time, CancellationToken token)
+        public Task<TimeSpan> Seek(TimeSpan time, CancellationToken token)
         {
             throw new NotImplementedException();
         }

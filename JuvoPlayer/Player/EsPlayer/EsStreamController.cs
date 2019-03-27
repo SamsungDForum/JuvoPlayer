@@ -20,7 +20,6 @@ using System.Collections.Generic;
 using JuvoPlayer.Common;
 using JuvoLogger;
 using System.Linq;
-using System.Reactive;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
 using System.Threading;
@@ -39,17 +38,11 @@ namespace JuvoPlayer.Player.EsPlayer
     /// </summary>
     internal sealed class EsStreamController : IDisposable
     {
-        private class DataStream
-        {
-            public EsStream Stream { get; set; }
-            public StreamType StreamType { get; set; }
-        }
-
         private readonly ILogger logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
 
         // Reference to all data streams representing transfer of individual
         // stream data and data storage
-        private readonly DataStream[] dataStreams;
+        private readonly EsStream[] esStreams;
         private readonly EsPlayerPacketStorage packetStorage;
 
         // Reference to ESPlayer & associated window
@@ -71,8 +64,8 @@ namespace JuvoPlayer.Player.EsPlayer
         // Returns configuration status of all underlying streams.
         // True - all initialized streams are configures
         // False - at least one underlying stream is not configured
-        private bool AllStreamsConfigured => dataStreams.All(streamEntry =>
-            streamEntry?.Stream.IsConfigured ?? true);
+        private bool AllStreamsConfigured => esStreams.All(streamEntry =>
+            streamEntry?.IsConfigured ?? true);
 
         public IPlayerClient Client { get; set; }
 
@@ -92,24 +85,22 @@ namespace JuvoPlayer.Player.EsPlayer
         {
             logger.Info(stream.ToString());
 
-            if (dataStreams[(int) stream] != null)
+            if (esStreams[(int) stream] != null)
             {
                 throw new ArgumentException($"Stream {stream} already initialized");
             }
 
             // Create new data stream & chunk state entry
             //
-            dataStreams[(int) stream] = new DataStream
-            {
-                Stream = new EsStream(stream, packetStorage),
-                StreamType = stream
-            };
+            var esStream = new EsStream(stream, packetStorage);
+            esStream.SetPlayer(player);
 
-            dataStreams[(int) stream].Stream.SetPlayer(player);
-            streamReconfigureSubs[(int) stream] = dataStreams[(int) stream].Stream.StreamReconfigure()
+            streamReconfigureSubs[(int) stream] = esStream.StreamReconfigure()
                 .Subscribe(unit => OnStreamReconfigure(), SynchronizationContext.Current);
-            playbackErrorSubs[(int) stream] = dataStreams[(int) stream].Stream.PlaybackError()
+            playbackErrorSubs[(int) stream] = esStream.PlaybackError()
                 .Subscribe(OnEsStreamError, SynchronizationContext.Current);
+
+            esStreams[(int) stream] = esStream;
         }
 
         public EsStreamController(EsPlayerPacketStorage storage)
@@ -128,7 +119,7 @@ namespace JuvoPlayer.Player.EsPlayer
             packetStorage = storage;
 
             // Create placeholder to data streams & chunk states
-            dataStreams = new DataStream[(int) StreamType.Count];
+            esStreams = new EsStream[(int) StreamType.Count];
             streamReconfigureSubs = new IDisposable[(int) StreamType.Count];
             playbackErrorSubs = new IDisposable[(int) StreamType.Count];
 
@@ -139,10 +130,10 @@ namespace JuvoPlayer.Player.EsPlayer
         {
             player = new ESPlayer.ESPlayer();
             player.Open();
-            
+
             //The Tizen TV emulator is based on the x86 architecture. Using trust zone (DRM'ed content playback) is not supported by the emulator.
             if (RuntimeInformation.ProcessArchitecture != Architecture.X86) player.SetTrustZoneUse(true);
-            
+
             player.SetDisplay(displayWindow);
             resourceConflict = false;
         }
@@ -167,7 +158,7 @@ namespace JuvoPlayer.Player.EsPlayer
 
             try
             {
-                var pushResult = dataStreams[(int) streamType].Stream.SetStreamConfig(config);
+                var pushResult = esStreams[(int) streamType].SetStreamConfig(config);
 
                 // Configuration queued. Do not prepare stream :)
                 if (pushResult == EsStream.SetStreamConfigResult.ConfigQueued)
@@ -307,7 +298,7 @@ namespace JuvoPlayer.Player.EsPlayer
             try
             {
                 await SeekStreamInitialize(token);
-                await Client.Seek(time, token);
+                time = await Client.Seek(time, token);
                 await StreamSeek(time, token);
             }
             catch (SeekException e)
@@ -364,7 +355,7 @@ namespace JuvoPlayer.Player.EsPlayer
                 : BufferState.BufferUnderrun;
 
             if (state == BufferState.BufferUnderrun)
-                dataStreams[(int) juvoStream].Stream.Wakeup();
+                esStreams[(int) juvoStream].Wakeup();
         }
 
         /// <summary>
@@ -442,7 +433,7 @@ namespace JuvoPlayer.Player.EsPlayer
 
             logger.Info(streamType.ToString());
 
-            dataStreams[(int) streamType].Stream.Start();
+            esStreams[(int) streamType].Start();
 
             logger.Info($"{streamType}: Completed");
 
@@ -510,8 +501,8 @@ namespace JuvoPlayer.Player.EsPlayer
         {
             logger.Info("");
             var awaitables = new List<Task>(
-                dataStreams.Where(esStream => esStream != null)
-                    .Select(esStream => esStream.Stream.GetActiveTask()));
+                esStreams.Where(esStream => esStream != null)
+                    .Select(esStream => esStream.GetActiveTask()));
 
             return awaitables;
         }
@@ -574,10 +565,10 @@ namespace JuvoPlayer.Player.EsPlayer
 
             AttachEventHandlers();
 
-            foreach (var esStream in dataStreams.Where(esStream => esStream != null))
+            foreach (var esStream in esStreams)
             {
-                esStream.Stream.SetPlayer(player);
-                esStream.Stream.ResetStreamConfig();
+                esStream?.SetPlayer(player);
+                esStream?.ResetStreamConfig();
             }
         }
 
@@ -623,14 +614,14 @@ namespace JuvoPlayer.Player.EsPlayer
         {
             logger.Info("Stopping all data streams");
 
-            foreach (var esStream in dataStreams.Where(esStream => esStream != null))
-                esStream.Stream.Stop();
+            foreach (var esStream in esStreams)
+                esStream?.Stop();
         }
 
         private void EmptyStreams()
         {
-            foreach (var esStream in dataStreams.Where(esStream => esStream != null))
-                esStream.Stream.EmptyStorage();
+            foreach (var esStream in esStreams)
+                esStream?.EmptyStorage();
         }
 
         /// <summary>
@@ -646,8 +637,8 @@ namespace JuvoPlayer.Player.EsPlayer
 
             // Starts can happen.. when they happen. See no reason to
             // wait for their completion.
-            foreach (var esStream in dataStreams.Where(esStream => esStream != null))
-                esStream.Stream.Start();
+            foreach (var esStream in esStreams)
+                esStream?.Start();
         }
 
         /// <summary>
@@ -658,8 +649,8 @@ namespace JuvoPlayer.Player.EsPlayer
         {
             logger.Info("Stop and Disable all data streams");
 
-            foreach (var esStream in dataStreams.Where(esStream => esStream != null))
-                esStream.Stream.Disable();
+            foreach (var esStream in esStreams)
+                esStream?.Disable();
         }
 
         /// <summary>
@@ -802,8 +793,8 @@ namespace JuvoPlayer.Player.EsPlayer
         {
             // Dispose of individual streams.
             logger.Info("Data Streams shutdown");
-            foreach (var esStream in dataStreams.Where(esStream => esStream != null))
-                esStream.Stream.Dispose();
+            foreach (var esStream in esStreams)
+                esStream?.Dispose();
         }
 
         private void DetachEventHandlers()
