@@ -16,6 +16,8 @@
  */
 
 using System;
+using System.Net.Http.Headers;
+using System.Reactive.Linq;
 using System.Threading.Tasks;
 using ElmSharp;
 using JuvoPlayer.Common;
@@ -58,6 +60,7 @@ namespace JuvoPlayer.Player.EsPlayer
         #region IPlayer Interface Implementation
         public void AppendPacket(Packet packet)
         {
+            streamControl.DataIn(packet);
             packetStorage.AddPacket(packet);
         }
 
@@ -130,6 +133,17 @@ namespace JuvoPlayer.Player.EsPlayer
         {
             return streamControl.SeekStarted();
         }
+
+        public IObservable<bool> BufferingStateChanged()
+        {
+            return streamControl.BufferingStateChanged();
+        }
+
+        public IObservable<DataArgs> DataNeedStateChanged()
+        {
+            return streamControl.DataNeededStateChanged();
+        }
+        
 
         #endregion
         #endregion

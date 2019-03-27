@@ -54,5 +54,6 @@ namespace JuvoPlayer.Player
         IObservable<TimeSpan> TimeUpdated();
         IObservable<SeekArgs> SeekStarted();
         IObservable<PlayerState> StateChanged();
+        IObservable<DataArgs> DataStateChanged();
     }
 }

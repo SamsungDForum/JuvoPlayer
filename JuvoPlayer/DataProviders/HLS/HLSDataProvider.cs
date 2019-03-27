@@ -52,6 +52,11 @@ namespace JuvoPlayer.DataProviders.HLS
             return lastReceivedPts - currentTime > MaxBufferHealth;
         }
 
+        public void OnDataStateChanged(DataArgs args)
+        {
+
+        }
+
         public void OnChangeActiveStream(StreamDescription stream)
         {
             if (stream.StreamType == StreamType.Subtitle)
@@ -188,16 +193,6 @@ namespace JuvoPlayer.DataProviders.HLS
         public IObservable<string> StreamError()
         {
             return Observable.Empty<string>();
-        }
-
-        public IObservable<Unit> BufferingStarted()
-        {
-            return Observable.Empty<Unit>();
-        }
-
-        public IObservable<Unit> BufferingCompleted()
-        {
-            return Observable.Empty<Unit>();
         }
 
         private List<StreamDescription> GetSubtitleStreamsDescription()

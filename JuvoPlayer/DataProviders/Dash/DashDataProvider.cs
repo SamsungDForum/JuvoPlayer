@@ -108,14 +108,19 @@ namespace JuvoPlayer.DataProviders.Dash
                 .Merge(videoPipeline.StreamError());
         }
 
-        public IObservable<Unit> BufferingStarted()
+        public void OnDataStateChanged(DataArgs args)
         {
-            return videoPipeline.BufferingStarted().Merge(audioPipeline.BufferingStarted());
-        }
-
-        public IObservable<Unit> BufferingCompleted()
-        {
-            return videoPipeline.BufferingCompleted().Merge(audioPipeline.BufferingCompleted());
+            switch (args.StreamType)
+            {
+                case StreamType.Audio:
+                    audioPipeline.ProvideData(args.DataFlag);
+                    break;
+                case StreamType.Video:
+                    videoPipeline.ProvideData(args.DataFlag);
+                    break;
+                default:
+                    break;
+            }
         }
 
         public void OnChangeActiveStream(StreamDescription stream)

@@ -97,6 +97,8 @@ namespace JuvoPlayer.Player.EsPlayer
         private readonly Subject<string> playbackErrorSubject = new Subject<string>();
         private readonly Subject<Unit> streamReconfigureSubject = new Subject<Unit>();
 
+        private readonly BufferControl bufferControl;
+
         public IObservable<string> PlaybackError()
         {
             return playbackErrorSubject.AsObservable();
@@ -110,10 +112,11 @@ namespace JuvoPlayer.Player.EsPlayer
 
         #region Public API
 
-        public EsStream(Common.StreamType type, EsPlayerPacketStorage storage)
+        public EsStream(Common.StreamType type, EsPlayerPacketStorage storage, BufferControl bufferControl)
         {
             streamType = type;
             packetStorage = storage;
+            this.bufferControl = bufferControl;
 
             switch (streamType)
             {
@@ -238,7 +241,7 @@ namespace JuvoPlayer.Player.EsPlayer
         /// <returns></returns>
         private SeekResult SeekTask(uint seekId, TimeSpan seekPosition, CancellationToken token)
         {
-            logger.Info($"{streamType}: {seekId}");
+            logger.Info($"{streamType}: {seekId} {seekPosition}");
 
             while (true)
             {
@@ -259,9 +262,11 @@ namespace JuvoPlayer.Player.EsPlayer
                                 break;
 
                             logger.Info($"{streamType}: Seek Id {seekId} found. Looking for time {seekPosition}");
+                            
                             return SeekResult.Ok;
                         default:
                             packet.Dispose();
+                            bufferControl.DataOut(packet);
                             break;
                     }
                 }
@@ -393,10 +398,12 @@ namespace JuvoPlayer.Player.EsPlayer
 
                 case EncryptedPacket encryptedPacket:
                     await PushEncryptedPacket(encryptedPacket, transferToken);
+                    bufferControl.DataOut(packet);
                     break;
 
                 case Packet dataPacket:
                     PushUnencryptedPacket(dataPacket, transferToken);
+                    bufferControl.DataOut(packet);
                     break;
 
                 default:
@@ -446,7 +453,7 @@ namespace JuvoPlayer.Player.EsPlayer
                         var delay = currentTransfer - (DateTime.Now - startTime);
 
                         logger.Info(
-                            $"{streamType}: Transfer task halted. {currentTransfer}/{(float)dataLength / 1024} kB pushed");
+                            $"{streamType}: Halted: {currentTransfer}/{(float)dataLength / 1024} kB. Buffered: {bufferControl.CurrentBufferSize} {bufferControl.BufferFill}%");
 
                         DelayTransfer(delay, token);
 
@@ -513,7 +520,7 @@ namespace JuvoPlayer.Player.EsPlayer
             }
 
             logger.Info(
-                $"{streamType}: Transfer task terminated. {currentTransfer}/{(float)dataLength / 1024} kB pushed");
+                $"{streamType}: Terminated: {currentTransfer}/{(float)dataLength / 1024} kB. Buffered: {bufferControl.CurrentBufferSize} {bufferControl.BufferFill}%");
 
             if (invokeError)
                 playbackErrorSubject.OnNext("Playback Error");

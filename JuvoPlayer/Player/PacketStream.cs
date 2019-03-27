@@ -79,15 +79,18 @@ namespace JuvoPlayer.Player
             if (config.StreamType() != streamType)
                 throw new ArgumentException("config type doesn't match");
 
-            if (this.config != null && this.config.Equals(config))
-                return;
-
-            forceDrmChange = (this.config != null);
-
-            this.config = config;
-
-            codecExtraDataHandler.OnStreamConfigChanged(config);
-
+            // If check does not use metadata information. Intentional.
+            // If configs are same, ignore extra data/drm change, but push
+            // it to player to adjust buffering parameters.
+            // i.e. Same Codec/FrameRate/Resolution, different bitrate.
+            if ( !(this.config != null && this.config.Equals(config)) )
+            {
+                forceDrmChange = (this.config != null);
+            
+                this.config = config;
+            
+                codecExtraDataHandler.OnStreamConfigChanged(config);
+            }
             player.SetStreamConfig(this.config);
         }
 

@@ -57,16 +57,14 @@ namespace JuvoPlayer.DataProviders
                     .Subscribe(controller.OnStreamConfigReady, context),
                 dataProvider.PacketReady()
                     .Subscribe(controller.OnPacketReady, context),
-                dataProvider.BufferingStarted()
-                    .Subscribe(unit => controller.OnBufferingStarted(), context),
-                dataProvider.BufferingCompleted()
-                    .Subscribe(unit => controller.OnBufferingCompleted(), context),
                 dataProvider.StreamError()
                     .Subscribe(controller.OnStreamError, context),
                 controller.TimeUpdated().Subscribe(dataProvider.OnTimeUpdated, context),
                 controller.StateChanged().Subscribe(dataProvider.OnStateChanged, context),
                 controller.SeekStarted()
                     .Subscribe(args => dataProvider.OnSeekStarted(args.Position, args.Id), context),
+                controller.DataStateChanged().Subscribe(dataProvider.OnDataStateChanged,context)
+
             };
         }
 

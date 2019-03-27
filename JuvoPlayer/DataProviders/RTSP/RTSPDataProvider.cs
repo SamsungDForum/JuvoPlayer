@@ -87,14 +87,9 @@ namespace JuvoPlayer.DataProviders.RTSP
                 .Merge(rtspClient.RTSPError());
         }
 
-        public IObservable<Unit> BufferingStarted()
+        public void OnDataStateChanged(DataArgs args)
         {
-            return Observable.Empty<Unit>();
-        }
 
-        public IObservable<Unit> BufferingCompleted()
-        {
-            return Observable.Empty<Unit>();
         }
 
         public void OnChangeActiveStream(StreamDescription stream)
