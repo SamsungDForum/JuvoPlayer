@@ -581,13 +581,12 @@ namespace JuvoPlayer.Player.EsPlayer
             }
         }
 
-        private Task SeekStreamInitialize(CancellationToken token)
+        private async Task SeekStreamInitialize(CancellationToken token)
         {
             logger.Info("");
             // Stop data streams. They will be restarted from
             // SeekAsync handler.
             DisableTransfer();
-            EmptyStreams();
             StopClockGenerator();
             // Make sure data transfer is stopped!
             // SeekAsync behaves unpredictably when data transfer to player
@@ -597,7 +596,9 @@ namespace JuvoPlayer.Player.EsPlayer
 
             logger.Info($"Waiting for completion of {terminations.Count} activities");
 
-            return Task.WhenAll(terminations).WithCancellation(token);
+            await Task.WhenAll(terminations).WithCancellation(token);
+
+            EmptyStreams();
         }
 
         private async Task StreamSeek(TimeSpan time, CancellationToken token)
