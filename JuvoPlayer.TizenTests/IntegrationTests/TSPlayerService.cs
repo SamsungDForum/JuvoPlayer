@@ -79,6 +79,7 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
         [TestCase("Encrypted MPEG DASH")]
         [TestCase("Encrypted 4K MPEG DASH")]
         [TestCase("Art Of Motion")]
+        [TestCase("Encrypted 4K MPEG DASH UHD")]
         public void Seek_Random10Times_Seeks(string clipTitle)
         {
             RunPlayerTest(clipTitle, async context =>
