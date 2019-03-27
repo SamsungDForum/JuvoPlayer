@@ -27,6 +27,8 @@ namespace JuvoPlayer.Player
         IObservable<TimeSpan> TimeUpdated();
         IObservable<SeekArgs> SeekStarted();
         IObservable<PlayerState> StateChanged();
+        IObservable<bool> BufferingStateChanged();
+        IObservable<DataArgs> DataNeedStateChanged();
 
         void Pause();
         void Play();

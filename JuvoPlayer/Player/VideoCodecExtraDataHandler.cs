@@ -66,10 +66,10 @@ namespace JuvoPlayer.Player
 
         public void OnStreamConfigChanged(StreamConfig config)
         {
-            parsedExtraData = new byte[0];
-
             if (!(config is VideoStreamConfig))
-                throw new ArgumentException("invalid config type");
+                return;
+
+            parsedExtraData = new byte[0];
 
             if (config.CodecExtraData == null)
                 return;

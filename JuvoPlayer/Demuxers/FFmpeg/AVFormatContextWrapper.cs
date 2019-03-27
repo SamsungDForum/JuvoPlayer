@@ -276,6 +276,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg
                     stream->codecpar->extradata_size);
             }
 
+            config.BitRate = stream->codecpar->bit_rate;
             return config;
         }
 
@@ -287,7 +288,8 @@ namespace JuvoPlayer.Demuxers.FFmpeg
                 CodecProfile = stream->codecpar->profile,
                 Size = new Size(stream->codecpar->width, stream->codecpar->height),
                 FrameRateNum = stream->r_frame_rate.num,
-                FrameRateDen = stream->r_frame_rate.den
+                FrameRateDen = stream->r_frame_rate.den,
+                BitRate = stream->codecpar->bit_rate
             };
             if (stream->codecpar->extradata_size > 0)
             {

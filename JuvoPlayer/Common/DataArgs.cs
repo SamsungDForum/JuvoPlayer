@@ -1,6 +1,6 @@
-/*!
+﻿/*!
  * https://github.com/SamsungDForum/JuvoPlayer
- * Copyright 2018, Samsung Electronics Co., Ltd
+ * Copyright 2019, Samsung Electronics Co., Ltd
  * Licensed under the MIT license
  *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
@@ -16,25 +16,12 @@
  */
 
 using System;
-using System.Reactive;
-using System.Threading.Tasks;
-using MpdParser;
 
-namespace JuvoPlayer.DataProviders.Dash
+namespace JuvoPlayer.Common
 {
-    internal interface IDashClient : IDisposable
+    public struct DataArgs
     {
-        TimeSpan Seek(TimeSpan position);
-        void Start(bool initRequired);
-        void Stop();
-        void Reset();
-        void OnTimeUpdated(TimeSpan time);
-        void UpdateRepresentation(Representation representation);
-        void ScheduleNextSegDownload();
-        void ProvideData(bool dataNeeded);
-        bool CanStreamSwitch();
-
-        IObservable<string> ErrorOccurred();
-        IObservable<Unit> DownloadCompleted();
+        public StreamType StreamType  { get; internal set; }
+        public bool DataFlag { get; internal set; }
     }
 }

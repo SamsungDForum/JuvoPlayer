@@ -41,6 +41,9 @@ namespace JuvoPlayer.Player.EsPlayer
         {
             public EsStream Stream { get; set; }
             public StreamType StreamType { get; set; }
+            public BufferControl BufferControl {get; set; }
+            public bool IsBuffering { get; set; }
+            public MetaDataStreamConfig MetaData { get; set; }
         }
 
         private readonly ILogger logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
@@ -60,6 +63,7 @@ namespace JuvoPlayer.Player.EsPlayer
         private readonly Subject<string> playbackErrorSubject = new Subject<string>();
         private readonly Subject<SeekArgs> seekStartedSubject = new Subject<SeekArgs>();
         private readonly Subject<PlayerState> stateChangedSubject = new Subject<PlayerState>();
+        private readonly Subject<bool> bufferingChangedSubject = new Subject<bool>();
 
         // Timer process and supporting cancellation elements for clock extraction
         // and generation
@@ -101,13 +105,20 @@ namespace JuvoPlayer.Player.EsPlayer
 
             // Create new data stream & chunk state entry
             //
+            var bufferControl = new BufferControl(stream);
             dataStreams[(int)stream] = new DataStream
             {
-                Stream = new EsStream(stream, packetStorage),
-                StreamType = stream
+                BufferControl = bufferControl,
+                Stream = new EsStream(stream, packetStorage,bufferControl),
+                StreamType = stream,
+                IsBuffering = false
             };
 
             dataStreams[(int)stream].Stream.SetPlayer(player);
+
+            dataStreams[(int) stream].BufferControl.BufferState
+                .Subscribe(OnBufferingChange, SynchronizationContext.Current);
+
             streamReconfigureSubs[(int)stream] = dataStreams[(int)stream].Stream.StreamReconfigure()
                 .Subscribe(unit => OnStreamReconfigure(), SynchronizationContext.Current);
             playbackErrorSubs[(int)stream] = dataStreams[(int)stream].Stream.PlaybackError()
@@ -155,6 +166,11 @@ namespace JuvoPlayer.Player.EsPlayer
             player.ResourceConflicted += OnResourceConflicted;
         }
 
+        public void DataIn(Packet packet)
+        {
+            dataStreams[(int) packet.StreamType].BufferControl.DataIn(packet);
+        }
+
         /// <summary>
         /// Sets provided configuration to appropriate stream.
         /// </summary>
@@ -167,6 +183,20 @@ namespace JuvoPlayer.Player.EsPlayer
 
             try
             {
+                if (config.Config is MetaDataStreamConfig metaData)
+                {
+                    if (dataStreams[(int) streamType].MetaData == metaData)
+                        return;
+
+                    logger.Info(metaData.ToString());
+
+                    dataStreams[(int) streamType].MetaData = metaData;
+
+                    // Update buffer configuration
+                    dataStreams[(int)streamType].BufferControl.UpdateBufferConfiguration(metaData);
+                    return;
+                }
+
                 var pushResult = dataStreams[(int)streamType].Stream.SetStreamConfig(config);
 
                 // Configuration queued. Do not prepare stream :)
@@ -353,6 +383,7 @@ namespace JuvoPlayer.Player.EsPlayer
                 ? BufferState.BufferOverrun
                 : BufferState.BufferUnderrun;
 
+            logger.Info($"{juvoStream} {state}");
             if (state == BufferState.BufferUnderrun)
                 dataStreams[(int)juvoStream].Stream.Wakeup();
         }
@@ -754,6 +785,17 @@ namespace JuvoPlayer.Player.EsPlayer
             clockGeneratorCts.Cancel();
         }
 
+        private void OnBufferingChange(DataArgs args)
+        {
+            dataStreams[(int) args.StreamType].IsBuffering = args.DataFlag;
+
+            var streamsBufferingState = dataStreams
+                .Where(esStream => esStream != null)
+                .Any(esStream => esStream.IsBuffering);
+
+            bufferingChangedSubject.OnNext(streamsBufferingState);
+        }
+
         #endregion
 
         #region Dispose support
@@ -855,6 +897,19 @@ namespace JuvoPlayer.Player.EsPlayer
         public IObservable<PlayerState> StateChanged()
         {
             return stateChangedSubject.AsObservable();
+        }
+
+        public IObservable<bool> BufferingStateChanged()
+        {
+            return bufferingChangedSubject.DistinctUntilChanged().AsObservable();
+        }
+
+        public IObservable<DataArgs> DataNeededStateChanged()
+        {
+            return dataStreams
+                .Where(esStream => esStream != null)
+                .Select(esStream => esStream.BufferControl.DataState)
+                .Aggregate((curr, next) => curr.Merge(next));
         }
     }
 }
