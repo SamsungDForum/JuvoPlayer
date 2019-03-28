@@ -38,8 +38,6 @@ namespace JuvoPlayer.Player
         void OnStreamConfigReady(StreamConfig config);
         void OnPacketReady(Packet packet);
         void OnStreamError(string errorMessage);
-        void OnBufferingStarted();
-        void OnBufferingCompleted();
         IPlayerClient Client { set; }
         #endregion
 
