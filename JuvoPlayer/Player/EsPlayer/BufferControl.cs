@@ -54,10 +54,10 @@ namespace JuvoPlayer.Player.EsPlayer
         */
 
         private readonly Subject<DataArgs> dataSubject = new Subject<DataArgs>();
-        private readonly Subject<DataArgs> bufferSubject = new Subject<DataArgs>();
+        private readonly Subject<bool> bufferSubject = new Subject<bool>();
         
 
-        public IObservable<DataArgs> BufferState => bufferSubject.AsObservable();
+        public IObservable<bool> BufferState => bufferSubject.AsObservable();
         public IObservable<DataArgs> DataState => dataSubject.AsObservable();
 
         private bool isBufferingNeeded = false;
@@ -195,7 +195,7 @@ namespace JuvoPlayer.Player.EsPlayer
 
             subjectNotifier.ContinueWith(_ =>
             {
-                bufferSubject.OnNext(new DataArgs {StreamType = streamType, DataFlag = isBufferingNeeded});
+                bufferSubject.OnNext(isBufferingNeeded);
                 logger.Info($"{streamType}: Buffer {isBufferingNeeded} {TimeSpan.FromTicks(currentBuffer)}");
             });
         }

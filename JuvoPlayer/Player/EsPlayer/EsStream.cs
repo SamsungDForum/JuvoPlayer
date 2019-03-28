@@ -337,12 +337,10 @@ namespace JuvoPlayer.Player.EsPlayer
 
                 case EncryptedPacket encryptedPacket:
                     await PushEncryptedPacket(encryptedPacket, transferToken);
-                    bufferControl.DataOut(packet);
                     break;
 
                 case Packet dataPacket:
                     PushUnencryptedPacket(dataPacket, transferToken);
-                    bufferControl.DataOut(packet);
                     break;
 
                 default:
@@ -390,7 +388,7 @@ namespace JuvoPlayer.Player.EsPlayer
                     var delay = barrier.TimeToNextFrame();
 
                     logger.Info(
-                        $"{streamType}: Transfer task halted.");
+                        $"{streamType}: Transfer task halted. Buffer {bufferControl.BufferFill}% {bufferControl.CurrentBufferSize}");
 
                     DelayTransfer(delay, token);
 
@@ -425,7 +423,7 @@ namespace JuvoPlayer.Player.EsPlayer
             }
 
             logger.Info(
-                $"{streamType}: Transfer task terminated.");
+                $"{streamType}: Transfer task terminated. Buffer {bufferControl.BufferFill}% {bufferControl.CurrentBufferSize}");
         }
 
         private async Task<bool> ProcessNextPacket(CancellationToken token)
@@ -436,6 +434,7 @@ namespace JuvoPlayer.Player.EsPlayer
             var shouldContinue = await ProcessPacket(currentPacket, token);
 
             barrier.PacketPushed(currentPacket);
+            bufferControl.DataOut(currentPacket);
             currentPacket.Dispose();
             currentPacket = null;
             return shouldContinue;

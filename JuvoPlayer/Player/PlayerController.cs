@@ -191,13 +191,13 @@ namespace JuvoPlayer.Player
             player.SetPlaybackRate(rate);
         }
 
-        public void OnBufferingStarted()
+        private void OnBufferingStarted()
         {
             bufferingProgressSubject.OnNext(0);
             player.Pause();
         }
 
-        public void OnBufferingCompleted()
+        private void OnBufferingCompleted()
         {
             player.Play();
             bufferingProgressSubject.OnNext(100);

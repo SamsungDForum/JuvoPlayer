@@ -45,6 +45,8 @@ namespace JuvoPlayer.Player.EsPlayer
         // stream data and data storage
         private readonly EsStream[] esStreams;
         private readonly EsPlayerPacketStorage packetStorage;
+        private readonly BufferControl[] bufferControls;
+        private MetaDataStreamConfig[] metaDataConfigs;
 
         // Reference to ESPlayer & associated window
         private ESPlayer.ESPlayer player;
@@ -86,14 +88,15 @@ namespace JuvoPlayer.Player.EsPlayer
         {
             logger.Info(stream.ToString());
 
-            if (dataStreams[(int)stream] != null)
+            if (esStreams[(int)stream] != null)
             {
                 throw new ArgumentException($"Stream {stream} already initialized");
             }
 
             // Create new data stream & chunk state entry
             //
-            var esStream = new EsStream(stream, packetStorage);
+            var bufferControl = new BufferControl(stream);
+            var esStream = new EsStream(stream, packetStorage,bufferControl);
             esStream.SetPlayer(player);
 
             streamReconfigureSubs[(int) stream] = esStream.StreamReconfigure()
@@ -102,6 +105,7 @@ namespace JuvoPlayer.Player.EsPlayer
                 .Subscribe(OnEsStreamError, SynchronizationContext.Current);
 
             esStreams[(int) stream] = esStream;
+            bufferControls[(int) stream] = bufferControl;
         }
 
         public EsStreamController(EsPlayerPacketStorage storage)
@@ -121,6 +125,8 @@ namespace JuvoPlayer.Player.EsPlayer
 
             // Create placeholder to data streams & chunk states
             esStreams = new EsStream[(int) StreamType.Count];
+            bufferControls = new BufferControl[(int) StreamType.Count];
+            metaDataConfigs = new MetaDataStreamConfig[(int) StreamType.Count];
             streamReconfigureSubs = new IDisposable[(int) StreamType.Count];
             playbackErrorSubs = new IDisposable[(int) StreamType.Count];
 
@@ -146,12 +152,12 @@ namespace JuvoPlayer.Player.EsPlayer
             player.BufferStatusChanged += OnBufferStatusChanged;
             player.ResourceConflicted += OnResourceConflicted;
         }
-/*
+
         public void DataIn(Packet packet)
         {
-            dataStreams[(int) packet.StreamType].BufferControl.DataIn(packet);
+            bufferControls[(int) packet.StreamType].DataIn(packet);
         }
-*/
+
         /// <summary>
         /// Sets provided configuration to appropriate stream.
         /// </summary>
@@ -164,23 +170,23 @@ namespace JuvoPlayer.Player.EsPlayer
 
             try
             {
-/*
+
                 if (config.Config is MetaDataStreamConfig metaData)
                 {
-                    if (dataStreams[(int) streamType].MetaData == metaData)
+                    if (metaDataConfigs[(int) streamType] == metaData)
                         return;
 
                     logger.Info(metaData.ToString());
 
-                    dataStreams[(int) streamType].MetaData = metaData;
+                    metaDataConfigs[(int) streamType] = metaData;
 
                     // Update buffer configuration
-                    dataStreams[(int)streamType].BufferControl.UpdateBufferConfiguration(metaData);
+                    bufferControls[(int)streamType].UpdateBufferConfiguration(metaData);
                     return;
                 }
-*/
 
-                var pushResult = dataStreams[(int)streamType].Stream.SetStreamConfig(config);
+
+                var pushResult = esStreams[(int)streamType].SetStreamConfig(config);
 
                 // Configuration queued. Do not prepare stream :)
                 if (pushResult == EsStream.SetStreamConfigResult.ConfigQueued)
@@ -644,6 +650,9 @@ namespace JuvoPlayer.Player.EsPlayer
         {
             foreach (var esStream in esStreams)
                 esStream?.EmptyStorage();
+
+            foreach (var buffer in bufferControls)
+                buffer?.Reset();
         }
 
         /// <summary>
@@ -753,18 +762,6 @@ namespace JuvoPlayer.Player.EsPlayer
 
             clockGeneratorCts.Cancel();
         }
-/*
-        private void OnBufferingChange(DataArgs args)
-        {
-            dataStreams[(int) args.StreamType].IsBuffering = args.DataFlag;
-
-            var streamsBufferingState = dataStreams
-                .Where(esStream => esStream != null)
-                .Any(esStream => esStream.IsBuffering);
-
-            bufferingChangedSubject.OnNext(streamsBufferingState);
-        }
-*/
 
         #endregion
 
@@ -802,6 +799,8 @@ namespace JuvoPlayer.Player.EsPlayer
 
             TerminateAsyncOperations();
 
+            ShutdownBufferControls();
+
             ShutdownStreams();
 
             DisposeAllSubjects();
@@ -831,6 +830,14 @@ namespace JuvoPlayer.Player.EsPlayer
                 esStream?.Dispose();
         }
 
+        private void ShutdownBufferControls()
+        {
+            // Dispose of individual buffer controls
+            logger.Info("Buffer bufferControls shutdown");
+            foreach (var buffer in bufferControls)
+                buffer?.Dispose();
+            
+        }
         private void DetachEventHandlers()
         {
             // Detach event handlers
@@ -862,19 +869,31 @@ namespace JuvoPlayer.Player.EsPlayer
         {
             return stateChangedSubject.AsObservable();
         }
-/*
+
         public IObservable<bool> BufferingStateChanged()
         {
-            return bufferingChangedSubject.DistinctUntilChanged().AsObservable();
+ 
+
+            return bufferControls
+                .Where(buffer => buffer != null)
+                .Select(buffer => buffer.BufferState)
+                .CombineLatest(bufferStateList =>
+                {
+                    var res = !bufferStateList.Contains(false);
+
+                    logger.Info($"Composite buffer status: {res}");
+                    return res;
+                });
+
         }
 
         public IObservable<DataArgs> DataNeededStateChanged()
         {
-            return dataStreams
-                .Where(esStream => esStream != null)
-                .Select(esStream => esStream.BufferControl.DataState)
+            return bufferControls
+                .Where(buffer => buffer != null)
+                .Select(buffer => buffer.DataState)
                 .Aggregate((curr, next) => curr.Merge(next));
         }
-*/
+
     }
 }
