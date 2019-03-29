@@ -3,7 +3,7 @@
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <TargetFramework>tizen50</TargetFramework>
-    <Version>1.4.5</Version>
+    <Version>1.4.6</Version>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugType>portable</DebugType>
@@ -16,21 +16,21 @@
     <Folder Include="res\" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\..\JuvoPlayer\JuvoPlayer.csproj" />
+    <ProjectReference Include="..\JuvoPlayer\JuvoPlayer.csproj" />
   </ItemGroup>
   <!-- Include Nuget Package for Tizen Project building -->
   <ItemGroup>
     <PackageReference Include="Tizen.NET.Sdk" Version="1.0.1" />
-    <PackageReference Include="Tizen.NET.TV" Version="5.5.0.4922">
+    <PackageReference Include="Tizen.NET.TV" Version="4.4.0.1341">
       <ExcludeAssets>Runtime</ExcludeAssets>
     </PackageReference>
     <PackageReference Include="Tizen.TV.Multimedia" Version="1.1.6">
       <ExcludeAssets>Runtime</ExcludeAssets>
     </PackageReference>
-    <PackageReference Include="Xamarin.Forms" Version="3.6.0.264807" />
+    <PackageReference Include="Xamarin.Forms" Version="3.5.0.274416" />
   </ItemGroup>
   <Target Name="UpdateVersion" BeforeTargets="PrepareForBuild">
-    <XmlPeek XmlInputPath="..\..\..\JuvoPlayer\JuvoPlayer.csproj" Query="/Project/PropertyGroup/Version[1]/text()">
+    <XmlPeek XmlInputPath="..\JuvoPlayer\JuvoPlayer.csproj" Query="/Project/PropertyGroup/Version[1]/text()">
       <Output TaskParameter="Result" ItemName="JuvoPlayerVersion" />
     </XmlPeek>
     <XmlPoke XmlInputPath="SimplePlayer.Tizen.TV.csproj" Query="/Project/PropertyGroup/Version" Value="@(JuvoPlayerVersion)" />
