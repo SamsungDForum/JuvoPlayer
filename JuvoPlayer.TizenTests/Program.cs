@@ -26,6 +26,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using JuvoLogger;
 using JuvoLogger.Tizen;
+using JuvoPlayer.Tests.Utils;
 using Tizen.Applications;
 using Path = System.IO.Path;
 using Window = ElmSharp.Window;
@@ -50,7 +51,7 @@ namespace JuvoPlayer.TizenTests
 
             mainWindow = new Window("Main Window") {Geometry = new ElmSharp.Rect(0, 0, 1920, 1080)};
             mainWindow.Show();
-            JuvoPlayer.TizenTests.Utils.PlayerService.SetWindow(mainWindow);
+            PlayerService.SetWindow(mainWindow);
         }
 
         private void ExtractNunitArgs()

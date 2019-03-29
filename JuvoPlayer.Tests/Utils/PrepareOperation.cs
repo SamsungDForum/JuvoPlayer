@@ -17,17 +17,43 @@
 
 using System;
 using System.Threading.Tasks;
+using JuvoPlayer.Common;
+using NUnit.Framework;
 
-namespace JuvoPlayer.TizenTests.Utils
+namespace JuvoPlayer.Tests.Utils
 {
-    public class RandomDelayOperation : TestOperation
+    [Serializable]
+    public class PrepareOperation : TestOperation
     {
+        public override bool Equals(object obj)
+        {
+            if (ReferenceEquals(null, obj)) return false;
+            if (ReferenceEquals(this, obj)) return true;
+            return obj.GetType() == GetType();
+        }
+
+        public override int GetHashCode()
+        {
+            return 0;
+        }
+
+        public void Prepare(TestContext context)
+        {
+        }
+
         public Task Execute(TestContext context)
         {
-            var maxDelayTime = context.RandomMaxDelayTime;
-            var rand = new Random();
-            var next = rand.Next((int) maxDelayTime.TotalMilliseconds);
-            return Task.Delay(TimeSpan.FromMilliseconds(next));
+            var service = context.Service;
+            var clipTitle = context.ClipTitle;
+
+            var clips = service.ReadClips();
+            var clip = clips.Find(_ => _.Title.Equals(clipTitle));
+
+            Assert.That(clip, Is.Not.Null);
+
+            service.SetSource(clip);
+
+            return StateChangedTask.Observe(service, PlayerState.Prepared, context.Token, context.Timeout);
         }
     }
 }

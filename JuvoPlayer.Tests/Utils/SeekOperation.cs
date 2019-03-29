@@ -21,29 +21,53 @@ using System.Threading.Tasks;
 using JuvoLogger;
 using JuvoPlayer.Player.EsPlayer;
 
-namespace JuvoPlayer.TizenTests.Utils
+namespace JuvoPlayer.Tests.Utils
 {
+    [Serializable]
     public class SeekOperation : TestOperation
     {
         private readonly ILogger _logger = LoggerManager.GetInstance().GetLogger("UT");
 
+        public TimeSpan SeekPosition { get; set; }
+
+        private bool Equals(SeekOperation other)
+        {
+            return SeekPosition.Equals(other.SeekPosition);
+        }
+
+        public override bool Equals(object obj)
+        {
+            if (ReferenceEquals(null, obj)) return false;
+            if (ReferenceEquals(this, obj)) return true;
+            return obj.GetType() == GetType() && Equals((SeekOperation) obj);
+        }
+
+        public override int GetHashCode()
+        {
+            return SeekPosition.GetHashCode();
+        }
+
+        public void Prepare(TestContext context)
+        {
+            var service = context.Service;
+            SeekPosition = context.SeekTime ?? RandomSeekTime(service);
+        }
+
         public async Task Execute(TestContext context)
         {
             var service = context.Service;
-            var position = context.SeekTime ?? RandomSeekTime(service);
-
-            _logger.Info($"Seeking to {position}");
+            _logger.Info($"Seeking to {SeekPosition}");
 
             using (var timeoutCts = new CancellationTokenSource())
             using (var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(timeoutCts.Token, context.Token))
             {
                 timeoutCts.CancelAfter(context.Timeout);
 
-                await service.SeekTo(position).WithCancellation(linkedCts.Token);
+                await service.SeekTo(SeekPosition).WithCancellation(linkedCts.Token);
 
                 for (var i = 0; i < 50; i++)
                 {
-                    var seekPos = position;
+                    var seekPos = SeekPosition;
                     var curPos = service.CurrentPosition;
                     var diffMs = Math.Abs((curPos - seekPos).TotalMilliseconds);
                     if (diffMs < 500)
@@ -55,7 +79,7 @@ namespace JuvoPlayer.TizenTests.Utils
             }
         }
 
-        private TimeSpan RandomSeekTime(PlayerService service)
+        private static TimeSpan RandomSeekTime(IPlayerService service)
         {
             var rand = new Random();
             return TimeSpan.FromSeconds(rand.Next((int) service.Duration.TotalSeconds - 10));
