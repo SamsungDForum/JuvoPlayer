@@ -61,13 +61,9 @@ namespace JuvoPlayer.Common
             if (Packet.size < suffixPes.Length)
                 return false;
 
-            for (int i = 0, dataOffset = Packet.size - suffixPes.Length;
-                i < suffixPes.Length && i + dataOffset < Packet.size;
-                ++i)
-            {
+            for (int i = 0, dataOffset = Packet.size - suffixPes.Length; i < suffixPes.Length; ++i)
                 if (Packet.data[i + dataOffset] != suffixPes[i])
                     return false;
-            }
 
             return true;
         }
