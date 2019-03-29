@@ -9,7 +9,7 @@ The reference for developers of streaming live TV and VOD Tizen .Net application
  * HLS protocol scenario's downloader and demuxer
  * RTP/RTSP protocol based scenario's demuxer. 
  * MPEG DASH protocol based scenario's demuxer.  
-2. [https://github.com/ngraziano/SharpRTSP][rtsplink] . (RTSP module, 2nd March 2017 ) - RTP/RTSP protocol scenarios downloader
+2. [https://github.com/ngraziano/SharpRTSP][rtsplink] . (RTSP module, 23rd December 2018) - RTP/RTSP protocol scenarios downloader
 
   [rtsplink]: https://github.com/ngraziano/SharpRTSP
   
@@ -36,6 +36,16 @@ The reference for developers of streaming live TV and VOD Tizen .Net application
 2. Start the select GUI project by pressing F5 (debug) or ctrl+F5 (release)
 
 ## Features and release notes
+**JuvoPlayer 1.4.6 (beta)**
+1. Features:
+* All features of the JuvoPlayer 1.4.5
+* Update - sync with the original GitHub project - of the RTSP module code (see dependencies)
+* Memory management optimizations (stability improvements)
+* Support for x86 processors architecture (TV emulator)
+* SimplePlayer GUI project added for illustrating simple playback scenario
+2. Known issues:
+* Multitasking - switching between runing apps - video sometimes do not recover
+
 **JuvoPlayer 1.4.5 (beta)**
 1. Features:
 * All features of the JuvoPlayer 1.4.4
@@ -44,7 +54,7 @@ The reference for developers of streaming live TV and VOD Tizen .Net application
 2. Known issues:
 * RTP/RTSP playback does not start (regresion)
 * Not enoght memory for UHD Widevine DRMed video (Tears of steel)
-* Multitasking - switching between runing apps - video sometimes do not recover 
+* Multitasking - switching between runing apps - video sometimes do not recover
 
 **JuvoPlayer 1.4.4 (beta)** 
 1. Features:
