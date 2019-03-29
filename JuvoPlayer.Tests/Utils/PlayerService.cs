@@ -15,16 +15,34 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-using System.Threading.Tasks;
+using System.Collections.Generic;
+using System.IO;
+using System.Linq;
+using ElmSharp;
+using JuvoPlayer.Common;
+using JuvoPlayer.Utils;
 
-namespace JuvoPlayer.TizenTests.Utils
+namespace JuvoPlayer.Tests.Utils
 {
-    public class DelayOperation : TestOperation
+    public class PlayerService : JuvoPlayer.PlayerServiceImpl
     {
-        public Task Execute(TestContext context)
+        private static Window window;
+
+        public PlayerService()
+            : base(window)
         {
-            var delay = context.DelayTime;
-            return Task.Delay(delay);
+        }
+
+        public static void SetWindow(Window w)
+        {
+            window = w;
+        }
+
+        public List<ClipDefinition> ReadClips()
+        {
+            var applicationPath = Paths.ApplicationPath;
+            var clipsPath = Path.Combine(applicationPath, "res", "videoclips.json");
+            return JSONFileReader.DeserializeJsonFile<List<ClipDefinition>>(clipsPath).ToList();
         }
     }
 }

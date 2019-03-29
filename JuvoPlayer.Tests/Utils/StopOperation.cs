@@ -15,34 +15,34 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-using System.Collections.Generic;
-using System.IO;
-using System.Linq;
-using ElmSharp;
+using System.Threading.Tasks;
 using JuvoPlayer.Common;
-using JuvoPlayer.Utils;
 
-namespace JuvoPlayer.TizenTests.Utils
+namespace JuvoPlayer.Tests.Utils
 {
-    public class PlayerService : JuvoPlayer.PlayerServiceImpl
+    public class StopOperation : TestOperation
     {
-        private static Window window;
+        public override bool Equals(object obj)
+        {
+            if (ReferenceEquals(null, obj)) return false;
+            if (ReferenceEquals(this, obj)) return true;
+            return obj.GetType() == GetType();
+        }
 
-        public PlayerService()
-            : base(window)
+        public override int GetHashCode()
+        {
+            return 0;
+        }
+
+        public void Prepare(TestContext context)
         {
         }
 
-        public static void SetWindow(Window w)
+        public Task Execute(TestContext context)
         {
-            window = w;
-        }
-
-        public List<ClipDefinition> ReadClips()
-        {
-            var applicationPath = Paths.ApplicationPath;
-            var clipsPath = Path.Combine(applicationPath, "res", "videoclips.json");
-            return JSONFileReader.DeserializeJsonFile<List<ClipDefinition>>(clipsPath).ToList();
+            var service = context.Service;
+            service.Stop();
+            return StateChangedTask.Observe(service, PlayerState.Idle, context.Token, context.Timeout);
         }
     }
 }
