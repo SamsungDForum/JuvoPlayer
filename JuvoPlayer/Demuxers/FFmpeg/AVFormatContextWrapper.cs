@@ -220,7 +220,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg
                 packet.Dts = TimeSpan.FromMilliseconds(dts >= 0 ? dts : 0);
                 packet.Duration = TimeSpan.FromMilliseconds(duration);
                 packet.IsKeyFrame = pkt.flags == 1;
-                packet.Storage = new FFmpegDataStorage {Packet = pkt};
+                packet.Storage = new FFmpegDataStorage {Packet = pkt, StreamType = packet.StreamType};
                 return packet;
             } while (true);
         }
