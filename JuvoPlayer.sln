@@ -22,9 +22,9 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "JuvoLogger.Tizen", "JuvoLog
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "JuvoPlayer.OpenGL", "JuvoPlayer.OpenGL\JuvoPlayer.OpenGL.csproj", "{81B4F92B-0168-4B86-9CA4-1472DDCEFEF0}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SimplePlayer.Tizen.TV", "SimplePlayer\SimplePlayer\SimplePlayer.Tizen.TV\SimplePlayer.Tizen.TV.csproj", "{B5B1967E-225C-47A5-BDFE-1B2902936A2C}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Configuration", "Configuration\Configuration.csproj", "{EEC056FC-078B-45C9-A781-4C37DD86E82F}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Configuration", "Configuration\Configuration.csproj", "{EEC056FC-078B-45C9-A781-4C37DD86E82F}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SimplePlayer.Tizen.TV", "SimplePlayer.Tizen.TV\SimplePlayer.Tizen.TV.csproj", "{C5EA225E-2165-41B1-8493-5FAEE0580E30}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -156,18 +156,6 @@ Global
 		{81B4F92B-0168-4B86-9CA4-1472DDCEFEF0}.Release|x64.Build.0 = Release|Any CPU
 		{81B4F92B-0168-4B86-9CA4-1472DDCEFEF0}.Release|x86.ActiveCfg = Release|Any CPU
 		{81B4F92B-0168-4B86-9CA4-1472DDCEFEF0}.Release|x86.Build.0 = Release|Any CPU
-		{B5B1967E-225C-47A5-BDFE-1B2902936A2C}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{B5B1967E-225C-47A5-BDFE-1B2902936A2C}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{B5B1967E-225C-47A5-BDFE-1B2902936A2C}.Debug|x64.ActiveCfg = Debug|Any CPU
-		{B5B1967E-225C-47A5-BDFE-1B2902936A2C}.Debug|x64.Build.0 = Debug|Any CPU
-		{B5B1967E-225C-47A5-BDFE-1B2902936A2C}.Debug|x86.ActiveCfg = Debug|Any CPU
-		{B5B1967E-225C-47A5-BDFE-1B2902936A2C}.Debug|x86.Build.0 = Debug|Any CPU
-		{B5B1967E-225C-47A5-BDFE-1B2902936A2C}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{B5B1967E-225C-47A5-BDFE-1B2902936A2C}.Release|Any CPU.Build.0 = Release|Any CPU
-		{B5B1967E-225C-47A5-BDFE-1B2902936A2C}.Release|x64.ActiveCfg = Release|Any CPU
-		{B5B1967E-225C-47A5-BDFE-1B2902936A2C}.Release|x64.Build.0 = Release|Any CPU
-		{B5B1967E-225C-47A5-BDFE-1B2902936A2C}.Release|x86.ActiveCfg = Release|Any CPU
-		{B5B1967E-225C-47A5-BDFE-1B2902936A2C}.Release|x86.Build.0 = Release|Any CPU
 		{EEC056FC-078B-45C9-A781-4C37DD86E82F}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{EEC056FC-078B-45C9-A781-4C37DD86E82F}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{EEC056FC-078B-45C9-A781-4C37DD86E82F}.Debug|x64.ActiveCfg = Debug|Any CPU
@@ -180,6 +168,18 @@ Global
 		{EEC056FC-078B-45C9-A781-4C37DD86E82F}.Release|x64.Build.0 = Release|Any CPU
 		{EEC056FC-078B-45C9-A781-4C37DD86E82F}.Release|x86.ActiveCfg = Release|Any CPU
 		{EEC056FC-078B-45C9-A781-4C37DD86E82F}.Release|x86.Build.0 = Release|Any CPU
+		{C5EA225E-2165-41B1-8493-5FAEE0580E30}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{C5EA225E-2165-41B1-8493-5FAEE0580E30}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{C5EA225E-2165-41B1-8493-5FAEE0580E30}.Debug|x64.ActiveCfg = Debug|Any CPU
+		{C5EA225E-2165-41B1-8493-5FAEE0580E30}.Debug|x64.Build.0 = Debug|Any CPU
+		{C5EA225E-2165-41B1-8493-5FAEE0580E30}.Debug|x86.ActiveCfg = Debug|Any CPU
+		{C5EA225E-2165-41B1-8493-5FAEE0580E30}.Debug|x86.Build.0 = Debug|Any CPU
+		{C5EA225E-2165-41B1-8493-5FAEE0580E30}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{C5EA225E-2165-41B1-8493-5FAEE0580E30}.Release|Any CPU.Build.0 = Release|Any CPU
+		{C5EA225E-2165-41B1-8493-5FAEE0580E30}.Release|x64.ActiveCfg = Release|Any CPU
+		{C5EA225E-2165-41B1-8493-5FAEE0580E30}.Release|x64.Build.0 = Release|Any CPU
+		{C5EA225E-2165-41B1-8493-5FAEE0580E30}.Release|x86.ActiveCfg = Release|Any CPU
+		{C5EA225E-2165-41B1-8493-5FAEE0580E30}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
