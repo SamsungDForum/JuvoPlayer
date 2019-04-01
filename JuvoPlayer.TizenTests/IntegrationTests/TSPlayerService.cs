@@ -19,6 +19,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.IO;
+using System.Linq;
 using System.Reactive.Linq;
 using System.Reactive.Threading.Tasks;
 using System.Threading;
@@ -26,6 +27,7 @@ using System.Threading.Tasks;
 using JuvoPlayer.Common;
 using JuvoPlayer.Tests.Utils;
 using JuvoPlayer.TizenTests.Utils;
+using JuvoPlayer.Utils;
 using Nito.AsyncEx;
 using NUnit.Framework;
 using TestContext = JuvoPlayer.Tests.Utils.TestContext;
@@ -57,16 +59,8 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
             });
         }
 
-        [TestCase("Clean MP4 over HTTP")]
-        [TestCase("Clean byte range MPEG DASH")]
-        [TestCase("Clean fMP4 MPEG DASH")]
-        [TestCase("Sintel - Clean fMP4 MPEG DASH - multiple languages")]
-        [TestCase("Encrypted MPEG DASH")]
-        [TestCase("Encrypted 4K MPEG DASH")]
-        [TestCase("Clean HLS")]
-        [TestCase("Clean HEVC 4k MPEG DASH")]
-        [TestCase("Art Of Motion")]
-        [TestCase("Encrypted 4K MPEG DASH UHD")]
+
+        [Test, TestCaseSource(nameof(AllClips))]
         public void Playback_Basic_PreparesAndStarts(string clipTitle)
         {
             RunPlayerTest(clipTitle, async context =>
@@ -77,13 +71,7 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
             });
         }
 
-        [TestCase("Clean byte range MPEG DASH")]
-        [TestCase("Clean fMP4 MPEG DASH")]
-        [TestCase("Sintel - Clean fMP4 MPEG DASH - multiple languages")]
-        [TestCase("Encrypted MPEG DASH")]
-        [TestCase("Encrypted 4K MPEG DASH")]
-        [TestCase("Art Of Motion")]
-        [TestCase("Encrypted 4K MPEG DASH UHD")]
+        [Test, TestCaseSource(nameof(DashClips))]
         public void Seek_Random10Times_Seeks(string clipTitle)
         {
             RunPlayerTest(clipTitle, async context =>
@@ -93,12 +81,7 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
             });
         }
 
-        [TestCase("Clean byte range MPEG DASH")]
-        [TestCase("Clean fMP4 MPEG DASH")]
-        [TestCase("Sintel - Clean fMP4 MPEG DASH - multiple languages")]
-        [TestCase("Encrypted MPEG DASH")]
-        [TestCase("Encrypted 4K MPEG DASH")]
-        [TestCase("Art Of Motion")]
+        [Test, TestCaseSource(nameof(DashClips))]
         public void Seek_DisposeDuringSeek_Disposes(string clipTitle)
         {
             RunPlayerTest(clipTitle, async context =>
@@ -110,12 +93,7 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
             });
         }
 
-        [TestCase("Clean byte range MPEG DASH")]
-        [TestCase("Clean fMP4 MPEG DASH")]
-        [TestCase("Sintel - Clean fMP4 MPEG DASH - multiple languages")]
-        [TestCase("Encrypted MPEG DASH")]
-        [TestCase("Encrypted 4K MPEG DASH")]
-        [TestCase("Art Of Motion")]
+        [Test, TestCaseSource(nameof(DashClips))]
         public void Seek_Forward_Seeks(string clipTitle)
         {
             RunPlayerTest(clipTitle, async context =>
@@ -132,12 +110,7 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
             });
         }
 
-        [TestCase("Clean byte range MPEG DASH")]
-        [TestCase("Clean fMP4 MPEG DASH")]
-        [TestCase("Sintel - Clean fMP4 MPEG DASH - multiple languages")]
-        [TestCase("Encrypted MPEG DASH")]
-        [TestCase("Encrypted 4K MPEG DASH")]
-        [TestCase("Art Of Motion")]
+        [Test, TestCaseSource(nameof(DashClips))]
         public void Seek_Backward_Seeks(string clipTitle)
         {
             RunPlayerTest(clipTitle, async context =>
@@ -154,12 +127,7 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
             });
         }
 
-        [TestCase("Clean byte range MPEG DASH")]
-        [TestCase("Clean fMP4 MPEG DASH")]
-        [TestCase("Sintel - Clean fMP4 MPEG DASH - multiple languages")]
-        [TestCase("Encrypted MPEG DASH")]
-        [TestCase("Encrypted 4K MPEG DASH")]
-        [TestCase("Art Of Motion")]
+        [Test, TestCaseSource(nameof(DashClips))]
         public void Seek_ToTheEnd_Seeks(string clipTitle)
         {
             RunPlayerTest(clipTitle, async context =>
@@ -177,13 +145,7 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
             });
         }
 
-        [TestCase("Clean byte range MPEG DASH")]
-        [TestCase("Clean fMP4 MPEG DASH")]
-        [TestCase("Sintel - Clean fMP4 MPEG DASH - multiple languages")]
-        [TestCase("Encrypted MPEG DASH")]
-        [TestCase("Encrypted 4K MPEG DASH")]
-        [TestCase("Art Of Motion")]
-        [TestCase("Encrypted 4K MPEG DASH UHD")]
+        [Test, TestCaseSource(nameof(DashClips))]
         public void Seek_EOSReached_StateChangedCompletes(string clipTitle)
         {
             RunPlayerTest(clipTitle, async context =>
@@ -244,6 +206,13 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
             }
         }
 
+        private static IEnumerable<ClipDefinition> ReadClips()
+        {
+            var applicationPath = Paths.ApplicationPath;
+            var clipsPath = Path.Combine(applicationPath, "res", "videoclips.json");
+            return JSONFileReader.DeserializeJsonFile<List<ClipDefinition>>(clipsPath).ToList();
+        }
+
         private static IList<TestOperation> GenerateOperations(int count, ICollection<Type> blackList)
         {
             var generatedOperations = new List<TestOperation>();
@@ -277,6 +246,21 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
                 OperationSerializer.Serialize(writer, operations);
                 Console.WriteLine($"Test operations dumped to {fullPath}");
             }
+        }
+
+        private static string[] AllClips()
+        {
+            return ReadClips()
+                .Select(clip => clip.Title)
+                .ToArray();
+        }
+
+        private static string[] DashClips()
+        {
+            return ReadClips()
+                .Where(clip => clip.Type == "dash")
+                .Select(clip => clip.Title)
+                .ToArray();
         }
     }
 }
