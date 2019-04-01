@@ -20,7 +20,7 @@ using Tizen.Applications;
 
 namespace JuvoPlayer.Tests.Utils
 {
-    class Paths
+    public class Paths
     {
         public static string ApplicationPath => Path.GetDirectoryName(
             Path.GetDirectoryName(Application.Current.ApplicationInfo.ExecutablePath));
