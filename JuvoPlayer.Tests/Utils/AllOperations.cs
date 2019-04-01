@@ -16,18 +16,27 @@
  */
 
 using System;
-using System.Threading;
+using System.Collections.Generic;
+using System.Linq;
+using System.Reflection;
 
-namespace JuvoPlayer.TizenTests.Utils
+namespace JuvoPlayer.Tests.Utils
 {
-    public class TestContext
+    public class AllOperations
     {
-        public PlayerService Service { get; set; }
-        public string ClipTitle { get; set; }
-        public TimeSpan? SeekTime { get; set; }
-        public TimeSpan DelayTime { get; set; }
-        public TimeSpan RandomMaxDelayTime { get; set; }
-        public CancellationToken Token { get; set; }
-        public TimeSpan Timeout { get; set; }
+        public static IEnumerable<Type> GetAllTypes()
+        {
+            var assembly = typeof(TestOperation).GetTypeInfo().Assembly;
+
+            return from type in assembly.GetTypes()
+                where typeof(TestOperation).IsAssignableFrom(type) && type != typeof(TestOperation)
+                select type;
+        }
+
+        public static IEnumerable<TestOperation> GetAll()
+        {
+            return GetAllTypes()
+                .Select(type => (TestOperation) type.GetConstructor(Type.EmptyTypes)?.Invoke(null));
+        }
     }
 }

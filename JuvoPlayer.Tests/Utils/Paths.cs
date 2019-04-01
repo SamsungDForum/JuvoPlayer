@@ -18,7 +18,7 @@
 using System.IO;
 using Tizen.Applications;
 
-namespace JuvoPlayer.TizenTests.Utils
+namespace JuvoPlayer.Tests.Utils
 {
     class Paths
     {
