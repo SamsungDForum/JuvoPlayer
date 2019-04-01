@@ -17,10 +17,12 @@
 
 using System.Threading.Tasks;
 
-namespace JuvoPlayer.TizenTests.Utils
+namespace JuvoPlayer.Tests.Utils
 {
     public interface TestOperation
     {
+        void Prepare(TestContext context);
+
         Task Execute(TestContext context);
     }
 }

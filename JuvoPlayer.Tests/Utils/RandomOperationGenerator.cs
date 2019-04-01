@@ -15,18 +15,24 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-using System.Threading.Tasks;
-using JuvoPlayer.Common;
+using System;
+using System.Linq;
 
-namespace JuvoPlayer.TizenTests.Utils
+namespace JuvoPlayer.Tests.Utils
 {
-    public class StartOperation : TestOperation
+    public class RandomOperationGenerator : TestOperationGenerator
     {
-        public Task Execute(TestContext context)
+        private readonly Random _random;
+
+        public RandomOperationGenerator()
         {
-            var service = context.Service;
-            service.Start();
-            return StateChangedTask.Observe(service, PlayerState.Playing, context.Token, context.Timeout);
+            _random = new Random();
+        }
+
+        public TestOperation NextOperation()
+        {
+            var operations = AllOperations.GetAll().ToList();
+            return operations[_random.Next(operations.Count)];
         }
     }
 }

@@ -20,16 +20,16 @@ using System.Threading;
 using System.Threading.Tasks;
 using JuvoPlayer.Common;
 
-namespace JuvoPlayer.TizenTests.Utils
+namespace JuvoPlayer.Tests.Utils
 {
     public class StateChangedTask
     {
-        private readonly PlayerService _service;
+        private readonly IPlayerService _service;
         private readonly PlayerState _expectedState;
         private readonly CancellationToken _cancellationToken;
         private TimeSpan _timeout;
 
-        public StateChangedTask(PlayerService service, PlayerState expectedState, CancellationToken token,
+        public StateChangedTask(IPlayerService service, PlayerState expectedState, CancellationToken token,
             TimeSpan timeout)
         {
             _service = service;
@@ -55,7 +55,7 @@ namespace JuvoPlayer.TizenTests.Utils
             }, _cancellationToken);
         }
 
-        public static Task Observe(PlayerService service, PlayerState expectedState, CancellationToken token,
+        public static Task Observe(IPlayerService service, PlayerState expectedState, CancellationToken token,
             TimeSpan timeout)
         {
             return new StateChangedTask(service, expectedState, token, timeout).Observe();

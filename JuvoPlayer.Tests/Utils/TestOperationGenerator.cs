@@ -15,22 +15,10 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Reflection;
-
-namespace JuvoPlayer.TizenTests.Utils
+namespace JuvoPlayer.Tests.Utils
 {
-    public class AllOperations
+    public interface TestOperationGenerator
     {
-        public static IEnumerable<Type> GetAll()
-        {
-            var assembly = typeof(TestOperation).GetTypeInfo().Assembly;
-
-            return from type in assembly.GetTypes()
-                where typeof(TestOperation).IsAssignableFrom(type) && type != typeof(TestOperation)
-                select type;
-        }
+        TestOperation NextOperation();
     }
 }
