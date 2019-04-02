@@ -20,7 +20,6 @@ using System.Collections.Generic;
 using JuvoPlayer.Common;
 using JuvoLogger;
 using System.Linq;
-using System.Reactive;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
 using System.Threading;
@@ -45,8 +44,7 @@ namespace JuvoPlayer.Player.EsPlayer
         // stream data and data storage
         private readonly EsStream[] esStreams;
         private readonly EsPlayerPacketStorage packetStorage;
-        private readonly BufferControl[] bufferControls;
-        private MetaDataStreamConfig[] metaDataConfigs;
+        private readonly StreamBufferController bufferController;
 
         // Reference to ESPlayer & associated window
         private ESPlayer.ESPlayer player;
@@ -95,8 +93,8 @@ namespace JuvoPlayer.Player.EsPlayer
 
             // Create new data stream & chunk state entry
             //
-            var bufferControl = new BufferControl(stream);
-            var esStream = new EsStream(stream, packetStorage,bufferControl);
+            bufferController.Initialize(stream);
+            var esStream = new EsStream(stream, packetStorage,bufferController);
             esStream.SetPlayer(player);
 
             streamReconfigureSubs[(int) stream] = esStream.StreamReconfigure()
@@ -105,7 +103,6 @@ namespace JuvoPlayer.Player.EsPlayer
                 .Subscribe(OnEsStreamError, SynchronizationContext.Current);
 
             esStreams[(int) stream] = esStream;
-            bufferControls[(int) stream] = bufferControl;
         }
 
         public EsStreamController(EsPlayerPacketStorage storage)
@@ -125,10 +122,9 @@ namespace JuvoPlayer.Player.EsPlayer
 
             // Create placeholder to data streams & chunk states
             esStreams = new EsStream[(int) StreamType.Count];
-            bufferControls = new BufferControl[(int) StreamType.Count];
-            metaDataConfigs = new MetaDataStreamConfig[(int) StreamType.Count];
             streamReconfigureSubs = new IDisposable[(int) StreamType.Count];
             playbackErrorSubs = new IDisposable[(int) StreamType.Count];
+            bufferController = new StreamBufferController();
 
             AttachEventHandlers();
         }
@@ -153,10 +149,8 @@ namespace JuvoPlayer.Player.EsPlayer
             player.ResourceConflicted += OnResourceConflicted;
         }
 
-        public void DataIn(Packet packet)
-        {
-            bufferControls[(int) packet.StreamType].DataIn(packet);
-        }
+        public void DataIn(Packet packet) => bufferController.DataIn(packet);
+        
 
         /// <summary>
         /// Sets provided configuration to appropriate stream.
@@ -173,15 +167,7 @@ namespace JuvoPlayer.Player.EsPlayer
 
                 if (config.Config is MetaDataStreamConfig metaData)
                 {
-                    if (metaDataConfigs[(int) streamType] == metaData)
-                        return;
-
-                    logger.Info(metaData.ToString());
-
-                    metaDataConfigs[(int) streamType] = metaData;
-
-                    // Update buffer configuration
-                    bufferControls[(int)streamType].UpdateBufferConfiguration(metaData);
+                    bufferController.SetMetaDataConfiguration(metaData);
                     return;
                 }
 
@@ -651,8 +637,7 @@ namespace JuvoPlayer.Player.EsPlayer
             foreach (var esStream in esStreams)
                 esStream?.EmptyStorage();
 
-            foreach (var buffer in bufferControls)
-                buffer?.Reset();
+            bufferController.ResetBuffers();
         }
 
         /// <summary>
@@ -799,13 +784,13 @@ namespace JuvoPlayer.Player.EsPlayer
 
             TerminateAsyncOperations();
 
-            ShutdownBufferControls();
-
             ShutdownStreams();
 
             DisposeAllSubjects();
 
             DisposeAllSubscriptions();
+
+            bufferController.Dispose();
 
             // Shut down player
             logger.Info("ESPlayer shutdown");
@@ -830,14 +815,6 @@ namespace JuvoPlayer.Player.EsPlayer
                 esStream?.Dispose();
         }
 
-        private void ShutdownBufferControls()
-        {
-            // Dispose of individual buffer controls
-            logger.Info("Buffer bufferControls shutdown");
-            foreach (var buffer in bufferControls)
-                buffer?.Dispose();
-            
-        }
         private void DetachEventHandlers()
         {
             // Detach event handlers
@@ -870,30 +847,11 @@ namespace JuvoPlayer.Player.EsPlayer
             return stateChangedSubject.AsObservable();
         }
 
-        public IObservable<bool> BufferingStateChanged()
-        {
- 
+        public IObservable<bool> BufferingStateChanged() =>
+            bufferController.BufferingStateChanged();
 
-            return bufferControls
-                .Where(buffer => buffer != null)
-                .Select(buffer => buffer.BufferState)
-                .CombineLatest(bufferStateList =>
-                {
-                    var res = !bufferStateList.Contains(false);
-
-                    logger.Info($"Composite buffer status: {res}");
-                    return res;
-                });
-
-        }
-
-        public IObservable<DataArgs> DataNeededStateChanged()
-        {
-            return bufferControls
-                .Where(buffer => buffer != null)
-                .Select(buffer => buffer.DataState)
-                .Aggregate((curr, next) => curr.Merge(next));
-        }
-
+        public IObservable<DataArgs> DataNeededStateChanged() =>
+            bufferController.DataNeededStateChanged();
+        
     }
 }

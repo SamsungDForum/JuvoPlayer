@@ -139,26 +139,31 @@ namespace JuvoPlayer.DataProviders.Dash
             SubscribeDemuxerEvents();
         }
 
-        public void ProvideData(bool dataRequired)
+        public void ProvideData(DataArgs args)
         {
-            dashClient.ProvideData(dataRequired);
+            dashClient.ProvideData(args);
 
-            if (dataRequired && pipelineStarted)
+            if (args.DurationRequired <= TimeSpan.Zero) return;
+
+            if (!pipelineStarted)
             {
-                dataNeededSubject.OnNext(Unit.Default);
+                Logger.Info($"{streamType}: Data Provider not started");
                 return;
             }
 
-            Logger.Info($"{streamType}: Data Provider not started");
-
+            dataNeededSubject.OnNext(Unit.Default);
         }
 
         private async Task OnDownloadCompleted()
         {
             try
             {
-                AdaptToNetConditions();
-                await SwitchStreamIfNeeded();
+                if (dashClient.CanStreamSwitch())
+                {
+                    AdaptToNetConditions();
+                    await SwitchStreamIfNeeded();
+                }
+
                 dashClient.ScheduleNextSegDownload();
             }
             catch (TaskCanceledException ex)
@@ -211,8 +216,8 @@ namespace JuvoPlayer.DataProviders.Dash
 
                         // Media Preparation (Call to Initialize) is done upon assignment to pendingStream.
                         currentStream = new DashStream(currentMedia, currentRepresentation);
-                        
-                        metaDataStreamConfigSubject.OnNext(GetStreamMetaDataConfig());
+
+                        PushMetaDataConfiguration();
 
                         dashClient.UpdateRepresentation(currentStream.Representation);
                         return;
@@ -301,6 +306,11 @@ namespace JuvoPlayer.DataProviders.Dash
             }
         }
 
+        private void PushMetaDataConfiguration()
+        {
+            Task.Run(()=>metaDataStreamConfigSubject.OnNext(GetStreamMetaDataConfig()));
+        }
+
         private void GetAvailableStreams(IEnumerable<AdaptationSet> media, AdaptationSet defaultMedia)
         {
             // Not perfect algorithm.
@@ -344,8 +354,8 @@ namespace JuvoPlayer.DataProviders.Dash
                 Logger.Info($"{StreamType}: Dash pipeline start.");
                 Logger.Info($"{StreamType}: Media: {currentStream.Media}");
                 Logger.Info($"{StreamType}: {currentStream.Representation}");
-                
-                metaDataStreamConfigSubject.OnNext(GetStreamMetaDataConfig());
+
+                PushMetaDataConfiguration();
 
                 dashClient.UpdateRepresentation(currentStream.Representation);
                 ParseDrms(currentStream.Media);

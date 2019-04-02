@@ -23,89 +23,108 @@ using JuvoLogger;
 using JuvoPlayer.Common;
 using System.Diagnostics;
 using System.Threading.Tasks;
+using Nito.AsyncEx;
+using static Configuration.StreamBuffer;
 
 namespace JuvoPlayer.Player.EsPlayer
 {
-    class BufferControl:IDisposable
+    class StreamBuffer:IDisposable
     {
         private readonly ILogger logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
-        
-        private const double DataOn = 0.2;
-        private const double DataOff = 0.8;
-        private const double BufferOn = 0;
-        private const double BufferOff = 0.1;
 
-        private TimeSpan maxBufferDuration = TimeSpan.FromSeconds(10);
-        private TimeSpan dataOnLevel = TimeSpan.FromSeconds(2);
-        private TimeSpan dataOffLevel = TimeSpan.FromSeconds(8);
-        private TimeSpan bufferOnLevel = TimeSpan.Zero;
-        private TimeSpan bufferOffLevel = TimeSpan.FromSeconds(1);
+        private TimeSpan maxBufferDuration;
+        private TimeSpan dataOnLevel;
+        private TimeSpan dataOffLevel;
+        private TimeSpan bufferOnLevel;
+        private TimeSpan bufferOffLevel;
 
         public TimeSpan CurrentBufferSize => TimeSpan.FromTicks(Interlocked.Read(ref currentBufferDuration));
         public int BufferFill => (int) (((double) Interlocked.Read(ref currentBufferDuration) / maxBufferDuration.Ticks) * 100);
         
         private readonly StreamType streamType;
 
-        /*
-        private readonly Subject<DataArgs> dataOnSubject = new Subject<DataArgs>();
-        private readonly Subject<DataArgs> dataOffSubject = new Subject<DataArgs>();
-        private readonly Subject<DataArgs> bufferOnSubject = new Subject<DataArgs>();
-        private readonly Subject<DataArgs> bufferOffSubject = new Subject<DataArgs>();
-        */
+        private readonly Subject<bool> dataOnSubject = new Subject<bool>();
+        private readonly Subject<bool> dataOffSubject = new Subject<bool>();
+        private readonly BehaviorSubject<DataArgs> dataSourceSubject;
+        private readonly Subject<bool> bufferOnSubject = new Subject<bool>();
+        private readonly Subject<bool> bufferOffSubject = new Subject<bool>();
 
-        private readonly Subject<DataArgs> dataSubject = new Subject<DataArgs>();
-        private readonly Subject<bool> bufferSubject = new Subject<bool>();
+        public IObservable<bool> BufferState =>
+            bufferOnSubject
+                .Merge(bufferOffSubject)
+                .DistinctUntilChanged()
+                .AsObservable();
+
+        public IObservable<DataArgs> DataState =>
+            dataSourceSubject
+                .Merge(ConvertedDataSource)
+                .AsObservable();
+
+        private IObservable<DataArgs> ConvertedDataSource =>
+            dataOffSubject
+                .Merge(dataOnSubject)
+                .DistinctUntilChanged()
+                .Select<bool, DataArgs>(flag => new DataArgs
+                {
+                    DurationRequired = flag ? maxBufferDuration - CurrentBufferSize : TimeSpan.Zero,
+                    StreamType = streamType
+                });
         
-
-        public IObservable<bool> BufferState => bufferSubject.AsObservable();
-        public IObservable<DataArgs> DataState => dataSubject.AsObservable();
-
-        private bool isBufferingNeeded = false;
-        
-        private bool isDataNeeded = true;
-
         private long currentBufferDuration;
 
         private TimeSpan? lastDtsIn;
         private TimeSpan? lastDtsOut;
         private TimeSpan? eosDts;
 
-        private Task subjectNotifier = Task.CompletedTask;
-
-        public BufferControl(StreamType streamType)
+        public StreamBuffer(StreamType streamType)
         {
             this.streamType = streamType;
 
-            UpdateBufferDuration(maxBufferDuration);
+            dataSourceSubject = new BehaviorSubject<DataArgs>(new DataArgs
+            {
+                DurationRequired = TimeSpan.Zero,
+                StreamType = streamType
+            });
 
+            UpdateBufferDuration(TimeBufferDepthDefault);
         }
 
         public void UpdateBufferConfiguration(MetaDataStreamConfig newStreamConfig)
         {
             UpdateBufferDuration(newStreamConfig.BufferDuration);
+            dataSourceSubject.OnNext(new DataArgs
+            {
+                DurationRequired = maxBufferDuration - CurrentBufferSize,
+                StreamType = streamType
+            });
         }
         
         private void UpdateBufferDuration(TimeSpan duration)
         {
             maxBufferDuration = duration;
-            dataOnLevel = TimeSpan.FromSeconds(duration.TotalSeconds * DataOn);
-            dataOffLevel = TimeSpan.FromSeconds(duration.TotalSeconds * DataOff);
-            bufferOnLevel = TimeSpan.FromSeconds(duration.TotalSeconds * BufferOn);
-            bufferOffLevel = TimeSpan.FromSeconds(duration.TotalSeconds * BufferOff);
+            dataOnLevel = TimeSpan.FromSeconds(duration.TotalSeconds * DataOnLevel);
+            dataOffLevel = TimeSpan.FromSeconds(duration.TotalSeconds * DataOffLevel);
+            bufferOnLevel = TimeSpan.FromSeconds(duration.TotalSeconds * BufferOnLevel);
+            bufferOffLevel = TimeSpan.FromSeconds(duration.TotalSeconds * BufferOffLevel);
 
             logger.Info($"Size={maxBufferDuration} DataOn={dataOnLevel} DataOff={dataOffLevel} BufferOn={bufferOnLevel} BufferOff={bufferOffLevel}");
         }
 
         public void Reset()
         {
-            isBufferingNeeded = false;
-            isDataNeeded = true;
+            logger.Info($"{streamType}");
 
             currentBufferDuration = 0;
 
             lastDtsIn = null;
             lastDtsOut = null;
             eosDts = null;
+
+            dataSourceSubject.OnNext(new DataArgs
+            {
+                DurationRequired = maxBufferDuration,
+                StreamType = streamType
+            });
         }
 
         public void DataIn(Packet packet)
@@ -113,10 +132,8 @@ namespace JuvoPlayer.Player.EsPlayer
             if (!packet.ContainsData())
             {
                 if (packet is EOSPacket)
-                {
                     eosDts = lastDtsIn;
-                }
-
+                
                 return;
             }
 
@@ -156,6 +173,7 @@ namespace JuvoPlayer.Player.EsPlayer
             var bufferTicks = Interlocked.Add(ref currentBufferDuration, duration.Value.Negate().Ticks);
             
             // If "out" packet DTS matches EOS DTS, don't process On levels
+            // to prevent buffer event generation on end of stream.
             if(lastDtsOut != eosDts)
                 ProcessOnLevels(bufferTicks);
         }
@@ -163,63 +181,31 @@ namespace JuvoPlayer.Player.EsPlayer
         private void ProcessOffLevels(long currentBuffer)
         { 
             if (currentBuffer >= bufferOffLevel.Ticks)
-            {
-                SetBufferState(false,currentBuffer);
-            }
-
+                bufferOffSubject.OnNext(false);
+            
             if (currentBuffer >= dataOffLevel.Ticks)
-            {    
-                SetDataState(false,currentBuffer);
-            }
+                dataOffSubject.OnNext(false);
         }
 
         private void ProcessOnLevels(long currentBuffer)
         { 
             if (currentBuffer <= dataOnLevel.Ticks)
-            {
-                SetDataState(true,currentBuffer);
-            }
-        
+                dataOnSubject.OnNext(true);
+            
             if (currentBuffer <= bufferOnLevel.Ticks)
-            {   
-                SetBufferState(true,currentBuffer);
-            }   
-        }
-
-        private void SetBufferState(bool flag, long currentBuffer)
-        {
-            if (flag == isBufferingNeeded)
-                return;
-
-            isBufferingNeeded = flag;
-
-            subjectNotifier.ContinueWith(_ =>
-            {
-                bufferSubject.OnNext(isBufferingNeeded);
-                logger.Info($"{streamType}: Buffer {isBufferingNeeded} {TimeSpan.FromTicks(currentBuffer)}");
-            });
-        }
-
-        private void SetDataState(bool flag, long currentBuffer)
-        {
-            if (flag == isDataNeeded)
-            {
-                return;
-            }
-
-            isDataNeeded = flag;
-
-            subjectNotifier.ContinueWith(_ =>
-            {
-                dataSubject.OnNext(new DataArgs {StreamType = streamType, DataFlag = isDataNeeded});
-                logger.Info($"{streamType}: Data {isDataNeeded} {TimeSpan.FromTicks(currentBuffer)}");
-            });
+                bufferOnSubject.OnNext(true);
         }
 
         public void Dispose()
         {
-            dataSubject.Dispose();
-            dataSubject.Dispose();
+            logger.Info($"{streamType}");
+
+            dataSourceSubject.Dispose();
+            dataOffSubject.Dispose();
+            dataOnSubject.Dispose();
+            bufferOffSubject.Dispose();
+            bufferOnSubject.Dispose();
+            
         }
     }
 }

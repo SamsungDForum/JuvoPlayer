@@ -19,9 +19,15 @@ using System;
 
 namespace JuvoPlayer.Common
 {
-    public struct DataArgs
+    public class DataArgs
     {
-        public StreamType StreamType  { get; internal set; }
-        public bool DataFlag { get; internal set; }
+        public StreamType StreamType  { get; set; }
+        public TimeSpan DurationRequired { get; set; }
+        public DateTimeOffset RequestTimeStamp { get; set; } = DateTimeOffset.Now;
+
+        public override string ToString()
+        {
+            return $"{StreamType}: {DurationRequired} {RequestTimeStamp}";
+        }
     }
 }
