@@ -400,25 +400,16 @@ namespace JuvoPlayer.DataProviders.Dash
             var exception = response.Exception?.Flatten().InnerExceptions[0] as DashDownloaderException;
             if (IsDynamic)
             {
-                var statusCode = ((exception?.InnerException as WebException)?.Response as HttpWebResponse)?.StatusCode;
+                var statusCode = exception?.StatusCode;
                 if (statusCode == HttpStatusCode.NotFound)
                     currentSegmentId = currentStreams.NextSegmentId(currentSegmentId);
                 return true;
             }
 
             StopAsync();
-            if (exception != null)
-            {
-                var segmentTime = exception.DownloadRequest.DownloadSegment.Period.Start;
-                var segmentDuration = exception.DownloadRequest.DownloadSegment.Period.Duration;
-                var segmentEndTime = segmentTime + segmentDuration - (trimOffset ?? TimeSpan.Zero);
-                if (IsEndOfContent(segmentEndTime))
-                    return false;
-            }
 
-            // Commented out on Dr. Boo request. No error message on failed download, just playback
-            // termination.
-            // Error?.Invoke(errorMessage);
+            if (!IsDynamic)
+                errorSubject.OnNext(errorMessage);
 
             return false;
         }
