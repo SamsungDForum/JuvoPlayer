@@ -15,18 +15,44 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+using System;
 using System.Threading.Tasks;
-using JuvoPlayer.Common;
 
-namespace JuvoPlayer.TizenTests.Utils
+namespace JuvoPlayer.Tests.Utils
 {
-    public class StopOperation : TestOperation
+    [Serializable]
+    public class RandomDelayOperation : TestOperation
     {
+        public TimeSpan Delay { get; set; }
+
+        private bool Equals(RandomDelayOperation other)
+        {
+            return Delay.Equals(other.Delay);
+        }
+
+        public override bool Equals(object obj)
+        {
+            if (ReferenceEquals(null, obj)) return false;
+            if (ReferenceEquals(this, obj)) return true;
+            return obj.GetType() == GetType() && Equals((RandomDelayOperation) obj);
+        }
+
+        public override int GetHashCode()
+        {
+            return Delay.GetHashCode();
+        }
+
+        public void Prepare(TestContext context)
+        {
+            var maxDelayTime = context.RandomMaxDelayTime;
+            var rand = new Random();
+            var millisecondsDelay = rand.Next((int) maxDelayTime.TotalMilliseconds);
+            Delay = TimeSpan.FromMilliseconds(millisecondsDelay);
+        }
+
         public Task Execute(TestContext context)
         {
-            var service = context.Service;
-            service.Stop();
-            return StateChangedTask.Observe(service, PlayerState.Idle, context.Token, context.Timeout);
+            return Task.Delay(Delay);
         }
     }
 }

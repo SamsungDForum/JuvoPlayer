@@ -15,18 +15,36 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+using System;
 using System.Threading.Tasks;
 using JuvoPlayer.Common;
 
-namespace JuvoPlayer.TizenTests.Utils
+namespace JuvoPlayer.Tests.Utils
 {
-    public class StartOperation : TestOperation
+    [Serializable]
+    public class PauseOperation : TestOperation
     {
+        public override bool Equals(object obj)
+        {
+            if (ReferenceEquals(null, obj)) return false;
+            if (ReferenceEquals(this, obj)) return true;
+            return obj.GetType() == GetType();
+        }
+
+        public override int GetHashCode()
+        {
+            return 0;
+        }
+
+        public void Prepare(TestContext context)
+        {
+        }
+
         public Task Execute(TestContext context)
         {
             var service = context.Service;
-            service.Start();
-            return StateChangedTask.Observe(service, PlayerState.Playing, context.Token, context.Timeout);
+            service.Pause();
+            return StateChangedTask.Observe(service, PlayerState.Paused, context.Token, context.Timeout);
         }
     }
 }

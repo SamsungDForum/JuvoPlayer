@@ -19,35 +19,65 @@ using System;
 using System.Threading.Tasks;
 using JuvoPlayer.Common;
 
-namespace JuvoPlayer.TizenTests.Utils
+namespace JuvoPlayer.Tests.Utils
 {
+    [Serializable]
     public class ChangeRepresentationOperation : TestOperation
     {
+        public int Index { get; set; }
+        public StreamType StreamType { get; set; }
+
+        private bool Equals(ChangeRepresentationOperation other)
+        {
+            return Index == other.Index && StreamType == other.StreamType;
+        }
+
+        public override bool Equals(object obj)
+        {
+            if (ReferenceEquals(null, obj)) return false;
+            if (ReferenceEquals(this, obj)) return true;
+            return obj.GetType() == GetType() && Equals((ChangeRepresentationOperation) obj);
+        }
+
+        public override int GetHashCode()
+        {
+            unchecked
+            {
+                return (Index * 397) ^ (int) StreamType;
+            }
+        }
+
+        public void Prepare(TestContext context)
+        {
+            var service = context.Service;
+            StreamType = GetRandomStreamType();
+            Index = GetRandomStreamDescriptionIndex(service, StreamType);
+        }
+
         public Task Execute(TestContext context)
         {
             var service = context.Service;
-            var type = GetRandomStreamType();
-            var description = GetRandomStreamDescription(service, type);
-            if (description != null)
-                service.ChangeActiveStream(description);
+            var descriptions = service.GetStreamsDescription(StreamType);
+            if (Index >= 0)
+                service.ChangeActiveStream(descriptions[Index]);
             return Task.CompletedTask;
         }
 
-        private StreamType GetRandomStreamType()
+        private static StreamType GetRandomStreamType()
         {
             var values = Enum.GetValues(typeof(StreamType));
             var random = new Random();
             return (StreamType) values.GetValue(random.Next(values.Length));
         }
 
-        private StreamDescription GetRandomStreamDescription(PlayerService service, StreamType streamType)
+        private static int GetRandomStreamDescriptionIndex(IPlayerService service, StreamType streamType)
         {
             var descriptions = service.GetStreamsDescription(streamType);
             if (descriptions.Count == 0)
-                return null;
+                return -1;
 
             var random = new Random();
-            return descriptions[random.Next(descriptions.Count)];
+            return random.Next(descriptions.Count);
         }
     }
 }

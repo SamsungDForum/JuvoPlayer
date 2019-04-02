@@ -16,15 +16,33 @@
  */
 
 using System.Threading.Tasks;
+using JuvoPlayer.Common;
 
-namespace JuvoPlayer.TizenTests.Utils
+namespace JuvoPlayer.Tests.Utils
 {
-    public class DelayOperation : TestOperation
+    public class StopOperation : TestOperation
     {
+        public override bool Equals(object obj)
+        {
+            if (ReferenceEquals(null, obj)) return false;
+            if (ReferenceEquals(this, obj)) return true;
+            return obj.GetType() == GetType();
+        }
+
+        public override int GetHashCode()
+        {
+            return 0;
+        }
+
+        public void Prepare(TestContext context)
+        {
+        }
+
         public Task Execute(TestContext context)
         {
-            var delay = context.DelayTime;
-            return Task.Delay(delay);
+            var service = context.Service;
+            service.Stop();
+            return StateChangedTask.Observe(service, PlayerState.Idle, context.Token, context.Timeout);
         }
     }
 }

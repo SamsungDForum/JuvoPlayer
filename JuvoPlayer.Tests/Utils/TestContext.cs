@@ -15,18 +15,19 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-using System.Threading.Tasks;
-using JuvoPlayer.Common;
+using System;
+using System.Threading;
 
-namespace JuvoPlayer.TizenTests.Utils
+namespace JuvoPlayer.Tests.Utils
 {
-    public class PauseOperation : TestOperation
+    public class TestContext
     {
-        public Task Execute(TestContext context)
-        {
-            var service = context.Service;
-            service.Pause();
-            return StateChangedTask.Observe(service, PlayerState.Paused, context.Token, context.Timeout);
-        }
+        public PlayerService Service { get; set; }
+        public string ClipTitle { get; set; }
+        public TimeSpan? SeekTime { get; set; }
+        public TimeSpan DelayTime { get; set; }
+        public TimeSpan RandomMaxDelayTime { get; set; }
+        public CancellationToken Token { get; set; }
+        public TimeSpan Timeout { get; set; }
     }
 }

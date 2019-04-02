@@ -24,12 +24,54 @@ namespace JuvoPlayer.Common
 {
     internal class FFmpegDataStorage : INativeDataStorage
     {
+        private static readonly byte[] AudioPES =
+            {0xC0, 0x00, 0x00, 0x00, 0x01, 0xCE, 0x8C, 0x4D, 0x9D, 0x10, 0x8E, 0x25, 0xE9, 0xFE};
+
+        private static readonly byte[] VideoPES =
+            {0xE0, 0x00, 0x00, 0x00, 0x01, 0xCE, 0x8C, 0x4D, 0x9D, 0x10, 0x8E, 0x25, 0xE9, 0xFE};
+
+        private int length = -1;
+
+        internal StreamType StreamType { get; set; }
+
         public unsafe byte* Data => Packet.data;
-        public int Length => Packet.size;
+        public int Length => GetLength();
 
         public AVPacket Packet { get; set; }
 
         private bool isDisposed;
+
+        private unsafe int GetLength()
+        {
+            if (length > -1)
+                return length;
+
+            length = Packet.size;
+
+            var removePes = Packet.side_data == null;
+            if (removePes && IsPesPresent())
+                length -= GetPes().Length;
+
+            return length;
+        }
+
+        private unsafe bool IsPesPresent()
+        {
+            var suffixPes = GetPes();
+            if (Packet.size < suffixPes.Length)
+                return false;
+
+            for (int i = 0, dataOffset = Packet.size - suffixPes.Length; i < suffixPes.Length; ++i)
+                if (Packet.data[i + dataOffset] != suffixPes[i])
+                    return false;
+
+            return true;
+        }
+
+        private byte[] GetPes()
+        {
+            return StreamType == StreamType.Audio ? AudioPES : VideoPES;
+        }
 
         public void Dispose()
         {

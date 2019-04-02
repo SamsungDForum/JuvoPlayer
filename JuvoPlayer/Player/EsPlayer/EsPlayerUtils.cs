@@ -198,7 +198,7 @@ namespace JuvoPlayer.Player.EsPlayer
     /// https://docs.microsoft.com/en-us/dotnet/api/microsoft.visualstudio.threading.threadingtools.withcancellation?view=visualstudiosdk-2017
     ///
     /// </summary>
-    internal static class TaskExtensions
+    public static class TaskExtensions
     {
         public static async Task<T> WithCancellation<T>(this Task<T> nonCancellable, CancellationToken token)
         {
