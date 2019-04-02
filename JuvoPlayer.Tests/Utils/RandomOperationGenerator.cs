@@ -15,14 +15,24 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-using System.IO;
-using Tizen.Applications;
+using System;
+using System.Linq;
 
-namespace JuvoPlayer.TizenTests.Utils
+namespace JuvoPlayer.Tests.Utils
 {
-    class Paths
+    public class RandomOperationGenerator : TestOperationGenerator
     {
-        public static string ApplicationPath => Path.GetDirectoryName(
-            Path.GetDirectoryName(Application.Current.ApplicationInfo.ExecutablePath));
+        private readonly Random _random;
+
+        public RandomOperationGenerator()
+        {
+            _random = new Random();
+        }
+
+        public TestOperation NextOperation()
+        {
+            var operations = AllOperations.GetAll().ToList();
+            return operations[_random.Next(operations.Count)];
+        }
     }
 }

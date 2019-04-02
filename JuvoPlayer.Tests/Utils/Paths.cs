@@ -15,34 +15,14 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-using System.Collections.Generic;
 using System.IO;
-using System.Linq;
-using ElmSharp;
-using JuvoPlayer.Common;
-using JuvoPlayer.Utils;
+using Tizen.Applications;
 
-namespace JuvoPlayer.TizenTests.Utils
+namespace JuvoPlayer.Tests.Utils
 {
-    public class PlayerService : JuvoPlayer.PlayerServiceImpl
+    public class Paths
     {
-        private static Window window;
-
-        public PlayerService()
-            : base(window)
-        {
-        }
-
-        public static void SetWindow(Window w)
-        {
-            window = w;
-        }
-
-        public List<ClipDefinition> ReadClips()
-        {
-            var applicationPath = Paths.ApplicationPath;
-            var clipsPath = Path.Combine(applicationPath, "res", "videoclips.json");
-            return JSONFileReader.DeserializeJsonFile<List<ClipDefinition>>(clipsPath).ToList();
-        }
+        public static string ApplicationPath => Path.GetDirectoryName(
+            Path.GetDirectoryName(Application.Current.ApplicationInfo.ExecutablePath));
     }
 }

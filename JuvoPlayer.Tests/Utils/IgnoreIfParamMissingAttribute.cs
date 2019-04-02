@@ -1,6 +1,7 @@
 /*!
- * https://github.com/SamsungDForum/JuvoPlayer
- * Copyright 2018, Samsung Electronics Co., Ltd
+ *
+ * [https://github.com/SamsungDForum/JuvoPlayer])
+ * Copyright 2019, Samsung Electronics Co., Ltd
  * Licensed under the MIT license
  *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
@@ -13,12 +14,34 @@
  * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
  */
 
-namespace JuvoPlayer.TizenTests.Utils
+using System;
+using NUnit.Framework;
+using NUnit.Framework.Interfaces;
+
+namespace JuvoPlayer.Tests.Utils
 {
-    public interface TestOperationGenerator
+    public class IgnoreIfParamMissingAttribute : Attribute, ITestAction
     {
-        TestOperation NextOperation();
+        private readonly string paramName;
+
+        public IgnoreIfParamMissingAttribute(string paramName)
+        {
+            this.paramName = paramName;
+        }
+
+        public void BeforeTest(ITest test)
+        {
+            if (!NUnit.Framework.TestContext.Parameters.Exists(paramName))
+                Assert.Ignore();
+        }
+
+        public void AfterTest(ITest test)
+        {
+        }
+
+        public ActionTargets Targets { get; }
     }
 }
