@@ -16,6 +16,7 @@
  */
 
 using System;
+using System.Dynamic;
 
 namespace Configuration
 {
@@ -31,12 +32,19 @@ namespace Configuration
                 TimeSpan.FromMilliseconds(200); // time between key events when key is being hold is ~100ms   
     }
 
+    public static class StreamBuffer
+    {
+        public static TimeSpan TimeBufferDepthDefault {get;set;} = TimeSpan.FromSeconds(10);
+        public static double DataOnLevel = 0.2;
+        public static double DataOffLevel = 0.8;
+        public static double BufferOnLevel = 0;
+        public static double BufferOffLevel = 0.1;
+    }
+
     public static class DashClient
     {
         public static TimeSpan TimeBufferDepthDefault { get; set; } = TimeSpan.FromSeconds(10);
-        public static TimeSpan MaxBufferTime { get; set; } = TimeSpan.FromSeconds(15);
-        public static TimeSpan MinBufferTime { get; set; } = TimeSpan.FromSeconds(5);
-        public static TimeSpan MinBufferDownloadTime { get; set; } = TimeSpan.FromSeconds(4);
+        public static double BufferSegmentOverheadLimit { get; set; } = 0.5;
     }
 
     public static class DashDownloader

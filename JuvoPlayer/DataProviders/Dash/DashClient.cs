@@ -29,6 +29,7 @@ using JuvoPlayer.Common;
 using MpdParser.Node;
 using MpdParser.Node.Dynamic;
 using Representation = MpdParser.Representation;
+using static Configuration.DashClient;
 
 namespace JuvoPlayer.DataProviders.Dash
 {
@@ -37,9 +38,6 @@ namespace JuvoPlayer.DataProviders.Dash
         private const string Tag = "JuvoPlayer";
 
         private static readonly ILogger Logger = LoggerManager.GetInstance().GetLogger(Tag);
-
-        private TimeSpan minBufferTime = TimeSpan.FromSeconds(5);
-        private static readonly TimeSpan timeBufferDepthDefault = TimeSpan.FromSeconds(10);
 
         private readonly IThroughputHistory throughputHistory;
         private readonly StreamType streamType;
@@ -65,13 +63,7 @@ namespace JuvoPlayer.DataProviders.Dash
         /// Contains information about timing data for last requested segment
         /// </summary>
         private TimeRange lastDownloadSegmentTimeRange;
-
-        /// <summary>
-        /// Data Needed/Not needed flag.
-        /// Controls download process
-        /// True - Data downloads required
-        /// False - Data downloads not required.
-        private volatile bool provideData = true;
+        private TimeSpan dataNeedsDuration = TimeSpan.Zero;
 
         /// <summary>
         /// A shorthand for retrieving currently played out document type
@@ -105,10 +97,19 @@ namespace JuvoPlayer.DataProviders.Dash
             this.streamType = streamType;
         }
 
-        public void ProvideData(bool dataNeeded)
+        public void ProvideData(DataArgs args)
         {
-            provideData = dataNeeded;
-            LogInfo($"Data Needed: {provideData}");
+            var currentNeeds = dataNeedsDuration;
+            if (args.DurationRequired > TimeSpan.Zero)
+            {
+                dataNeedsDuration = (DateTimeOffset.Now - args.RequestTimeStamp) + args.DurationRequired;
+            }
+            else
+            {
+                dataNeedsDuration = TimeSpan.Zero;
+            }
+
+            LogInfo($"Data Needed: {dataNeedsDuration} {currentNeeds}");
         }
 
         public TimeSpan Seek(TimeSpan position)
@@ -148,8 +149,8 @@ namespace JuvoPlayer.DataProviders.Dash
                 throw new Exception("currentRepresentation has not been set");
 
             initInProgress = true;
-
-            LogInfo("DashClient start.");
+    
+            LogInfo("DashClient start."+dataNeedsDuration);
 
             if (cancellationTokenSource == null || cancellationTokenSource?.IsCancellationRequested == true)
             {
@@ -178,20 +179,24 @@ namespace JuvoPlayer.DataProviders.Dash
 
         private bool IsBufferSpaceAvailable()
         {
+            var segmentDuration 
+                = currentStreams.MediaSegment(currentSegmentId)?.Period.Duration 
+                  ?? TimeSpan.Zero;
 
-            if (provideData)
-                return true;
+            LogInfo(dataNeedsDuration + " " + segmentDuration);
 
-            LogInfo($"Full buffer: ({bufferTime}-{currentTime}) {bufferTime - currentTime}");
-            
+            var overheadLimit =
+                TimeSpan.FromSeconds(segmentDuration.TotalSeconds * BufferSegmentOverheadLimit);
+
+            if (dataNeedsDuration >= overheadLimit ) return true;
+
+            LogInfo($"Full buffer: {bufferTime}-{currentTime} ({bufferTime - currentTime}) {dataNeedsDuration}");
+    
             return false;
-
         }
 
         public void ScheduleNextSegDownload()
         {
-            LogInfo($"{bufferTime}");
-
             if (IsEndOfContent(bufferTime))
             {
                 // DashClient termination. This may be happening as part of scheduleDownloadNextTask.
@@ -207,15 +212,6 @@ namespace JuvoPlayer.DataProviders.Dash
 
             if (!IsBufferSpaceAvailable())
                 return;
-
-            if (initInProgress)
-            {
-                if (bufferTime - currentTime >= minBufferTime)
-                {
-                    initInProgress = false;
-                    LogInfo("Initialization complete");
-                }
-            }
 
             SwapRepresentation();
 
@@ -233,6 +229,11 @@ namespace JuvoPlayer.DataProviders.Dash
             }
 
             DownloadSegment(segment);
+        }
+
+        private void UpdateDataNeedsDuration(TimeSpan duration)
+        {
+            dataNeedsDuration -= duration;
         }
 
         private void DownloadSegment(Segment segment)
@@ -338,7 +339,16 @@ namespace JuvoPlayer.DataProviders.Dash
             lastDownloadSegmentTimeRange = segment.Period.Copy();
             bufferTime = segment.Period.Start + segment.Period.Duration - (trimOffset ?? TimeSpan.Zero);
             currentSegmentId = currentStreams.NextSegmentId(currentSegmentId);
+            UpdateDataNeedsDuration(segment.Period.Duration);
+            
             var timeInfo = segment.Period.ToString();
+
+            if (initInProgress)
+            {
+                initInProgress = false;
+                LogInfo("Initialization complete.");
+            }
+
             LogInfo($"Segment: {responseResult.SegmentId} enqueued {timeInfo}");
             return true;
         }
@@ -357,7 +367,11 @@ namespace JuvoPlayer.DataProviders.Dash
             {
                 var statusCode = ((exception?.InnerException as WebException)?.Response as HttpWebResponse)?.StatusCode;
                 if (statusCode == HttpStatusCode.NotFound)
+                {
                     currentSegmentId = currentStreams.NextSegmentId(currentSegmentId);
+                    UpdateDataNeedsDuration(TimeSpan.Zero);
+                }
+
                 return true;
             }
 
@@ -461,8 +475,6 @@ namespace JuvoPlayer.DataProviders.Dash
                 ? docParams.Document.MediaPresentationDuration
                 : currentStreams.Duration;
 
-            minBufferTime = docParams.Document.MinBufferTime ?? minBufferTime;
-
             if (lastDownloadSegmentTimeRange == null)
             {
                 currentSegmentId = currentRepresentation.AlignedStartSegmentID;
@@ -548,7 +560,7 @@ namespace JuvoPlayer.DataProviders.Dash
         {
             if (!IsDynamic)
                 return TimeSpan.MaxValue;
-            var timeout = timeBufferDepthDefault;
+            var timeout = TimeBufferDepthDefault;
             var averageThroughput = throughputHistory.GetAverageThroughput();
             if (averageThroughput > 0 && currentRepresentation.Bandwidth.HasValue && segment.Period != null)
             {

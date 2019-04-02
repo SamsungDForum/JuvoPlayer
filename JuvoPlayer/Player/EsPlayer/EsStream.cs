@@ -92,7 +92,7 @@ namespace JuvoPlayer.Player.EsPlayer
 
         private Packet currentPacket;
         private PacketBarrier barrier;
-        private readonly BufferControl bufferControl;
+        private readonly StreamBuffer streamBuffer;
 
         public IObservable<string> PlaybackError()
         {
@@ -106,11 +106,11 @@ namespace JuvoPlayer.Player.EsPlayer
 
         #region Public API
 
-        public EsStream(Common.StreamType type, EsPlayerPacketStorage storage, BufferControl bufferControl)
+        public EsStream(Common.StreamType type, EsPlayerPacketStorage storage, StreamBufferController bufferController)
         {
             streamType = type;
             packetStorage = storage;
-            this.bufferControl = bufferControl;
+            streamBuffer = bufferController.GetStreamBuffer(type);
 
             switch (streamType)
             {
@@ -388,7 +388,7 @@ namespace JuvoPlayer.Player.EsPlayer
                     var delay = barrier.TimeToNextFrame();
 
                     logger.Info(
-                        $"{streamType}: Transfer task halted. Buffer {bufferControl.BufferFill}% {bufferControl.CurrentBufferSize}");
+                        $"{streamType}: Transfer task halted. Buffer {streamBuffer.BufferFill}% {streamBuffer.CurrentBufferSize}");
 
                     DelayTransfer(delay, token);
 
@@ -423,7 +423,7 @@ namespace JuvoPlayer.Player.EsPlayer
             }
 
             logger.Info(
-                $"{streamType}: Transfer task terminated. Buffer {bufferControl.BufferFill}% {bufferControl.CurrentBufferSize}");
+                $"{streamType}: Transfer task terminated. Buffer {streamBuffer.BufferFill}% {streamBuffer.CurrentBufferSize}");
         }
 
         private async Task<bool> ProcessNextPacket(CancellationToken token)
@@ -434,7 +434,7 @@ namespace JuvoPlayer.Player.EsPlayer
             var shouldContinue = await ProcessPacket(currentPacket, token);
 
             barrier.PacketPushed(currentPacket);
-            bufferControl.DataOut(currentPacket);
+            streamBuffer.DataOut(currentPacket);
             currentPacket.Dispose();
             currentPacket = null;
             return shouldContinue;

@@ -113,10 +113,10 @@ namespace JuvoPlayer.DataProviders.Dash
             switch (args.StreamType)
             {
                 case StreamType.Audio:
-                    audioPipeline.ProvideData(args.DataFlag);
+                    audioPipeline.ProvideData(args);
                     break;
                 case StreamType.Video:
-                    videoPipeline.ProvideData(args.DataFlag);
+                    videoPipeline.ProvideData(args);
                     break;
                 default:
                     break;
