@@ -35,6 +35,12 @@ namespace JuvoPlayer.DataProviders.Dash
 {
     internal class DashClient : IDashClient
     {
+        private enum DownloadLoopStatus
+        {
+            Continue,
+            GiveUp
+        }
+
         private const string Tag = "JuvoPlayer";
 
         private static readonly ILogger Logger = LoggerManager.GetInstance().GetLogger(Tag);
@@ -258,18 +264,18 @@ namespace JuvoPlayer.DataProviders.Dash
                 cancelToken);
             processDataTask = downloadDataTask.ContinueWith(response =>
             {
-                bool shouldContinue;
+                DownloadLoopStatus loopStatus;
                 if (cancelToken.IsCancellationRequested)
-                    shouldContinue = false;
+                    loopStatus = DownloadLoopStatus.GiveUp;
                 else if (response.IsCanceled)
-                    shouldContinue = HandleCancelledDownload(cancelToken);
+                    loopStatus = HandleCancelledDownload(cancelToken);
                 else if (response.IsFaulted)
-                    shouldContinue = HandleFailedDownload(response);
+                    loopStatus = HandleFailedDownload(response);
                 else // always continue on successful download
-                    shouldContinue = HandleSuccessfulDownload(response.Result);
+                    loopStatus = HandleSuccessfulDownload(response.Result);
 
                 // throw exception so continuation wont run
-                if (!shouldContinue)
+                if (loopStatus == DownloadLoopStatus.GiveUp)
                     throw new Exception();
             }, TaskScheduler.Default);
             downloadCompletedTask = processDataTask.ContinueWith(
@@ -277,12 +283,12 @@ namespace JuvoPlayer.DataProviders.Dash
                 TaskContinuationOptions.OnlyOnRanToCompletion);
         }
 
-        private bool HandleCancelledDownload(CancellationToken token)
+        private DownloadLoopStatus HandleCancelledDownload(CancellationToken token)
         {
             LogInfo($"Segment: download cancelled. Continue? {!cancellationTokenSource.IsCancellationRequested}");
 
             // if download was cancelled by timeout cancellation token than reschedule download
-            return !token.IsCancellationRequested;
+            return token.IsCancellationRequested == false ? DownloadLoopStatus.Continue : DownloadLoopStatus.GiveUp;
         }
 
         private void DownloadInitSegment(Segment segment, bool initReloadRequired)
@@ -303,24 +309,24 @@ namespace JuvoPlayer.DataProviders.Dash
                 downloadDataTask = CreateDownloadTask(segment, true, null, chunkDownloadedHandler, cancelToken);
                 processDataTask = downloadDataTask.ContinueWith(response =>
                 {
-                    var shouldContinue = true;
+                    var loopStatus = DownloadLoopStatus.Continue;
                     if (cancelToken.IsCancellationRequested)
-                        shouldContinue = false;
+                        loopStatus = DownloadLoopStatus.GiveUp;
                     else if (response.IsFaulted)
                     {
                         HandleFailedInitDownload(GetErrorMessage(response));
-                        shouldContinue = false;
+                        loopStatus = DownloadLoopStatus.GiveUp;
                     }
                     else if (response.IsCanceled)
                     {
                         initStreamBytes.Clear();
-                        shouldContinue = false;
+                        loopStatus = DownloadLoopStatus.GiveUp;
                     }
                     else // always continue on successful download
                         InitDataDownloaded();
 
                     // throw exception so continuation wont run
-                    if (!shouldContinue)
+                    if (loopStatus == DownloadLoopStatus.GiveUp)
                         throw new Exception();
                 }, TaskScheduler.Default);
 
@@ -344,10 +350,10 @@ namespace JuvoPlayer.DataProviders.Dash
             return response.Exception?.Flatten().InnerExceptions[0].Message;
         }
 
-        private bool HandleSuccessfulDownload(DownloadResponse responseResult)
+        private DownloadLoopStatus HandleSuccessfulDownload(DownloadResponse responseResult)
         {
             if (cancellationTokenSource.IsCancellationRequested)
-                return false;
+                return DownloadLoopStatus.GiveUp;
             var segment = responseResult.DownloadSegment;
             lastDownloadSegmentTimeRange = segment.Period.Copy();
             bufferTime = segment.Period.Start + segment.Period.Duration - (trimOffset ?? TimeSpan.Zero);
@@ -356,7 +362,7 @@ namespace JuvoPlayer.DataProviders.Dash
             LogInfo($"Segment: {responseResult.SegmentId} enqueued {timeInfo}");
             if (IsBufferingCompleted())
                 SendBufferingCompletedEvent();
-            return true;
+            return DownloadLoopStatus.Continue;
         }
 
         private bool IsBufferingNeeded()
@@ -393,7 +399,7 @@ namespace JuvoPlayer.DataProviders.Dash
             LogInfo("Segment: INIT enqueued.");
         }
 
-        private bool HandleFailedDownload(Task response)
+        private DownloadLoopStatus HandleFailedDownload(Task response)
         {
             var errorMessage = GetErrorMessage(response);
             LogError(errorMessage);
@@ -403,7 +409,7 @@ namespace JuvoPlayer.DataProviders.Dash
                 var statusCode = exception?.StatusCode;
                 if (statusCode == HttpStatusCode.NotFound)
                     currentSegmentId = currentStreams.NextSegmentId(currentSegmentId);
-                return true;
+                return DownloadLoopStatus.Continue;
             }
 
             StopAsync();
@@ -411,7 +417,7 @@ namespace JuvoPlayer.DataProviders.Dash
             if (!IsDynamic)
                 errorSubject.OnNext(errorMessage);
 
-            return false;
+            return DownloadLoopStatus.GiveUp;
         }
 
         private void HandleFailedInitDownload(string message)
