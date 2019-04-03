@@ -126,10 +126,13 @@ namespace JuvoPlayer.DataProviders.Dash
     internal class DashDownloaderException : Exception
     {
         public DownloadRequest DownloadRequest { get; }
+        public HttpStatusCode StatusCode { get; set; }
 
-        public DashDownloaderException(DownloadRequest request, string message, Exception inner) : base(message, inner)
+        public DashDownloaderException(DownloadRequest request, string message, Exception inner,
+            HttpStatusCode statusCode) : base(message, inner)
         {
             DownloadRequest = request;
+            StatusCode = statusCode;
         }
     }
 
@@ -147,6 +150,8 @@ namespace JuvoPlayer.DataProviders.Dash
         private readonly ByteRange downloadRange;
         private readonly DownloadRequest request;
         private readonly IThroughputHistory throughputHistory;
+
+        public HttpStatusCode StatusCode { get; set; }
 
         private int downloadErrorCount;
 
@@ -187,7 +192,7 @@ namespace JuvoPlayer.DataProviders.Dash
 
                     return await DownloadDataTaskAsync();
                 }
-                catch (WebException e)
+                catch (HttpRequestException e)
                 {
                     Logger.Warn(e, $"{request.StreamType}: Segment: {segmentId}");
 
@@ -206,14 +211,18 @@ namespace JuvoPlayer.DataProviders.Dash
                 catch (Exception e)
                 {
                     lastException = e;
-                    Logger.Warn(e, $"{request.StreamType}: Segment: {segmentId}");
+                    Logger.Warn(e, $"{request.StreamType}: Segment: {segmentId} {e.GetType()}");
                     ++downloadErrorCount;
                 }
             } while (!request.IgnoreError && downloadErrorCount < 3);
 
             var message = $"Cannot download segment: {segmentId}.";
+            if (lastException is HttpRequestException httpRequestException)
+            {
+                message += $"\nReason: {httpRequestException.Message}";
+            }
 
-            throw new DashDownloaderException(request, message, lastException);
+            throw new DashDownloaderException(request, message, lastException, StatusCode);
         }
 
         private async Task<DownloadResponse> DownloadDataTaskAsync()
@@ -232,6 +241,7 @@ namespace JuvoPlayer.DataProviders.Dash
                     using (var response = await client.SendAsync(httpRequest, HttpCompletionOption.ResponseHeadersRead,
                         cancellationToken))
                     {
+                        StatusCode = response.StatusCode;
                         response.EnsureSuccessStatusCode();
 
                         using (var stream = await response.Content.ReadAsStreamAsync())

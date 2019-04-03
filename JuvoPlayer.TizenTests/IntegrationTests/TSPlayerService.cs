@@ -151,12 +151,22 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
             RunPlayerTest(clipTitle, async context =>
             {
                 var service = context.Service;
+
                 context.SeekTime = service.Duration - TimeSpan.FromSeconds(5);
-                await new SeekOperation().Execute(context);
-                await service.StateChanged()
+                var seekOperation = new SeekOperation();
+
+                var playbackErrorTask = service.PlaybackError()
+                    .FirstAsync()
+                    .ToTask();
+
+                var clipCompletedTask = service.StateChanged()
                     .AsCompletion()
                     .Timeout(TimeSpan.FromSeconds(10))
+                    .FirstAsync()
                     .ToTask();
+
+                await Task.WhenAny(seekOperation.Execute(context), playbackErrorTask);
+                await Task.WhenAny(clipCompletedTask, playbackErrorTask);
             });
         }
 
