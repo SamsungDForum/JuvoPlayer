@@ -179,16 +179,12 @@ namespace JuvoPlayer.DataProviders.Dash
 
         private bool IsBufferSpaceAvailable()
         {
-            var segmentDuration 
-                = currentStreams.MediaSegment(currentSegmentId)?.Period.Duration 
-                  ?? TimeSpan.Zero;
-
-            LogInfo(dataNeedsDuration + " " + segmentDuration);
-
-            var overheadLimit =
-                TimeSpan.FromSeconds(segmentDuration.TotalSeconds * BufferSegmentOverheadLimit);
-
-            if (dataNeedsDuration >= overheadLimit ) return true;
+            // TODO: Incorporate Segment size into data needs duration
+            // TODO: to reduce buffer overflows. Needs to be done with care as not
+            // TODO: enough data will not generate "buffer full" event from player.
+            // TODO: Lack of this event will prevent "buffer empty" event from being
+            // TODO: generated.
+            if (dataNeedsDuration > TimeSpan.Zero ) return true;
 
             LogInfo($"Full buffer: {bufferTime}-{currentTime} ({bufferTime - currentTime}) {dataNeedsDuration}");
     

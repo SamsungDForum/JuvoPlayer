@@ -39,7 +39,7 @@ namespace JuvoPlayer.Tests.UnitTests
     [TestFixture]
     public class TSStreamBufferController
     {
-        private IList<Packet> BuildPacketList(StreamType type, TimeSpan duration, int maxPacketCount)
+        private IList<Packet> BuildPacketList(StreamType type, TimeSpan duration, int maxPacketCount, TimeSpan? startTime=null)
         {
             var packetList = new List<Packet>();
 
@@ -47,11 +47,14 @@ namespace JuvoPlayer.Tests.UnitTests
             var packetDtsDuration =
                 duration.TotalMilliseconds / maxPacketCount;
 
+            if (!startTime.HasValue)
+                startTime = TimeSpan.Zero;
+
             while (packetCount <= maxPacketCount)
             {
                 var packet = new Packet
                 {
-                    Dts = TimeSpan.FromMilliseconds(packetDtsDuration * packetCount),
+                    Dts = startTime.Value + TimeSpan.FromMilliseconds(packetDtsDuration * packetCount),
                     Storage = new dummyStorage(),
                     StreamType = type
                 };
@@ -471,6 +474,7 @@ namespace JuvoPlayer.Tests.UnitTests
                         var eventCount = 0;
                         var eventOnCount = 0;
                         var eventOffCount = 0;
+                        var bufferState = false;
 
                         bufferController.BufferingStateChanged()
                             .Subscribe(a =>
@@ -481,12 +485,24 @@ namespace JuvoPlayer.Tests.UnitTests
                                 else
                                     eventOffCount++;
 
+                                bufferState = a;
+
                             }, SynchronizationContext.Current);
+
+
 
                         IList<Packet>[] avPackets = {
                             BuildPacketList(StreamType.Audio, TimeSpan.FromSeconds(15), 100),
                             BuildPacketList(StreamType.Video, TimeSpan.FromSeconds(15), 100)
                         };
+
+                        if (eventCount != 1 || eventOffCount != 1 || bufferState == true)
+                            await Task.Delay(TimeSpan.FromSeconds(1));
+
+                        Assert.IsTrue(eventCount == 1);
+                        Assert.IsTrue(eventOnCount == 0);
+                        Assert.IsTrue(eventOffCount == 1);
+                        Assert.IsTrue(bufferState == false);
 
                         avPackets.AsParallel().ForAll(packetList =>
                             {
@@ -508,37 +524,47 @@ namespace JuvoPlayer.Tests.UnitTests
                         Assert.IsTrue(eventCount == 2);
                         Assert.IsTrue(eventOnCount == 1);
                         Assert.IsTrue(eventOffCount == 1);
+                        Assert.IsTrue(bufferState == true);
 
-                        bufferController.ResetBuffers();
+                        avPackets.AsParallel().ForAll(packetList =>
+                        {
+                            foreach (var packet in packetList)
+                                packet.Dispose();
+                        });
+
+                        avPackets = new IList<Packet>[] {
+                            BuildPacketList(StreamType.Audio, TimeSpan.FromSeconds(15), 100, TimeSpan.FromSeconds(15.5)),
+                            BuildPacketList(StreamType.Video, TimeSpan.FromSeconds(15), 100,TimeSpan.FromSeconds(15.5))
+                        };
 
                         var vPackets = avPackets[0];
                         foreach (var packet in vPackets)
                             bufferController.DataIn(packet);
 
-                        if (eventOffCount != 1)
-                            await Task.Delay(TimeSpan.FromSeconds(1));
+                        await Task.Delay(TimeSpan.FromSeconds(0.5));
 
                         Assert.IsTrue(eventCount == 2);
                         Assert.IsTrue(eventOnCount == 1);
                         Assert.IsTrue(eventOffCount == 1);
+                        Assert.IsTrue(bufferState == true);
 
                         var aPackets = avPackets[1];
                         foreach (var packet in aPackets)
                             bufferController.DataIn(packet);
 
-                        if (eventOffCount != 2)
+                        if (eventCount != 3 || eventOffCount !=2 || bufferState != false)
                             await Task.Delay(TimeSpan.FromSeconds(1));
 
                         Assert.IsTrue(eventCount == 3);
                         Assert.IsTrue(eventOnCount == 1);
                         Assert.IsTrue(eventOffCount == 2);
+                        Assert.IsTrue(bufferState == false);
 
                         avPackets.AsParallel().ForAll(packetList =>
                             {
                                 foreach (var packet in packetList)
                                     packet.Dispose();
-                            }
-                        );
+                            });
                     }
                 });
         }
@@ -629,7 +655,9 @@ namespace JuvoPlayer.Tests.UnitTests
                             }
                         );
 
-                        if (eventCount != 4)
+                        if (eventCount != 4 ||
+                            dataArgsHolder[(int)StreamType.Video].DurationRequired > TimeSpan.Zero ||
+                            dataArgsHolder[(int)StreamType.Audio].DurationRequired > TimeSpan.Zero )
                             await Task.Delay(TimeSpan.FromSeconds(1));
 
                         Assert.IsTrue(eventCount == 4);
@@ -643,7 +671,9 @@ namespace JuvoPlayer.Tests.UnitTests
                             }
                         );
 
-                        if (eventCount != 6)
+                        if (eventCount != 6||
+                            dataArgsHolder[(int)StreamType.Video].DurationRequired <= TimeSpan.Zero ||
+                            dataArgsHolder[(int)StreamType.Audio].DurationRequired <= TimeSpan.Zero )
                             await Task.Delay(TimeSpan.FromSeconds(1));
 
                         Assert.IsTrue(eventCount == 6);
