@@ -24,10 +24,11 @@ namespace JuvoPlayer.Common
         public StreamType StreamType  { get; set; }
         public TimeSpan DurationRequired { get; set; }
         public DateTimeOffset RequestTimeStamp { get; set; } = DateTimeOffset.Now;
+        public bool BufferEmpty { get; set; }
 
         public override string ToString()
         {
-            return $"{StreamType}: {DurationRequired} {RequestTimeStamp}";
+            return $"{StreamType}: {DurationRequired} {RequestTimeStamp} Empty {BufferEmpty}";
         }
     }
 }

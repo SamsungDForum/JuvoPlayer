@@ -20,6 +20,7 @@ using System.Collections.Generic;
 using JuvoPlayer.Common;
 using JuvoLogger;
 using System.Linq;
+using System.Linq.Expressions;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
 using System.Threading;
@@ -124,7 +125,11 @@ namespace JuvoPlayer.Player.EsPlayer
             esStreams = new EsStream[(int) StreamType.Count];
             streamReconfigureSubs = new IDisposable[(int) StreamType.Count];
             playbackErrorSubs = new IDisposable[(int) StreamType.Count];
-            bufferController = new StreamBufferController();
+
+            bufferController = new StreamBufferController
+            {
+                BufferEventsEnabled = BufferEventsAllowed
+            };
 
             AttachEventHandlers();
         }
@@ -748,6 +753,27 @@ namespace JuvoPlayer.Player.EsPlayer
             clockGeneratorCts.Cancel();
         }
 
+        private bool BufferEventsAllowed()
+        {
+            try
+            {
+                var playerState = player.GetState();
+                switch (playerState)
+                {
+                    case ESPlayer.ESPlayerState.Paused:
+                    case ESPlayer.ESPlayerState.Playing:
+                        return true;
+                    default:
+                        return false;
+                }
+            }
+            catch (Exception ex) 
+                when (ex is ObjectDisposedException || 
+                      ex is InvalidOperationException )
+            {
+                return false;
+            }
+        }
         #endregion
 
         #region Dispose support

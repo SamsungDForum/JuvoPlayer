@@ -16,14 +16,10 @@
  */
 
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Linq;
-using System.Reactive.Joins;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
-using System.Security.Cryptography.X509Certificates;
-using System.Text;
 using System.Threading;
 using JuvoLogger;
 using JuvoPlayer.Common;
@@ -31,6 +27,12 @@ using JuvoPlayer.Common;
 namespace JuvoPlayer.Player.EsPlayer
 {
 
+    // TODO: Extend class functionality to provide:
+    // TODO:    - Stream Synchronization so no streams lags behind other stream
+    // TODO:    - Prebuffering on stream start (initial) to accomodate
+    // TODO:      MPD's minBufferTime if present. minBufferTime = minimum buffer period
+    // TODO:      before playback start assuring smooth content delivery as defined in
+    // TODO:      ISO/IEC 23009-1 5.3.1.2 Table 3
 
     class StreamBufferController : IDisposable
     {
@@ -38,13 +40,40 @@ namespace JuvoPlayer.Player.EsPlayer
 
         private readonly StreamBuffer[] streamBuffers = new StreamBuffer[(int)StreamType.Count];
         private readonly MetaDataStreamConfig[] metaDataConfigs = new MetaDataStreamConfig[(int)StreamType.Count];
-        private bool[] streamBufferBuffering = new bool[(int)StreamType.Count];
-        private readonly SynchronizationContext bufferingContext = new SynchronizationContext();
+        private readonly bool[] streamBufferBuffering = new bool[(int)StreamType.Count];
         private readonly BehaviorSubject<bool> aggregatedBufferSubject = new BehaviorSubject<bool>(false);
         private readonly IList<IDisposable> bufferSubscriptions = new List<IDisposable>();
 
+        public void DataIn(Packet packet) =>
+            streamBuffers[(int) packet.StreamType].DataIn(packet);
+        
+        public void DataOut(Packet packet) =>
+            streamBuffers[(int) packet.StreamType].DataOut(packet);
+
+        public IObservable<bool> BufferingStateChanged() =>
+            aggregatedBufferSubject
+                .DistinctUntilChanged()
+                .Do(bufferingState => logger.Info($"Buffering: {bufferingState}"))
+                .AsObservable();
+        
+        public IObservable<DataArgs> DataNeededStateChanged() =>
+            streamBuffers
+                .Where(buffer => buffer != null)
+                .Select(buffer => buffer.DataState())
+                .Aggregate( (curr, next) => curr.Merge(next) )
+                .Do(a => logger.Info(a.ToString()))
+                .AsObservable();
+
         public StreamBuffer GetStreamBuffer(StreamType stream) 
             => streamBuffers[(int)stream];
+
+        public Func<bool> BufferEventsEnabled { get; set; } = () => false;
+
+        private void ResetBufferingEventState()
+        {
+            for (var i = 0; i < streamBufferBuffering.Length; i++)
+                streamBufferBuffering[i] = false;
+        }
 
         public void SetMetaDataConfiguration(MetaDataStreamConfig config)
         {
@@ -59,23 +88,6 @@ namespace JuvoPlayer.Player.EsPlayer
             streamBuffers[index].UpdateBufferConfiguration(config);
         }
 
-        public void DataIn(Packet packet) =>
-            streamBuffers[(int) packet.StreamType].DataIn(packet);
-        
-        public void DataOut(Packet packet) =>
-            streamBuffers[(int) packet.StreamType].DataOut(packet);
-        
-        public IObservable<bool> BufferingStateChanged() =>
-            aggregatedBufferSubject
-                .DistinctUntilChanged();
-        
-        public IObservable<DataArgs> DataNeededStateChanged() =>
-            streamBuffers
-                .Where(buffer => buffer != null)
-                .Select(buffer => buffer.DataState)
-                .Aggregate( (curr, next) => curr.Merge(next) )
-                .AsObservable();
-
         public StreamBuffer Initialize(StreamType stream)
         {
             logger.Info(stream.ToString());
@@ -86,23 +98,26 @@ namespace JuvoPlayer.Player.EsPlayer
             }
 
             var buffer = new StreamBuffer(stream);
-
-            bufferSubscriptions.Add(
-                buffer.BufferState.Subscribe(state =>
-                {
-                    streamBufferBuffering[(int) stream] = state;
-                    var anyBuffering = streamBufferBuffering.Any(isBuffering => isBuffering);
-                    aggregatedBufferSubject.OnNext(anyBuffering);
-                }, bufferingContext)
-            );
-
-
             streamBuffers[(int) stream] = buffer;
-            metaDataConfigs[(int)stream] = new MetaDataStreamConfig();
+
+            var dataSub = buffer.DataState().Subscribe(args =>
+            {
+                if (!BufferEventsEnabled())
+                {
+                    logger.Info("Buffering events not allowed");
+                    ResetBufferingEventState();
+                    return;
+                }
+
+                streamBufferBuffering[(int)args.StreamType] = args.BufferEmpty;
+                var anyBuffering = streamBufferBuffering.Any(isBuffering => isBuffering == true);
+                aggregatedBufferSubject.OnNext(anyBuffering);
+            }, SynchronizationContext.Current);
+
+            bufferSubscriptions.Add(dataSub);
 
             return buffer;
         }
-
         
         public void ResetBuffers()
         {
@@ -111,7 +126,7 @@ namespace JuvoPlayer.Player.EsPlayer
             foreach (var buffer in streamBuffers)
                 buffer?.Reset();
 
-            streamBufferBuffering = new bool[(int)StreamType.Count];
+            ResetBufferingEventState();
         }
 
         public void Dispose()
