@@ -13,7 +13,9 @@
     <metadata key="http://samsung.com/tv/metadata/devel.api.version" value="2.4" />
     <metadata key="http://samsung.com/tv/metadata/use.preview" value="endpoint_URL=https://raw.githubusercontent.com/SamsungDForum/JuvoPlayer/master/smarthubpreview/juvoplayerclipsJSON.json" />
     <metadata key="http://samsung.com/tv/metadata/appbootingsupport" />
-    <splash-screens />
+    <splash-screens>
+      <splash-screen src="JuvoPlayerXamarinTizenTV.jpg" type="img" dpi="hdpi" orientation="landscape" indicator-display="false" app-control-operation="http://tizen.org/appcontrol/operation/default" />
+    </splash-screens>
   </ui-application>
   <shortcut-list />
   <privileges>
