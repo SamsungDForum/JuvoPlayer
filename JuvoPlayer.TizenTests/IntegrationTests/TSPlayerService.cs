@@ -59,7 +59,6 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
             });
         }
 
-
         [Test, TestCaseSource(nameof(AllClips))]
         public void Playback_Basic_PreparesAndStarts(string clipTitle)
         {
@@ -76,8 +75,13 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
         {
             RunPlayerTest(clipTitle, async context =>
             {
+                context.SeekTime = null;
                 for (var i = 0; i < 10; ++i)
-                    await new SeekOperation().Execute(context);
+                {
+                    var seekOperation = new SeekOperation();
+                    seekOperation.Prepare(context);
+                    await seekOperation.Execute(context);
+                }
             });
         }
 
@@ -86,8 +90,10 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
         {
             RunPlayerTest(clipTitle, async context =>
             {
+                var seekOperation = new SeekOperation();
+                seekOperation.Prepare(context);
 #pragma warning disable 4014
-                new SeekOperation().Execute(context);
+                seekOperation.Execute(context);
 #pragma warning restore 4014
                 await Task.Delay(250);
             });
@@ -105,7 +111,9 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
                     nextSeekTime += TimeSpan.FromSeconds(10))
                 {
                     context.SeekTime = nextSeekTime;
-                    await new SeekOperation().Execute(context);
+                    var seekOperation = new SeekOperation();
+                    seekOperation.Prepare(context);
+                    await seekOperation.Execute(context);
                 }
             });
         }
@@ -122,7 +130,9 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
                     nextSeekTime -= TimeSpan.FromSeconds(20))
                 {
                     context.SeekTime = nextSeekTime;
-                    await new SeekOperation().Execute(context);
+                    var seekOperation = new SeekOperation();
+                    seekOperation.Prepare(context);
+                    await seekOperation.Execute(context);
                 }
             });
         }
@@ -136,7 +146,9 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
                 context.SeekTime = service.Duration;
                 try
                 {
-                    await new SeekOperation().Execute(context);
+                    var seekOperation = new SeekOperation();
+                    seekOperation.Prepare(context);
+                    await seekOperation.Execute(context);
                 }
                 catch (SeekException)
                 {
@@ -151,12 +163,23 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
             RunPlayerTest(clipTitle, async context =>
             {
                 var service = context.Service;
+
                 context.SeekTime = service.Duration - TimeSpan.FromSeconds(5);
-                await new SeekOperation().Execute(context);
-                await service.StateChanged()
+                var seekOperation = new SeekOperation();
+                seekOperation.Prepare(context);
+
+                var playbackErrorTask = service.PlaybackError()
+                    .FirstAsync()
+                    .ToTask();
+
+                var clipCompletedTask = service.StateChanged()
                     .AsCompletion()
                     .Timeout(TimeSpan.FromSeconds(10))
+                    .FirstAsync()
                     .ToTask();
+
+                await Task.WhenAny(seekOperation.Execute(context), playbackErrorTask);
+                await Task.WhenAny(clipCompletedTask, playbackErrorTask);
             });
         }
 
