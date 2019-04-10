@@ -19,6 +19,7 @@ using System;
 using System.Threading;
 using System.Threading.Tasks;
 using JuvoLogger;
+using JuvoPlayer.Common;
 using JuvoPlayer.Player.EsPlayer;
 
 namespace JuvoPlayer.Tests.Utils
@@ -64,6 +65,9 @@ namespace JuvoPlayer.Tests.Utils
                 timeoutCts.CancelAfter(context.Timeout);
 
                 await service.SeekTo(SeekPosition).WithCancellation(linkedCts.Token);
+
+                if (service.State != PlayerState.Playing)
+                    return;
 
                 for (var i = 0; i < 100; i++)
                 {
