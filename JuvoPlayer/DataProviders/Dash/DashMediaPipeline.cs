@@ -31,11 +31,6 @@ using MpdParser;
 using System.Threading;
 using System.Threading.Tasks;
 using static Configuration.DashMediaPipeline;
-using MpdParser.Node;
-using AdaptationSet = MpdParser.AdaptationSet;
-using ContentProtection = MpdParser.ContentProtection;
-using Period = MpdParser.Period;
-using Representation = MpdParser.Representation;
 
 namespace JuvoPlayer.DataProviders.Dash
 {
@@ -92,7 +87,8 @@ namespace JuvoPlayer.DataProviders.Dash
         public bool DisableAdaptiveStreaming { get; set; }
 
         private DashStream currentStream;
-        private DashStream pendingStream;
+
+        private DashStream PendingStream;
 
         private readonly Object switchStreamLock = new Object();
         private List<DashStream> availableStreams = new List<DashStream>();
@@ -130,10 +126,8 @@ namespace JuvoPlayer.DataProviders.Dash
                                          "throughputHistory cannot be null");
             this.streamType = streamType;
 
-            downloadCompletedSub = 
-                dashClient.DownloadCompleted()
-                    .Subscribe(async unit => await OnDownloadCompleted(), SynchronizationContext.Current);
-
+            downloadCompletedSub = dashClient.DownloadCompleted()
+                .Subscribe(async unit => await OnDownloadCompleted(), SynchronizationContext.Current);
             SubscribeDemuxerEvents();
         }
 
@@ -144,9 +138,6 @@ namespace JuvoPlayer.DataProviders.Dash
 
         private async Task OnDownloadCompleted()
         {
-            Logger.Info($"ENTER {pipelineStarted}");
-            
-
             try
             {
                 if (dashClient.CanStreamSwitch())
@@ -161,12 +152,15 @@ namespace JuvoPlayer.DataProviders.Dash
             {
                 Logger.Warn(ex, "Doesn't schedule next segment to download");
             }
-            Logger.Info("EXIT");
+            catch (OperationCanceledException ex)
+            {
+                Logger.Warn(ex, "Doesn't schedule next segment to download");
+            }
         }
 
         public Representation GetRepresentation()
         {
-            return pendingStream?.Representation ?? currentStream?.Representation;
+            return PendingStream?.Representation ?? currentStream?.Representation;
         }
 
         public void SynchronizeWith(DashMediaPipeline synchronizeWith)
@@ -208,7 +202,6 @@ namespace JuvoPlayer.DataProviders.Dash
 
                         // Media Preparation (Call to Initialize) is done upon assignment to pendingStream.
                         currentStream = new DashStream(currentMedia, currentRepresentation);
-
                         dashClient.UpdateRepresentation(currentStream.Representation);
 
                         PushMetaDataConfiguration();
@@ -222,7 +215,7 @@ namespace JuvoPlayer.DataProviders.Dash
                 // get first element of sorted array
                 var representation = defaultMedia.Representations.OrderByDescending(o => o.Bandwidth).Last();
 
-                pendingStream = new DashStream(defaultMedia, representation);
+                PendingStream = new DashStream(defaultMedia, representation);
             }
         }
 
@@ -231,10 +224,10 @@ namespace JuvoPlayer.DataProviders.Dash
             if (DisableAdaptiveStreaming)
                 return;
 
-            if (currentStream == null && pendingStream == null)
+            if (currentStream == null && PendingStream == null)
                 return;
 
-            var streamToAdapt = pendingStream ?? currentStream;
+            var streamToAdapt = PendingStream ?? currentStream;
             if (streamToAdapt.Representation.Bandwidth.HasValue == false)
                 return;
 
@@ -253,7 +246,7 @@ namespace JuvoPlayer.DataProviders.Dash
             if (stream.Representation.Bandwidth == streamToAdapt.Representation.Bandwidth) return;
 
             Logger.Info("Changing stream to bandwidth: " + stream.Representation.Bandwidth);
-            pendingStream = stream;
+            PendingStream = stream;
         }
 
         public async Task SwitchStreamIfNeeded()
@@ -273,15 +266,15 @@ namespace JuvoPlayer.DataProviders.Dash
 
             try
             {
-                if (pendingStream == null)
+                if (PendingStream == null)
                     return;
 
                 Logger.Info($"{StreamType}");
 
                 if (currentStream == null)
                 {
-                    StartPipeline(pendingStream);
-                    pendingStream = null;
+                    StartPipeline(PendingStream);
+                    PendingStream = null;
                     return;
                 }
 
@@ -289,9 +282,9 @@ namespace JuvoPlayer.DataProviders.Dash
                     return;
 
                 await FlushPipeline();
-                StartPipeline(pendingStream);
+                StartPipeline(PendingStream);
 
-                pendingStream = null;
+                PendingStream = null;
             }
             finally
             {
