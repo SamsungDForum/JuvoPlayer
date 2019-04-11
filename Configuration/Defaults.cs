@@ -44,7 +44,7 @@ namespace Configuration
     public static class DashClient
     {
         public static TimeSpan TimeBufferDepthDefault { get; set; } = TimeSpan.FromSeconds(10);
-        public static double BufferSegmentOverheadLimit { get; set; } = 0.5;
+        public static double MinimumSegmentFitRatio { get; set; } = 0.7;
     }
 
     public static class DashDownloader

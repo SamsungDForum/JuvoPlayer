@@ -61,7 +61,7 @@ namespace JuvoPlayer.DataProviders.Dash
         private readonly IList<byte[]> initStreamBytes = new List<byte[]>();
 
         private Task<DownloadResponse> downloadDataTask;
-        private Task processDataTask;
+        private Task processDataTask = Task.CompletedTask;
         private CancellationTokenSource cancellationTokenSource;
         private Task downloadCompletedTask;
 
@@ -69,8 +69,10 @@ namespace JuvoPlayer.DataProviders.Dash
         /// Contains information about timing data for last requested segment
         /// </summary>
         private TimeRange lastDownloadSegmentTimeRange;
-        private TimeSpan dataNeedsDuration = TimeSpan.Zero;
-
+        private TimeSpan dataNeedsDuration;
+        private DataArgs newDurationNeeds;
+        private uint sequenceId;
+        
         /// <summary>
         /// A shorthand for retrieving currently played out document type
         /// True - Content is dynamic
@@ -91,6 +93,8 @@ namespace JuvoPlayer.DataProviders.Dash
         /// </summary>
         private bool initInProgress;
 
+        private bool initReloadRequired;
+
         private readonly Subject<string> errorSubject = new Subject<string>();
         private readonly Subject<Unit> downloadCompletedSubject = new Subject<Unit>();
         private readonly Subject<byte[]> chunkReadySubject = new Subject<byte[]>();
@@ -105,19 +109,44 @@ namespace JuvoPlayer.DataProviders.Dash
 
         public void ProvideData(DataArgs args)
         {
-            var currentNeeds = dataNeedsDuration;
-            if (args.DurationRequired > TimeSpan.Zero)
+            if (disposedValue)
+                return;
+
+            Interlocked.Exchange(ref newDurationNeeds, args);
+            LogInfo($"New data needs set: {args}");
+
+            ScheduleNextSegDownload();
+        }
+
+        private void UpdateDataNeeds()
+        {
+            var newNeeds = Interlocked.Exchange(ref newDurationNeeds, null);
+            if (newNeeds == null)
+                return;
+
+            var oldDurationNeeds = dataNeedsDuration;
+            var oldSequence = sequenceId;
+
+            if (newNeeds.SequenceId != sequenceId)
             {
-                dataNeedsDuration = (DateTimeOffset.Now - args.RequestTimeStamp) + args.DurationRequired;
+                dataNeedsDuration = newNeeds.DurationRequired;
+                sequenceId = newNeeds.SequenceId;
             }
             else
             {
-                dataNeedsDuration = TimeSpan.Zero;
+                var newDuration = TimeSpan.Zero;
+
+                if (newNeeds.DurationRequired > TimeSpan.Zero)
+                {
+                    var durationDiff = newNeeds.DurationRequired - dataNeedsDuration;
+                    newDuration = dataNeedsDuration + durationDiff;
+                }
+
+                dataNeedsDuration = newDuration;
             }
-
-            LogInfo($"Data Needed: {dataNeedsDuration} {currentNeeds}");
+            
+            LogInfo($"Data needs updated: {dataNeedsDuration} Req: {newNeeds.DurationRequired} old: {oldDurationNeeds} Seq {newNeeds.SequenceId}/{oldSequence}");
         }
-
         public TimeSpan Seek(TimeSpan position)
         {
             // A workaround for a case when we seek to the end of a content while audio and video streams have
@@ -155,8 +184,11 @@ namespace JuvoPlayer.DataProviders.Dash
                 throw new Exception("currentRepresentation has not been set");
 
             initInProgress = true;
-    
-            LogInfo("DashClient start."+dataNeedsDuration);
+            this.initReloadRequired = initReloadRequired;
+            dataNeedsDuration = TimeSpan.Zero;
+
+            UpdateDataNeeds();
+            LogInfo("DashClient start: "+dataNeedsDuration);
 
             if (cancellationTokenSource == null || cancellationTokenSource?.IsCancellationRequested == true)
             {
@@ -172,25 +204,31 @@ namespace JuvoPlayer.DataProviders.Dash
             if (!trimOffset.HasValue)
                 trimOffset = currentRepresentation.AlignedTrimOffset;
 
-            var initSegment = currentStreams.InitSegment;
-            if (initSegment != null)
+            if ( currentStreams.InitSegment == null)
             {
-                DownloadInitSegment(initSegment, initReloadRequired);
+                initInProgress = false;
             }
-            else
-            {
-                ScheduleNextSegDownload();
-            }
+
+            downloadCompletedSubject.OnNext(Unit.Default);
+             //ScheduleNextSegDownload();
+           
         }
 
         private bool IsBufferSpaceAvailable()
         {
-            // TODO: Incorporate Segment size into data needs duration
-            // TODO: to reduce buffer overflows. Needs to be done with care as not
-            // TODO: enough data will not generate "buffer full" event from player.
-            // TODO: Lack of this event will prevent "buffer empty" event from being
-            // TODO: generated.
-            if (dataNeedsDuration > TimeSpan.Zero ) return true;
+            if (lastDownloadSegmentTimeRange == null)
+            {
+                if (dataNeedsDuration > TimeSpan.Zero) return true;
+            }
+            else
+            {
+                // Try not to overflow buffers. Download next segment if predefined
+                // amount will fit
+                var minFitDuration = TimeSpan.FromMilliseconds(
+                    lastDownloadSegmentTimeRange.Duration.TotalMilliseconds * MinimumSegmentFitRatio);
+
+                if (dataNeedsDuration >= minFitDuration) return true;
+            }
 
             LogInfo($"Full buffer: {bufferTime}-{currentTime} ({bufferTime - currentTime}) {dataNeedsDuration}");
     
@@ -209,13 +247,29 @@ namespace JuvoPlayer.DataProviders.Dash
                 return;
             }
 
-            if (!processDataTask.IsCompleted || cancellationTokenSource.IsCancellationRequested)
+            if (!processDataTask.IsCompleted || cancellationTokenSource == null || cancellationTokenSource.IsCancellationRequested)
                 return;
+
+            UpdateDataNeeds();
 
             if (!IsBufferSpaceAvailable())
                 return;
 
             SwapRepresentation();
+
+            if (initInProgress)
+            {
+                if (currentStreams.InitSegment != null)
+                {
+                    DownloadInitSegment(currentStreams.InitSegment, initReloadRequired);
+                }
+                else
+                {
+                    initInProgress = false;
+                }
+
+                return;
+            }
 
             var segment = currentStreams.MediaSegment(currentSegmentId);
             if (segment == null)
@@ -314,7 +368,11 @@ namespace JuvoPlayer.DataProviders.Dash
                 }, TaskScheduler.Default);
 
                 downloadCompletedTask = processDataTask.ContinueWith(
-                    _ => downloadCompletedSubject.OnNext(Unit.Default),
+                    _ =>
+                    {
+                        LogInfo("Init Done. Poking downloadCompleted");
+                        downloadCompletedSubject.OnNext(Unit.Default);
+                    },
                     TaskContinuationOptions.OnlyOnRanToCompletion);
             }
             else
@@ -345,11 +403,6 @@ namespace JuvoPlayer.DataProviders.Dash
             
             var timeInfo = segment.Period.ToString();
             LogInfo($"Segment: {responseResult.SegmentId} enqueued {timeInfo}");
-            if (initInProgress)
-            {
-                initInProgress = false;
-                LogInfo("Initialization complete.");
-            }
 
             return DownloadLoopStatus.Continue;
         }
@@ -357,6 +410,7 @@ namespace JuvoPlayer.DataProviders.Dash
         private void InitDataDownloaded()
         {
             LogInfo("Segment: INIT enqueued.");
+            initInProgress = false;
         }
 
         private DownloadLoopStatus HandleFailedDownload(Task response)

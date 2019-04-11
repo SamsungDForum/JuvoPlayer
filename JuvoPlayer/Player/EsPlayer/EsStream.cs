@@ -92,7 +92,8 @@ namespace JuvoPlayer.Player.EsPlayer
 
         private Packet currentPacket;
         private PacketBarrier barrier;
-        private readonly StreamBuffer streamBuffer;
+        private readonly StreamBufferController streamBufferController;
+        
 
         public IObservable<string> PlaybackError()
         {
@@ -110,7 +111,7 @@ namespace JuvoPlayer.Player.EsPlayer
         {
             streamType = type;
             packetStorage = storage;
-            streamBuffer = bufferController.GetStreamBuffer(type);
+            streamBufferController = bufferController;
 
             switch (streamType)
             {
@@ -372,7 +373,7 @@ namespace JuvoPlayer.Player.EsPlayer
         private async Task TransferTask(CancellationToken token)
         {
             logger.Info($"{streamType}: Transfer task started");
-
+            var streamBuffer = streamBufferController.GetStreamBuffer(streamType);
             barrier.Reset();
 
             try
@@ -388,11 +389,14 @@ namespace JuvoPlayer.Player.EsPlayer
                     var delay = barrier.TimeToNextFrame();
 
                     logger.Info(
-                        $"{streamType}: Transfer task halted. Buffer {streamBuffer.BufferFill}% {streamBuffer.CurrentBufferSize}");
+                        $"{streamType}: Halted. Buffer {streamBuffer.BufferFill()}% {streamBuffer.CurrentBufferedDuration()} {streamBuffer.BufferTimeRange}");
 
                     DelayTransfer(delay, token);
 
                     barrier.Reset();
+
+                    logger.Info(
+                        $"{streamType}: Restarted {streamBuffer.BufferTimeRange}");
                 }
             }
             catch (InvalidOperationException e)
@@ -423,7 +427,7 @@ namespace JuvoPlayer.Player.EsPlayer
             }
 
             logger.Info(
-                $"{streamType}: Transfer task terminated. Buffer {streamBuffer.BufferFill}% {streamBuffer.CurrentBufferSize}");
+                $"{streamType}: Terminated. Buffer {streamBuffer.BufferFill()}% {streamBuffer.CurrentBufferedDuration()} {streamBuffer.BufferTimeRange}");
         }
 
         private async Task<bool> ProcessNextPacket(CancellationToken token)
@@ -433,8 +437,8 @@ namespace JuvoPlayer.Player.EsPlayer
 
             var shouldContinue = await ProcessPacket(currentPacket, token);
 
+            streamBufferController.DataOut(currentPacket);
             barrier.PacketPushed(currentPacket);
-            streamBuffer.DataOut(currentPacket);
             currentPacket.Dispose();
             currentPacket = null;
             return shouldContinue;

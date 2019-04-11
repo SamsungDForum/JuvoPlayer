@@ -16,132 +16,151 @@
  */
 
 using System;
+
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
 using System.Threading;
 using JuvoLogger;
 using JuvoPlayer.Common;
-using System.Diagnostics;
-using System.Reactive;
-using static Configuration.StreamBuffer;
+
 
 namespace JuvoPlayer.Player.EsPlayer
 {
-    class StreamBuffer:IDisposable
+    internal class StreamBuffer:IDisposable
     {
         private readonly ILogger logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
 
         private TimeSpan maxBufferDuration;
-        private TimeSpan dataOnLevel;
-        private TimeSpan dataOffLevel;
-        private TimeSpan bufferOnLevel;
-        private TimeSpan bufferOffLevel;
+        private long bufferAvailableTicks;
 
-        public TimeSpan CurrentBufferSize => TimeSpan.FromTicks(GetCurrentBufferDurationTicks());
-        public int BufferFill => (int) (((double) Interlocked.Read(ref currentBufferDurationTicks) / maxBufferDuration.Ticks) * 100);
-        
         private readonly StreamType streamType;
 
         private readonly Subject<long> dataInSubject = new Subject<long>();
         private readonly Subject<long> dataOutSubject = new Subject<long>();
-        private readonly BehaviorSubject<DataArgs> bufferUpdateSubject;
-
-        private long currentBufferDurationTicks;
+        private readonly Subject<long> bufferUpdateSubject = new Subject<long>();
         
         private TimeSpan? lastDtsIn;
         private TimeSpan? lastDtsOut;
         private TimeSpan? eosDts;
 
-        private long GetCurrentBufferDurationTicks() =>
-            Interlocked.Read(ref currentBufferDurationTicks);
+        private volatile uint sequenceId;
+        private volatile bool reportFull;
 
-        private bool IsBufferEmpty(TimeSpan currentBuffer) =>
-            currentBuffer >= maxBufferDuration;
+        public string BufferTimeRange => lastDtsOut  + "-" + lastDtsIn;
+        private long GetAvailableBufferTicks() =>
+            Interlocked.Read(ref bufferAvailableTicks);
 
         public IObservable<DataArgs> DataState() =>
-            bufferUpdateSubject
-                .Merge(filteredDataInOut())
-                .AsObservable();
-
-        private IObservable<DataArgs> filteredDataInOut() =>
-            filteredDataIn()
-                .Merge(filteredDataOut())
-                .Sample(TimeSpan.FromSeconds(1))
-                .Select(currentBufferTicks =>
+            FilteredDataIn()
+                .Merge(FilteredDataOut())
+                .TakeLast(1)
+                .Merge(bufferUpdateSubject)
+                .Select(currentBufferTicks => new DataArgs
                 {
-                    var bufferSize = maxBufferDuration - TimeSpan.FromTicks(currentBufferTicks);
-                    return new DataArgs
-                    {
-                        DurationRequired = bufferSize,
-                        StreamType = streamType,
-                        BufferEmpty = IsBufferEmpty(bufferSize)
-                    };
+                    SequenceId = sequenceId,
+                    DurationRequired = reportFull?
+                        TimeSpan.Zero:
+                        TimeSpan.FromTicks(currentBufferTicks),
+                    StreamType = streamType,
                 });
 
-        private IObservable<long> filteredDataIn() =>
+        private IObservable<long> FilteredDataIn() =>
             dataInSubject
-                .Where(currentBuffer => currentBuffer >= dataOffLevel.Ticks)
-                .DistinctUntilChanged();
+                .Throttle(TimeSpan.FromMilliseconds(250))
+                .Timeout(TimeSpan.FromSeconds(1), OnDataTimeout());
 
-        private IObservable<long> filteredDataOut() =>
+
+        private IObservable<long> FilteredDataOut() =>
             dataOutSubject
-                .Where(currentBuffer => currentBuffer <= dataOnLevel.Ticks)
-                .DistinctUntilChanged();
-        
-        public StreamBuffer(StreamType streamType)
+                .Throttle(TimeSpan.FromMilliseconds(250))
+                .Timeout(TimeSpan.FromSeconds(1), OnDataTimeout());
+
+
+        public StreamBuffer(StreamType streamType, uint id)
         {
             this.streamType = streamType;
+            sequenceId = id;
 
-            UpdateBufferDuration(TimeBufferDepthDefault);
+            UpdateBufferDuration(TimeSpan.FromSeconds(10));
 
-            bufferUpdateSubject = new BehaviorSubject<DataArgs>(new DataArgs
-            {
-                DurationRequired = maxBufferDuration,
-                BufferEmpty = false,
-                StreamType = streamType
-            });
+            Interlocked.Exchange(ref bufferAvailableTicks, maxBufferDuration.Ticks);
+        }
+
+        private IObservable<long> OnDataTimeout()
+        {
+            var ticks = GetAvailableBufferTicks();
+            
+            return Observable.Return(ticks);
+        }
+
+        public TimeSpan CurrentBufferedDuration()
+        {
+            var durationTicks = maxBufferDuration.Ticks - GetAvailableBufferTicks();
+            return TimeSpan.FromTicks(durationTicks);
+        }
+
+        public double BufferFill()
+        {
+            var fillValue = (((maxBufferDuration.Ticks - GetAvailableBufferTicks())
+                              / (double) maxBufferDuration.Ticks)) * 100;
+
+            return Math.Round(fillValue,2);
         }
 
         public void UpdateBufferConfiguration(MetaDataStreamConfig newStreamConfig)
         {
+            var previousMax = maxBufferDuration;
+
             UpdateBufferDuration(newStreamConfig.BufferDuration);
 
-            var bufferSpace = maxBufferDuration - CurrentBufferSize;
+            var durationDiff =  maxBufferDuration - previousMax;
 
-            bufferUpdateSubject.OnNext(new DataArgs
-            {
-                DurationRequired = bufferSpace,
-                BufferEmpty = IsBufferEmpty(bufferSpace),
-                StreamType = streamType
-            });   
+            var diff = Interlocked.Add(ref bufferAvailableTicks, durationDiff.Ticks);
+            
+            bufferUpdateSubject.OnNext(diff);   
+            
         }
-        
         private void UpdateBufferDuration(TimeSpan duration)
         {
             maxBufferDuration = duration;
-            dataOnLevel = TimeSpan.FromSeconds(duration.TotalSeconds * DataOnLevel);
-            dataOffLevel = TimeSpan.FromSeconds(duration.TotalSeconds * DataOffLevel);
-            bufferOnLevel = TimeSpan.FromSeconds(duration.TotalSeconds * BufferOnLevel);
-            bufferOffLevel = TimeSpan.FromSeconds(duration.TotalSeconds * BufferOffLevel);
 
-            logger.Info($"Size={maxBufferDuration} DataOn={dataOnLevel} DataOff={dataOffLevel} BufferOn={bufferOnLevel} BufferOff={bufferOffLevel}");
+            logger.Info($"{streamType}: Buffer Size {maxBufferDuration}");
         }
 
-        public void Reset()
+        public void Reset(uint id)
         {
-            logger.Info($"{streamType}");
+            logger.Info($"{streamType}: {id}");
 
-            currentBufferDurationTicks = 0;
+            Interlocked.Exchange(ref bufferAvailableTicks, maxBufferDuration.Ticks);
 
+            // EOS is not reset. Intentional.
             lastDtsIn = null;
             lastDtsOut = null;
 
-            bufferUpdateSubject.OnNext(new DataArgs
-            {
-                DurationRequired = maxBufferDuration,
-                BufferEmpty = false,
-                StreamType = streamType
-            });
+            sequenceId = id;
+
+            bufferUpdateSubject.OnNext(maxBufferDuration.Ticks);
+        }
+
+        public void Update()
+        {
+            logger.Info($"{streamType}:");
+
+            bufferUpdateSubject.OnNext(GetAvailableBufferTicks());
+        }
+
+        public void ReportFullBuffer()
+        {
+            logger.Info($"{streamType}:");
+
+            reportFull = true;
+        }
+
+        public void ReportActualBuffer()
+        {
+            logger.Info($"{streamType}:");
+
+            reportFull = false;
         }
 
         public void DataIn(Packet packet)
@@ -160,54 +179,49 @@ namespace JuvoPlayer.Player.EsPlayer
                 return;
             }
             
-            var duration = packet.Dts - lastDtsIn;
+            var duration = packet.Dts - lastDtsIn.Value;
             if (duration < TimeSpan.Zero)
             {
-                logger.Warn($"DTS Mismatch! lastDTS {lastDtsIn} PacketDTS {packet.Dts}. Presentation changed?");
+                logger.Warn($"{streamType}: DTS Mismatch! last DTS In {lastDtsIn} PacketDTS {packet.Dts}. Presentation changed?");
                 return;
             }
-
-            if (duration == TimeSpan.Zero)
-                return;
-
+            
             lastDtsIn = packet.Dts;
 
-            var bufferTicks = Interlocked.Add(ref currentBufferDurationTicks, duration.Value.Ticks);
+            var bufferTicks = Interlocked.Add(ref bufferAvailableTicks, duration.Negate().Ticks);
 
             dataInSubject.OnNext(bufferTicks);            
         }
 
-        public void DataOut(Packet packet)
+        public bool DataOut(Packet packet)
         {
             if (!packet.ContainsData())
-                return;
+                return false;
 
             if (!lastDtsOut.HasValue)
             {
                 lastDtsOut = packet.Dts;
-                return;
+                return false;
             }
 
-            var duration = packet.Dts - lastDtsOut;
+            var duration = packet.Dts - lastDtsOut.Value;
             if (duration < TimeSpan.Zero)
             {
-                logger.Warn($"DTS Mismatch! lastDTS {lastDtsIn} PacketDTS {packet.Dts}. Presentation changed?");
-                return;
+                logger.Warn($"{streamType}: DTS Mismatch! last DTS Out {lastDtsOut} PacketDTS {packet.Dts}. Presentation changed?");
+                return false;
             }
-
-            if (duration == TimeSpan.Zero)
-                return;
 
             lastDtsOut = packet.Dts;
 
-            var bufferTicks = Interlocked.Add(ref currentBufferDurationTicks, duration.Value.Negate().Ticks);
-            
-            // If "out" packet DTS matches EOS DTS, don't process On levels
-            // to prevent buffer event generation on end of stream.
-            if (lastDtsOut == eosDts)
-                return;
+            var bufferTicks = Interlocked.Add(ref bufferAvailableTicks, duration.Ticks);
 
             dataOutSubject.OnNext(bufferTicks);
+
+            var bufferEmpty = bufferTicks >= maxBufferDuration.Ticks;
+
+            // If "out" packet DTS matches EOS DTS, don't process On levels
+            // to prevent buffer event generation on end of stream.
+            return lastDtsOut < eosDts && bufferEmpty;
         }
 
         public void Dispose()
