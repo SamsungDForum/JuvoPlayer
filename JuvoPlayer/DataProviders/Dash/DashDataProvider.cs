@@ -70,6 +70,10 @@ namespace JuvoPlayer.DataProviders.Dash
             {
                 Logger.Warn(ex);
             }
+            catch (OperationCanceledException ex)
+            {
+                Logger.Warn(ex);
+            }
         }
 
         public IObservable<TimeSpan> ClipDurationChanged()
