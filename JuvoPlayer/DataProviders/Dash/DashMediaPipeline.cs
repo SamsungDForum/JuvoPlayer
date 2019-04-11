@@ -139,6 +139,10 @@ namespace JuvoPlayer.DataProviders.Dash
             {
                 Logger.Warn(ex, "Doesn't schedule next segment to download");
             }
+            catch (OperationCanceledException ex)
+            {
+                Logger.Warn(ex, "Doesn't schedule next segment to download");
+            }
         }
 
         public Representation GetRepresentation()
