@@ -87,7 +87,6 @@ namespace JuvoPlayer.DataProviders.Dash
         public bool DisableAdaptiveStreaming { get; set; }
 
         private DashStream currentStream;
-        private DashStream _pendingStreamStorage;
 
         private DashStream PendingStream;
 
