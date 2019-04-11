@@ -45,7 +45,7 @@ namespace JuvoPlayer.Player.EsPlayer
         // stream data and data storage
         private readonly EsStream[] esStreams;
         private readonly EsPlayerPacketStorage packetStorage;
-        private readonly StreamBufferController bufferController;
+        private readonly StreamBufferController bufferController = new StreamBufferController();
 
         // Reference to ESPlayer & associated window
         private ESPlayer.ESPlayer player;
@@ -126,11 +126,6 @@ namespace JuvoPlayer.Player.EsPlayer
             streamReconfigureSubs = new IDisposable[(int) StreamType.Count];
             playbackErrorSubs = new IDisposable[(int) StreamType.Count];
 
-            bufferController = new StreamBufferController
-            {
-                BufferEventsEnabled = BufferEventsAllowed
-            };
-
             AttachEventHandlers();
         }
 
@@ -169,13 +164,11 @@ namespace JuvoPlayer.Player.EsPlayer
 
             try
             {
-
                 if (config.Config is MetaDataStreamConfig metaData)
                 {
                     bufferController.SetMetaDataConfiguration(metaData);
                     return;
                 }
-
 
                 var pushResult = esStreams[(int)streamType].SetStreamConfig(config);
 
@@ -254,7 +247,7 @@ namespace JuvoPlayer.Player.EsPlayer
                     default:
                         throw new InvalidOperationException($"Play called in invalid state: {state}");
                 }
-
+                
                 EnableTransfer();
                 StartClockGenerator();
                 stateChangedSubject.OnNext(PlayerState.Playing);
@@ -298,6 +291,7 @@ namespace JuvoPlayer.Player.EsPlayer
 
             try
             {
+                bufferController.DisableEvents();
                 DisableTransfer();
                 StopClockGenerator();
                 player.Stop();
@@ -316,8 +310,18 @@ namespace JuvoPlayer.Player.EsPlayer
 
             try
             {
+                bufferController.ReportFullBuffer();
+                bufferController.UpdateBuffer();
+                bufferController.DisableEvents();
+
                 await SeekStreamInitialize(token);
                 time = await Client.Seek(time, token);
+                
+                bufferController.ResetBuffers();
+                bufferController.ReportActualBuffer();
+                bufferController.EnableEvents();
+                bufferController.UpdateBuffer();
+
                 await StreamSeek(time, token);
             }
             catch (SeekException e)
@@ -641,8 +645,6 @@ namespace JuvoPlayer.Player.EsPlayer
         {
             foreach (var esStream in esStreams)
                 esStream?.EmptyStorage();
-
-            bufferController.ResetBuffers();
         }
 
         /// <summary>
@@ -694,6 +696,7 @@ namespace JuvoPlayer.Player.EsPlayer
 
                         currentClock = currentPlayTime;
                         timeUpdatedSubject.OnNext(currentClock);
+                        logger.Info($"{currentClock}");
                     }
                     catch (InvalidOperationException ioe)
                     {
@@ -753,27 +756,6 @@ namespace JuvoPlayer.Player.EsPlayer
             clockGeneratorCts.Cancel();
         }
 
-        private bool BufferEventsAllowed()
-        {
-            try
-            {
-                var playerState = player.GetState();
-                switch (playerState)
-                {
-                    case ESPlayer.ESPlayerState.Paused:
-                    case ESPlayer.ESPlayerState.Playing:
-                        return true;
-                    default:
-                        return false;
-                }
-            }
-            catch (Exception ex) 
-                when (ex is ObjectDisposedException || 
-                      ex is InvalidOperationException )
-            {
-                return false;
-            }
-        }
         #endregion
 
         #region Dispose support

@@ -88,7 +88,7 @@ namespace JuvoPlayer.DataProviders.Dash
         private readonly StreamType streamType;
         public StreamType StreamType => streamType;
 
-        private bool pipelineStarted;
+        private volatile bool pipelineStarted;
         public bool DisableAdaptiveStreaming { get; set; }
 
         private DashStream currentStream;
@@ -107,7 +107,6 @@ namespace JuvoPlayer.DataProviders.Dash
         private readonly Subject<Packet> packetReadySubject = new Subject<Packet>();
         private readonly Subject<StreamConfig> demuxerStreamConfigReadySubject = new Subject<StreamConfig>();
         private readonly Subject<StreamConfig> metaDataStreamConfigSubject = new Subject<StreamConfig>();
-        private readonly Subject<Unit> dataNeededSubject = new Subject<Unit>();
         
         private IDisposable demuxerPacketReadySub;
         private IDisposable demuxerStreamConfigReadySub;
@@ -133,7 +132,6 @@ namespace JuvoPlayer.DataProviders.Dash
 
             downloadCompletedSub = 
                 dashClient.DownloadCompleted()
-                    .Merge(dataNeededSubject)
                     .Subscribe(async unit => await OnDownloadCompleted(), SynchronizationContext.Current);
 
             SubscribeDemuxerEvents();
@@ -142,20 +140,13 @@ namespace JuvoPlayer.DataProviders.Dash
         public void ProvideData(DataArgs args)
         {
             dashClient.ProvideData(args);
-
-            if (args.DurationRequired <= TimeSpan.Zero) return;
-
-            if (!pipelineStarted)
-            {
-                Logger.Info($"{streamType}: Data Provider not started");
-                return;
-            }
-
-            dataNeededSubject.OnNext(Unit.Default);
         }
 
         private async Task OnDownloadCompleted()
         {
+            Logger.Info($"ENTER {pipelineStarted}");
+            
+
             try
             {
                 if (dashClient.CanStreamSwitch())
@@ -170,6 +161,7 @@ namespace JuvoPlayer.DataProviders.Dash
             {
                 Logger.Warn(ex, "Doesn't schedule next segment to download");
             }
+            Logger.Info("EXIT");
         }
 
         public Representation GetRepresentation()
@@ -217,9 +209,10 @@ namespace JuvoPlayer.DataProviders.Dash
                         // Media Preparation (Call to Initialize) is done upon assignment to pendingStream.
                         currentStream = new DashStream(currentMedia, currentRepresentation);
 
+                        dashClient.UpdateRepresentation(currentStream.Representation);
+
                         PushMetaDataConfiguration();
 
-                        dashClient.UpdateRepresentation(currentStream.Representation);
                         return;
                     }
                 }
@@ -308,7 +301,8 @@ namespace JuvoPlayer.DataProviders.Dash
 
         private void PushMetaDataConfiguration()
         {
-            Task.Run(()=>metaDataStreamConfigSubject.OnNext(GetStreamMetaDataConfig()));
+            //Task.Run(()=>metaDataStreamConfigSubject.OnNext(GetStreamMetaDataConfig()));
+            metaDataStreamConfigSubject.OnNext(GetStreamMetaDataConfig());
         }
 
         private void GetAvailableStreams(IEnumerable<AdaptationSet> media, AdaptationSet defaultMedia)
@@ -355,8 +349,6 @@ namespace JuvoPlayer.DataProviders.Dash
                 Logger.Info($"{StreamType}: Media: {currentStream.Media}");
                 Logger.Info($"{StreamType}: {currentStream.Representation}");
 
-                PushMetaDataConfiguration();
-
                 dashClient.UpdateRepresentation(currentStream.Representation);
                 ParseDrms(currentStream.Media);
             }
@@ -370,6 +362,11 @@ namespace JuvoPlayer.DataProviders.Dash
             dashClient.Start(fullInitRequired);
 
             pipelineStarted = true;
+
+            if (newStream != null)
+            {
+                PushMetaDataConfiguration();
+            }
         }
 
         private static AdaptationSet GetDefaultMedia(ICollection<AdaptationSet> medias)
