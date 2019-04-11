@@ -85,9 +85,11 @@ namespace JuvoPlayer.Demuxers
 
             // Make sure that all pending chunks are delivered before calling Complete
             await Task.Yield();
+            token.ThrowIfCancellationRequested();
 
             demuxer.Complete();
             await demuxer.Completion.WaitAsync(token);
+            token.ThrowIfCancellationRequested();
 
             demuxer.Reset();
         }

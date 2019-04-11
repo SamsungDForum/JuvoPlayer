@@ -87,7 +87,6 @@ namespace JuvoPlayer.DataProviders.Dash
         public bool DisableAdaptiveStreaming { get; set; }
 
         private DashStream currentStream;
-        private DashStream _pendingStreamStorage;
 
         private DashStream PendingStream;
 
@@ -137,6 +136,10 @@ namespace JuvoPlayer.DataProviders.Dash
                 dashClient.ScheduleNextSegDownload();
             }
             catch (TaskCanceledException ex)
+            {
+                Logger.Warn(ex, "Doesn't schedule next segment to download");
+            }
+            catch (OperationCanceledException ex)
             {
                 Logger.Warn(ex, "Doesn't schedule next segment to download");
             }

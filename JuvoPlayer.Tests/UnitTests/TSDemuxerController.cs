@@ -359,6 +359,10 @@ namespace JuvoPlayer.Tests.UnitTests
                     {
                         // ignored
                     }
+                    catch (OperationCanceledException)
+                    {
+                        // ignored
+                    }
                 }
             });
         }
