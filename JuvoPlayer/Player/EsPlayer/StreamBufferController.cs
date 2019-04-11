@@ -108,7 +108,19 @@ namespace JuvoPlayer.Player.EsPlayer
         public void DataIn(Packet packet)
         {
             var index = (int) packet.StreamType;
+
+            if (!packet.ContainsData())
+            {
+                if (packet is EOSPacket)
+                    streamBuffers[index].MarkEosDts();
+
+                return;
+            }
+            
             streamBuffers[index].DataIn(packet);
+
+            if (!packet.ContainsData())
+                return;
 
             if(streamBufferingFilter[index])
                 logger.Info($"{packet.StreamType}: Buffering Off");
@@ -122,8 +134,14 @@ namespace JuvoPlayer.Player.EsPlayer
 
         public void DataOut(Packet packet)
         {
+            if (!packet.ContainsData())
+                return;
+
             var index = (int) packet.StreamType;
             var isEmpty = streamBuffers[index].DataOut(packet);
+
+            if (!packet.ContainsData())
+                return;
 
             if(isEmpty )
                 logger.Info($"{packet.StreamType}: Buffering On");

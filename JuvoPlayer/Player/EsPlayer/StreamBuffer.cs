@@ -22,12 +22,19 @@ using System.Reactive.Subjects;
 using System.Threading;
 using JuvoLogger;
 using JuvoPlayer.Common;
+using Tizen.TV.System;
 
 
 namespace JuvoPlayer.Player.EsPlayer
 {
     internal class StreamBuffer:IDisposable
     {
+        private class PacketData
+        {
+            public TimeSpan Dts;
+            public bool isEos;
+        }
+
         private readonly ILogger logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
 
         private TimeSpan maxBufferDuration;
@@ -163,28 +170,28 @@ namespace JuvoPlayer.Player.EsPlayer
             reportFull = false;
         }
 
+        public void MarkEosDts()
+        {
+            eosDts = lastDtsIn;
+            logger.Info($"{streamType}: EOS Dts set to {eosDts}");
+        }
+
         public void DataIn(Packet packet)
         {
-            if (!packet.ContainsData())
-            {
-                if (packet is EOSPacket)
-                    eosDts = lastDtsIn;
-                
-                return;
-            }
-
             if (!lastDtsIn.HasValue)
             {
                 lastDtsIn = packet.Dts;
                 return;
             }
             
-            var duration = packet.Dts - lastDtsIn.Value;
-            if (duration < TimeSpan.Zero)
+            if (lastDtsIn > packet.Dts)
             {
                 logger.Warn($"{streamType}: DTS Mismatch! last DTS In {lastDtsIn} PacketDTS {packet.Dts}. Presentation changed?");
+                lastDtsIn = packet.Dts;
                 return;
             }
+
+            var duration = packet.Dts - lastDtsIn.Value;
             
             lastDtsIn = packet.Dts;
 
@@ -195,22 +202,21 @@ namespace JuvoPlayer.Player.EsPlayer
 
         public bool DataOut(Packet packet)
         {
-            if (!packet.ContainsData())
-                return false;
-
             if (!lastDtsOut.HasValue)
             {
                 lastDtsOut = packet.Dts;
                 return false;
             }
 
-            var duration = packet.Dts - lastDtsOut.Value;
-            if (duration < TimeSpan.Zero)
+            if (lastDtsOut > packet.Dts)
             {
                 logger.Warn($"{streamType}: DTS Mismatch! last DTS Out {lastDtsOut} PacketDTS {packet.Dts}. Presentation changed?");
+                lastDtsOut = packet.Dts;
                 return false;
             }
-
+            
+            var duration = packet.Dts - lastDtsOut.Value;
+            
             lastDtsOut = packet.Dts;
 
             var bufferTicks = Interlocked.Add(ref bufferAvailableTicks, duration.Ticks);
