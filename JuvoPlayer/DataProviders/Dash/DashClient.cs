@@ -93,6 +93,8 @@ namespace JuvoPlayer.DataProviders.Dash
         /// </summary>
         private bool initInProgress;
 
+        private TimeSpan initDataDuration;
+
         private bool initReloadRequired;
 
         private readonly Subject<string> errorSubject = new Subject<string>();
@@ -184,6 +186,8 @@ namespace JuvoPlayer.DataProviders.Dash
                 throw new Exception("currentRepresentation has not been set");
 
             initInProgress = true;
+            initDataDuration = currentStreams.GetDocumentParameters().Document.MinBufferTime ??
+                                               MinimumBufferTime;
             this.initReloadRequired = initReloadRequired;
             dataNeedsDuration = TimeSpan.Zero;
 
@@ -290,6 +294,8 @@ namespace JuvoPlayer.DataProviders.Dash
         private void UpdateDataNeedsDuration(TimeSpan duration)
         {
             dataNeedsDuration -= duration;
+            if (initDataDuration > TimeSpan.Zero)
+                initDataDuration -= duration;
         }
 
         private void DownloadSegment(Segment segment)
@@ -513,6 +519,7 @@ namespace JuvoPlayer.DataProviders.Dash
             var docParams = currentStreams.GetDocumentParameters();
             if (docParams == null)
                 throw new ArgumentNullException("currentStreams.GetDocumentParameters() returns null");
+
             currentStreamDuration = IsDynamic
                 ? docParams.Document.MediaPresentationDuration
                 : currentStreams.Duration;
@@ -539,6 +546,7 @@ namespace JuvoPlayer.DataProviders.Dash
             LogInfo(
                 $"Rep. Swap. Last Seg: {currentSegmentId}/{lastDownloadSegmentTimeRange.Start}-{lastDownloadSegmentTimeRange.Duration} {message}");
             currentSegmentId = newSeg;
+
             LogInfo("Representations swapped.");
         }
 
@@ -627,7 +635,7 @@ namespace JuvoPlayer.DataProviders.Dash
             // Allow stream change ONLY if not performing initialization.
             // If needed, initInProgress flag could be used to delay stream switching
             // i.e. reset not after INIT segment but INIT + whatever number of data segments.
-            return !initInProgress;
+            return !initInProgress && initDataDuration <= TimeSpan.Zero;
         }
 
         public IObservable<string> ErrorOccurred()
