@@ -14,7 +14,10 @@
     <metadata key="http://samsung.com/tv/metadata/use.preview" value="endpoint_URL=https://raw.githubusercontent.com/SamsungDForum/JuvoPlayer/master/smarthubpreview/juvoplayerclipsJSON.json" />
     <metadata key="http://samsung.com/tv/metadata/appbootingsupport" />
     <splash-screens>
-      <splash-screen src="JuvoPlayerXamarinTizenTV.jpg" type="img" dpi="hdpi" orientation="landscape" indicator-display="false" app-control-operation="http://tizen.org/appcontrol/operation/default" />
+      <!--Orientation needs to be set to portrait due to the platform bug-->
+      <splash-screen src="JuvoPlayerXamarinTizenTV_black.jpg" type="img" dpi="hdpi" orientation="portrait" indicator-display="false" />
+      <!--Copy of a file is needed, because APP installer doesn't allow to specify 2 splash screens with the same "src" attribute -->
+      <splash-screen src="JuvoPlayerXamarinTizenTV_black_eden.jpg" type="img" dpi="hdpi" orientation="portrait" indicator-display="false" app-control-operation="http://samsung.com/appcontrol/operation/eden_resume" />
     </splash-screens>
   </ui-application>
   <shortcut-list />
