@@ -22,7 +22,7 @@ namespace JuvoPlayer.Common
     public class DataArgs
     {
         public uint SequenceId { get; set; }
-        public StreamType StreamType  { get; set; }
+        public StreamType StreamType { get; set; }
         public TimeSpan DurationRequired { get; set; }
         public override string ToString()
         {

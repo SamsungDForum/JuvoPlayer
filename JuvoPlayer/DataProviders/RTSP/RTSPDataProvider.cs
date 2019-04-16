@@ -17,7 +17,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Reactive;
 using System.Reactive.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -25,6 +24,7 @@ using JuvoPlayer.Common;
 using JuvoPlayer.Demuxers;
 using JuvoPlayer.Subtitles;
 using static Configuration.RTSPDataProvider;
+
 namespace JuvoPlayer.DataProviders.RTSP
 {
     internal class RTSPDataProvider : IDataProvider

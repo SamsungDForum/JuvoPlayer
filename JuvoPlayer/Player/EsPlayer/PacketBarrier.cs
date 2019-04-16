@@ -24,7 +24,7 @@ namespace JuvoPlayer.Player.EsPlayer
 {
     public class PacketBarrier
     {
-        private TimeSpan _firstDts;
+        private TimeSpan _firstPts;
         private TimeSpan _currentTransfer;
         private readonly TimeSpan _timeFrame;
         private DateTime _startTime;
@@ -42,10 +42,10 @@ namespace JuvoPlayer.Player.EsPlayer
             if (_startTime == default(DateTime))
                 _startTime = DateTime.Now;
 
-            if (_firstDts == default(TimeSpan))
-                _firstDts = packet.Dts;
+            if (_firstPts == default(TimeSpan))
+                _firstPts = packet.Pts;
             else
-                _currentTransfer = packet.Dts - _firstDts;
+                _currentTransfer = packet.Pts - _firstPts;
         }
 
         public bool Reached()
@@ -65,7 +65,7 @@ namespace JuvoPlayer.Player.EsPlayer
 
         public void Reset()
         {
-            _firstDts = default(TimeSpan);
+            _firstPts = default(TimeSpan);
             _startTime = default(DateTime);
             _currentTransfer = default(TimeSpan);
         }
