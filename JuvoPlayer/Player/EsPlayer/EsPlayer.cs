@@ -142,7 +142,7 @@ namespace JuvoPlayer.Player.EsPlayer
         {
             return streamControl.DataNeededStateChanged();
         }
-        
+
 
         #endregion
         #endregion

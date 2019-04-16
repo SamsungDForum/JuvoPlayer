@@ -24,9 +24,9 @@ using System.Threading.Tasks;
 using JuvoLogger;
 using JuvoPlayer.Common;
 using JuvoPlayer.Drms;
+using JuvoPlayer.Player.EsPlayer.Stream.Buffering;
 using ESPlayer = Tizen.TV.Multimedia;
 using StreamType = JuvoPlayer.Common.StreamType;
-using static Configuration.EsStream;
 
 namespace JuvoPlayer.Player.EsPlayer
 {
@@ -80,8 +80,6 @@ namespace JuvoPlayer.Player.EsPlayer
         // Stream type for this instance to EsStream.
         private readonly Common.StreamType streamType;
 
-        private ManualResetEventSlim wakeup;
-
         // Buffer configuration and supporting info
         public BufferConfigurationPacket CurrentConfig { get; internal set; }
         public bool IsConfigured => (CurrentConfig != null);
@@ -91,9 +89,9 @@ namespace JuvoPlayer.Player.EsPlayer
         private readonly Subject<Unit> streamReconfigureSubject = new Subject<Unit>();
 
         private Packet currentPacket;
-        private PacketBarrier barrier;
+
         private readonly StreamBufferController streamBufferController;
-        
+
 
         public IObservable<string> PlaybackError()
         {
@@ -124,9 +122,6 @@ namespace JuvoPlayer.Player.EsPlayer
                 default:
                     throw new ArgumentException($"Stream Type {streamType} is unsupported");
             }
-
-            wakeup = new ManualResetEventSlim(false);
-            barrier = new PacketBarrier(TransferChunk);
         }
 
         /// <summary>
@@ -210,12 +205,6 @@ namespace JuvoPlayer.Player.EsPlayer
         public Task GetActiveTask()
         {
             return activeTask;
-        }
-
-        public void Wakeup()
-        {
-            logger.Info($"{streamType}:");
-            wakeup.Set();
         }
 
         public void EmptyStorage()
@@ -351,20 +340,6 @@ namespace JuvoPlayer.Player.EsPlayer
             return continueProcessing;
         }
 
-        private void DelayTransfer(TimeSpan delay, CancellationToken token)
-        {
-            logger.Info($"{streamType}: Transfer task restart in {delay}");
-            wakeup.Reset();
-            if (delay > TimeSpan.Zero)
-            {
-                logger.Info($"{streamType}: {delay}");
-                wakeup.Wait(delay, token);
-            }
-
-            wakeup.Reset();
-            logger.Info($"{streamType}: Transfer restarted");
-        }
-
         /// <summary>
         /// Transfer task. Retrieves data from underlying storage and pushes it down
         /// to ESPlayer
@@ -373,30 +348,27 @@ namespace JuvoPlayer.Player.EsPlayer
         private async Task TransferTask(CancellationToken token)
         {
             logger.Info($"{streamType}: Transfer task started");
+
             var streamBuffer = streamBufferController.GetStreamBuffer(streamType);
-            barrier.Reset();
+            var streamSynchronizer = streamBufferController.StreamSynchronizer;
 
             try
             {
                 while (true)
                 {
                     var shouldContinue = await ProcessNextPacket(token);
+
                     if (!shouldContinue)
                         break;
-                    if (!barrier.Reached())
-                        continue;
 
-                    var delay = barrier.TimeToNextFrame();
+                    if (streamSynchronizer.IsStreamSyncNeeded(streamType))
+                        await streamSynchronizer.SynchronizeStreams(streamType, token);
 
+                    if (!streamSynchronizer.IsPlayerClockSyncNeeded(streamType)) continue;
+
+                    await streamSynchronizer.SynchronizePlayerClock(streamType, token);
                     logger.Info(
-                        $"{streamType}: Halted. Buffer {streamBuffer.BufferFill()}% {streamBuffer.CurrentBufferedDuration()} {streamBuffer.BufferTimeRange}");
-
-                    DelayTransfer(delay, token);
-
-                    barrier.Reset();
-
-                    logger.Info(
-                        $"{streamType}: Restarted {streamBuffer.BufferTimeRange}");
+                        $"{streamType}: Buffer {streamBuffer.BufferFill()}% {streamBuffer.CurrentBufferedDuration()} {streamBuffer.BufferTimeRange}");
                 }
             }
             catch (InvalidOperationException e)
@@ -438,9 +410,12 @@ namespace JuvoPlayer.Player.EsPlayer
             var shouldContinue = await ProcessPacket(currentPacket, token);
 
             streamBufferController.DataOut(currentPacket);
-            barrier.PacketPushed(currentPacket);
+
             currentPacket.Dispose();
             currentPacket = null;
+
+            streamBufferController.StreamSynchronizer.UpdateSynchronizationTraps(streamType);
+
             return shouldContinue;
         }
 
@@ -457,7 +432,7 @@ namespace JuvoPlayer.Player.EsPlayer
         /// </exception>
         private void PushUnencryptedPacket(Packet dataPacket, CancellationToken token)
         {
-            for (;;)
+            for (; ; )
             {
                 var submitStatus = player.Submit(dataPacket);
 
@@ -492,7 +467,7 @@ namespace JuvoPlayer.Player.EsPlayer
             using (var decryptedPacket = await dataPacket.Decrypt(token) as DecryptedEMEPacket)
             {
                 // Continue pushing packet till success or terminal failure
-                for (;;)
+                for (; ; )
                 {
                     var submitStatus = player.Submit(decryptedPacket);
 
@@ -529,7 +504,7 @@ namespace JuvoPlayer.Player.EsPlayer
             logger.Info("");
 
             // Continue pushing packet till success or terminal failure
-            for (;;)
+            for (; ; )
             {
                 var submitStatus = player.Submit(packet);
                 if (submitStatus == ESPlayer.SubmitStatus.Success)
@@ -588,8 +563,6 @@ namespace JuvoPlayer.Player.EsPlayer
             streamReconfigureSubject.Dispose();
 
             transferCts?.Dispose();
-
-            wakeup.Dispose();
 
             currentPacket?.Dispose();
 

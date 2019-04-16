@@ -16,7 +16,6 @@
  */
 
 using System;
-using System.Dynamic;
 
 namespace Configuration
 {
@@ -26,26 +25,30 @@ namespace Configuration
         public static TimeSpan DefaultSeekAccumulateInterval { get; set; } = TimeSpan.FromSeconds(2);
         public static double DefaultMaximumSeekIntervalPercentOfContentTotalTime { get; set; } = 1.0;
 
-        public static TimeSpan
-            DefaultSeekIntervalValueThreshold
-        { get; set; } =
+        public static TimeSpan DefaultSeekIntervalValueThreshold { get; set; } =
                 TimeSpan.FromMilliseconds(200); // time between key events when key is being hold is ~100ms   
     }
 
     public static class StreamBuffer
     {
         public static TimeSpan TimeBufferDepthDefault {get;set;} = TimeSpan.FromSeconds(10);
-        public static double DataOnLevel = 0.2;
-        public static double DataOffLevel = 0.8;
-        public static double BufferOnLevel = 0;
-        public static double BufferOffLevel = 0.1;
+        public static TimeSpan DataStateEventGenerationInterval { get; set; } = TimeSpan.FromSeconds(1);
     }
 
+    public static class StreamSynchronizerConfig
+    {
+        public static TimeSpan MaxStreamDifference {get;set;} = TimeSpan.FromSeconds(1);
+        public static TimeSpan DefaultStreamDurationInPlayer { get; set; } = TimeSpan.FromSeconds(1.5);
+        public static TimeSpan AudioStreamDurationInPlayer { get; set; } = TimeSpan.FromSeconds(1.5);
+        public static TimeSpan VideoStreamDurationInPlayer { get; set; } = TimeSpan.FromSeconds(1.5);
+        public static TimeSpan PlayerClockSyncNeededOverhead { get; set; } = TimeSpan.FromSeconds(0.5);
+    }
     public static class DashClient
     {
         public static TimeSpan TimeBufferDepthDefault { get; set; } = TimeSpan.FromSeconds(10);
         public static double MinimumSegmentFitRatio { get; set; } = 0.7;
         public static TimeSpan MinimumBufferTime { get; set; } = TimeSpan.FromSeconds(3);
+        
     }
 
     public static class DashDownloader
@@ -108,10 +111,4 @@ namespace Configuration
         public static int MaxDecryptRetries { get; set; } = 5;
         public static TimeSpan DecryptBufferFullSleepTime { get; set; } = TimeSpan.FromMilliseconds(1000);
     }
-
-    public static class EsStream
-    {
-        public static TimeSpan TransferChunk { get; set; } = TimeSpan.FromSeconds(2);
-    }
-
 }

@@ -65,7 +65,7 @@ namespace JuvoPlayer.Tests.UnitTests
 
             return packetList;
         }
-
+        /*
         [Test]
         public void DataEventsAfterSubscription()
         {
@@ -98,7 +98,7 @@ namespace JuvoPlayer.Tests.UnitTests
                 });
         }
 
-
+        
         [Test]
         public void BufferEventAfterSubscription()
         {
@@ -689,6 +689,7 @@ namespace JuvoPlayer.Tests.UnitTests
                     }
                 });
         }
+        */
 
     }
 }

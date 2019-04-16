@@ -22,12 +22,11 @@ using System.Reactive.Linq;
 using System.Reactive.Subjects;
 using JuvoLogger;
 using JuvoPlayer.Common;
+using JuvoPlayer.Player.EsPlayer.Stream.Synchronization;
 
-namespace JuvoPlayer.Player.EsPlayer
+namespace JuvoPlayer.Player.EsPlayer.Stream.Buffering
 {
-
     // TODO: Extend class functionality to provide:
-    // TODO:    - Stream Synchronization
     // TODO:    - Prebuffering on stream start (initial) to accomodate
     // TODO:      MPD's minBufferTime if present. minBufferTime = minimum buffer period
     // TODO:      before playback start assuring smooth content delivery as defined in
@@ -39,20 +38,21 @@ namespace JuvoPlayer.Player.EsPlayer
 
         private readonly StreamBuffer[] streamBuffers = new StreamBuffer[(int)StreamType.Count];
         private readonly MetaDataStreamConfig[] metaDataConfigs = new MetaDataStreamConfig[(int)StreamType.Count];
-        private volatile bool[] streamBufferingFilter = new bool[(int)StreamType.Count];
+        private volatile bool[] streamBufferingState = new bool[(int)StreamType.Count];
+        public StreamSynchronizer StreamSynchronizer { get; }
 
         private readonly Subject<Unit> bufferingOnSubject = new Subject<Unit>();
         private readonly Subject<Unit> bufferingOffSubject = new Subject<Unit>();
         private volatile bool eventsEnabled = true;
-        
+
         private volatile bool isBuffering;
 
         private volatile uint sequenceId = 1;
 
 
         public IObservable<bool> BufferingStateChanged() =>
-            bufferOnSource()
-                .Merge(bufferOffSource())
+            BufferOnSource()
+                .Merge(BufferOffSource())
                 .Do(state =>
                 {
                     isBuffering = state;
@@ -60,54 +60,62 @@ namespace JuvoPlayer.Player.EsPlayer
                 })
                 .AsObservable();
 
-        private IObservable<bool> bufferOnSource() =>
+        private IObservable<bool> BufferOnSource() =>
             bufferingOnSubject
                 .Where(_ => eventsEnabled)
                 .Throttle(TimeSpan.FromSeconds(1))
-                .Where(_=> isBuffering == false &&
-                           streamBufferingFilter.Any(bufferingNeeded => bufferingNeeded))
+                .Where(_ => isBuffering == false &&
+                           streamBufferingState.Any(bufferingNeeded => bufferingNeeded))
                 .Select(_ => true);
 
-        private IObservable<bool> bufferOffSource() =>
+        private IObservable<bool> BufferOffSource() =>
             bufferingOffSubject
-                .Where(_ => eventsEnabled && 
-                            isBuffering && 
-                            !streamBufferingFilter.Any(bufferingNeeded => bufferingNeeded))
+                .Where(_ => eventsEnabled &&
+                            isBuffering &&
+                            !streamBufferingState.Any(bufferingNeeded => bufferingNeeded))
                 .Select(_ => false);
 
-        public IObservable<DataArgs> DataNeededStateChanged() =>
+        private IObservable<DataArgs> DataNeededSource() =>
             streamBuffers
                 .Where(buffer => buffer != null)
                 .Select(buffer => buffer.DataState())
-                .Aggregate( (curr, next) => curr.Merge(next) )
+                .Aggregate((curr, next) => curr.Merge(next));
+
+        public IObservable<DataArgs> DataNeededStateChanged() =>
+            DataNeededSource()
                 .Where(args => eventsEnabled && args.SequenceId == sequenceId)
                 .Do(args =>
                     {
                         logger.Info(args.ToString());
                     })
                 .AsObservable();
-                
 
-        public StreamBuffer GetStreamBuffer(StreamType stream) 
+
+        public StreamBuffer GetStreamBuffer(StreamType stream)
             => streamBuffers[(int)stream];
 
         public void Initialize(StreamType stream)
         {
             logger.Info(stream.ToString());
 
-            var index = (int) stream;
+            var index = (int)stream;
 
             if (streamBuffers[index] != null)
             {
                 throw new ArgumentException($"Stream buffer {stream} already initialized");
             }
-            
-            streamBuffers[index] = new StreamBuffer(stream,sequenceId);
+
+            streamBuffers[index] = new StreamBuffer(stream, sequenceId);
+        }
+
+        public StreamBufferController()
+        {
+            StreamSynchronizer = new StreamSynchronizer(streamBuffers);
         }
 
         public void DataIn(Packet packet)
         {
-            var index = (int) packet.StreamType;
+            var index = (int)packet.StreamType;
 
             if (!packet.ContainsData())
             {
@@ -116,20 +124,15 @@ namespace JuvoPlayer.Player.EsPlayer
 
                 return;
             }
-            
-            streamBuffers[index].DataIn(packet);
 
-            if (!packet.ContainsData())
-                return;
+            streamBuffers[index].DataIn(StreamBuffer.GetStreamClock(packet));
 
-            if(streamBufferingFilter[index])
-                logger.Info($"{packet.StreamType}: Buffering Off");
+            var wasEmpty = streamBufferingState[index];
+            streamBufferingState[index] = false;
 
-            var wasEmpty = streamBufferingFilter[index];
-            streamBufferingFilter[index] = false;
-            
-            if(wasEmpty)
+            if (wasEmpty)
                 bufferingOffSubject.OnNext(Unit.Default);
+
         }
 
         public void DataOut(Packet packet)
@@ -137,24 +140,18 @@ namespace JuvoPlayer.Player.EsPlayer
             if (!packet.ContainsData())
                 return;
 
-            var index = (int) packet.StreamType;
-            var isEmpty = streamBuffers[index].DataOut(packet);
+            var index = (int)packet.StreamType;
+            var isEmpty = streamBuffers[index].DataOut(StreamBuffer.GetStreamClock(packet));
 
-            if (!packet.ContainsData())
-                return;
+            streamBufferingState[index] = isEmpty;
 
-            if(isEmpty )
-                logger.Info($"{packet.StreamType}: Buffering On");
-
-            streamBufferingFilter[index] = isEmpty;
-
-            if(isEmpty)
+            if (isEmpty)
                 bufferingOnSubject.OnNext(Unit.Default);
         }
 
-        private void ResetStreamBufferingFilter()
+        private void ResetStreamBufferingState()
         {
-            streamBufferingFilter = Enumerable.Repeat(false, (int) StreamType.Count).ToArray();
+            streamBufferingState = Enumerable.Repeat(false, (int)StreamType.Count).ToArray();
             isBuffering = false;
 
         }
@@ -174,34 +171,26 @@ namespace JuvoPlayer.Player.EsPlayer
 
         public void ReportFullBuffer()
         {
-            logger.Info("");
-
             foreach (var buffer in streamBuffers)
                 buffer?.ReportFullBuffer();
         }
 
         public void ReportActualBuffer()
         {
-            logger.Info("");
-
             foreach (var buffer in streamBuffers)
                 buffer?.ReportActualBuffer();
         }
 
-        public void UpdateBuffer()
+        public void PublishBufferState()
         {
-            logger.Info("");
-
             foreach (var buffer in streamBuffers)
-                buffer?.Update();
+                buffer?.PublishBufferState();
         }
 
         public void SetMetaDataConfiguration(MetaDataStreamConfig config)
         {
-            logger.Info("");
-
             var index = (int)config.Stream;
-            
+
             if (config == metaDataConfigs[index])
                 return;
 
@@ -211,20 +200,19 @@ namespace JuvoPlayer.Player.EsPlayer
 
         public void ResetBuffers()
         {
-            logger.Info("");
-
             sequenceId++;
 
-            ResetStreamBufferingFilter();
+            ResetStreamBufferingState();
 
             foreach (var buffer in streamBuffers)
                 buffer?.Reset(sequenceId);
 
         }
+
         public void Dispose()
         {
             logger.Info("");
-            
+
             foreach (var buffer in streamBuffers)
                 buffer?.Dispose();
 

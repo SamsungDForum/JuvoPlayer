@@ -18,7 +18,6 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Reactive;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
 using System.Xml;
@@ -80,8 +79,7 @@ namespace JuvoPlayer.DataProviders.Dash
         private readonly IDashClient dashClient;
         private readonly IDemuxerController demuxerController;
         private readonly IThroughputHistory throughputHistory;
-        private readonly StreamType streamType;
-        public StreamType StreamType => streamType;
+        public StreamType StreamType { get; }
 
         private volatile bool pipelineStarted;
         public bool DisableAdaptiveStreaming { get; set; }
@@ -103,7 +101,7 @@ namespace JuvoPlayer.DataProviders.Dash
         private readonly Subject<Packet> packetReadySubject = new Subject<Packet>();
         private readonly Subject<StreamConfig> demuxerStreamConfigReadySubject = new Subject<StreamConfig>();
         private readonly Subject<StreamConfig> metaDataStreamConfigSubject = new Subject<StreamConfig>();
-        
+
         private IDisposable demuxerPacketReadySub;
         private IDisposable demuxerStreamConfigReadySub;
         private IDisposable downloadCompletedSub;
@@ -124,17 +122,15 @@ namespace JuvoPlayer.DataProviders.Dash
             this.throughputHistory = throughputHistory ??
                                      throw new ArgumentNullException(nameof(throughputHistory),
                                          "throughputHistory cannot be null");
-            this.streamType = streamType;
+            this.StreamType = streamType;
 
             downloadCompletedSub = dashClient.DownloadCompleted()
                 .Subscribe(async unit => await OnDownloadCompleted(), SynchronizationContext.Current);
             SubscribeDemuxerEvents();
         }
 
-        public void ProvideData(DataArgs args)
-        {
-            dashClient.ProvideData(args);
-        }
+        public void SetDataNeeds(DataArgs args) =>
+            dashClient.SetDataNeeds(args);
 
         private async Task OnDownloadCompleted()
         {
@@ -178,7 +174,7 @@ namespace JuvoPlayer.DataProviders.Dash
             myRepresentation.AlignStartSegmentsWith(syncRepresentation);
 
             Logger.Info(
-                $"Segment Alignment: {streamType}={myRepresentation.AlignedStartSegmentID} {synchronizeWith.StreamType}={syncRepresentation.AlignedStartSegmentID} TrimOffset={myRepresentation.AlignedTrimOffset}");
+                $"Segment Alignment: {StreamType}={myRepresentation.AlignedStartSegmentID} {synchronizeWith.StreamType}={syncRepresentation.AlignedStartSegmentID} TrimOffset={myRepresentation.AlignedTrimOffset}");
         }
 
         public void UpdateMedia(Period period)
@@ -292,11 +288,9 @@ namespace JuvoPlayer.DataProviders.Dash
             }
         }
 
-        private void PushMetaDataConfiguration()
-        {
-            //Task.Run(()=>metaDataStreamConfigSubject.OnNext(GetStreamMetaDataConfig()));
+        private void PushMetaDataConfiguration() =>
             metaDataStreamConfigSubject.OnNext(GetStreamMetaDataConfig());
-        }
+
 
         private void GetAvailableStreams(IEnumerable<AdaptationSet> media, AdaptationSet defaultMedia)
         {
@@ -593,7 +587,7 @@ namespace JuvoPlayer.DataProviders.Dash
                 .Merge(drmInitDataSubject.AsObservable())
                 .Select(data =>
                 {
-                    data.StreamType = streamType;
+                    data.StreamType = StreamType;
                     return data;
                 });
         }
@@ -620,7 +614,7 @@ namespace JuvoPlayer.DataProviders.Dash
                         packet.Dts = TimeSpan.Zero;
                     }
 
-                    Logger.Debug($"{streamType} {packet.Pts}");
+                    Logger.Debug($"{StreamType} {packet.Pts}");
 
                     // Don't convert packet here, use assignment (less costly)
                     lastPushedClock.SetClock(packet);
@@ -658,7 +652,7 @@ namespace JuvoPlayer.DataProviders.Dash
                     SynchronizationContext.Current);
 
             demuxerStreamConfigReadySub = demuxerController.StreamConfigReady()
-                .Subscribe(config =>demuxerStreamConfigReadySubject.OnNext(config), SynchronizationContext.Current);
+                .Subscribe(config => demuxerStreamConfigReadySubject.OnNext(config), SynchronizationContext.Current);
         }
 
         MetaDataStreamConfig GetStreamMetaDataConfig()
@@ -668,7 +662,7 @@ namespace JuvoPlayer.DataProviders.Dash
 
             return new MetaDataStreamConfig
             {
-                Stream = streamType,
+                Stream = StreamType,
                 Bandwidth = representation.Bandwidth,
                 MinBufferTime = mpdDoc.MinBufferTime,
                 BufferDuration = GetTimeBufferDepth(mpdDoc, representation)
@@ -684,7 +678,7 @@ namespace JuvoPlayer.DataProviders.Dash
             //var docParams = GetRepresentation().Segments.GetDocumentParameters();
             if (docParams == null)
                 throw new ArgumentNullException("currentStreams.GetDocumentParameters() returns null");
-            var tsBuffer = (int) (docParams.TimeShiftBufferDepth?.TotalSeconds ??
+            var tsBuffer = (int)(docParams.TimeShiftBufferDepth?.TotalSeconds ??
                                   0);
             tsBuffer = tsBuffer / 2;
 
@@ -699,12 +693,12 @@ namespace JuvoPlayer.DataProviders.Dash
                 return timeBufferDepthDefault;
 
             var segments = repStream.Segments.Count;
-            if ( 0 == segments)
+            if (0 == segments)
                 return timeBufferDepthDefault;
 
             if (docParams == null)
                 throw new ArgumentNullException("currentStreams.GetDocumentParameters() returns null");
-            
+
             var manifestMinBufferDepth =
                 docParams.MinBufferTime ?? TimeSpan.FromSeconds(10);
 
@@ -713,9 +707,9 @@ namespace JuvoPlayer.DataProviders.Dash
                 duration.Value.TotalSeconds / segments);
             var portionOfSegmentDuration = TimeSpan.FromSeconds(avgSegmentDuration.TotalSeconds * 0.15);
             var safeTimeBufferDepth = TimeSpan.FromTicks(avgSegmentDuration.Ticks * 3) + portionOfSegmentDuration;
-            
+
             TimeSpan timeBufferDepth;
-            
+
             if (safeTimeBufferDepth >= manifestMinBufferDepth)
             {
                 timeBufferDepth = safeTimeBufferDepth;
@@ -740,7 +734,7 @@ namespace JuvoPlayer.DataProviders.Dash
             if (docParams.IsDynamic)
                 bufferSize = TimeBufferDepthDynamic(docParams);
             else
-                bufferSize = TimeBufferDepthStatic(docParams,repStream);
+                bufferSize = TimeBufferDepthStatic(docParams, repStream);
             if (bufferSize > maxBufferTime)
                 bufferSize = maxBufferTime;
             else if (bufferSize < minBufferTime)

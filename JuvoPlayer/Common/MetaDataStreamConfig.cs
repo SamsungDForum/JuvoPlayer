@@ -31,8 +31,8 @@ namespace JuvoPlayer.Common
         {
             if (ReferenceEquals(null, other)) return false;
             if (ReferenceEquals(this, other)) return true;
-            return Bandwidth == other.Bandwidth && 
-                   MinBufferTime.Equals(other.MinBufferTime) && 
+            return Bandwidth == other.Bandwidth &&
+                   MinBufferTime.Equals(other.MinBufferTime) &&
                    Stream.Equals(other.Stream);
         }
 
@@ -64,7 +64,6 @@ namespace JuvoPlayer.Common
             return !Equals(left, right);
         }
 
-        
         public override StreamType StreamType()
         {
             return Stream;
@@ -76,8 +75,8 @@ namespace JuvoPlayer.Common
 
             sb.AppendLine("\nMetaData Configuration:");
             sb.AppendLine("\tStream         = " + Stream);
-            sb.AppendLine("\tBandwidth      = " + (Bandwidth.HasValue?Bandwidth.ToString():"N/A"));
-            sb.AppendLine("\tMinBufferTime  = " + (MinBufferTime.HasValue?MinBufferTime.ToString():"N/A"));
+            sb.AppendLine("\tBandwidth      = " + (Bandwidth.HasValue ? Bandwidth.ToString() : "N/A"));
+            sb.AppendLine("\tMinBufferTime  = " + (MinBufferTime.HasValue ? MinBufferTime.ToString() : "N/A"));
             sb.AppendLine("\tBufferDuration = " + BufferDuration);
 
             return sb.ToString();

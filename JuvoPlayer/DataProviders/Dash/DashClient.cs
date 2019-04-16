@@ -72,7 +72,7 @@ namespace JuvoPlayer.DataProviders.Dash
         private TimeSpan dataNeedsDuration;
         private DataArgs newDurationNeeds;
         private uint sequenceId;
-        
+
         /// <summary>
         /// A shorthand for retrieving currently played out document type
         /// True - Content is dynamic
@@ -95,7 +95,7 @@ namespace JuvoPlayer.DataProviders.Dash
 
         private TimeSpan initDataDuration;
 
-        private bool initReloadRequired;
+        private bool initSegmentReloadRequired;
 
         private readonly Subject<string> errorSubject = new Subject<string>();
         private readonly Subject<Unit> downloadCompletedSubject = new Subject<Unit>();
@@ -109,13 +109,12 @@ namespace JuvoPlayer.DataProviders.Dash
             this.streamType = streamType;
         }
 
-        public void ProvideData(DataArgs args)
+        public void SetDataNeeds(DataArgs args)
         {
             if (disposedValue)
                 return;
 
             Interlocked.Exchange(ref newDurationNeeds, args);
-            LogInfo($"New data needs set: {args}");
 
             ScheduleNextSegDownload();
         }
@@ -146,9 +145,10 @@ namespace JuvoPlayer.DataProviders.Dash
 
                 dataNeedsDuration = newDuration;
             }
-            
+
             LogInfo($"Data needs updated: {dataNeedsDuration} Req: {newNeeds.DurationRequired} old: {oldDurationNeeds} Seq {newNeeds.SequenceId}/{oldSequence}");
         }
+
         public TimeSpan Seek(TimeSpan position)
         {
             // A workaround for a case when we seek to the end of a content while audio and video streams have
@@ -173,7 +173,7 @@ namespace JuvoPlayer.DataProviders.Dash
             currentTime = seekToTimeRange.Start;
 
             LogInfo(
-                $"Seek Pos Req: {position} Seek to: ({seekToTimeRange.Start}/{currentTime}) SegId: {currentSegmentId}");
+                $"Seek Pos Req: {position} Seek to: ({seekToTimeRange.Start}-{seekToTimeRange.Start + seekToTimeRange.Duration}/{currentTime}) SegId: {currentSegmentId}");
 
             return seekToTimeRange.Start;
         }
@@ -188,11 +188,11 @@ namespace JuvoPlayer.DataProviders.Dash
             initInProgress = true;
             initDataDuration = currentStreams.GetDocumentParameters().Document.MinBufferTime ??
                                                MinimumBufferTime;
-            this.initReloadRequired = initReloadRequired;
+            this.initSegmentReloadRequired = initReloadRequired;
             dataNeedsDuration = TimeSpan.Zero;
 
             UpdateDataNeeds();
-            LogInfo("DashClient start: "+dataNeedsDuration);
+            LogInfo("DashClient start: " + dataNeedsDuration);
 
             if (cancellationTokenSource == null || cancellationTokenSource?.IsCancellationRequested == true)
             {
@@ -208,14 +208,12 @@ namespace JuvoPlayer.DataProviders.Dash
             if (!trimOffset.HasValue)
                 trimOffset = currentRepresentation.AlignedTrimOffset;
 
-            if ( currentStreams.InitSegment == null)
+            if (currentStreams.InitSegment == null)
             {
                 initInProgress = false;
             }
 
             downloadCompletedSubject.OnNext(Unit.Default);
-             //ScheduleNextSegDownload();
-           
         }
 
         private bool IsBufferSpaceAvailable()
@@ -235,7 +233,7 @@ namespace JuvoPlayer.DataProviders.Dash
             }
 
             LogInfo($"Full buffer: {bufferTime}-{currentTime} ({bufferTime - currentTime}) {dataNeedsDuration}");
-    
+
             return false;
         }
 
@@ -265,7 +263,7 @@ namespace JuvoPlayer.DataProviders.Dash
             {
                 if (currentStreams.InitSegment != null)
                 {
-                    DownloadInitSegment(currentStreams.InitSegment, initReloadRequired);
+                    DownloadInitSegment(currentStreams.InitSegment, initSegmentReloadRequired);
                 }
                 else
                 {
@@ -406,7 +404,7 @@ namespace JuvoPlayer.DataProviders.Dash
             bufferTime = segment.Period.Start + segment.Period.Duration - (trimOffset ?? TimeSpan.Zero);
             currentSegmentId = currentStreams.NextSegmentId(currentSegmentId);
             UpdateDataNeedsDuration(segment.Period.Duration);
-            
+
             var timeInfo = segment.Period.ToString();
             LogInfo($"Segment: {responseResult.SegmentId} enqueued {timeInfo}");
 
