@@ -199,7 +199,10 @@ namespace JuvoPlayer.Player.EsPlayer.Stream.Buffering
 
             // If "out" packet DTS matches EOS DTS, don't process On levels
             // to prevent buffer event generation on end of stream.
-            return StreamClockOut < eosDts && bufferEmpty;
+            if(eosDts.HasValue)
+                return StreamClockOut < eosDts && bufferEmpty;
+
+            return bufferEmpty;
         }
 
         public void Dispose()
