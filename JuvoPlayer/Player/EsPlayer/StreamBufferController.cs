@@ -64,15 +64,13 @@ namespace JuvoPlayer.Player.EsPlayer.Stream.Buffering
             bufferingOnSubject
                 .Where(_ => eventsEnabled)
                 .Throttle(TimeSpan.FromSeconds(1))
-                .Where(_ => isBuffering == false &&
-                           streamBufferingState.Any(bufferingNeeded => bufferingNeeded))
+                .Where(_ => !isBuffering )
                 .Select(_ => true);
 
         private IObservable<bool> BufferOffSource() =>
             bufferingOffSubject
                 .Where(_ => eventsEnabled &&
-                            isBuffering &&
-                            !streamBufferingState.Any(bufferingNeeded => bufferingNeeded))
+                            isBuffering )
                 .Select(_ => false);
 
         private IObservable<DataArgs> DataNeededSource() =>
@@ -127,11 +125,12 @@ namespace JuvoPlayer.Player.EsPlayer.Stream.Buffering
 
             streamBuffers[index].DataIn(StreamBuffer.GetStreamClock(packet));
 
-            var wasEmpty = streamBufferingState[index];
+            var wasBuffering = streamBufferingState[index];
             streamBufferingState[index] = false;
 
-            if (wasEmpty)
-                bufferingOffSubject.OnNext(Unit.Default);
+            if (wasBuffering && 
+                !streamBufferingState.Any(bufferingNeeded => bufferingNeeded))
+                    bufferingOffSubject.OnNext(Unit.Default);
 
         }
 
