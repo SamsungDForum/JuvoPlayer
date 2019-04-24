@@ -52,7 +52,7 @@ namespace JuvoPlayer.DataProviders.HLS
             return lastReceivedPts - currentTime > MaxBufferHealth;
         }
 
-        public void OnDataStateChanged(DataArgs args)
+        public void OnDataStateChanged(DataRequest request)
         {
 
         }

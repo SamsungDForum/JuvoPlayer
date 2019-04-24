@@ -87,7 +87,7 @@ namespace JuvoPlayer.DataProviders.RTSP
                 .Merge(rtspClient.RTSPError());
         }
 
-        public void OnDataStateChanged(DataArgs args)
+        public void OnDataStateChanged(DataRequest request)
         {
 
         }

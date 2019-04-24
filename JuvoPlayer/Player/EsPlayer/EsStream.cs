@@ -383,23 +383,20 @@ namespace JuvoPlayer.Player.EsPlayer
             {
                 while (true)
                 {
-                    while (true)
-                    {
-                        var shouldContinue = await ProcessNextPacket(token);
-                        if (!shouldContinue)
-                            break;
-                        if (!barrier.Reached())
-                            continue;
+                    var shouldContinue = await ProcessNextPacket(token);
+                    if (!shouldContinue)
+                        break;
+                    if (!barrier.Reached())
+                        continue;
 
-                        var delay = barrier.TimeToNextFrame();
+                    var delay = barrier.TimeToNextFrame();
 
-                        logger.Info(
-                            $"{streamType}: Halted. Buffer {streamBuffer.BufferFill()}% {streamBuffer.CurrentBufferedDuration()} {streamBuffer.BufferTimeRange}");
+                    logger.Info(
+                        $"{streamType}: Halted. Buffer {streamBuffer.BufferFill()}% {streamBuffer.CurrentBufferedDuration()} {streamBuffer.BufferTimeRange}");
 
-                        DelayTransfer(delay, token);
+                    DelayTransfer(delay, token);
 
-                        barrier.Reset();
-                    }
+                    barrier.Reset();
                 }
             }
             catch (InvalidOperationException e)
@@ -593,7 +590,7 @@ namespace JuvoPlayer.Player.EsPlayer
             streamReconfigureSubject.Dispose();
 
             transferCts?.Dispose();
-
+            wakeup.Dispose();
             currentPacket?.Dispose();
 
             isDisposed = true;

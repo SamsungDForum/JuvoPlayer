@@ -868,7 +868,7 @@ namespace JuvoPlayer.Player.EsPlayer
         public IObservable<bool> BufferingStateChanged() =>
             bufferController.BufferingStateChanged();
 
-        public IObservable<DataArgs> DataNeededStateChanged() =>
+        public IObservable<DataRequest> DataNeededStateChanged() =>
             bufferController.DataNeededStateChanged();
 
     }

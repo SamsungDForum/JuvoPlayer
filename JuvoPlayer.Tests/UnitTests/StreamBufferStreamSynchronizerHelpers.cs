@@ -35,23 +35,28 @@ namespace JuvoPlayer.Tests.UnitTests
 
     internal static class StreamBufferStreamSynchronizerHelpers
     {
-        public static bool CompareDataArgs(this DataArgs a, DataArgs b)
+        public static bool CompareDataArgs(this DataRequest a, DataRequest b)
         {
-            if (b == null)
+            if (a == null && b == null)
+                return true;
+
+            if (a == null || b == null)
                 return false;
 
             return a.StreamType == b.StreamType &&
-                   a.DurationRequired == b.DurationRequired &&
-                   a.SequenceId == b.SequenceId;
+                   a.Duration == b.Duration;
         }
 
-        public static bool CompareMetaData(this DataArgs a, MetaDataStreamConfig b)
+        public static bool CompareMetaData(this DataRequest a, MetaDataStreamConfig b)
         {
-            if (b == null)
+            if (a == null && b == null)
+                return true;
+
+            if (a == null || b == null)
                 return false;
 
             return a.StreamType == b.StreamType() &&
-                   a.DurationRequired == b.BufferDuration;
+                   a.Duration == b.BufferDuration;
         }
 
         public static async Task PushPackets(this StreamBufferController streamBuffer, IEnumerable<Packet> source)

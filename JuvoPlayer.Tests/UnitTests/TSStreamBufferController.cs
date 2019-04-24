@@ -40,7 +40,7 @@ namespace JuvoPlayer.Tests.UnitTests
                     {
                         bufferController.Initialize(StreamType.Audio);
                         bufferController.Initialize(StreamType.Video);
-                        var dataArgsHolder = new DataArgs[(int)StreamType.Count];
+                        var dataArgsHolder = new DataRequest[(int)StreamType.Count];
 
                         var eventCount = 0;
                         using (bufferController.DataNeededStateChanged().Subscribe(
@@ -98,7 +98,7 @@ namespace JuvoPlayer.Tests.UnitTests
                     {
                         bufferController.Initialize(StreamType.Audio);
                         bufferController.Initialize(StreamType.Video);
-                        var dataArgsHolder = new DataArgs[(int)StreamType.Count];
+                        var dataArgsHolder = new DataRequest[(int)StreamType.Count];
 
                         using (bufferController.DataNeededStateChanged()
                             .Subscribe(a => { dataArgsHolder[(int)a.StreamType] = a; },
@@ -134,7 +134,7 @@ namespace JuvoPlayer.Tests.UnitTests
                     {
                         bufferController.Initialize(StreamType.Audio);
                         bufferController.Initialize(StreamType.Video);
-                        var dataArgsHolder = new DataArgs[(int)StreamType.Count];
+                        var dataArgsHolder = new DataRequest[(int)StreamType.Count];
 
                         var configsToSet = 0;
 
@@ -402,7 +402,7 @@ namespace JuvoPlayer.Tests.UnitTests
                     {
                         bufferController.Initialize(StreamType.Audio);
                         bufferController.Initialize(StreamType.Video);
-                        var dataArgsHolder = new DataArgs[(int)StreamType.Count];
+                        var dataArgsHolder = new DataRequest[(int)StreamType.Count];
 
                         var eventCount = 0;
 
@@ -423,13 +423,13 @@ namespace JuvoPlayer.Tests.UnitTests
                             SpinWait.SpinUntil(() => eventCount >= 2, TimeSpan.FromSeconds(1.5));
 
                             Assert.IsTrue(eventCount >= 2);
-                            Assert.IsTrue(dataArgsHolder[(int)StreamType.Audio].DurationRequired <= TimeSpan.Zero);
+                            Assert.IsTrue(dataArgsHolder[(int)StreamType.Audio].Duration <= TimeSpan.Zero);
 
                             await bufferController.PullPackets(audioPackets);
                             SpinWait.SpinUntil(() => eventCount >= 3, TimeSpan.FromSeconds(1.5));
 
                             Assert.IsTrue(eventCount >= 3);
-                            Assert.IsTrue(dataArgsHolder[(int)StreamType.Audio].DurationRequired > TimeSpan.Zero);
+                            Assert.IsTrue(dataArgsHolder[(int)StreamType.Audio].Duration > TimeSpan.Zero);
 
                             await audioPackets.DisposePackets();
                         }
@@ -448,7 +448,7 @@ namespace JuvoPlayer.Tests.UnitTests
                     {
                         bufferController.Initialize(StreamType.Audio);
                         bufferController.Initialize(StreamType.Video);
-                        var dataArgsHolder = new DataArgs[(int)StreamType.Count];
+                        var dataArgsHolder = new DataRequest[(int)StreamType.Count];
 
 
                         var eventCount = 0;
@@ -473,8 +473,8 @@ namespace JuvoPlayer.Tests.UnitTests
                             SpinWait.SpinUntil(() => eventCount >= 2, TimeSpan.FromSeconds(1.5));
 
                             Assert.IsTrue(eventCount >= 2);
-                            Assert.IsTrue(dataArgsHolder[(int)StreamType.Audio].DurationRequired <= TimeSpan.Zero);
-                            Assert.IsTrue(dataArgsHolder[(int)StreamType.Video].DurationRequired <= TimeSpan.Zero);
+                            Assert.IsTrue(dataArgsHolder[(int)StreamType.Audio].Duration <= TimeSpan.Zero);
+                            Assert.IsTrue(dataArgsHolder[(int)StreamType.Video].Duration <= TimeSpan.Zero);
 
                             await Task.WhenAll(
                                 bufferController.PullPackets(audio),
@@ -483,8 +483,8 @@ namespace JuvoPlayer.Tests.UnitTests
                             SpinWait.SpinUntil(() => eventCount >= 4, TimeSpan.FromSeconds(1.5));
 
                             Assert.IsTrue(eventCount >= 4);
-                            Assert.IsTrue(dataArgsHolder[(int)StreamType.Audio].DurationRequired > TimeSpan.Zero);
-                            Assert.IsTrue(dataArgsHolder[(int)StreamType.Video].DurationRequired > TimeSpan.Zero);
+                            Assert.IsTrue(dataArgsHolder[(int)StreamType.Audio].Duration > TimeSpan.Zero);
+                            Assert.IsTrue(dataArgsHolder[(int)StreamType.Video].Duration > TimeSpan.Zero);
 
                             await Task.WhenAll(
                                 audio.DisposePackets(),
@@ -505,7 +505,7 @@ namespace JuvoPlayer.Tests.UnitTests
                     {
                         bufferController.Initialize(StreamType.Audio);
                         bufferController.Initialize(StreamType.Video);
-                        var dataArgsHolder = new DataArgs[(int)StreamType.Count];
+                        var dataArgsHolder = new DataRequest[(int)StreamType.Count];
 
                         var eventCount = 0;
 
@@ -569,7 +569,7 @@ namespace JuvoPlayer.Tests.UnitTests
                     {
                         bufferController.Initialize(StreamType.Audio);
                         bufferController.Initialize(StreamType.Video);
-                        var dataArgsHolder = new DataArgs[(int)StreamType.Count];
+                        var dataArgsHolder = new DataRequest[(int)StreamType.Count];
 
                         var eventCount = 0;
 
@@ -592,24 +592,24 @@ namespace JuvoPlayer.Tests.UnitTests
 
                             SpinWait.SpinUntil(() => eventCount >= 2, TimeSpan.FromSeconds(1.5));
 
-                            var audioLevel = dataArgsHolder[(int)StreamType.Audio].DurationRequired;
-                            var videoLevel = dataArgsHolder[(int)StreamType.Audio].DurationRequired;
+                            var audioLevel = dataArgsHolder[(int)StreamType.Audio].Duration;
+                            var videoLevel = dataArgsHolder[(int)StreamType.Audio].Duration;
 
                             bufferController.ReportFullBuffer();
                             bufferController.PublishBufferState();
 
                             SpinWait.SpinUntil(() => eventCount >= 4, TimeSpan.FromSeconds(1.5));
 
-                            Assert.IsTrue(dataArgsHolder[(int)StreamType.Audio].DurationRequired == TimeSpan.Zero);
-                            Assert.IsTrue(dataArgsHolder[(int)StreamType.Video].DurationRequired == TimeSpan.Zero);
+                            Assert.IsTrue(dataArgsHolder[(int)StreamType.Audio].Duration == TimeSpan.Zero);
+                            Assert.IsTrue(dataArgsHolder[(int)StreamType.Video].Duration == TimeSpan.Zero);
 
                             bufferController.ReportActualBuffer();
                             bufferController.PublishBufferState();
 
                             SpinWait.SpinUntil(() => eventCount >= 6, TimeSpan.FromSeconds(1.5));
 
-                            Assert.IsTrue(dataArgsHolder[(int)StreamType.Audio].DurationRequired == audioLevel);
-                            Assert.IsTrue(dataArgsHolder[(int)StreamType.Video].DurationRequired == videoLevel);
+                            Assert.IsTrue(dataArgsHolder[(int)StreamType.Audio].Duration == audioLevel);
+                            Assert.IsTrue(dataArgsHolder[(int)StreamType.Video].Duration == videoLevel);
 
                             await Task.WhenAll(
                                 audio.DisposePackets(),
