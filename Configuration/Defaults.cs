@@ -39,25 +39,11 @@ namespace Configuration
         public static TimeSpan TimeBufferDepthDefault { get; set; } = TimeSpan.FromSeconds(10);
     }
 
-    public static class StreamSynchronizerConfig
-    {
-        public static int DefaultStreamSizeInPlayer { get; set; } = 1024 * 1024 * 10; //10Mb
-        public static int AudioStreamSizeInPlayer { get; set; } = 1024 * 256 ; // 2Mb
-        public static int VideoStreamSizeInPlayer { get; set; } = 1024 * 1024 * 3; // 8Mb
-
-        public static TimeSpan DefaultStreamDurationInPlayer { get; set; } = TimeSpan.FromSeconds(2);
-        public static TimeSpan AudioStreamDurationInPlayer { get; set; } = TimeSpan.FromSeconds(2);
-        public static TimeSpan VideoStreamDurationInPlayer { get; set; } = TimeSpan.FromSeconds(2);
-        public static TimeSpan MinimumStreamClockPlayerClockDifference { get; set; } = TimeSpan.FromSeconds(0.5);
-        public static TimeSpan MaximumStreamClockPlayerClockDifference { get; set; } = TimeSpan.FromSeconds(0.75);
-    }
-
     public static class DashClient
     {
         public static TimeSpan TimeBufferDepthDefault { get; set; } = TimeSpan.FromSeconds(10);
         public static double MinimumSegmentFitRatio { get; set; } = 0.7;
         public static TimeSpan MinimumBufferTime { get; set; } = TimeSpan.FromSeconds(3);
-
     }
 
     public static class DashDownloader
@@ -119,5 +105,10 @@ namespace Configuration
     {
         public static int MaxDecryptRetries { get; set; } = 5;
         public static TimeSpan DecryptBufferFullSleepTime { get; set; } = TimeSpan.FromMilliseconds(1000);
+    }
+
+    public static class EsStream
+    {
+        public static TimeSpan TransferChunk { get; set; } = TimeSpan.FromSeconds(2);
     }
 }

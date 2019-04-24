@@ -127,11 +127,7 @@ namespace JuvoPlayer.Player.EsPlayer
             esStreams = new EsStream[(int)StreamType.Count];
             streamReconfigureSubs = new IDisposable[(int)StreamType.Count];
             playbackErrorSubs = new IDisposable[(int)StreamType.Count];
-            bufferController = new StreamBufferController(stateChangedSubject, () =>
-            {
-                player.GetPlayingTime(out var clock);
-                return clock;
-            });
+            bufferController = new StreamBufferController(stateChangedSubject);
 
             AttachEventHandlers();
         }
@@ -468,7 +464,7 @@ namespace JuvoPlayer.Player.EsPlayer
             logger.Info(esPlayerStreamType.ToString());
 
             streamsReady++;
-            if (streamsReady != esStreams.Count(entry=>entry!=null))
+            if (streamsReady != esStreams.Count(entry => entry != null))
                 return;
 
             StartStreams();
@@ -479,7 +475,7 @@ namespace JuvoPlayer.Player.EsPlayer
             logger.Info($"{esPlayerStreamType}: {time}");
 
             streamsReady++;
-            if (streamsReady != esStreams.Count(entry=>entry!=null))
+            if (streamsReady != esStreams.Count(entry => entry != null))
                 return;
 
             StartStreams();

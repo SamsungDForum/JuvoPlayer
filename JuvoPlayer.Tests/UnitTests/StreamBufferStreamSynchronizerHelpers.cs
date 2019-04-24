@@ -37,6 +37,9 @@ namespace JuvoPlayer.Tests.UnitTests
     {
         public static bool CompareDataArgs(this DataArgs a, DataArgs b)
         {
+            if (b == null)
+                return false;
+
             return a.StreamType == b.StreamType &&
                    a.DurationRequired == b.DurationRequired &&
                    a.SequenceId == b.SequenceId;
@@ -44,6 +47,9 @@ namespace JuvoPlayer.Tests.UnitTests
 
         public static bool CompareMetaData(this DataArgs a, MetaDataStreamConfig b)
         {
+            if (b == null)
+                return false;
+
             return a.StreamType == b.StreamType() &&
                    a.DurationRequired == b.BufferDuration;
         }
