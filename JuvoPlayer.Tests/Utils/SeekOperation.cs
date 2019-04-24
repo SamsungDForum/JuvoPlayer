@@ -40,7 +40,7 @@ namespace JuvoPlayer.Tests.Utils
         {
             if (ReferenceEquals(null, obj)) return false;
             if (ReferenceEquals(this, obj)) return true;
-            return obj.GetType() == GetType() && Equals((SeekOperation)obj);
+            return obj.GetType() == GetType() && Equals((SeekOperation) obj);
         }
 
         public override int GetHashCode()
@@ -66,17 +66,11 @@ namespace JuvoPlayer.Tests.Utils
 
                 await service.SeekTo(SeekPosition).WithCancellation(linkedCts.Token);
 
-                if (service.State != PlayerState.Playing ||
-                    service.State != PlayerState.Paused)
+                if (service.State != PlayerState.Playing)
                     return;
 
                 for (var i = 0; i < 100; i++)
                 {
-                    while (service.State == PlayerState.Paused)
-                    {
-                        await Task.Delay(100, linkedCts.Token);
-                    }
-
                     var seekPos = SeekPosition;
                     var curPos = service.CurrentPosition;
                     var diffMs = Math.Abs((curPos - seekPos).TotalMilliseconds);
@@ -92,7 +86,7 @@ namespace JuvoPlayer.Tests.Utils
         private static TimeSpan RandomSeekTime(IPlayerService service)
         {
             var rand = new Random();
-            return TimeSpan.FromSeconds(rand.Next((int)service.Duration.TotalSeconds - 10));
+            return TimeSpan.FromSeconds(rand.Next((int) service.Duration.TotalSeconds - 10));
         }
     }
 }
