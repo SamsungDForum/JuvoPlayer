@@ -16,131 +16,195 @@
  */
 
 using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using JuvoLogger;
 using JuvoPlayer.Common;
-using JuvoPlayer.Player.EsPlayer.Stream.Buffering;
+using JuvoPlayer.Demuxers.FFmpeg.Interop;
+using Nito.AsyncEx;
 using static Configuration.StreamSynchronizerConfig;
+using StreamBuffer = JuvoPlayer.Player.EsPlayer.Stream.Buffering.StreamBuffer;
 
 namespace JuvoPlayer.Player.EsPlayer.Stream.Synchronization
 {
+
+
     internal class StreamSynchronizer
     {
         private readonly ILogger logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
 
         private readonly StreamBuffer[] streamBuffers;
-        private volatile StreamSynchronizationBarrier[] streamSyncTraps = new StreamSynchronizationBarrier[(int)StreamType.Count];
+        private readonly StreamBufferSize[] streamSizes;
+        private readonly TimeSpan[] maxDurationInPlayer = new TimeSpan[(int)StreamType.Count];
+        private readonly int[] maxSizeInPlayer = new int[(int)StreamType.Count];
 
-        private readonly TimeSpan[] streamDurationInPlayer = new TimeSpan[(int)StreamType.Count];
+        private readonly Func<TimeSpan> getPlayerClock;
         private readonly TimeSpan[] lastSynchronizedPlayerClock = new TimeSpan[(int)StreamType.Count];
-        public delegate TimeSpan PlayerClockDelegate();
+        private readonly AsyncManualResetEvent[] bufferSizeFull = new AsyncManualResetEvent[(int)StreamType.Count];
+        
 
-        public PlayerClockDelegate PlayerClock { get; set; } = null;
-
-        public StreamSynchronizer(StreamBuffer[] buffers)
+        public StreamSynchronizer(StreamBuffer[] buffers, StreamBufferSize[] sizes, Func<TimeSpan> timeGetter)
         {
             streamBuffers = buffers;
-            for (var i = 0; i < streamDurationInPlayer.Length; i++)
-            {
-                switch (i)
-                {
-                    case (int)StreamType.Audio:
-                        streamDurationInPlayer[i] = AudioStreamDurationInPlayer;
-                        break;
-                    case (int)StreamType.Video:
-                        streamDurationInPlayer[i] = VideoStreamDurationInPlayer;
-                        break;
-                    default:
-                        streamDurationInPlayer[i] = DefaultStreamDurationInPlayer;
-                        break;
-                }
-            }
+            getPlayerClock = timeGetter;
+            streamSizes = sizes;
         }
 
-        private IEnumerable<StreamType> GetSyncStreams(StreamType stream, TimeSpan streamClock) =>
-            streamBuffers
-                .Where(buffer => buffer != null &&
-                                 buffer.StreamType != stream &&
-                                 streamClock - buffer.StreamClockOut > MaxStreamDifference)
-                .Select(buffer => buffer.StreamType);
+        public void Initialize(StreamType stream)
+        {
+            switch (stream)
+            {
+                case StreamType.Audio:
+                    maxDurationInPlayer[(int)StreamType.Audio] = AudioStreamDurationInPlayer;
+                    maxSizeInPlayer[(int)StreamType.Audio] = AudioStreamSizeInPlayer;
+                    break;
+                case StreamType.Video:
+                    maxDurationInPlayer[(int)StreamType.Video] = VideoStreamDurationInPlayer;
+                    maxSizeInPlayer[(int)StreamType.Video] = VideoStreamSizeInPlayer;
+                    break;
+                default:
+                    maxDurationInPlayer[(int)stream] = DefaultStreamDurationInPlayer;
+                    maxSizeInPlayer[(int)stream] = DefaultStreamSizeInPlayer;
+                    break;
+            }
 
-        public bool IsStreamSyncNeeded(StreamType stream)
+            bufferSizeFull[(int)stream] = new AsyncManualResetEvent(false);
+        }
+
+        public void StorePacketSize(Packet packet)
+        {
+
+        }
+
+        public void Reset(StreamType stream)
+        {
+            lastSynchronizedPlayerClock[(int) stream] = getPlayerClock();
+            logger.Info($"{stream} Last player clock set to {lastSynchronizedPlayerClock[(int) stream]}");
+        }
+
+        private (TimeSpan streamClock, TimeSpan playerClock, TimeSpan delay) GetSynchronizationParameters(StreamType stream)
         {
             var streamClock = streamBuffers[(int)stream].StreamClockOut;
+            var playerClock = this.getPlayerClock();
+            var delay = streamClock - playerClock - maxDurationInPlayer[(int)stream];
 
-            return GetSyncStreams(stream, streamClock).Any();
+            return (streamClock, playerClock, delay);
         }
 
-        private string DumpStreams(IEnumerable<StreamType> source) =>
-            source.Aggregate("", ((s, type) => s + type + " " + streamBuffers[(int)type].StreamClockOut + " "));
-
-        public async Task SynchronizeStreams(StreamType stream, CancellationToken token)
+        public bool IsPlayerClockSynchronized(StreamType stream)
         {
-            var streamClock = streamBuffers[(int)stream].StreamClockOut;
+            var syncData = GetSynchronizationParameters(stream);
 
-            var syncWithStreams = GetSyncStreams(stream, streamClock);
-
-            if (!syncWithStreams.Any())
-                return;
-
-            try
-            {
-                var syncTrap = new StreamSynchronizationBarrier(streamClock, syncWithStreams.Count());
-                streamSyncTraps[(int)stream] = syncTrap;
-                logger.Info($"{stream}: {streamClock} Sync with {DumpStreams(syncWithStreams)}");
-                await syncTrap.WaitForSynchronization(token);
-            }
-            finally
-            {
-                streamSyncTraps[(int)stream] = null;
-            }
-        }
-
-        public void UpdateSynchronizationTraps(StreamType stream)
-        {
-            var streamClock = streamBuffers[(int)stream].StreamClockOut;
-
-            foreach (var trap in streamSyncTraps)
-                trap?.UpdateSynchronization(stream, streamClock);
-        }
-
-        public async Task SynchronizePlayerClock(StreamType stream, CancellationToken token)
-        {
-            var playerClock = PlayerClock();
-            var streamClock = streamBuffers[(int)stream].StreamClockOut;
-            var delay = streamClock - playerClock - streamDurationInPlayer[(int)stream];
-
-            if (delay <= TimeSpan.Zero)
-                return;
-
-            lastSynchronizedPlayerClock[(int)stream] = playerClock;
-            logger.Info($"{stream}: {streamClock} Sync with player {playerClock} Delay {delay}");
-
-            try
-            {
-                await Task.Delay(delay, token);
-            }
-            catch (TaskCanceledException)
-            {
-                throw new OperationCanceledException();
-            }
-
-            logger.Info($"{stream}: {streamClock} Sync with player done {PlayerClock()}");
-        }
-
-        public bool IsPlayerClockSyncNeeded(StreamType stream)
-        {
-            var playerClock = PlayerClock();
-
-            if (lastSynchronizedPlayerClock[(int)stream] == playerClock)
+            if (syncData.delay < MinimumStreamClockPlayerClockDifference)
                 return false;
 
-            var streamClock = streamBuffers[(int)stream].StreamClockOut;
-            var clockDiff = streamClock - playerClock;
-            return clockDiff > streamDurationInPlayer[(int)stream] + PlayerClockSyncNeededOverhead;
+            return true;
+        }
+
+        /*
+        public Task PlayerClockSynchronization(StreamType stream, CancellationToken token)
+        {
+            var syncParams = GetSynchronizationParameters(stream);
+
+            if (syncParams.delay <= TimeSpan.Zero)
+                return Task.CompletedTask;
+
+            // Clock may report stale time information.
+            // Expected delay is ~0.5 sec. If large, then its stale.
+            var delay = syncParams.delay > PlayerClockSyncNeededOverhead
+                ? PlayerClockSyncNeededOverhead
+                : syncParams.delay;
+
+            delay = syncParams.delay;
+
+            logger.Info($"{stream}: {syncParams.streamClock} Sync with player {syncParams.playerClock} Delay {delay} Stream Clock {syncParams.streamClock}");
+
+            lastSynchronizedPlayerClock[(int) stream] = syncParams.playerClock;
+
+            return Task.Delay(delay, token);
+
+        }
+
+        private Task SynchronizeStreams(StreamType stream, CancellationToken token)
+        {
+
+        }
+        */
+
+        public Task Synchronize(StreamType stream, CancellationToken token)
+        {
+            var syncParams = GetSynchronizationParameters(stream);
+
+            var delay = TimeSpan.Zero;
+            
+            if (syncParams.playerClock == lastSynchronizedPlayerClock[(int) stream] ||
+                syncParams.streamClock == TimeSpan.Zero)
+            {
+                var otherStreams = streamBuffers
+                    .Where(buffer => buffer != null &&
+                                     buffer.StreamClockOut - syncParams.streamClock > TimeSpan.FromSeconds(1))
+                    .OrderBy(buffer => buffer.StreamClockOut)
+                    .ToList();
+
+                if (otherStreams.Count == 0)
+                    return Task.CompletedTask;
+
+                var otherStreamClock = otherStreams[0].StreamClockOut;
+                delay = otherStreamClock - syncParams.streamClock - TimeSpan.FromSeconds(1);
+                logger.Info($"{stream}: {syncParams.streamClock} Sync with stream {otherStreams[0].StreamType} Clock {otherStreamClock} Delay {delay}");
+
+            }
+            else
+            {
+                if (syncParams.delay < MinimumStreamClockPlayerClockDifference)
+                    return Task.CompletedTask;
+
+                delay = syncParams.delay > MaximumStreamClockPlayerClockDifference
+                    ? MaximumStreamClockPlayerClockDifference
+                    : syncParams.delay;
+
+                logger.Info($"{stream}: {syncParams.streamClock} Sync with player {syncParams.playerClock} Delay {delay} Stream Clock {syncParams.streamClock}");
+
+            }
+
+            lastSynchronizedPlayerClock[(int) stream] = syncParams.playerClock;
+
+            return Task.Delay(delay, token);
+        }
+
+        public async Task SynchronizeWithSize(StreamType stream, CancellationToken token)
+        {
+            var index = (int) stream;
+            var sizeInPlayer = streamSizes[index].GetSize;
+
+            //logger.Info($"{stream} {sizeInPlayer} {maxSizeInPlayer[index]}");
+            if (sizeInPlayer < maxSizeInPlayer[index])
+                return;
+
+            logger.Info($"{stream}: {sizeInPlayer/1024} kB exceeds {maxSizeInPlayer[index]/1024} kB {streamBuffers[index].StreamClockOut}");
+            bufferSizeFull[index].Reset();
+            await bufferSizeFull[index].WaitAsync(token);
+            
+                logger.Info($"{stream}: Sync Reached");
+            
+            return;
+        }
+
+        public void UpdateSizeSynchronization()
+        {
+            foreach (var stream in streamSizes)
+            {
+                if (stream == null)
+                    continue;
+
+                var index = (int)stream.StreamType;
+                var currentSize = streamSizes[index].GetSize;
+                if(currentSize < maxSizeInPlayer[index] && !bufferSizeFull[index].IsSet)
+                    bufferSizeFull[index].Set();
+                    
+
+            }
         }
     }
 }

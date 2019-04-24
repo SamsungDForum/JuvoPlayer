@@ -351,6 +351,7 @@ namespace JuvoPlayer.Player.EsPlayer
 
             var streamBuffer = streamBufferController.GetStreamBuffer(streamType);
             var streamSynchronizer = streamBufferController.StreamSynchronizer;
+            streamSynchronizer.Reset(streamType);
 
             try
             {
@@ -361,14 +362,26 @@ namespace JuvoPlayer.Player.EsPlayer
                     if (!shouldContinue)
                         break;
 
-                    if (streamSynchronizer.IsStreamSyncNeeded(streamType))
-                        await streamSynchronizer.SynchronizeStreams(streamType, token);
+                    /*
+                    if (!streamSynchronizer.IsPlayerClockSynchronized(streamType))
+                        continue;
 
-                    if (!streamSynchronizer.IsPlayerClockSyncNeeded(streamType)) continue;
+                    while (streamSynchronizer.IsPlayerClockSynchronized(streamType))
+                    {
+                        await streamSynchronizer.PlayerClockSynchronization(streamType, token);
+                    }
+                    */
+                    await streamSynchronizer.SynchronizeWithSize(streamType, token);
+                    
+                    /*
+                    if (awaiter.IsCompleted)
+                        continue;
 
-                    await streamSynchronizer.SynchronizePlayerClock(streamType, token);
                     logger.Info(
                         $"{streamType}: Buffer {streamBuffer.BufferFill()}% {streamBuffer.CurrentBufferedDuration()} {streamBuffer.BufferTimeRange}");
+
+                    await awaiter;
+                    */
                 }
             }
             catch (InvalidOperationException e)
@@ -413,8 +426,6 @@ namespace JuvoPlayer.Player.EsPlayer
 
             currentPacket.Dispose();
             currentPacket = null;
-
-            streamBufferController.StreamSynchronizer.UpdateSynchronizationTraps(streamType);
 
             return shouldContinue;
         }
@@ -465,7 +476,7 @@ namespace JuvoPlayer.Player.EsPlayer
         private async Task PushEncryptedPacket(EncryptedPacket dataPacket, CancellationToken token)
         {
             using (var decryptedPacket = await dataPacket.Decrypt(token) as DecryptedEMEPacket)
-            {
+            {       
                 // Continue pushing packet till success or terminal failure
                 for (; ; )
                 {

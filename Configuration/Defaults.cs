@@ -29,26 +29,35 @@ namespace Configuration
                 TimeSpan.FromMilliseconds(200); // time between key events when key is being hold is ~100ms   
     }
 
+    public static class StreamBufferControllerConfig
+    {
+        public static TimeSpan EventGenerationInterval { get; set; } = TimeSpan.FromSeconds(1);
+    }
+
     public static class StreamBuffer
     {
-        public static TimeSpan TimeBufferDepthDefault {get;set;} = TimeSpan.FromSeconds(10);
-        public static TimeSpan DataStateEventGenerationInterval { get; set; } = TimeSpan.FromSeconds(1);
+        public static TimeSpan TimeBufferDepthDefault { get; set; } = TimeSpan.FromSeconds(10);
     }
 
     public static class StreamSynchronizerConfig
     {
-        public static TimeSpan MaxStreamDifference {get;set;} = TimeSpan.FromSeconds(1);
-        public static TimeSpan DefaultStreamDurationInPlayer { get; set; } = TimeSpan.FromSeconds(1.5);
-        public static TimeSpan AudioStreamDurationInPlayer { get; set; } = TimeSpan.FromSeconds(1.5);
-        public static TimeSpan VideoStreamDurationInPlayer { get; set; } = TimeSpan.FromSeconds(1.5);
-        public static TimeSpan PlayerClockSyncNeededOverhead { get; set; } = TimeSpan.FromSeconds(0.5);
+        public static int DefaultStreamSizeInPlayer { get; set; } = 1024 * 1024 * 10; //10Mb
+        public static int AudioStreamSizeInPlayer { get; set; } = 1024 * 256 ; // 2Mb
+        public static int VideoStreamSizeInPlayer { get; set; } = 1024 * 1024 * 3; // 8Mb
+
+        public static TimeSpan DefaultStreamDurationInPlayer { get; set; } = TimeSpan.FromSeconds(2);
+        public static TimeSpan AudioStreamDurationInPlayer { get; set; } = TimeSpan.FromSeconds(2);
+        public static TimeSpan VideoStreamDurationInPlayer { get; set; } = TimeSpan.FromSeconds(2);
+        public static TimeSpan MinimumStreamClockPlayerClockDifference { get; set; } = TimeSpan.FromSeconds(0.5);
+        public static TimeSpan MaximumStreamClockPlayerClockDifference { get; set; } = TimeSpan.FromSeconds(0.75);
     }
+
     public static class DashClient
     {
         public static TimeSpan TimeBufferDepthDefault { get; set; } = TimeSpan.FromSeconds(10);
         public static double MinimumSegmentFitRatio { get; set; } = 0.7;
         public static TimeSpan MinimumBufferTime { get; set; } = TimeSpan.FromSeconds(3);
-        
+
     }
 
     public static class DashDownloader

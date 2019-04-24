@@ -24,9 +24,10 @@ namespace JuvoPlayer.Common
         public uint SequenceId { get; set; }
         public StreamType StreamType { get; set; }
         public TimeSpan DurationRequired { get; set; }
+        public bool IsBufferEmpty { get; set; }
         public override string ToString()
         {
-            return $"{StreamType}: {DurationRequired} Seq: {SequenceId}";
+            return $"{StreamType}: {DurationRequired} Seq: {SequenceId} IsEmpty: {IsBufferEmpty}";
         }
     }
 }
