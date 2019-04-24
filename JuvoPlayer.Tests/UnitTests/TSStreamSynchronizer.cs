@@ -16,6 +16,7 @@
  */
 
 using System;
+using System.Reactive.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using JuvoPlayer.Common;
@@ -28,85 +29,6 @@ namespace JuvoPlayer.Tests.UnitTests
     [TestFixture]
     public class TSStreamSynchronizer
     {
-        private async Task TransferTaskSychStreams(StreamType stream, StreamBufferController streamBuffer, CancellationToken token,
-            AsyncLock alock, Action addSync)
-        {
-            var rnd = new Random((int)DateTime.Now.Ticks);
-            var packet = new Packet
-            {
-                Storage = new dummyStorage(),
-                StreamType = stream
-            };
-            var streamSynchronizer = streamBuffer.StreamSynchronizer;
-
-            try
-            {
-                for (; ; )
-                {
-
-                    using (await alock.LockAsync(token))
-                    {
-                        for (; ; )
-                        {
-                            streamBuffer.DataOut(packet);
-                            packet.Dts += TimeSpan.FromMilliseconds(rnd.Next(50, 150));
-                            streamSynchronizer.UpdateSynchronizationTraps(stream);
-
-                            if (streamSynchronizer.IsStreamSyncNeeded(stream))
-                                break;
-                        }
-                    }
-
-                    await streamSynchronizer.SynchronizeStreams(stream, token);
-                    addSync();
-                }
-            }
-            catch (TaskCanceledException)
-            {
-            }
-            finally
-            {
-                packet.Dispose();
-            }
-        }
-
-        [Test]
-        public void SynchronizeWithStreams()
-        {
-            Assert.DoesNotThrow(
-                () =>
-                {
-                    using (var bufferController = new StreamBufferController())
-                    {
-                        bufferController.Initialize(StreamType.Audio);
-                        bufferController.Initialize(StreamType.Video);
-                        var cts = new CancellationTokenSource();
-                        var token = cts.Token;
-                        var avlock = new AsyncLock();
-
-
-                        var audioSync = 0;
-                        var videoSync = 0;
-
-                        var audioTask = Task.Factory.StartNew(async () =>
-                            await TransferTaskSychStreams(StreamType.Audio, bufferController, token, avlock,
-                                () => { audioSync++; })).Unwrap();
-
-                        var videoTask = Task.Factory.StartNew(async () =>
-                            await TransferTaskSychStreams(StreamType.Video, bufferController, token, avlock,
-                                () => { videoSync++; })).Unwrap();
-
-                        SpinWait.SpinUntil(() => audioSync >= 3 && videoSync >= 3, TimeSpan.FromSeconds(10));
-
-                        cts.Cancel();
-
-                        Assert.IsTrue(audioSync > 0);
-                        Assert.IsTrue(videoSync > 0);
-                    }
-
-                });
-        }
-
         private async Task TransferTaskSychClock(StreamType stream, StreamBufferController streamBuffer,
             CancellationToken token, Action addSync)
         {
@@ -125,12 +47,14 @@ namespace JuvoPlayer.Tests.UnitTests
 
                     streamBuffer.DataOut(packet);
                     packet.Dts += TimeSpan.FromMilliseconds(rnd.Next(50, 150));
-                    streamSynchronizer.UpdateSynchronizationTraps(stream);
 
-                    if (!streamSynchronizer.IsPlayerClockSyncNeeded(stream))
+                    //while (streamSynchronizer.IsPlayerClockSynchronized(stream))
+                    //    await streamSynchronizer.PlayerClockSynchronization(stream, token);
+
+                    var awaiter = streamSynchronizer.Synchronize(stream, token);
+                    if (awaiter.IsCompleted)
                         continue;
 
-                    await streamSynchronizer.SynchronizePlayerClock(stream, token);
                     addSync();
 
                 }
@@ -150,10 +74,11 @@ namespace JuvoPlayer.Tests.UnitTests
             Assert.DoesNotThrow(
                 () =>
                 {
-                    using (var bufferController = new StreamBufferController())
+                    var clockStart = DateTime.Now;
+
+                    using (var bufferController = new StreamBufferController(Observable.Return<PlayerState>(PlayerState.Playing), () => DateTime.Now - clockStart))
                     {
-                        var clockStart = DateTime.Now;
-                        bufferController.StreamSynchronizer.PlayerClock = () => DateTime.Now - clockStart;
+
                         bufferController.Initialize(StreamType.Audio);
                         bufferController.Initialize(StreamType.Video);
                         var cts = new CancellationTokenSource();

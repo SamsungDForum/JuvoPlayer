@@ -128,10 +128,12 @@ namespace JuvoPlayer.DataProviders.Dash
             var oldDurationNeeds = dataNeedsDuration;
             var oldSequence = sequenceId;
 
+            var printUpdate = false;
             if (newNeeds.SequenceId != sequenceId)
             {
                 dataNeedsDuration = newNeeds.DurationRequired;
                 sequenceId = newNeeds.SequenceId;
+                printUpdate = true;
             }
             else
             {
@@ -139,14 +141,18 @@ namespace JuvoPlayer.DataProviders.Dash
 
                 if (newNeeds.DurationRequired > TimeSpan.Zero)
                 {
+
                     var durationDiff = newNeeds.DurationRequired - dataNeedsDuration;
                     newDuration = dataNeedsDuration + durationDiff;
+
                 }
 
+                printUpdate = dataNeedsDuration != newDuration;
                 dataNeedsDuration = newDuration;
             }
 
-            LogInfo($"Data needs updated: {dataNeedsDuration} Req: {newNeeds.DurationRequired} old: {oldDurationNeeds} Seq {newNeeds.SequenceId}/{oldSequence}");
+            if (printUpdate)
+                LogInfo($"Data needs updated: {dataNeedsDuration} Req: {newNeeds.DurationRequired} old: {oldDurationNeeds} Seq {newNeeds.SequenceId}/{oldSequence}");
         }
 
         public TimeSpan Seek(TimeSpan position)

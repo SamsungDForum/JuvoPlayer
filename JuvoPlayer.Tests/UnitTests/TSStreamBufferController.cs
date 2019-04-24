@@ -16,6 +16,7 @@
  */
 
 using System;
+using System.Reactive.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using JuvoPlayer.Common;
@@ -35,7 +36,7 @@ namespace JuvoPlayer.Tests.UnitTests
             Assert.DoesNotThrow(
                 () =>
                 {
-                    using (var bufferController = new StreamBufferController())
+                    using (var bufferController = new StreamBufferController(Observable.Return<PlayerState>(PlayerState.Playing), () => TimeSpan.Zero))
                     {
                         bufferController.Initialize(StreamType.Audio);
                         bufferController.Initialize(StreamType.Video);
@@ -66,7 +67,7 @@ namespace JuvoPlayer.Tests.UnitTests
             Assert.DoesNotThrowAsync(
                 async () =>
                 {
-                    using (var bufferController = new StreamBufferController())
+                    using (var bufferController = new StreamBufferController(Observable.Return<PlayerState>(PlayerState.Playing), () => TimeSpan.Zero))
                     {
                         bufferController.Initialize(StreamType.Audio);
                         bufferController.Initialize(StreamType.Video);
@@ -91,7 +92,7 @@ namespace JuvoPlayer.Tests.UnitTests
             Assert.DoesNotThrow(
                 () =>
                 {
-                    using (var bufferController = new StreamBufferController())
+                    using (var bufferController = new StreamBufferController(Observable.Return<PlayerState>(PlayerState.Playing), () => TimeSpan.Zero))
                     {
                         bufferController.Initialize(StreamType.Audio);
                         bufferController.Initialize(StreamType.Video);
@@ -128,7 +129,7 @@ namespace JuvoPlayer.Tests.UnitTests
             Assert.DoesNotThrow(
                 () =>
                 {
-                    using (var bufferController = new StreamBufferController())
+                    using (var bufferController = new StreamBufferController(Observable.Return<PlayerState>(PlayerState.Playing), () => TimeSpan.Zero))
                     {
                         bufferController.Initialize(StreamType.Audio);
                         bufferController.Initialize(StreamType.Video);
@@ -178,10 +179,9 @@ namespace JuvoPlayer.Tests.UnitTests
             Assert.DoesNotThrowAsync(
                 async () =>
                 {
-                    using (var bufferController = new StreamBufferController())
+                    using (var bufferController = new StreamBufferController(Observable.Return<PlayerState>(PlayerState.Playing), () => TimeSpan.Zero))
                     {
                         bufferController.Initialize(StreamType.Audio);
-                        bufferController.Initialize(StreamType.Video);
 
                         var eventCount = 0;
                         var eventOnCount = 0;
@@ -199,7 +199,7 @@ namespace JuvoPlayer.Tests.UnitTests
                         await bufferController.PushPackets(audioPackets);
                         await bufferController.PullPackets(audioPackets);
 
-                        SpinWait.SpinUntil(() => eventOnCount == 1, TimeSpan.FromSeconds(1.5));
+                        SpinWait.SpinUntil(() => eventOnCount == 1, TimeSpan.FromSeconds(3.5));
 
                         Assert.IsTrue(eventCount == 1);
                         Assert.IsTrue(eventOnCount == 1);
@@ -215,7 +215,7 @@ namespace JuvoPlayer.Tests.UnitTests
             Assert.DoesNotThrowAsync(
                 async () =>
                 {
-                    using (var bufferController = new StreamBufferController())
+                    using (var bufferController = new StreamBufferController(Observable.Return<PlayerState>(PlayerState.Playing), () => TimeSpan.Zero))
                     {
                         bufferController.Initialize(StreamType.Audio);
                         bufferController.Initialize(StreamType.Video);
@@ -245,10 +245,10 @@ namespace JuvoPlayer.Tests.UnitTests
                             bufferController.PullPackets(video)
                         );
 
-                        SpinWait.SpinUntil(() => eventOnCount < 1, TimeSpan.FromSeconds(1.5));
+                        SpinWait.SpinUntil(() => eventOnCount > 0, TimeSpan.FromSeconds(1.5));
 
-                        Assert.IsTrue(eventCount < 1);
-                        Assert.IsTrue(eventOnCount < 1);
+                        Assert.IsTrue(eventCount > 0);
+                        Assert.IsTrue(eventOnCount > 0);
 
                         await Task.WhenAll(
                             audio.DisposePackets(),
@@ -264,10 +264,9 @@ namespace JuvoPlayer.Tests.UnitTests
             Assert.DoesNotThrowAsync(
                 async () =>
                 {
-                    using (var bufferController = new StreamBufferController())
+                    using (var bufferController = new StreamBufferController(Observable.Return<PlayerState>(PlayerState.Playing), () => TimeSpan.Zero))
                     {
                         bufferController.Initialize(StreamType.Audio);
-                        bufferController.Initialize(StreamType.Video);
 
                         var eventCount = 0;
                         var eventOnCount = 0;
@@ -284,20 +283,23 @@ namespace JuvoPlayer.Tests.UnitTests
 
                             }, SynchronizationContext.Current);
 
-                        var audioPackets = BuildPacketList(StreamType.Audio, TimeSpan.FromSeconds(15), 100);
-                        await bufferController.PushPackets(audioPackets);
-                        await bufferController.PullPackets(audioPackets);
+                        var audioPackets1 = BuildPacketList(StreamType.Audio, TimeSpan.FromSeconds(15), 100);
+                        var audioPackets2 = BuildPacketList(StreamType.Audio, TimeSpan.FromSeconds(15), 100, TimeSpan.FromSeconds(15));
+
+                        await bufferController.PushPackets(audioPackets1);
+                        await bufferController.PullPackets(audioPackets1);
 
                         SpinWait.SpinUntil(() => eventOnCount == 1, TimeSpan.FromSeconds(1.5));
 
-                        await bufferController.PushPackets(audioPackets);
+                        await bufferController.PushPackets(audioPackets2);
 
-                        SpinWait.SpinUntil(() => eventOnCount == 1 && eventOffCount == 1, TimeSpan.FromSeconds(1.5));
+                        SpinWait.SpinUntil(() => eventOnCount > 0 && eventOffCount > 0, TimeSpan.FromSeconds(1.5));
 
                         Assert.IsTrue(eventOffCount == 1);
                         Assert.IsTrue(eventOnCount == 1);
 
-                        await audioPackets.DisposePackets();
+                        await audioPackets1.DisposePackets();
+                        await audioPackets2.DisposePackets();
 
                     }
                 });
@@ -309,7 +311,7 @@ namespace JuvoPlayer.Tests.UnitTests
             Assert.DoesNotThrowAsync(
                 async () =>
                 {
-                    using (var bufferController = new StreamBufferController())
+                    using (var bufferController = new StreamBufferController(Observable.Return<PlayerState>(PlayerState.Playing), () => TimeSpan.Zero))
                     {
                         bufferController.Initialize(StreamType.Audio);
                         bufferController.Initialize(StreamType.Video);
@@ -345,11 +347,14 @@ namespace JuvoPlayer.Tests.UnitTests
                             bufferController.PullPackets(video)
                         );
 
-                        SpinWait.SpinUntil(() => eventOnCount == 1, TimeSpan.FromSeconds(1.5));
+                        SpinWait.SpinUntil(() => eventOnCount > 0, TimeSpan.FromSeconds(1.5));
                         Assert.IsTrue(eventOnCount == 1);
                         Assert.IsTrue(eventOffCount == 0);
-                        Assert.IsTrue(eventCount == 1);
                         Assert.IsTrue(bufferState == true);
+
+                        bufferController.EnableEvents(StreamBufferEvents.StreamBufferEvent.None);
+                        bufferController.ResetBuffers();
+                        bufferController.EnableEvents(StreamBufferEvents.StreamBufferEvent.All);
 
                         await bufferController.PushPackets(video);
 
@@ -357,14 +362,12 @@ namespace JuvoPlayer.Tests.UnitTests
 
                         Assert.IsTrue(eventOnCount == 1);
                         Assert.IsTrue(eventOffCount == 0);
-                        Assert.IsTrue(eventCount == 1);
                         Assert.IsTrue(bufferState == true);
 
                         await bufferController.PushPackets(audio);
 
-                        SpinWait.SpinUntil(() => eventOnCount == 1 && eventOffCount == 1, TimeSpan.FromSeconds(1.5));
+                        SpinWait.SpinUntil(() => eventOnCount > 0 && eventOffCount > 0, TimeSpan.FromSeconds(1.5));
 
-                        Assert.IsTrue(eventCount == 2);
                         Assert.IsTrue(eventOnCount == 1);
                         Assert.IsTrue(eventOffCount == 1);
                         Assert.IsTrue(bufferState == false);
@@ -383,7 +386,7 @@ namespace JuvoPlayer.Tests.UnitTests
             Assert.DoesNotThrowAsync(
                 async () =>
                 {
-                    using (var bufferController = new StreamBufferController())
+                    using (var bufferController = new StreamBufferController(Observable.Return<PlayerState>(PlayerState.Playing), () => TimeSpan.Zero))
                     {
                         bufferController.Initialize(StreamType.Audio);
                         bufferController.Initialize(StreamType.Video);
@@ -427,7 +430,7 @@ namespace JuvoPlayer.Tests.UnitTests
             Assert.DoesNotThrowAsync(
                 async () =>
                 {
-                    using (var bufferController = new StreamBufferController())
+                    using (var bufferController = new StreamBufferController(Observable.Return<PlayerState>(PlayerState.Playing), () => TimeSpan.Zero))
                     {
                         bufferController.Initialize(StreamType.Audio);
                         bufferController.Initialize(StreamType.Video);
@@ -481,7 +484,7 @@ namespace JuvoPlayer.Tests.UnitTests
             Assert.DoesNotThrowAsync(
                 async () =>
                 {
-                    using (var bufferController = new StreamBufferController())
+                    using (var bufferController = new StreamBufferController(Observable.Return<PlayerState>(PlayerState.Playing), () => TimeSpan.Zero))
                     {
                         bufferController.Initialize(StreamType.Audio);
                         bufferController.Initialize(StreamType.Video);
@@ -513,7 +516,7 @@ namespace JuvoPlayer.Tests.UnitTests
 
                         SpinWait.SpinUntil(() => eventCount >= 4, TimeSpan.FromSeconds(1.5));
 
-                        bufferController.DisableEvents();
+                        bufferController.EnableEvents(StreamBufferEvents.StreamBufferEvent.None);
                         var currEventCount = eventCount;
 
                         await Task.WhenAll(
@@ -543,7 +546,7 @@ namespace JuvoPlayer.Tests.UnitTests
             Assert.DoesNotThrowAsync(
                 async () =>
                 {
-                    using (var bufferController = new StreamBufferController())
+                    using (var bufferController = new StreamBufferController(Observable.Return<PlayerState>(PlayerState.Playing), () => TimeSpan.Zero))
                     {
                         bufferController.Initialize(StreamType.Audio);
                         bufferController.Initialize(StreamType.Video);
