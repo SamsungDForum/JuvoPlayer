@@ -138,7 +138,7 @@ namespace JuvoPlayer.Player.EsPlayer
             return streamControl.BufferingStateChanged();
         }
 
-        public IObservable<DataArgs> DataNeedStateChanged()
+        public IObservable<DataRequest> DataNeedStateChanged()
         {
             return streamControl.DataNeededStateChanged();
         }

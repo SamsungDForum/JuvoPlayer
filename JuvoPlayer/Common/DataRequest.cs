@@ -19,15 +19,14 @@ using System;
 
 namespace JuvoPlayer.Common
 {
-    public class DataArgs
+    public class DataRequest
     {
-        public uint SequenceId { get; set; }
         public StreamType StreamType { get; set; }
-        public TimeSpan DurationRequired { get; set; }
+        public TimeSpan Duration { get; set; }
         public bool IsBufferEmpty { get; set; }
         public override string ToString()
         {
-            return $"{StreamType}: {DurationRequired} Seq: {SequenceId} IsEmpty: {IsBufferEmpty}";
+            return $"{StreamType}: {Duration} IsEmpty: {IsBufferEmpty}";
         }
     }
 }

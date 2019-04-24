@@ -31,19 +31,22 @@ namespace JuvoPlayer.Player.EsPlayer.Stream.Buffering
         private long bufferAvailableTicks;
         private TimeSpan? eosDts;
 
-        private volatile uint sequenceId;
         private volatile bool reportFull;
 
         private long GetAvailableBufferTicks() =>
-            reportFull?0:Interlocked.Read(ref bufferAvailableTicks);
+            reportFull ? 0 : Interlocked.Read(ref bufferAvailableTicks);
 
-        public DataArgs GetDataRequest() => new DataArgs
+        public DataRequest GetDataRequest()
         {
-            SequenceId = sequenceId,
-            DurationRequired = TimeSpan.FromTicks(GetAvailableBufferTicks()),
-            StreamType = StreamType,
-            IsBufferEmpty = (StreamClockIn == StreamClockOut && eosDts != StreamClockOut)
-        };
+            var ticks = GetAvailableBufferTicks();
+            var duration = ticks > 0 ? TimeSpan.FromTicks(ticks) : TimeSpan.Zero;
+            return new DataRequest
+            {
+                Duration = duration,
+                StreamType = StreamType,
+                IsBufferEmpty = (StreamClockIn == StreamClockOut && eosDts != StreamClockOut)
+            };
+        }
 
         public TimeSpan StreamClockIn { get; private set; }
         public TimeSpan StreamClockOut { get; private set; }
@@ -51,14 +54,13 @@ namespace JuvoPlayer.Player.EsPlayer.Stream.Buffering
         public string BufferTimeRange => StreamClockOut + "-" + StreamClockIn;
         public StreamType StreamType { get; }
 
-        public StreamBuffer(StreamType streamType, uint id)
+        public StreamBuffer(StreamType streamType)
         {
             StreamType = streamType;
-            sequenceId = id;
 
             UpdateBufferDuration(TimeBufferDepthDefault);
 
-            Interlocked.Exchange(ref bufferAvailableTicks, maxBufferDuration.Ticks);          
+            Interlocked.Exchange(ref bufferAvailableTicks, maxBufferDuration.Ticks);
         }
 
         public TimeSpan CurrentBufferedDuration()
@@ -93,17 +95,15 @@ namespace JuvoPlayer.Player.EsPlayer.Stream.Buffering
             logger.Info($"{StreamType}: Buffer Size {maxBufferDuration}");
         }
 
-        public void Reset(uint id)
+        public void Reset()
         {
-            logger.Info($"{StreamType}: {id}");
+            logger.Info($"{StreamType}:");
 
             Interlocked.Exchange(ref bufferAvailableTicks, maxBufferDuration.Ticks);
 
             // EOS is not reset. Intentional.
             StreamClockIn = TimeSpan.Zero;
             StreamClockOut = TimeSpan.Zero;
-
-            sequenceId = id;
         }
 
         public void ReportFullBuffer()

@@ -68,7 +68,7 @@ namespace JuvoPlayer.Common
         public override string ToString()
         {
             StringBuilder sb = new StringBuilder();
-            sb.AppendLine("\nVideo Configuration:");
+            sb.AppendLine("Video Configuration:");
             sb.AppendLine("\tCodec     = " + Codec);
             sb.AppendLine("\tSize      = " + Size);
             sb.AppendLine("\tFrameRate = (" + FrameRateNum + "/" + FrameRateDen + ") " + FrameRate);

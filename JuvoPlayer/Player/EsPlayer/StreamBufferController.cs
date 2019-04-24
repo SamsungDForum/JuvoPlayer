@@ -16,7 +16,6 @@
  */
 
 using System;
-using System.Collections.Generic;
 using System.Linq;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
@@ -55,11 +54,11 @@ namespace JuvoPlayer.Player.EsPlayer.Stream.Buffering
         private readonly MetaDataStreamConfig[] metaDataConfigs = new MetaDataStreamConfig[(int)StreamType.Count];
 
         private readonly Subject<(bool bufferingNeeded, bool allowPublication)> bufferingSubject = new Subject<(bool bufferingNeeded, bool allowPublication)>();
-        private readonly Subject<DataArgs> dataRequestSubject = new Subject<DataArgs>();
-        private readonly Subject<DataArgs> bufferConfigurationSubject = new Subject<DataArgs>();
+        private readonly Subject<DataRequest> dataRequestSubject = new Subject<DataRequest>();
+        private readonly Subject<DataRequest> bufferConfigurationSubject = new Subject<DataRequest>();
 
         private StreamBufferEvent allowedEventsFlag = StreamBufferEvent.All;
-        private volatile uint sequenceId;
+
         private Task bufferStatePublisherTask;
         private CancellationTokenSource publisherCts;
 
@@ -76,7 +75,7 @@ namespace JuvoPlayer.Player.EsPlayer.Stream.Buffering
                 .Do(state => logger.Info($"Buffering Needed: {state}"))
                 .AsObservable();
 
-        public IObservable<DataArgs> DataNeededStateChanged() =>
+        public IObservable<DataRequest> DataNeededStateChanged() =>
             dataRequestSubject
                 .Merge(bufferConfigurationSubject)
                 .AsObservable();
@@ -96,11 +95,11 @@ namespace JuvoPlayer.Player.EsPlayer.Stream.Buffering
             if (streamBuffers[index] != null)
                 throw new ArgumentException($"Stream buffer {stream} already initialized");
 
-            streamBuffers[index] = new StreamBuffer(stream, sequenceId);
+            streamBuffers[index] = new StreamBuffer(stream);
 
             if (bufferStatePublisherTask != null) return;
             publisherCts = new CancellationTokenSource();
-            bufferStatePublisherTask = GenerateBufferUpdates(publisherCts.Token);
+            bufferStatePublisherTask = Task.Run(async () => await GenerateBufferUpdates(publisherCts.Token));
         }
 
         public StreamBufferController(IObservable<PlayerState> playerStateSubject)
@@ -134,22 +133,14 @@ namespace JuvoPlayer.Player.EsPlayer.Stream.Buffering
             streamBuffers[(int)packet.StreamType].DataOut(StreamBuffer.GetStreamClock(packet));
         }
 
-        private void PushNotifications(StreamBufferEvent pushRequest, IObserver<DataArgs> pipeline = null, StreamType forStream = StreamType.Count)
+        private void PushNotifications(StreamBufferEvent pushRequest, IObserver<DataRequest> pipeline = null, StreamType forStream = StreamType.Count)
         {
             if (allowedEventsFlag == StreamBufferEvent.None)
                 return;
 
-            IList<DataArgs> bufferState;
-
-            // Grab a snapshot of items & verify if each collected element
-            // has a matching sequence ID
-            do
-            {
-                bufferState = streamBuffers
-                    .Where(stream => stream != null && (stream.StreamType == forStream || forStream == StreamType.Count))
-                    .Select(buffer => buffer.GetDataRequest()).ToList();
-
-            } while (bufferState.Any(args => args.SequenceId != sequenceId));
+            var bufferState = streamBuffers
+                 .Where(stream => stream != null && (stream.StreamType == forStream || forStream == StreamType.Count))
+                 .Select(buffer => buffer.GetDataRequest()).ToList();
 
             if (StreamBufferEvent.DataRequest == (allowedEventsFlag & pushRequest & StreamBufferEvent.DataRequest))
             {
@@ -210,12 +201,10 @@ namespace JuvoPlayer.Player.EsPlayer.Stream.Buffering
 
         public void ResetBuffers()
         {
-            sequenceId++;
-
             ResetStreamBufferingState();
 
             foreach (var buffer in streamBuffers)
-                buffer?.Reset(sequenceId);
+                buffer?.Reset();
         }
 
         private async Task GenerateBufferUpdates(CancellationToken token)

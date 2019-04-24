@@ -17,7 +17,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Reactive;
 using System.Reactive.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -112,17 +111,15 @@ namespace JuvoPlayer.DataProviders.Dash
                 .Merge(videoPipeline.StreamError());
         }
 
-        public void OnDataStateChanged(DataArgs args)
+        public void OnDataStateChanged(DataRequest request)
         {
-            switch (args.StreamType)
+            switch (request.StreamType)
             {
                 case StreamType.Audio:
-                    audioPipeline.SetDataNeeds(args);
+                    audioPipeline.SetDataNeeds(request);
                     break;
                 case StreamType.Video:
-                    videoPipeline.SetDataNeeds(args);
-                    break;
-                default:
+                    videoPipeline.SetDataNeeds(request);
                     break;
             }
         }

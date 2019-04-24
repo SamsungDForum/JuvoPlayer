@@ -61,7 +61,7 @@ namespace JuvoPlayer.Common
         public override string ToString()
         {
             StringBuilder sb = new StringBuilder();
-            sb.AppendLine("\nAudio Configuration:");
+            sb.AppendLine("Audio Configuration:");
             sb.AppendLine("\tCodec          = " + Codec);
             sb.AppendLine("\tBitsPerChannel = " + BitsPerChannel);
             sb.AppendLine("\tChannelLayout  = " + ChannelLayout);

@@ -69,7 +69,7 @@ namespace JuvoPlayer.DataProviders.Dash
             }
         }
 
-        private static ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
+        private static readonly ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
 
         /// <summary>
         /// Holds smaller of the two (PTS/DTS) from the initial packet.
@@ -129,8 +129,8 @@ namespace JuvoPlayer.DataProviders.Dash
             SubscribeDemuxerEvents();
         }
 
-        public void SetDataNeeds(DataArgs args) =>
-            dashClient.SetDataNeeds(args);
+        public void SetDataNeeds(DataRequest request) =>
+            dashClient.SetDataNeeds(request);
 
         private async Task OnDownloadCompleted()
         {
@@ -288,8 +288,14 @@ namespace JuvoPlayer.DataProviders.Dash
             }
         }
 
-        private void PushMetaDataConfiguration() =>
-            metaDataStreamConfigSubject.OnNext(GetStreamMetaDataConfig());
+        private void PushMetaDataConfiguration()
+        {
+            var metaConfig = GetStreamMetaDataConfig();
+            if (metaConfig == null)
+                return;
+
+            metaDataStreamConfigSubject.OnNext(metaConfig);
+        }
 
 
         private void GetAvailableStreams(IEnumerable<AdaptationSet> media, AdaptationSet defaultMedia)
@@ -658,6 +664,9 @@ namespace JuvoPlayer.DataProviders.Dash
         MetaDataStreamConfig GetStreamMetaDataConfig()
         {
             var representation = GetRepresentation();
+            if (representation == null)
+                return null;
+
             var mpdDoc = representation.Segments.GetDocumentParameters().Document;
 
             return new MetaDataStreamConfig

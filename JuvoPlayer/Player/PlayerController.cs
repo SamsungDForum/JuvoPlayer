@@ -73,7 +73,7 @@ namespace JuvoPlayer.Player
             }
             else
             {
-                OnBufferingCompleted();   
+                OnBufferingCompleted();
             }
         }
 
@@ -97,7 +97,7 @@ namespace JuvoPlayer.Player
             return player.StateChanged();
         }
 
-        public IObservable<DataArgs> DataStateChanged()
+        public IObservable<DataRequest> DataStateChanged()
         {
             return player.DataNeedStateChanged();
         }
