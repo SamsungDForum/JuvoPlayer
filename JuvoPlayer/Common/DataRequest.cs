@@ -1,6 +1,6 @@
-/*!
+﻿/*!
  * https://github.com/SamsungDForum/JuvoPlayer
- * Copyright 2018, Samsung Electronics Co., Ltd
+ * Copyright 2019, Samsung Electronics Co., Ltd
  * Licensed under the MIT license
  *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
@@ -16,29 +16,17 @@
  */
 
 using System;
-using System.Threading.Tasks;
-using JuvoPlayer.Common;
 
-namespace JuvoPlayer.Player
+namespace JuvoPlayer.Common
 {
-    public interface IPlayer : IDisposable
+    public class DataRequest
     {
-        IObservable<string> PlaybackError();
-        IObservable<TimeSpan> TimeUpdated();
-        IObservable<PlayerState> StateChanged();
-        IObservable<bool> BufferingStateChanged();
-        IObservable<DataRequest> DataNeedStateChanged();
-
-        IPlayerClient Client { get; set; }
-
-        void Pause();
-        void Play();
-        Task Seek(TimeSpan time);
-        void SetDuration(TimeSpan duration);
-        void SetPlaybackRate(float rate);
-        void Stop();
-
-        void SetStreamConfig(StreamConfig config);
-        void AppendPacket(Packet packet);
+        public StreamType StreamType { get; set; }
+        public TimeSpan Duration { get; set; }
+        public bool IsBufferEmpty { get; set; }
+        public override string ToString()
+        {
+            return $"{StreamType}: {Duration} IsEmpty: {IsBufferEmpty}";
+        }
     }
 }

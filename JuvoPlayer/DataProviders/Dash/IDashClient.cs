@@ -17,6 +17,7 @@
 
 using System;
 using System.Reactive;
+using JuvoPlayer.Common;
 using MpdParser;
 
 namespace JuvoPlayer.DataProviders.Dash
@@ -30,12 +31,10 @@ namespace JuvoPlayer.DataProviders.Dash
         void OnTimeUpdated(TimeSpan time);
         void UpdateRepresentation(Representation representation);
         void ScheduleNextSegDownload();
-
+        void SetDataNeeds(DataRequest dataNeeded);
         bool CanStreamSwitch();
 
         IObservable<string> ErrorOccurred();
         IObservable<Unit> DownloadCompleted();
-        IObservable<Unit> BufferingStarted();
-        IObservable<Unit> BufferingCompleted();
     }
 }

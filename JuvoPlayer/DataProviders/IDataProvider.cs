@@ -27,6 +27,7 @@ namespace JuvoPlayer.DataProviders
 {
     public interface IDataProvider : IDisposable
     {
+        void OnDataStateChanged(DataRequest request);
         void OnChangeActiveStream(StreamDescription stream);
         void OnDeactivateStream(StreamType streamType);
         void OnStateChanged(PlayerState state);
@@ -46,7 +47,5 @@ namespace JuvoPlayer.DataProviders
         IObservable<StreamConfig> StreamConfigReady();
         IObservable<Packet> PacketReady();
         IObservable<string> StreamError();
-        IObservable<Unit> BufferingStarted();
-        IObservable<Unit> BufferingCompleted();
     }
 }

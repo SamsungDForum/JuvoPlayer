@@ -58,6 +58,7 @@ namespace JuvoPlayer.Player.EsPlayer
         #region IPlayer Interface Implementation
         public void AppendPacket(Packet packet)
         {
+            streamControl.DataIn(packet);
             packetStorage.AddPacket(packet);
         }
 
@@ -131,6 +132,17 @@ namespace JuvoPlayer.Player.EsPlayer
         {
             return streamControl.TimeUpdated();
         }
+
+        public IObservable<bool> BufferingStateChanged()
+        {
+            return streamControl.BufferingStateChanged();
+        }
+
+        public IObservable<DataRequest> DataNeedStateChanged()
+        {
+            return streamControl.DataNeededStateChanged();
+        }
+
 
         #endregion
         #endregion
