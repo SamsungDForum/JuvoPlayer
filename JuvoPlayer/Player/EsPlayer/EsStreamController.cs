@@ -378,7 +378,8 @@ namespace JuvoPlayer.Player.EsPlayer
 
         private void OnBufferStatusChanged(object sender, ESPlayer.BufferStatusEventArgs buffArgs)
         {
-            logger.Info($"{buffArgs.StreamType.JuvoStreamType()}: {buffArgs.BufferStatus}");
+            if (buffArgs.BufferStatus == ESPlayer.BufferStatus.Underrun)
+                esStreams[(int)buffArgs.StreamType.JuvoStreamType()].Wakeup();
         }
 
         /// <summary>
@@ -444,41 +445,31 @@ namespace JuvoPlayer.Player.EsPlayer
             return playbackErrorSubject.AsObservable();
         }
 
-        private void StartStreams()
-        {
-            EnableTransfer();
-
-            streamsReady = 0;
-
-            logger.Info($"Streams Started");
-        }
-
         /// <summary>
         /// ESPlayer event handler. Issued after calling AsyncPrepare. Stream type
         /// passed as an argument indicates stream for which data transfer has be started.
         /// This effectively starts playback.
         /// </summary>
         /// <param name="esPlayerStreamType">ESPlayer.StreamType</param>
-        private void OnReadyToStartStream(ESPlayer.StreamType esPlayerStreamType)
+        private async void OnReadyToStartStream(ESPlayer.StreamType esPlayerStreamType)
         {
-            logger.Info(esPlayerStreamType.ToString());
+            var streamType = esPlayerStreamType.JuvoStreamType();
 
-            streamsReady++;
-            if (streamsReady != esStreams.Count(entry => entry != null))
-                return;
+            logger.Info(streamType.ToString());
 
-            StartStreams();
+            esStreams[(int)streamType].Start();
+
+            logger.Info($"{streamType}: Completed");
+
+            await Task.Yield();
         }
 
-        private void OnReadyToSeekStream(ESPlayer.StreamType esPlayerStreamType, TimeSpan time)
+        private async void OnReadyToSeekStream(ESPlayer.StreamType esPlayerStreamType, TimeSpan time)
         {
             logger.Info($"{esPlayerStreamType}: {time}");
+            OnReadyToStartStream(esPlayerStreamType);
 
-            streamsReady++;
-            if (streamsReady != esStreams.Count(entry => entry != null))
-                return;
-
-            StartStreams();
+            await Task.Yield();
         }
 
         #endregion
