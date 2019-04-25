@@ -101,6 +101,11 @@ namespace JuvoPlayer.DataProviders.HLS
         {
         }
 
+        public void OnBufferingStateChanged(bool bufferingState)
+        {
+
+        }
+
         public Task<TimeSpan> Seek(TimeSpan time, CancellationToken token)
         {
             throw new NotImplementedException();
@@ -148,6 +153,11 @@ namespace JuvoPlayer.DataProviders.HLS
             if (streamType == StreamType.Subtitle)
                 return GetSubtitleStreamsDescription();
             return new List<StreamDescription>();
+        }
+
+        public IObservable<bool> BufferingStateChanged()
+        {
+            return Observable.Empty<bool>();
         }
 
         public IObservable<TimeSpan> ClipDurationChanged()
