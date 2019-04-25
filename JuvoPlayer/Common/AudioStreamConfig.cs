@@ -57,15 +57,16 @@ namespace JuvoPlayer.Common
         public int ChannelLayout { get; set; }
         public int SampleRate { get; set; }
         public int BitsPerChannel { get; set; }
-        public int BitRate { get; set; }
+        public long BitRate { get; set; }
         public override string ToString()
         {
             StringBuilder sb = new StringBuilder();
             sb.AppendLine("Audio Configuration:");
-            sb.AppendLine("\tCodec = " + Codec);
-            sb.AppendLine("\tBitsPerChannel =" + BitsPerChannel);
-            sb.AppendLine("\tChannelLayout = " + ChannelLayout);
-            sb.AppendLine("\tSampleRate = " + SampleRate);
+            sb.AppendLine("\tCodec          = " + Codec);
+            sb.AppendLine("\tBitsPerChannel = " + BitsPerChannel);
+            sb.AppendLine("\tChannelLayout  = " + ChannelLayout);
+            sb.AppendLine("\tSampleRate     = " + SampleRate);
+            sb.AppendLine("\tBitRate        = " + BitRate);
 
             return sb.ToString();
         }

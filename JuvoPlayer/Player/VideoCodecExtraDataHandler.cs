@@ -15,7 +15,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using JuvoLogger;
@@ -254,7 +254,7 @@ namespace JuvoPlayer.Player
         {
             foreach (var pps in nals)
             {
-                var len = AsBytesMSB((uint) pps.Length, (int) lengthSize);
+                var len = AsBytesMSB((uint)pps.Length, (int)lengthSize);
                 Buffer.BlockCopy(len, 0, parsedExtraData, offset, len.Length);
                 offset += len.Length;
                 Buffer.BlockCopy(pps, 0, parsedExtraData, offset, pps.Length);

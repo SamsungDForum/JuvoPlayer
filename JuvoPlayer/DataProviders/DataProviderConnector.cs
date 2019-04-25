@@ -88,6 +88,7 @@ namespace JuvoPlayer.DataProviders
             {
                 playerController.TimeUpdated().Subscribe(dataProvider.OnTimeUpdated, context),
                 playerController.StateChanged().Subscribe(dataProvider.OnStateChanged, context),
+                playerController.DataStateChanged().Subscribe(dataProvider.OnDataStateChanged)
             };
         }
 
@@ -110,10 +111,6 @@ namespace JuvoPlayer.DataProviders
                     .Subscribe(playerController.OnStreamConfigReady, context),
                 dataProvider.PacketReady()
                     .Subscribe(playerController.OnPacketReady, context),
-                dataProvider.BufferingStarted()
-                    .Subscribe(unit => playerController.OnBufferingStarted(), context),
-                dataProvider.BufferingCompleted()
-                    .Subscribe(unit => playerController.OnBufferingCompleted(), context),
                 dataProvider.StreamError()
                     .Subscribe(playerController.OnStreamError, context)
             };

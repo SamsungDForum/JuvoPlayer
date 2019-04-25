@@ -15,7 +15,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-﻿using System;
+using System;
 using JuvoLogger;
 using JuvoPlayer.Common;
 using JuvoPlayer.Common.Utils.IReferenceCountableExtensions;
@@ -78,6 +78,12 @@ namespace JuvoPlayer.Player
 
             if (config.StreamType() != streamType)
                 throw new ArgumentException("config type doesn't match");
+
+            if (config is MetaDataStreamConfig)
+            {
+                player.SetStreamConfig(config);
+                return;
+            }
 
             if (this.config != null && this.config.Equals(config))
                 return;
