@@ -378,7 +378,13 @@ namespace JuvoPlayer.Player.EsPlayer
 
         private void OnBufferStatusChanged(object sender, ESPlayer.BufferStatusEventArgs buffArgs)
         {
-            logger.Info($"{buffArgs.StreamType.JuvoStreamType()}: {buffArgs.BufferStatus}");
+            var juvoStream = buffArgs.StreamType.JuvoStreamType();
+            var state = buffArgs.BufferStatus == ESPlayer.BufferStatus.Overrun
+                ? BufferState.BufferOverrun
+                : BufferState.BufferUnderrun;
+
+            if (state == BufferState.BufferUnderrun)
+                esStreams[(int)juvoStream].Wakeup();
         }
 
         /// <summary>
@@ -459,26 +465,26 @@ namespace JuvoPlayer.Player.EsPlayer
         /// This effectively starts playback.
         /// </summary>
         /// <param name="esPlayerStreamType">ESPlayer.StreamType</param>
-        private void OnReadyToStartStream(ESPlayer.StreamType esPlayerStreamType)
+        private async void OnReadyToStartStream(ESPlayer.StreamType esPlayerStreamType)
         {
             logger.Info(esPlayerStreamType.ToString());
 
             streamsReady++;
-            if (streamsReady != esStreams.Count(entry => entry != null))
-                return;
+            if (streamsReady == esStreams.Count(entry => entry != null))
+                StartStreams();
 
-            StartStreams();
+            await Task.Yield();
         }
 
-        private void OnReadyToSeekStream(ESPlayer.StreamType esPlayerStreamType, TimeSpan time)
+        private async void OnReadyToSeekStream(ESPlayer.StreamType esPlayerStreamType, TimeSpan time)
         {
             logger.Info($"{esPlayerStreamType}: {time}");
 
             streamsReady++;
-            if (streamsReady != esStreams.Count(entry => entry != null))
-                return;
+            if (streamsReady == esStreams.Count(entry => entry != null))
+                StartStreams();
 
-            StartStreams();
+            await Task.Yield();
         }
 
         #endregion
