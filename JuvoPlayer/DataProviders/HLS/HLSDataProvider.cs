@@ -54,7 +54,8 @@ namespace JuvoPlayer.DataProviders.HLS
 
         public void OnDataStateChanged(DataRequest request)
         {
-
+            // HLS Data Provider does not support data request events
+            // Input handler empty
         }
 
         public void OnChangeActiveStream(StreamDescription stream)
@@ -103,7 +104,8 @@ namespace JuvoPlayer.DataProviders.HLS
 
         public void OnBufferingStateChanged(bool bufferingState)
         {
-
+            // HLS Data Provider filters filters out buffering events.
+            // Input handler empty
         }
 
         public Task<TimeSpan> Seek(TimeSpan time, CancellationToken token)
