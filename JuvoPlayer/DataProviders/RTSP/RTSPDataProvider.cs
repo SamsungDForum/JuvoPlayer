@@ -126,8 +126,8 @@ namespace JuvoPlayer.DataProviders.RTSP
 
         public void OnBufferingStateChanged(bool bufferingState)
         {
-            // RTSP Data Provider filters filters out buffering events.
-            // Input handler empty
+            // RTSP Data provider does not support buffering events.
+            // Input handler empty. Events filtered out.
         }
 
         public Task<TimeSpan> Seek(TimeSpan time, CancellationToken token)
