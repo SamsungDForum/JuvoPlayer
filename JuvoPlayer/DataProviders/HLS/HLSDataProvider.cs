@@ -54,7 +54,8 @@ namespace JuvoPlayer.DataProviders.HLS
 
         public void OnDataStateChanged(DataRequest request)
         {
-
+            // HLS Data Provider does not support data request events
+            // Input handler empty
         }
 
         public void OnChangeActiveStream(StreamDescription stream)
@@ -99,6 +100,12 @@ namespace JuvoPlayer.DataProviders.HLS
 
         public void OnStopped()
         {
+        }
+
+        public void OnBufferingStateChanged(bool bufferingState)
+        {
+            // HLS Data provider does not support buffering events.
+            // Input handler empty. Events filtered out.
         }
 
         public Task<TimeSpan> Seek(TimeSpan time, CancellationToken token)
@@ -148,6 +155,11 @@ namespace JuvoPlayer.DataProviders.HLS
             if (streamType == StreamType.Subtitle)
                 return GetSubtitleStreamsDescription();
             return new List<StreamDescription>();
+        }
+
+        public IObservable<bool> BufferingStateChanged()
+        {
+            return Observable.Empty<bool>();
         }
 
         public IObservable<TimeSpan> ClipDurationChanged()

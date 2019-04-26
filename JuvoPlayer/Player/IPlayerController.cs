@@ -38,6 +38,7 @@ namespace JuvoPlayer.Player
         void OnStreamConfigReady(StreamConfig config);
         void OnPacketReady(Packet packet);
         void OnStreamError(string errorMessage);
+        void OnBufferingStateChanged(bool bufferState);
         IPlayerClient Client { set; }
         #endregion
 
@@ -48,6 +49,7 @@ namespace JuvoPlayer.Player
 
         #endregion
 
+        IObservable<bool> BufferingStateChanged();
         IObservable<int> BufferingProgress();
         IObservable<string> PlaybackError();
         IObservable<TimeSpan> TimeUpdated();
