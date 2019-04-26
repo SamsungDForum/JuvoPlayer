@@ -104,8 +104,8 @@ namespace JuvoPlayer.DataProviders.HLS
 
         public void OnBufferingStateChanged(bool bufferingState)
         {
-            // HLS Data Provider filters filters out buffering events.
-            // Input handler empty
+            // HLS Data provider does not support buffering events.
+            // Input handler empty. Events filtered out.
         }
 
         public Task<TimeSpan> Seek(TimeSpan time, CancellationToken token)
