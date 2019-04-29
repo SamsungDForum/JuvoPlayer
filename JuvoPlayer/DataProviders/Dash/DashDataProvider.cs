@@ -18,6 +18,7 @@
 using System;
 using System.Collections.Generic;
 using System.Reactive.Linq;
+using System.Reactive.Subjects;
 using System.Threading;
 using System.Threading.Tasks;
 using JuvoLogger;
@@ -41,6 +42,8 @@ namespace JuvoPlayer.DataProviders.Dash
 
         private bool disposed;
         private readonly IDisposable manifestReadySub;
+
+        private Subject<bool> bufferingStateSubject = new Subject<bool>();
 
         public DashDataProvider(
             string clipUrl,
@@ -74,6 +77,8 @@ namespace JuvoPlayer.DataProviders.Dash
                 Logger.Warn(ex);
             }
         }
+
+        public IObservable<bool> BufferingStateChanged() => bufferingStateSubject.AsObservable();
 
         public IObservable<TimeSpan> ClipDurationChanged()
         {
@@ -175,6 +180,11 @@ namespace JuvoPlayer.DataProviders.Dash
             audioPipeline.Stop();
         }
 
+        public void OnBufferingStateChanged(bool bufferingState)
+        {
+            bufferingStateSubject.OnNext(bufferingState);
+        }
+
         public Task<TimeSpan> Seek(TimeSpan time, CancellationToken token)
         {
             if (!IsSeekingSupported())
@@ -270,6 +280,8 @@ namespace JuvoPlayer.DataProviders.Dash
 
             videoPipeline?.Dispose();
             videoPipeline = null;
+
+            bufferingStateSubject.Dispose();
         }
     }
 }
