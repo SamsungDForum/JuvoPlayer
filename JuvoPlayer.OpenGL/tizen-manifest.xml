@@ -1,5 +1,5 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<manifest package="JuvoPlayerOpenGLNative.Tizen.TV" version="1.4.6" api-version="5" xmlns="http://tizen.org/ns/packages">
+<manifest package="JuvoPlayerOpenGLNative.Tizen.TV" version="1.4.7" api-version="5" xmlns="http://tizen.org/ns/packages">
   <feature name="http://tizen.org/feature/screen.size.normal.1080.1920">true</feature>
   <profile name="tv" />
   <app-control>
@@ -13,7 +13,12 @@
     <metadata key="http://samsung.com/tv/metadata/devel.api.version" value="2.4" />
     <metadata key="http://samsung.com/tv/metadata/use.preview" value="endpoint_URL=https://raw.githubusercontent.com/SamsungDForum/JuvoPlayer/master/smarthubpreview/juvoplayerclipsJSON.json" />
     <metadata key="http://samsung.com/tv/metadata/appbootingsupport" />
-    <splash-screens />
+    <splash-screens>
+      <!--Orientation needs to be set to portrait due to the platform bug-->
+      <splash-screen src="JuvoPlayerOpenGLNativeTizenTV_black_simple.jpg" type="img" dpi="hdpi" orientation="portrait" indicator-display="false" />
+      <!--Copy of a file is needed, because APP installer doesn't allow to specify 2 splash screens with the same "src" attribute -->
+      <splash-screen src="JuvoPlayerOpenGLNativeTizenTV_black_simple_eden.jpg" type="img" dpi="hdpi" orientation="portrait" indicator-display="false" app-control-operation="http://samsung.com/appcontrol/operation/eden_resume" />
+    </splash-screens>
   </ui-application>
   <shortcut-list />
   <privileges>
