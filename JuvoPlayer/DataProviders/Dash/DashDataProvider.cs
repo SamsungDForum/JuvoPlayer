@@ -193,6 +193,20 @@ namespace JuvoPlayer.DataProviders.Dash
             return Task.FromResult(videoSegmentStart);
         }
 
+        public bool IsDataAvailable()
+        {
+            if (!manifestProvider.Manifest.CurrentDocument?.IsDynamic ?? true)
+                return true;
+
+            var videoAvailable = videoPipeline.IsDataAvailable();
+            var audioAvailable = audioPipeline.IsDataAvailable();
+            var available = videoAvailable && audioAvailable;
+
+            Logger.Info($"Data Available: {available} Audio: {audioAvailable} Video: {videoAvailable}");
+
+            return available;
+        }
+
         public bool IsSeekingSupported()
         {
             // If there is no current document (not downloaded yet), prevent seeking.

@@ -86,7 +86,7 @@ namespace JuvoPlayer.DataProviders.Dash
 
         private DashStream currentStream;
 
-        private DashStream PendingStream;
+        private DashStream pendingStream;
 
         private readonly Object switchStreamLock = new Object();
         private List<DashStream> availableStreams = new List<DashStream>();
@@ -122,12 +122,15 @@ namespace JuvoPlayer.DataProviders.Dash
             this.throughputHistory = throughputHistory ??
                                      throw new ArgumentNullException(nameof(throughputHistory),
                                          "throughputHistory cannot be null");
-            this.StreamType = streamType;
+            StreamType = streamType;
 
             downloadCompletedSub = dashClient.DownloadCompleted()
                 .Subscribe(async unit => await OnDownloadCompleted(), SynchronizationContext.Current);
             SubscribeDemuxerEvents();
         }
+
+        public bool IsDataAvailable() =>
+            (!pipelineStarted || dashClient.IsDataAvailable());
 
         public void SetDataNeeds(DataRequest request) =>
             dashClient.SetDataNeeds(request);
@@ -156,7 +159,7 @@ namespace JuvoPlayer.DataProviders.Dash
 
         public Representation GetRepresentation()
         {
-            return PendingStream?.Representation ?? currentStream?.Representation;
+            return pendingStream?.Representation ?? currentStream?.Representation;
         }
 
         public void SynchronizeWith(DashMediaPipeline synchronizeWith)
@@ -211,7 +214,7 @@ namespace JuvoPlayer.DataProviders.Dash
                 // get first element of sorted array
                 var representation = defaultMedia.Representations.OrderByDescending(o => o.Bandwidth).Last();
 
-                PendingStream = new DashStream(defaultMedia, representation);
+                pendingStream = new DashStream(defaultMedia, representation);
             }
         }
 
@@ -220,10 +223,10 @@ namespace JuvoPlayer.DataProviders.Dash
             if (DisableAdaptiveStreaming)
                 return;
 
-            if (currentStream == null && PendingStream == null)
+            if (currentStream == null && pendingStream == null)
                 return;
 
-            var streamToAdapt = PendingStream ?? currentStream;
+            var streamToAdapt = pendingStream ?? currentStream;
             if (streamToAdapt.Representation.Bandwidth.HasValue == false)
                 return;
 
@@ -242,7 +245,7 @@ namespace JuvoPlayer.DataProviders.Dash
             if (stream.Representation.Bandwidth == streamToAdapt.Representation.Bandwidth) return;
 
             Logger.Info("Changing stream to bandwidth: " + stream.Representation.Bandwidth);
-            PendingStream = stream;
+            pendingStream = stream;
         }
 
         public async Task SwitchStreamIfNeeded()
@@ -262,15 +265,15 @@ namespace JuvoPlayer.DataProviders.Dash
 
             try
             {
-                if (PendingStream == null)
+                if (pendingStream == null)
                     return;
 
                 Logger.Info($"{StreamType}");
 
                 if (currentStream == null)
                 {
-                    StartPipeline(PendingStream);
-                    PendingStream = null;
+                    StartPipeline(pendingStream);
+                    pendingStream = null;
                     return;
                 }
 
@@ -278,9 +281,9 @@ namespace JuvoPlayer.DataProviders.Dash
                     return;
 
                 await FlushPipeline();
-                StartPipeline(PendingStream);
+                StartPipeline(pendingStream);
 
-                PendingStream = null;
+                pendingStream = null;
             }
             finally
             {
@@ -406,11 +409,17 @@ namespace JuvoPlayer.DataProviders.Dash
                 return;
 
             dashClient.Stop();
-            demuxerController.Reset();
+
+            ResetPipeline();
+
+            demuxerClock.Reset();
+            lastPushedClock.Reset();
+            lastSeek = TimeSpan.Zero;
 
             trimOffset = null;
+            currentStream = null;
+            pendingStream = null;
 
-            pipelineStarted = false;
         }
 
         public void OnTimeUpdated(TimeSpan time)
