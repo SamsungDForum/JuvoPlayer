@@ -52,8 +52,7 @@ namespace JuvoPlayer.Player
 
             subscriptions = new CompositeDisposable
             {
-                TimeUpdated().Subscribe(time => currentTime = time, SynchronizationContext.Current),
-                player.BufferingStateChanged().Subscribe(BufferingNeeded, SynchronizationContext.Current)
+                TimeUpdated().Subscribe(time => currentTime = time, SynchronizationContext.Current)
             };
 
             var audioCodecExtraDataHandler = new AudioCodecExtraDataHandler(player);
@@ -65,16 +64,9 @@ namespace JuvoPlayer.Player
                 new PacketStream(StreamType.Video, this.player, drmManager, videoCodecExtraDataHandler);
         }
 
-        private void BufferingNeeded(bool needed)
+        public IObservable<bool> BufferingStateChanged()
         {
-            if (needed)
-            {
-                OnBufferingStarted();
-            }
-            else
-            {
-                OnBufferingCompleted();
-            }
+            return player.BufferingStateChanged();
         }
 
         public IObservable<int> BufferingProgress()
@@ -184,6 +176,18 @@ namespace JuvoPlayer.Player
         public void OnStreamError(string errorMessage)
         {
             streamErrorSubject.OnNext(errorMessage);
+        }
+
+        public void OnBufferingStateChanged(bool bufferState)
+        {
+            if (bufferState)
+            {
+                OnBufferingStarted();
+            }
+            else
+            {
+                OnBufferingCompleted();
+            }
         }
 
         public void OnSetPlaybackRate(float rate)

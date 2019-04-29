@@ -32,6 +32,7 @@ namespace JuvoPlayer.DataProviders
         void OnStateChanged(PlayerState state);
         void OnStopped();
         void OnTimeUpdated(TimeSpan time);
+        void OnBufferingStateChanged(bool bufferingState);
 
         Task<TimeSpan> Seek(TimeSpan time, CancellationToken token);
 
@@ -47,5 +48,6 @@ namespace JuvoPlayer.DataProviders
         IObservable<StreamConfig> StreamConfigReady();
         IObservable<Packet> PacketReady();
         IObservable<string> StreamError();
+        IObservable<bool> BufferingStateChanged();
     }
 }
