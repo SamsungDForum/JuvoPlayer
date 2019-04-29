@@ -18,9 +18,12 @@
 using System;
 using System.Collections.Generic;
 using System.Reactive.Disposables;
+using System.Reactive.Linq;
+using System.Reactive.Subjects;
 using System.Threading;
 using System.Threading.Tasks;
 using ElmSharp;
+using JuvoLogger;
 using JuvoPlayer.Common;
 using JuvoPlayer.DataProviders;
 using JuvoPlayer.DataProviders.Dash;
@@ -36,11 +39,13 @@ namespace JuvoPlayer
 {
     public class PlayerServiceImpl : IPlayerService
     {
+        private readonly ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
+
         private IDataProvider dataProvider;
         private IPlayerController playerController;
         private DataProviderConnector connector;
         private readonly DataProviderFactoryManager dataProviders;
-        private readonly CompositeDisposable subscriptions;
+        private CompositeDisposable subscriptions;
 
         public TimeSpan Duration => playerController?.ClipDuration ?? TimeSpan.FromSeconds(0);
 
@@ -53,6 +58,12 @@ namespace JuvoPlayer
 
         public string CurrentCueText => dataProvider?.CurrentCue?.Text;
 
+        private Window playerWindow;
+        private readonly IDrmManager drmManager;
+        private Subject<PlayerState> stateChangedSubject = new Subject<PlayerState>();
+        private Subject<string> playbackErrorSubject = new Subject<string>();
+        private Subject<int> bufferingProgressSubject = new Subject<int>();
+
         public PlayerServiceImpl(Window window)
         {
             dataProviders = new DataProviderFactoryManager();
@@ -60,18 +71,34 @@ namespace JuvoPlayer
             dataProviders.RegisterDataProviderFactory(new HLSDataProviderFactory());
             dataProviders.RegisterDataProviderFactory(new RTSPDataProviderFactory());
 
-            var drmManager = new DrmManager();
+            drmManager = new DrmManager();
             drmManager.RegisterDrmHandler(new CencHandler());
 
-            if (window == null)
-                window = WindowUtils.CreateElmSharpWindow();
-            var player = new EsPlayer(window);
+            playerWindow = window;
+
+            CreatePlayerController();
+        }
+
+        private void CreatePlayerController()
+        {
+            if (playerWindow == null)
+                playerWindow = WindowUtils.CreateElmSharpWindow();
+            var player = new EsPlayer(playerWindow);
+
             playerController = new PlayerController(player, drmManager);
 
             subscriptions = new CompositeDisposable
             {
                 playerController.StateChanged()
-                    .Subscribe(state => { State = state; }, SynchronizationContext.Current)
+                    .Subscribe(state =>
+                    {
+                        State = state;
+                        stateChangedSubject.OnNext(state);
+                    }, SynchronizationContext.Current),
+                playerController.PlaybackError()
+                    .Subscribe(playbackErrorSubject.OnNext,SynchronizationContext.Current),
+                playerController.BufferingProgress()
+                    .Subscribe(bufferingProgressSubject.OnNext,SynchronizationContext.Current)
             };
         }
 
@@ -119,6 +146,31 @@ namespace JuvoPlayer
 
         public void Start()
         {
+            Logger.Info(State.ToString());
+
+            if (!dataProvider.IsDataAvailable())
+            {
+                RestartPlayerController();
+                return;
+            }
+
+            playerController.OnPlay();
+        }
+
+        private void RestartPlayerController()
+        {
+            Logger.Info("Player controller restart");
+
+            dataProvider.OnStopped();
+            subscriptions.Dispose();
+            connector?.Dispose();
+            playerController?.Dispose();
+
+            CreatePlayerController();
+
+            connector = new DataProviderConnector(playerController, dataProvider);
+
+            dataProvider.Start();
             playerController.OnPlay();
         }
 
@@ -144,23 +196,26 @@ namespace JuvoPlayer
                 playerController = null;
                 dataProvider?.Dispose();
                 dataProvider = null;
+                stateChangedSubject.Dispose();
+                playbackErrorSubject.Dispose();
+                bufferingProgressSubject.Dispose();
                 GC.Collect();
             }
         }
 
         public IObservable<PlayerState> StateChanged()
         {
-            return playerController.StateChanged();
+            return stateChangedSubject.AsObservable();
         }
 
         public IObservable<string> PlaybackError()
         {
-            return playerController.PlaybackError();
+            return playbackErrorSubject.AsObservable();
         }
 
         public IObservable<int> BufferingProgress()
         {
-            return playerController.BufferingProgress();
+            return bufferingProgressSubject.AsObservable();
         }
     }
 }
