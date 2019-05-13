@@ -116,6 +116,8 @@ namespace JuvoPlayer.DataProviders.Dash
 
         public bool IsDataAvailable()
         {
+            // No last download segment = Initial stream start.
+            // Data availability not checked, initial segment will be used.
             if (lastDownloadSegmentTimeRange == null)
                 return true;
 
