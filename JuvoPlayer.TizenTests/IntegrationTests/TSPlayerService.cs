@@ -24,6 +24,7 @@ using System.Reactive.Linq;
 using System.Reactive.Threading.Tasks;
 using System.Threading;
 using System.Threading.Tasks;
+using JuvoLogger;
 using JuvoPlayer.Common;
 using JuvoPlayer.Tests.Utils;
 using JuvoPlayer.TizenTests.Utils;
@@ -37,6 +38,8 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
     [TestFixture]
     class TSPlayerService
     {
+        private readonly ILogger _logger = LoggerManager.GetInstance().GetLogger("UT");
+
         private void RunPlayerTest(string clipTitle, Func<TestContext, Task> testImpl)
         {
             AsyncContext.Run(async () =>
@@ -62,17 +65,20 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
         [Test, TestCaseSource(nameof(AllClips))]
         public void Playback_Basic_PreparesAndStarts(string clipTitle)
         {
+            _logger.Info("Start " + clipTitle);
             RunPlayerTest(clipTitle, async context =>
             {
                 await Task.Delay(TimeSpan.FromSeconds(1));
 
                 Assert.That(context.Service.CurrentPosition, Is.GreaterThan(TimeSpan.Zero));
             });
+            _logger.Info("End " + clipTitle);
         }
 
         [Test, TestCaseSource(nameof(DashClips))]
         public void Seek_Random10Times_Seeks(string clipTitle)
         {
+            _logger.Info("Start " + clipTitle);
             RunPlayerTest(clipTitle, async context =>
             {
                 context.SeekTime = null;
@@ -83,11 +89,13 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
                     await seekOperation.Execute(context);
                 }
             });
+            _logger.Info("End " + clipTitle);
         }
 
         [Test, TestCaseSource(nameof(DashClips))]
         public void Seek_DisposeDuringSeek_Disposes(string clipTitle)
         {
+            _logger.Info("Start " + clipTitle);
             RunPlayerTest(clipTitle, async context =>
             {
                 var seekOperation = new SeekOperation();
@@ -97,11 +105,13 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
 #pragma warning restore 4014
                 await Task.Delay(250);
             });
+            _logger.Info("End " + clipTitle);
         }
 
         [Test, TestCaseSource(nameof(DashClips))]
         public void Seek_Forward_Seeks(string clipTitle)
         {
+            _logger.Info("Start " + clipTitle);
             RunPlayerTest(clipTitle, async context =>
             {
                 var service = context.Service;
@@ -116,11 +126,13 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
                     await seekOperation.Execute(context);
                 }
             });
+            _logger.Info("End " + clipTitle);
         }
 
         [Test, TestCaseSource(nameof(DashClips))]
         public void Seek_Backward_Seeks(string clipTitle)
         {
+            _logger.Info("Start " + clipTitle);
             RunPlayerTest(clipTitle, async context =>
             {
                 var service = context.Service;
@@ -135,11 +147,13 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
                     await seekOperation.Execute(context);
                 }
             });
+            _logger.Info("End " + clipTitle);
         }
 
         [Test, TestCaseSource(nameof(DashClips))]
         public void Seek_ToTheEnd_Seeks(string clipTitle)
         {
+            _logger.Info("Start " + clipTitle);
             RunPlayerTest(clipTitle, async context =>
             {
                 var service = context.Service;
@@ -155,11 +169,13 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
                     // ignored
                 }
             });
+            _logger.Info("End " + clipTitle);
         }
 
         [Test, TestCaseSource(nameof(DashClips))]
         public void Seek_EOSReached_StateChangedCompletes(string clipTitle)
         {
+            _logger.Info("Start " + clipTitle);
             RunPlayerTest(clipTitle, async context =>
             {
                 var service = context.Service;
@@ -181,23 +197,30 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
                 await Task.WhenAny(seekOperation.Execute(context), playbackErrorTask);
                 await Task.WhenAny(clipCompletedTask, playbackErrorTask);
             });
+            _logger.Info("End " + clipTitle);
         }
 
         [TestCase("Clean byte range MPEG DASH")]
         public void Random_20RandomOperations_ExecutedCorrectly(string clipTitle)
         {
+            _logger.Info("Start " + clipTitle);
+
             var operations =
-                GenerateOperations(20, new List<Type> {typeof(StopOperation), typeof(PrepareOperation)});
+                GenerateOperations(20, new List<Type> { typeof(StopOperation), typeof(PrepareOperation) });
 
             try
             {
                 RunRandomOperationsTest(clipTitle, operations, true);
             }
-            catch (Exception)
+            catch (Exception e)
             {
+                _logger.Error("Error " + clipTitle);
+                _logger.Error(e);
                 DumpOperations(clipTitle, operations);
                 throw;
             }
+
+            _logger.Info("End " + clipTitle);
         }
 
         private void RunRandomOperationsTest(string clipTitle, IList<TestOperation> operations, bool shouldPrepare)

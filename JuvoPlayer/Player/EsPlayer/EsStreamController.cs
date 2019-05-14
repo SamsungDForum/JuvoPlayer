@@ -29,8 +29,7 @@ using ElmSharp;
 using JuvoPlayer.Utils;
 using Nito.AsyncEx;
 using System.Runtime.InteropServices;
-using JuvoPlayer.Player.EsPlayer.Stream.Buffering;
-using static JuvoPlayer.Player.EsPlayer.Stream.Buffering.StreamBufferEvents;
+using static JuvoPlayer.Player.EsPlayer.DataEvents;
 
 namespace JuvoPlayer.Player.EsPlayer
 {
@@ -45,7 +44,7 @@ namespace JuvoPlayer.Player.EsPlayer
         // stream data and data storage
         private readonly EsStream[] esStreams;
         private readonly EsPlayerPacketStorage packetStorage;
-        private readonly StreamBufferController bufferController;
+        private readonly DataMonitor dataMonitor;
 
         // Reference to ESPlayer & associated window
         private ESPlayer.ESPlayer player;
@@ -53,15 +52,8 @@ namespace JuvoPlayer.Player.EsPlayer
         private readonly bool usesExternalWindow = true;
 
         // event callbacks
-        private readonly Subject<TimeSpan> timeUpdatedSubject = new Subject<TimeSpan>();
         private readonly Subject<string> playbackErrorSubject = new Subject<string>();
         private readonly Subject<PlayerState> stateChangedSubject = new Subject<PlayerState>();
-
-        // Timer process and supporting cancellation elements for clock extraction
-        // and generation
-        private Task clockGenerator = Task.CompletedTask;
-        private CancellationTokenSource clockGeneratorCts;
-        private TimeSpan currentClock;
 
         // Returns configuration status of all underlying streams.
         // True - all initialized streams are configures
@@ -81,7 +73,7 @@ namespace JuvoPlayer.Player.EsPlayer
         private bool isDisposed;
         private bool resourceConflict;
 
-        private int streamsReady;
+        private ClockFilter clockFilter = new ClockFilter();
 
         #region Public API
 
@@ -96,8 +88,8 @@ namespace JuvoPlayer.Player.EsPlayer
 
             // Create new data stream & chunk state entry
             //
-            bufferController.Initialize(stream);
-            var esStream = new EsStream(stream, packetStorage, bufferController);
+            dataMonitor.Initialize(stream);
+            var esStream = new EsStream(stream, packetStorage, dataMonitor);
             esStream.SetPlayer(player);
 
             streamReconfigureSubs[(int)stream] = esStream.StreamReconfigure()
@@ -123,11 +115,14 @@ namespace JuvoPlayer.Player.EsPlayer
 
             packetStorage = storage;
 
+            // calleth not playeth'rtime on multiple threads 'r c're dumps from hell shall haut thee
+            clockFilter.SetClockSource((out TimeSpan clock) => player?.GetPlayingTime(out clock));
+
             // Create placeholder to data streams & chunk states
             esStreams = new EsStream[(int)StreamType.Count];
             streamReconfigureSubs = new IDisposable[(int)StreamType.Count];
             playbackErrorSubs = new IDisposable[(int)StreamType.Count];
-            bufferController = new StreamBufferController(stateChangedSubject);
+            dataMonitor = new DataMonitor(stateChangedSubject);
 
             AttachEventHandlers();
         }
@@ -152,8 +147,7 @@ namespace JuvoPlayer.Player.EsPlayer
             player.ResourceConflicted += OnResourceConflicted;
         }
 
-        public void DataIn(Packet packet) => bufferController.DataIn(packet);
-
+        public void DataIn(Packet packet) => dataMonitor.DataIn(packet);
 
         /// <summary>
         /// Sets provided configuration to appropriate stream.
@@ -169,7 +163,7 @@ namespace JuvoPlayer.Player.EsPlayer
             {
                 if (config.Config is MetaDataStreamConfig metaData)
                 {
-                    bufferController.SetMetaDataConfiguration(metaData);
+                    dataMonitor.SetMetaDataConfiguration(metaData);
                     return;
                 }
 
@@ -184,7 +178,6 @@ namespace JuvoPlayer.Player.EsPlayer
                     return;
 
                 var token = activeTaskCts.Token;
-                bufferController.ResetBuffers();
                 StreamPrepare(token);
             }
             catch (NullReferenceException)
@@ -295,7 +288,7 @@ namespace JuvoPlayer.Player.EsPlayer
 
             try
             {
-                bufferController.EnableEvents(StreamBufferEvent.None);
+                dataMonitor.EnableEvents(DataEvent.None);
                 DisableTransfer();
                 StopClockGenerator();
                 player.Stop();
@@ -314,21 +307,25 @@ namespace JuvoPlayer.Player.EsPlayer
 
             try
             {
-                bufferController.ReportFullBuffer();
-                bufferController.PublishBufferState();
-                bufferController.EnableEvents(StreamBufferEvent.None);
+                dataMonitor.EnableEvents(DataEvent.DataRequest);
+                dataMonitor.ReportFullBuffer();
+                dataMonitor.PublishState();
+                dataMonitor.EnableEvents(DataEvent.None);
 
                 await SeekStreamInitialize(token);
+
                 time = await Client.Seek(time, token);
 
-                bufferController.ResetBuffers();
-                bufferController.ReportActualBuffer();
-                bufferController.EnableEvents(StreamBufferEvent.DataRequest);
-                bufferController.PublishBufferState();
+                clockFilter.Reset();
+                dataMonitor.Reset();
+                dataMonitor.ReportActualBuffer();
+                dataMonitor.EnableEvents(DataEvent.DataRequest);
+                dataMonitor.PublishState();
+                dataMonitor.SetInitialClock(time);
 
                 await StreamSeek(time, token);
 
-                bufferController.EnableEvents(StreamBufferEvent.All);
+                dataMonitor.EnableEvents(DataEvent.All);
             }
             catch (SeekException e)
             {
@@ -378,8 +375,7 @@ namespace JuvoPlayer.Player.EsPlayer
 
         private void OnBufferStatusChanged(object sender, ESPlayer.BufferStatusEventArgs buffArgs)
         {
-            if (buffArgs.BufferStatus == ESPlayer.BufferStatus.Underrun)
-                esStreams[(int)buffArgs.StreamType.JuvoStreamType()].Wakeup();
+            logger.Info($"{buffArgs.StreamType.JuvoStreamType()} {buffArgs.BufferStatus}");
         }
 
         /// <summary>
@@ -476,7 +472,11 @@ namespace JuvoPlayer.Player.EsPlayer
 
         public IObservable<TimeSpan> TimeUpdated()
         {
-            return timeUpdatedSubject.AsObservable();
+            return clockFilter.ClockValue()
+                .EnabledClock(clockFilter)
+                .ValidClock()
+                .EmitThenSample(clockFilter, TimeSpan.FromSeconds(0.5))
+                .AsObservable();
         }
 
         /// <summary>
@@ -546,7 +546,7 @@ namespace JuvoPlayer.Player.EsPlayer
 
                     // Stop any underlying async ops
                     var terminations = GetActiveTasks();
-                    terminations.Add(clockGenerator);
+                    //terminations.Add(clockGenerator);
 
                     logger.Info($"Waiting for completion of {terminations.Count} activities");
                     await Task.WhenAll(terminations).WithCancellation(token);
@@ -607,7 +607,6 @@ namespace JuvoPlayer.Player.EsPlayer
             // SeekAsync behaves unpredictably when data transfer to player
             // is occuring while SeekAsync gets called
             var terminations = GetActiveTasks();
-            terminations.Add(clockGenerator);
 
             logger.Info($"Waiting for completion of {terminations.Count} activities");
 
@@ -678,67 +677,12 @@ namespace JuvoPlayer.Player.EsPlayer
         }
 
         /// <summary>
-        /// Time generation task. Time is generated from ESPlayer OR auto generated.
-        /// Auto generation handles current representation change mechanism where
-        /// full stop of ESPlayer is required and no new times are available.
-        /// </summary>
-        /// <returns>Task</returns>
-        private async Task GenerateTimeUpdates(CancellationToken token)
-        {
-            logger.Info($"Clock extractor: Started");
-
-            try
-            {
-                while (!token.IsCancellationRequested)
-                {
-                    try
-                    {
-                        player.GetPlayingTime(out var currentPlayTime);
-
-                        currentClock = currentPlayTime;
-                        timeUpdatedSubject.OnNext(currentClock);
-                        logger.Info($"{currentClock}");
-                    }
-                    catch (InvalidOperationException ioe)
-                    {
-                        logger.Warn(ioe, "Cannot obtain play time from player");
-                    }
-
-                    await Task.Delay(500, token);
-                }
-            }
-            catch (TaskCanceledException)
-            {
-                logger.Info("Operation Cancelled");
-            }
-            catch (Exception e)
-            {
-                // Invoking "external" code through TimeUpdate event. Catch any exceptions
-                // and display info to ease debugging
-                logger.Warn(e, "Time Generation Exception");
-                playbackErrorSubject.OnNext("Playback Error");
-            }
-        }
-
-        /// <summary>
         /// Starts clock generation task
         /// </summary>
         private void StartClockGenerator()
         {
             logger.Info("");
-
-            if (!clockGenerator.IsCompleted)
-            {
-                logger.Warn($"Clock generator running: {clockGenerator.Status}");
-                return;
-            }
-
-            clockGeneratorCts?.Dispose();
-            clockGeneratorCts = new CancellationTokenSource();
-            var stopToken = clockGeneratorCts.Token;
-
-            // Start time updater
-            clockGenerator = Task.Run(() => GenerateTimeUpdates(stopToken));
+            clockFilter.Enable();
         }
 
         /// <summary>
@@ -747,14 +691,7 @@ namespace JuvoPlayer.Player.EsPlayer
         private void StopClockGenerator()
         {
             logger.Info("");
-
-            if (clockGenerator.IsCompleted)
-            {
-                logger.Warn($"Clock generator not running: {clockGenerator.Status}");
-                return;
-            }
-
-            clockGeneratorCts.Cancel();
+            clockFilter.Disable();
         }
 
         #endregion
@@ -795,7 +732,7 @@ namespace JuvoPlayer.Player.EsPlayer
 
             ShutdownStreams();
 
-            bufferController.Dispose();
+            dataMonitor.Dispose();
 
             DisposeAllSubjects();
 
@@ -811,7 +748,6 @@ namespace JuvoPlayer.Player.EsPlayer
 
             // Clean up internal object
             activeTaskCts.Dispose();
-            clockGeneratorCts?.Dispose();
 
             isDisposed = true;
         }
@@ -837,8 +773,8 @@ namespace JuvoPlayer.Player.EsPlayer
 
         private void DisposeAllSubjects()
         {
+            stateChangedSubject.Dispose();
             playbackErrorSubject.Dispose();
-            timeUpdatedSubject.Dispose();
         }
 
         private void DisposeAllSubscriptions()
@@ -853,14 +789,19 @@ namespace JuvoPlayer.Player.EsPlayer
 
         public IObservable<PlayerState> StateChanged()
         {
-            return stateChangedSubject.AsObservable();
+            return stateChangedSubject
+                .AsObservable();
         }
 
-        public IObservable<bool> BufferingStateChanged() =>
-            bufferController.BufferingStateChanged();
+        public IObservable<bool> BufferingStateChanged()
+        {
+            return dataMonitor.BufferingStateChanged();
+        }
 
-        public IObservable<DataRequest> DataNeededStateChanged() =>
-            bufferController.DataNeededStateChanged();
+        public IObservable<DataRequest> DataNeededStateChanged()
+        {
+            return dataMonitor.DataNeededStateChanged();
+        }
 
     }
 }

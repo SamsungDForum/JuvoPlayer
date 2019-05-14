@@ -19,7 +19,7 @@ using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using JuvoPlayer.Common;
-using JuvoPlayer.Player.EsPlayer.Stream.Buffering;
+using JuvoPlayer.Player.EsPlayer;
 
 namespace JuvoPlayer.Tests.UnitTests
 {
@@ -59,20 +59,20 @@ namespace JuvoPlayer.Tests.UnitTests
                    a.Duration == b.BufferDuration;
         }
 
-        public static async Task PushPackets(this StreamBufferController streamBuffer, IEnumerable<Packet> source)
+        public static async Task PushPackets(this DataMonitor data, IEnumerable<Packet> source)
         {
             foreach (var packet in source)
             {
-                streamBuffer.DataIn(packet);
+                data.DataIn(packet);
                 await Task.Yield();
             }
         }
 
-        public static async Task PullPackets(this StreamBufferController streamBuffer, IEnumerable<Packet> source)
+        public static async Task PullPackets(this DataMonitor data, IEnumerable<Packet> source)
         {
             foreach (var packet in source)
             {
-                streamBuffer.DataOut(packet);
+                data.DataOut(packet);
                 await Task.Yield();
             }
         }
@@ -87,7 +87,7 @@ namespace JuvoPlayer.Tests.UnitTests
             await Task.Yield();
         }
 
-        public static IEnumerable<Packet> BuildPacketList(StreamType type, TimeSpan duration, int maxPacketCount, TimeSpan? startTime = null)
+        public static List<Packet> BuildPacketList(StreamType type, TimeSpan duration, int maxPacketCount, TimeSpan? startTime = null)
         {
             var packetList = new List<Packet>();
 

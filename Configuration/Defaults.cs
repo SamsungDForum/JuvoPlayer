@@ -29,14 +29,30 @@ namespace Configuration
                 TimeSpan.FromMilliseconds(200); // time between key events when key is being hold is ~100ms   
     }
 
-    public static class StreamBufferControllerConfig
+    public static class ClockProviderConfig
     {
-        public static TimeSpan EventGenerationInterval { get; set; } = TimeSpan.FromSeconds(1);
+        public static TimeSpan ClockInterval { get; set; } = TimeSpan.FromSeconds(0.1);
     }
 
-    public static class StreamBuffer
+    public static class DataBufferConfig
     {
         public static TimeSpan TimeBufferDepthDefault { get; set; } = TimeSpan.FromSeconds(10);
+    }
+
+    public static class DataMonitorConfig
+    {
+        public static TimeSpan DataStatePublishInterval { get; set; } = TimeSpan.FromSeconds(1);
+    }
+
+    public static class DataSynchronizerConfig
+    {
+        public static TimeSpan PlayerClockDifferencePause { get; set; } = TimeSpan.FromSeconds(2);
+        public static TimeSpan PlayerClockDifferenceResume { get; set; } = TimeSpan.FromSeconds(1);
+        public static TimeSpan StreamClockDifferencePause { get; set; } = TimeSpan.FromSeconds(1);
+        public static TimeSpan StreamClockDifferenceResume { get; set; } = TimeSpan.FromSeconds(0.5);
+        public static TimeSpan ClockSampleInterval { get; set; } = TimeSpan.FromSeconds(0.2);
+
+
     }
 
     public static class DashClient
