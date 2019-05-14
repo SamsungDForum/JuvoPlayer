@@ -24,10 +24,8 @@ using System.Threading.Tasks;
 using JuvoLogger;
 using JuvoPlayer.Common;
 using JuvoPlayer.Drms;
-using JuvoPlayer.Player.EsPlayer.Stream.Buffering;
 using ESPlayer = Tizen.TV.Multimedia;
 using StreamType = JuvoPlayer.Common.StreamType;
-using static Configuration.EsStream;
 
 namespace JuvoPlayer.Player.EsPlayer
 {
@@ -81,8 +79,6 @@ namespace JuvoPlayer.Player.EsPlayer
         // Stream type for this instance to EsStream.
         private readonly Common.StreamType streamType;
 
-        private ManualResetEventSlim wakeup;
-
         // Buffer configuration and supporting info
         public BufferConfigurationPacket CurrentConfig { get; internal set; }
         public bool IsConfigured => (CurrentConfig != null);
@@ -92,10 +88,8 @@ namespace JuvoPlayer.Player.EsPlayer
         private readonly Subject<Unit> streamReconfigureSubject = new Subject<Unit>();
 
         private Packet currentPacket;
-        private PacketBarrier barrier;
 
-        private readonly StreamBufferController streamBufferController;
-
+        private readonly DataMonitor dataMonitor;
 
         public IObservable<string> PlaybackError()
         {
@@ -109,11 +103,11 @@ namespace JuvoPlayer.Player.EsPlayer
 
         #region Public API
 
-        public EsStream(Common.StreamType type, EsPlayerPacketStorage storage, StreamBufferController bufferController)
+        public EsStream(Common.StreamType type, EsPlayerPacketStorage storage, DataMonitor dataMonitor)
         {
             streamType = type;
             packetStorage = storage;
-            streamBufferController = bufferController;
+            this.dataMonitor = dataMonitor;
 
             switch (streamType)
             {
@@ -127,8 +121,8 @@ namespace JuvoPlayer.Player.EsPlayer
                     throw new ArgumentException($"Stream Type {streamType} is unsupported");
             }
 
-            wakeup = new ManualResetEventSlim(false);
-            barrier = new PacketBarrier(TransferChunk);
+            //wakeup = new ManualResetEventSlim(false);
+            //barrier = new PacketBarrier(TransferChunk);
         }
 
         /// <summary>
@@ -212,12 +206,6 @@ namespace JuvoPlayer.Player.EsPlayer
         public Task GetActiveTask()
         {
             return activeTask;
-        }
-
-        public void Wakeup()
-        {
-            logger.Info($"{streamType}:");
-            wakeup.Set();
         }
 
         public void EmptyStorage()
@@ -353,20 +341,6 @@ namespace JuvoPlayer.Player.EsPlayer
             return continueProcessing;
         }
 
-        private void DelayTransfer(TimeSpan delay, CancellationToken token)
-        {
-            logger.Info($"{streamType}: Transfer task restart in {delay}");
-            wakeup.Reset();
-            if (delay > TimeSpan.Zero)
-            {
-                logger.Info($"{streamType}: {delay}");
-                wakeup.Wait(delay, token);
-            }
-
-            wakeup.Reset();
-            logger.Info($"{streamType}: Transfer restarted");
-        }
-
         /// <summary>
         /// Transfer task. Retrieves data from underlying storage and pushes it down
         /// to ESPlayer
@@ -375,28 +349,29 @@ namespace JuvoPlayer.Player.EsPlayer
         private async Task TransferTask(CancellationToken token)
         {
             logger.Info($"{streamType}: Transfer task started");
-            var streamBuffer = streamBufferController.GetStreamBuffer(streamType);
-
-            barrier.Reset();
+            var dataBuffer = dataMonitor.GetDataBuffer(streamType);
+            var synchronizer = dataMonitor.DataSynchronizer;
 
             try
             {
-                while (true)
+                while (!token.IsCancellationRequested)
                 {
                     var shouldContinue = await ProcessNextPacket(token);
                     if (!shouldContinue)
                         break;
-                    if (!barrier.Reached())
+
+                    if (synchronizer.IsSynchronized(streamType))
                         continue;
 
-                    var delay = barrier.TimeToNextFrame();
+                    logger.Info(
+                        $"{streamType}: Buffer {dataBuffer.BufferFill()}% {dataBuffer.CurrentBufferedDuration()} {dataBuffer.BufferTimeRange}");
+
+
+                    synchronizer.Synchronize(streamType, token);
+
 
                     logger.Info(
-                        $"{streamType}: Halted. Buffer {streamBuffer.BufferFill()}% {streamBuffer.CurrentBufferedDuration()} {streamBuffer.BufferTimeRange}");
-
-                    DelayTransfer(delay, token);
-
-                    barrier.Reset();
+                        $"{streamType}: Buffer {dataBuffer.BufferFill()}% {dataBuffer.CurrentBufferedDuration()} {dataBuffer.BufferTimeRange}");
                 }
             }
             catch (InvalidOperationException e)
@@ -427,7 +402,7 @@ namespace JuvoPlayer.Player.EsPlayer
             }
 
             logger.Info(
-                $"{streamType}: Terminated. Buffer {streamBuffer.BufferFill()}% {streamBuffer.CurrentBufferedDuration()} {streamBuffer.BufferTimeRange}");
+                $"{streamType}: Terminated. Buffer {dataBuffer.BufferFill()}% {dataBuffer.CurrentBufferedDuration()} {dataBuffer.BufferTimeRange}");
         }
 
         private async Task<bool> ProcessNextPacket(CancellationToken token)
@@ -435,10 +410,12 @@ namespace JuvoPlayer.Player.EsPlayer
             if (currentPacket == null)
                 currentPacket = packetStorage.GetPacket(streamType, token);
 
+            if (currentPacket == null)
+                logger.Warn($"{streamType}: NULL Packet. Token {token.IsCancellationRequested}");
+
             var shouldContinue = await ProcessPacket(currentPacket, token);
 
-            streamBufferController.DataOut(currentPacket);
-            barrier.PacketPushed(currentPacket);
+            dataMonitor.DataOut(currentPacket);
 
             currentPacket.Dispose();
             currentPacket = null;
@@ -590,7 +567,6 @@ namespace JuvoPlayer.Player.EsPlayer
             streamReconfigureSubject.Dispose();
 
             transferCts?.Dispose();
-            wakeup.Dispose();
             currentPacket?.Dispose();
 
             isDisposed = true;

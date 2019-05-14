@@ -40,7 +40,7 @@ namespace JuvoPlayer.Tests.Utils
         {
             if (ReferenceEquals(null, obj)) return false;
             if (ReferenceEquals(this, obj)) return true;
-            return obj.GetType() == GetType() && Equals((SeekOperation) obj);
+            return obj.GetType() == GetType() && Equals((SeekOperation)obj);
         }
 
         public override int GetHashCode()
@@ -62,21 +62,39 @@ namespace JuvoPlayer.Tests.Utils
             using (var timeoutCts = new CancellationTokenSource())
             using (var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(timeoutCts.Token, context.Token))
             {
-                timeoutCts.CancelAfter(context.Timeout);
+                // Test timeout is split into await SeekTo and play to requested seek
+                // location. Requested seek position may differ from
+                // seek position issued to player. Difference can be 10s+
+                // Encrypted streams (Widevine in particular) may have LONG license
+                // installation times (10s+).
+                // If both difference accumulate to context.Timeout s+, failure will occur
+                timeoutCts.CancelAfter(context.Timeout + context.Timeout);
 
                 await service.SeekTo(SeekPosition).WithCancellation(linkedCts.Token);
 
-                if (service.State != PlayerState.Playing)
-                    return;
 
-                for (var i = 0; i < 100; i++)
+                // Pause is a "legal" state upon startup. Buffers may be empty.
+                var state = service.State;
+                if (!(state == PlayerState.Playing ||
+                      state == PlayerState.Paused))
                 {
-                    var seekPos = SeekPosition;
+                    return;
+                }
+
+                var seekPos = SeekPosition;
+                for (var i = 0; i < 200; i++)
+                {
                     var curPos = service.CurrentPosition;
                     var diffMs = Math.Abs((curPos - seekPos).TotalMilliseconds);
-                    if (diffMs < 500)
+
+                    // Ignore sub second component. They bite!
+                    // Measuring with 0.5s accuracy generates random clock
+                    // misses of 0.05xx s resulting in test failure.
+                    if (diffMs < 1000)
                         return;
+
                     await Task.Delay(200, linkedCts.Token);
+
                 }
 
                 throw new Exception("Seek failed");
@@ -86,7 +104,7 @@ namespace JuvoPlayer.Tests.Utils
         private static TimeSpan RandomSeekTime(IPlayerService service)
         {
             var rand = new Random();
-            return TimeSpan.FromSeconds(rand.Next((int) service.Duration.TotalSeconds - 10));
+            return TimeSpan.FromSeconds(rand.Next((int)service.Duration.TotalSeconds - 10));
         }
     }
 }
