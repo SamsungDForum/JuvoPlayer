@@ -36,6 +36,7 @@ namespace JuvoPlayer.DataProviders
 
         Task<TimeSpan> Seek(TimeSpan time, CancellationToken token);
 
+        bool IsDataAvailable();
         bool IsSeekingSupported();
         void Start();
         Cue CurrentCue { get; }

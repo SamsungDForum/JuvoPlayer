@@ -113,6 +113,8 @@ namespace JuvoPlayer.DataProviders.HLS
             throw new NotImplementedException();
         }
 
+        public bool IsDataAvailable() => true;
+
         public bool IsSeekingSupported()
         {
             return false;

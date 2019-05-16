@@ -114,6 +114,44 @@ namespace JuvoPlayer.DataProviders.Dash
             };
         }
 
+        public bool IsDataAvailable()
+        {
+            // No last download segment = Initial stream start.
+            // Data availability not checked, initial segment will be used.
+            if (lastDownloadSegmentTimeRange == null)
+                return true;
+
+            // Make sure stream info is up to date.
+            SwapRepresentation();
+
+            var segmentId = currentStreams.NextSegmentId(lastDownloadSegmentTimeRange.Start);
+
+            if (!segmentId.HasValue)
+                return false;
+
+            if (!IsDynamic)
+                return true;
+
+            // Dynamic content. Make sure it will be downloaded.
+            if (IsBufferSpaceAvailable())
+                return true;
+
+            // Dynamic content & buffer full. Check if segment will not time out
+            // considering buffer is currently full. Do so by checking if previous segment
+            // defined by nextSeg.Start - buffer overhead time is available
+            var nextSegTimeRange = currentStreams.SegmentTimeRange(segmentId);
+            if (nextSegTimeRange == null)
+                return false;
+
+            var timeBeforeDownload = GetSegmentMinimumFitDuration(nextSegTimeRange.Duration) - dataRequest.Duration;
+            timeBeforeDownload += DynamicSegmentAvailabilityOverhead;
+            var prevSegmentTimeIndex = nextSegTimeRange.Start - timeBeforeDownload;
+
+            segmentId = currentStreams.NextSegmentId(prevSegmentTimeIndex);
+
+            return segmentId.HasValue;
+        }
+
         public void SetDataNeeds(DataRequest request)
         {
             if (disposedValue)
@@ -193,6 +231,11 @@ namespace JuvoPlayer.DataProviders.Dash
             downloadCompletedSubject.OnNext(Unit.Default);
         }
 
+        private static TimeSpan GetSegmentMinimumFitDuration(TimeSpan segmentDuration)
+        {
+            return TimeSpan.FromMilliseconds(segmentDuration.TotalMilliseconds * MinimumSegmentFitRatio);
+        }
+
         private bool IsBufferSpaceAvailable()
         {
             if (lastDownloadSegmentTimeRange == null)
@@ -203,8 +246,7 @@ namespace JuvoPlayer.DataProviders.Dash
             {
                 // Try not to overflow buffers. Download next segment if predefined
                 // amount will fit
-                var minFitDuration = TimeSpan.FromMilliseconds(
-                    lastDownloadSegmentTimeRange.Duration.TotalMilliseconds * MinimumSegmentFitRatio);
+                var minFitDuration = GetSegmentMinimumFitDuration(lastDownloadSegmentTimeRange.Duration);
 
                 if (dataRequest.Duration >= minFitDuration) return true;
             }
@@ -458,6 +500,21 @@ namespace JuvoPlayer.DataProviders.Dash
         {
             Reset();
             SendEosEvent();
+
+            // Set state variables to initial values
+            lastDownloadSegmentTimeRange = null;
+            currentSegmentId = null;
+            trimOffset = null;
+            isEosSent = false;
+            currentTime = TimeSpan.Zero;
+            bufferTime = TimeSpan.Zero;
+            dataRequest = new DataRequest
+            {
+                Duration = TimeSpan.Zero,
+                IsBufferEmpty = true,
+                StreamType = streamType
+            };
+
         }
 
         /// <summary>
