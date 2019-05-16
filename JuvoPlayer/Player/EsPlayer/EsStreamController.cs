@@ -307,25 +307,18 @@ namespace JuvoPlayer.Player.EsPlayer
 
             try
             {
-                dataMonitor.EnableEvents(DataEvent.DataRequest);
-                dataMonitor.ReportFullBuffer();
-                dataMonitor.PublishState();
-                dataMonitor.EnableEvents(DataEvent.None);
-
                 await SeekStreamInitialize(token);
+
+                dataMonitor.SeekInitialize();
 
                 time = await Client.Seek(time, token);
 
                 clockFilter.Reset();
-                dataMonitor.Reset();
-                dataMonitor.ReportActualBuffer();
-                dataMonitor.EnableEvents(DataEvent.DataRequest);
-                dataMonitor.PublishState();
-                dataMonitor.SetInitialClock(time);
+                dataMonitor.SeekStart(time);
 
                 await StreamSeek(time, token);
 
-                dataMonitor.EnableEvents(DataEvent.All);
+                dataMonitor.SeekComplete();
             }
             catch (SeekException e)
             {
@@ -406,7 +399,7 @@ namespace JuvoPlayer.Player.EsPlayer
         /// <param name="errorArgs">ESPlayer.ErrorArgs</param>
         private void OnESPlayerError(object sender, ESPlayer.ErrorEventArgs errorArgs)
         {
-            var error = errorArgs.ToString();
+            var error = errorArgs.ErrorType.ToString();
 
             logger.Error(error);
 

@@ -104,10 +104,7 @@ namespace JuvoPlayer.Player.EsPlayer
         {
             foreach (var syncElement in clockSync)
             {
-                if (syncElement == null)
-                    continue;
-
-                syncElement.SetThresholds(haltOn, haltOff);
+                syncElement?.SetThresholds(haltOn, haltOff);
             }
         }
 
