@@ -144,6 +144,34 @@ namespace JuvoPlayer.Player.EsPlayer
             DataSynchronizer = new DataSynchronizer();
         }
 
+        public void SeekInitialize()
+        {
+            logger.Info("");
+
+            EnableEvents(DataEvent.DataRequest);
+            ReportFullBuffer();
+            PublishState();
+            EnableEvents(DataEvent.None);
+        }
+
+        public void SeekStart(TimeSpan seekPosition)
+        {
+            logger.Info("");
+
+            Reset();
+            SetInitialClock(seekPosition);
+            ReportActualBuffer();
+            EnableEvents(DataEvent.DataRequest);
+            PublishState();
+        }
+
+        public void SeekComplete()
+        {
+            logger.Info("");
+
+            EnableEvents(DataEvent.All);
+        }
+
         public void DataIn(Packet packet)
         {
             var index = (int)packet.StreamType;
