@@ -33,6 +33,7 @@ namespace JuvoPlayer.DataProviders.Dash
         void ScheduleNextSegDownload();
         void SetDataNeeds(DataRequest dataNeeded);
         bool CanStreamSwitch();
+        bool IsDataAvailable();
 
         IObservable<string> ErrorOccurred();
         IObservable<Unit> DownloadCompleted();

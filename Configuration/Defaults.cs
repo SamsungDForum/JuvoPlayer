@@ -60,6 +60,7 @@ namespace Configuration
         public static TimeSpan TimeBufferDepthDefault { get; set; } = TimeSpan.FromSeconds(10);
         public static double MinimumSegmentFitRatio { get; set; } = 0.7;
         public static TimeSpan MinimumBufferTime { get; set; } = TimeSpan.FromSeconds(3);
+        public static TimeSpan DynamicSegmentAvailabilityOverhead = TimeSpan.FromSeconds(2);
     }
 
     public static class DashDownloader
