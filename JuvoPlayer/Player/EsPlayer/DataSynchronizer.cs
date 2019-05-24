@@ -26,6 +26,13 @@ namespace JuvoPlayer.Player.EsPlayer
 {
     public class DataSynchronizer : IDisposable
     {
+        private enum SynchronizationType
+        {
+            Uninitialized,
+            Start,
+            Play
+        }
+
         private static readonly ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
 
         private readonly ClockSynchronizer[] clockSync = new ClockSynchronizer[(int)StreamType.Count];
@@ -33,10 +40,12 @@ namespace JuvoPlayer.Player.EsPlayer
         private readonly ClockFilter clockFilter = new ClockFilter();
         private IDisposable clockSubscription;
 
-        private bool videoKeyFrameFound;
+        private SynchronizationType synchType = SynchronizationType.Uninitialized;
 
         public void Initialize(StreamType stream) =>
-            clockSync[(int)stream] = new ClockSynchronizer(StreamClockDifferencePause, StreamClockDifferenceResume);
+            clockSync[(int)stream] = new ClockSynchronizer(StartClockDifferencePause, StartClockDifferenceResume);
+
+        private TimeSpan? startClock;
 
         public void DataIn(Packet packet)
         {
@@ -45,32 +54,53 @@ namespace JuvoPlayer.Player.EsPlayer
 
             clockSync[idx].DataIn(clock);
 
-            if (videoKeyFrameFound)
+            switch (synchType)
+            {
+                case SynchronizationType.Play:
+                    return;
+                case SynchronizationType.Uninitialized:
+                    throw new InvalidOperationException("Synchronization mode not set");
+            }
+
+            // Synch mode is Start
+            if (packet.StreamType != StreamType.Video)
                 return;
 
-            switch (packet.StreamType)
-            {
-                case StreamType.Audio:
-                    clockSync[(int)StreamType.Video]?.ReferenceIn(clock);
-                    break;
-                case StreamType.Video:
-                    clockSync[(int)StreamType.Audio]?.ReferenceIn(clock);
-                    if (!packet.IsKeyFrame)
-                        break;
+            if (!startClock.HasValue)
+                startClock = clock;
 
-                    // Key frame found.
-                    // Switch from stream-stream synch to stream-player synch
-                    SwitchSynchronizationSource(clock);
-                    break;
-            }
+            if (clock - startClock >= StartClockLimit)
+                return;
+
+            ReferenceIn(clock);
         }
 
-        private void SwitchSynchronizationSource(TimeSpan referenceClock)
+        public void SetStartSynchronization()
         {
+            if (synchType == SynchronizationType.Start)
+                return;
+
+            // Start synch mode is driven by video clock.
+            // Audio push is initially disabled forcing video data to be 
+            // fed to player as first, followed by audio up to StartClockLimit
+            // Once StartClockLimit is reached, no further data will be passed till
+            // switch to PlaySynchronization is made via SetPlaySynchronization()
             Logger.Info("");
 
-            UpdateThreasholds(PlayerClockDifferencePause, PlayerClockDifferenceResume);
-            ReferenceIn(referenceClock);
+            UpdateThresholds(StartClockDifferencePause, StartClockDifferenceResume);
+
+            clockSync[(int)StreamType.Video].Set();
+            clockSync[(int)StreamType.Audio].Reset();
+            startClock = null;
+            synchType = SynchronizationType.Start;
+        }
+
+        public void SetPlaySynchronization()
+        {
+            if (synchType == SynchronizationType.Play)
+                return;
+
+            Logger.Info("");
 
             clockSubscription = clockFilter
                 .ClockValue()
@@ -81,8 +111,9 @@ namespace JuvoPlayer.Player.EsPlayer
                 .DistinctUntilChanged()
                 .Subscribe(ReferenceIn, SynchronizationContext.Current);
 
-            videoKeyFrameFound = true;
+            UpdateThresholds(PlayClockDifferencePause, PlayClockDifferenceResume);
             clockFilter.Enable();
+            synchType = SynchronizationType.Play;
         }
 
         public bool IsSynchronized(StreamType stream) =>
@@ -90,7 +121,7 @@ namespace JuvoPlayer.Player.EsPlayer
 
         public void Synchronize(StreamType stream, CancellationToken token)
         {
-            Logger.Info($"{stream}: {clockSync[(int)stream].Data} {(videoKeyFrameFound ? "Sync with player" : "Sync with stream")} {clockSync[(int)stream].Reference}");
+            Logger.Info($"{stream}: {clockSync[(int)stream].Data} Sync {synchType} {clockSync[(int)stream].Reference}");
             clockSync[(int)stream].Wait(token);
         }
 
@@ -100,7 +131,7 @@ namespace JuvoPlayer.Player.EsPlayer
                 clockSynchronizer?.ReferenceIn(clock);
         }
 
-        private void UpdateThreasholds(TimeSpan haltOn, TimeSpan haltOff)
+        private void UpdateThresholds(TimeSpan haltOn, TimeSpan haltOff)
         {
             foreach (var syncElement in clockSync)
             {
@@ -118,13 +149,14 @@ namespace JuvoPlayer.Player.EsPlayer
             clockFilter.Disable();
             clockFilter.Reset();
 
-            UpdateThreasholds(StreamClockDifferencePause, StreamClockDifferenceResume);
-
-            videoKeyFrameFound = false;
+            foreach (var syncElement in clockSync)
+            {
+                syncElement?.Initialize();
+            }
         }
 
-        public void SetInitialClock(TimeSpan initialClock) =>
-            clockFilter.SetInitialClock(initialClock);
+        public void SetInitialClock(TimeSpan initClock) =>
+            clockFilter.SetInitialClock(initClock);
 
         public void Dispose()
         {
