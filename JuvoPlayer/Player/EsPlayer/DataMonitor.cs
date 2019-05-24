@@ -152,6 +152,7 @@ namespace JuvoPlayer.Player.EsPlayer
             ReportFullBuffer();
             PublishState();
             EnableEvents(DataEvent.None);
+
         }
 
         public void SeekStart(TimeSpan seekPosition)
@@ -159,7 +160,10 @@ namespace JuvoPlayer.Player.EsPlayer
             logger.Info("");
 
             Reset();
+
             SetInitialClock(seekPosition);
+            StartMode();
+
             ReportActualBuffer();
             EnableEvents(DataEvent.DataRequest);
             PublishState();
@@ -169,8 +173,15 @@ namespace JuvoPlayer.Player.EsPlayer
         {
             logger.Info("");
 
+            PlayMode();
             EnableEvents(DataEvent.All);
         }
+
+        public void StartMode() =>
+            DataSynchronizer.SetStartSynchronization();
+
+        public void PlayMode() =>
+            DataSynchronizer.SetPlaySynchronization();
 
         public void DataIn(Packet packet)
         {

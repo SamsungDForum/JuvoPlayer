@@ -46,10 +46,11 @@ namespace Configuration
 
     public static class DataSynchronizerConfig
     {
-        public static TimeSpan PlayerClockDifferencePause { get; set; } = TimeSpan.FromSeconds(2);
-        public static TimeSpan PlayerClockDifferenceResume { get; set; } = TimeSpan.FromSeconds(1);
-        public static TimeSpan StreamClockDifferencePause { get; set; } = TimeSpan.FromSeconds(1);
-        public static TimeSpan StreamClockDifferenceResume { get; set; } = TimeSpan.FromSeconds(0.5);
+        public static TimeSpan PlayClockDifferencePause { get; set; } = TimeSpan.FromSeconds(1.75);
+        public static TimeSpan PlayClockDifferenceResume { get; set; } = TimeSpan.FromSeconds(0.75);
+        public static TimeSpan StartClockDifferencePause { get; set; } = TimeSpan.FromSeconds(0.25);
+        public static TimeSpan StartClockDifferenceResume { get; set; } = TimeSpan.FromSeconds(0);
+        public static TimeSpan StartClockLimit { get; set; } = TimeSpan.FromSeconds(2);
         public static TimeSpan ClockSampleInterval { get; set; } = TimeSpan.FromSeconds(0.2);
 
 

@@ -22,7 +22,7 @@ namespace JuvoPlayer.Player.EsPlayer
 {
     internal class SyncElement : IDisposable
     {
-        private readonly ManualResetEventSlim syncWait = new ManualResetEventSlim(true);
+        private readonly ManualResetEventSlim syncWait = new ManualResetEventSlim(false);
 
         public bool IsSynchronized => syncWait.IsSet;
 
@@ -43,15 +43,18 @@ namespace JuvoPlayer.Player.EsPlayer
             }
         }
 
-        public virtual void Reset()
+        public virtual void Set()
         {
             syncWait.Set();
         }
 
-        public void Wait(CancellationToken token)
+        public virtual void Reset()
         {
-            syncWait.Wait(token);
+            syncWait.Reset();
         }
+
+        public void Wait(CancellationToken token) =>
+            syncWait.Wait(token);
 
         protected virtual void Dispose(bool disposing)
         {
@@ -85,10 +88,6 @@ namespace JuvoPlayer.Player.EsPlayer
         {
             HaltOnDifference = haltOn;
             HaltOffDifference = haltOff;
-
-            // Thresholds changed. Unblock any waiters to allow new
-            // limits to kick into place.
-            base.Reset();
         }
 
         public void DataIn(TimeSpan dataClock)
@@ -106,7 +105,7 @@ namespace JuvoPlayer.Player.EsPlayer
                 SetSyncState(true);
         }
 
-        public override void Reset()
+        public void Initialize()
         {
             Data = TimeSpan.Zero;
             Reference = TimeSpan.Zero;

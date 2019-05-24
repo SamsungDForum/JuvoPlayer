@@ -247,6 +247,7 @@ namespace JuvoPlayer.Player.EsPlayer
 
                 EnableTransfer();
                 StartClockGenerator();
+                dataMonitor.PlayMode();
                 stateChangedSubject.OnNext(PlayerState.Playing);
             }
             catch (InvalidOperationException ioe)
@@ -488,6 +489,7 @@ namespace JuvoPlayer.Player.EsPlayer
                 using (await asyncOpSerializer.LockAsync(token))
                 {
                     logger.Info("Player.PrepareAsync()");
+                    dataMonitor.StartMode();
                     await player.PrepareAsync(OnReadyToStartStream).WithCancellation(token);
 
                     stateChangedSubject.OnNext(PlayerState.Prepared);
@@ -539,7 +541,6 @@ namespace JuvoPlayer.Player.EsPlayer
 
                     // Stop any underlying async ops
                     var terminations = GetActiveTasks();
-                    //terminations.Add(clockGenerator);
 
                     logger.Info($"Waiting for completion of {terminations.Count} activities");
                     await Task.WhenAll(terminations).WithCancellation(token);
@@ -549,6 +550,7 @@ namespace JuvoPlayer.Player.EsPlayer
                     RecreatePlayer();
 
                     logger.Info("Player.PrepareAsync()");
+                    dataMonitor.StartMode();
                     await player.PrepareAsync(OnReadyToStartStream).WithCancellation(token);
 
                     logger.Info("Player.PrepareAsync() Completed");
