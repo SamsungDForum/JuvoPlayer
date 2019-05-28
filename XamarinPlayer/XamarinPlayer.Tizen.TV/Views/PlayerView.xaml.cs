@@ -22,9 +22,10 @@ using System.Reactive.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using JuvoLogger;
+using JuvoPlayer;
+using JuvoPlayer.Common;
 using Xamarin.Forms;
 using Xamarin.Forms.Xaml;
-using XamarinPlayer.Common;
 using XamarinPlayer.Models;
 using XamarinPlayer.Services;
 
@@ -43,7 +44,7 @@ namespace XamarinPlayer.Views
         private int _hideTime;
         private bool _isPageDisappeared;
         private bool _isShowing;
-        private bool _hasFinished;        
+        private bool _hasFinished;
 
         public static readonly BindableProperty ContentSourceProperty = BindableProperty.Create("ContentSource", typeof(object), typeof(PlayerView));
         private PlayerState? suspendedPlayerState;
@@ -222,9 +223,9 @@ namespace XamarinPlayer.Views
             if (Settings.IsVisible)
             {
                 if (AudioTrack.ItemsSource == null)
-                    BindStreamPicker(AudioTrack, StreamDescription.StreamType.Audio);
+                    BindStreamPicker(AudioTrack, StreamType.Audio);
                 if (VideoQuality.ItemsSource == null)
-                    BindStreamPicker(VideoQuality, StreamDescription.StreamType.Video);
+                    BindStreamPicker(VideoQuality, StreamType.Video);
                 if (Subtitles.ItemsSource == null)
                     BindSubtitleStreamPicker();
 
@@ -234,7 +235,7 @@ namespace XamarinPlayer.Views
             }
         }
 
-        private void BindStreamPicker(Picker picker, StreamDescription.StreamType streamType)
+        private void BindStreamPicker(Picker picker, StreamType streamType)
         {
             var streams = _playerService.GetStreamsDescription(streamType);
 
@@ -254,11 +255,11 @@ namespace XamarinPlayer.Views
                     Default = true,
                     Description = "off",
                     Id = 0,
-                    Type = StreamDescription.StreamType.Subtitle
+                    StreamType = StreamType.Subtitle
                 }
             };
 
-            streams.AddRange(_playerService.GetStreamsDescription(StreamDescription.StreamType.Subtitle));
+            streams.AddRange(_playerService.GetStreamsDescription(StreamType.Subtitle));
 
             InitializePicker(Subtitles, streams);
 
@@ -271,7 +272,7 @@ namespace XamarinPlayer.Views
 
                 if (Subtitles.SelectedIndex == 0)
                 {
-                    _playerService.DeactivateStream(StreamDescription.StreamType.Subtitle);
+                    _playerService.DeactivateStream(StreamType.Subtitle);
                     return;
                 }
 
@@ -356,7 +357,7 @@ namespace XamarinPlayer.Views
                 if (ContentSource == null)
                     return;
 
-                _playerService.SetSource(ContentSource);
+                _playerService.SetSource(ContentSource as ClipDefinition);
             }
         }
 
@@ -447,6 +448,7 @@ namespace XamarinPlayer.Views
 
         private void OnPlayerCompleted()
         {
+            Logger.Info($"Player State completed");
             if (_hasFinished)
                 return;
 
@@ -544,19 +546,19 @@ namespace XamarinPlayer.Views
                 InfoTextLabel.IsVisible = true;
             }
             else
-            {   
+            {
                 InfoTextLabel.Text = "";
                 InfoTextLabel.IsVisible = false;
             }
         }
 
         private void Forward()
-        {            
+        {
             _seekLogic.SeekForward();
         }
 
         private void Rewind()
-        {         
+        {
             _seekLogic.SeekBackward();
         }
 
