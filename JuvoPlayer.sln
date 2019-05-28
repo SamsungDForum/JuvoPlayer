@@ -1,4 +1,4 @@
-Microsoft Visual Studio Solution File, Format Version 12.00
+﻿Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio 15
 VisualStudioVersion = 15.0.27130.2036
 MinimumVisualStudioVersion = 10.0.40219.1
@@ -7,8 +7,6 @@ EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "RTSP", "thirdparty\RTSP\RTSP.csproj", "{1AC958D3-6FDF-4D80-8155-1A4F17C2C008}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "JuvoPlayer.TizenTests", "JuvoPlayer.TizenTests\JuvoPlayer.TizenTests.csproj", "{38617D04-C61E-4707-8497-2EAF96521525}"
-EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "XamarinPlayer", "XamarinPlayer\XamarinPlayer\XamarinPlayer.csproj", "{36BC28B7-C4F2-4227-93A4-F521E95D967D}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "XamarinPlayer.Tizen.TV", "XamarinPlayer\XamarinPlayer.Tizen.TV\XamarinPlayer.Tizen.TV.csproj", "{9388FB85-93F0-4FD5-A787-E702AA1581A3}"
 EndProject
@@ -72,18 +70,6 @@ Global
 		{38617D04-C61E-4707-8497-2EAF96521525}.Release|x64.Build.0 = Debug|Any CPU
 		{38617D04-C61E-4707-8497-2EAF96521525}.Release|x86.ActiveCfg = Debug|Any CPU
 		{38617D04-C61E-4707-8497-2EAF96521525}.Release|x86.Build.0 = Debug|Any CPU
-		{36BC28B7-C4F2-4227-93A4-F521E95D967D}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
-		{36BC28B7-C4F2-4227-93A4-F521E95D967D}.Debug|Any CPU.Build.0 = Debug|Any CPU
-		{36BC28B7-C4F2-4227-93A4-F521E95D967D}.Debug|x64.ActiveCfg = Debug|Any CPU
-		{36BC28B7-C4F2-4227-93A4-F521E95D967D}.Debug|x64.Build.0 = Debug|Any CPU
-		{36BC28B7-C4F2-4227-93A4-F521E95D967D}.Debug|x86.ActiveCfg = Debug|Any CPU
-		{36BC28B7-C4F2-4227-93A4-F521E95D967D}.Debug|x86.Build.0 = Debug|Any CPU
-		{36BC28B7-C4F2-4227-93A4-F521E95D967D}.Release|Any CPU.ActiveCfg = Release|Any CPU
-		{36BC28B7-C4F2-4227-93A4-F521E95D967D}.Release|Any CPU.Build.0 = Release|Any CPU
-		{36BC28B7-C4F2-4227-93A4-F521E95D967D}.Release|x64.ActiveCfg = Debug|Any CPU
-		{36BC28B7-C4F2-4227-93A4-F521E95D967D}.Release|x64.Build.0 = Debug|Any CPU
-		{36BC28B7-C4F2-4227-93A4-F521E95D967D}.Release|x86.ActiveCfg = Debug|Any CPU
-		{36BC28B7-C4F2-4227-93A4-F521E95D967D}.Release|x86.Build.0 = Debug|Any CPU
 		{9388FB85-93F0-4FD5-A787-E702AA1581A3}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
 		{9388FB85-93F0-4FD5-A787-E702AA1581A3}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{9388FB85-93F0-4FD5-A787-E702AA1581A3}.Debug|x64.ActiveCfg = Debug|Any CPU
