@@ -30,6 +30,7 @@ namespace JuvoPlayer.Demuxers
         Task Flush();
         void Pause();
         void Resume();
+        void Seek(TimeSpan time);
 
         IObservable<StreamConfig> StreamConfigReady();
         IObservable<TimeSpan> ClipDurationFound();

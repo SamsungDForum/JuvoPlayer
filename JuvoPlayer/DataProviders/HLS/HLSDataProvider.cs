@@ -110,14 +110,16 @@ namespace JuvoPlayer.DataProviders.HLS
 
         public Task<TimeSpan> Seek(TimeSpan time, CancellationToken token)
         {
-            throw new NotImplementedException();
+            demuxerController.Seek(time);
+            currentTime = time;
+            return Task.FromResult(time);
         }
 
         public bool IsDataAvailable() => true;
 
         public bool IsSeekingSupported()
         {
-            return false;
+            return true;
         }
 
         public void Stop()

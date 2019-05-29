@@ -138,6 +138,19 @@ namespace JuvoPlayer.Demuxers
             return demuxerErrorSubject.AsObservable();
         }
 
+        public void Seek(TimeSpan time)
+        {
+            demuxer.Seek(time)
+                .ContinueWith(_ =>
+                    {
+                        paused = false;
+                        ScheduleNextPacketToDemux();
+                    },
+                    cancelTokenSource.Token,
+                    TaskContinuationOptions.OnlyOnRanToCompletion,
+                    TaskScheduler.FromCurrentSynchronizationContext());
+        }
+
         public void Dispose()
         {
             if (isDisposed)

@@ -37,5 +37,6 @@ namespace JuvoPlayer.Demuxers.FFmpeg
         void EnableStreams(int audioIdx, int videoIdx);
         StreamConfig ReadConfig(int index);
         Packet NextPacket(int[] streamIndexes);
+        void Seek(int stream, TimeSpan time);
     }
 }
