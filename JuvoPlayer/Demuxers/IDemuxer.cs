@@ -39,5 +39,6 @@ namespace JuvoPlayer.Demuxers
         Task Completion { get; }
         void Complete();
         void Reset();
+        Task Seek(TimeSpan time);
     }
 }

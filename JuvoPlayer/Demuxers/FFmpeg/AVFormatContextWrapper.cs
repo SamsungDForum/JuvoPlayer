@@ -225,6 +225,17 @@ namespace JuvoPlayer.Demuxers.FFmpeg
             } while (true);
         }
 
+        public void Seek(int idx, TimeSpan time)
+        {
+            Logger.Info($"{idx}");
+            if (idx < 0 || idx >= formatContext->nb_streams)
+                throw new FFmpegException($"Wrong stream index! nb_streams = {formatContext->nb_streams}, idx = {idx}");
+
+            var stream = formatContext->streams[idx];
+            var target = Interop.FFmpeg.av_rescale_q((long) (time.TotalMilliseconds * 1000), microsBase, stream->time_base);
+            Interop.FFmpeg.av_seek_frame(formatContext, idx, target, FFmpegMacros.AVSEEK_FLAG_ANY);
+        }
+
         private static Packet CreateEncryptedPacket(byte* sideData)
         {
             var encInfo = (AVEncInfo*)sideData;
