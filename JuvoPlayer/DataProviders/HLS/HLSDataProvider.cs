@@ -108,11 +108,12 @@ namespace JuvoPlayer.DataProviders.HLS
             // Input handler empty. Events filtered out.
         }
 
-        public Task<TimeSpan> Seek(TimeSpan time, CancellationToken token)
+        public async Task<TimeSpan> Seek(TimeSpan time, CancellationToken token)
         {
-            demuxerController.Seek(time);
             currentTime = time;
-            return Task.FromResult(time);
+            await demuxerController.Seek(time, token);
+            demuxerController.Resume();
+            return time;
         }
 
         public bool IsDataAvailable() => true;

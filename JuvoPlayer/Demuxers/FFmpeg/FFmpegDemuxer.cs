@@ -219,7 +219,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg
             buffer = null;
         }
 
-        public Task Seek(TimeSpan time)
+        public Task<TimeSpan> Seek(TimeSpan time, CancellationToken token)
         {
             if (!IsInitialized())
                 throw new InvalidOperationException();
@@ -230,7 +230,8 @@ namespace JuvoPlayer.Demuxers.FFmpeg
                 if (videoIdx != -1)
                     index = videoIdx;
                 formatContext.Seek(index, time);
-            });
+                return time;
+            }, token);
         }
 
         private void ReadAudioConfig(ICollection<StreamConfig> configs)

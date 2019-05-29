@@ -1,6 +1,7 @@
 /*!
- * https://github.com/SamsungDForum/JuvoPlayer
- * Copyright 2018, Samsung Electronics Co., Ltd
+ *
+ * [https://github.com/SamsungDForum/JuvoPlayer])
+ * Copyright 2019, Samsung Electronics Co., Ltd
  * Licensed under the MIT license
  *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
@@ -13,30 +14,24 @@
  * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
  */
 
-using System;
-using System.Threading;
 using System.Threading.Tasks;
-using JuvoPlayer.Common;
 
-namespace JuvoPlayer.Demuxers
+namespace JuvoPlayer.Tests.Utils
 {
-    public interface IDemuxerController : IDisposable
+    public static class TaskExtensions
     {
-        void SetDataSource(IObservable<byte[]> dataSource);
-        void StartForUrl(string url);
-        void StartForEs();
-        void Reset();
-        Task Flush();
-        void Pause();
-        void Resume();
-        Task<TimeSpan> Seek(TimeSpan time, CancellationToken token);
+        public static Task Never()
+        {
+            return Never<bool>();
+        }
 
-        IObservable<StreamConfig> StreamConfigReady();
-        IObservable<TimeSpan> ClipDurationFound();
-        IObservable<DRMInitData> DrmInitDataFound();
-        IObservable<Packet> PacketReady();
-        IObservable<string> DemuxerError();
+        public static Task<T> Never<T>()
+        {
+            var tcs = new TaskCompletionSource<T>();
+            return tcs.Task;
+        }
     }
 }
