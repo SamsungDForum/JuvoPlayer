@@ -70,7 +70,7 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
             });
         }
 
-        [Test, TestCaseSource(nameof(DashClips))]
+        [Test, TestCaseSource(nameof(AllClips))]
         public void Seek_Random10Times_Seeks(string clipTitle)
         {
             RunPlayerTest(clipTitle, async context =>
@@ -85,7 +85,7 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
             });
         }
 
-        [Test, TestCaseSource(nameof(DashClips))]
+        [Test, TestCaseSource(nameof(AllClips))]
         public void Seek_DisposeDuringSeek_Disposes(string clipTitle)
         {
             RunPlayerTest(clipTitle, async context =>
@@ -99,7 +99,7 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
             });
         }
 
-        [Test, TestCaseSource(nameof(DashClips))]
+        [Test, TestCaseSource(nameof(AllClips))]
         public void Seek_Forward_Seeks(string clipTitle)
         {
             RunPlayerTest(clipTitle, async context =>
@@ -118,7 +118,7 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
             });
         }
 
-        [Test, TestCaseSource(nameof(DashClips))]
+        [Test, TestCaseSource(nameof(AllClips))]
         public void Seek_Backward_Seeks(string clipTitle)
         {
             RunPlayerTest(clipTitle, async context =>
@@ -137,8 +137,8 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
             });
         }
 
-        [Test, TestCaseSource(nameof(DashClips))]
-        public void Seek_ToTheEnd_Seeks(string clipTitle)
+        [Test, TestCaseSource(nameof(AllClips))]
+        public void Seek_ToTheEnd_SeeksOrCompletes(string clipTitle)
         {
             RunPlayerTest(clipTitle, async context =>
             {
@@ -148,7 +148,15 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
                 {
                     var seekOperation = new SeekOperation();
                     seekOperation.Prepare(context);
-                    await seekOperation.Execute(context);
+                    var seekTask = seekOperation.Execute(context);
+
+                    var clipCompletedTask = service.StateChanged()
+                        .AsCompletion()
+                        .Timeout(context.Timeout)
+                        .FirstAsync()
+                        .ToTask();
+
+                    await await Task.WhenAny(seekTask, clipCompletedTask);
                 }
                 catch (SeekException)
                 {
@@ -157,7 +165,7 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
             });
         }
 
-        [Test, TestCaseSource(nameof(DashClips))]
+        [Test, TestCaseSource(nameof(AllClips))]
         public void Seek_EOSReached_StateChangedCompletes(string clipTitle)
         {
             RunPlayerTest(clipTitle, async context =>
@@ -176,7 +184,7 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
 
                 var clipCompletedTask = service.StateChanged()
                     .AsCompletion()
-                    .Timeout(TimeSpan.FromSeconds(20))
+                    .Timeout(context.Timeout)
                     .FirstAsync()
                     .ToTask();
 
@@ -275,14 +283,6 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
         private static string[] AllClips()
         {
             return ReadClips()
-                .Select(clip => clip.Title)
-                .ToArray();
-        }
-
-        private static string[] DashClips()
-        {
-            return ReadClips()
-                .Where(clip => clip.Type == "dash")
                 .Select(clip => clip.Title)
                 .ToArray();
         }
