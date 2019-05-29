@@ -21,7 +21,7 @@
   <!-- Include Nuget Package for Tizen Project building -->
   <ItemGroup>
     <PackageReference Include="Tizen.NET.Sdk" Version="1.0.1" />
-    <PackageReference Include="Tizen.NET.TV" Version="4.4.0.1341">
+    <PackageReference Include="Tizen.NET.TV" Version="5.5.0.4997532">
       <ExcludeAssets>Runtime</ExcludeAssets>
     </PackageReference>
     <PackageReference Include="Tizen.TV.Multimedia" Version="1.1.6">
