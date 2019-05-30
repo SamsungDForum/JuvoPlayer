@@ -39,6 +39,7 @@
   </ItemGroup>
 
   <ItemGroup>
+    <PackageReference Include="Newtonsoft.Json" Version="10.0.3" />
     <PackageReference Include="Nito.AsyncEx" Version="5.0.0-pre-05" />
     <PackageReference Include="Nito.AsyncEx.Context" Version="5.0.0-pre-05" />
     <PackageReference Include="Overby.Extensions.AsyncBinaryReaderWriter" Version="1.0.39" />
@@ -52,16 +53,10 @@
     <PackageReference Include="Tizen.NET.Sdk" Version="1.0.1">
       <ExcludeAssets>Runtime</ExcludeAssets>
     </PackageReference>
-    <PackageReference Include="Tizen.NET.TV" Version="4.4.0.1341">
+    <PackageReference Include="Tizen.NET.TV" Version="5.5.0.4997532">
       <ExcludeAssets>Runtime</ExcludeAssets>
     </PackageReference>
-    <PackageReference Include="Tizen.TV.Multimedia.ESPlayer" Version="1.0.0">
-      <ExcludeAssets>Runtime</ExcludeAssets>
-    </PackageReference>
-    <!-- Tizen.TV.Security is hijacked, as such it is included in assets. Add exclusion once released -->
-    <PackageReference Include="Tizen.TV.Security" Version="1.0.3">
-      <ExcludeAssets>Runtime</ExcludeAssets>
-    </PackageReference>
+   
   </ItemGroup>
 
   <ItemGroup>
