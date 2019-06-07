@@ -21,7 +21,7 @@ using System;
 using System.Reactive;
 using System.Reactive.Linq;
 
-namespace JuvoPlayer.TizenTests.Utils
+namespace JuvoPlayer.Tests.Utils
 {
     public static class ReactiveExtensions
     {

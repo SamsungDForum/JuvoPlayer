@@ -219,6 +219,21 @@ namespace JuvoPlayer.Demuxers.FFmpeg
             buffer = null;
         }
 
+        public Task<TimeSpan> Seek(TimeSpan time, CancellationToken token)
+        {
+            if (!IsInitialized())
+                throw new InvalidOperationException();
+
+            return thread.Factory.StartNew(() =>
+            {
+                var index = audioIdx;
+                if (videoIdx != -1)
+                    index = videoIdx;
+                formatContext.Seek(index, time);
+                return time;
+            }, token);
+        }
+
         private void ReadAudioConfig(ICollection<StreamConfig> configs)
         {
             if (audioIdx < 0)
