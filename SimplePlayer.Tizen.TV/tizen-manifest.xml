@@ -1,5 +1,5 @@
 ﻿<?xml version="1.0" encoding="utf-8"?>
-<manifest xmlns="http://tizen.org/ns/packages" api-version="5" package="org.tizen.example.SimplePlayer.Tizen.TV" version="1.4.7">
+<manifest xmlns="http://tizen.org/ns/packages" api-version="5" package="org.tizen.example.SimplePlayer.Tizen.TV" version="1.4.8">
   <feature name="http://tizen.org/feature/screen.size.normal.1080.1920">true</feature>
   <profile name="tv" />
   <ui-application appid="org.tizen.example.SimplePlayer.Tizen.TV" exec="SimplePlayer.Tizen.TV.dll" type="dotnet" multiple="false" taskmanage="true" nodisplay="false" launch_mode="single">
