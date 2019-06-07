@@ -19,6 +19,7 @@ using System;
 using System.Linq;
 using System.Reactive.Linq;
 using System.Reactive.Threading.Tasks;
+using System.Threading;
 using System.Threading.Tasks;
 using JuvoPlayer.Common;
 using JuvoPlayer.DataProviders.HLS;
@@ -72,6 +73,18 @@ namespace JuvoPlayer.Tests.UnitTests
 
             Assert.That(packets.Count, Is.EqualTo(2));
             Assert.That(packets.All(p => p.GetType() == typeof(EOSPacket)), Is.True);
+        }
+
+        [Test]
+        public async Task Seek_Called_ResumesDemuxer()
+        {
+            var demuxerStub = Substitute.For<IDemuxerController>();
+            var clipDefinition = new ClipDefinition();
+            var dataProvider = new HLSDataProvider(demuxerStub, clipDefinition);
+
+            await dataProvider.Seek(TimeSpan.FromSeconds(5), CancellationToken.None);
+
+            demuxerStub.Received().Resume();
         }
     }
 }
