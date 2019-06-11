@@ -1,0 +1,144 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+  <!-- Property Group for .NET Core Project -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>netcoreapp2.0</TargetFramework>
+    <DefineConstants></DefineConstants>
+  </PropertyGroup>
+
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugType>portable</DebugType>
+    <DefineConstants></DefineConstants>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugType>None</DebugType>
+  </PropertyGroup>
+  <ItemGroup>
+    <Compile Remove="lib\**" />
+    <EmbeddedResource Remove="lib\**" />
+    <None Remove="lib\**" />
+  </ItemGroup>
+  <ItemGroup>
+    <None Remove="shared\res\index.tizen.bundle" />
+    <None Remove="shared\res\icon.png" />
+    <None Remove="lib\libJSCore.so" />
+    <None Remove="lib\libyoga.so" />
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="shared\res\index.tizen.bundle">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </EmbeddedResource>
+    <EmbeddedResource Include="shared\res\icon.png">
+      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+    </EmbeddedResource>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="res\" />
+  </ItemGroup>
+
+
+  <ItemGroup>
+    <TizenTpkUserExcludeFiles Include="ElmSharp.dll" />
+    <TizenTpkUserExcludeFiles Include="ElmSharp.Wearable.dll" />
+    <TizenTpkUserExcludeFiles Include="Tizen.Account.AccountManager.dll" />
+    <TizenTpkUserExcludeFiles Include="Tizen.Account.FidoClient.dll" />
+    <TizenTpkUserExcludeFiles Include="Tizen.Account.OAuth2.dll" />
+    <TizenTpkUserExcludeFiles Include="Tizen.Account.SyncManager.dll" />
+    <TizenTpkUserExcludeFiles Include="Tizen.Applications.Alarm.dll" />
+    <TizenTpkUserExcludeFiles Include="Tizen.Applications.AttachPanel.dll" />
+    <TizenTpkUserExcludeFiles Include="Tizen.Applications.Badge.dll" />
+    <TizenTpkUserExcludeFiles Include="Tizen.Applications.Common.dll" />
+    <TizenTpkUserExcludeFiles Include="Tizen.Applications.DataControl.dll" />
+    <TizenTpkUserExcludeFiles Include="Tizen.Applications.MessagePort.dll" />
+    <TizenTpkUserExcludeFiles Include="Tizen.Applications.Notification.dll" />
+    <TizenTpkUserExcludeFiles Include="Tizen.Applications.NotificationEventListener.dll" />
+    <TizenTpkUserExcludeFiles Include="Tizen.Applications.PackageManager.dll" />
+    <TizenTpkUserExcludeFiles Include="Tizen.Applications.Preference.dll" />
+    <TizenTpkUserExcludeFiles Include="Tizen.Applications.RemoteView.dll" />
+    <TizenTpkUserExcludeFiles Include="Tizen.Applications.Service.dll" />
+    <TizenTpkUserExcludeFiles Include="Tizen.Applications.Shortcut.dll" />
+    <TizenTpkUserExcludeFiles Include="Tizen.Applications.ToastMessage.dll" />
+    <TizenTpkUserExcludeFiles Include="Tizen.Applications.UI.dll" />
+    <TizenTpkUserExcludeFiles Include="Tizen.Applications.WatchApplication.dll" />
+    <TizenTpkUserExcludeFiles Include="Tizen.Applications.WidgetApplication.dll" />
+    <TizenTpkUserExcludeFiles Include="Tizen.Applications.WidgetControl.dll" />
+    <TizenTpkUserExcludeFiles Include="Tizen.Content.Download.dll" />
+    <TizenTpkUserExcludeFiles Include="Tizen.Content.MediaContent.dll" />
+    <TizenTpkUserExcludeFiles Include="Tizen.Content.MimeType.dll" />
+    <TizenTpkUserExcludeFiles Include="Tizen.Context.dll" />
+    <TizenTpkUserExcludeFiles Include="Tizen.dll" />
+    <TizenTpkUserExcludeFiles Include="Tizen.Location.dll" />
+    <TizenTpkUserExcludeFiles Include="Tizen.Location.Geofence.dll" />
+    <TizenTpkUserExcludeFiles Include="Tizen.Log.dll" />
+    <TizenTpkUserExcludeFiles Include="Tizen.Maps.dll" />
+    <TizenTpkUserExcludeFiles Include="Tizen.Messaging.dll" />
+    <TizenTpkUserExcludeFiles Include="Tizen.Messaging.Push.dll" />
+    <TizenTpkUserExcludeFiles Include="Tizen.Multimedia.AudioIO.dll" />
+    <TizenTpkUserExcludeFiles Include="Tizen.Multimedia.Camera.dll" />
+    <TizenTpkUserExcludeFiles Include="Tizen.Multimedia.dll" />
+    <TizenTpkUserExcludeFiles Include="Tizen.Multimedia.MediaCodec.dll" />
+    <TizenTpkUserExcludeFiles Include="Tizen.Multimedia.MediaPlayer.dll" />
+    <TizenTpkUserExcludeFiles Include="Tizen.Multimedia.Metadata.dll" />
+    <TizenTpkUserExcludeFiles Include="Tizen.Multimedia.Radio.dll" />
+    <TizenTpkUserExcludeFiles Include="Tizen.Multimedia.Recorder.dll" />
+    <TizenTpkUserExcludeFiles Include="Tizen.Multimedia.Remoting.dll" />
+    <TizenTpkUserExcludeFiles Include="Tizen.Multimedia.StreamRecorder.dll" />
+    <TizenTpkUserExcludeFiles Include="Tizen.Multimedia.Util.dll" />
+    <TizenTpkUserExcludeFiles Include="Tizen.Multimedia.Vision.dll" />
+    <TizenTpkUserExcludeFiles Include="Tizen.Network.Bluetooth.dll" />
+    <TizenTpkUserExcludeFiles Include="Tizen.Network.Connection.dll" />
+    <TizenTpkUserExcludeFiles Include="Tizen.Network.IoTConnectivity.dll" />
+    <TizenTpkUserExcludeFiles Include="Tizen.Network.Nfc.dll" />
+    <TizenTpkUserExcludeFiles Include="Tizen.Network.Nsd.dll" />
+    <TizenTpkUserExcludeFiles Include="Tizen.Network.Smartcard.dll" />
+    <TizenTpkUserExcludeFiles Include="Tizen.Network.WiFi.dll" />
+    <TizenTpkUserExcludeFiles Include="Tizen.Network.WiFiDirect.dll" />
+    <TizenTpkUserExcludeFiles Include="Tizen.NUI.dll" />
+    <TizenTpkUserExcludeFiles Include="Tizen.PhonenumberUtils.dll" />
+    <TizenTpkUserExcludeFiles Include="Tizen.Pims.Calendar.dll" />
+    <TizenTpkUserExcludeFiles Include="Tizen.Pims.Contacts.dll" />
+    <TizenTpkUserExcludeFiles Include="Tizen.Security.dll" />
+    <TizenTpkUserExcludeFiles Include="Tizen.Security.PrivacyPrivilegeManager.dll" />
+    <TizenTpkUserExcludeFiles Include="Tizen.Security.SecureRepository.dll" />
+    <TizenTpkUserExcludeFiles Include="Tizen.Security.TEEC.dll" />
+    <TizenTpkUserExcludeFiles Include="Tizen.Sensor.dll" />
+    <TizenTpkUserExcludeFiles Include="Tizen.System.dll" />
+    <TizenTpkUserExcludeFiles Include="Tizen.System.Feedback.dll" />
+    <TizenTpkUserExcludeFiles Include="Tizen.System.Information.dll" />
+    <TizenTpkUserExcludeFiles Include="Tizen.System.MediaKey.dll" />
+    <TizenTpkUserExcludeFiles Include="Tizen.System.PlatformConfig.dll" />
+    <TizenTpkUserExcludeFiles Include="Tizen.System.Storage.dll" />
+    <TizenTpkUserExcludeFiles Include="Tizen.System.SystemSettings.dll" />
+    <TizenTpkUserExcludeFiles Include="Tizen.System.Usb.dll" />
+    <TizenTpkUserExcludeFiles Include="Tizen.Telephony.dll" />
+    <TizenTpkUserExcludeFiles Include="Tizen.Tracer.dll" />
+    <TizenTpkUserExcludeFiles Include="Tizen.TV.NUI.Component.dll" />
+    <TizenTpkUserExcludeFiles Include="Tizen.TV.NUI.dll" />
+    <TizenTpkUserExcludeFiles Include="Tizen.TV.Security.dll" />
+    <TizenTpkUserExcludeFiles Include="Tizen.Uix.InputMethod.dll" />
+    <TizenTpkUserExcludeFiles Include="Tizen.Uix.InputMethodManager.dll" />
+    <TizenTpkUserExcludeFiles Include="Tizen.Uix.Stt.dll" />
+    <TizenTpkUserExcludeFiles Include="Tizen.Uix.SttEngine.dll" />
+    <TizenTpkUserExcludeFiles Include="Tizen.Uix.Tts.dll" />
+    <TizenTpkUserExcludeFiles Include="Tizen.Uix.TtsEngine.dll" />
+    <TizenTpkUserExcludeFiles Include="Tizen.Uix.VoiceControl.dll" />
+    <TizenTpkUserExcludeFiles Include="Tizen.WebView.dll" />
+    <TizenTpkUserExcludeFiles Include="Tizen.TV.CoBA.Common.dll" />
+    <TizenTpkUserExcludeFiles Include="Tizen.TV.Service.CoBA.Common.dll" />
+  </ItemGroup>
+
+  <!-- Include Nuget Package for Tizen Project building -->
+  <ItemGroup>
+    <PackageReference Include="Tizen.NET" Version="4.0.0" />
+    <PackageReference Include="Tizen.NET.Sdk" Version="1.0.0" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Reference Include="ReactNativeTizen">
+      <HintPath>ReactNativeTizen.dll</HintPath>
+    </Reference>
+  </ItemGroup>
+  
+</Project>

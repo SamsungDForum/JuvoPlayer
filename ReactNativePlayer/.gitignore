@@ -1,0 +1,11 @@
+# git ignore file
+node_mdules
+.expo/
+npm-debug.*
+.vs
+Tizen/bin
+bin
+obj
+*.lock.json
+*.user
+*.swp
