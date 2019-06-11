@@ -1,0 +1,16 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<manifest package="react_native_template" version="1.0.0" api-version="3.0" xmlns="http://tizen.org/ns/packages">
+  <profile name="common" />
+  <ui-application appid="hash_val.react_native_template" exec="react_native_template.dll" multiple="false" nodisplay="false" taskmanage="true" splash-screen-display="true" type="dotnet" launch_mode="single">
+    <label>react_native_template</label>
+    <icon>icon.png</icon>
+  </ui-application>
+  <shortcut-list />
+  <privileges>
+    <privilege>http://tizen.org/privilege/network.get</privilege>
+    <privilege>http://tizen.org/privilege/network.set</privilege>
+    <privilege>http://tizen.org/privilege/network.profile</privilege>
+    <privilege>http://tizen.org/privilege/mediastorage</privilege>
+    <privilege>http://tizen.org/privilege/externalstorage</privilege>
+  </privileges>
+</manifest>
