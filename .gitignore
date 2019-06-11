@@ -2,6 +2,7 @@
 .vs
 bin
 obj
+node_modules
 *.lock.json
 *.user
 *.swp
