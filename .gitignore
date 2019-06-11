@@ -1,8 +1,10 @@
 # git ignore file
+node_modules/
+npm-debug.log
+yarn-error.log
 .vs
 bin
 obj
-node_modules
 *.lock.json
 *.user
 *.swp
