@@ -1,22 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
-
-using ReactNative;
-using ReactNative.Common;
-using ReactNative.Tracing;
-using ReactNative.Shell;
 using ReactNative.Modules.Core;
 using ReactNative.Bridge;
-using ReactNative.Collections;
-
-using JuvoPlayer;
 using JuvoLogger;
-using JuvoLogger.Tizen;
 using ILogger = JuvoLogger.ILogger;
 using Log = Tizen.Log;
-
-using Tizen.Applications;
-using Tizen;
 using ReactNative.UIManager;
 
 namespace JuvoReactNative

@@ -46,7 +46,7 @@ export default class JuvoReactNative extends Component {
         onPress={onHideShowButtonPress}
         title="Hide/Show"
         accessibilityLabel="See an informative alert"
-        />
+        />        
       </View>    
     );
   }
