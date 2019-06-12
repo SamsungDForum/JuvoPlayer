@@ -1,15 +1,14 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
-
+﻿<?xml version="1.0" encoding="utf-8"?>
+<Project Sdk="Microsoft.NET.Sdk">
   <!-- Property Group for .NET Core Project -->
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <TargetFramework>netcoreapp2.0</TargetFramework>
-    <DefineConstants></DefineConstants>
+    <DefineConstants />
   </PropertyGroup>
-
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugType>portable</DebugType>
-    <DefineConstants></DefineConstants>
+    <DefineConstants />
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>None</DebugType>
@@ -33,12 +32,9 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </EmbeddedResource>
   </ItemGroup>
-
   <ItemGroup>
     <Folder Include="res\" />
   </ItemGroup>
-
-
   <ItemGroup>
     <TizenTpkUserExcludeFiles Include="ElmSharp.dll" />
     <TizenTpkUserExcludeFiles Include="ElmSharp.Wearable.dll" />
@@ -128,7 +124,6 @@
     <TizenTpkUserExcludeFiles Include="Tizen.TV.CoBA.Common.dll" />
     <TizenTpkUserExcludeFiles Include="Tizen.TV.Service.CoBA.Common.dll" />
   </ItemGroup>
-
   <!-- Include Nuget Package for Tizen Project building -->
   <ItemGroup>
     <PackageReference Include="Tizen.NET" Version="5.0.0.14572">
@@ -142,11 +137,10 @@
   <ItemGroup>
     <ProjectReference Include="..\..\JuvoLogger.Tizen\JuvoLogger.Tizen.csproj" />
     <ProjectReference Include="..\..\JuvoPlayer\JuvoPlayer.csproj" />
-  </ItemGroup>  
+  </ItemGroup>
   <ItemGroup>
     <Reference Include="ReactNativeTizen">
       <HintPath>ReactNativeTizen.dll</HintPath>
     </Reference>
   </ItemGroup>
-  
 </Project>
