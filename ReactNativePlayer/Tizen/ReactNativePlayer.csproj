@@ -1,4 +1,4 @@
-<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Microsoft.NET.Sdk">
 
   <!-- Property Group for .NET Core Project -->
   <PropertyGroup>
@@ -131,10 +131,18 @@
 
   <!-- Include Nuget Package for Tizen Project building -->
   <ItemGroup>
-    <PackageReference Include="Tizen.NET" Version="4.0.0" />
-    <PackageReference Include="Tizen.NET.Sdk" Version="1.0.0" />
+    <PackageReference Include="Tizen.NET" Version="5.0.0.14572">
+      <ExcludeAssets>Runtime</ExcludeAssets>
+    </PackageReference>
+    <PackageReference Include="Tizen.NET.Sdk" Version="1.0.1" />
+    <PackageReference Include="Tizen.NET.TV" Version="5.5.0.4997532">
+      <ExcludeAssets>Runtime</ExcludeAssets>
+    </PackageReference>
   </ItemGroup>
-
+  <ItemGroup>
+    <ProjectReference Include="..\..\JuvoLogger.Tizen\JuvoLogger.Tizen.csproj" />
+    <ProjectReference Include="..\..\JuvoPlayer\JuvoPlayer.csproj" />
+  </ItemGroup>  
   <ItemGroup>
     <Reference Include="ReactNativeTizen">
       <HintPath>ReactNativeTizen.dll</HintPath>
