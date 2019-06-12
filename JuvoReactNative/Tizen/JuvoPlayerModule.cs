@@ -50,6 +50,9 @@ namespace JuvoReactNative
 
         public void OnDestroy()
         {
+            Log.Error(Tag, "Destroying JuvoPlayerModule...");
+            juvoPlayer.Dispose();
+            platformPlayer.Dispose();
         }
 
         public void OnResume()
@@ -58,6 +61,7 @@ namespace JuvoReactNative
 
         public void OnSuspend()
         {
+            
         }
 
         private void UpdateBufferingProgress(int percent)

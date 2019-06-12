@@ -100,7 +100,21 @@ namespace JuvoReactNative
             _keyDown.On += (s, e) =>
             {
                 Log.Error(Tag, "keyDown.On = " + e.KeyName);
+                DispatchTheRemoteControlKey(s, e);
             };
+        }
+
+        void DispatchTheRemoteControlKey(object s, EcoreKeyEventArgs e)
+        {
+            switch (e.KeyName)
+            {
+                case "XF86Back":
+                    //return key has been pressed
+                    ReactNativeApp app = (ReactNativeApp) Application.Current;
+                    app.Dispose();
+                    app.Exit();                    
+                    break;
+            }
         }
 
         protected override void OnAppControlReceived(AppControlReceivedEventArgs e) // Launch request handling via Smart Hub Preview (deep links) functionality
@@ -121,6 +135,7 @@ namespace JuvoReactNative
                 AppDomain.CurrentDomain.UnhandledException += UnhandledException;
                 ReactNativeApp app = new ReactNativeApp();
                 app.Run(args);
+                
             }
             catch (Exception e)
             {
