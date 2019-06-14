@@ -14,20 +14,39 @@ import {
   Button
 } from 'react-native';
 
+var NativeEventEmitter = require('NativeEventEmitter');
 import { NativeModules } from 'react-native';
-const MPlayer = NativeModules.JuvoPlayer;
+const JuvoPlayer = NativeModules.JuvoPlayer;
+var JuvoPlayerEventEmitter = new NativeEventEmitter(JuvoPlayer);
+var ProgressBar = require('ProgressBarAndroid');
+var TimerMixin = require('react-timer-mixin');
+
+var MovingBar = React.createClass({
+  mixins: [TimerMixin],
+
+  getInitialState: function() {
+    return {
+      progress: 0
+    };
+  },
+
+  componentDidMount: function() {
+    this.setInterval(
+      () => {
+        var progress = (this.state.progress + 0.02) % 1;
+        this.setState({progress: progress});
+      }, 50
+    );
+  },
+
+  render: function() {
+    return <ProgressBar progress={this.state.progress} {...this.props} />;
+  },
+});
 
 const onButtonPress = () => {
   try {
-    MPlayer.startPlayback();    
-  } catch (e) {
-    Alert.alert('Error! ' + e);
-  }
-};
-
-const onHideShowButtonPress = () => {
-  try {
-    Alert.alert('onHideShowButtonPress');
+    JuvoPlayer.startPlayback();    
   } catch (e) {
     Alert.alert('Error! ' + e);
   }
@@ -35,19 +54,15 @@ const onHideShowButtonPress = () => {
 
 export default class JuvoReactNative extends Component {  
   render() {
-    return (    
-      <View style={{width:300, height: 200, backgroundColor: 'red'}}>
+    return (
+      <View style={{width:1920, height: 1080}}>
         <Button style={{width:300, height: 100}}
         onPress={onButtonPress}
         title="Start!"
         accessibilityLabel="See an informative alert"
         />
-        <Button style={{width:300, height: 100}}
-        onPress={onHideShowButtonPress}
-        title="Hide/Show"
-        accessibilityLabel="See an informative alert"
-        />        
-      </View>    
+         <MovingBar horizontal={true} style={{top:850, width:1860, height:40, backgroundColor: 'green', color: 'blue'}} />
+      </View>
     );
   }
 }
@@ -70,6 +85,5 @@ const styles = StyleSheet.create({
     marginBottom: 5,
   },
 });
-
 
 AppRegistry.registerComponent('JuvoReactNative', () => JuvoReactNative);

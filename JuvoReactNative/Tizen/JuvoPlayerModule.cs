@@ -13,7 +13,8 @@ using Log = Tizen.Log;
 using TVMultimedia = Tizen.TV.Multimedia;
 using Tizen.Multimedia;
 using ElmSharp;
-
+using ReactNative.Modules.Core;
+using Newtonsoft.Json.Linq;
 
 namespace JuvoReactNative
 {
@@ -61,7 +62,6 @@ namespace JuvoReactNative
 
         public void OnSuspend()
         {
-            
         }
 
         private void UpdateBufferingProgress(int percent)
@@ -166,10 +166,10 @@ namespace JuvoReactNative
 
                 Log.Error(Tag, "JuvoPlayerModule (Play) window.Show()");
                 /////////////Clean contents////////////////////
-                //var url = "http://yt-dash-mse-test.commondatastorage.googleapis.com/media/car-20120827-manifest.mpd";
+                var url = "http://yt-dash-mse-test.commondatastorage.googleapis.com/media/car-20120827-manifest.mpd";
                 //var url = "https://bitdash-a.akamaihd.net/content/sintel/sintel.mpd";
                 //var url = "http://distribution.bbb3d.renderfarming.net/video/mp4/bbb_sunflower_1080p_30fps_normal.mp4";
-                var url = "http://wowzaec2demo.streamlock.net/live/bigbuckbunny/manifest_mvtime.mpd";
+                //var url = "http://wowzaec2demo.streamlock.net/live/bigbuckbunny/manifest_mvtime.mpd";
                 //var url = "http://download.tsi.telecom-paristech.fr/gpac/dataset/dash/uhd/dashevc-live-2s/dashevc-live-2s-4k.mpd";
 
 
@@ -209,14 +209,31 @@ namespace JuvoReactNative
         public async void startPlayback()
         {
             //StartTimer(UpdateInterval, UpdatePlayerControl);
-
             Log.Error(Tag, "JuvoPlayerModule startPlayback() function called! ");
             await Play();
         }
 
+        [ReactMethod]
+        public async void DispatchPlayerKey(string KeyName)
+        {
+            Log.Error(Tag, "JuvoPlayerModule DispatchPlayerKey() function called! ");
+        }
+
+        private void SendEvent(string eventName, JObject parameters)
+        {
+            Context.GetJavaScriptModule<RCTDeviceEventEmitter>()
+                .emit(eventName, parameters);
+        }
+
         public Task Seek(TimeSpan to)
         {
+            Newtonsoft.Json.Linq.JObject value;
+            string json = @"{to: '2'}";
+            value = JObject.Parse(json);
+            //Task<void> task = new Task<void>(SendEvent)<string>("SeekToTimeSpan")<JObject>(value);            
             throw new NotImplementedException();
         }
+
+      
     }
 }
