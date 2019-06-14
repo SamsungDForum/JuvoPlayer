@@ -100,11 +100,11 @@ namespace JuvoReactNative
             _keyDown.On += (s, e) =>
             {
                 Log.Error(Tag, "keyDown.On = " + e.KeyName);
-                DispatchTheRemoteControlKey(s, e);
+                DispatchRemoteControlKey(s, e);
             };
         }
 
-        void DispatchTheRemoteControlKey(object s, EcoreKeyEventArgs e)
+        void DispatchRemoteControlKey(object s, EcoreKeyEventArgs e)
         {
             switch (e.KeyName)
             {
