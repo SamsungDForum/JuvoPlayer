@@ -72,6 +72,52 @@ namespace JuvoReactNative
             //Log.Error(Tag, $"Buffering {(true ? $"in progress: {percent}%" : "ended")}.");
         }
 
+        void PlayJuvoPlayerRTSP(String videoSourceURL, PlayerServiceProxy player)
+        {
+            try
+            {
+                player.SetSource(new ClipDefinition
+                {
+                    Title = "Title",
+                    Type = "rtsp",
+                    Url = videoSourceURL,
+                    Subtitles = new List<SubtitleInfo>(),
+                    Poster = "Poster",
+                    Description = "Descritption",
+                    DRMDatas = new List<DRMDescription>()
+                });
+                //Log.Error(Tag, "JuvoPlayerModule (PlayJuvoPlayerClean) player source set!");
+
+                SynchronizationContext scx = new SynchronizationContext();
+
+                player.StateChanged()
+                    .ObserveOn(scx)
+                    .Where(state => state == JuvoPlayer.Common.PlayerState.Prepared)
+                    .Subscribe(state =>
+                    {
+                        player.Start();
+                    });
+
+                player.PlaybackError()
+                    .ObserveOn(scx)
+                    .Subscribe(message =>
+                    {
+                        Logger?.Info($"Playback Error: {message}");
+                        //ReturnToMainMenu();
+                        //DisplayAlert("Playback Error", message, "OK");
+                    });
+
+                player.BufferingProgress()
+                    .ObserveOn(scx)
+                    .Subscribe(UpdateBufferingProgress);
+                //Log.Error(Tag, "JuvoPlayerModule (PlayJuvoPlayerClean) player statechanged()!");
+            }
+            catch (Exception e)
+            {
+                Log.Error(Tag, "PlayJuvoPlayerClean: " + e.Message + " stack trace: " + e.StackTrace);
+            }
+        }
+
         void PlayJuvoPlayerClean(String videoSourceURL, PlayerServiceProxy player)
         {
             try
@@ -171,6 +217,7 @@ namespace JuvoReactNative
                 //var url = "http://distribution.bbb3d.renderfarming.net/video/mp4/bbb_sunflower_1080p_30fps_normal.mp4";
                 //var url = "http://wowzaec2demo.streamlock.net/live/bigbuckbunny/manifest_mvtime.mpd";
                 //var url = "http://download.tsi.telecom-paristech.fr/gpac/dataset/dash/uhd/dashevc-live-2s/dashevc-live-2s-4k.mpd";
+                //var url = "rtsp://192.168.137.187/canimals.ts";
 
 
                 /////////////Play Ready encrypted content//////
@@ -194,7 +241,8 @@ namespace JuvoReactNative
                 //////The JuvoPlayer backend (elementary stream data source).
                 juvoPlayer = new PlayerServiceProxy(new PlayerServiceImpl(window));
                 Log.Error(Tag, "JuvoPlayerModule (Play) juvoPlayer object created..");
-                PlayJuvoPlayerClean(url, juvoPlayer);
+                //PlayJuvoPlayerRTSP(url, juvoPlayer);
+                PlayJuvoPlayerClean(url, juvoPlayer);                
                 //PlayJuvoPlayerDRMed(url, license, "playready", juvoPlayer);
                 //PlayJuvoPlayerDRMed(url, license, "widevine", juvoPlayer);
                 Log.Error(Tag, "JuvoPlayerModule: Playback OK!");

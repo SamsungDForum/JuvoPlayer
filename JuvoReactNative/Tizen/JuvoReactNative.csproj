@@ -36,7 +36,7 @@
     </EmbeddedResource>
   </ItemGroup>
   <ItemGroup>
-    <Folder Include="res\" />
+    <Folder Include="res\tiles\" />
   </ItemGroup>
   <ItemGroup>
     <TizenTpkUserExcludeFiles Include="ElmSharp.dll" />
