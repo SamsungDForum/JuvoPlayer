@@ -16,14 +16,17 @@
  */
 
 using System;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using JuvoLogger;
 using JuvoPlayer.Common;
 
 namespace JuvoPlayer.Tests.Utils
 {
     public class StateChangedTask
     {
+        private readonly ILogger _logger = LoggerManager.GetInstance().GetLogger("UT");
         private readonly IPlayerService _service;
         private readonly PlayerState _expectedState;
         private readonly CancellationToken _cancellationToken;
@@ -42,15 +45,33 @@ namespace JuvoPlayer.Tests.Utils
         {
             return Task.Run(async () =>
             {
-                using (var timeoutCts = new CancellationTokenSource())
-                using (var linkedCts =
-                    CancellationTokenSource.CreateLinkedTokenSource(_cancellationToken, timeoutCts.Token))
+                var observedStates = new List<(DateTimeOffset timeStamp, PlayerState state)>();
+                var currentState =_service.State;
+                try
                 {
-                    timeoutCts.CancelAfter(_timeout);
-                    while (_service.State != _expectedState && !linkedCts.IsCancellationRequested)
+                    using (var timeoutCts = new CancellationTokenSource())
+                    using (var linkedCts =
+                        CancellationTokenSource.CreateLinkedTokenSource(_cancellationToken, timeoutCts.Token))
                     {
-                        await Task.Delay(100, linkedCts.Token);
+                        timeoutCts.CancelAfter(_timeout);
+                        
+                        while (currentState != _expectedState && !linkedCts.IsCancellationRequested)
+                        {
+                            currentState =  _service.State;
+                            await Task.Delay(100, linkedCts.Token);
+                            observedStates.Add((DateTimeOffset.Now,currentState));
+                        }
                     }
+                }
+                catch (Exception)
+                {
+                    _logger.Error($"State change error. Timeout {_timeout} Expected: {_expectedState} Current: {currentState}");
+                    foreach (var state in observedStates)
+                    {
+                        _logger.Error($"{state.timeStamp} {state.state}");
+                    }
+
+                    throw;
                 }
             }, _cancellationToken);
         }

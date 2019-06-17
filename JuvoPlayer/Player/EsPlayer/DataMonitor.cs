@@ -20,6 +20,7 @@ using System.Collections.Generic;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
 using System.Threading;
+using System.Threading.Tasks;
 using JuvoLogger;
 using JuvoPlayer.Common;
 using static JuvoPlayer.Player.EsPlayer.DataEvents;
@@ -50,8 +51,7 @@ namespace JuvoPlayer.Player.EsPlayer
         private readonly ILogger logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
 
         private readonly DataBuffer[] dataBuffers = new DataBuffer[(int)StreamType.Count];
-        private readonly MetaDataStreamConfig[] metaDataConfigs = new MetaDataStreamConfig[(int)StreamType.Count];
-
+        
         private readonly Subject<bool> bufferingSubject = new Subject<bool>();
         private readonly Subject<DataRequest> bufferConfigurationSubject = new Subject<DataRequest>();
         private readonly Subject<DataRequest> publishSubject = new Subject<DataRequest>();
@@ -62,15 +62,13 @@ namespace JuvoPlayer.Player.EsPlayer
 
         private readonly IDisposable playerStateSubscription;
         private volatile PlayerState playerState;
+        private readonly PlayerClock playerClock = new PlayerClock();
 
         private IObservable<(List<DataRequest> DataRequests, bool? BufferingNeeded)> NotificationSource() =>
-            ClockProvider
-                .ClockTick()
-                .AsObservable()
+            playerClock
+                .TickSource()
                 .Sample(DataStatePublishInterval)
-                .Select(_ => GetNotifications(DataEvent.All))
-                .Publish()
-                .RefCount();
+                .Select(_ => GetNotifications(DataEvent.All));
 
         private IObservable<DataRequest> DataNotificationSource() =>
             NotificationSource()
@@ -84,7 +82,7 @@ namespace JuvoPlayer.Player.EsPlayer
 
         public IObservable<bool> BufferingStateChanged() =>
             BufferingNotificationSource()
-                .Merge(bufferingSubject.AsObservable())
+                .Merge(bufferingSubject)
                 .StartWith(true)
                 .DistinctUntilChanged()
                 .Skip(1)
@@ -93,21 +91,17 @@ namespace JuvoPlayer.Player.EsPlayer
                     var currentState = playerState;
                     return currentState == PlayerState.Playing ||
                            currentState == PlayerState.Paused;
-                })
-                .Publish()
-                .RefCount();
+                });
 
         public IObservable<DataRequest> DataNeededStateChanged() =>
             DataNotificationSource()
-                .Merge(publishSubject.AsObservable())
-                .Merge(bufferConfigurationSubject.AsObservable())
-                .Publish()
-                .RefCount();
+                .Merge(publishSubject)
+                .Merge(bufferConfigurationSubject);
 
         public IDataBuffer GetDataBuffer(StreamType stream) =>
             dataBuffers[(int)stream];
 
-        public void PublishState()
+        public async Task PublishState()
         {
             var (dataRequests, bufferingNeeded) = GetNotifications(DataEvent.All);
 
@@ -121,6 +115,8 @@ namespace JuvoPlayer.Player.EsPlayer
 
             if (bufferingNeeded.HasValue)
                 bufferingSubject.OnNext(bufferingNeeded.Value);
+
+            await Task.Yield();
         }
 
         public void Initialize(StreamType stream)
@@ -144,67 +140,45 @@ namespace JuvoPlayer.Player.EsPlayer
             DataSynchronizer = new DataSynchronizer();
         }
 
-        public void SeekInitialize()
+        public async Task SeekInitialize()
         {
             logger.Info("");
 
-            EnableEvents(DataEvent.DataRequest);
+            AllowedEvents(DataEvent.DataRequest);
             ReportFullBuffer();
-            PublishState();
-            EnableEvents(DataEvent.None);
-
+            await PublishState();
+            AllowedEvents(DataEvent.None);
         }
 
-        public void SeekStart(TimeSpan seekPosition)
+        public async Task SeekStart(TimeSpan clock)
         {
             logger.Info("");
-
-            Reset();
-
-            SetInitialClock(seekPosition);
-            StartMode();
-
+            
+            DataSynchronizer.SeekStartSynchronization(clock);
+            
             ReportActualBuffer();
-            EnableEvents(DataEvent.DataRequest);
-            PublishState();
+            AllowedEvents(DataEvent.DataRequest);
+            await PublishState();
         }
 
         public void SeekComplete()
         {
             logger.Info("");
 
-            PlayMode();
-            EnableEvents(DataEvent.All);
+            AllowedEvents(DataEvent.All);
         }
-
-        public void StartMode() =>
-            DataSynchronizer.SetStartSynchronization();
-
-        public void PlayMode() =>
-            DataSynchronizer.SetPlaySynchronization();
 
         public void DataIn(Packet packet)
         {
             var index = (int)packet.StreamType;
-
-            if (!packet.ContainsData())
-            {
-                if (packet is EOSPacket)
-                    dataBuffers[index].MarkEosDts();
-
-                return;
-            }
 
             dataBuffers[index].DataIn(packet);
         }
 
         public void DataOut(Packet packet)
         {
-            if (!packet.ContainsData())
-                return;
-
             dataBuffers[(int)packet.StreamType].DataOut(packet);
-            DataSynchronizer.DataIn(packet);
+            DataSynchronizer.UpdateClock(packet);
         }
 
         private (List<DataRequest> DataRequests, bool? BufferingNeeded) GetNotifications(DataEvent pushRequest, StreamType forStream = StreamType.Count)
@@ -241,7 +215,7 @@ namespace JuvoPlayer.Player.EsPlayer
             return (result, bufferResult);
         }
 
-        public void EnableEvents(DataEvent events) =>
+        public void AllowedEvents(DataEvent events) =>
             allowedEventsFlag = events;
 
         public void ReportFullBuffer()
@@ -258,15 +232,8 @@ namespace JuvoPlayer.Player.EsPlayer
 
         public void SetMetaDataConfiguration(MetaDataStreamConfig config)
         {
-            var index = (int)config.Stream;
-
-            if (config == metaDataConfigs[index])
+            if (!dataBuffers[(int) config.Stream].UpdateBufferConfiguration(config))
                 return;
-
-            var stream = dataBuffers[index];
-
-            metaDataConfigs[index] = config;
-            stream.UpdateBufferConfiguration(config);
 
             var dataRequests = GetNotifications(DataEvent.DataRequest, config.Stream).DataRequests;
             if (dataRequests == null)
@@ -275,9 +242,6 @@ namespace JuvoPlayer.Player.EsPlayer
             foreach (var request in dataRequests)
                 bufferConfigurationSubject.OnNext(request);
         }
-
-        public void SetInitialClock(TimeSpan initialClock) =>
-            DataSynchronizer.SetInitialClock(initialClock);
 
         public void Reset()
         {
@@ -298,6 +262,7 @@ namespace JuvoPlayer.Player.EsPlayer
             bufferingSubject.Dispose();
             publishSubject.Dispose();
             DataSynchronizer.Dispose();
+            playerClock.Dispose();
         }
     }
 }

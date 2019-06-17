@@ -21,7 +21,7 @@ using System.Threading.Tasks;
 using JuvoPlayer.Common;
 using JuvoPlayer.Player.EsPlayer;
 
-namespace JuvoPlayer.Tests.UnitTests
+namespace JuvoPlayer.Tests.IntegrationTests
 {
     internal class dummyStorage : IDataStorage
     {
@@ -64,7 +64,6 @@ namespace JuvoPlayer.Tests.UnitTests
             foreach (var packet in source)
             {
                 data.DataIn(packet);
-                await Task.Yield();
             }
         }
 
@@ -73,7 +72,6 @@ namespace JuvoPlayer.Tests.UnitTests
             foreach (var packet in source)
             {
                 data.DataOut(packet);
-                await Task.Yield();
             }
         }
 

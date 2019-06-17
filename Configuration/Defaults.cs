@@ -46,14 +46,13 @@ namespace Configuration
 
     public static class DataSynchronizerConfig
     {
-        public static TimeSpan PlayClockDifferencePause { get; set; } = TimeSpan.FromSeconds(1.75);
+        public static TimeSpan PlayClockDifferencePause { get; set; } = TimeSpan.FromSeconds(1.25);
         public static TimeSpan PlayClockDifferenceResume { get; set; } = TimeSpan.FromSeconds(0.75);
-        public static TimeSpan StartClockDifferencePause { get; set; } = TimeSpan.FromSeconds(0.25);
-        public static TimeSpan StartClockDifferenceResume { get; set; } = TimeSpan.FromSeconds(0);
-        public static TimeSpan StartClockLimit { get; set; } = TimeSpan.FromSeconds(2);
+        public static TimeSpan ClockRunningThreshold { get; set; } = TimeSpan.FromSeconds(0.25);
+        public static TimeSpan StartClockDifferencePause { get; set; } = TimeSpan.FromSeconds(0.5);
+        public static TimeSpan StartClockDifferenceResume { get; set; } = TimeSpan.FromSeconds(0.0);
         public static TimeSpan ClockSampleInterval { get; set; } = TimeSpan.FromSeconds(0.2);
-
-
+        public static int InvalidClockReSyncCount { get; set; } = 2;
     }
 
     public static class DashClient
@@ -125,8 +124,9 @@ namespace Configuration
         public static TimeSpan DecryptBufferFullSleepTime { get; set; } = TimeSpan.FromMilliseconds(1000);
     }
 
-    public static class EsStream
+    public static class EsStreamControllerConfig
     {
-        public static TimeSpan TransferChunk { get; set; } = TimeSpan.FromSeconds(2);
+        public static TimeSpan ClockInterval { get; set; } = TimeSpan.FromSeconds(0.5);
     }
+
 }

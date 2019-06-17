@@ -22,11 +22,10 @@ using System.Threading.Tasks;
 using JuvoLogger;
 using JuvoPlayer.Common;
 using JuvoPlayer.Player.EsPlayer;
-using static JuvoPlayer.Tests.UnitTests.StreamBufferStreamSynchronizerHelpers;
+using static JuvoPlayer.Tests.IntegrationTests.StreamBufferStreamSynchronizerHelpers;
 using NUnit.Framework;
 
-
-namespace JuvoPlayer.Tests.UnitTests
+namespace JuvoPlayer.Tests.IntegrationTests
 {
     [TestFixture]
     public class TSStreamBufferController
@@ -43,13 +42,12 @@ namespace JuvoPlayer.Tests.UnitTests
 
                 try
                 {
-                    await Task.Yield();
                     while (!fn())
                     {
                         await Task.Delay(250, token);
                     }
                 }
-                catch (Exception)
+                catch (TaskCanceledException)
                 {
                     //Ignore errors.
                 }
@@ -58,15 +56,12 @@ namespace JuvoPlayer.Tests.UnitTests
         [Test]
         public void DataEventsAfterSubscription()
         {
-
             Assert.DoesNotThrowAsync(
                 async () =>
                 {
-                    _logger.Info("");
-
                     using (var bufferController = new DataMonitor(Observable.Return<PlayerState>(PlayerState.Playing)))
                     {
-                        bufferController.DataSynchronizer.SetPlaySynchronization();
+                        bufferController.DataSynchronizer.PlaySynchronization(TimeSpan.Zero);
                         bufferController.Initialize(StreamType.Audio);
                         bufferController.Initialize(StreamType.Video);
                         var dataArgsHolder = new DataRequest[(int)StreamType.Count];
@@ -83,11 +78,8 @@ namespace JuvoPlayer.Tests.UnitTests
 
                             Assert.IsTrue(dataArgsHolder[(int)StreamType.Audio] != null, "dataArgsHolder[(int)StreamType.Audio] != null");
                             Assert.IsTrue(dataArgsHolder[(int)StreamType.Video] != null, "dataArgsHolder[(int)StreamType.Video] != null");
-                            ;
                         }
                     }
-
-                    _logger.Info("Done");
                 });
         }
 
@@ -98,11 +90,9 @@ namespace JuvoPlayer.Tests.UnitTests
             Assert.DoesNotThrowAsync(
                 async () =>
                 {
-                    _logger.Info("");
-
                     using (var bufferController = new DataMonitor(Observable.Return<PlayerState>(PlayerState.Playing)))
                     {
-                        bufferController.DataSynchronizer.SetPlaySynchronization();
+                        bufferController.DataSynchronizer.PlaySynchronization(TimeSpan.Zero);
                         bufferController.Initialize(StreamType.Audio);
                         bufferController.Initialize(StreamType.Video);
 
@@ -122,8 +112,6 @@ namespace JuvoPlayer.Tests.UnitTests
                                 $"Expected: eventCount == 0 Flag == true Result: eventCount == {eventCount} flag == {flag}");
                         }
                     }
-
-                    _logger.Info("Done");
                 });
         }
 
@@ -133,10 +121,9 @@ namespace JuvoPlayer.Tests.UnitTests
             Assert.DoesNotThrowAsync(
                 async () =>
                 {
-                    _logger.Info("");
                     using (var bufferController = new DataMonitor(Observable.Return<PlayerState>(PlayerState.Playing)))
                     {
-                        bufferController.DataSynchronizer.SetPlaySynchronization();
+                        bufferController.DataSynchronizer.PlaySynchronization(TimeSpan.Zero);
                         bufferController.Initialize(StreamType.Audio);
 
                         var dataArgsHolder = new DataRequest[(int)StreamType.Count];
@@ -160,7 +147,6 @@ namespace JuvoPlayer.Tests.UnitTests
                                 dataArgsHolder[(int)StreamType.Audio].CompareMetaData(conf), $"Expected: Same Result: {conf} {dataArgsHolder[(int)StreamType.Audio]}");
                         }
                     }
-                    _logger.Info("Done");
                 });
         }
 
@@ -170,10 +156,9 @@ namespace JuvoPlayer.Tests.UnitTests
             Assert.DoesNotThrowAsync(
                 async () =>
                 {
-                    _logger.Info("");
                     using (var bufferController = new DataMonitor(Observable.Return<PlayerState>(PlayerState.Playing)))
                     {
-                        bufferController.DataSynchronizer.SetPlaySynchronization();
+                        bufferController.DataSynchronizer.PlaySynchronization(TimeSpan.Zero);
                         bufferController.Initialize(StreamType.Audio);
                         bufferController.Initialize(StreamType.Video);
                         var dataArgsHolder = new DataRequest[(int)StreamType.Count];
@@ -215,7 +200,6 @@ namespace JuvoPlayer.Tests.UnitTests
                                 dataArgsHolder[(int)StreamType.Video].CompareMetaData(video), $"Expected: Same Result: {video} {dataArgsHolder[(int)StreamType.Audio]}");
                         }
                     }
-                    _logger.Info("Done");
                 });
         }
 
@@ -225,10 +209,9 @@ namespace JuvoPlayer.Tests.UnitTests
             Assert.DoesNotThrowAsync(
                 async () =>
                 {
-                    _logger.Info("");
                     using (var bufferController = new DataMonitor(Observable.Return<PlayerState>(PlayerState.Playing)))
                     {
-                        bufferController.DataSynchronizer.SetPlaySynchronization();
+                        bufferController.DataSynchronizer.PlaySynchronization(TimeSpan.Zero);
                         bufferController.Initialize(StreamType.Audio);
 
                         var bufferState = true;
@@ -255,10 +238,7 @@ namespace JuvoPlayer.Tests.UnitTests
 
                             await audioPackets1.DisposePackets();
                         }
-
                     }
-
-                    _logger.Info("Done");
                 });
         }
 
@@ -268,10 +248,9 @@ namespace JuvoPlayer.Tests.UnitTests
             Assert.DoesNotThrowAsync(
                 async () =>
                 {
-                    _logger.Info("");
                     using (var bufferController = new DataMonitor(Observable.Return<PlayerState>(PlayerState.Playing)))
                     {
-                        bufferController.DataSynchronizer.SetPlaySynchronization();
+                        bufferController.DataSynchronizer.PlaySynchronization(TimeSpan.Zero);
                         bufferController.Initialize(StreamType.Audio);
                         bufferController.Initialize(StreamType.Video);
 
@@ -315,8 +294,6 @@ namespace JuvoPlayer.Tests.UnitTests
                             );
                         }
                     }
-
-                    _logger.Info("Done");
                 });
         }
 
@@ -326,10 +303,9 @@ namespace JuvoPlayer.Tests.UnitTests
             Assert.DoesNotThrowAsync(
                 async () =>
                 {
-                    _logger.Info("");
                     using (var bufferController = new DataMonitor(Observable.Return<PlayerState>(PlayerState.Playing)))
                     {
-                        bufferController.DataSynchronizer.SetPlaySynchronization();
+                        bufferController.DataSynchronizer.PlaySynchronization(TimeSpan.Zero);
                         bufferController.Initialize(StreamType.Audio);
 
                         var dataArgsHolder = new DataRequest[(int)StreamType.Count];
@@ -363,8 +339,6 @@ namespace JuvoPlayer.Tests.UnitTests
                             await audioPackets.DisposePackets();
                         }
                     }
-
-                    _logger.Info("Done");
                 });
         }
 
@@ -374,10 +348,9 @@ namespace JuvoPlayer.Tests.UnitTests
             Assert.DoesNotThrowAsync(
                 async () =>
                 {
-                    _logger.Info("");
                     using (var bufferController = new DataMonitor(Observable.Return<PlayerState>(PlayerState.Playing)))
                     {
-                        bufferController.DataSynchronizer.SetPlaySynchronization();
+                        bufferController.DataSynchronizer.PlaySynchronization(TimeSpan.Zero);
                         bufferController.Initialize(StreamType.Audio);
                         bufferController.Initialize(StreamType.Video);
                         var dataArgsHolder = new DataRequest[(int)StreamType.Count];
@@ -426,8 +399,6 @@ namespace JuvoPlayer.Tests.UnitTests
                             );
                         }
                     }
-
-                    _logger.Info("Done");
                 });
         }
 
@@ -437,11 +408,9 @@ namespace JuvoPlayer.Tests.UnitTests
             Assert.DoesNotThrowAsync(
                 async () =>
                 {
-                    _logger.Info("");
-
                     using (var bufferController = new DataMonitor(Observable.Return<PlayerState>(PlayerState.Playing)))
                     {
-                        bufferController.DataSynchronizer.SetPlaySynchronization();
+                        bufferController.DataSynchronizer.PlaySynchronization(TimeSpan.Zero);
                         bufferController.Initialize(StreamType.Audio);
                         bufferController.Initialize(StreamType.Video);
 
@@ -489,7 +458,7 @@ namespace JuvoPlayer.Tests.UnitTests
                             Assert.IsTrue(dataArgsHolder[(int)StreamType.Video].Duration <= TimeSpan.Zero, $"Expected: Duration <= 0 Result: Duration=={dataArgsHolder[(int)StreamType.Video].Duration}");
                             Assert.IsTrue(bufferEventCount == 1, $"Expected: bufferEventCount == 1 Result: {bufferEventCount} != 1");
 
-                            bufferController.EnableEvents(DataEvents.DataEvent.None);
+                            bufferController.AllowedEvents(DataEvents.DataEvent.None);
 
                             await Task.WhenAll(
                                 bufferController.PullPackets(audio),
@@ -501,14 +470,14 @@ namespace JuvoPlayer.Tests.UnitTests
                             Assert.IsTrue(dataArgsHolder[(int)StreamType.Video].Duration <= TimeSpan.Zero, $"Expected: Duration <= 0 Result: Duration=={dataArgsHolder[(int)StreamType.Video].Duration}");
                             Assert.IsTrue(bufferEventCount == 1, $"Expected: bufferEventCount == 1 Result: {bufferEventCount} != 1");
 
-                            bufferController.EnableEvents(DataEvents.DataEvent.Buffering);
+                            bufferController.AllowedEvents(DataEvents.DataEvent.Buffering);
                             await Result(() => bufferState, Timeout);
                             Assert.IsTrue(bufferState, $"Expected: bufferState == true Result: {bufferState}");
                             Assert.IsTrue(dataArgsHolder[(int)StreamType.Audio].Duration <= TimeSpan.Zero, $"Expected: Duration <= 0 Result: Duration=={dataArgsHolder[(int)StreamType.Audio].Duration}");
                             Assert.IsTrue(dataArgsHolder[(int)StreamType.Video].Duration <= TimeSpan.Zero, $"Expected: Duration <= 0 Result: Duration=={dataArgsHolder[(int)StreamType.Video].Duration}");
                             Assert.IsTrue(bufferEventCount == 2, $"Expected: bufferEventCount == 2 Result: {bufferEventCount} != 2");
 
-                            bufferController.EnableEvents(DataEvents.DataEvent.DataRequest);
+                            bufferController.AllowedEvents(DataEvents.DataEvent.DataRequest);
                             await Result(() => dataArgsHolder[(int)StreamType.Audio].Duration > TimeSpan.Zero &&
                                                      dataArgsHolder[(int)StreamType.Video].Duration > TimeSpan.Zero,
                                 Timeout);
@@ -517,7 +486,7 @@ namespace JuvoPlayer.Tests.UnitTests
                             Assert.IsTrue(dataArgsHolder[(int)StreamType.Audio].Duration > TimeSpan.Zero, $"Expected: Duration > 0 Result: Duration=={dataArgsHolder[(int)StreamType.Audio].Duration}");
                             Assert.IsTrue(dataArgsHolder[(int)StreamType.Video].Duration > TimeSpan.Zero, $"Expected: Duration > 0 Result: Duration=={dataArgsHolder[(int)StreamType.Video].Duration}");
 
-                            bufferController.EnableEvents(DataEvents.DataEvent.None);
+                            bufferController.AllowedEvents(DataEvents.DataEvent.None);
 
 
                             await Task.WhenAll(
@@ -531,7 +500,7 @@ namespace JuvoPlayer.Tests.UnitTests
                             Assert.IsTrue(dataArgsHolder[(int)StreamType.Video].Duration > TimeSpan.Zero, $"Expected: Duration > 0 Result: Duration=={dataArgsHolder[(int)StreamType.Video].Duration}");
 
 
-                            bufferController.EnableEvents(DataEvents.DataEvent.All);
+                            bufferController.AllowedEvents(DataEvents.DataEvent.All);
                             await Result(() => dataArgsHolder[(int)StreamType.Audio].Duration <= TimeSpan.Zero &&
                                                      dataArgsHolder[(int)StreamType.Video].Duration <= TimeSpan.Zero &&
                                                      !bufferState, Timeout);
@@ -540,7 +509,7 @@ namespace JuvoPlayer.Tests.UnitTests
                             Assert.IsTrue(dataArgsHolder[(int)StreamType.Audio].Duration <= TimeSpan.Zero, $"Expected: Duration <= 0 Result: Duration=={dataArgsHolder[(int)StreamType.Audio].Duration}");
                             Assert.IsTrue(dataArgsHolder[(int)StreamType.Video].Duration <= TimeSpan.Zero, $"Expected: Duration <= 0 Result: Duration=={dataArgsHolder[(int)StreamType.Video].Duration}");
 
-                            bufferController.EnableEvents(DataEvents.DataEvent.None);
+                            bufferController.AllowedEvents(DataEvents.DataEvent.None);
 
                             await Task.WhenAll(
                                 bufferController.PullPackets(audio2),
@@ -559,7 +528,7 @@ namespace JuvoPlayer.Tests.UnitTests
                             Assert.IsTrue(bufferEventCount == 3, $"Expected: bufferEventCount == 3 Result: {bufferEventCount} != 3");
 
 
-                            bufferController.EnableEvents(DataEvents.DataEvent.All);
+                            bufferController.AllowedEvents(DataEvents.DataEvent.All);
                             await Result(() => dataArgsHolder[(int)StreamType.Audio].Duration > TimeSpan.Zero &&
                                                      dataArgsHolder[(int)StreamType.Video].Duration > TimeSpan.Zero &&
                                                      bufferState, Timeout);
@@ -572,8 +541,6 @@ namespace JuvoPlayer.Tests.UnitTests
 
                         }
                     }
-
-                    _logger.Info("Done");
                 });
         }
 
@@ -583,10 +550,9 @@ namespace JuvoPlayer.Tests.UnitTests
             Assert.DoesNotThrowAsync(
                 async () =>
                 {
-                    _logger.Info("");
                     using (var bufferController = new DataMonitor(Observable.Return<PlayerState>(PlayerState.Playing)))
                     {
-                        bufferController.DataSynchronizer.SetPlaySynchronization();
+                        bufferController.DataSynchronizer.PlaySynchronization(TimeSpan.Zero);
                         bufferController.Initialize(StreamType.Audio);
                         bufferController.Initialize(StreamType.Video);
                         var dataArgsHolder = new DataRequest[(int)StreamType.Count];
@@ -620,7 +586,7 @@ namespace JuvoPlayer.Tests.UnitTests
                             var videoLevel = dataArgsHolder[(int)StreamType.Video].Duration;
 
                             bufferController.ReportFullBuffer();
-                            bufferController.PublishState();
+                            await bufferController.PublishState();
 
                             await Result(() => dataArgsHolder[(int)StreamType.Audio].Duration == TimeSpan.Zero &&
                                                      dataArgsHolder[(int)StreamType.Video].Duration == TimeSpan.Zero, Timeout);
@@ -633,7 +599,7 @@ namespace JuvoPlayer.Tests.UnitTests
                                 video.DisposePackets());
 
                             bufferController.ReportActualBuffer();
-                            bufferController.PublishState();
+                            await bufferController.PublishState();
 
                             await Result(() => dataArgsHolder[(int)StreamType.Audio].Duration == audioLevel &&
                                                      dataArgsHolder[(int)StreamType.Video].Duration == videoLevel, Timeout);
@@ -645,8 +611,6 @@ namespace JuvoPlayer.Tests.UnitTests
 
                         }
                     }
-
-                    _logger.Info("Done");
                 });
         }
 
