@@ -17,6 +17,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Threading;
 using System.Threading.Tasks;
 using JuvoPlayer.Common;
 
@@ -39,5 +40,6 @@ namespace JuvoPlayer.Demuxers
         Task Completion { get; }
         void Complete();
         void Reset();
+        Task<TimeSpan> Seek(TimeSpan time, CancellationToken token);
     }
 }

@@ -56,6 +56,11 @@ namespace JuvoPlayer.Demuxers
                     TaskContinuationOptions.None,
                     TaskScheduler.FromCurrentSynchronizationContext());
 
+            ListenForEos();
+        }
+
+        private void ListenForEos()
+        {
             demuxer.Completion?.ContinueWith(OnEos,
                 cancelTokenSource.Token,
                 TaskContinuationOptions.None,
@@ -136,6 +141,15 @@ namespace JuvoPlayer.Demuxers
         public IObservable<string> DemuxerError()
         {
             return demuxerErrorSubject.AsObservable();
+        }
+
+        public async Task<TimeSpan> Seek(TimeSpan time, CancellationToken token)
+        {
+            CancelContinuations();
+            var seekTime = await demuxer.Seek(time, token);
+            ListenForEos();
+            ScheduleNextPacketToDemux();
+            return seekTime;
         }
 
         public void Dispose()

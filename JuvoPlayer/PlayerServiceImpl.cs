@@ -94,7 +94,7 @@ namespace JuvoPlayer
                     {
                         State = state;
                         stateChangedSubject.OnNext(state);
-                    }, SynchronizationContext.Current),
+                    }, () => stateChangedSubject.OnCompleted(), SynchronizationContext.Current),
                 playerController.PlaybackError()
                     .Subscribe(playbackErrorSubject.OnNext,SynchronizationContext.Current),
                 playerController.BufferingProgress()
