@@ -44,20 +44,39 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
         {
             AsyncContext.Run(async () =>
             {
-                using (var service = new PlayerService())
-                using (var cts = new CancellationTokenSource())
+                try
                 {
-                    var context = new TestContext
-                    {
-                        Service = service,
-                        ClipTitle = clipTitle,
-                        Token = cts.Token,
-                        Timeout = TimeSpan.FromSeconds(20)
-                    };
-                    await new PrepareOperation().Execute(context);
-                    await new StartOperation().Execute(context);
+                    _logger.Info($"Begin: {NUnit.Framework.TestContext.CurrentContext.Test.FullName}");
 
-                    await testImpl(context);
+                    using (var service = new PlayerService())
+                    using (var cts = new CancellationTokenSource())
+                    {
+                        var context = new TestContext
+                        {
+                            Service = service,
+                            ClipTitle = clipTitle,
+                            Token = cts.Token,
+
+                            // Requested seek position may differ from
+                            // seek position issued to player. Difference can be 10s+
+                            // Encrypted streams (Widevine in particular) may have LONG license
+                            // installation times (10s+).
+                            // DRM content has larger timeout
+                            Timeout = IsEncrypted(clipTitle) ?
+                                TimeSpan.FromSeconds(40) : TimeSpan.FromSeconds(20)
+                        };
+                        await new PrepareOperation().Execute(context);
+                        await new StartOperation().Execute(context);
+
+                        await testImpl(context);
+                    }
+
+                    _logger.Info($"End: {NUnit.Framework.TestContext.CurrentContext.Test.FullName}");
+                }
+                catch (Exception e)
+                {
+                    _logger.Error($"Error: {NUnit.Framework.TestContext.CurrentContext.Test.FullName} {e.Message}");
+                    throw;
                 }
             });
         }
@@ -65,20 +84,17 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
         [Test, TestCaseSource(nameof(AllClips))]
         public void Playback_Basic_PreparesAndStarts(string clipTitle)
         {
-            _logger.Info("Start " + clipTitle);
             RunPlayerTest(clipTitle, async context =>
             {
                 await Task.Delay(TimeSpan.FromSeconds(1));
 
                 Assert.That(context.Service.CurrentPosition, Is.GreaterThan(TimeSpan.Zero));
             });
-            _logger.Info("End " + clipTitle);
         }
 
         [Test, TestCaseSource(nameof(DashClips))]
         public void Seek_Random10Times_Seeks(string clipTitle)
         {
-            _logger.Info("Start " + clipTitle);
             RunPlayerTest(clipTitle, async context =>
             {
                 context.SeekTime = null;
@@ -89,13 +105,11 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
                     await seekOperation.Execute(context);
                 }
             });
-            _logger.Info("End " + clipTitle);
         }
 
         [Test, TestCaseSource(nameof(DashClips))]
         public void Seek_DisposeDuringSeek_Disposes(string clipTitle)
         {
-            _logger.Info("Start " + clipTitle);
             RunPlayerTest(clipTitle, async context =>
             {
                 var seekOperation = new SeekOperation();
@@ -105,13 +119,11 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
 #pragma warning restore 4014
                 await Task.Delay(250);
             });
-            _logger.Info("End " + clipTitle);
         }
 
         [Test, TestCaseSource(nameof(DashClips))]
         public void Seek_Forward_Seeks(string clipTitle)
         {
-            _logger.Info("Start " + clipTitle);
             RunPlayerTest(clipTitle, async context =>
             {
                 var service = context.Service;
@@ -126,13 +138,11 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
                     await seekOperation.Execute(context);
                 }
             });
-            _logger.Info("End " + clipTitle);
         }
 
         [Test, TestCaseSource(nameof(DashClips))]
         public void Seek_Backward_Seeks(string clipTitle)
         {
-            _logger.Info("Start " + clipTitle);
             RunPlayerTest(clipTitle, async context =>
             {
                 var service = context.Service;
@@ -147,13 +157,11 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
                     await seekOperation.Execute(context);
                 }
             });
-            _logger.Info("End " + clipTitle);
         }
 
         [Test, TestCaseSource(nameof(DashClips))]
         public void Seek_ToTheEnd_Seeks(string clipTitle)
         {
-            _logger.Info("Start " + clipTitle);
             RunPlayerTest(clipTitle, async context =>
             {
                 var service = context.Service;
@@ -169,13 +177,11 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
                     // ignored
                 }
             });
-            _logger.Info("End " + clipTitle);
         }
 
         [Test, TestCaseSource(nameof(DashClips))]
         public void Seek_EOSReached_StateChangedCompletes(string clipTitle)
         {
-            _logger.Info("Start " + clipTitle);
             RunPlayerTest(clipTitle, async context =>
             {
                 var service = context.Service;
@@ -197,20 +203,20 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
                 await Task.WhenAny(seekOperation.Execute(context), playbackErrorTask);
                 await Task.WhenAny(clipCompletedTask, playbackErrorTask);
             });
-            _logger.Info("End " + clipTitle);
         }
 
         [TestCase("Clean byte range MPEG DASH")]
+        [Repeat(3)]
         public void Random_20RandomOperations_ExecutedCorrectly(string clipTitle)
         {
-            _logger.Info("Start " + clipTitle);
-
             var operations =
                 GenerateOperations(20, new List<Type> { typeof(StopOperation), typeof(PrepareOperation) });
 
             try
             {
+                _logger.Info("Begin: " + NUnit.Framework.TestContext.CurrentContext.Test.Name);
                 RunRandomOperationsTest(clipTitle, operations, true);
+                _logger.Info("Done: " + NUnit.Framework.TestContext.CurrentContext.Test.Name);
             }
             catch (Exception e)
             {
@@ -220,7 +226,6 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
                 throw;
             }
 
-            _logger.Info("End " + clipTitle);
         }
 
         private void RunRandomOperationsTest(string clipTitle, IList<TestOperation> operations, bool shouldPrepare)
@@ -232,10 +237,18 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
 
                 if (shouldPrepare)
                     foreach (var operation in operations)
+                    {
+                        _logger.Info($"Prepare: {operation}");
                         operation.Prepare(context);
+                        _logger.Info($"Prepare Done: {operation}");
+                    }
 
                 foreach (var operation in operations)
+                {
+                    _logger.Info($"Execute: {operation}");
                     await operation.Execute(context);
+                    _logger.Info($"Execute Done: {operation}");
+                }
             });
         }
 
@@ -307,6 +320,14 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
                 .Where(clip => clip.Type == "dash")
                 .Select(clip => clip.Title)
                 .ToArray();
+        }
+
+        private static bool IsEncrypted(string clipTitle)
+        {
+            return ReadClips()
+                .Where(clip => string.Equals(clip.Title, clipTitle))
+                .Select(clip => clip.DRMDatas?.Count > 0)
+                .FirstOrDefault();
         }
     }
 }

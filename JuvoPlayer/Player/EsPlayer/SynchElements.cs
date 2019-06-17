@@ -17,99 +17,89 @@
 
 using System;
 using System.Threading;
+using JuvoPlayer.Common;
 
 namespace JuvoPlayer.Player.EsPlayer
 {
-    internal class SyncElement : IDisposable
+    internal class ClockSynchronizer : IDisposable
     {
+        private long clockTicks;
+        private long referenceClockTicks;
+
+        public TimeSpan Clock
+        {
+            get => TimeSpan.FromTicks(Volatile.Read(ref clockTicks));
+            private set => Interlocked.Exchange(ref clockTicks, value.Ticks);
+        }
+
+        public TimeSpan ReferenceClock
+        {
+            get => TimeSpan.FromTicks(Volatile.Read(ref referenceClockTicks));
+            private set => Interlocked.Exchange(ref referenceClockTicks, value.Ticks);
+        }
+
+        private long haltOnDifference;
+        private long haltOffDifference;
+
         private readonly ManualResetEventSlim syncWait = new ManualResetEventSlim(false);
 
+        public StreamType StreamType { get; }
         public bool IsSynchronized => syncWait.IsSet;
 
-        protected void SetSyncState(bool newSyncState)
+        public ClockSynchronizer(StreamType stream)
         {
-            var hasChanged = IsSynchronized ^ newSyncState;
-
-            if (!hasChanged)
-                return;
-
-            if (newSyncState)
-            {
-                syncWait.Set();
-            }
-            else
-            {
-                syncWait.Reset();
-            }
+            StreamType = stream;
+            Initialize();
         }
 
-        public virtual void Set()
-        {
+        public void Set() =>
             syncWait.Set();
-        }
 
-        public virtual void Reset()
-        {
+        public void Reset() =>
             syncWait.Reset();
-        }
 
         public void Wait(CancellationToken token) =>
             syncWait.Wait(token);
 
-        protected virtual void Dispose(bool disposing)
+        public void SetThresholds(TimeSpan haltOn, TimeSpan haltOff)
         {
-            if (disposing)
-            {
-                syncWait.Dispose();
-            }
+            Interlocked.Exchange(ref haltOnDifference, haltOn.Ticks);
+            Interlocked.Exchange(ref haltOffDifference, haltOff.Ticks);
+        }
+
+        public void UpdateClock(TimeSpan clock)
+        {
+            var reference = ReferenceClock;
+            var haltOnDiff = Volatile.Read(ref haltOnDifference);
+
+            if (clock.Ticks - reference.Ticks >= haltOnDiff && syncWait.IsSet)
+                syncWait.Reset();
+
+            Clock = clock;
+        }
+
+        public void UpdateReferenceClock(TimeSpan reference)
+        {
+            var clock = Clock;
+            var haltOffDiff = Volatile.Read(ref haltOffDifference);
+
+            if (clock.Ticks - reference.Ticks <= haltOffDiff && !syncWait.IsSet)
+                syncWait.Set();
+
+            ReferenceClock = reference;
+        }
+
+
+        public void Initialize()
+        {
+            Clock = TimeSpan.Zero;
+            ReferenceClock = TimeSpan.Zero;
+            syncWait.Set();
         }
 
         public void Dispose()
         {
-            Dispose(true);
-            GC.SuppressFinalize(this);
-        }
-    }
-
-    internal class ClockSynchronizer : SyncElement
-    {
-        public TimeSpan Data { get; protected set; } = TimeSpan.Zero;
-        public TimeSpan Reference { get; protected set; } = TimeSpan.Zero;
-
-        protected TimeSpan HaltOnDifference;
-        protected TimeSpan HaltOffDifference;
-
-        public ClockSynchronizer(TimeSpan haltOn, TimeSpan haltOff)
-        {
-            SetThresholds(haltOn, haltOff);
-        }
-
-        public void SetThresholds(TimeSpan haltOn, TimeSpan haltOff)
-        {
-            HaltOnDifference = haltOn;
-            HaltOffDifference = haltOff;
-        }
-
-        public void DataIn(TimeSpan dataClock)
-        {
-            Data = dataClock;
-
-            if (dataClock - Reference >= HaltOnDifference)
-                SetSyncState(false);
-        }
-
-        public void ReferenceIn(TimeSpan refClock)
-        {
-            Reference = refClock;
-            if (Data - refClock <= HaltOffDifference)
-                SetSyncState(true);
-        }
-
-        public void Initialize()
-        {
-            Data = TimeSpan.Zero;
-            Reference = TimeSpan.Zero;
-            base.Reset();
+            syncWait.Dispose();
         }
     }
 }

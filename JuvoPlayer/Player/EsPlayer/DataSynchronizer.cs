@@ -24,143 +24,241 @@ using static Configuration.DataSynchronizerConfig;
 
 namespace JuvoPlayer.Player.EsPlayer
 {
-    public class DataSynchronizer : IDisposable
+    internal class DataSynchronizer : IDisposable
     {
-        private enum SynchronizationType
+        public enum SynchronizationMode
         {
-            Uninitialized,
-            Start,
+            PlayStart,
+            SeekStart,
             Play
         }
 
         private static readonly ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
 
-        private readonly ClockSynchronizer[] clockSync = new ClockSynchronizer[(int)StreamType.Count];
+        private readonly ClockSynchronizer[] clockSyncs = new ClockSynchronizer[(int)StreamType.Count];
+        private readonly long[] lastClocksTicks = new long[(int)StreamType.Count];
+        private readonly PlayerClock playerClock = new PlayerClock();
+        private readonly bool[] ignoreSync = new bool[(int)StreamType.Count];
 
-        private readonly ClockFilter clockFilter = new ClockFilter();
         private IDisposable clockSubscription;
 
-        private SynchronizationType synchType = SynchronizationType.Uninitialized;
+        private SynchronizationMode syncMode = SynchronizationMode.PlayStart;
 
-        public void Initialize(StreamType stream) =>
-            clockSync[(int)stream] = new ClockSynchronizer(StartClockDifferencePause, StartClockDifferenceResume);
+        private TimeSpan playerGeneratedClock;
+        private TimeSpan accumulatedStartDuration;
+        private int invalidClockReSyncCount;
 
-        private TimeSpan? startClock;
-
-        public void DataIn(Packet packet)
+        public void Initialize(StreamType stream)
         {
-            var clock = packet.Dts;
-            var idx = (int)packet.StreamType;
+            clockSyncs[(int) stream] = new ClockSynchronizer(stream);
+        }
 
-            clockSync[idx].DataIn(clock);
+        private long GetLastTicks(StreamType stream) =>
+            Volatile.Read(ref lastClocksTicks[(int) stream]);
 
-            switch (synchType)
+        public void UpdateClock(Packet packet)
+        {
+            // Non data packet - Ignore sync as they carry no clock.
+            if (!packet.ContainsData())
             {
-                case SynchronizationType.Play:
-                    return;
-                case SynchronizationType.Uninitialized:
-                    throw new InvalidOperationException("Synchronization mode not set");
+                ignoreSync[(int) packet.StreamType] = true;
+                return;
+            }
+            
+            var clock = packet.Dts;
+
+            if (syncMode != SynchronizationMode.Play)
+            {
+                // In play start mode, stream may begin with non zero clock.
+                // Sync with first packet clock.
+                if (syncMode == SynchronizationMode.PlayStart &&
+                    lastClocksTicks[(int) packet.StreamType] == long.MaxValue)
+                {
+                    clockSyncs[(int)packet.StreamType].UpdateReferenceClock(clock);
+                }
+
+                Interlocked.Exchange(ref lastClocksTicks[(int) packet.StreamType], clock.Ticks);
+
+                //if(packet.StreamType == StreamType.Video && packet.IsKeyFrame)
+                //    Logger.Info($"*** key Frame: {clock} {packet.Pts}");
             }
 
-            // Synch mode is Start
-            if (packet.StreamType != StreamType.Video)
-                return;
-
-            if (!startClock.HasValue)
-                startClock = clock;
-
-            if (clock - startClock >= StartClockLimit)
-                return;
-
-            ReferenceIn(clock);
+            clockSyncs[(int)packet.StreamType].UpdateClock(clock);
         }
 
-        public void SetStartSynchronization()
+        private void InitializeOperation()
         {
-            if (synchType == SynchronizationType.Start)
-                return;
+            playerGeneratedClock = TimeSpan.MaxValue;
+            accumulatedStartDuration = TimeSpan.Zero;
+            invalidClockReSyncCount = InvalidClockReSyncCount;
 
-            // Start synch mode is driven by video clock.
-            // Audio push is initially disabled forcing video data to be 
-            // fed to player as first, followed by audio up to StartClockLimit
-            // Once StartClockLimit is reached, no further data will be passed till
-            // switch to PlaySynchronization is made via SetPlaySynchronization()
-            Logger.Info("");
-
-            UpdateThresholds(StartClockDifferencePause, StartClockDifferenceResume);
-
-            clockSync[(int)StreamType.Video].Set();
-            clockSync[(int)StreamType.Audio].Reset();
-            startClock = null;
-            synchType = SynchronizationType.Start;
+            for (var i = 0; i < (int) StreamType.Count; i++)
+                Interlocked.Exchange(ref lastClocksTicks[i],long.MinValue);
         }
 
-        public void SetPlaySynchronization()
+        private void CreateStartClockSubscription()
         {
-            if (synchType == SynchronizationType.Play)
-                return;
+            clockSubscription = playerClock
+                .ClockSource()
+                .Sample(TimeSpan.FromSeconds(0.1))
+                .Subscribe(ClockStartMonitor, SynchronizationContext.Current);
+        }
 
-            Logger.Info("");
-
-            clockSubscription = clockFilter
-                .ClockValue()
-                .EnabledClock(clockFilter)
+        private void CreatePlayClockSubscription()
+        {
+            clockSubscription = playerClock
+                .ClockSource()
                 .ValidClock()
-                .ClockOrInitial(clockFilter)
-                .Sample(ClockSampleInterval)
-                .DistinctUntilChanged()
-                .Subscribe(ReferenceIn, SynchronizationContext.Current);
-
-            UpdateThresholds(PlayClockDifferencePause, PlayClockDifferenceResume);
-            clockFilter.Enable();
-            synchType = SynchronizationType.Play;
+                .Sample(ClockSampleInterval)             
+                .Subscribe(UpdateReferenceClock, SynchronizationContext.Current);
         }
 
-        public bool IsSynchronized(StreamType stream) =>
-            clockSync[(int)stream].IsSynchronized;
-
-        public void Synchronize(StreamType stream, CancellationToken token)
+        public void SeekStartSynchronization(TimeSpan clock)
         {
-            Logger.Info($"{stream}: {clockSync[(int)stream].Data} Sync {synchType} {clockSync[(int)stream].Reference}");
-            clockSync[(int)stream].Wait(token);
+            Logger.Info(clock.ToString());
+
+            syncMode = SynchronizationMode.SeekStart;
+
+            InitializeOperation();
+            SetThresholds(StartClockDifferencePause, StartClockDifferenceResume);
+            UpdateReferenceClock(clock);
+            CreateStartClockSubscription();
         }
 
-        private void ReferenceIn(TimeSpan clock)
+        public void PlayStartSynchronization()
         {
-            foreach (var clockSynchronizer in clockSync)
-                clockSynchronizer?.ReferenceIn(clock);
+            Logger.Info("");
+
+            syncMode = SynchronizationMode.PlayStart;
+
+            InitializeOperation();
+            SetThresholds(StartClockDifferencePause, StartClockDifferenceResume);
+            CreateStartClockSubscription();
         }
 
-        private void UpdateThresholds(TimeSpan haltOn, TimeSpan haltOff)
+        public void PlaySynchronization(TimeSpan startClock)
         {
-            foreach (var syncElement in clockSync)
+            Logger.Info("");
+
+            syncMode = SynchronizationMode.Play;
+
+            DisposeClockSubscription();
+            SetThresholds(PlayClockDifferencePause,PlayClockDifferenceResume);
+            UpdateReferenceClock(startClock);
+            CreatePlayClockSubscription();
+        }
+
+        public bool Synchronize(StreamType stream, CancellationToken token)
+        {
+            if (ignoreSync[(int) stream] || clockSyncs[(int) stream].IsSynchronized)
+            {
+                ignoreSync[(int) stream] = false;
+                return false;
+            }
+
+            var clock = clockSyncs[(int) stream].Clock;
+            var reference = clockSyncs[(int) stream].ReferenceClock;
+
+            Logger.Info($"{stream}: {syncMode} sync {clock} with {reference}");
+            clockSyncs[(int)stream].Wait(token);
+
+            return true;
+        }
+
+
+        private void ClockStartMonitor(TimeSpan clock)
+        {
+            if (syncMode == SynchronizationMode.Play)
+                return;
+            
+            if (clock < playerGeneratedClock)
+            {
+                playerGeneratedClock = clock;
+                accumulatedStartDuration = TimeSpan.Zero;
+            }
+
+            accumulatedStartDuration += clock - playerGeneratedClock;
+
+            if (accumulatedStartDuration >= ClockRunningThreshold)
+            {
+                PlaySynchronization(clock);
+                return;
+            }
+
+            // Self clock streams if clock has not started. 
+            var audioSync = clockSyncs[(int) StreamType.Video].IsSynchronized;
+            var videoSync = clockSyncs[(int) StreamType.Audio].IsSynchronized;
+            if (audioSync || videoSync) 
+                return;
+
+            // Self clock occurs only if BOTH streams have seen valid packets
+            // preventing streams getting out of sync
+            var audioTicks = GetLastTicks(StreamType.Audio);
+            var videoTicks = GetLastTicks(StreamType.Video);
+            if (audioTicks == long.MinValue || videoTicks == long.MinValue)
+                return;
+
+            if (!PlayerClock.IsClockValid(clock))
+            {
+                if (invalidClockReSyncCount <= 0)
+                    return;
+
+                invalidClockReSyncCount--;
+            }
+
+            var audioClock = TimeSpan.FromTicks(audioTicks);
+            var videoClock = TimeSpan.FromTicks(videoTicks);
+
+            Logger.Info($"Clock ReSync. Audio {audioClock} Video {videoClock}");
+            clockSyncs[(int) StreamType.Video].UpdateReferenceClock(videoClock);
+            clockSyncs[(int) StreamType.Audio].UpdateReferenceClock(audioClock);
+        }
+
+        private void UpdateReferenceClock(TimeSpan clock)
+        {
+            foreach (var syncEntry in clockSyncs)
+            {
+                syncEntry?.UpdateReferenceClock(clock);
+            }
+        }
+
+        private void SetThresholds(TimeSpan haltOn, TimeSpan haltOff)
+        {
+            foreach (var syncElement in clockSyncs)
             {
                 syncElement?.SetThresholds(haltOn, haltOff);
             }
+        }
+
+        private void InitializeSyncElements()
+        {
+            foreach (var syncElement in clockSyncs)
+            {
+                syncElement?.Initialize();
+            }
+        }
+
+        private void DisposeClockSubscription()
+        {
+            playerClock.Reset();
+
+            clockSubscription?.Dispose();
+            clockSubscription = null;
         }
 
         public void Reset()
         {
             Logger.Info("");
 
-            clockSubscription?.Dispose();
-            clockSubscription = null;
+            DisposeClockSubscription();
 
-            clockFilter.Disable();
-            clockFilter.Reset();
-
-            foreach (var syncElement in clockSync)
-            {
-                syncElement?.Initialize();
-            }
+            InitializeSyncElements();
         }
-
-        public void SetInitialClock(TimeSpan initClock) =>
-            clockFilter.SetInitialClock(initClock);
-
+        
         public void Dispose()
         {
-            clockSubscription?.Dispose();
+            DisposeClockSubscription();
+            playerClock.Dispose();
         }
     }
 }

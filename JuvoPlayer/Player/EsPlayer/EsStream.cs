@@ -120,9 +120,6 @@ namespace JuvoPlayer.Player.EsPlayer
                 default:
                     throw new ArgumentException($"Stream Type {streamType} is unsupported");
             }
-
-            //wakeup = new ManualResetEventSlim(false);
-            //barrier = new PacketBarrier(TransferChunk);
         }
 
         /// <summary>
@@ -360,18 +357,11 @@ namespace JuvoPlayer.Player.EsPlayer
                     if (!shouldContinue)
                         break;
 
-                    if (synchronizer.IsSynchronized(streamType))
-                        continue;
-
-                    logger.Info(
-                        $"{streamType}: Buffer {dataBuffer.BufferFill()}% {dataBuffer.CurrentBufferedDuration()} {dataBuffer.BufferTimeRange}");
-
-
-                    synchronizer.Synchronize(streamType, token);
-
-
-                    logger.Info(
-                        $"{streamType}: Buffer {dataBuffer.BufferFill()}% {dataBuffer.CurrentBufferedDuration()} {dataBuffer.BufferTimeRange}");
+                    if (synchronizer.Synchronize(streamType, token))
+                    {
+                        logger.Info(
+                            $"{streamType}: Buffer {dataBuffer.FillLevel()}% {dataBuffer.Duration()}");
+                    }
                 }
             }
             catch (InvalidOperationException e)
@@ -402,7 +392,7 @@ namespace JuvoPlayer.Player.EsPlayer
             }
 
             logger.Info(
-                $"{streamType}: Terminated. Buffer {dataBuffer.BufferFill()}% {dataBuffer.CurrentBufferedDuration()} {dataBuffer.BufferTimeRange}");
+                $"{streamType}: Terminated. Buffer {dataBuffer.FillLevel()}% {dataBuffer.Duration()}");
         }
 
         private async Task<bool> ProcessNextPacket(CancellationToken token)

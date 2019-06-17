@@ -16,6 +16,8 @@
  */
 
 using System;
+using System.Collections.Generic;
+using System.Security.Cryptography;
 using System.Threading;
 using System.Threading.Tasks;
 using JuvoLogger;
@@ -56,48 +58,57 @@ namespace JuvoPlayer.Tests.Utils
 
         public async Task Execute(TestContext context)
         {
+            List<(TimeSpan clock, double diff)> clocks = new List<(TimeSpan clock, double diff)>();
+
             var service = context.Service;
             _logger.Info($"Seeking to {SeekPosition}");
 
-            using (var timeoutCts = new CancellationTokenSource())
-            using (var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(timeoutCts.Token, context.Token))
+            try
             {
-                // Test timeout is split into await SeekTo and play to requested seek
-                // location. Requested seek position may differ from
-                // seek position issued to player. Difference can be 10s+
-                // Encrypted streams (Widevine in particular) may have LONG license
-                // installation times (10s+).
-                // If both difference accumulate to context.Timeout s+, failure will occur
-                timeoutCts.CancelAfter(context.Timeout + context.Timeout);
-
-                await service.SeekTo(SeekPosition).WithCancellation(linkedCts.Token);
-
-
-                // Pause is a "legal" state upon startup. Buffers may be empty.
-                var state = service.State;
-                if (!(state == PlayerState.Playing ||
-                      state == PlayerState.Paused))
+                using (var timeoutCts = new CancellationTokenSource())
+                using (var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(timeoutCts.Token, context.Token))
                 {
-                    return;
-                }
+                    timeoutCts.CancelAfter(context.Timeout);
 
-                var seekPos = SeekPosition;
-                for (var i = 0; i < 200; i++)
-                {
-                    var curPos = service.CurrentPosition;
-                    var diffMs = Math.Abs((curPos - seekPos).TotalMilliseconds);
+                    await service.SeekTo(SeekPosition).WithCancellation(linkedCts.Token);
 
-                    // Ignore sub second component. They bite!
-                    // Measuring with 0.5s accuracy generates random clock
-                    // misses of 0.05xx s resulting in test failure.
-                    if (diffMs < 1000)
+                    // Pause is a "legal" state upon startup. Buffers may be empty.
+                    var state = service.State;
+                    if (!(state == PlayerState.Playing ||
+                          state == PlayerState.Paused))
+                    {
                         return;
+                    }
 
-                    await Task.Delay(200, linkedCts.Token);
+                    var iterations = (int)(context.Timeout.TotalSeconds / 200);
 
+                    var seekPos = SeekPosition;
+                    for (var i = 0; i < iterations; i++)
+                    {
+                        var curPos = service.CurrentPosition;
+                        var diffMs = Math.Abs((curPos - seekPos).TotalMilliseconds);
+
+                        if (diffMs <= 2000)
+                            return;
+
+                        clocks.Add((curPos, diffMs));
+
+                        await Task.Delay(200, linkedCts.Token);
+
+                    }
+
+                    throw new Exception("Seek failed");
                 }
-
-                throw new Exception("Seek failed");
+            }
+            catch (Exception)
+            {
+                _logger.Error($"Timeout: {context.Timeout}");
+                _logger.Error($"Seek To: {SeekPosition}");
+                foreach (var clock in clocks)
+                {
+                    _logger.Error($"Clock: {clock.clock} Diff: {clock.diff}");
+                }
+                throw;
             }
         }
 
