@@ -80,10 +80,9 @@ namespace JuvoPlayer.Tests.Utils
                         return;
                     }
 
-                    var iterations = (int)(context.Timeout.TotalSeconds / 200);
-
+                    
                     var seekPos = SeekPosition;
-                    for (var i = 0; i < iterations; i++)
+                    while(true)
                     {
                         var curPos = service.CurrentPosition;
                         var diffMs = Math.Abs((curPos - seekPos).TotalMilliseconds);
@@ -96,8 +95,6 @@ namespace JuvoPlayer.Tests.Utils
                         await Task.Delay(200, linkedCts.Token);
 
                     }
-
-                    throw new Exception("Seek failed");
                 }
             }
             catch (Exception)
