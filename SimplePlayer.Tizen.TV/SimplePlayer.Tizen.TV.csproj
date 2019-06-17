@@ -3,7 +3,7 @@
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <TargetFramework>tizen50</TargetFramework>
-    <Version>1.4.7</Version>
+    <Version>1.4.8</Version>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugType>portable</DebugType>
@@ -20,11 +20,10 @@
   </ItemGroup>
   <!-- Include Nuget Package for Tizen Project building -->
   <ItemGroup>
-    <PackageReference Include="Tizen.NET.Sdk" Version="1.0.1" />
-    <PackageReference Include="Tizen.NET.TV" Version="4.4.0.1341">
+    <PackageReference Include="Tizen.NET.Sdk" Version="1.0.1">
       <ExcludeAssets>Runtime</ExcludeAssets>
     </PackageReference>
-    <PackageReference Include="Tizen.TV.Multimedia" Version="1.1.6">
+    <PackageReference Include="Tizen.NET.TV" Version="5.5.0.4997532">
       <ExcludeAssets>Runtime</ExcludeAssets>
     </PackageReference>
     <PackageReference Include="Xamarin.Forms" Version="3.5.0.274416" />

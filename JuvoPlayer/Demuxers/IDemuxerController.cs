@@ -16,6 +16,7 @@
  */
 
 using System;
+using System.Threading;
 using System.Threading.Tasks;
 using JuvoPlayer.Common;
 
@@ -30,6 +31,7 @@ namespace JuvoPlayer.Demuxers
         Task Flush();
         void Pause();
         void Resume();
+        Task<TimeSpan> Seek(TimeSpan time, CancellationToken token);
 
         IObservable<StreamConfig> StreamConfigReady();
         IObservable<TimeSpan> ClipDurationFound();

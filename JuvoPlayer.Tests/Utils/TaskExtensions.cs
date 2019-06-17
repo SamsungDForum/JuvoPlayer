@@ -1,6 +1,7 @@
-﻿/*!
- * https://github.com/SamsungDForum/JuvoPlayer
- * Copyright 2018, Samsung Electronics Co., Ltd
+/*!
+ *
+ * [https://github.com/SamsungDForum/JuvoPlayer])
+ * Copyright 2019, Samsung Electronics Co., Ltd
  * Licensed under the MIT license
  *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
@@ -13,21 +14,24 @@
  * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
  */
 
-using System;
 using System.Threading.Tasks;
-using XamarinPlayer.Services;
 
-namespace XamarinPlayer.Common
+namespace JuvoPlayer.Tests.Utils
 {
-    public interface ISeekLogicClient
+    public static class TaskExtensions
     {
-        TimeSpan CurrentPositionUI { get; set; }
-        TimeSpan CurrentPositionPlayer { get; }
-        TimeSpan Duration { get; }
-        Task Seek(TimeSpan to);
-        PlayerState State { get; }
-        bool IsSeekingSupported { get; }
+        public static Task Never()
+        {
+            return Never<bool>();
+        }
+
+        public static Task<T> Never<T>()
+        {
+            var tcs = new TaskCompletionSource<T>();
+            return tcs.Task;
+        }
     }
 }

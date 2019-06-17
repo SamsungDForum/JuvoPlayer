@@ -35,12 +35,12 @@ namespace JuvoPlayer.Demuxers.FFmpeg
         private AVFormatContext* formatContext;
         private AVIOContextWrapper avioContext;
 
-        private const int MicrosecondsPerSecond = 1000000;
+        private const int MillisecondsPerSecond = 1000;
 
-        private readonly AVRational microsBase = new AVRational
+        private readonly AVRational millsBase = new AVRational
         {
             num = 1,
-            den = MicrosecondsPerSecond
+            den = MillisecondsPerSecond
         };
 
         public AVFormatContextWrapper()
@@ -59,7 +59,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg
         public TimeSpan MaxAnalyzeDuration
         {
             get => TimeSpan.FromMilliseconds(formatContext->max_analyze_duration);
-            set => formatContext->max_analyze_duration = (long)value.TotalMilliseconds;
+            set => formatContext->max_analyze_duration = (long) value.TotalMilliseconds;
         }
 
         public IAVIOContext AVIOContext
@@ -73,7 +73,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg
                 {
                     if (value.GetType() != typeof(AVIOContextWrapper))
                         throw new FFmpegException($"Unexpected context type. Got {value.GetType()}");
-                    avioContext = (AVIOContextWrapper)value;
+                    avioContext = (AVIOContextWrapper) value;
                     formatContext->pb = avioContext.Context;
                 }
             }
@@ -103,7 +103,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg
                     InitData = new byte[systemData.pssh_box_size]
                 };
 
-                Marshal.Copy((IntPtr)systemData.pssh_box, drmData.InitData, 0, (int)systemData.pssh_box_size);
+                Marshal.Copy((IntPtr) systemData.pssh_box, drmData.InitData, 0, (int) systemData.pssh_box_size);
                 result.Add(drmData);
             }
 
@@ -150,7 +150,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg
                 var dict = Interop.FFmpeg.av_dict_get(formatContext->streams[i]->metadata, "variant_bitrate", null, 0);
                 if (dict == null)
                     return -1;
-                var stringValue = Marshal.PtrToStringAnsi((IntPtr)dict->value);
+                var stringValue = Marshal.PtrToStringAnsi((IntPtr) dict->value);
                 if (!ulong.TryParse(stringValue, out var value))
                 {
                     Logger.Error($"Expected to received an ulong, but got {stringValue}");
@@ -176,8 +176,8 @@ namespace JuvoPlayer.Demuxers.FFmpeg
 
         public StreamConfig ReadConfig(int idx)
         {
-            if (idx < 0 || idx >= formatContext->nb_streams)
-                throw new FFmpegException($"Wrong stream index! nb_streams = {formatContext->nb_streams}, idx = {idx}");
+            VerifyStreamIndex(idx);
+
             var stream = formatContext->streams[idx];
             switch (stream->codec->codec_type)
             {
@@ -207,27 +207,75 @@ namespace JuvoPlayer.Demuxers.FFmpeg
                 if (streamIndexes.All(index => index != streamIndex))
                     continue;
                 var stream = formatContext->streams[streamIndex];
-                var pts = Interop.FFmpeg.av_rescale_q(pkt.pts, stream->time_base, microsBase) / 1000;
-                var dts = Interop.FFmpeg.av_rescale_q(pkt.dts, stream->time_base, microsBase) / 1000;
-                var duration = Interop.FFmpeg.av_rescale_q(pkt.duration, stream->time_base, microsBase) / 1000;
+                var pts = Rescale(pkt.pts, stream);
+                var dts = Rescale(pkt.dts, stream);
                 var sideData = Interop.FFmpeg.av_packet_get_side_data(&pkt,
                     AVPacketSideDataType.AV_PKT_DATA_ENCRYPT_INFO, null);
                 var packet = sideData != null ? CreateEncryptedPacket(sideData) : new Packet();
                 packet.StreamType = stream->codec->codec_type == AVMediaType.AVMEDIA_TYPE_AUDIO
                     ? StreamType.Audio
                     : StreamType.Video;
-                packet.Pts = TimeSpan.FromMilliseconds(pts >= 0 ? pts : 0);
-                packet.Dts = TimeSpan.FromMilliseconds(dts >= 0 ? dts : 0);
-                packet.Duration = TimeSpan.FromMilliseconds(duration);
+                packet.Pts = pts.Ticks >= 0 ? pts : TimeSpan.Zero;
+                packet.Dts = dts.Ticks >= 0 ? dts : TimeSpan.Zero;
+                packet.Duration = Rescale(pkt.duration, stream);
                 packet.IsKeyFrame = pkt.flags == 1;
-                packet.Storage = new FFmpegDataStorage { Packet = pkt, StreamType = packet.StreamType };
+                packet.Storage = new FFmpegDataStorage {Packet = pkt, StreamType = packet.StreamType};
                 return packet;
             } while (true);
         }
 
+        private TimeSpan Rescale(long ffmpegTime, AVStream* stream)
+        {
+            var rescalled = Interop.FFmpeg.av_rescale_q(ffmpegTime, stream->time_base, millsBase);
+            return TimeSpan.FromMilliseconds(rescalled);
+        }
+
+        public void Seek(int idx, TimeSpan time)
+        {
+            VerifyStreamIndex(idx);
+            HandleSeek(idx, time);
+        }
+
+        private void VerifyStreamIndex(int idx)
+        {
+            if (idx < 0 || idx >= formatContext->nb_streams)
+                throw new FFmpegException($"Wrong stream index! nb_streams = {formatContext->nb_streams}, idx = {idx}");
+        }
+
+        private void HandleSeek(int idx, TimeSpan time)
+        {
+            var (target, flags) = CalculateTargetAndFlags(idx, time);
+            var ret = Interop.FFmpeg.av_seek_frame(formatContext, idx, target, flags);
+
+            if (ret != 0)
+                throw new FFmpegException($"av_seek_frame returned {ret}");
+        }
+
+        private (long, int) CalculateTargetAndFlags(int idx, TimeSpan time)
+        {
+            var stream = formatContext->streams[idx];
+            var target =
+                Interop.FFmpeg.av_rescale_q((long) (time.TotalMilliseconds), millsBase, stream->time_base);
+
+            if (target < stream->first_dts)
+                return (stream->first_dts, FFmpegMacros.AVSEEK_FLAG_BACKWARD);
+
+            if (stream->index_entries != null && stream->nb_index_entries > 0)
+            {
+                var lastTimestamp = stream->index_entries[stream->nb_index_entries - 1].timestamp;
+                if (target > lastTimestamp)
+                    return (lastTimestamp, FFmpegMacros.AVSEEK_FLAG_BACKWARD);
+            }
+
+            if (stream->duration > 0 && target > stream->duration)
+               return (stream->duration, FFmpegMacros.AVSEEK_FLAG_BACKWARD);
+
+            return (target, FFmpegMacros.AVSEEK_FLAG_ANY);
+        }
+
         private static Packet CreateEncryptedPacket(byte* sideData)
         {
-            var encInfo = (AVEncInfo*)sideData;
+            var encInfo = (AVEncInfo*) sideData;
             int subsampleCount = encInfo->subsample_count;
             var keyId = encInfo->kid.ToArray();
             var iv = new byte[encInfo->iv_size];
@@ -257,7 +305,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg
         private StreamConfig ReadAudioConfig(AVStream* stream)
         {
             var config = new AudioStreamConfig();
-            var sampleFormat = (AVSampleFormat)stream->codecpar->format;
+            var sampleFormat = (AVSampleFormat) stream->codecpar->format;
             config.Codec = ConvertAudioCodec(stream->codecpar->codec_id);
             if (stream->codecpar->bits_per_coded_sample > 0)
                 config.BitsPerChannel = stream->codecpar->bits_per_coded_sample;
@@ -272,7 +320,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg
             if (stream->codecpar->extradata_size > 0)
             {
                 config.CodecExtraData = new byte[stream->codecpar->extradata_size];
-                Marshal.Copy((IntPtr)stream->codecpar->extradata, config.CodecExtraData, 0,
+                Marshal.Copy((IntPtr) stream->codecpar->extradata, config.CodecExtraData, 0,
                     stream->codecpar->extradata_size);
             }
 
@@ -294,7 +342,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg
             if (stream->codecpar->extradata_size > 0)
             {
                 config.CodecExtraData = new byte[stream->codecpar->extradata_size];
-                Marshal.Copy((IntPtr)stream->codecpar->extradata, config.CodecExtraData, 0,
+                Marshal.Copy((IntPtr) stream->codecpar->extradata, config.CodecExtraData, 0,
                     stream->codecpar->extradata_size);
             }
 

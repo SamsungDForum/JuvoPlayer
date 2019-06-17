@@ -92,7 +92,7 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
             });
         }
 
-        [Test, TestCaseSource(nameof(DashClips))]
+        [Test, TestCaseSource(nameof(AllClips))]
         public void Seek_Random10Times_Seeks(string clipTitle)
         {
             RunPlayerTest(clipTitle, async context =>
@@ -107,7 +107,7 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
             });
         }
 
-        [Test, TestCaseSource(nameof(DashClips))]
+        [Test, TestCaseSource(nameof(AllClips))]
         public void Seek_DisposeDuringSeek_Disposes(string clipTitle)
         {
             RunPlayerTest(clipTitle, async context =>
@@ -121,7 +121,7 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
             });
         }
 
-        [Test, TestCaseSource(nameof(DashClips))]
+        [Test, TestCaseSource(nameof(AllClips))]
         public void Seek_Forward_Seeks(string clipTitle)
         {
             RunPlayerTest(clipTitle, async context =>
@@ -140,7 +140,7 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
             });
         }
 
-        [Test, TestCaseSource(nameof(DashClips))]
+        [Test, TestCaseSource(nameof(AllClips))]
         public void Seek_Backward_Seeks(string clipTitle)
         {
             RunPlayerTest(clipTitle, async context =>
@@ -159,8 +159,8 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
             });
         }
 
-        [Test, TestCaseSource(nameof(DashClips))]
-        public void Seek_ToTheEnd_Seeks(string clipTitle)
+        [Test, TestCaseSource(nameof(AllClips))]
+        public void Seek_ToTheEnd_SeeksOrCompletes(string clipTitle)
         {
             RunPlayerTest(clipTitle, async context =>
             {
@@ -170,7 +170,15 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
                 {
                     var seekOperation = new SeekOperation();
                     seekOperation.Prepare(context);
-                    await seekOperation.Execute(context);
+                    var seekTask = seekOperation.Execute(context);
+
+                    var clipCompletedTask = service.StateChanged()
+                        .AsCompletion()
+                        .Timeout(context.Timeout)
+                        .FirstAsync()
+                        .ToTask();
+
+                    await await Task.WhenAny(seekTask, clipCompletedTask);
                 }
                 catch (SeekException)
                 {
@@ -179,7 +187,7 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
             });
         }
 
-        [Test, TestCaseSource(nameof(DashClips))]
+        [Test, TestCaseSource(nameof(AllClips))]
         public void Seek_EOSReached_StateChangedCompletes(string clipTitle)
         {
             RunPlayerTest(clipTitle, async context =>
@@ -194,23 +202,23 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
                     .FirstAsync()
                     .ToTask();
 
+                await await Task.WhenAny(seekOperation.Execute(context), playbackErrorTask);
+
                 var clipCompletedTask = service.StateChanged()
                     .AsCompletion()
-                    .Timeout(TimeSpan.FromSeconds(10))
+                    .Timeout(context.Timeout)
                     .FirstAsync()
                     .ToTask();
 
-                await Task.WhenAny(seekOperation.Execute(context), playbackErrorTask);
-                await Task.WhenAny(clipCompletedTask, playbackErrorTask);
+                await await Task.WhenAny(clipCompletedTask, playbackErrorTask);
             });
         }
 
         [TestCase("Clean byte range MPEG DASH")]
-        [Repeat(3)]
         public void Random_20RandomOperations_ExecutedCorrectly(string clipTitle)
         {
             var operations =
-                GenerateOperations(20, new List<Type> { typeof(StopOperation), typeof(PrepareOperation) });
+                GenerateOperations(20, new List<Type> {typeof(StopOperation), typeof(PrepareOperation)});
 
             try
             {
@@ -218,14 +226,12 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
                 RunRandomOperationsTest(clipTitle, operations, true);
                 _logger.Info("Done: " + NUnit.Framework.TestContext.CurrentContext.Test.Name);
             }
-            catch (Exception e)
+            catch (Exception)
             {
                 _logger.Error("Error " + clipTitle);
-                _logger.Error(e);
                 DumpOperations(clipTitle, operations);
                 throw;
             }
-
         }
 
         private void RunRandomOperationsTest(string clipTitle, IList<TestOperation> operations, bool shouldPrepare)

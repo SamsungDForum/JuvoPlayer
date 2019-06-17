@@ -15,7 +15,7 @@
     <Company>Samsung Electronics VD</Company>
     <NeutralLanguage>en</NeutralLanguage>
     <Description>JuvoPlayerXamarin.Tizen.TV</Description>
-    <Version>1.4.7</Version>
+    <Version>1.4.8</Version>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugType>portable</DebugType>
@@ -52,7 +52,6 @@
   <ItemGroup>
     <ProjectReference Include="..\..\JuvoLogger.Tizen\JuvoLogger.Tizen.csproj" />
     <ProjectReference Include="..\..\JuvoPlayer\JuvoPlayer.csproj" />
-    <ProjectReference Include="..\XamarinPlayer\XamarinPlayer.csproj" />
   </ItemGroup>
   <ItemGroup>
     <Compile Update="Properties\Resources.Designer.cs">

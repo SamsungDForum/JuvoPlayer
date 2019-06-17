@@ -20,6 +20,7 @@ using System.Collections.Generic;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
 using System.Reactive.Threading.Tasks;
+using System.Threading;
 using System.Threading.Tasks;
 using JuvoPlayer.Common;
 using JuvoPlayer.Demuxers;
@@ -363,6 +364,66 @@ namespace JuvoPlayer.Tests.UnitTests
                     {
                         // ignored
                     }
+                }
+            });
+        }
+
+        [Test]
+        public void Seek_Called_DemuxesNextPacket()
+        {
+            AsyncContext.Run(async () =>
+            {
+                var demuxerStub = Substitute.For<IDemuxer>();
+                demuxerStub.IsInitialized().Returns(true);
+                demuxerStub.NextPacket().Returns(Task.FromResult(new Packet()));
+                demuxerStub.Completion.Returns(Utils.TaskExtensions.Never());
+
+                using (var controller = new DemuxerController(demuxerStub))
+                {
+                    var packetReady = controller.PacketReady().FirstAsync().ToTask();
+
+                    await controller.Seek(TimeSpan.FromSeconds(5), CancellationToken.None);
+
+                    var packet = await packetReady;
+                    Assert.That(packet, Is.Not.Null);
+                }
+            });
+        }
+
+        [Test]
+        public void Seek_Called_ListensForEos()
+        {
+            AsyncContext.Run(async () =>
+            {
+                var demuxerStub = Substitute.For<IDemuxer>();
+                demuxerStub.NextPacket().Returns(Utils.TaskExtensions.Never<Packet>());
+                demuxerStub.Completion.Returns(Task.CompletedTask);
+
+                using (var controller = new DemuxerController(demuxerStub))
+                {
+                    var packetReady = controller.PacketReady().FirstAsync().ToTask();
+
+                    await controller.Seek(TimeSpan.FromSeconds(5), CancellationToken.None);
+
+                    var packet = await packetReady;
+                    Assert.That(packet, Is.Null);
+                }
+            });
+        }
+
+        [Test]
+        public void Seek_CalledWhenPaused_DoesntDemuxNextPacket()
+        {
+            AsyncContext.Run(async () =>
+            {
+                var demuxerMock = Substitute.For<IDemuxer>();
+                demuxerMock.IsInitialized().Returns(true);
+
+                using (var controller = new DemuxerController(demuxerMock))
+                {
+                    controller.Pause();
+                    await controller.Seek(TimeSpan.FromSeconds(5), CancellationToken.None);
+                    await demuxerMock.DidNotReceive().NextPacket();
                 }
             });
         }

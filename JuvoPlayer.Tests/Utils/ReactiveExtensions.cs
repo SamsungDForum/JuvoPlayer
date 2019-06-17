@@ -1,5 +1,6 @@
 /*!
- * https://github.com/SamsungDForum/JuvoPlayer
+ *
+ * [https://github.com/SamsungDForum/JuvoPlayer])
  * Copyright 2018, Samsung Electronics Co., Ltd
  * Licensed under the MIT license
  *
@@ -13,22 +14,29 @@
  * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
  */
 
-﻿namespace XamarinPlayer.Services
-{
-    public class StreamDescription
-    {
-        public enum StreamType
-        {
-            Audio,
-            Video,
-            Subtitle
-        };
+using System;
+using System.Reactive;
+using System.Reactive.Linq;
 
-        public int Id { get; set; }
-        public string Description { get; set; }
-        public StreamType Type { get; set; }
-        public bool Default { get; set; }
+namespace JuvoPlayer.Tests.Utils
+{
+    public static class ReactiveExtensions
+    {
+        public static IObservable<Unit> AsCompletion<T>(this IObservable<T> observable)
+        {
+            return Observable.Create<Unit>(observer =>
+            {
+                void OnCompleted()
+                {
+                    observer.OnNext(Unit.Default);
+                    observer.OnCompleted();
+                }
+
+                return observable.Subscribe(_ => { }, observer.OnError, OnCompleted);
+            });
+        }
     }
 }
