@@ -39,7 +39,7 @@ namespace JuvoPlayer.Player.EsPlayer
     /// </summary>
     internal sealed class EsStreamController : IDisposable
     {
-        private class ClockExtractor : ClockSource
+        private class ClockExtractor : IClockSource
         {
             private ESPlayer.ESPlayer player;
 
@@ -135,6 +135,8 @@ namespace JuvoPlayer.Player.EsPlayer
             dataMonitor = new DataMonitor(stateChangedSubject);
 
             AttachEventHandlers();
+
+            dataMonitor.AllowedEvents(DataEvent.All);
         }
 
         private void CreatePlayer()
@@ -322,16 +324,16 @@ namespace JuvoPlayer.Player.EsPlayer
                 await dataMonitor.SeekInitialize();
 
                 await SeekStreamInitialize(token);
-                
+
                 dataMonitor.Reset();
 
                 time = await Client.Seek(time, token);
-                
+
                 await dataMonitor.SeekStart(time);
 
                 await StreamSeek(time, token);
-                
-                dataMonitor.SeekComplete();
+
+                await dataMonitor.SeekComplete();
             }
             catch (SeekException e)
             {
@@ -505,15 +507,18 @@ namespace JuvoPlayer.Player.EsPlayer
                 using (await asyncOpSerializer.LockAsync(token))
                 {
                     dataMonitor.Reset();
-                    playerClock.ConnectClockSource();
+
                     dataMonitor.DataSynchronizer.PlayStartSynchronization();
 
                     logger.Info("Player.PrepareAsync()");
-                    
+
                     await player.PrepareAsync(OnReadyToStartStream).WithCancellation(token);
-                    
+
+                    playerClock.ConnectClockSource();
+                    dataMonitor.DataSynchronizer.PlaySynchronization();
+
                     stateChangedSubject.OnNext(PlayerState.Prepared);
-                }                
+                }
             }
             catch (InvalidOperationException ioe)
             {
@@ -568,7 +573,7 @@ namespace JuvoPlayer.Player.EsPlayer
                     playerClock.DisconnectClockSource();
 
                     token.ThrowIfCancellationRequested();
-                    
+
                     RecreatePlayer();
 
                     playerClock.ConnectClockSource();
@@ -576,7 +581,7 @@ namespace JuvoPlayer.Player.EsPlayer
                     dataMonitor.DataSynchronizer.PlayStartSynchronization();
 
                     logger.Info("Player.PrepareAsync()");
-                    
+
                     await player.PrepareAsync(OnReadyToStartStream).WithCancellation(token);
 
                     logger.Info("Player.PrepareAsync() Completed");
@@ -645,10 +650,13 @@ namespace JuvoPlayer.Player.EsPlayer
             {
                 logger.Info("Player.SeekAsync()");
 
+                playerClock.DisconnectClockSource();
                 await player.SeekAsync(time, OnReadyToSeekStream).WithCancellation(token);
 
                 logger.Info("Player.SeekAsync() Completed");
+                playerClock.ConnectClockSource();
                 StartClockGenerator();
+                dataMonitor.DataSynchronizer.PlaySynchronization();
             }
         }
 

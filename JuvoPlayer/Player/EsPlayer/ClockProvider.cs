@@ -17,7 +17,6 @@
 
 using System;
 using System.Reactive.Linq;
-using System.Reactive;
 using System.Reactive.Subjects;
 using System.Threading;
 using JuvoLogger;
@@ -27,31 +26,31 @@ using static Configuration.ClockProviderConfig;
 
 namespace JuvoPlayer.Player.EsPlayer
 {
-    internal interface ClockSource
+    internal interface IClockSource
     {
-        void GetClock( out TimeSpan clock);
+        void GetClock(out TimeSpan clock);
     }
 
-    internal class ClockProvider :IDisposable, IReferenceCountable
+    internal class ClockProvider : IDisposable, IReferenceCountable
     {
         private readonly ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
         public static readonly TimeSpan InvalidClock = TimeSpan.MaxValue;
 
-        private ClockSource clockProvider;
+        private IClockSource clockProvider;
 
         private readonly IConnectableObservable<long> tickSource;
         private readonly IConnectableObservable<TimeSpan> clockSource;
         private Subject<long> tickPipe = new Subject<long>();
         private BehaviorSubject<TimeSpan> clockPipe = new BehaviorSubject<TimeSpan>(InvalidClock);
 
-        public IObservable<long> TickSource() =>
-            tickSource
-                .RefCount();
+        public IConnectableObservable<long> TickSource() =>
+            tickSource;
 
         public IConnectableObservable<TimeSpan> ClockSource() =>
             clockSource;
-  
+
         private IDisposable clockSourceConnection;
+        private IDisposable tickSourceConnection;
 
         private static volatile ClockProvider clockProviderInstance;
         private static volatile object instanceLock = new object();
@@ -80,15 +79,17 @@ namespace JuvoPlayer.Player.EsPlayer
         public ClockProvider()
         {
             tickSource = Observable.Interval(ClockInterval)
-                .Multicast(tickPipe);    
+                .Multicast(tickPipe);
 
-            clockSource =  Observable.Interval(ClockInterval)
-                .Select(_ => GetClockValue())                  
+            clockSource = Observable.Interval(ClockInterval)
+                .Select(_ => GetClockValue())
                 .Multicast(clockPipe);
+
+            Volatile.Write(ref tickSourceConnection, tickSource.Connect());
         }
 
-        public void SetSourceClock(ClockSource clock) =>
-            Interlocked.Exchange(ref clockProvider,clock);
+        public void SetSourceClock(IClockSource clock) =>
+            Interlocked.Exchange(ref clockProvider, clock);
 
         public void ConnectClockSource()
         {
@@ -130,11 +131,14 @@ namespace JuvoPlayer.Player.EsPlayer
             lock (instanceLock)
             {
                 Volatile.Read(ref clockSourceConnection)?.Dispose();
-                Interlocked.Exchange(ref clockProvider,null);
-                
+                Interlocked.Exchange(ref clockProvider, null);
+
+                Volatile.Read(ref tickSourceConnection)?.Dispose();
+                Interlocked.Exchange(ref tickSourceConnection, null);
+
                 Volatile.Read(ref tickPipe)?.Dispose();
                 Volatile.Read(ref clockPipe)?.Dispose();
-                
+
                 Interlocked.Exchange(ref clockProviderInstance, null);
             }
         }
@@ -143,22 +147,21 @@ namespace JuvoPlayer.Player.EsPlayer
     internal class PlayerClock : IDisposable
     {
         private static readonly long DefaultEmit = default(DateTimeOffset).Ticks;
-        
+
         private long lastEmit = DefaultEmit;
         private long initialClockTicks = ClockProvider.InvalidClock.Ticks;
         private volatile bool enabled;
         private readonly ClockProvider clockProvider;
 
-        public IObservable<TimeSpan> ClockSource() =>
+        public IConnectableObservable<TimeSpan> ClockSource() =>
             clockProvider
-                .ClockSource()
-                .AsObservable();
+                .ClockSource();
 
-        public IObservable<long> TickSource() => 
+        public IConnectableObservable<long> TickSource() =>
             clockProvider
                 .TickSource();
 
-        public void SetClockSource(ClockSource clockSource) =>
+        public void SetClockSource(IClockSource clockSource) =>
             clockProvider.SetSourceClock(clockSource);
 
         public void ConnectClockSource() =>
@@ -200,7 +203,7 @@ namespace JuvoPlayer.Player.EsPlayer
             if (now - Volatile.Read(ref lastEmit) < samplePeriod.Ticks)
                 return false;
 
-            Interlocked.Exchange(ref lastEmit,now);
+            Interlocked.Exchange(ref lastEmit, now);
             return true;
         }
 
@@ -236,7 +239,7 @@ namespace JuvoPlayer.Player.EsPlayer
             source
                 .Where(cf.ClockWhenInitialReached);
 
-        public static IObservable<TimeSpan> EmitThenSample(this IObservable<TimeSpan> source, PlayerClock cf,TimeSpan samplePeriod) =>
+        public static IObservable<TimeSpan> EmitThenSample(this IObservable<TimeSpan> source, PlayerClock cf, TimeSpan samplePeriod) =>
             source
                 .Where(_ => cf.IsSamplePeriodExpired(samplePeriod));
     }

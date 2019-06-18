@@ -28,6 +28,7 @@ namespace JuvoPlayer.Player.EsPlayer
     {
         public enum SynchronizationMode
         {
+            None,
             PlayStart,
             SeekStart,
             Play
@@ -39,32 +40,32 @@ namespace JuvoPlayer.Player.EsPlayer
         private readonly long[] lastClocksTicks = new long[(int)StreamType.Count];
         private readonly PlayerClock playerClock = new PlayerClock();
         private readonly bool[] ignoreSync = new bool[(int)StreamType.Count];
+        private DateTimeOffset lastReSyncTime;
 
         private IDisposable clockSubscription;
 
         private SynchronizationMode syncMode = SynchronizationMode.PlayStart;
 
-        private TimeSpan playerGeneratedClock;
-        private TimeSpan accumulatedStartDuration;
-        private int invalidClockReSyncCount;
-
         public void Initialize(StreamType stream)
         {
-            clockSyncs[(int) stream] = new ClockSynchronizer(stream);
+            clockSyncs[(int)stream] = new ClockSynchronizer(stream);
         }
-
-        private long GetLastTicks(StreamType stream) =>
-            Volatile.Read(ref lastClocksTicks[(int) stream]);
 
         public void UpdateClock(Packet packet)
         {
             // Non data packet - Ignore sync as they carry no clock.
             if (!packet.ContainsData())
             {
-                ignoreSync[(int) packet.StreamType] = true;
+                // EOS Packet. This stream has ended. "Other" streams will have nothing to sync with.
+                // Switch synchronization to mode "none"
+                if (packet is EOSPacket && syncMode != SynchronizationMode.Play)
+                    syncMode = SynchronizationMode.None;
+
+                ignoreSync[(int)packet.StreamType] = true;
+
                 return;
             }
-            
+
             var clock = packet.Dts;
 
             if (syncMode != SynchronizationMode.Play)
@@ -72,15 +73,11 @@ namespace JuvoPlayer.Player.EsPlayer
                 // In play start mode, stream may begin with non zero clock.
                 // Sync with first packet clock.
                 if (syncMode == SynchronizationMode.PlayStart &&
-                    lastClocksTicks[(int) packet.StreamType] == long.MaxValue)
+                    lastClocksTicks[(int)packet.StreamType] == long.MaxValue)
                 {
                     clockSyncs[(int)packet.StreamType].UpdateReferenceClock(clock);
+                    lastClocksTicks[(int)packet.StreamType] = clock.Ticks;
                 }
-
-                Interlocked.Exchange(ref lastClocksTicks[(int) packet.StreamType], clock.Ticks);
-
-                //if(packet.StreamType == StreamType.Video && packet.IsKeyFrame)
-                //    Logger.Info($"*** key Frame: {clock} {packet.Pts}");
             }
 
             clockSyncs[(int)packet.StreamType].UpdateClock(clock);
@@ -88,18 +85,16 @@ namespace JuvoPlayer.Player.EsPlayer
 
         private void InitializeOperation()
         {
-            playerGeneratedClock = TimeSpan.MaxValue;
-            accumulatedStartDuration = TimeSpan.Zero;
-            invalidClockReSyncCount = InvalidClockReSyncCount;
+            lastReSyncTime = DateTimeOffset.Now;
 
-            for (var i = 0; i < (int) StreamType.Count; i++)
-                Interlocked.Exchange(ref lastClocksTicks[i],long.MinValue);
+            for (var i = 0; i < (int)StreamType.Count; i++)
+                Interlocked.Exchange(ref lastClocksTicks[i], long.MinValue);
         }
 
         private void CreateStartClockSubscription()
         {
             clockSubscription = playerClock
-                .ClockSource()
+                .TickSource()
                 .Sample(TimeSpan.FromSeconds(0.1))
                 .Subscribe(ClockStartMonitor, SynchronizationContext.Current);
         }
@@ -109,7 +104,7 @@ namespace JuvoPlayer.Player.EsPlayer
             clockSubscription = playerClock
                 .ClockSource()
                 .ValidClock()
-                .Sample(ClockSampleInterval)             
+                .Sample(ClockSampleInterval)
                 .Subscribe(UpdateReferenceClock, SynchronizationContext.Current);
         }
 
@@ -136,28 +131,31 @@ namespace JuvoPlayer.Player.EsPlayer
             CreateStartClockSubscription();
         }
 
-        public void PlaySynchronization(TimeSpan startClock)
+        public void PlaySynchronization()
         {
             Logger.Info("");
 
             syncMode = SynchronizationMode.Play;
 
             DisposeClockSubscription();
-            SetThresholds(PlayClockDifferencePause,PlayClockDifferenceResume);
-            UpdateReferenceClock(startClock);
+            SetThresholds(PlayClockDifferencePause, PlayClockDifferenceResume);
+
+            clockSyncs[(int)StreamType.Video].SetReferenceClockToClock();
+            clockSyncs[(int)StreamType.Audio].SetReferenceClockToClock();
+
             CreatePlayClockSubscription();
         }
 
         public bool Synchronize(StreamType stream, CancellationToken token)
         {
-            if (ignoreSync[(int) stream] || clockSyncs[(int) stream].IsSynchronized)
+            if (ignoreSync[(int)stream] || clockSyncs[(int)stream].IsSynchronized)
             {
-                ignoreSync[(int) stream] = false;
+                ignoreSync[(int)stream] = false;
                 return false;
             }
 
-            var clock = clockSyncs[(int) stream].Clock;
-            var reference = clockSyncs[(int) stream].ReferenceClock;
+            var clock = clockSyncs[(int)stream].Clock;
+            var reference = clockSyncs[(int)stream].ReferenceClock;
 
             Logger.Info($"{stream}: {syncMode} sync {clock} with {reference}");
             clockSyncs[(int)stream].Wait(token);
@@ -165,53 +163,42 @@ namespace JuvoPlayer.Player.EsPlayer
             return true;
         }
 
-
-        private void ClockStartMonitor(TimeSpan clock)
+        private void ClockStartMonitor(long tick)
         {
-            if (syncMode == SynchronizationMode.Play)
-                return;
-            
-            if (clock < playerGeneratedClock)
+            switch (syncMode)
             {
-                playerGeneratedClock = clock;
-                accumulatedStartDuration = TimeSpan.Zero;
-            }
-
-            accumulatedStartDuration += clock - playerGeneratedClock;
-
-            if (accumulatedStartDuration >= ClockRunningThreshold)
-            {
-                PlaySynchronization(clock);
-                return;
-            }
-
-            // Self clock streams if clock has not started. 
-            var audioSync = clockSyncs[(int) StreamType.Video].IsSynchronized;
-            var videoSync = clockSyncs[(int) StreamType.Audio].IsSynchronized;
-            if (audioSync || videoSync) 
-                return;
-
-            // Self clock occurs only if BOTH streams have seen valid packets
-            // preventing streams getting out of sync
-            var audioTicks = GetLastTicks(StreamType.Audio);
-            var videoTicks = GetLastTicks(StreamType.Video);
-            if (audioTicks == long.MinValue || videoTicks == long.MinValue)
-                return;
-
-            if (!PlayerClock.IsClockValid(clock))
-            {
-                if (invalidClockReSyncCount <= 0)
+                case SynchronizationMode.Play:
                     return;
 
-                invalidClockReSyncCount--;
+                case SynchronizationMode.None:
+                    Logger.Info("Clock ReSync. Synchronization None");
+                    break;
+
+                default:
+                    // Self clock occurs only if BOTH streams have seen valid packets
+                    // preventing streams getting out of sync
+                    var minReSyncInterval = StartClockDifferencePause - TimeSpan.FromSeconds(0.1);
+                    var now = DateTimeOffset.Now;
+                    var timeSinceLastReSync = now - lastReSyncTime;
+                    if (timeSinceLastReSync < minReSyncInterval)
+                        return;
+
+                    if (!clockSyncs[(int)StreamType.Video].ClockSeen() ||
+                        !clockSyncs[(int)StreamType.Audio].ClockSeen())
+                        return;
+
+                    if (clockSyncs[(int)StreamType.Video].IsSynchronized ||
+                        clockSyncs[(int)StreamType.Audio].IsSynchronized)
+                        return;
+
+                    Logger.Info($"Clock ReSync {timeSinceLastReSync}");
+                    lastReSyncTime = now;
+                    break;
             }
 
-            var audioClock = TimeSpan.FromTicks(audioTicks);
-            var videoClock = TimeSpan.FromTicks(videoTicks);
+            clockSyncs[(int)StreamType.Video].SetReferenceClockToClock();
+            clockSyncs[(int)StreamType.Audio].SetReferenceClockToClock();
 
-            Logger.Info($"Clock ReSync. Audio {audioClock} Video {videoClock}");
-            clockSyncs[(int) StreamType.Video].UpdateReferenceClock(videoClock);
-            clockSyncs[(int) StreamType.Audio].UpdateReferenceClock(audioClock);
         }
 
         private void UpdateReferenceClock(TimeSpan clock)
@@ -254,7 +241,7 @@ namespace JuvoPlayer.Player.EsPlayer
 
             InitializeSyncElements();
         }
-        
+
         public void Dispose()
         {
             DisposeClockSubscription();

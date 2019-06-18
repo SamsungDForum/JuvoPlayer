@@ -48,11 +48,9 @@ namespace Configuration
     {
         public static TimeSpan PlayClockDifferencePause { get; set; } = TimeSpan.FromSeconds(1.25);
         public static TimeSpan PlayClockDifferenceResume { get; set; } = TimeSpan.FromSeconds(0.75);
-        public static TimeSpan ClockRunningThreshold { get; set; } = TimeSpan.FromSeconds(0.25);
         public static TimeSpan StartClockDifferencePause { get; set; } = TimeSpan.FromSeconds(0.5);
         public static TimeSpan StartClockDifferenceResume { get; set; } = TimeSpan.FromSeconds(0.0);
         public static TimeSpan ClockSampleInterval { get; set; } = TimeSpan.FromSeconds(0.2);
-        public static int InvalidClockReSyncCount { get; set; } = 2;
     }
 
     public static class DashClient
