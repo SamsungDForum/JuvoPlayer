@@ -23,19 +23,30 @@ namespace JuvoPlayer.Player.EsPlayer
 {
     internal class ClockSynchronizer : IDisposable
     {
-        private long clockTicks;
-        private long referenceClockTicks;
+        private static readonly TimeSpan InitialClock = TimeSpan.Zero;
+
+        private long _clockTicks;
+        private long _referenceClockTicks;
+
+        private long GetClockTicks() =>
+            Volatile.Read(ref _clockTicks);
+
+        private long GetReferenceClockTicks() =>
+            Volatile.Read(ref _referenceClockTicks);
+
+        public bool ClockSeen() =>
+            GetClockTicks() != InitialClock.Ticks;
 
         public TimeSpan Clock
         {
-            get => TimeSpan.FromTicks(Volatile.Read(ref clockTicks));
-            private set => Interlocked.Exchange(ref clockTicks, value.Ticks);
+            get => TimeSpan.FromTicks(GetClockTicks());
+            private set => Interlocked.Exchange(ref _clockTicks, value.Ticks);
         }
 
         public TimeSpan ReferenceClock
         {
-            get => TimeSpan.FromTicks(Volatile.Read(ref referenceClockTicks));
-            private set => Interlocked.Exchange(ref referenceClockTicks, value.Ticks);
+            get => TimeSpan.FromTicks(GetReferenceClockTicks());
+            private set => Interlocked.Exchange(ref _referenceClockTicks, value.Ticks);
         }
 
         private long haltOnDifference;
@@ -69,31 +80,48 @@ namespace JuvoPlayer.Player.EsPlayer
 
         public void UpdateClock(TimeSpan clock)
         {
-            var reference = ReferenceClock;
-            var haltOnDiff = Volatile.Read(ref haltOnDifference);
-
-            if (clock.Ticks - reference.Ticks >= haltOnDiff && syncWait.IsSet)
-                syncWait.Reset();
-
+            var referenceTicks = GetReferenceClockTicks();
             Clock = clock;
+
+            ResetSyncElement(clock.Ticks, referenceTicks);
         }
 
         public void UpdateReferenceClock(TimeSpan reference)
         {
-            var clock = Clock;
-            var haltOffDiff = Volatile.Read(ref haltOffDifference);
-
-            if (clock.Ticks - reference.Ticks <= haltOffDiff && !syncWait.IsSet)
-                syncWait.Set();
-
+            var clockTicks = GetClockTicks();
             ReferenceClock = reference;
+
+            SetSyncElement(clockTicks, reference.Ticks);
         }
 
+        public void SetReferenceClockToClock()
+        {
+            var clockTicks = GetClockTicks();
+            Interlocked.Exchange(ref _referenceClockTicks, clockTicks);
+
+            syncWait.Set();
+        }
+
+        private void ResetSyncElement(long clockTicks, long referenceTicks)
+        {
+            var haltOnDiff = Volatile.Read(ref haltOnDifference);
+
+            if (clockTicks - referenceTicks >= haltOnDiff && syncWait.IsSet)
+                syncWait.Reset();
+        }
+
+        private void SetSyncElement(long clockTicks, long referenceTicks)
+        {
+            var haltOffDiff = Volatile.Read(ref haltOffDifference);
+
+            if (clockTicks - referenceTicks <= haltOffDiff && !syncWait.IsSet)
+                syncWait.Set();
+        }
 
         public void Initialize()
         {
-            Clock = TimeSpan.Zero;
-            ReferenceClock = TimeSpan.Zero;
+            Clock = InitialClock;
+            ReferenceClock = InitialClock;
             syncWait.Set();
         }
 

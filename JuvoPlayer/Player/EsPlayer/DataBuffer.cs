@@ -43,7 +43,7 @@ namespace JuvoPlayer.Player.EsPlayer
 
         private long GetAvailableBufferTicks() =>
             reportFull ? 0 : Volatile.Read(ref bufferAvailableTicks);
-        
+
         private long GetLastTicksIn() =>
             Volatile.Read(ref lastTicksIn);
 
@@ -76,7 +76,7 @@ namespace JuvoPlayer.Player.EsPlayer
             var eos = GetEosTicks();
 
             var duration = ticks > 0 ? TimeSpan.FromTicks(ticks) : TimeSpan.Zero;
-            
+
             return new DataRequest
             {
                 Duration = duration,
@@ -163,18 +163,13 @@ namespace JuvoPlayer.Player.EsPlayer
             var lastTicks = lastTicksIn;
 
             if (!packet.ContainsData())
-            {
-                if (packet is EOSPacket)
-                    MarkEosDts(lastTicks);
-
                 return;
-            }
 
             var currentTicks = packet.Dts.Ticks;
 
             if (lastTicks > currentTicks)
             {
-                if( lastTicks != long.MaxValue)
+                if (lastTicks != long.MaxValue)
                     logger.Warn($"{StreamType}: Clock Mismatch! Current {packet.Dts} Last {TimeSpan.FromTicks(lastTicks)}. Stale data received?");
 
                 lastTicksIn = currentTicks;
@@ -184,20 +179,24 @@ namespace JuvoPlayer.Player.EsPlayer
             var duration = currentTicks - lastTicks;
             Interlocked.Add(ref bufferAvailableTicks, -duration);
             Interlocked.Exchange(ref lastTicksIn, currentTicks);
-
         }
 
         public void DataOut(Packet packet)
         {
             if (!packet.ContainsData())
-                return;
+            {
+                if (packet is EOSPacket)
+                    MarkEosDts(packet.Dts.Ticks);
 
-            var currentTicks = packet.Dts.Ticks;
+                return;
+            }
+
             var lastTicks = lastTicksOut;
-            
+            var currentTicks = packet.Dts.Ticks;
+
             if (lastTicks > currentTicks)
             {
-                if( lastTicks != long.MaxValue)
+                if (lastTicks != long.MaxValue)
                     logger.Warn($"{StreamType}: Clock Mismatch! Current {packet.Dts} Last {TimeSpan.FromTicks(lastTicks)}. Stale data received?");
 
                 lastTicksOut = currentTicks;
@@ -207,7 +206,6 @@ namespace JuvoPlayer.Player.EsPlayer
             var duration = currentTicks - lastTicks;
             Interlocked.Add(ref bufferAvailableTicks, duration);
             Interlocked.Exchange(ref lastTicksOut, currentTicks);
-            
         }
     }
 }

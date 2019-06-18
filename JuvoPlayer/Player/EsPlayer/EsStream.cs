@@ -495,7 +495,7 @@ namespace JuvoPlayer.Player.EsPlayer
         /// </exception>
         private void PushEosPacket(EOSPacket packet, CancellationToken token)
         {
-            logger.Info("");
+            logger.Info($"{streamType}");
 
             // Continue pushing packet till success or terminal failure
             for (; ; )

@@ -61,7 +61,7 @@ namespace JuvoPlayer.Tests.IntegrationTests
                 {
                     using (var bufferController = new DataMonitor(Observable.Return<PlayerState>(PlayerState.Playing)))
                     {
-                        bufferController.DataSynchronizer.PlaySynchronization(TimeSpan.Zero);
+                        bufferController.DataSynchronizer.PlaySynchronization();
                         bufferController.Initialize(StreamType.Audio);
                         bufferController.Initialize(StreamType.Video);
                         var dataArgsHolder = new DataRequest[(int)StreamType.Count];
@@ -92,7 +92,7 @@ namespace JuvoPlayer.Tests.IntegrationTests
                 {
                     using (var bufferController = new DataMonitor(Observable.Return<PlayerState>(PlayerState.Playing)))
                     {
-                        bufferController.DataSynchronizer.PlaySynchronization(TimeSpan.Zero);
+                        bufferController.DataSynchronizer.PlaySynchronization();
                         bufferController.Initialize(StreamType.Audio);
                         bufferController.Initialize(StreamType.Video);
 
@@ -123,7 +123,7 @@ namespace JuvoPlayer.Tests.IntegrationTests
                 {
                     using (var bufferController = new DataMonitor(Observable.Return<PlayerState>(PlayerState.Playing)))
                     {
-                        bufferController.DataSynchronizer.PlaySynchronization(TimeSpan.Zero);
+                        bufferController.DataSynchronizer.PlaySynchronization();
                         bufferController.Initialize(StreamType.Audio);
 
                         var dataArgsHolder = new DataRequest[(int)StreamType.Count];
@@ -158,7 +158,7 @@ namespace JuvoPlayer.Tests.IntegrationTests
                 {
                     using (var bufferController = new DataMonitor(Observable.Return<PlayerState>(PlayerState.Playing)))
                     {
-                        bufferController.DataSynchronizer.PlaySynchronization(TimeSpan.Zero);
+                        bufferController.DataSynchronizer.PlaySynchronization();
                         bufferController.Initialize(StreamType.Audio);
                         bufferController.Initialize(StreamType.Video);
                         var dataArgsHolder = new DataRequest[(int)StreamType.Count];
@@ -211,7 +211,7 @@ namespace JuvoPlayer.Tests.IntegrationTests
                 {
                     using (var bufferController = new DataMonitor(Observable.Return<PlayerState>(PlayerState.Playing)))
                     {
-                        bufferController.DataSynchronizer.PlaySynchronization(TimeSpan.Zero);
+                        bufferController.DataSynchronizer.PlaySynchronization();
                         bufferController.Initialize(StreamType.Audio);
 
                         var bufferState = true;
@@ -250,7 +250,7 @@ namespace JuvoPlayer.Tests.IntegrationTests
                 {
                     using (var bufferController = new DataMonitor(Observable.Return<PlayerState>(PlayerState.Playing)))
                     {
-                        bufferController.DataSynchronizer.PlaySynchronization(TimeSpan.Zero);
+                        bufferController.DataSynchronizer.PlaySynchronization();
                         bufferController.Initialize(StreamType.Audio);
                         bufferController.Initialize(StreamType.Video);
 
@@ -305,7 +305,7 @@ namespace JuvoPlayer.Tests.IntegrationTests
                 {
                     using (var bufferController = new DataMonitor(Observable.Return<PlayerState>(PlayerState.Playing)))
                     {
-                        bufferController.DataSynchronizer.PlaySynchronization(TimeSpan.Zero);
+                        bufferController.DataSynchronizer.PlaySynchronization();
                         bufferController.Initialize(StreamType.Audio);
 
                         var dataArgsHolder = new DataRequest[(int)StreamType.Count];
@@ -350,7 +350,7 @@ namespace JuvoPlayer.Tests.IntegrationTests
                 {
                     using (var bufferController = new DataMonitor(Observable.Return<PlayerState>(PlayerState.Playing)))
                     {
-                        bufferController.DataSynchronizer.PlaySynchronization(TimeSpan.Zero);
+                        bufferController.DataSynchronizer.PlaySynchronization();
                         bufferController.Initialize(StreamType.Audio);
                         bufferController.Initialize(StreamType.Video);
                         var dataArgsHolder = new DataRequest[(int)StreamType.Count];
@@ -410,7 +410,7 @@ namespace JuvoPlayer.Tests.IntegrationTests
                 {
                     using (var bufferController = new DataMonitor(Observable.Return<PlayerState>(PlayerState.Playing)))
                     {
-                        bufferController.DataSynchronizer.PlaySynchronization(TimeSpan.Zero);
+                        bufferController.DataSynchronizer.PlaySynchronization();
                         bufferController.Initialize(StreamType.Audio);
                         bufferController.Initialize(StreamType.Video);
 
@@ -552,7 +552,7 @@ namespace JuvoPlayer.Tests.IntegrationTests
                 {
                     using (var bufferController = new DataMonitor(Observable.Return<PlayerState>(PlayerState.Playing)))
                     {
-                        bufferController.DataSynchronizer.PlaySynchronization(TimeSpan.Zero);
+                        bufferController.DataSynchronizer.PlaySynchronization();
                         bufferController.Initialize(StreamType.Audio);
                         bufferController.Initialize(StreamType.Video);
                         var dataArgsHolder = new DataRequest[(int)StreamType.Count];

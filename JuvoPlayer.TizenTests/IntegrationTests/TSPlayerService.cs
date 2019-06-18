@@ -202,15 +202,13 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
                     .FirstAsync()
                     .ToTask();
 
-                await await Task.WhenAny(seekOperation.Execute(context), playbackErrorTask);
-
                 var clipCompletedTask = service.StateChanged()
                     .AsCompletion()
                     .Timeout(context.Timeout)
                     .FirstAsync()
                     .ToTask();
 
-                await await Task.WhenAny(clipCompletedTask, playbackErrorTask);
+                await await Task.WhenAny(seekOperation.Execute(context), clipCompletedTask, playbackErrorTask);
             });
         }
 
@@ -218,7 +216,7 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
         public void Random_20RandomOperations_ExecutedCorrectly(string clipTitle)
         {
             var operations =
-                GenerateOperations(20, new List<Type> {typeof(StopOperation), typeof(PrepareOperation)});
+                GenerateOperations(20, new List<Type> { typeof(StopOperation), typeof(PrepareOperation) });
 
             try
             {

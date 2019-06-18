@@ -51,24 +51,28 @@ namespace JuvoPlayer.Player.EsPlayer
         private readonly ILogger logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
 
         private readonly DataBuffer[] dataBuffers = new DataBuffer[(int)StreamType.Count];
-        
+
         private readonly Subject<bool> bufferingSubject = new Subject<bool>();
         private readonly Subject<DataRequest> bufferConfigurationSubject = new Subject<DataRequest>();
         private readonly Subject<DataRequest> publishSubject = new Subject<DataRequest>();
+        private readonly Subject<(List<DataRequest> DataRequests, bool? BufferingNeeded)> notificationSourceSubject = new Subject<(List<DataRequest> DataRequests, bool? BufferingNeeded)>();
+        private IDisposable tickSourceConnection;
 
         public DataSynchronizer DataSynchronizer { get; }
 
-        private volatile DataEvent allowedEventsFlag = DataEvent.All;
+        private volatile DataEvent allowedEventsFlag = DataEvent.None;
 
         private readonly IDisposable playerStateSubscription;
         private volatile PlayerState playerState;
         private readonly PlayerClock playerClock = new PlayerClock();
 
-        private IObservable<(List<DataRequest> DataRequests, bool? BufferingNeeded)> NotificationSource() =>
+
+        private IConnectableObservable<(List<DataRequest> DataRequests, bool? BufferingNeeded)> NotificationSource() =>
             playerClock
                 .TickSource()
                 .Sample(DataStatePublishInterval)
-                .Select(_ => GetNotifications(DataEvent.All));
+                .Select(_ => GetNotifications(DataEvent.All))
+                .Multicast(notificationSourceSubject);
 
         private IObservable<DataRequest> DataNotificationSource() =>
             NotificationSource()
@@ -82,7 +86,7 @@ namespace JuvoPlayer.Player.EsPlayer
 
         public IObservable<bool> BufferingStateChanged() =>
             BufferingNotificationSource()
-                .Merge(bufferingSubject)
+                .Merge(bufferingSubject.AsObservable())
                 .StartWith(true)
                 .DistinctUntilChanged()
                 .Skip(1)
@@ -95,8 +99,8 @@ namespace JuvoPlayer.Player.EsPlayer
 
         public IObservable<DataRequest> DataNeededStateChanged() =>
             DataNotificationSource()
-                .Merge(publishSubject)
-                .Merge(bufferConfigurationSubject);
+                .Merge(publishSubject.AsObservable())
+                .Merge(bufferConfigurationSubject.AsObservable());
 
         public IDataBuffer GetDataBuffer(StreamType stream) =>
             dataBuffers[(int)stream];
@@ -153,19 +157,20 @@ namespace JuvoPlayer.Player.EsPlayer
         public async Task SeekStart(TimeSpan clock)
         {
             logger.Info("");
-            
+
             DataSynchronizer.SeekStartSynchronization(clock);
-            
+
             ReportActualBuffer();
             AllowedEvents(DataEvent.DataRequest);
             await PublishState();
         }
 
-        public void SeekComplete()
+        public async Task SeekComplete()
         {
             logger.Info("");
 
             AllowedEvents(DataEvent.All);
+            await PublishState();
         }
 
         public void DataIn(Packet packet)
@@ -215,8 +220,24 @@ namespace JuvoPlayer.Player.EsPlayer
             return (result, bufferResult);
         }
 
-        public void AllowedEvents(DataEvent events) =>
+
+        public void AllowedEvents(DataEvent events)
+        {
+            logger.Info(events.ToString());
             allowedEventsFlag = events;
+
+            if (allowedEventsFlag == DataEvent.None)
+            {
+                tickSourceConnection?.Dispose();
+                tickSourceConnection = null;
+            }
+            else
+            {
+                if (tickSourceConnection == null)
+                    tickSourceConnection = NotificationSource().Connect();
+
+            }
+        }
 
         public void ReportFullBuffer()
         {
@@ -232,7 +253,7 @@ namespace JuvoPlayer.Player.EsPlayer
 
         public void SetMetaDataConfiguration(MetaDataStreamConfig config)
         {
-            if (!dataBuffers[(int) config.Stream].UpdateBufferConfiguration(config))
+            if (!dataBuffers[(int)config.Stream].UpdateBufferConfiguration(config))
                 return;
 
             var dataRequests = GetNotifications(DataEvent.DataRequest, config.Stream).DataRequests;
@@ -261,6 +282,7 @@ namespace JuvoPlayer.Player.EsPlayer
             bufferConfigurationSubject.Dispose();
             bufferingSubject.Dispose();
             publishSubject.Dispose();
+            tickSourceConnection?.Dispose();
             DataSynchronizer.Dispose();
             playerClock.Dispose();
         }
