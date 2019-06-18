@@ -34,7 +34,10 @@ class Thumb extends React.Component {
   render() {
     return (
         <View style={styles.thumb}>
+          <TouchableOpacity
+          onPress={PlayVideo}>
             <Image style={styles.img} source={{uri: this.props.source}} />
+          </TouchableOpacity>
         </View>
     );
   }
@@ -54,17 +57,17 @@ class VerticalScrollView extends React.Component {
           onScroll={() => { console.log('onScroll!'); }}
           scrollEventThrottle={200}
           style={styles.scrollView}>
-          {THUMB_URLS.map(createThumbRow)}
+          {THUMB_URIS.map(createThumbRow)}
         </ScrollView>
         <TouchableOpacity
           style={styles.button}
           onPress={() => { _scrollView.scrollTo({y: 0}); }}>
-          <Text style = {{color:'black'}}>Scroll to top</Text>
+            <Text style = {{color:'black'}}>Scroll to top</Text>
         </TouchableOpacity>
           <TouchableOpacity
           style={styles.button}
           onPress={() => { _scrollView.scrollToEnd({animated: true}); }}>
-          <Text style = {{color:'black'}}>Scroll to bottom</Text>
+            <Text style = {{color:'black'}}>Scroll to bottom</Text>
         </TouchableOpacity>
       </View>
     );
@@ -77,50 +80,41 @@ class HorizontalScrollView extends React.Component {
   render() {
     var _scrollView;
     var addtionalStyles = {direction: 'ltr'};
-    //{direction: 'rtl'}
-    var title = 'HorizontalScroll';
     return (
         <View style={addtionalStyles}>
-          <Text style={styles.text}>{title}</Text>
           <ScrollView
             ref={(scrollView) => { _scrollView = scrollView; }}
             automaticallyAdjustContentInsets={false}
+            scrollEventThrottle={100}
             horizontal={true}
             style={[styles.scrollView, styles.horizontalScrollView]}>
-            {THUMB_URI.map(createThumbRow)}
+            {THUMB_URIS.map(createThumbRow)}
           </ScrollView>
           <TouchableOpacity
             style={styles.button}
             onPress={() => { _scrollView.scrollTo({x: 0}); }}>
-            <Text style = {{color:'black'}}>Scroll to start</Text>
+             <Text style = {{color:'black'}}>Scroll to start</Text>
           </TouchableOpacity>
           <TouchableOpacity
             style={styles.button}
             onPress={() => { _scrollView.scrollToEnd({animated: true}); }}>
-            <Text style = {{color:'black'}}>Scroll to end</Text>
+              <Text style = {{color:'black'}}>Scroll to end</Text>
           </TouchableOpacity>
         </View>
       );
   }
 }
 
-var THUMB_URLS = [
-  require('./Thumbnails/like.png'),
-  require('./Thumbnails/dislike.png'),
-  require('./Thumbnails/call.png') 
+var THUMB_URIS = [
+  'https://github.com/SamsungDForum/JuvoPlayer/blob/master/smarthubpreview/pictures/car.jpg?raw=true',
+  'https://github.com/SamsungDForum/JuvoPlayer/blob/master/smarthubpreview/pictures/car.jpg?raw=true',
+  'https://github.com/SamsungDForum/JuvoPlayer/blob/master/smarthubpreview/pictures/car.jpg?raw=true',
+  'https://github.com/SamsungDForum/JuvoPlayer/blob/master/smarthubpreview/pictures/car.jpg?raw=true',
+  'https://github.com/SamsungDForum/JuvoPlayer/blob/master/smarthubpreview/pictures/car.jpg?raw=true',
+  'https://github.com/SamsungDForum/JuvoPlayer/blob/master/smarthubpreview/pictures/car.jpg?raw=true',
+  'https://github.com/SamsungDForum/JuvoPlayer/blob/master/smarthubpreview/pictures/car.jpg?raw=true',
+  'https://github.com/SamsungDForum/JuvoPlayer/blob/master/smarthubpreview/pictures/car.jpg?raw=true'
 ];
-var THUMB_URI = [
-  'https://github.com/SamsungDForum/JuvoPlayer/blob/master/smarthubpreview/pictures/car.jpg?raw=true',
-  'https://github.com/SamsungDForum/JuvoPlayer/blob/master/smarthubpreview/pictures/car.jpg?raw=true',
-  'https://github.com/SamsungDForum/JuvoPlayer/blob/master/smarthubpreview/pictures/car.jpg?raw=true',
-  'https://github.com/SamsungDForum/JuvoPlayer/blob/master/smarthubpreview/pictures/car.jpg?raw=true',
-  'https://github.com/SamsungDForum/JuvoPlayer/blob/master/smarthubpreview/pictures/car.jpg?raw=true',
-  'https://github.com/SamsungDForum/JuvoPlayer/blob/master/smarthubpreview/pictures/car.jpg?raw=true',
-  'https://github.com/SamsungDForum/JuvoPlayer/blob/master/smarthubpreview/pictures/car.jpg?raw=true',
-  'https://github.com/SamsungDForum/JuvoPlayer/blob/master/smarthubpreview/pictures/car.jpg?raw=true'  
-];
-//THUMB_URLS = THUMB_URLS.concat(THUMB_URLS); // double length of THUMB_URLS
-
 var createThumbRow = (uri, i) => <Thumb key={i} source={uri} />;
 
 var MovingBar = React.createClass({
@@ -146,7 +140,7 @@ var MovingBar = React.createClass({
   },
 });
 
-const onButtonPress = () => {
+const PlayVideo = () => {
   try {
     JuvoPlayer.startPlayback();    
   } catch (e) {
@@ -159,13 +153,13 @@ export default class JuvoReactNative extends Component {
     return (
       <View style={{width:1920, height: 1080}}>
         <Button style={{width:300, height: 100}}
-                onPress={onButtonPress}
+                onPress={PlayVideo}
                 title="Start!"
                 accessibilityLabel="See an informative alert"
         />
         <Image source={{uri: 'https://github.com/SamsungDForum/JuvoPlayer/blob/master/smarthubpreview/pictures/car.jpg?raw=true', width: 208, height: 180}} />
-        <Image style={styles.img} source={'./Tizen/res/tiles/bolid.jpg'} />
-        <MovingBar horizontal={true} style={{top:750, width:1860, height:40, backgroundColor: 'green', color: 'blue'}} />
+        <Image source={{uri: '/home/owner/apps_rw/JuvoReactNative/res/tiles/bolid.jpg', width: 208, height: 180}} />
+        <MovingBar horizontal={true} style={{top:650, width:1860, height:40, backgroundColor: 'green', color: 'blue'}} />
         <HorizontalScrollView />
       </View>
     );
@@ -194,8 +188,8 @@ const styles = StyleSheet.create({
     height: 350,
   },
   horizontalScrollView: {
-    height: 406,    
-    width: 1650
+    height: 280,
+    width: 1920,
   },
   text: {
     fontSize: 16,
@@ -217,7 +211,7 @@ const styles = StyleSheet.create({
     minWidth: 96,    
   },
   img: {
-    width: 464,
+    width: 460,
     height: 264,
   }
 });
