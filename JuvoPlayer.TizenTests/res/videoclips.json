@@ -20,13 +20,22 @@
         "poster": "sintel.jpg",
         "description": "Resolution 1920x818 Codecs: H264 - MPEG4 AVC, MPEG AAC, The Blender Foundation - Sintel. Origin https://bitmovin.com/multi-language-multi-audio/"
     },
-    {
-        "title": "Encrypted MPEG DASH",
-        "url": "http://106.120.45.49/nexusq/oops_cenc-20121114-signedlicenseurl-manifest.mpd",
-        "type": "dash",
-        "poster": "oops.jpg",
-        "description": "Resolution 1920x1080 Codecs: H264 - MPEG4 AVC, MPEG AAC. Google Nexus Q video. Origin http://dash-mse-test.appspot.com/media.html"
-    },
+  {
+    "title": "Encrypted MPEG DASH",
+    "url": "http://106.120.45.49/nexusq/oops_cenc-20121114-signedlicenseurl-manifest.mpd",
+    "type": "dash",
+    "poster": "oops.jpg",
+    "description": "Resolution 1920x1080 Codecs: H264 - MPEG4 AVC, MPEG AAC. Google Nexus Q video. Origin http://dash-mse-test.appspot.com/media.html",
+    "drmDatas": [
+      {
+        "scheme": "",
+        "licenceUrl": "",
+        "keyRequestProperties": {
+          "Content-Type": ""
+        }
+      }
+    ]
+  },
     {
         "title": "Encrypted 4K MPEG DASH",
         "url": "http://106.120.45.49/tears_of_steel/manifest(format=mpd-time-csf)",
