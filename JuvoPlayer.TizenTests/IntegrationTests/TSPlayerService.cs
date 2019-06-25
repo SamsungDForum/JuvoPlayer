@@ -238,6 +238,7 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
             {
                 context.RandomMaxDelayTime = TimeSpan.FromSeconds(3);
                 context.DelayTime = TimeSpan.FromSeconds(2);
+                context.Timeout = IsEncrypted(clipTitle) ? TimeSpan.FromSeconds(40) : TimeSpan.FromSeconds(20);
 
                 if (shouldPrepare)
                     foreach (var operation in operations)
@@ -313,6 +314,7 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
 
         private static string[] AllClips()
         {
+            var c = ReadClips();
             return ReadClips()
                 .Select(clip => clip.Title)
                 .ToArray();
@@ -320,6 +322,8 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
 
         private static string[] DashClips()
         {
+            var c = ReadClips();
+
             return ReadClips()
                 .Where(clip => clip.Type == "dash")
                 .Select(clip => clip.Title)
@@ -330,7 +334,7 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
         {
             return ReadClips()
                 .Where(clip => string.Equals(clip.Title, clipTitle))
-                .Select(clip => clip.DRMDatas?.Count > 0)
+                .Select(clip => clip.DRMDatas != null)
                 .FirstOrDefault();
         }
     }
