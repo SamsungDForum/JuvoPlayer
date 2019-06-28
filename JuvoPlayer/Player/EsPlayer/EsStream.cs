@@ -107,6 +107,7 @@ namespace JuvoPlayer.Player.EsPlayer
             return streamReconfigureSubject.AsObservable();
         }
 
+
         #region Public API
 
         public EsStream(Common.StreamType type, EsPlayerPacketStorage storage, StreamBufferController bufferController)
@@ -339,6 +340,16 @@ namespace JuvoPlayer.Player.EsPlayer
                     break;
 
                 case EncryptedPacket encryptedPacket:
+                    if (!encryptedPacket.DrmSession.IsSessionInitialized())
+                    {
+                        // TODO: Add buffer ON/OFF notification when waiting for DRM license installation
+
+                        logger.Info($"{streamType}: Awaiting DRM license installation");
+                        await encryptedPacket.DrmSession.WaitForInitialization().WithCancellation(transferToken);
+                        if (transferToken.IsCancellationRequested)
+                            return false;
+                    }
+
                     await PushEncryptedPacket(encryptedPacket, transferToken);
                     break;
 

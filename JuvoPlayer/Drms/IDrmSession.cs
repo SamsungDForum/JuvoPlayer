@@ -36,5 +36,20 @@ namespace JuvoPlayer.Drms
         /// <returns>A task, which will produce decrypted <see cref="T:JuvoPlayer.Common.Packet"></see>.</returns>
         /// <exception cref="T:JuvoPlayer.Drms.DRMException">Session is not initialized or packet couldn't be decrypted.</exception>
         Task<Packet> DecryptPacket(EncryptedPacket packet, CancellationToken token);
+
+        /// <summary>
+        /// Checks if session is ready to be used.
+        /// </summary>
+        /// <returns>true - Initialization complete. false-Initialization in progress</returns>
+        bool IsSessionInitialized();
+
+        /// <summary>
+        /// Awaitable call for initialization completion.
+        /// </summary>
+        /// <returns>Task which completes when initialization is complete and session is ready for usage</returns>
+        /// <exception cref="TaskCanceledException">TaskCancelledException is throw when <paramref name="token"/>
+        /// is cancelled prior to initialization completion</exception>
+        Task WaitForInitialization();
+
     }
 }
