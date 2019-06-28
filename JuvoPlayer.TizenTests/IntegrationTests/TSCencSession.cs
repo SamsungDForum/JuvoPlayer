@@ -28,6 +28,7 @@ using JuvoLogger;
 using JuvoPlayer.Common;
 using JuvoPlayer.Drms;
 using JuvoPlayer.Drms.Cenc;
+using JuvoPlayer.Player.EsPlayer;
 using NUnit.Framework;
 
 namespace JuvoPlayer.TizenTests.IntegrationTests
@@ -35,7 +36,10 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
     [TestFixture]
     public class TSCencSession
     {
+        private readonly ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
+
         private byte[] initData;
+        private byte[] initWidevineData;
 
         // This test needs one, arbitrary, video encrypted packet from Google Dash OOPS Cenc content.
         // To dump one encrypted packet add following code to JuvoPlayer.Player.PacketStream class:
@@ -61,6 +65,9 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
         private static byte[] PlayreadySystemId = new byte[]
             {0x9a, 0x04, 0xf0, 0x79, 0x98, 0x40, 0x42, 0x86, 0xab, 0x92, 0xe6, 0x5b, 0xe0, 0x88, 0x5f, 0x95};
 
+        private static byte[] WidevineSystemId = new byte[]
+            {0xed, 0xef, 0x8b, 0xa9, 0x79, 0xd6, 0x4a, 0xce, 0xa3, 0xc8, 0x27, 0xdc, 0xd5, 0x1d, 0x21, 0xed };
+
         [OneTimeSetUp]
         public void OneTimeSetUp()
         {
@@ -75,18 +82,25 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
                 initData = reader.ReadBytes((int)drmInitDataStream.Length);
             }
 
+            drmInitDataStream = assembly.GetManifestResourceStream("JuvoPlayer.TizenTests.res.drm.tos4kuhd_dash_widevine_encrypted_init_data");
+            using (var reader = new BinaryReader(drmInitDataStream))
+            {
+                initWidevineData = reader.ReadBytes((int)drmInitDataStream.Length);
+            }
+
             Assert.That(initData, Is.Not.Null);
+            Assert.That(initWidevineData, Is.Not.Null);
 
             var encryptedPacketStream =
                 assembly.GetManifestResourceStream(
                     "JuvoPlayer.TizenTests.res.drm.google_dash_encrypted_video_packet_pts_10_01.xml");
             var packetSerializer = new XmlSerializer(typeof(EncryptedPacket));
-            encryptedPacket = (EncryptedPacket) packetSerializer.Deserialize(encryptedPacketStream);
+            encryptedPacket = (EncryptedPacket)packetSerializer.Deserialize(encryptedPacketStream);
             var storageSerializer = new XmlSerializer(typeof(ManagedDataStorage));
             var encryptedPacketStorageStream =
                 assembly.GetManifestResourceStream(
                     "JuvoPlayer.TizenTests.res.drm.google_dash_encrypted_video_packet_pts_10_01_storage.xml");
-            encryptedPacket.Storage = (IDataStorage) storageSerializer.Deserialize(encryptedPacketStorageStream);
+            encryptedPacket.Storage = (IDataStorage)storageSerializer.Deserialize(encryptedPacketStorageStream);
 
             Assert.That(encryptedPacket, Is.Not.Null);
         }
@@ -115,12 +129,35 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
             return configuration;
         }
 
+        private static DRMDescription CreateWidevineDrmDescription()
+        {
+            var licenceUrl = "https://proxy.uat.widevine.com/proxy?provider=widevine_test";
+            var configuration = new DRMDescription()
+            {
+                Scheme = CencUtils.GetScheme(WidevineSystemId),
+                LicenceUrl = licenceUrl,
+                KeyRequestProperties = new Dictionary<string, string>() { { "Content-Type", "text/xml; charset=utf-8" } },
+            };
+            return configuration;
+        }
+
         private DRMInitData CreateDrmInitData()
         {
             var drmInitData = new DRMInitData()
             {
                 InitData = initData,
                 SystemId = PlayreadySystemId,
+                StreamType = StreamType.Video,
+            };
+            return drmInitData;
+        }
+
+        private DRMInitData CreateWidevineDrmInitData()
+        {
+            var drmInitData = new DRMInitData()
+            {
+                InitData = initWidevineData,
+                SystemId = WidevineSystemId,
                 StreamType = StreamType.Video,
             };
             return drmInitData;
@@ -166,6 +203,109 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
                 var drmSession = CencSession.Create(drmInitData, configuration);
                 drmSession.Initialize();
                 drmSession.Dispose();
+            });
+        }
+
+        private async Task Disposer(CencSessionHolder ses, int delay)
+        {
+            using (var cts = new CancellationTokenSource(delay))
+            {
+                try
+                {
+                    await ses.initTask.WithCancellation(cts.Token);
+                }
+                catch (OperationCanceledException)
+                {
+                    if (!cts.Token.IsCancellationRequested)
+                        throw;
+                }
+            }
+
+            ses.session.Dispose();
+            Logger.Info($"Session #{ses.id} Disposed");
+        }
+
+        private struct CencSessionHolder
+        {
+            public CencSession session;
+            public int id;
+            public Task initTask;
+        }
+
+        [Test]
+        public void MultiThreaded_CreateDispose_DoesNotThrow()
+        {
+            Assert.DoesNotThrowAsync(async () =>
+            {
+                DRMInitData[] initData = new DRMInitData[2];
+                DRMDescription[] configData = new DRMDescription[2];
+                initData[0] = CreateWidevineDrmInitData();
+                initData[1] = CreateDrmInitData();
+                configData[0] = CreateWidevineDrmDescription();
+                configData[1] = CreateDrmDescription();
+
+                int drmType = 0;
+
+                var rnd = new Random();
+
+                var createDisposeTries = 50;
+                var createCount = 0;
+                var disposeCount = 0;
+                var concurrent = 0;
+                var maxConcurrent = 10;
+
+                var launchedTasks = new List<Task>();
+
+                while (createCount < createDisposeTries)
+                {
+                    CencSessionHolder cencHolder = new CencSessionHolder();
+                    createCount++;
+                    var r = Interlocked.Add(ref concurrent, 1);
+                    cencHolder.session = CencSession.Create(initData[drmType], configData[drmType]);
+                    cencHolder.initTask = cencHolder.session.Initialize();
+                    cencHolder.id = createCount;
+
+                    drmType = drmType ^ 1;
+
+                    var disposeTask = Task.Run(async () =>
+                    {
+                        // Delay actual termination so various phases of init process are tested.
+                        await Disposer(cencHolder, rnd.Next(200, 2000));
+                        Interlocked.Add(ref concurrent, -1);
+                        Interlocked.Add(ref disposeCount, 1);
+                    });
+
+                    launchedTasks.Add(disposeTask);
+
+                    Logger.Info($"Session #{cencHolder.id} Created");
+
+                    if (r >= maxConcurrent)
+                    {
+                        Logger.Info($"{maxConcurrent} concurrent CencSession. Waiting...");
+                        while (Volatile.Read(ref concurrent) >= maxConcurrent)
+                        {
+                            await Task.Delay(1000);
+                        }
+
+                        Logger.Info($"{maxConcurrent} concurrent CencSession. Waiting completed.");
+                    }
+                }
+
+                Logger.Info($"Waiting completion...");
+
+                var endt = Task.WhenAll(launchedTasks);
+                await endt;
+
+                if (endt.IsFaulted)
+                    throw new Exception("Disposers terminated with fault");
+
+                Assert.AreEqual(createCount, Volatile.Read(ref disposeCount));
+                Assert.AreEqual(createCount, createDisposeTries);
+                Assert.AreEqual(Volatile.Read(ref disposeCount), createDisposeTries);
+
+                Logger.Info($"All done");
+
+
             });
         }
 
