@@ -57,15 +57,14 @@ namespace JuvoPlayer.Player.EsPlayer
         private readonly Subject<DataRequest> publishSubject = new Subject<DataRequest>();
         private readonly Subject<(List<DataRequest> DataRequests, bool? BufferingNeeded)> notificationSourceSubject = new Subject<(List<DataRequest> DataRequests, bool? BufferingNeeded)>();
         private IDisposable tickSourceConnection;
+        private int forcedBufferingCount;
+        private bool IsForcedBufferingEnabled() => (Volatile.Read(ref forcedBufferingCount) > 0);
 
         public DataSynchronizer DataSynchronizer { get; }
 
         private volatile DataEvent allowedEventsFlag = DataEvent.None;
 
-        private readonly IDisposable playerStateSubscription;
-        private volatile PlayerState playerState;
         private readonly PlayerClock playerClock = new PlayerClock();
-
 
         private IConnectableObservable<(List<DataRequest> DataRequests, bool? BufferingNeeded)> NotificationSource() =>
             playerClock
@@ -82,20 +81,14 @@ namespace JuvoPlayer.Player.EsPlayer
         private IObservable<bool> BufferingNotificationSource() =>
             NotificationSource()
                 .Where(request => request.BufferingNeeded.HasValue)
-                .Select(request => request.BufferingNeeded.Value);
+                .Select(request => request.BufferingNeeded.Value)
+                .Merge(bufferingSubject.AsObservable())
+                .StartWith(false)
+                .DistinctUntilChanged()
+                .Skip(1);
 
         public IObservable<bool> BufferingStateChanged() =>
-            BufferingNotificationSource()
-                .Merge(bufferingSubject.AsObservable())
-                .StartWith(true)
-                .DistinctUntilChanged()
-                .Skip(1)
-                .Where(_ =>
-                {
-                    var currentState = playerState;
-                    return currentState == PlayerState.Playing ||
-                           currentState == PlayerState.Paused;
-                });
+            BufferingNotificationSource();
 
         public IObservable<DataRequest> DataNeededStateChanged() =>
             DataNotificationSource()
@@ -116,6 +109,9 @@ namespace JuvoPlayer.Player.EsPlayer
                     publishSubject.OnNext(request);
                 }
             }
+
+            if (IsForcedBufferingEnabled())
+                bufferingNeeded = true;
 
             if (bufferingNeeded.HasValue)
                 bufferingSubject.OnNext(bufferingNeeded.Value);
@@ -138,10 +134,20 @@ namespace JuvoPlayer.Player.EsPlayer
 
         public DataMonitor(IObservable<PlayerState> playerStateSource)
         {
-            playerStateSubscription =
-                playerStateSource.Subscribe(state => playerState = state, SynchronizationContext.Current);
-
             DataSynchronizer = new DataSynchronizer();
+        }
+
+        public async void ForceBufferingEvent(bool state)
+        {
+            var bufferingValue = state ? 1 : -1;
+            var currentCount = Interlocked.Add(ref forcedBufferingCount, bufferingValue);
+            if (currentCount < 0)
+                throw new ArgumentOutOfRangeException(
+                    $"{nameof(forcedBufferingCount)} Out of range. Value {currentCount}. Must be >= 0");
+
+            logger.Info(currentCount.ToString());
+
+            await PublishState();
         }
 
         public async Task SeekInitialize()
@@ -235,7 +241,6 @@ namespace JuvoPlayer.Player.EsPlayer
             {
                 if (tickSourceConnection == null)
                     tickSourceConnection = NotificationSource().Connect();
-
             }
         }
 
@@ -278,7 +283,6 @@ namespace JuvoPlayer.Player.EsPlayer
         {
             logger.Info("");
 
-            playerStateSubscription.Dispose();
             bufferConfigurationSubject.Dispose();
             bufferingSubject.Dispose();
             publishSubject.Dispose();
