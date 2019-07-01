@@ -136,7 +136,7 @@ namespace JuvoPlayer.Player.EsPlayer
 
             AttachEventHandlers();
 
-            dataMonitor.AllowedEvents(DataEvent.All);
+            dataMonitor.AllowedEvents(DataEvent.DataRequest);
         }
 
         private void CreatePlayer()
@@ -167,7 +167,7 @@ namespace JuvoPlayer.Player.EsPlayer
         /// Sets provided configuration to appropriate stream.
         /// </summary>
         /// <param name="config">StreamConfig</param>
-        public void SetStreamConfiguration(BufferConfigurationPacket config)
+        public async void SetStreamConfiguration(BufferConfigurationPacket config)
         {
             var streamType = config.StreamType;
 
@@ -192,7 +192,7 @@ namespace JuvoPlayer.Player.EsPlayer
                     return;
 
                 var token = activeTaskCts.Token;
-                StreamPrepare(token);
+                await StreamPrepare(token);
             }
             catch (NullReferenceException)
             {
@@ -516,8 +516,8 @@ namespace JuvoPlayer.Player.EsPlayer
 
                     playerClock.ConnectClockSource();
                     dataMonitor.DataSynchronizer.PlaySynchronization();
-
                     stateChangedSubject.OnNext(PlayerState.Prepared);
+                    dataMonitor.AllowedEvents(DataEvent.All);
                 }
             }
             catch (InvalidOperationException ioe)
