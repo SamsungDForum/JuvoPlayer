@@ -42,9 +42,7 @@ namespace JuvoPlayer.Tests.UnitTests
 
         public Task<Packet> DecryptPacket(EncryptedPacket packet, CancellationToken token) { return Task.FromResult(new Packet()); }
 
-        public bool IsSessionInitialized() => true;
-
-        public Task WaitForInitialization() => Task.CompletedTask;
+        public Task WaitForInitialization(CancellationToken token) => Task.CompletedTask;
     }
 
     [TestFixture]

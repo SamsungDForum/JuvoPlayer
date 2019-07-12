@@ -340,16 +340,6 @@ namespace JuvoPlayer.Player.EsPlayer
                     break;
 
                 case EncryptedPacket encryptedPacket:
-                    if (!encryptedPacket.DrmSession.IsSessionInitialized())
-                    {
-                        // TODO: Add buffer ON/OFF notification when waiting for DRM license installation
-
-                        logger.Info($"{streamType}: Awaiting DRM license installation");
-                        await encryptedPacket.DrmSession.WaitForInitialization().WithCancellation(transferToken);
-                        if (transferToken.IsCancellationRequested)
-                            return false;
-                    }
-
                     await PushEncryptedPacket(encryptedPacket, transferToken);
                     break;
 
@@ -502,29 +492,41 @@ namespace JuvoPlayer.Player.EsPlayer
         /// </exception>
         private async Task PushEncryptedPacket(EncryptedPacket dataPacket, CancellationToken token)
         {
-            using (var decryptedPacket = await dataPacket.Decrypt(token) as DecryptedEMEPacket)
+            for (; ; )
             {
-                // Continue pushing packet till success or terminal failure
-                for (; ; )
+                try
                 {
-                    var submitStatus = player.Submit(decryptedPacket);
-
-                    logger.Debug(
-                        $"{decryptedPacket.StreamType}: ({submitStatus}) PTS: {decryptedPacket.Pts} Duration:" +
-                        $"{decryptedPacket.Duration} Handle: {decryptedPacket.HandleSize.handle} " +
-                        $"HandleSize: {decryptedPacket.HandleSize.size}");
-
-                    if (submitStatus == ESPlayer.SubmitStatus.Success)
+                    using (var decryptedPacket = await dataPacket.Decrypt(token) as DecryptedEMEPacket)
                     {
-                        decryptedPacket.CleanHandle();
-                        return;
+                        // Continue pushing packet till success or terminal failure
+                        for (; ; )
+                        {
+                            var submitStatus = player.Submit(decryptedPacket);
+
+                            logger.Debug(
+                                $"{decryptedPacket.StreamType}: ({submitStatus}) PTS: {decryptedPacket.Pts} Duration:" +
+                                $"{decryptedPacket.Duration} Handle: {decryptedPacket.HandleSize.handle} " +
+                                $"HandleSize: {decryptedPacket.HandleSize.size}");
+
+                            if (submitStatus == ESPlayer.SubmitStatus.Success)
+                            {
+                                decryptedPacket.CleanHandle();
+                                return;
+                            }
+
+                            if (!ShouldRetry(submitStatus))
+                                throw new PacketSubmitException("Packet Submit Error", submitStatus);
+
+                            var delay = CalculateDelay(submitStatus);
+                            Wait(delay, token);
+                        }
                     }
-
-                    if (!ShouldRetry(submitStatus))
-                        throw new PacketSubmitException("Packet Submit Error", submitStatus);
-
-                    var delay = CalculateDelay(submitStatus);
-                    Wait(delay, token);
+                }
+                catch (DrmNoLicenseException)
+                {
+                    logger.Info($"{streamType}: No DRM License.");
+                    await dataPacket.DrmSession.WaitForInitialization(token);
+                    logger.Info($"{streamType}: DRM License installed. {token.IsCancellationRequested}");
                 }
             }
         }

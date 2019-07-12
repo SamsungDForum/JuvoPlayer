@@ -38,18 +38,15 @@ namespace JuvoPlayer.Drms
         Task<Packet> DecryptPacket(EncryptedPacket packet, CancellationToken token);
 
         /// <summary>
-        /// Checks if session is ready to be used.
-        /// </summary>
-        /// <returns>true - Initialization complete. false-Initialization in progress</returns>
-        bool IsSessionInitialized();
-
-        /// <summary>
         /// Awaitable call for initialization completion.
         /// </summary>
-        /// <returns>Task which completes when initialization is complete and session is ready for usage</returns>
-        /// <exception cref="TaskCanceledException">TaskCancelledException is throw when <paramref name="token"/>
-        /// is cancelled prior to initialization completion</exception>
-        Task WaitForInitialization();
-
+        /// <param name="token">Cancellation token</param>
+        /// <returns>Task which completes when initialization is done</returns>
+        /// <exception cref="OperationCancelledException"> is throw when initialization is terminated before
+        /// completion or when passed <see cref="token"/> gets cancelled.</exception>
+        /// <exception cref=""></exception>
+        /// <exception cref="T:JuvoPlayer.Drms.DRMException"> is thrown when session could not be initialized</exception>
+        /// <exception cref="InvalidOperationException"> is thrown if this API is called prior to calling Initialize</exception>
+        Task WaitForInitialization(CancellationToken token);
     }
 }
