@@ -598,7 +598,7 @@ namespace JuvoPlayer.Tests.UnitTests
                             var videoLevel = dataArgsHolder[(int)StreamType.Video].Duration;
 
                             bufferController.ReportFullBuffer();
-                            bufferController.PublishBufferState();
+                            await bufferController.PublishBufferState();
 
                             SpinWait.SpinUntil(() => eventCount >= 4, TimeSpan.FromSeconds(2));
 
@@ -606,7 +606,7 @@ namespace JuvoPlayer.Tests.UnitTests
                             Assert.IsTrue(dataArgsHolder[(int)StreamType.Video].Duration == TimeSpan.Zero, $"Expected: video Duration == 0 Result: Duration=={dataArgsHolder[(int)StreamType.Video].Duration}");
 
                             bufferController.ReportActualBuffer();
-                            bufferController.PublishBufferState();
+                            await bufferController.PublishBufferState();
 
                             SpinWait.SpinUntil(() => eventCount >= 6, TimeSpan.FromSeconds(2));
 

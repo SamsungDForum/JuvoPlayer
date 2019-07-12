@@ -35,4 +35,21 @@ namespace JuvoPlayer.Drms
         {
         }
     }
+
+    public class DrmNoLicenseException : DrmException
+    {
+
+        public DrmNoLicenseException()
+        {
+        }
+
+        public DrmNoLicenseException(string message) : base(message)
+        {
+        }
+
+        public DrmNoLicenseException(string message, Exception inner) : base(message, inner)
+        {
+        }
+    }
+
 }
