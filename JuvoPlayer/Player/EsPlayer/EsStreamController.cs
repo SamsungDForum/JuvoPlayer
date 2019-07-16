@@ -315,7 +315,10 @@ namespace JuvoPlayer.Player.EsPlayer
             try
             {
                 bufferController.ReportFullBuffer();
-                await bufferController.PublishBufferState();
+                bufferController.PublishBufferState();
+                // Make sure buffer publication is delivered.
+                await Task.Yield();
+
                 bufferController.EnableEvents(StreamBufferEvent.None);
 
                 await SeekStreamInitialize(token);
@@ -325,8 +328,9 @@ namespace JuvoPlayer.Player.EsPlayer
 
                 bufferController.ReportActualBuffer();
                 bufferController.EnableEvents(StreamBufferEvent.DataRequest);
-                await bufferController.PublishBufferState();
-
+                bufferController.PublishBufferState();
+                // Make sure buffer publication is delivered.
+                await Task.Yield();
                 await StreamSeek(time, token);
 
                 bufferController.EnableEvents(StreamBufferEvent.All);

@@ -526,7 +526,7 @@ namespace JuvoPlayer.Player.EsPlayer
                 {
                     logger.Info($"{streamType}: No DRM License.");
                     await dataPacket.DrmSession.WaitForInitialization(token);
-                    logger.Info($"{streamType}: DRM License installed. {token.IsCancellationRequested}");
+                    logger.Info($"{streamType}: DRM License installed.");
                 }
             }
         }

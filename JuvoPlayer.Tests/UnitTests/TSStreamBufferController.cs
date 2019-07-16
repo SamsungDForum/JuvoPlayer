@@ -50,13 +50,10 @@ namespace JuvoPlayer.Tests.UnitTests
                                 eventCount++;
                             }, SynchronizationContext.Current))
                         {
-
-
                             SpinWait.SpinUntil(() => eventCount == 2, TimeSpan.FromSeconds(2));
 
                             Assert.IsTrue(dataArgsHolder[(int)StreamType.Audio] != null, "dataArgsHolder[(int)StreamType.Audio] != null");
                             Assert.IsTrue(dataArgsHolder[(int)StreamType.Video] != null, "dataArgsHolder[(int)StreamType.Video] != null");
-                            ;
                         }
                     }
                 });
@@ -598,7 +595,8 @@ namespace JuvoPlayer.Tests.UnitTests
                             var videoLevel = dataArgsHolder[(int)StreamType.Video].Duration;
 
                             bufferController.ReportFullBuffer();
-                            await bufferController.PublishBufferState();
+                            bufferController.PublishBufferState();
+                            await Task.Yield();
 
                             SpinWait.SpinUntil(() => eventCount >= 4, TimeSpan.FromSeconds(2));
 
@@ -606,7 +604,8 @@ namespace JuvoPlayer.Tests.UnitTests
                             Assert.IsTrue(dataArgsHolder[(int)StreamType.Video].Duration == TimeSpan.Zero, $"Expected: video Duration == 0 Result: Duration=={dataArgsHolder[(int)StreamType.Video].Duration}");
 
                             bufferController.ReportActualBuffer();
-                            await bufferController.PublishBufferState();
+                            bufferController.PublishBufferState();
+                            await Task.Yield();
 
                             SpinWait.SpinUntil(() => eventCount >= 6, TimeSpan.FromSeconds(2));
 
