@@ -20,6 +20,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Reflection;
+using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
 using System.Xml.Serialization;
@@ -88,9 +89,9 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
         [OneTimeSetUp]
         public void OneTimeSetUp()
         {
-            //Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
-            //savedLoggerManager = LoggerManager.ResetForTests();
-            //LoggerManager.Configure("JuvoPlayer=Verbose", CreateLoggerFunc);
+            Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
+            savedLoggerManager = LoggerManager.ResetForTests();
+            LoggerManager.Configure("JuvoPlayer=Verbose", CreateLoggerFunc);
 
             var assembly = Assembly.GetExecutingAssembly();
             var drmInitDataStream = assembly.GetManifestResourceStream("JuvoPlayer.TizenTests.res.drm.google_dash_encrypted_init_data");
@@ -107,7 +108,6 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
 
             Assert.That(initPlayReadyData, Is.Not.Null);
             Assert.That(initWidevineData, Is.Not.Null);
-
 
             // Load PlayReady packet
             var encryptedPacketStream =
@@ -128,8 +128,6 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
                 EncryptedDataPacket = encryptedPlayReadyPacket
             });
 
-
-
             // Load widevine packet
             encryptedPacketStream = assembly.GetManifestResourceStream(
                 "JuvoPlayer.TizenTests.res.drm.tos4kuhd_dash_widevine_encrypted_video_packet.xml");
@@ -148,8 +146,10 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
                 EncryptedDataPacket = encryptedWidevinePacket
             });
 
-            Assert.That(DrmConfigurations[DrmTypes[0]].EncryptedDataPacket, Is.Not.Null);
-            Assert.That(DrmConfigurations[DrmTypes[1]].EncryptedDataPacket, Is.Not.Null);
+            foreach (var drm in DrmTypes)
+            {
+                Assert.That(DrmConfigurations[drm].EncryptedDataPacket, Is.Not.Null);
+            }
         }
 
         private static LoggerBase CreateLoggerFunc(string channel, LogLevel level)
@@ -160,7 +160,7 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
         [OneTimeTearDown]
         public void OneTimeTearDown()
         {
-            //LoggerManager.RestoreForTests(savedLoggerManager);
+            LoggerManager.RestoreForTests(savedLoggerManager);
         }
 
         private static DRMDescription CreatePlayReadyDrmDescription()
@@ -210,7 +210,7 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
             return drmInitData;
         }
 
-        private DRMInitData CreateDrmInitDate(string drmName) =>
+        private DRMInitData CreateDrmInitData(string drmName) =>
             DrmConfigurations[drmName].GetDrmInitData();
 
         private DRMDescription CreateDrmDescription(string drmName) =>
@@ -224,7 +224,7 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
         {
             Logger.Info(drmName);
 
-            var drmInitData = CreateDrmInitDate(drmName);
+            var drmInitData = CreateDrmInitData(drmName);
             var configuration = CreateDrmDescription(drmName);
             configuration.LicenceUrl = null;
 
@@ -236,7 +236,7 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
         {
             Logger.Info(drmName);
 
-            var drmInitData = CreateDrmInitDate(drmName);
+            var drmInitData = CreateDrmInitData(drmName);
             var configuration = CreateDrmDescription(drmName);
             drmInitData.InitData = null;
             Assert.ThrowsAsync<DrmException>(async () =>
@@ -258,7 +258,7 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
         {
             Logger.Info(drmName);
 
-            var drmInitData = CreateDrmInitDate(drmName);
+            var drmInitData = CreateDrmInitData(drmName);
             var configuration = CreateDrmDescription(drmName);
             Assert.DoesNotThrow(() =>
             {
@@ -271,16 +271,16 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
         [Test, TestCaseSource(nameof(DrmTypes))]
         public void Concurrent_CreateDispose_DoesNotThrow(string drmName)
         {
-            Assert.DoesNotThrow(() =>
+            Assert.DoesNotThrowAsync(async () =>
            {
                using (var goDispose = new Barrier(0))
                {
                    var id = 0;
 
-                   void DoWork(string drm)
+                   async Task DoWork(string drm)
                    {
 
-                       var drmInitData = CreateDrmInitDate(drm);
+                       var drmInitData = CreateDrmInitData(drm);
                        var configuration = CreateDrmDescription(drm);
 
                        var myId = Interlocked.Increment(ref id);
@@ -289,20 +289,36 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
                        try
                        {
                            Logger.Info($"Creating {drm} Session {myId}");
-                           var ses = CencSession.Create(drmInitData, configuration);
-                           Logger.Info($"Initializing {drm} Session {myId}");
-                           ses.Initialize();
-                           using (var cts = new CancellationTokenSource(TimeSpan.FromSeconds(20)))
+                           using (var ses = CencSession.Create(drmInitData, configuration))
                            {
-                               var init = ses.WaitForInitialization(cts.Token);
-                               init.Wait(cts.Token);
+                               Logger.Info($"Initializing {drm} Session {myId}");
+                               ses.Initialize();
+
+                               // Widevine cases - 15 concurrent sessions - individual session may take 60s+
+                               // to initialize when run @15 sessions.
+                               using (var cts = new CancellationTokenSource(TimeSpan.FromSeconds(90)))
+                               {
+                                   try
+                                   {
+                                       await ses.WaitForInitialization(cts.Token);
+                                   }
+                                   catch (OperationCanceledException)
+                                   {
+                                       Logger.Info($"TIMEOUT {drm} Session {myId}");
+                                       throw;
+                                   }
+                                   catch (Exception e)
+                                   {
+                                       Logger.Error(e);
+                                       throw;
+                                   }
+                               }
+
+                               Logger.Info($"{drm} Session {myId} Initialized. Waiting for Dispose");
+                               goDispose.SignalAndWait();
+                               signaled = true;
                            }
 
-                           Logger.Info($"{drm} Session {myId} Initialized. Waiting for Dispose");
-                           goDispose.SignalAndWait();
-                           signaled = true;
-                           Logger.Info($"Disposing {drm} Session {myId}");
-                           ses.Dispose();
                            Logger.Info($"{drm} Session {myId} completed");
                        }
                        finally
@@ -312,19 +328,15 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
                        }
                    }
 
-                   var workPool = new List<Action>();
+                   var workPool = new List<Task>();
 
                    for (var i = 0; i < ConcurrentDrmSessionsLimit; i++)
                    {
-                       workPool.Add(() => DoWork(drmName));
+                       workPool.Add(DoWork(drmName));
                        goDispose.AddParticipant();
                    }
 
-                   Parallel.Invoke(new ParallelOptions
-                   {
-                       MaxDegreeOfParallelism = ConcurrentDrmSessionsLimit * 4
-                   }, workPool.ToArray());
-
+                   await Task.WhenAll(workPool.ToArray());
                    Logger.Info($"{drmName} Test completed");
                }
            });
@@ -335,7 +347,7 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
         {
             Logger.Info(drmName);
 
-            var drmInitData = CreateDrmInitDate(drmName);
+            var drmInitData = CreateDrmInitData(drmName);
             var configuration = CreateDrmDescription(drmName);
             var encryptedPacket = CreateEncryptedPacket(drmName);
 

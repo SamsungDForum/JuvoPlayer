@@ -83,13 +83,9 @@ namespace JuvoPlayer.Player.EsPlayer.Stream.Buffering
         public StreamBuffer GetStreamBuffer(StreamType stream)
             => streamBuffers[(int)stream];
 
-        public async Task PublishBufferState()
+        public void PublishBufferState()
         {
             PushNotifications(StreamBufferEvent.Buffering, bufferConfigurationSubject);
-
-            // backport from PRJLTVA-351. Avoid delivery of data from terminated client downloads
-            // by assuring delivery of data requests to client.
-            await Task.Yield();
         }
 
         public void Initialize(StreamType stream)

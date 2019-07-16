@@ -15,6 +15,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
 using JuvoPlayer.Common;
