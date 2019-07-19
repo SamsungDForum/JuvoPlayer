@@ -1,17 +1,15 @@
-﻿<?xml version="1.0" encoding="utf-8"?>
 <Project Sdk="Microsoft.NET.Sdk">
+
   <!-- Property Group for .NET Core Project -->
   <PropertyGroup>
     <OutputType>Exe</OutputType>
     <TargetFramework>netcoreapp2.0</TargetFramework>
-    <DefineConstants />
-    <AssemblyName>JuvoReactNative</AssemblyName>
-    <RootNamespace>JuvoReactNative</RootNamespace>
-    <AssemblyVersion>1.0.0.0</AssemblyVersion>
+    <DefineConstants></DefineConstants>
   </PropertyGroup>
+
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugType>portable</DebugType>
-    <DefineConstants />
+    <DefineConstants></DefineConstants>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>None</DebugType>
@@ -35,9 +33,12 @@
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </EmbeddedResource>
   </ItemGroup>
+
   <ItemGroup>
-    <Folder Include="res\tiles\" />
+    <Folder Include="res\" />
   </ItemGroup>
+
+
   <ItemGroup>
     <TizenTpkUserExcludeFiles Include="ElmSharp.dll" />
     <TizenTpkUserExcludeFiles Include="ElmSharp.Wearable.dll" />
@@ -127,23 +128,22 @@
     <TizenTpkUserExcludeFiles Include="Tizen.TV.CoBA.Common.dll" />
     <TizenTpkUserExcludeFiles Include="Tizen.TV.Service.CoBA.Common.dll" />
   </ItemGroup>
+
   <!-- Include Nuget Package for Tizen Project building -->
   <ItemGroup>
-    <PackageReference Include="Tizen.NET" Version="5.0.0.14572">
-      <ExcludeAssets>Runtime</ExcludeAssets>
-    </PackageReference>
+    <PackageReference Include="Tizen.NET" Version="5.0.0.14629" />
     <PackageReference Include="Tizen.NET.Sdk" Version="1.0.1" />
-    <PackageReference Include="Tizen.NET.TV" Version="5.5.0.4997532">
-      <ExcludeAssets>Runtime</ExcludeAssets>
-    </PackageReference>
+    <PackageReference Include="Tizen.NET.TV" Version="5.5.0.4997532" />
   </ItemGroup>
   <ItemGroup>
-    <ProjectReference Include="..\..\JuvoLogger.Tizen\JuvoLogger.Tizen.csproj" />
-    <ProjectReference Include="..\..\JuvoPlayer\JuvoPlayer.csproj" />
+    <ProjectReference Include="..\..\..\..\..\bitbucket\juvo-player\JuvoLogger.Tizen\JuvoLogger.Tizen.csproj" />
+    <ProjectReference Include="..\..\..\..\..\bitbucket\juvo-player\JuvoPlayer\JuvoPlayer.csproj" />
   </ItemGroup>
+
   <ItemGroup>
     <Reference Include="ReactNativeTizen">
       <HintPath>ReactNativeTizen.dll</HintPath>
     </Reference>
   </ItemGroup>
+  
 </Project>
