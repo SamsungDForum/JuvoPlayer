@@ -35,7 +35,7 @@
   <ItemGroup>
     <PackageReference Include="RevStackCore-ImageSharp" Version="0.9.0" />
     <!-- Tizen.* packages are excluded from runtime -->
-    <PackageReference Include="Tizen.NET" Version="5.0.0.14572">
+    <PackageReference Include="Tizen.NET" Version="5.0.0.14629">
       <ExcludeAssets>Runtime</ExcludeAssets>
     </PackageReference>
     <PackageReference Include="Tizen.NET.Sdk" Version="1.0.1">
