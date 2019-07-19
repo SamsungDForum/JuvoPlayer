@@ -36,7 +36,7 @@ namespace JuvoPlayer.Drms.Cenc
 {
     internal sealed class CencSession : IEventListener, IDrmSession
     {
-        private static readonly ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
+        private readonly ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
 
         private IEME CDMInstance;
         private readonly DRMInitData initData;
@@ -47,9 +47,8 @@ namespace JuvoPlayer.Drms.Cenc
         private readonly AsyncContextThread thread = new AsyncContextThread();
 
         private bool isDisposed;
-        private CancellationTokenSource cancellationTokenSource;
+        private readonly CancellationTokenSource cancellationTokenSource;
         private TaskCompletionSource<byte[]> requestDataCompletionSource;
-        private Task initializationTask = Task.FromException(new DrmException("Initialization not called"));
 
         private int counter;
         ref int IReferenceCountable.Count => ref counter;
@@ -60,6 +59,7 @@ namespace JuvoPlayer.Drms.Cenc
         private const int E_DECRYPT_BUFFER_FULL = 2;
 
         private CencUtils.DrmType drmType;
+        private Task initializationTask = Task.FromException(new Exception("CencSession Initialize not called"));
 
         private CencSession(DRMInitData initData, DRMDescription drmDescription)
         {
@@ -82,17 +82,10 @@ namespace JuvoPlayer.Drms.Cenc
 
             if (currentSessionId != null)
             {
-                // Widevine requires serialized access to session_close(). Will crash otherwise.
-                // PlayReady does not.
                 using (sessionLock.Lock())
                     CDMInstance.session_close(currentSessionId);
-
                 Logger.Info($"CencSession: {currentSessionId} closed");
                 currentSessionId = null;
-            }
-            else
-            {
-                Logger.Info($"CencSession: NULL");
             }
 
             IEME.destroy(CDMInstance);
@@ -101,14 +94,11 @@ namespace JuvoPlayer.Drms.Cenc
 
         public override void Dispose()
         {
+            Logger.Info($"Disposing CencSession: {currentSessionId}");
             if (isDisposed)
                 return;
 
-            Logger.Info($"Disposing CencSession: {currentSessionId}");
-
             cancellationTokenSource?.Cancel();
-            cancellationTokenSource?.Dispose();
-            cancellationTokenSource = null;
 
             thread.Factory.Run(() => DestroyCDM()); //will do nothing on a disposed AsyncContextThread
             // thread.dispose is not waiting until thread ends. thread Join waits and calls dispose
@@ -130,15 +120,9 @@ namespace JuvoPlayer.Drms.Cenc
             return new CencSession(initData, drmDescription);
         }
 
-        public Task WaitForInitialization(CancellationToken token)
-        {
-            Logger.Info($"{currentSessionId}: Waiting for license");
-
-            return initializationTask.WaitAsync(token);
-        }
-
         public Task<Packet> DecryptPacket(EncryptedPacket packet, CancellationToken token)
         {
+            ThrowIfDisposed();
             return thread.Factory.Run(() => DecryptPacketOnIemeThread(packet, token));
         }
 
@@ -154,14 +138,6 @@ namespace JuvoPlayer.Drms.Cenc
             using (var linkedToken =
                 CancellationTokenSource.CreateLinkedTokenSource(cancellationTokenSource.Token, token))
             {
-                if (licenceInstalled == false)
-                {
-                    if (!initializationTask.IsCompleted)
-                        throw new DrmNoLicenseException("Waiting for license");
-
-                    throw new DrmException("No license installed");
-                }
-
                 // Do padding only for Widevine with keys shorter then 16 bytes
                 // Shorter keys need to be zero padded, not PCKS#7
                 if (drmType == CencUtils.DrmType.Widevine && packet.Iv.Length < 16)
@@ -190,8 +166,6 @@ namespace JuvoPlayer.Drms.Cenc
         private unsafe eCDMReturnType CreateParamsAndDecryptData(EncryptedPacket packet, ref HandleSize[] pHandleArray,
             CancellationToken token)
         {
-            token.ThrowIfCancellationRequested();
-
             switch (packet.Storage)
             {
                 case IManagedDataStorage managedStorage:
@@ -214,8 +188,6 @@ namespace JuvoPlayer.Drms.Cenc
         private unsafe eCDMReturnType CreateParamsAndDecryptData(EncryptedPacket packet, byte* data, int dataLen,
             ref HandleSize[] pHandleArray, CancellationToken token)
         {
-            token.ThrowIfCancellationRequested();
-
             fixed (byte* iv = packet.Iv, kId = packet.KeyId)
             {
                 var subdataPointer = MarshalSubsampleArray(packet);
@@ -259,6 +231,7 @@ namespace JuvoPlayer.Drms.Cenc
                 if ((int)res == E_DECRYPT_BUFFER_FULL && errorCount < MaxDecryptRetries)
                 {
                     Logger.Warn($"{type}: E_DECRYPT_BUFFER_FULL ({errorCount}/{MaxDecryptRetries})");
+                    token.ThrowIfCancellationRequested();
                     ++errorCount;
                     Task.Delay(DecryptBufferFullSleepTime, token).Wait(token);
                     continue;
@@ -299,11 +272,9 @@ namespace JuvoPlayer.Drms.Cenc
 
         public override void onMessage(string sessionId, MessageType messageType, string message)
         {
+            Logger.Info("Got Ieme message: " + sessionId);
             if (!sessionId.Equals(currentSessionId))
                 return;
-
-            Logger.Info($"{sessionId}: {messageType}");
-
             switch (messageType)
             {
                 case MessageType.kLicenseRequest:
@@ -321,23 +292,33 @@ namespace JuvoPlayer.Drms.Cenc
         // There has been a change in the keys in the session or their status.
         public override void onKeyStatusesChange(string sessionId)
         {
-            Logger.Info(sessionId);
         }
 
         // A remove() operation has been completed.
         public override void onRemoveComplete(string sessionId)
         {
-            Logger.Info(sessionId);
         }
 
         public Task Initialize()
         {
             ThrowIfDisposed();
+            Logger.Info("");
+
             var t = thread.Factory.Run(InitializeOnIemeThread);
             Volatile.Write(ref initializationTask, t);
             return initializationTask;
         }
 
+        public Task WaitForInitialization(CancellationToken token)
+        {
+            Logger.Info($"{currentSessionId}: Waiting for license");
+
+            return Volatile.Read(ref initializationTask).WaitAsync(token);
+        }
+
+        public bool CanDecrypt() =>
+            licenceInstalled;
+        
         private void ThrowIfDisposed()
         {
             if (isDisposed)
@@ -346,74 +327,65 @@ namespace JuvoPlayer.Drms.Cenc
 
         private async Task InitializeOnIemeThread()
         {
-            Logger.Info("");
-
             var cancellationToken = cancellationTokenSource.Token;
-
-            CreateIeme(cancellationToken);
-            await CreateSession(cancellationToken);
-            var requestData = await GetRequestData(cancellationToken);
-            var responseText = await AcquireLicenceFromServer(requestData, cancellationToken);
-            await InstallLicence(responseText, cancellationToken);
+      
+            CreateIeme();
+            cancellationToken.ThrowIfCancellationRequested();
+            currentSessionId = await CreateSession();
+            Logger.Info($"CencSession ID {currentSessionId}");
+            cancellationToken.ThrowIfCancellationRequested();
+            var requestData = await GetRequestData();
+            cancellationToken.ThrowIfCancellationRequested();
+            var responseText = await AcquireLicenceFromServer(requestData);
+            cancellationToken.ThrowIfCancellationRequested();
+            await InstallLicence(responseText);
+            licenceInstalled = true;
+           
         }
 
-        private void CreateIeme(CancellationToken token)
+        private void CreateIeme()
         {
-            token.ThrowIfCancellationRequested();
-
-            Logger.Info("");
-
             var keySystem = CencUtils.GetKeySystemName(initData.SystemId);
             CDMInstance = IEME.create(this, keySystem, false, CDM_MODEL.E_CDM_MODEL_DEFAULT);
             if (CDMInstance == null)
                 throw new DrmException(ErrorMessage.Generic);
         }
 
-        private async Task CreateSession(CancellationToken token)
+        private async Task<string> CreateSession()
         {
-            string sessionId = null;
-
-            Status status;
-            using (await sessionLock.LockAsync(token))
-                status = CDMInstance.session_create(SessionType.kTemporary, ref sessionId);
-
-            if (status != Status.kSuccess)
-                throw new DrmException(EmeStatusConverter.Convert(status));
-
-            // Session Id can be stored outside of lock as Dispose waits for init task completion.
-            currentSessionId = sessionId;
-
-            Logger.Info("Created CencSession ID: " + currentSessionId);
+            using (await sessionLock.LockAsync(cancellationTokenSource.Token))
+            {
+                string sessionId = null;
+                var status = CDMInstance.session_create(SessionType.kTemporary, ref sessionId);
+                if (status != Status.kSuccess)
+                    throw new DrmException(EmeStatusConverter.Convert(status));
+                Logger.Info("Created session: " + sessionId);
+                return sessionId;
+            }
         }
 
-        private async Task<byte[]> GetRequestData(CancellationToken token)
+        private async Task<byte[]> GetRequestData()
         {
-            token.ThrowIfCancellationRequested();
-
-            Logger.Info(currentSessionId);
-
             if (initData.InitData == null)
                 throw new DrmException(ErrorMessage.InvalidArgument);
-
             requestDataCompletionSource = new TaskCompletionSource<byte[]>();
-
-            var status = CDMInstance.session_generateRequest(currentSessionId, InitDataType.kCenc,
+            Status status;
+            using (await sessionLock.LockAsync(cancellationTokenSource.Token))
+            {
+                status =
+                    CDMInstance.session_generateRequest(currentSessionId, InitDataType.kCenc,
                         Encode(initData.InitData));
+            }
 
             if (status != Status.kSuccess)
                 throw new DrmException(EmeStatusConverter.Convert(status));
-            var requestData = await requestDataCompletionSource.Task.WaitAsync(token);
+            var requestData = await requestDataCompletionSource.Task.WaitAsync(cancellationTokenSource.Token);
             requestDataCompletionSource = null;
-
             return requestData;
         }
 
-        private async Task<string> AcquireLicenceFromServer(byte[] requestData, CancellationToken token)
+        private async Task<string> AcquireLicenceFromServer(byte[] requestData)
         {
-            token.ThrowIfCancellationRequested();
-
-            Logger.Info(currentSessionId);
-
             using (var client = new HttpClient())
             {
                 var licenceUrl = new Uri(drmDescription.LicenceUrl);
@@ -432,7 +404,7 @@ namespace JuvoPlayer.Drms.Cenc
                     }
                 }
 
-                var responseTask = await client.PostAsync(licenceUrl, content, token);
+                var responseTask = await client.PostAsync(licenceUrl, content, cancellationTokenSource.Token);
 
                 // TODO: Add retries. Net failures are expected
                 Logger.Info("Response: " + responseTask);
@@ -440,10 +412,7 @@ namespace JuvoPlayer.Drms.Cenc
                 var readStream = new StreamReader(await receiveStream, Encoding.GetEncoding(437));
                 var responseText = await readStream.ReadToEndAsync();
                 if (!responseText.StartsWith("GLS/1.0 0 OK"))
-                {
                     return responseText;
-                }
-
                 const string headerMark = "\r\n\r\n";
                 var headerMarkIndex = responseText.IndexOf(headerMark, StringComparison.Ordinal);
                 return headerMarkIndex == -1
@@ -452,24 +421,28 @@ namespace JuvoPlayer.Drms.Cenc
             }
         }
 
-        private async Task InstallLicence(string responseText, CancellationToken token)
+        private async Task InstallLicence(string responseText)
         {
-            Logger.Info($"{currentSessionId}");
-
-            // PlayReady required. Concurrent calls to session_update *may* randomly fail
-            // serialize access to session_update.
-            Status status;
-            using (await sessionLock.LockAsync(token))
-                status = CDMInstance.session_update(currentSessionId, responseText);
-
-            Logger.Info($"Install CencSession {currentSessionId} result: {status}");
-            if (status != Status.kSuccess)
+            Logger.Info($"Installing CencSession: {currentSessionId}");
+            try
             {
-                Logger.Error($"License Installation failure {EmeStatusConverter.Convert(status)}");
-                throw new DrmException(EmeStatusConverter.Convert(status));
+                Status status;
+                using (await sessionLock.LockAsync(cancellationTokenSource.Token))
+                    status = CDMInstance.session_update(currentSessionId, responseText);
+                Logger.Info($"Install CencSession ${currentSessionId} result: {status}");
+                if (status != Status.kSuccess)
+                {
+                    Logger.Error($"License Installation failure {EmeStatusConverter.Convert(status)}");
+                    throw new DrmException(EmeStatusConverter.Convert(status));
+                }
             }
-
-            licenceInstalled = true;
+            catch (Exception e)
+            {
+                //Something went wrong i.e. communication with the license server failed
+                //TODO Show to the user as 'DRM license session error!' on the screen.
+                throw new DrmException(EmeStatusConverter.Convert(Status.kUnexpectedError) + " - Exception message: " +
+                                       e.Message);
+            }
         }
 
         public override string ToString()
