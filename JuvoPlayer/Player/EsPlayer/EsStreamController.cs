@@ -316,16 +316,21 @@ namespace JuvoPlayer.Player.EsPlayer
             {
                 bufferController.ReportFullBuffer();
                 bufferController.PublishBufferState();
+                // Make sure buffer publication is delivered.
+                await Task.Yield();
+
                 bufferController.EnableEvents(StreamBufferEvent.None);
 
                 await SeekStreamInitialize(token);
+                bufferController.ResetBuffers();
+
                 time = await Client.Seek(time, token);
 
-                bufferController.ResetBuffers();
                 bufferController.ReportActualBuffer();
                 bufferController.EnableEvents(StreamBufferEvent.DataRequest);
                 bufferController.PublishBufferState();
-
+                // Make sure buffer publication is delivered.
+                await Task.Yield();
                 await StreamSeek(time, token);
 
                 bufferController.EnableEvents(StreamBufferEvent.All);
