@@ -107,6 +107,7 @@ namespace JuvoPlayer.Player.EsPlayer
             return streamReconfigureSubject.AsObservable();
         }
 
+
         #region Public API
 
         public EsStream(Common.StreamType type, EsPlayerPacketStorage storage, StreamBufferController bufferController)
@@ -491,6 +492,12 @@ namespace JuvoPlayer.Player.EsPlayer
         /// </exception>
         private async Task PushEncryptedPacket(EncryptedPacket dataPacket, CancellationToken token)
         {
+            if (!dataPacket.DrmSession.CanDecrypt())
+            {
+                await dataPacket.DrmSession.WaitForInitialization(token);
+                logger.Info($"{streamType}: DRM Initialization complete");
+            }
+
             using (var decryptedPacket = await dataPacket.Decrypt(token) as DecryptedEMEPacket)
             {
                 // Continue pushing packet till success or terminal failure
@@ -515,7 +522,7 @@ namespace JuvoPlayer.Player.EsPlayer
                     var delay = CalculateDelay(submitStatus);
                     Wait(delay, token);
                 }
-            }
+            }   
         }
 
         /// <summary>

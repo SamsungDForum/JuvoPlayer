@@ -36,5 +36,23 @@ namespace JuvoPlayer.Drms
         /// <returns>A task, which will produce decrypted <see cref="T:JuvoPlayer.Common.Packet"></see>.</returns>
         /// <exception cref="T:JuvoPlayer.Drms.DRMException">Session is not initialized or packet couldn't be decrypted.</exception>
         Task<Packet> DecryptPacket(EncryptedPacket packet, CancellationToken token);
+
+        /// <summary>
+        /// Awaitable call for initialization completion.
+        /// </summary>
+        /// <param name="token">Cancellation token</param>
+        /// <returns>Task which completes when initialization is done</returns>
+        /// <exception cref="OperationCancelledException"> is throw when initialization is terminated before
+        /// completion or when passed <see cref="token"/> gets cancelled.</exception>
+        /// <exception cref=""></exception>
+        /// <exception cref="T:JuvoPlayer.Drms.DRMException"> is thrown when session could not be initialized</exception>
+        /// <exception cref="InvalidOperationException"> is thrown if this API is called prior to calling Initialize</exception>
+        Task WaitForInitialization(CancellationToken token);
+
+        /// <summary>
+        /// Returns initialization state of session
+        /// </summary>
+        /// <returns>True - License installed. False - No license</returns>
+        bool CanDecrypt();
     }
 }
