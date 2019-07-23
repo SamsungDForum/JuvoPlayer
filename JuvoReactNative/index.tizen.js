@@ -28,8 +28,8 @@ const JuvoPlayer = NativeModules.JuvoPlayer;
 
 const PlayVideo = (name) => {
   try {
-    Alert.alert('Ok.' + name);
-    //JuvoPlayer.startPlayback();    
+    //Alert.alert('Ok.' + name);
+    JuvoPlayer.startPlayback();    
 
   } catch (e) {
     Alert.alert('Error! ' + e);
@@ -94,7 +94,7 @@ class HorizontalScrollView extends React.Component {
           <View style = {styles.control_buttons}>
             <Button
               title="Scroll to left"
-              accessibilityLabel="Learn more about this  button"           
+              accessibilityLabel="Learn more abo ut this  button"           
               onPress={ _handleButtonPressLeft }>             
             </Button>
             <Button
@@ -103,7 +103,7 @@ class HorizontalScrollView extends React.Component {
               onPress={() => { _scrollView.scrollTo({x: 0}); }}>             
             </Button>
             <Button
-              title="Scroll to right"
+              title="Scroll to   right"
               accessibilityLabel="Learn more about this  button"            
               onPress={ _handleButtonPressRight }>             
             </Button>          
@@ -141,9 +141,13 @@ export default class JuvoReactNative extends Component {
 
   render() {
     return (
-      <View style={styles.container}>       
-       <Image style={styles.img_big} source={{uri: 'https://github.com/SamsungDForum/JuvoPlayer/blob/master/smarthubpreview/pictures/car.jpg?raw=true'}} />
-      
+      <View style={styles.container}>  
+        <HideableView> 
+          visible={true} 
+          <Image 
+            style={styles.img_big} 
+            source={{uri: 'https://github.com/SamsungDForum/JuvoPlayer/blob/master/smarthubpreview/pictures/car.jpg?raw=true'}} />
+        </HideableView>
         <HideableView 
           visible={this.state.visible} 
           style = {styles.clip_details}>
@@ -153,7 +157,7 @@ export default class JuvoReactNative extends Component {
         </HideableView >  
         <Button style = {{width: '100%', backgroundColor: 'transparent'}}
             onPress={this.toggle}
-            title="Start video!"            
+            title="Start video bbb!"            
             accessibilityLabel="See an informative alert"
           />        
           <HideableView 
