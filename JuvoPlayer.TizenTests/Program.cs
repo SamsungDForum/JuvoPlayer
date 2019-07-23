@@ -26,6 +26,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using JuvoLogger;
 using JuvoLogger.Tizen;
+using JuvoPlayer.Common;
 using JuvoPlayer.Tests.Utils;
 using Tizen.Applications;
 using Path = System.IO.Path;
@@ -36,8 +37,10 @@ namespace JuvoPlayer.TizenTests
     class Program : CoreUIApplication
     {
         private static ILogger Logger = LoggerManager.GetInstance().GetLogger("UT");
+        private static GCLogger gcLogger;
         private ReceivedAppControl receivedAppControl;
         private string[] nunitArgs;
+        private bool enableGCLogs = false;
         private Window mainWindow;
 
         private static Assembly GetAssemblyByName(string name)
@@ -62,6 +65,18 @@ namespace JuvoPlayer.TizenTests
                 nunitArgs = unparsed.Split(":");
             }
         }
+        
+        /// <summary>
+         /// Extracts GC command line argument.
+         /// </summary>
+         private void ExtractGCArg()
+         {
+             if (receivedAppControl.ExtraData.TryGet("--gc-logs", out string gcArg))
+             {
+                 if (!(gcArg.Equals("0") || gcArg.Equals("false", StringComparison.InvariantCultureIgnoreCase)))
+                     enableGCLogs = true;
+             }
+         }
 
         private void RunTests(Assembly assembly)
         {
@@ -94,6 +109,13 @@ namespace JuvoPlayer.TizenTests
         {
             receivedAppControl = e.ReceivedAppControl;
             ExtractNunitArgs();
+            ExtractGCArg();
+
+            if (enableGCLogs)
+            {
+                gcLogger = new GCLogger();
+                gcLogger.Start(10);
+            }
 
             await Task.Factory.StartNew(() =>
             {
@@ -101,7 +123,10 @@ namespace JuvoPlayer.TizenTests
                 RunJuvoPlayerTizenTests();
                 RunJuvoPlayerTests();
             }, TaskCreationOptions.LongRunning);
-
+            
+            if(enableGCLogs)
+                gcLogger.Dispose();
+            
             Exit();
         }
 
