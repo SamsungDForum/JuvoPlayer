@@ -67,16 +67,16 @@ namespace JuvoPlayer.TizenTests
         }
         
         /// <summary>
-         /// Extracts GC command line argument.
-         /// </summary>
-         private void ExtractGCArg()
-         {
-             if (receivedAppControl.ExtraData.TryGet("--gc-logs", out string gcArg))
-             {
-                 if (!(gcArg.Equals("0") || gcArg.Equals("false", StringComparison.InvariantCultureIgnoreCase)))
+        /// Extracts GC command line argument.
+        /// </summary>
+        private void ExtractGCArg()
+        {
+            if (receivedAppControl.ExtraData.TryGet("--gc-logs", out string gcArg))
+            {
+                if (!(gcArg.Equals("0") || gcArg.Equals("false", StringComparison.InvariantCultureIgnoreCase)))
                      enableGCLogs = true;
-             }
-         }
+            }
+        }
 
         private void RunTests(Assembly assembly)
         {

@@ -17,7 +17,7 @@ namespace JuvoPlayer.Common
         /// <summary>
         /// Starts collecting logs.
         /// </summary>
-        /// <param name="interval">time interval between reading from GC</param>
+        /// <param name="interval">time interval between readings from GC</param>
         public void Start(int interval = 1000)
         {
             tokenSource = new CancellationTokenSource();
