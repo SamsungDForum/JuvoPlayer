@@ -37,7 +37,6 @@ namespace JuvoPlayer.TizenTests
     class Program : CoreUIApplication
     {
         private static ILogger Logger = LoggerManager.GetInstance().GetLogger("UT");
-        private static GCLogger gcLogger;
         private ReceivedAppControl receivedAppControl;
         private string[] nunitArgs;
         private bool enableGCLogs = false;
@@ -110,23 +109,24 @@ namespace JuvoPlayer.TizenTests
             receivedAppControl = e.ReceivedAppControl;
             ExtractNunitArgs();
             ExtractGCArg();
-
+            GCLogger gcLogger = null;
+            
             if (enableGCLogs)
             {
                 gcLogger = new GCLogger();
-                gcLogger.Start(10);
+                gcLogger.Start(TimeSpan.FromMilliseconds(1000));
             }
 
-            await Task.Factory.StartNew(() =>
+            using (gcLogger)
             {
-                SynchronizationContext.SetSynchronizationContext(new SynchronizationContext());
-                RunJuvoPlayerTizenTests();
-                RunJuvoPlayerTests();
-            }, TaskCreationOptions.LongRunning);
-            
-            if(enableGCLogs)
-                gcLogger.Dispose();
-            
+                await Task.Factory.StartNew(() =>
+                {
+                    SynchronizationContext.SetSynchronizationContext(new SynchronizationContext());
+                    RunJuvoPlayerTizenTests();
+                    RunJuvoPlayerTests();
+                }, TaskCreationOptions.LongRunning);
+            }
+
             Exit();
         }
 

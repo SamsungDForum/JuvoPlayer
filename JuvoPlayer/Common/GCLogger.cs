@@ -17,8 +17,8 @@ namespace JuvoPlayer.Common
         /// <summary>
         /// Starts collecting logs.
         /// </summary>
-        /// <param name="interval">time interval between readings from GC</param>
-        public void Start(int interval = 1000)
+        /// <param name="interval">time interval between reading from GC</param>
+        public void Start(TimeSpan interval)
         {
             tokenSource = new CancellationTokenSource();
             task = Task.Run(async () => await CollectLogs(interval, tokenSource.Token));
@@ -29,8 +29,8 @@ namespace JuvoPlayer.Common
         /// </summary>
         public void Dispose()
         {
-            tokenSource.Cancel();
-            task.Wait();
+            tokenSource?.Cancel();
+            task?.Wait();
         }
 
         /// <summary>
@@ -40,8 +40,9 @@ namespace JuvoPlayer.Common
         /// <param name="interval"></param>
         /// <param name="tokenSourceToken"></param>
         /// <returns></returns>
-        private async Task CollectLogs(int interval, CancellationToken tokenSourceToken)
+        private async Task CollectLogs(TimeSpan interval, CancellationToken tokenSourceToken)
         {
+            int miliseconds = (int)interval.TotalMilliseconds;
             int iteration = 0;
             while (!tokenSourceToken.IsCancellationRequested)
             {
@@ -52,7 +53,7 @@ namespace JuvoPlayer.Common
                 iteration++;
                 try
                 {
-                    await Task.Delay(interval, tokenSourceToken);
+                    await Task.Delay(miliseconds, tokenSourceToken);
                 }
                 catch (TaskCanceledException ex)
                 {
