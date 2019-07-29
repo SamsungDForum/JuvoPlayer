@@ -30,6 +30,7 @@ using JuvoPlayer.Utils;
 using Nito.AsyncEx;
 using System.Runtime.InteropServices;
 using JuvoPlayer.Player.EsPlayer.Stream.Buffering;
+using Nito.AsyncEx.Synchronous;
 using static JuvoPlayer.Player.EsPlayer.Stream.Buffering.StreamBufferEvents;
 
 namespace JuvoPlayer.Player.EsPlayer
@@ -775,30 +776,42 @@ namespace JuvoPlayer.Player.EsPlayer
             StopClockGenerator();
         }
 
+        private void WaitForAsyncOperationsCompletion()
+        {
+            logger.Info("Waiting for Clock/AsyncOps to complete");
+
+            var terminations = GetActiveTasks();
+            terminations.Add(clockGenerator);
+
+            Task.WhenAll(terminations).WaitWithoutException();
+        }
         public void Dispose()
         {
             if (isDisposed)
                 return;
+
+            logger.Info("");
+
+            // Stop data streams            
+            DisableTransfer();
+            TerminateAsyncOperations();
+            WaitForAsyncOperationsCompletion();
 
             logger.Info("Stopping playback");
             try
             {
                 player.Stop();
             }
-            catch (InvalidOperationException)
+            catch (Exception e)
             {
+                if(!(e is InvalidOperationException))
+                    logger.Error(e);
                 // Ignore. Will be raised if not playing :)
             }
 
-            logger.Info("Data Streams shutdown");
-            // Stop data streams
-            DisableTransfer();
-
             DetachEventHandlers();
 
-            TerminateAsyncOperations();
-
-            ShutdownStreams();
+            DisposeStreams();
 
             bufferController.Dispose();
 
@@ -807,13 +820,14 @@ namespace JuvoPlayer.Player.EsPlayer
             DisposeAllSubscriptions();
 
             // Shut down player
-            logger.Info("ESPlayer shutdown");
+            logger.Info("Disposing ESPlayer");
 
             // Don't call Close. Dispose does that. Otherwise exceptions will fly
             player.Dispose();
             if (usesExternalWindow == false)
                 WindowUtils.DestroyElmSharpWindow(displayWindow);
 
+            logger.Info("Disposing Tokens");
             // Clean up internal object
             activeTaskCts.Dispose();
             clockGeneratorCts?.Dispose();
@@ -821,10 +835,10 @@ namespace JuvoPlayer.Player.EsPlayer
             isDisposed = true;
         }
 
-        private void ShutdownStreams()
+        private void DisposeStreams()
         {
             // Dispose of individual streams.
-            logger.Info("Data Streams shutdown");
+            logger.Info("Disposing Data Streams");
             foreach (var esStream in esStreams)
                 esStream?.Dispose();
         }
