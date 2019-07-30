@@ -248,12 +248,12 @@ namespace JuvoPlayer.Player.EsPlayer
                         break;
                     case ESPlayer.ESPlayerState.Paused:
                         player.Resume();
+                        EnableTransfer();
                         break;
                     default:
                         throw new InvalidOperationException($"Play called in invalid state: {state}");
                 }
-
-                EnableTransfer();
+                
                 StartClockGenerator();
                 stateChangedSubject.OnNext(PlayerState.Playing);
             }
@@ -315,6 +315,7 @@ namespace JuvoPlayer.Player.EsPlayer
 
             try
             {
+                bufferController.EnableEvents(StreamBufferEvent.DataRequest);
                 bufferController.ReportFullBuffer();
                 bufferController.PublishBufferState();
                 // Make sure buffer publication is delivered.
