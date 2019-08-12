@@ -20,16 +20,16 @@ import {
 
 
 const deviceWidth = 298 //Dimensions.get('window').width / 100
-const FIXED_BAR_WIDTH = 1
-const BAR_SPACE = 1
+const FIXED_BAR_WIDTH = 1;
+const BAR_SPACE = 1;
 
 import { NativeModules } from 'react-native';
 const JuvoPlayer = NativeModules.JuvoPlayer;
 
-const PlayVideo = (name) => {
+const PlayVideo = (clip_url) => {
   try {
-    //Alert.alert('Ok.' + name);
-    JuvoPlayer.startPlayback();    
+    Alert.alert('Ok.' + clip_url);
+    //JuvoPlayer.startPlayback();    
 
   } catch (e) {
     Alert.alert('Error! ' + e);
@@ -46,7 +46,7 @@ class Thumb extends React.Component {
       <View style={styles.thumb}>
         <Button style={styles.button_thumb}  
           title = ''                            
-          onPress = {PlayVideo}
+          onPress = {() => PlayVideo(this.props.source)}
           name={this.props.source}
           >                       
         </Button>       
@@ -91,6 +91,15 @@ class HorizontalScrollView extends React.Component {
 
     return (
         <View style = {styles.horizontalScrollView}>
+           <ScrollView
+            ref={(scrollView) => { _scrollView = scrollView; }}
+            automaticallyAdjustContentInsets={false}
+            scrollEventThrottle={100}
+            horizontal={true}
+            showsHorizontalScrollIndicator = {false}             
+            style={[styles.scrollView]}>
+            {THUMB_URIS.map(createThumbRow)}
+          </ScrollView>
           <View style = {styles.control_buttons}>
             <Button
               title="Scroll to left"
@@ -103,20 +112,12 @@ class HorizontalScrollView extends React.Component {
               onPress={() => { _scrollView.scrollTo({x: 0}); }}>             
             </Button>
             <Button
-              title="Scroll to   right"
+              title="Scroll to right"
               accessibilityLabel="Learn more about this  button"            
               onPress={ _handleButtonPressRight }>             
             </Button>          
           </View>          
-          <ScrollView
-            ref={(scrollView) => { _scrollView = scrollView; }}
-            automaticallyAdjustContentInsets={false}
-            scrollEventThrottle={100}
-            horizontal={true}
-            showsHorizontalScrollIndicator = {false}             
-            style={[styles.scrollView]}>
-            {THUMB_URIS.map(createThumbRow)}
-          </ScrollView>
+         
         </View>
       );
   }
@@ -142,8 +143,8 @@ export default class JuvoReactNative extends Component {
   render() {
     return (
       <View style={styles.container}>  
-        <HideableView> 
-          visible={true} 
+        <HideableView 
+          visible={true}>           
           <Image 
             style={styles.img_big} 
             source={{uri: 'https://github.com/SamsungDForum/JuvoPlayer/blob/master/smarthubpreview/pictures/car.jpg?raw=true'}} />
@@ -157,7 +158,7 @@ export default class JuvoReactNative extends Component {
         </HideableView >  
         <Button style = {{width: '100%', backgroundColor: 'transparent'}}
             onPress={this.toggle}
-            title="Start video bbb!"            
+            title="Start video!"            
             accessibilityLabel="See an informative alert"
           />        
           <HideableView 
