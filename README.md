@@ -36,6 +36,13 @@ The reference for developers of streaming live TV and VOD Tizen .Net application
 2. Start the select GUI project by pressing F5 (debug) or ctrl+F5 (release)
 
 ## Features and release notes
+**JuvoPlayer 1.4.9 (beta)**
+1. Features:
+* All features of the JuvoPlayer 1.4.8
+* JuvoPlayer backend stability improvements 
+2. Known issues:
+* Right after the finishing seek in HLS streams there is a short video pause until the audio catch up. It is a result of FFmpeg 'seek' function specific.
+  
 **JuvoPlayer 1.4.8 (beta)**
 1. Features:
 * All features of the JuvoPlayer 1.4.7

@@ -1,3 +1,4 @@
+<<<<<<< HEAD
 ﻿<?xml version="1.0" encoding="utf-8"?>
 <manifest package="JuvoPlayerOpenGLNative.Tizen.TV" version="1.4.8" api-version="5" xmlns="http://tizen.org/ns/packages">
   <feature name="http://tizen.org/feature/screen.size.normal.1080.1920">true</feature>
@@ -28,4 +29,36 @@
     <privilege>http://developer.samsung.com/privilege/esplay</privilege>
   </privileges>
   <provides-appdefined-privileges />
+=======
+﻿<?xml version="1.0" encoding="utf-8"?>
+<manifest package="JuvoPlayerOpenGLNative.Tizen.TV" version="1.4.9" api-version="5" xmlns="http://tizen.org/ns/packages">
+  <feature name="http://tizen.org/feature/screen.size.normal.1080.1920">true</feature>
+  <profile name="tv" />
+  <app-control>
+    <src name="index.html" reload="disable" />
+    <operation name="http://samsung.com/appcontrol/operation/eden_resume" />
+  </app-control>
+  <ui-application appid="JuvoPlayerOpenGLNative.Tizen.TV" exec="JuvoPlayerOpenGLNative.Tizen.TV.dll" multiple="false" nodisplay="false" taskmanage="true" splash-screen-display="true" type="dotnet" launch_mode="single">
+    <label>JuvoPlayerOpenGLNative.Tizen.TV</label>
+    <icon>JuvoPlayerOpenGLNativeTizenTV.png</icon>
+    <metadata key="http://samsung.com/tv/metadata/mountinstall" value="false" />
+    <metadata key="http://samsung.com/tv/metadata/devel.api.version" value="2.4" />
+    <metadata key="http://samsung.com/tv/metadata/use.preview" value="endpoint_URL=https://raw.githubusercontent.com/SamsungDForum/JuvoPlayer/master/smarthubpreview/juvoplayerclipsJSON.json" />
+    <metadata key="http://samsung.com/tv/metadata/appbootingsupport" />
+    <splash-screens>
+      <!--Orientation needs to be set to portrait due to the platform bug-->
+      <splash-screen src="JuvoPlayerOpenGLNativeTizenTV_black_simple.jpg" type="img" dpi="hdpi" orientation="portrait" indicator-display="false" />
+      <!--Copy of a file is needed, because APP installer doesn't allow to specify 2 splash screens with the same "src" attribute -->
+      <splash-screen src="JuvoPlayerOpenGLNativeTizenTV_black_simple_eden.jpg" type="img" dpi="hdpi" orientation="portrait" indicator-display="false" app-control-operation="http://samsung.com/appcontrol/operation/eden_resume" />
+    </splash-screens>
+  </ui-application>
+  <shortcut-list />
+  <privileges>
+    <privilege>http://tizen.org/privilege/internet</privilege>
+    <privilege>http://developer.samsung.com/privilege/drmplay</privilege>
+    <privilege>http://developer.samsung.com/privilege/drminfo</privilege>
+    <privilege>http://developer.samsung.com/privilege/esplay</privilege>
+  </privileges>
+  <provides-appdefined-privileges />
+>>>>>>> master
 </manifest>

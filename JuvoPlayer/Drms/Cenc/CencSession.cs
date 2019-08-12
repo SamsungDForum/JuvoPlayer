@@ -22,7 +22,6 @@ using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Runtime.InteropServices;
 using System.Text;
-using System.Text.RegularExpressions;
 using System.Threading;
 using System.Threading.Tasks;
 using JuvoPlayer.Common;
@@ -46,7 +45,6 @@ namespace JuvoPlayer.Drms.Cenc
 
         private readonly DRMDescription drmDescription;
         private readonly AsyncContextThread thread = new AsyncContextThread();
-        private readonly AsyncLock threadLock = new AsyncLock();
 
         private bool isDisposed;
         private readonly CancellationTokenSource cancellationTokenSource;
@@ -61,6 +59,7 @@ namespace JuvoPlayer.Drms.Cenc
         private const int E_DECRYPT_BUFFER_FULL = 2;
 
         private CencUtils.DrmType drmType;
+        private Task initializationTask = Task.FromException(new Exception("CencSession Initialize not called"));
 
         private CencSession(DRMInitData initData, DRMDescription drmDescription)
         {
@@ -134,18 +133,11 @@ namespace JuvoPlayer.Drms.Cenc
             return paddedIv;
         }
 
-        private async Task<Packet> DecryptPacketOnIemeThread(EncryptedPacket packet, CancellationToken token)
+        private Packet DecryptPacketOnIemeThread(EncryptedPacket packet, CancellationToken token)
         {
             using (var linkedToken =
                 CancellationTokenSource.CreateLinkedTokenSource(cancellationTokenSource.Token, token))
-            using (await threadLock.LockAsync(linkedToken.Token))
             {
-                if (licenceInstalled == false)
-                {
-                    Logger.Error("No licence installed");
-                    throw new DrmException("No licence installed");
-                }
-
                 // Do padding only for Widevine with keys shorter then 16 bytes
                 // Shorter keys need to be zero padded, not PCKS#7
                 if (drmType == CencUtils.DrmType.Widevine && packet.Iv.Length < 16)
@@ -309,11 +301,24 @@ namespace JuvoPlayer.Drms.Cenc
 
         public Task Initialize()
         {
-            Logger.Info("");
             ThrowIfDisposed();
-            return thread.Factory.Run(InitializeOnIemeThread);
+            Logger.Info("");
+
+            var t = thread.Factory.Run(InitializeOnIemeThread);
+            Volatile.Write(ref initializationTask, t);
+            return initializationTask;
         }
 
+        public Task WaitForInitialization(CancellationToken token)
+        {
+            Logger.Info($"{currentSessionId}: Waiting for license");
+
+            return Volatile.Read(ref initializationTask).WaitAsync(token);
+        }
+
+        public bool CanDecrypt() =>
+            licenceInstalled;
+        
         private void ThrowIfDisposed()
         {
             if (isDisposed)
@@ -323,20 +328,19 @@ namespace JuvoPlayer.Drms.Cenc
         private async Task InitializeOnIemeThread()
         {
             var cancellationToken = cancellationTokenSource.Token;
-            using (await threadLock.LockAsync(cancellationToken))
-            {
-                CreateIeme();
-                cancellationToken.ThrowIfCancellationRequested();
-                currentSessionId = await CreateSession();
-                Logger.Info($"CencSession ID {currentSessionId}");
-                cancellationToken.ThrowIfCancellationRequested();
-                var requestData = await GetRequestData();
-                cancellationToken.ThrowIfCancellationRequested();
-                var responseText = await AcquireLicenceFromServer(requestData);
-                cancellationToken.ThrowIfCancellationRequested();
-                await InstallLicence(responseText);
-                licenceInstalled = true;
-            }
+      
+            CreateIeme();
+            cancellationToken.ThrowIfCancellationRequested();
+            currentSessionId = await CreateSession();
+            Logger.Info($"CencSession ID {currentSessionId}");
+            cancellationToken.ThrowIfCancellationRequested();
+            var requestData = await GetRequestData();
+            cancellationToken.ThrowIfCancellationRequested();
+            var responseText = await AcquireLicenceFromServer(requestData);
+            cancellationToken.ThrowIfCancellationRequested();
+            await InstallLicence(responseText);
+            licenceInstalled = true;
+           
         }
 
         private void CreateIeme()
