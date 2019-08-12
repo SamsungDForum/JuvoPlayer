@@ -81,7 +81,6 @@ class HorizontalScrollView extends React.Component {
        _scrollView.scrollTo({x: curIndex*deviceWidth, y: 0, animated: true})        
       }
     };
-
     var _handleButtonPressLeft = () => {      
      if (curIndex > 0){
          curIndex--;       
@@ -117,12 +116,10 @@ class HorizontalScrollView extends React.Component {
               onPress={ _handleButtonPressRight }>             
             </Button>          
           </View>          
-         
         </View>
       );
   }
 }
-
 
 export default class JuvoReactNative extends Component {
   
@@ -210,7 +207,6 @@ class HideableView extends Component {
     )
   }
 }
-
 HideableView.propTypes = {
   visible: PropTypes.bool.isRequired,
   duration: PropTypes.number,
@@ -219,24 +215,25 @@ HideableView.propTypes = {
 }
 
 
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     flexDirection: 'column',
     justifyContent: 'flex-end',
-    alignItems: 'flex-start',    
+    alignItems: 'flex-end',    
     backgroundColor: "transparent",   
     width: '100%', 
     height: '100%'
   },   
   scrollView: {
-    height: '25%',
+    height: '46%',
     width: 1920,
   },
   horizontalScrollView: {
     flexDirection: 'column',
     justifyContent: 'flex-end',
-    alignItems: 'flex-start',
+    alignItems: 'flex-end',
   },
   text: {
     fontSize: 16,
@@ -257,7 +254,7 @@ const styles = StyleSheet.create({
     alignItems: 'center',        
     backgroundColor: '#cccccc',    
     width: 459,        
-    height: '98%'
+    height: 260
   },
   img: {     
     justifyContent: 'center', 
@@ -268,7 +265,7 @@ const styles = StyleSheet.create({
    img_big: {    
    position : 'absolute', 
    justifyContent: 'flex-start', 
-   alignItems: 'flex-start',     
+   alignItems: 'flex-end',     
    width: '100%',
    height: '100%', 
   },
@@ -282,7 +279,7 @@ const styles = StyleSheet.create({
    },
   control_buttons : {
      justifyContent: 'space-between',
-     alignItems: 'flex-start',
+     alignItems: 'flex-end',
      flexDirection: 'row',
      alignItems: 'stretch'
   },
