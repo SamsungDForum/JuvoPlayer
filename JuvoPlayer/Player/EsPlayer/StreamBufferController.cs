@@ -84,7 +84,7 @@ namespace JuvoPlayer.Player.EsPlayer.Stream.Buffering
             => streamBuffers[(int)stream];
 
         public void PublishBufferState() =>
-            PushNotifications(StreamBufferEvent.Buffering, bufferConfigurationSubject);
+            PushNotifications(StreamBufferEvent.All);
 
         public void Initialize(StreamType stream)
         {
