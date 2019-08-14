@@ -140,8 +140,7 @@ export default class JuvoReactNative extends Component {
     });    
   }
 
-  componentWillMount() {
-    
+  componentWillMount() {    
     JuvoEventEmitter.addListener(
       'onTVKeyPress', 
       this.onTVKey
@@ -164,6 +163,7 @@ export default class JuvoReactNative extends Component {
             }
             else {
               //pause
+              JuvoPlayer.pauseResumePlayback();
             }
             break;
         case "XF86Back":
