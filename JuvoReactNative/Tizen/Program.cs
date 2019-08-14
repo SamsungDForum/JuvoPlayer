@@ -12,14 +12,14 @@ using ILogger = JuvoLogger.ILogger;
 using Log = Tizen.Log;
 using Tizen.Applications;
 using ElmSharp;
+//using ReactNative.Modules.Core;
 
 namespace JuvoReactNative
 {
     class ReactNativeApp : ReactProgram
     {
         private static ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoRN");
-        public static readonly string Tag = "JuvoRN";
-        EcoreEvent<EcoreKeyEventArgs> _keyDown;
+        public static readonly string Tag = "JuvoRN";        
 
         public override string MainComponentName
         {
@@ -95,26 +95,14 @@ namespace JuvoReactNative
 
             Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
             ServicePointManager.DefaultConnectionLimit = 100;
-
-            _keyDown = new EcoreEvent<EcoreKeyEventArgs>(EcoreEventType.KeyDown, EcoreKeyEventArgs.Create);
-            _keyDown.On += (s, e) =>
-            {
-                Log.Error(Tag, "keyDown.On = " + e.KeyName);
-                DispatchRemoteControlKey(s, e);
-            };
         }
 
-        void DispatchRemoteControlKey(object s, EcoreKeyEventArgs e)
+        public void ShutDown()
         {
-            switch (e.KeyName)
-            {
-                case "XF86Back":
-                    //return key has been pressed
-                    ReactNativeApp app = (ReactNativeApp) Application.Current;
-                    app.Dispose();
-                    app.Exit();                    
-                    break;
-            }
+            Log.Error(Tag, "Shutting down...");
+            ReactNativeApp app = (ReactNativeApp)Application.Current;
+            app.Dispose();
+            app.Exit();
         }
 
         protected override void OnAppControlReceived(AppControlReceivedEventArgs e) // Launch request handling via Smart Hub Preview (deep links) functionality
