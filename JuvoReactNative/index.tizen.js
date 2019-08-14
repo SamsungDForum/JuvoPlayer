@@ -17,14 +17,16 @@ import {
   AppRegistry
 } from 'react-native';
 
-
+var NativeEventEmitter = require('NativeEventEmitter');
 
 const deviceWidth = 298 //Dimensions.get('window').width / 100
 const FIXED_BAR_WIDTH = 1;
 const BAR_SPACE = 1;
 
 import { NativeModules } from 'react-native';
+//import console = require('console');
 const JuvoPlayer = NativeModules.JuvoPlayer;
+var JuvoEventEmitter = new NativeEventEmitter(JuvoPlayer);
 
 const PlayVideo = (clip_url) => {
   try {
@@ -126,38 +128,67 @@ export default class JuvoReactNative extends Component {
   constructor(props) {
     super(props);
     this.state = {
-      visible: false
+      visible: true
     };
     this.toggle = this.toggle.bind(this);
+    this.onTVKey = this.onTVKey.bind(this);
   }
 
   toggle() {
     this.setState({
       visible: !this.state.visible
-    });
-    if (this.state.visible)
-      PlayVideo('url');
+    });    
   }
 
+  componentWillMount() {
+    
+    JuvoEventEmitter.addListener(
+      'onTVKeyPress', 
+      this.onTVKey
+    );
+  }
 
+  onTVKey(pressed) {
+    //There are two parameters available:
+    //params.KeyName
+    //params.KeyCode   
+
+    switch (pressed.KeyName)
+      {
+        case "Return":
+        case "XF86AudioPlay":     
+            JuvoPlayer.log("Start playback...");
+            if (this.state.visible) {
+              JuvoPlayer.startPlayback();
+              this.toggle();
+            }
+            else {
+              //pause
+            }
+            break;
+        case "XF86Back":
+        case "XF86AudioStop":
+            if (!this.state.visible) {            
+              JuvoPlayer.stopPlayback();
+              this.toggle();
+            }  
+            break;        
+      }  
+    JuvoPlayer.log("hello from Tizen world! params - KeyName  " + pressed.KeyName + " the code: " + pressed.KeyCode);
+  }
 
   render() {
     return (
-
       <View style={styles.container}>
         <HideableView
           visible={this.state.visible}
           style={styles.clip_details}>
           <Image style={styles.img_big} source={require('./res/images/car.png')} />
           <Text style={styles.clip_details_text}>
-            Hello !
+            Hello world!
           </Text>
         </HideableView >
-        <Button style={{ width: '100%', backgroundColor: 'transparent' }}
-          onPress={this.toggle}
-          title="Start video!"
-          accessibilityLabel="See an informative alert"
-        />
+        
         <HideableView
           visible={this.state.visible}>
 
@@ -166,7 +197,6 @@ export default class JuvoReactNative extends Component {
     );
   }
 }
-
 
 class HideableView extends Component {
   constructor(props) {
@@ -213,8 +243,6 @@ HideableView.propTypes = {
   removeWhenHidden: PropTypes.bool,
   noAnimation: PropTypes.bool
 }
-
-
 
 const styles = StyleSheet.create({
   container: {
@@ -297,6 +325,7 @@ const styles = StyleSheet.create({
     fontSize: 50,
     textAlign: 'right',
     textAlignVertical: 'center'
+    
   }
 });
 

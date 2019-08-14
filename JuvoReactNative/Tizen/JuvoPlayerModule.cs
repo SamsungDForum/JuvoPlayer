@@ -15,16 +15,18 @@ using Tizen.Multimedia;
 using ElmSharp;
 using ReactNative.Modules.Core;
 using Newtonsoft.Json.Linq;
+using Tizen.Applications;
 
 namespace JuvoReactNative
 {
-    public class JuvoPlayerModule : ReactContextNativeModuleBase, ILifecycleEventListener, ISeekLogicClient
+    public class JuvoPlayerModule : ReactContextNativeModuleBase, ILifecycleEventListener
     {
         private PlayerServiceProxy juvoPlayer;
-        private TVMultimedia.Player platformPlayer;
+        //private TVMultimedia.Player platformPlayer;
 
         private static ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoRN");
         public static readonly string Tag = "JuvoRN";
+        EcoreEvent<EcoreKeyEventArgs> _keyDown;
 
         public JuvoPlayerModule(ReactContext reactContext)
             : base(reactContext)
@@ -38,8 +40,6 @@ namespace JuvoReactNative
             }
         }
 
-        public TimeSpan CurrentPositionUI { get => throw new NotImplementedException(); set => throw new NotImplementedException(); }
-
         public TimeSpan CurrentPositionPlayer => juvoPlayer?.CurrentPosition ?? TimeSpan.Zero;
 
         public TimeSpan Duration => juvoPlayer?.Duration ?? TimeSpan.Zero;
@@ -48,18 +48,37 @@ namespace JuvoReactNative
 
         public bool IsSeekingSupported => juvoPlayer?.IsSeekingSupported ?? false;
 
+        private void SendEvent(string eventName, JObject parameters)
+        {
+            Context.GetJavaScriptModule<RCTDeviceEventEmitter>()
+                .emit(eventName, parameters);
+        }
 
+        public override void Initialize()
+        {
+            Context.AddLifecycleEventListener(this);
+
+            _keyDown = new EcoreEvent<EcoreKeyEventArgs>(EcoreEventType.KeyDown, EcoreKeyEventArgs.Create);
+            _keyDown.On += (s, e) =>
+            {
+                Log.Error(Tag, "keyDown.On = " + e.KeyName);                
+
+                //Propagate the key press event to JavaScript module
+                var param = new JObject();
+                param.Add("KeyName", e.KeyName);
+                param.Add("KeyCode", e.KeyCode);
+                SendEvent("onTVKeyPress", param);
+            };
+        }
         public void OnDestroy()
         {
             Log.Error(Tag, "Destroying JuvoPlayerModule...");
             juvoPlayer.Dispose();
-            platformPlayer.Dispose();
+            //platformPlayer.Dispose();
         }
-
         public void OnResume()
         {
         }
-
         public void OnSuspend()
         {
         }
@@ -67,9 +86,10 @@ namespace JuvoReactNative
         private void UpdateBufferingProgress(int percent)
         {
             Log.Error(Tag, "Update buffering");
-            //_bufferingProgress = percent;
-            //_bufferingInProgress = percent < 100;
-            //Log.Error(Tag, $"Buffering {(true ? $"in progress: {percent}%" : "ended")}.");
+            //Propagate the bufffering progress event to JavaScript module
+            var param = new JObject();
+            param.Add("Percent", percent);
+            SendEvent("onUpdateBufferingProgress", param);
         }
 
         void PlayJuvoPlayerRTSP(String videoSourceURL, PlayerServiceProxy player)
@@ -118,7 +138,7 @@ namespace JuvoReactNative
             }
         }
 
-        void PlayJuvoPlayerClean(String videoSourceURL, PlayerServiceProxy player)
+        private void PlayJuvoPlayerClean(String videoSourceURL, PlayerServiceProxy player)
         {
             try
             {
@@ -132,7 +152,6 @@ namespace JuvoReactNative
                     Description = "Descritption",
                     DRMDatas = new List<DRMDescription>()
                 });
-                //Log.Error(Tag, "JuvoPlayerModule (PlayJuvoPlayerClean) player source set!");
 
                 SynchronizationContext scx = new SynchronizationContext();
 
@@ -149,14 +168,12 @@ namespace JuvoReactNative
                     .Subscribe(message =>
                     {
                         Logger?.Info($"Playback Error: {message}");
-                        //ReturnToMainMenu();
-                        //DisplayAlert("Playback Error", message, "OK");
+                        stopPlayback();
                     });
 
                 player.BufferingProgress()
                     .ObserveOn(scx)
-                    .Subscribe(UpdateBufferingProgress);
-                //Log.Error(Tag, "JuvoPlayerModule (PlayJuvoPlayerClean) player statechanged()!");
+                    .Subscribe(UpdateBufferingProgress); 
             }
             catch (Exception e)
             {
@@ -233,7 +250,7 @@ namespace JuvoReactNative
                 //var license = "https://proxy.uat.widevine.com/proxy?provider=widevine_test";
                 Log.Error(Tag, "JuvoPlayerModule (Play) url: " + url);
 
-                //////The TV platform MediaPlayer (URL data source only).                
+                //////The TV platform MediaPlayer (URL data source only).
                 //platformPlayer = new TVMultimedia.Player { Display = new Display(window) };
                 //await PlayPlatformMediaClean(url, platformPlayer);
                 //await PlayPlatformMediaDRMed(url, license, platformPlayer);
@@ -242,7 +259,7 @@ namespace JuvoReactNative
                 juvoPlayer = new PlayerServiceProxy(new PlayerServiceImpl(window));
                 Log.Error(Tag, "JuvoPlayerModule (Play) juvoPlayer object created..");
                 //PlayJuvoPlayerRTSP(url, juvoPlayer);
-                PlayJuvoPlayerClean(url, juvoPlayer);                
+                PlayJuvoPlayerClean(url, juvoPlayer);
                 //PlayJuvoPlayerDRMed(url, license, "playready", juvoPlayer);
                 //PlayJuvoPlayerDRMed(url, license, "widevine", juvoPlayer);
                 Log.Error(Tag, "JuvoPlayerModule: Playback OK!");
@@ -253,6 +270,12 @@ namespace JuvoReactNative
             }
         }
 
+        //ReactMethods - accessible with JavaScript
+        [ReactMethod]
+        public async void log(string message)
+        {
+            Log.Error(Tag, message);
+        }
         [ReactMethod]
         public async void startPlayback()
         {
@@ -260,28 +283,29 @@ namespace JuvoReactNative
             Log.Error(Tag, "JuvoPlayerModule startPlayback() function called! ");
             await Play();
         }
-
         [ReactMethod]
-        public async void DispatchPlayerKey(string KeyName)
+        public void stopPlayback()
         {
-            Log.Error(Tag, "JuvoPlayerModule DispatchPlayerKey() function called! ");
+            Logger?.Info("Closing player");
+            juvoPlayer?.Stop();
+            juvoPlayer?.Dispose();
+            juvoPlayer = null;
         }
-
-        private void SendEvent(string eventName, JObject parameters)
+        [ReactMethod]
+        void exitApp()
         {
-            Context.GetJavaScriptModule<RCTDeviceEventEmitter>()
-                .emit(eventName, parameters);
+            Log.Error(Tag, "Exiting App...");
+            ReactNativeApp app = (ReactNativeApp)Application.Current;
+            app.ShutDown();
         }
-
-        public Task Seek(TimeSpan to)
-        {
-            Newtonsoft.Json.Linq.JObject value;
-            string json = @"{to: '2'}";
-            value = JObject.Parse(json);
-            //Task<void> task = new Task<void>(SendEvent)<string>("SeekToTimeSpan")<JObject>(value);            
-            throw new NotImplementedException();
-        }
-
-      
+        //public Task Seek(TimeSpan to)
+        //{
+        //    Newtonsoft.Json.Linq.JObject value;
+        //    string json = @"{to: '2'}";
+        //    value = JObject.Parse(json);
+        //    Task<void> task = new Task<void>(SendEvent)<string>("SeekToTimeSpan")<JObject>(value);
+        //    return task;
+        //    //throw new NotImplementedException();
+        //}
     }
 }
