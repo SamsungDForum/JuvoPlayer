@@ -292,6 +292,19 @@ namespace JuvoReactNative
             juvoPlayer = null;
         }
         [ReactMethod]
+        public void pauseResumePlayback()
+        {
+            switch (juvoPlayer.State)
+            {
+                case JuvoPlayer.Common.PlayerState.Playing:
+                    juvoPlayer?.Pause();
+                    break;
+                case JuvoPlayer.Common.PlayerState.Paused:
+                    juvoPlayer?.Start();
+                    break;
+            }
+        }
+        [ReactMethod]
         void exitApp()
         {
             Log.Error(Tag, "Exiting App...");
