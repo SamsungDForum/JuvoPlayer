@@ -223,8 +223,8 @@ export default class JuvoReactNative extends Component {
           visible={this.state.visible}
           style={styles.clip_details}>
             <Image style={styles.img_big} source={require('./res/images/car.png')} />
-            <Text style={styles.clip_details_text}>
-              Hello world!
+            <Text style={styles.clip_details_text} >
+              {THUMB_URIS[0]}
             </Text>
           <HorizontalScrollView/>
         </HideableView >               
@@ -286,18 +286,18 @@ const styles = StyleSheet.create({
     flexDirection: 'column',
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: "#ff1493",
+    backgroundColor: 'transparent',
     width: 1920,
-    height: 1280,
-    top: -200,
+    height: 1080,
+    top: 0,
     left: 0, 
     position: 'absolute'
   },
   scrollView: {
-    top: 0,
+    top: -265,
     left: 0, 
     position: 'absolute',    
-    height: '100%',
+    height: 300,
     width: 1920,
     backgroundColor: "#adff2f"
   },
@@ -339,10 +339,10 @@ const styles = StyleSheet.create({
     top: 0,
     left: 0,
     width: 1920,
-    height: 1180
+    height: 1080
   },   
   clip_details: {
-    position: "relative",
+    position: "absolute",
     top: 0,
     left: 0,
     width: 1920,
@@ -350,15 +350,12 @@ const styles = StyleSheet.create({
   },
   clip_details_text: {    
     position: "relative",
-    top: 0,
-    left: 1000,
-    width: '80%',
-    height: '86%',
-    backgroundColor: '#345636',
-    fontSize: 30,    
-    textAlign: 'right',
-    textAlignVertical: 'center'
-    
+    top: 500,
+    left: 150,
+    width: '100%',
+    height: '100%',
+    fontSize: 30,
+    color: '#000000'
   }
 });
 
