@@ -24,7 +24,6 @@ const FIXED_BAR_WIDTH = 1;
 const BAR_SPACE = 1;
 
 import { NativeModules } from 'react-native';
-//import console = require('console');
 const JuvoPlayer = NativeModules.JuvoPlayer;
 var JuvoEventEmitter = new NativeEventEmitter(JuvoPlayer);
 
@@ -39,29 +38,32 @@ const PlayVideo = (clip_url) => {
 };
 
 
-
 class Thumb extends React.Component {
   
   constructor(props) {
-    super(props);  
-    this.state = {curIndex: props.curIndex}; 
-
+    super(props);      
   }
 
   shouldComponentUpdate(nextProps, nextState) {
     return true;
-  }
+  }  
 
-  componentDidMount() {
-
-  }
-
-  render() {    
-    return (
-      <View style={styles.thumb}>        
-        <Image style={styles.img} source={{ uri: this.props.source }} />
-      </View>
-    );
+  render() {  
+    //JuvoPlayer.log("thumb props.selectedURI " + this.props.selectedIndex);
+    //JuvoPlayer.log("thumb props.myURI = " + this.props.myIndex);  
+    if ( this.props.selectedIndex == this.props.myIndex) {
+      return (
+        <View style={styles.thumb_selected}>              
+          <Image style={styles.img_thumb} source={{ uri: this.props.source }} />
+        </View>
+      );
+    } else {
+      return (
+        <View style={styles.thumb}>              
+          <Image style={styles.img_thumb} source={{ uri: this.props.source }} />
+        </View>
+      );  
+    }    
   }
 }
 var THUMB_URIS = [
@@ -74,63 +76,53 @@ var THUMB_URIS = [
   'https://github.com/SamsungDForum/JuvoPlayer/blob/master/smarthubpreview/pictures/car.jpg?raw=true',
   'https://github.com/SamsungDForum/JuvoPlayer/blob/master/smarthubpreview/pictures/car.jpg?raw=true'
 ];
-var createThumbRow = (uri, i) => <Thumb key={i} source={uri} />;
+
 
 class HorizontalScrollView extends React.Component {
 
   constructor(props) {
     super(props);
-    this.onTVKey = this.onTVKey.bind(this);
-    this._scrollView;    
-    this.scroll_inprogress = false;    
-    this.curIndex = 0
-    this.numItems = THUMB_URIS.length
-    this.itemWidth = (FIXED_BAR_WIDTH / this.numItems) - ((this.numItems - 1) * BAR_SPACE)    
+      
+    this._scrollView;       
+    this.curIndex = 0    
+    this.state = {selectedIndex: 0};
+    this.numItems = THUMB_URIS.length;
+    this.itemWidth = (FIXED_BAR_WIDTH / this.numItems) - ((this.numItems - 1) * BAR_SPACE);
+
+    this.onTVKey = this.onTVKey.bind(this);    
     this._handleButtonPressRight = this._handleButtonPressRight.bind(this);
     this._handleButtonPressLeft = this._handleButtonPressLeft.bind(this);    
   }
 
   _handleButtonPressRight = () => {
-    JuvoPlayer.log("curIndex = " + this.curIndex);
-    JuvoPlayer.log("numItems = " + this.numItems);
+   // JuvoPlayer.log("curIndex = " + this.curIndex);
+   // JuvoPlayer.log("numItems = " + this.numItems);
     this.scroll_inprogress = false;    
     if (this.curIndex < this.numItems - 1) {      
       this.curIndex++;
       this._scrollView.scrollTo({ x: this.curIndex * deviceWidth, y: 0, animated: true });
     }    
+    this.setState({selectedIndex: this.curIndex });
   };
 
   _handleButtonPressLeft = () => {
-    JuvoPlayer.log("curIndex = " + this.curIndex);
-    JuvoPlayer.log("numItems = " + this.numItems);
+   // JuvoPlayer.log("curIndex = " + this.curIndex);
+   // JuvoPlayer.log("numItems = " + this.numItems);
     this.scroll_inprogress = false;
     if (this.curIndex > 0) {     
       this.curIndex--;
       this._scrollView.scrollTo({ x: this.curIndex * deviceWidth, y: 0, animated: true });  
     };
+    this.setState({selectedIndex: this.curIndex});
   };
-
-  //onMomentumScrollEnd
-  _onScroll = (event) => { 
-    if (!this.scroll_inprogress) {
-      JuvoPlayer.log("_onScroll... index = " + this.curIndex);
-      this.scroll_inprogress = true;
-    }
-    
-    //this.yOffset = event.nativeEvent.contentOffset.y;
-  };  
-
+  
   componentWillMount() {    
     JuvoEventEmitter.addListener(
       'onTVKeyPress', 
       this.onTVKey
     );
   }
-
-  componentDidMount() {
-
-  }
-
+  
   onTVKey(pressed) {
     //There are two parameters available:
     //params.KeyName
@@ -149,20 +141,21 @@ class HorizontalScrollView extends React.Component {
       }  
     JuvoPlayer.log("hello from Tizen world! params - KeyName  " + pressed.KeyName + " the code: " + pressed.KeyCode);
   };  
-
+   
   render() {    
+    const index = this.state.selectedIndex;
+    const renderThumbs = (uri, i) => <Thumb key={i} source={uri} myIndex={i} selectedIndex={index} />;
     return (
       <View style={styles.horizontalScrollView}>
         <ScrollView          
           scrollEnabled = {false}
-          ref={(scrollView) => {this._scrollView = scrollView;}}
-                  
+          ref={(scrollView) => {this._scrollView = scrollView;}}                  
           automaticallyAdjustContentInsets={false}
           scrollEventThrottle={16}
           horizontal={true}
           showsHorizontalScrollIndicator={false}
           style={[styles.scrollView]}>
-          {THUMB_URIS.map(createThumbRow)}
+          {THUMB_URIS.map(renderThumbs)}
         </ScrollView>        
       </View>
     );
@@ -229,15 +222,12 @@ export default class JuvoReactNative extends Component {
         <HideableView
           visible={this.state.visible}
           style={styles.clip_details}>
-          <Image style={styles.img_big} source={require('./res/images/car.png')} />
-          <Text style={styles.clip_details_text}>
-            Hello world!
-          </Text>
+            <Image style={styles.img_big} source={require('./res/images/car.png')} />
+            <Text style={styles.clip_details_text}>
+              Hello world!
+            </Text>
           <HorizontalScrollView/>
-        </HideableView >        
-        <HideableView
-          visible={this.state.visible}>
-        </HideableView>
+        </HideableView >               
       </View>
     );
   }
@@ -289,37 +279,35 @@ HideableView.propTypes = {
   noAnimation: PropTypes.bool
 }
 
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
     flexDirection: 'column',
-    justifyContent: 'flex-end',
-    alignItems: 'flex-end',
-    backgroundColor: "transparent",
-    width: '100%',
-    height: '100%'
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: "#ff1493",
+    width: 1920,
+    height: 1280,
+    top: -200,
+    left: 0, 
+    position: 'absolute'
   },
   scrollView: {
-    height: '46%',
+    top: 0,
+    left: 0, 
+    position: 'absolute',    
+    height: '100%',
     width: 1920,
+    backgroundColor: "#adff2f"
   },
   horizontalScrollView: {
     flex: 1,
+    height: '100%',
+    width: 1920,
     flexDirection: 'column',
     justifyContent: 'flex-end',
     alignItems: 'flex-end',
-  },
-  text: {
-    fontSize: 16,
-    fontWeight: 'bold',
-    margin: 5,
-  },
-  button_thumb: {
-    position: 'absolute',
-    alignItems: 'center',
-    backgroundColor: '#00000070',
-    width: '100%',
-    height: '100%'
   },
   thumb: {
     flex: 1,
@@ -330,44 +318,44 @@ const styles = StyleSheet.create({
     width: 459,
     height: 260
   },
-  img: {
+  thumb_selected : {    
+    position: 'relative',
+    top: 0,
+    left: 0,
+    alignItems: 'center', 
+    justifyContent: 'center',   
+    backgroundColor: '#ffd700',
+    width: 459,
+    height: 260
+  },
+  img_thumb: {
     justifyContent: 'center',
     alignItems: 'center',
-    width: '96%',
-    height: '96%',
+    width: '98%',
+    height: '98%',
   },
   img_big: {    
     position: "absolute",
     top: 0,
-    left: 0
-    
-  },
-  img_big_hide: {
-    position: 'absolute',
-    width: '10%',
-    height: '10%',
-    backgroundColor: "transparent",
-    top: 0,
-    left: 0
-  },
-  control_buttons: {
-    justifyContent: 'space-between',
-    alignItems: 'flex-end',
-    flexDirection: 'row',
-    alignItems: 'stretch'
-  },
+    left: 0,
+    width: 1920,
+    height: 1180
+  },   
   clip_details: {
-    position: "absolute",
+    position: "relative",
     top: 0,
     left: 0,
-    width: '100%',
-    height: '100%'
+    width: 1920,
+    height: 1080
   },
   clip_details_text: {    
-    width: '60%',
-    height: '60%',
+    position: "relative",
+    top: 0,
+    left: 1000,
+    width: '80%',
+    height: '86%',
     backgroundColor: '#345636',
-    fontSize: 50,
+    fontSize: 30,    
     textAlign: 'right',
     textAlignVertical: 'center'
     
