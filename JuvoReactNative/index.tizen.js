@@ -68,7 +68,7 @@ class Thumb extends React.Component {
 }
 var THUMB_URIS = [
   'https://github.com/SamsungDForum/JuvoPlayer/blob/master/smarthubpreview/pictures/car.jpg?raw=true',
-  'https://github.com/SamsungDForum/JuvoPlayer/blob/master/smarthubpreview/pictures/car.jpg?raw=true',
+  'https://github.com/SamsungDForum/JuvoPlayer/blob/master/smarthubpreview/pictures/bolid.jpg?raw=true',
   'https://github.com/SamsungDForum/JuvoPlayer/blob/master/smarthubpreview/pictures/car.jpg?raw=true',
   'https://github.com/SamsungDForum/JuvoPlayer/blob/master/smarthubpreview/pictures/car.jpg?raw=true',
   'https://github.com/SamsungDForum/JuvoPlayer/blob/master/smarthubpreview/pictures/car.jpg?raw=true',
@@ -103,6 +103,7 @@ class HorizontalScrollView extends React.Component {
       this._scrollView.scrollTo({ x: this.curIndex * deviceWidth, y: 0, animated: true });
     }    
     this.setState({selectedIndex: this.curIndex });
+    this.props.onSelectedIndexChange(this.curIndex);
   };
 
   _handleButtonPressLeft = () => {
@@ -114,6 +115,7 @@ class HorizontalScrollView extends React.Component {
       this._scrollView.scrollTo({ x: this.curIndex * deviceWidth, y: 0, animated: true });  
     };
     this.setState({selectedIndex: this.curIndex});
+    this.props.onSelectedIndexChange(this.curIndex);
   };
   
   componentWillMount() {    
@@ -127,19 +129,19 @@ class HorizontalScrollView extends React.Component {
     //There are two parameters available:
     //params.KeyName
     //params.KeyCode   
-    JuvoPlayer.log("ScrollView clicked...");
+   // JuvoPlayer.log("ScrollView clicked...");
     switch (pressed.KeyName)
       {
         case "Right":
-            JuvoPlayer.log("Right clicked...");
+            //JuvoPlayer.log("Right clicked...");
             this._handleButtonPressRight();
             break;
         case "Left":
-          JuvoPlayer.log("Left clicked...");
+         // JuvoPlayer.log("Left clicked...");
           this._handleButtonPressLeft();
             break;        
       }  
-    JuvoPlayer.log("hello from Tizen world! params - KeyName  " + pressed.KeyName + " the code: " + pressed.KeyCode);
+   // JuvoPlayer.log("HorizontalScrollView params - KeyName  " + pressed.KeyName + " the code: " + pressed.KeyCode);
   };  
    
   render() {    
@@ -167,10 +169,12 @@ export default class JuvoReactNative extends Component {
   constructor(props) {
     super(props);
     this.state = {
-      visible: true
+      visible: true,
+      selectedClipIndex: 0
     };
     this.toggle = this.toggle.bind(this);
     this.onTVKey = this.onTVKey.bind(this);
+    this.handleSelectedIndexChange = this.handleSelectedIndexChange.bind(this);
   }
 
   toggle() {
@@ -188,13 +192,14 @@ export default class JuvoReactNative extends Component {
 
   onTVKey(pressed) {
     //There are two parameters available:
-    //params.KeyName
-    //params.KeyCode   
+    //pressed.KeyName
+    //pressed.KeyCode   
 
     switch (pressed.KeyName)
       {
         case "Return":
-        case "XF86AudioPlay":     
+        case "XF86AudioPlay":    
+        case "XF86PlayBack": 
             JuvoPlayer.log("Start playback...");
             if (this.state.visible) {
               //JuvoPlayer.startPlayback();
@@ -206,27 +211,32 @@ export default class JuvoReactNative extends Component {
             }
             break;
         case "XF86Back":
-        case "XF86AudioStop":
+        case "XF86AudioStop":        
             if (!this.state.visible) {            
               //JuvoPlayer.stopPlayback();
               this.toggle();
             }  
             break;        
       }  
-    JuvoPlayer.log("hello from Tizen world! params - KeyName  " + pressed.KeyName + " the code: " + pressed.KeyCode);
+    //JuvoPlayer.log("JuvoReactNative params - KeyName  " + pressed.KeyName + " the code: " + pressed.KeyCode);
+  }
+
+  handleSelectedIndexChange(index) {
+    this.setState({selectedClipIndex: index});
+    JuvoPlayer.log("handleSelectedIndexChange index = " + index);
   }
 
   render() {
     return (
       <View style={styles.container}>
         <HideableView
-          visible={this.state.visible}
+          visible={this.state.visible}          
           style={styles.clip_details}>
             <Image style={styles.img_big} source={require('./res/images/car.png')} />
             <Text style={styles.clip_details_text} >
-              {THUMB_URIS[0]}
+              {THUMB_URIS[this.state.selectedClipIndex]}
             </Text>
-          <HorizontalScrollView/>
+            <HorizontalScrollView onSelectedIndexChange={this.handleSelectedIndexChange}/>
         </HideableView >               
       </View>
     );
