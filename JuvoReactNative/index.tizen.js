@@ -17,6 +17,8 @@ import {
   AppRegistry
 } from 'react-native';
 
+import LocalImages from './src/LocalImages';
+
 var NativeEventEmitter = require('NativeEventEmitter');
 
 const deviceWidth = 298 //Dimensions.get('window').width / 100
@@ -38,45 +40,50 @@ const PlayVideo = (clip_url) => {
 };
 
 
+
 class Thumb extends React.Component {
 
   constructor(props) {
     super(props);
+    
   }
 
   shouldComponentUpdate(nextProps, nextState) {
     return true;
   }
 
+ 
+
   render() {
-    //JuvoPlayer.log("thumb props.selectedURI " + this.props.selectedIndex);
-    //JuvoPlayer.log("thumb props.myURI = " + this.props.myIndex);  
+    const name =  this.props.source;
+    JuvoPlayer.log("thumb props.sorce " + this.props.source);
+    JuvoPlayer.log("thumb name = " + name);  
+    
     if (this.props.selectedIndex == this.props.myIndex) {
       return (
         <View style={styles.thumb_selected}>
-          <Image style={styles.img_thumb} source={{ uri: this.props.source }} />
+          <Image style={{ width: 459, height: 260 }} source={this.props.onTilePathSelect(name)} />
         </View>
       );
     } else {
       return (
         <View style={styles.thumb}>
-          <Image style={styles.img_thumb} source={{ uri: this.props.source }} />
+          <Image style={{ width: 459, height: 260 }} source={this.props.onTilePathSelect(name)} />
         </View>
       );
     }
   }
 }
 var THUMB_URIS = [
-  'https://github.com/SamsungDForum/JuvoPlayer/blob/master/smarthubpreview/pictures/car.jpg?raw=true',
-  'https://github.com/SamsungDForum/JuvoPlayer/blob/master/smarthubpreview/pictures/bolid.jpg?raw=true',
-  'https://github.com/SamsungDForum/JuvoPlayer/blob/master/smarthubpreview/pictures/car.jpg?raw=true',
-  'https://github.com/SamsungDForum/JuvoPlayer/blob/master/smarthubpreview/pictures/car.jpg?raw=true',
-  'https://github.com/SamsungDForum/JuvoPlayer/blob/master/smarthubpreview/pictures/car.jpg?raw=true',
-  'https://github.com/SamsungDForum/JuvoPlayer/blob/master/smarthubpreview/pictures/car.jpg?raw=true',
-  'https://github.com/SamsungDForum/JuvoPlayer/blob/master/smarthubpreview/pictures/car.jpg?raw=true',
-  'https://github.com/SamsungDForum/JuvoPlayer/blob/master/smarthubpreview/pictures/car.jpg?raw=true'
+  'bolidjpg',
+  'bolidjpg',
+  'sinteljpg',
+  'oopsjpg',
+  'carjpg',
+  'bolidjpg',
+  'sinteljpg',
+  'oopsjpg'
 ];
-
 
 class HorizontalScrollView extends React.Component {
 
@@ -125,6 +132,8 @@ class HorizontalScrollView extends React.Component {
     );
   }
 
+ 
+
   onTVKey(pressed) {
     //There are two parameters available:
     //params.KeyName
@@ -145,7 +154,7 @@ class HorizontalScrollView extends React.Component {
 
   render() {
     const index = this.state.selectedIndex;
-    const renderThumbs = (uri, i) => <Thumb key={i} source={uri} myIndex={i} selectedIndex={index} />;
+    const renderThumbs = (uri, i) => <Thumb key={i} source={uri} myIndex={i} selectedIndex={index} onTilePathSelect={this.props.onTilePathSelect}/>;
     return (
       <View>
         <ScrollView
@@ -173,6 +182,7 @@ export default class JuvoReactNative extends Component {
     this.toggle = this.toggle.bind(this);
     this.onTVKey = this.onTVKey.bind(this);
     this.handleSelectedIndexChange = this.handleSelectedIndexChange.bind(this);
+    this.tilePathSelect = this.tilePathSelect.bind(this);
   }
 
   toggle() {
@@ -188,6 +198,10 @@ export default class JuvoReactNative extends Component {
     );
   }
 
+  componentDidMount() {    
+    //this.toggle();  
+  }
+
   onTVKey(pressed) {
     //There are two parameters available:
     //pressed.KeyName
@@ -199,18 +213,18 @@ export default class JuvoReactNative extends Component {
       case "XF86PlayBack":
         JuvoPlayer.log("Start playback...");
         if (this.state.visible) {
-          JuvoPlayer.startPlayback();
+         // JuvoPlayer.startPlayback();
           this.toggle();
         }
         else {
           //pause
-          JuvoPlayer.pauseResumePlayback();
+         // JuvoPlayer.pauseResumePlayback();
         }
         break;
       case "XF86Back":
       case "XF86AudioStop":
         if (!this.state.visible) {
-          JuvoPlayer.stopPlayback();
+        // JuvoPlayer.stopPlayback();
           this.toggle();
         }
         break;
@@ -219,37 +233,49 @@ export default class JuvoReactNative extends Component {
   }
 
   handleSelectedIndexChange(index) {
-    this.setState({ selectedClipIndex: index});
-    
-    //this.forceUpdate();
+    this.setState({ selectedClipIndex: index });
   }
 
   shouldComponentUpdate(nextProps, nextState) {
     return true;
   }
 
+  tilePathSelect = name => {
+    if (name === null)
+      return LocalImages.tiles.default;
+  
+      const tileArray = {
+        'carjpg': LocalImages.tiles.bolidjpg,
+        'bolidjpg': LocalImages.tiles.bolidjpg,
+        'sinteljpg': LocalImages.tiles.sinteljpg,
+        'oopsjpg': LocalImages.tiles.oopsjpg
+      };
+      return tileArray[name];
+  }
+
   render() {
-    JuvoPlayer.log("JuvoReactNative render() this.state.selectedClipIndex = " + this.state.selectedClipIndex);
+    //JuvoPlayer.log("JuvoReactNative render() this.state.selectedClipIndex = " + this.state.selectedClipIndex);
     const index = this.state.selectedClipIndex;
+
     return (
       <View style={styles.container}>
 
         <HideableView visible={this.state.visible}>
 
-            <View>
-              <Image style={{ width: 1920, height: 1080 }} source={require('./res/images/car.png')} />
-            </View>
+          <View>
+            <Image style={{ width: 1920, height: 1080 }} source={this.tilePathSelect(THUMB_URIS[index])} />
+          </View>
 
-            <View style={{ position: 'absolute', top: 300, left: 200 }}>
-              <Text style={{ fontSize: 30, color: '#7fff00'  }}>
-                {THUMB_URIS[index]}
-              </Text>
-            </View>
+          <View style={{ position: 'absolute', top: 300, left: 200 }}>
+            <Text style={{ fontSize: 30, color: '#7fff00' }}>
+              {THUMB_URIS[index]}
+            </Text>
+          </View>
 
-            <View style={{ top: -300 }}>
-              <HorizontalScrollView style={{ position: 'relative' }} onSelectedIndexChange={this.handleSelectedIndexChange} />
-            </View>
-          
+          <View style={{ top: -300 }}>
+            <HorizontalScrollView onSelectedIndexChange={this.handleSelectedIndexChange}  onTilePathSelect = {this.tilePathSelect}/>
+          </View>
+
         </HideableView>
 
       </View>
