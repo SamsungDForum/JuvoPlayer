@@ -1,11 +1,11 @@
-const localimages = {
+const Localimages = {
     tiles: {
-        carjpg: require('.././res/images/tiles/car.jpg'),
-        bolidjpg: require('.././res/images/tiles/bolid.jpg'),
-        sinteljpg: require('.././res/images/tiles/sintel.jpg'),
-        oopsjpg: require('.././res/images/tiles/oops.png'),
+        car: require('.././res/images/tiles/carsmall.png'),
+        bolid: require('.././res/images/tiles/bolid.png'),
+        sintel: require('.././res/images/tiles/bunny.png'),
+        oops: require('.././res/images/tiles/canimals.png'),
         default: require('.././res/images/tiles/default_bg.png')
     }
   };
   
-  export default localimages;
+  export default Localimages;
