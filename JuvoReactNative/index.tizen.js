@@ -21,7 +21,7 @@ import LocalImages from './src/LocalImages';
 
 var NativeEventEmitter = require('NativeEventEmitter');
 
-const deviceWidth = 298 //Dimensions.get('window').width / 100
+const deviceWidth = 250; 
 const FIXED_BAR_WIDTH = 1;
 const BAR_SPACE = 1;
 
@@ -32,7 +32,7 @@ var JuvoEventEmitter = new NativeEventEmitter(JuvoPlayer);
 const PlayVideo = (clip_url) => {
   try {
     Alert.alert('Ok.' + clip_url);
-    //JuvoPlayer.startPlayback();    
+    //JuvoPlayer.startPlayback();   
 
   } catch (e) {
     Alert.alert('Error! ' + e);
@@ -40,34 +40,60 @@ const PlayVideo = (clip_url) => {
 };
 
 
-
 class Thumb extends React.Component {
-
   constructor(props) {
-    super(props);
+    super(props);     
+    
   }
 
-  shouldComponentUpdate(nextProps, nextState) {
-    return true;
+  shouldComponentUpdate(nextProps, nextState) {    
+     return true;
+  }
+
+  componentDidMount() {
+   // //JuvoPlayer.log("componentDidMount" );
   }
 
   render() {
     const name = this.props.source;
-    // JuvoPlayer.log("thumb props.sorce " + this.props.source);
-    // JuvoPlayer.log("thumb name = " + name);      
-    if (this.props.selectedIndex == this.props.myIndex) {
+    const width = this.props.width ? this.props.width : 1920;
+    const height = this.props.height ? this.props.height : 1080;
+    const top = this.props.top ? this.props.top : 0;
+    const left = this.props.left ? this.props.left : 0; 
+    const position = this.props.position ? this.props.position : 'relative';
+    const stylesThumbSelected = this.props.stylesThumbSelected ? this.props.stylesThumbSelected : {width: 460, height: 266};
+    const stylesThumb = this.props.stylesThumb ? this.props.stylesThumb : {width: 460, height: 266};
+    const path = this.props.path;
+    const fadeDuration = this.props.fadeDuration ? this.props.fadeDuration : 500;
+   
+    const visible = this.props.visible ? this.props.visible : true;
+    const onLoadStart = this.props.onLoadStart ? this.props.onLoadStart : () => {};
+    const onLoadEnd = this.props.onLoadEnd ? this.props.onLoadEnd : () => {};
+  
+
+    if (this.props.selectedIndex == this.props.myIndex) {           
       return (
-        <HideableView visible={this.props.visible} duration={this.props.fadeduration} >
-          <View style={this.props.styles_thumb_selected}>
-            <Image resizeMode='cover' style={{ width: this.props.width, height: this.props.height, top: this.props.top, left: this.props.left, position: this.props.position }} source={this.props.onTilePathSelect(name)} />
+        <HideableView visible={visible} duration={fadeDuration} >
+          <View style={stylesThumbSelected}>
+            <Image resizeMode='cover' 
+                  style={{ width: width, height: height, top: top, left: left, position: position}} 
+                  source={path} 
+                  onLoadStart={onLoadStart}
+                  onLoadEnd={onLoadEnd} 
+            />
           </View>
-          </HideableView>
+        </HideableView>
       );
     } else {
       return (
-        <HideableView visible={this.props.visible} duration={this.props.fadeduration} >
-          <View style={this.props.styles_thumb}>
-          <Image resizeMode='cover' style={{ width: this.props.width, height: this.props.height, top: this.props.top, left: this.props.left, position: this.props.position }} source={this.props.onTilePathSelect(name)} />
+        <HideableView visible={visible} duration={this.props.fadeDuration} >
+          <View style={stylesThumb}>
+          <Image resizeMode='cover' 
+                style={{ width: width , height: height , top: top, left: left, position: position}} 
+                source={path} 
+                onLoadStart={this.props.onLoadStart}
+                onLoadEnd={this.props.onLoadEnd}
+            />
           </View>
         </HideableView>
       );
@@ -75,118 +101,139 @@ class Thumb extends React.Component {
   }
 }
 var THUMB_URIS = [
-  'carjpg',
-  'bolidjpg',
-  'sinteljpg',
-  'oopsjpg',
-  'carjpg',
-  'bolidjpg',
-  'sinteljpg',
-  'oopsjpg'
+  'car',
+  'bolid',
+  'sintel',
+  'oops',
+  'car',
+  'bolid',
+  'sintel',
+  'oops'
 ];
 
 class HorizontalScrollView extends React.Component {
 
   constructor(props) {
     super(props);
-
     this._scrollView;
-    this.curIndex = 0
+    this.curIndex = 0    
     this.state = { selectedIndex: 0 };
     this.numItems = THUMB_URIS.length;
     this.itemWidth = (FIXED_BAR_WIDTH / this.numItems) - ((this.numItems - 1) * BAR_SPACE);
-
-    this.onTVKey = this.onTVKey.bind(this);
-    this._handleButtonPressRight = this._handleButtonPressRight.bind(this);
-    this._handleButtonPressLeft = this._handleButtonPressLeft.bind(this);
-    this.onMomentumScrollEnd = this.onMomentumScrollEnd.bind(this);
+    this.onTVKeyDown = this.onTVKeyDown.bind(this);
+    this.onTVKeyUp = this.onTVKeyUp.bind(this);    
+    this.handleButtonPressRight = this.handleButtonPressRight.bind(this);
+    this.handleButtonPressLeft = this.handleButtonPressLeft.bind(this); 
+    
   }
 
-  _handleButtonPressRight = () => {
-    JuvoPlayer.log("curIndex = " + this.curIndex);
-    // JuvoPlayer.log("numItems = " + this.numItems);
-    this.scroll_inprogress = false;
+  handleButtonPressRight() {       
     if (this.curIndex < this.numItems - 1) {
       this.curIndex++;
       this._scrollView.scrollTo({ x: this.curIndex * deviceWidth, y: 0, animated: true });
-    }
-    this.props.onSelectedIndexChange(this.curIndex);
+    } 
     this.setState({ selectedIndex: this.curIndex });
   };
 
-  _handleButtonPressLeft = () => {
-    JuvoPlayer.log("curIndex = " + this.curIndex);
-    // JuvoPlayer.log("numItems = " + this.numItems);
-    this.scroll_inprogress = false;
+  handleButtonPressLeft() { 
     if (this.curIndex > 0) {
       this.curIndex--;
       this._scrollView.scrollTo({ x: this.curIndex * deviceWidth, y: 0, animated: true });
     };
-    this.props.onSelectedIndexChange(this.curIndex);
     this.setState({ selectedIndex: this.curIndex });
   };
 
   componentWillMount() {
     JuvoEventEmitter.addListener(
-      'onTVKeyPress',
-      this.onTVKey
+      'onTVKeyDown',
+      this.onTVKeyDown
+    );
+    JuvoEventEmitter.addListener(
+      'onTVKeyUp',
+      this.onTVKeyUp
     );
   }
+ 
 
-  onTVKey(pressed) {
+  onTVKeyDown(pressed) {
     //There are two parameters available:
     //params.KeyName
     //params.KeyCode   
-    // JuvoPlayer.log("ScrollView clicked...");
+
     switch (pressed.KeyName) {
-      case "Right":
-        //JuvoPlayer.log("Right clicked...");
-        this._handleButtonPressRight();
+      case "Right":        
+        this.handleButtonPressRight();
         break;
-      case "Left":
-        // JuvoPlayer.log("Left clicked...");
-        this._handleButtonPressLeft();
+      case "Left":       
+        this.handleButtonPressLeft();
         break;
-    }
-    // JuvoPlayer.log("HorizontalScrollView params - KeyName  " + pressed.KeyName + " the code: " + pressed.KeyCode);
-  };
+    }    
+    //this.props.onSelectedIndexChange(this.state.selectedIndex);
+  };  
+
+  onTVKeyUp(pressed) {
+  //  JuvoPlayer.log("HorizontalScrollView onTVKeyUp ...");
+    //this.setState({ loadInProgress: false });
+    this.setState({ selectedIndex: this.curIndex });   
+    this.props.onSelectedIndexChange(this.state.selectedIndex);
+    
+  }
+
+ 
 
   render() {
     const index = this.state.selectedIndex;
+    const width = this.props.itemWidth ? this.props.itemWidth : 454;
+    const height = this.props.itemHeight ? this.props.itemHeight : 260;      
+    const stylesThumbSelected = this.props.stylesThumbSelected ? this.props.stylesThumbSelected : {width: 460, height: 266, backgroundColor: '#ffd700'};
+    const stylesThumb = this.props.stylesThumb ? this.props.stylesThumb : {width: 460, height: 266};
     const renderThumbs = (uri, i) => <Thumb key={i} source={uri} myIndex={i} selectedIndex={index}
-      onTilePathSelect={this.props.onTilePathSelect}
-      width={454} height={260} top={0} left ={0} position={'relative'} visible={true} fadeduration={1} 
-      styles_thumb_selected={styles.thumb_selected} styles_thumb={styles.thumb}/>;
+      path={this.props.onTilePathSelect(uri)}
+      width={width} height={height} top={2} left ={2} position={'relative'} visible={true} fadeDuration={1} 
+      stylesThumbSelected={stylesThumbSelected} stylesThumb={stylesThumb} 
+      />;
+
     return (
-      <View>
+      <View style={{overflow: 'visible'}}>
+        <View style={{position: 'relative', top: 400, left: 500, width: 1920, height: 800, zIndex: 200, overflow: 'visible'}}>
+          <OverlayText viewStyle={{ position: 'relative', top: 100, left: 100, width: 1920, height: 800, zIndex: 200, overflow: 'visible' }} 
+                      headerStyle={{ fontSize: 30, color: '#7fff00' }} 
+                      headerText={THUMB_URIS[index]} />
+        </View>
+        <View>
         <ScrollView
           scrollEnabled={false}
           ref={(scrollView) => { this._scrollView = scrollView; }}
           automaticallyAdjustContentInsets={false}
-          scrollEventThrottle={16}
+          scrollEventThrottle={0}
           horizontal={true}
-          showsHorizontalScrollIndicator={false}          >
-          {THUMB_URIS.map(renderThumbs)}
+          showsHorizontalScrollIndicator={false}     
+           >
+          {THUMB_URIS.map(renderThumbs)}          
         </ScrollView>
+        </View>                
       </View>
     );
   }
 }
-
-
 
 export default class JuvoReactNative extends Component {
 
   constructor(props) {
     super(props);
     this.state = {
-      visible: true,
-      selectedClipIndex: 0
+      visible: false,
+      selectedClipIndex: 0,      
+      bigPictureVisible: true
     };
     this.toggle = this.toggle.bind(this);
-    this.onTVKey = this.onTVKey.bind(this);
+    this.onTVKeyDown = this.onTVKeyDown.bind(this);
+    this.onTVKeyUp = this.onTVKeyUp.bind(this);
     this.handleSelectedIndexChange = this.handleSelectedIndexChange.bind(this);
     this.tilePathSelect = this.tilePathSelect.bind(this);
+    this.onBigPictureLoadStart = this.onBigPictureLoadStart.bind(this);
+    this.onBigPictureLoadEnd = this.onBigPictureLoadEnd.bind(this);
+    this.bigPictureFadeDuration = 500;
   }
 
   toggle() {
@@ -197,25 +244,28 @@ export default class JuvoReactNative extends Component {
 
   componentWillMount() {
     JuvoEventEmitter.addListener(
-      'onTVKeyPress',
-      this.onTVKey
+      'onTVKeyDown',
+      this.onTVKeyDown
+    );
+    JuvoEventEmitter.addListener(
+      'onTVKeyUp',
+      this.onTVKeyUp
     );
   }
 
-  componentDidMount() {
-    //this.toggle();  
-  }
-
-  onTVKey(pressed) {
+  
+  onTVKeyDown(pressed) {
     //There are two parameters available:
     //pressed.KeyName
-    //pressed.KeyCode   
+    //pressed.KeyCode       
+   
+    this.setState({bigPictureVisible: false});
 
     switch (pressed.KeyName) {
       case "Return":
       case "XF86AudioPlay":
       case "XF86PlayBack":
-        JuvoPlayer.log("Start playback...");
+        //JuvoPlayer.log("Start playback...");
         if (this.state.visible) {
           // JuvoPlayer.startPlayback();
           this.toggle();
@@ -228,19 +278,22 @@ export default class JuvoReactNative extends Component {
       case "XF86Back":
       case "XF86AudioStop":
         if (!this.state.visible) {
-          // JuvoPlayer.stopPlayback();
+         //  JuvoPlayer.stopPlayback();
           this.toggle();
         }
         break;
-    }
-    //JuvoPlayer.log("JuvoReactNative params - KeyName  " + pressed.KeyName + " the code: " + pressed.KeyCode);
+    }   
   }
 
-  handleSelectedIndexChange(index) {
-    this.setState({ selectedClipIndex: index });
+  onTVKeyUp(pressed) {         
+      this.setState({bigPictureVisible: true}); 
   }
 
-  shouldComponentUpdate(nextProps, nextState) {
+  handleSelectedIndexChange(index) {     
+    this.setState({ selectedClipIndex: index});      
+  }
+
+  shouldComponentUpdate(nextProps, nextState) {       
     return true;
   }
 
@@ -249,64 +302,69 @@ export default class JuvoReactNative extends Component {
       return LocalImages.tiles.default;
 
     const tileArray = {
-      'carjpg': LocalImages.tiles.carjpg,
-      'bolidjpg': LocalImages.tiles.bolidjpg,
-      'sinteljpg': LocalImages.tiles.sinteljpg,
-      'oopsjpg': LocalImages.tiles.oopsjpg
-    };
-    //JuvoPlayer.log("tilePathSelect name = " + name);
+      'car': LocalImages.tiles.car,
+      'bolid': LocalImages.tiles.bolid,
+      'sintel': LocalImages.tiles.sintel,
+      'oops': LocalImages.tiles.oops
+    };    
     return tileArray[name];
   }
 
+  onBigPictureLoadStart(event) { 
+  }
+
+  onBigPictureLoadEnd(event) {  
+  }
+
   render() {
-    JuvoPlayer.log("JuvoReactNative render() this.state.selectedClipIndex = " + this.state.selectedClipIndex);
-    const index = this.state.selectedClipIndex;
-    const renderBigPicture = (uri, i) => <Thumb key={i} source={uri} myIndex={i} selectedIndex={index}
-                                                onTilePathSelect={this.tilePathSelect}
-                                                width={1920} height={1080} top={0} left ={0} position={'relative'} visible={true} fadeduration={1}
-                                                styles_thumb_selected={{width: 1920, height: 1080}} styles_thumb={{width: 1920, height: 1080}} />;
+    JuvoPlayer.log("JuvoReactNative render() this.state.selectedClipIndex = " + this.state.bigPictureVisible);
+    const index = this.state.selectedClipIndex; 
+    const visible = (index == 1);
+    const uri = THUMB_URIS[index];
     return (
       <View style={styles.container}>
+        <HideableView  visible={this.state.visible} duration={300}>
+          <HideableView  visible={this.state.bigPictureVisible} duration={300} style={{zIndex: -100 }}>          
+            <View style={{position: 'relative', top: 0, width: 1920, height: 1080, zIndex: -10 }}>
+              <Thumb key={index} source={uri} myIndex={index} selectedIndex={index}
+                      path={this.tilePathSelect(uri)}
+                      width={1920} height={1080} top={0} left = {0} position={'relative'} visible={true} fadeDuration={this.bigPictureFadeDuration} 
+                      stylesThumbSelected={{width: 1920, height: 1080}} stylesThumb={{width: 1920, height: 1080}}
+                      onLoadStart = {this.onBigPictureLoadStart} onLoadEnd = {this.onBigPictureLoadEnd}/>
 
-        <HideableView  visible={this.state.visible} duration={500}>
-
-        <View style={{ position: 'relative', top: 200, left: 400, width: 1920, height: 815, zIndex: 1 }}>
-          <Text style={{ fontSize: 30, color: '#7fff00' }}>
-            {THUMB_URIS[index]}
-          </Text>
-        </View>
-
-        <View style={{position: 'relative', top: -6, width: 1920, height: 265, zIndex: 1 }}>
-          <HorizontalScrollView onSelectedIndexChange={this.handleSelectedIndexChange} onTilePathSelect={this.tilePathSelect} />
-        </View>
-
-        <View style={{position: 'relative', top: -1080, width: 1920, height: 1080, zIndex: -1 }}>
-          {THUMB_URIS.map(renderBigPicture)}
-        </View>
-
-        </HideableView>           
-
+            </View>   
+          </HideableView>   
+          <View style={{position: 'relative', top: -1080, width: 1920, height: 1080, zIndex: 100 }}>
+            <HorizontalScrollView stylesThumbSelected={styles.stylesThumbSelected} stylesThumb={styles.stylesThumb} 
+            onSelectedIndexChange={this.handleSelectedIndexChange} onTilePathSelect={this.tilePathSelect}  />
+          </View>   
+        </HideableView> 
       </View>
     );
   }
 }
 
-class BufferedBigPictures extends Component {
+class OverlayText extends Component {
+
+  constructor(props) {
+    super(props);     
+  }
+
+  shouldComponentUpdate(nextProps, nextState) {
+    return true;
+  }
+
   render() {
-    return (
-      <View style={styles.container}>
-        <HideableView visible={this.state.visible} duration={1}>
-          <View>
-            <Image style={{ width: 1920, height: 1080 }} source={this.tilePathSelect(THUMB_URIS[index])} />
-          </View>
-        </HideableView>
+    this.handleSelectedIndexChange = this.props.onSelectedIndexChange;
+    return(
+      <View style={this.props.viewStyle}>
+        <Text style={this.props.headerStyle}>
+          {this.props.headerText}
+        </Text>
       </View>
-    )
+    );
   }
 }
-
-
-
 class HideableView extends Component {
   constructor(props) {
     super(props);
@@ -325,8 +383,7 @@ class HideableView extends Component {
     ).start();
   }
 
-  shouldComponentUpdate(nextProps) {
-    //return this.props.visible !== nextProps.visible;
+  shouldComponentUpdate(nextProps) {   
     return true;
   }
 
@@ -357,7 +414,6 @@ HideableView.propTypes = {
   noAnimation: PropTypes.bool
 }
 
-
 const styles = StyleSheet.create({
   container: {
     position: 'absolute',
@@ -379,7 +435,6 @@ const styles = StyleSheet.create({
     width: 460,
     height: 266
   }
-
 });
 
 AppRegistry.registerComponent('JuvoReactNative', () => JuvoReactNative);

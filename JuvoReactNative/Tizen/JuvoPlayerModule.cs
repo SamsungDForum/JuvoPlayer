@@ -27,6 +27,7 @@ namespace JuvoReactNative
         private static ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoRN");
         public static readonly string Tag = "JuvoRN";
         EcoreEvent<EcoreKeyEventArgs> _keyDown;
+        EcoreEvent<EcoreKeyEventArgs> _keyUp;
 
         public JuvoPlayerModule(ReactContext reactContext)
             : base(reactContext)
@@ -67,7 +68,18 @@ namespace JuvoReactNative
                 var param = new JObject();
                 param.Add("KeyName", e.KeyName);
                 param.Add("KeyCode", e.KeyCode);
-                SendEvent("onTVKeyPress", param);
+                SendEvent("onTVKeyDown", param);
+            };
+
+            _keyUp = new EcoreEvent<EcoreKeyEventArgs>(EcoreEventType.KeyUp, EcoreKeyEventArgs.Create);
+            _keyUp.On += (s, e)  => {
+                Log.Error(Tag, "keyUp.On = " + e.KeyName);
+
+                //Propagate the key press event to JavaScript module
+                var param = new JObject();
+                param.Add("KeyName", e.KeyName);
+                param.Add("KeyCode", e.KeyCode);
+                SendEvent("onTVKeyUp", param);
             };
         }
         public void OnDestroy()
