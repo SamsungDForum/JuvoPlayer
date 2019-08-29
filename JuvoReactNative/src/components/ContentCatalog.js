@@ -55,24 +55,28 @@ export default class ContentCatalog extends Component {
    
     this.setState({bigPictureVisible: false});
 
+    let video = LocalResources.clipsData[this.state.selectedClipIndex];
     switch (pressed.KeyName) {
       case "Return":
       case "XF86AudioPlay":
       case "XF86PlayBack":
         //JuvoPlayer.log("Start playback...");
         if (this.state.visible) {
-          // this.JuvoPlayer.startPlayback();
+          let licenseURI = video.drmDatas ? video.drmDatas[0].licenceUrl : null;
+          let DRM = video.drmDatas ? video.drmDatas[0].scheme : null;
+          //this.JuvoPlayer.log("video " + licenseURI + " " + DRM);
+          this.JuvoPlayer.startPlayback(video.url, licenseURI, DRM);
           this.toggle();
         }
         else {
           //pause
-          // this.JuvoPlayer.pauseResumePlayback();
+          this.JuvoPlayer.pauseResumePlayback();
         }
         break;
       case "XF86Back":
       case "XF86AudioStop":
         if (!this.state.visible) {
-         //  this.JuvoPlayer.stopPlayback();
+          this.JuvoPlayer.stopPlayback();
           this.toggle();
         }
         break;

@@ -77,17 +77,20 @@ export default class ContentScrollView extends React.Component {
   };  
 
   onTVKeyUp(pressed) {     
+    this.props.onSelectedIndexChange(this.curIndex); 
     this.setState({ selectedIndex: this.curIndex });   
-    this.props.onSelectedIndexChange(this.state.selectedIndex);    
+       
   }
 
   render() {
     const index = this.state.selectedIndex;
     const width = this.props.itemWidth ? this.props.itemWidth : 454;
     const height = this.props.itemHeight ? this.props.itemHeight : 260;      
-    const stylesThumbSelected = this.props.stylesThumbSelected ? this.props.stylesThumbSelected : {width: 460, height: 266, backgroundColor: '#ffd700'};
-    const stylesThumb = this.props.stylesThumb ? this.props.stylesThumb : {width: 460, height: 266};
-    const pathFinder = LocalResources.tilePathSelect;
+    const stylesThumbSelected = this.props.stylesThumbSelected ? this.props.stylesThumbSelected : {width: 460, height: 270, backgroundColor: '#ffffff', overflow: 'visible'};
+    const stylesThumb = this.props.stylesThumb ? this.props.stylesThumb : {width: 460, height: 266, backgroundColor: 'transparent'};
+    const pathFinder = LocalResources.tilePathSelect;    
+    const title = LocalResources.clipsData[index].title; 
+    const description = LocalResources.clipsData[index].description;
     const renderThumbs = (uri, i) => <ContentPicture key={i} source={uri} myIndex={i} selectedIndex={index}
       path={pathFinder(uri)}
       width={width} height={height} top={2} left ={2} position={'relative'} visible={true} fadeDuration={1} 
@@ -96,10 +99,10 @@ export default class ContentScrollView extends React.Component {
 
     return (
       <View style={{overflow: 'visible'}}>
-        <View style={{position: 'relative', top: 400, left: 500, width: 1920, height: 800, zIndex: 200, overflow: 'visible'}}>
-          <ContentDescription viewStyle={{ position: 'relative', top: 100, left: 100, width: 1920, height: 800, zIndex: 200, overflow: 'visible' }} 
-                      headerStyle={{ fontSize: 30, color: '#7fff00' }} 
-                      headerText={this.props.contentURIs[index]} />
+        <View style={{position: 'relative', top: 200, left: 200, width: 1920, height: 800, zIndex: 200, overflow: 'visible'}}>
+          <ContentDescription viewStyle={{ position: 'relative', top: 0, left: 0, width: 1520, height: 800, zIndex: 200, overflow: 'visible' }} 
+                      headerStyle={{ fontSize: 60, color: '#ffffff' }} bodyStyle={{ fontSize: 30, color: '#ffffff', top: 0}} 
+                      headerText={title} bodyText={description}/>
         </View>
         <View>
         <ScrollView

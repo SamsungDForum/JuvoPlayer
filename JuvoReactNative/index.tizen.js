@@ -47,19 +47,20 @@ const styles = StyleSheet.create({
     position: 'absolute',
     backgroundColor: 'transparent',
     width: 1920,
-    height: 1080
+    height: 1080,
+    overflow: 'visible'   
   },
   thumb: {
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#cccccc',
+    backgroundColor: '#000000',
     width: 460,
     height: 266
   },
   thumb_selected: {
     alignItems: 'center',
     justifyContent: 'center',
-    backgroundColor: '#ffd700',
+    backgroundColor: '#ffffff',
     width: 460,
     height: 266
   }

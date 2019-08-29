@@ -23,6 +23,9 @@ export default class ContentDescription extends Component {
           <Text style={this.props.headerStyle}>
             {this.props.headerText}
           </Text>
+          <Text style={this.props.bodyStyle}>
+            {this.props.bodyText}
+          </Text>
         </View>
       );
     }
