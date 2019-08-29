@@ -28,7 +28,7 @@ export default class ContentPicture extends React.Component {
       const position = this.props.position ? this.props.position : 'relative';
       const stylesThumbSelected = this.props.stylesThumbSelected ? this.props.stylesThumbSelected : {width: 500, height: 300};
       const stylesThumb = this.props.stylesThumb ? this.props.stylesThumb : {width: 460, height: 266};
-      const path = this.props.path ? this.props.path : LocalResources.tilesPath.default;
+      const path = this.props.path ? this.props.path : LocalResources.tilesPath.default;      
       const fadeDuration = this.props.fadeDuration ? this.props.fadeDuration : 500;   
       const visible = this.props.visible ? this.props.visible : true;
       const onLoadStart = this.props.onLoadStart ? this.props.onLoadStart : () => {};
@@ -44,8 +44,8 @@ export default class ContentPicture extends React.Component {
                     source={path} 
                     onLoadStart={onLoadStart}
                     onLoadEnd={onLoadEnd} 
-              />
-            </View>
+              />              
+            </View>           
           </HideableView>
         );
       } else {

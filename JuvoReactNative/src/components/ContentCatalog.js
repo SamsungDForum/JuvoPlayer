@@ -108,20 +108,27 @@ export default class ContentCatalog extends Component {
     const uri = LocalResources.tileNames[index];
     const path = LocalResources.tilePathSelect(uri);
     const styles = this.props.styles.container;
+    const overlay = LocalResources.tilesPath.contentDescriptionBackground;
     return (
       <View style={styles}>
         <HideableView  visible={this.state.visible} duration={300}>
           <HideableView  visible={this.state.bigPictureVisible} duration={300} style={{zIndex: -100 }}>          
             <View style={{position: 'relative', top: 0, width: 1920, height: 1080, zIndex: -10 }}>
-              <ContentPicture key={index} source={uri} myIndex={index} selectedIndex={index}
+              <ContentPicture source={uri} selectedIndex={index}
                       path={path}
                       width={1920} height={1080} top={0} left = {0} position={'relative'} visible={true} fadeDuration={this.bigPictureFadeDuration} 
                       stylesThumbSelected={{width: 1920, height: 1080}} stylesThumb={{width: 1920, height: 1080}}
-                      onLoadStart = {this.onBigPictureLoadStart} onLoadEnd = {this.onBigPictureLoadEnd}/>
-
+                      onLoadStart = {this.onBigPictureLoadStart} onLoadEnd = {this.onBigPictureLoadEnd}/>              
             </View>   
+            <View style={{position: 'relative', top: -1080, width: 1920, height: 1080, zIndex: -10 }}>
+            <ContentPicture  source={uri} selectedIndex={index}
+                      path={overlay}
+                      width={1920} height={1080} top={0} left = {0} position={'relative'} visible={true} fadeDuration={this.bigPictureFadeDuration} 
+                      stylesThumbSelected={{width: 1920, height: 1080}} stylesThumb={{width: 1920, height: 1080}}
+                      onLoadStart = {this.onBigPictureLoadStart} onLoadEnd = {this.onBigPictureLoadEnd}/>
+            </View>
           </HideableView>   
-          <View style={{position: 'relative', top: -1080, width: 1920, height: 1080, zIndex: 100 }}>
+          <View style={{position: 'relative', top: -2160, width: 1920, height: 1080, zIndex: 100 }}>
             <ContentScrollView stylesThumbSelected={styles.stylesThumbSelected} stylesThumb={styles.stylesThumb} 
                               onSelectedIndexChange={this.handleSelectedIndexChange} contentURIs={LocalResources.tileNames}  />
           </View>   

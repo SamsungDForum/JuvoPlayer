@@ -28,7 +28,8 @@ const LocalResources = {
         sacrecoeur: require('.././res/images/tiles/sacrecoeur.png'),
         canimals: require('.././res/images/tiles/canimals.png'),
         testwatchscreen: require('.././res/images/tiles/testwatchscreen.png'),        
-        default: require('.././res/images/tiles/default_bg.png')
+        default: require('.././res/images/tiles/default_bg.png'),
+        contentDescriptionBackground: require('.././res/images/tiles/content_list_bg.png')
     },
     tilePathSelect : name => {
         if (name === null)
@@ -45,7 +46,8 @@ const LocalResources = {
           'sacrecoeur': LocalResources.tilesPath.sacrecoeur,
           'canimals': LocalResources.tilesPath.canimals,
           'testwatchscreen': LocalResources.tilesPath.testwatchscreen,        
-          'default': LocalResources.tilesPath.default
+          'default': LocalResources.tilesPath.default,
+          'contentDescriptionBackground': LocalResources.tilesPath.contentDescriptionBackground
         };    
         if (tileArray[name] == null) return LocalResources.tilesPath.default;
         return tileArray[name];
