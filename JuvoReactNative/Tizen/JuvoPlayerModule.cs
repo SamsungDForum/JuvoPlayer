@@ -231,7 +231,7 @@ namespace JuvoReactNative
             player.Start();
         }
 
-        private async Task Play()
+        private async Task Play(string videoURI, string licenseURI, string DRM)
         {
             try
             {
@@ -242,6 +242,7 @@ namespace JuvoReactNative
                 Log.Error(Tag, "JuvoPlayerModule (Play) window.Show()");
                 /////////////Clean contents////////////////////
                 var url = "http://yt-dash-mse-test.commondatastorage.googleapis.com/media/car-20120827-manifest.mpd";
+                if (videoURI != null) url = videoURI;
                 //var url = "https://bitdash-a.akamaihd.net/content/sintel/sintel.mpd";
                 //var url = "http://distribution.bbb3d.renderfarming.net/video/mp4/bbb_sunflower_1080p_30fps_normal.mp4";
                 //var url = "http://wowzaec2demo.streamlock.net/live/bigbuckbunny/manifest_mvtime.mpd";
@@ -267,11 +268,21 @@ namespace JuvoReactNative
                 //await PlayPlatformMediaClean(url, platformPlayer);
                 //await PlayPlatformMediaDRMed(url, license, platformPlayer);
 
+
                 //////The JuvoPlayer backend (elementary stream data source).
                 juvoPlayer = new PlayerServiceProxy(new PlayerServiceImpl(window));
                 Log.Error(Tag, "JuvoPlayerModule (Play) juvoPlayer object created..");
                 //PlayJuvoPlayerRTSP(url, juvoPlayer);
-                PlayJuvoPlayerClean(url, juvoPlayer);
+                if (videoURI == null) return;
+
+                if (licenseURI == null)
+                {
+                    PlayJuvoPlayerClean(url, juvoPlayer);
+                } else
+                {
+                    PlayJuvoPlayerDRMed(url, licenseURI, DRM, juvoPlayer);
+                }                
+
                 //PlayJuvoPlayerDRMed(url, license, "playready", juvoPlayer);
                 //PlayJuvoPlayerDRMed(url, license, "widevine", juvoPlayer);
                 Log.Error(Tag, "JuvoPlayerModule: Playback OK!");
@@ -289,11 +300,11 @@ namespace JuvoReactNative
             Log.Error(Tag, message);
         }
         [ReactMethod]
-        public async void startPlayback()
+        public async void startPlayback(string videoURI, string licenseURI, string DRM)
         {
             //StartTimer(UpdateInterval, UpdatePlayerControl);
-            Log.Error(Tag, "JuvoPlayerModule startPlayback() function called! ");
-            await Play();
+            Log.Error(Tag, "JuvoPlayerModule startPlayback() function called! videoURI = " + videoURI + " licenseURI = " + licenseURI + " DRM = " + DRM );
+            await Play(videoURI, licenseURI, DRM);
         }
         [ReactMethod]
         public void stopPlayback()
