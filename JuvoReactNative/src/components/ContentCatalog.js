@@ -16,10 +16,10 @@ export default class ContentCatalog extends Component {
   constructor(props) {
     super(props);
     this.state = {
-      visible: false,
-      selectedClipIndex: 0,      
-      bigPictureVisible: false
-    };
+      visible: true,        
+      bigPictureVisible: false,
+      selectedClipIndex : 0
+    };    
     this.toggle = this.toggle.bind(this);
     this.onTVKeyDown = this.onTVKeyDown.bind(this);
     this.onTVKeyUp = this.onTVKeyUp.bind(this);
@@ -50,8 +50,7 @@ export default class ContentCatalog extends Component {
   onTVKeyDown(pressed) {
     //There are two parameters available:
     //pressed.KeyName
-    //pressed.KeyCode       
-   
+    //pressed.KeyCode         
     this.setState({bigPictureVisible: false});
 
     let video = LocalResources.clipsData[this.state.selectedClipIndex];
@@ -81,12 +80,12 @@ export default class ContentCatalog extends Component {
   }
 
   onTVKeyUp(pressed) {         
-      this.setState({bigPictureVisible: true}); 
+      this.setState({bigPictureVisible: true});      
   }
 
   handleSelectedIndexChange(index) {     
-    this.props.onSelectedIndexChange(index);
-    this.setState({selectedClipIndex: index});      
+    //this.props.onSelectedIndexChange(index);
+    this.setState({selectedClipIndex: index});          
   }
 
   shouldComponentUpdate(nextProps, nextState) {       
@@ -97,7 +96,7 @@ export default class ContentCatalog extends Component {
     this.setState({bigPictureVisible: false});
   }
   handleBigPicLoadEnd() {
-    this.setState({bigPictureVisible: true, visible: true });
+    this.setState({bigPictureVisible: true });
   }
 
   render() {    
@@ -110,21 +109,19 @@ export default class ContentCatalog extends Component {
       <View style={{backgroundColor: 'transparent'}}>
         <HideableView  visible={this.state.visible} duration={fadeduration}>
           <HideableView  visible={this.state.bigPictureVisible} duration={fadeduration} style={{zIndex: -100 }}>          
-            <View style={{position: 'relative', top: 0, width: 1920, height: 1080, zIndex: -10 }}>
+            <View style={{position: 'relative', top: 0, left: 650, width: 1920, height: 1080, zIndex: -10 }}>
               <ContentPicture source={uri} selectedIndex={index} 
                       path={path} onLoadEnd={this.handleBigPicLoadEnd} onLoadStart={this.handleBigPicLoadStart}
-                      width={1920} height={1080} top={0} left = {0} position={'relative'}   
-                      stylesThumbSelected={{width: 1920, height: 1080}} stylesThumb={{width: 1920, height: 1080}}
+                      width={1266} height={715} top={0} left = {0} position={'relative'}                        
                       />              
-            </View>   
-            <View style={{position: 'relative', top: -1080, width: 1920, height: 1080, zIndex: -10 }}>
-            <ContentPicture  source={uri} selectedIndex={index}
+            </View>              
+          </HideableView> 
+          <View style={{position: 'relative', top: -1080, left: 650, width: 1920, height: 1080, zIndex: -10 }}>
+            <ContentPicture  source={uri} selectedIndex={index} 
                       path={overlay}
-                      width={1920} height={1080} top={0} left = {0} position={'relative'}  
-                      stylesThumbSelected={{width: 1920, height: 1080}} stylesThumb={{width: 1920, height: 1080}}
+                      width={1266} height={715} top={0} left = {0} position={'relative'}                        
                       />
-            </View>
-          </HideableView>   
+            </View>  
           <View style={{position: 'relative', top: -2160, width: 1920, height: 1080, zIndex: 100 }}>
             <ContentScrollView onSelectedIndexChange={this.handleSelectedIndexChange} contentURIs={LocalResources.tileNames}  />
           </View>   

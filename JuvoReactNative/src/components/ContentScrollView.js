@@ -80,6 +80,13 @@ export default class ContentScrollView extends React.Component {
     this.setState({ selectedIndex: this.curIndex }); 
   }
 
+  shouldComponentUpdate(nextProps, nextState) {  
+    if (nextState.selectedIndex == this.state.selectedIndex) {
+        return false;
+    }     
+    return true;
+  } 
+
   render() {
     const index = this.state.selectedIndex;
     const pathFinder = LocalResources.tilePathSelect;    
@@ -90,14 +97,14 @@ export default class ContentScrollView extends React.Component {
     const renderThumbs = (uri, i) => <ContentPicture key={i} source={uri} myIndex={i} selectedIndex={index}
       path={pathFinder(uri)} 
       width={itemWidth - 8} height={itemHeight - 8} top={4} left ={4} position={'relative'} fadeDuration={1} 
-      stylesThumbSelected={{width: itemWidth, height: itemHeight, top: 0, backgroundColor: '#ffffff'}} 
-      stylesThumb={{width: itemWidth, height: itemHeight, top:0, backgroundColor: 'transparent'}} 
+      stylesThumbSelected={{width: itemWidth, height: itemHeight, top: 0, backgroundColor: 'transparent', opacity: 0.1}} 
+      stylesThumb={{width: itemWidth, height: itemHeight, top:0, backgroundColor: 'transparent', opacity: 1}} 
       />;
 
     return (
       <View >
-        <View style={{position: 'relative', top: 200, left: 200, width: 1920, height: 800, zIndex: 200}}>
-          <ContentDescription viewStyle={{ position: 'relative', top: 0, left: 0, width: 1520, height: 800, zIndex: 200, overflow: 'visible' }} 
+        <View style={{position: 'relative', top: 150, left: 50, width: 900, height: 800, zIndex: 200}}>
+          <ContentDescription viewStyle={{ position: 'relative', top: 0, left: 0, width: 900, height: 800, zIndex: 200 }} 
                       headerStyle={{ fontSize: 60, color: '#ffffff' }} bodyStyle={{ fontSize: 30, color: '#ffffff', top: 0}} 
                       headerText={title} bodyText={description}/>
         </View>
