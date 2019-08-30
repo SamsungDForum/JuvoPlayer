@@ -35,7 +35,7 @@ export default class JuvoReactNative extends Component {
   
   render() {
     return (
-      <View style={{position: 'absolute', backgroundColor: 'transparent',  width: 1920, height: 1080}}>
+      <View style={styles.container}>
        <ContentCatalog styles={styles} onSelectedIndexChange={this.handleSelectedIndexChange}/>
       </View>
     );
