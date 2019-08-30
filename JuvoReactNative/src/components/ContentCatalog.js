@@ -23,9 +23,7 @@ export default class ContentCatalog extends Component {
     this.toggle = this.toggle.bind(this);
     this.onTVKeyDown = this.onTVKeyDown.bind(this);
     this.onTVKeyUp = this.onTVKeyUp.bind(this);
-    this.handleSelectedIndexChange = this.handleSelectedIndexChange.bind(this);   
-    this.onBigPictureLoadStart = this.onBigPictureLoadStart.bind(this);
-    this.onBigPictureLoadEnd = this.onBigPictureLoadEnd.bind(this);
+    this.handleSelectedIndexChange = this.handleSelectedIndexChange.bind(this);      
     this.bigPictureFadeDuration = 500;
     this.JuvoPlayer = NativeModules.JuvoPlayer;
     this.JuvoEventEmitter = new NativeEventEmitter(this.JuvoPlayer);
@@ -59,12 +57,10 @@ export default class ContentCatalog extends Component {
     switch (pressed.KeyName) {
       case "Return":
       case "XF86AudioPlay":
-      case "XF86PlayBack":
-        //JuvoPlayer.log("Start playback...");
+      case "XF86PlayBack":      
         if (this.state.visible) {
           let licenseURI = video.drmDatas ? video.drmDatas[0].licenceUrl : null;
-          let DRM = video.drmDatas ? video.drmDatas[0].scheme : null;
-          //this.JuvoPlayer.log("video " + licenseURI + " " + DRM);
+          let DRM = video.drmDatas ? video.drmDatas[0].scheme : null;          
           this.JuvoPlayer.startPlayback(video.url, licenseURI, DRM);
           this.toggle();
         }
@@ -96,41 +92,32 @@ export default class ContentCatalog extends Component {
     return true;
   } 
 
-  onBigPictureLoadStart(event) { 
-  }
-
-  onBigPictureLoadEnd(event) {  
-  }
-
   render() {    
-    const index = this.state.selectedClipIndex; 
-    const visible = (index == 1);
+    const index = this.state.selectedClipIndex;    
     const uri = LocalResources.tileNames[index];
-    const path = LocalResources.tilePathSelect(uri);
-    const styles = this.props.styles.container;
+    const path = LocalResources.tilePathSelect(uri);   
     const overlay = LocalResources.tilesPath.contentDescriptionBackground;
     return (
-      <View style={styles}>
+      <View style={{position: 'absolute', backgroundColor: 'transparent',  width: 1920, height: 1080}}>
         <HideableView  visible={this.state.visible} duration={300}>
           <HideableView  visible={this.state.bigPictureVisible} duration={300} style={{zIndex: -100 }}>          
             <View style={{position: 'relative', top: 0, width: 1920, height: 1080, zIndex: -10 }}>
-              <ContentPicture source={uri} selectedIndex={index}
+              <ContentPicture source={uri} selectedIndex={index} 
                       path={path}
                       width={1920} height={1080} top={0} left = {0} position={'relative'} visible={true} fadeDuration={this.bigPictureFadeDuration} 
                       stylesThumbSelected={{width: 1920, height: 1080}} stylesThumb={{width: 1920, height: 1080}}
-                      onLoadStart = {this.onBigPictureLoadStart} onLoadEnd = {this.onBigPictureLoadEnd}/>              
+                      />              
             </View>   
             <View style={{position: 'relative', top: -1080, width: 1920, height: 1080, zIndex: -10 }}>
             <ContentPicture  source={uri} selectedIndex={index}
                       path={overlay}
                       width={1920} height={1080} top={0} left = {0} position={'relative'} visible={true} fadeDuration={this.bigPictureFadeDuration} 
                       stylesThumbSelected={{width: 1920, height: 1080}} stylesThumb={{width: 1920, height: 1080}}
-                      onLoadStart = {this.onBigPictureLoadStart} onLoadEnd = {this.onBigPictureLoadEnd}/>
+                      />
             </View>
           </HideableView>   
           <View style={{position: 'relative', top: -2160, width: 1920, height: 1080, zIndex: 100 }}>
-            <ContentScrollView stylesThumbSelected={styles.stylesThumbSelected} stylesThumb={styles.stylesThumb} 
-                              onSelectedIndexChange={this.handleSelectedIndexChange} contentURIs={LocalResources.tileNames}  />
+            <ContentScrollView onSelectedIndexChange={this.handleSelectedIndexChange} contentURIs={LocalResources.tileNames}  />
           </View>   
         </HideableView> 
       </View>
