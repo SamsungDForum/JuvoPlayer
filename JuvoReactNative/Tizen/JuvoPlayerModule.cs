@@ -11,7 +11,7 @@ using JuvoLogger;
 using ILogger = JuvoLogger.ILogger;
 using Log = Tizen.Log;
 using TVMultimedia = Tizen.TV.Multimedia;
-using Tizen.Multimedia;
+//using Tizen.Multimedia;
 using ElmSharp;
 using ReactNative.Modules.Core;
 using Newtonsoft.Json.Linq;
@@ -19,9 +19,13 @@ using Tizen.Applications;
 
 namespace JuvoReactNative
 {
-    public class JuvoPlayerModule : ReactContextNativeModuleBase, ILifecycleEventListener
+    public class JuvoPlayerModule : ReactContextNativeModuleBase, ILifecycleEventListener, ISeekLogicClient
     {
         private PlayerServiceProxy juvoPlayer;
+        private readonly int DefaultTimeout = 5000;
+        private readonly TimeSpan UpdateInterval = TimeSpan.FromMilliseconds(100);
+
+        private SeekLogic seekLogic = null; // needs to be initialized in constructor!
         //private TVMultimedia.Player platformPlayer;
 
         private static ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoRN");
@@ -32,6 +36,30 @@ namespace JuvoReactNative
         public JuvoPlayerModule(ReactContext reactContext)
             : base(reactContext)
         {
+            // You see a gray background and no video it means that the Canvas.cs file of the react-native-tizen framework is invalid.
+            var window = ReactProgram.RctWindow as Window; //The main window of the application has to be transparent.
+            juvoPlayer = new PlayerServiceProxy(new PlayerServiceImpl(window));
+
+            SynchronizationContext scx = new SynchronizationContext();
+
+            juvoPlayer.StateChanged()
+               .ObserveOn(scx)
+               .Subscribe(OnPlayerStateChanged, OnPlayerCompleted);
+
+            juvoPlayer.PlaybackError()
+                .ObserveOn(scx)
+                .Subscribe(message =>
+                {
+                    Logger?.Info($"Playback Error: {message}");
+                    stopPlayback();
+                });
+
+            juvoPlayer.BufferingProgress()
+                .ObserveOn(scx)
+                .Subscribe(UpdateBufferingProgress);
+
+            seekLogic = new SeekLogic(this);
+
         }
         public override string Name
         {
@@ -49,6 +77,17 @@ namespace JuvoReactNative
 
         public bool IsSeekingSupported => juvoPlayer?.IsSeekingSupported ?? false;
 
+        public TimeSpan CurrentPositionUI
+        {
+            get
+            {
+                if (seekLogic.IsSeekAccumulationInProgress == false && seekLogic.IsSeekInProgress == false)
+                    currentPosition = CurrentPositionPlayer;
+                return currentPosition;
+            }
+            set => currentPosition = value;
+        }
+        private TimeSpan currentPosition;
         private void SendEvent(string eventName, JObject parameters)
         {
             Context.GetJavaScriptModule<RCTDeviceEventEmitter>()
@@ -81,7 +120,43 @@ namespace JuvoReactNative
                 param.Add("KeyCode", e.KeyCode);
                 SendEvent("onTVKeyUp", param);
             };
+
+            //Device.StartTimer(UpdateInterval, UpdatePlayerControl);
+            
         }
+
+        private void OnPlayerStateChanged(PlayerState state)
+        {
+            switch (state)
+            {
+                case PlayerState.Prepared:
+                    {
+                        if (juvoPlayer.IsSeekingSupported)
+                        {
+                           // BackButton.IsEnabled = true;
+                           // ForwardButton.IsEnabled = true;
+                        }
+                        // PlayButton.IsEnabled = true;
+                        //  SettingsButton.IsEnabled = true;
+                        // PlayButton.Focus();
+
+                        juvoPlayer.Start();
+                       // Show();
+                        break;
+                    }
+                case PlayerState.Playing:
+                   // PlayImage.Source = ImageSource.FromFile("btn_viewer_control_pause_normal.png");
+                    break;
+                case PlayerState.Paused:
+                   // PlayImage.Source = ImageSource.FromFile("btn_viewer_control_play_normal.png");
+                    break;
+            }
+        }
+
+        private void OnPlayerCompleted()
+        {
+        }
+
         public void OnDestroy()
         {
             Log.Error(Tag, "Destroying JuvoPlayerModule...");
@@ -94,7 +169,6 @@ namespace JuvoReactNative
         public void OnSuspend()
         {
         }
-
         private void UpdateBufferingProgress(int percent)
         {
             Log.Error(Tag, "Update buffering");
@@ -104,50 +178,14 @@ namespace JuvoReactNative
             SendEvent("onUpdateBufferingProgress", param);
         }
 
-        void PlayJuvoPlayerRTSP(String videoSourceURL, PlayerServiceProxy player)
-        {
-            try
-            {
-                player.SetSource(new ClipDefinition
-                {
-                    Title = "Title",
-                    Type = "rtsp",
-                    Url = videoSourceURL,
-                    Subtitles = new List<SubtitleInfo>(),
-                    Poster = "Poster",
-                    Description = "Descritption",
-                    DRMDatas = new List<DRMDescription>()
-                });
-                //Log.Error(Tag, "JuvoPlayerModule (PlayJuvoPlayerClean) player source set!");
-
-                SynchronizationContext scx = new SynchronizationContext();
-
-                player.StateChanged()
-                    .ObserveOn(scx)
-                    .Where(state => state == JuvoPlayer.Common.PlayerState.Prepared)
-                    .Subscribe(state =>
-                    {
-                        player.Start();
-                    });
-
-                player.PlaybackError()
-                    .ObserveOn(scx)
-                    .Subscribe(message =>
-                    {
-                        Logger?.Info($"Playback Error: {message}");
-                        //ReturnToMainMenu();
-                        //DisplayAlert("Playback Error", message, "OK");
-                    });
-
-                player.BufferingProgress()
-                    .ObserveOn(scx)
-                    .Subscribe(UpdateBufferingProgress);
-                //Log.Error(Tag, "JuvoPlayerModule (PlayJuvoPlayerClean) player statechanged()!");
-            }
-            catch (Exception e)
-            {
-                Log.Error(Tag, "PlayJuvoPlayerClean: " + e.Message + " stack trace: " + e.StackTrace);
-            }
+        private void UpdatePlayTime()
+        {         
+            Log.Error(Tag, "UpdatePlayTime");
+            //Propagate the bufffering progress event to JavaScript module
+            var param = new JObject();
+            param.Add("CurrentPosition", (int)Duration.TotalMilliseconds);
+            param.Add("Duration", (int)CurrentPositionUI.TotalMilliseconds);
+            SendEvent("onUpdatePlayTime", param);
         }
 
         private void PlayJuvoPlayerClean(String videoSourceURL, PlayerServiceProxy player)
@@ -164,28 +202,6 @@ namespace JuvoReactNative
                     Description = "Descritption",
                     DRMDatas = new List<DRMDescription>()
                 });
-
-                SynchronizationContext scx = new SynchronizationContext();
-
-                player.StateChanged()
-                    .ObserveOn(scx)
-                    .Where(state => state == JuvoPlayer.Common.PlayerState.Prepared)
-                    .Subscribe(state =>
-                    {
-                        player.Start();
-                    });
-
-                player.PlaybackError()
-                    .ObserveOn(scx)
-                    .Subscribe(message =>
-                    {
-                        Logger?.Info($"Playback Error: {message}");
-                        stopPlayback();
-                    });
-
-                player.BufferingProgress()
-                    .ObserveOn(scx)
-                    .Subscribe(UpdateBufferingProgress); 
             }
             catch (Exception e)
             {
@@ -213,20 +229,12 @@ namespace JuvoReactNative
                 Description = "Descritption",
                 DRMDatas = drmData
             });
-
-            player.StateChanged()
-               .ObserveOn(new SynchronizationContext())
-               .Where(state => state == JuvoPlayer.Common.PlayerState.Prepared)
-               .Subscribe(state =>
-               {
-                   player.Start();
-               });
         }
 
         //Playback launching functions
         async Task PlayPlatformMediaClean(String videoSourceURL, TVMultimedia.Player player)
         {
-            player.SetSource(new MediaUriSource(videoSourceURL));
+            player.SetSource(new Tizen.Multimedia.MediaUriSource(videoSourceURL));
             await player.PrepareAsync();
             player.Start();
         }
@@ -235,62 +243,40 @@ namespace JuvoReactNative
         {
             try
             {
-                Log.Error(Tag, "JuvoPlayerModule (Play) Play() launched..");
-                var window = ReactProgram.RctWindow as Window; //The main window of the application has to be transparent.
-                // You see a gray background and no video it means that the Canvas.cs file of the react-native-tizen framework is invalid.
+               
 
-                Log.Error(Tag, "JuvoPlayerModule (Play) window.Show()");
-                /////////////Clean contents////////////////////
+                //Log.Error(Tag, "JuvoPlayerModule (Play) window.Show()");               
                 var url = "http://yt-dash-mse-test.commondatastorage.googleapis.com/media/car-20120827-manifest.mpd";
-                if (videoURI != null) url = videoURI;
-                //var url = "https://bitdash-a.akamaihd.net/content/sintel/sintel.mpd";
-                //var url = "http://distribution.bbb3d.renderfarming.net/video/mp4/bbb_sunflower_1080p_30fps_normal.mp4";
-                //var url = "http://wowzaec2demo.streamlock.net/live/bigbuckbunny/manifest_mvtime.mpd";
-                //var url = "http://download.tsi.telecom-paristech.fr/gpac/dataset/dash/uhd/dashevc-live-2s/dashevc-live-2s-4k.mpd";
-                //var url = "rtsp://192.168.137.187/canimals.ts";
+                if (videoURI != null) url = videoURI;              
 
-
-                /////////////Play Ready encrypted content//////
-                //var url = "http://profficialsite.origin.mediaservices.windows.net/c51358ea-9a5e-4322-8951-897d640fdfd7/tearsofsteel_4k.ism/manifest(format=mpd-time-csf)";
-                //var license = "http://playready-testserver.azurewebsites.net/rightsmanager.asmx?PlayRight=1&UseSimpleNonPersistentLicense=1";
-                //var url = "http://yt-dash-mse-test.commondatastorage.googleapis.com/media/oops_cenc-20121114-signedlicenseurl-manifest.mpd";
-                //var license = ""; //The license url is embeded in the video source .mpd file above
-
-                /////////////Widevine encrypted content////////
-                //var url = "https://bitmovin-a.akamaihd.net/content/art-of-motion_drm/mpds/11331.mpd";
-                //var license = "https://widevine-proxy.appspot.com/proxy";
-                //var url = "https://storage.googleapis.com/wvmedia/cenc/h264/tears/tears_uhd.mpd";
-                //var license = "https://proxy.uat.widevine.com/proxy?provider=widevine_test";
-                Log.Error(Tag, "JuvoPlayerModule (Play) url: " + url);
-
-                //////The TV platform MediaPlayer (URL data source only).
-                //platformPlayer = new TVMultimedia.Player { Display = new Display(window) };
-                //await PlayPlatformMediaClean(url, platformPlayer);
-                //await PlayPlatformMediaDRMed(url, license, platformPlayer);
-
-
-                //////The JuvoPlayer backend (elementary stream data source).
-                juvoPlayer = new PlayerServiceProxy(new PlayerServiceImpl(window));
-                Log.Error(Tag, "JuvoPlayerModule (Play) juvoPlayer object created..");
-                //PlayJuvoPlayerRTSP(url, juvoPlayer);
+                Log.Error(Tag, "JuvoPlayerModule (Play) juvoPlayer object created..");              
                 if (videoURI == null) return;
-
                 if (licenseURI == null)
                 {
                     PlayJuvoPlayerClean(url, juvoPlayer);
                 } else
                 {
                     PlayJuvoPlayerDRMed(url, licenseURI, DRM, juvoPlayer);
-                }                
+                }
 
-                //PlayJuvoPlayerDRMed(url, license, "playready", juvoPlayer);
-                //PlayJuvoPlayerDRMed(url, license, "widevine", juvoPlayer);
+
+
+                if (juvoPlayer.State == PlayerState.Playing)
+                    juvoPlayer.Pause();
+                else
+                    juvoPlayer.Start();
+
                 Log.Error(Tag, "JuvoPlayerModule: Playback OK!");
             }
             catch (Exception e)
             {
                 Log.Error(Tag, e.Message);
             }
+        }
+
+        public Task Seek(TimeSpan to)
+        {
+            return juvoPlayer.SeekTo(to);
         }
 
         //ReactMethods - accessible with JavaScript
@@ -328,20 +314,24 @@ namespace JuvoReactNative
             }
         }
         [ReactMethod]
-        void exitApp()
+        public void exitApp()
         {
             Log.Error(Tag, "Exiting App...");
             ReactNativeApp app = (ReactNativeApp)Application.Current;
             app.ShutDown();
         }
-        //public Task Seek(TimeSpan to)
-        //{
-        //    Newtonsoft.Json.Linq.JObject value;
-        //    string json = @"{to: '2'}";
-        //    value = JObject.Parse(json);
-        //    Task<void> task = new Task<void>(SendEvent)<string>("SeekToTimeSpan")<JObject>(value);
-        //    return task;
-        //    //throw new NotImplementedException();
-        //}
+
+        [ReactMethod]
+        public void Forward()
+        {
+            seekLogic.SeekForward();
+        }
+        [ReactMethod]
+        public void Rewind()
+        {
+            seekLogic.SeekBackward();
+        }
+        
+       
     }
 }

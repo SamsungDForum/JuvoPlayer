@@ -33,8 +33,7 @@ export default class ContentScrollView extends React.Component {
   handleButtonPressRight() {       
     if (this.curIndex < this.numItems - 1) {
       this.curIndex++;           
-      this.scrolloffset = (this.curIndex * this.itemWidth);                
-      this.JuvoPlayer.log("scrollView.scrollTo x = " +  this.scrolloffset);
+      this.scrolloffset = (this.curIndex * this.itemWidth);  
       this._scrollView.scrollTo({ x:  this.scrolloffset, y: 0, animated: true });            
     } 
     this.setState({ selectedIndex: this.curIndex });
@@ -45,7 +44,6 @@ export default class ContentScrollView extends React.Component {
       this.curIndex--;      
       this.scrolloffset = (this.curIndex * this.itemWidth);  
       this._scrollView.scrollTo({ x:  this.scrolloffset, y: 0, animated: true });
-      
     };
     this.setState({ selectedIndex: this.curIndex });
   };
@@ -81,10 +79,7 @@ export default class ContentScrollView extends React.Component {
   }
 
   shouldComponentUpdate(nextProps, nextState) {  
-    if (nextState.selectedIndex == this.state.selectedIndex) {
-        return false;
-    }     
-    return true;
+    return (nextState.selectedIndex != this.state.selectedIndex);
   } 
 
   render() {
