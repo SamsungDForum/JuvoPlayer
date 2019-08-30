@@ -20,27 +20,27 @@ export default class ContentPicture extends React.Component {
     }     
   
     render() {
-      const name = this.props.source;
-      const width = this.props.width ? this.props.width : 1920;
-      const height = this.props.height ? this.props.height : 1080;
+      const index = this.props.myIndex ? this.props.myIndex : this.props.selectedIndex;  
+      const path = this.props.path ? this.props.path : LocalResources.tilesPath.default; 
+
+      const imageWidth = this.props.width ? this.props.width : 1920;
+      const imageHeight = this.props.height ? this.props.height : 1080;
       const top = this.props.top ? this.props.top : 0;
       const left = this.props.left ? this.props.left : 0; 
       const position = this.props.position ? this.props.position : 'relative';
-      const stylesThumbSelected = this.props.stylesThumbSelected ? this.props.stylesThumbSelected : {width: 500, height: 300};
-      const stylesThumb = this.props.stylesThumb ? this.props.stylesThumb : {width: 460, height: 266};
-      const path = this.props.path ? this.props.path : LocalResources.tilesPath.default;      
-      const fadeDuration = this.props.fadeDuration ? this.props.fadeDuration : 500;   
+      const stylesThumbSelected = this.props.stylesThumbSelected ? this.props.stylesThumbSelected : {width: imageWidth, height: imageHeight};
+      const stylesThumb = this.props.stylesThumb ? this.props.stylesThumb : {width: imageWidth, height: imageHeight};           
+      const fadeDuration = this.props.fadeDuration ? this.props.fadeDuration : 1;   
       const visible = this.props.visible ? this.props.visible : true;
       const onLoadStart = this.props.onLoadStart ? this.props.onLoadStart : () => {};
-      const onLoadEnd = this.props.onLoadEnd ? this.props.onLoadEnd : () => {};
-    
+      const onLoadEnd = this.props.onLoadEnd ? this.props.onLoadEnd : () => {};    
   
-      if (this.props.selectedIndex == this.props.myIndex) {           
+      if (this.props.selectedIndex == index) {           
         return (
           <HideableView visible={visible} duration={fadeDuration} >
             <View style={stylesThumbSelected}>
               <Image resizeMode='cover' 
-                    style={{ width: width, height: height, top: top, left: left, position: position, overflow: 'visible'}} 
+                    style={{ width: imageWidth , height: imageHeight , top: top, left: left, position: position}} 
                     source={path} 
                     onLoadStart={onLoadStart}
                     onLoadEnd={onLoadEnd} 
@@ -53,7 +53,7 @@ export default class ContentPicture extends React.Component {
           <HideableView visible={visible} duration={this.props.fadeDuration} >
             <View style={stylesThumb}>
             <Image resizeMode='cover' 
-                  style={{ width: width , height: height , top: top, left: left, position: position}} 
+                  style={{ width: imageWidth , height: imageHeight, top: top, left: left, position: position}} 
                   source={path} 
                   onLoadStart={this.props.onLoadStart}
                   onLoadEnd={this.props.onLoadEnd}

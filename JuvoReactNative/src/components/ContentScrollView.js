@@ -59,8 +59,7 @@ export default class ContentScrollView extends React.Component {
       'onTVKeyUp',
       this.onTVKeyUp
     );
-  }
- 
+  } 
 
   onTVKeyDown(pressed) {
     //There are two parameters available:
@@ -78,28 +77,26 @@ export default class ContentScrollView extends React.Component {
 
   onTVKeyUp(pressed) {     
     this.props.onSelectedIndexChange(this.curIndex); 
-    this.setState({ selectedIndex: this.curIndex });   
-       
+    this.setState({ selectedIndex: this.curIndex }); 
   }
 
   render() {
     const index = this.state.selectedIndex;
-    const width = this.props.itemWidth ? this.props.itemWidth : 454;
-    const height = this.props.itemHeight ? this.props.itemHeight : 260;      
-    const stylesThumbSelected = this.props.stylesThumbSelected ? this.props.stylesThumbSelected : {width: 460, height: 270, backgroundColor: '#ffffff', overflow: 'visible'};
-    const stylesThumb = this.props.stylesThumb ? this.props.stylesThumb : {width: 460, height: 266, backgroundColor: 'transparent'};
     const pathFinder = LocalResources.tilePathSelect;    
     const title = LocalResources.clipsData[index].title; 
-    const description = LocalResources.clipsData[index].description;
+    const description = LocalResources.clipsData[index].description; 
+    const itemWidth = 454;
+    const itemHeight = 260;      
     const renderThumbs = (uri, i) => <ContentPicture key={i} source={uri} myIndex={i} selectedIndex={index}
       path={pathFinder(uri)}
-      width={width} height={height} top={2} left ={2} position={'relative'} visible={true} fadeDuration={1} 
-      stylesThumbSelected={stylesThumbSelected} stylesThumb={stylesThumb} 
+      width={itemWidth - 8} height={itemHeight - 8} top={4} left ={4} position={'relative'} fadeDuration={100} 
+      stylesThumbSelected={{width: itemWidth, height: itemHeight, top: 0, backgroundColor: '#ffffff'}} 
+      stylesThumb={{width: itemWidth, height: itemHeight, top:0, backgroundColor: 'transparent'}} 
       />;
 
     return (
-      <View style={{overflow: 'visible'}}>
-        <View style={{position: 'relative', top: 200, left: 200, width: 1920, height: 800, zIndex: 200, overflow: 'visible'}}>
+      <View >
+        <View style={{position: 'relative', top: 200, left: 200, width: 1920, height: 800, zIndex: 200}}>
           <ContentDescription viewStyle={{ position: 'relative', top: 0, left: 0, width: 1520, height: 800, zIndex: 200, overflow: 'visible' }} 
                       headerStyle={{ fontSize: 60, color: '#ffffff' }} bodyStyle={{ fontSize: 30, color: '#ffffff', top: 0}} 
                       headerText={title} bodyText={description}/>

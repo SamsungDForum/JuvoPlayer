@@ -1,3 +1,4 @@
 node_modules/
 .expo/
 npm-debug.*
+Tizen/shared/res/index.tizen.bundle

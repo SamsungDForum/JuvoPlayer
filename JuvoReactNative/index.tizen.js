@@ -35,7 +35,7 @@ export default class JuvoReactNative extends Component {
   
   render() {
     return (
-      <View style={styles.container}>
+      <View style={{position: 'absolute', backgroundColor: 'transparent',  width: 1920, height: 1080}}>
        <ContentCatalog styles={styles} onSelectedIndexChange={this.handleSelectedIndexChange}/>
       </View>
     );
@@ -47,22 +47,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     backgroundColor: 'transparent',
     width: 1920,
-    height: 1080,
-    overflow: 'visible'   
-  },
-  thumb: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#000000',
-    width: 460,
-    height: 266
-  },
-  thumb_selected: {
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: '#ffffff',
-    width: 460,
-    height: 266
+    height: 1080  
   }
 });
 
