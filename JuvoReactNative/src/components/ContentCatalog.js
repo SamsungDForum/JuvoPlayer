@@ -83,8 +83,7 @@ export default class ContentCatalog extends Component {
       this.setState({bigPictureVisible: true});      
   }
 
-  handleSelectedIndexChange(index) {     
-    //this.props.onSelectedIndexChange(index);
+  handleSelectedIndexChange(index) {      
     this.setState({selectedClipIndex: index});          
   }
 
@@ -104,7 +103,7 @@ export default class ContentCatalog extends Component {
     const uri = LocalResources.tileNames[index];
     const path = LocalResources.tilePathSelect(uri);   
     const overlay = LocalResources.tilesPath.contentDescriptionBackground;
-    const fadeduration = 300;
+    const fadeduration = 100;
     return (
       <View style={{backgroundColor: 'transparent'}}>
         <HideableView  visible={this.state.visible} duration={fadeduration}>
