@@ -52,7 +52,21 @@ const LocalResources = {
         if (tileArray[name] == null) return LocalResources.tilesPath.default;
         return tileArray[name];
       },
-      clipsData : videoclipsdata      
+    clipsData : videoclipsdata,
+    playbackIconsPath : {
+      'play': require('.././res/images/btn_viewer_control_play_normal.png')
+    },
+    playbackIconsPathSelect : name => {
+      if (name === null)
+        return LocalResources.tilesPath.default;
+  
+      const tileArray = {
+        'play': LocalResources.playbackIconsPath.play,
+        'default': LocalResources.tilesPath.default
+      };    
+      if (tileArray[name] == null) return LocalResources.tilesPath.default;
+      return tileArray[name];
+    }    
   };
   
   export default LocalResources;
