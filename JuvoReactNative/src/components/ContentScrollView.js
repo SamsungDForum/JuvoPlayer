@@ -88,8 +88,8 @@ export default class ContentScrollView extends React.Component {
     const itemWidth = 454;
     const itemHeight = 260;      
     const renderThumbs = (uri, i) => <ContentPicture key={i} source={uri} myIndex={i} selectedIndex={index}
-      path={pathFinder(uri)}
-      width={itemWidth - 8} height={itemHeight - 8} top={4} left ={4} position={'relative'} fadeDuration={100} 
+      path={pathFinder(uri)} 
+      width={itemWidth - 8} height={itemHeight - 8} top={4} left ={4} position={'relative'} fadeDuration={1} 
       stylesThumbSelected={{width: itemWidth, height: itemHeight, top: 0, backgroundColor: '#ffffff'}} 
       stylesThumb={{width: itemWidth, height: itemHeight, top:0, backgroundColor: 'transparent'}} 
       />;
