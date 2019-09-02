@@ -50,7 +50,8 @@ export default class ContentCatalog extends Component {
   onTVKeyDown(pressed) {
     //There are two parameters available:
     //pressed.KeyName
-    //pressed.KeyCode         
+    //pressed.KeyCode  
+
     this.setState({bigPictureVisible: false});
 
     let video = LocalResources.clipsData[this.state.selectedClipIndex];
@@ -92,9 +93,11 @@ export default class ContentCatalog extends Component {
   } 
 
   handleBigPicLoadStart() {
+    this.JuvoPlayer.log("handleBigPicLoadStart...");
     this.setState({bigPictureVisible: false});
   }
   handleBigPicLoadEnd() {
+    this.JuvoPlayer.log("handleBigPicLoadEnd...");
     this.setState({bigPictureVisible: true });
   }
 
@@ -103,25 +106,25 @@ export default class ContentCatalog extends Component {
     const uri = LocalResources.tileNames[index];
     const path = LocalResources.tilePathSelect(uri);   
     const overlay = LocalResources.tilesPath.contentDescriptionBackground;
-    const fadeduration = 100;
+    const fadeduration = 200;
     return (
       <View style={{backgroundColor: 'transparent'}}>
         <HideableView  visible={this.state.visible} duration={fadeduration}>
           <HideableView  visible={this.state.bigPictureVisible} duration={fadeduration} style={{zIndex: -100 }}>          
-            <View style={{position: 'relative', top: 0, left: 650, width: 1920, height: 1080, zIndex: -10 }}>
+            <View style={{position: 'relative', top: 0, left: 650, width: 1270, height: 800, zIndex: -10  }}>
               <ContentPicture source={uri} selectedIndex={index} 
                       path={path} onLoadEnd={this.handleBigPicLoadEnd} onLoadStart={this.handleBigPicLoadStart}
                       width={1266} height={715} top={0} left = {0} position={'relative'}                        
                       />              
             </View>              
           </HideableView> 
-          <View style={{position: 'relative', top: -1080, left: 650, width: 1920, height: 1080, zIndex: -10 }}>
+          <View style={{position: 'relative', top: -800, left: 650, width: 1270, height: 800, zIndex: -10 }}>
             <ContentPicture  source={uri} selectedIndex={index} 
                       path={overlay}
                       width={1266} height={715} top={0} left = {0} position={'relative'}                        
                       />
             </View>  
-          <View style={{position: 'relative', top: -2160, width: 1920, height: 1080, zIndex: 100 }}>
+          <View style={{position: 'relative', top: -1600, width: 1920, height: 1080, zIndex: 100 }}>
             <ContentScrollView onSelectedIndexChange={this.handleSelectedIndexChange} contentURIs={LocalResources.tileNames}  />
           </View>   
         </HideableView> 
