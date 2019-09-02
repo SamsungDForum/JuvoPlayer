@@ -98,13 +98,13 @@ export default class ContentScrollView extends React.Component {
 
     return (
       <View >
-        <View style={{position: 'relative', top: 150, left: 50, width: 900, height: 800, zIndex: 200}}>
+        <View style={{position: 'relative', top: 150, left: 100, width: 900, height: 800, zIndex: 200}}>
           <ContentDescription viewStyle={{ position: 'relative', top: 0, left: 0, width: 900, height: 800, zIndex: 200 }} 
                       headerStyle={{ fontSize: 60, color: '#ffffff' }} bodyStyle={{ fontSize: 30, color: '#ffffff', top: 0}} 
                       headerText={title} bodyText={description}/>
         </View>
         <View>
-        <ScrollView
+        <ScrollView 
           scrollEnabled={false}
           ref={(scrollView) => { this._scrollView = scrollView; }}
           automaticallyAdjustContentInsets={false}

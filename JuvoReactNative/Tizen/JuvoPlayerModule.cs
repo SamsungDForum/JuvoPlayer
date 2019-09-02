@@ -36,6 +36,11 @@ namespace JuvoReactNative
         public JuvoPlayerModule(ReactContext reactContext)
             : base(reactContext)
         {
+            seekLogic = new SeekLogic(this);
+        }
+
+        private void InitializeJuvoPlayer()
+        {
             // You see a gray background and no video it means that the Canvas.cs file of the react-native-tizen framework is invalid.
             var window = ReactProgram.RctWindow as Window; //The main window of the application has to be transparent.
             juvoPlayer = new PlayerServiceProxy(new PlayerServiceImpl(window));
@@ -57,10 +62,8 @@ namespace JuvoReactNative
             juvoPlayer.BufferingProgress()
                 .ObserveOn(scx)
                 .Subscribe(UpdateBufferingProgress);
-
-            seekLogic = new SeekLogic(this);
-
         }
+
         public override string Name
         {
             get
@@ -127,6 +130,7 @@ namespace JuvoReactNative
 
         private void OnPlayerStateChanged(PlayerState state)
         {
+            Logger?.Info($"OnPlayerStateChanged: {state}");
             switch (state)
             {
                 case PlayerState.Prepared:
@@ -160,8 +164,6 @@ namespace JuvoReactNative
         public void OnDestroy()
         {
             Log.Error(Tag, "Destroying JuvoPlayerModule...");
-            juvoPlayer.Dispose();
-            //platformPlayer.Dispose();
         }
         public void OnResume()
         {
@@ -179,7 +181,7 @@ namespace JuvoReactNative
         }
 
         private void UpdatePlayTime()
-        {         
+        {
             Log.Error(Tag, "UpdatePlayTime");
             //Propagate the bufffering progress event to JavaScript module
             var param = new JObject();
@@ -243,7 +245,7 @@ namespace JuvoReactNative
         {
             try
             {
-               
+                InitializeJuvoPlayer();
 
                 //Log.Error(Tag, "JuvoPlayerModule (Play) window.Show()");               
                 var url = "http://yt-dash-mse-test.commondatastorage.googleapis.com/media/car-20120827-manifest.mpd";
@@ -258,8 +260,6 @@ namespace JuvoReactNative
                 {
                     PlayJuvoPlayerDRMed(url, licenseURI, DRM, juvoPlayer);
                 }
-
-
 
                 if (juvoPlayer.State == PlayerState.Playing)
                     juvoPlayer.Pause();
@@ -295,10 +295,11 @@ namespace JuvoReactNative
         [ReactMethod]
         public void stopPlayback()
         {
-            Logger?.Info("Closing player");
-            juvoPlayer?.Stop();
+            Logger?.Info("Stopping player");
             juvoPlayer?.Dispose();
             juvoPlayer = null;
+            //platformPlayer.Dispose();
+
         }
         [ReactMethod]
         public void pauseResumePlayback()
