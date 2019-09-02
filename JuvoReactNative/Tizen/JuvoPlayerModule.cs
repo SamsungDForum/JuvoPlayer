@@ -32,10 +32,12 @@ namespace JuvoReactNative
         public static readonly string Tag = "JuvoRN";
         EcoreEvent<EcoreKeyEventArgs> _keyDown;
         EcoreEvent<EcoreKeyEventArgs> _keyUp;
+        SynchronizationContext syncContext;
 
         public JuvoPlayerModule(ReactContext reactContext)
             : base(reactContext)
         {
+            syncContext = new SynchronizationContext();
             seekLogic = new SeekLogic(this);
         }
 
@@ -45,14 +47,14 @@ namespace JuvoReactNative
             var window = ReactProgram.RctWindow as Window; //The main window of the application has to be transparent.
             juvoPlayer = new PlayerServiceProxy(new PlayerServiceImpl(window));
 
-            SynchronizationContext scx = new SynchronizationContext();
+            
 
             juvoPlayer.StateChanged()
-               .ObserveOn(scx)
+               .ObserveOn(syncContext)
                .Subscribe(OnPlayerStateChanged, OnPlayerCompleted);
 
             juvoPlayer.PlaybackError()
-                .ObserveOn(scx)
+                .ObserveOn(syncContext)
                 .Subscribe(message =>
                 {
                     Logger?.Info($"Playback Error: {message}");
@@ -60,7 +62,7 @@ namespace JuvoReactNative
                 });
 
             juvoPlayer.BufferingProgress()
-                .ObserveOn(scx)
+                .ObserveOn(syncContext)
                 .Subscribe(UpdateBufferingProgress);
         }
 
