@@ -33,6 +33,7 @@ namespace JuvoReactNative
         EcoreEvent<EcoreKeyEventArgs> _keyDown;
         EcoreEvent<EcoreKeyEventArgs> _keyUp;
         SynchronizationContext syncContext;
+        Window window = ReactProgram.RctWindow; // as Window; //The main window of the application has to be transparent.
 
         public JuvoPlayerModule(ReactContext reactContext)
             : base(reactContext)
@@ -44,14 +45,12 @@ namespace JuvoReactNative
         private void InitializeJuvoPlayer()
         {
             // You see a gray background and no video it means that the Canvas.cs file of the react-native-tizen framework is invalid.
-            var window = ReactProgram.RctWindow as Window; //The main window of the application has to be transparent.
+           
             juvoPlayer = new PlayerServiceProxy(new PlayerServiceImpl(window));
-
-            
 
             juvoPlayer.StateChanged()
                .ObserveOn(syncContext)
-               .Subscribe(OnPlayerStateChanged, OnPlayerCompleted);
+               .Subscribe(OnPlayerStateChanged, OnPlaybackCompleted);
 
             juvoPlayer.PlaybackError()
                 .ObserveOn(syncContext)
@@ -125,42 +124,41 @@ namespace JuvoReactNative
                 param.Add("KeyCode", e.KeyCode);
                 SendEvent("onTVKeyUp", param);
             };
-
-            //Device.StartTimer(UpdateInterval, UpdatePlayerControl);
-            
         }
 
         private void OnPlayerStateChanged(PlayerState state)
         {
             Logger?.Info($"OnPlayerStateChanged: {state}");
+            var param = new JObject();
+            string value = "Idle";
             switch (state)
             {
                 case PlayerState.Prepared:
+                    if (juvoPlayer.IsSeekingSupported)
                     {
-                        if (juvoPlayer.IsSeekingSupported)
-                        {
-                           // BackButton.IsEnabled = true;
-                           // ForwardButton.IsEnabled = true;
-                        }
-                        // PlayButton.IsEnabled = true;
-                        //  SettingsButton.IsEnabled = true;
-                        // PlayButton.Focus();
-
-                        juvoPlayer.Start();
-                       // Show();
-                        break;
                     }
+                    juvoPlayer.Start();
+                    value = "Prepared";
+                    break;
                 case PlayerState.Playing:
-                   // PlayImage.Source = ImageSource.FromFile("btn_viewer_control_pause_normal.png");
+                    value = "Playing";
                     break;
                 case PlayerState.Paused:
-                   // PlayImage.Source = ImageSource.FromFile("btn_viewer_control_play_normal.png");
+                    value = "Paused";
                     break;
             }
+            param.Add("State", value);
+            SendEvent("OnPlayerStateChanged", param);
+            Logger?.Info("OnPlayerStateChanged: SendEvent attached");
         }
 
-        private void OnPlayerCompleted()
+        private void OnPlaybackCompleted()
         {
+            Log.Error(Tag, "OnPlaybackCompleted...");
+            var param = new JObject();
+            SendEvent("OnPlaybackCompleted", param);
+
+            stopPlayback();
         }
 
         public void OnDestroy()
@@ -225,12 +223,12 @@ namespace JuvoReactNative
 
             player.SetSource(new ClipDefinition
             {
-                Title = "Title",
-                Type = "dash",
+              Title = "Title",
+              Type = "dash",
                 Url = videoSourceURL,
                 Subtitles = new List<SubtitleInfo>(),
                 Poster = "Poster",
-                Description = "Descritption",
+               Description = "Descritption",
                 DRMDatas = drmData
             });
         }
@@ -247,27 +245,21 @@ namespace JuvoReactNative
         {
             try
             {
+                if (videoURI == null) return;
+
                 InitializeJuvoPlayer();
 
-                //Log.Error(Tag, "JuvoPlayerModule (Play) window.Show()");               
-                var url = "http://yt-dash-mse-test.commondatastorage.googleapis.com/media/car-20120827-manifest.mpd";
-                if (videoURI != null) url = videoURI;              
+                if (juvoPlayer.State == PlayerState.Playing) return;
 
-                Log.Error(Tag, "JuvoPlayerModule (Play) juvoPlayer object created..");              
-                if (videoURI == null) return;
+                Log.Error(Tag, "JuvoPlayerModule (Play) juvoPlayer object created..");
+
                 if (licenseURI == null)
                 {
-                    PlayJuvoPlayerClean(url, juvoPlayer);
+                    PlayJuvoPlayerClean(videoURI, juvoPlayer);
                 } else
                 {
-                    PlayJuvoPlayerDRMed(url, licenseURI, DRM, juvoPlayer);
+                    PlayJuvoPlayerDRMed(videoURI, licenseURI, DRM, juvoPlayer);
                 }
-
-                if (juvoPlayer.State == PlayerState.Playing)
-                    juvoPlayer.Pause();
-                else
-                    juvoPlayer.Start();
-
                 Log.Error(Tag, "JuvoPlayerModule: Playback OK!");
             }
             catch (Exception e)
@@ -278,7 +270,12 @@ namespace JuvoReactNative
 
         public Task Seek(TimeSpan to)
         {
-            return juvoPlayer.SeekTo(to);
+            Log.Error(Tag, "Seek to.. " + to);
+            var param = new JObject();
+            param.Add("to", (int)to.TotalMilliseconds);
+            SendEvent("OnSeek", param);
+           
+            return juvoPlayer?.SeekTo(to);
         }
 
         //ReactMethods - accessible with JavaScript
@@ -298,10 +295,10 @@ namespace JuvoReactNative
         public void stopPlayback()
         {
             Logger?.Info("Stopping player");
+            juvoPlayer?.Stop();
             juvoPlayer?.Dispose();
             juvoPlayer = null;
             //platformPlayer.Dispose();
-
         }
         [ReactMethod]
         public void pauseResumePlayback()
@@ -323,7 +320,6 @@ namespace JuvoReactNative
             ReactNativeApp app = (ReactNativeApp)Application.Current;
             app.ShutDown();
         }
-
         [ReactMethod]
         public void Forward()
         {
@@ -334,7 +330,5 @@ namespace JuvoReactNative
         {
             seekLogic.SeekBackward();
         }
-        
-       
     }
 }
