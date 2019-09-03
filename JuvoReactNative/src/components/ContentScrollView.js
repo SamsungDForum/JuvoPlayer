@@ -62,7 +62,10 @@ export default class ContentScrollView extends React.Component {
   onTVKeyDown(pressed) {
     //There are two parameters available:
     //params.KeyName
-    //params.KeyCode   
+    //params.KeyCode 
+    
+    if (this.props.keysListenningOff) return;
+
     switch (pressed.KeyName) {
       case "Right":        
         this.handleButtonPressRight();
@@ -73,7 +76,10 @@ export default class ContentScrollView extends React.Component {
     }        
   };  
 
-  onTVKeyUp(pressed) {     
+  onTVKeyUp(pressed) {   
+   
+    if (this.props.keysListenningOff) return;      
+
     this.props.onSelectedIndexChange(this.curIndex); 
     this.setState({ selectedIndex: this.curIndex }); 
   }

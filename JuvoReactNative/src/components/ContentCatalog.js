@@ -17,7 +17,7 @@ export default class ContentCatalog extends Component {
     super(props);
     this.state = {
       visible: true,        
-      bigPictureVisible: false,
+      bigPictureVisible: true,
       selectedClipIndex : 0
     };    
     this.toggle = this.toggle.bind(this);
@@ -93,11 +93,11 @@ export default class ContentCatalog extends Component {
   } 
 
   handleBigPicLoadStart() {
-    this.JuvoPlayer.log("handleBigPicLoadStart...");
+   // this.JuvoPlayer.log("handleBigPicLoadStart...");
     this.setState({bigPictureVisible: false});
   }
   handleBigPicLoadEnd() {
-    this.JuvoPlayer.log("handleBigPicLoadEnd...");
+   // this.JuvoPlayer.log("handleBigPicLoadEnd...");
     this.setState({bigPictureVisible: true });
   }
 
@@ -125,7 +125,7 @@ export default class ContentCatalog extends Component {
                       />
             </View>  
           <View style={{position: 'relative', top: -1600, width: 1920, height: 1080, zIndex: 100 }}>
-            <ContentScrollView onSelectedIndexChange={this.handleSelectedIndexChange} contentURIs={LocalResources.tileNames}  />
+            <ContentScrollView onSelectedIndexChange={this.handleSelectedIndexChange} contentURIs={LocalResources.tileNames}  keysListenningOff={!this.state.visible}/>
           </View>   
         </HideableView> 
       </View>
