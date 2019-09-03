@@ -23,6 +23,7 @@ export default class ContentCatalog extends Component {
     this.toggle = this.toggle.bind(this);
     this.onTVKeyDown = this.onTVKeyDown.bind(this);
     this.onTVKeyUp = this.onTVKeyUp.bind(this);
+    this.onPlaybackCompleted = this.onPlaybackCompleted.bind(this);
     this.handleSelectedIndexChange = this.handleSelectedIndexChange.bind(this);  
     this.handleBigPicLoadStart = this.handleBigPicLoadStart.bind(this);
     this.handleBigPicLoadEnd = this.handleBigPicLoadEnd.bind(this);
@@ -45,6 +46,10 @@ export default class ContentCatalog extends Component {
       'onTVKeyUp',
       this.onTVKeyUp
     );
+    this.JuvoEventEmitter.addListener(
+      'OnPlaybackCompleted',
+      this.onPlaybackCompleted
+    );
   }
   
   onTVKeyDown(pressed) {
@@ -54,7 +59,7 @@ export default class ContentCatalog extends Component {
 
     this.setState({bigPictureVisible: false});
 
-    let video = LocalResources.clipsData[this.state.selectedClipIndex];
+    const video = LocalResources.clipsData[this.state.selectedClipIndex];
     switch (pressed.KeyName) {
       case "Return":
       case "XF86AudioPlay":
@@ -84,6 +89,11 @@ export default class ContentCatalog extends Component {
       this.setState({bigPictureVisible: true});      
   }
 
+  onPlaybackCompleted(param) {
+    this.JuvoPlayer.log("onPlaybackCompleted...");
+    this.toggle();
+  }
+
   handleSelectedIndexChange(index) {      
     this.setState({selectedClipIndex: index});          
   }
@@ -92,12 +102,10 @@ export default class ContentCatalog extends Component {
     return true;
   } 
 
-  handleBigPicLoadStart() {
-   // this.JuvoPlayer.log("handleBigPicLoadStart...");
+  handleBigPicLoadStart() {   
     this.setState({bigPictureVisible: false});
   }
-  handleBigPicLoadEnd() {
-   // this.JuvoPlayer.log("handleBigPicLoadEnd...");
+  handleBigPicLoadEnd() {  
     this.setState({bigPictureVisible: true });
   }
 
