@@ -148,7 +148,7 @@ namespace JuvoReactNative
                     break;
             }
             param.Add("State", value);
-            SendEvent("OnPlayerStateChanged", param);
+            SendEvent("onPlayerStateChanged", param);
             Logger?.Info("OnPlayerStateChanged: SendEvent attached");
         }
 
@@ -156,7 +156,7 @@ namespace JuvoReactNative
         {
             Log.Error(Tag, "OnPlaybackCompleted...");
             var param = new JObject();
-            SendEvent("OnPlaybackCompleted", param);
+            SendEvent("onPlaybackCompleted", param);
 
             stopPlayback();
         }
@@ -176,7 +176,7 @@ namespace JuvoReactNative
             Log.Error(Tag, "Update buffering");
             //Propagate the bufffering progress event to JavaScript module
             var param = new JObject();
-            param.Add("Percent", percent);
+            param.Add("Percent", (int)percent);
             SendEvent("onUpdateBufferingProgress", param);
         }
 
@@ -196,12 +196,12 @@ namespace JuvoReactNative
             {
                 player.SetSource(new ClipDefinition
                 {
-                    Title = "Title",
+                 //   Title = "Title",
                     Type = "dash",
                     Url = videoSourceURL,
                     Subtitles = new List<SubtitleInfo>(),
-                    Poster = "Poster",
-                    Description = "Descritption",
+                //    Poster = "Poster",
+                //    Description = "Descritption",
                     DRMDatas = new List<DRMDescription>()
                 });
             }
@@ -223,12 +223,12 @@ namespace JuvoReactNative
 
             player.SetSource(new ClipDefinition
             {
-              Title = "Title",
+             // Title = "Title",
               Type = "dash",
                 Url = videoSourceURL,
                 Subtitles = new List<SubtitleInfo>(),
-                Poster = "Poster",
-               Description = "Descritption",
+            //    Poster = "Poster",
+             //  Description = "Descritption",
                 DRMDatas = drmData
             });
         }
@@ -273,7 +273,7 @@ namespace JuvoReactNative
             Log.Error(Tag, "Seek to.. " + to);
             var param = new JObject();
             param.Add("to", (int)to.TotalMilliseconds);
-            SendEvent("OnSeek", param);
+            SendEvent("onSeek", param);
            
             return juvoPlayer?.SeekTo(to);
         }
