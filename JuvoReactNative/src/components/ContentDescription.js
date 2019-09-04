@@ -16,11 +16,11 @@ export default class ContentDescription extends Component {
       return true;
     }
   
-    render() {
+    render() {      
       this.handleSelectedIndexChange = this.props.onSelectedIndexChange;
       return(
         <View style={this.props.viewStyle}>
-          <Text style={this.props.headerStyle}>
+          <Text style={this.props.headerStyle} >
             {this.props.headerText}
           </Text>
           <Text style={this.props.bodyStyle}>

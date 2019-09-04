@@ -16,14 +16,14 @@ export default class ContentCatalog extends Component {
   constructor(props) {
     super(props);
     this.state = {
-      visible: true,        
+      visible: this.props.visibility,        
       bigPictureVisible: true,
       selectedClipIndex : 0
     };    
+    this.keysListenningOff = this.props.keysListenningOff;
     this.toggle = this.toggle.bind(this);
     this.onTVKeyDown = this.onTVKeyDown.bind(this);
-    this.onTVKeyUp = this.onTVKeyUp.bind(this);
-    this.onPlaybackCompleted = this.onPlaybackCompleted.bind(this);
+    this.onTVKeyUp = this.onTVKeyUp.bind(this);  
     this.handleSelectedIndexChange = this.handleSelectedIndexChange.bind(this);  
     this.handleBigPicLoadStart = this.handleBigPicLoadStart.bind(this);
     this.handleBigPicLoadEnd = this.handleBigPicLoadEnd.bind(this);
@@ -45,57 +45,36 @@ export default class ContentCatalog extends Component {
     this.JuvoEventEmitter.addListener(
       'onTVKeyUp',
       this.onTVKeyUp
-    );
-    this.JuvoEventEmitter.addListener(
-      'OnPlaybackCompleted',
-      this.onPlaybackCompleted
-    );
+    );   
   }
   
   onTVKeyDown(pressed) {
     //There are two parameters available:
     //pressed.KeyName
     //pressed.KeyCode  
+   // if (this.keysListenningOff) return;
 
     this.setState({bigPictureVisible: false});
-
-    const video = LocalResources.clipsData[this.state.selectedClipIndex];
-    switch (pressed.KeyName) {
+  
+    switch (pressed.KeyName) {     
+      case "XF86Back":
+      case "XF86AudioStop": 
       case "Return":
       case "XF86AudioPlay":
-      case "XF86PlayBack":      
-        if (this.state.visible) {
-          let licenseURI = video.drmDatas ? video.drmDatas[0].licenceUrl : null;
-          let DRM = video.drmDatas ? video.drmDatas[0].scheme : null;          
-          this.JuvoPlayer.startPlayback(video.url, licenseURI, DRM);
-          this.toggle();
-        }
-        else {
-          //pause
-          this.JuvoPlayer.pauseResumePlayback();
-        }
-        break;
-      case "XF86Back":
-      case "XF86AudioStop":
-        if (!this.state.visible) {
-          this.JuvoPlayer.stopPlayback();
-          this.toggle();
-        }
+      case "XF86PlayBack":         
+        this.toggle(); 
+        this.props.onVisibilityChange('PlaybackControls', true);
         break;
     }   
   }
+  onTVKeyUp(pressed) {        
+   // if (this.keysListenningOff) return;
+     this.setState({bigPictureVisible: true});      
+  }  
 
-  onTVKeyUp(pressed) {         
-      this.setState({bigPictureVisible: true});      
-  }
-
-  onPlaybackCompleted(param) {
-    this.JuvoPlayer.log("onPlaybackCompleted...");
-    this.toggle();
-  }
-
-  handleSelectedIndexChange(index) {      
-    this.setState({selectedClipIndex: index});          
+  handleSelectedIndexChange(index) {     
+    this.props.onSelectedIndexChange(index);  
+    this.setState({selectedClipIndex: index});
   }
 
   shouldComponentUpdate(nextProps, nextState) {       
@@ -114,10 +93,13 @@ export default class ContentCatalog extends Component {
     const uri = LocalResources.tileNames[index];
     const path = LocalResources.tilePathSelect(uri);   
     const overlay = LocalResources.tilesPath.contentDescriptionBackground;
-    const fadeduration = 200;
+    const fadeduration = 500;
+    const visibility = this.props.visibility ? this.props.visibility : this.state.visible;
+    this.keysListenningOff = this.props.keysListenningOff ? this.props.keysListenningOff : true;
+    this.JuvoPlayer.log("ContentCatalog render() this.props.keysListenningOff = " + this.props.keysListenningOff);
     return (
       <View style={{backgroundColor: 'transparent'}}>
-        <HideableView  visible={this.state.visible} duration={fadeduration}>
+        <HideableView  visible={visibility} duration={fadeduration}>
           <HideableView  visible={this.state.bigPictureVisible} duration={fadeduration} style={{zIndex: -100 }}>          
             <View style={{position: 'relative', top: 0, left: 650, width: 1270, height: 800, zIndex: -10  }}>
               <ContentPicture source={uri} selectedIndex={index} 
