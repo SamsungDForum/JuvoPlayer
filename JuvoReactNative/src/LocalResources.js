@@ -54,7 +54,11 @@ const LocalResources = {
       },
     clipsData : videoclipsdata,
     playbackIconsPath : {
-      'play': require('.././res/images/btn_viewer_control_play_normal.png')
+      'play': require('.././res/images/btn_viewer_control_play_normal.png'),
+      'ffw': require('.././res/images/btn_viewer_control_forward_normal.png'),
+      'rew': require('.././res/images/btn_viewer_control_back_normal.png'),
+      'set': require('.././res/images/btn_viewer_control_settings_normal.png'),
+      'pause': require('.././res/images/btn_viewer_control_pause_normal.png')      
     },
     playbackIconsPathSelect : name => {
       if (name === null)
@@ -62,6 +66,10 @@ const LocalResources = {
   
       const tileArray = {
         'play': LocalResources.playbackIconsPath.play,
+        'ffw': LocalResources.playbackIconsPath.ffw,
+        'rew': LocalResources.playbackIconsPath.rew,
+        'set': LocalResources.playbackIconsPath.set,
+        'pause': LocalResources.playbackIconsPath.pause,
         'default': LocalResources.tilesPath.default
       };    
       if (tileArray[name] == null) return LocalResources.tilesPath.default;

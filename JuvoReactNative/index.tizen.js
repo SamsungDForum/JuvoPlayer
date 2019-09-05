@@ -14,7 +14,7 @@ import {
 } from 'react-native';
 
 import ContentCatalog from './src/components/ContentCatalog';
-import PlaybackControls from './src/components/PlaybackControls';
+import PlaybackView from './src/components/PlaybackView';
 
 export default class JuvoReactNative extends Component {
   
@@ -23,7 +23,7 @@ export default class JuvoReactNative extends Component {
     this.state = {
       components : {
         'isContentCatalogVisible': true,
-        'isPlaybackControlsVisible': false  
+        'isPlaybackViewVisible': false  
       }
     }
     this.selectedClipIndex = 0;
@@ -38,13 +38,13 @@ export default class JuvoReactNative extends Component {
         case 'ContentCatalog':            
               this.setState({components: {
                 'isContentCatalogVisible': visible,
-                'isPlaybackControlsVisible': !visible
+                'isPlaybackViewVisible': !visible
               }});              
           break;
-        case 'PlaybackControls':           
+        case 'PlaybackView':           
               this.setState({components: {
                 'isContentCatalogVisible': !visible,
-                'isPlaybackControlsVisible': visible
+                'isPlaybackViewVisible': visible
               }});              
           break;
     }
@@ -66,7 +66,7 @@ export default class JuvoReactNative extends Component {
                        visibility={this.state.components.isContentCatalogVisible}
                        switchVisibility={this.handleComponentsVisibility}
                        onSelectedIndexChange={this.handleSelectedIndexChange}/>
-       <PlaybackControls visibility={this.state.components.isPlaybackControlsVisible}
+       <PlaybackView visibility={this.state.components.isPlaybackViewVisible}
                          switchVisibility={this.handleComponentsVisibility}
                          selectedIndex={this.selectedClipIndex} />
       </View>
