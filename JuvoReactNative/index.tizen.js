@@ -19,8 +19,7 @@ import PlaybackControls from './src/components/PlaybackControls';
 export default class JuvoReactNative extends Component {
   
   constructor(props) {
-    super(props);
-    
+    super(props);    
     this.state = {
       components : {
         'isContentCatalogVisible': true,
@@ -28,28 +27,25 @@ export default class JuvoReactNative extends Component {
       }
     }
     this.selectedClipIndex = 0;
-    this.onVisibilityChange = this.onVisibilityChange.bind(this);
+    this.handleComponentsVisibility = this.handleComponentsVisibility.bind(this);
     this.handleSelectedIndexChange = this.handleSelectedIndexChange.bind(this);
     this.JuvoPlayer = NativeModules.JuvoPlayer;
     this.JuvoEventEmitter = new NativeEventEmitter(this.JuvoPlayer);
   } 
 
-  onVisibilityChange(componentName, visible) {   
-   // this.JuvoPlayer.log("onVisibilityChange componentName = " + componentName + ", visibilityState = " + visible);    
+  handleComponentsVisibility(componentName, visible) {       
     switch (componentName) {
         case 'ContentCatalog':            
               this.setState({components: {
-                'isContentCatalogVisible': !visible,
-                'isPlaybackControlsVisible': visible
-              }});  
-            //  this.JuvoPlayer.log("onVisibilityChange isPlaybackControlsVisible = " + this.state.components.isPlaybackControlsVisible);
+                'isContentCatalogVisible': visible,
+                'isPlaybackControlsVisible': !visible
+              }});              
           break;
         case 'PlaybackControls':           
               this.setState({components: {
                 'isContentCatalogVisible': !visible,
                 'isPlaybackControlsVisible': visible
-              }}); 
-             // this.JuvoPlayer.log("onVisibilityChange isContentCatalogVisible = " + this.state.components.isContentCatalogVisible);
+              }});              
           break;
     }
   }
@@ -59,24 +55,20 @@ export default class JuvoReactNative extends Component {
   }
 
   handleSelectedIndexChange(index) {      
-    this.selectedClipIndex = index;    
-   //this.setState({selectedClipIndex: index});     
+    this.selectedClipIndex = index;
   }
   
-  render() {
-   // this.JuvoPlayer.log("JuvoReactNative render() this.state.components.isContentCatalogVisible = " + this.state.components.isContentCatalogVisible);
+  render() {   
     this.JuvoPlayer.log("JuvoReactNative render() this.state.components.isContentCatalogVisible = " + this.state.components.isContentCatalogVisible);
     return (
       <View style={styles.container}>        
-       <ContentCatalog styles={styles} 
-                      keysListenningOff={this.state.components.isPlaybackControlsVisible}                     
-                      visibility={this.state.components.isContentCatalogVisible}
-                      onVisibilityChange={this.onVisibilityChange}
-                      onSelectedIndexChange={this.handleSelectedIndexChange}/>
-       <PlaybackControls  keysListenningOff={!this.state.components.isPlaybackControlsVisible}      
-                          selectedIndex={this.selectedClipIndex}                         
-                          visibility={this.state.components.isPlaybackControlsVisible}
-                          onVisibilityChange={this.onVisibilityChange}/>
+       <ContentCatalog styles={styles}                    
+                       visibility={this.state.components.isContentCatalogVisible}
+                       switchVisibility={this.handleComponentsVisibility}
+                       onSelectedIndexChange={this.handleSelectedIndexChange}/>
+       <PlaybackControls visibility={this.state.components.isPlaybackControlsVisible}
+                         switchVisibility={this.handleComponentsVisibility}
+                         selectedIndex={this.selectedClipIndex} />
       </View>
     );
   }

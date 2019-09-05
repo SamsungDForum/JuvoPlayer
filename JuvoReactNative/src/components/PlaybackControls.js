@@ -19,13 +19,14 @@ export default class PlaybackControls extends React.Component {
   constructor(props) {
     super(props);   
     this.curIndex = 0;
-    this.state = {
-        visible: this.props.visibility,
+    this.state = {        
         selectedIndex: 0
-      };          
-    this.onVisibilityChange = this.onVisibilityChange.bind(this);
+      };      
     this.onTVKeyDown = this.onTVKeyDown.bind(this);
-    this.onTVKeyUp = this.onTVKeyUp.bind(this);  
+    this.onTVKeyUp = this.onTVKeyUp.bind(this);
+    this.visible =  this.props.visibility ? this.props.visibility : false; 
+    this.keysListenningOff = false;  
+    this.toggleVisibility = this.toggleVisibility.bind(this);
     this.onPlaybackCompleted = this.onPlaybackCompleted.bind(this);
     this.onPlayerStateChanged = this.onPlayerStateChanged.bind(this);
     this.onUpdateBufferingProgress = this.onUpdateBufferingProgress.bind(this);
@@ -37,10 +38,11 @@ export default class PlaybackControls extends React.Component {
     this.JuvoEventEmitter = new NativeEventEmitter(this.JuvoPlayer);
     this.playerState = 'Idle';
   }
-  
- 
-  onVisibilityChange(componentName, visibilityState) {
-  } 
+
+  toggleVisibility() {    
+    this.visible = !this.visible; 
+    this.props.switchVisibility('PlaybackControls', this.visible);  
+  }   
 
   handleButtonPressRight() { 
   }
@@ -48,21 +50,21 @@ export default class PlaybackControls extends React.Component {
   handleButtonPressLeft() {  
   }
 
-  onPlaybackCompleted(param) {      
-    this.props.onVisibilityChange('PlaybackControls', false); 
+  onPlaybackCompleted(param) {         
+    this.toggleVisibility();
   }
   onPlayerStateChanged(state) {
-    this.playerState = state.State;//JSON.stringify(state);
+    this.playerState = state.State;
     this.JuvoPlayer.log("onPlayerStateChanged... playerState = " +  this.playerState);
   }
   onUpdateBufferingProgress(percent) {
-    this.JuvoPlayer.log("onUpdateBufferingProgress... precent = " + percent);
+    this.JuvoPlayer.log("onUpdateBufferingProgress... precent = " + percent.Percent);
   }
   onUpdatePlayTime(position, duration) {
-    this.JuvoPlayer.log("onUpdatePlayTime... pos = " + position + ", duration = " + duration );
+    this.JuvoPlayer.log("onUpdatePlayTime... pos = " + position.CurrentPosition + ", duration = " + duration.Duration );
   }
-  onSeek(to) {
-    this.JuvoPlayer.log("onSeek... to = " + to);
+  onSeek(time) {
+    this.JuvoPlayer.log("onSeek... time = " + time.to);
   }
 
   componentWillMount() {
@@ -100,7 +102,9 @@ export default class PlaybackControls extends React.Component {
     //There are two parameters available:
     //params.KeyName
     //params.KeyCode     
-    if (this.props.keysListenningOff) return;
+   // this.JuvoPlayer.log("PlaybackControls onTVKeyDown() this.keysListenningOff = " + this.keysListenningOff);
+
+    if (this.keysListenningOff) return;
 
     const video = LocalResources.clipsData[this.props.selectedIndex];
 
@@ -126,16 +130,17 @@ export default class PlaybackControls extends React.Component {
         break;
       case "XF86Back":
       case "XF86AudioStop":
-            this.JuvoPlayer.log("onPlayerState is ... " + this.playerState);
-        if (this.playerState === 'Playing') {
-            this.JuvoPlayer.stopPlayback();
-            this.props.onVisibilityChange('PlaybackControls', false);               
+        this.JuvoPlayer.log("onPlayerState is ... " + this.playerState);
+        if (this.playerState === 'Playing' || this.playerState === 'Paused') {
+            this.JuvoPlayer.stopPlayback();                             
         }                
+        this.toggleVisibility();        
     }        
   };  
 
   onTVKeyUp(pressed) {      
-    if (this.props.keysListenningOff) return; 
+    if (this.keysListenningOff) return; 
+
   }
 
   shouldComponentUpdate(nextProps, nextState) {  
@@ -150,7 +155,9 @@ export default class PlaybackControls extends React.Component {
     const playIconPath = LocalResources.playbackIconsPathSelect('play');
     const revIconPath = LocalResources.playbackIconsPathSelect('play');
     const ffwIconPath = LocalResources.playbackIconsPathSelect('play');
-    const visibility = this.props.visibility ? this.props.visibility : this.state.visible;    
+    const visibility = this.props.visibility ? this.props.visibility : this.visible;   
+    this.visible = visibility;
+    this.keysListenningOff  = !visibility;
     return (
       <View style={{ top: -2680, left: 0, width: 1920, height: 1080}}>
            <HideableView visible={visibility} duration={fadeduration}>                               

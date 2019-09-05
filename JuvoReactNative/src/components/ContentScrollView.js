@@ -62,8 +62,7 @@ export default class ContentScrollView extends React.Component {
   onTVKeyDown(pressed) {
     //There are two parameters available:
     //params.KeyName
-    //params.KeyCode 
-    
+    //params.KeyCode     
     if (this.props.keysListenningOff) return;
 
     switch (pressed.KeyName) {
