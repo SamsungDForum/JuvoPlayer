@@ -13,8 +13,9 @@ import {
 import LocalResources from '../LocalResources';
 import ContentDescription from  './ContentDescription';
 import HideableView from './HideableView';
+import DisappearingView from './DisappearingView';
 
-export default class PlaybackControls extends React.Component {
+export default class PlaybackView extends React.Component {
 
   constructor(props) {
     super(props);   
@@ -25,7 +26,8 @@ export default class PlaybackControls extends React.Component {
     this.onTVKeyDown = this.onTVKeyDown.bind(this);
     this.onTVKeyUp = this.onTVKeyUp.bind(this);
     this.visible =  this.props.visibility ? this.props.visibility : false; 
-    this.keysListenningOff = false;  
+    this.keysListenningOff = false;
+    this.disappeard = false;  
     this.toggleVisibility = this.toggleVisibility.bind(this);
     this.onPlaybackCompleted = this.onPlaybackCompleted.bind(this);
     this.onPlayerStateChanged = this.onPlayerStateChanged.bind(this);
@@ -34,6 +36,7 @@ export default class PlaybackControls extends React.Component {
     this.onSeek = this.onSeek.bind(this);  
     this.handleButtonPressRight = this.handleButtonPressRight.bind(this);
     this.handleButtonPressLeft = this.handleButtonPressLeft.bind(this);
+    this.handleViewDisappeard = this.handleViewDisappeard.bind(this);
     this.JuvoPlayer = NativeModules.JuvoPlayer;
     this.JuvoEventEmitter = new NativeEventEmitter(this.JuvoPlayer);
     this.playerState = 'Idle';
@@ -41,7 +44,7 @@ export default class PlaybackControls extends React.Component {
 
   toggleVisibility() {    
     this.visible = !this.visible; 
-    this.props.switchVisibility('PlaybackControls', this.visible);  
+    this.props.switchVisibility('PlaybackView', this.visible);  
   }   
 
   handleButtonPressRight() { 
@@ -50,11 +53,18 @@ export default class PlaybackControls extends React.Component {
   handleButtonPressLeft() {  
   }
 
+  handleViewDisappeard() {
+    this.disappeard = true;
+    this.JuvoPlayer.log("handleViewDisappeard... ");
+  }
+
   onPlaybackCompleted(param) {         
     this.toggleVisibility();
   }
   onPlayerStateChanged(state) {
     this.playerState = state.State;
+    //this.render();
+    this.setState({selectedIndex: this.state.selectedIndex});
     this.JuvoPlayer.log("onPlayerStateChanged... playerState = " +  this.playerState);
   }
   onUpdateBufferingProgress(percent) {
@@ -65,6 +75,7 @@ export default class PlaybackControls extends React.Component {
   }
   onSeek(time) {
     this.JuvoPlayer.log("onSeek... time = " + time.to);
+
   }
 
   componentWillMount() {
@@ -77,34 +88,37 @@ export default class PlaybackControls extends React.Component {
       this.onTVKeyUp
     );
     this.JuvoEventEmitter.addListener(
-        'onPlaybackCompleted',
-        this.onPlaybackCompleted
-      );
-      this.JuvoEventEmitter.addListener(
-        'onPlayerStateChanged',
-        this.onPlayerStateChanged
-      );
-      this.JuvoEventEmitter.addListener(
-        'onUpdateBufferingProgress',
-        this.onUpdateBufferingProgress
-      );
-      this.JuvoEventEmitter.addListener(
-        'onUpdatePlayTime',
-        this.onUpdatePlayTime
-      );
-      this.JuvoEventEmitter.addListener(
-        'onSeek',
-        this.onSeek
-      );   
+      'onPlaybackCompleted',
+      this.onPlaybackCompleted
+    );
+    this.JuvoEventEmitter.addListener(
+      'onPlayerStateChanged',
+      this.onPlayerStateChanged
+    );
+    this.JuvoEventEmitter.addListener(
+      'onUpdateBufferingProgress',
+      this.onUpdateBufferingProgress
+    );
+    this.JuvoEventEmitter.addListener(
+      'onUpdatePlayTime',
+      this.onUpdatePlayTime
+    );
+    this.JuvoEventEmitter.addListener(
+      'onSeek',
+      this.onSeek
+    );   
   } 
 
   onTVKeyDown(pressed) {
     //There are two parameters available:
     //params.KeyName
     //params.KeyCode     
-   // this.JuvoPlayer.log("PlaybackControls onTVKeyDown() this.keysListenningOff = " + this.keysListenningOff);
 
     if (this.keysListenningOff) return;
+
+    this.disappeard = false;
+    
+    this.setState({selectedIndex: this.state.selectedIndex});  //just for refreshing the view
 
     const video = LocalResources.clipsData[this.props.selectedIndex];
 
@@ -151,16 +165,22 @@ export default class PlaybackControls extends React.Component {
     const index = this.state.selectedIndex;     
     const title = LocalResources.clipsData[index].title; 
     const description = '';  
-    const fadeduration = 500;   
-    const playIconPath = LocalResources.playbackIconsPathSelect('play');
-    const revIconPath = LocalResources.playbackIconsPathSelect('play');
-    const ffwIconPath = LocalResources.playbackIconsPathSelect('play');
+    const fadeduration = 300;   
+    
+    const revIconPath = LocalResources.playbackIconsPathSelect('rew');
+    const ffwIconPath = LocalResources.playbackIconsPathSelect('ffw');
+    const setIconPath = LocalResources.playbackIconsPathSelect('set');   
+    const playIconPath = this.playerState !== 'Playing' ? LocalResources.playbackIconsPathSelect('play') : LocalResources.playbackIconsPathSelect('pause');
+    
     const visibility = this.props.visibility ? this.props.visibility : this.visible;   
     this.visible = visibility;
     this.keysListenningOff  = !visibility;
+    const disappeard = visibility;
+    this.JuvoPlayer.log("PlaybackView this.disappeard = " + disappeard);
     return (
       <View style={{ top: -2680, left: 0, width: 1920, height: 1080}}>
-           <HideableView visible={visibility} duration={fadeduration}>                               
+           <HideableView visible={visibility} duration={fadeduration}>    
+              <DisappearingView visible={disappeard} duration={fadeduration} timeOnScreen={7000} onDisappeared={this.handleViewDisappeard}>     
                     <ContentDescription viewStyle={{ top: 0, left: 0, width: 1920, height: 250, justifyContent: 'center', alignSelf: 'center'}} 
                                             headerStyle={{ fontSize: 60, color: '#ffffff', alignSelf: 'center'}} bodyStyle={{ fontSize: 30, color: '#ffffff', top: 0}} 
                                             headerText={title} bodyText={description}/>
@@ -187,10 +207,10 @@ export default class PlaybackControls extends React.Component {
                     </View>
                     <Image resizeMode='cover' 
                             style={{ width: 70 , height: 70, top: -1050, left: 1810}} 
-                            source={revIconPath} 
-                        />       
-           </HideableView>
-                                       
+                            source={setIconPath} 
+                        /> 
+              </DisappearingView>
+          </HideableView>                                       
       </View>
     );
   }

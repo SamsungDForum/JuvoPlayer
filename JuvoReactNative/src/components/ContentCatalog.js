@@ -33,7 +33,7 @@ export default class ContentCatalog extends Component {
 
   toggleVisibility() {    
    this.visible = !this.visible; 
-   this.props.switchVisibility('PlaybackControls', !this.visible);  
+   this.props.switchVisibility('PlaybackView', !this.visible);  
   }
 
   componentWillMount() {
@@ -92,7 +92,7 @@ export default class ContentCatalog extends Component {
     const uri = LocalResources.tileNames[index];
     const path = LocalResources.tilePathSelect(uri);   
     const overlay = LocalResources.tilesPath.contentDescriptionBackground;
-    const fadeduration = 300;
+    const fadeduration = 200;
     const visibility = this.props.visibility ? this.props.visibility : this.visible;   
     this.visible = visibility;
     this.keysListenningOff = !visibility; 
