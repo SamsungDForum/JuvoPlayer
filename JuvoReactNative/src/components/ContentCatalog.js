@@ -51,6 +51,8 @@ export default class ContentCatalog extends Component {
     //There are two parameters available:
     //pressed.KeyName
     //pressed.KeyCode      
+
+   // this.JuvoPlayer.log("ContentCatalog onTVKeyDown ");
     if (this.keysListenningOff) return;    
   
     switch (pressed.KeyName) {     
@@ -88,18 +90,20 @@ export default class ContentCatalog extends Component {
   }
 
   render() {    
-    const index = this.state.selectedClipIndex;    
+    const index = this.state.selectedClipIndex ? this.state.selectedClipIndex : 0;    
     const uri = LocalResources.tileNames[index];
     const path = LocalResources.tilePathSelect(uri);   
     const overlay = LocalResources.tilesPath.contentDescriptionBackground;
-    const fadeduration = 200;
+    const fadeduration = 300;
     const visibility = this.props.visibility ? this.props.visibility : this.visible;   
     this.visible = visibility;
     this.keysListenningOff = !visibility; 
+    const showBigPicture = this.state.bigPictureVisible;// ? this.state.bigPictureVisible: true; 
+    this.JuvoPlayer.log("ContentCatalog render() showBigPicture = " + showBigPicture);
     return (
       <View style={{backgroundColor: 'transparent'}}>
         <HideableView  visible={visibility} duration={fadeduration}>
-          <HideableView  visible={this.state.bigPictureVisible} duration={fadeduration} style={{zIndex: -100 }}>          
+          <HideableView  visible={showBigPicture} duration={fadeduration} style={{zIndex: -100 }}>          
             <View style={{position: 'relative', top: 0, left: 650, width: 1270, height: 800, zIndex: -11  }}>
               <ContentPicture source={uri} selectedIndex={index} 
                       path={path} onLoadEnd={this.handleBigPicLoadEnd} onLoadStart={this.handleBigPicLoadStart}
