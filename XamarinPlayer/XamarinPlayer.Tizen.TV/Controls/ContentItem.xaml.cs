@@ -14,10 +14,10 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-﻿using System;
+
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
-using System.Windows.Input;
 using Xamarin.Forms;
 using XamarinPlayer.Services;
 
@@ -25,45 +25,43 @@ namespace XamarinPlayer.Controls
 {
     public partial class ContentItem : AbsoluteLayout
     {
-        public static readonly BindableProperty ContentImgProperty = BindableProperty.Create("ContentImg", typeof(string), typeof(ContentItem), default(ICollection<string>));
+        public static readonly BindableProperty ContentImgProperty = BindableProperty.Create("ContentImg",
+            typeof(string), typeof(ContentItem), default(ICollection<string>));
+
         public string ContentImg
         {
             set { SetValue(ContentImgProperty, value); }
-            get { return (string)GetValue(ContentImgProperty); }
+            get { return (string) GetValue(ContentImgProperty); }
         }
 
-        public static readonly BindableProperty ContentTitleProperty = BindableProperty.Create("ContentTitle", typeof(string), typeof(ContentItem), default(string));
+        public static readonly BindableProperty ContentTitleProperty =
+            BindableProperty.Create("ContentTitle", typeof(string), typeof(ContentItem), default(string));
+
         public string ContentTitle
         {
             set { SetValue(ContentTitleProperty, value); }
-            get { return (string)GetValue(ContentTitleProperty); }
+            get { return (string) GetValue(ContentTitleProperty); }
         }
 
-        public static readonly BindableProperty ContentDescriptionProperty = BindableProperty.Create("ContentDescription", typeof(string), typeof(ContentItem), default(string));
+        public static readonly BindableProperty ContentDescriptionProperty =
+            BindableProperty.Create("ContentDescription", typeof(string), typeof(ContentItem), default(string));
+
         public string ContentDescription
         {
             set { SetValue(ContentDescriptionProperty, value); }
-            get { return (string)GetValue(ContentDescriptionProperty); }
-        }
-
-        public static readonly BindableProperty ContentFocusedCommandProperty = BindableProperty.Create("ContentFocusedCommand", typeof(ICommand), typeof(ContentItem), default(ICommand));
-        public ICommand ContentFocusedCommand
-        {
-            set { SetValue(ContentFocusedCommandProperty, value); }
-            get { return (ICommand)GetValue(ContentFocusedCommandProperty); }
+            get { return (string) GetValue(ContentDescriptionProperty); }
         }
 
         public ContentSelectHandler OnContentSelect;
 
-        public enum ItemState
+        private enum ItemState
         {
             Unfocused,
             Focused,
             Selected
         }
 
-        public ItemState State;
-        public double _height;
+        private double _height;
 
         public ContentItem()
         {
@@ -76,10 +74,9 @@ namespace XamarinPlayer.Controls
             PropertyChanged += ContentPropertyChanged;
         }
 
-        public bool SetFocus()
+        public void SetFocus()
         {
-            ContentFocusedCommand?.Execute(this);
-            return FocusArea.Focus();
+            SetItemState(ItemState.Focused);
         }
 
         public void SetUnfocus()
@@ -113,40 +110,23 @@ namespace XamarinPlayer.Controls
                     ImageBorder.BackgroundColor = Color.FromRgb(234, 234, 234);
                     Dim.Color = Color.FromRgba(0, 0, 0, 192);
                     PlayImage.Opacity = 1;
-                    this.ScaleTo(0.9, 250);
+                    this.ScaleTo(0.9);
                     break;
                 default:
                     return;
             }
-            State = st;
         }
 
         protected override void OnSizeAllocated(double width, double height)
         {
             base.OnSizeAllocated(width, height);
 
-            if (width == -1 || height == -1)
+            const double tolerance = 0.001;
+            if (Math.Abs(width - -1) < tolerance || Math.Abs(height - -1) < tolerance)
                 return;
 
-            if (_height == 0)
+            if (Math.Abs(_height) < tolerance)
                 WidthRequest = height * 1.8;
-        }
-
-        private void OnItemClicked(object sender, EventArgs e)
-        {
-            OnContentSelect(this);
-        }
-
-        private void OnItemFocused(object sender, FocusEventArgs e)
-        {
-            ContentFocusedCommand?.Execute(this);
-
-            SetItemState(ItemState.Selected);
-        }
-
-        private void OnItemUnfocused(object sender, FocusEventArgs e)
-        {
-            SetItemState(ItemState.Unfocused);
         }
 
         private void ContentPropertyChanged(object sender, PropertyChangedEventArgs e)
