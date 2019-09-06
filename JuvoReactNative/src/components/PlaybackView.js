@@ -25,9 +25,9 @@ export default class PlaybackView extends React.Component {
       };      
     this.onTVKeyDown = this.onTVKeyDown.bind(this);
     this.onTVKeyUp = this.onTVKeyUp.bind(this);
-    this.visible =  this.props.visibility ? this.props.visibility : false; 
-    this.keysListenningOff = false;
-    this.disappeard = false;  
+    this.visible =  this.props.visibility ? this.props.visibility : false;     
+    this.keysListenningOff = false;    
+    this.rerender = this.rerender.bind(this);
     this.toggleVisibility = this.toggleVisibility.bind(this);
     this.onPlaybackCompleted = this.onPlaybackCompleted.bind(this);
     this.onPlayerStateChanged = this.onPlayerStateChanged.bind(this);
@@ -44,6 +44,7 @@ export default class PlaybackView extends React.Component {
 
   toggleVisibility() {    
     this.visible = !this.visible; 
+    this.playerState = 'Idle';
     this.props.switchVisibility('PlaybackView', this.visible);  
   }   
 
@@ -53,8 +54,7 @@ export default class PlaybackView extends React.Component {
   handleButtonPressLeft() {  
   }
 
-  handleViewDisappeard() {
-    this.disappeard = true;
+  handleViewDisappeard() {   
     this.JuvoPlayer.log("handleViewDisappeard... ");
   }
 
@@ -63,8 +63,10 @@ export default class PlaybackView extends React.Component {
   }
   onPlayerStateChanged(state) {
     this.playerState = state.State;
-    //this.render();
-    this.setState({selectedIndex: this.state.selectedIndex});
+    
+    if (this.playerState === 'Playing' || this.playerState === 'Paused') {
+      this.rerender(); //just for refreshing the controls view
+    }      
     this.JuvoPlayer.log("onPlayerStateChanged... playerState = " +  this.playerState);
   }
   onUpdateBufferingProgress(percent) {
@@ -113,12 +115,10 @@ export default class PlaybackView extends React.Component {
     //There are two parameters available:
     //params.KeyName
     //params.KeyCode     
-
+    this.JuvoPlayer.log("PlaybacView onTVKeyDown ");
     if (this.keysListenningOff) return;
 
-    this.disappeard = false;
-    
-    this.setState({selectedIndex: this.state.selectedIndex});  //just for refreshing the view
+    this.rerender(); //just for refreshing the view
 
     const video = LocalResources.clipsData[this.props.selectedIndex];
 
@@ -138,8 +138,8 @@ export default class PlaybackView extends React.Component {
           this.JuvoPlayer.startPlayback(video.url, licenseURI, DRM);          
         }
         else {
-          //pause
-          this.JuvoPlayer.pauseResumePlayback();
+          //pause         
+            this.JuvoPlayer.pauseResumePlayback();                
         }
         break;
       case "XF86Back":
@@ -154,18 +154,21 @@ export default class PlaybackView extends React.Component {
 
   onTVKeyUp(pressed) {      
     if (this.keysListenningOff) return; 
-
   }
 
   shouldComponentUpdate(nextProps, nextState) {  
     return true;
   } 
 
+  rerender() {
+    this.setState({selectedIndex: this.state.selectedIndex});
+  }
+
   render() {    
-    const index = this.state.selectedIndex;     
+    const index = this.props.selectedIndex; 
     const title = LocalResources.clipsData[index].title; 
     const description = '';  
-    const fadeduration = 300;   
+    const fadeduration = 500;   
     
     const revIconPath = LocalResources.playbackIconsPathSelect('rew');
     const ffwIconPath = LocalResources.playbackIconsPathSelect('ffw');
@@ -174,13 +177,12 @@ export default class PlaybackView extends React.Component {
     
     const visibility = this.props.visibility ? this.props.visibility : this.visible;   
     this.visible = visibility;
-    this.keysListenningOff  = !visibility;
-    const disappeard = visibility;
-    this.JuvoPlayer.log("PlaybackView this.disappeard = " + disappeard);
+    this.keysListenningOff  = !visibility;    
+    this.JuvoPlayer.log("PlaybackView render() this.visible = " + this.visible);
     return (
       <View style={{ top: -2680, left: 0, width: 1920, height: 1080}}>
            <HideableView visible={visibility} duration={fadeduration}>    
-              <DisappearingView visible={disappeard} duration={fadeduration} timeOnScreen={7000} onDisappeared={this.handleViewDisappeard}>     
+              <DisappearingView visible={visibility} duration={fadeduration} timeOnScreen={5000} onDisappeared={this.handleViewDisappeard}>     
                     <ContentDescription viewStyle={{ top: 0, left: 0, width: 1920, height: 250, justifyContent: 'center', alignSelf: 'center'}} 
                                             headerStyle={{ fontSize: 60, color: '#ffffff', alignSelf: 'center'}} bodyStyle={{ fontSize: 30, color: '#ffffff', top: 0}} 
                                             headerText={title} bodyText={description}/>
