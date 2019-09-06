@@ -4,8 +4,7 @@
              xmlns:vm="clr-namespace:XamarinPlayer.ViewModels"
              xmlns:Controls="clr-namespace:XamarinPlayer.Controls"
              x:Class="XamarinPlayer.Views.ContentListPage"
-             BackgroundColor="#000000"
-             FocusedContent="{Binding FocusedContent}">
+             BackgroundColor="#000000">
     <ContentPage.BindingContext>
         <vm:ContentListPageViewModel />
     </ContentPage.BindingContext>
