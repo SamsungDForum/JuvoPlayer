@@ -2,7 +2,8 @@
 import React, { Component, PropTypes } from 'react';
 import {  
   View,  
-  Animated  
+  Animated,
+  NativeModules  
 } from 'react-native'
 
 export default class DisappearingView extends Component {
@@ -12,40 +13,48 @@ export default class DisappearingView extends Component {
       this.state = {
         opacity: new Animated.Value(this.props.visible ? 1 : 0)
       }
-    }
-  
-    animate(show) {
-      const duration = this.props.duration ? parseInt(this.props.duration) : 500;
-      const timeOnScreen = this.props.timeOnScreen ? parseInt(this.props.timeOnScreen) : 3000; //3 sec is default on screen time
-    
-      //Animated.EndCallback = this.props.onDisappeared();
-      Animated.sequence([
-        // decay, then spring to start and twirl
-        Animated.timing(
-             this.state.opacity, {
-               toValue: show ? 1 : 0,
-               duration: !this.props.noAnimation ? duration : 0
-             }
-           ),
-        Animated.delay(timeOnScreen),
-        Animated.timing(
-          this.state.opacity, {
-            toValue: 0,
-            duration: !this.props.noAnimation ? duration : 0
-          }
-        )
-        ]).start(this.props.onDisappeared); // start the sequence group        
+      this.animationInProgress = false;
+      this.handleDisappeared = this.handleDisappeared.bind(this);
+      this.JuvoPlayer = NativeModules.JuvoPlayer;
+           
     }
 
-  //() => {this.props.onDisappeared()}
+    handleDisappeared() {
+      this.animationInProgress = false;
+      this.props.onDisappeared();
+    }
+  
+    animate(show) {            
+      if (!this.animationInProgress) {
+        const duration = this.props.duration ? parseInt(this.props.duration) : parseInt(500);
+        const timeOnScreen = this.props.timeOnScreen ? parseInt(this.props.timeOnScreen) : parseInt(5000); // default on screen time       
+        Animated.sequence([        
+          Animated.timing(
+              this.state.opacity, {
+                toValue: show ? 1 : 0,
+                duration: !this.props.noAnimation ? duration : 0
+              }
+              ),
+          Animated.delay(timeOnScreen),            
+          Animated.timing(
+            this.state.opacity, {
+              toValue: 0,
+              duration: !this.props.noAnimation ? duration : 0            
+            }              
+          )
+          ]).start(this.handleDisappeared);             
+          this.animationInProgress = true;  
+        }           
+    }  
     shouldComponentUpdate(nextProps) {   
       return true;
     }
   
-    componentWillUpdate(nextProps, nextState) {
-      if (this.props.visible !== nextProps.visible) {
-        this.animate(nextProps.visible);
-      }
+    componentWillUpdate(nextProps, nextState) {             
+      this.animate(nextProps.visible);      
+    }
+
+    componentDidMount() {      
     }
   
     render() {

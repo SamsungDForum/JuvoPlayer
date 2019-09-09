@@ -12,7 +12,7 @@ import ContentPicture from './ContentPicture';
 import ContentDescription from  './ContentDescription';
 import LocalResources from '../LocalResources';
 
-export default class ContentScrollView extends React.Component {
+export default class ContentScroll extends React.Component {
 
   constructor(props) {
     super(props);
@@ -96,7 +96,7 @@ export default class ContentScrollView extends React.Component {
     const itemHeight = 260;      
     const renderThumbs = (uri, i) => <ContentPicture key={i} source={uri} myIndex={i} selectedIndex={index}
       path={pathFinder(uri)} 
-      width={itemWidth - 8} height={itemHeight - 8} top={4} left ={4} position={'relative'} fadeDuration={1} 
+      width={itemWidth - 8} height={itemHeight - 8} top={4} left ={4} fadeDuration={1} 
       stylesThumbSelected={{width: itemWidth, height: itemHeight, top: 0, backgroundColor: 'transparent', opacity: 0.1}} 
       stylesThumb={{width: itemWidth, height: itemHeight, top:0, backgroundColor: 'transparent', opacity: 1}} 
       />;
@@ -104,7 +104,7 @@ export default class ContentScrollView extends React.Component {
     return (
       <View >
         <View style={{position: 'relative', top: 150, left: 100, width: 900, height: 800, zIndex: 200}}>
-          <ContentDescription viewStyle={{ position: 'relative', top: 0, left: 0, width: 900, height: 800, zIndex: 200 }} 
+          <ContentDescription viewStyle={{ top: 0, left: 0, width: 900, height: 800, zIndex: 200 }} 
                       headerStyle={{ fontSize: 60, color: '#ffffff' }} bodyStyle={{ fontSize: 30, color: '#ffffff', top: 0}} 
                       headerText={title} bodyText={description}/>
         </View>
