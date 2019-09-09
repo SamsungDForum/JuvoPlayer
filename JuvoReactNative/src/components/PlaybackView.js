@@ -33,6 +33,7 @@ export default class PlaybackView extends React.Component {
     this.onUpdateBufferingProgress = this.onUpdateBufferingProgress.bind(this);
     this.onUpdatePlayTime = this.onUpdatePlayTime.bind(this);
     this.onSeek = this.onSeek.bind(this);  
+    this.onPlaybackError = this.onPlaybackError.bind(this);
     this.handleButtonPressRight = this.handleButtonPressRight.bind(this);
     this.handleButtonPressLeft = this.handleButtonPressLeft.bind(this);
     this.handleViewDisappeard = this.handleViewDisappeard.bind(this);
@@ -69,6 +70,10 @@ export default class PlaybackView extends React.Component {
     this.JuvoEventEmitter.addListener(
       'onSeek',
       this.onSeek
+    );      
+    this.JuvoEventEmitter.addListener(
+      'onPlaybackError',
+    this.onPlaybackError
     );   
   } 
 
@@ -83,9 +88,11 @@ export default class PlaybackView extends React.Component {
   }   
 
   handleButtonPressRight() { 
+    this.JuvoPlayer.forward();
   }
 
   handleButtonPressLeft() {  
+    this.JuvoPlayer.rewind();
   }
 
   handleViewDisappeard() {    
@@ -103,14 +110,18 @@ export default class PlaybackView extends React.Component {
     }      
     this.JuvoPlayer.log("onPlayerStateChanged... playerState = " +  this.playerState);
   }
-  onUpdateBufferingProgress(percent) {
-    this.JuvoPlayer.log("onUpdateBufferingProgress... precent = " + percent.Percent);
+  onUpdateBufferingProgress(buffering) {
+    this.JuvoPlayer.log("onUpdateBufferingProgress... precent = " + buffering.Percent);
   }
-  onUpdatePlayTime(position, duration) {
-    this.JuvoPlayer.log("onUpdatePlayTime... pos = " + position.CurrentPosition + ", duration = " + duration.Duration );
+  onUpdatePlayTime(playtime) {
+    this.JuvoPlayer.log("onUpdatePlayTime... position = " + playtime.Current + ", duration = " + playtime.Total );
   }
   onSeek(time) {
     this.JuvoPlayer.log("onSeek... time = " + time.to);
+  }
+  onPlaybackError(error) {
+    this.JuvoPlayer.log("onPlaybackError message = " + error.Message);
+    this.toggleView(); 
   }
 
   onTVKeyDown(pressed) {
@@ -158,8 +169,7 @@ export default class PlaybackView extends React.Component {
   }
 
   rerender() {
-    this.setState({selectedIndex: this.state.selectedIndex});
-    //this.render();
+    this.setState({selectedIndex: this.state.selectedIndex});    
   }
 
   render() {    

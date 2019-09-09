@@ -23,7 +23,8 @@ namespace JuvoReactNative
     {
         private PlayerServiceProxy juvoPlayer;
         private readonly int DefaultTimeout = 5000;
-        private readonly TimeSpan UpdateInterval = TimeSpan.FromMilliseconds(100);
+        private readonly TimeSpan UpdatePlaybackInterval = TimeSpan.FromMilliseconds(100);
+        private static Timer playbackTimer ;
 
         private SeekLogic seekLogic = null; // needs to be initialized in constructor!
         //private TVMultimedia.Player platformPlayer;
@@ -45,7 +46,7 @@ namespace JuvoReactNative
         private void InitializeJuvoPlayer()
         {
             // You see a gray background and no video it means that the Canvas.cs file of the react-native-tizen framework is invalid.
-           
+            //It requires the change: BackgroundColor = Color.Transparent of the canvas class.
             juvoPlayer = new PlayerServiceProxy(new PlayerServiceImpl(window));
 
             juvoPlayer.StateChanged()
@@ -56,6 +57,10 @@ namespace JuvoReactNative
                 .ObserveOn(syncContext)
                 .Subscribe(message =>
                 {
+                    var param = new JObject();
+                    param.Add("Message", message);
+                    SendEvent("onPlaybackError", param);
+
                     Logger?.Info($"Playback Error: {message}");
                     stopPlayback();
                 });
@@ -92,6 +97,7 @@ namespace JuvoReactNative
             set => currentPosition = value;
         }
         private TimeSpan currentPosition;
+
         private void SendEvent(string eventName, JObject parameters)
         {
             Context.GetJavaScriptModule<RCTDeviceEventEmitter>()
@@ -136,15 +142,23 @@ namespace JuvoReactNative
                 case PlayerState.Prepared:
                     if (juvoPlayer.IsSeekingSupported)
                     {
+
                     }
                     juvoPlayer.Start();
+                    playbackTimer = new Timer(
+                        callback: new TimerCallback(UpdatePlayTime),
+                        state: CurrentPositionUI,
+                        dueTime: 0,
+                        period: 1000);
                     value = "Prepared";
                     break;
                 case PlayerState.Playing:
                     value = "Playing";
+                    playbackTimer.Change(0, 1000); //resume progress info update
                     break;
                 case PlayerState.Paused:
                     value = "Paused";
+                    playbackTimer.Change(Timeout.Infinite, Timeout.Infinite); //suspend progress info update
                     break;
             }
             param.Add("State", value);
@@ -156,8 +170,7 @@ namespace JuvoReactNative
         {
             Log.Error(Tag, "OnPlaybackCompleted...");
             var param = new JObject();
-            SendEvent("onPlaybackCompleted", param);
-
+            SendEvent("onPlaybackCompleted", param);            
             stopPlayback();
         }
 
@@ -180,13 +193,13 @@ namespace JuvoReactNative
             SendEvent("onUpdateBufferingProgress", param);
         }
 
-        private void UpdatePlayTime()
+        private void UpdatePlayTime(object timerState) 
         {
             Log.Error(Tag, "UpdatePlayTime");
             //Propagate the bufffering progress event to JavaScript module
             var param = new JObject();
-            param.Add("CurrentPosition", (int)Duration.TotalMilliseconds);
-            param.Add("Duration", (int)CurrentPositionUI.TotalMilliseconds);
+            param.Add("Total", (int)Duration.TotalMilliseconds);
+            param.Add("Current", (int)CurrentPositionUI.TotalMilliseconds);
             SendEvent("onUpdatePlayTime", param);
         }
 
@@ -273,8 +286,7 @@ namespace JuvoReactNative
             Log.Error(Tag, "Seek to.. " + to);
             var param = new JObject();
             param.Add("to", (int)to.TotalMilliseconds);
-            SendEvent("onSeek", param);
-           
+            SendEvent("onSeek", param);           
             return juvoPlayer?.SeekTo(to);
         }
 
@@ -290,6 +302,7 @@ namespace JuvoReactNative
             //StartTimer(UpdateInterval, UpdatePlayerControl);
             Log.Error(Tag, "JuvoPlayerModule startPlayback() function called! videoURI = " + videoURI + " licenseURI = " + licenseURI + " DRM = " + DRM );
             await Play(videoURI, licenseURI, DRM);
+            seekLogic.IsSeekInProgress = false;
         }
         [ReactMethod]
         public void stopPlayback()
@@ -297,8 +310,9 @@ namespace JuvoReactNative
             Logger?.Info("Stopping player");
             juvoPlayer?.Stop();
             juvoPlayer?.Dispose();
+            playbackTimer?.Dispose();
             juvoPlayer = null;
-            //platformPlayer.Dispose();
+            seekLogic.IsSeekAccumulationInProgress = false;            
         }
         [ReactMethod]
         public void pauseResumePlayback()
@@ -321,12 +335,12 @@ namespace JuvoReactNative
             app.ShutDown();
         }
         [ReactMethod]
-        public void Forward()
+        public void forward()
         {
             seekLogic.SeekForward();
         }
         [ReactMethod]
-        public void Rewind()
+        public void rewind()
         {
             seekLogic.SeekBackward();
         }
