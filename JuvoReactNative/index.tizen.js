@@ -27,18 +27,14 @@ export default class JuvoReactNative extends Component {
       }
     }
     this.selectedClipIndex = 0;
-    this.handleComponentsView = this.handleComponentsView.bind(this);
+    this.switchComponentsView = this.switchComponentsView.bind(this);
     this.handleSelectedIndexChange = this.handleSelectedIndexChange.bind(this);
     this.JuvoPlayer = NativeModules.JuvoPlayer;
     this.JuvoEventEmitter = new NativeEventEmitter(this.JuvoPlayer);
   } 
-  
-  shouldComponentUpdate(nextProps, nextState) {       
-    return true;
-  }
-
+    
   //It is assumed that at the only one component can be visible on the screen
-  handleComponentsView(componentName, visible) {       
+  switchComponentsView(componentName, visible) {       
     switch (componentName) {
         case 'ContentCatalog':            
               this.setState({components: {
@@ -64,10 +60,10 @@ export default class JuvoReactNative extends Component {
       <View style={styles.container}>        
        <ContentCatalog styles={styles}                    
                        visibility={this.state.components.isContentCatalogVisible}
-                       switchView={this.handleComponentsView}
+                       switchView={this.switchComponentsView}
                        onSelectedIndexChange={this.handleSelectedIndexChange}/>
        <PlaybackView visibility={this.state.components.isPlaybackViewVisible}
-                         switchView={this.handleComponentsView}
+                         switchView={this.switchComponentsView}
                          selectedIndex={this.selectedClipIndex} />
       </View>
     );
