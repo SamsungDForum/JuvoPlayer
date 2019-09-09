@@ -27,13 +27,18 @@ export default class JuvoReactNative extends Component {
       }
     }
     this.selectedClipIndex = 0;
-    this.handleComponentsVisibility = this.handleComponentsVisibility.bind(this);
+    this.handleComponentsView = this.handleComponentsView.bind(this);
     this.handleSelectedIndexChange = this.handleSelectedIndexChange.bind(this);
     this.JuvoPlayer = NativeModules.JuvoPlayer;
     this.JuvoEventEmitter = new NativeEventEmitter(this.JuvoPlayer);
   } 
+  
+  shouldComponentUpdate(nextProps, nextState) {       
+    return true;
+  }
 
-  handleComponentsVisibility(componentName, visible) {       
+  //It is assumed that at the only one component can be visible on the screen
+  handleComponentsView(componentName, visible) {       
     switch (componentName) {
         case 'ContentCatalog':            
               this.setState({components: {
@@ -50,24 +55,19 @@ export default class JuvoReactNative extends Component {
     }
   }
 
-  shouldComponentUpdate(nextProps, nextState) {       
-    return true;
-  }
-
   handleSelectedIndexChange(index) {      
     this.selectedClipIndex = index;
   }
   
-  render() {   
-    this.JuvoPlayer.log("JuvoReactNative render() this.state.components.isContentCatalogVisible = " + this.state.components.isContentCatalogVisible);
+  render() {      
     return (
       <View style={styles.container}>        
        <ContentCatalog styles={styles}                    
                        visibility={this.state.components.isContentCatalogVisible}
-                       switchVisibility={this.handleComponentsVisibility}
+                       switchView={this.handleComponentsView}
                        onSelectedIndexChange={this.handleSelectedIndexChange}/>
        <PlaybackView visibility={this.state.components.isPlaybackViewVisible}
-                         switchVisibility={this.handleComponentsVisibility}
+                         switchView={this.handleComponentsView}
                          selectedIndex={this.selectedClipIndex} />
       </View>
     );

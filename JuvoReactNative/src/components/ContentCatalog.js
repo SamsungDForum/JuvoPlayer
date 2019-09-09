@@ -88,6 +88,7 @@ export default class ContentCatalog extends Component {
   onTVKeyUp(pressed) {   
     if (this.keysListenningOff) return;
     this.bigPictureVisible = true;    
+    this.rerender();
   }  
 
   handleSelectedIndexChange(index) {     
@@ -130,7 +131,7 @@ export default class ContentCatalog extends Component {
                       width={1266} height={715} top={0} left = {0}                         
                       />
             </View>  
-          <View style={{position: 'relative', top: -1600, width: 1920, height: 1080, zIndex: 100 }}>
+          <View style={{top: -1600, width: 1920, height: 1080, zIndex: 100 }}>
             <ContentScroll onSelectedIndexChange={this.handleSelectedIndexChange} contentURIs={LocalResources.tileNames}  keysListenningOff={this.keysListenningOff}/>
           </View>   
         </HideableView> 
