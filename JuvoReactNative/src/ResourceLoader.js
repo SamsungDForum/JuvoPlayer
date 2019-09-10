@@ -1,6 +1,6 @@
 import videoclipsdata from '.././res/videoclips.json'
 
-const LocalResources = {    
+const ResourceLoader = {    
     tileNames : [
         'car',
         'bolid',
@@ -33,23 +33,23 @@ const LocalResources = {
     },
     tilePathSelect : name => {
         if (name === null)
-          return LocalResources.tilesPath.default;
+          return ResourceLoader.tilesPath.default;
     
         const tileArray = {
-          'car': LocalResources.tilesPath.car,
-          'bolid': LocalResources.tilesPath.bolid,
-          'sintel': LocalResources.tilesPath.sintel,
-          'oops': LocalResources.tilesPath.oops,
-          'tosposter': LocalResources.tilesPath.tosposter,
-          'artofwalking': LocalResources.tilesPath.artofwalking,
-          'bunny': LocalResources.tilesPath.bunny,        
-          'sacrecoeur': LocalResources.tilesPath.sacrecoeur,
-          'canimals': LocalResources.tilesPath.canimals,
-          'testwatchscreen': LocalResources.tilesPath.testwatchscreen,        
-          'default': LocalResources.tilesPath.default,
-          'contentDescriptionBackground': LocalResources.tilesPath.contentDescriptionBackground
+          'car': ResourceLoader.tilesPath.car,
+          'bolid': ResourceLoader.tilesPath.bolid,
+          'sintel': ResourceLoader.tilesPath.sintel,
+          'oops': ResourceLoader.tilesPath.oops,
+          'tosposter': ResourceLoader.tilesPath.tosposter,
+          'artofwalking': ResourceLoader.tilesPath.artofwalking,
+          'bunny': ResourceLoader.tilesPath.bunny,        
+          'sacrecoeur': ResourceLoader.tilesPath.sacrecoeur,
+          'canimals': ResourceLoader.tilesPath.canimals,
+          'testwatchscreen': ResourceLoader.tilesPath.testwatchscreen,        
+          'default': ResourceLoader.tilesPath.default,
+          'contentDescriptionBackground': ResourceLoader.tilesPath.contentDescriptionBackground
         };    
-        if (tileArray[name] == null) return LocalResources.tilesPath.default;
+        if (tileArray[name] == null) return ResourceLoader.tilesPath.default;
         return tileArray[name];
       },
     clipsData : videoclipsdata,
@@ -62,19 +62,19 @@ const LocalResources = {
     },
     playbackIconsPathSelect : name => {
       if (name === null)
-        return LocalResources.tilesPath.default;
+        return ResourceLoader.tilesPath.default;
   
       const tileArray = {
-        'play': LocalResources.playbackIconsPath.play,
-        'ffw': LocalResources.playbackIconsPath.ffw,
-        'rew': LocalResources.playbackIconsPath.rew,
-        'set': LocalResources.playbackIconsPath.set,
-        'pause': LocalResources.playbackIconsPath.pause,
-        'default': LocalResources.tilesPath.default
+        'play': ResourceLoader.playbackIconsPath.play,
+        'ffw': ResourceLoader.playbackIconsPath.ffw,
+        'rew': ResourceLoader.playbackIconsPath.rew,
+        'set': ResourceLoader.playbackIconsPath.set,
+        'pause': ResourceLoader.playbackIconsPath.pause,
+        'default': ResourceLoader.tilesPath.default
       };    
-      if (tileArray[name] == null) return LocalResources.tilesPath.default;
+      if (tileArray[name] == null) return ResourceLoader.tilesPath.default;
       return tileArray[name];
     }    
   };
   
-  export default LocalResources;
+  export default ResourceLoader;

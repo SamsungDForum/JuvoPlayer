@@ -10,7 +10,7 @@ import {
 
 import ContentPicture from './ContentPicture';
 import ContentDescription from  './ContentDescription';
-import LocalResources from '../LocalResources';
+import ResourceLoader from '../ResourceLoader';
 
 export default class ContentScroll extends React.Component {
 
@@ -89,9 +89,9 @@ export default class ContentScroll extends React.Component {
 
   render() {
     const index = this.state.selectedIndex;
-    const pathFinder = LocalResources.tilePathSelect;    
-    const title = LocalResources.clipsData[index].title; 
-    const description = LocalResources.clipsData[index].description; 
+    const pathFinder = ResourceLoader.tilePathSelect;    
+    const title = ResourceLoader.clipsData[index].title; 
+    const description = ResourceLoader.clipsData[index].description; 
     const itemWidth = 454;
     const itemHeight = 260;      
     const renderThumbs = (uri, i) => <ContentPicture key={i} source={uri} myIndex={i} selectedIndex={index}
