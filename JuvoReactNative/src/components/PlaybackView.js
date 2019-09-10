@@ -19,30 +19,30 @@ export default class PlaybackView extends React.Component {
   constructor(props) {
     super(props);   
     this.curIndex = 0;
+    this.playbackTimeCurrent = 0;
+    this.playbackTimeTotal = 0; 
     this.state = {        
         selectedIndex: 0
       };      
-    this.onTVKeyDown = this.onTVKeyDown.bind(this);
-    this.onTVKeyUp = this.onTVKeyUp.bind(this);
     this.visible =  this.props.visibility ? this.props.visibility : false;     
     this.keysListenningOff = false;    
+    this.playerState = 'Idle';
+    this.JuvoPlayer = NativeModules.JuvoPlayer;
+    this.JuvoEventEmitter = new NativeEventEmitter(this.JuvoPlayer);
+    this.onTVKeyDown = this.onTVKeyDown.bind(this);  
     this.rerender = this.rerender.bind(this);
     this.toggleView = this.toggleView.bind(this);
     this.onPlaybackCompleted = this.onPlaybackCompleted.bind(this);
     this.onPlayerStateChanged = this.onPlayerStateChanged.bind(this);
     this.onUpdateBufferingProgress = this.onUpdateBufferingProgress.bind(this);
     this.onUpdatePlayTime = this.onUpdatePlayTime.bind(this);
-    this.resetPlaybackTime = this.resetPlaybackTime.bind(this);
-    this.resetPlaybackTime();   
+    this.resetPlaybackTime = this.resetPlaybackTime.bind(this);      
     this.onSeek = this.onSeek.bind(this);  
     this.onPlaybackError = this.onPlaybackError.bind(this);
     this.handleFastForwardKey = this.handleFastForwardKey.bind(this);
     this.handleRewindKey = this.handleRewindKey.bind(this);
     this.getFormattedTime = this.getFormattedTime.bind(this);
     this.handleViewDisappeard = this.handleViewDisappeard.bind(this);
-    this.JuvoPlayer = NativeModules.JuvoPlayer;
-    this.JuvoEventEmitter = new NativeEventEmitter(this.JuvoPlayer);
-    this.playerState = 'Idle';
   }
   resetPlaybackTime() {
     this.playbackTimeCurrent = 0;
@@ -61,11 +61,7 @@ export default class PlaybackView extends React.Component {
     this.JuvoEventEmitter.addListener(
       'onTVKeyDown',
       this.onTVKeyDown
-    );
-    this.JuvoEventEmitter.addListener(
-      'onTVKeyUp',
-      this.onTVKeyUp
-    );
+    );   
     this.JuvoEventEmitter.addListener(
       'onPlaybackCompleted',
       this.onPlaybackCompleted
@@ -130,7 +126,7 @@ export default class PlaybackView extends React.Component {
   onUpdatePlayTime(playtime) {
     this.playbackTimeCurrent = parseInt(playtime.Current);
     this.playbackTimeTotal = parseInt(playtime.Total);  
-    this.JuvoPlayer.log("onUpdatePlayTime... position = " + this.getFormattedTime(playtime.Current) + ", duration = " + this.getFormattedTime(this.playbackTimeTotal) );
+   
     this.rerender();
   }
   onSeek(time) {
