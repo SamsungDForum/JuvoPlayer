@@ -9,7 +9,7 @@ import {
 import HideableView from './HideableView';
 import ContentPicture from './ContentPicture';
 import ContentScroll from './ContentScroll';
-import LocalResources from '../LocalResources';
+import ResourceLoader from '../ResourceLoader';
 
 export default class ContentCatalog extends Component {
   
@@ -106,9 +106,9 @@ export default class ContentCatalog extends Component {
 
   render() {    
     const index = this.state.selectedClipIndex ? this.state.selectedClipIndex : 0;    
-    const uri = LocalResources.tileNames[index];
-    const path = LocalResources.tilePathSelect(uri);   
-    const overlay = LocalResources.tilesPath.contentDescriptionBackground;    
+    const uri = ResourceLoader.tileNames[index];
+    const path = ResourceLoader.tilePathSelect(uri);   
+    const overlay = ResourceLoader.tilesPath.contentDescriptionBackground;    
     const visibility = this.props.visibility ? this.props.visibility : this.visible;   
     this.visible = visibility;
     this.keysListenningOff = !visibility; 
@@ -132,7 +132,7 @@ export default class ContentCatalog extends Component {
                       />
             </View>  
           <View style={{top: -1600, width: 1920, height: 1080, zIndex: 100 }}>
-            <ContentScroll onSelectedIndexChange={this.handleSelectedIndexChange} contentURIs={LocalResources.tileNames}  keysListenningOff={this.keysListenningOff}/>
+            <ContentScroll onSelectedIndexChange={this.handleSelectedIndexChange} contentURIs={ResourceLoader.tileNames}  keysListenningOff={this.keysListenningOff}/>
           </View>   
         </HideableView> 
       </View>
