@@ -28,7 +28,7 @@ namespace JuvoReactNative
         EcoreEvent<EcoreKeyEventArgs> _keyDown;
         EcoreEvent<EcoreKeyEventArgs> _keyUp;
         SynchronizationContext syncContext;
-        Window window = ReactProgram.RctWindow; // as Window; //The main window of the application has to be transparent.
+        Window window = ReactProgram.RctWindow; //The main window of the application has to be transparent.
         public TimeSpan CurrentPositionPlayer => juvoPlayer?.CurrentPosition ?? TimeSpan.Zero;
         public TimeSpan Duration => juvoPlayer?.Duration ?? TimeSpan.Zero;
         public JuvoPlayer.Common.PlayerState State => ((IPlayerService)juvoPlayer)?.State ?? JuvoPlayer.Common.PlayerState.Idle;
