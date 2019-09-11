@@ -4,8 +4,7 @@ import {
   View,
   Image,
   NativeModules,
-  NativeEventEmitter,
-  ProgressBarAndroid,
+  NativeEventEmitter,  
   Text
 } from 'react-native';
 
@@ -13,6 +12,7 @@ import ResourceLoader from '../ResourceLoader';
 import ContentDescription from  './ContentDescription';
 import HideableView from './HideableView';
 import DisappearingView from './DisappearingView';
+import PlaybackProgress from './PlaybackProgressBar';
 
 export default class PlaybackView extends React.Component {
 
@@ -27,9 +27,14 @@ export default class PlaybackView extends React.Component {
     this.visible =  this.props.visibility ? this.props.visibility : false;     
     this.keysListenningOff = false;    
     this.playerState = 'Idle';
+    this.seekKeyPressCounter = 0;
+    this.seekInProgres = false;
+    this.bufferingInProgress = false;
+    this.refreshInterval = null;
     this.JuvoPlayer = NativeModules.JuvoPlayer;
     this.JuvoEventEmitter = new NativeEventEmitter(this.JuvoPlayer);
     this.onTVKeyDown = this.onTVKeyDown.bind(this);  
+    this.onTVKeyUp = this.onTVKeyUp.bind(this);
     this.rerender = this.rerender.bind(this);
     this.toggleView = this.toggleView.bind(this);
     this.onPlaybackCompleted = this.onPlaybackCompleted.bind(this);
@@ -43,6 +48,7 @@ export default class PlaybackView extends React.Component {
     this.handleRewindKey = this.handleRewindKey.bind(this);
     this.getFormattedTime = this.getFormattedTime.bind(this);
     this.handleViewDisappeard = this.handleViewDisappeard.bind(this);
+    this.showPlaybackInfo = this.showPlaybackInfo.bind(this);
   }
   resetPlaybackTime() {
     this.playbackTimeCurrent = 0;
@@ -62,6 +68,10 @@ export default class PlaybackView extends React.Component {
       'onTVKeyDown',
       this.onTVKeyDown
     );   
+    this.JuvoEventEmitter.addListener(
+      'onTVKeyUp',
+      this.onTVKeyUp
+    ); 
     this.JuvoEventEmitter.addListener(
       'onPlaybackCompleted',
       this.onPlaybackCompleted
@@ -86,7 +96,8 @@ export default class PlaybackView extends React.Component {
       'onPlaybackError',
     this.onPlaybackError
     );   
-  } 
+    this.resetPlaybackTime();
+  }  
   shouldComponentUpdate(nextProps, nextState) {  
     return true;
   }
@@ -96,13 +107,18 @@ export default class PlaybackView extends React.Component {
     this.resetPlaybackTime();
     this.props.switchView('PlaybackView', this.visible);  
   }   
-  handleFastForwardKey() { 
+  handleFastForwardKey() {  
+    this.seekInProgres = false;
+    this.seekKeyPressCounter = Number(this.seekKeyPressCounter).toPrecision(2) + 0.01;    
     this.JuvoPlayer.forward();
   }
-  handleRewindKey() {  
+  handleRewindKey() {    
+    this.seekInProgres = false;
+    this.seekKeyPressCounter = Number(this.seekKeyPressCounter).toPrecision(2) - 0.01;
     this.JuvoPlayer.rewind();
   }
   handleViewDisappeard() {    
+    clearInterval(this.refreshInterval);
   }
   onPlaybackCompleted(param) {         
     this.toggleView();
@@ -115,22 +131,26 @@ export default class PlaybackView extends React.Component {
       this.resetPlaybackTime();
     }
     
-    if (this.playerState === 'Playing' || this.playerState === 'Paused') {
-      this.rerender(); //just for refreshing the playback controls icons
+    if (this.playerState === 'Playing' || this.playerState === 'Paused') {      
+      this.showPlaybackInfo(); 
     }      
     this.JuvoPlayer.log("onPlayerStateChanged... playerState = " +  this.playerState);
   }
   onUpdateBufferingProgress(buffering) {
     this.JuvoPlayer.log("onUpdateBufferingProgress... precent = " + buffering.Percent);
+    this.bufferingInProgress = true;
   }
   onUpdatePlayTime(playtime) {
     this.playbackTimeCurrent = parseInt(playtime.Current);
     this.playbackTimeTotal = parseInt(playtime.Total);  
-   
-    this.rerender();
+    this.seekInProgres = parseInt(playtime.Seeking) ===1 ? true : false;
+    this.bufferingInProgress = false;
   }
   onSeek(time) {
-    this.JuvoPlayer.log("onSeek... time = " + time.to);
+    this.seekKeyPressCounter = 0;
+    this.JuvoPlayer.log("onSeek time is " + time.to);    
+    this.seekInProgres = false;   
+    this.showPlaybackInfo();  
   }
   onPlaybackError(error) {
     this.JuvoPlayer.log("onPlaybackError message = " + error.Message);
@@ -140,8 +160,8 @@ export default class PlaybackView extends React.Component {
     //There are two parameters available:
     //params.KeyName
     //params.KeyCode      
-    if (this.keysListenningOff) return;   
-
+    if (this.keysListenningOff) return;       
+    
     const video = ResourceLoader.clipsData[this.props.selectedIndex];
 
     switch (pressed.KeyName) {
@@ -168,11 +188,31 @@ export default class PlaybackView extends React.Component {
       case "XF86AudioStop":  
         this.JuvoPlayer.stopPlayback(); 
         this.toggleView();        
-    }
+    }    
 
-    this.rerender(); //refreshing the controls view
+    this.showPlaybackInfo();
 
   }
+
+  onTVKeyUp(pressed) {
+
+    if (this.keysListenningOff) return;      
+    
+    switch (pressed.KeyName) {
+      case "Right":        
+      case "Left":   
+      this.seekKeyPressCounter = 0;
+        break;
+    }
+  }
+
+  showPlaybackInfo() {
+    if (this.refreshInterval !== null)
+      clearInterval(this.refreshInterval);
+    this.rerender();
+    this.refreshInterval = setInterval(this.rerender, 1000);
+  }
+
   rerender() {
     this.setState({selectedIndex: this.state.selectedIndex});    
   }
@@ -186,41 +226,50 @@ export default class PlaybackView extends React.Component {
     const playIconPath = this.playerState !== 'Playing' ? ResourceLoader.playbackIconsPathSelect('play') : ResourceLoader.playbackIconsPathSelect('pause');
     const visibility = this.props.visibility ? this.props.visibility : this.visible;   
     this.visible = visibility;
-    this.keysListenningOff  = !visibility;    
-    const progressbar = this.playbackTimeTotal > 0 ?  this.playbackTimeCurrent / this.playbackTimeTotal : 0;  
-    //this.JuvoPlayer.log("PlaybackView render() progressbar =" + progressbar);
+    this.keysListenningOff  = !visibility;        
+    const total = Number(this.playbackTimeTotal);
+    const current = Number(this.playbackTimeCurrent);
+    const playbackTime = total > 0 ?  Number(current / total).toPrecision(4): 0;
+    const keyPressCounter = Number(this.seekKeyPressCounter).toPrecision(4);
+    const progress = Number(playbackTime + keyPressCounter).toPrecision(4);
+    const refreshProgresBar = (!this.seekInProgres ||  this.seekKeyPressCounter != 0) && !this.bufferingInProgress && this.playerState === 'Playing';
+    this.JuvoPlayer.log("PlaybackView render() seekInProgress =" + this.seekInProgres + 
+                                              " progressbar =" + total + 
+                                              " this.KeyPressCounter =" + this.seekKeyPressCounter +
+                                              "this.bufferingInProgress = " + this.bufferingInProgress);
     return (
       <View style={{ top: -2680, left: 0, width: 1920, height: 1080}}>
            <HideableView visible={visibility} duration={fadeduration}>    
-              <DisappearingView visible={visibility} duration={fadeduration} timeOnScreen={5000} onDisappeared={this.handleViewDisappeard}>     
-                    <ContentDescription viewStyle={{ top: 0, left: 0, width: 1920, height: 250, justifyContent: 'center', alignSelf: 'center'}} 
-                                            headerStyle={{ fontSize: 60, color: '#ffffff', alignSelf: 'center'}} bodyStyle={{ fontSize: 30, color: '#ffffff', top: 0}} 
+              <DisappearingView visible={visibility} duration={fadeduration} timeOnScreen={7000} onDisappeared={this.handleViewDisappeard}>     
+                    <ContentDescription viewStyle={{ top: 0, left: 0, width: 1920, height: 250, justifyContent: 'center', alignSelf: 'center', backgroundColor: '#000000', opacity: 0.8}} 
+                                            headerStyle={{ fontSize: 60, color: '#ffffff', alignSelf: 'center', opacity: 1.0}} bodyStyle={{ fontSize: 30, color: '#ffffff', top: 0}} 
                                             headerText={title} bodyText={''}/>
-                    <View style={{ top: 350, left: 0, width: 1920, height: 820,  justifyContent: 'center', alignSelf: 'center'}}>
-                        <ProgressBarAndroid value={progressbar} style={{left: 0, top: 10, width:1930, height:10}} horizontal={true} color="red" />
+                     <Image resizeMode='cover' 
+                          style={{ width: 70 , height: 70, top: -180, left: 1800}} 
+                          source={settingsIconPath} 
+                        /> 
+                    <View style={{ top: 530, left: 0, width: 1920, height: 760,  justifyContent: 'center', alignSelf: 'center', backgroundColor: '#000000', opacity: 0.8}}>
+                        <PlaybackProgress value={progress}  color="green" doUpdate={refreshProgresBar} />
                         <Image resizeMode='cover' 
-                            style={{ width: 70 , height: 70, top: 70, left: 0}} 
+                            style={{ width: 70 , height: 70, top: -130, left: 70}} 
                             source={revIconPath} 
                         />
                         <Image resizeMode='cover' 
-                            style={{ width: 70 , height: 70, top: 0, left: 930}} 
+                            style={{ width: 70 , height: 70, top: -200, left: 930}} 
                             source={playIconPath} 
                         />  
                         <Image resizeMode='cover' 
-                            style={{ width: 70 , height: 70, top: -70, left: 1830}} 
+                            style={{ width: 70 , height: 70, top: -270, left: 1780}} 
                             source={ffwIconPath} 
                         />
-                         <Text style={{width: 150 , height: 30, top: -180, left: 20, fontSize: 30, color: '#ffffff' }} >
+                         <Text style={{width: 150 , height: 30, top: -380, left: 60, fontSize: 30, color: '#ffffff' }} >
                             {this.getFormattedTime(this.playbackTimeCurrent)}
                         </Text>
-                        <Text style={{width: 150 , height: 30, top: -210, left: 1800, fontSize: 30, color: '#ffffff' }} >
+                        <Text style={{width: 150 , height: 30, top: -410, left: 1760, fontSize: 30, color: '#ffffff' }} >
                             {this.getFormattedTime(this.playbackTimeTotal)}
                         </Text>
-                    </View>
-                    <Image resizeMode='cover' 
-                          style={{ width: 70 , height: 70, top: -1050, left: 1810}} 
-                          source={settingsIconPath} 
-                        /> 
+                        
+                    </View>                    
               </DisappearingView>
           </HideableView>                                       
       </View>

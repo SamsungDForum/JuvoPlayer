@@ -166,10 +166,11 @@ namespace JuvoReactNative
         private void UpdatePlayTime(object timerState) 
         {
             Logger?.Info("UpdatePlayTime");
-            //Propagate the bufffering progress event to JavaScript module
+            //Propagate the bufffering progress event to JavaScript module           
             var param = new JObject();
             param.Add("Total", (int)Duration.TotalMilliseconds);
             param.Add("Current", (int)CurrentPositionUI.TotalMilliseconds);
+            param.Add("Seeking", (int)((seekLogic.IsSeekInProgress || seekLogic.IsSeekAccumulationInProgress) ? 1 : 0));
             SendEvent("onUpdatePlayTime", param);
         }
         void PlayJuvoPlayer(String videoSourceURI, String licenseServerURI, String drmScheme, PlayerServiceProxy player, string streamingProtocol)
@@ -213,6 +214,7 @@ namespace JuvoReactNative
             var param = new JObject();
             param.Add("to", (int)to.TotalMilliseconds);
             SendEvent("onSeek", param);
+            seekLogic.IsSeekAccumulationInProgress = false;
             return juvoPlayer?.SeekTo(to);
         }
        
