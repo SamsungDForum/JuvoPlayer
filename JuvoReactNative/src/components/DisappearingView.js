@@ -50,17 +50,12 @@ export default class DisappearingView extends Component {
       return true;
     }
   
-    componentWillUpdate(nextProps, nextState) {             
+    componentWillUpdate(nextProps, nextState) {   
+      this.state.opacity.stopAnimation();          
       this.animate(nextProps.visible);      
-    }
-
-    componentDidMount() {      
-    }
+    }    
   
-    render() {
-    //  if (this.props.removeWhenHidden) {
-     //   return (this.visible && this.props.children);
-     // }
+    render() {  
       return (
         <View>
           <Animated.View style={{ opacity: this.state.opacity }}>
