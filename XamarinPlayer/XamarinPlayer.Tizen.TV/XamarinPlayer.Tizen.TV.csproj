@@ -40,6 +40,8 @@
   <!-- If solution already has PCL project, will reference -->
   <!-- Include Nuget Package for Tizen Project building -->
   <ItemGroup>
+    <PackageReference Include="Xamarin.FFImageLoading" Version="2.4.11.982" />
+    <PackageReference Include="Xamarin.FFImageLoading.Forms" Version="2.4.11.982" />
     <PackageReference Include="Xamarin.Forms" Version="3.5.0.274416" />
     <!-- Tizen.* packages are excluded from runtime -->
     <PackageReference Include="Tizen.NET" Version="5.0.0.14629">
