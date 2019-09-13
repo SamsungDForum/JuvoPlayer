@@ -1,12 +1,10 @@
 'use strict'
 import React from 'react';
 import {  
-  View,
-  Image,
+  View, 
   NativeModules,
   NativeEventEmitter,
-  ProgressBarAndroid,
-  Text
+  ProgressBarAndroid  
 } from 'react-native';
 
 
@@ -23,10 +21,12 @@ export default class PlaybackProgressBar extends React.Component {
   shouldComponentUpdate(nextProps, nextState) {  
     //  return false;
    // return (this.props.value !== nextProps.value);
-   if (this.props.value === undefined)  return true;
-   const oldValue = 0;//Number(this.props.value).toPrecision(1);
-   const newValue = Number(nextProps.value).toPrecision(1);
-   this.JuvoPlayer.log("PlaybackProgressBar shouldComponentUpdate() oldValue =" + this.props.value );
+   //this.JuvoPlayer.log("PlaybackProgressBar shouldComponentUpdate() this.props.value = " + this.props.value );
+   //this.JuvoPlayer.log("PlaybackProgressBar shouldComponentUpdate() nextProps.value = " + nextProps.value );
+   //if (Number.isNaN(this.props.value))  return true;
+   const oldValue = this.props.value;
+   const newValue = nextProps.value;
+  
     if ((oldValue !== newValue) && this.props.doUpdate)
         return true;
     else
