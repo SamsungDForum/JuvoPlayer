@@ -66,8 +66,6 @@ namespace JuvoReactNative
                     var param = new JObject();
                     param.Add("Message", message);
                     SendEvent("onPlaybackError", param);
-
-                    Logger?.Info($"Playback Error: {message}");
                     stopPlayback();
                 });
             juvoPlayer.BufferingProgress()
@@ -100,8 +98,7 @@ namespace JuvoReactNative
                 SendEvent("onTVKeyDown", param);
             };
             _keyUp = new EcoreEvent<EcoreKeyEventArgs>(EcoreEventType.KeyUp, EcoreKeyEventArgs.Create);
-            _keyUp.On += (s, e)  => {
-                Logger?.Info("keyUp.On = " + e.KeyName);
+            _keyUp.On += (s, e)  => {                
                 //Propagate the key press event to JavaScript module
                 var param = new JObject();
                 param.Add("KeyName", e.KeyName);
@@ -156,16 +153,14 @@ namespace JuvoReactNative
         {
         }
         private void UpdateBufferingProgress(int percent)
-        {
-            Logger?.Info("Update buffering");
+        {            
             //Propagate the bufffering progress event to JavaScript module
             var param = new JObject();
             param.Add("Percent", (int)percent);
             SendEvent("onUpdateBufferingProgress", param);
         }
         private void UpdatePlayTime(object timerState) 
-        {
-            Logger?.Info("UpdatePlayTime");
+        {           
             //Propagate the bufffering progress event to JavaScript module           
             var param = new JObject();
             param.Add("Total", (int)Duration.TotalMilliseconds);
@@ -209,8 +204,7 @@ namespace JuvoReactNative
             }
         }
         public Task Seek(TimeSpan to)
-        {
-            Logger?.Info("Seek to.. " + to);
+        {           
             var param = new JObject();
             param.Add("to", (int)to.TotalMilliseconds);
             SendEvent("onSeek", param);
@@ -227,7 +221,6 @@ namespace JuvoReactNative
         [ReactMethod]
         public async void startPlayback(string videoURI, string licenseURI, string DRM, string streamingProtocol)
         {
-            Logger?.Info("JuvoPlayerModule startPlayback() function called! videoURI = " + videoURI + " licenseURI = " + licenseURI + " DRM = " + DRM + " streamingProtocol" + streamingProtocol);
             await Play(videoURI, licenseURI, DRM, streamingProtocol);
             seekLogic.IsSeekInProgress = false;
         }
