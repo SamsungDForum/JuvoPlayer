@@ -135,11 +135,9 @@ export default class PlaybackView extends React.Component {
     this.playerState = state.State;
     if (this.playerState ==='Idle') {      
       this.resetPlaybackTime();
-    }    
-    if (this.playerState === 'Playing' || this.playerState === 'Paused') {      
-      this.showPlaybackInfo(); 
-    }      
-    this.JuvoPlayer.log("onPlayerStateChanged... playerState = " +  this.playerState);
+    }     
+    this.showPlaybackInfo();    
+   // this.JuvoPlayer.log("onPlayerStateChanged... playerState = " +  this.playerState);
   }
   onUpdateBufferingProgress(buffering) {
     this.JuvoPlayer.log("onUpdateBufferingProgress... precent = " + buffering.Percent);
