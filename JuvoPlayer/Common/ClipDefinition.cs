@@ -56,6 +56,7 @@ namespace JuvoPlayer.Common
         public string Scheme { get; set; }
         public string LicenceUrl { get; set; }
         public Dictionary<string, string> KeyRequestProperties { get; set; }
+        public bool IsImmutable { get; set; }
     }
 
     public class ClipDefinition
