@@ -15,7 +15,6 @@ import DisappearingView from './DisappearingView';
 import PlaybackProgressBar from './PlaybackProgressBar';
 
 export default class PlaybackView extends React.Component {
-
   constructor(props) {
     super(props);   
     this.curIndex = 0;
@@ -26,8 +25,7 @@ export default class PlaybackView extends React.Component {
       };      
     this.visible =  this.props.visibility ? this.props.visibility : false;     
     this.keysListenningOff = false;    
-    this.playerState = 'Idle';
-    this.seekKeyPressCounter = 0;
+    this.playerState = 'Idle';    
     this.seekInProgres = false;
     this.bufferingInProgress = false;
     this.refreshInterval = null;
@@ -52,7 +50,9 @@ export default class PlaybackView extends React.Component {
   }
   resetPlaybackTime() {
     this.playbackTimeCurrent = 0;
-    this.playbackTimeTotal = 0;
+    this.playbackTimeTotal = 0;    
+    if (this.refreshInterval !== null)
+        clearInterval(this.refreshInterval);
   }
   getFormattedTime(milisecs) {  
     var seconds = parseInt((milisecs/1000)%60)
@@ -95,65 +95,54 @@ export default class PlaybackView extends React.Component {
     this.JuvoEventEmitter.addListener(
       'onPlaybackError',
     this.onPlaybackError
-    );   
+    );    
 
-    this.showPlaybackInfo(); 
-  }  
-
-  componentWillReceiveProps(nextProps) {   
+    this.showPlaybackInfo();    
+  }   
+  componentWillUpdate(nextProps, nextState) {  
   }
-
+  componentWillUnmount() {
+    this.resetPlaybackTime();
+  }
   shouldComponentUpdate(nextProps, nextState) { 
       return true;   
   }
   toggleView() {    
-    this.visible = !this.visible; 
-    this.playerState = 'Idle';
-    this.resetPlaybackTime();
+    this.visible = !this.visible;           
     this.props.switchView('PlaybackView', this.visible);  
   }   
   handleFastForwardKey() {  
-    this.seekInProgres = false;  
-    const step = 0.01;  
-    this.seekKeyPressCounter += step;   
+    this.seekInProgres = false;      
     this.JuvoPlayer.forward();
   }
   handleRewindKey() {    
-    this.seekInProgres = false;   
-    const step = 0.01;  
-    this.seekKeyPressCounter -= step;
+    this.seekInProgres = false;      
     this.JuvoPlayer.rewind();
   }
   handleViewDisappeard() {    
-    if (this.refreshInterval !== null)
-        clearInterval(this.refreshInterval);
+    this.resetPlaybackTime();
   }
   onPlaybackCompleted(param) {         
     this.toggleView();
   }
   onPlayerStateChanged(state) {
-    this.playerState = state.State;
-    if (this.playerState ==='Idle') {      
-      this.resetPlaybackTime();
-    }     
-    this.showPlaybackInfo();    
-   // this.JuvoPlayer.log("onPlayerStateChanged... playerState = " +  this.playerState);
+    this.playerState = state.State;   
   }
-  onUpdateBufferingProgress(buffering) {
-    this.JuvoPlayer.log("onUpdateBufferingProgress... precent = " + buffering.Percent);
-    this.bufferingInProgress = true;
+  onUpdateBufferingProgress(buffering) {     
+      if (buffering.Percent == 100) {
+        this.bufferingInProgress = false;        
+      } else {
+        this.bufferingInProgress = true;        
+      }
   }
   onUpdatePlayTime(playtime) {
     this.playbackTimeCurrent = parseInt(playtime.Current);
     this.playbackTimeTotal = parseInt(playtime.Total);  
-    this.seekInProgres = parseInt(playtime.Seeking) === 1 ? true : false;
-    this.bufferingInProgress = false;  
+    this.seekInProgres = parseInt(playtime.Seeking) === 1 ? true : false;      
   }
-  onSeek(time) {
-    this.seekKeyPressCounter = 0;
-    this.JuvoPlayer.log("onSeek time is " + time.to);    
-    this.seekInProgres = false;      
-    this.showPlaybackInfo();  
+  onSeek(time) {    
+    this.JuvoPlayer.log("onSeek time is " + time.to);  
+   
   }
   onPlaybackError(error) {
     this.JuvoPlayer.log("onPlaybackError message = " + error.Message);
@@ -163,8 +152,8 @@ export default class PlaybackView extends React.Component {
     //There are two parameters available:
     //params.KeyName
     //params.KeyCode      
-    if (this.keysListenningOff) return;  
-    this.showPlaybackInfo();
+    if (this.keysListenningOff) return;   
+   
     const video = ResourceLoader.clipsData[this.props.selectedIndex];
     switch (pressed.KeyName) {
       case "Right":              
@@ -176,7 +165,8 @@ export default class PlaybackView extends React.Component {
       case "Return":
       case "XF86AudioPlay":
       case "XF86PlayBack":      
-        if (this.playerState === 'Idle') {
+        if (this.playerState === 'Idle') {         
+          this.resetPlaybackTime();                 
           let licenseURI = video.drmDatas ? video.drmDatas[0].licenceUrl : null;
           let DRM = video.drmDatas ? video.drmDatas[0].scheme : null;          
           this.JuvoPlayer.startPlayback(video.url, licenseURI, DRM, video.type);          
@@ -189,29 +179,24 @@ export default class PlaybackView extends React.Component {
       case "XF86Back":
       case "XF86AudioStop":  
         this.JuvoPlayer.stopPlayback(); 
+        this.playerState = 'Idle';
+        this.resetPlaybackTime();
         this.toggleView();        
-    }        
-  }
-
-  onTVKeyUp(pressed) {
-    if (this.keysListenningOff) return; 
-    this.showPlaybackInfo();
-      switch (pressed.KeyName) {
-        case "Right":        
-        case "Left":   
-          this.seekKeyPressCounter = 0;
-          this.seekInProgres = false;
-        break;
     }
-  }
 
+    this.showPlaybackInfo(); 
+         
+  }
+  onTVKeyUp(pressed) {
+    if (this.keysListenningOff) return;   
+  }
   showPlaybackInfo() {
     this.rerender();
-    if (this.refreshInterval !== null)
-      clearInterval(this.refreshInterval);    
+    if (this.refreshInterval !== null) {
+      clearInterval(this.refreshInterval);
+    }    
     this.refreshInterval = setInterval(this.rerender, 1000);
   }
-
   rerender() {
     this.setState({selectedIndex: this.state.selectedIndex});    
   }
@@ -229,8 +214,8 @@ export default class PlaybackView extends React.Component {
     const total = this.playbackTimeTotal;
     const current = this.playbackTimeCurrent;
     const playbackTime = total > 0 ?  current / total : 0;    
-    const progress = Math.round((playbackTime + this.seekKeyPressCounter) * 100 ) / 100;   
-    const refreshProgresBar = (this.playerState == 'Playing' && !this.bufferingInProgress && !this.seekInProgres) ;
+    const progress = Math.round((playbackTime) * 100 ) / 100;   
+    const refreshProgresBar =  (!this.bufferingInProgress && !this.seekInProgres && this.playerState == 'Playing') ;
   //  this.JuvoPlayer.log("PlaybackView render() \n seekInProgress =" + this.seekInProgres + 
   //                                            "\n progressbar =" + total + 
  //                                             "\n this.KeyPressCounter =" + this.seekKeyPressCounter +
@@ -265,8 +250,7 @@ export default class PlaybackView extends React.Component {
                         </Text>
                         <Text style={{width: 150 , height: 30, top: -410, left: 1760, fontSize: 30, color: '#ffffff' }} >
                             {this.getFormattedTime(this.playbackTimeTotal)}
-                        </Text>
-                        
+                        </Text>                        
                     </View>                    
               </DisappearingView>
           </HideableView>                                       
