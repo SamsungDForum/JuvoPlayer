@@ -111,6 +111,7 @@ namespace JuvoReactNative
             Logger?.Info($"OnPlayerStateChanged: {state}");
             var param = new JObject();
             string value = "Idle";
+            int interval = 100;
             switch (state)
             {
                 case PlayerState.Prepared:
@@ -119,12 +120,12 @@ namespace JuvoReactNative
                         callback: new TimerCallback(UpdatePlayTime),
                         state: CurrentPositionUI,
                         dueTime: 0,
-                        period: 1000);
+                        period: interval);
                     value = "Prepared";
                     break;
                 case PlayerState.Playing:
                     value = "Playing";
-                    playbackTimer.Change(0, 1000); //resume progress info update
+                    playbackTimer.Change(0, interval); //resume progress info update
                     break;
                 case PlayerState.Paused:
                     value = "Paused";
@@ -160,8 +161,11 @@ namespace JuvoReactNative
             SendEvent("onUpdateBufferingProgress", param);
         }
         private void UpdatePlayTime(object timerState) 
-        {           
-            //Propagate the bufffering progress event to JavaScript module           
+        {
+            if (seekLogic.IsSeekAccumulationInProgress == false && seekLogic.IsSeekInProgress == false)
+                CurrentPositionUI = CurrentPositionPlayer;
+
+            //Propagate the bufffering progress event to JavaScript module 
             var param = new JObject();
             param.Add("Total", (int)Duration.TotalMilliseconds);
             param.Add("Current", (int)CurrentPositionUI.TotalMilliseconds);
@@ -209,6 +213,7 @@ namespace JuvoReactNative
             param.Add("to", (int)to.TotalMilliseconds);
             SendEvent("onSeek", param);
             seekLogic.IsSeekAccumulationInProgress = false;
+            Logger?.Info($" Seek to: {to}");
             return juvoPlayer?.SeekTo(to);
         }
        
