@@ -18,15 +18,14 @@ export default class PlaybackView extends React.Component {
   constructor(props) {
     super(props);   
     this.curIndex = 0;
-    this.playbackTimeCurrent = 0;
+    this.playbackTimeCurrent = 0;    
     this.playbackTimeTotal = 0;     
     this.state = {        
         selectedIndex: 0
       };      
     this.visible =  this.props.visibility ? this.props.visibility : false;     
     this.keysListenningOff = false;    
-    this.playerState = 'Idle';    
-    this.seekInProgres = false;
+    this.playerState = 'Idle';      
     this.bufferingInProgress = false;
     this.refreshInterval = null;
     this.JuvoPlayer = NativeModules.JuvoPlayer;
@@ -47,13 +46,22 @@ export default class PlaybackView extends React.Component {
     this.getFormattedTime = this.getFormattedTime.bind(this);
     this.handleViewDisappeard = this.handleViewDisappeard.bind(this);
     this.showPlaybackInfo = this.showPlaybackInfo.bind(this);
+    this.stopPlaybackTime = this.stopPlaybackTime.bind(this);
+    this.refreshPlaybackInfo = this.refreshPlaybackInfo.bind(this);
   }
   resetPlaybackTime() {
     this.playbackTimeCurrent = 0;
     this.playbackTimeTotal = 0;    
-    if (this.refreshInterval !== null)
-        clearInterval(this.refreshInterval);
+    this.stopPlaybackTime();  
   }
+
+  stopPlaybackTime() {
+    if (this.refreshInterval !== null) {      
+      clearInterval(this.refreshInterval);
+      this.refreshInterval = null;
+    }  
+  }
+
   getFormattedTime(milisecs) {  
     var seconds = parseInt((milisecs/1000)%60)
     var minutes = parseInt((milisecs/(1000*60))%60)
@@ -97,12 +105,11 @@ export default class PlaybackView extends React.Component {
     this.onPlaybackError
     );    
 
-    this.showPlaybackInfo();    
-  }   
-  componentWillUpdate(nextProps, nextState) {  
-  }
-  componentWillUnmount() {
     this.resetPlaybackTime();
+    this.showPlaybackInfo(); 
+  }    
+  componentWillUnmount() {
+   // this.resetPlaybackTime();
   }
   shouldComponentUpdate(nextProps, nextState) { 
       return true;   
@@ -111,22 +118,25 @@ export default class PlaybackView extends React.Component {
     this.visible = !this.visible;           
     this.props.switchView('PlaybackView', this.visible);  
   }   
-  handleFastForwardKey() {  
-    this.seekInProgres = false;      
+  handleFastForwardKey() {        
     this.JuvoPlayer.forward();
   }
-  handleRewindKey() {    
-    this.seekInProgres = false;      
+  handleRewindKey() {           
     this.JuvoPlayer.rewind();
   }
   handleViewDisappeard() {    
-    this.resetPlaybackTime();
+    this.stopPlaybackTime(); 
   }
   onPlaybackCompleted(param) {         
     this.toggleView();
   }
   onPlayerStateChanged(state) {
+    if (this.playerState === 'Idle' && state.State === 'Playing') {
+      this.resetPlaybackTime();
+      this.showPlaybackInfo(); 
+    }      
     this.playerState = state.State;   
+     
   }
   onUpdateBufferingProgress(buffering) {     
       if (buffering.Percent == 100) {
@@ -135,14 +145,13 @@ export default class PlaybackView extends React.Component {
         this.bufferingInProgress = true;        
       }
   }
-  onUpdatePlayTime(playtime) {
+  onUpdatePlayTime(playtime) {   
     this.playbackTimeCurrent = parseInt(playtime.Current);
-    this.playbackTimeTotal = parseInt(playtime.Total);  
-    this.seekInProgres = parseInt(playtime.Seeking) === 1 ? true : false;      
+    this.playbackTimeTotal = parseInt(playtime.Total); 
   }
   onSeek(time) {    
-    this.JuvoPlayer.log("onSeek time is " + time.to);  
-   
+    this.JuvoPlayer.log("onSeek time is " + time.to); 
+    this.refreshPlaybackInfo();
   }
   onPlaybackError(error) {
     this.JuvoPlayer.log("onPlaybackError message = " + error.Message);
@@ -152,50 +161,52 @@ export default class PlaybackView extends React.Component {
     //There are two parameters available:
     //params.KeyName
     //params.KeyCode      
-    if (this.keysListenningOff) return;   
-   
+    if (this.keysListenningOff) return;  
     const video = ResourceLoader.clipsData[this.props.selectedIndex];
     switch (pressed.KeyName) {
-      case "Right":              
+      case "Right":    
         this.handleFastForwardKey();
+        this.showPlaybackInfo();  
         break;
-      case "Left":       
+      case "Left":        
         this.handleRewindKey();
+        this.showPlaybackInfo();  
         break;
       case "Return":
       case "XF86AudioPlay":
-      case "XF86PlayBack":      
+      case "XF86PlayBack":  
         if (this.playerState === 'Idle') {         
           this.resetPlaybackTime();                 
           let licenseURI = video.drmDatas ? video.drmDatas[0].licenceUrl : null;
           let DRM = video.drmDatas ? video.drmDatas[0].scheme : null;          
           this.JuvoPlayer.startPlayback(video.url, licenseURI, DRM, video.type);          
-        }
-        else {
+        } else {
           //pause         
           this.JuvoPlayer.pauseResumePlayback();                
-        }
+        }  
+        this.showPlaybackInfo();       
         break;
       case "XF86Back":
       case "XF86AudioStop":  
         this.JuvoPlayer.stopPlayback(); 
         this.playerState = 'Idle';
         this.resetPlaybackTime();
-        this.toggleView();        
-    }
-
-    this.showPlaybackInfo(); 
-         
+        this.toggleView();     
+      default: 
+        this.showPlaybackInfo();
+    }            
   }
   onTVKeyUp(pressed) {
     if (this.keysListenningOff) return;   
+    this.showPlaybackInfo();
   }
-  showPlaybackInfo() {
-    this.rerender();
-    if (this.refreshInterval !== null) {
-      clearInterval(this.refreshInterval);
-    }    
-    this.refreshInterval = setInterval(this.rerender, 1000);
+  showPlaybackInfo() {    
+    this.stopPlaybackTime();  
+    this.rerender();    
+    this.refreshPlaybackInfo();
+  }
+  refreshPlaybackInfo() {
+    this.refreshInterval = setInterval(this.rerender, 1000);    
   }
   rerender() {
     this.setState({selectedIndex: this.state.selectedIndex});    
@@ -212,18 +223,16 @@ export default class PlaybackView extends React.Component {
     this.visible = visibility;
     this.keysListenningOff  = !visibility;        
     const total = this.playbackTimeTotal;
-    const current = this.playbackTimeCurrent;
+    const current = this.playbackTimeCurrent;   
     const playbackTime = total > 0 ?  current / total : 0;    
-    const progress = Math.round((playbackTime) * 100 ) / 100;   
-    const refreshProgresBar =  (!this.bufferingInProgress && !this.seekInProgres && this.playerState == 'Playing') ;
-  //  this.JuvoPlayer.log("PlaybackView render() \n seekInProgress =" + this.seekInProgres + 
-  //                                            "\n progressbar =" + total + 
- //                                             "\n this.KeyPressCounter =" + this.seekKeyPressCounter +
- //                                             "\n this.bufferingInProgress = " + this.bufferingInProgress);
+    const progress = Math.round((playbackTime) * 100 ) / 100;    
+   // if (current == 0) 
+   // this.JuvoPlayer.log("PlaybackView render() \n " +  
+   //                                           "\n current =" + current );
     return (
       <View style={{ top: -2680, left: 0, width: 1920, height: 1080}}>
            <HideableView visible={visibility} duration={fadeduration}>    
-              <DisappearingView visible={visibility} duration={fadeduration} timeOnScreen={7000} onDisappeared={this.handleViewDisappeard}>     
+              <DisappearingView visible={visibility} duration={fadeduration} timeOnScreen={10000} onDisappeared={this.handleViewDisappeard}>     
                     <ContentDescription viewStyle={{ top: 0, left: 0, width: 1920, height: 250, justifyContent: 'center', alignSelf: 'center', backgroundColor: '#000000', opacity: 0.8}} 
                                             headerStyle={{ fontSize: 60, color: '#ffffff', alignSelf: 'center', opacity: 1.0}} bodyStyle={{ fontSize: 30, color: '#ffffff', top: 0}} 
                                             headerText={title} bodyText={''}/>
@@ -232,7 +241,7 @@ export default class PlaybackView extends React.Component {
                           source={settingsIconPath} 
                         /> 
                     <View style={{ top: 530, left: 0, width: 1920, height: 760,  justifyContent: 'center', alignSelf: 'center', backgroundColor: '#000000', opacity: 0.8}}>
-                        <PlaybackProgressBar value={progress}  color="green" doUpdate={refreshProgresBar} />
+                        <PlaybackProgressBar value={progress}  color="green" />
                         <Image resizeMode='cover' 
                             style={{ width: 70 , height: 70, top: -130, left: 70}} 
                             source={revIconPath} 
