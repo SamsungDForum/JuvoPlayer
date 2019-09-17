@@ -66,6 +66,7 @@ namespace XamarinPlayer.Views
             set => _currentPosition = value;
         }
         private TimeSpan _currentPosition;
+        private bool _isBuffering;
         public TimeSpan CurrentPositionPlayer => _playerService?.CurrentPosition ?? TimeSpan.Zero;
         public TimeSpan Duration => _playerService?.Duration ?? TimeSpan.Zero;
         public PlayerState State => _playerService?.State ?? PlayerState.Idle;
@@ -125,13 +126,7 @@ namespace XamarinPlayer.Views
 
         private void OnBufferingProgress(int progress)
         {
-            if (progress >= 100)
-                InfoTextLabel.IsVisible = false;
-            else
-            {
-                InfoTextLabel.Text = "Buffering...";
-                InfoTextLabel.IsVisible = true;
-            }
+            _isBuffering = progress < 100;
         }
 
         private void KeyEventHandler(string e)
@@ -477,7 +472,7 @@ namespace XamarinPlayer.Views
 
                 UpdatePlayTime();
                 UpdateCueTextLabel();
-                ShowSeekInfo();
+                UpdateLoadingIndicator();
 
                 if (Settings.IsVisible)
                     return;
@@ -538,17 +533,18 @@ namespace XamarinPlayer.Views
                 _playerService?.Start();
         }
 
-        private void ShowSeekInfo()
+        private void UpdateLoadingIndicator()
         {
-            if (_seekLogic.IsSeekInProgress || _seekLogic.IsSeekAccumulationInProgress)
+            var isSeeking = _seekLogic.IsSeekInProgress || _seekLogic.IsSeekAccumulationInProgress;
+            if (isSeeking || _isBuffering)
             {
-                InfoTextLabel.Text = "Seeking...";
-                InfoTextLabel.IsVisible = true;
+                LoadingIndicator.IsRunning = true;
+                LoadingIndicator.IsVisible = true;
             }
             else
             {
-                InfoTextLabel.Text = "";
-                InfoTextLabel.IsVisible = false;
+                LoadingIndicator.IsRunning = false;
+                LoadingIndicator.IsVisible = false;
             }
         }
 

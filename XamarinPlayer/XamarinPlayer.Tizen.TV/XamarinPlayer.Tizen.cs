@@ -40,7 +40,7 @@ namespace XamarinPlayer.Tizen
         private static ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
         public static readonly string Tag = "JuvoPlayer";
         private App app;
-        
+
         protected override void OnCreate()
         {
             base.OnCreate();
@@ -116,11 +116,11 @@ namespace XamarinPlayer.Tizen
         }
 
         protected override async void OnAppControlReceived(AppControlReceivedEventArgs e)
-        {            
-            var payloadParser = new PayloadParser(e.ReceivedAppControl);          
-            
+        {
+            var payloadParser = new PayloadParser(e.ReceivedAppControl);
+
             if (!payloadParser.TryGetUrl(out var url))
-                return;         
+                return;
             await WaitForMainWindowResize();
             await app.LoadUrl(url);
         }
