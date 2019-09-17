@@ -136,7 +136,7 @@ namespace JuvoPlayer
             if (clip.DRMDatas != null)
             {
                 foreach (var drm in clip.DRMDatas)
-                    playerController.OnSetDrmConfiguration(drm);
+                    drmManager.UpdateDrmConfiguration(drm);
             }
 
             connector = new DataProviderConnector(playerController, dataProvider);

@@ -15,7 +15,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-﻿using JuvoPlayer.Common;
+ using JuvoPlayer.Common;
 
 namespace JuvoPlayer.Drms
 {

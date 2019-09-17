@@ -42,8 +42,11 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
         /// failures
         /// </summary>
         private static readonly int ConcurrentDrmSessionsLimit = 15;
-        private static readonly string[] DrmTypes = { "Widevine", "PlayReady" };
+
+        private static readonly string[] DrmTypes = {"Widevine", "PlayReady"};
+
         private delegate DRMDescription DrmDescriptionDelegate();
+
         private delegate DRMInitData DrmInitDataDelegate();
 
         private class DrmConfiguration
@@ -53,7 +56,8 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
             public EncryptedPacket EncryptedDataPacket;
         }
 
-        private static readonly Dictionary<string, DrmConfiguration> DrmConfigurations = new Dictionary<string, DrmConfiguration>();
+        private static readonly Dictionary<string, DrmConfiguration> DrmConfigurations =
+            new Dictionary<string, DrmConfiguration>();
 
         private static byte[] initPlayReadyData;
         private static byte[] initWidevineData;
@@ -84,7 +88,7 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
             {0x9a, 0x04, 0xf0, 0x79, 0x98, 0x40, 0x42, 0x86, 0xab, 0x92, 0xe6, 0x5b, 0xe0, 0x88, 0x5f, 0x95};
 
         private static byte[] WidevineSystemId = new byte[]
-            {0xed, 0xef, 0x8b, 0xa9, 0x79, 0xd6, 0x4a, 0xce, 0xa3, 0xc8, 0x27, 0xdc, 0xd5, 0x1d, 0x21, 0xed };
+            {0xed, 0xef, 0x8b, 0xa9, 0x79, 0xd6, 0x4a, 0xce, 0xa3, 0xc8, 0x27, 0xdc, 0xd5, 0x1d, 0x21, 0xed};
 
         [OneTimeSetUp]
         public void OneTimeSetUp()
@@ -94,16 +98,19 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
             LoggerManager.Configure("JuvoPlayer=Verbose", CreateLoggerFunc);
 
             var assembly = Assembly.GetExecutingAssembly();
-            var drmInitDataStream = assembly.GetManifestResourceStream("JuvoPlayer.TizenTests.res.drm.google_dash_encrypted_init_data");
+            var drmInitDataStream =
+                assembly.GetManifestResourceStream("JuvoPlayer.TizenTests.res.drm.google_dash_encrypted_init_data");
             using (var reader = new BinaryReader(drmInitDataStream))
             {
-                initPlayReadyData = reader.ReadBytes((int)drmInitDataStream.Length);
+                initPlayReadyData = reader.ReadBytes((int) drmInitDataStream.Length);
             }
 
-            drmInitDataStream = assembly.GetManifestResourceStream("JuvoPlayer.TizenTests.res.drm.tos4kuhd_dash_widevine_encrypted_init_data");
+            drmInitDataStream =
+                assembly.GetManifestResourceStream(
+                    "JuvoPlayer.TizenTests.res.drm.tos4kuhd_dash_widevine_encrypted_init_data");
             using (var reader = new BinaryReader(drmInitDataStream))
             {
-                initWidevineData = reader.ReadBytes((int)drmInitDataStream.Length);
+                initWidevineData = reader.ReadBytes((int) drmInitDataStream.Length);
             }
 
             Assert.That(initPlayReadyData, Is.Not.Null);
@@ -114,12 +121,13 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
                 assembly.GetManifestResourceStream(
                     "JuvoPlayer.TizenTests.res.drm.google_dash_encrypted_video_packet_pts_10_01.xml");
             var packetSerializer = new XmlSerializer(typeof(EncryptedPacket));
-            encryptedPlayReadyPacket = (EncryptedPacket)packetSerializer.Deserialize(encryptedPacketStream);
+            encryptedPlayReadyPacket = (EncryptedPacket) packetSerializer.Deserialize(encryptedPacketStream);
             var storageSerializer = new XmlSerializer(typeof(ManagedDataStorage));
             var encryptedPacketStorageStream =
                 assembly.GetManifestResourceStream(
                     "JuvoPlayer.TizenTests.res.drm.google_dash_encrypted_video_packet_pts_10_01_storage.xml");
-            encryptedPlayReadyPacket.Storage = (IDataStorage)storageSerializer.Deserialize(encryptedPacketStorageStream);
+            encryptedPlayReadyPacket.Storage =
+                (IDataStorage) storageSerializer.Deserialize(encryptedPacketStorageStream);
 
             DrmConfigurations.Add(DrmTypes[1], new DrmConfiguration
             {
@@ -132,12 +140,13 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
             encryptedPacketStream = assembly.GetManifestResourceStream(
                 "JuvoPlayer.TizenTests.res.drm.tos4kuhd_dash_widevine_encrypted_video_packet.xml");
             packetSerializer = new XmlSerializer(typeof(EncryptedPacket));
-            encryptedWidevinePacket = (EncryptedPacket)packetSerializer.Deserialize(encryptedPacketStream);
+            encryptedWidevinePacket = (EncryptedPacket) packetSerializer.Deserialize(encryptedPacketStream);
             storageSerializer = new XmlSerializer(typeof(ManagedDataStorage));
             encryptedPacketStorageStream =
                 assembly.GetManifestResourceStream(
                     "JuvoPlayer.TizenTests.res.drm.tos4kuhd_dash_widevine_encrypted_video_packet_storage.xml");
-            encryptedWidevinePacket.Storage = (IDataStorage)storageSerializer.Deserialize(encryptedPacketStorageStream);
+            encryptedWidevinePacket.Storage =
+                (IDataStorage) storageSerializer.Deserialize(encryptedPacketStorageStream);
 
             DrmConfigurations.Add(DrmTypes[0], new DrmConfiguration
             {
@@ -166,12 +175,12 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
         private static DRMDescription CreatePlayReadyDrmDescription()
         {
             var licenceUrl =
-                "http://dash-mse-test.appspot.com/api/drm/playready?drm_system=playready&source=YOUTUBE&video_id=03681262dc412c06&ip=0.0.0.0&ipbits=0&expire=19000000000&sparams=ip,ipbits,expire,drm_system,source,video_id&signature=3BB038322E72D0B027F7233A733CD67D518AF675.2B7C39053DA46498D23F3BCB87596EF8FD8B1669&key=test_key1";
+                "https://dash-mse-test.appspot.com/api/drm/playready?drm_system=playready&source=YOUTUBE&ip=0.0.0.0&ipbits=0&expire=19000000000&sparams=ip,ipbits,expire,drm_system,source,video_id&video_id=03681262dc412c06&signature=448279561E2755699618BE0A2402189D4A30B03B.0CD6A27286BD2DAF00577FFA21928665DCD320C2&key=test_key1";
             var configuration = new DRMDescription()
             {
                 Scheme = CencUtils.GetScheme(PlayreadySystemId),
                 LicenceUrl = licenceUrl,
-                KeyRequestProperties = new Dictionary<string, string>() { { "Content-Type", "text/xml; charset=utf-8" } },
+                KeyRequestProperties = new Dictionary<string, string>() {{"Content-Type", "text/xml; charset=utf-8"}},
             };
             return configuration;
         }
@@ -183,7 +192,7 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
             {
                 Scheme = CencUtils.GetScheme(WidevineSystemId),
                 LicenceUrl = licenceUrl,
-                KeyRequestProperties = new Dictionary<string, string>() { { "Content-Type", "text/xml; charset=utf-8" } },
+                KeyRequestProperties = new Dictionary<string, string>() {{"Content-Type", "text/xml; charset=utf-8"}},
             };
             return configuration;
         }
@@ -272,74 +281,73 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
         public void Concurrent_CreateDispose_DoesNotThrow(string drmName)
         {
             Assert.DoesNotThrowAsync(async () =>
-           {
-               using (var goDispose = new Barrier(0))
-               {
-                   var id = 0;
+            {
+                using (var goDispose = new Barrier(0))
+                {
+                    var id = 0;
 
-                   async Task DoWork(string drm)
-                   {
+                    async Task DoWork(string drm)
+                    {
+                        var drmInitData = CreateDrmInitData(drm);
+                        var configuration = CreateDrmDescription(drm);
 
-                       var drmInitData = CreateDrmInitData(drm);
-                       var configuration = CreateDrmDescription(drm);
+                        var myId = Interlocked.Increment(ref id);
+                        var signaled = false;
 
-                       var myId = Interlocked.Increment(ref id);
-                       var signaled = false;
+                        try
+                        {
+                            Logger.Info($"Creating {drm} Session {myId}");
+                            using (var ses = CencSession.Create(drmInitData, configuration))
+                            {
+                                Logger.Info($"Initializing {drm} Session {myId}");
+                                ses.Initialize();
 
-                       try
-                       {
-                           Logger.Info($"Creating {drm} Session {myId}");
-                           using (var ses = CencSession.Create(drmInitData, configuration))
-                           {
-                               Logger.Info($"Initializing {drm} Session {myId}");
-                               ses.Initialize();
+                                // Widevine cases - 15 concurrent sessions - individual session may take 60s+
+                                // to initialize when run @15 sessions.
+                                using (var cts = new CancellationTokenSource(TimeSpan.FromSeconds(90)))
+                                {
+                                    try
+                                    {
+                                        await ses.WaitForInitialization(cts.Token);
+                                    }
+                                    catch (OperationCanceledException)
+                                    {
+                                        Logger.Info($"TIMEOUT {drm} Session {myId}");
+                                        throw;
+                                    }
+                                    catch (Exception e)
+                                    {
+                                        Logger.Error(e);
+                                        throw;
+                                    }
+                                }
 
-                               // Widevine cases - 15 concurrent sessions - individual session may take 60s+
-                               // to initialize when run @15 sessions.
-                               using (var cts = new CancellationTokenSource(TimeSpan.FromSeconds(90)))
-                               {
-                                   try
-                                   {
-                                       await ses.WaitForInitialization(cts.Token);
-                                   }
-                                   catch (OperationCanceledException)
-                                   {
-                                       Logger.Info($"TIMEOUT {drm} Session {myId}");
-                                       throw;
-                                   }
-                                   catch (Exception e)
-                                   {
-                                       Logger.Error(e);
-                                       throw;
-                                   }
-                               }
+                                Logger.Info($"{drm} Session {myId} Initialized. Waiting for Dispose");
+                                goDispose.SignalAndWait();
+                                signaled = true;
+                            }
 
-                               Logger.Info($"{drm} Session {myId} Initialized. Waiting for Dispose");
-                               goDispose.SignalAndWait();
-                               signaled = true;
-                           }
+                            Logger.Info($"{drm} Session {myId} completed");
+                        }
+                        finally
+                        {
+                            if (!signaled)
+                                goDispose.RemoveParticipant();
+                        }
+                    }
 
-                           Logger.Info($"{drm} Session {myId} completed");
-                       }
-                       finally
-                       {
-                           if (!signaled)
-                               goDispose.RemoveParticipant();
-                       }
-                   }
+                    var workPool = new List<Task>();
 
-                   var workPool = new List<Task>();
+                    for (var i = 0; i < ConcurrentDrmSessionsLimit; i++)
+                    {
+                        workPool.Add(DoWork(drmName));
+                        goDispose.AddParticipant();
+                    }
 
-                   for (var i = 0; i < ConcurrentDrmSessionsLimit; i++)
-                   {
-                       workPool.Add(DoWork(drmName));
-                       goDispose.AddParticipant();
-                   }
-
-                   await Task.WhenAll(workPool.ToArray());
-                   Logger.Info($"{drmName} Test completed");
-               }
-           });
+                    await Task.WhenAll(workPool.ToArray());
+                    Logger.Info($"{drmName} Test completed");
+                }
+            });
         }
 
         [Test, TestCaseSource(nameof(DrmTypes))]
