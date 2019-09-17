@@ -1,160 +1,176 @@
-﻿<?xml version="1.0" encoding="utf-8" ?>
+﻿<?xml version="1.0" encoding="utf-8"?>
+
 <ContentPage xmlns="http://xamarin.com/schemas/2014/forms"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              x:Class="XamarinPlayer.Views.PlayerView"
              ContentSource="{Binding Clip}">
     <ContentPage.Content>
-        <StackLayout HorizontalOptions="FillAndExpand"
-                     VerticalOptions="FillAndExpand">
-            <StackLayout.GestureRecognizers>
-                <TapGestureRecognizer
-                        Tapped="OnTapGestureRecognizerViewTapped"/>
-            </StackLayout.GestureRecognizers>
+        <Grid>
             <StackLayout HorizontalOptions="FillAndExpand"
-                         VerticalOptions="FillAndExpand"
-                         x:Name="Controller">
-                <StackLayout BackgroundColor="#B0101010"
-                             Padding="0, 20"
-                             x:Name="TopBar">
-                    <AbsoluteLayout HorizontalOptions="End">
-                        <Image x:Name="SettingsImage"
-                               Source="btn_viewer_control_settings_normal.png"
+                         VerticalOptions="FillAndExpand">
+                <StackLayout.GestureRecognizers>
+                    <TapGestureRecognizer
+                        Tapped="OnTapGestureRecognizerViewTapped" />
+                </StackLayout.GestureRecognizers>
+                <StackLayout HorizontalOptions="FillAndExpand"
+                             VerticalOptions="FillAndExpand"
+                             x:Name="Controller">
+                    <StackLayout BackgroundColor="#B0101010"
+                                 Padding="0, 20"
+                                 x:Name="TopBar">
+                        <AbsoluteLayout HorizontalOptions="End">
+                            <Image x:Name="SettingsImage"
+                                   Source="btn_viewer_control_settings_normal.png"
+                                   HorizontalOptions="Center"
+                                   VerticalOptions="Start"
+                                   AbsoluteLayout.LayoutBounds="0,0,1,1" AbsoluteLayout.LayoutFlags="All" />
+                            <Label x:Name="SettingsButton"
+                                   Opacity="0.1"
+                                   AbsoluteLayout.LayoutBounds="0,0,1,1" AbsoluteLayout.LayoutFlags="All"
+                                   HorizontalOptions="Fill"
+                                   VerticalOptions="Fill"
+                                   WidthRequest="80" />
+                        </AbsoluteLayout>
+                        <Label x:Name="VideoTitle"
+                               Text="{Binding Title}"
+                               TextColor="White"
+                               FontSize="Large"
                                HorizontalOptions="Center"
-                               VerticalOptions="Start"
-                               AbsoluteLayout.LayoutBounds="0,0,1,1" AbsoluteLayout.LayoutFlags="All"/>
-                        <Label x:Name="SettingsButton"
-                                Opacity="0.1"
-                                AbsoluteLayout.LayoutBounds="0,0,1,1" AbsoluteLayout.LayoutFlags="All"
-                                HorizontalOptions="Fill"
-                                VerticalOptions="Fill"
-                                WidthRequest="80"/>
-                    </AbsoluteLayout>
-                    <Label x:Name="VideoTitle"
-                           Text="{Binding Title}"
-                           TextColor="White"
-                           FontSize="Large"
-                           HorizontalOptions="Center"
-                           VerticalOptions="Center"/>
-                </StackLayout>
-                <StackLayout VerticalOptions="FillAndExpand">
-                    <BoxView VerticalOptions="FillAndExpand">
-                        <BoxView.GestureRecognizers>
-                            <TapGestureRecognizer
-                                Tapped="OnTapGestureRecognizerControllerTapped"/>
-                        </BoxView.GestureRecognizers>
-                    </BoxView>
-                    <ContentView Padding="30, 30" HorizontalOptions="Center">
-                        <Label IsVisible="false" BackgroundColor="#B0101010" FontSize="Large" TextColor="White" x:Name="InfoTextLabel" HorizontalOptions="Center" HorizontalTextAlignment="Center"/>
-                    </ContentView>
-                    <ContentView Padding="30, 30" HorizontalOptions="CenterAndExpand">
-                        <Label BackgroundColor="#B0101010" IsVisible="false" FontSize="Medium" TextColor="White" x:Name="CueTextLabel" HorizontalOptions="CenterAndExpand" WidthRequest="800" HorizontalTextAlignment="Center"/>
-                    </ContentView>
-                    <AbsoluteLayout x:Name="Settings" IsVisible="false" BackgroundColor="#B0101010" HorizontalOptions="Center">
-                        <StackLayout Padding="20, 10">
-                            <StackLayout Orientation="Horizontal">
-                                <Label Text="Audio track" TextColor="White" HorizontalOptions="Start" VerticalOptions="Center" WidthRequest="200" />
-                                <Picker x:Name="AudioTrack" WidthRequest="300">
-                                </Picker>
-                            </StackLayout>
-                            <StackLayout Orientation="Horizontal">
-                                <Label Text="Video quality" TextColor="White" HorizontalOptions="Start" VerticalOptions="Center" WidthRequest="200" />
-                                <Picker x:Name="VideoQuality" WidthRequest="300">
-                                    <Picker.Items>
-                                        <x:String>auto</x:String>
-                                    </Picker.Items>
-                                    <Picker.SelectedIndex>0</Picker.SelectedIndex>
-                                </Picker>
-                            </StackLayout>
-                            <StackLayout Orientation="Horizontal">
-                                <Label Text="Video speed" TextColor="White" HorizontalOptions="Start" VerticalOptions="Center" WidthRequest="200" />
-                                <Picker x:Name="VideoSpeed" WidthRequest="300" >
-                                    <Picker.Items>
-                                        <x:String>normal</x:String>
-                                    </Picker.Items>
-                                    <Picker.SelectedIndex>0</Picker.SelectedIndex>
-                                </Picker>
-                            </StackLayout>
-                            <StackLayout Orientation="Horizontal" >
-                                <Label Text="Subtitles" TextColor="White" HorizontalOptions="Start" VerticalOptions="Center" WidthRequest="200" />
-                                <Picker x:Name="Subtitles" WidthRequest="300" >
-                                    <Picker.Items>
-                                        <x:String>off</x:String>
-                                    </Picker.Items>
-                                    <Picker.SelectedIndex>0</Picker.SelectedIndex>
-                                </Picker>
-                            </StackLayout>
-                        </StackLayout>
-                    </AbsoluteLayout>
-                </StackLayout>
-                <StackLayout BackgroundColor="#B0101010"
-                             Padding="20, 10"
-                             x:Name="BottomBar">
-                    <RelativeLayout>
-                        <BoxView Color="#20303030"
-                                 HeightRequest="4"
-                                 RelativeLayout.WidthConstraint="{ConstraintExpression Type=RelativeToParent, Property=Width, Factor=0.898}"
-                                 RelativeLayout.XConstraint="{ConstraintExpression Type=RelativeToParent, Property=Width, Factor=0.051}"/>
-                        <ProgressBar x:Name="Progressbar"
-                                     Progress=".0"
-                                     RelativeLayout.WidthConstraint="{ConstraintExpression Type=RelativeToParent, Property=Width, Factor=1.0}"
-                                     RelativeLayout.XConstraint="{ConstraintExpression Type=RelativeToParent, Property=Width, Factor=0.0}" />
-                    </RelativeLayout>
-                    <StackLayout Orientation="Horizontal">
-                        <Label x:Name="CurrentTime"
-                               HorizontalOptions="StartAndExpand"
-                               Text="00:00"
-                               TextColor="White"
-                               FontSize="Small"/>
-                        <Label x:Name="TotalTime"
-                               HorizontalOptions="EndAndExpand"
-                               Text="00:00"
-                               TextColor="White"
-                               FontSize="Small"/>
+                               VerticalOptions="Center" />
                     </StackLayout>
-                    <StackLayout Orientation="Horizontal" HorizontalOptions="Fill">
-                        <AbsoluteLayout HorizontalOptions="StartAndExpand">
-                            <Image x:Name="BackImage"
-                                   Source="btn_viewer_control_back_normal.png"
-                                   HorizontalOptions="Center"
-                                   VerticalOptions="Center"
-                                   AbsoluteLayout.LayoutBounds="0,0,1,1" AbsoluteLayout.LayoutFlags="All"/>
-                            <Label x:Name="BackButton"
-                                    Opacity="0.1"
-                                    AbsoluteLayout.LayoutBounds="0,0,1,1" AbsoluteLayout.LayoutFlags="All"
-                                    HorizontalOptions="Fill"
-                                    VerticalOptions="Fill"
-                                    WidthRequest="100"/>
+                    <StackLayout VerticalOptions="FillAndExpand">
+                        <BoxView VerticalOptions="FillAndExpand">
+                            <BoxView.GestureRecognizers>
+                                <TapGestureRecognizer
+                                    Tapped="OnTapGestureRecognizerControllerTapped" />
+                            </BoxView.GestureRecognizers>
+                        </BoxView>
+                        <ContentView Padding="30, 30" HorizontalOptions="CenterAndExpand">
+                            <Label BackgroundColor="#B0101010" IsVisible="false" FontSize="Medium" TextColor="White"
+                                   x:Name="CueTextLabel" HorizontalOptions="CenterAndExpand" WidthRequest="800"
+                                   HorizontalTextAlignment="Center" />
+                        </ContentView>
+                        <AbsoluteLayout x:Name="Settings" IsVisible="false" BackgroundColor="#B0101010"
+                                        HorizontalOptions="Center">
+                            <StackLayout Padding="20, 10">
+                                <StackLayout Orientation="Horizontal">
+                                    <Label Text="Audio track" TextColor="White" HorizontalOptions="Start"
+                                           VerticalOptions="Center" WidthRequest="200" />
+                                    <Picker x:Name="AudioTrack" WidthRequest="300" />
+                                </StackLayout>
+                                <StackLayout Orientation="Horizontal">
+                                    <Label Text="Video quality" TextColor="White" HorizontalOptions="Start"
+                                           VerticalOptions="Center" WidthRequest="200" />
+                                    <Picker x:Name="VideoQuality" WidthRequest="300">
+                                        <Picker.Items>
+                                            <x:String>auto</x:String>
+                                        </Picker.Items>
+                                        <Picker.SelectedIndex>0</Picker.SelectedIndex>
+                                    </Picker>
+                                </StackLayout>
+                                <StackLayout Orientation="Horizontal">
+                                    <Label Text="Video speed" TextColor="White" HorizontalOptions="Start"
+                                           VerticalOptions="Center" WidthRequest="200" />
+                                    <Picker x:Name="VideoSpeed" WidthRequest="300">
+                                        <Picker.Items>
+                                            <x:String>normal</x:String>
+                                        </Picker.Items>
+                                        <Picker.SelectedIndex>0</Picker.SelectedIndex>
+                                    </Picker>
+                                </StackLayout>
+                                <StackLayout Orientation="Horizontal">
+                                    <Label Text="Subtitles" TextColor="White" HorizontalOptions="Start"
+                                           VerticalOptions="Center" WidthRequest="200" />
+                                    <Picker x:Name="Subtitles" WidthRequest="300">
+                                        <Picker.Items>
+                                            <x:String>off</x:String>
+                                        </Picker.Items>
+                                        <Picker.SelectedIndex>0</Picker.SelectedIndex>
+                                    </Picker>
+                                </StackLayout>
+                            </StackLayout>
                         </AbsoluteLayout>
-                        <AbsoluteLayout HorizontalOptions="Center">
-                            <Image x:Name="PlayImage"
-                                    Source="btn_viewer_control_play_normal.png"
-                                    HorizontalOptions="Center"
-                                    VerticalOptions="Center"
-                                    AbsoluteLayout.LayoutBounds="0,0,1,1" AbsoluteLayout.LayoutFlags="All"/>
-                            <Button x:Name="PlayButton"
-                                    Opacity="0.1"
-                                    AbsoluteLayout.LayoutBounds="0,0,1,1" AbsoluteLayout.LayoutFlags="All"
-                                    HorizontalOptions="Fill"
-                                    VerticalOptions="Fill"
-                                    WidthRequest="100"
-                                    IsEnabled="False"/>
-                        </AbsoluteLayout>
-                        <AbsoluteLayout HorizontalOptions="EndAndExpand">
-                            <Image x:Name="ForwardImage"
-                                   Source="btn_viewer_control_forward_normal.png"
-                                   HorizontalOptions="Center"
-                                   VerticalOptions="Center"
-                                   AbsoluteLayout.LayoutBounds="0,0,1,1" AbsoluteLayout.LayoutFlags="All"/>
-                            <Label x:Name="ForwardButton"
-                                    Opacity="0.1"
-                                    AbsoluteLayout.LayoutBounds="0,0,1,1" AbsoluteLayout.LayoutFlags="All"
-                                    HorizontalOptions="Fill"
-                                    VerticalOptions="Fill"
-                                    WidthRequest="100"/>
-                        </AbsoluteLayout>
+                    </StackLayout>
+                    <StackLayout BackgroundColor="#B0101010"
+                                 Padding="20, 10"
+                                 x:Name="BottomBar">
+                        <RelativeLayout>
+                            <BoxView Color="#20303030"
+                                     HeightRequest="4"
+                                     RelativeLayout.WidthConstraint="{ConstraintExpression Type=RelativeToParent, Property=Width, Factor=0.898}"
+                                     RelativeLayout.XConstraint="{ConstraintExpression Type=RelativeToParent, Property=Width, Factor=0.051}" />
+                            <ProgressBar x:Name="Progressbar"
+                                         Progress=".0"
+                                         RelativeLayout.WidthConstraint="{ConstraintExpression Type=RelativeToParent, Property=Width, Factor=1.0}"
+                                         RelativeLayout.XConstraint="{ConstraintExpression Type=RelativeToParent, Property=Width, Factor=0.0}" />
+                        </RelativeLayout>
+                        <StackLayout Orientation="Horizontal">
+                            <Label x:Name="CurrentTime"
+                                   HorizontalOptions="StartAndExpand"
+                                   Text="00:00"
+                                   TextColor="White"
+                                   FontSize="Small" />
+                            <Label x:Name="TotalTime"
+                                   HorizontalOptions="EndAndExpand"
+                                   Text="00:00"
+                                   TextColor="White"
+                                   FontSize="Small" />
+                        </StackLayout>
+                        <StackLayout Orientation="Horizontal" HorizontalOptions="Fill">
+                            <AbsoluteLayout HorizontalOptions="StartAndExpand">
+                                <Image x:Name="BackImage"
+                                       Source="btn_viewer_control_back_normal.png"
+                                       HorizontalOptions="Center"
+                                       VerticalOptions="Center"
+                                       AbsoluteLayout.LayoutBounds="0,0,1,1" AbsoluteLayout.LayoutFlags="All" />
+                                <Label x:Name="BackButton"
+                                       Opacity="0.1"
+                                       AbsoluteLayout.LayoutBounds="0,0,1,1" AbsoluteLayout.LayoutFlags="All"
+                                       HorizontalOptions="Fill"
+                                       VerticalOptions="Fill"
+                                       WidthRequest="100" />
+                            </AbsoluteLayout>
+                            <AbsoluteLayout HorizontalOptions="Center">
+                                <Image x:Name="PlayImage"
+                                       Source="btn_viewer_control_play_normal.png"
+                                       HorizontalOptions="Center"
+                                       VerticalOptions="Center"
+                                       AbsoluteLayout.LayoutBounds="0,0,1,1" AbsoluteLayout.LayoutFlags="All" />
+                                <Button x:Name="PlayButton"
+                                        Opacity="0.1"
+                                        AbsoluteLayout.LayoutBounds="0,0,1,1" AbsoluteLayout.LayoutFlags="All"
+                                        HorizontalOptions="Fill"
+                                        VerticalOptions="Fill"
+                                        WidthRequest="100"
+                                        IsEnabled="False" />
+                            </AbsoluteLayout>
+                            <AbsoluteLayout HorizontalOptions="EndAndExpand">
+                                <Image x:Name="ForwardImage"
+                                       Source="btn_viewer_control_forward_normal.png"
+                                       HorizontalOptions="Center"
+                                       VerticalOptions="Center"
+                                       AbsoluteLayout.LayoutBounds="0,0,1,1" AbsoluteLayout.LayoutFlags="All" />
+                                <Label x:Name="ForwardButton"
+                                       Opacity="0.1"
+                                       AbsoluteLayout.LayoutBounds="0,0,1,1" AbsoluteLayout.LayoutFlags="All"
+                                       HorizontalOptions="Fill"
+                                       VerticalOptions="Fill"
+                                       WidthRequest="100" />
+                            </AbsoluteLayout>
+                        </StackLayout>
                     </StackLayout>
                 </StackLayout>
             </StackLayout>
-        </StackLayout>
+            <AbsoluteLayout
+                HorizontalOptions="FillAndExpand"
+                VerticalOptions="FillAndExpand"
+                InputTransparent="True">
+                <ActivityIndicator x:Name="LoadingIndicator" AbsoluteLayout.LayoutBounds="0.5, 0.5, -1, -1"
+                                   AbsoluteLayout.LayoutFlags="PositionProportional" VerticalOptions="Center"
+                                   IsVisible="False"
+                                   HeightRequest="100"
+                                   WidthRequest="100" />
+            </AbsoluteLayout>
+        </Grid>
     </ContentPage.Content>
 </ContentPage>
