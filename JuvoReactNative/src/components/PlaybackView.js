@@ -27,7 +27,7 @@ export default class PlaybackView extends React.Component {
     this.keysListenningOff = false;    
     this.playerState = 'Idle';      
     this.bufferingInProgress = false;
-    this.refreshInterval = null;
+    this.refreshInterval = -1;
     this.JuvoPlayer = NativeModules.JuvoPlayer;
     this.JuvoEventEmitter = new NativeEventEmitter(this.JuvoPlayer);
     this.onTVKeyDown = this.onTVKeyDown.bind(this);  
@@ -49,18 +49,7 @@ export default class PlaybackView extends React.Component {
     this.stopPlaybackTime = this.stopPlaybackTime.bind(this);
     this.refreshPlaybackInfo = this.refreshPlaybackInfo.bind(this);
   }
-  resetPlaybackTime() {
-    this.playbackTimeCurrent = 0;
-    this.playbackTimeTotal = 0;    
-    this.stopPlaybackTime();  
-  }
-
-  stopPlaybackTime() {
-    if (this.refreshInterval !== null) {      
-      clearInterval(this.refreshInterval);
-      this.refreshInterval = null;
-    }  
-  }
+  
 
   getFormattedTime(milisecs) {  
     var seconds = parseInt((milisecs/1000)%60)
@@ -104,18 +93,14 @@ export default class PlaybackView extends React.Component {
       'onPlaybackError',
     this.onPlaybackError
     );    
-
-    this.resetPlaybackTime();
-    this.showPlaybackInfo(); 
+    
   }    
-  componentWillUnmount() {
-   // this.resetPlaybackTime();
-  }
+  
   shouldComponentUpdate(nextProps, nextState) { 
       return true;   
   }
-  toggleView() {    
-    this.visible = !this.visible;           
+  toggleView() {       
+    this.visible = !this.visible;    
     this.props.switchView('PlaybackView', this.visible);  
   }   
   handleFastForwardKey() {        
@@ -130,28 +115,37 @@ export default class PlaybackView extends React.Component {
   onPlaybackCompleted(param) {         
     this.toggleView();
   }
-  onPlayerStateChanged(state) {
-    if (this.playerState === 'Idle' && state.State === 'Playing') {
+  onPlayerStateChanged(player) {      
+    if ( player.State === 'Playing') {    
+      this.stopPlaybackTime();     
+      this.showPlaybackInfo();    
+    }         
+    if ( player.State === 'Prepared') {
+      this.resetPlaybackTime();  
+      this.showPlaybackInfo();    
+    } 
+    if (player.State === 'Idle') {
+      this.stopPlaybackTime(); 
       this.resetPlaybackTime();
-      this.showPlaybackInfo(); 
-    }      
-    this.playerState = state.State;   
-     
+      this.showPlaybackInfo();
+    }
+    
+    this.playerState = player.State;  
   }
   onUpdateBufferingProgress(buffering) {     
       if (buffering.Percent == 100) {
         this.bufferingInProgress = false;        
       } else {
+        this.JuvoPlayer.log("Buffering" + buffering.Percent);
         this.bufferingInProgress = true;        
       }
   }
   onUpdatePlayTime(playtime) {   
     this.playbackTimeCurrent = parseInt(playtime.Current);
-    this.playbackTimeTotal = parseInt(playtime.Total); 
+    this.playbackTimeTotal = parseInt(playtime.Total);     
   }
   onSeek(time) {    
-    this.JuvoPlayer.log("onSeek time is " + time.to); 
-    this.refreshPlaybackInfo();
+    //this.showPlaybackInfo();
   }
   onPlaybackError(error) {
     this.JuvoPlayer.log("onPlaybackError message = " + error.Message);
@@ -175,46 +169,65 @@ export default class PlaybackView extends React.Component {
       case "Return":
       case "XF86AudioPlay":
       case "XF86PlayBack":  
-        if (this.playerState === 'Idle') {         
-          this.resetPlaybackTime();                 
+        if (this.playerState === 'Idle') {          
           let licenseURI = video.drmDatas ? video.drmDatas[0].licenceUrl : null;
           let DRM = video.drmDatas ? video.drmDatas[0].scheme : null;          
-          this.JuvoPlayer.startPlayback(video.url, licenseURI, DRM, video.type);          
+          this.JuvoPlayer.startPlayback(video.url, licenseURI, DRM, video.type);                  
         } else {
-          //pause         
-          this.JuvoPlayer.pauseResumePlayback();                
+          //pause                   
+          this.JuvoPlayer.pauseResumePlayback();                     
         }  
-        this.showPlaybackInfo();       
         break;
       case "XF86Back":
-      case "XF86AudioStop":  
-        this.JuvoPlayer.stopPlayback(); 
-        this.playerState = 'Idle';
-        this.resetPlaybackTime();
+      case "XF86AudioStop":      
+        this.JuvoPlayer.stopPlayback();       
         this.toggleView();     
       default: 
         this.showPlaybackInfo();
-    }            
+    }  
+    this.refreshPlaybackInfo();             
   }
   onTVKeyUp(pressed) {
     if (this.keysListenningOff) return;   
+    switch (pressed.KeyName) {
+      case "Right": 
+      case "Left":
+        break;
+      default:
+                    
+    }
     this.showPlaybackInfo();
+    
   }
-  showPlaybackInfo() {    
-    this.stopPlaybackTime();  
-    this.rerender();    
-    this.refreshPlaybackInfo();
+  showPlaybackInfo() {   
+          
+    this.stopPlaybackTime();
+    this.refreshPlaybackInfo();   
+    this.rerender();   
+  }
+  resetPlaybackTime() {
+    this.playbackTimeCurrent = 0;
+    this.playbackTimeTotal = 0; 
+  }
+  stopPlaybackTime() {
+    if (this.refreshInterval >= 0) {      
+      clearInterval(this.refreshInterval);
+      this.refreshInterval = -1;
+    }  
   }
   refreshPlaybackInfo() {
     this.refreshInterval = setInterval(this.rerender, 1000);    
   }
   rerender() {
+    if (this.refreshInterval < 0) { 
+       this.refreshPlaybackInfo();
+    }
     this.setState({selectedIndex: this.state.selectedIndex});    
   }
   render() {    
     const index = this.props.selectedIndex; 
     const title = ResourceLoader.clipsData[index].title;    
-    const fadeduration = 500;
+    const fadeduration = 300;
     const revIconPath = ResourceLoader.playbackIconsPathSelect('rew');
     const ffwIconPath = ResourceLoader.playbackIconsPathSelect('ffw');
     const settingsIconPath = ResourceLoader.playbackIconsPathSelect('set');   
@@ -226,13 +239,10 @@ export default class PlaybackView extends React.Component {
     const current = this.playbackTimeCurrent;   
     const playbackTime = total > 0 ?  current / total : 0;    
     const progress = Math.round((playbackTime) * 100 ) / 100;    
-   // if (current == 0) 
-   // this.JuvoPlayer.log("PlaybackView render() \n " +  
-   //                                           "\n current =" + current );
     return (
       <View style={{ top: -2680, left: 0, width: 1920, height: 1080}}>
            <HideableView visible={visibility} duration={fadeduration}>    
-              <DisappearingView visible={visibility} duration={fadeduration} timeOnScreen={10000} onDisappeared={this.handleViewDisappeard}>     
+              <DisappearingView duration={fadeduration} timeOnScreen={10000} onDisappeared={this.handleViewDisappeard}>     
                     <ContentDescription viewStyle={{ top: 0, left: 0, width: 1920, height: 250, justifyContent: 'center', alignSelf: 'center', backgroundColor: '#000000', opacity: 0.8}} 
                                             headerStyle={{ fontSize: 60, color: '#ffffff', alignSelf: 'center', opacity: 1.0}} bodyStyle={{ fontSize: 30, color: '#ffffff', top: 0}} 
                                             headerText={title} bodyText={''}/>
