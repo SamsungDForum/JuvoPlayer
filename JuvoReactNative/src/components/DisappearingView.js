@@ -6,28 +6,26 @@ import {
   NativeModules  
 } from 'react-native'
 
-export default class DisappearingView extends Component {
-   
+export default class DisappearingView extends Component {   
     constructor(props) {
       super(props);
       this.state = {
-        opacity: new Animated.Value(this.props.visible ? 1 : 0)
+        opacity: new Animated.Value(1)
       }
       this.animationInProgress = false;
       this.handleDisappeared = this.handleDisappeared.bind(this);
       this.JuvoPlayer = NativeModules.JuvoPlayer;
            
     }
-
     handleDisappeared() {
       this.animationInProgress = false;
       this.props.onDisappeared();
-    }
-  
+    }  
     animate(show) {            
       if (!this.animationInProgress) {
         const duration = this.props.duration ? parseInt(this.props.duration) : parseInt(500);
         const timeOnScreen = this.props.timeOnScreen ? parseInt(this.props.timeOnScreen) : parseInt(5000); // default on screen time       
+        this.animationInProgress = true; 
         Animated.sequence([        
           Animated.timing(
               this.state.opacity, {
@@ -42,19 +40,13 @@ export default class DisappearingView extends Component {
               duration: !this.props.noAnimation ? duration : 0            
             }              
           )
-          ]).start(this.handleDisappeared);             
-          this.animationInProgress = true;  
+          ]).start(this.handleDisappeared);    
         }           
-    }  
-    shouldComponentUpdate(nextProps) {   
-      return true;
     }
-  
     componentWillUpdate(nextProps, nextState) {   
       this.state.opacity.stopAnimation();          
-      this.animate(nextProps.visible);      
-    }    
-  
+      this.animate(1);      
+    }           
     render() {  
       return (
         <View>
@@ -66,8 +58,7 @@ export default class DisappearingView extends Component {
     }
   }
   
-  DisappearingView.propTypes = {
-    visible: PropTypes.bool.isRequired,
+  DisappearingView.propTypes = {    
     timeOnScreen: PropTypes.number,
     duration: PropTypes.number,
     removeWhenHidden: PropTypes.bool,

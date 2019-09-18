@@ -212,8 +212,8 @@ namespace JuvoReactNative
             var param = new JObject();
             param.Add("to", (int)to.TotalMilliseconds);
             SendEvent("onSeek", param);
-            seekLogic.IsSeekAccumulationInProgress = false;
-            Logger?.Info($" Seek to: {to}");
+          //seekLogic.IsSeekAccumulationInProgress = false;
+            Logger?.Info($"Seek to: {to}");
             return juvoPlayer?.SeekTo(to);
         }
        
