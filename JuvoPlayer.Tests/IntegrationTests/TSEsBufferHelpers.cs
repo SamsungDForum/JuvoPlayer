@@ -33,45 +33,33 @@ namespace JuvoPlayer.Tests.IntegrationTests
         }
     }
 
-    internal static class StreamBufferStreamSynchronizerHelpers
+    internal static class TSEsBufferHelpers
     {
         public static bool CompareDataArgs(this DataRequest a, DataRequest b)
         {
-            if (a == null && b == null)
-                return true;
-
-            if (a == null || b == null)
-                return false;
-
             return a.StreamType == b.StreamType &&
-                   a.Duration == b.Duration;
+                   a.RequestPeriod == b.RequestPeriod;
         }
 
         public static bool CompareMetaData(this DataRequest a, MetaDataStreamConfig b)
         {
-            if (a == null && b == null)
-                return true;
-
-            if (a == null || b == null)
-                return false;
-
             return a.StreamType == b.StreamType() &&
-                   a.Duration == b.BufferDuration;
+                   a.RequestPeriod == b.BufferDuration;
         }
 
-        public static async Task PushPackets(this DataMonitor data, IEnumerable<Packet> source)
+        public static async Task PushPackets(this EsBuffer dataBuffer, IEnumerable<Packet> source)
         {
             foreach (var packet in source)
             {
-                data.DataIn(packet);
+                dataBuffer.DataIn(packet);
             }
         }
 
-        public static async Task PullPackets(this DataMonitor data, IEnumerable<Packet> source)
+        public static async Task PullPackets(this EsBuffer dataBuffer, IEnumerable<Packet> source)
         {
             foreach (var packet in source)
             {
-                data.DataOut(packet);
+                dataBuffer.DataOut(packet);
             }
         }
 
