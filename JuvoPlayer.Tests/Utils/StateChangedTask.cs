@@ -21,6 +21,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using JuvoLogger;
 using JuvoPlayer.Common;
+using Nito.AsyncEx;
 
 namespace JuvoPlayer.Tests.Utils
 {
@@ -46,20 +47,32 @@ namespace JuvoPlayer.Tests.Utils
             return Task.Run(async () =>
             {
                 var observedStates = new List<(DateTimeOffset timeStamp, PlayerState state)>();
-                var currentState =_service.State;
+                var currentState = _service.State;
                 try
                 {
                     using (var timeoutCts = new CancellationTokenSource())
                     using (var linkedCts =
                         CancellationTokenSource.CreateLinkedTokenSource(_cancellationToken, timeoutCts.Token))
                     {
-                        timeoutCts.CancelAfter(_timeout);
-                        
-                        while (currentState != _expectedState && !linkedCts.IsCancellationRequested)
+                        // Listening for result with delay can lead to false-failures.
+                        // i.e. consecutive events arrive faster then specified delay period
+                        var tcs = new TaskCompletionSource<bool>();
+
+                        using (_service.StateChanged().Subscribe((newState) =>
                         {
-                            currentState =  _service.State;
-                            await Task.Delay(100, linkedCts.Token);
-                            observedStates.Add((DateTimeOffset.Now,currentState));
+                            currentState = _service.State;
+                            observedStates.Add((DateTimeOffset.Now, newState));
+                            if (newState == _expectedState)
+                                tcs.TrySetResult(true);
+                        }, SynchronizationContext.Current))
+                        {
+                            timeoutCts.CancelAfter(_timeout);
+
+                            // Wait for new state might occur AFTER transition has already happened.
+                            // Verify such scenario and exit if in expected state.
+                            if (_service.State == _expectedState)
+                                return;
+                            await tcs.Task.WaitAsync(linkedCts.Token);
                         }
                     }
                 }

@@ -17,7 +17,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Security.Cryptography;
 using System.Threading;
 using System.Threading.Tasks;
 using JuvoLogger;
@@ -53,7 +52,8 @@ namespace JuvoPlayer.Tests.Utils
         public void Prepare(TestContext context)
         {
             var service = context.Service;
-            SeekPosition = context.SeekTime ?? RandomSeekTime(service);
+            var newSeekPos = context.SeekTime ?? RandomSeekTime(service);
+            SeekPosition = newSeekPos - TimeSpan.FromMilliseconds(newSeekPos.Milliseconds);
         }
 
         public async Task Execute(TestContext context)
@@ -61,10 +61,27 @@ namespace JuvoPlayer.Tests.Utils
             List<(TimeSpan clock, double diff)> clocks = new List<(TimeSpan clock, double diff)>();
 
             var service = context.Service;
+            var tcs = new TaskCompletionSource<bool>();
+            var seekDuringPause = service.State == PlayerState.Paused;
+
             _logger.Info($"Seeking to {SeekPosition}");
 
             try
             {
+                using (ClockProvider.GetClockProvider().PlayerClockObservable().Subscribe(clk =>
+                {
+                    // Remove ms component.
+                    clk = clk - TimeSpan.FromMilliseconds(clk.Milliseconds);
+                    var diffMs = Math.Abs((clk - SeekPosition).TotalMilliseconds);
+
+                    if (diffMs <= 500)
+                    {
+                        tcs.TrySetResult(true);
+                        return;
+                    }
+
+                    clocks.Add((clk, diffMs));
+                }, SynchronizationContext.Current))
                 using (var timeoutCts = new CancellationTokenSource())
                 using (var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(timeoutCts.Token, context.Token))
                 {
@@ -72,29 +89,14 @@ namespace JuvoPlayer.Tests.Utils
 
                     await service.SeekTo(SeekPosition).WithCancellation(linkedCts.Token);
 
-                    // Pause is a "legal" state upon startup. Buffers may be empty.
+                    // Pause is a "legal" state upon startup. Buffers may be empty, unless seek
+                    // started in paused mode.
                     var state = service.State;
-                    if (!(state == PlayerState.Playing ||
-                          state == PlayerState.Paused))
-                    {
+                    if (seekDuringPause && state == PlayerState.Paused)
                         return;
-                    }
 
-                    
-                    var seekPos = SeekPosition;
-                    while(true)
-                    {
-                        var curPos = service.CurrentPosition;
-                        var diffMs = Math.Abs((curPos - seekPos).TotalMilliseconds);
+                    await tcs.Task.WithCancellation(linkedCts.Token);
 
-                        if (diffMs <= 2000)
-                            return;
-
-                        clocks.Add((curPos, diffMs));
-
-                        await Task.Delay(200, linkedCts.Token);
-
-                    }
                 }
             }
             catch (Exception)
