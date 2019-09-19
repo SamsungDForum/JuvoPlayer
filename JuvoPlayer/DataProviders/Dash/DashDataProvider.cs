@@ -18,7 +18,6 @@
 using System;
 using System.Collections.Generic;
 using System.Reactive.Linq;
-using System.Reactive.Subjects;
 using System.Threading;
 using System.Threading.Tasks;
 using JuvoLogger;
@@ -42,8 +41,6 @@ namespace JuvoPlayer.DataProviders.Dash
 
         private bool disposed;
         private readonly IDisposable manifestReadySub;
-
-        private Subject<bool> bufferingStateSubject = new Subject<bool>();
 
         public DashDataProvider(
             string clipUrl,
@@ -77,8 +74,6 @@ namespace JuvoPlayer.DataProviders.Dash
                 Logger.Warn(ex);
             }
         }
-
-        public IObservable<bool> BufferingStateChanged() => bufferingStateSubject.AsObservable();
 
         public IObservable<TimeSpan> ClipDurationChanged()
         {
@@ -114,19 +109,6 @@ namespace JuvoPlayer.DataProviders.Dash
             return manifestProvider.StreamError()
                 .Merge(audioPipeline.StreamError())
                 .Merge(videoPipeline.StreamError());
-        }
-
-        public void OnDataStateChanged(DataRequest request)
-        {
-            switch (request.StreamType)
-            {
-                case StreamType.Audio:
-                    audioPipeline.SetDataNeeds(request);
-                    break;
-                case StreamType.Video:
-                    videoPipeline.SetDataNeeds(request);
-                    break;
-            }
         }
 
         public void OnChangeActiveStream(StreamDescription stream)
@@ -180,9 +162,17 @@ namespace JuvoPlayer.DataProviders.Dash
             audioPipeline.Stop();
         }
 
-        public void OnBufferingStateChanged(bool bufferingState)
+        public void OnDataRequest(DataRequest dataRequest)
         {
-            bufferingStateSubject.OnNext(bufferingState);
+            switch (dataRequest.StreamType)
+            {
+                case StreamType.Audio:
+                    audioPipeline.SetDataRequest(dataRequest);
+                    break;
+                case StreamType.Video:
+                    videoPipeline.SetDataRequest(dataRequest);
+                    break;
+            }
         }
 
         public Task<TimeSpan> Seek(TimeSpan time, CancellationToken token)
@@ -195,6 +185,7 @@ namespace JuvoPlayer.DataProviders.Dash
 
             var videoSegmentStart = videoPipeline.Seek(time);
             audioPipeline.Seek(videoSegmentStart);
+
             audioPipeline.PacketPredicate = packet => !packet.ContainsData() || packet.Pts >= videoSegmentStart;
 
             videoPipeline.Resume();
@@ -281,7 +272,6 @@ namespace JuvoPlayer.DataProviders.Dash
             videoPipeline?.Dispose();
             videoPipeline = null;
 
-            bufferingStateSubject.Dispose();
         }
     }
 }
