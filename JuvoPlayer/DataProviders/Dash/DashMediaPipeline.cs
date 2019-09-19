@@ -127,13 +127,14 @@ namespace JuvoPlayer.DataProviders.Dash
             downloadCompletedSub = dashClient.DownloadCompleted()
                 .Subscribe(async unit => await OnDownloadCompleted(), SynchronizationContext.Current);
             SubscribeDemuxerEvents();
+
         }
 
         public bool IsDataAvailable() =>
             (!pipelineStarted || dashClient.IsDataAvailable());
 
-        public void SetDataNeeds(DataRequest request) =>
-            dashClient.SetDataNeeds(request);
+        public void SetDataRequest(DataRequest request) =>
+            dashClient.SetDataRequest(request);
 
         private async Task OnDownloadCompleted()
         {

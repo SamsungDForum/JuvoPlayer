@@ -26,8 +26,8 @@ namespace JuvoPlayer.Player
         IObservable<string> PlaybackError();
         IObservable<TimeSpan> TimeUpdated();
         IObservable<PlayerState> StateChanged();
-        IObservable<bool> BufferingStateChanged();
-        IObservable<DataRequest> DataNeedStateChanged();
+        IObservable<int> BufferingProgress();
+        IObservable<DataRequest> DataRequest();
 
         IPlayerClient Client { get; set; }
 
