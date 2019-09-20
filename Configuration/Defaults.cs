@@ -31,31 +31,30 @@ namespace Configuration
 
     public static class ClockProviderConfig
     {
-        public static TimeSpan ClockInterval { get; set; } = TimeSpan.FromSeconds(0.1);
+        public static TimeSpan ClockInterval { get; set; } = TimeSpan.FromSeconds(0.2);
+        public static TimeSpan InvalidClock { get; set; } = TimeSpan.FromSeconds(-1);
     }
 
     public static class DataBufferConfig
     {
         public static TimeSpan TimeBufferDepthDefault { get; set; } = TimeSpan.FromSeconds(10);
-    }
-
-    public static class DataMonitorConfig
-    {
         public static TimeSpan DataStatePublishInterval { get; set; } = TimeSpan.FromSeconds(1);
+        public static TimeSpan StreamClockDiscontinuityThreshold { get; set; } = TimeSpan.FromSeconds(0.1);
+        public static TimeSpan DataRequestOutputThreshold { get; set; } = TimeSpan.FromSeconds(3);
     }
 
     public static class DataSynchronizerConfig
     {
-        public static TimeSpan PlayClockDifferencePause { get; set; } = TimeSpan.FromSeconds(1.25);
-        public static TimeSpan PlayClockDifferenceResume { get; set; } = TimeSpan.FromSeconds(0.75);
-        public static TimeSpan StartClockDifferencePause { get; set; } = TimeSpan.FromSeconds(0.5);
-        public static TimeSpan StartClockDifferenceResume { get; set; } = TimeSpan.FromSeconds(0.0);
-        public static TimeSpan ClockSampleInterval { get; set; } = TimeSpan.FromSeconds(0.2);
+        public static TimeSpan InitialChunkDuration { get; set; } = TimeSpan.FromSeconds(0.5);
+        public static TimeSpan DefaultChunkDuration { get; set; } = TimeSpan.FromSeconds(0.3);
+        public static TimeSpan StreamClockMaximumOverhead { get; set; } = TimeSpan.FromSeconds(1.25);
+        public static TimeSpan StreamClockMinimumOverhead { get; set; } = TimeSpan.FromSeconds(0.75);
+        public static int ClockDetectionConsecutiveValidClockCount { get; set; } = 3;
     }
 
     public static class DashClient
     {
-        public static TimeSpan TimeBufferDepthDefault { get; set; } = TimeSpan.FromSeconds(10);
+        //public static TimeSpan TimeBufferDepthDefault { get; set; } = TimeSpan.FromSeconds(10);
         public static double MinimumSegmentFitRatio { get; set; } = 0.7;
         public static TimeSpan MinimumBufferTime { get; set; } = TimeSpan.FromSeconds(3);
         public static TimeSpan DynamicSegmentAvailabilityOverhead = TimeSpan.FromSeconds(2);
