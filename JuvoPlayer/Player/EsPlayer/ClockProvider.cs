@@ -16,231 +16,97 @@
  */
 
 using System;
+using System.Reactive.Concurrency;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
-using System.Threading;
 using JuvoLogger;
-using JuvoPlayer.Common.Utils.IReferenceCountable;
-using JuvoPlayer.Common.Utils.IReferenceCountableExtensions;
 using static Configuration.ClockProviderConfig;
 
 namespace JuvoPlayer.Player.EsPlayer
 {
-    internal interface IClockSource
+    internal delegate TimeSpan PlayerClockFn();
+
+    internal class ClockProvider : IDisposable
     {
-        void GetClock(out TimeSpan clock);
-    }
+        private static readonly ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
 
-    internal class ClockProvider : IDisposable, IReferenceCountable
-    {
-        private readonly ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
-        public static readonly TimeSpan InvalidClock = TimeSpan.MaxValue;
+        private static readonly PlayerClockFn InvalidPlayerClock = InvalidClockFn;
+        private PlayerClockFn playerClock = InvalidClockFn;
+        public static TimeSpan LastClock { get; private set; } = InvalidClock;
+        private static ClockProvider clockProviderInstance;
+        private static readonly object InstanceLock = new object();
 
-        private IClockSource clockProvider;
+        private readonly IScheduler scheduler = new EventLoopScheduler();
+        private IDisposable playerClockSourceConnection;
+        private readonly IConnectableObservable<TimeSpan> playerClockConnectable;
 
-        private readonly IConnectableObservable<long> tickSource;
-        private readonly IConnectableObservable<TimeSpan> clockSource;
-        private Subject<long> tickPipe = new Subject<long>();
-        private BehaviorSubject<TimeSpan> clockPipe = new BehaviorSubject<TimeSpan>(InvalidClock);
-
-        public IConnectableObservable<long> TickSource() =>
-            tickSource;
-
-        public IConnectableObservable<TimeSpan> ClockSource() =>
-            clockSource;
-
-        private IDisposable clockSourceConnection;
-        private IDisposable tickSourceConnection;
-
-        private static volatile ClockProvider clockProviderInstance;
-        private static volatile object instanceLock = new object();
-
-        private int counter;
-        public ref int Count => ref counter;
-
-        public static ClockProvider GetClockProvider()
-        {
-            lock (instanceLock)
-            {
-                if (clockProviderInstance != null)
-                {
-                    clockProviderInstance.Share();
-                    return clockProviderInstance;
-                }
-
-                var clockProvider = new ClockProvider();
-                clockProvider.InitializeReferenceCounting();
-                clockProviderInstance = clockProvider;
-
-                return clockProviderInstance;
-            }
-        }
+        public IObservable<TimeSpan> PlayerClockObservable() => playerClockConnectable
+            .AsObservable();
 
         public ClockProvider()
         {
-            tickSource = Observable.Interval(ClockInterval)
-                .Multicast(tickPipe);
-
-            clockSource = Observable.Interval(ClockInterval)
-                .Select(_ => GetClockValue())
-                .Multicast(clockPipe);
-
-            Volatile.Write(ref tickSourceConnection, tickSource.Connect());
+            playerClockConnectable = Observable.Interval(ClockInterval, scheduler)
+                .Select(_ => playerClock())
+                .Where(clkValue =>
+                {
+                    LastClock = clkValue;
+                    return clkValue != InvalidClock;
+                })
+                .Publish();
         }
 
-        public void SetSourceClock(IClockSource clock) =>
-            Interlocked.Exchange(ref clockProvider, clock);
-
-        public void ConnectClockSource()
+        public static ClockProvider GetClockProvider()
         {
-            Logger.Info("");
-
-            var newConnection = clockSource.Connect();
-
-            var result = Interlocked.CompareExchange(ref clockSourceConnection, newConnection, null);
-            if (result?.Equals(newConnection) == false)
-                newConnection.Dispose();
-        }
-
-        public void DisconnectClockSource()
-        {
-            Logger.Info("");
-            Volatile.Read(ref clockSourceConnection)?.Dispose();
-            Interlocked.Exchange(ref clockSourceConnection, null);
-        }
-
-        private TimeSpan GetClockValue()
-        {
-            var currentClock = InvalidClock;
-
-            try
+            lock (InstanceLock)
             {
-                Volatile.Read(ref clockProvider)?.GetClock(out currentClock);
-            }
-            catch (Exception e) when (e is ObjectDisposedException || e is InvalidOperationException)
-            {
-                // Ignore exception when clock is accessed when unavailable
+                if (clockProviderInstance == null)
+                    clockProviderInstance = new ClockProvider();
             }
 
-            return currentClock;
+            return clockProviderInstance;
+        }
+
+        public void SetPlayerClockSource(PlayerClockFn clockFn)
+        {
+            Logger.Info("");
+            if (clockFn == null)
+                clockFn = InvalidPlayerClock;
+
+            scheduler.Schedule(clockFn,
+                (args, _) => playerClock = args);
+        }
+
+        private static TimeSpan InvalidClockFn()
+        {
+            Logger.Info("");
+            return InvalidClock;
+        }
+
+        public void EnableClock()
+        {
+            if (playerClockSourceConnection != null)
+                return;
+
+            playerClockSourceConnection = playerClockConnectable.Connect();
+        }
+
+        public void DisableClock()
+        {
+            playerClockSourceConnection?.Dispose();
+            playerClockSourceConnection = null;
+            LastClock = InvalidClock;
         }
 
         public void Dispose()
         {
-            Logger.Info("");
-            lock (instanceLock)
+            lock (InstanceLock)
             {
-                Volatile.Read(ref clockSourceConnection)?.Dispose();
-                Interlocked.Exchange(ref clockProvider, null);
+                Logger.Info("");
 
-                Volatile.Read(ref tickSourceConnection)?.Dispose();
-                Interlocked.Exchange(ref tickSourceConnection, null);
-
-                Volatile.Read(ref tickPipe)?.Dispose();
-                Volatile.Read(ref clockPipe)?.Dispose();
-
-                Interlocked.Exchange(ref clockProviderInstance, null);
+                playerClockSourceConnection?.Dispose();
+                playerClockSourceConnection = null;
+                clockProviderInstance = null;
             }
         }
-    }
-
-    internal class PlayerClock : IDisposable
-    {
-        private static readonly long DefaultEmit = default(DateTimeOffset).Ticks;
-
-        private long lastEmit = DefaultEmit;
-        private long initialClockTicks = ClockProvider.InvalidClock.Ticks;
-        private volatile bool enabled;
-        private readonly ClockProvider clockProvider;
-
-        public IConnectableObservable<TimeSpan> ClockSource() =>
-            clockProvider
-                .ClockSource();
-
-        public IConnectableObservable<long> TickSource() =>
-            clockProvider
-                .TickSource();
-
-        public void SetClockSource(IClockSource clockSource) =>
-            clockProvider.SetSourceClock(clockSource);
-
-        public void ConnectClockSource() =>
-            clockProvider.ConnectClockSource();
-
-        public void DisconnectClockSource() =>
-            clockProvider.DisconnectClockSource();
-
-        public PlayerClock()
-        {
-            clockProvider = ClockProvider.GetClockProvider();
-            Reset();
-        }
-
-        public void Reset()
-        {
-            enabled = false;
-            Interlocked.Exchange(ref initialClockTicks, ClockProvider.InvalidClock.Ticks);
-            Interlocked.Exchange(ref lastEmit, DefaultEmit);
-        }
-
-        public void SetInitialClock(TimeSpan initClock)
-        {
-            Interlocked.Exchange(ref initialClockTicks, initClock.Ticks);
-        }
-
-        public static bool IsClockValid(TimeSpan clock) =>
-            clock != ClockProvider.InvalidClock;
-
-        public TimeSpan GetClockOrInitial(TimeSpan clock) =>
-            clock.Ticks >= Volatile.Read(ref initialClockTicks) ? clock : TimeSpan.FromTicks(initialClockTicks);
-
-        public bool ClockWhenInitialReached(TimeSpan clock) =>
-            clock.Ticks >= Volatile.Read(ref initialClockTicks);
-
-        public bool IsSamplePeriodExpired(TimeSpan samplePeriod)
-        {
-            var now = DateTimeOffset.Now.Ticks;
-            if (now - Volatile.Read(ref lastEmit) < samplePeriod.Ticks)
-                return false;
-
-            Interlocked.Exchange(ref lastEmit, now);
-            return true;
-        }
-
-        public bool IsEnabled() => enabled;
-        public bool Enable() => enabled = true;
-        public bool Disable() => enabled = false;
-
-        public void Dispose()
-        {
-            clockProvider.Release();
-        }
-    }
-
-    internal static class ClockProviderEx
-    {
-        public static IObservable<TimeSpan> EnabledClock(this IObservable<TimeSpan> source, PlayerClock cf) =>
-            source
-                .Where(_ => cf.IsEnabled());
-
-        public static IObservable<long> EnabledClock(this IObservable<long> source, PlayerClock cf) =>
-            source
-                .Where(_ => cf.IsEnabled());
-
-        public static IObservable<TimeSpan> ValidClock(this IObservable<TimeSpan> source) =>
-            source
-                .Where(PlayerClock.IsClockValid);
-
-        public static IObservable<TimeSpan> ClockOrInitial(this IObservable<TimeSpan> source, PlayerClock cf) =>
-            source
-                .Select(cf.GetClockOrInitial);
-
-        public static IObservable<TimeSpan> ClockWhenInitialReached(this IObservable<TimeSpan> source, PlayerClock cf) =>
-            source
-                .Where(cf.ClockWhenInitialReached);
-
-        public static IObservable<TimeSpan> EmitThenSample(this IObservable<TimeSpan> source, PlayerClock cf, TimeSpan samplePeriod) =>
-            source
-                .Where(_ => cf.IsSamplePeriodExpired(samplePeriod));
     }
 }
