@@ -56,11 +56,8 @@ namespace JuvoPlayer.Player.EsPlayer
         }
 
         #region IPlayer Interface Implementation
-        public void AppendPacket(Packet packet)
-        {
-            streamControl.DataIn(packet);
-            packetStorage.AddPacket(packet);
-        }
+        public void AppendPacket(Packet packet) =>
+            streamControl.AppendPacket(packet);
 
         public IObservable<PlayerState> StateChanged()
         {
@@ -133,12 +130,12 @@ namespace JuvoPlayer.Player.EsPlayer
             return streamControl.TimeUpdated();
         }
 
-        public IObservable<bool> BufferingStateChanged()
+        public IObservable<int> BufferingProgress()
         {
-            return streamControl.BufferingStateChanged();
+            return streamControl.BufferingProgress();
         }
 
-        public IObservable<DataRequest> DataNeedStateChanged()
+        public IObservable<DataRequest> DataRequest()
         {
             return streamControl.DataNeededStateChanged();
         }
