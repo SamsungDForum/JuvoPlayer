@@ -57,15 +57,14 @@ namespace JuvoPlayer.Player.EsPlayer
     {
         internal enum SetStreamConfigResult
         {
-            ConfigPushed,
-            ConfigQueued
+            SetConfiguration,
+            QueueConfiguration
         }
 
         private readonly ILogger logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
 
         /// Delegate holding PushConfigMethod. Different for Audio and Video
-        private delegate void StreamConfigure(Common.StreamConfig streamConfig);
-
+        private delegate void StreamConfigure(StreamConfig streamConfig);
         private readonly StreamConfigure PushStreamConfig;
 
         // Reference to internal EsPlayer objects
@@ -76,11 +75,15 @@ namespace JuvoPlayer.Player.EsPlayer
         private Task activeTask = Task.CompletedTask;
         private CancellationTokenSource transferCts;
 
+        private TaskCompletionSource<bool> dataPacketTcs;
+
         // Stream type for this instance to EsStream.
-        private readonly Common.StreamType streamType;
+        private readonly StreamType streamType;
 
         // Buffer configuration and supporting info
         public BufferConfigurationPacket CurrentConfig { get; internal set; }
+        public BufferConfigurationPacket LastQueuedConfig { get; internal set; }
+
         public bool IsConfigured => (CurrentConfig != null);
 
         // Events
@@ -89,7 +92,8 @@ namespace JuvoPlayer.Player.EsPlayer
 
         private Packet currentPacket;
 
-        private readonly DataMonitor dataMonitor;
+        private readonly EsBuffer dataBuffer;
+        private readonly Synchronizer dataSynchronizer;
 
         public IObservable<string> PlaybackError()
         {
@@ -103,11 +107,13 @@ namespace JuvoPlayer.Player.EsPlayer
 
         #region Public API
 
-        public EsStream(Common.StreamType type, EsPlayerPacketStorage storage, DataMonitor dataMonitor)
+        public EsStream(StreamType type, EsPlayerPacketStorage storage, EsBuffer buffer, Synchronizer synchronizer)
         {
             streamType = type;
             packetStorage = storage;
-            this.dataMonitor = dataMonitor;
+            dataBuffer = buffer;
+            dataSynchronizer = synchronizer;
+            dataSynchronizer.Initialize(streamType);
 
             switch (streamType)
             {
@@ -139,24 +145,19 @@ namespace JuvoPlayer.Player.EsPlayer
         /// </summary>
         /// <param name="bufferConfig">BufferConfigurationPacket</param>
         /// <returns>SetStreamConfigResult</returns>
-        public SetStreamConfigResult SetStreamConfig(BufferConfigurationPacket bufferConfig)
+        public SetStreamConfigResult SetStreamConfiguration(BufferConfigurationPacket bufferConfig)
         {
             // Depending on current configuration state, packets are either pushed
             // directly to player or queued in packet queue.
-            // To make sure current state is known, sync this operation.
-            //
-            logger.Info($"{streamType}: Already Configured: {IsConfigured}");
 
-            if (IsConfigured)
-            {
-                packetStorage.AddPacket(bufferConfig);
-                logger.Info($"{streamType}: New configuration queued");
-                return SetStreamConfigResult.ConfigQueued;
-            }
+            LastQueuedConfig = bufferConfig;
 
-            CurrentConfig = bufferConfig;
-            PushStreamConfig(CurrentConfig.Config);
-            return SetStreamConfigResult.ConfigPushed;
+            if (!IsConfigured)
+                return SetStreamConfigResult.SetConfiguration;
+
+            logger.Info($"{streamType}: New configuration needs queuing");
+            return SetStreamConfigResult.QueueConfiguration;
+
         }
 
         /// <summary>
@@ -164,11 +165,10 @@ namespace JuvoPlayer.Player.EsPlayer
         /// of config packet being queued, CurrentConfig holds value of new configuration
         /// which needs to be pushed to player
         /// </summary>
-        public void ResetStreamConfig()
+        public void PushStreamConfiguration()
         {
-            logger.Info($"{streamType}:");
-
-            PushStreamConfig(CurrentConfig.Config);
+            PushStreamConfig(LastQueuedConfig.Config);
+            CurrentConfig = LastQueuedConfig;
         }
 
         /// <summary>
@@ -202,15 +202,31 @@ namespace JuvoPlayer.Player.EsPlayer
         /// <returns></returns>
         public Task GetActiveTask()
         {
+            logger.Info($"{streamType}: {activeTask.Status}");
             return activeTask;
         }
 
         public void EmptyStorage()
         {
-            packetStorage.Empty(streamType);
+            packetStorage.Disable(streamType);
+
             currentPacket?.Dispose();
             currentPacket = null;
+
+            packetStorage.Empty(streamType);
         }
+
+        public void EnableStorage() =>
+            packetStorage.Enable(streamType);
+
+        public void RequestDataPacketProcessedNotification()
+        {
+            dataPacketTcs = new TaskCompletionSource<bool>();
+            logger.Info($"{streamType}: Data packet processed confirmation requested");
+        }
+
+        public Task<bool> DataPacketProcessed() =>
+            dataPacketTcs?.Task ?? Task.FromResult(true);
 
         #endregion
 
@@ -222,11 +238,10 @@ namespace JuvoPlayer.Player.EsPlayer
         /// <param name="streamConfig">Common.StreamConfig</param>
         private void PushAudioConfig(StreamConfig streamConfig)
         {
-            logger.Info($"{streamType}:");
-
+            logger.Info("");
             var streamInfo = streamConfig.ESAudioStreamInfo();
 
-            logger.Info(streamInfo.DumpConfig());
+            logger.Info($"{streamType}: " + streamInfo.DumpConfig());
 
             player.SetStream(streamInfo);
 
@@ -239,11 +254,11 @@ namespace JuvoPlayer.Player.EsPlayer
         /// <param name="streamConfig">Common.StreamConfig</param>
         private void PushVideoConfig(StreamConfig streamConfig)
         {
-            logger.Info($"{streamType}:");
+            logger.Info("");
 
             var streamInfo = streamConfig.ESVideoStreamInfo();
 
-            logger.Info(streamInfo.DumpConfig());
+            logger.Info($"{streamType}: " + streamInfo.DumpConfig());
 
             player.SetStream(streamInfo);
 
@@ -270,11 +285,15 @@ namespace JuvoPlayer.Player.EsPlayer
                 throw new InvalidOperationException($"{streamType}: Not Configured");
             }
 
+            dataSynchronizer.ResumeStream(streamType);
+
             transferCts?.Dispose();
             transferCts = new CancellationTokenSource();
             var token = transferCts.Token;
 
+            //activeTask = Task.Factory.StartNew(async () => await TransferTask(token)).Unwrap();
             activeTask = Task.Factory.StartNew(async () => await TransferTask(token)).Unwrap();
+            //activeTask = Task.Run(async () => await TransferTask(token));
         }
 
         /// <summary>
@@ -284,7 +303,6 @@ namespace JuvoPlayer.Player.EsPlayer
         {
             logger.Info($"{streamType}:");
             transferCts?.Cancel();
-            logger.Info($"{streamType}: Stopping transfer");
         }
 
         /// <summary>
@@ -345,10 +363,6 @@ namespace JuvoPlayer.Player.EsPlayer
         /// <param name="token">CancellationToken</param>
         private async Task TransferTask(CancellationToken token)
         {
-            logger.Info($"{streamType}: Transfer task started");
-            var dataBuffer = dataMonitor.GetDataBuffer(streamType);
-            var synchronizer = dataMonitor.DataSynchronizer;
-
             try
             {
                 while (!token.IsCancellationRequested)
@@ -357,11 +371,8 @@ namespace JuvoPlayer.Player.EsPlayer
                     if (!shouldContinue)
                         break;
 
-                    if (synchronizer.Synchronize(streamType, token))
-                    {
-                        logger.Info(
-                            $"{streamType}: Buffer {dataBuffer.FillLevel()}% {dataBuffer.Duration()}");
-                    }
+                    if (await dataSynchronizer.Synchronize(streamType, token))
+                        logger.Info($"Buffer {dataBuffer.GetStreamStateReport(streamType)}");
                 }
             }
             catch (InvalidOperationException e)
@@ -390,9 +401,41 @@ namespace JuvoPlayer.Player.EsPlayer
                 DisableInput();
                 playbackErrorSubject.OnNext("Playback Error");
             }
+            finally
+            {
+                dataSynchronizer.SuspendStream(streamType);
+                dataBuffer.RequestBuffering(false);
 
-            logger.Info(
-                $"{streamType}: Terminated. Buffer {dataBuffer.FillLevel()}% {dataBuffer.Duration()}");
+                if (dataPacketTcs != null)
+                {
+                    logger.Info($"{streamType}: Terminated before first data packet. Sending EOS");
+                    dataPacketTcs.SetResult(false);
+                    dataPacketTcs = null;
+                    PushEosPacket(EOSPacket.Create(streamType) as EOSPacket, token);
+                }
+
+                logger.Info(
+                    $"{streamType}: Terminated. Buffer {dataBuffer.GetStreamStateReport(streamType)}");
+            }
+        }
+
+        private void ConfirmDataPacket()
+        {
+            if (!currentPacket.ContainsData())
+            {
+                if (!(currentPacket is EOSPacket))
+                    return;
+
+                dataPacketTcs.SetResult(false);
+                logger.Info($"{streamType}: First packet is EOS");
+            }
+            else
+            {
+                dataPacketTcs.SetResult(true);
+                logger.Info($"{streamType}: First packet is DATA. {currentPacket.Dts}");
+            }
+
+            dataPacketTcs = null;
         }
 
         private async Task<bool> ProcessNextPacket(CancellationToken token)
@@ -405,7 +448,11 @@ namespace JuvoPlayer.Player.EsPlayer
 
             var shouldContinue = await ProcessPacket(currentPacket, token);
 
-            dataMonitor.DataOut(currentPacket);
+            if (dataPacketTcs != null)
+                ConfirmDataPacket();
+
+            dataBuffer.DataOut(currentPacket);
+            dataSynchronizer.DataOut(currentPacket);
 
             currentPacket.Dispose();
             currentPacket = null;
@@ -458,6 +505,14 @@ namespace JuvoPlayer.Player.EsPlayer
         /// </exception>
         private async Task PushEncryptedPacket(EncryptedPacket dataPacket, CancellationToken token)
         {
+            if (!dataPacket.DrmSession.CanDecrypt())
+            {
+                dataBuffer.RequestBuffering(true);
+                await dataPacket.DrmSession.WaitForInitialization(token);
+                dataBuffer.RequestBuffering(false);
+                logger.Info($"{streamType}: DRM Initialization complete");
+            }
+
             using (var decryptedPacket = await dataPacket.Decrypt(token) as DecryptedEMEPacket)
             {
                 // Continue pushing packet till success or terminal failure
@@ -523,6 +578,7 @@ namespace JuvoPlayer.Player.EsPlayer
             switch (status)
             {
                 case ESPlayer.SubmitStatus.NotPrepared:
+                    logger.Info($"{streamType}: Packet NOT Prepared");
                     return TimeSpan.FromSeconds(1);
                 case ESPlayer.SubmitStatus.Full:
                     return TimeSpan.FromMilliseconds(500);
@@ -548,16 +604,25 @@ namespace JuvoPlayer.Player.EsPlayer
             if (isDisposed)
                 return;
 
-            logger.Info($"{streamType}:");
+            try
+            {
+                logger.Info($"{streamType}:");
 
-            DisableInput();
-            DisableTransfer();
+                DisableInput();
+                DisableTransfer();
 
-            playbackErrorSubject.Dispose();
-            streamReconfigureSubject.Dispose();
+                playbackErrorSubject.Dispose();
+                streamReconfigureSubject.Dispose();
 
-            transferCts?.Dispose();
-            currentPacket?.Dispose();
+
+                transferCts?.Dispose();
+                currentPacket?.Dispose();
+            }
+            catch (Exception e)
+            {
+                logger.Error($"{streamType}: {e}");
+                throw;
+            }
 
             isDisposed = true;
         }
