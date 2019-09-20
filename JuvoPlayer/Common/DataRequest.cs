@@ -19,14 +19,16 @@ using System;
 
 namespace JuvoPlayer.Common
 {
-    public class DataRequest
+    public struct DataRequest
     {
-        public StreamType StreamType { get; set; }
-        public TimeSpan Duration { get; set; }
-        public bool IsBufferEmpty { get; set; }
+        public StreamType StreamType;
+        public TimeSpan RequestPeriod;
+        public TimeSpan MaxBufferDuration;
+
         public override string ToString()
         {
-            return $"{StreamType}: {Duration} IsEmpty: {IsBufferEmpty}";
+            return $"{StreamType}: {RequestPeriod}/{MaxBufferDuration}";
         }
     }
+
 }
