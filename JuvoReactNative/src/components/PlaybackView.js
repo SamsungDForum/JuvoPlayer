@@ -28,6 +28,7 @@ export default class PlaybackView extends React.Component {
     this.bufferingInProgress = false;
     this.refreshInterval = -1;
     this.onScreenTimeOut = -1;    
+    this.circleAnimationProgress = -1;    
     this.JuvoPlayer = NativeModules.JuvoPlayer;
     this.JuvoEventEmitter = new NativeEventEmitter(this.JuvoPlayer);
     this.onTVKeyDown = this.onTVKeyDown.bind(this);  
@@ -119,10 +120,13 @@ export default class PlaybackView extends React.Component {
   onPlayerStateChanged(player) {  
     if ( player.State === 'Playing') {   
       this.showPlaybackInfo();
+      clearInterval(this.circleAnimationProgress);
+      this.circleAnimationProgress = -1;
     }   
     if (player.State === 'Idle') {     
       this.resetPlaybackTime();  
       this.rerender();  
+      this.circleAnimationProgress = this.setIntervalImmediately(this.rerender, 1000);
     }  
     this.playerState = player.State;  
   }
@@ -225,38 +229,38 @@ export default class PlaybackView extends React.Component {
     const playbackTime = total > 0 ?  current / total : 0;    
     const progress = Math.round((playbackTime) * 100 ) / 100;      
     return (
-      <View style={{ top: -2680, left: 0, width: 1920, height: 1080}}>
-           <HideableView visible={visibility} duration={fadeduration}>    
-              <HideableView visible={this.onScreenTimeOut >= 0} duration={fadeduration}>     
-                    <ContentDescription viewStyle={{ top: 0, left: 0, width: 1920, height: 250, justifyContent: 'center', alignSelf: 'center', backgroundColor: '#000000', opacity: 0.8}} 
-                                            headerStyle={{ fontSize: 60, color: '#ffffff', alignSelf: 'center', opacity: 1.0}} bodyStyle={{ fontSize: 30, color: '#ffffff', top: 0}} 
-                                            headerText={title} bodyText={''}/>
-                     <Image resizeMode='cover' 
-                          style={{ width: 70 , height: 70, top: -180, left: 1800}} 
-                          source={settingsIconPath} 
-                        /> 
-                    <View style={{ top: 530, left: 0, width: 1920, height: 760,  justifyContent: 'center', alignSelf: 'center', backgroundColor: '#000000', opacity: 0.8}}>
-                        <PlaybackProgressBar value={progress}  color="green" />
-                        <Image resizeMode='cover' 
-                            style={{ width: 70 , height: 70, top: -130, left: 70}} 
-                            source={revIconPath} 
-                        />
-                        <Image resizeMode='cover' 
-                            style={{ width: 70 , height: 70, top: -200, left: 930}} 
-                            source={playIconPath} 
-                        />  
-                        <Image resizeMode='cover' 
-                            style={{ width: 70 , height: 70, top: -270, left: 1780}} 
-                            source={ffwIconPath} 
-                        />
-                         <Text style={{width: 150 , height: 30, top: -380, left: 60, fontSize: 30, color: '#ffffff' }} >
-                            {this.getFormattedTime(this.playbackTimeCurrent)}
-                        </Text>
-                        <Text style={{width: 150 , height: 30, top: -410, left: 1760, fontSize: 30, color: '#ffffff' }} >
-                            {this.getFormattedTime(this.playbackTimeTotal)}
-                        </Text>                        
-                    </View>                    
-              </HideableView>
+      <View style={{ top: -2680, left: 0, width: 1920, height: 1080}}>          
+          <HideableView visible={visibility} duration={fadeduration}>         
+            <HideableView visible={this.onScreenTimeOut >= 0} duration={fadeduration}>     
+                  <ContentDescription viewStyle={{ top: 0, left: 0, width: 1920, height: 250, justifyContent: 'center', alignSelf: 'center', backgroundColor: '#000000', opacity: 0.8}} 
+                                          headerStyle={{ fontSize: 60, color: '#ffffff', alignSelf: 'center', opacity: 1.0}} bodyStyle={{ fontSize: 30, color: '#ffffff', top: 0}} 
+                                          headerText={title} bodyText={''}/>
+                    <Image resizeMode='cover' 
+                        style={{ width: 70 , height: 70, top: -180, left: 1800}} 
+                        source={settingsIconPath} 
+                      /> 
+                  <View style={{ top: 530, left: 0, width: 1920, height: 760,  justifyContent: 'center', alignSelf: 'center', backgroundColor: '#000000', opacity: 0.8}}>
+                      <PlaybackProgressBar value={progress}  color="green" />
+                      <Image resizeMode='cover' 
+                          style={{ width: 70 , height: 70, top: -130, left: 70}} 
+                          source={revIconPath} 
+                      />
+                      <Image resizeMode='cover' 
+                          style={{ width: 70 , height: 70, top: -200, left: 930}} 
+                          source={playIconPath} 
+                      />  
+                      <Image resizeMode='cover' 
+                          style={{ width: 70 , height: 70, top: -270, left: 1780}} 
+                          source={ffwIconPath} 
+                      />
+                        <Text style={{width: 150 , height: 30, top: -380, left: 60, fontSize: 30, color: '#ffffff' }} >
+                          {this.getFormattedTime(this.playbackTimeCurrent)}
+                      </Text>
+                      <Text style={{width: 150 , height: 30, top: -410, left: 1760, fontSize: 30, color: '#ffffff' }} >
+                          {this.getFormattedTime(this.playbackTimeTotal)}
+                      </Text>                        
+                  </View>                    
+            </HideableView>           
           </HideableView>                                       
       </View>
     );
