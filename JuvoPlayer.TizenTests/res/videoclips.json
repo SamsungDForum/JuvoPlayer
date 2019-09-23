@@ -20,22 +20,31 @@
         "poster": "sintel.jpg",
         "description": "Resolution 1920x818 Codecs: H264 - MPEG4 AVC, MPEG AAC, The Blender Foundation - Sintel. Origin https://bitmovin.com/multi-language-multi-audio/"
     },
-  {
-    "title": "Encrypted MPEG DASH",
-    "url": "http://106.120.45.49/nexusq/oops_cenc-20121114-signedlicenseurl-manifest.mpd",
-    "type": "dash",
-    "poster": "oops.jpg",
-    "description": "Resolution 1920x1080 Codecs: H264 - MPEG4 AVC, MPEG AAC. Google Nexus Q video. Origin http://dash-mse-test.appspot.com/media.html",
-    "drmDatas": [
-      {
-        "scheme": "",
-        "licenceUrl": "",
-        "keyRequestProperties": {
-          "Content-Type": ""
-        }
-      }
-    ]
-  },
+    {
+        "title": "Encrypted MPEG DASH",
+        "url": "http://106.120.45.49/nexusq/oops_cenc-20121114-signedlicenseurl-manifest.mpd",
+        "type": "dash",
+        "poster": "oops.jpg",
+        "description": "Resolution 1920x1080 Codecs: H264 - MPEG4 AVC, MPEG AAC. Google Nexus Q video. Origin http://dash-mse-test.appspot.com/media.html",
+        "drmDatas": [
+            {
+                "scheme": "playready",
+                "licenceUrl": "https://dash-mse-test.appspot.com/api/drm/playready?drm_system=playready&source=YOUTUBE&ip=0.0.0.0&ipbits=0&expire=19000000000&sparams=ip,ipbits,expire,drm_system,source,video_id&video_id=03681262dc412c06&signature=448279561E2755699618BE0A2402189D4A30B03B.0CD6A27286BD2DAF00577FFA21928665DCD320C2&key=test_key1",
+                "keyRequestProperties": {
+                    "Content-Type": "text/xml; charset=utf-8"
+                },
+                "isImmutable": true
+            },
+            {
+                "scheme": "widevine",
+                "licenceUrl": "https://dash-mse-test.appspot.com/api/drm/widevine?drm_system=widevine&source=YOUTUBE&ip=0.0.0.0&ipbits=0&expire=19000000000&key=test_key1&sparams=ip,ipbits,expire,drm_system,source,video_id&video_id=03681262dc412c06&signature=9C4BE99E6F517B51FED1F0B3B31966D3C5DAB9D6.6A1F30BB35F3A39A4CA814B731450D4CBD198FFD",
+                "keyRequestProperties": {
+                    "Content-Type": "text/xml; charset=utf-8"
+                },
+                "isImmutable": true
+            }
+        ]
+    },
     {
         "title": "Encrypted 4K MPEG DASH",
         "url": "http://106.120.45.49/tears_of_steel/manifest(format=mpd-time-csf)",
