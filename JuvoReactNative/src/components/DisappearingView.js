@@ -12,40 +12,47 @@ export default class DisappearingView extends Component {
       this.state = {
         opacity: new Animated.Value(1)
       }
-      this.animationInProgress = false;
+      this.animationInProgress = false;     
       this.handleDisappeared = this.handleDisappeared.bind(this);
       this.JuvoPlayer = NativeModules.JuvoPlayer;
-           
     }
     handleDisappeared() {
-      this.animationInProgress = false;
-      this.props.onDisappeared();
+      this.animationInProgress = false;    
+      this.props.onDisappeared();      
     }  
-    animate(show) {            
-      if (!this.animationInProgress) {
-        const duration = this.props.duration ? parseInt(this.props.duration) : parseInt(500);
-        const timeOnScreen = this.props.timeOnScreen ? parseInt(this.props.timeOnScreen) : parseInt(5000); // default on screen time       
-        this.animationInProgress = true; 
-        Animated.sequence([        
-          Animated.timing(
-              this.state.opacity, {
-                toValue: show ? 1 : 0,
-                duration: !this.props.noAnimation ? duration : 0
-              }
-              ),
-          Animated.delay(timeOnScreen),            
-          Animated.timing(
+    animate(show) {         
+      
+      this.JuvoPlayer.log("DisappearingView  animate");
+      const duration = this.props.duration ? parseInt(this.props.duration) : parseInt(500);
+      const timeOnScreen = 10000;//this.props.timeOnScreen ? parseInt(this.props.timeOnScreen) : parseInt(5000); // default on screen time       
+      this.animationInProgress = true;   
+     
+      Animated.sequence([        
+        Animated.timing(
             this.state.opacity, {
-              toValue: 0,
-              duration: !this.props.noAnimation ? duration : 0            
-            }              
-          )
-          ]).start(this.handleDisappeared);    
-        }           
-    }
+              toValue: show ? 1 : 0,
+              duration: !this.props.noAnimation ? duration : 0
+            }
+            ),
+        Animated.delay(timeOnScreen),            
+        Animated.timing(
+          this.state.opacity, {
+            toValue: 0,
+            duration: !this.props.noAnimation ? duration : 0            
+          }              
+        )
+        ]).start(this.handleDisappeared); 
+           
+    }           
+  
     componentWillUpdate(nextProps, nextState) {   
-      this.state.opacity.stopAnimation();          
-      this.animate(1);      
+      this.JuvoPlayer.log("componentWillUpdate");
+      if (this.animationInProgress) {     
+        this.state.opacity.stopAnimation(); 
+        this.animationInProgress = false;
+      }       
+     // if (nextState.opacity === this.state.opacity)
+          this.animate(1);                            
     }           
     render() {  
       return (
