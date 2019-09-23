@@ -10,11 +10,13 @@ import {
   View,  
   AppRegistry,
   NativeModules,
-  NativeEventEmitter
+  NativeEventEmitter,
+  Text
 } from 'react-native';
 
 import ContentCatalog from './src/components/ContentCatalog';
 import PlaybackView from './src/components/PlaybackView';
+import InProgressView from './src/components/ProgressCircle';
 
 export default class JuvoReactNative extends Component {
   
@@ -23,7 +25,8 @@ export default class JuvoReactNative extends Component {
     this.state = {
       components : {
         'isContentCatalogVisible': true,
-        'isPlaybackViewVisible': false  
+        'isPlaybackViewVisible': false,
+        'isInProgressViewVisible': true  
       }
     }
     this.selectedClipIndex = 0;
@@ -48,6 +51,11 @@ export default class JuvoReactNative extends Component {
                 'isPlaybackViewVisible': visible
               }});              
           break;
+        case 'InProgressView':           
+          this.setState({components: {
+            'isInProgressViewVisible': visible
+          }});              
+          break;
     }
   }
 
@@ -65,6 +73,7 @@ export default class JuvoReactNative extends Component {
        <PlaybackView visibility={this.state.components.isPlaybackViewVisible}
                          switchView={this.switchComponentsView}
                          selectedIndex={this.selectedClipIndex} />
+        <InProgressView visibility={this.state.components.isInProgressViewVisible}/>
       </View>
     );
   }

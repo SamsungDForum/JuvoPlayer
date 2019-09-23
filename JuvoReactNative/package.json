@@ -3,10 +3,10 @@
   "version": "0.0.1",
   "private": true,
   "devDependencies": {
-    "react-native-tizen-scripts": "0.1.11",
     "babel-jest": "20.0.3",
     "babel-preset-react-native": "2.1.0",
     "jest": "20.0.4",
+    "react-native-tizen-scripts": "0.1.11",
     "react-test-renderer": "15.4.2"
   },
   "main": "index.js",
@@ -23,6 +23,7 @@
     "mode": "Debug"
   },
   "dependencies": {
+    "help": "^3.0.2",
     "react": "15.4.2",
     "react-native": "0.42.3",
     "react-native-tizen-dotnet": ">=0.1.1"
