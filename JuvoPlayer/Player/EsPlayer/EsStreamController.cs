@@ -19,8 +19,8 @@ using System;
 using System.Linq;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
-using System.Runtime.InteropServices;
 using System.Threading;
+using ESPlayer = Tizen.TV.Multimedia;
 using System.Threading.Tasks;
 using Configuration;
 using ElmSharp;
@@ -29,8 +29,8 @@ using JuvoPlayer.Common;
 using JuvoPlayer.Utils;
 using Nito.AsyncEx;
 using Nito.AsyncEx.Synchronous;
-using ESPlayer = Tizen.TV.Multimedia;
 using static Configuration.EsStreamControllerConfig;
+using System.Runtime.InteropServices;
 
 namespace JuvoPlayer.Player.EsPlayer
 {
@@ -300,14 +300,12 @@ namespace JuvoPlayer.Player.EsPlayer
                 {
                     case ESPlayer.ESPlayerState.Playing:
                         return;
-
                     case ESPlayer.ESPlayerState.Ready:
                         stateChangedSubject.OnNext(PlayerState.Playing);
                         player.Start();
                         StartClockGenerator();
                         dataBuffer.SetAllowedEvents(EsBuffer.DataEvent.All);
                         break;
-
                     case ESPlayer.ESPlayerState.Paused:
                         await OnSuspendResume(SuspendRequest.StopPause);
                         return;
@@ -843,6 +841,7 @@ namespace JuvoPlayer.Player.EsPlayer
                 dataBuffer.SetAllowedEvents(EsBuffer.DataEvent.DataRequest);
 
                 logger.Info("Player.SeekAsync()");
+
                 await player.SeekAsync(time, OnReadyToSeekStream).WithCancellation(token);
                 logger.Info("Player.SeekAsync() Completed");
 

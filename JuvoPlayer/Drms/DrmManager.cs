@@ -46,6 +46,12 @@ namespace JuvoPlayer.Drms
                     return;
                 }
 
+                if (currentDescription.IsImmutable)
+                {
+                    Logger.Warn($"{currentDescription.Scheme} is immutable - ignoring update request");
+                    return;
+                }
+
                 if (drmDescription.KeyRequestProperties != null)
                     currentDescription.KeyRequestProperties = drmDescription.KeyRequestProperties;
                 if (drmDescription.LicenceUrl != null)

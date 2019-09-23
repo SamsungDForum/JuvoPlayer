@@ -241,7 +241,7 @@ namespace JuvoPlayer.Player.EsPlayer
             logger.Info("");
             var streamInfo = streamConfig.ESAudioStreamInfo();
 
-            logger.Info($"{streamType}: " + streamInfo.DumpConfig());
+            logger.Info(streamInfo.DumpConfig());
 
             player.SetStream(streamInfo);
 
@@ -258,7 +258,7 @@ namespace JuvoPlayer.Player.EsPlayer
 
             var streamInfo = streamConfig.ESVideoStreamInfo();
 
-            logger.Info($"{streamType}: " + streamInfo.DumpConfig());
+            logger.Info(streamInfo.DumpConfig());
 
             player.SetStream(streamInfo);
 
@@ -291,9 +291,7 @@ namespace JuvoPlayer.Player.EsPlayer
             transferCts = new CancellationTokenSource();
             var token = transferCts.Token;
 
-            //activeTask = Task.Factory.StartNew(async () => await TransferTask(token)).Unwrap();
             activeTask = Task.Factory.StartNew(async () => await TransferTask(token)).Unwrap();
-            //activeTask = Task.Run(async () => await TransferTask(token));
         }
 
         /// <summary>
@@ -442,9 +440,6 @@ namespace JuvoPlayer.Player.EsPlayer
         {
             if (currentPacket == null)
                 currentPacket = packetStorage.GetPacket(streamType, token);
-
-            if (currentPacket == null)
-                logger.Warn($"{streamType}: NULL Packet. Token {token.IsCancellationRequested}");
 
             var shouldContinue = await ProcessPacket(currentPacket, token);
 
@@ -603,27 +598,18 @@ namespace JuvoPlayer.Player.EsPlayer
         {
             if (isDisposed)
                 return;
+           
+            logger.Info($"{streamType}:");
 
-            try
-            {
-                logger.Info($"{streamType}:");
+            DisableInput();
+            DisableTransfer();
 
-                DisableInput();
-                DisableTransfer();
+            playbackErrorSubject.Dispose();
+            streamReconfigureSubject.Dispose();
 
-                playbackErrorSubject.Dispose();
-                streamReconfigureSubject.Dispose();
-
-
-                transferCts?.Dispose();
-                currentPacket?.Dispose();
-            }
-            catch (Exception e)
-            {
-                logger.Error($"{streamType}: {e}");
-                throw;
-            }
-
+            transferCts?.Dispose();
+            currentPacket?.Dispose();
+          
             isDisposed = true;
         }
 

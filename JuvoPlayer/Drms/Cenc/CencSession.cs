@@ -30,9 +30,7 @@ using Nito.AsyncEx;
 using Tizen.TV.Security.DrmDecrypt;
 using Tizen.TV.Security.DrmDecrypt.emeCDM;
 using JuvoPlayer.Common.Utils.IReferenceCountable;
-using JuvoPlayer.Player.EsPlayer;
 using static Configuration.CencSession;
-using Buffer = System.Buffer;
 
 namespace JuvoPlayer.Drms.Cenc
 {
@@ -306,16 +304,16 @@ namespace JuvoPlayer.Drms.Cenc
             ThrowIfDisposed();
             Logger.Info("");
 
-            initializationTask = thread.Factory.Run(InitializeOnIemeThread);
-            //Volatile.Write(ref initializationTask, t);
+            var t = thread.Factory.Run(InitializeOnIemeThread);
+            Volatile.Write(ref initializationTask, t);
             return initializationTask;
         }
 
-        public async Task WaitForInitialization(CancellationToken token)
+        public Task WaitForInitialization(CancellationToken token)
         {
             Logger.Info($"{currentSessionId}: Waiting for license");
 
-            await initializationTask.WithCancellation(token);
+            return Volatile.Read(ref initializationTask).WaitAsync(token);
         }
 
         public bool CanDecrypt() =>
@@ -342,7 +340,6 @@ namespace JuvoPlayer.Drms.Cenc
             cancellationToken.ThrowIfCancellationRequested();
             await InstallLicence(responseText);
             licenceInstalled = true;
-
         }
 
         private void CreateIeme()
