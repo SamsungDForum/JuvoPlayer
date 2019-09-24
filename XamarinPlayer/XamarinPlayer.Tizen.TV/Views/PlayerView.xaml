@@ -165,8 +165,11 @@
                 HorizontalOptions="FillAndExpand"
                 VerticalOptions="FillAndExpand"
                 InputTransparent="True">
-                <ActivityIndicator x:Name="LoadingIndicator" AbsoluteLayout.LayoutBounds="0.5, 0.5, -1, -1"
-                                   AbsoluteLayout.LayoutFlags="PositionProportional" VerticalOptions="Center"
+                <ActivityIndicator x:Name="LoadingIndicator"
+                                   AbsoluteLayout.LayoutBounds="0.5, 0.5, -1, -1"
+                                   AbsoluteLayout.LayoutFlags="PositionProportional"
+                                   Color="White"
+                                   VerticalOptions="Center"
                                    IsVisible="False"
                                    HeightRequest="100"
                                    WidthRequest="100" />
