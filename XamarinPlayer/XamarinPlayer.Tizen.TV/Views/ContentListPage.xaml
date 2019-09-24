@@ -4,8 +4,8 @@
              xmlns:vm="clr-namespace:XamarinPlayer.ViewModels"
              xmlns:Controls="clr-namespace:XamarinPlayer.Controls"
              x:Class="XamarinPlayer.Views.ContentListPage"
-             BackgroundColor="#000000"
-             FocusedContent="{Binding FocusedContent}">
+             xmlns:ffimageloading="clr-namespace:FFImageLoading.Forms;assembly=FFImageLoading.Forms"
+             BackgroundColor="#000000">
     <ContentPage.BindingContext>
         <vm:ContentListPageViewModel />
     </ContentPage.BindingContext>
@@ -16,7 +16,7 @@
                             RelativeLayout.WidthConstraint="{ConstraintExpression Type=RelativeToParent, Property=Width, Factor=0.7}"
                             RelativeLayout.YConstraint="{ConstraintExpression Type=RelativeToParent, Property=Height, Factor=0}"
                             RelativeLayout.XConstraint="{ConstraintExpression Type=RelativeToParent, Property=Width, Factor=0.3}">
-                <Image x:Name="ContentImage"
+                <ffimageloading:CachedImage x:Name="ContentImage"
                        Aspect="AspectFill"
                        RelativeLayout.HeightConstraint="{ConstraintExpression Type=RelativeToParent, Property=Height, Factor=1}"
                        RelativeLayout.WidthConstraint="{ConstraintExpression Type=RelativeToParent, Property=Width, Factor=1}" />
@@ -41,7 +41,7 @@
             </StackLayout>
             <Controls:ContentList x:Name="ContentListView"
                                   HorizontalOptions="Center"
-                                  VerticalOptions="Center"                                  
+                                  VerticalOptions="Center"
                                   RelativeLayout.HeightConstraint="{ConstraintExpression Type=RelativeToParent, Property=Height, Factor=0.21}"
                                   RelativeLayout.WidthConstraint="{ConstraintExpression Type=RelativeToParent, Property=Width, Factor=0.94}"
                                   RelativeLayout.YConstraint="{ConstraintExpression Type=RelativeToParent, Property=Height, Factor=0.7}"
