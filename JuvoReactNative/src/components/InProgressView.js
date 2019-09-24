@@ -10,10 +10,7 @@ import HideableView from './HideableView';
 
 export default class InProgressView extends React.Component {
   constructor(props) {
-    super(props);    
-    this.needsToBeRerendered = true;
-    this.value = 0;
-    this.valueUpdateInterval = -1;
+    super(props); 
   }    
   render() {         
     const fadeduration = 300;   
