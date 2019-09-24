@@ -5,8 +5,7 @@
             HorizontalOptions="Center"
             ContentImg="{Binding Bg}"
             ContentTitle="{Binding Title}"
-            ContentDescription ="{Binding Description}"
-            ContentFocusedCommand="{Binding ContentFocusedCommand}">
+            ContentDescription ="{Binding Description}">
     <BoxView x:Name="ImageBorder"
              HorizontalOptions="Fill"
              VerticalOptions="Fill"
@@ -28,12 +27,4 @@
            HorizontalOptions="Center"
            VerticalOptions="Center"
            AbsoluteLayout.LayoutBounds="0,0,1,1" AbsoluteLayout.LayoutFlags="All"/>
-    <Button x:Name="FocusArea"
-            Opacity="0"
-            AbsoluteLayout.LayoutBounds="0,0,1,1" AbsoluteLayout.LayoutFlags="All"
-            HorizontalOptions="Fill"
-            VerticalOptions="Fill"
-            Clicked="OnItemClicked"
-            Focused="OnItemFocused"
-            Unfocused="OnItemUnfocused"/>
 </AbsoluteLayout>
