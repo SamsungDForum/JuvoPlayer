@@ -29,8 +29,7 @@ export default class PlaybackView extends React.Component {
     this.operationInProgress = true;
     this.inProgressDescription = 'Please wait...';
     this.refreshInterval = -1;
-    this.onScreenTimeOut = -1;    
-    this.circleAnimationProgress = -1;    
+    this.onScreenTimeOut = -1;   
     this.JuvoPlayer = NativeModules.JuvoPlayer;
     this.JuvoEventEmitter = new NativeEventEmitter(this.JuvoPlayer);
     this.onTVKeyDown = this.onTVKeyDown.bind(this);  
