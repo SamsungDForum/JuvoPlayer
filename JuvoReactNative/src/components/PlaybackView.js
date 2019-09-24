@@ -12,6 +12,7 @@ import ResourceLoader from '../ResourceLoader';
 import ContentDescription from  './ContentDescription';
 import HideableView from './HideableView';
 import PlaybackProgressBar from './PlaybackProgressBar';
+import InProgressView from './InProgressView';
 
 export default class PlaybackView extends React.Component {
   constructor(props) {
@@ -25,7 +26,8 @@ export default class PlaybackView extends React.Component {
     this.visible =  this.props.visibility ? this.props.visibility : false;     
     this.keysListenningOff = false;    
     this.playerState = 'Idle';      
-    this.bufferingInProgress = false;
+    this.operationInProgress = true;
+    this.inProgressDescription = 'Please wait...';
     this.refreshInterval = -1;
     this.onScreenTimeOut = -1;    
     this.circleAnimationProgress = -1;    
@@ -50,6 +52,7 @@ export default class PlaybackView extends React.Component {
     this.stopPlaybackTime = this.stopPlaybackTime.bind(this);
     this.refreshPlaybackInfo = this.refreshPlaybackInfo.bind(this);
     this.setIntervalImmediately = this.setIntervalImmediately.bind(this);
+    this.handleSeek = this.handleSeek.bind(this);
     
   }
   getFormattedTime(milisecs) {  
@@ -102,12 +105,18 @@ export default class PlaybackView extends React.Component {
     this.visible = !this.visible;    
     this.props.switchView('PlaybackView', this.visible);  
   }   
-  handleFastForwardKey() {        
+
+  handleSeek() {
     if (this.playerState =='Paused') return; 
+    this.operationInProgress = true;
+    this.inProgressDescription = 'Seeking...';
+  }
+  handleFastForwardKey() {        
+    this.handleSeek();
     this.JuvoPlayer.forward();
   }
   handleRewindKey() {     
-    if (this.playerState =='Paused') return;      
+    this.handleSeek();
     this.JuvoPlayer.rewind();
   }
   handlePlaybackInfoDisappeard() {     
@@ -118,35 +127,41 @@ export default class PlaybackView extends React.Component {
     this.toggleView();
   }
   onPlayerStateChanged(player) {  
-    if ( player.State === 'Playing') {   
-      this.showPlaybackInfo();
-      clearInterval(this.circleAnimationProgress);
-      this.circleAnimationProgress = -1;
+  
+    if ( player.State === 'Playing') {  
+      this.operationInProgress = false; 
+      this.showPlaybackInfo();  
     }   
-    if (player.State === 'Idle') {     
+    if (player.State === 'Idle') {  
+      this.operationInProgress = true;   
       this.resetPlaybackTime();  
-      this.rerender();  
-      this.circleAnimationProgress = this.setIntervalImmediately(this.rerender, 1000);
+      this.rerender();      
     }  
     this.playerState = player.State;  
   }
   onUpdateBufferingProgress(buffering) {     
       if (buffering.Percent == 100) {
-        this.bufferingInProgress = false;        
+        this.operationInProgress = false;    
+        this.inProgressDescription = 'Please wait...';    
       } else {
         this.JuvoPlayer.log("Buffering" + buffering.Percent);
-        this.bufferingInProgress = true;        
+        this.inProgressDescription = 'Buffering...'
+        this.operationInProgress = true;        
       }
+      this.rerender();
   }
-  onUpdatePlayTime(playtime) {   
+  onUpdatePlayTime(playtime) {      
     this.playbackTimeCurrent = parseInt(playtime.Current);
     this.playbackTimeTotal = parseInt(playtime.Total);   
   }
   onSeek(time) { 
-    this.JuvoPlayer.log("onSeek time.to = " + time.to);
+    this.JuvoPlayer.log("onSeek time.to = " + time.to);   
+    this.operationInProgress = false;  
+    this.inProgressDescription = 'Please wait...';
   }
   onPlaybackError(error) {
     this.JuvoPlayer.log("onPlaybackError message = " + error.Message);
+    this.operationInProgress = false; 
     this.toggleView(); 
   }
   onTVKeyDown(pressed) {
@@ -227,7 +242,8 @@ export default class PlaybackView extends React.Component {
     const total = this.playbackTimeTotal;
     const current = this.playbackTimeCurrent;   
     const playbackTime = total > 0 ?  current / total : 0;    
-    const progress = Math.round((playbackTime) * 100 ) / 100;      
+    const progress = Math.round((playbackTime) * 100 ) / 100;     
+  
     return (
       <View style={{ top: -2680, left: 0, width: 1920, height: 1080}}>          
           <HideableView visible={visibility} duration={fadeduration}>         
@@ -261,6 +277,9 @@ export default class PlaybackView extends React.Component {
                       </Text>                        
                   </View>                    
             </HideableView>           
+            <View style={{top: -650, left: 870, width: 250, height: 250}}>
+              <InProgressView visible={this.operationInProgress} message={this.inProgressDescription} />
+            </View>  
           </HideableView>                                       
       </View>
     );

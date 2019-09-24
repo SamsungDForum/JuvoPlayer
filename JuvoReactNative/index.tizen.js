@@ -10,23 +10,19 @@ import {
   View,  
   AppRegistry,
   NativeModules,
-  NativeEventEmitter,
-  Text
+  NativeEventEmitter  
 } from 'react-native';
 
 import ContentCatalog from './src/components/ContentCatalog';
 import PlaybackView from './src/components/PlaybackView';
-import InProgressView from './src/components/ProgressCircle';
 
-export default class JuvoReactNative extends Component {
-  
+export default class JuvoReactNative extends Component {  
   constructor(props) {
     super(props);    
     this.state = {
       components : {
         'isContentCatalogVisible': true,
-        'isPlaybackViewVisible': false,
-        'isInProgressViewVisible': true  
+        'isPlaybackViewVisible': false  
       }
     }
     this.selectedClipIndex = 0;
@@ -50,12 +46,7 @@ export default class JuvoReactNative extends Component {
                 'isContentCatalogVisible': !visible,
                 'isPlaybackViewVisible': visible
               }});              
-          break;
-        case 'InProgressView':           
-          this.setState({components: {
-            'isInProgressViewVisible': visible
-          }});              
-          break;
+          break;        
     }
   }
 
@@ -65,15 +56,16 @@ export default class JuvoReactNative extends Component {
   
   render() {      
     return (
-      <View style={styles.container}>        
+      <View style={styles.container}>         
        <ContentCatalog styles={styles}                    
                        visibility={this.state.components.isContentCatalogVisible}
                        switchView={this.switchComponentsView}
-                       onSelectedIndexChange={this.handleSelectedIndexChange}/>
+                       onSelectedIndexChange={this.handleSelectedIndexChange}/>   
+                               
        <PlaybackView visibility={this.state.components.isPlaybackViewVisible}
                          switchView={this.switchComponentsView}
                          selectedIndex={this.selectedClipIndex} />
-        <InProgressView visibility={this.state.components.isInProgressViewVisible}/>
+         
       </View>
     );
   }
@@ -84,7 +76,7 @@ const styles = StyleSheet.create({
     position: 'absolute',
     backgroundColor: 'transparent',
     width: 1920,
-    height: 1080  
+    height: 1080
   }
 });
 

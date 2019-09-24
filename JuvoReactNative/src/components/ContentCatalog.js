@@ -10,16 +10,16 @@ import HideableView from './HideableView';
 import ContentPicture from './ContentPicture';
 import ContentScroll from './ContentScroll';
 import ResourceLoader from '../ResourceLoader';
+import InProgressView from './InProgressView';
 
-export default class ContentCatalog extends Component {
-  
+export default class ContentCatalog extends Component {  
   constructor(props) {
     super(props);
     this.state = {   
       selectedClipIndex : 0
     };    
     this.visible = this.props.visibility; 
-    this.bigPictureVisible = this.visible;
+    this.bigPictureVisible = this.visible;    
     this.keysListenningOff = false;
     this.toggleVisibility = this.toggleVisibility.bind(this);
     this.onTVKeyDown = this.onTVKeyDown.bind(this);
@@ -30,7 +30,6 @@ export default class ContentCatalog extends Component {
     this.JuvoPlayer = NativeModules.JuvoPlayer;
     this.JuvoEventEmitter = new NativeEventEmitter(this.JuvoPlayer);
   }
-
   componentWillMount() {
     this.JuvoEventEmitter.addListener(
       'onTVKeyDown',
@@ -41,30 +40,24 @@ export default class ContentCatalog extends Component {
       this.onTVKeyUp
     );   
   }
-
   componentDidUpdate(prevProps, prevState) {   
-    this.bigPictureVisible = true;
+    this.bigPictureVisible = true;    
   }
-
   shouldComponentUpdate(nextProps, nextState) {  
     return true;
   } 
-
-  toggleVisibility() {    
+  toggleVisibility() {  
    this.visible = !this.visible; 
    this.props.switchView('PlaybackView', !this.visible);  
   }
-
   rerender() {
     this.setState({selectedIndex: this.state.selectedIndex});
-  }
-  
+  }  
   onTVKeyDown(pressed) {
     //There are two parameters available:
     //pressed.KeyName
     //pressed.KeyCode         
-    if (this.keysListenningOff) return;    
-  
+    if (this.keysListenningOff) return;  
     switch (pressed.KeyName) {     
       case "XF86Back":
       case "XF86AudioStop":         
@@ -76,34 +69,27 @@ export default class ContentCatalog extends Component {
       case "Left", "Right":
                     
         break;            
-    }    
-   
+    }      
     if (this.bigPictureVisible) {      
       //hide big picture during the fast scrolling (long key press)
       this.bigPictureVisible = false;  
       this.rerender();
-    }   
-    
+    }       
   }
   onTVKeyUp(pressed) {   
     if (this.keysListenningOff) return;
     this.bigPictureVisible = true;    
     this.rerender();
-  }  
-
-  handleSelectedIndexChange(index) {     
+  } 
+  handleSelectedIndexChange(index) { 
     this.props.onSelectedIndexChange(index);  
     this.setState({selectedClipIndex: index});    
   }  
-
-  handleBigPicLoadStart() {     
-    this.bigPictureVisible = false; 
+  handleBigPicLoadStart() {       
   }
-
   handleBigPicLoadEnd() {    
-    this.bigPictureVisible = true; 
+    this.bigPictureVisible = true;   
   }
-
   render() {    
     const index = this.state.selectedClipIndex ? this.state.selectedClipIndex : 0;    
     const uri = ResourceLoader.tileNames[index];
@@ -113,9 +99,8 @@ export default class ContentCatalog extends Component {
     this.visible = visibility;
     this.keysListenningOff = !visibility; 
     const showBigPicture = this.bigPictureVisible; 
-   
     return (
-      <View style={{backgroundColor: 'transparent'}}>
+      <View >
         <HideableView  visible={visibility} duration={300}>
           <HideableView  visible={showBigPicture} duration={100} style={{zIndex: -20 }}>          
             <View style={{top: 0, left: 650, width: 1270, height: 800, zIndex: -11  }}>
@@ -132,8 +117,10 @@ export default class ContentCatalog extends Component {
                       />
             </View>  
           <View style={{top: -1600, width: 1920, height: 1080, zIndex: 100 }}>
-            <ContentScroll onSelectedIndexChange={this.handleSelectedIndexChange} contentURIs={ResourceLoader.tileNames}  keysListenningOff={this.keysListenningOff}/>
-          </View>   
+            <ContentScroll onSelectedIndexChange={this.handleSelectedIndexChange}
+                           contentURIs={ResourceLoader.tileNames} 
+                           keysListenningOff={this.keysListenningOff}/>
+          </View>                      
         </HideableView> 
       </View>
     );
