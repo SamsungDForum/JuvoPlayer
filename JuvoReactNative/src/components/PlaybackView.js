@@ -100,7 +100,11 @@ export default class PlaybackView extends React.Component {
   shouldComponentUpdate(nextProps, nextState) { 
       return true; 
   }
-  toggleView() {   
+  toggleView() {  
+    if (this.visible) {
+      this.resetPlaybackTime();  
+      this.rerender(); 
+    }
     this.visible = !this.visible;    
     this.props.switchView('PlaybackView', this.visible);  
   }   
