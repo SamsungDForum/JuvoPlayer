@@ -142,8 +142,8 @@ export default class PlaybackView extends React.Component {
     this.stopPlaybackTime(); 
     this.rerender();
   }
-  handleSettingsViewDisappeared() {
-    this.JuvoPlayer.log("handleSettingsViewDisappeared");
+  handleSettingsViewDisappeared(playbackSettings) {
+  //  this.JuvoPlayer.log("handleSettingsViewDisappeared playbackSettings.Audio = " + playbackSettings.AudioTrack);
     this.showingSettingsView = false;
     this.rerender();
   }
@@ -221,6 +221,8 @@ export default class PlaybackView extends React.Component {
         this.toggleView(); 
         break; 
       case "Up" :
+          //requesting the native module for details regarding the stream settings.
+          //The response is handled inside the onGotStreamsDescription() function.
           this.JuvoPlayer.getStreamsDescription(Native.JuvoPlayer.Common.StreamType.Audio); 
           this.JuvoPlayer.getStreamsDescription(Native.JuvoPlayer.Common.StreamType.Video); 
           this.JuvoPlayer.getStreamsDescription(Native.JuvoPlayer.Common.StreamType.Subtitle);                
@@ -232,8 +234,8 @@ export default class PlaybackView extends React.Component {
     this.showPlaybackInfo(); 
   }
   onGotStreamsDescription(streams) {  
-    this.JuvoPlayer.log("streams.StreamTypeIndex = " + streams.StreamTypeIndex);  
-    this.JuvoPlayer.log("streams.Description = " + streams.Description); 
+  //  this.JuvoPlayer.log("streams.StreamTypeIndex = " + streams.StreamTypeIndex);  
+ //   this.JuvoPlayer.log("streams.Description = " + streams.Description); 
     var StreamType = Native.JuvoPlayer.Common.StreamType;  
     switch (streams.StreamTypeIndex) {
       case StreamType.Audio :

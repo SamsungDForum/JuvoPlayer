@@ -15,9 +15,9 @@ export default class PlaybackSettingsView extends React.Component {
   constructor(props) {
     super(props);    
     this.playbackSettings = {
-        AudioTrack: 0,
-        VideoQuality: 0,
-        Subtitle: 0
+        AudioTrack: '0',
+        VideoQuality: '0',
+        Subtitle: '0'
     }
     this.JuvoPlayer = NativeModules.JuvoPlayer;
     this.JuvoEventEmitter = new NativeEventEmitter(this.JuvoPlayer);
@@ -41,7 +41,7 @@ export default class PlaybackSettingsView extends React.Component {
 
   handleConfirmSettings() {    
     this.keysListenningOff = true; 
-    this.props.onCloseSettingsView();
+    this.props.onCloseSettingsView(this.playbackSettings);
   }
 
   onTVKeyDown(pressed) {
@@ -67,7 +67,7 @@ export default class PlaybackSettingsView extends React.Component {
   
   render() {         
     const fadeduration = 300;  
-    this.JuvoPlayer.log("this.props.streamsData.Audio.length = " + this.props.streamsData.Audio.length);
+   // this.JuvoPlayer.log("this.props.streamsData.Audio.length = " + this.props.streamsData.Audio.length);
     return (
       <View>  
           <HideableView visible={this.props.visible} duration={fadeduration}> 
@@ -79,7 +79,8 @@ export default class PlaybackSettingsView extends React.Component {
                 selectedValue={this.playbackSettings.AudioTrack}
                 mode="dropdown"
                 style={{left: 100, top: -265, height: 30, width: 350, color: '#00ff00'}}
-                onValueChange={(itemValue, itemIndex) => {                   
+                onValueChange={(itemValue, itemIndex) => {        
+                    this.JuvoPlayer.log("itemValue = " + itemValue);           
                     this.playbackSettings.AudioTrack = itemValue;                                     
                 }                    
                 }
