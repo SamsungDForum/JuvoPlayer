@@ -9,3 +9,5 @@ obj
 *.user
 *.swp
 CyclomaticComplexityReport.log
+JuvoReactNative/Tizen/shared/res/index.tizen.bundle
+JuvoReactNative/Tizen/shared/res/index.tizen.bundle.meta
