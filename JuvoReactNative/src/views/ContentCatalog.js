@@ -10,7 +10,6 @@ import HideableView from './HideableView';
 import ContentPicture from './ContentPicture';
 import ContentScroll from './ContentScroll';
 import ResourceLoader from '../ResourceLoader';
-import InProgressView from './InProgressView';
 
 export default class ContentCatalog extends Component {  
   constructor(props) {
