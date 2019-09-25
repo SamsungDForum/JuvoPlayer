@@ -13,8 +13,8 @@ import {
   NativeEventEmitter  
 } from 'react-native';
 
-import ContentCatalog from './src/components/ContentCatalog';
-import PlaybackView from './src/components/PlaybackView';
+import ContentCatalog from './src/views/ContentCatalog';
+import PlaybackView from './src/views/PlaybackView';
 
 export default class JuvoReactNative extends Component {  
   constructor(props) {

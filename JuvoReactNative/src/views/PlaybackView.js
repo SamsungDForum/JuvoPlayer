@@ -13,6 +13,8 @@ import ContentDescription from  './ContentDescription';
 import HideableView from './HideableView';
 import PlaybackProgressBar from './PlaybackProgressBar';
 import InProgressView from './InProgressView';
+import PlaybackSettingsView from './PlaybackSettingsView';
+import Native from '../Native';
 
 export default class PlaybackView extends React.Component {
   constructor(props) {
@@ -30,8 +32,16 @@ export default class PlaybackView extends React.Component {
     this.inProgressDescription = 'Please wait...';
     this.refreshInterval = -1;
     this.onScreenTimeOut = -1;   
+    this.showingSettingsView = false;
     this.JuvoPlayer = NativeModules.JuvoPlayer;
     this.JuvoEventEmitter = new NativeEventEmitter(this.JuvoPlayer);
+    this.streamsData = {
+      Audio: [],
+      Video: [],
+      Subtitle: [],
+      Teletext: [],
+      Count: 4
+    };
     this.onTVKeyDown = this.onTVKeyDown.bind(this);  
     this.onTVKeyUp = this.onTVKeyUp.bind(this);
     this.rerender = this.rerender.bind(this);
@@ -52,6 +62,8 @@ export default class PlaybackView extends React.Component {
     this.refreshPlaybackInfo = this.refreshPlaybackInfo.bind(this);
     this.setIntervalImmediately = this.setIntervalImmediately.bind(this);
     this.handleSeek = this.handleSeek.bind(this);
+    this.handleSettingsViewDisappeared = this.handleSettingsViewDisappeared.bind(this);
+    this.onGotStreamsDescription = this.onGotStreamsDescription.bind(this);
     
   }
   getFormattedTime(milisecs) {  
@@ -96,6 +108,10 @@ export default class PlaybackView extends React.Component {
       'onPlaybackError',
     this.onPlaybackError
     );  
+    this.JuvoEventEmitter.addListener(
+      'onGotStreamsDescription',
+      this.onGotStreamsDescription
+    );
   }  
   shouldComponentUpdate(nextProps, nextState) { 
       return true; 
@@ -124,6 +140,11 @@ export default class PlaybackView extends React.Component {
   }
   handlePlaybackInfoDisappeard() {     
     this.stopPlaybackTime(); 
+    this.rerender();
+  }
+  handleSettingsViewDisappeared() {
+    this.JuvoPlayer.log("handleSettingsViewDisappeared");
+    this.showingSettingsView = false;
     this.rerender();
   }
   onPlaybackCompleted(param) {         
@@ -158,7 +179,7 @@ export default class PlaybackView extends React.Component {
     this.playbackTimeTotal = parseInt(playtime.Total);   
   }
   onSeek(time) { 
-    this.JuvoPlayer.log("onSeek time.to = " + time.to);   
+    this.JuvoPlayer.log("onSeek time.to = " + time.To);   
     this.operationInProgress = false;  
     this.inProgressDescription = 'Please wait...';
   }
@@ -197,13 +218,37 @@ export default class PlaybackView extends React.Component {
       case "XF86Back":
       case "XF86AudioStop":            
         this.JuvoPlayer.stopPlayback();       
-        this.toggleView();         
+        this.toggleView(); 
+        break; 
+      case "Up" :
+          this.JuvoPlayer.getStreamsDescription(Native.JuvoPlayer.Common.StreamType.Audio); 
+          this.JuvoPlayer.getStreamsDescription(Native.JuvoPlayer.Common.StreamType.Video); 
+          this.JuvoPlayer.getStreamsDescription(Native.JuvoPlayer.Common.StreamType.Subtitle);                
+        break;
     }       
   }
   onTVKeyUp(pressed) {
     if (this.keysListenningOff) return; 
     this.showPlaybackInfo(); 
   }
+  onGotStreamsDescription(streams) {  
+    this.JuvoPlayer.log("streams.StreamTypeIndex = " + streams.StreamTypeIndex);  
+    this.JuvoPlayer.log("streams.Description = " + streams.Description); 
+    var StreamType = Native.JuvoPlayer.Common.StreamType;  
+    switch (streams.StreamTypeIndex) {
+      case StreamType.Audio :
+          this.streamsData.Audio = JSON.parse(streams.Description);
+        break;
+      case StreamType.Video :
+          this.streamsData.Video = JSON.parse(streams.Description);
+        break;
+      case StreamType.Subtitle :
+          this.streamsData.Subtitle = JSON.parse(streams.Description);
+        break;      
+    } 
+    this.showingSettingsView = (this.streamsData.Audio !== null && this.streamsData.Video !== null && this.streamsData.Subtitle !== null); 
+  }
+
   showPlaybackInfo() {               
     this.stopPlaybackTime();  
     this.refreshPlaybackInfo();   
@@ -241,7 +286,7 @@ export default class PlaybackView extends React.Component {
     const playIconPath = this.playerState !== 'Playing' ? ResourceLoader.playbackIconsPathSelect('play') : ResourceLoader.playbackIconsPathSelect('pause');
     const visibility = this.props.visibility ? this.props.visibility : this.visible;   
     this.visible = visibility;
-    this.keysListenningOff  = !visibility;        
+    this.keysListenningOff  = !visibility || this.showingSettingsView;        
     const total = this.playbackTimeTotal;
     const current = this.playbackTimeCurrent;   
     const playbackTime = total > 0 ?  current / total : 0;    
@@ -249,7 +294,7 @@ export default class PlaybackView extends React.Component {
   
     return (
       <View style={{ top: -2680, left: 0, width: 1920, height: 1080}}>          
-          <HideableView visible={visibility} duration={fadeduration}>         
+          <HideableView visible={visibility} duration={fadeduration}>                 
             <HideableView visible={this.onScreenTimeOut >= 0} duration={fadeduration}>     
                   <ContentDescription viewStyle={{ top: 0, left: 0, width: 1920, height: 250, justifyContent: 'center', alignSelf: 'center', backgroundColor: '#000000', opacity: 0.8}} 
                                           headerStyle={{ fontSize: 60, color: '#ffffff', alignSelf: 'center', opacity: 1.0}} bodyStyle={{ fontSize: 30, color: '#ffffff', top: 0}} 
@@ -282,7 +327,13 @@ export default class PlaybackView extends React.Component {
             </HideableView>           
             <View style={{top: -650, left: 870, width: 250, height: 250}}>
               <InProgressView visible={this.operationInProgress} message={this.inProgressDescription} />
-            </View>  
+            </View> 
+            <View style={{top: -950, left: 470}}>
+              <PlaybackSettingsView visible={this.showingSettingsView} 
+                                    onCloseSettingsView={this.handleSettingsViewDisappeared}
+                                    enable={this.showingSettingsView}
+                                    streamsData={this.streamsData}/>
+            </View>              
           </HideableView>                                       
       </View>
     );
