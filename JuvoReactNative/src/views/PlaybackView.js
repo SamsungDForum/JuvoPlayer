@@ -118,8 +118,10 @@ export default class PlaybackView extends React.Component {
   }
   toggleView() {  
     if (this.visible) {
-      this.resetPlaybackTime();  
-      this.rerender(); 
+      //Executed when the playback view is being closed (returns to the content catalog view). 
+      //Reseting the playback info screen to make it ready for starting a video playback again.
+      this.resetPlaybackTime();       
+      this.handlePlaybackInfoDisappeard();
     }
     this.visible = !this.visible;    
     this.props.switchView('PlaybackView', this.visible);  
@@ -129,10 +131,11 @@ export default class PlaybackView extends React.Component {
     if (this.playerState =='Paused') return; 
     this.operationInProgress = true;
     this.inProgressDescription = 'Seeking...';
+    this.showPlaybackInfo();
   }
   handleFastForwardKey() {        
     this.handleSeek();
-    this.JuvoPlayer.forward();
+    this.JuvoPlayer.forward();    
   }
   handleRewindKey() {     
     this.handleSeek();
@@ -142,8 +145,7 @@ export default class PlaybackView extends React.Component {
     this.stopPlaybackTime(); 
     this.rerender();
   }
-  handleSettingsViewDisappeared(playbackSettings) {
-  //  this.JuvoPlayer.log("handleSettingsViewDisappeared playbackSettings.Audio = " + playbackSettings.AudioTrack);
+  handleSettingsViewDisappeared(playbackSettings) {  
     this.showingSettingsView = false;
     this.rerender();
   }
@@ -193,26 +195,27 @@ export default class PlaybackView extends React.Component {
     //params.KeyName
     //params.KeyCode      
     if (this.keysListenningOff) return;  
-    this.showPlaybackInfo();  
+      
     const video = ResourceLoader.clipsData[this.props.selectedIndex];
     switch (pressed.KeyName) {
       case "Right":         
-        this.handleFastForwardKey(); 
+        this.handleFastForwardKey();        
         break;
       case "Left":    
-        this.handleRewindKey();  
+        this.handleRewindKey();          
         break;
       case "Return":
       case "XF86AudioPlay":
-      case "XF86PlayBack":  
+      case "XF86PlayBack":         
         if (this.playerState === 'Idle') {                  
           let licenseURI = video.drmDatas ? video.drmDatas[0].licenceUrl : null;
           let DRM = video.drmDatas ? video.drmDatas[0].scheme : null;          
           this.JuvoPlayer.startPlayback(video.url, licenseURI, DRM, video.type);                          
         }
         if (this.playerState === 'Paused' || this.playerState === 'Playing') {
-          //pause - resume                            
-          this.JuvoPlayer.pauseResumePlayback(); 
+          //pause - resume               
+          this.JuvoPlayer.pauseResumePlayback();  
+          this.showPlaybackInfo();                            
         }                
         break;        
       case "XF86Back":
@@ -231,7 +234,17 @@ export default class PlaybackView extends React.Component {
   }
   onTVKeyUp(pressed) {
     if (this.keysListenningOff) return; 
-    this.showPlaybackInfo(); 
+    switch (pressed.KeyName) {
+      case "Right":  
+      case "Left": 
+      case "Return":
+      case "XF86AudioPlay":
+      case "XF86PlayBack":    
+        break;
+      default: 
+      this.showPlaybackInfo();  
+    }  
+    
   }
   onGotStreamsDescription(streams) {  
   //  this.JuvoPlayer.log("streams.StreamTypeIndex = " + streams.StreamTypeIndex);  
@@ -269,7 +282,7 @@ export default class PlaybackView extends React.Component {
   }
   refreshPlaybackInfo() {   
     this.onScreenTimeOut = setTimeout(this.handlePlaybackInfoDisappeard, 10000);
-    this.refreshInterval = this.setIntervalImmediately(this.rerender, 1000); 
+    this.refreshInterval = this.setIntervalImmediately(this.rerender, 100); 
   }
   setIntervalImmediately(func, interval) {
     func();
