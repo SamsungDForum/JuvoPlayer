@@ -24,6 +24,7 @@ using System.Reactive.Threading.Tasks;
 using System.Threading;
 using System.Threading.Tasks;
 using Configuration;
+using JuvoPlayer.Utils;
 using static Configuration.DataSynchronizerConfig;
 
 namespace JuvoPlayer.Player.EsPlayer
@@ -47,17 +48,16 @@ namespace JuvoPlayer.Player.EsPlayer
             public SynchronizationState SyncState;
             public Task<Unit> ClockDetector;
             public bool IsClockDetected => ClockDetector?.IsCompleted ?? false;
-            public bool IsBarrierInUse;
             public bool IsSuspended;
         }
 
         private static readonly ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
         private readonly SynchronizationData[] streamSyncData = new SynchronizationData[(int)StreamType.Count];
-        private readonly Barrier streamSyncBarrier = new Barrier(0);
-        private readonly ClockProvider PlayerClockSource = ClockProvider.GetClockProvider();
+        private readonly AsyncBarrier streamSyncBarrier = new AsyncBarrier();
+        private readonly ClockProvider playerClockSource = ClockProvider.GetClockProvider();
 
         private Task<Unit> DetectPlayerClock(CancellationToken token) =>
-            PlayerClockSource
+            playerClockSource
                 .PlayerClockObservable()
                 .Buffer(ClockDetectionConsecutiveValidClockCount, 1)
                 .FirstAsync(args =>
@@ -75,7 +75,6 @@ namespace JuvoPlayer.Player.EsPlayer
                     return true;
                 })
                 .Select(_ => Unit.Default)
-                //.TakeLast(1)
                 .ToTask(token);
 
         public void Initialize(StreamType stream)
@@ -93,19 +92,11 @@ namespace JuvoPlayer.Player.EsPlayer
             if (!streamState.IsSuspended)
                 return;
 
-            Logger.Info($"{stream}: '{streamState.SyncState}'");
-
             streamState.IsSuspended = false;
-
-            if (streamState.SyncState == SynchronizationState.Synchronizing)
-                return;
-
             streamSyncBarrier.AddParticipant();
-            streamState.IsBarrierInUse = true;
-
-            // Resuming "started" stream needs to go back to init stage.
-            // No token at this point to restart clock detection.
             streamState.SyncState = SynchronizationState.Initialized;
+
+            Logger.Info($"{stream}:");
         }
 
         public void SuspendStream(StreamType stream)
@@ -115,19 +106,9 @@ namespace JuvoPlayer.Player.EsPlayer
                 return;
 
             streamState.IsSuspended = true;
-
-            LeaveBarrier(streamState);
-
-            Logger.Info($"{stream}: '{streamState.SyncState}'");
-        }
-
-        private void LeaveBarrier(SynchronizationData streamState)
-        {
-            if (!streamState.IsBarrierInUse)
-                return;
-
             streamSyncBarrier.RemoveParticipant();
-            streamState.IsBarrierInUse = false;
+
+            Logger.Info($"{stream}:");
         }
 
         private static void ResetTransferChunk(SynchronizationData streamState)
@@ -162,12 +143,6 @@ namespace JuvoPlayer.Player.EsPlayer
             return streamState.TransferredDuration - transferTime;
         }
 
-        private void WaitForRemainingStreams(SynchronizationData streamState, CancellationToken token)
-        {
-            Logger.Info($"{streamState.StreamType}: '{streamState.SyncState}' {streamState.CurrentClock} Waiting for {streamSyncBarrier.ParticipantsRemaining - 1} streams");
-            streamSyncBarrier.SignalAndWait(token);
-        }
-
         private static Task DelayStream(SynchronizationData streamState, TimeSpan delay, CancellationToken token)
         {
             if (delay <= TimeSpan.Zero)
@@ -196,7 +171,7 @@ namespace JuvoPlayer.Player.EsPlayer
             return false;
         }
 
-        private async Task<bool> StreamSync(SynchronizationData streamState, CancellationToken token)
+        private Task StreamSync(SynchronizationData streamState, CancellationToken token)
         {
             var playerClock = ClockProvider.LastClock;
             var desiredClock = ClockProviderConfig.InvalidClock;
@@ -207,7 +182,7 @@ namespace JuvoPlayer.Player.EsPlayer
             {
                 var clockDiff = streamState.CurrentClock - playerClock - StreamClockMinimumOverhead;
                 if (clockDiff <= TimeSpan.Zero)
-                    return false;
+                    return Task.CompletedTask;
 
                 desiredClock = playerClock + clockDiff;
 
@@ -218,11 +193,9 @@ namespace JuvoPlayer.Player.EsPlayer
                 Logger.Info($"{streamState.StreamType}: Sync {streamState.CurrentClock} to --:--:-- (--:--:--) Restart --:--:--");
             }
 
-            await PlayerClockSource.PlayerClockObservable()
+            return playerClockSource.PlayerClockObservable()
                 .FirstAsync(pClock => IsSyncPointReached(pClock, ref desiredClock, streamState))
                 .ToTask(token);
-
-            return true;
         }
 
         private static bool IsTransferCompleted(SynchronizationData streamState)
@@ -232,6 +205,9 @@ namespace JuvoPlayer.Player.EsPlayer
 
             return streamState.TransferredDuration >= streamState.RequestedDuration;
         }
+
+        private static StreamType OtherStream(StreamType thisStream) =>
+            thisStream == StreamType.Audio ? StreamType.Video : StreamType.Audio;
 
         public async ValueTask<bool> Synchronize(StreamType streamType, CancellationToken token)
         {
@@ -243,7 +219,9 @@ namespace JuvoPlayer.Player.EsPlayer
             switch (streamState.SyncState)
             {
                 case SynchronizationState.Initialized:
-                    WaitForRemainingStreams(streamState, token);
+                    Logger.Info(
+                        $"{streamState.StreamType}: '{streamState.SyncState}' {streamState.CurrentClock} Waiting for {OtherStream(streamState.StreamType)}");
+                    await streamSyncBarrier.SignalAndWait(token);
 
                     if (!streamState.SkipClockDetection)
                     {
@@ -262,20 +240,27 @@ namespace JuvoPlayer.Player.EsPlayer
                     break;
 
                 case SynchronizationState.Started:
-                    WaitForRemainingStreams(streamState, token);
+                    Logger.Info(
+                        $"{streamState.StreamType}: '{streamState.SyncState}' {streamState.CurrentClock} Waiting for {OtherStream(streamState.StreamType)}");
+                    await streamSyncBarrier.SignalAndWait(token);
 
                     if (streamState.IsClockDetected)
                     {
+                        streamSyncBarrier.RemoveParticipant();
                         streamState.ClockDetector = null;
                         streamState.SyncState = SynchronizationState.Synchronizing;
-                        Logger.Info($"{streamState.StreamType}: {streamState.SyncState}");
+                        Logger.Info($"{streamState.StreamType}: '{streamState.SyncState}'");
                     }
 
                     await DelayStream(streamState, GetGenericDelay(streamState), token);
                     break;
 
                 case SynchronizationState.Synchronizing:
-                    return await StreamSync(streamState, token);
+                    var isWaiting = StreamSync(streamState, token);
+                    if (isWaiting.IsCompleted)
+                        return false;
+                    await isWaiting;
+                    return true;
             }
 
             ResetTransferChunk(streamState);
@@ -300,10 +285,8 @@ namespace JuvoPlayer.Player.EsPlayer
 
         public void InitializeSynchronization(bool skipClockDetection)
         {
-            if (streamSyncBarrier.ParticipantCount > 0)
-                streamSyncBarrier.RemoveParticipants(streamSyncBarrier.ParticipantCount);
+            streamSyncBarrier.Reset();
 
-            var validStreamCount = 0;
             var initClock = DateTimeOffset.Now;
 
             foreach (var state in streamSyncData)
@@ -316,15 +299,11 @@ namespace JuvoPlayer.Player.EsPlayer
                 state.TransferredDuration = TimeSpan.Zero;
                 state.RequestedDuration = InitialChunkDuration;
                 state.CurrentClock = ClockProviderConfig.InvalidClock;
-
                 state.SkipClockDetection = skipClockDetection;
-                state.IsBarrierInUse = true;
                 state.IsSuspended = false;
 
-                validStreamCount++;
+                streamSyncBarrier.AddParticipant();
             }
-
-            streamSyncBarrier.AddParticipants(validStreamCount);
 
             Logger.Info("");
         }
@@ -332,11 +311,7 @@ namespace JuvoPlayer.Player.EsPlayer
         public void Dispose()
         {
             Logger.Info("");
-
-            if (streamSyncBarrier.ParticipantCount > 0)
-                streamSyncBarrier.RemoveParticipants(streamSyncBarrier.ParticipantCount);
-
-            streamSyncBarrier.Dispose();
+            streamSyncBarrier.Reset();
         }
     }
 }
