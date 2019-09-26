@@ -75,10 +75,14 @@ namespace JuvoPlayer.Player.EsPlayer
         private Task activeTask = Task.CompletedTask;
         private CancellationTokenSource transferCts;
 
-        private TaskCompletionSource<bool> dataPacketTcs;
+        private TaskCompletionSource<object> firstDataPacketTcs;
+
+        public Task FirstDataPacketCompletionTask { get; set; }
 
         // Stream type for this instance to EsStream.
         private readonly StreamType streamType;
+
+        public StreamType GetStreamType() => streamType;
 
         // Buffer configuration and supporting info
         public BufferConfigurationPacket CurrentConfig { get; internal set; }
@@ -219,15 +223,26 @@ namespace JuvoPlayer.Player.EsPlayer
         public void EnableStorage() =>
             packetStorage.Enable(streamType);
 
-        public void RequestDataPacketProcessedNotification()
+        public Task RequestFirstDataPacketNotification()
         {
-            dataPacketTcs = new TaskCompletionSource<bool>();
+            firstDataPacketTcs = new TaskCompletionSource<object>(streamType, TaskCreationOptions.RunContinuationsAsynchronously);
+
             logger.Info($"{streamType}: Data packet processed confirmation requested");
+            return firstDataPacketTcs.Task;
         }
 
-        public Task<bool> DataPacketProcessed() =>
-            dataPacketTcs?.Task ?? Task.FromResult(true);
+        private Task WaitForFirstDataPacket(CancellationToken token)
+        {
+            var waitTask = FirstDataPacketCompletionTask;
+            if (waitTask == null)
+                return Task.CompletedTask;
 
+            // Consume first data packet once
+            FirstDataPacketCompletionTask = null;
+
+            logger.Info($"{streamType}: Waiting for {(StreamType)waitTask.AsyncState} first data packet");
+            return waitTask.WithCancellation(token);
+        }
         #endregion
 
         #region Private Methods
@@ -289,9 +304,8 @@ namespace JuvoPlayer.Player.EsPlayer
 
             transferCts?.Dispose();
             transferCts = new CancellationTokenSource();
-            var token = transferCts.Token;
 
-            activeTask = Task.Factory.StartNew(async () => await TransferTask(token)).Unwrap();
+            activeTask = Task.Factory.StartNew(() => TransferTask(transferCts.Token)).Unwrap();
         }
 
         /// <summary>
@@ -359,10 +373,16 @@ namespace JuvoPlayer.Player.EsPlayer
         /// to ESPlayer
         /// </summary>
         /// <param name="token">CancellationToken</param>
+        /// <param name="continueAfter">Task when completed will resume transfer</param>
         private async Task TransferTask(CancellationToken token)
         {
+            logger.Info($"{streamType}: Started");
             try
             {
+                await WaitForFirstDataPacket(token);
+
+                logger.Info($"{streamType}: Transfer commenced");
+
                 while (!token.IsCancellationRequested)
                 {
                     var shouldContinue = await ProcessNextPacket(token);
@@ -404,38 +424,33 @@ namespace JuvoPlayer.Player.EsPlayer
                 dataSynchronizer.SuspendStream(streamType);
                 dataBuffer.RequestBuffering(false);
 
-                if (dataPacketTcs != null)
+                if (firstDataPacketTcs != null)
                 {
-                    logger.Info($"{streamType}: Terminated before first data packet. Sending EOS");
-                    dataPacketTcs.SetResult(false);
-                    dataPacketTcs = null;
-                    PushEosPacket(EOSPacket.Create(streamType) as EOSPacket, token);
+                    firstDataPacketTcs.SetException(new OperationCanceledException("Terminated before first data packet"));
+                    firstDataPacketTcs = null;
                 }
 
                 logger.Info(
                     $"{streamType}: Terminated. Buffer {dataBuffer.GetStreamStateReport(streamType)}");
             }
         }
-
-        private void ConfirmDataPacket()
+        private void ConfirmFirstDataPacket()
         {
-            if (!currentPacket.ContainsData())
+            if (currentPacket.ContainsData())
             {
-                if (!(currentPacket is EOSPacket))
-                    return;
-
-                dataPacketTcs.SetResult(false);
-                logger.Info($"{streamType}: First packet is EOS");
-            }
-            else
-            {
-                dataPacketTcs.SetResult(true);
-                logger.Info($"{streamType}: First packet is DATA. {currentPacket.Dts}");
+                firstDataPacketTcs.SetResult(null);
+                logger.Info($"{currentPacket.StreamType}: First packet is DATA. {currentPacket.Dts}");
+                firstDataPacketTcs = null;
+                return;
             }
 
-            dataPacketTcs = null;
+            if (!(currentPacket is EOSPacket))
+                return;
+
+            firstDataPacketTcs.SetException(new OperationCanceledException("First packet is EOS"));
+            logger.Info($"{currentPacket.StreamType}: First Packet is EOS");
+            firstDataPacketTcs = null;
         }
-
         private async Task<bool> ProcessNextPacket(CancellationToken token)
         {
             if (currentPacket == null)
@@ -443,11 +458,11 @@ namespace JuvoPlayer.Player.EsPlayer
 
             var shouldContinue = await ProcessPacket(currentPacket, token);
 
-            if (dataPacketTcs != null)
-                ConfirmDataPacket();
-
             dataBuffer.DataOut(currentPacket);
             dataSynchronizer.DataOut(currentPacket);
+
+            if (firstDataPacketTcs != null)
+                ConfirmFirstDataPacket();
 
             currentPacket.Dispose();
             currentPacket = null;
@@ -598,7 +613,7 @@ namespace JuvoPlayer.Player.EsPlayer
         {
             if (isDisposed)
                 return;
-           
+
             logger.Info($"{streamType}:");
 
             DisableInput();
@@ -609,7 +624,7 @@ namespace JuvoPlayer.Player.EsPlayer
 
             transferCts?.Dispose();
             currentPacket?.Dispose();
-          
+
             isDisposed = true;
         }
 
