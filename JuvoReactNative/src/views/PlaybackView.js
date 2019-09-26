@@ -248,7 +248,7 @@ export default class PlaybackView extends React.Component {
   }
   onGotStreamsDescription(streams) {  
   //  this.JuvoPlayer.log("streams.StreamTypeIndex = " + streams.StreamTypeIndex);  
- //   this.JuvoPlayer.log("streams.Description = " + streams.Description); 
+    this.JuvoPlayer.log("streams.Description = " + streams.Description); 
     var StreamType = Native.JuvoPlayer.Common.StreamType;  
     switch (streams.StreamTypeIndex) {
       case StreamType.Audio :
@@ -343,7 +343,7 @@ export default class PlaybackView extends React.Component {
             <View style={{top: -650, left: 870, width: 250, height: 250}}>
               <InProgressView visible={this.operationInProgress} message={this.inProgressDescription} />
             </View> 
-            <View style={{top: -950, left: 470}}>
+            <View style={{top: -1060, left: 470}}>
               <PlaybackSettingsView visible={this.showingSettingsView} 
                                     onCloseSettingsView={this.handleSettingsViewDisappeared}
                                     enable={this.showingSettingsView}
