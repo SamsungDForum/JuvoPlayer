@@ -40,7 +40,8 @@ export default class PlaybackView extends React.Component {
       Video: [],
       Subtitle: [],
       Teletext: [],
-      Count: 4
+      Count: 4,
+      selectedIndex: -1
     };
     this.onTVKeyDown = this.onTVKeyDown.bind(this);  
     this.onTVKeyUp = this.onTVKeyUp.bind(this);
@@ -148,6 +149,8 @@ export default class PlaybackView extends React.Component {
   handleSettingsViewDisappeared(playbackSettings) {  
     this.showingSettingsView = false;
     this.rerender();
+    //Apply the playback setttings to the playback
+
   }
   onPlaybackCompleted(param) {         
     this.toggleView();
@@ -306,7 +309,9 @@ export default class PlaybackView extends React.Component {
     const current = this.playbackTimeCurrent;   
     const playbackTime = total > 0 ?  current / total : 0;    
     const progress = Math.round((playbackTime) * 100 ) / 100;     
-  
+   // if (this.showingSettingsView) {
+      this.streamsData.selectedIndex = index;
+  //  }
     return (
       <View style={{ top: -2680, left: 0, width: 1920, height: 1080}}>          
           <HideableView visible={visibility} duration={fadeduration}>                 
@@ -343,7 +348,7 @@ export default class PlaybackView extends React.Component {
             <View style={{top: -650, left: 870, width: 250, height: 250}}>
               <InProgressView visible={this.operationInProgress} message={this.inProgressDescription} />
             </View> 
-            <View style={{top: -1060, left: 470}}>
+            <View style={{top: -1260, left: 200}}>
               <PlaybackSettingsView visible={this.showingSettingsView} 
                                     onCloseSettingsView={this.handleSettingsViewDisappeared}
                                     enable={this.showingSettingsView}
