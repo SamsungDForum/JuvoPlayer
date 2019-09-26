@@ -91,26 +91,33 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
                     _logger.Info($"Begin: {NUnit.Framework.TestContext.CurrentContext.Test.FullName}");
 
                     using (var service = new PlayerService())
-                    using (var cts = new CancellationTokenSource())
                     {
-                        var context = new TestContext
+                        using (var cts = new CancellationTokenSource())
                         {
-                            Service = service,
-                            ClipTitle = clipTitle,
-                            Token = cts.Token,
+                            var context = new TestContext
+                            {
+                                Service = service,
+                                ClipTitle = clipTitle,
+                                Token = cts.Token,
 
-                            // Requested seek position may differ from
-                            // seek position issued to player. Difference can be 10s+
-                            // Encrypted streams (Widevine in particular) may have LONG license
-                            // installation times (10s+).
-                            // DRM content has larger timeout
-                            Timeout = TSPlayerServiceTestCaseSource.IsEncrypted(clipTitle) ?
-                                TimeSpan.FromSeconds(40) : TimeSpan.FromSeconds(20)
-                        };
-                        await new PrepareOperation().Execute(context);
-                        await new StartOperation().Execute(context);
+                                // Requested seek position may differ from
+                                // seek position issued to player. Difference can be 10s+
+                                // Encrypted streams (Widevine in particular) may have LONG license
+                                // installation times (10s+).
+                                // DRM content has larger timeout
+                                Timeout = TSPlayerServiceTestCaseSource.IsEncrypted(clipTitle)
+                                    ? TimeSpan.FromSeconds(40)
+                                    : TimeSpan.FromSeconds(20)
+                            };
+                            await new PrepareOperation().Execute(context);
+                            await new StartOperation().Execute(context);
 
-                        await testImpl(context);
+                            await testImpl(context);
+
+                            // Test completed.
+                            // Do cancellation to terminate test's sub activities (if any)
+                            cts.Cancel();
+                        }
                     }
 
                     _logger.Info($"End: {NUnit.Framework.TestContext.CurrentContext.Test.FullName}");
