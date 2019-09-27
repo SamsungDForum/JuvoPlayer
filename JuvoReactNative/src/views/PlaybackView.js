@@ -32,7 +32,7 @@ export default class PlaybackView extends React.Component {
     this.inProgressDescription = 'Please wait...';
     this.refreshInterval = -1;
     this.onScreenTimeOut = -1;   
-    this.showingSettingsView = false;
+    this.showingSettingsView = false;    
     this.JuvoPlayer = NativeModules.JuvoPlayer;
     this.JuvoEventEmitter = new NativeEventEmitter(this.JuvoPlayer);
     this.streamsData = {
@@ -64,8 +64,7 @@ export default class PlaybackView extends React.Component {
     this.setIntervalImmediately = this.setIntervalImmediately.bind(this);
     this.handleSeek = this.handleSeek.bind(this);
     this.handleSettingsViewDisappeared = this.handleSettingsViewDisappeared.bind(this);
-    this.onGotStreamsDescription = this.onGotStreamsDescription.bind(this);
-    
+    this.onGotStreamsDescription = this.onGotStreamsDescription.bind(this);    
   }
   getFormattedTime(milisecs) {  
     var seconds = parseInt((milisecs/1000)%60)
@@ -123,6 +122,7 @@ export default class PlaybackView extends React.Component {
       //Reseting the playback info screen to make it ready for starting a video playback again.
       this.resetPlaybackTime();       
       this.handlePlaybackInfoDisappeard();
+      this.showingSettingsView = false;     
     }
     this.visible = !this.visible;    
     this.props.switchView('PlaybackView', this.visible);  
@@ -147,10 +147,8 @@ export default class PlaybackView extends React.Component {
     this.rerender();
   }
   handleSettingsViewDisappeared(playbackSettings) {  
-    this.showingSettingsView = false;
+    this.showingSettingsView = false;    
     this.rerender();
-    //Apply the playback setttings to the playback
-
   }
   onPlaybackCompleted(param) {         
     this.toggleView();
@@ -197,8 +195,7 @@ export default class PlaybackView extends React.Component {
     //There are two parameters available:
     //params.KeyName
     //params.KeyCode      
-    if (this.keysListenningOff) return;  
-      
+    if (this.keysListenningOff) return;        
     const video = ResourceLoader.clipsData[this.props.selectedIndex];
     switch (pressed.KeyName) {
       case "Right":         
@@ -213,7 +210,7 @@ export default class PlaybackView extends React.Component {
         if (this.playerState === 'Idle') {                  
           let licenseURI = video.drmDatas ? video.drmDatas[0].licenceUrl : null;
           let DRM = video.drmDatas ? video.drmDatas[0].scheme : null;          
-          this.JuvoPlayer.startPlayback(video.url, licenseURI, DRM, video.type);                          
+          this.JuvoPlayer.startPlayback(video.url, licenseURI, DRM, video.type);
         }
         if (this.playerState === 'Paused' || this.playerState === 'Playing') {
           //pause - resume               
@@ -222,7 +219,7 @@ export default class PlaybackView extends React.Component {
         }                
         break;        
       case "XF86Back":
-      case "XF86AudioStop":            
+      case "XF86AudioStop":                         
         this.JuvoPlayer.stopPlayback();       
         this.toggleView(); 
         break; 
@@ -246,12 +243,10 @@ export default class PlaybackView extends React.Component {
         break;
       default: 
       this.showPlaybackInfo();  
-    }  
-    
-  }
+    }      
+  }  
   onGotStreamsDescription(streams) {  
-  //  this.JuvoPlayer.log("streams.StreamTypeIndex = " + streams.StreamTypeIndex);  
-    this.JuvoPlayer.log("streams.Description = " + streams.Description); 
+  //this.JuvoPlayer.log("streams.Description = " + streams.Description); 
     var StreamType = Native.JuvoPlayer.Common.StreamType;  
     switch (streams.StreamTypeIndex) {
       case StreamType.Audio :
@@ -308,10 +303,8 @@ export default class PlaybackView extends React.Component {
     const total = this.playbackTimeTotal;
     const current = this.playbackTimeCurrent;   
     const playbackTime = total > 0 ?  current / total : 0;    
-    const progress = Math.round((playbackTime) * 100 ) / 100;     
-   // if (this.showingSettingsView) {
-      this.streamsData.selectedIndex = index;
-  //  }
+    const progress = Math.round((playbackTime) * 100 ) / 100;  
+    this.streamsData.selectedIndex = index;
     return (
       <View style={{ top: -2680, left: 0, width: 1920, height: 1080}}>          
           <HideableView visible={visibility} duration={fadeduration}>                 
@@ -352,7 +345,7 @@ export default class PlaybackView extends React.Component {
               <PlaybackSettingsView visible={this.showingSettingsView} 
                                     onCloseSettingsView={this.handleSettingsViewDisappeared}
                                     enable={this.showingSettingsView}
-                                    streamsData={this.streamsData}/>
+                                    streamsData={this.streamsData} />
             </View>              
           </HideableView>                                       
       </View>
