@@ -33,6 +33,7 @@ namespace Configuration
     {
         public static TimeSpan ClockInterval { get; set; } = TimeSpan.FromSeconds(0.2);
         public static TimeSpan InvalidClock { get; set; } = TimeSpan.FromSeconds(-1);
+        public static TimeSpan NoClockReturnValue { get; set; } = TimeSpan.FromSeconds(-2);
     }
 
     public static class DataBufferConfig
@@ -54,7 +55,6 @@ namespace Configuration
 
     public static class DashClient
     {
-        //public static TimeSpan TimeBufferDepthDefault { get; set; } = TimeSpan.FromSeconds(10);
         public static double MinimumSegmentFitRatio { get; set; } = 0.7;
         public static TimeSpan MinimumBufferTime { get; set; } = TimeSpan.FromSeconds(3);
         public static TimeSpan DynamicSegmentAvailabilityOverhead = TimeSpan.FromSeconds(2);

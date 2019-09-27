@@ -25,6 +25,7 @@ using System.Threading.Tasks;
 using JuvoLogger;
 using JuvoPlayer.Common;
 using JuvoPlayer.Drms;
+using JuvoPlayer.Player.EsPlayer;
 
 namespace JuvoPlayer.Player
 {
@@ -130,6 +131,9 @@ namespace JuvoPlayer.Player
                     time = duration;
 
                 await player.Seek(time);
+
+                // Update "clock cache" with latest value
+                currentTime = ClockProvider.LastClock;
             }
             catch (OperationCanceledException)
             {
