@@ -49,8 +49,11 @@ namespace JuvoPlayer.Player.EsPlayer
                 .Select(_ => playerClock())
                 .Where(clkValue =>
                 {
+                    if (clkValue < LastClock)
+                        return false;
+
                     LastClock = clkValue;
-                    return clkValue != InvalidClock;
+                    return true;
                 })
                 .Publish();
         }
@@ -79,7 +82,7 @@ namespace JuvoPlayer.Player.EsPlayer
         private static TimeSpan InvalidClockFn()
         {
             Logger.Info("");
-            return InvalidClock;
+            return NoClockReturnValue;
         }
 
         public void EnableClock()
@@ -87,6 +90,7 @@ namespace JuvoPlayer.Player.EsPlayer
             if (playerClockSourceConnection != null)
                 return;
 
+            LastClock = playerClock();
             playerClockSourceConnection = playerClockConnectable.Connect();
         }
 

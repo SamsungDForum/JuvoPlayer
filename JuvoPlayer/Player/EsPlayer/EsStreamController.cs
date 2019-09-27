@@ -179,7 +179,7 @@ namespace JuvoPlayer.Player.EsPlayer
                 catch (Exception e)
                 {
                     if (e is ObjectDisposedException || e is InvalidOperationException)
-                        return ClockProviderConfig.InvalidClock;
+                        return ClockProviderConfig.NoClockReturnValue;
 
                     logger.Error(e);
                     throw;
@@ -557,12 +557,6 @@ namespace JuvoPlayer.Player.EsPlayer
         }
 
         #endregion
-
-        public IObservable<TimeSpan> TimeUpdated()
-        {
-            return playerClock.PlayerClockObservable()
-                .Sample(ClockInterval);
-        }
 
         private void SuspendPlayback(SuspendRequest request, SuspendState currently)
         {
@@ -1033,6 +1027,8 @@ namespace JuvoPlayer.Player.EsPlayer
         private void DisposeAllSubjects()
         {
             playbackErrorSubject.Dispose();
+            stateChangedSubject.OnCompleted();
+            stateChangedSubject.Dispose();
         }
 
         private void DisposeAllSubscriptions()
@@ -1049,8 +1045,7 @@ namespace JuvoPlayer.Player.EsPlayer
 
         public IObservable<PlayerState> StateChanged()
         {
-            return stateChangedSubject
-                .AsObservable();
+            return stateChangedSubject.AsObservable();
         }
 
         public IObservable<int> BufferingProgress()
@@ -1061,6 +1056,11 @@ namespace JuvoPlayer.Player.EsPlayer
         public IObservable<DataRequest> DataNeededStateChanged()
         {
             return dataBuffer.DataRequestObservable();
+        }
+
+        public IObservable<TimeSpan> TimeUpdated()
+        {
+            return playerClock.PlayerClockObservable().Sample(ClockInterval);
         }
 
     }
