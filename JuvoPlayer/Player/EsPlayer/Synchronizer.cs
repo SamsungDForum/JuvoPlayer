@@ -88,11 +88,9 @@ namespace JuvoPlayer.Player.EsPlayer
         public void ResumeStream(StreamType stream)
         {
             var streamState = streamSyncData[(int)stream];
-
             if (!streamState.IsSuspended)
                 return;
 
-            streamState.IsSuspended = false;
             streamSyncBarrier.AddParticipant();
             streamState.SyncState = SynchronizationState.Initialized;
 
@@ -102,12 +100,10 @@ namespace JuvoPlayer.Player.EsPlayer
         public void SuspendStream(StreamType stream)
         {
             var streamState = streamSyncData[(int)stream];
-            if (streamState.IsSuspended)
+            if (streamState.IsSuspended || streamState.SyncState == SynchronizationState.Synchronizing)
                 return;
 
-            streamState.IsSuspended = true;
             streamSyncBarrier.RemoveParticipant();
-
             Logger.Info($"{stream}:");
         }
 
@@ -246,9 +242,9 @@ namespace JuvoPlayer.Player.EsPlayer
 
                     if (streamState.IsClockDetected)
                     {
+                        streamState.SyncState = SynchronizationState.Synchronizing;
                         streamSyncBarrier.RemoveParticipant();
                         streamState.ClockDetector = null;
-                        streamState.SyncState = SynchronizationState.Synchronizing;
                         Logger.Info($"{streamState.StreamType}: '{streamState.SyncState}'");
                     }
 
@@ -301,7 +297,6 @@ namespace JuvoPlayer.Player.EsPlayer
                 state.CurrentClock = ClockProviderConfig.InvalidClock;
                 state.SkipClockDetection = skipClockDetection;
                 state.IsSuspended = false;
-
                 streamSyncBarrier.AddParticipant();
             }
 
