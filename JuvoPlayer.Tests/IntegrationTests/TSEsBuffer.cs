@@ -55,6 +55,7 @@ namespace JuvoPlayer.Tests.IntegrationTests
             }
         }
         [Test]
+        [Ignore("To be reworked https://internal.example.com/browse/PRJLTVA-399")]
         public void DataEventsAfterSubscription()
         {
             Assert.DoesNotThrowAsync(
