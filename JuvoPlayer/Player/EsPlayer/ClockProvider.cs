@@ -26,56 +26,36 @@ namespace JuvoPlayer.Player.EsPlayer
 {
     internal delegate TimeSpan PlayerClockFn();
 
-    internal class ClockProvider : IDisposable
+    internal class ClockProvider
     {
         private static readonly ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
 
-        private static readonly PlayerClockFn InvalidPlayerClock = InvalidClockFn;
-        private PlayerClockFn playerClock = InvalidClockFn;
+        private static PlayerClockFn playerClock = InvalidClockFn;
         public static TimeSpan LastClock { get; private set; } = InvalidClock;
-        private static ClockProvider clockProviderInstance;
-        private static readonly object InstanceLock = new object();
 
-        private readonly IScheduler scheduler = new EventLoopScheduler();
-        private IDisposable playerClockSourceConnection;
-        private readonly IConnectableObservable<TimeSpan> playerClockConnectable;
+        private static readonly IScheduler Scheduler = new EventLoopScheduler();
+        private static IDisposable playerClockSourceConnection;
+        private static IConnectableObservable<TimeSpan> PlayerClockConnectable =>
+            PlayerClockConnectableLazy.Value;
 
-        public IObservable<TimeSpan> PlayerClockObservable() => playerClockConnectable
-            .AsObservable();
-
-        public ClockProvider()
-        {
-            playerClockConnectable = Observable.Interval(ClockInterval, scheduler)
+        private static readonly Lazy<IConnectableObservable<TimeSpan>> PlayerClockConnectableLazy =
+            new Lazy<IConnectableObservable<TimeSpan>>(() =>
+                Observable.Interval(ClockInterval, Scheduler)
                 .Select(_ => playerClock())
-                .Where(clkValue =>
-                {
-                    if (clkValue < LastClock)
-                        return false;
+                .Where(clkValue => clkValue < LastClock)
+                .Do(clkValue => LastClock = clkValue)
+                .Publish());
 
-                    LastClock = clkValue;
-                    return true;
-                })
-                .Publish();
-        }
-
-        public static ClockProvider GetClockProvider()
-        {
-            lock (InstanceLock)
-            {
-                if (clockProviderInstance == null)
-                    clockProviderInstance = new ClockProvider();
-            }
-
-            return clockProviderInstance;
-        }
+        public IObservable<TimeSpan> PlayerClockObservable() => PlayerClockConnectable
+            .AsObservable();
 
         public void SetPlayerClockSource(PlayerClockFn clockFn)
         {
             Logger.Info("");
             if (clockFn == null)
-                clockFn = InvalidPlayerClock;
+                clockFn = InvalidClockFn;
 
-            scheduler.Schedule(clockFn,
+            Scheduler.Schedule(clockFn,
                 (args, _) => playerClock = args);
         }
 
@@ -91,7 +71,7 @@ namespace JuvoPlayer.Player.EsPlayer
                 return;
 
             LastClock = playerClock();
-            playerClockSourceConnection = playerClockConnectable.Connect();
+            playerClockSourceConnection = PlayerClockConnectable.Connect();
         }
 
         public void DisableClock()
@@ -99,18 +79,6 @@ namespace JuvoPlayer.Player.EsPlayer
             playerClockSourceConnection?.Dispose();
             playerClockSourceConnection = null;
             LastClock = InvalidClock;
-        }
-
-        public void Dispose()
-        {
-            lock (InstanceLock)
-            {
-                Logger.Info("");
-
-                playerClockSourceConnection?.Dispose();
-                playerClockSourceConnection = null;
-                clockProviderInstance = null;
-            }
         }
     }
 }

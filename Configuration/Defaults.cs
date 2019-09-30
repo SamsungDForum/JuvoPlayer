@@ -32,8 +32,8 @@ namespace Configuration
     public static class ClockProviderConfig
     {
         public static TimeSpan ClockInterval { get; set; } = TimeSpan.FromSeconds(0.2);
-        public static TimeSpan InvalidClock { get; set; } = TimeSpan.FromSeconds(-1);
-        public static TimeSpan NoClockReturnValue { get; set; } = TimeSpan.FromSeconds(-2);
+        public static readonly TimeSpan InvalidClock = TimeSpan.FromSeconds(-1);
+        public static readonly TimeSpan NoClockReturnValue = TimeSpan.FromSeconds(-2);
     }
 
     public static class DataBufferConfig
