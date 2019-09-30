@@ -16,9 +16,7 @@
  */
 
 using System;
-using System.Threading;
 using System.Threading.Tasks;
-using Nito.AsyncEx;
 
 namespace JuvoPlayer.Utils
 {
@@ -27,7 +25,15 @@ namespace JuvoPlayer.Utils
         private volatile int participantCount;
         private volatile int currentCount;
         private readonly object locker = new object();
-        private readonly AsyncAutoResetEvent waitEvent = new AsyncAutoResetEvent(false);
+        private TaskCompletionSource<object> waitTcs;
+
+        private Task GetWaitTask()
+        {
+            if (waitTcs == null)
+                waitTcs = new TaskCompletionSource<object>(TaskCreationOptions.RunContinuationsAsynchronously);
+
+            return waitTcs.Task;
+        }
 
         private bool ReleaseIfReached(int value, bool valueIsParticipantCount)
         {
@@ -49,7 +55,8 @@ namespace JuvoPlayer.Utils
                 return false;
 
             currentCount = 0;
-            waitEvent.Set();
+            waitTcs?.SetResult(null);
+            waitTcs = null;
             return true;
         }
 
@@ -59,7 +66,6 @@ namespace JuvoPlayer.Utils
             {
                 currentCount = 0;
                 participantCount = 0;
-                waitEvent.Set();
             }
         }
 
@@ -84,7 +90,7 @@ namespace JuvoPlayer.Utils
             }
         }
 
-        public Task SignalAndWait(CancellationToken token)
+        public Task Signal()
         {
             lock (locker)
             {
@@ -94,9 +100,8 @@ namespace JuvoPlayer.Utils
                     return Task.CompletedTask;
 
                 currentCount = newCurrentCount;
+                return GetWaitTask();
             }
-
-            return waitEvent.WaitAsync(token);
         }
     }
 }
