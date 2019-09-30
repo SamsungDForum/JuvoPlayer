@@ -241,7 +241,7 @@ namespace JuvoPlayer.Player.EsPlayer
             FirstDataPacketCompletionTask = null;
 
             logger.Info($"{streamType}: Waiting for {(StreamType)waitTask.AsyncState} first data packet");
-            return waitTask.WithCancellation(token);
+            return waitTask;
         }
         #endregion
 
@@ -300,12 +300,10 @@ namespace JuvoPlayer.Player.EsPlayer
                 throw new InvalidOperationException($"{streamType}: Not Configured");
             }
 
-            dataSynchronizer.ResumeStream(streamType);
-
             transferCts?.Dispose();
             transferCts = new CancellationTokenSource();
 
-            activeTask = Task.Factory.StartNew(() => TransferTask(transferCts.Token)).Unwrap();
+            activeTask = Task.Factory.StartNew(() => TransferTask(transferCts.Token), transferCts.Token).Unwrap();
         }
 
         /// <summary>
@@ -379,7 +377,7 @@ namespace JuvoPlayer.Player.EsPlayer
             logger.Info($"{streamType}: Started");
             try
             {
-                await WaitForFirstDataPacket(token);
+                await WaitForFirstDataPacket(token).WithCancellation(token);
 
                 logger.Info($"{streamType}: Transfer commenced");
 
@@ -421,7 +419,6 @@ namespace JuvoPlayer.Player.EsPlayer
             }
             finally
             {
-                dataSynchronizer.SuspendStream(streamType);
                 dataBuffer.RequestBuffering(false);
 
                 if (firstDataPacketTcs != null)

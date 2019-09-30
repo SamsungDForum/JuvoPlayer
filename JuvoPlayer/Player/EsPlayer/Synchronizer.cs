@@ -82,29 +82,6 @@ namespace JuvoPlayer.Player.EsPlayer
             };
         }
 
-        public void ResumeStream(StreamType stream)
-        {
-            //var streamState = streamSyncData[(int)stream];
-            //if (!streamState.IsSuspended)
-            //    return;
-
-            //streamSyncBarrier.AddParticipant();
-            //streamState.SyncState = SynchronizationState.Initialized;
-
-            //Logger.Info($"{stream}:");
-        }
-
-        public void SuspendStream(StreamType stream)
-        {
-            //var streamState = streamSyncData[(int)stream];
-            //if (streamState.IsSuspended || streamState.SyncState == SynchronizationState.Synchronizing)
-            //    return;
-
-            //streamState.ClockDetector = null;
-            //streamSyncBarrier.RemoveParticipant();
-            //Logger.Info($"{stream}:");
-        }
-
         private static void ResetTransferChunk(SynchronizationData streamState)
         {
             streamState.TransferredDuration = TimeSpan.Zero;
@@ -232,7 +209,7 @@ namespace JuvoPlayer.Player.EsPlayer
                     if (!streamState.SkipClockDetection)
                     {
                         streamState.SyncState = SynchronizationState.Started;
-                        await DelayStream(streamState, GetGenericDelay(streamState), token);
+                        await DelayStream(streamState, GetGenericDelay(streamState), token).ConfigureAwait(false);
                     }
                     else
                     {
@@ -256,14 +233,14 @@ namespace JuvoPlayer.Player.EsPlayer
                         Logger.Info($"{streamState.StreamType}: '{streamState.SyncState}'");
                     }
 
-                    await DelayStream(streamState, GetGenericDelay(streamState), token);
+                    await DelayStream(streamState, GetGenericDelay(streamState), token).ConfigureAwait(false);
                     break;
 
                 case SynchronizationState.Synchronizing:
                     var isWaiting = StreamSync(streamState, token);
                     if (isWaiting.IsCompleted)
                         return false;
-                    await isWaiting;
+                    await isWaiting.ConfigureAwait(false);
                     return true;
             }
 
@@ -309,7 +286,6 @@ namespace JuvoPlayer.Player.EsPlayer
                 state.RequestedDuration = InitialChunkDuration;
                 state.CurrentClock = ClockProviderConfig.InvalidClock;
                 state.SkipClockDetection = skipClockDetection;
-                //state.IsSuspended = false;
                 state.ClockDetector = CancelledTask;
 
                 streamSyncBarrier.AddParticipant();

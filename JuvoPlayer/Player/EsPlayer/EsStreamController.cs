@@ -102,7 +102,7 @@ namespace JuvoPlayer.Player.EsPlayer
         private bool isDisposed;
         private bool resourceConflict;
 
-        private readonly ClockProvider playerClock = ClockProvider.GetClockProvider();
+        private readonly ClockProvider playerClock = new ClockProvider();
 
         #region Public API
 
@@ -157,8 +157,8 @@ namespace JuvoPlayer.Player.EsPlayer
             pauseBufferingSubscription = dataBuffer
                 .BufferingRequestObservable()
                 .Select(on => (on: on, isPause: false))
-                .Subscribe(async args =>
-                    await OnSuspendResume(args.on ? SuspendRequest.StartBuffering : SuspendRequest.StopBuffering),
+                .Subscribe(args =>
+                    OnSuspendResume(args.on ? SuspendRequest.StartBuffering : SuspendRequest.StopBuffering),
                     SynchronizationContext.Current);
 
             bufferingProgressObservable =
@@ -304,7 +304,7 @@ namespace JuvoPlayer.Player.EsPlayer
                         dataBuffer.SetAllowedEvents(EsBuffer.DataEvent.All);
                         break;
                     case ESPlayer.ESPlayerState.Paused:
-                        await OnSuspendResume(SuspendRequest.StopPause);
+                        OnSuspendResume(SuspendRequest.StopPause);
                         return;
 
                     default:
@@ -330,8 +330,7 @@ namespace JuvoPlayer.Player.EsPlayer
 
             try
             {
-                // UTs expect this operation to be "synchronous".
-                OnSuspendResume(SuspendRequest.StartPause).Wait(activeTaskCts.Token);
+                OnSuspendResume(SuspendRequest.StartPause);
             }
             catch (OperationCanceledException)
             {
@@ -574,6 +573,7 @@ namespace JuvoPlayer.Player.EsPlayer
                     stateChangedSubject.OnNext(PlayerState.Paused);
                     return;
 
+                case SuspendRequest.StartBuffering when currently == SuspendState.NotPlaying:
                 case SuspendRequest.StartBuffering when currently == SuspendState.Playing:
                     BufferingProgressEvent?.Invoke(0);
                     bufferingRequests++;
@@ -608,10 +608,12 @@ namespace JuvoPlayer.Player.EsPlayer
                     stateChangedSubject.OnNext(PlayerState.Playing);
                     return;
 
+                case SuspendRequest.StopBuffering when currently == SuspendState.NotPlaying && bufferingRequests > 1:
                 case SuspendRequest.StopBuffering when currently == SuspendState.Buffering && bufferingRequests > 1:
                     bufferingRequests--;
                     return;
 
+                case SuspendRequest.StopBuffering when currently == SuspendState.NotPlaying && bufferingRequests == 1:
                 case SuspendRequest.StopBuffering when currently == SuspendState.Buffering && bufferingRequests == 1:
                     BufferingProgressEvent?.Invoke(100);
                     bufferingRequests = 0;
@@ -621,6 +623,9 @@ namespace JuvoPlayer.Player.EsPlayer
                     logger.Info("Request ignored");
                     return;
             }
+
+            if (currently == SuspendState.NotPlaying)
+                return;
 
             player.Resume();
             StartClockGenerator();
@@ -646,10 +651,10 @@ namespace JuvoPlayer.Player.EsPlayer
             }
         }
 
-        private async Task OnSuspendResume(SuspendRequest request)
+        private void OnSuspendResume(SuspendRequest request)
         {
             var token = activeTaskCts.Token;
-            using (await pauseBufferSerializer.LockAsync(token))
+            using (pauseBufferSerializer.Lock(token))
             {
                 // Cancelled tokens can acquire async lock.
                 if (token.IsCancellationRequested)
@@ -929,15 +934,16 @@ namespace JuvoPlayer.Player.EsPlayer
         {
             // Stop clock & async operations
             logger.Info("");
+
+            // No async ops. Disable transfer
+            DisableTransfer();
+            DisableInput();
             activeTaskCts.Cancel();
 
             try
             {
                 // Check if async op is in progress
                 asyncOpSerializer.Lock(activeTaskCts.Token).Dispose();
-
-                // No async ops. Disable transfer
-                DisableTransfer();
             }
             catch (TaskCanceledException)
             {
@@ -988,7 +994,6 @@ namespace JuvoPlayer.Player.EsPlayer
             dataBuffer.Dispose();
             DisposeStreams();
             DisposeAllSubjects();
-            playerClock.Dispose();
 
             // Shut down player
             logger.Info("Disposing ESPlayer");

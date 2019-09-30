@@ -137,7 +137,7 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
             {
                 var tcs = new TaskCompletionSource<TimeSpan>();
 
-                using (ClockProvider.GetClockProvider().PlayerClockObservable()
+                using (new ClockProvider().PlayerClockObservable()
                     .Subscribe(clk =>
                     {
                         if (clk <= TimeSpan.Zero)
