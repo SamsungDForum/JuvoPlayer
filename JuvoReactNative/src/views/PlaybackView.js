@@ -32,8 +32,7 @@ export default class PlaybackView extends React.Component {
     this.inProgressDescription = 'Please wait...';
     this.playbackInfoInterval = -1;
     this.subtitleTextInterval = -1;
-    this.onScreenTimeOut = -1;   
-    
+    this.onScreenTimeOut = -1;       
     this.showingSettingsView = false;    
     this.JuvoPlayer = NativeModules.JuvoPlayer;
     this.JuvoEventEmitter = new NativeEventEmitter(this.JuvoPlayer);   
@@ -116,10 +115,7 @@ export default class PlaybackView extends React.Component {
       'onGotStreamsDescription',
       this.onGotStreamsDescription
     );   
-  }  
- 
-				   
-   
+  }	
   toggleView() {  
     if (this.visible) {
       //Executed when the playback view is being closed (returns to the content catalog view). 
@@ -131,7 +127,6 @@ export default class PlaybackView extends React.Component {
     this.visible = !this.visible;    
     this.props.switchView('PlaybackView', this.visible);  
   }   
-
   handleSeek() {
     if (this.playerState =='Paused') return; 
     this.operationInProgress = true;
@@ -157,8 +152,7 @@ export default class PlaybackView extends React.Component {
   onPlaybackCompleted(param) {         
     this.toggleView();
   }
-  onPlayerStateChanged(player) {  
-  
+  onPlayerStateChanged(player) {    
     if ( player.State === 'Playing') {  
       this.operationInProgress = false; 
       this.showPlaybackInfo();  
@@ -324,12 +318,11 @@ export default class PlaybackView extends React.Component {
     const playbackTime = total > 0 ?  current / total : 0;    
     const progress = Math.round((playbackTime) * 100 ) / 100;  
     this.streamsData.selectedIndex = index;
-    const subtitleText = this.currentSubtitleText;// ';//this.JuvoPlayer.CurrentSubtitleText;
+    const subtitleText = this.currentSubtitleText;
     var subStyle = (subtitleText == '') ? {top: -500, left: 0, width: 1920, height: 150, opacity: 0} : {top: -500, left: 0, width: 1920, height: 150, opacity: 0.8};
     return (
       <View style={{ top: -2680, left: 0, width: 1920, height: 1080}}>          
           <HideableView visible={visibility} duration={fadeduration}>  
-
             <HideableView visible={this.onScreenTimeOut >= 0} duration={fadeduration}>     
                   <ContentDescription viewStyle={{ top: 0, left: 0, width: 1920, height: 250, justifyContent: 'center', alignSelf: 'center', backgroundColor: '#000000', opacity: 0.8}} 
                                           headerStyle={{ fontSize: 60, color: '#ffffff', alignSelf: 'center', opacity: 1.0}} bodyStyle={{ fontSize: 30, color: '#ffffff', top: 0}} 
