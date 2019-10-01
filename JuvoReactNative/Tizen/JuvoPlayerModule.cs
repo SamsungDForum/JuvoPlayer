@@ -44,6 +44,7 @@ namespace JuvoReactNative
             set => currentPosition = value;
         }
         private TimeSpan currentPosition;
+        List<StreamDescription>[] allStreamsDescriptions = { null, null, null};
 
         public JuvoPlayerModule(ReactContext reactContext)
             : base(reactContext)
@@ -162,10 +163,16 @@ namespace JuvoReactNative
         }
         private void UpdatePlayTime(object timerState) 
         {
-            //Propagate the bufffering progress event to JavaScript module 
+            string txt = "";
+            if (juvoPlayer?.CurrentCueText != null)
+            {
+                txt = juvoPlayer?.CurrentCueText;
+            }
+            Logger?.Info($"GetCurrentSubtitleText: {txt}");
             var param = new JObject();
             param.Add("Total", (int)Duration.TotalMilliseconds);
-            param.Add("Current", (int)CurrentPositionUI.TotalMilliseconds);           
+            param.Add("Current", (int)CurrentPositionUI.TotalMilliseconds);
+            param.Add("SubtiteText", txt);
             SendEvent("onUpdatePlayTime", param);
         }
         void PlayJuvoPlayer(String videoSourceURI, String licenseServerURI, String drmScheme, PlayerServiceProxy player, string streamingProtocol)
@@ -207,106 +214,17 @@ namespace JuvoReactNative
         {           
             var param = new JObject();
             param.Add("To", (int)to.TotalMilliseconds);
-            SendEvent("onSeek", param);         
+            SendEvent("onSeek", param);
             Logger?.Info($"Seek to: {to}");
             return juvoPlayer?.SeekTo(to);
         }
-
-        //private void BindStreamPicker(Picker picker, StreamType streamType)
-        //{
-        //    var streams = juvoPlayer.GetStreamsDescription(streamType);
-
-        //    InitializePicker(picker, streams);
-
-        //    SelectDefaultStreamForPicker(picker, streams);
-
-        //    RegisterSelectedIndexChangeEventForPicker(picker);
-        //}
-
-        //private void BindSubtitleStreamPicker()
-        //{
-        //    var streams = new List<StreamDescription>
-        //    {
-        //        new StreamDescription
-        //        {
-        //            Default = true,
-        //            Description = "off",
-        //            Id = 0,
-        //            StreamType = StreamType.Subtitle
-        //        }
-        //    };
-
-        //    streams.AddRange(juvoPlayer.GetStreamsDescription(StreamType.Subtitle));
-
-        //    InitializePicker(Subtitles, streams);
-
-        //    SelectDefaultStreamForPicker(Subtitles, streams);
-
-        //    Subtitles.SelectedIndexChanged += (sender, args) =>
-        //    {
-        //        if (Subtitles.SelectedIndex == -1)
-        //            return;
-
-        //        if (Subtitles.SelectedIndex == 0)
-        //        {
-        //            juvoPlayer.DeactivateStream(StreamType.Subtitle);
-        //            return;
-        //        }
-
-        //        var stream = (StreamDescription)Subtitles.ItemsSource[Subtitles.SelectedIndex];
-        //        try
-        //        {
-        //            juvoPlayer.ChangeActiveStream(stream);
-        //        }
-        //        catch (Exception ex)
-        //        {
-        //            Logger.Error(ex);
-        //            Subtitles.SelectedIndex = 0;
-        //        }
-        //    };
-        //}
-
-        //private static void InitializePicker(Picker picker, List<StreamDescription> streams)
-        //{
-        //    picker.ItemsSource = streams;
-        //    picker.ItemDisplayBinding = new Binding("Description");
-        //    picker.SelectedIndex = 0;
-        //}
-
-        //private static void SelectDefaultStreamForPicker(Picker picker, List<StreamDescription> streams)
-        //{
-        //    for (var i = 0; i < streams.Count; ++i)
-        //    {
-        //        if (streams[i].Default)
-        //        {
-        //            picker.SelectedIndex = i;
-        //            return;
-        //        }
-        //    }
-        //}
-
-        //private void RegisterSelectedIndexChangeEventForPicker(Picker picker)
-        //{
-        //    picker.SelectedIndexChanged += (sender, args) =>
-        //    {
-        //        if (picker.SelectedIndex != -1)
-        //        {
-        //            var stream = (StreamDescription)picker.ItemsSource[picker.SelectedIndex];
-
-        //            _playerService.ChangeActiveStream(stream);
-        //        }
-        //    };
-        //}
-
-
-        //ReactMethods - JS methods
+        //JS methods
         [ReactMethod]
-        public void getStreamsDescription(int StreamTypeIndex)
+        public void GetStreamsDescription(int StreamTypeIndex)
         {
-            List<StreamDescription> streams;
             if (StreamTypeIndex == 2)  //Subtitle
             {
-                streams = new List<StreamDescription>
+                this.allStreamsDescriptions[StreamTypeIndex] = new List<StreamDescription>
                 {
                     new StreamDescription
                     {
@@ -316,16 +234,38 @@ namespace JuvoReactNative
                         StreamType = (StreamType)StreamTypeIndex
                     }
                 };
-                streams.AddRange(juvoPlayer.GetStreamsDescription((StreamType)StreamTypeIndex));
+                this.allStreamsDescriptions[StreamTypeIndex].AddRange(juvoPlayer.GetStreamsDescription((StreamType)StreamTypeIndex));
             } else
             {
-                streams = juvoPlayer.GetStreamsDescription((StreamType)StreamTypeIndex);
+                this.allStreamsDescriptions[StreamTypeIndex] = juvoPlayer.GetStreamsDescription((StreamType)StreamTypeIndex);
             }
             Logger?.Info($"getStreamsDescription StreamTypeIndex : {StreamTypeIndex}");
             var param = new JObject();
-            param.Add("Description", Newtonsoft.Json.JsonConvert.SerializeObject(streams));
+            param.Add("Description", Newtonsoft.Json.JsonConvert.SerializeObject(this.allStreamsDescriptions[StreamTypeIndex]));
             param.Add("StreamTypeIndex", (int)StreamTypeIndex);
             SendEvent("onGotStreamsDescription", param);
+        }
+        [ReactMethod]
+        public void setStream(int SelectedIndex, int StreamTypeIndex)
+        {
+            Logger?.Info($"setStream  SelectedIndex: {SelectedIndex},  StreamTypeIndex : {StreamTypeIndex}");
+
+            if (this.allStreamsDescriptions[StreamTypeIndex] == null) return;
+
+            if (SelectedIndex != -1)
+            {
+                if (StreamTypeIndex == 2)  //Subtitle
+                {
+                    if (SelectedIndex == 0)
+                    {
+                        juvoPlayer.DeactivateStream(StreamType.Subtitle);
+                        return;
+                    }
+                }
+                var stream = (StreamDescription)this.allStreamsDescriptions[StreamTypeIndex][SelectedIndex];
+                Logger?.Info($"setStream  stream.Description: {stream.Description}");
+                juvoPlayer.ChangeActiveStream(stream);
+            }
         }
         [ReactMethod]
         public void log(string message)

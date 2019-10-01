@@ -152,6 +152,7 @@ export default class PlaybackSettingsView extends React.Component {
                 onValueChange={(itemValue, itemIndex) => {
                     this.JuvoPlayer.log("itemValue = " + itemValue);   
                     this.pickerChange(itemIndex, 'Subtitle');   
+                    this.props.onSubtitleSelection(this.state.streamsData.Subtitle[itemIndex].Description)
                     }                    
                 }
                 enabled={this.props.enable}>

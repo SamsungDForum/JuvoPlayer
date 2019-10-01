@@ -30,11 +30,13 @@ export default class PlaybackView extends React.Component {
     this.playerState = 'Idle';      
     this.operationInProgress = true;
     this.inProgressDescription = 'Please wait...';
-    this.refreshInterval = -1;
+    this.playbackInfoInterval = -1;
+    this.subtitleTextInterval = -1;
     this.onScreenTimeOut = -1;   
+    
     this.showingSettingsView = false;    
     this.JuvoPlayer = NativeModules.JuvoPlayer;
-    this.JuvoEventEmitter = new NativeEventEmitter(this.JuvoPlayer);
+    this.JuvoEventEmitter = new NativeEventEmitter(this.JuvoPlayer);   
     this.streamsData = {
       Audio: [],
       Video: [],
@@ -43,6 +45,7 @@ export default class PlaybackView extends React.Component {
       Count: 4,
       selectedIndex: -1
     };
+    this.currentSubtitleText = '';
     this.onTVKeyDown = this.onTVKeyDown.bind(this);  
     this.onTVKeyUp = this.onTVKeyUp.bind(this);
     this.rerender = this.rerender.bind(this);
@@ -64,7 +67,8 @@ export default class PlaybackView extends React.Component {
     this.setIntervalImmediately = this.setIntervalImmediately.bind(this);
     this.handleSeek = this.handleSeek.bind(this);
     this.handleSettingsViewDisappeared = this.handleSettingsViewDisappeared.bind(this);
-    this.onGotStreamsDescription = this.onGotStreamsDescription.bind(this);    
+    this.onGotStreamsDescription = this.onGotStreamsDescription.bind(this);      
+    this.onSubtitleSelection = this.onSubtitleSelection.bind(this);
   }
   getFormattedTime(milisecs) {  
     var seconds = parseInt((milisecs/1000)%60)
@@ -111,11 +115,11 @@ export default class PlaybackView extends React.Component {
     this.JuvoEventEmitter.addListener(
       'onGotStreamsDescription',
       this.onGotStreamsDescription
-    );
+    );   
   }  
-  shouldComponentUpdate(nextProps, nextState) { 
-      return true; 
-  }
+ 
+				   
+   
   toggleView() {  
     if (this.visible) {
       //Executed when the playback view is being closed (returns to the content catalog view). 
@@ -180,6 +184,7 @@ export default class PlaybackView extends React.Component {
   onUpdatePlayTime(playtime) {      
     this.playbackTimeCurrent = parseInt(playtime.Current);
     this.playbackTimeTotal = parseInt(playtime.Total);   
+    this.currentSubtitleText = playtime.SubtiteText;
   }
   onSeek(time) { 
     this.JuvoPlayer.log("onSeek time.to = " + time.To);   
@@ -226,9 +231,9 @@ export default class PlaybackView extends React.Component {
       case "Up" :
           //requesting the native module for details regarding the stream settings.
           //The response is handled inside the onGotStreamsDescription() function.
-          this.JuvoPlayer.getStreamsDescription(Native.JuvoPlayer.Common.StreamType.Audio); 
-          this.JuvoPlayer.getStreamsDescription(Native.JuvoPlayer.Common.StreamType.Video); 
-          this.JuvoPlayer.getStreamsDescription(Native.JuvoPlayer.Common.StreamType.Subtitle);                
+          this.JuvoPlayer.GetStreamsDescription(Native.JuvoPlayer.Common.StreamType.Audio); 
+          this.JuvoPlayer.GetStreamsDescription(Native.JuvoPlayer.Common.StreamType.Video); 
+          this.JuvoPlayer.GetStreamsDescription(Native.JuvoPlayer.Common.StreamType.Subtitle);                
         break;
     }       
   }
@@ -245,8 +250,9 @@ export default class PlaybackView extends React.Component {
       this.showPlaybackInfo();  
     }      
   }  
+
   onGotStreamsDescription(streams) {  
-  //this.JuvoPlayer.log("streams.Description = " + streams.Description); 
+   this.JuvoPlayer.log("streams.Description = " + streams.Description); 
     var StreamType = Native.JuvoPlayer.Common.StreamType;  
     switch (streams.StreamTypeIndex) {
       case StreamType.Audio :
@@ -256,10 +262,23 @@ export default class PlaybackView extends React.Component {
           this.streamsData.Video = JSON.parse(streams.Description);
         break;
       case StreamType.Subtitle :
-          this.streamsData.Subtitle = JSON.parse(streams.Description);
+          this.streamsData.Subtitle = JSON.parse(streams.Description); 
         break;      
     } 
     this.showingSettingsView = (this.streamsData.Audio !== null && this.streamsData.Video !== null && this.streamsData.Subtitle !== null); 
+  }
+
+  onSubtitleSelection(Selected) {
+    if (this.subtitleTextInterval >= 0) {      
+      clearInterval(this.subtitleTextInterval);   
+      this.subtitleTextInterval = -1;          
+    }
+    if (Selected != 'off') {
+      this.subtitleTextInterval = this.setIntervalImmediately(this.rerender, 100); 
+    } else {      
+      this.currentSubtitleText = '';
+      this.rerender();
+    }     
   }
 
   showPlaybackInfo() {               
@@ -271,16 +290,16 @@ export default class PlaybackView extends React.Component {
     this.playbackTimeTotal = 0; 
   }
   stopPlaybackTime() {   
-    if (this.refreshInterval >= 0) {      
-      clearInterval(this.refreshInterval);
-      this.refreshInterval = -1;
+    if (this.playbackInfoInterval >= 0) {      
+      clearInterval(this.playbackInfoInterval);
+      this.playbackInfoInterval = -1;
       clearTimeout(this.onScreenTimeOut);
       this.onScreenTimeOut = -1;      
     }  
   }
   refreshPlaybackInfo() {   
     this.onScreenTimeOut = setTimeout(this.handlePlaybackInfoDisappeard, 10000);
-    this.refreshInterval = this.setIntervalImmediately(this.rerender, 100); 
+    this.playbackInfoInterval = this.setIntervalImmediately(this.rerender, 500); 
   }
   setIntervalImmediately(func, interval) {
     func();
@@ -305,9 +324,12 @@ export default class PlaybackView extends React.Component {
     const playbackTime = total > 0 ?  current / total : 0;    
     const progress = Math.round((playbackTime) * 100 ) / 100;  
     this.streamsData.selectedIndex = index;
+    const subtitleText = this.currentSubtitleText;// ';//this.JuvoPlayer.CurrentSubtitleText;
+    var subStyle = (subtitleText == '') ? {top: -500, left: 0, width: 1920, height: 150, opacity: 0} : {top: -500, left: 0, width: 1920, height: 150, opacity: 0.8};
     return (
       <View style={{ top: -2680, left: 0, width: 1920, height: 1080}}>          
-          <HideableView visible={visibility} duration={fadeduration}>                 
+          <HideableView visible={visibility} duration={fadeduration}>  
+
             <HideableView visible={this.onScreenTimeOut >= 0} duration={fadeduration}>     
                   <ContentDescription viewStyle={{ top: 0, left: 0, width: 1920, height: 250, justifyContent: 'center', alignSelf: 'center', backgroundColor: '#000000', opacity: 0.8}} 
                                           headerStyle={{ fontSize: 60, color: '#ffffff', alignSelf: 'center', opacity: 1.0}} bodyStyle={{ fontSize: 30, color: '#ffffff', top: 0}} 
@@ -336,18 +358,24 @@ export default class PlaybackView extends React.Component {
                       <Text style={{width: 150 , height: 30, top: -410, left: 1760, fontSize: 30, color: '#ffffff' }} >
                           {this.getFormattedTime(this.playbackTimeTotal)}
                       </Text>                        
-                  </View>                    
-            </HideableView>           
+                  </View>                                        
+            </HideableView> 
             <View style={{top: -650, left: 870, width: 250, height: 250}}>
               <InProgressView visible={this.operationInProgress} message={this.inProgressDescription} />
-            </View> 
-            <View style={{top: -1260, left: 200}}>
+            </View>    
+            <View style={{top: -1185, left: 180}}>
               <PlaybackSettingsView visible={this.showingSettingsView} 
                                     onCloseSettingsView={this.handleSettingsViewDisappeared}
+                                    onSubtitleSelection={this.onSubtitleSelection}
                                     enable={this.showingSettingsView}
                                     streamsData={this.streamsData} />
-            </View>              
-          </HideableView>                                       
+            </View>      
+            <View style = {subStyle}>
+              <Text style={{top: 0, left: 0, fontSize: 30, color: '#ffffff', textAlign:'center', backgroundColor: '#000000' }} >
+                  {subtitleText}
+              </Text> 
+            </View>               
+          </HideableView>                                   
       </View>
     );
   }
