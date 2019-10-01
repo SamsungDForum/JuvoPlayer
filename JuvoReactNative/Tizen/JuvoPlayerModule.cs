@@ -168,7 +168,7 @@ namespace JuvoReactNative
             {
                 txt = juvoPlayer?.CurrentCueText;
             }
-            Logger?.Info($"GetCurrentSubtitleText: {txt}");
+            //Logger?.Info($"GetCurrentSubtitleText: {txt}");
             var param = new JObject();
             param.Add("Total", (int)Duration.TotalMilliseconds);
             param.Add("Current", (int)CurrentPositionUI.TotalMilliseconds);

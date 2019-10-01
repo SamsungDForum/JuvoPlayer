@@ -15,6 +15,7 @@ import PlaybackProgressBar from './PlaybackProgressBar';
 import InProgressView from './InProgressView';
 import PlaybackSettingsView from './PlaybackSettingsView';
 import Native from '../Native';
+import NotificationPopup from './NotificationPopup';
 
 export default class PlaybackView extends React.Component {
   constructor(props) {
@@ -28,12 +29,13 @@ export default class PlaybackView extends React.Component {
     this.visible =  this.props.visibility ? this.props.visibility : false;     
     this.keysListenningOff = false;    
     this.playerState = 'Idle';      
-    this.operationInProgress = true;
+    this.operationInProgress = false;
     this.inProgressDescription = 'Please wait...';
     this.playbackInfoInterval = -1;
     this.subtitleTextInterval = -1;
     this.onScreenTimeOut = -1;       
-    this.showingSettingsView = false;    
+    this.showingSettingsView = false; 
+    this.showNotificationPopup = false;   
     this.JuvoPlayer = NativeModules.JuvoPlayer;
     this.JuvoEventEmitter = new NativeEventEmitter(this.JuvoPlayer);   
     this.streamsData = {
@@ -45,6 +47,7 @@ export default class PlaybackView extends React.Component {
       selectedIndex: -1
     };
     this.currentSubtitleText = '';
+    this.popupMessage = '';
     this.onTVKeyDown = this.onTVKeyDown.bind(this);  
     this.onTVKeyUp = this.onTVKeyUp.bind(this);
     this.rerender = this.rerender.bind(this);
@@ -68,6 +71,8 @@ export default class PlaybackView extends React.Component {
     this.handleSettingsViewDisappeared = this.handleSettingsViewDisappeared.bind(this);
     this.onGotStreamsDescription = this.onGotStreamsDescription.bind(this);      
     this.onSubtitleSelection = this.onSubtitleSelection.bind(this);
+    this.handleNotificationPopupDisappeared = this.handleNotificationPopupDisappeared.bind(this);
+    this.hideInProgressAnimation = this.hideInProgressAnimation.bind(this);
   }
   getFormattedTime(milisecs) {  
     var seconds = parseInt((milisecs/1000)%60)
@@ -116,13 +121,18 @@ export default class PlaybackView extends React.Component {
       this.onGotStreamsDescription
     );   
   }	
+
+  componentWillReceiveProps(nextProps) {        
+    this.operationInProgress = nextProps.visibility;
+} 
+  //
   toggleView() {  
     if (this.visible) {
       //Executed when the playback view is being closed (returns to the content catalog view). 
       //Reseting the playback info screen to make it ready for starting a video playback again.
       this.resetPlaybackTime();       
       this.handlePlaybackInfoDisappeard();
-      this.showingSettingsView = false;     
+      this.showingSettingsView = false;  
     }
     this.visible = !this.visible;    
     this.props.switchView('PlaybackView', this.visible);  
@@ -149,6 +159,12 @@ export default class PlaybackView extends React.Component {
     this.showingSettingsView = false;    
     this.rerender();
   }
+  handleNotificationPopupDisappeared() {   
+    this.JuvoPlayer.log("handleNotificationPopupDisappeared");
+    this.showNotificationPopup = false;  
+    this.rerender();
+    this.toggleView();
+  }
   onPlaybackCompleted(param) {         
     this.toggleView();
   }
@@ -157,8 +173,7 @@ export default class PlaybackView extends React.Component {
       this.operationInProgress = false; 
       this.showPlaybackInfo();  
     }   
-    if (player.State === 'Idle') {  
-      this.operationInProgress = true;   
+    if (player.State === 'Idle') {       
       this.resetPlaybackTime();  
       this.rerender();      
     }  
@@ -187,8 +202,11 @@ export default class PlaybackView extends React.Component {
   }
   onPlaybackError(error) {
     this.JuvoPlayer.log("onPlaybackError message = " + error.Message);
+    this.popupMessage = error.Message;
+    this.showNotificationPopup = true;
     this.operationInProgress = false; 
-    this.toggleView(); 
+    this.hideInProgressAnimation();
+    this.rerender();    
   }
   onTVKeyDown(pressed) {
     //There are two parameters available:
@@ -287,9 +305,12 @@ export default class PlaybackView extends React.Component {
     if (this.playbackInfoInterval >= 0) {      
       clearInterval(this.playbackInfoInterval);
       this.playbackInfoInterval = -1;
-      clearTimeout(this.onScreenTimeOut);
-      this.onScreenTimeOut = -1;      
+      this.hideInProgressAnimation();
     }  
+  }  
+  hideInProgressAnimation(){
+    clearTimeout(this.onScreenTimeOut);
+    this.onScreenTimeOut = -1;   
   }
   refreshPlaybackInfo() {   
     this.onScreenTimeOut = setTimeout(this.handlePlaybackInfoDisappeard, 10000);
@@ -312,7 +333,7 @@ export default class PlaybackView extends React.Component {
     const playIconPath = this.playerState !== 'Playing' ? ResourceLoader.playbackIconsPathSelect('play') : ResourceLoader.playbackIconsPathSelect('pause');
     const visibility = this.props.visibility ? this.props.visibility : this.visible;   
     this.visible = visibility;
-    this.keysListenningOff  = !visibility || this.showingSettingsView;        
+    this.keysListenningOff  = !visibility || this.showingSettingsView || this.showNotificationPopup;        
     const total = this.playbackTimeTotal;
     const current = this.playbackTimeCurrent;   
     const playbackTime = total > 0 ?  current / total : 0;    
@@ -367,8 +388,14 @@ export default class PlaybackView extends React.Component {
               <Text style={{top: 0, left: 0, fontSize: 30, color: '#ffffff', textAlign:'center', backgroundColor: '#000000' }} >
                   {subtitleText}
               </Text> 
-            </View>               
-          </HideableView>                                   
+            </View>     
+          </HideableView>  
+          <View style= {{top: -1300, left: 520, width: 850 , height: 430 }}>
+               <NotificationPopup 
+                                  visible={this.showNotificationPopup} 
+                                  onNotificationPopupDisappeared={this.handleNotificationPopupDisappeared} 
+                                  messageText={this.popupMessage}/>
+          </View>             
       </View>
     );
   }
