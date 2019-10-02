@@ -39,8 +39,6 @@ namespace XamarinPlayer.Views
         private readonly TimeSpan UpdateInterval = TimeSpan.FromMilliseconds(100);
 
         private SeekLogic _seekLogic = null; // needs to be initialized in constructor!
-
-        private IPlayerService _playerService;
         private int _hideTime;
         private bool _isPageDisappeared;
         private bool _isShowing;
@@ -55,22 +53,8 @@ namespace XamarinPlayer.Views
             get { return GetValue(ContentSourceProperty); }
         }
 
-        public TimeSpan CurrentPositionUI
-        {
-            get
-            {
-                if (_seekLogic.IsSeekAccumulationInProgress == false && _seekLogic.IsSeekInProgress == false)
-                    _currentPosition = CurrentPositionPlayer;
-                return _currentPosition;
-            }
-            set => _currentPosition = value;
-        }
-        private TimeSpan _currentPosition;
         private bool _isBuffering;
-        public TimeSpan CurrentPositionPlayer => _playerService?.CurrentPosition ?? TimeSpan.Zero;
-        public TimeSpan Duration => _playerService?.Duration ?? TimeSpan.Zero;
-        public PlayerState State => _playerService?.State ?? PlayerState.Idle;
-        public bool IsSeekingSupported => _playerService?.IsSeekingSupported ?? false;
+        public IPlayerService Player { get; private set; }
 
         public PlayerView()
         {
@@ -78,17 +62,17 @@ namespace XamarinPlayer.Views
 
             NavigationPage.SetHasNavigationBar(this, false);
 
-            _playerService = DependencyService.Get<IPlayerService>(DependencyFetchTarget.NewInstance);
+            Player = DependencyService.Get<IPlayerService>(DependencyFetchTarget.NewInstance);
 
-            _playerService.StateChanged()
+            Player.StateChanged()
                 .ObserveOn(SynchronizationContext.Current)
                 .Subscribe(OnPlayerStateChanged, OnPlayerCompleted);
 
-            _playerService.PlaybackError()
+            Player.PlaybackError()
                 .ObserveOn(SynchronizationContext.Current)
                 .Subscribe(async message => await OnPlaybackError(message));
 
-            _playerService.BufferingProgress()
+            Player.BufferingProgress()
                 .ObserveOn(SynchronizationContext.Current)
                 .Subscribe(OnBufferingProgress);
 
@@ -101,10 +85,10 @@ namespace XamarinPlayer.Views
 
         private void Play()
         {
-            if (_playerService.State == PlayerState.Playing)
-                _playerService.Pause();
+            if (Player.State == PlayerState.Playing)
+                Player.Pause();
             else
-                _playerService.Start();
+                Player.Start();
         }
 
         private async Task OnPlaybackError(string message)
@@ -116,7 +100,7 @@ namespace XamarinPlayer.Views
                 _hasFinished = true;
 
                 Hide();
-                _playerService.Stop();
+                Player.Stop();
                 if (!string.IsNullOrEmpty(message))
                     await DisplayAlert("Playback Error", message, "OK");
 
@@ -143,8 +127,8 @@ namespace XamarinPlayer.Views
             if (e.Contains("Back") && !e.Contains("XF86PlayBack"))
             {
                 //If the 'return' button on standard or back arrow on the smart remote control was pressed do react depending on the playback state
-                if (_playerService.State < PlayerState.Playing ||
-                    _playerService.State >= PlayerState.Playing && !_isShowing)
+                if (Player.State < PlayerState.Playing ||
+                    Player.State >= PlayerState.Playing && !_isShowing)
                 {
                     //return to the main menu showing all the video contents list
                     Navigation.RemovePage(this);
@@ -171,14 +155,14 @@ namespace XamarinPlayer.Views
                 if (_isShowing)
                 {
                     if ((e.Contains("Play") || e.Contains("XF86PlayBack")) &&
-                        _playerService.State == PlayerState.Paused)
+                        Player.State == PlayerState.Paused)
                     {
-                        _playerService.Start();
+                        Player.Start();
                     }
                     else if ((e.Contains("Pause") || e.Contains("XF86PlayBack")) &&
-                             _playerService.State == PlayerState.Playing)
+                             Player.State == PlayerState.Playing)
                     {
-                        _playerService.Pause();
+                        Player.Pause();
                     }
 
                     if ((e.Contains("Next") || e.Contains("Right")))
@@ -232,7 +216,7 @@ namespace XamarinPlayer.Views
 
         private void BindStreamPicker(Picker picker, StreamType streamType)
         {
-            var streams = _playerService.GetStreamsDescription(streamType);
+            var streams = Player.GetStreamsDescription(streamType);
 
             InitializePicker(picker, streams);
 
@@ -254,7 +238,7 @@ namespace XamarinPlayer.Views
                 }
             };
 
-            streams.AddRange(_playerService.GetStreamsDescription(StreamType.Subtitle));
+            streams.AddRange(Player.GetStreamsDescription(StreamType.Subtitle));
 
             InitializePicker(Subtitles, streams);
 
@@ -267,14 +251,14 @@ namespace XamarinPlayer.Views
 
                 if (Subtitles.SelectedIndex == 0)
                 {
-                    _playerService.DeactivateStream(StreamType.Subtitle);
+                    Player.DeactivateStream(StreamType.Subtitle);
                     return;
                 }
 
                 var stream = (StreamDescription) Subtitles.ItemsSource[Subtitles.SelectedIndex];
                 try
                 {
-                    _playerService.ChangeActiveStream(stream);
+                    Player.ChangeActiveStream(stream);
                 }
                 catch (Exception ex)
                 {
@@ -311,7 +295,7 @@ namespace XamarinPlayer.Views
                 {
                     var stream = (StreamDescription) picker.ItemsSource[picker.SelectedIndex];
 
-                    _playerService.ChangeActiveStream(stream);
+                    Player.ChangeActiveStream(stream);
                 }
             };
         }
@@ -352,7 +336,7 @@ namespace XamarinPlayer.Views
                 if (ContentSource == null)
                     return;
 
-                _playerService.SetSource(ContentSource as ClipDefinition);
+                Player.SetSource(ContentSource as ClipDefinition);
             }
         }
 
@@ -381,8 +365,8 @@ namespace XamarinPlayer.Views
             {
                 if (!_isPageDisappeared)
                     return false;
-                _playerService?.Dispose();
-                _playerService = null;
+                Player?.Dispose();
+                Player = null;
 
                 return false;
             });
@@ -418,7 +402,7 @@ namespace XamarinPlayer.Views
             {
                 case PlayerState.Prepared:
                 {
-                    if (_playerService.IsSeekingSupported)
+                    if (Player.IsSeekingSupported)
                     {
                         BackButton.IsEnabled = true;
                         ForwardButton.IsEnabled = true;
@@ -428,7 +412,7 @@ namespace XamarinPlayer.Views
                     SettingsButton.IsEnabled = true;
                     PlayButton.Focus();
 
-                    _playerService.Start();
+                    Player.Start();
                     Show();
                     break;
                 }
@@ -465,7 +449,7 @@ namespace XamarinPlayer.Views
 
             Device.BeginInvokeOnMainThread(() =>
             {
-                if (_playerService.State < PlayerState.Playing)
+                if (Player.State < PlayerState.Playing)
                 {
                     return;
                 }
@@ -492,19 +476,19 @@ namespace XamarinPlayer.Views
 
         private void UpdatePlayTime()
         {
-            CurrentTime.Text = GetFormattedTime(CurrentPositionUI);
-            TotalTime.Text = GetFormattedTime(Duration);
+            CurrentTime.Text = GetFormattedTime(_seekLogic.CurrentPositionUI);
+            TotalTime.Text = GetFormattedTime(_seekLogic.Duration);
 
-            if (Duration.TotalMilliseconds > 0)
-                Progressbar.Progress = CurrentPositionUI.TotalMilliseconds /
-                                       Duration.TotalMilliseconds;
+            if (_seekLogic.Duration.TotalMilliseconds > 0)
+                Progressbar.Progress = _seekLogic.CurrentPositionUI.TotalMilliseconds /
+                                       _seekLogic.Duration.TotalMilliseconds;
             else
                 Progressbar.Progress = 0;
         }
 
         private void UpdateCueTextLabel()
         {
-            var cueText = _playerService.CurrentCueText ?? string.Empty;
+            var cueText = Player.CurrentCueText ?? string.Empty;
             if (string.IsNullOrEmpty(cueText))
             {
                 CueTextLabel.IsVisible = false;
@@ -523,14 +507,14 @@ namespace XamarinPlayer.Views
 
         public void Suspend()
         {
-            suspendedPlayerState = _playerService?.State;
-            _playerService?.Pause();
+            suspendedPlayerState = Player?.State;
+            Player?.Pause();
         }
 
         public void Resume()
         {
             if (suspendedPlayerState == PlayerState.Playing)
-                _playerService?.Start();
+                Player?.Start();
         }
 
         private void UpdateLoadingIndicator()
@@ -556,11 +540,6 @@ namespace XamarinPlayer.Views
         private void Rewind()
         {
             _seekLogic.SeekBackward();
-        }
-
-        public Task Seek(TimeSpan to)
-        {
-            return _playerService.SeekTo(to);
         }
     }
 }
