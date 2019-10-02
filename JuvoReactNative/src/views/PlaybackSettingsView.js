@@ -39,7 +39,6 @@ export default class PlaybackSettingsView extends React.Component {
     this.keysListenningOff = true; 
     this.props.onCloseSettingsView(this.settings);    
   }
-
   componentWillReceiveProps(nextProps) {  
     const result = (this.state.streamsData.selectedIndex !== nextProps.streamsData.selectedIndex);   
     if (result) {
@@ -53,28 +52,16 @@ export default class PlaybackSettingsView extends React.Component {
         })        
     }   
     this.keysListenningOff = false;
-  }  
-  
+  }    
   onTVKeyDown(pressed) {
     if (this.keysListenningOff) return;  
-    switch (pressed.KeyName) {
-        case "Right":            
-          break;
-        case "Left":           
-          break;
-        case "Return":
-        case "XF86AudioPlay":
-        case "XF86PlayBack":   
-          break;        
+    switch (pressed.KeyName) {          
         case "XF86Back":
         case "XF86AudioStop":  
             this.handleConfirmSettings();          
-          break;
-        case "Up" :
-          break;  
+          break;         
       }     
   }
-
   pickerChange(itemIndex, settingName) {
     //Apply the playback setttings to the playback
     this.state.streamsData[settingName].map( (v,i)=>{
@@ -92,10 +79,8 @@ export default class PlaybackSettingsView extends React.Component {
             }                  
         }
     });
-
-    this.JuvoPlayer.setStream(itemIndex, Native.JuvoPlayer.Common.StreamType[settingName]);   
-  }
-  
+    this.JuvoPlayer.SetStream(itemIndex, Native.JuvoPlayer.Common.StreamType[settingName]);   
+  }  
   render() {    
     const fadeduration = 300;    
     return (
@@ -103,11 +88,10 @@ export default class PlaybackSettingsView extends React.Component {
           <HideableView  visible={this.props.visible} duration={fadeduration}> 
           <View style={{width: 1600, height: 105, justifyContent: 'center', alignItems: 'center', backgroundColor: '#000000', opacity: 0.8}}> 
             <Picker
-                selectedValue={this.settings.audioSetting}
-                mode="dropdown"
+                selectedValue={this.settings.audioSetting}                
                 style={{left: -500, top: 100, height: 30, width: 450, color: '#00ff00'}}
                     onValueChange={(itemValue, itemIndex) => {        
-                        this.JuvoPlayer.log("itemValue = " + itemValue);   
+                        this.JuvoPlayer.Log("itemValue = " + itemValue);   
                         this.pickerChange(itemIndex, 'Audio');                                                             
                     }                    
                 }
@@ -123,14 +107,12 @@ export default class PlaybackSettingsView extends React.Component {
             </Picker>
             <Text style={{left: -645, top: 30, color: '#00ff00', fontSize: 28, fontWeight: 'bold'}}>
                Audio track
-            </Text>
-           
+            </Text>           
             <Picker
-                selectedValue={this.settings.videoSetting}
-                mode="dropdown"
+                selectedValue={this.settings.videoSetting}               
                 style={{left: 0, top: 33, height: 30, width: 450, color: '#00ff00'}}
                 onValueChange={(itemValue, itemIndex) => {
-                        this.JuvoPlayer.log("itemValue = " + itemValue);   
+                        this.JuvoPlayer.Log("itemValue = " + itemValue);   
                         this.pickerChange(itemIndex, 'Video');      
                     }                    
                 }
@@ -146,11 +128,10 @@ export default class PlaybackSettingsView extends React.Component {
                Video quality
             </Text>            
             <Picker
-                selectedValue={this.settings.subtitleSetting}
-                mode="dropdown"
+                selectedValue={this.settings.subtitleSetting}               
                 style={{left: 500, top: -33, height: 30, width: 450, color: '#00ff00'}}
                 onValueChange={(itemValue, itemIndex) => {
-                    this.JuvoPlayer.log("itemValue = " + itemValue);   
+                    this.JuvoPlayer.Log("itemValue = " + itemValue);   
                     this.pickerChange(itemIndex, 'Subtitle');   
                     this.props.onSubtitleSelection(this.state.streamsData.Subtitle[itemIndex].Description)
                     }                    
