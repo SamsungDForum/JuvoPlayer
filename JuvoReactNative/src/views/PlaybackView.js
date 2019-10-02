@@ -48,8 +48,7 @@ export default class PlaybackView extends React.Component {
     };
     this.currentSubtitleText = '';
     this.popupMessage = '';
-    this.onTVKeyDown = this.onTVKeyDown.bind(this);  
-    this.onTVKeyUp = this.onTVKeyUp.bind(this);
+    this.onTVKeyDown = this.onTVKeyDown.bind(this);    
     this.rerender = this.rerender.bind(this);
     this.toggleView = this.toggleView.bind(this);
     this.onPlaybackCompleted = this.onPlaybackCompleted.bind(this);
@@ -73,25 +72,13 @@ export default class PlaybackView extends React.Component {
     this.onSubtitleSelection = this.onSubtitleSelection.bind(this);
     this.handleNotificationPopupDisappeared = this.handleNotificationPopupDisappeared.bind(this);
     this.hideInProgressAnimation = this.hideInProgressAnimation.bind(this);
-  }
-  getFormattedTime(milisecs) {  
-    var seconds = parseInt((milisecs/1000)%60)
-    var minutes = parseInt((milisecs/(1000*60))%60)
-    var hours = parseInt((milisecs/(1000*60*60))%24);
-    return "%hours:%minutes:%seconds"
-      .replace('%hours', hours.toString().padStart(2, '0'))
-      .replace('%minutes', minutes.toString().padStart(2, '0'))
-      .replace('%seconds', seconds.toString().padStart(2, '0'))      
-  }  
+    this.resetPlaybackState = this.resetPlaybackState.bind(this);
+  }   
   componentWillMount() {
     this.JuvoEventEmitter.addListener(
       'onTVKeyDown',
       this.onTVKeyDown
-    );   
-    this.JuvoEventEmitter.addListener(
-      'onTVKeyUp',
-      this.onTVKeyUp
-    ); 
+    );       
     this.JuvoEventEmitter.addListener(
       'onPlaybackCompleted',
       this.onPlaybackCompleted
@@ -121,35 +108,48 @@ export default class PlaybackView extends React.Component {
       this.onGotStreamsDescription
     );   
   }	
-
   componentWillReceiveProps(nextProps) {        
     this.operationInProgress = nextProps.visibility;
-} 
-  //
+  }
+  getFormattedTime(milisecs) {  
+    var seconds = parseInt((milisecs/1000)%60)
+    var minutes = parseInt((milisecs/(1000*60))%60)
+    var hours = parseInt((milisecs/(1000*60*60))%24);
+    return "%hours:%minutes:%seconds"
+      .replace('%hours', hours.toString().padStart(2, '0'))
+      .replace('%minutes', minutes.toString().padStart(2, '0'))
+      .replace('%seconds', seconds.toString().padStart(2, '0'))      
+  }    
+  resetPlaybackState() {
+    this.resetPlaybackTime();       
+    this.handlePlaybackInfoDisappeard();
+    this.showingSettingsView = false;  
+    this.playerState = 'Idle';
+    this.inProgressDescription = 'Please wait...';
+    this.JuvoPlayer.StopPlayback();   
+  }
   toggleView() {  
     if (this.visible) {
       //Executed when the playback view is being closed (returns to the content catalog view). 
       //Reseting the playback info screen to make it ready for starting a video playback again.
-      this.resetPlaybackTime();       
-      this.handlePlaybackInfoDisappeard();
-      this.showingSettingsView = false;  
-    }
+      this.resetPlaybackState();
+    } 
+    //Manage hide/show state between the content catalog and the playback View
     this.visible = !this.visible;    
     this.props.switchView('PlaybackView', this.visible);  
   }   
   handleSeek() {
-    if (this.playerState =='Paused') return; 
+    if (this.playerState =='Paused') return false; 
     this.operationInProgress = true;
     this.inProgressDescription = 'Seeking...';
     this.showPlaybackInfo();
+    return true;
   }
   handleFastForwardKey() {        
-    this.handleSeek();
-    this.JuvoPlayer.forward();    
+    if (this.handleSeek()) this.JuvoPlayer.Forward();    
   }
   handleRewindKey() {     
-    this.handleSeek();
-    this.JuvoPlayer.rewind();
+    if (this.handleSeek()) this.JuvoPlayer.Rewind();
   }
   handlePlaybackInfoDisappeard() {     
     this.stopPlaybackTime(); 
@@ -159,17 +159,16 @@ export default class PlaybackView extends React.Component {
     this.showingSettingsView = false;    
     this.rerender();
   }
-  handleNotificationPopupDisappeared() {   
-    this.JuvoPlayer.log("handleNotificationPopupDisappeared");
+  handleNotificationPopupDisappeared() {      
     this.showNotificationPopup = false;  
-    this.rerender();
+    this.rerender();    
     this.toggleView();
   }
-  onPlaybackCompleted(param) {         
+  onPlaybackCompleted(param) {          
     this.toggleView();
   }
   onPlayerStateChanged(player) {    
-    if ( player.State === 'Playing') {  
+    if (player.State === 'Playing') {  
       this.operationInProgress = false; 
       this.showPlaybackInfo();  
     }   
@@ -180,11 +179,10 @@ export default class PlaybackView extends React.Component {
     this.playerState = player.State;  
   }
   onUpdateBufferingProgress(buffering) {     
-      if (buffering.Percent == 100) {
-        this.operationInProgress = false;    
+      if (buffering.Percent == 100) {         
         this.inProgressDescription = 'Please wait...';    
-      } else {
-        this.JuvoPlayer.log("Buffering" + buffering.Percent);
+        this.operationInProgress = false;  
+      } else {       
         this.inProgressDescription = 'Buffering...'
         this.operationInProgress = true;        
       }
@@ -195,13 +193,11 @@ export default class PlaybackView extends React.Component {
     this.playbackTimeTotal = parseInt(playtime.Total);   
     this.currentSubtitleText = playtime.SubtiteText;
   }
-  onSeek(time) { 
-    this.JuvoPlayer.log("onSeek time.to = " + time.To);   
+  onSeek(time) {       
     this.operationInProgress = false;  
     this.inProgressDescription = 'Please wait...';
   }
-  onPlaybackError(error) {
-    this.JuvoPlayer.log("onPlaybackError message = " + error.Message);
+  onPlaybackError(error) {   
     this.popupMessage = error.Message;
     this.showNotificationPopup = true;
     this.operationInProgress = false; 
@@ -227,17 +223,16 @@ export default class PlaybackView extends React.Component {
         if (this.playerState === 'Idle') {                  
           let licenseURI = video.drmDatas ? video.drmDatas[0].licenceUrl : null;
           let DRM = video.drmDatas ? video.drmDatas[0].scheme : null;          
-          this.JuvoPlayer.startPlayback(video.url, licenseURI, DRM, video.type);
+          this.JuvoPlayer.StartPlayback(video.url, licenseURI, DRM, video.type);
         }
         if (this.playerState === 'Paused' || this.playerState === 'Playing') {
           //pause - resume               
-          this.JuvoPlayer.pauseResumePlayback();  
+          this.JuvoPlayer.PauseResumePlayback();           
           this.showPlaybackInfo();                            
         }                
         break;        
       case "XF86Back":
-      case "XF86AudioStop":                         
-        this.JuvoPlayer.stopPlayback();       
+      case "XF86AudioStop":     
         this.toggleView(); 
         break; 
       case "Up" :
@@ -248,23 +243,8 @@ export default class PlaybackView extends React.Component {
           this.JuvoPlayer.GetStreamsDescription(Native.JuvoPlayer.Common.StreamType.Subtitle);                
         break;
     }       
-  }
-  onTVKeyUp(pressed) {
-    if (this.keysListenningOff) return; 
-    switch (pressed.KeyName) {
-      case "Right":  
-      case "Left": 
-      case "Return":
-      case "XF86AudioPlay":
-      case "XF86PlayBack":    
-        break;
-      default: 
-      this.showPlaybackInfo();  
-    }      
   }  
-
-  onGotStreamsDescription(streams) {  
-   this.JuvoPlayer.log("streams.Description = " + streams.Description); 
+  onGotStreamsDescription(streams) {    
     var StreamType = Native.JuvoPlayer.Common.StreamType;  
     switch (streams.StreamTypeIndex) {
       case StreamType.Audio :
@@ -279,7 +259,6 @@ export default class PlaybackView extends React.Component {
     } 
     this.showingSettingsView = (this.streamsData.Audio !== null && this.streamsData.Video !== null && this.streamsData.Subtitle !== null); 
   }
-
   onSubtitleSelection(Selected) {
     if (this.subtitleTextInterval >= 0) {      
       clearInterval(this.subtitleTextInterval);   
@@ -292,7 +271,6 @@ export default class PlaybackView extends React.Component {
       this.rerender();
     }     
   }
-
   showPlaybackInfo() {               
     this.stopPlaybackTime();  
     this.refreshPlaybackInfo();   
@@ -325,6 +303,7 @@ export default class PlaybackView extends React.Component {
   }
   render() {    
     const index = this.props.selectedIndex; 
+    this.streamsData.selectedIndex = index;
     const title = ResourceLoader.clipsData[index].title;    
     const fadeduration = 300;
     const revIconPath = ResourceLoader.playbackIconsPathSelect('rew');
@@ -337,10 +316,9 @@ export default class PlaybackView extends React.Component {
     const total = this.playbackTimeTotal;
     const current = this.playbackTimeCurrent;   
     const playbackTime = total > 0 ?  current / total : 0;    
-    const progress = Math.round((playbackTime) * 100 ) / 100;  
-    this.streamsData.selectedIndex = index;
+    const progress = Math.round((playbackTime) * 100 ) / 100;     
     const subtitleText = this.currentSubtitleText;
-    var subStyle = (subtitleText == '') ? {top: -500, left: 0, width: 1920, height: 150, opacity: 0} : {top: -500, left: 0, width: 1920, height: 150, opacity: 0.8};
+    var subtitlesStyle = (subtitleText == '') ? {top: -500, left: 0, width: 1920, height: 150, opacity: 0} : {top: -500, left: 0, width: 1920, height: 150, opacity: 0.8};
     return (
       <View style={{ top: -2680, left: 0, width: 1920, height: 1080}}>          
           <HideableView visible={visibility} duration={fadeduration}>  
@@ -384,15 +362,14 @@ export default class PlaybackView extends React.Component {
                                     enable={this.showingSettingsView}
                                     streamsData={this.streamsData} />
             </View>      
-            <View style = {subStyle}>
+            <View style = {subtitlesStyle}>
               <Text style={{top: 0, left: 0, fontSize: 30, color: '#ffffff', textAlign:'center', backgroundColor: '#000000' }} >
                   {subtitleText}
               </Text> 
             </View>     
           </HideableView>  
           <View style= {{top: -1300, left: 520, width: 850 , height: 430 }}>
-               <NotificationPopup 
-                                  visible={this.showNotificationPopup} 
+               <NotificationPopup visible={this.showNotificationPopup} 
                                   onNotificationPopupDisappeared={this.handleNotificationPopupDisappeared} 
                                   messageText={this.popupMessage}/>
           </View>             
