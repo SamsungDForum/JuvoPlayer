@@ -90,9 +90,9 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
                 {
                     _logger.Info($"Begin: {NUnit.Framework.TestContext.CurrentContext.Test.FullName}");
 
-                    using (var service = new PlayerService())
+                    using (var cts = new CancellationTokenSource())
                     {
-                        using (var cts = new CancellationTokenSource())
+                        using (var service = new PlayerService())
                         {
                             var context = new TestContext
                             {
@@ -113,11 +113,11 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
                             await new StartOperation().Execute(context);
 
                             await testImpl(context);
-
-                            // Test completed.
-                            // Do cancellation to terminate test's sub activities (if any)
-                            cts.Cancel();
                         }
+
+                        // Test completed.
+                        // Do cancellation to terminate test's sub activities (if any)
+                        cts.Cancel();
                     }
 
                     _logger.Info($"End: {NUnit.Framework.TestContext.CurrentContext.Test.FullName}");
