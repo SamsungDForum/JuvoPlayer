@@ -135,22 +135,15 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
         {
             RunPlayerTest(clipTitle, async context =>
             {
-                var tcs = new TaskCompletionSource<TimeSpan>();
+                if (ClockProvider.LastClock > TimeSpan.Zero)
+                    return;
 
-                using (new ClockProvider().PlayerClockObservable()
-                    .Subscribe(clk =>
-                    {
-                        if (clk <= TimeSpan.Zero)
-                            return;
-                        tcs.TrySetResult(clk);
-                    }))
-                {
+                await Task.Delay(TimeSpan.FromSeconds(1));
 
-                    var clock = await Task.WhenAny(tcs.Task, Task.Delay(TimeSpan.FromSeconds(1))) == tcs.Task ?
-                        tcs.Task.Result : TimeSpan.Zero;
+                var clock = ClockProvider.LastClock;
 
-                    Assert.That(clock, Is.GreaterThan(TimeSpan.Zero));
-                }
+                Assert.That(clock, Is.GreaterThan(TimeSpan.Zero));
+
             });
         }
 

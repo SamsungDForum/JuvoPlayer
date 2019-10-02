@@ -274,7 +274,8 @@ namespace JuvoPlayer.Player.EsPlayer
         /// </summary>
         public async Task Play()
         {
-            logger.Info("");
+            var state = player.GetState();
+            logger.Info($"{state}");
 
             if (!AllStreamsConfigured)
             {
@@ -292,17 +293,17 @@ namespace JuvoPlayer.Player.EsPlayer
                     return;
                 }
 
-                var state = player.GetState();
                 switch (state)
                 {
                     case ESPlayer.ESPlayerState.Playing:
                         return;
+
                     case ESPlayer.ESPlayerState.Ready:
-                        stateChangedSubject.OnNext(PlayerState.Playing);
                         player.Start();
                         StartClockGenerator();
-                        dataBuffer.SetAllowedEvents(EsBuffer.DataEvent.All);
-                        break;
+                        stateChangedSubject.OnNext(PlayerState.Playing);
+                        return;
+
                     case ESPlayer.ESPlayerState.Paused:
                         OnSuspendResume(SuspendRequest.StopPause);
                         return;
@@ -573,7 +574,6 @@ namespace JuvoPlayer.Player.EsPlayer
                     stateChangedSubject.OnNext(PlayerState.Paused);
                     return;
 
-                case SuspendRequest.StartBuffering when currently == SuspendState.NotPlaying:
                 case SuspendRequest.StartBuffering when currently == SuspendState.Playing:
                     BufferingProgressEvent?.Invoke(0);
                     bufferingRequests++;
@@ -608,12 +608,10 @@ namespace JuvoPlayer.Player.EsPlayer
                     stateChangedSubject.OnNext(PlayerState.Playing);
                     return;
 
-                case SuspendRequest.StopBuffering when currently == SuspendState.NotPlaying && bufferingRequests > 1:
                 case SuspendRequest.StopBuffering when currently == SuspendState.Buffering && bufferingRequests > 1:
                     bufferingRequests--;
                     return;
 
-                case SuspendRequest.StopBuffering when currently == SuspendState.NotPlaying && bufferingRequests == 1:
                 case SuspendRequest.StopBuffering when currently == SuspendState.Buffering && bufferingRequests == 1:
                     BufferingProgressEvent?.Invoke(100);
                     bufferingRequests = 0;
@@ -623,9 +621,6 @@ namespace JuvoPlayer.Player.EsPlayer
                     logger.Info("Request ignored");
                     return;
             }
-
-            if (currently == SuspendState.NotPlaying)
-                return;
 
             player.Resume();
             StartClockGenerator();

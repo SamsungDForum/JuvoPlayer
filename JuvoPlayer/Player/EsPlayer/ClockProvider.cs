@@ -30,18 +30,18 @@ namespace JuvoPlayer.Player.EsPlayer
     {
         private static readonly ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
 
-        private static PlayerClockFn playerClock = InvalidClockFn;
+        private static PlayerClockFn _playerClock = InvalidClockFn;
         public static TimeSpan LastClock { get; private set; } = InvalidClock;
 
         private static readonly IScheduler Scheduler = new EventLoopScheduler();
-        private static IDisposable playerClockSourceConnection;
+        private static IDisposable _playerClockSourceConnection;
         private static IConnectableObservable<TimeSpan> PlayerClockConnectable =>
             PlayerClockConnectableLazy.Value;
 
         private static readonly Lazy<IConnectableObservable<TimeSpan>> PlayerClockConnectableLazy =
             new Lazy<IConnectableObservable<TimeSpan>>(() =>
                 Observable.Interval(ClockInterval, Scheduler)
-                .Select(_ => playerClock())
+                .Select(_ => _playerClock())
                 .Where(clkValue => clkValue < LastClock)
                 .Do(clkValue => LastClock = clkValue)
                 .Publish());
@@ -56,7 +56,7 @@ namespace JuvoPlayer.Player.EsPlayer
                 clockFn = InvalidClockFn;
 
             Scheduler.Schedule(clockFn,
-                (args, _) => playerClock = args);
+                (args, _) => _playerClock = args);
         }
 
         private static TimeSpan InvalidClockFn()
@@ -67,17 +67,17 @@ namespace JuvoPlayer.Player.EsPlayer
 
         public void EnableClock()
         {
-            if (playerClockSourceConnection != null)
+            if (_playerClockSourceConnection != null)
                 return;
 
-            LastClock = playerClock();
-            playerClockSourceConnection = PlayerClockConnectable.Connect();
+            LastClock = _playerClock();
+            _playerClockSourceConnection = PlayerClockConnectable.Connect();
         }
 
         public void DisableClock()
         {
-            playerClockSourceConnection?.Dispose();
-            playerClockSourceConnection = null;
+            _playerClockSourceConnection?.Dispose();
+            _playerClockSourceConnection = null;
             LastClock = InvalidClock;
         }
     }
