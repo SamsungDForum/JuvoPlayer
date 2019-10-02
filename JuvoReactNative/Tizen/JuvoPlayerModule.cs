@@ -55,7 +55,7 @@ namespace JuvoReactNative
         private void InitializeJuvoPlayer()
         {
             // You see a gray background and no video it means that the Canvas.cs file of the react-native-tizen framework is invalid.
-            //It requires the change: BackgroundColor = Color.Transparent of the canvas class.            
+            //It requires the change: BackgroundColor = Color.Transparent of the canvas class. 
             juvoPlayer = new PlayerServiceProxy(new PlayerServiceImpl(window));
             juvoPlayer.StateChanged()
                .ObserveOn(syncContext)
@@ -286,8 +286,7 @@ namespace JuvoReactNative
             Logger?.Info("Stopping player");
             juvoPlayer?.Stop();
             juvoPlayer?.Dispose();
-            juvoPlayer = null;
-            syncContext = null;
+            juvoPlayer = null;            
             seekLogic.IsSeekAccumulationInProgress = false;
         }
         [ReactMethod]
