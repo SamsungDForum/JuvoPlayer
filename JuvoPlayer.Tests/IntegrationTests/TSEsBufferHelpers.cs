@@ -17,13 +17,12 @@
 
 using System;
 using System.Collections.Generic;
-using System.Threading.Tasks;
 using JuvoPlayer.Common;
 using JuvoPlayer.Player.EsPlayer;
 
 namespace JuvoPlayer.Tests.IntegrationTests
 {
-    internal class dummyStorage : IDataStorage
+    internal class DummyStorage : IDataStorage
     {
         public int Length => 1;
 
@@ -33,21 +32,9 @@ namespace JuvoPlayer.Tests.IntegrationTests
         }
     }
 
-    internal static class TSEsBufferHelpers
+    internal static class TsEsBufferHelpers
     {
-        public static bool CompareDataArgs(this DataRequest a, DataRequest b)
-        {
-            return a.StreamType == b.StreamType &&
-                   a.RequestPeriod == b.RequestPeriod;
-        }
-
-        public static bool CompareMetaData(this DataRequest a, MetaDataStreamConfig b)
-        {
-            return a.StreamType == b.StreamType() &&
-                   a.RequestPeriod == b.BufferDuration;
-        }
-
-        public static async Task PushPackets(this EsBuffer dataBuffer, IEnumerable<Packet> source)
+        public static void DataIn(this EsBuffer dataBuffer, IEnumerable<Packet> source)
         {
             foreach (var packet in source)
             {
@@ -55,7 +42,7 @@ namespace JuvoPlayer.Tests.IntegrationTests
             }
         }
 
-        public static async Task PullPackets(this EsBuffer dataBuffer, IEnumerable<Packet> source)
+        public static void DataOut(this EsBuffer dataBuffer, IEnumerable<Packet> source)
         {
             foreach (var packet in source)
             {
@@ -63,14 +50,12 @@ namespace JuvoPlayer.Tests.IntegrationTests
             }
         }
 
-        public static async Task DisposePackets(this IEnumerable<Packet> source)
+        public static void DisposePackets(this IEnumerable<Packet> source)
         {
             foreach (var packet in source)
             {
                 packet.Dispose();
             }
-
-            await Task.Yield();
         }
 
         public static List<Packet> BuildPacketList(StreamType type, TimeSpan duration, int maxPacketCount, TimeSpan? startTime = null)
@@ -89,7 +74,7 @@ namespace JuvoPlayer.Tests.IntegrationTests
                 var packet = new Packet
                 {
                     Dts = startTime.Value + TimeSpan.FromMilliseconds(packetDtsDuration * packetCount),
-                    Storage = new dummyStorage(),
+                    Storage = new DummyStorage(),
                     StreamType = type
                 };
 
@@ -99,6 +84,5 @@ namespace JuvoPlayer.Tests.IntegrationTests
 
             return packetList;
         }
-
     }
 }
