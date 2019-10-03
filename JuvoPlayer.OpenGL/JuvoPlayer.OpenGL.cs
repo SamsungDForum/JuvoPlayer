@@ -626,6 +626,23 @@ namespace JuvoPlayer.OpenGL
             _metricsHandler.Update();
         }
 
+        private static PlayerState ToPlayerState(Common.PlayerState state)
+        {
+            switch (state)
+            {
+                case Common.PlayerState.Idle:
+                    return PlayerState.Idle;
+                case Common.PlayerState.Prepared:
+                    return PlayerState.Prepared;
+                case Common.PlayerState.Paused:
+                    return PlayerState.Paused;
+                case Common.PlayerState.Playing:
+                    return PlayerState.Playing;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(state), state, null);
+            }
+        }
+
         private unsafe void UpdatePlaybackControls()
         {
             if (_progressBarShown && Player?.State == Common.PlayerState.Playing &&
@@ -641,7 +658,7 @@ namespace JuvoPlayer.OpenGL
                 DllImports.UpdatePlaybackControls(new DllImports.PlaybackData()
                 {
                     show = _progressBarShown ? 1 : 0,
-                    state = (int)(Player?.State ?? Common.PlayerState.Idle),
+                    state = (int)ToPlayerState(Player?.State ?? Common.PlayerState.Idle),
                     currentTime = (int)_seekLogic.CurrentPositionUI.TotalMilliseconds,
                     totalTime = (int)_seekLogic.Duration.TotalMilliseconds,
                     text = name,

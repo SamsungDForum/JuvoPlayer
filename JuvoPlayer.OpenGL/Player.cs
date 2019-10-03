@@ -16,40 +16,15 @@
  */
 
 using System;
-using System.Reactive.Linq;
 using ElmSharp;
 
 namespace JuvoPlayer.OpenGL
 {
     class Player : PlayerServiceProxy
     {
-        public new PlayerState State => ToPlayerState(base.State);
-
         public Player(Window playerWindow)
             : base(new PlayerServiceImpl(playerWindow))
         {
-        }
-
-        public new IObservable<PlayerState> StateChanged()
-        {
-            return base.StateChanged().Select(ToPlayerState);
-        }
-
-        private PlayerState ToPlayerState(Common.PlayerState state)
-        {
-            switch (state)
-            {
-                case Common.PlayerState.Idle:
-                    return PlayerState.Idle;
-                case Common.PlayerState.Prepared:
-                    return PlayerState.Prepared;
-                case Common.PlayerState.Paused:
-                    return PlayerState.Paused;
-                case Common.PlayerState.Playing:
-                    return PlayerState.Playing;
-                default:
-                    throw new ArgumentOutOfRangeException(nameof(state), state, null);
-            }
         }
     }
 }
