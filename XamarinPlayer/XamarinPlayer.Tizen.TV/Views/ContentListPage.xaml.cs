@@ -109,11 +109,11 @@ namespace XamarinPlayer.Views
 
         private static KeyCode ConvertToKeyCode(string e)
         {
-            if (e.Contains("Next") || e.Contains("Right"))
+            if (e.Contains("Right"))
                 return KeyCode.Next;
-            if (e.Contains("Rewind") || e.Contains("Left"))
+            if (e.Contains("Left"))
                 return KeyCode.Previous;
-            if (e.Contains("Return"))
+            if (e.Contains("Return") || e.Contains("Play"))
                 return KeyCode.Enter;
             return KeyCode.Unknown;
         }
