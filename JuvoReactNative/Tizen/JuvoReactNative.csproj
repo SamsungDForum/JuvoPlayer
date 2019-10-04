@@ -5,6 +5,7 @@
     <OutputType>Exe</OutputType>
     <TargetFramework>netcoreapp2.0</TargetFramework>
     <DefineConstants></DefineConstants>
+    <Version>1.5.0</Version>
   </PropertyGroup>
 
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
@@ -32,10 +33,6 @@
     <EmbeddedResource Include="shared\res\icon.png">
       <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
     </EmbeddedResource>
-  </ItemGroup>
-
-  <ItemGroup>
-    <Folder Include="res\" />
   </ItemGroup>
 
 
@@ -144,6 +141,10 @@
     <Reference Include="ReactNativeTizen">
       <HintPath>ReactNativeTizen.dll</HintPath>
     </Reference>
+  </ItemGroup>
+
+  <ItemGroup>
+    <Folder Include="res\" />
   </ItemGroup>
   
 </Project>
