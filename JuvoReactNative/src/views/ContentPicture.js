@@ -3,7 +3,8 @@
 import React from 'react';
 import {  
   View,  
-  Image  
+  Image,
+  NativeModules  
 } from 'react-native';
 
 import HideableView from './HideableView';
@@ -13,6 +14,7 @@ export default class ContentPicture extends React.Component {
     
     constructor(props) {
       super(props); 
+      this.JuvoPlayer = NativeModules.JuvoPlayer;
     }
   
     shouldComponentUpdate(nextProps, nextState) {    
@@ -56,6 +58,7 @@ export default class ContentPicture extends React.Component {
                   source={path} 
                   onLoadStart={this.props.onLoadStart}
                   onLoadEnd={this.props.onLoadEnd}
+                  onError = {(error) => { this.JuvoPlayer.Log('Image loading error: ' + error); }}
               />
             </View>
           </HideableView>
