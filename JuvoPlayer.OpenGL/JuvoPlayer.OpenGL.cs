@@ -561,10 +561,20 @@ namespace JuvoPlayer.OpenGL
 
         private void HandleKeyPlay()
         {
-            if (PlayerHandle?.State == PlayerState.Playing)
-                PlayerHandle?.Pause();
+            if (_isMenuShown)
+            {
+                if (_selectedTile >= _resourceLoader.TilesCount)
+                    return;
+                ShowMenu(false);
+                HandlePlaybackStart();
+            }
             else
-                PlayerHandle?.Start();
+            {
+                if (PlayerHandle?.State == PlayerState.Playing)
+                    PlayerHandle?.Pause();
+                else
+                    PlayerHandle?.Start();
+            }
         }
 
         private void HandleKeyPause()
