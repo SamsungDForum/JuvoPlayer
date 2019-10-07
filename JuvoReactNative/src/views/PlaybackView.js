@@ -71,7 +71,7 @@ export default class PlaybackView extends React.Component {
     this.onGotStreamsDescription = this.onGotStreamsDescription.bind(this);      
     this.onSubtitleSelection = this.onSubtitleSelection.bind(this);
     this.handleNotificationPopupDisappeared = this.handleNotificationPopupDisappeared.bind(this);
-    this.hideInProgressAnimation = this.hideInProgressAnimation.bind(this);
+    this.stopInProgressAnimation = this.stopInProgressAnimation.bind(this);
     this.resetPlaybackState = this.resetPlaybackState.bind(this);
   }   
   componentWillMount() {
@@ -201,7 +201,8 @@ export default class PlaybackView extends React.Component {
     this.popupMessage = error.Message;
     this.showNotificationPopup = true;
     this.operationInProgress = false; 
-    this.hideInProgressAnimation();
+    this.showingSettingsView = false;    
+    this.stopInProgressAnimation();
     this.rerender();    
   }
   onTVKeyDown(pressed) {
@@ -283,10 +284,10 @@ export default class PlaybackView extends React.Component {
     if (this.playbackInfoInterval >= 0) {      
       clearInterval(this.playbackInfoInterval);
       this.playbackInfoInterval = -1;
-      this.hideInProgressAnimation();
+      this.stopInProgressAnimation();
     }  
   }  
-  hideInProgressAnimation(){
+  stopInProgressAnimation(){
     clearTimeout(this.onScreenTimeOut);
     this.onScreenTimeOut = -1;   
   }

@@ -142,9 +142,5 @@
       <HintPath>ReactNativeTizen.dll</HintPath>
     </Reference>
   </ItemGroup>
-
-  <ItemGroup>
-    <Folder Include="res\" />
-  </ItemGroup>
   
 </Project>
