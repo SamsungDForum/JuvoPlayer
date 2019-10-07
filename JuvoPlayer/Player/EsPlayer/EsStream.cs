@@ -375,9 +375,11 @@ namespace JuvoPlayer.Player.EsPlayer
         private async Task TransferTask(CancellationToken token)
         {
             logger.Info($"{streamType}: Started");
+            Task firstPacket = Task.CompletedTask;
             try
             {
-                await WaitForFirstDataPacket(token).WithCancellation(token);
+                firstPacket = WaitForFirstDataPacket(token);
+                await firstPacket.WithCancellation(token);
 
                 logger.Info($"{streamType}: Transfer commenced");
 
@@ -398,6 +400,16 @@ namespace JuvoPlayer.Player.EsPlayer
             catch (OperationCanceledException)
             {
                 logger.Info($"{streamType}: Transfer cancelled");
+
+                // Termination when performing async op (prepare/seek)
+                // FirstPacket termination = async op termination. Further playback not expected.
+                // Issue EOS to terminate async op as soon as possible.
+                // Pause/Resume operations do not occour during async ops this won't be affected.
+                if (firstPacket.IsFaulted)
+                {
+                    logger.Info($"{streamType}: Cancelled during first data packet wait. Issuing EOS");
+                    player.SubmitEosPacket(streamType.ESStreamType());
+                }
             }
             catch (PacketSubmitException pse)
             {
@@ -423,7 +435,7 @@ namespace JuvoPlayer.Player.EsPlayer
 
                 if (firstDataPacketTcs != null)
                 {
-                    firstDataPacketTcs.SetException(new OperationCanceledException("Terminated before first data packet"));
+                    firstDataPacketTcs.SetException(new OperationCanceledException("Terminated before notifying first data packet"));
                     firstDataPacketTcs = null;
                 }
 

@@ -22,17 +22,18 @@ namespace JuvoPlayer.Utils
 {
     class AsyncBarrier
     {
-        private volatile int participantCount;
-        private volatile int currentCount;
-        private readonly object locker = new object();
-        private TaskCompletionSource<object> waitTcs;
+        private volatile int _participantCount;
+        private volatile int _currentCount;
+        private volatile object _message;
+        private readonly object _locker = new object();
+        private TaskCompletionSource<object> _waitTcs;
 
-        private Task GetWaitTask()
+        private Task<object> GetWaitTask()
         {
-            if (waitTcs == null)
-                waitTcs = new TaskCompletionSource<object>(TaskCreationOptions.RunContinuationsAsynchronously);
+            if (_waitTcs == null)
+                _waitTcs = new TaskCompletionSource<object>(TaskCreationOptions.RunContinuationsAsynchronously);
 
-            return waitTcs.Task;
+            return _waitTcs.Task;
         }
 
         private bool ReleaseIfReached(int value, bool valueIsParticipantCount)
@@ -43,64 +44,68 @@ namespace JuvoPlayer.Utils
             if (valueIsParticipantCount)
             {
                 participants = value;
-                currently = currentCount;
+                currently = _currentCount;
             }
             else
             {
-                participants = participantCount;
+                participants = _participantCount;
                 currently = value;
             }
 
             if (currently < participants)
                 return false;
 
-            currentCount = 0;
-            waitTcs?.SetResult(null);
-            waitTcs = null;
+            _currentCount = 0;
+            _waitTcs?.SetResult(_message);
+            _message = null;
+            _waitTcs = null;
             return true;
         }
 
         public void Reset()
         {
-            lock (locker)
+            lock (_locker)
             {
-                currentCount = 0;
-                participantCount = 0;
+                _currentCount = 0;
+                _participantCount = 0;
             }
         }
 
         public void AddParticipant()
         {
-            lock (locker)
+            lock (_locker)
             {
-                participantCount++;
+                _participantCount++;
             }
         }
 
         public void RemoveParticipant()
         {
-            lock (locker)
+            lock (_locker)
             {
-                var newCount = participantCount - 1;
+                var newCount = _participantCount - 1;
                 if (newCount < 0)
-                    throw new ArgumentOutOfRangeException(nameof(participantCount) + "<0");
+                    throw new ArgumentOutOfRangeException(nameof(_participantCount) + "<0");
 
-                participantCount = newCount;
+                _participantCount = newCount;
                 ReleaseIfReached(newCount, true);
             }
         }
 
-        public Task Signal()
+        public Task<object> Signal(object msg = null)
         {
-            lock (locker)
+            lock (_locker)
             {
-                var newCurrentCount = currentCount + 1;
+                if (msg != null)
+                    _message = msg;
 
+                var newCurrentCount = _currentCount + 1;
+                var currentWaitTask = GetWaitTask();
                 if (ReleaseIfReached(newCurrentCount, false))
-                    return Task.CompletedTask;
+                    return currentWaitTask;
 
-                currentCount = newCurrentCount;
-                return GetWaitTask();
+                _currentCount = newCurrentCount;
+                return currentWaitTask;
             }
         }
     }

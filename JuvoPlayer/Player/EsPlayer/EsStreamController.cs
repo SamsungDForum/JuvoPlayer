@@ -20,6 +20,7 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
+using System.Reactive.Threading.Tasks;
 using System.Threading;
 using ESPlayer = Tizen.TV.Multimedia;
 using System.Threading.Tasks;
@@ -293,14 +294,20 @@ namespace JuvoPlayer.Player.EsPlayer
                     return;
                 }
 
+                var asyncOpRunning = IsAsyncOpRunning();
+                logger.Info($"Async Op Running: {asyncOpRunning}");
                 switch (state)
                 {
                     case ESPlayer.ESPlayerState.Playing:
                         return;
 
                     case ESPlayer.ESPlayerState.Ready:
-                        player.Start();
-                        StartClockGenerator();
+                        //player.Start();
+                        //StartClockGenerator();
+                        //stateChangedSubject.OnNext(PlayerState.Playing);
+                        return;
+
+                    case ESPlayer.ESPlayerState.Paused when asyncOpRunning:
                         stateChangedSubject.OnNext(PlayerState.Playing);
                         return;
 
@@ -374,7 +381,14 @@ namespace JuvoPlayer.Player.EsPlayer
                 await SeekStreamInitialize(token);
                 time = await Client.Seek(time, token);
                 EnableInput();
-                await StreamSeek(time, token);
+                var resumeNeeded = player.GetState() == ESPlayer.ESPlayerState.Paused;
+                if (resumeNeeded)
+                    await stateChangedSubject
+                        .AsObservable()
+                        .FirstAsync(state => state == PlayerState.Playing)
+                        .ToTask(token);
+
+                await StreamSeek(time, resumeNeeded, token);
             }
             catch (SeekException e)
             {
@@ -668,12 +682,14 @@ namespace JuvoPlayer.Player.EsPlayer
             esStreams[(int)StreamType.Audio].FirstDataPacketCompletionTask =
                 esStreams[(int)StreamType.Video].RequestFirstDataPacketNotification();
 
-            dataSynchronizer.InitializeSynchronization(false);
+            dataSynchronizer.Prepare();
             dataBuffer.SetAllowedEvents(EsBuffer.DataEvent.DataRequest);
 
             logger.Info("Player.PrepareAsync()");
 
-            await player.PrepareAsync(OnReadyToStartStream).WithCancellation(token);
+            var asyncOp = player.PrepareAsync(OnReadyToStartStream);
+            dataSynchronizer.SetAsyncOperation(asyncOp);
+            await asyncOp.WithCancellation(token);
 
             logger.Info("Player.PrepareAsync() Completed");
         }
@@ -696,6 +712,9 @@ namespace JuvoPlayer.Player.EsPlayer
 
                     token.ThrowIfCancellationRequested();
                     stateChangedSubject.OnNext(PlayerState.Prepared);
+                    player.Start();
+                    StartClockGenerator();
+                    stateChangedSubject.OnNext(PlayerState.Playing);
                 }
             }
             catch (InvalidOperationException ioe)
@@ -798,6 +817,7 @@ namespace JuvoPlayer.Player.EsPlayer
 
             // Stop data streams. They will be restarted from
             // SeekAsync handler.
+
             DisableInput();
             DisableTransfer();
             StopClockGenerator();
@@ -809,6 +829,7 @@ namespace JuvoPlayer.Player.EsPlayer
             logger.Info($"Waiting for {terminations.Length} activities to complete");
             await Task.WhenAll(terminations).WithCancellation(token);
 
+
             var resetDone = dataBuffer.Reset();
             EmptyStreams();
             await resetDone.WithCancellation(token);
@@ -819,30 +840,27 @@ namespace JuvoPlayer.Player.EsPlayer
                 esStreams[(int)StreamType.Video].RequestFirstDataPacketNotification();
         }
 
-        private async Task StreamSeek(TimeSpan time, CancellationToken token)
+        private async Task StreamSeek(TimeSpan time, bool resumeNeeded, CancellationToken token)
         {
-            var seekToMsg = time.ToString();
-
-            var skipClockDetection = player.GetState() == ESPlayer.ESPlayerState.Paused;
-            if (skipClockDetection)
-                seekToMsg += " Seeking in paused state. Running clock detection will be skipped";
-
-            logger.Info(seekToMsg);
-
             using (await asyncOpSerializer.LockAsync(token))
             {
                 token.ThrowIfCancellationRequested();
 
-                dataSynchronizer.InitializeSynchronization(skipClockDetection);
+                dataSynchronizer.Prepare();
                 dataBuffer.SetAllowedEvents(EsBuffer.DataEvent.DataRequest);
 
-                logger.Info("Player.SeekAsync()");
+                logger.Info($"Player.SeekAsync(): Resume needed: {resumeNeeded}");
 
-                await player.SeekAsync(time, OnReadyToSeekStream).WithCancellation(token);
+                var asyncOp = player.SeekAsync(time, OnReadyToSeekStream);
+                dataSynchronizer.SetAsyncOperation(asyncOp);
+                await asyncOp.WithCancellation(token);
 
                 logger.Info("Player.SeekAsync() Completed");
 
                 token.ThrowIfCancellationRequested();
+
+                if (resumeNeeded)
+                    player.Resume();
 
                 StartClockGenerator();
 
@@ -921,6 +939,20 @@ namespace JuvoPlayer.Player.EsPlayer
             playerClock.DisableClock();
         }
 
+        private bool IsAsyncOpRunning()
+        {
+            try
+            {
+                // Check if async op is in progress
+                asyncOpSerializer.Lock(new CancellationToken(true)).Dispose();
+                return false;
+            }
+            catch (TaskCanceledException)
+            {
+                return true;
+            }
+        }
+
         #endregion
 
         #region Dispose support
@@ -935,12 +967,7 @@ namespace JuvoPlayer.Player.EsPlayer
             DisableInput();
             activeTaskCts.Cancel();
 
-            try
-            {
-                // Check if async op is in progress
-                asyncOpSerializer.Lock(activeTaskCts.Token).Dispose();
-            }
-            catch (TaskCanceledException)
+            if (IsAsyncOpRunning())
             {
                 logger.Info("Async operation in progress. Terminating with EOS");
                 var audioResult = player.SubmitEosPacket(ESPlayer.StreamType.Audio);
