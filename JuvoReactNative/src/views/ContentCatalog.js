@@ -6,8 +6,6 @@ import {
   NativeEventEmitter
 } from 'react-native';
 
-var nativeImageSource = require('nativeImageSource');
-
 import HideableView from './HideableView';
 import ContentPicture from './ContentPicture';
 import ContentScroll from './ContentScroll';
