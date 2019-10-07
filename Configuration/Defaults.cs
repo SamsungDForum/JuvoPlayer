@@ -31,7 +31,7 @@ namespace Configuration
 
     public static class ClockProviderConfig
     {
-        public static TimeSpan ClockInterval { get; set; } = TimeSpan.FromSeconds(0.2);
+        public static TimeSpan ClockInterval { get; set; } = TimeSpan.FromSeconds(0.1);
         public static readonly TimeSpan InvalidClock = TimeSpan.FromSeconds(-1);
         public static readonly TimeSpan NoClockReturnValue = TimeSpan.FromSeconds(-2);
     }
@@ -46,11 +46,10 @@ namespace Configuration
 
     public static class DataSynchronizerConfig
     {
-        public static TimeSpan InitialChunkDuration { get; set; } = TimeSpan.FromSeconds(0.5);
-        public static TimeSpan DefaultChunkDuration { get; set; } = TimeSpan.FromSeconds(0.3);
+        public static TimeSpan KeyFrameTransferDuration { get; set; } = TimeSpan.FromSeconds(0.3);
+        public static TimeSpan DefaultTransferDuration { get; set; } = TimeSpan.FromSeconds(0.5);
         public static TimeSpan StreamClockMaximumOverhead { get; set; } = TimeSpan.FromSeconds(1.25);
         public static TimeSpan StreamClockMinimumOverhead { get; set; } = TimeSpan.FromSeconds(0.75);
-        public static int ClockDetectionConsecutiveValidClockCount { get; set; } = 3;
     }
 
     public static class DashClient

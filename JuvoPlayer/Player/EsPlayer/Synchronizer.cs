@@ -18,7 +18,6 @@
 using JuvoLogger;
 using JuvoPlayer.Common;
 using System;
-using System.Collections.Generic;
 using System.Reactive.Linq;
 using System.Reactive.Threading.Tasks;
 using System.Threading;
@@ -33,50 +32,32 @@ namespace JuvoPlayer.Player.EsPlayer
     {
         private enum SynchronizationState
         {
-            Initialized,
-            Started,
-            Synchronizing
+            KeyFrameSearch,
+            PlayerClockSynchronize
         }
         private class SynchronizationData
         {
-            public bool SkipClockDetection;
+            public TimeSpan FirstPts;
             public DateTimeOffset BeginTime;
-            public TimeSpan CurrentClock;
+            public TimeSpan Dts;
+            public TimeSpan Pts;
             public TimeSpan RequestedDuration;
             public TimeSpan TransferredDuration;
             public StreamType StreamType;
             public SynchronizationState SyncState;
-            public Task<IList<TimeSpan>> ClockDetector;
+            public Task AsyncOperation;
+            public bool IsKeyFrameSeen;
+            public bool IsEosSeen;
         }
 
         private static readonly ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
-        private readonly SynchronizationData[] streamSyncData = new SynchronizationData[(int)StreamType.Count];
-        private readonly AsyncBarrier streamSyncBarrier = new AsyncBarrier();
-        private readonly ClockProvider playerClockSource = new ClockProvider();
-        private static readonly Task<IList<TimeSpan>> CancelledTask = Task.FromCanceled<IList<TimeSpan>>(new CancellationToken(true));
-        private Task<IList<TimeSpan>> DetectPlayerClock(CancellationToken token) =>
-            playerClockSource
-                .PlayerClockObservable()
-                .Buffer(ClockDetectionConsecutiveValidClockCount, 1)
-                .FirstAsync(args =>
-               {
-                   var lastClock = TimeSpan.Zero;
-
-                   foreach (var clock in args)
-                   {
-                       if (clock <= lastClock)
-                           return false;
-
-                       lastClock = clock;
-                   }
-
-                   return true;
-               })
-                .ToTask(token);
+        private readonly SynchronizationData[] _streamSyncData = new SynchronizationData[(int)StreamType.Count];
+        private readonly AsyncBarrier _streamSyncBarrier = new AsyncBarrier();
+        private readonly ClockProvider _playerClockSource = new ClockProvider();
 
         public void Initialize(StreamType stream)
         {
-            streamSyncData[(int)stream] = new SynchronizationData
+            _streamSyncData[(int)stream] = new SynchronizationData
             {
                 StreamType = stream
             };
@@ -85,25 +66,44 @@ namespace JuvoPlayer.Player.EsPlayer
         private static void ResetTransferChunk(SynchronizationData streamState)
         {
             streamState.TransferredDuration = TimeSpan.Zero;
-            streamState.RequestedDuration = DefaultChunkDuration;
+            streamState.RequestedDuration = DefaultTransferDuration;
             streamState.BeginTime = DateTimeOffset.Now;
         }
 
-        private static void UpdateTransferChunk(SynchronizationData streamState, TimeSpan clock)
+        private static void UpdateTransferdDuration(SynchronizationData streamState, Packet packet)
         {
-            var lastClock = streamState.CurrentClock;
-            streamState.CurrentClock = clock;
+            if (streamState.FirstPts == default(TimeSpan))
+                streamState.FirstPts = packet.Pts;
 
-            var clockDiff = streamState.CurrentClock - lastClock;
+            if (!streamState.IsKeyFrameSeen && packet.IsKeyFrame)
+            {
+                // On first key frame, reset transfer duration to collect KeyFrameTransferDuration ammount
+                // of data after key frame. Below this level, ESPlayer may not complete current async operations
+                // (seek/prepare)
+                streamState.IsKeyFrameSeen = true;
+                streamState.TransferredDuration = TimeSpan.Zero;
+                streamState.RequestedDuration = KeyFrameTransferDuration;
+
+                if (packet.StreamType == StreamType.Video && packet.IsKeyFrame)
+                    Logger.Info($"{streamState.StreamType}: Key frame seen {packet.Pts}/{packet.Dts}. First PTS {streamState.FirstPts}");
+
+            }
+
+            var lastClock = streamState.Dts;
+            streamState.Dts = packet.Dts;
+            streamState.Pts = packet.Pts;
+
+            var clockDiff = streamState.Dts - lastClock;
 
             if (clockDiff > DataBufferConfig.StreamClockDiscontinuityThreshold || clockDiff <= TimeSpan.Zero)
             {
-                Logger.Info($"{streamState.StreamType}: Clock Discontinuity {clockDiff} {streamState.CurrentClock}/{lastClock}");
+                Logger.Info($"{streamState.StreamType}: Clock Discontinuity {clockDiff} {streamState.Dts}/{lastClock}");
                 return;
             }
 
             streamState.TransferredDuration += clockDiff;
         }
+
 
         private static TimeSpan GetGenericDelay(SynchronizationData streamState)
         {
@@ -114,129 +114,90 @@ namespace JuvoPlayer.Player.EsPlayer
             return streamState.TransferredDuration - transferTime;
         }
 
-        private static Task DelayStream(SynchronizationData streamState, TimeSpan delay, CancellationToken token)
+        private static Task DelayStream(StreamType streamType, TimeSpan transferred, TimeSpan delay, CancellationToken token)
         {
             if (delay <= TimeSpan.Zero)
                 return Task.CompletedTask;
 
-            Logger.Info($"{streamState.StreamType}: Transferred {streamState.TransferredDuration} Delaying {delay}");
+            Logger.Info($"{streamType}: Transferred {transferred} Delaying {delay}");
 
             return Task.Delay(delay, token);
         }
 
-        private static bool IsSyncPointReached(TimeSpan playerClock, TimeSpan targetClock, SynchronizationData streamState)
-        {
-            if (targetClock != ClockProviderConfig.InvalidClock)
-                return playerClock >= targetClock;
-
-            if (playerClock == ClockProviderConfig.InvalidClock)
-                return false;
-
-            var clockDiff = streamState.CurrentClock - playerClock - StreamClockMinimumOverhead;
-            if (clockDiff <= TimeSpan.Zero)
-                return true;
-
-            targetClock = playerClock + clockDiff;
-
-            Logger.Info($"{streamState.StreamType}: Sync {streamState.CurrentClock} to {playerClock} ({clockDiff}) Restart {targetClock}");
-            return false;
-        }
 
         private Task StreamSync(SynchronizationData streamState, CancellationToken token)
         {
             var playerClock = ClockProvider.LastClock;
-            var desiredClock = ClockProviderConfig.InvalidClock;
+            if (playerClock < TimeSpan.Zero)
+                playerClock = streamState.FirstPts;
 
-            // Check quick exit path for borderline clock cases. New clock might have arrived between
-            // last IsTransferCompleted() and now.
-            if (playerClock != ClockProviderConfig.InvalidClock)
-            {
-                var clockDiff = streamState.CurrentClock - playerClock - StreamClockMinimumOverhead;
-                if (clockDiff <= TimeSpan.Zero)
-                    return Task.CompletedTask;
+            var clockDiff = streamState.Pts - playerClock - StreamClockMinimumOverhead;
+            if (clockDiff <= TimeSpan.Zero)
+                return Task.CompletedTask;
 
-                desiredClock = playerClock + clockDiff;
+            var desiredClock = playerClock + clockDiff;
 
-                Logger.Info($"{streamState.StreamType}: Sync {streamState.CurrentClock} to {playerClock} ({clockDiff}) Restart {desiredClock}");
-            }
-            else
-            {
-                Logger.Info($"{streamState.StreamType}: Sync {streamState.CurrentClock} to --:--:-- (--:--:--) Restart --:--:--");
-            }
+            Logger.Info($"{streamState.StreamType}: Sync {streamState.Dts} to {playerClock} ({clockDiff}) Restart {desiredClock}");
 
-            return playerClockSource.PlayerClockObservable()
-                .FirstAsync(pClock => IsSyncPointReached(pClock, desiredClock, streamState))
+            return _playerClockSource.PlayerClockObservable()
+                .FirstAsync(pClock => pClock >= desiredClock)
                 .ToTask(token);
         }
 
-        private static bool IsTransferCompleted(SynchronizationData streamState)
+        private static bool IsTransferedDurationCompleted(SynchronizationData streamState)
         {
-            if (streamState.SyncState == SynchronizationState.Synchronizing)
-                return streamState.CurrentClock - ClockProvider.LastClock >= StreamClockMaximumOverhead;
+            // Once EOS is seen
+            if (streamState.IsEosSeen)
+                return false;
+
+            if (streamState.SyncState == SynchronizationState.PlayerClockSynchronize)
+                return streamState.Dts - ClockProvider.LastClock >= StreamClockMaximumOverhead;
 
             return streamState.TransferredDuration >= streamState.RequestedDuration;
         }
 
-        private static StreamType OtherStream(StreamType thisStream) =>
-            thisStream == StreamType.Audio ? StreamType.Video : StreamType.Audio;
-
-        private bool IsClockDetected(SynchronizationData streamState, CancellationToken token)
-        {
-            if (streamState.ClockDetector.IsCanceled || streamState.ClockDetector.IsFaulted)
-            {
-                // Clock detector not running (first start or restart after pause)
-                streamState.ClockDetector = DetectPlayerClock(token);
-                return false;
-            }
-
-            return streamState.ClockDetector.IsCompleted;
-        }
-
         public async ValueTask<bool> Synchronize(StreamType streamType, CancellationToken token)
         {
-            var streamState = streamSyncData[(int)streamType];
+            var streamState = _streamSyncData[(int)streamType];
 
-            if (!IsTransferCompleted(streamState))
+            if (!IsTransferedDurationCompleted(streamState))
                 return false;
 
             switch (streamState.SyncState)
             {
-                case SynchronizationState.Initialized:
+                case SynchronizationState.KeyFrameSearch:
                     Logger.Info(
-                        $"{streamState.StreamType}: '{streamState.SyncState}' {streamState.CurrentClock} Waiting for {OtherStream(streamState.StreamType)}");
-                    await streamSyncBarrier.Signal().WithCancellation(token);
+                        $"{streamState.StreamType}: '{streamState.SyncState}' {streamState.Dts} Waiting for AsyncOp completion");
 
-                    if (!streamState.SkipClockDetection)
-                    {
-                        streamState.SyncState = SynchronizationState.Started;
-                        await DelayStream(streamState, GetGenericDelay(streamState), token).ConfigureAwait(false);
-                    }
-                    else
-                    {
-                        streamState.SyncState = SynchronizationState.Synchronizing;
-                        Logger.Info($"{streamState.StreamType}: Skipping clock detection");
-                    }
+                    object msg = null;
+
+                    // Video stream controls transfer from KeyFrameSearch state to PlayerClockSynchronize
+                    // When key frame gets detected, first video frame clock is sent to remaining streams.
+                    // If player clock will not be available in initial stages of PlayerClockSynchronize, this
+                    // value will be used as player clock
+                    if (streamType == StreamType.Video && streamState.IsKeyFrameSeen)
+                        msg = streamState.FirstPts;
+
+                    // Synchronize A&V. At this point they run independant of each other.
+                    var waitTask = _streamSyncBarrier.Signal(msg);
+                    await waitTask.WithCancellation(token);
+
+                    // Check if transition to PlayerClockSynchronize is possible.
+                    // If not, repeat KeyFrameSearch.
+                    var waitMessage = waitTask.Result;
+                    if (waitMessage == null)
+                        break;
+
+                    // Video stream observed key frame
+                    streamState.FirstPts = (TimeSpan)waitMessage;
+                    await streamState.AsyncOperation.WithCancellation(token);
+                    streamState.SyncState = SynchronizationState.PlayerClockSynchronize;
+                    streamState.AsyncOperation = null;
 
                     Logger.Info($"{streamState.StreamType}: {streamState.SyncState}");
                     break;
 
-                case SynchronizationState.Started:
-                    Logger.Info(
-                        $"{streamState.StreamType}: '{streamState.SyncState}' {streamState.CurrentClock} Waiting for {OtherStream(streamState.StreamType)}");
-                    await streamSyncBarrier.Signal().WithCancellation(token);
-
-                    if (IsClockDetected(streamState, token))
-                    {
-                        streamState.SyncState = SynchronizationState.Synchronizing;
-                        streamSyncBarrier.RemoveParticipant();
-
-                        Logger.Info($"{streamState.StreamType}: '{streamState.SyncState}'");
-                    }
-
-                    await DelayStream(streamState, GetGenericDelay(streamState), token).ConfigureAwait(false);
-                    break;
-
-                case SynchronizationState.Synchronizing:
+                case SynchronizationState.PlayerClockSynchronize:
                     var isWaiting = StreamSync(streamState, token);
                     if (isWaiting.IsCompleted)
                         return false;
@@ -244,60 +205,83 @@ namespace JuvoPlayer.Player.EsPlayer
                     return true;
             }
 
+            var transferred = streamState.TransferredDuration;
+            var delay = GetGenericDelay(streamState);
             ResetTransferChunk(streamState);
+            await DelayStream(streamState.StreamType, transferred, delay, token).ConfigureAwait(false);
+
             return false;
         }
 
         public void DataOut(Packet packet)
         {
-            var streamState = streamSyncData[(int)packet.StreamType];
+            var streamState = _streamSyncData[(int)packet.StreamType];
 
             if (!packet.ContainsData())
             {
-                if (packet is EOSPacket && streamState.SyncState != SynchronizationState.Synchronizing)
-                    streamSyncBarrier.RemoveParticipant();
+                if (streamState.IsEosSeen || !(packet is EOSPacket))
+                    return;
+
+                // Don't sychronize after EOS.
+                Logger.Info($"{streamState.StreamType}: 'streamState.SyncState' EOS {streamState.Pts}");
+                streamState.IsEosSeen = true;
+                if (streamState.SyncState != SynchronizationState.PlayerClockSynchronize)
+                    _streamSyncBarrier.RemoveParticipant();
 
                 return;
             }
 
-            if (streamState.SyncState == SynchronizationState.Synchronizing)
+            if (streamState.SyncState == SynchronizationState.PlayerClockSynchronize)
             {
-                streamState.CurrentClock = packet.Dts;
+                streamState.Dts = packet.Dts;
+                streamState.Pts = packet.Pts;
                 return;
             }
 
-            UpdateTransferChunk(streamState, packet.Dts);
+            UpdateTransferdDuration(streamState, packet);
         }
 
-        public void InitializeSynchronization(bool skipClockDetection)
+        public void Prepare()
         {
-            streamSyncBarrier.Reset();
+            _streamSyncBarrier.Reset();
 
             var initClock = DateTimeOffset.Now;
 
-            foreach (var state in streamSyncData)
+            foreach (var state in _streamSyncData)
             {
                 if (state == null)
                     continue;
 
-                state.SyncState = SynchronizationState.Initialized;
+                state.FirstPts = default(TimeSpan);
+                state.SyncState = SynchronizationState.KeyFrameSearch;
                 state.BeginTime = initClock;
                 state.TransferredDuration = TimeSpan.Zero;
-                state.RequestedDuration = InitialChunkDuration;
-                state.CurrentClock = ClockProviderConfig.InvalidClock;
-                state.SkipClockDetection = skipClockDetection;
-                state.ClockDetector = CancelledTask;
+                state.RequestedDuration = DefaultTransferDuration;
+                state.Dts = ClockProviderConfig.InvalidClock;
+                state.IsKeyFrameSeen = false;
+                state.IsEosSeen = false;
 
-                streamSyncBarrier.AddParticipant();
+                _streamSyncBarrier.AddParticipant();
             }
 
             Logger.Info("");
+        }
+
+        public void SetAsyncOperation(Task asyncOp)
+        {
+            foreach (var state in _streamSyncData)
+            {
+                if (state == null)
+                    continue;
+
+                state.AsyncOperation = asyncOp;
+            }
         }
 
         public void Dispose()
         {
             Logger.Info("");
-            streamSyncBarrier.Reset();
+            _streamSyncBarrier.Reset();
         }
     }
 }

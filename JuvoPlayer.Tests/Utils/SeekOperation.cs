@@ -95,9 +95,17 @@ namespace JuvoPlayer.Tests.Utils
                     if (seekDuringPause && state == PlayerState.Paused)
                         return;
 
-                    await tcs.Task.WithCancellation(linkedCts.Token);
-
+                    await tcs.Task.WithCancellation(linkedCts.Token);                        
                 }
+            }
+            catch (OperationCanceledException)
+            {
+                // If cancellation was not coused by timeout, don't report it. External
+                // cancellation are not reported.
+
+                _logger.Error($"**** External Cancellation {context.Token.IsCancellationRequested}");
+                if (!context.Token.IsCancellationRequested)
+                    throw;
             }
             catch (Exception)
             {

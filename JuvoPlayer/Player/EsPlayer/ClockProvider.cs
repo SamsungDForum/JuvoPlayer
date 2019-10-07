@@ -42,7 +42,7 @@ namespace JuvoPlayer.Player.EsPlayer
             new Lazy<IConnectableObservable<TimeSpan>>(() =>
                 Observable.Interval(ClockInterval, Scheduler)
                 .Select(_ => _playerClock())
-                .Where(clkValue => clkValue < LastClock)
+                .Where(clkValue => clkValue >= LastClock)
                 .Do(clkValue => LastClock = clkValue)
                 .Publish());
 
@@ -70,8 +70,12 @@ namespace JuvoPlayer.Player.EsPlayer
             if (_playerClockSourceConnection != null)
                 return;
 
-            LastClock = _playerClock();
+            var currentClock = _playerClock();
+            if (currentClock > LastClock)
+                LastClock = currentClock;
+
             _playerClockSourceConnection = PlayerClockConnectable.Connect();
+            Logger.Info($"{currentClock}");
         }
 
         public void DisableClock()
