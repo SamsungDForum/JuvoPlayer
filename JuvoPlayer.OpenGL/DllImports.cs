@@ -15,7 +15,6 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-﻿using System;
 using System.Runtime.InteropServices;
 
 namespace JuvoPlayer.OpenGL
@@ -102,7 +101,7 @@ namespace JuvoPlayer.OpenGL
         public static extern void Terminate();
 
         [DllImport(GlDemoLib, EntryPoint = "Draw")]
-        public static extern void Draw(IntPtr eglDisplay, IntPtr eglSurface);
+        public static extern void Draw();
 
         // Resource management
 

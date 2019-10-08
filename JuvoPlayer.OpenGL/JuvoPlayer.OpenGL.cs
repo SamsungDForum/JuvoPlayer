@@ -92,10 +92,11 @@ namespace JuvoPlayer.OpenGL
             DllImports.Terminate();
         }
 
-        protected override void OnUpdate(IntPtr eglDisplay, IntPtr eglSurface)
+        protected override bool OnUpdate()
         {
             UpdateUI();
-            DllImports.Draw(eglDisplay, eglSurface);
+            DllImports.Draw();
+            return true;
         }
 
         protected override void OnAppControlReceived(AppControlReceivedEventArgs e) // Launch request handling via Smart Hub Preview (deep links) functionality
