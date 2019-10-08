@@ -86,10 +86,10 @@ export default class PlaybackSettingsView extends React.Component {
     return (
       <View>  
           <HideableView  visible={this.props.visible} duration={fadeduration}> 
-          <View style={{width: 1600, height: 105, justifyContent: 'center', alignItems: 'center', backgroundColor: '#000000', opacity: 0.8}}> 
+          <View style={{width: 1600, height: 350, justifyContent: 'center', alignItems: 'center', backgroundColor: '#000000', opacity: 0.8}}> 
             <Picker
                 selectedValue={this.settings.audioSetting}                
-                style={{left: -500, top: 100, height: 30, width: 450, color: '#00ff00'}}
+                style={{left: -500, top: 100, height: 30, width: 450, color: '#ffffff'}}
                     onValueChange={(itemValue, itemIndex) => {        
                         this.JuvoPlayer.Log("itemValue = " + itemValue);   
                         this.pickerChange(itemIndex, 'Audio');                                                             
@@ -105,12 +105,12 @@ export default class PlaybackSettingsView extends React.Component {
                   })                    
                 }                             
             </Picker>
-            <Text style={{left: -645, top: 30, color: '#00ff00', fontSize: 28, fontWeight: 'bold'}}>
+            <Text style={{left: -645, top: 30, color: '#ffffff', fontSize: 28, fontWeight: 'bold'}}>
                Audio track
             </Text>           
             <Picker
                 selectedValue={this.settings.videoSetting}               
-                style={{left: 0, top: 33, height: 30, width: 450, color: '#00ff00'}}
+                style={{left: 0, top: 33, height: 30, width: 450, color: '#ffffff'}}
                 onValueChange={(itemValue, itemIndex) => {
                         this.JuvoPlayer.Log("itemValue = " + itemValue);   
                         this.pickerChange(itemIndex, 'Video');      
@@ -124,12 +124,12 @@ export default class PlaybackSettingsView extends React.Component {
                     return (<Picker.Item label={item.Description} value={item.Id} key={index}/>) 
                 })}
             </Picker>
-            <Text style={{left: -130, top: -37, color: '#00ff00', fontSize: 28, fontWeight: 'bold'}}>
+            <Text style={{left: -130, top: -37, color: '#ffffff', fontSize: 28, fontWeight: 'bold'}}>
                Video quality
             </Text>            
             <Picker
                 selectedValue={this.settings.subtitleSetting}               
-                style={{left: 500, top: -33, height: 30, width: 450, color: '#00ff00'}}
+                style={{left: 500, top: -33, height: 30, width: 450, color: '#ffffff'}}
                 onValueChange={(itemValue, itemIndex) => {
                     this.JuvoPlayer.Log("itemValue = " + itemValue);   
                     this.pickerChange(itemIndex, 'Subtitle');   
@@ -144,9 +144,11 @@ export default class PlaybackSettingsView extends React.Component {
                     return (<Picker.Item label={item.Description} value={item.Id} key={index}/>) 
                 })}
             </Picker> 
-            <Text style={{left: 340, top: -103, color: '#00ff00', fontSize: 28, fontWeight: 'bold'}}>
+            <Text style={{left: 340, top: -103, color: '#ffffff', fontSize: 28, fontWeight: 'bold'}}>
                Subtitles
-            </Text>          
+            </Text>
+            <Text style={{ top: -215, left: 0, fontSize: 30, color: '#ffffff', textAlign:'center', fontWeight: 'bold'}}> Use arrow keys to navigate. Press enter key to select a setting. </Text>    
+            <Text style={{ top: 0, left: 0, fontSize: 20, color: '#ffffff', textAlign:'center'}}> Press return key to close </Text>              
           </View>
           </HideableView>
       </View>

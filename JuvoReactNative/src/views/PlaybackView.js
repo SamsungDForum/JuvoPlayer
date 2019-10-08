@@ -156,7 +156,7 @@ export default class PlaybackView extends React.Component {
     this.rerender();
   }
   handleSettingsViewDisappeared(playbackSettings) {  
-    this.showingSettingsView = false;    
+    this.showingSettingsView = false; 
     this.rerender();
   }
   handleNotificationPopupDisappeared() {      
@@ -233,15 +233,19 @@ export default class PlaybackView extends React.Component {
         }                
         break;        
       case "XF86Back":
-      case "XF86AudioStop":     
-        this.toggleView(); 
+      case "XF86AudioStop":
+        if (this.playbackInfoInterval == -1) {
+          this.toggleView(); 
+        } else {
+          this.stopPlaybackTime();
+        }        
         break; 
       case "Up" :
           //requesting the native module for details regarding the stream settings.
           //The response is handled inside the onGotStreamsDescription() function.
           this.JuvoPlayer.GetStreamsDescription(Native.JuvoPlayer.Common.StreamType.Audio); 
           this.JuvoPlayer.GetStreamsDescription(Native.JuvoPlayer.Common.StreamType.Video); 
-          this.JuvoPlayer.GetStreamsDescription(Native.JuvoPlayer.Common.StreamType.Subtitle);                
+          this.JuvoPlayer.GetStreamsDescription(Native.JuvoPlayer.Common.StreamType.Subtitle);                      
         break;
     }       
   }  
@@ -259,6 +263,7 @@ export default class PlaybackView extends React.Component {
         break;      
     } 
     this.showingSettingsView = (this.streamsData.Audio !== null && this.streamsData.Video !== null && this.streamsData.Subtitle !== null); 
+    if (this.showingSettingsView) this.rerender();   
   }
   onSubtitleSelection(Selected) {
     if (this.subtitleTextInterval >= 0) {      
@@ -331,7 +336,7 @@ export default class PlaybackView extends React.Component {
                         style={{ width: 70 , height: 70, top: -180, left: 1800}} 
                         source={settingsIconPath} 
                       /> 
-                  <View style={{ top: 530, left: 0, width: 1920, height: 760,  justifyContent: 'center', alignSelf: 'center', backgroundColor: '#000000', opacity: 0.8}}>
+                  <View style={{ top: 530, left: 0, width: 1920, height: 760,  justifyContent: 'center', alignSelf: 'center', backgroundColor: '#000000', opacity: 0.6}}>
                       <PlaybackProgressBar value={progress}  color="green" />
                       <Image resizeMode='cover' 
                           style={{ width: 70 , height: 70, top: -130, left: 70}} 
@@ -356,7 +361,7 @@ export default class PlaybackView extends React.Component {
             <View style={{top: -650, left: 870, width: 250, height: 250}}>
               <InProgressView visible={this.operationInProgress} message={this.inProgressDescription} />
             </View>    
-            <View style={{top: -1185, left: 180}}>
+            <View style={{top: -1075, left: 180}}>
               <PlaybackSettingsView visible={this.showingSettingsView} 
                                     onCloseSettingsView={this.handleSettingsViewDisappeared}
                                     onSubtitleSelection={this.onSubtitleSelection}
@@ -369,7 +374,7 @@ export default class PlaybackView extends React.Component {
               </Text> 
             </View>     
           </HideableView>  
-          <View style= {{top: -1300, left: 520, width: 850 , height: 430 }}>
+          <View style= {{top: -1535, left: 520, width: 850 , height: 430 }}>
                <NotificationPopup visible={this.showNotificationPopup} 
                                   onNotificationPopupDisappeared={this.handleNotificationPopupDisappeared} 
                                   messageText={this.popupMessage}/>

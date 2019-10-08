@@ -11,16 +11,15 @@ using JuvoLogger.Tizen;
 using ILogger = JuvoLogger.ILogger;
 using Log = Tizen.Log;
 using Tizen.Applications;
-using ElmSharp;
-//using ReactNative.Modules.Core;
+using ReactNative.UIManager.Events;
+using System.Threading.Tasks;
 
 namespace JuvoReactNative
 {
     class ReactNativeApp : ReactProgram
-    {
+    {        
         private static ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoRN");
-        public static readonly string Tag = "JuvoRN";        
-
+        public static readonly string Tag = "JuvoRN";
         public override string MainComponentName
         {
             get
@@ -28,7 +27,6 @@ namespace JuvoReactNative
                 return "JuvoReactNative";
             }
         }
-
         public override string JavaScriptMainModuleName
         {
             get
@@ -36,7 +34,6 @@ namespace JuvoReactNative
                 return "index.tizen";
             }
         }
-
 #if !DEBUG
         public override string JavaScriptBundleFile
         {
@@ -58,7 +55,6 @@ namespace JuvoReactNative
                 };
             }
         }
-
         public override bool UseDeveloperSupport
         {
             get
@@ -70,7 +66,6 @@ namespace JuvoReactNative
 #endif
             }
         }
-
         static void UnhandledException(object sender, UnhandledExceptionEventArgs evt)
         {
             if (evt.ExceptionObject is Exception e)
@@ -86,7 +81,6 @@ namespace JuvoReactNative
                 Log.Error(Tag, "Got unhandled exception event: " + evt);
             }
         }
-
         protected override void OnCreate()
         {
             base.OnCreate();
@@ -96,7 +90,6 @@ namespace JuvoReactNative
             Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
             ServicePointManager.DefaultConnectionLimit = 100;
         }
-
         public void ShutDown()
         {
             Log.Error(Tag, "Shutting down...");
@@ -105,16 +98,19 @@ namespace JuvoReactNative
             app.Exit();
         }
 
-        protected override void OnAppControlReceived(AppControlReceivedEventArgs e) // Launch request handling via Smart Hub Preview (deep links) functionality
+        protected override async void OnAppControlReceived(AppControlReceivedEventArgs e)
         {
             Log.Error(Tag, "OnApp control received..");
+            ReactNativeApp app = (ReactNativeApp) Application.Current;
+            
             var payloadParser = new PayloadParser(e.ReceivedAppControl);
-            if (!payloadParser.TryGetUrl(out var url))
-                return;
-
+            if (!payloadParser.TryGetUrl(out var url)) Logger?.Info($"url condtion : {url}") ;
+               // return;
+            Task result = LoadUrl(url);
+            await result;
+            Logger?.Info($"url after await: {url}");
             base.OnAppControlReceived(e);
         }
-
         static void Main(string[] args)
         {
             try
@@ -123,12 +119,26 @@ namespace JuvoReactNative
                 AppDomain.CurrentDomain.UnhandledException += UnhandledException;
                 ReactNativeApp app = new ReactNativeApp();
                 app.Run(args);
-                
             }
             catch (Exception e)
             {
                 Log.Error(Tag, e.ToString());
             }
+        }
+
+        public async Task LoadUrl(string url)
+        {
+            await Task.Run( () => {
+                foreach (IReactPackage package in Packages)
+                {
+                    if (package.GetType() == typeof(JuvoPlayerReactPackage))
+                    {
+                        Logger?.Info($"pkg.JuvoPlayer.Name url : {url}");
+                        JuvoPlayerReactPackage pkg = (JuvoPlayerReactPackage)package;                       
+                    }
+                }
+            });
+            return;
         }
     }
 }

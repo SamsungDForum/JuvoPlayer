@@ -13,12 +13,12 @@ using Log = Tizen.Log;
 using ElmSharp;
 using ReactNative.Modules.Core;
 using Newtonsoft.Json.Linq;
-using Tizen.Applications;
+
 
 namespace JuvoReactNative
 {
     public class JuvoPlayerModule : ReactContextNativeModuleBase, ILifecycleEventListener, ISeekLogicClient
-    {
+    { 
         private PlayerServiceProxy juvoPlayer = null;        
         private readonly TimeSpan UpdatePlaybackInterval = TimeSpan.FromMilliseconds(100);
         private static Timer playbackTimer ;
@@ -82,7 +82,7 @@ namespace JuvoReactNative
         private void SendEvent(string eventName, JObject parameters)
         {
             Context.GetJavaScriptModule<RCTDeviceEventEmitter>()
-                .emit(eventName, parameters);
+                .emit(eventName, parameters);            
         }
         public override void Initialize()
         {
@@ -90,7 +90,6 @@ namespace JuvoReactNative
             _keyDown = new EcoreEvent<EcoreKeyEventArgs>(EcoreEventType.KeyDown, EcoreKeyEventArgs.Create);
             _keyDown.On += (s, e) =>
             {
-                Logger?.Info("keyDown.On = " + e.KeyName);
                 //Propagate the key press event to JavaScript module
                 var param = new JObject();
                 param.Add("KeyName", e.KeyName);
@@ -108,7 +107,6 @@ namespace JuvoReactNative
         }
         private void OnPlayerStateChanged(PlayerState state)
         {
-            Logger?.Info($"OnPlayerStateChanged: {state}");           
             string value = "Idle";
             int interval = 100;
             switch (state)
@@ -137,11 +135,9 @@ namespace JuvoReactNative
             var param = new JObject();
             param.Add("State", value);
             SendEvent("onPlayerStateChanged", param);
-            Logger?.Info("OnPlayerStateChanged: SendEvent attached");
         }
         private void OnPlaybackCompleted()
         {
-            Logger?.Info("OnPlaybackCompleted...");
             var param = new JObject();
             param.Add("State", "Completed");
             SendEvent("onPlaybackCompleted", param);
@@ -204,7 +200,6 @@ namespace JuvoReactNative
                 if (juvoPlayer?.State == PlayerState.Playing) return;
                 InitializeJuvoPlayer();
                 PlayJuvoPlayer(videoURI, licenseURI, DRM, juvoPlayer, streamingProtocol);
-                Logger?.Info("JuvoPlayerModule: Playback OK!");
             }
             catch (Exception e)
             {
@@ -215,8 +210,7 @@ namespace JuvoReactNative
         {
             var param = new JObject();
             param.Add("To", (int)to.TotalMilliseconds);
-            SendEvent("onSeek", param);
-            Logger?.Info($"Seek to: {to}");
+            SendEvent("onSeek", param);          
             return juvoPlayer?.SeekTo(to);
         }
 
@@ -240,8 +234,7 @@ namespace JuvoReactNative
             } else
             {
                 this.allStreamsDescriptions[StreamTypeIndex] = juvoPlayer.GetStreamsDescription((StreamType)StreamTypeIndex);
-            }
-            Logger?.Info($"getStreamsDescription StreamTypeIndex : {StreamTypeIndex}");
+            }          
             var param = new JObject();
             param.Add("Description", Newtonsoft.Json.JsonConvert.SerializeObject(this.allStreamsDescriptions[StreamTypeIndex]));
             param.Add("StreamTypeIndex", (int)StreamTypeIndex);
@@ -250,8 +243,6 @@ namespace JuvoReactNative
         [ReactMethod]
         public void SetStream(int SelectedIndex, int StreamTypeIndex)
         {
-            Logger?.Info($"setStream  SelectedIndex: {SelectedIndex},  StreamTypeIndex : {StreamTypeIndex}");
-
             if (this.allStreamsDescriptions[StreamTypeIndex] == null) return;
 
             if (SelectedIndex != -1)
@@ -264,8 +255,7 @@ namespace JuvoReactNative
                         return;
                     }
                 }
-                var stream = (StreamDescription)this.allStreamsDescriptions[StreamTypeIndex][SelectedIndex];
-                Logger?.Info($"setStream  stream.Description: {stream.Description}");
+                var stream = (StreamDescription)this.allStreamsDescriptions[StreamTypeIndex][SelectedIndex];               
                 juvoPlayer.ChangeActiveStream(stream);
             }
         }
@@ -283,7 +273,6 @@ namespace JuvoReactNative
         [ReactMethod]
         public void StopPlayback()
         {
-            Logger?.Info("Stopping player");
             juvoPlayer?.Stop();
             juvoPlayer?.Dispose();
             juvoPlayer = null;            

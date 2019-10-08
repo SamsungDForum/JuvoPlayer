@@ -97,7 +97,7 @@ export default class ContentScroll extends React.Component {
     const renderThumbs = (uri, i) => <ContentPicture key={i} source={uri} myIndex={i} selectedIndex={index}
       path={pathFinder(uri)} 
       width={itemWidth - 8} height={itemHeight - 8} top={4} left ={4} fadeDuration={1} 
-      stylesThumbSelected={{width: itemWidth, height: itemHeight, top: 0, backgroundColor: 'transparent', opacity: 0.1}} 
+      stylesThumbSelected={{width: itemWidth, height: itemHeight, top: 0, backgroundColor: 'transparent', opacity: 0.3}} 
       stylesThumb={{width: itemWidth, height: itemHeight, top:0, backgroundColor: 'transparent', opacity: 1}} 
       />;
 

@@ -6,13 +6,14 @@ using JuvoLogger;
 using ILogger = JuvoLogger.ILogger;
 using Log = Tizen.Log;
 using ReactNative.UIManager;
+using System.Threading.Tasks;
 
 namespace JuvoReactNative
 {
     public class JuvoPlayerReactPackage : IReactPackage
     {
         private static ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoRN");
-        public static readonly string Tag = "JuvoRN";
+        public static readonly string Tag = "JuvoRN"; 
 
         public IReadOnlyList<INativeModule> CreateNativeModules(ReactContext reactContext)
         {
@@ -20,7 +21,7 @@ namespace JuvoReactNative
             return new List<INativeModule>
             {
                 new JuvoPlayerModule(reactContext)
-            };
+        };
         }
         public IReadOnlyList<Type> CreateJavaScriptModulesConfig()
         {
@@ -31,5 +32,6 @@ namespace JuvoReactNative
         {
             return new List<IViewManager>(0);
         }
+
     }
 }
