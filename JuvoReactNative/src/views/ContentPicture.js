@@ -19,7 +19,9 @@ export default class ContentPicture extends React.Component {
   
     shouldComponentUpdate(nextProps, nextState) {    
        return true;
-    }     
+    }  
+    
+    
   
     render() {
       const index = this.props.myIndex ? this.props.myIndex : this.props.selectedIndex;  
@@ -35,18 +37,20 @@ export default class ContentPicture extends React.Component {
       const visible = this.props.visible ? this.props.visible : true;
       const onLoadStart = this.props.onLoadStart ? this.props.onLoadStart : () => {};
       const onLoadEnd = this.props.onLoadEnd ? this.props.onLoadEnd : () => {};    
-  
+      
+    
+
       if (this.props.selectedIndex == index) {           
         return (
           <HideableView visible={visible} duration={fadeDuration} >
-            <View style={stylesThumbSelected}>
-              <Image resizeMode='cover' 
-                    style={{ width: imageWidth , height: imageHeight , top: top, left: left}} 
-                    source={path} 
-                    onLoadStart={onLoadStart}
-                    onLoadEnd={onLoadEnd} 
-              />              
-            </View>           
+            <View style={stylesThumbSelected}>                         
+            <Image resizeMode='cover' 
+                  style={{ width: imageWidth , height: imageHeight , top: top, left: left}} 
+                  source={path} 
+                  onLoadStart={onLoadStart}
+                  onLoadEnd={onLoadEnd} 
+            />
+            </View>                        
           </HideableView>
         );
       } else {
