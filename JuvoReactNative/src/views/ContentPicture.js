@@ -36,10 +36,8 @@ export default class ContentPicture extends React.Component {
       const fadeDuration = this.props.fadeDuration ? this.props.fadeDuration : 1;   
       const visible = this.props.visible ? this.props.visible : true;
       const onLoadStart = this.props.onLoadStart ? this.props.onLoadStart : () => {};
-      const onLoadEnd = this.props.onLoadEnd ? this.props.onLoadEnd : () => {};    
-      
+      const onLoadEnd = this.props.onLoadEnd ? this.props.onLoadEnd : () => {};        
     
-
       if (this.props.selectedIndex == index) {           
         return (
           <HideableView visible={visible} duration={fadeDuration} >
