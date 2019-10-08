@@ -23,7 +23,6 @@ using Xamarin.Forms.Xaml;
 using XamarinPlayer.Controls;
 using XamarinPlayer.Services;
 using XamarinPlayer.ViewModels;
-using Application = Tizen.Applications.Application;
 
 namespace XamarinPlayer.Views
 {
