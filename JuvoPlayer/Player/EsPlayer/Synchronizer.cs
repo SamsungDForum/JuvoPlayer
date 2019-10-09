@@ -45,9 +45,12 @@ namespace JuvoPlayer.Player.EsPlayer
             public TimeSpan TransferredDuration;
             public StreamType StreamType;
             public SynchronizationState SyncState;
-            public Task AsyncOperation;
             public bool IsKeyFrameSeen;
-            public bool IsEosSeen;
+            // Represents a player asynchronous operation being executed
+            // SeekAsync() / PrepareAsync(). 
+            // Upon complition, running player clock is extected.
+            public Task PlayerAsyncOperation;
+
         }
 
         private static readonly ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
@@ -70,7 +73,7 @@ namespace JuvoPlayer.Player.EsPlayer
             streamState.BeginTime = DateTimeOffset.Now;
         }
 
-        private static void UpdateTransferdDuration(SynchronizationData streamState, Packet packet)
+        private static void UpdateTransferredDuration(SynchronizationData streamState, Packet packet)
         {
             if (streamState.FirstPts == default(TimeSpan))
                 streamState.FirstPts = packet.Pts;
@@ -81,11 +84,11 @@ namespace JuvoPlayer.Player.EsPlayer
                 // of data after key frame. Below this level, ESPlayer may not complete current async operations
                 // (seek/prepare)
                 streamState.IsKeyFrameSeen = true;
-                streamState.TransferredDuration = TimeSpan.Zero;
-                streamState.RequestedDuration = KeyFrameTransferDuration;
 
-                if (packet.StreamType == StreamType.Video && packet.IsKeyFrame)
-                    Logger.Info($"{streamState.StreamType}: Key frame seen {packet.Pts}/{packet.Dts}. First PTS {streamState.FirstPts}");
+                streamState.RequestedDuration = streamState.TransferredDuration + KeyFrameTransferDuration;
+
+                if (packet.StreamType == StreamType.Video)
+                    Logger.Info($"{streamState.StreamType}: Key frame seen. Player clock alternative set to {streamState.FirstPts}");
 
             }
 
@@ -96,34 +99,23 @@ namespace JuvoPlayer.Player.EsPlayer
             var clockDiff = streamState.Dts - lastClock;
 
             if (clockDiff > DataBufferConfig.StreamClockDiscontinuityThreshold || clockDiff <= TimeSpan.Zero)
-            {
-                Logger.Info($"{streamState.StreamType}: Clock Discontinuity {clockDiff} {streamState.Dts}/{lastClock}");
                 return;
-            }
 
             streamState.TransferredDuration += clockDiff;
         }
 
-
-        private static TimeSpan GetGenericDelay(SynchronizationData streamState)
+        private static Task DelayStream(SynchronizationData streamState, CancellationToken token)
         {
             var transferTime = (DateTimeOffset.Now - streamState.BeginTime);
             if (transferTime >= streamState.TransferredDuration)
-                return TimeSpan.Zero;
-
-            return streamState.TransferredDuration - transferTime;
-        }
-
-        private static Task DelayStream(StreamType streamType, TimeSpan transferred, TimeSpan delay, CancellationToken token)
-        {
-            if (delay <= TimeSpan.Zero)
                 return Task.CompletedTask;
 
-            Logger.Info($"{streamType}: Transferred {transferred} Delaying {delay}");
+            var delay = streamState.TransferredDuration - transferTime;
+
+            Logger.Info($"{streamState.StreamType}: Delaying {delay}");
 
             return Task.Delay(delay, token);
         }
-
 
         private Task StreamSync(SynchronizationData streamState, CancellationToken token)
         {
@@ -144,12 +136,8 @@ namespace JuvoPlayer.Player.EsPlayer
                 .ToTask(token);
         }
 
-        private static bool IsTransferedDurationCompleted(SynchronizationData streamState)
+        private static bool IsTransferredDurationCompleted(SynchronizationData streamState)
         {
-            // Once EOS is seen
-            if (streamState.IsEosSeen)
-                return false;
-
             if (streamState.SyncState == SynchronizationState.PlayerClockSynchronize)
                 return streamState.Dts - ClockProvider.LastClock >= StreamClockMaximumOverhead;
 
@@ -160,55 +148,52 @@ namespace JuvoPlayer.Player.EsPlayer
         {
             var streamState = _streamSyncData[(int)streamType];
 
-            if (!IsTransferedDurationCompleted(streamState))
+            if (!IsTransferredDurationCompleted(streamState))
                 return false;
 
             switch (streamState.SyncState)
             {
                 case SynchronizationState.KeyFrameSearch:
-                    Logger.Info(
-                        $"{streamState.StreamType}: '{streamState.SyncState}' {streamState.Dts} Waiting for AsyncOp completion");
-
-                    object msg = null;
-
                     // Video stream controls transfer from KeyFrameSearch state to PlayerClockSynchronize
                     // When key frame gets detected, first video frame clock is sent to remaining streams.
                     // If player clock will not be available in initial stages of PlayerClockSynchronize, this
                     // value will be used as player clock
+                    object msg = null;
                     if (streamType == StreamType.Video && streamState.IsKeyFrameSeen)
                         msg = streamState.FirstPts;
 
-                    // Synchronize A&V. At this point they run independant of each other.
-                    var waitTask = _streamSyncBarrier.Signal(msg);
-                    await waitTask.WithCancellation(token);
+                    Task<object> streamWait = _streamSyncBarrier.Signal(msg);
+
+                    // Synchronize A&V with each other. During KeyFrameSearch, they run independent.
+                    Logger.Info($"{streamType}: Waiting for other streams");
+                    await streamWait.WithCancellation(token);
 
                     // Check if transition to PlayerClockSynchronize is possible.
                     // If not, repeat KeyFrameSearch.
-                    var waitMessage = waitTask.Result;
-                    if (waitMessage == null)
-                        break;
+                    var waitMessage = streamWait.Result;
+                    if (waitMessage != null)
+                    {
+                        // Video stream observed key frame
+                        Logger.Info(
+                            $"{streamState.StreamType}: '{streamState.SyncState}' {streamState.Dts} Waiting for AsyncOp completion");
 
-                    // Video stream observed key frame
-                    streamState.FirstPts = (TimeSpan)waitMessage;
-                    await streamState.AsyncOperation.WithCancellation(token);
-                    streamState.SyncState = SynchronizationState.PlayerClockSynchronize;
-                    streamState.AsyncOperation = null;
+                        streamState.FirstPts = (TimeSpan)waitMessage;
+                        await streamState.PlayerAsyncOperation.WithCancellation(token).ConfigureAwait(false);
+                        streamState.SyncState = SynchronizationState.PlayerClockSynchronize;
+                        streamState.PlayerAsyncOperation = null;
 
-                    Logger.Info($"{streamState.StreamType}: {streamState.SyncState}");
-                    break;
+                        Logger.Info($"{streamState.StreamType}: {streamState.SyncState}");
+                        return true;
+                    }
+
+                    await DelayStream(streamState, token).ConfigureAwait(false);
+                    ResetTransferChunk(streamState);
+                    return false;
 
                 case SynchronizationState.PlayerClockSynchronize:
-                    var isWaiting = StreamSync(streamState, token);
-                    if (isWaiting.IsCompleted)
-                        return false;
-                    await isWaiting.ConfigureAwait(false);
+                    await StreamSync(streamState, token).ConfigureAwait(false);
                     return true;
             }
-
-            var transferred = streamState.TransferredDuration;
-            var delay = GetGenericDelay(streamState);
-            ResetTransferChunk(streamState);
-            await DelayStream(streamState.StreamType, transferred, delay, token).ConfigureAwait(false);
 
             return false;
         }
@@ -219,12 +204,11 @@ namespace JuvoPlayer.Player.EsPlayer
 
             if (!packet.ContainsData())
             {
-                if (streamState.IsEosSeen || !(packet is EOSPacket))
+                if (!(packet is EOSPacket))
                     return;
 
-                // Don't sychronize after EOS.
-                Logger.Info($"{streamState.StreamType}: 'streamState.SyncState' EOS {streamState.Pts}");
-                streamState.IsEosSeen = true;
+                Logger.Info($"{streamState.StreamType}: '{streamState.SyncState}' EOS {streamState.Pts}");
+
                 if (streamState.SyncState != SynchronizationState.PlayerClockSynchronize)
                     _streamSyncBarrier.RemoveParticipant();
 
@@ -238,7 +222,7 @@ namespace JuvoPlayer.Player.EsPlayer
                 return;
             }
 
-            UpdateTransferdDuration(streamState, packet);
+            UpdateTransferredDuration(streamState, packet);
         }
 
         public void Prepare()
@@ -259,7 +243,6 @@ namespace JuvoPlayer.Player.EsPlayer
                 state.RequestedDuration = DefaultTransferDuration;
                 state.Dts = ClockProviderConfig.InvalidClock;
                 state.IsKeyFrameSeen = false;
-                state.IsEosSeen = false;
 
                 _streamSyncBarrier.AddParticipant();
             }
@@ -274,7 +257,7 @@ namespace JuvoPlayer.Player.EsPlayer
                 if (state == null)
                     continue;
 
-                state.AsyncOperation = asyncOp;
+                state.PlayerAsyncOperation = asyncOp;
             }
         }
 

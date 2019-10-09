@@ -150,7 +150,6 @@ namespace JuvoPlayer.Player.EsPlayer
         ///
         private void EmptyQueue(StreamType stream, ref BlockingCollection<Packet> queue)
         {
-            logger.Info($"{queue.IsAddingCompleted}");
             if (queue == null)
                 return;
 
@@ -165,7 +164,6 @@ namespace JuvoPlayer.Player.EsPlayer
 
         private void DisposeQueue(StreamType stream, BlockingCollection<Packet> queue)
         {
-            logger.Info($"{queue.IsAddingCompleted}");
             var packetCount = queue.Count;
 
             foreach (var packet in queue)

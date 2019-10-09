@@ -61,6 +61,7 @@ namespace JuvoPlayer.Tests.Utils
             List<(TimeSpan clock, double diff)> clocks = new List<(TimeSpan clock, double diff)>();
 
             var service = context.Service;
+
             var tcs = new TaskCompletionSource<bool>();
             var seekDuringPause = service.State == PlayerState.Paused;
 
@@ -87,23 +88,20 @@ namespace JuvoPlayer.Tests.Utils
                 {
                     timeoutCts.CancelAfter(context.Timeout);
 
-                    await service.SeekTo(SeekPosition).WithCancellation(linkedCts.Token);
+                    var seekTask = service.SeekTo(SeekPosition);
 
-                    // Pause is a "legal" state upon startup. Buffers may be empty, unless seek
-                    // started in paused mode.
-                    var state = service.State;
-                    if (seekDuringPause && state == PlayerState.Paused)
-                        return;
+                    // Seek in paused state requires resume.
+                    if (seekDuringPause)
+                        service.Start();
 
-                    await tcs.Task.WithCancellation(linkedCts.Token);                        
+                    await seekTask.WithCancellation(linkedCts.Token);
+                    await tcs.Task.WithCancellation(linkedCts.Token);
                 }
             }
             catch (OperationCanceledException)
             {
                 // If cancellation was not coused by timeout, don't report it. External
                 // cancellation are not reported.
-
-                _logger.Error($"**** External Cancellation {context.Token.IsCancellationRequested}");
                 if (!context.Token.IsCancellationRequested)
                     throw;
             }

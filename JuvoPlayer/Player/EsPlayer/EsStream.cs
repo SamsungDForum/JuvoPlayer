@@ -75,9 +75,7 @@ namespace JuvoPlayer.Player.EsPlayer
         private Task activeTask = Task.CompletedTask;
         private CancellationTokenSource transferCts;
 
-        private TaskCompletionSource<object> firstDataPacketTcs;
-
-        public Task FirstDataPacketCompletionTask { get; set; }
+        private TaskCompletionSource<object> _firstDataPacketTcs;
 
         // Stream type for this instance to EsStream.
         private readonly StreamType streamType;
@@ -130,6 +128,8 @@ namespace JuvoPlayer.Player.EsPlayer
                 default:
                     throw new ArgumentException($"Stream Type {streamType} is unsupported");
             }
+
+            _firstDataPacketTcs = new TaskCompletionSource<object>();
         }
 
         /// <summary>
@@ -204,10 +204,10 @@ namespace JuvoPlayer.Player.EsPlayer
         /// Awaitable function. Will return when a running task terminates.
         /// </summary>
         /// <returns></returns>
-        public Task GetActiveTask()
+        public ref Task GetActiveTask()
         {
             logger.Info($"{streamType}: {activeTask.Status}");
-            return activeTask;
+            return ref activeTask;
         }
 
         public void EmptyStorage()
@@ -223,26 +223,23 @@ namespace JuvoPlayer.Player.EsPlayer
         public void EnableStorage() =>
             packetStorage.Enable(streamType);
 
-        public Task RequestFirstDataPacketNotification()
+        public void RequestFirstDataPacketNotification()
         {
-            firstDataPacketTcs = new TaskCompletionSource<object>(streamType, TaskCreationOptions.RunContinuationsAsynchronously);
+            // Note. RequestFirstDataPacketNotification() is not thread safe.
+            // It is to be called once per first packet need.
+            // Currently, this is async Ops (Seek/Prepare). Not by Pause/Resume
 
-            logger.Info($"{streamType}: Data packet processed confirmation requested");
-            return firstDataPacketTcs.Task;
+            if (!GetFirstDataPacketNotificationTask().IsCompleted)
+                return;
+
+            _firstDataPacketTcs = new TaskCompletionSource<object>(streamType, TaskCreationOptions.RunContinuationsAsynchronously);
+
+            logger.Info($"{streamType}: Data packet processed confirmation requested {GetFirstDataPacketNotificationTask().GetHashCode()}");
         }
 
-        private Task WaitForFirstDataPacket(CancellationToken token)
-        {
-            var waitTask = FirstDataPacketCompletionTask;
-            if (waitTask == null)
-                return Task.CompletedTask;
+        public Task<object> GetFirstDataPacketNotificationTask() =>
+            _firstDataPacketTcs?.Task ?? Task.FromResult<object>(null);
 
-            // Consume first data packet once
-            FirstDataPacketCompletionTask = null;
-
-            logger.Info($"{streamType}: Waiting for {(StreamType)waitTask.AsyncState} first data packet");
-            return waitTask;
-        }
         #endregion
 
         #region Private Methods
@@ -303,7 +300,7 @@ namespace JuvoPlayer.Player.EsPlayer
             transferCts?.Dispose();
             transferCts = new CancellationTokenSource();
 
-            activeTask = Task.Factory.StartNew(() => TransferTask(transferCts.Token), transferCts.Token).Unwrap();
+            activeTask = Task.Run(async () => await TransferTask());
         }
 
         /// <summary>
@@ -325,14 +322,14 @@ namespace JuvoPlayer.Player.EsPlayer
             packetStorage.Disable(streamType);
         }
 
-        private async Task<bool> ProcessPacket(Packet packet, CancellationToken transferToken)
+        private async ValueTask<bool> ProcessPacket(Packet packet, CancellationToken transferToken)
         {
             var continueProcessing = true;
 
             switch (packet)
             {
                 case EOSPacket eosPacket:
-                    PushEosPacket(eosPacket, transferToken);
+                    await PushEosPacket(eosPacket, transferToken);
                     continueProcessing = false;
                     break;
 
@@ -356,7 +353,7 @@ namespace JuvoPlayer.Player.EsPlayer
                     break;
 
                 case Packet dataPacket:
-                    PushUnencryptedPacket(dataPacket, transferToken);
+                    await PushUnencryptedPacket(dataPacket, transferToken);
                     break;
 
                 default:
@@ -371,18 +368,13 @@ namespace JuvoPlayer.Player.EsPlayer
         /// to ESPlayer
         /// </summary>
         /// <param name="token">CancellationToken</param>
-        /// <param name="continueAfter">Task when completed will resume transfer</param>
-        private async Task TransferTask(CancellationToken token)
+        private async Task TransferTask()
         {
+            CancellationToken token = transferCts.Token;
             logger.Info($"{streamType}: Started");
-            Task firstPacket = Task.CompletedTask;
+
             try
             {
-                firstPacket = WaitForFirstDataPacket(token);
-                await firstPacket.WithCancellation(token);
-
-                logger.Info($"{streamType}: Transfer commenced");
-
                 while (!token.IsCancellationRequested)
                 {
                     var shouldContinue = await ProcessNextPacket(token);
@@ -400,16 +392,6 @@ namespace JuvoPlayer.Player.EsPlayer
             catch (OperationCanceledException)
             {
                 logger.Info($"{streamType}: Transfer cancelled");
-
-                // Termination when performing async op (prepare/seek)
-                // FirstPacket termination = async op termination. Further playback not expected.
-                // Issue EOS to terminate async op as soon as possible.
-                // Pause/Resume operations do not occour during async ops this won't be affected.
-                if (firstPacket.IsFaulted)
-                {
-                    logger.Info($"{streamType}: Cancelled during first data packet wait. Issuing EOS");
-                    player.SubmitEosPacket(streamType.ESStreamType());
-                }
             }
             catch (PacketSubmitException pse)
             {
@@ -433,34 +415,35 @@ namespace JuvoPlayer.Player.EsPlayer
             {
                 dataBuffer.RequestBuffering(false);
 
-                if (firstDataPacketTcs != null)
+                if (_firstDataPacketTcs?.Task.IsCompleted == false)
                 {
-                    firstDataPacketTcs.SetException(new OperationCanceledException("Terminated before notifying first data packet"));
-                    firstDataPacketTcs = null;
+                    logger.Info($"{streamType}: Cancelling first data packet request");
+                    _firstDataPacketTcs.TrySetException(
+                        new OperationCanceledException("Terminated before notifying first data packet"));
                 }
 
                 logger.Info(
                     $"{streamType}: Terminated. Buffer {dataBuffer.GetStreamStateReport(streamType)}");
             }
         }
+
         private void ConfirmFirstDataPacket()
         {
             if (currentPacket.ContainsData())
             {
-                firstDataPacketTcs.SetResult(null);
-                logger.Info($"{currentPacket.StreamType}: First packet is DATA. {currentPacket.Dts}");
-                firstDataPacketTcs = null;
+                _firstDataPacketTcs.SetResult(null);
+                logger.Info($"{currentPacket.StreamType}: First packet is DATA. {currentPacket.Dts} {_firstDataPacketTcs.Task.GetHashCode()}");
                 return;
             }
 
             if (!(currentPacket is EOSPacket))
                 return;
 
-            firstDataPacketTcs.SetException(new OperationCanceledException("First packet is EOS"));
+            _firstDataPacketTcs.SetException(new OperationCanceledException("First packet is EOS"));
             logger.Info($"{currentPacket.StreamType}: First Packet is EOS");
-            firstDataPacketTcs = null;
         }
-        private async Task<bool> ProcessNextPacket(CancellationToken token)
+
+        private async ValueTask<bool> ProcessNextPacket(CancellationToken token)
         {
             if (currentPacket == null)
                 currentPacket = packetStorage.GetPacket(streamType, token);
@@ -470,7 +453,7 @@ namespace JuvoPlayer.Player.EsPlayer
             dataBuffer.DataOut(currentPacket);
             dataSynchronizer.DataOut(currentPacket);
 
-            if (firstDataPacketTcs != null)
+            if (_firstDataPacketTcs?.Task.IsCompleted == false)
                 ConfirmFirstDataPacket();
 
             currentPacket.Dispose();
@@ -490,7 +473,7 @@ namespace JuvoPlayer.Player.EsPlayer
         /// <exception cref="OperationCanceledException">
         /// Exception thrown on submit cancellation
         /// </exception>
-        private void PushUnencryptedPacket(Packet dataPacket, CancellationToken token)
+        private async ValueTask PushUnencryptedPacket(Packet dataPacket, CancellationToken token)
         {
             for (; ; )
             {
@@ -505,8 +488,7 @@ namespace JuvoPlayer.Player.EsPlayer
                 if (!ShouldRetry(submitStatus))
                     throw new PacketSubmitException("Packet Submit Error", submitStatus);
 
-                var delay = CalculateDelay(submitStatus);
-                Wait(delay, token);
+                await Task.Delay(CalculateDelay(submitStatus), token);
             }
         }
 
@@ -522,7 +504,7 @@ namespace JuvoPlayer.Player.EsPlayer
         /// <exception cref="OperationCanceledException">
         /// Exception thrown on submit cancellation
         /// </exception>
-        private async Task PushEncryptedPacket(EncryptedPacket dataPacket, CancellationToken token)
+        private async ValueTask PushEncryptedPacket(EncryptedPacket dataPacket, CancellationToken token)
         {
             if (!dataPacket.DrmSession.CanDecrypt())
             {
@@ -553,8 +535,7 @@ namespace JuvoPlayer.Player.EsPlayer
                     if (!ShouldRetry(submitStatus))
                         throw new PacketSubmitException("Packet Submit Error", submitStatus);
 
-                    var delay = CalculateDelay(submitStatus);
-                    Wait(delay, token);
+                    await Task.Delay(CalculateDelay(submitStatus), token);
                 }
             }
         }
@@ -567,7 +548,7 @@ namespace JuvoPlayer.Player.EsPlayer
         /// <exception cref="PacketSubmitException">
         /// Exception thrown on submit error
         /// </exception>
-        private void PushEosPacket(EOSPacket packet, CancellationToken token)
+        private async ValueTask PushEosPacket(EOSPacket packet, CancellationToken token)
         {
             logger.Info($"{streamType}");
 
@@ -581,8 +562,7 @@ namespace JuvoPlayer.Player.EsPlayer
                 if (!ShouldRetry(submitStatus))
                     throw new PacketSubmitException("Packet Submit Error", submitStatus);
 
-                var delay = CalculateDelay(submitStatus);
-                Wait(delay, token);
+                await Task.Delay(CalculateDelay(submitStatus), token);
             }
         }
 
@@ -605,13 +585,6 @@ namespace JuvoPlayer.Player.EsPlayer
                     return TimeSpan.Zero;
             }
         }
-
-        private void Wait(TimeSpan delay, CancellationToken token)
-        {
-            using (var @event = new ManualResetEventSlim(false))
-                @event.Wait(delay, token);
-        }
-
         #endregion
 
         #region IDisposable Support

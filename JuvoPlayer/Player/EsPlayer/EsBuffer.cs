@@ -251,6 +251,7 @@ namespace JuvoPlayer.Player.EsPlayer
                     BufferingRequestEvent?.Invoke(bufferingNeeded);
 
                 await NextUpdate(token);
+
             }
 
             Logger.Info("Completed");
@@ -264,7 +265,7 @@ namespace JuvoPlayer.Player.EsPlayer
             periodicUpdateCts?.Dispose();
             periodicUpdateCts = new CancellationTokenSource();
 
-            jobChannel.Start().Wait(periodicUpdateCts.Token);
+            jobChannel.Start();
             jobChannel.EnqueueJob(new PeriodicUpdateData { Token = periodicUpdateCts.Token });
         }
 
