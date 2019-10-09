@@ -3,6 +3,7 @@
 import React from 'react';
 import {  
   View,
+  Image,
   ScrollView,
   NativeModules,
   NativeEventEmitter
@@ -93,17 +94,25 @@ export default class ContentScroll extends React.Component {
     const title = ResourceLoader.clipsData[index].title; 
     const description = ResourceLoader.clipsData[index].description; 
     const itemWidth = 454;
-    const itemHeight = 260;      
-    const renderThumbs = (uri, i) => <ContentPicture key={i} source={uri} myIndex={i} selectedIndex={index}
-      path={pathFinder(uri)} 
-      width={itemWidth - 8} height={itemHeight - 8} top={4} left ={4} fadeDuration={1} 
-      stylesThumbSelected={{width: itemWidth, height: itemHeight, top: 0, backgroundColor: 'transparent', opacity: 0.3}} 
-      stylesThumb={{width: itemWidth, height: itemHeight, top:0, backgroundColor: 'transparent', opacity: 1}} 
-      />;
-
+    const itemHeight = 260;         
+    const overlayPath =  ResourceLoader.playbackIconsPathSelect('play');
+    const length = + this.props.contentURIs.length;
+    const renderThumbs = (uri, i) => 
+        <View  key={i}>
+           <Image resizeMode='cover' 
+                style={{ top: (itemHeight / 2) + 35, left: (itemWidth / 2)-25}} 
+                source={overlayPath} 
+            /> 
+            <ContentPicture  source={uri} myIndex={i} selectedIndex={index}
+                  path={pathFinder(uri)}                   
+                  width={itemWidth - 8} height={itemHeight - 8} top={4} left ={4} fadeDuration={1} 
+                  stylesThumbSelected={{width: itemWidth, height: itemHeight, top: 0, backgroundColor: 'transparent', opacity: 0.3}} 
+                  stylesThumb={{width: itemWidth, height: itemHeight, top:0, backgroundColor: 'transparent', opacity: 1}} 
+                  />
+        </View> ;
     return (
       <View >
-        <View style={{position: 'relative', top: 150, left: 100, width: 900, height: 800, zIndex: 200}}>
+        <View style={{position: 'relative', top: 150, left: 100, width: 900, height: 750, zIndex: 200}}>          
           <ContentDescription viewStyle={{ top: 0, left: 0, width: 900, height: 800, zIndex: 200 }} 
                       headerStyle={{ fontSize: 60, color: '#ffffff' }} bodyStyle={{ fontSize: 30, color: '#ffffff', top: 0}} 
                       headerText={title} bodyText={description}/>
@@ -115,8 +124,7 @@ export default class ContentScroll extends React.Component {
           automaticallyAdjustContentInsets={false}
           scrollEventThrottle={0}
           horizontal={true}
-          showsHorizontalScrollIndicator={false}     
-           >
+          showsHorizontalScrollIndicator={false}>
           {this.props.contentURIs.map(renderThumbs)}          
         </ScrollView>
         </View>                

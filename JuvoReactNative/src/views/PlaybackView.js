@@ -324,7 +324,7 @@ export default class PlaybackView extends React.Component {
     const playbackTime = total > 0 ?  current / total : 0;    
     const progress = Math.round((playbackTime) * 100 ) / 100;     
     const subtitleText = this.currentSubtitleText;
-    var subtitlesStyle = (subtitleText == '') ? {top: -500, left: 0, width: 1920, height: 150, opacity: 0} : {top: -500, left: 0, width: 1920, height: 150, opacity: 0.8};
+    var subtitlesStyle = {top: -750, left: 0, width: 1920, height: 150, opacity: 0.8};// (subtitleText == '') ? {top: -500, left: 0, width: 1920, height: 150, opacity: 0} : {top: -500, left: 0, width: 1920, height: 150, opacity: 0.8};
     return (
       <View style={{ top: -2680, left: 0, width: 1920, height: 1080}}>          
           <HideableView visible={visibility} duration={fadeduration}>  
