@@ -46,18 +46,18 @@ namespace JuvoPlayer.Utils
         // will be available, change implementation from multi channels to single channel with priority selection
         // based on returned enumerator.
         //
-        private Channel<IJob>[] jobChannels;
-        private ChannelWriter<IJob>[] jobWriters;
-        private readonly uint maxChannels;
-        private Task jobQueueTask;
+        private readonly Channel<IJob>[] _jobChannels;
+        private readonly ChannelWriter<IJob>[] _jobWriters;
+        private readonly uint _maxChannels;
+        private Task _jobQueueTask;
 
-        public bool IsRunning() => jobQueueTask != null;
+        public bool IsRunning() => _jobQueueTask != null;
 
         public PriorityJobChannel(uint maxPriorities)
         {
-            maxChannels = maxPriorities;
-            jobChannels = new Channel<IJob>[maxChannels];
-            jobWriters = new ChannelWriter<IJob>[maxChannels];
+            _maxChannels = maxPriorities;
+            _jobChannels = new Channel<IJob>[_maxChannels];
+            _jobWriters = new ChannelWriter<IJob>[_maxChannels];
         }
 
         private static Task GetChannelReadWaitTask(ChannelReader<IJob> reader) =>
@@ -82,13 +82,13 @@ namespace JuvoPlayer.Utils
             return true;
         }
 
-        private async ValueTask JobListener()
+        private async Task JobListener()
         {
             Logger.Info("Started");
-            var jobReader = new ChannelReader<IJob>[maxChannels];
+            var jobReader = new ChannelReader<IJob>[_maxChannels];
 
-            for (var channel = 0; channel < maxChannels; channel++)
-                jobReader[channel] = jobChannels[channel].Reader;
+            for (var channel = 0; channel < _maxChannels; channel++)
+                jobReader[channel] = _jobChannels[channel].Reader;
 
             try
             {
@@ -96,7 +96,7 @@ namespace JuvoPlayer.Utils
                 {
                     // Priority based round robin with recheck of jobs at higher priority
                     // on successful read of lower priority job
-                    for (var channel = 0; channel < maxChannels;)
+                    for (var channel = 0; channel < _maxChannels;)
                     {
                         if (jobReader[channel].TryRead(out var job))
                         {
@@ -128,39 +128,38 @@ namespace JuvoPlayer.Utils
         }
 
         public bool EnqueueJob(IJob job) =>
-            jobWriters[job.Priority].TryWrite(job);
+            _jobWriters[job.Priority].TryWrite(job);
 
         public async ValueTask EnqueueJobAsync(IJob job) =>
-            await jobWriters[job.Priority].WriteAsync(job);
+            await _jobWriters[job.Priority].WriteAsync(job);
 
-        public Task<Task> Start()
+        public Task Start()
         {
-            if (jobQueueTask != null)
+            if (_jobQueueTask != null)
                 throw new InvalidOperationException("Already running");
 
-            for (var i = 0; i < maxChannels; i++)
+            for (var i = 0; i < _maxChannels; i++)
             {
-                jobChannels[i] = Channel.CreateUnbounded<IJob>(new UnboundedChannelOptions { SingleReader = true });
-                jobWriters[i] = jobChannels[i].Writer;
+                _jobChannels[i] = Channel.CreateUnbounded<IJob>(new UnboundedChannelOptions { SingleReader = true });
+                _jobWriters[i] = _jobChannels[i].Writer;
             }
 
-            var startProcess = Task.Factory.StartNew(async () => await JobListener(), TaskCreationOptions.LongRunning);
-            jobQueueTask = startProcess.Unwrap();
+            _jobQueueTask = Task.Run(JobListener);
 
-            return startProcess;
+            return _jobQueueTask;
         }
 
         public void Stop()
         {
-            if (jobQueueTask == null)
+            if (_jobQueueTask == null)
                 throw new InvalidOperationException("Not started");
 
-            for (var i = 0; i < maxChannels; i++)
+            for (var i = 0; i < _maxChannels; i++)
             {
-                jobWriters[i].Complete();
+                _jobWriters[i].Complete();
             }
 
-            jobQueueTask = null;
+            _jobQueueTask = null;
         }
     }
 }
