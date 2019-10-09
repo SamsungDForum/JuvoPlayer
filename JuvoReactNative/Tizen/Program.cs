@@ -97,18 +97,15 @@ namespace JuvoReactNative
             app.Dispose();
             app.Exit();
         }
-
         protected override async void OnAppControlReceived(AppControlReceivedEventArgs e)
         {
-            Log.Error(Tag, "OnApp control received..");
-            ReactNativeApp app = (ReactNativeApp) Application.Current;
-            
+            //TODO - EDEN preview needs to be implemented here.            
+            ReactNativeApp app = (ReactNativeApp) Application.Current;            
             var payloadParser = new PayloadParser(e.ReceivedAppControl);
-            if (!payloadParser.TryGetUrl(out var url)) Logger?.Info($"url condtion : {url}") ;
-               // return;
+            if (!payloadParser.TryGetUrl(out var url)) 
+               return;
             Task result = LoadUrl(url);
-            await result;
-            Logger?.Info($"url after await: {url}");
+            await result;            
             base.OnAppControlReceived(e);
         }
         static void Main(string[] args)
@@ -125,15 +122,13 @@ namespace JuvoReactNative
                 Log.Error(Tag, e.ToString());
             }
         }
-
         public async Task LoadUrl(string url)
         {
             await Task.Run( () => {
                 foreach (IReactPackage package in Packages)
                 {
                     if (package.GetType() == typeof(JuvoPlayerReactPackage))
-                    {
-                        Logger?.Info($"pkg.JuvoPlayer.Name url : {url}");
+                    {                        
                         JuvoPlayerReactPackage pkg = (JuvoPlayerReactPackage)package;                       
                     }
                 }
