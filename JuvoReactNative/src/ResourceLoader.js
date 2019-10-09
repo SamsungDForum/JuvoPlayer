@@ -1,4 +1,4 @@
-import videoclipsdata from '.././res/videoclips.json'
+import videoclipsdata from '.././Tizen/shared/res/assets/videoclips.json'
 
 const ResourceLoader = {    
     tileNames : [
@@ -18,18 +18,18 @@ const ResourceLoader = {
         'bunny'
       ],
     tilesPath: {
-        car: require('.././res/images/tiles/carsmall.png'),
-        bolid: require('.././res/images/tiles/bolid.png'),
-        sintel: require('.././res/images/tiles/sintel.png'),
-        oops: require('.././res/images/tiles/oops.png'),
-        tosposter: require('.././res/images/tiles/tos-poster.png'),
-        artofwalking: require('.././res/images/tiles/artofwalking.png'),
-        bunny: require('.././res/images/tiles/bunny.png'),        
-        sacrecoeur: require('.././res/images/tiles/sacrecoeur.png'),
-        canimals: require('.././res/images/tiles/canimals.png'),
-        testwatchscreen: require('.././res/images/tiles/testwatchscreen.png'),        
-        default: require('.././res/images/tiles/default_bg.png'),
-        contentDescriptionBackground: require('.././res/images/tiles/content_list_bg.png')
+        car: require('.././Tizen/shared/res/assets/images/tiles/carsmall.png'),
+        bolid: require('.././Tizen/shared/res/assets/images/tiles/bolid.png'),
+        sintel: require('.././Tizen/shared/res/assets/images/tiles/sintel.png'),
+        oops: require('.././Tizen/shared/res/assets/images/tiles/oops.png'),
+        tosposter: require('.././Tizen/shared/res/assets/images/tiles/tos-poster.png'),
+        artofwalking: require('.././Tizen/shared/res/assets/images/tiles/artofwalking.png'),
+        bunny: require('.././Tizen/shared/res/assets/images/tiles/bunny.png'),        
+        sacrecoeur: require('.././Tizen/shared/res/assets/images/tiles/sacrecoeur.png'),
+        canimals: require('.././Tizen/shared/res/assets/images/tiles/canimals.png'),
+        testwatchscreen: require('.././Tizen/shared/res/assets/images/tiles/testwatchscreen.png'),        
+        default: require('.././Tizen/shared/res/assets/images/tiles/default_bg.png'),
+        contentDescriptionBackground: require('.././Tizen/shared/res/assets/images/tiles/content_list_bg.png')
     },
     tilePathSelect : name => {
         if (name === null)
@@ -54,11 +54,11 @@ const ResourceLoader = {
       },
     clipsData : videoclipsdata,
     playbackIconsPath : {
-      'play': require('.././res/images/btn_viewer_control_play_normal.png'),
-      'ffw': require('.././res/images/btn_viewer_control_forward_normal.png'),
-      'rew': require('.././res/images/btn_viewer_control_back_normal.png'),
-      'set': require('.././res/images/btn_viewer_control_settings_normal.png'),
-      'pause': require('.././res/images/btn_viewer_control_pause_normal.png')      
+      'play': require('.././Tizen/shared/res/assets/images/btn_viewer_control_play_normal.png'),
+      'ffw': require('.././Tizen/shared/res/assets/images/btn_viewer_control_forward_normal.png'),
+      'rew': require('.././Tizen/shared/res/assets/images/btn_viewer_control_back_normal.png'),
+      'set': require('.././Tizen/shared/res/assets/images/btn_viewer_control_settings_normal.png'),
+      'pause': require('.././Tizen/shared/res/assets/images/btn_viewer_control_pause_normal.png')      
     },
     playbackIconsPathSelect : name => {
       if (name === null)
