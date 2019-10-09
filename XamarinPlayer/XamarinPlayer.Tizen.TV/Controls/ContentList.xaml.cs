@@ -14,8 +14,9 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-﻿using System.ComponentModel;
+
 using System.Linq;
+using System.Threading.Tasks;
 using Xamarin.Forms;
 using Xamarin.Forms.Xaml;
 
@@ -24,18 +25,11 @@ namespace XamarinPlayer.Controls
     [XamlCompilation(XamlCompilationOptions.Compile)]
     public partial class ContentList : ScrollView
     {
-        public static readonly BindableProperty FocusedContentProperty = BindableProperty.Create("FocusedContent", typeof(ContentItem), typeof(ContentList), default(ContentItem));
-        public ContentItem FocusedContent
-        {
-            get { return (ContentItem)GetValue(FocusedContentProperty); }
-            set { SetValue(FocusedContentProperty, value); }
-        }
+        public ContentItem FocusedContent { get; set; }
 
         public ContentList()
         {
             InitializeComponent();
-
-            PropertyChanged += ContentFocusedChanged;
         }
 
         public void Add(ContentItem item)
@@ -45,52 +39,51 @@ namespace XamarinPlayer.Controls
 
         public ContentItem GetItem(int index)
         {
-            ContentItem item = ContentLayout.Children.ElementAt(index) as ContentItem;
-            return item;
+            return ContentLayout.Children.ElementAt(index) as ContentItem;
         }
 
-        public bool SetFocus()
+        public void SetFocus()
         {
-            ContentItem item = ContentLayout.Children.First() as ContentItem;
+            if (FocusedContent == null)
+                FocusedContent = (ContentItem) ContentLayout.Children.First();
+            FocusedContent.SetFocus();
+        }
 
-            foreach (ContentItem child in ContentLayout.Children)
-            {
-                if (child == FocusedContent)
-                {
-                    item = child;
-                    break;
-                }
-            }
+        public async Task<bool> ScrollToNext()
+        {
+            var index = ContentLayout.Children.IndexOf(FocusedContent);
+            var nextIndex = index + 1;
+            if (nextIndex == ContentLayout.Children.Count)
+                return false;
+            
+            await SwapFocusedContent(ContentLayout.Children[nextIndex] as ContentItem);
+            return true;
+        }
 
-            return item.SetFocus();
+        public async Task<bool> ScrollToPrevious()
+        {
+            var index = ContentLayout.Children.IndexOf(FocusedContent);
+            var prevIndex = index - 1;
+            if (prevIndex == -1)
+                return false;
+            await SwapFocusedContent(ContentLayout.Children[prevIndex] as ContentItem);
+            return true;
+        }
+
+        private Task SwapFocusedContent(ContentItem newContent)
+        {
+            FocusedContent.SetUnfocus();
+            FocusedContent = newContent;
+            FocusedContent.SetFocus();
+            return ScrollToAsync(FocusedContent, ScrollToPosition.Center, true);
         }
 
         public void SetHeight(double height)
         {
-            ContentItem item = ContentLayout.Children.First() as ContentItem;
-
-            foreach (ContentItem child in ContentLayout.Children)
+            foreach (var view in ContentLayout.Children)
             {
+                var child = (ContentItem) view;
                 child.SetHeight(height);
-            }
-        }
-
-        private void ContentFocusedChanged(object sender, PropertyChangedEventArgs e)
-        {
-            if (e.PropertyName.Equals("FocusedContent"))
-            {
-                UpdateItemState();
-            }
-        }
-
-        private void UpdateItemState()
-        {
-            foreach (ContentItem child in ContentLayout.Children)
-            {
-                if (child != FocusedContent)
-                {
-                    child.SetUnfocus();
-                }
             }
         }
     }

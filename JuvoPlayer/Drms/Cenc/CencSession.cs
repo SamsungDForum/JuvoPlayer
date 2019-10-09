@@ -318,7 +318,7 @@ namespace JuvoPlayer.Drms.Cenc
 
         public bool CanDecrypt() =>
             licenceInstalled;
-        
+
         private void ThrowIfDisposed()
         {
             if (isDisposed)
@@ -328,7 +328,7 @@ namespace JuvoPlayer.Drms.Cenc
         private async Task InitializeOnIemeThread()
         {
             var cancellationToken = cancellationTokenSource.Token;
-      
+
             CreateIeme();
             cancellationToken.ThrowIfCancellationRequested();
             currentSessionId = await CreateSession();
@@ -340,7 +340,6 @@ namespace JuvoPlayer.Drms.Cenc
             cancellationToken.ThrowIfCancellationRequested();
             await InstallLicence(responseText);
             licenceInstalled = true;
-           
         }
 
         private void CreateIeme()

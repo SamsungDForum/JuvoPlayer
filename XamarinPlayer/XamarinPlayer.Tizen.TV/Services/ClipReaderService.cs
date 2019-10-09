@@ -41,7 +41,7 @@ namespace XamarinPlayer.Tizen.TV.Services
             return JSONFileReader.DeserializeJsonFile<List<ClipDefinition>>(clipsPath).Select(
                 o => new Clip
                 {
-                    Image = o.Poster, Description = o.Description, Source = o.Url, Title = o.Title,
+                    Image = Path.Combine(ApplicationPath, "res", o.Poster), Description = o.Description, Source = o.Url, Title = o.Title,
                     ClipDetailsHandle = o
                 }
             ).ToList();
