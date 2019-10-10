@@ -1,9 +1,4 @@
 # git ignore file
-node_modules/
-npm-debug.log
-yarn-error.log
-Tizen/shared/res/index.tizen.bundle
-Tizen/shared/res/index.tizen.bundle.meta
 .vs
 bin
 obj
@@ -11,3 +6,8 @@ obj
 *.user
 *.swp
 CyclomaticComplexityReport.log
+**/node_modules/
+npm-debug.log
+yarn-error.log
+**/assets/index.tizen.bundle
+**/assets/index.tizen.bundle.meta
