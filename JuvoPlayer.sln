@@ -25,10 +25,6 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "Configuration", "Configurat
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SimplePlayer.Tizen.TV", "SimplePlayer.Tizen.TV\SimplePlayer.Tizen.TV.csproj", "{C5EA225E-2165-41B1-8493-5FAEE0580E30}"
 EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "ReactNativeTizen", "..\..\Users\p.buczynski\reactapps\react-native-tizen-dotnet\Framework\ReactNet\ReactNativeTizen\ReactNativeTizen.csproj", "{2085C6C6-071E-4900-BA58-40DC04FE825D}"
-EndProject
-Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "myTizenApp", "..\..\Users\p.buczynski\reactapps\myTizenApp\Tizen\myTizenApp.csproj", "{8D4B239E-4793-421C-85B6-7340FB29DD55}"
-EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "JuvoReactNative", "JuvoReactNative\Tizen\JuvoReactNative.csproj", "{B30DBFBB-B88D-4CC2-BF29-870397559737}"
 EndProject
 Global
