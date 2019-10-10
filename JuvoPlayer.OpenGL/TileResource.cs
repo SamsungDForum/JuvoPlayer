@@ -15,7 +15,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-﻿namespace JuvoPlayer.OpenGL
+namespace JuvoPlayer.OpenGL
 {
     class TileResource : Resource
     {
@@ -24,7 +24,7 @@
         private string _name;
         private string _description;
 
-        public TileResource(int id, string path, string name, string description) : base()
+        public TileResource(int id, string path, string name, string description)
         {
             _id = id;
             _image.Path = path;
@@ -34,14 +34,14 @@
 
         public override void Load()
         {
-            _image = GetImage(_image.Path, ColorSpace.RGB);
+            _image = GetImage(_image.Path);
         }
 
         public override unsafe void Push()
         {
             fixed (byte* p = _image.Pixels, name = GetBytes(_name), desc = GetBytes(_description))
             {
-                DllImports.SetTileData(new DllImports.TileData()
+                DllImports.SetTileData(new DllImports.TileData
                 {
                     tileId = _id,
                     pixels = p,
@@ -50,7 +50,8 @@
                     name = name,
                     nameLen = _name.Length,
                     desc = desc,
-                    descLen = _description.Length
+                    descLen = _description.Length,
+                    format = (int) _image.Format
                 });
             }
         }
