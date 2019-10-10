@@ -1,5 +1,5 @@
-node_modules/
-.expo/
-npm-debug.*
-Tizen/shared/res/index.tizen.bundle
-Tizen/shared/res/index.tizen.bundle.meta
+**/node_modules/
+npm-debug.log
+yarn-error.log
+**/assets/index.tizen.bundle
+**/assets/index.tizen.bundle.meta
