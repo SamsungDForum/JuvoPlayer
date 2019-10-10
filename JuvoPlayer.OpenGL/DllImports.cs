@@ -36,6 +36,7 @@ namespace JuvoPlayer.OpenGL
             public int nameLen;
             public byte* desc;
             public int descLen;
+            public int format;
         }
 
         [StructLayout(LayoutKind.Sequential)]
@@ -45,6 +46,7 @@ namespace JuvoPlayer.OpenGL
             public byte* pixels;
             public int width;
             public int height;
+            public int format;
         }
 
         [StructLayout(LayoutKind.Sequential)]
@@ -110,12 +112,6 @@ namespace JuvoPlayer.OpenGL
 
         [DllImport(GlDemoLib, EntryPoint = "SetTileData")]
         public static extern void SetTileData(TileData tileData);
-
-        [DllImport(GlDemoLib, EntryPoint = "AddEmptyTile")]
-        public static extern int AddEmptyTile();
-
-        [DllImport(GlDemoLib, EntryPoint = "SetTileTexture")]
-        public static extern int SetTileTexture(ImageData image);
 
         [DllImport(GlDemoLib, EntryPoint = "AddFont")]
         public static extern int AddFont(byte* data, int size);
