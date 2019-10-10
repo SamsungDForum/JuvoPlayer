@@ -1,5 +1,5 @@
 node_modules/
 .expo/
 npm-debug.*
-*.index.tizen.bundle
-*.index.tizen.bundle.meta
+Tizen/shared/res/index.tizen.bundle
+Tizen/shared/res/index.tizen.bundle.meta
