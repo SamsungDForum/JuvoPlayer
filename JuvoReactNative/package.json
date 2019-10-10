@@ -20,7 +20,7 @@
   "jest": {},
   "config": {
     "tvip": "192.168.137.4",
-    "mode": "Debug"
+    "mode": "Release"
   },
   "dependencies": {
     "help": "^3.0.2",
