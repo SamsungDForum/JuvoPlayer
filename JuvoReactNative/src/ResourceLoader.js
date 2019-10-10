@@ -18,7 +18,7 @@ const ResourceLoader = {
         'bunny'
       ],
     tilesPath: {
-        car: require('.././Tizen/shared/res/assets/images/tiles/carsmall.png'),
+        car: require('.././Tizen/shared/res/assets/images/tiles/car.png'),
         bolid: require('.././Tizen/shared/res/assets/images/tiles/bolid.png'),
         sintel: require('.././Tizen/shared/res/assets/images/tiles/sintel.png'),
         oops: require('.././Tizen/shared/res/assets/images/tiles/oops.png'),
