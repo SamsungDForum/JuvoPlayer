@@ -110,6 +110,7 @@ export default class PlaybackView extends React.Component {
   }	
   componentWillReceiveProps(nextProps) {        
     this.operationInProgress = nextProps.visibility;
+    this.currentSubtitleText = "";
   }
   getFormattedTime(milisecs) {  
     var seconds = parseInt((milisecs/1000)%60)
@@ -125,8 +126,7 @@ export default class PlaybackView extends React.Component {
     this.handlePlaybackInfoDisappeard();
     this.showingSettingsView = false;  
     this.playerState = 'Idle';
-    this.inProgressDescription = 'Please wait...';
-    this.currentSubtitleText = "";
+    this.inProgressDescription = 'Please wait...';   
     this.JuvoPlayer.StopPlayback();   
   }
   toggleView() {  
