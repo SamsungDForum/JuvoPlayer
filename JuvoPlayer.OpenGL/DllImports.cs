@@ -15,7 +15,6 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-﻿using System;
 using System.Runtime.InteropServices;
 
 namespace JuvoPlayer.OpenGL
@@ -37,6 +36,7 @@ namespace JuvoPlayer.OpenGL
             public int nameLen;
             public byte* desc;
             public int descLen;
+            public int format;
         }
 
         [StructLayout(LayoutKind.Sequential)]
@@ -46,6 +46,7 @@ namespace JuvoPlayer.OpenGL
             public byte* pixels;
             public int width;
             public int height;
+            public int format;
         }
 
         [StructLayout(LayoutKind.Sequential)]
@@ -102,7 +103,7 @@ namespace JuvoPlayer.OpenGL
         public static extern void Terminate();
 
         [DllImport(GlDemoLib, EntryPoint = "Draw")]
-        public static extern void Draw(IntPtr eglDisplay, IntPtr eglSurface);
+        public static extern void Draw();
 
         // Resource management
 
@@ -111,12 +112,6 @@ namespace JuvoPlayer.OpenGL
 
         [DllImport(GlDemoLib, EntryPoint = "SetTileData")]
         public static extern void SetTileData(TileData tileData);
-
-        [DllImport(GlDemoLib, EntryPoint = "AddEmptyTile")]
-        public static extern int AddEmptyTile();
-
-        [DllImport(GlDemoLib, EntryPoint = "SetTileTexture")]
-        public static extern int SetTileTexture(ImageData image);
 
         [DllImport(GlDemoLib, EntryPoint = "AddFont")]
         public static extern int AddFont(byte* data, int size);
