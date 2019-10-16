@@ -41,14 +41,14 @@ namespace JuvoPlayer.Player.EsPlayer
             public DateTimeOffset BeginTime;
             public TimeSpan Dts;
             public TimeSpan Pts;
-            public TimeSpan RequestedDuration;
+            public TimeSpan NeededDuration;
             public TimeSpan TransferredDuration;
             public StreamType StreamType;
             public SynchronizationState SyncState;
             public bool IsKeyFrameSeen;
             // Represents a player asynchronous operation being executed
             // SeekAsync() / PrepareAsync(). 
-            // Upon complition, running player clock is extected.
+            // Upon completion, running player clock is expected.
             public Task PlayerAsyncOperation;
 
         }
@@ -69,7 +69,7 @@ namespace JuvoPlayer.Player.EsPlayer
         private static void ResetTransferChunk(SynchronizationData streamState)
         {
             streamState.TransferredDuration = TimeSpan.Zero;
-            streamState.RequestedDuration = DefaultTransferDuration;
+            streamState.NeededDuration = DefaultTransferDuration;
             streamState.BeginTime = DateTimeOffset.Now;
         }
 
@@ -85,7 +85,7 @@ namespace JuvoPlayer.Player.EsPlayer
                 // (seek/prepare)
                 streamState.IsKeyFrameSeen = true;
 
-                streamState.RequestedDuration = streamState.TransferredDuration + KeyFrameTransferDuration;
+                streamState.NeededDuration = streamState.TransferredDuration + KeyFrameTransferDuration;
 
                 if (packet.StreamType == StreamType.Video)
                     Logger.Info($"{streamState.StreamType}: Key frame seen. Player clock alternative set to {streamState.FirstPts}");
@@ -141,7 +141,7 @@ namespace JuvoPlayer.Player.EsPlayer
             if (streamState.SyncState == SynchronizationState.PlayerClockSynchronize)
                 return streamState.Dts - ClockProvider.LastClock >= StreamClockMaximumOverhead;
 
-            return streamState.TransferredDuration >= streamState.RequestedDuration;
+            return streamState.TransferredDuration >= streamState.NeededDuration;
         }
 
         public async ValueTask<bool> Synchronize(StreamType streamType, CancellationToken token)
@@ -240,7 +240,7 @@ namespace JuvoPlayer.Player.EsPlayer
                 state.SyncState = SynchronizationState.KeyFrameSearch;
                 state.BeginTime = initClock;
                 state.TransferredDuration = TimeSpan.Zero;
-                state.RequestedDuration = DefaultTransferDuration;
+                state.NeededDuration = DefaultTransferDuration;
                 state.Dts = ClockProviderConfig.InvalidClock;
                 state.IsKeyFrameSeen = false;
 
