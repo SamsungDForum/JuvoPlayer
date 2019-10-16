@@ -25,12 +25,21 @@
         Paused = 3
     }
 
+    internal enum Format
+    {
+        Rgba,
+        Bgra,
+        Rgb,
+        Unknown
+    }
+
     internal struct ImageData
     {
         public string Path;
         public int Width;
         public int Height;
         public byte[] Pixels;
+        public Format Format;
     }
 
     internal enum IconType

@@ -15,14 +15,14 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
- namespace JuvoPlayer.OpenGL
+namespace JuvoPlayer.OpenGL
 {
     class IconResource : Resource
     {
         private IconType _type;
         private ImageData _image;
 
-        public IconResource(IconType iconType, string path) : base()
+        public IconResource(IconType iconType, string path)
         {
             _type = iconType;
             _image.Path = path;
@@ -30,20 +30,21 @@
 
         public override void Load()
         {
-            _image = GetImage(_image.Path, ColorSpace.RGBA);
+            _image = GetImage(_image.Path);
         }
 
         public override unsafe void Push()
         {
             fixed (byte* p = _image.Pixels)
             {
-                DllImports.SetIcon(new DllImports.ImageData()
-                    {
+                DllImports.SetIcon(new DllImports.ImageData
+                {
                         id = (int)_type,
                         pixels = p,
                         width = _image.Width,
-                        height = _image.Height
-                    });
+                        height = _image.Height,
+                        format = (int) _image.Format
+                });
             }
         }
     }
