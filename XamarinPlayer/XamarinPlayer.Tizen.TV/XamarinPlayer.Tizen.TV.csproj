@@ -48,6 +48,18 @@
     <PackageReference Include="Tizen.NET.Sdk" Version="1.0.1">
       <ExcludeAssets>Runtime</ExcludeAssets>
     </PackageReference>
+    <Reference Include="FFImageLoading, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null">
+      <HintPath>packages\FFImageLoading.dll</HintPath>
+    </Reference>
+    <Reference Include="FFImageLoading.Forms, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null">
+      <HintPath>packages\FFImageLoading.Forms.dll</HintPath>
+    </Reference>
+    <Reference Include="FFImageLoading.Forms.Platform, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null">
+      <HintPath>packages\FFImageLoading.Forms.Platform.dll</HintPath>
+    </Reference>
+    <Reference Include="FFImageLoading.Platform, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null">
+      <HintPath>packages\FFImageLoading.Platform.dll</HintPath>
+    </Reference>
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\JuvoLogger.Tizen\JuvoLogger.Tizen.csproj" />

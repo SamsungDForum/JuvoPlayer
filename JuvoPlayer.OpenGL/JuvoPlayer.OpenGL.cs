@@ -86,10 +86,11 @@ namespace JuvoPlayer.OpenGL
             DllImports.Terminate();
         }
 
-        protected override void OnUpdate(IntPtr eglDisplay, IntPtr eglSurface)
+        protected override bool OnUpdate()
         {
             UpdateUI();
-            DllImports.Draw(eglDisplay, eglSurface);
+            DllImports.Draw();
+            return true;
         }
 
         protected override void OnAppControlReceived(AppControlReceivedEventArgs e) // Launch request handling via Smart Hub Preview (deep links) functionality
@@ -554,10 +555,20 @@ namespace JuvoPlayer.OpenGL
 
         private void HandleKeyPlay()
         {
-            if (Player?.State == Common.PlayerState.Playing)
-                Player?.Pause();
+            if (_isMenuShown)
+            {
+                if (_selectedTile >= _resourceLoader.TilesCount)
+                    return;
+                ShowMenu(false);
+                HandlePlaybackStart();
+            }
             else
-                Player?.Start();
+            {
+                if (Player?.State == Common.PlayerState.Playing)
+                    Player?.Pause();
+                else
+                    Player?.Start();
+            }
         }
 
         private void HandleKeyPause()
