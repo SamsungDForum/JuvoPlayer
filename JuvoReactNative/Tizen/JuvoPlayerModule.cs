@@ -218,7 +218,8 @@ namespace JuvoReactNative
         [ReactMethod]
         public void GetStreamsDescription(int StreamTypeIndex)
         {
-            if (StreamTypeIndex == 2)  //Subtitle
+            var index = (JuvoPlayer.Common.StreamType)StreamTypeIndex;
+            if (index == JuvoPlayer.Common.StreamType.Subtitle)  //Subtitle
             {
                 this.allStreamsDescriptions[StreamTypeIndex] = new List<StreamDescription>
                 {
