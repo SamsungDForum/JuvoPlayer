@@ -1,35 +1,29 @@
-'use strict'
-import React from 'react';
-import {  
-  View, 
-  NativeModules,
-  NativeEventEmitter,
-  ProgressBarAndroid  
-} from 'react-native';
+"use strict";
+import React from "react";
+import { View, NativeModules, NativeEventEmitter, ProgressBarAndroid } from "react-native";
 
 export default class PlaybackProgressBar extends React.Component {
-
   constructor(props) {
-    super(props);  
+    super(props);
     this.JuvoPlayer = NativeModules.JuvoPlayer;
-    this.JuvoEventEmitter = new NativeEventEmitter(this.JuvoPlayer);      
+    this.JuvoEventEmitter = new NativeEventEmitter(this.JuvoPlayer);
   }
-  shouldComponentUpdate(nextProps, nextState) {    
+  shouldComponentUpdate(nextProps, nextState) {
     const oldValue = this.props.value;
-    const newValue =  nextProps.value;
-    if (oldValue !== newValue) {   
+    const newValue = nextProps.value;
+    if (oldValue !== newValue) {
       return true;
-    } else {      
+    } else {
       return false;
-    }        
+    }
   }
-  render() {  
+  render() {
     const value = this.props.value;
-    const color = this.props.color ? this.props.color : 'red';    
-    return (  
-        <View>
-            <ProgressBarAndroid style={{left: 10, top: -200, width:1930, height:10}} value={value} horizontal={true} color={color}/>                      
-        </View>  
+    const color = this.props.color ? this.props.color : "red";
+    return (
+      <View>
+        <ProgressBarAndroid style={{ left: 10, top: -200, width: 1930, height: 10 }} value={value} horizontal={true} color={color} />
+      </View>
     );
   }
 }

@@ -11,13 +11,12 @@ using JuvoLogger.Tizen;
 using ILogger = JuvoLogger.ILogger;
 using Log = Tizen.Log;
 using Tizen.Applications;
-using ReactNative.UIManager.Events;
 using System.Threading.Tasks;
 
 namespace JuvoReactNative
 {
     class ReactNativeApp : ReactProgram
-    {        
+    {
         private static ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoRN");
         public static readonly string Tag = "JuvoRN";
         public override string MainComponentName
@@ -89,6 +88,7 @@ namespace JuvoReactNative
 
             Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
             ServicePointManager.DefaultConnectionLimit = 100;
+            RootView.BackgroundColor = ElmSharp.Color.Transparent;
         }
         public void ShutDown()
         {
@@ -99,13 +99,13 @@ namespace JuvoReactNative
         }
         protected override async void OnAppControlReceived(AppControlReceivedEventArgs e)
         {
-            //TODO - EDEN preview needs to be implemented here.            
-            ReactNativeApp app = (ReactNativeApp) Application.Current;            
+            //TODO - EDEN preview needs to be implemented here. 
+            ReactNativeApp app = (ReactNativeApp)Application.Current;
             var payloadParser = new PayloadParser(e.ReceivedAppControl);
-            if (!payloadParser.TryGetUrl(out var url)) 
-               return;
+            if (!payloadParser.TryGetUrl(out var url))
+                return;
             Task result = LoadUrl(url);
-            await result;            
+            await result;
             base.OnAppControlReceived(e);
         }
         static void Main(string[] args)
@@ -124,12 +124,13 @@ namespace JuvoReactNative
         }
         public async Task LoadUrl(string url)
         {
-            await Task.Run( () => {
+            await Task.Run(() =>
+            {
                 foreach (IReactPackage package in Packages)
                 {
                     if (package.GetType() == typeof(JuvoPlayerReactPackage))
-                    {                        
-                        JuvoPlayerReactPackage pkg = (JuvoPlayerReactPackage)package;                       
+                    {
+                        JuvoPlayerReactPackage pkg = (JuvoPlayerReactPackage)package;
                     }
                 }
             });
