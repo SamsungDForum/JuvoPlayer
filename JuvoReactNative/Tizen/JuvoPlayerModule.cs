@@ -18,10 +18,10 @@ using Newtonsoft.Json.Linq;
 namespace JuvoReactNative
 {
     public class JuvoPlayerModule : ReactContextNativeModuleBase, ILifecycleEventListener, ISeekLogicClient
-    { 
-        private PlayerServiceProxy juvoPlayer = null;        
+    {
+        private PlayerServiceProxy juvoPlayer = null;
         private readonly TimeSpan UpdatePlaybackInterval = TimeSpan.FromMilliseconds(100);
-        private static Timer playbackTimer ;
+        private static Timer playbackTimer;
         private SeekLogic seekLogic = null; // needs to be initialized in the constructor!
         private static ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoRN");
         public static readonly string Tag = "JuvoRN";
@@ -44,7 +44,7 @@ namespace JuvoReactNative
             set => currentPosition = value;
         }
         private TimeSpan currentPosition;
-        List<StreamDescription>[] allStreamsDescriptions = { null, null, null};
+        List<StreamDescription>[] allStreamsDescriptions = { null, null, null };
 
         public JuvoPlayerModule(ReactContext reactContext)
             : base(reactContext)
@@ -54,8 +54,6 @@ namespace JuvoReactNative
         }
         private void InitializeJuvoPlayer()
         {
-            // You see a gray background and no video it means that the Canvas.cs file of the react-native-tizen framework is invalid.
-            //It requires the change: BackgroundColor = Color.Transparent of the canvas class. 
             juvoPlayer = new PlayerServiceProxy(new PlayerServiceImpl(window));
             juvoPlayer.StateChanged()
                .ObserveOn(syncContext)
@@ -82,7 +80,7 @@ namespace JuvoReactNative
         private void SendEvent(string eventName, JObject parameters)
         {
             Context.GetJavaScriptModule<RCTDeviceEventEmitter>()
-                .emit(eventName, parameters);            
+                .emit(eventName, parameters);
         }
         public override void Initialize()
         {
@@ -97,7 +95,8 @@ namespace JuvoReactNative
                 SendEvent("onTVKeyDown", param);
             };
             _keyUp = new EcoreEvent<EcoreKeyEventArgs>(EcoreEventType.KeyUp, EcoreKeyEventArgs.Create);
-            _keyUp.On += (s, e)  => {
+            _keyUp.On += (s, e) =>
+            {
                 //Propagate the key press event to JavaScript module
                 var param = new JObject();
                 param.Add("KeyName", e.KeyName);
@@ -159,7 +158,7 @@ namespace JuvoReactNative
             param.Add("Percent", (int)percent);
             SendEvent("onUpdateBufferingProgress", param);
         }
-        private void UpdatePlayTime(object timerState) 
+        private void UpdatePlayTime(object timerState)
         {
             string txt = "";
             if (juvoPlayer?.CurrentCueText != null)
@@ -186,10 +185,10 @@ namespace JuvoReactNative
             }
             player.SetSource(new ClipDefinition
             {
-              Type = streamingProtocol,
-              Url = videoSourceURI,
-              Subtitles = new List<SubtitleInfo>(),
-              DRMDatas = drmData
+                Type = streamingProtocol,
+                Url = videoSourceURI,
+                Subtitles = new List<SubtitleInfo>(),
+                DRMDatas = drmData
             });
         }
         private void Play(string videoURI, string licenseURI, string DRM, string streamingProtocol)
@@ -210,11 +209,12 @@ namespace JuvoReactNative
         {
             var param = new JObject();
             param.Add("To", (int)to.TotalMilliseconds);
-            SendEvent("onSeek", param);          
+            SendEvent("onSeek", param);
             return juvoPlayer?.SeekTo(to);
         }
 
         //////////////////JS methods//////////////////
+
         [ReactMethod]
         public void GetStreamsDescription(int StreamTypeIndex)
         {
@@ -231,10 +231,11 @@ namespace JuvoReactNative
                     }
                 };
                 this.allStreamsDescriptions[StreamTypeIndex].AddRange(juvoPlayer.GetStreamsDescription((StreamType)StreamTypeIndex));
-            } else
+            }
+            else
             {
                 this.allStreamsDescriptions[StreamTypeIndex] = juvoPlayer.GetStreamsDescription((StreamType)StreamTypeIndex);
-            }          
+            }
             var param = new JObject();
             param.Add("Description", Newtonsoft.Json.JsonConvert.SerializeObject(this.allStreamsDescriptions[StreamTypeIndex]));
             param.Add("StreamTypeIndex", (int)StreamTypeIndex);
@@ -255,7 +256,7 @@ namespace JuvoReactNative
                         return;
                     }
                 }
-                var stream = (StreamDescription)this.allStreamsDescriptions[StreamTypeIndex][SelectedIndex];               
+                var stream = (StreamDescription)this.allStreamsDescriptions[StreamTypeIndex][SelectedIndex];
                 juvoPlayer.ChangeActiveStream(stream);
             }
         }
@@ -275,7 +276,7 @@ namespace JuvoReactNative
         {
             juvoPlayer?.Stop();
             juvoPlayer?.Dispose();
-            juvoPlayer = null;            
+            juvoPlayer = null;
             seekLogic.IsSeekAccumulationInProgress = false;
         }
         [ReactMethod]
