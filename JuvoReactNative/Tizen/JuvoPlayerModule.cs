@@ -18,7 +18,7 @@ using Newtonsoft.Json.Linq;
 namespace JuvoReactNative
 {
     public class JuvoPlayerModule : ReactContextNativeModuleBase, ILifecycleEventListener, ISeekLogicClient
-    { 
+    {
         private readonly TimeSpan UpdatePlaybackInterval = TimeSpan.FromMilliseconds(100);
         private static Timer playbackTimer;
         private SeekLogic seekLogic = null; // needs to be initialized in the constructor!
@@ -27,7 +27,7 @@ namespace JuvoReactNative
         EcoreEvent<EcoreKeyEventArgs> _keyDown;
         EcoreEvent<EcoreKeyEventArgs> _keyUp;
         SynchronizationContext syncContext;
-        Window window = ReactProgram.RctWindow; //The main window of the application has to be transparent.     
+        Window window = ReactProgram.RctWindow; //The main window of the application has to be transparent. 
         List<StreamDescription>[] allStreamsDescriptions = { null, null, null };
         public IPlayerService Player { get; private set; }
         public JuvoPlayerModule(ReactContext reactContext)
@@ -62,7 +62,7 @@ namespace JuvoReactNative
             }
         }
 
-        
+
 
         private void SendEvent(string eventName, JObject parameters)
         {
@@ -206,7 +206,7 @@ namespace JuvoReactNative
         public void GetStreamsDescription(int StreamTypeIndex)
         {
             var index = (JuvoPlayer.Common.StreamType)StreamTypeIndex;
-            if (index == JuvoPlayer.Common.StreamType.Subtitle)  
+            if (index == JuvoPlayer.Common.StreamType.Subtitle)
             {
                 this.allStreamsDescriptions[StreamTypeIndex] = new List<StreamDescription>
                 {
