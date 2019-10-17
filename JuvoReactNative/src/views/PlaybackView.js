@@ -212,12 +212,16 @@ export default class PlaybackView extends React.Component {
         }
         break;
       case "Up":
-        //requesting the native module for details regarding the stream settings.
-        //The response is handled inside the onGotStreamsDescription() function.
-        this.JuvoPlayer.GetStreamsDescription(Native.JuvoPlayer.Common.StreamType.Audio);
-        this.JuvoPlayer.GetStreamsDescription(Native.JuvoPlayer.Common.StreamType.Video);
-        this.JuvoPlayer.GetStreamsDescription(Native.JuvoPlayer.Common.StreamType.Subtitle);
-        break;
+        //Show the settings view only if the playback controls are visible on the screen
+        if (this.onScreenTimeOut >= 0) {
+          //requesting the native module for details regarding the stream settings.
+          //The response is handled inside the onGotStreamsDescription() function.
+          this.JuvoPlayer.GetStreamsDescription(Native.JuvoPlayer.Common.StreamType.Audio);
+          this.JuvoPlayer.GetStreamsDescription(Native.JuvoPlayer.Common.StreamType.Video);
+          this.JuvoPlayer.GetStreamsDescription(Native.JuvoPlayer.Common.StreamType.Subtitle);
+        }
+      default:
+        this.showPlaybackInfo();
     }
   }
   onGotStreamsDescription(streams) {
