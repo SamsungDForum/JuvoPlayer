@@ -62,7 +62,7 @@ namespace JuvoPlayer.OpenGL
 
         public ILogger Logger { private get; set; }
 
-        public void LoadStreamLists(Player player)
+        public void LoadStreamLists(IPlayerService player)
         {
             ClearOptionsMenu();
 
@@ -205,7 +205,7 @@ namespace JuvoPlayer.OpenGL
             return selectedStreamIndex >= 0 && selectedStreamIndex < _streams[selectedStreamTypeIndex].Descriptions.Count;
         }
 
-        public void ControlSelect(Player player)
+        public void ControlSelect(IPlayerService player)
         {
             if (player == null)
                 return;
