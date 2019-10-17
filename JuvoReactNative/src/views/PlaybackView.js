@@ -193,9 +193,8 @@ export default class PlaybackView extends React.Component {
       case "XF86AudioPlay":
       case "XF86PlayBack":
         if (this.playerState === "Idle") {
-          let licenseURI = video.drmDatas ? video.drmDatas[0].licenceUrl : null;
-          let DRM = video.drmDatas ? video.drmDatas[0].scheme : null;
-          this.JuvoPlayer.StartPlayback(video.url, licenseURI, DRM, video.type);
+          let DRM = video.drmDatas ? JSON.stringify(video.drmDatas) : null;
+          this.JuvoPlayer.StartPlayback(video.url, DRM, video.type);
         }
         if (this.playerState === "Paused" || this.playerState === "Playing") {
           //pause - resume

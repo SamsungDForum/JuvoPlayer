@@ -9,7 +9,6 @@ using JuvoPlayer;
 using JuvoPlayer.Common;
 using JuvoLogger;
 using ILogger = JuvoLogger.ILogger;
-using Log = Tizen.Log;
 using ElmSharp;
 using ReactNative.Modules.Core;
 using Newtonsoft.Json.Linq;
@@ -19,7 +18,6 @@ namespace JuvoReactNative
 {
     public class JuvoPlayerModule : ReactContextNativeModuleBase, ILifecycleEventListener, ISeekLogicClient
     {
-        private readonly TimeSpan UpdatePlaybackInterval = TimeSpan.FromMilliseconds(100);
         private static Timer playbackTimer;
         private SeekLogic seekLogic = null; // needs to be initialized in the constructor!
         private static ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoRN");
@@ -61,9 +59,6 @@ namespace JuvoReactNative
                 return "JuvoPlayer";
             }
         }
-
-
-
         private void SendEvent(string eventName, JObject parameters)
         {
             Context.GetJavaScriptModule<RCTDeviceEventEmitter>()
@@ -158,34 +153,20 @@ namespace JuvoReactNative
             param.Add("SubtiteText", txt);
             SendEvent("onUpdatePlayTime", param);
         }
-        void PlayJuvoPlayer(String videoSourceURI, String licenseServerURI, String drmScheme, IPlayerService player, string streamingProtocol)
-        {
-            var drmData = new List<DRMDescription>();
-            if (licenseServerURI != null)
-            {
-                drmData.Add(new DRMDescription
-                {
-                    Scheme = drmScheme,
-                    LicenceUrl = licenseServerURI,
-                    KeyRequestProperties = new Dictionary<string, string>() { { "Content-Type", "text/xml; charset=utf-8" } },
-                });
-            }
-            player.SetSource(new ClipDefinition
-            {
-                Type = streamingProtocol,
-                Url = videoSourceURI,
-                Subtitles = new List<SubtitleInfo>(),
-                DRMDatas = drmData
-            });
-        }
-        private void Play(string videoURI, string licenseURI, string DRM, string streamingProtocol)
+        private void Play(string videoURI, List<DRMDescription> drmDataList, string streamingProtocol)
         {
             try
             {
                 if (videoURI == null) return;
                 if (Player?.State == PlayerState.Playing) return;
                 InitializeJuvoPlayer();
-                PlayJuvoPlayer(videoURI, licenseURI, DRM, Player, streamingProtocol);
+                Player.SetSource(new ClipDefinition
+                {
+                    Type = streamingProtocol,
+                    Url = videoURI,
+                    Subtitles = new List<SubtitleInfo>(),
+                    DRMDatas = drmDataList
+                });
             }
             catch (Exception e)
             {
@@ -255,10 +236,21 @@ namespace JuvoReactNative
             Logger?.Info(message);
         }
         [ReactMethod]
-        public void StartPlayback(string videoURI, string licenseURI, string DRM, string streamingProtocol)
+        public void StartPlayback(string videoURI, string drmDatasJSON, string streamingProtocol)
         {
-            Play(videoURI, licenseURI, DRM, streamingProtocol);
-            seekLogic.IsSeekInProgress = false;
+            try
+            {
+                var drmDataList = (drmDatasJSON != null) ? JuvoPlayer.Utils.JSONFileReader.DeserializeJsonText<List<DRMDescription>>(drmDatasJSON) : new List<DRMDescription>();
+                Play(videoURI, drmDataList, streamingProtocol);
+            }
+            catch (Exception e)
+            {
+                Logger?.Error(Tag, "StartPlayback failed... " + e.Message);
+            }
+            finally
+            {
+                seekLogic.Reset();
+            }
         }
         [ReactMethod]
         public void StopPlayback()
