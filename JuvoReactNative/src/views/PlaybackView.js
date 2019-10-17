@@ -20,7 +20,7 @@ export default class PlaybackView extends React.Component {
     this.state = {
       selectedIndex: 0
     };
-    this.visible = this.props.visibility ? this.props.visibility : false;
+    this.visible = false;
     this.keysListenningOff = false;
     this.playerState = "Idle";
     this.operationInProgress = false;
