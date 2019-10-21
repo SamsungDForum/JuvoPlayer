@@ -115,7 +115,7 @@ export default class ContentScroll extends React.Component {
     return (
       <View>
         <View
-          style={{          
+          style={{
             top: 150,
             left: 100,
             width: 900,
