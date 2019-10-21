@@ -12,12 +12,11 @@ namespace JuvoReactNative
 {
     public class JuvoPlayerReactPackage : IReactPackage
     {
-        private static ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoRN");
-        public static readonly string Tag = "JuvoRN"; 
+        private ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoRN");
+        public readonly string Tag = "JuvoRN"; 
 
         public IReadOnlyList<INativeModule> CreateNativeModules(ReactContext reactContext)
         {
-            Log.Error(Tag, "JuvoPlayerReactPackage CreateNativeModules called! ");
             return new List<INativeModule>
             {
                 new JuvoPlayerModule(reactContext)

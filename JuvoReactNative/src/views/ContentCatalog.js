@@ -93,14 +93,13 @@ export default class ContentCatalog extends Component {
     return (
       <View>
         <HideableView visible={visibility} duration={300}>
-          <HideableView visible={showBigPicture} duration={100} style={{ zIndex: -20 }}>
+          <HideableView visible={showBigPicture} duration={100}>
             <View
               style={{
                 top: 0,
                 left: 650,
                 width: 1270,
-                height: 800,
-                zIndex: -11
+                height: 800
               }}>
               <ContentPicture
                 source={uri}
@@ -120,12 +119,11 @@ export default class ContentCatalog extends Component {
               top: -800,
               left: 650,
               width: 1270,
-              height: 800,
-              zIndex: -10
+              height: 800
             }}>
             <ContentPicture source={uri} selectedIndex={index} path={overlay} width={1266} height={715} top={0} left={0} />
           </View>
-          <View style={{ top: -1600, width: 1920, height: 1080, zIndex: 100 }}>
+          <View style={{ top: -1600, width: 1920, height: 1080 }}>
             <ContentScroll
               onSelectedIndexChange={this.handleSelectedIndexChange}
               contentURIs={ResourceLoader.tileNames}

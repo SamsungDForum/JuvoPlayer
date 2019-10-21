@@ -6,8 +6,3 @@ obj
 *.user
 *.swp
 CyclomaticComplexityReport.log
-**/node_modules/
-npm-debug.log
-yarn-error.log
-JuvoReactNative.code-workspace
-**/assets/
