@@ -31,6 +31,7 @@ using Tizen.TV.Security.DrmDecrypt;
 using Tizen.TV.Security.DrmDecrypt.emeCDM;
 using JuvoPlayer.Common.Utils.IReferenceCountable;
 using static Configuration.CencSession;
+using InitDataType = Tizen.TV.Security.DrmDecrypt.emeCDM.InitDataType;
 
 namespace JuvoPlayer.Drms.Cenc
 {
@@ -59,7 +60,8 @@ namespace JuvoPlayer.Drms.Cenc
         private const int E_DECRYPT_BUFFER_FULL = 2;
 
         private CencUtils.DrmType drmType;
-        private Task initializationTask = Task.FromException(new Exception("CencSession Initialize not called"));
+        private readonly Lazy<Task> _initializationTaskLazy;
+        private Task InitializationTask => _initializationTaskLazy.Value;
 
         private CencSession(DRMInitData initData, DRMDescription drmDescription)
         {
@@ -73,6 +75,10 @@ namespace JuvoPlayer.Drms.Cenc
             this.drmDescription = drmDescription;
             cancellationTokenSource = new CancellationTokenSource();
             drmType = CencUtils.GetDrmType(this.drmDescription.Scheme);
+
+            // Session can be shared between Audio&Video (if cached)
+            // Use lazy for initialization task retrieval, including Initialize()
+            _initializationTaskLazy = new Lazy<Task>(StartInitialization);
         }
 
         private void DestroyCDM()
@@ -299,21 +305,26 @@ namespace JuvoPlayer.Drms.Cenc
         {
         }
 
-        public Task Initialize()
+        private Task StartInitialization()
         {
             ThrowIfDisposed();
             Logger.Info("");
 
-            var t = thread.Factory.Run(InitializeOnIemeThread);
-            Volatile.Write(ref initializationTask, t);
-            return initializationTask;
+            return thread.Factory.Run(InitializeOnIemeThread);
+        }
+        public Task Initialize()
+        {
+            ThrowIfDisposed();
+            Logger.Info($"{InitializationTask.Status}");
+
+            return InitializationTask;
         }
 
         public Task WaitForInitialization(CancellationToken token)
         {
             Logger.Info($"{currentSessionId}: Waiting for license");
 
-            return Volatile.Read(ref initializationTask).WaitAsync(token);
+            return InitializationTask;
         }
 
         public bool CanDecrypt() =>
@@ -335,8 +346,10 @@ namespace JuvoPlayer.Drms.Cenc
             Logger.Info($"CencSession ID {currentSessionId}");
             cancellationToken.ThrowIfCancellationRequested();
             var requestData = await GetRequestData();
+            Logger.Info($"CencSession ID {currentSessionId}");
             cancellationToken.ThrowIfCancellationRequested();
             var responseText = await AcquireLicenceFromServer(requestData);
+            Logger.Info($"CencSession ID {currentSessionId} {responseText}");
             cancellationToken.ThrowIfCancellationRequested();
             await InstallLicence(responseText);
             licenceInstalled = true;
