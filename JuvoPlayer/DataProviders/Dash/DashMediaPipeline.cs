@@ -555,9 +555,13 @@ namespace JuvoPlayer.DataProviders.Dash
 
             // read first node inner text (should be psshbox or pro header)
             var initData = doc.FirstChild?.FirstChild?.InnerText;
+            if (initData == null)
+                return;
 
             var drmInitData = new DRMInitData
             {
+                KeyIDs = CencUtils.GetKeyIDs(descriptor.CencDefaultKID),
+                DataType = CencUtils.GetInitDataType(doc.FirstChild?.FirstChild?.Name),
                 InitData = Convert.FromBase64String(initData),
                 SystemId = CencUtils.SchemeIdUriToSystemId(schemeIdUri),
                 // Stream Type will be appended during OnDRMInitDataFound()
