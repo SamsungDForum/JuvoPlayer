@@ -44,7 +44,7 @@ The reference for developers of streaming live TV and VOD Tizen .Net application
 * All features of the JuvoPlayer 1.4.9
 * JuvoReactNative GUI - based on React Native Tizen project https://github.com/Samsung/react-native-tizen-dotnet
 * JuvoPlayerXamarin JuvoPlayerOpenGL animation and picture loading performance improvements.
-* Bixby (voice control) basic playback functions (JuvoPlayerXamarin, JuvoPlayerOpenGL)
+* Bixby (voice control) basic playback functions (JuvoPlayerXamarin, JuvoPlayerOpenGL, JuvoReactNative )
 * JuvoPlayer backend stability and performance improvements 
 2. Known issues:
 * Right after the finishing seek in HLS streams there is a short video pause until the audio catch up. It is a result of FFmpeg 'seek' function specific.
