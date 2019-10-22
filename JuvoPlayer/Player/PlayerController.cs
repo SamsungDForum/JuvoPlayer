@@ -84,9 +84,9 @@ namespace JuvoPlayer.Player
             return player.StateChanged();
         }
 
-        public IObservable<DataRequest> DataRequest()
+        public IObservable<TimeSpan> DataClock()
         {
-            return player.DataRequest();
+            return player.DataClock();
         }
 
         public void OnClipDurationChanged(TimeSpan duration)
@@ -133,7 +133,7 @@ namespace JuvoPlayer.Player
                 await player.Seek(time);
 
                 // Update "clock cache" with latest value
-                currentTime = ClockProvider.LastClock;
+                currentTime = PlayerClockProvider.LastClock;
             }
             catch (OperationCanceledException)
             {

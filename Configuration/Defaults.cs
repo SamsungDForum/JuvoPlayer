@@ -29,19 +29,17 @@ namespace Configuration
                 TimeSpan.FromMilliseconds(200); // time between key events when key is being hold is ~100ms   
     }
 
-    public static class ClockProviderConfig
+    public static class PlayerClockProviderConfig
     {
         public static TimeSpan ClockInterval { get; set; } = TimeSpan.FromSeconds(0.1);
         public static readonly TimeSpan InvalidClock = TimeSpan.FromSeconds(-1);
         public static readonly TimeSpan NoClockReturnValue = TimeSpan.FromSeconds(-2);
     }
 
-    public static class DataBufferConfig
+    public static class DataClockProviderConfig
     {
         public static TimeSpan TimeBufferDepthDefault { get; set; } = TimeSpan.FromSeconds(10);
-        public static TimeSpan DataStatePublishInterval { get; set; } = TimeSpan.FromSeconds(1);
-        public static TimeSpan StreamClockDiscontinuityThreshold { get; set; } = TimeSpan.FromSeconds(0.1);
-        public static TimeSpan DataRequestOutputThreshold { get; set; } = TimeSpan.FromSeconds(3);
+        public static TimeSpan ClockInterval { get; set; } = TimeSpan.FromSeconds(0.5);
     }
 
     public static class DataSynchronizerConfig
@@ -50,6 +48,7 @@ namespace Configuration
         public static TimeSpan DefaultTransferDuration { get; set; } = TimeSpan.FromSeconds(0.5);
         public static TimeSpan StreamClockMaximumOverhead { get; set; } = TimeSpan.FromSeconds(1.25);
         public static TimeSpan StreamClockMinimumOverhead { get; set; } = TimeSpan.FromSeconds(0.75);
+        public static TimeSpan StreamClockDiscontinuityThreshold { get; set; } = TimeSpan.FromSeconds(0.1);
     }
 
     public static class DashClient

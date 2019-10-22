@@ -87,9 +87,9 @@ namespace JuvoPlayer.DataProviders.RTSP
                 .Merge(rtspClient.RTSPError());
         }
 
-        public void OnDataRequest(DataRequest request)
+        public void OnDataClock(TimeSpan dataClock)
         {
-            // RTSP Data Provider does not support data request events
+            // RTSP Data Provider does not support data dataClock events
             // Input handler empty
         }
 

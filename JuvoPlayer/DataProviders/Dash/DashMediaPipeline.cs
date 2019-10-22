@@ -133,7 +133,7 @@ namespace JuvoPlayer.DataProviders.Dash
         public bool IsDataAvailable() =>
             (!pipelineStarted || dashClient.IsDataAvailable());
 
-        public void SetDataRequest(DataRequest request) =>
+        public void SetDataRequest(TimeSpan request) =>
             dashClient.SetDataRequest(request);
 
         private async Task OnDownloadCompleted()
@@ -199,8 +199,6 @@ namespace JuvoPlayer.DataProviders.Dash
                     if (currentRepresentation != null)
                     {
                         GetAvailableStreams(media, currentMedia);
-
-                        // Media Preparation (Call to Initialize) is done upon assignment to pendingStream.
                         currentStream = new DashStream(currentMedia, currentRepresentation);
                         dashClient.UpdateRepresentation(currentStream.Representation);
 
@@ -671,7 +669,7 @@ namespace JuvoPlayer.DataProviders.Dash
                 .Subscribe(config => demuxerStreamConfigReadySubject.OnNext(config), SynchronizationContext.Current);
         }
 
-        MetaDataStreamConfig GetStreamMetaDataConfig()
+        BufferStreamConfig GetStreamMetaDataConfig()
         {
             var representation = GetRepresentation();
             if (representation == null)
@@ -679,7 +677,7 @@ namespace JuvoPlayer.DataProviders.Dash
 
             var mpdDoc = representation.Segments.GetDocumentParameters().Document;
 
-            return new MetaDataStreamConfig
+            return new BufferStreamConfig
             {
                 Stream = StreamType,
                 Bandwidth = representation.Bandwidth,

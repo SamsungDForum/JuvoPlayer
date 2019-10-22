@@ -162,17 +162,10 @@ namespace JuvoPlayer.DataProviders.Dash
             audioPipeline.Stop();
         }
 
-        public void OnDataRequest(DataRequest dataRequest)
+        public void OnDataClock(TimeSpan dataClock)
         {
-            switch (dataRequest.StreamType)
-            {
-                case StreamType.Audio:
-                    audioPipeline.SetDataRequest(dataRequest);
-                    break;
-                case StreamType.Video:
-                    videoPipeline.SetDataRequest(dataRequest);
-                    break;
-            }
+            audioPipeline.SetDataRequest(dataClock);
+            videoPipeline.SetDataRequest(dataClock);   
         }
 
         public Task<TimeSpan> Seek(TimeSpan time, CancellationToken token)

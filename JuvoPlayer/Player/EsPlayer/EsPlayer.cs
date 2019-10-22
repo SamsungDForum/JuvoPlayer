@@ -135,7 +135,7 @@ namespace JuvoPlayer.Player.EsPlayer
             return streamControl.BufferingProgress();
         }
 
-        public IObservable<DataRequest> DataRequest()
+        public IObservable<TimeSpan> DataClock()
         {
             return streamControl.DataNeededStateChanged();
         }

@@ -31,7 +31,7 @@ namespace JuvoPlayer.DataProviders.Dash
         void OnTimeUpdated(TimeSpan time);
         void UpdateRepresentation(Representation representation);
         void ScheduleNextSegDownload();
-        void SetDataRequest(DataRequest dataNeeded);
+        void SetDataRequest(TimeSpan dataNeeded);
         bool CanStreamSwitch();
         bool IsDataAvailable();
 

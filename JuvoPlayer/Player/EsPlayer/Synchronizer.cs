@@ -56,7 +56,12 @@ namespace JuvoPlayer.Player.EsPlayer
         private static readonly ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
         private readonly SynchronizationData[] _streamSyncData = new SynchronizationData[(int)StreamType.Count];
         private readonly AsyncBarrier _streamSyncBarrier = new AsyncBarrier();
-        private readonly ClockProvider _playerClockSource = new ClockProvider();
+        private readonly PlayerClockProvider _playerClockSource;
+
+        public Synchronizer(PlayerClockProvider playerClockSource)
+        {
+            _playerClockSource = playerClockSource;
+        }
 
         public void Initialize(StreamType stream)
         {
@@ -98,7 +103,7 @@ namespace JuvoPlayer.Player.EsPlayer
 
             var clockDiff = streamState.Dts - lastClock;
 
-            if (clockDiff > DataBufferConfig.StreamClockDiscontinuityThreshold || clockDiff <= TimeSpan.Zero)
+            if (clockDiff > StreamClockDiscontinuityThreshold || clockDiff <= TimeSpan.Zero)
                 return;
 
             streamState.TransferredDuration += clockDiff;
@@ -119,7 +124,7 @@ namespace JuvoPlayer.Player.EsPlayer
 
         private Task StreamSync(SynchronizationData streamState, CancellationToken token)
         {
-            var playerClock = ClockProvider.LastClock;
+            var playerClock = PlayerClockProvider.LastClock;
             if (playerClock < TimeSpan.Zero)
                 playerClock = streamState.FirstPts;
 
@@ -139,7 +144,7 @@ namespace JuvoPlayer.Player.EsPlayer
         private static bool IsTransferredDurationCompleted(SynchronizationData streamState)
         {
             if (streamState.SyncState == SynchronizationState.PlayerClockSynchronize)
-                return streamState.Dts - ClockProvider.LastClock >= StreamClockMaximumOverhead;
+                return streamState.Dts - PlayerClockProvider.LastClock >= StreamClockMaximumOverhead;
 
             return streamState.TransferredDuration >= streamState.NeededDuration;
         }
@@ -241,7 +246,7 @@ namespace JuvoPlayer.Player.EsPlayer
                 state.BeginTime = initClock;
                 state.TransferredDuration = TimeSpan.Zero;
                 state.NeededDuration = DefaultTransferDuration;
-                state.Dts = ClockProviderConfig.InvalidClock;
+                state.Dts = PlayerClockProviderConfig.InvalidClock;
                 state.IsKeyFrameSeen = false;
 
                 _streamSyncBarrier.AddParticipant();
