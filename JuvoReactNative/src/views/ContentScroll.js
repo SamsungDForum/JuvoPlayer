@@ -116,20 +116,17 @@ export default class ContentScroll extends React.Component {
       <View>
         <View
           style={{
-            position: "relative",
             top: 150,
             left: 100,
             width: 900,
-            height: 750,
-            zIndex: 200
+            height: 750
           }}>
           <ContentDescription
             viewStyle={{
               top: 0,
               left: 0,
               width: 900,
-              height: 800,
-              zIndex: 200
+              height: 800
             }}
             headerStyle={{ fontSize: 60, color: "#ffffff" }}
             bodyStyle={{ fontSize: 30, color: "#ffffff", top: 0 }}
