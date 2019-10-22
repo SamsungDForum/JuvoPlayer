@@ -81,23 +81,10 @@ namespace JuvoReactNative
         protected override void OnCreate()
         {
             base.OnCreate();
-
             Log.Error(Tag, "OnCreate()...");
-
             Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
             ServicePointManager.DefaultConnectionLimit = 100;
             RootView.BackgroundColor = ElmSharp.Color.Transparent;
-        }
-        public void ShutDown()
-        {
-            Log.Error(Tag, "Shutting down...");
-            ReactNativeApp app = (ReactNativeApp)Application.Current;
-            app.Dispose();
-            app.Exit();
-        }
-        protected override void OnAppControlReceived(AppControlReceivedEventArgs e)
-        {
-            base.OnAppControlReceived(e);
         }
         static void Main(string[] args)
         {
