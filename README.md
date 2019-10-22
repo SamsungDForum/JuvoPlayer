@@ -48,8 +48,9 @@ The reference for developers of streaming live TV and VOD Tizen .Net application
 * JuvoPlayer backend stability and performance improvements 
 2. Known issues:
 * Right after the finishing seek in HLS streams there is a short video pause until the audio catch up. It is a result of FFmpeg 'seek' function specific.
-* JuvoReactNative seek in HLS, HTTP streams does not hide the activity indicator (missing seek completion signaling)
+* JuvoReactNative seek in HLS, HTTP streams does not hide the activity indicator (missing seek completion signaling).
 * JuvoReactNative GUI does not support deeplinked shortcuts for SmartHub preview feature.
+* JuvoReactNative GUI playback settings view does not support setting default values (limitation of the React Native Tizen's Picker component).
 
 **JuvoPlayer 1.4.9 (beta)**
 1. Features:
