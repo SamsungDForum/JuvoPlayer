@@ -96,7 +96,7 @@ namespace JuvoPlayer.DataProviders.HLS
         {
         }
 
-        public void OnDataRequest(DataRequest dataRequest)
+        public void OnDataClock(TimeSpan dataClock)
         {
             // HLS Data provider does not rely on data requests from player.
         }

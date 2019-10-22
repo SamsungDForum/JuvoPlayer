@@ -52,6 +52,6 @@ namespace JuvoPlayer.Player
         IObservable<string> PlaybackError();
         IObservable<TimeSpan> TimeUpdated();
         IObservable<PlayerState> StateChanged();
-        IObservable<DataRequest> DataRequest();
+        IObservable<TimeSpan> DataClock();
     }
 }

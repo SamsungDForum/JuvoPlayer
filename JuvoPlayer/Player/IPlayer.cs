@@ -27,7 +27,7 @@ namespace JuvoPlayer.Player
         IObservable<TimeSpan> TimeUpdated();
         IObservable<PlayerState> StateChanged();
         IObservable<int> BufferingProgress();
-        IObservable<DataRequest> DataRequest();
+        IObservable<TimeSpan> DataClock();
 
         IPlayerClient Client { get; set; }
 

@@ -94,8 +94,8 @@ namespace JuvoPlayer.Player.EsPlayer
 
         private Packet currentPacket;
 
-        private readonly EsBuffer dataBuffer;
-        private readonly Synchronizer dataSynchronizer;
+        private readonly Synchronizer _dataSynchronizer;
+        private readonly SuspendResumeLogic _suspendResumeLogic;
 
         public IObservable<string> PlaybackError()
         {
@@ -109,13 +109,13 @@ namespace JuvoPlayer.Player.EsPlayer
 
         #region Public API
 
-        public EsStream(StreamType type, EsPlayerPacketStorage storage, EsBuffer buffer, Synchronizer synchronizer)
+        public EsStream(StreamType type, EsPlayerPacketStorage storage, Synchronizer synchronizer, SuspendResumeLogic suspendRedumeLogic)
         {
             streamType = type;
             packetStorage = storage;
-            dataBuffer = buffer;
-            dataSynchronizer = synchronizer;
-            dataSynchronizer.Initialize(streamType);
+            _dataSynchronizer = synchronizer;
+            _dataSynchronizer.Initialize(streamType);
+            _suspendResumeLogic = suspendRedumeLogic;
 
             switch (streamType)
             {
@@ -381,8 +381,7 @@ namespace JuvoPlayer.Player.EsPlayer
                     if (!shouldContinue)
                         break;
 
-                    if (await dataSynchronizer.Synchronize(streamType, token))
-                        logger.Info($"Buffer {dataBuffer.GetStreamStateReport(streamType)}");
+                    await _dataSynchronizer.Synchronize(streamType, token);
                 }
             }
             catch (InvalidOperationException e)
@@ -413,8 +412,6 @@ namespace JuvoPlayer.Player.EsPlayer
             }
             finally
             {
-                dataBuffer.RequestBuffering(false);
-
                 if (_firstDataPacketTcs?.Task.IsCompleted == false)
                 {
                     logger.Info($"{streamType}: Cancelling first data packet request");
@@ -422,8 +419,7 @@ namespace JuvoPlayer.Player.EsPlayer
                         new OperationCanceledException("Terminated before notifying first data packet"));
                 }
 
-                logger.Info(
-                    $"{streamType}: Terminated. Buffer {dataBuffer.GetStreamStateReport(streamType)}");
+                logger.Info($"{streamType}: Terminated. ");
             }
         }
 
@@ -450,8 +446,7 @@ namespace JuvoPlayer.Player.EsPlayer
 
             var shouldContinue = await ProcessPacket(currentPacket, token);
 
-            dataBuffer.DataOut(currentPacket);
-            dataSynchronizer.DataOut(currentPacket);
+            _dataSynchronizer.DataOut(currentPacket);
 
             if (_firstDataPacketTcs?.Task.IsCompleted == false)
                 ConfirmFirstDataPacket();
@@ -508,9 +503,11 @@ namespace JuvoPlayer.Player.EsPlayer
         {
             if (!dataPacket.DrmSession.CanDecrypt())
             {
-                dataBuffer.RequestBuffering(true);
+#pragma warning disable 4014    // No await intentional. Do not care much when buffering will be displayed
+                _suspendResumeLogic.RequestBuffering(true);
                 await dataPacket.DrmSession.WaitForInitialization(token);
-                dataBuffer.RequestBuffering(false);
+                _suspendResumeLogic.RequestBuffering(false);
+#pragma warning restore 4014    // of hidden for that matter.
                 logger.Info($"{streamType}: DRM Initialization complete");
             }
 

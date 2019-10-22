@@ -88,7 +88,7 @@ namespace JuvoPlayer.DataProviders
             {
                 playerController.TimeUpdated().Subscribe(dataProvider.OnTimeUpdated, context),
                 playerController.StateChanged().Subscribe(dataProvider.OnStateChanged, context),
-                playerController.DataRequest().Subscribe(dataProvider.OnDataRequest,context),
+                playerController.DataClock().Subscribe(dataProvider.OnDataClock,context),
             };
         }
 

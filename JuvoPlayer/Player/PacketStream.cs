@@ -79,7 +79,7 @@ namespace JuvoPlayer.Player
             if (config.StreamType() != streamType)
                 throw new ArgumentException("config type doesn't match");
 
-            if (config is MetaDataStreamConfig)
+            if (config is BufferStreamConfig)
             {
                 player.SetStreamConfig(config);
                 return;

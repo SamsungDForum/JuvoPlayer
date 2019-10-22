@@ -20,14 +20,14 @@ using System.Text;
 
 namespace JuvoPlayer.Common
 {
-    public sealed class MetaDataStreamConfig : StreamConfig, IEquatable<MetaDataStreamConfig>
+    public sealed class BufferStreamConfig : StreamConfig, IEquatable<BufferStreamConfig>
     {
         public StreamType Stream { get; internal set; }
         public uint? Bandwidth { get; internal set; }
         public TimeSpan? MinBufferTime { get; internal set; }
         public TimeSpan BufferDuration { get; internal set; }
 
-        public bool Equals(MetaDataStreamConfig other)
+        public bool Equals(BufferStreamConfig other)
         {
             if (ReferenceEquals(null, other)) return false;
             if (ReferenceEquals(this, other)) return true;
@@ -40,7 +40,7 @@ namespace JuvoPlayer.Common
         {
             if (ReferenceEquals(null, obj)) return false;
             if (ReferenceEquals(this, obj)) return true;
-            return obj is MetaDataStreamConfig other && Equals(other);
+            return obj is BufferStreamConfig other && Equals(other);
         }
 
         public override int GetHashCode()
@@ -54,12 +54,12 @@ namespace JuvoPlayer.Common
             }
         }
 
-        public static bool operator ==(MetaDataStreamConfig left, MetaDataStreamConfig right)
+        public static bool operator ==(BufferStreamConfig left, BufferStreamConfig right)
         {
             return Equals(left, right);
         }
 
-        public static bool operator !=(MetaDataStreamConfig left, MetaDataStreamConfig right)
+        public static bool operator !=(BufferStreamConfig left, BufferStreamConfig right)
         {
             return !Equals(left, right);
         }

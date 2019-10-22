@@ -31,7 +31,7 @@ namespace JuvoPlayer.DataProviders
         void OnStateChanged(PlayerState state);
         void OnStopped();
         void OnTimeUpdated(TimeSpan time);
-        void OnDataRequest(DataRequest dataRequest);
+        void OnDataClock(TimeSpan dataClock);
 
         Task<TimeSpan> Seek(TimeSpan time, CancellationToken token);
         bool IsDataAvailable();

@@ -69,7 +69,7 @@ namespace JuvoPlayer.Tests.Utils
 
             try
             {
-                using (new ClockProvider().PlayerClockObservable().Subscribe(clk =>
+                using (PlayerClockProvider.GetInstance().PlayerClockObservable().Subscribe(clk =>
                 {
                     // Remove ms component.
                     clk = clk - TimeSpan.FromMilliseconds(clk.Milliseconds);

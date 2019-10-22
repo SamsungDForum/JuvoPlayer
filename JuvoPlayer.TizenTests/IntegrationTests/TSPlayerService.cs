@@ -135,12 +135,12 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
         {
             RunPlayerTest(clipTitle, async context =>
             {
-                if (ClockProvider.LastClock > TimeSpan.Zero)
+                if (PlayerClockProvider.LastClock > TimeSpan.Zero)
                     return;
 
                 await Task.Delay(TimeSpan.FromSeconds(1));
 
-                var clock = ClockProvider.LastClock;
+                var clock = PlayerClockProvider.LastClock;
 
                 Assert.That(clock, Is.GreaterThan(TimeSpan.Zero));
 
