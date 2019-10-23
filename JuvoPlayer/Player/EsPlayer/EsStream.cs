@@ -449,8 +449,8 @@ namespace JuvoPlayer.Player.EsPlayer
         private async ValueTask<bool> ProcessNextPacket(CancellationToken token)
         {
             if (currentPacket == null)
-            {   
-                if (packetStorage.Count(streamType) == 0 && 
+            {
+                if (packetStorage.Count(streamType) == 0 &&
                     (PlayerClockProvider.LastClock - currentPts).Duration() <= EsStreamConfig.BufferingEventThreshold)
                 {
                     await _suspendResumeLogic.RequestBuffering(true);
