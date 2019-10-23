@@ -21,6 +21,7 @@ using System.Reactive.Linq;
 using System.Reactive.Subjects;
 using System.Threading;
 using System.Threading.Tasks;
+using Configuration;
 using JuvoLogger;
 using JuvoPlayer.Common;
 using JuvoPlayer.Drms;
@@ -93,9 +94,11 @@ namespace JuvoPlayer.Player.EsPlayer
         private readonly Subject<Unit> streamReconfigureSubject = new Subject<Unit>();
 
         private Packet currentPacket;
+        private TimeSpan currentPts;
 
         private readonly Synchronizer _dataSynchronizer;
         private readonly SuspendResumeLogic _suspendResumeLogic;
+
 
         public IObservable<string> PlaybackError()
         {
@@ -135,10 +138,11 @@ namespace JuvoPlayer.Player.EsPlayer
         /// <summary>
         /// Sets the player to be used by EsStream
         /// </summary>
-        /// <param name="player">ESPlayer</param>
-        public void SetPlayer(ESPlayer.ESPlayer player)
+        /// <param name="newPlayer">ESPlayer</param>
+        public void SetPlayer(ESPlayer.ESPlayer newPlayer)
         {
-            this.player = player;
+            logger.Info($"{streamType}");
+            player = newPlayer;
         }
 
         /// <summary>
@@ -151,8 +155,7 @@ namespace JuvoPlayer.Player.EsPlayer
         /// <returns>SetStreamConfigResult</returns>
         public SetStreamConfigResult SetStreamConfiguration(BufferConfigurationPacket bufferConfig)
         {
-            // Depending on current configuration state, packets are either pushed
-            // directly to player or queued in packet queue.
+            logger.Info($"{streamType}");
 
             LastQueuedConfig = bufferConfig;
 
@@ -171,6 +174,8 @@ namespace JuvoPlayer.Player.EsPlayer
         /// </summary>
         public void PushStreamConfiguration()
         {
+            logger.Info($"{streamType}");
+
             PushStreamConfig(LastQueuedConfig.Config);
             CurrentConfig = LastQueuedConfig;
         }
@@ -234,7 +239,7 @@ namespace JuvoPlayer.Player.EsPlayer
 
             _firstDataPacketTcs = new TaskCompletionSource<object>(streamType, TaskCreationOptions.RunContinuationsAsynchronously);
 
-            logger.Info($"{streamType}: Data packet processed confirmation requested {GetFirstDataPacketNotificationTask().GetHashCode()}");
+            logger.Info($"{streamType}: Data packet processed confirmation requested");
         }
 
         public Task<object> GetFirstDataPacketNotificationTask() =>
@@ -350,10 +355,12 @@ namespace JuvoPlayer.Player.EsPlayer
 
                 case EncryptedPacket encryptedPacket:
                     await PushEncryptedPacket(encryptedPacket, transferToken);
+                    currentPts = packet.Pts;
                     break;
 
                 case Packet dataPacket:
                     await PushUnencryptedPacket(dataPacket, transferToken);
+                    currentPts = packet.Pts;
                     break;
 
                 default:
@@ -428,7 +435,7 @@ namespace JuvoPlayer.Player.EsPlayer
             if (currentPacket.ContainsData())
             {
                 _firstDataPacketTcs.SetResult(null);
-                logger.Info($"{currentPacket.StreamType}: First packet is DATA. {currentPacket.Dts} {_firstDataPacketTcs.Task.GetHashCode()}");
+                logger.Info($"{currentPacket.StreamType}: First packet is DATA. {currentPacket.Dts}");
                 return;
             }
 
@@ -442,7 +449,23 @@ namespace JuvoPlayer.Player.EsPlayer
         private async ValueTask<bool> ProcessNextPacket(CancellationToken token)
         {
             if (currentPacket == null)
-                currentPacket = packetStorage.GetPacket(streamType, token);
+            {   
+                if (packetStorage.Count(streamType) == 0 && 
+                    (PlayerClockProvider.LastClock - currentPts).Duration() <= EsStreamConfig.BufferingEventThreshold)
+                {
+                    await _suspendResumeLogic.RequestBuffering(true);
+                    currentPacket = packetStorage.GetPacket(streamType, token);
+#pragma warning disable 4014 // No need to wait for dissapear. Will happen.. eventually.
+                    _suspendResumeLogic.RequestBuffering(false);
+#pragma warning restore 4014
+                }
+                else
+                {
+                    currentPacket = packetStorage.GetPacket(streamType, token);
+                }
+
+                currentPts = currentPacket.Pts;
+            }
 
             var shouldContinue = await ProcessPacket(currentPacket, token);
 

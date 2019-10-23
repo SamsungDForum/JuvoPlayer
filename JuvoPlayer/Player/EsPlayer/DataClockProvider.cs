@@ -18,6 +18,7 @@
 using System;
 using System.Linq;
 using System.Reactive.Concurrency;
+using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
 using System.Threading;
@@ -28,7 +29,7 @@ using JuvoPlayer.Common;
 
 namespace JuvoPlayer.Player.EsPlayer
 {
-    internal class DataClockProvider:IDisposable
+    internal class DataClockProvider : IDisposable
     {
         private static readonly ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
         private TimeSpan _dataLimit = DataClockProviderConfig.TimeBufferDepthDefault;
@@ -40,42 +41,42 @@ namespace JuvoPlayer.Player.EsPlayer
 
         // Do not filter output to distinc values. Clients may start listening (without resubscription)
         // at their discretion.
-        private readonly IConnectableObservable<TimeSpan> _dataClockConnectable;
+        private readonly IConnectableObservable<TimeSpan> _dataClockSource;
+        private readonly IObservable<TimeSpan> _dataClockObservable;
+        private readonly Subject<TimeSpan> _dataClockSubject = new Subject<TimeSpan>();
+        private readonly IDisposable _disabledClock = Disposable.Empty;
 
         private bool _isDisposed;
 
         public DataClockProvider(IScheduler scheduler)
         {
             _scheduler = scheduler;
-            _dataClockConnectable =
-                Observable.Interval(DataClockProviderConfig.ClockInterval, _scheduler)
-                    .TakeWhile(_=>!_isDisposed)
-                    .Select(GetDataClock)
-                    .Publish();
 
-            _dataClockConnection = _dataClockConnectable.Connect();
-            Logger.Info($"Data Clock: {_sourceClock + _dataLimit}");
+            _dataClockSource =
+                Observable.Interval(DataClockProviderConfig.ClockInterval, _scheduler)
+                    .TakeWhile(_ => !_isDisposed)
+                    .Select(GetDataClock)
+                    .Multicast(_dataClockSubject);
+
+            _dataClockObservable = Observable.Defer(StartOnSubscription);
+
+            Logger.Info($"Initial Data Clock: {_sourceClock + _dataLimit}");
         }
 
         public IObservable<TimeSpan> DataClock()
         {
-            return _dataClockConnectable.AsObservable();
+            return _dataClockObservable;
         }
 
         public async Task SetClock(TimeSpan newClock, CancellationToken token)
         {
             _dataClockConnection?.Dispose();
 
-            var setClock = await Observable.Start(()=>
-            {
-                _sourceClock = newClock;
-                return _sourceClock;
-            }, _scheduler);
+            await Observable.Start(() => _sourceClock = newClock, _scheduler);
 
             token.ThrowIfCancellationRequested();
 
-            _dataClockConnection = _dataClockConnectable.Connect();
-            Logger.Info($"Data Clock: {setClock + _dataLimit}");
+            Start();
         }
 
         public async Task UpdateBufferDepth(StreamType stream, TimeSpan newDataLimit)
@@ -92,10 +93,17 @@ namespace JuvoPlayer.Player.EsPlayer
 
             }, _scheduler);
 
-            if(isUpdated)
+            if (isUpdated)
                 Logger.Info($"A/V Buffer depth set to {newDataLimit}");
         }
 
+        private IObservable<TimeSpan> StartOnSubscription()
+        {
+            if (_dataClockConnection == null)
+                _dataClockConnection = _dataClockSource.Connect();
+
+            return _dataClockSource.AsObservable();
+        }
         private TimeSpan GetDataClock(long i)
         {
             // NOTE:
@@ -105,34 +113,60 @@ namespace JuvoPlayer.Player.EsPlayer
             // - Player clock HAS TO start within time defined by DataLimit.
             //   If not, data providers will not be able to source new data.
             // - Live content. Player clock needs to start within first segment.
+            // - Packet drop during seek (clock matching) cannot exceed  data limit
+            //   If not, data providers will not be able to source new data.
             //
-            // In case of scenario where data limit is not enough to start player
-            // clock, consider sourcing clock from raw packets. Do note, packet clocks
-            // may have holes, old values, discontinuities or not yet seen fiendish imps.
+            // Data Limit   - Data limit is not enough to start player clock, consider 
+            //                sourcing clock from raw packets. Do note, raw packet clocks may have 
+            //                holes, old values, discontinuities or not yet seen fiendish imps.
             // Live Content - MPD based initial clock update may be required.
+            // Packet drops - Notify data provided on dropped packets OR what is common clock
+            //                so counting of buffered data can be done from that point.
             //
             var playerClock = PlayerClockProvider.LastClock;
             if (playerClock != PlayerClockProviderConfig.InvalidClock)
                 _sourceClock = playerClock;
 
-            Logger.Info($"PlayerClock {playerClock} DataClock {_sourceClock + _dataLimit}");
             return _sourceClock + _dataLimit;
         }
 
         public void Stop()
         {
             _dataClockConnection?.Dispose();
-            _dataClockConnection = null;
+            _dataClockConnection = _disabledClock;
+            _dataClockSubject.OnNext(PlayerClockProviderConfig.InvalidClock);
             Logger.Info("");
         }
 
+        public void Start()
+        {
+            if (!ReferenceEquals(_dataClockConnection, _disabledClock)) return;
+
+            _scheduler.Schedule(this, PushCurrentLimit);
+
+            _dataClockConnection = _dataClockSource.Connect();
+        }
+
+        private static IDisposable PushCurrentLimit(IScheduler sched, DataClockProvider @this)
+        {
+            if (@this._isDisposed) return Disposable.Empty;
+
+            @this._dataClockSubject.OnNext(@this._sourceClock + @this._dataLimit);
+            Logger.Info((@this._sourceClock + @this._dataLimit).ToString());
+
+            return Disposable.Empty;
+        }
         public void Dispose()
         {
             if (_isDisposed)
                 return;
 
             _isDisposed = true;
+
             _dataClockConnection?.Dispose();
+            _dataClockSubject.Dispose();
+
+            Logger.Info("");
         }
     }
 }
