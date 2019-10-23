@@ -114,6 +114,10 @@ namespace JuvoPlayer.Player.EsPlayer
             packetQueues[(int)stream].packetQueue.CompleteAdding();
         }
 
+        public int Count(StreamType stream)
+        {
+            return packetQueues[(int)stream].packetQueue.Count;
+        }
 
         public void Empty(StreamType stream)
         {

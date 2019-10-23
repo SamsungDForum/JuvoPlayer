@@ -94,8 +94,8 @@ namespace JuvoPlayer.DataProviders.Dash
         private bool initInProgress;
 
         private TimeSpan initDataDuration;
-
         private bool initSegmentReloadRequired;
+        private bool bufferAvailable;
 
         private readonly Subject<string> errorSubject = new Subject<string>();
         private readonly Subject<Unit> downloadCompletedSubject = new Subject<Unit>();
@@ -138,7 +138,7 @@ namespace JuvoPlayer.DataProviders.Dash
             if (nextSegTimeRange == null)
                 return false;
 
-            var timeToNextSegmentDownload = (GetSegmentMinimumFitDuration(nextSegTimeRange.Duration) 
+            var timeToNextSegmentDownload = (GetSegmentMinimumFitDuration(nextSegTimeRange.Duration)
                                             - (_dataClockLimit - bufferTime))
                                             + DynamicSegmentAvailabilityOverhead;
 
@@ -155,7 +155,7 @@ namespace JuvoPlayer.DataProviders.Dash
                 return;
 
             // Reduce message output to changed end clock.
-            if(request != _dataClockLimit)
+            if (request != _dataClockLimit)
                 LogInfo($"Data clock update: {_dataClockLimit}->{request}");
 
             _dataClockLimit = request;
@@ -185,6 +185,9 @@ namespace JuvoPlayer.DataProviders.Dash
             }
 
             currentTime = seekToTimeRange.Start;
+
+            // Will get updated by first downloaded chunk
+            bufferTime = TimeSpan.Zero;
 
             LogInfo(
                 $"Seek Pos Req: {position} Seek to: ({seekToTimeRange.Start}-{seekToTimeRange.Start + seekToTimeRange.Duration}/{currentTime}) SegId: {currentSegmentId}");
@@ -234,15 +237,22 @@ namespace JuvoPlayer.DataProviders.Dash
         {
             if (lastDownloadSegmentTimeRange == null)
                 return _dataClockLimit > TimeSpan.Zero;
-            
+
             // Try not to overflow buffers. Download next segment if predefined
             // amount will fit
             var minFitDuration = GetSegmentMinimumFitDuration(lastDownloadSegmentTimeRange.Duration);
 
-            if (_dataClockLimit >= bufferTime+minFitDuration) return true;
-            
+            if (_dataClockLimit >= bufferTime + minFitDuration)
+            {
+                bufferAvailable = true;
+                return true;
+            }
 
-            LogInfo($"Full buffer: {bufferTime} {_dataClockLimit} ({bufferTime - currentTime}) {minFitDuration}");
+            // Spam once per buffer available transition to false
+            if (bufferAvailable)
+                LogInfo($"Full buffer: {bufferTime} Limit {_dataClockLimit} MinFit {minFitDuration} ({bufferTime - currentTime})");
+
+            bufferAvailable = false;
             return false;
         }
 
@@ -494,7 +504,7 @@ namespace JuvoPlayer.DataProviders.Dash
             isEosSent = false;
             currentTime = TimeSpan.Zero;
             bufferTime = TimeSpan.Zero;
-            
+
         }
 
         /// <summary>

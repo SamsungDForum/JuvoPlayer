@@ -65,14 +65,14 @@ namespace JuvoPlayer.Player.EsPlayer
         private readonly CancellationToken _isRunningCt;
 
         // Buffering event pipeline
-        private delegate void RequestBufferingDelegate(int requestCount);
+        private delegate void RequestBufferingDelegate(int progress);
         private event RequestBufferingDelegate BufferingRequestEvent;
         private readonly IObservable<int> _bufferingProgressObservable;
 
         public IObservable<int> BufferingProgressObservable() =>
             _bufferingProgressObservable;
 
-        public SuspendResumeLogic(Action suspendPlayback, Action resumePlayback, Action<Common.PlayerState> setPlayerState, 
+        public SuspendResumeLogic(Action suspendPlayback, Action resumePlayback, Action<Common.PlayerState> setPlayerState,
             Func<ESPlayerState> playerState, Action<bool> transferState, CancellationToken token)
         {
             _suspendAction = suspendPlayback;
@@ -128,7 +128,7 @@ namespace JuvoPlayer.Player.EsPlayer
 
                 _isPaused = true;
 
-                if(!Suspend())
+                if (!Suspend())
                     return;
 
                 _setDataTransfer(false);
@@ -142,7 +142,7 @@ namespace JuvoPlayer.Player.EsPlayer
             {
                 // Cancelled tokens can acquire async lock.
                 _isRunningCt.ThrowIfCancellationRequested();
-                
+
                 if (bufferingNeeded)
                 {
                     if (!Suspend())
@@ -207,6 +207,11 @@ namespace JuvoPlayer.Player.EsPlayer
                 default:
                     return false;
             }
+        }
+
+        public void SetBuffering(bool bufferingOn)
+        {
+            BufferingRequestEvent?.Invoke(bufferingOn ? 0 : 100);
         }
     }
 }

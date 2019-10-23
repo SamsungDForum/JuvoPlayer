@@ -124,4 +124,9 @@ namespace Configuration
         public static TimeSpan ClockInterval { get; set; } = TimeSpan.FromSeconds(0.5);
     }
 
+    public static class EsStreamConfig
+    {
+        public static TimeSpan BufferingEventThreshold { get; set; } = TimeSpan.FromSeconds(0.2);
+    }
+
 }
