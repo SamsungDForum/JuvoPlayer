@@ -58,7 +58,6 @@ namespace JuvoPlayer.Player
                 var encryptedPacket = (EncryptedPacket)packet;
 
                 // Increment reference counter on DRM session
-                //
                 drmSession.Share();
 
                 encryptedPacket.DrmSession = drmSession;
@@ -117,7 +116,7 @@ namespace JuvoPlayer.Player
             if (!forceDrmChange && drmSession != null)
                 return;
 
-            var newSession = drmManager.CreateDRMSession(data);
+            IDrmSession newSession = drmManager.CreateDRMSession(data);
 
             // Do not reset wait for DRM event. If there is no valid session
             // do not want to append new data
@@ -129,17 +128,13 @@ namespace JuvoPlayer.Player
             forceDrmChange = false;
 
             // Decrement use counter for packet stream on old DRM Session
-            //
             drmSession?.Release();
 
-            // Initialize reference counting and session.
-            //
-            newSession.InitializeReferenceCounting();
-            newSession.Initialize();
+            // Add reference count for new session
+            newSession.Share();
 
             // Set new session as current & let data submitters run wild.
             // There is no need to store sessions. They live in player queue
-            //
             drmSession = newSession;
         }
 

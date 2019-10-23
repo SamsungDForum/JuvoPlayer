@@ -15,7 +15,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
- using JuvoPlayer.Common;
+using JuvoPlayer.Common;
 
 namespace JuvoPlayer.Drms
 {
@@ -23,7 +23,7 @@ namespace JuvoPlayer.Drms
     {
         void RegisterDrmHandler(IDrmHandler handler);
         void UpdateDrmConfiguration(DRMDescription drmDescription);
-
+        void ClearCache();
         IDrmSession CreateDRMSession(DRMInitData data);
     }
 }

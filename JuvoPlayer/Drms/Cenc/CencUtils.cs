@@ -17,11 +17,14 @@
 
 using System;
 using System.Linq;
+using JuvoPlayer.Common;
 
 namespace JuvoPlayer.Drms.Cenc
 {
     public static class CencUtils
     {
+        private static readonly string[] KeyIdSeparators = { " " };
+
         public enum DrmType
         {
             Unknown,
@@ -61,7 +64,7 @@ namespace JuvoPlayer.Drms.Cenc
             }
         };
 
-        private static DrmConstants[] AllDrmConstants = {PlayReadyConstants, WidevineConstants};
+        private static DrmConstants[] AllDrmConstants = { PlayReadyConstants, WidevineConstants };
 
         public static byte[] SchemeIdUriToSystemId(string schemeIdUri)
         {
@@ -103,6 +106,31 @@ namespace JuvoPlayer.Drms.Cenc
         {
             return AllDrmConstants.FirstOrDefault(a =>
                 string.Equals(a.Type.ToString(), schemeName, StringComparison.CurrentCultureIgnoreCase)).Type;
+        }
+
+        public static DRMInitDataType GetInitDataType(string initDataName)
+        {
+            if (initDataName == null)
+                return DRMInitDataType.Unknown;
+
+            var initName = initDataName.ToLowerInvariant();
+
+            switch (initName)
+            {
+                case "mspr:pro":
+                    return DRMInitDataType.MsPrPro;
+
+                case "cenc:pssh":
+                    return DRMInitDataType.Pssh;
+
+                default:
+                    return DRMInitDataType.Unknown;
+            }
+        }
+
+        public static string[] GetKeyIDs(string source)
+        {
+            return source?.Split(KeyIdSeparators, StringSplitOptions.RemoveEmptyEntries);
         }
     }
 }
