@@ -20,6 +20,7 @@ using System.Collections.Generic;
 using System.Linq;
 using JuvoPlayer.Common;
 using JuvoLogger;
+using JuvoPlayer.Common.Utils.IReferenceCountableExtensions;
 
 namespace JuvoPlayer.Drms
 {
@@ -29,9 +30,7 @@ namespace JuvoPlayer.Drms
 
         private readonly List<IDrmHandler> drmHandlers = new List<IDrmHandler>();
         private readonly List<DRMDescription> clipDrmConfiguration = new List<DRMDescription>();
-        public DrmManager()
-        {
-        }
+        private readonly DrmSessionCache _sessionCache = new DrmSessionCache();
 
         public void UpdateDrmConfiguration(DRMDescription drmDescription)
         {
@@ -59,6 +58,12 @@ namespace JuvoPlayer.Drms
             }
         }
 
+        public void ClearCache()
+        {
+            Logger.Info("");
+            _sessionCache.Clear();
+        }
+
         public void RegisterDrmHandler(IDrmHandler handler)
         {
             lock (drmHandlers)
@@ -70,6 +75,24 @@ namespace JuvoPlayer.Drms
         public IDrmSession CreateDRMSession(DRMInitData data)
         {
             Logger.Info("Create DrmSession");
+
+            // Before diving into locks, decode DRM InitData KeyIDs
+            var keyIds = DrmInitDataTools.GetKeyIds(data);
+            var useGenericKey = keyIds.Count == 0;
+            if (useGenericKey)
+            {
+                Logger.Info("No keys found. Using entire DRMInitData.InitData as generic key");
+                keyIds.Add(data.InitData);
+            }
+            else
+            {
+                // Early exit scenario - already cached
+                if (_sessionCache.TryGetSession(keyIds, out IDrmSession session))
+                {
+                    Logger.Info("Cached session found");
+                    return session;
+                }
+            }
 
             lock (drmHandlers)
             {
@@ -91,7 +114,25 @@ namespace JuvoPlayer.Drms
                         return null;
                     }
 
-                    var session = handler.CreateDRMSession(data, drmConfiguration);
+                    // Recheck needs to be done for cached session.
+                    // Early check may produce false negatives - session being created by other stream
+                    // but not yet cached.
+                    if (_sessionCache.TryGetSession(keyIds, out IDrmSession session))
+                    {
+                        Logger.Info("Cached session found");
+                        return session;
+                    }
+
+                    Logger.Info("No cached session found");
+
+                    session = handler.CreateDRMSession(data, drmConfiguration);
+                    session.Share();
+                    if (_sessionCache.TryAddSession(keyIds, session))
+                        return session;
+
+                    Logger.Info("Failed to cache session");
+                    session.Release();
+
                     return session;
                 }
             }

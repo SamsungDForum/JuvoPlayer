@@ -129,6 +129,7 @@ namespace JuvoPlayer
 
         public void SetSource(ClipDefinition clip)
         {
+            drmManager.ClearCache();
             connector?.Dispose();
 
             dataProvider = dataProviders.CreateDataProvider(clip);
@@ -161,6 +162,7 @@ namespace JuvoPlayer
         {
             Logger.Info("Player controller restart");
 
+            drmManager.ClearCache();
             dataProvider.OnStopped();
             subscriptions.Dispose();
             connector?.Dispose();
@@ -178,6 +180,7 @@ namespace JuvoPlayer
         {
             dataProvider.OnStopped();
             playerController.OnStop();
+            drmManager.ClearCache();
             connector.Dispose();
         }
 
@@ -190,6 +193,7 @@ namespace JuvoPlayer
         {
             if (disposing)
             {
+                drmManager.ClearCache();
                 subscriptions.Dispose();
                 connector?.Dispose();
                 playerController?.Dispose();

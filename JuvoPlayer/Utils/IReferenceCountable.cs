@@ -15,34 +15,21 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-﻿//
-// Code snatched from:
-// https://gist.github.com/ufcpp/1c7977f4f5f7856787f3f2b6a8b13c8e
-//
-// Removed unused code.
-// Changed Init() to InitializeReferenceCounting()
-//
-
 using System;
 using System.Threading;
+
+// Code snatched from:
+// https://gist.github.com/ufcpp/1c7977f4f5f7856787f3f2b6a8b13c8e
 
 namespace JuvoPlayer.Common.Utils.IReferenceCountableExtensions
 {
     using IReferenceCountable;
     public static class ReferenceCountable
     {
-        public static T InitializeReferenceCounting<T>(this T obj)
-            where T : IReferenceCountable
-        {
-            obj.Count = 1;
-
-            return obj;
-        }
-
         public static T Share<T>(this T obj)
             where T : IReferenceCountable
         {
-            var r = Interlocked.Increment(ref obj.Count);
+            Interlocked.Increment(ref obj.Count);
             return obj;
         }
 
