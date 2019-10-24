@@ -74,6 +74,7 @@ namespace JuvoPlayer.Player.EsPlayer
         // Termination & serialization objects for async operations.
         private readonly CancellationTokenSource activeTaskCts = new CancellationTokenSource();
         private readonly AsyncLock asyncOpSerializer = new AsyncLock();
+        private volatile Task _firstPacketTask = Task.CompletedTask;
 
         private readonly IDisposable[] streamReconfigureSubs;
         private readonly IDisposable[] playbackErrorSubs;
@@ -767,42 +768,43 @@ namespace JuvoPlayer.Player.EsPlayer
             }
 
             // Start first packet listner.
-            var firstPacketTask = Task.Run(async () =>
-            {
-                logger.Info(
-                    $"{StreamType.Audio}: Waiting for {StreamType.Video} first data packet");
+            // Blocking calls, if executed from within (Prepare/Seek)Async() may cause deadlocks
+            // with packet submission (?!?)
+            _firstPacketTask = Task.Run(FirstPacketWait);
+        }
 
+        private async Task FirstPacketWait()
+        {
+            logger.Info(
+                $"{StreamType.Audio}: Waiting for {StreamType.Video} first data packet");
+
+            try
+            {
                 await esStreams[(int)StreamType.Video].GetFirstDataPacketNotificationTask();
 
                 logger.Info(
                     $"{StreamType.Audio}: {StreamType.Video} first data packet processed");
-            }, activeTaskCts.Token);
 
-            // Start or cleanup.
-            try
-            {
-                firstPacketTask.Wait(activeTaskCts.Token);
-                if (!firstPacketTask.IsCanceled)
+                if (!activeTaskCts.Token.IsCancellationRequested)
+                {
                     esStreams[(int)StreamType.Audio].Start();
+                    return;
+                }
             }
-            catch (Exception e)
-                when (e is OperationCanceledException ||
-                     (e is AggregateException && e?.InnerException is OperationCanceledException))
+            catch (OperationCanceledException)
             {
                 logger.Info(
                     $"{StreamType.Audio}: Wait for {StreamType.Video} first data packet cancelled");
-                // Issue EOS if Player Async Operation (seek/prepare) is in progress
-                if (IsAsyncOpRunning())
-                {
-                    logger.Info("Terminating player async operation by A/V EOS");
-                    player.SubmitEosPacket(ESPlayer.StreamType.Video);
-                    player.SubmitEosPacket(ESPlayer.StreamType.Audio);
-                }
+            }
 
-                // Do not rethrow cancellation.
+            // Issue EOS if Player Async Operation (seek/prepare) is in progress
+            if (IsAsyncOpRunning())
+            {
+                logger.Info("Terminating player async operation by A/V EOS");
+                player.SubmitEosPacket(ESPlayer.StreamType.Video);
+                player.SubmitEosPacket(ESPlayer.StreamType.Audio);
             }
         }
-
 
         /// <summary>
         /// Disables all initialized data streams preventing
@@ -866,13 +868,12 @@ namespace JuvoPlayer.Player.EsPlayer
             activeTaskCts.Cancel();
 
             StopClockGenerator();
-            _dataClock.Stop();
             logger.Info("Clock/AsyncOps shutdown");
         }
 
         private void WaitForAsyncOperationsCompletion()
         {
-            var terminations = GetActiveTasks().ToArray();
+            var terminations = (GetActiveTasks().Append(_firstPacketTask)).ToArray();
             logger.Info($"Waiting for {terminations.Length} operations to complete");
             Task.WhenAll(terminations).WaitWithoutException();
             logger.Info("Done");
@@ -907,12 +908,12 @@ namespace JuvoPlayer.Player.EsPlayer
             DisposeAllSubjects();
 
             logger.Info("Disposing clock sources");
-            _playerClock.Dispose();
+            // data clock uses player clock. Dispose data clock first.
             _dataClock.Dispose();
+            _playerClock.Dispose();
 
             // Shut down player
             logger.Info("Disposing ESPlayer");
-
             // Don't call Close. Dispose does that. Otherwise exceptions will fly
             player.Dispose();
             if (usesExternalWindow == false)

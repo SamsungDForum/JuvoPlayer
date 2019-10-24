@@ -61,6 +61,7 @@ namespace JuvoPlayer.Player.EsPlayer
                     .Select(GetDataClock)
                     .Multicast(_dataClockSubject);
 
+            // Defer connection of IConnectObservable till very first subscription
             _dataClockObservable = Observable.Defer(StartOnSubscription);
 
             Logger.Info($"Initial Data Clock: {_sourceClock + _dataLimit}");
@@ -75,7 +76,11 @@ namespace JuvoPlayer.Player.EsPlayer
         {
             _dataClockConnection?.Dispose();
 
-            await Observable.Start(() => _sourceClock = newClock, _scheduler);
+            await Observable.Start(() =>
+            {
+                _sourceClock = newClock;
+                Logger.Info($"Clock set: {_sourceClock}");
+            }, _scheduler);
 
             token.ThrowIfCancellationRequested();
 
@@ -102,11 +107,15 @@ namespace JuvoPlayer.Player.EsPlayer
 
         private IObservable<TimeSpan> StartOnSubscription()
         {
+            // Null identifies very fist subscription. 
+            // internal enable/disabled is done with _disabledClock to differentiate
+            // between first/connection, any subsequent connections.
             if (_dataClockConnection == null)
                 _dataClockConnection = _dataClockSource.Connect();
 
             return _dataClockSource.AsObservable();
         }
+
         private TimeSpan GetDataClock(long i)
         {
             // NOTE:
@@ -144,10 +153,11 @@ namespace JuvoPlayer.Player.EsPlayer
         public void Start()
         {
             if (!ReferenceEquals(_dataClockConnection, _disabledClock)) return;
-            
+
             _dataClockConnection = _dataClockSource.Connect();
+            Logger.Info("");
         }
-        
+
         public void Dispose()
         {
             if (_isDisposed)
