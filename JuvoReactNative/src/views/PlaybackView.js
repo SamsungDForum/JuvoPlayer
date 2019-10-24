@@ -50,7 +50,7 @@ export default class PlaybackView extends React.Component {
     this.onUpdateBufferingProgress = this.onUpdateBufferingProgress.bind(this);
     this.onUpdatePlayTime = this.onUpdatePlayTime.bind(this);
     this.resetPlaybackTime = this.resetPlaybackTime.bind(this);
-    this.onSeek = this.onSeek.bind(this);
+    this.onSeekCompleted = this.onSeekCompleted.bind(this);
     this.onPlaybackError = this.onPlaybackError.bind(this);
     this.handleFastForwardKey = this.handleFastForwardKey.bind(this);
     this.handleRewindKey = this.handleRewindKey.bind(this);
@@ -74,7 +74,7 @@ export default class PlaybackView extends React.Component {
     this.JuvoEventEmitter.addListener("onPlayerStateChanged", this.onPlayerStateChanged);
     this.JuvoEventEmitter.addListener("onUpdateBufferingProgress", this.onUpdateBufferingProgress);
     this.JuvoEventEmitter.addListener("onUpdatePlayTime", this.onUpdatePlayTime);
-    this.JuvoEventEmitter.addListener("onSeek", this.onSeek);
+    this.JuvoEventEmitter.addListener("onSeekCompleted", this.onSeekCompleted);
     this.JuvoEventEmitter.addListener("onPlaybackError", this.onPlaybackError);
     this.JuvoEventEmitter.addListener("onGotStreamsDescription", this.onGotStreamsDescription);
   }
@@ -164,7 +164,7 @@ export default class PlaybackView extends React.Component {
     this.playbackTimeTotal = parseInt(playtime.Total);
     this.currentSubtitleText = playtime.SubtiteText;
   }
-  onSeek(time) {
+  onSeekCompleted(Value) {
     this.operationInProgress = false;
     this.inProgressDescription = "Please wait...";
   }

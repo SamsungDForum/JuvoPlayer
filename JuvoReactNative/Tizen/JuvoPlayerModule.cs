@@ -173,7 +173,6 @@ namespace JuvoReactNative
         }
         public void OnCompleted()
         {
-            //throw new NotImplementedException();
             unsubscriber.Dispose();
         }
 
@@ -192,7 +191,6 @@ namespace JuvoReactNative
         }
 
         //////////////////JS methods//////////////////
-
         [ReactMethod]
         public void GetStreamsDescription(int StreamTypeIndex)
         {
