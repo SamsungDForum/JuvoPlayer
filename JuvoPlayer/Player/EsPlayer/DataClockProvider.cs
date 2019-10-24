@@ -36,7 +36,10 @@ namespace JuvoPlayer.Player.EsPlayer
 
         private readonly TimeSpan[] _streamDataLimits = new TimeSpan[(int)StreamType.Count];
         private TimeSpan _sourceClock;
-        private IDisposable _dataClockConnection;
+
+        // Start / Stop may be called from multiple threads.
+        private volatile IDisposable _dataClockConnection;
+
         private readonly IScheduler _scheduler;
 
         // Do not filter output to distinc values. Clients may start listening (without resubscription)
