@@ -3,8 +3,9 @@
     <OutputType>Exe</OutputType>
     <TargetFramework>netcoreapp2.0</TargetFramework>
     <AssemblyName>JuvoPlayerOpenGLNative.Tizen.TV</AssemblyName>
-    <Version>1.4.9</Version>
+    <Version>1.5.0</Version>
     <Description>C++ native GUI for the JuvoPlayer backend. For animation peformance optimization the Open GL framework has been used.</Description>
+    <TizenTpkExcludePattern>runtimes\*\native\*.*</TizenTpkExcludePattern>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugType>portable</DebugType>
@@ -33,8 +34,10 @@
     <Folder Include="res\icons\" />
   </ItemGroup>
   <ItemGroup>
-    <PackageReference Include="RevStackCore-ImageSharp" Version="0.9.0" />
     <!-- Tizen.* packages are excluded from runtime -->
+    <PackageReference Include="SkiaSharp" Version="1.60.3">
+      <ExcludeAssets>Runtime</ExcludeAssets>
+    </PackageReference>
     <PackageReference Include="Tizen.NET" Version="5.0.0.14629">
       <ExcludeAssets>Runtime</ExcludeAssets>
     </PackageReference>

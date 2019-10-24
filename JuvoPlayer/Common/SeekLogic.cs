@@ -18,6 +18,9 @@
 using System;
 using System.Diagnostics;
 using System.Linq;
+using System.Reactive;
+using System.Reactive.Linq;
+using System.Reactive.Subjects;
 using System.Threading;
 using System.Threading.Tasks;
 using static Configuration.SeekLogic;
@@ -26,8 +29,30 @@ namespace JuvoPlayer.Common
 {
     public class SeekLogic
     {
+        public TimeSpan CurrentPositionUI
+        {
+            get
+            {
+                if (IsSeekAccumulationInProgress == false && IsSeekInProgress == false)
+                    _CurrentPositionUI = CurrentPositionPlayer;
+                return _CurrentPositionUI;
+            }
+            set => _CurrentPositionUI = value;
+        }
+        private TimeSpan _CurrentPositionUI;
+        public TimeSpan CurrentPositionPlayer => _client.Player?.CurrentPosition ?? TimeSpan.Zero;
+        public TimeSpan Duration => _client.Player?.Duration ?? TimeSpan.Zero;
+        public PlayerState State => _client.Player?.State ?? PlayerState.Idle;
+        public bool IsSeekingSupported => _client.Player?.IsSeekingSupported ?? false;
+
         public bool IsSeekInProgress { get; set; }
         public bool IsSeekAccumulationInProgress { get; set; }
+
+        private Subject<Unit> _seekCompleted = new Subject<Unit>();
+        public IObservable<Unit> SeekCompleted()
+        {
+            return _seekCompleted.AsObservable();
+        }
 
         private readonly Stopwatch _seekStopwatch = new Stopwatch();
         private TimeSpan _targetSeekTime;
@@ -62,7 +87,7 @@ namespace JuvoPlayer.Common
         private TimeSpan SeekInterval()
         {
             TimeSpan seekInterval = DefaultSeekInterval;
-            TimeSpan contentLength = _client.Duration;
+            TimeSpan contentLength = Duration;
             TimeSpan intervalSinceLastSeek = IntervalSinceLastSeek();
 
             if (intervalSinceLastSeek < DefaultSeekIntervalValueThreshold) // key is being hold
@@ -87,7 +112,7 @@ namespace JuvoPlayer.Common
 
         private async void Seek(TimeSpan seekInterval)
         {
-            if (_client.IsSeekingSupported == false || IsSeekInProgress)
+            if (IsSeekingSupported == false || IsSeekInProgress)
                 return;
 
             _seekCancellationTokenSource?.Cancel();
@@ -102,6 +127,7 @@ namespace JuvoPlayer.Common
             try
             {
                 await ExecuteSeek();
+                _seekCompleted.OnNext(Unit.Default);
             }
             catch (SeekException)
             {
@@ -117,21 +143,21 @@ namespace JuvoPlayer.Common
             }
             else
             {
-                _targetSeekTime = _client.CurrentPositionPlayer + seekInterval;
+                _targetSeekTime = CurrentPositionPlayer + seekInterval;
                 IsSeekAccumulationInProgress = true;
             }
-            _targetSeekTime = Clamp(_targetSeekTime, TimeSpan.Zero, _client.Duration);
-            _client.CurrentPositionUI = _targetSeekTime;
+            _targetSeekTime = Clamp(_targetSeekTime, TimeSpan.Zero, Duration);
+            CurrentPositionUI = _targetSeekTime;
         }
 
         private async Task ExecuteSeek()
         {
             _seekStopwatch.Reset();
 
-            if (IsStateSeekable(_client.State))
+            if (IsStateSeekable(State))
             {
                 IsSeekInProgress = true;
-                await _client.Seek(_targetSeekTime);
+                await _client.Player?.SeekTo(_targetSeekTime);
                 IsSeekAccumulationInProgress = false;
                 IsSeekInProgress = false;
             }

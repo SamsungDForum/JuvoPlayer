@@ -13,10 +13,12 @@ The reference for developers of streaming live TV and VOD Tizen .Net application
 
   [rtsplink]: https://github.com/ngraziano/SharpRTSP
   
-3. Samsung TV firmware - **This component comes with a Samsung 2019 TV device**
+3. Samsung TV firmware for 2019 TVs 
 4. Video content URLs embeded in videoclips.json files. See in the project tree:
 * _XamarinPlayer.Tizen.TV\shared\res\videoclips.json_
 * _JuvoPlayer.OpenGL\shared\res\videoclips.json_
+* _JuvoReactNative\videoclips.json_
+1. React Native Tizen (https://github.com/Samsung/react-native-tizen-dotnet) based on react-native 0.42 and react-native-windows 0.42.
 
 [smarthubprevlink]: https://developer.samsung.com/tv/develop/guides/smart-hub-preview
 
@@ -30,12 +32,27 @@ The reference for developers of streaming live TV and VOD Tizen .Net application
 4. Set one of the GUI projects as startup. Choose one of the following:
 * XamarinPlayer
 * JuvoPlayer.OpenGL
+* JuvoReactNative
 
 ## Application launch 
 1. Connect with the TV set using the 'Device Manager' tool installed together with the Tizen Tools package see more in [https://developer.samsung.com/tv/tizen-net-tv][tizendotnettvlink]
-2. Start the select GUI project by pressing F5 (debug) or ctrl+F5 (release)
+2. Start the select in Visual Studio solution tree GUI project by pressing F5 (debug) or ctrl+F5 (release)
 
 ## Features and release notes
+**JuvoPlayer 1.5.0 (beta)**
+1. Features:
+* All features of the JuvoPlayer 1.4.9
+* JuvoReactNative GUI - based on React Native Tizen project https://github.com/Samsung/react-native-tizen-dotnet
+* JuvoPlayerXamarin JuvoPlayerOpenGL animation and picture loading performance improvements.
+* Bixby (voice control) basic playback functions (JuvoPlayerXamarin, JuvoPlayerOpenGL, JuvoReactNative )
+* JuvoPlayer backend stability and performance improvements 
+2. Known issues:
+* Right after the finishing seek in HLS streams there is a short video pause until the audio catch up. It is a result of FFmpeg 'seek' function specific.
+* JuvoReactNative seek in HLS, HTTP streams does not hide the activity indicator (missing seek completion signaling).
+* JuvoReactNative GUI does not support deeplinked shortcuts for SmartHub preview feature.
+* JuvoReactNative GUI playback settings view does not support setting default values (limitation of the React Native Tizen's Picker component).
+* JuvoReactNative GUI does not resume playback after switching from another app (no multitasking).
+
 **JuvoPlayer 1.4.9 (beta)**
 1. Features:
 * All features of the JuvoPlayer 1.4.8

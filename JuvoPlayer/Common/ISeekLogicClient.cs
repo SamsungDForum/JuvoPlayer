@@ -15,18 +15,10 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-using System;
-using System.Threading.Tasks;
-
 namespace JuvoPlayer.Common
 {
     public interface ISeekLogicClient
     {
-        TimeSpan CurrentPositionUI { get; set; }
-        TimeSpan CurrentPositionPlayer { get; }
-        TimeSpan Duration { get; }
-        Task Seek(TimeSpan to);
-        PlayerState State { get; }
-        bool IsSeekingSupported { get; }
+        IPlayerService Player { get; }
     }
 }
