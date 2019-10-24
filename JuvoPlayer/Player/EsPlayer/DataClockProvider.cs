@@ -141,21 +141,10 @@ namespace JuvoPlayer.Player.EsPlayer
         public void Start()
         {
             if (!ReferenceEquals(_dataClockConnection, _disabledClock)) return;
-
-            _scheduler.Schedule(this, PushCurrentLimit);
-
+            
             _dataClockConnection = _dataClockSource.Connect();
         }
-
-        private static IDisposable PushCurrentLimit(IScheduler sched, DataClockProvider @this)
-        {
-            if (@this._isDisposed) return Disposable.Empty;
-
-            @this._dataClockSubject.OnNext(@this._sourceClock + @this._dataLimit);
-            Logger.Info((@this._sourceClock + @this._dataLimit).ToString());
-
-            return Disposable.Empty;
-        }
+        
         public void Dispose()
         {
             if (_isDisposed)
