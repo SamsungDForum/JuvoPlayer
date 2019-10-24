@@ -26,7 +26,7 @@ namespace JuvoPlayer.Player.EsPlayer
 {
     internal delegate TimeSpan PlayerClockFn();
 
-    internal class PlayerClockProvider:IDisposable
+    internal class PlayerClockProvider : IDisposable
     {
         private static readonly ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
 
@@ -37,6 +37,7 @@ namespace JuvoPlayer.Player.EsPlayer
         private IDisposable _playerClockSourceConnection;
         private readonly IConnectableObservable<TimeSpan> _playerClockConnectable;
         private bool _isDisposed;
+
         private static volatile PlayerClockProvider _this;
 
         public PlayerClockProvider(IScheduler scheduler)
@@ -44,7 +45,7 @@ namespace JuvoPlayer.Player.EsPlayer
             _scheduler = scheduler;
 
             _playerClockConnectable = Observable.Interval(ClockInterval, _scheduler)
-                    .TakeWhile(_=>!_isDisposed)
+                    .TakeWhile(_ => !_isDisposed)
                     .Select(_ => _playerClock())
                     .Where(clkValue => clkValue >= LastClock)
                     .Do(clkValue => LastClock = clkValue)
@@ -61,7 +62,7 @@ namespace JuvoPlayer.Player.EsPlayer
         public IObservable<TimeSpan> PlayerClockObservable()
         {
             return _playerClockConnectable.AsObservable();
-        } 
+        }
 
         public void SetPlayerClockSource(PlayerClockFn clockFn)
         {
@@ -104,9 +105,9 @@ namespace JuvoPlayer.Player.EsPlayer
             if (_isDisposed)
                 return;
 
+            _isDisposed = true;
             SetPlayerClockSource(null);
             DisableClock();
-            _isDisposed = true;
             _this = null;
         }
     }

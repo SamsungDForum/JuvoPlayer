@@ -30,6 +30,7 @@ using Nito.AsyncEx;
 using Tizen.TV.Security.DrmDecrypt;
 using Tizen.TV.Security.DrmDecrypt.emeCDM;
 using JuvoPlayer.Common.Utils.IReferenceCountable;
+using JuvoPlayer.Player.EsPlayer;
 using static Configuration.CencSession;
 
 namespace JuvoPlayer.Drms.Cenc
@@ -345,7 +346,6 @@ namespace JuvoPlayer.Drms.Cenc
             Logger.Info($"CencSession ID {currentSessionId}");
             cancellationToken.ThrowIfCancellationRequested();
             var requestData = await GetRequestData();
-            Logger.Info($"CencSession ID {currentSessionId}");
             cancellationToken.ThrowIfCancellationRequested();
             var responseText = await AcquireLicenceFromServer(requestData);
             Logger.Info($"CencSession ID {currentSessionId} {responseText}");
