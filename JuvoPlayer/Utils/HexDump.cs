@@ -16,6 +16,7 @@
  */
 
 using System;
+using System.Collections.Generic;
 
 namespace JuvoPlayer.Utils
 {
@@ -44,9 +45,9 @@ namespace JuvoPlayer.Utils
         {
             if (bytes == null) return "<null>";
 
-            int idx = bytes.Length-1-length;
+            int idx = bytes.Length - 1 - length;
             int dlen = length;
-            if(idx < 0)
+            if (idx < 0)
             {
                 idx = 0;
                 dlen = bytes.Length;
@@ -95,7 +96,16 @@ namespace JuvoPlayer.Utils
         /// <returns>string containing hex dump of input</returns>
         public static string HexDump(this byte[] bytes, int? index = null, int? length = null, bool doTextDump = true, int bytesPerLine = 16)
         {
-            if (bytes == null) return "<null>";
+            return string.Join("\n", HexDumpEnumerable(bytes, index, length, doTextDump, bytesPerLine));
+        }
+
+        public static IEnumerable<string> HexDumpEnumerable(this byte[] bytes, int? index = null, int? length = null, bool doTextDump = true, int bytesPerLine = 16)
+        {
+            if (bytes == null)
+            {
+                yield return "<null>";
+                yield break;
+            }
 
             // compute default start index and byte range
             int startIndex = index ?? 0;
@@ -107,15 +117,15 @@ namespace JuvoPlayer.Utils
             bytesLength = (bytes.Length < (startIndex + bytesLength)) ? bytes.Length - startIndex : bytesLength;
 
             // Validate if we are not requesting bytes beyond input array size
-            if (bytesLength <= 0) return "<No Data Requested or Index/Length out of input byte[] range>";
-
-            string[] results = new string[((int)(bytesLength / bytesPerLine)) + 1];
-            int idx = 0;
+            if (bytesLength <= 0)
+            {
+                yield return "<No Data Requested or Index/Length out of input byte[] range>";
+                yield break;
+            }
 
             for (int i = startIndex; i < bytesLength;)
             {
                 int bytesToDo = (bytesPerLine <= (bytesLength - i)) ? bytesPerLine : (bytesLength - i);
-                int fill = bytesPerLine - bytesToDo;
 
                 // Convert a line of data into hex, replace "-" (as BitConverter generates)  with a space ' ' and pad
                 // if data to be dumped is shorter then # of bytes per line.
@@ -129,28 +139,26 @@ namespace JuvoPlayer.Utils
                     {
                         // Dump only "printable" characters. Range 0x20 to 0x7E inclusive
                         // All else is replaced with a '.'
-                        if ((byte)bytes[j] > (byte)0x1F && (byte)bytes[j] < (byte)0x7F)
+                        if (bytes[j] > 0x1F && bytes[j] < 0x7F)
                         {
-                            text += System.Convert.ToChar(bytes[j]) + " ";
+                            text += Convert.ToChar(bytes[j]) + " ";
                         }
                         else
                         {
-                            text += ". ";
+                            text += ".";
                         }
 
                     }
 
-                    results[idx++] = i.ToString("X6") + ": " + hex + " | " + text;
+                    yield return i.ToString("X6") + ": " + hex + " | " + text;
                 }
                 else
                 {
-                    results[idx++] = i.ToString("X6") + ": " + hex;
+                    yield return i.ToString("X6") + ": " + hex;
                 }
 
                 i += bytesToDo;
             }
-
-            return String.Join("\n", results);
         }
     }
 }

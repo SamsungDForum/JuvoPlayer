@@ -15,7 +15,9 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-using System.ComponentModel;
+using System;
+using System.IO;
+using System.Threading.Tasks;
 using Xamarin.Forms;
 using Xamarin.Forms.Xaml;
 using XamarinPlayer.Controls;
@@ -25,23 +27,9 @@ using XamarinPlayer.ViewModels;
 namespace XamarinPlayer.Views
 {
     [XamlCompilation(XamlCompilationOptions.Compile)]
-
     public partial class ContentListPage : ContentPage, IContentPayloadHandler
     {
         NavigationPage AppMainPage;
-
-        public static readonly BindableProperty FocusedContentProperty = BindableProperty.Create("FocusedContent", typeof(ContentItem), typeof(ContentListPage), default(ContentItem));
-        public ContentItem FocusedContent
-        {
-            get
-            {
-                return (ContentItem)GetValue(FocusedContentProperty);
-            }
-            set
-            {
-                SetValue(FocusedContentProperty, value);
-            }
-        }
 
         public ContentListPage(NavigationPage page)
         {
@@ -52,59 +40,106 @@ namespace XamarinPlayer.Views
             UpdateItem();
 
             NavigationPage.SetHasNavigationBar(this, false);
-
-            PropertyChanged += ContentChanged;
         }
 
-        private void ContentChanged(object sender, PropertyChangedEventArgs e)
+        private Task ContentSelected(ContentItem item)
         {
-            if (e.PropertyName.Equals("FocusedContent"))
-            {
-                UpdateContentInfo();
-            }
-        }
-
-        private void ContentSelected(ContentItem item)
-        {
-            ContentListView.FocusedContent = item;
             var playerView = new PlayerView
             {
                 BindingContext = item.BindingContext
             };
-            AppMainPage.PushAsync(playerView);
+            return AppMainPage.PushAsync(playerView);
         }
 
         private void UpdateItem()
         {
-
-            foreach (var content in ((ContentListPageViewModel)BindingContext).ContentList)
+            foreach (var content in ((ContentListPageViewModel) BindingContext).ContentList)
             {
                 var item = new ContentItem
                 {
                     BindingContext = content
                 };
-                item.OnContentSelect += ContentSelected;
                 ContentListView.Add(item);
             }
-
-
         }
 
-        protected async void UpdateContentInfo()
+        private async Task UpdateContentInfo()
         {
-            ContentTitle.Text = FocusedContent.ContentTitle;
-            ContentDesc.Text = FocusedContent.ContentDescription;
-
-            ContentImage.Source = ImageSource.FromFile(FocusedContent.ContentImg);
+            var focusedContent = ContentListView.FocusedContent;
+            ContentTitle.Text = focusedContent.ContentTitle;
+            ContentDesc.Text = focusedContent.ContentDescription;
+            ContentImage.Source = ImageSource.FromStream(() => File.OpenRead(focusedContent.ContentImg));
             ContentImage.Opacity = 0;
             await ContentImage.FadeTo(1, 1000);
         }
 
-        protected override void OnAppearing()
+        protected override async void OnAppearing()
         {
             base.OnAppearing();
-
+            MessagingCenter.Subscribe<IKeyEventSender, string>(this, "KeyDown", (s, e) =>
+            {
+                HandleKeyEvent(e);
+            });
             ContentListView.SetFocus();
+            await UpdateContentInfo();
+        }
+
+        protected override void OnDisappearing()
+        {
+            base.OnDisappearing();
+            MessagingCenter.Unsubscribe<IKeyEventSender, string>(this, "KeyDown");
+        }
+
+        private enum KeyCode
+        {
+            Unknown,
+            Enter,
+            Next,
+            Previous
+        }
+
+        private async void HandleKeyEvent(string e)
+        {
+            var keyCode = ConvertToKeyCode(e);
+            if (IsScrollEvent(keyCode))
+                await HandleScrollEvent(keyCode);
+            else if (keyCode == KeyCode.Enter)
+                await HandleEnterEvent();
+        }
+
+        private static KeyCode ConvertToKeyCode(string e)
+        {
+            if (e.Contains("Right"))
+                return KeyCode.Next;
+            if (e.Contains("Left"))
+                return KeyCode.Previous;
+            if (e.Contains("Return") || e.Contains("Play"))
+                return KeyCode.Enter;
+            return KeyCode.Unknown;
+        }
+
+        private static bool IsScrollEvent(KeyCode code)
+        {
+            return code == KeyCode.Next || code == KeyCode.Previous;
+        }
+
+        private async Task HandleScrollEvent(KeyCode keyCode)
+        {
+            Task<bool> ScrollTask()
+            {
+                if (keyCode == KeyCode.Next) return ContentListView.ScrollToNext();
+                if (keyCode == KeyCode.Previous) return ContentListView.ScrollToPrevious();
+                throw new ArgumentOutOfRangeException(nameof(keyCode), keyCode, null);
+            }
+
+            var listScrolled = await ScrollTask();
+            if (listScrolled)
+                await UpdateContentInfo();
+        }
+
+        private Task HandleEnterEvent()
+        {
+            return ContentSelected(ContentListView.FocusedContent);
         }
 
         protected override void OnSizeAllocated(double width, double height)

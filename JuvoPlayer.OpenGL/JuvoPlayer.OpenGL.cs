@@ -42,15 +42,9 @@ namespace JuvoPlayer.OpenGL
         private bool _isMenuShown;
         private bool _progressBarShown;
 
-        private Player PlayerHandle { get; set; }
+        public IPlayerService Player { get; private set; }
 
         private bool _playbackCompletedNeedsHandling;
-
-        public TimeSpan CurrentPositionUI { get; set; }
-        public TimeSpan CurrentPositionPlayer => PlayerHandle?.CurrentPosition ?? TimeSpan.Zero;
-        public TimeSpan Duration => PlayerHandle?.Duration ?? TimeSpan.Zero;
-        public Common.PlayerState State => ((IPlayerService)PlayerHandle)?.State ?? Common.PlayerState.Idle;
-        public bool IsSeekingSupported => PlayerHandle?.IsSeekingSupported ?? false;
 
         private const string Tag = "JuvoPlayer";
         private static readonly ILogger Logger = LoggerManager.GetInstance().GetLogger(Tag);
@@ -92,10 +86,11 @@ namespace JuvoPlayer.OpenGL
             DllImports.Terminate();
         }
 
-        protected override void OnUpdate(IntPtr eglDisplay, IntPtr eglSurface)
+        protected override bool OnUpdate()
         {
             UpdateUI();
-            DllImports.Draw(eglDisplay, eglSurface);
+            DllImports.Draw();
+            return true;
         }
 
         protected override void OnAppControlReceived(AppControlReceivedEventArgs e) // Launch request handling via Smart Hub Preview (deep links) functionality
@@ -113,11 +108,11 @@ namespace JuvoPlayer.OpenGL
 
         protected override void OnPause()
         {
-            if (PlayerHandle == null || PlayerHandle.State != PlayerState.Playing)
+            if (Player == null || Player.State != Common.PlayerState.Playing)
                 return;
 
             _appPaused = true;
-            PlayerHandle.Pause();
+            Player.Pause();
         }
 
         protected override void OnResume()
@@ -127,11 +122,11 @@ namespace JuvoPlayer.OpenGL
 
             _appPaused = false;
 
-            if (PlayerHandle != null)
+            if (Player != null)
             {
                 ShowMenu(false);
                 KeyPressedMenuUpdate(); // Playback UI should be visible when starting playback after app execution is resumed
-                PlayerHandle.Start();
+                Player.Start();
                 return;
             }
 
@@ -215,7 +210,6 @@ namespace JuvoPlayer.OpenGL
             _lastKeyPressTime = DateTime.Now;
             _seekLogic.Reset();
 
-            CurrentPositionUI = TimeSpan.Zero;
             _playbackCompletedNeedsHandling = false;
 
             _metricsHandler.Hide();
@@ -310,7 +304,7 @@ namespace JuvoPlayer.OpenGL
                 return;
             if (tileNo == _selectedTile)
                 return;
-            if (PlayerHandle != null)
+            if (Player != null)
                 ClosePlayer();
             _selectedTile = tileNo;
             DllImports.SelectTile(_selectedTile);
@@ -335,7 +329,7 @@ namespace JuvoPlayer.OpenGL
 
         private void HandleExternalPlaybackStart()
         {
-            if (PlayerHandle != null) // it's possible that playback has already started via other control path (PreviewPayloadHandler vs HandleLoadingFinished calls order)
+            if (Player != null) // it's possible that playback has already started via other control path (PreviewPayloadHandler vs HandleLoadingFinished calls order)
                 return;
 
             if (_selectedTile >= _resourceLoader.TilesCount)
@@ -464,40 +458,40 @@ namespace JuvoPlayer.OpenGL
             }
             else if (_progressBarShown && !_options.Visible)
             {
-                switch (PlayerHandle.State)
+                switch (Player.State)
                 {
-                    case PlayerState.Playing:
-                        PlayerHandle?.Pause();
+                    case Common.PlayerState.Playing:
+                        Player?.Pause();
                         break;
-                    case PlayerState.Paused:
-                        PlayerHandle?.Start();
+                    case Common.PlayerState.Paused:
+                        Player?.Start();
                         break;
                 }
             }
             else if (_options.Visible && _options.ProperSelection())
             {
-                _options.ControlSelect(PlayerHandle);
+                _options.ControlSelect(Player);
                 _options.Hide();
             }
         }
 
         private void HandlePlaybackStart()
         {
-            if (PlayerHandle == null)
+            if (Player == null)
             {
-                PlayerHandle = new Player(_playerWindow);
-                PlayerHandle.StateChanged()
+                Player = new Player(_playerWindow);
+                Player.StateChanged()
                     .ObserveOn(SynchronizationContext.Current)
-                    .Where(state => state == PlayerState.Prepared)
+                    .Where(state => state == Common.PlayerState.Prepared)
                     .Subscribe(state =>
                     {
-                        if (PlayerHandle == null)
+                        if (Player == null)
                             return;
-                        _options.LoadStreamLists(PlayerHandle);
-                        PlayerHandle.Start();
+                        _options.LoadStreamLists(Player);
+                        Player.Start();
                     }, () => { _playbackCompletedNeedsHandling = true; });
 
-                PlayerHandle.PlaybackError()
+                Player.PlaybackError()
                     .ObserveOn(SynchronizationContext.Current)
                     .Subscribe(message =>
                     {
@@ -506,14 +500,14 @@ namespace JuvoPlayer.OpenGL
                         DisplayAlert("Playback Error", message, "OK");
                     });
 
-                PlayerHandle.BufferingProgress()
+                Player.BufferingProgress()
                     .ObserveOn(SynchronizationContext.Current)
                     .Subscribe(UpdateBufferingProgress);
             }
 
             Logger?.Info(
                 $"Playing {_resourceLoader.ContentList[_selectedTile].Title} ({_resourceLoader.ContentList[_selectedTile].Url})");
-            PlayerHandle.SetSource(_resourceLoader.ContentList[_selectedTile]);
+            Player.SetSource(_resourceLoader.ContentList[_selectedTile]);
             _options.ClearOptionsMenu();
             _seekLogic.IsSeekInProgress = false;
             _bufferingInProgress = false;
@@ -548,9 +542,9 @@ namespace JuvoPlayer.OpenGL
         private void ClosePlayer()
         {
             Logger?.Info("Closing player");
-            PlayerHandle?.Stop();
-            PlayerHandle?.Dispose();
-            PlayerHandle = null;
+            Player?.Stop();
+            Player?.Dispose();
+            Player = null;
         }
 
         private void HandleKeyExit()
@@ -561,15 +555,25 @@ namespace JuvoPlayer.OpenGL
 
         private void HandleKeyPlay()
         {
-            if (PlayerHandle?.State == PlayerState.Playing)
-                PlayerHandle?.Pause();
+            if (_isMenuShown)
+            {
+                if (_selectedTile >= _resourceLoader.TilesCount)
+                    return;
+                ShowMenu(false);
+                HandlePlaybackStart();
+            }
             else
-                PlayerHandle?.Start();
+            {
+                if (Player?.State == Common.PlayerState.Playing)
+                    Player?.Pause();
+                else
+                    Player?.Start();
+            }
         }
 
         private void HandleKeyPause()
         {
-            PlayerHandle?.Pause();
+            Player?.Pause();
         }
 
         private void HandleKeyStop()
@@ -603,11 +607,11 @@ namespace JuvoPlayer.OpenGL
 
         private unsafe void UpdateSubtitles()
         {
-            if (PlayerHandle?.CurrentCueText != null && _options.SubtitlesOn)
+            if (Player?.CurrentCueText != null && _options.SubtitlesOn)
             {
-                fixed (byte* cueText = ResourceLoader.GetBytes(PlayerHandle.CurrentCueText))
+                fixed (byte* cueText = ResourceLoader.GetBytes(Player.CurrentCueText))
                     DllImports.ShowSubtitle(0, cueText,
-                        PlayerHandle.CurrentCueText.Length); // 0ms duration - special value just for next frame
+                        Player.CurrentCueText.Length); // 0ms duration - special value just for next frame
             }
         }
 
@@ -633,11 +637,26 @@ namespace JuvoPlayer.OpenGL
             _metricsHandler.Update();
         }
 
+        private static PlayerState ToPlayerState(Common.PlayerState state)
+        {
+            switch (state)
+            {
+                case Common.PlayerState.Idle:
+                    return PlayerState.Idle;
+                case Common.PlayerState.Prepared:
+                    return PlayerState.Prepared;
+                case Common.PlayerState.Paused:
+                    return PlayerState.Paused;
+                case Common.PlayerState.Playing:
+                    return PlayerState.Playing;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(state), state, null);
+            }
+        }
+
         private unsafe void UpdatePlaybackControls()
         {
-            if (_seekLogic.IsSeekAccumulationInProgress == false && _seekLogic.IsSeekInProgress == false)
-                CurrentPositionUI = CurrentPositionPlayer;
-            if (_progressBarShown && PlayerHandle?.State == PlayerState.Playing &&
+            if (_progressBarShown && Player?.State == Common.PlayerState.Playing &&
                 (DateTime.Now - _lastKeyPressTime).TotalMilliseconds >= _progressBarFadeout.TotalMilliseconds)
             {
                 _progressBarShown = false;
@@ -650,9 +669,9 @@ namespace JuvoPlayer.OpenGL
                 DllImports.UpdatePlaybackControls(new DllImports.PlaybackData()
                 {
                     show = _progressBarShown ? 1 : 0,
-                    state = (int)(PlayerHandle?.State ?? PlayerState.Idle),
-                    currentTime = (int)CurrentPositionUI.TotalMilliseconds,
-                    totalTime = (int)Duration.TotalMilliseconds,
+                    state = (int)ToPlayerState(Player?.State ?? Common.PlayerState.Idle),
+                    currentTime = (int)_seekLogic.CurrentPositionUI.TotalMilliseconds,
+                    totalTime = (int)_seekLogic.Duration.TotalMilliseconds,
                     text = name,
                     textLen = _resourceLoader.ContentList[_selectedTile].Title.Length,
                     buffering = _bufferingInProgress ? 1 : 0,
@@ -660,11 +679,6 @@ namespace JuvoPlayer.OpenGL
                     seeking = (_seekLogic.IsSeekInProgress || _seekLogic.IsSeekAccumulationInProgress) ? 1 : 0
                 });
             }
-        }
-
-        public Task Seek(TimeSpan to)
-        {
-            return PlayerHandle?.SeekTo(to);
         }
 
         private void UpdateUI()
