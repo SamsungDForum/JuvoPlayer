@@ -496,14 +496,14 @@ namespace JuvoPlayer.Player.EsPlayer
 
         private void SuspendPlayback()
         {
+            // Get most current player time.
+            _suspendClock = PlayerClockProvider.LastClock;
+
             // Stop data clock to halt data providers. Not required for UI based operation
             // but needed for multitasking with player preemption. Prevents data clock difference
             // between player & data provider.
             _dataClock.Stop();
             StopClockGenerator();
-
-            // Get most current player time.
-            player.GetPlayingTime(out _suspendClock);
             player.Pause();
 
             logger.Info($"Playback time {_suspendClock}");
