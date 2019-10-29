@@ -164,7 +164,7 @@ export default class PlaybackView extends React.Component {
     this.playbackTimeTotal = parseInt(playtime.Total);
     this.currentSubtitleText = playtime.SubtiteText;
   }
-  onSeekCompleted(Value) {
+  onSeekCompleted() {
     this.operationInProgress = false;
     this.inProgressDescription = "Please wait...";
   }
