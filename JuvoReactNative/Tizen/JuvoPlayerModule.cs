@@ -1,8 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Reactive;
 using System.Reactive.Linq;
-using System.Threading.Tasks;
 using System.Threading;
 using ReactNative;
 using ReactNative.Bridge;
@@ -17,7 +15,7 @@ using Newtonsoft.Json.Linq;
 
 namespace JuvoReactNative
 {
-    public class JuvoPlayerModule : ReactContextNativeModuleBase, ILifecycleEventListener, ISeekLogicClient, IObserver<Unit>
+    public class JuvoPlayerModule : ReactContextNativeModuleBase, ILifecycleEventListener, ISeekLogicClient
     {
         private Timer playbackTimer;
         private SeekLogic seekLogic = null; // needs to be initialized in the constructor!
@@ -28,12 +26,16 @@ namespace JuvoReactNative
         Window window = ReactProgram.RctWindow; //The main window of the application has to be transparent. 
         List<StreamDescription>[] allStreamsDescriptions = { null, null, null };
         public IPlayerService Player { get; private set; }
-        private IDisposable unsubscriber;
+        private IDisposable seekCompletedSub;
         public JuvoPlayerModule(ReactContext reactContext)
             : base(reactContext)
         {
             seekLogic = new SeekLogic(this);
-            unsubscriber = seekLogic.SeekCompleted().Subscribe(this);
+            seekCompletedSub = seekLogic.SeekCompleted().Subscribe(message =>
+            {
+                var param = new JObject();
+                SendEvent("onSeekCompleted", param);
+            });
         }
         private void InitializeJuvoPlayer()
         {
@@ -124,6 +126,7 @@ namespace JuvoReactNative
         public void OnDestroy()
         {
             Logger?.Info("Destroying JuvoPlayerModule...");
+            seekCompletedSub.Dispose();
         }
         public void OnResume()
         {
@@ -171,23 +174,12 @@ namespace JuvoReactNative
                 Logger?.Error(Tag, e.Message);
             }
         }
-        public void OnCompleted()
-        {
-            unsubscriber.Dispose();
-        }
 
         public void OnError(Exception error)
         {
             var param = new JObject();
             param.Add("Message", error.Message);
             SendEvent("onPlaybackError", param);
-        }
-
-        public void OnNext(Unit value)
-        {
-            var param = new JObject();
-            param.Add("Value", Newtonsoft.Json.JsonConvert.SerializeObject(value));
-            SendEvent("onSeekCompleted", param);
         }
 
         //////////////////JS methods//////////////////
@@ -291,5 +283,7 @@ namespace JuvoReactNative
         {
             seekLogic.SeekBackward();
         }
+
+
     }
 }
