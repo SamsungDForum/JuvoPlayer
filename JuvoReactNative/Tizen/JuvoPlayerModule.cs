@@ -27,6 +27,10 @@ namespace JuvoReactNative
         List<StreamDescription>[] allStreamsDescriptions = { null, null, null };
         public IPlayerService Player { get; private set; }
         private IDisposable seekCompletedSub;
+        private IDisposable playerStateChangeSub;
+        private IDisposable playbackErrorsSub;
+        private IDisposable bufferingProgressSub;
+
         public JuvoPlayerModule(ReactContext reactContext)
             : base(reactContext)
         {
@@ -40,16 +44,16 @@ namespace JuvoReactNative
         private void InitializeJuvoPlayer()
         {
             Player = new PlayerServiceProxy(new PlayerServiceImpl(window));
-            Player.StateChanged()
+            playerStateChangeSub = Player.StateChanged()
                .Subscribe(OnPlayerStateChanged, OnPlaybackCompleted);
-            Player.PlaybackError()
+            playbackErrorsSub = Player.PlaybackError()
                 .Subscribe(message =>
                 {
                     var param = new JObject();
                     param.Add("Message", message);
                     SendEvent("onPlaybackError", param);
                 });
-            Player.BufferingProgress()
+            bufferingProgressSub = Player.BufferingProgress()
                 .Subscribe(UpdateBufferingProgress);
         }
         public override string Name
@@ -127,6 +131,9 @@ namespace JuvoReactNative
         {
             Logger?.Info("Destroying JuvoPlayerModule...");
             seekCompletedSub.Dispose();
+            playerStateChangeSub.Dispose();
+            playbackErrorsSub.Dispose();
+            bufferingProgressSub.Dispose();
         }
         public void OnResume()
         {
