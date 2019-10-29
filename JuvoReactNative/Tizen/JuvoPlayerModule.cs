@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Reactive.Linq;
-using System.Threading.Tasks;
 using System.Threading;
 using ReactNative;
 using ReactNative.Bridge;
@@ -27,24 +26,34 @@ namespace JuvoReactNative
         Window window = ReactProgram.RctWindow; //The main window of the application has to be transparent. 
         List<StreamDescription>[] allStreamsDescriptions = { null, null, null };
         public IPlayerService Player { get; private set; }
+        private IDisposable seekCompletedSub;
+        private IDisposable playerStateChangeSub;
+        private IDisposable playbackErrorsSub;
+        private IDisposable bufferingProgressSub;
+
         public JuvoPlayerModule(ReactContext reactContext)
             : base(reactContext)
         {
             seekLogic = new SeekLogic(this);
+            seekCompletedSub = seekLogic.SeekCompleted().Subscribe(message =>
+            {
+                var param = new JObject();
+                SendEvent("onSeekCompleted", param);
+            });
         }
         private void InitializeJuvoPlayer()
         {
             Player = new PlayerServiceProxy(new PlayerServiceImpl(window));
-            Player.StateChanged()
+            playerStateChangeSub = Player.StateChanged()
                .Subscribe(OnPlayerStateChanged, OnPlaybackCompleted);
-            Player.PlaybackError()
+            playbackErrorsSub = Player.PlaybackError()
                 .Subscribe(message =>
                 {
                     var param = new JObject();
                     param.Add("Message", message);
                     SendEvent("onPlaybackError", param);
                 });
-            Player.BufferingProgress()
+            bufferingProgressSub = Player.BufferingProgress()
                 .Subscribe(UpdateBufferingProgress);
         }
         public override string Name
@@ -121,6 +130,10 @@ namespace JuvoReactNative
         public void OnDestroy()
         {
             Logger?.Info("Destroying JuvoPlayerModule...");
+            seekCompletedSub.Dispose();
+            playerStateChangeSub.Dispose();
+            playbackErrorsSub.Dispose();
+            bufferingProgressSub.Dispose();
         }
         public void OnResume()
         {
@@ -168,16 +181,15 @@ namespace JuvoReactNative
                 Logger?.Error(Tag, e.Message);
             }
         }
-        public Task Seek(TimeSpan to)
+
+        public void OnError(Exception error)
         {
             var param = new JObject();
-            param.Add("To", (int)to.TotalMilliseconds);
-            SendEvent("onSeek", param);
-            return Player?.SeekTo(to);
+            param.Add("Message", error.Message);
+            SendEvent("onPlaybackError", param);
         }
 
         //////////////////JS methods//////////////////
-
         [ReactMethod]
         public void GetStreamsDescription(int StreamTypeIndex)
         {
@@ -278,5 +290,7 @@ namespace JuvoReactNative
         {
             seekLogic.SeekBackward();
         }
+
+
     }
 }
