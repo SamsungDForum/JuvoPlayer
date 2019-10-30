@@ -47,11 +47,6 @@ namespace JuvoPlayer.DataProviders.RTSP
                 currentClip ?? throw new ArgumentNullException(nameof(currentClip), "clip cannot be null");
         }
 
-        public IObservable<bool> BufferingStateChanged()
-        {
-            return Observable.Empty<bool>();
-        }
-
         public IObservable<TimeSpan> ClipDurationChanged()
         {
             return demuxerController.ClipDurationFound();
@@ -92,9 +87,9 @@ namespace JuvoPlayer.DataProviders.RTSP
                 .Merge(rtspClient.RTSPError());
         }
 
-        public void OnDataStateChanged(DataRequest request)
+        public void OnDataClock(TimeSpan dataClock)
         {
-            // RTSP Data Provider does not support data request events
+            // RTSP Data Provider does not support data dataClock events
             // Input handler empty
         }
 
@@ -124,18 +119,15 @@ namespace JuvoPlayer.DataProviders.RTSP
             }
         }
 
-        public void OnBufferingStateChanged(bool bufferingState)
-        {
-            // RTSP Data provider does not support buffering events.
-            // Input handler empty. Events filtered out.
-        }
-
         public Task<TimeSpan> Seek(TimeSpan time, CancellationToken token)
         {
             throw new NotImplementedException();
         }
 
-        public bool IsDataAvailable() => true;
+        public bool IsDataAvailable()
+        {
+            return true;
+        }
 
         public bool IsSeekingSupported()
         {

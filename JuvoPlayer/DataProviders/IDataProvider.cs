@@ -26,16 +26,14 @@ namespace JuvoPlayer.DataProviders
 {
     public interface IDataProvider : IDisposable
     {
-        void OnDataStateChanged(DataRequest request);
         void OnChangeActiveStream(StreamDescription stream);
         void OnDeactivateStream(StreamType streamType);
         void OnStateChanged(PlayerState state);
         void OnStopped();
         void OnTimeUpdated(TimeSpan time);
-        void OnBufferingStateChanged(bool bufferingState);
+        void OnDataClock(TimeSpan dataClock);
 
         Task<TimeSpan> Seek(TimeSpan time, CancellationToken token);
-
         bool IsDataAvailable();
         bool IsSeekingSupported();
         void Start();
@@ -48,6 +46,5 @@ namespace JuvoPlayer.DataProviders
         IObservable<StreamConfig> StreamConfigReady();
         IObservable<Packet> PacketReady();
         IObservable<string> StreamError();
-        IObservable<bool> BufferingStateChanged();
     }
 }

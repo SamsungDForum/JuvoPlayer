@@ -24,53 +24,130 @@ using System.Reactive.Linq;
 using System.Reactive.Threading.Tasks;
 using System.Threading;
 using System.Threading.Tasks;
+using JuvoLogger;
 using JuvoPlayer.Common;
 using JuvoPlayer.Tests.Utils;
-using JuvoPlayer.TizenTests.Utils;
 using JuvoPlayer.Utils;
 using Nito.AsyncEx;
 using NUnit.Framework;
+using JuvoPlayer.Player.EsPlayer;
 using TestContext = JuvoPlayer.Tests.Utils.TestContext;
 
 namespace JuvoPlayer.TizenTests.IntegrationTests
 {
+    public static class TSPlayerServiceTestCaseSource
+    {
+        private static ClipDefinition[] allClipSource;
+        private static string[] allClipsData;
+        private static string[] dashClipsData;
+        private static ClipDefinition[] drmClipsSource;
+
+        private static IEnumerable<ClipDefinition> ReadClips()
+        {
+            var applicationPath = Paths.ApplicationPath;
+            var clipsPath = Path.Combine(applicationPath, "res", "videoclips.json");
+            return JSONFileReader.DeserializeJsonFile<List<ClipDefinition>>(clipsPath).ToList();
+        }
+
+        static TSPlayerServiceTestCaseSource()
+        {
+            allClipSource = ReadClips()
+                .ToArray();
+
+            allClipsData = allClipSource
+                .Select(clip => clip.Title)
+                .ToArray();
+
+            dashClipsData = allClipSource
+                .Where(clip => clip.Type == "dash")
+                .Select(clip => clip.Title)
+                .ToArray();
+
+            drmClipsSource = allClipSource
+                .Where(clip => clip.DRMDatas != null)
+                .ToArray();
+
+        }
+
+        public static string[] AllClips() => allClipsData;
+
+        public static string[] DashClips() => dashClipsData;
+
+        public static bool IsEncrypted(string clipTitle) =>
+            drmClipsSource.Any(clip => string.Equals(clip.Title, clipTitle));
+    }
+
     [TestFixture]
     class TSPlayerService
     {
+        private readonly ILogger _logger = LoggerManager.GetInstance().GetLogger("UT");
+
         private void RunPlayerTest(string clipTitle, Func<TestContext, Task> testImpl)
         {
             AsyncContext.Run(async () =>
             {
-                using (var service = new PlayerService())
-                using (var cts = new CancellationTokenSource())
+                try
                 {
-                    var context = new TestContext
-                    {
-                        Service = service,
-                        ClipTitle = clipTitle,
-                        Token = cts.Token,
-                        Timeout = TimeSpan.FromSeconds(20)
-                    };
-                    await new PrepareOperation().Execute(context);
-                    await new StartOperation().Execute(context);
+                    _logger.Info($"Begin: {NUnit.Framework.TestContext.CurrentContext.Test.FullName}");
 
-                    await testImpl(context);
+                    using (var cts = new CancellationTokenSource())
+                    {
+                        using (var service = new PlayerService())
+                        {
+                            var context = new TestContext
+                            {
+                                Service = service,
+                                ClipTitle = clipTitle,
+                                Token = cts.Token,
+
+                                // Requested seek position may differ from
+                                // seek position issued to player. Difference can be 10s+
+                                // Encrypted streams (Widevine in particular) may have LONG license
+                                // installation times (10s+).
+                                // DRM content has larger timeout
+                                Timeout = TSPlayerServiceTestCaseSource.IsEncrypted(clipTitle)
+                                    ? TimeSpan.FromSeconds(40)
+                                    : TimeSpan.FromSeconds(20)
+                            };
+                            await new PrepareOperation().Execute(context);
+                            await new StartOperation().Execute(context);
+
+                            await testImpl(context);
+                        }
+
+                        // Test completed.
+                        // Do cancellation to terminate test's sub activities (if any)
+                        cts.Cancel();
+                    }
+
+                    _logger.Info($"End: {NUnit.Framework.TestContext.CurrentContext.Test.FullName}");
+                }
+                catch (Exception e)
+                {
+                    _logger.Error($"Error: {NUnit.Framework.TestContext.CurrentContext.Test.FullName} {e.Message} {e.StackTrace}");
+                    throw;
                 }
             });
         }
 
-        [Test, TestCaseSource(nameof(AllClips))]
+        [Test, TestCaseSource(typeof(TSPlayerServiceTestCaseSource), nameof(TSPlayerServiceTestCaseSource.AllClips))]
         public void Playback_Basic_PreparesAndStarts(string clipTitle)
         {
             RunPlayerTest(clipTitle, async context =>
             {
+                if (PlayerClockProvider.LastClock > TimeSpan.Zero)
+                    return;
+
                 await Task.Delay(TimeSpan.FromSeconds(1));
 
-                Assert.That(context.Service.CurrentPosition, Is.GreaterThan(TimeSpan.Zero));
+                var clock = PlayerClockProvider.LastClock;
+
+                Assert.That(clock, Is.GreaterThan(TimeSpan.Zero));
+
             });
         }
 
-        [Test, TestCaseSource(nameof(AllClips))]
+        [Test, TestCaseSource(typeof(TSPlayerServiceTestCaseSource), nameof(TSPlayerServiceTestCaseSource.AllClips))]
         public void Seek_Random10Times_Seeks(string clipTitle)
         {
             RunPlayerTest(clipTitle, async context =>
@@ -85,7 +162,7 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
             });
         }
 
-        [Test, TestCaseSource(nameof(AllClips))]
+        [Test, TestCaseSource(typeof(TSPlayerServiceTestCaseSource), nameof(TSPlayerServiceTestCaseSource.AllClips))]
         public void Seek_DisposeDuringSeek_Disposes(string clipTitle)
         {
             RunPlayerTest(clipTitle, async context =>
@@ -99,7 +176,7 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
             });
         }
 
-        [Test, TestCaseSource(nameof(AllClips))]
+        [Test, TestCaseSource(typeof(TSPlayerServiceTestCaseSource), nameof(TSPlayerServiceTestCaseSource.AllClips))]
         public void Seek_Forward_Seeks(string clipTitle)
         {
             RunPlayerTest(clipTitle, async context =>
@@ -118,7 +195,7 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
             });
         }
 
-        [Test, TestCaseSource(nameof(AllClips))]
+        [Test, TestCaseSource(typeof(TSPlayerServiceTestCaseSource), nameof(TSPlayerServiceTestCaseSource.AllClips))]
         public void Seek_Backward_Seeks(string clipTitle)
         {
             RunPlayerTest(clipTitle, async context =>
@@ -137,7 +214,7 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
             });
         }
 
-        [Test, TestCaseSource(nameof(AllClips))]
+        [Test, TestCaseSource(typeof(TSPlayerServiceTestCaseSource), nameof(TSPlayerServiceTestCaseSource.AllClips))]
         public void Seek_ToTheEnd_SeeksOrCompletes(string clipTitle)
         {
             RunPlayerTest(clipTitle, async context =>
@@ -165,7 +242,7 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
             });
         }
 
-        [Test, TestCaseSource(nameof(AllClips))]
+        [Test, TestCaseSource(typeof(TSPlayerServiceTestCaseSource), nameof(TSPlayerServiceTestCaseSource.AllClips))]
         public void Seek_EOSReached_StateChangedCompletes(string clipTitle)
         {
             RunPlayerTest(clipTitle, async context =>
@@ -180,15 +257,13 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
                     .FirstAsync()
                     .ToTask();
 
-                await await Task.WhenAny(seekOperation.Execute(context), playbackErrorTask);
-
                 var clipCompletedTask = service.StateChanged()
                     .AsCompletion()
                     .Timeout(context.Timeout)
                     .FirstAsync()
                     .ToTask();
 
-                await await Task.WhenAny(clipCompletedTask, playbackErrorTask);
+                await await Task.WhenAny(seekOperation.Execute(context), clipCompletedTask, playbackErrorTask);
             });
         }
 
@@ -196,14 +271,17 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
         public void Random_20RandomOperations_ExecutedCorrectly(string clipTitle)
         {
             var operations =
-                GenerateOperations(20, new List<Type> {typeof(StopOperation), typeof(PrepareOperation)});
+                GenerateOperations(20, new List<Type> { typeof(StopOperation), typeof(PrepareOperation) });
 
             try
             {
+                _logger.Info("Begin: " + NUnit.Framework.TestContext.CurrentContext.Test.Name);
                 RunRandomOperationsTest(clipTitle, operations, true);
+                _logger.Info("Done: " + NUnit.Framework.TestContext.CurrentContext.Test.Name);
             }
             catch (Exception)
             {
+                _logger.Error("Error " + clipTitle);
                 DumpOperations(clipTitle, operations);
                 throw;
             }
@@ -215,13 +293,22 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
             {
                 context.RandomMaxDelayTime = TimeSpan.FromSeconds(3);
                 context.DelayTime = TimeSpan.FromSeconds(2);
+                context.Timeout = TSPlayerServiceTestCaseSource.IsEncrypted(clipTitle) ? TimeSpan.FromSeconds(40) : TimeSpan.FromSeconds(20);
 
                 if (shouldPrepare)
                     foreach (var operation in operations)
+                    {
+                        _logger.Info($"Prepare: {operation}");
                         operation.Prepare(context);
+                        _logger.Info($"Prepare Done: {operation}");
+                    }
 
                 foreach (var operation in operations)
+                {
+                    _logger.Info($"Execute: {operation}");
                     await operation.Execute(context);
+                    _logger.Info($"Execute Done: {operation}");
+                }
             });
         }
 
@@ -236,13 +323,6 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
                 var operations = OperationSerializer.Deserialize(reader);
                 RunRandomOperationsTest(clipTitle, operations, false);
             }
-        }
-
-        private static IEnumerable<ClipDefinition> ReadClips()
-        {
-            var applicationPath = Paths.ApplicationPath;
-            var clipsPath = Path.Combine(applicationPath, "res", "videoclips.json");
-            return JSONFileReader.DeserializeJsonFile<List<ClipDefinition>>(clipsPath).ToList();
         }
 
         private static IList<TestOperation> GenerateOperations(int count, ICollection<Type> blackList)
@@ -278,13 +358,6 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
                 OperationSerializer.Serialize(writer, operations);
                 Console.WriteLine($"Test operations dumped to {fullPath}");
             }
-        }
-
-        private static string[] AllClips()
-        {
-            return ReadClips()
-                .Select(clip => clip.Title)
-                .ToArray();
         }
     }
 }

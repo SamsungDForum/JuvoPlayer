@@ -30,8 +30,8 @@ using Nito.AsyncEx;
 using Tizen.TV.Security.DrmDecrypt;
 using Tizen.TV.Security.DrmDecrypt.emeCDM;
 using JuvoPlayer.Common.Utils.IReferenceCountable;
+using JuvoPlayer.Player.EsPlayer;
 using static Configuration.CencSession;
-using InitDataType = Tizen.TV.Security.DrmDecrypt.emeCDM.InitDataType;
 
 namespace JuvoPlayer.Drms.Cenc
 {
@@ -346,7 +346,6 @@ namespace JuvoPlayer.Drms.Cenc
             Logger.Info($"CencSession ID {currentSessionId}");
             cancellationToken.ThrowIfCancellationRequested();
             var requestData = await GetRequestData();
-            Logger.Info($"CencSession ID {currentSessionId}");
             cancellationToken.ThrowIfCancellationRequested();
             var responseText = await AcquireLicenceFromServer(requestData);
             Logger.Info($"CencSession ID {currentSessionId} {responseText}");
@@ -391,7 +390,7 @@ namespace JuvoPlayer.Drms.Cenc
 
             if (status != Status.kSuccess)
                 throw new DrmException(EmeStatusConverter.Convert(status));
-            var requestData = await requestDataCompletionSource.Task.WaitAsync(cancellationTokenSource.Token);
+            var requestData = await requestDataCompletionSource.Task.WithCancellation(cancellationTokenSource.Token);
             requestDataCompletionSource = null;
             return requestData;
         }
