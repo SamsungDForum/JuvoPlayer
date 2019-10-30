@@ -129,7 +129,6 @@ namespace JuvoReactNative
         }
         private void DisposePlayerSubscribers()
         {
-            seekCompletedSub.Dispose();
             playerStateChangeSub.Dispose();
             playbackErrorsSub.Dispose();
             bufferingProgressSub.Dispose();
@@ -138,6 +137,7 @@ namespace JuvoReactNative
         {
             Logger?.Info("Destroying JuvoPlayerModule...");
             DisposePlayerSubscribers();
+            seekCompletedSub.Dispose();
         }
         public void OnResume()
         {
