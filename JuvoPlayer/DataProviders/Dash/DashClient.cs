@@ -24,6 +24,7 @@ using System.Reactive.Subjects;
 using System.Runtime.CompilerServices;
 using System.Threading;
 using System.Threading.Tasks;
+using Configuration;
 using JuvoLogger;
 using JuvoPlayer.Common;
 using MpdParser.Node;
@@ -70,7 +71,7 @@ namespace JuvoPlayer.DataProviders.Dash
         /// </summary>
         private TimeRange lastDownloadSegmentTimeRange;
 
-        private DataRequest dataRequest;
+        private TimeSpan _dataClockLimit;
 
         /// <summary>
         /// A shorthand for retrieving currently played out document type
@@ -93,8 +94,8 @@ namespace JuvoPlayer.DataProviders.Dash
         private bool initInProgress;
 
         private TimeSpan initDataDuration;
-
         private bool initSegmentReloadRequired;
+        private bool bufferAvailable;
 
         private readonly Subject<string> errorSubject = new Subject<string>();
         private readonly Subject<Unit> downloadCompletedSubject = new Subject<Unit>();
@@ -106,12 +107,6 @@ namespace JuvoPlayer.DataProviders.Dash
                                      throw new ArgumentNullException(nameof(throughputHistory),
                                          "throughputHistory cannot be null");
             this.streamType = streamType;
-            dataRequest = new DataRequest
-            {
-                Duration = TimeSpan.Zero,
-                IsBufferEmpty = true,
-                StreamType = this.streamType
-            };
         }
 
         public bool IsDataAvailable()
@@ -143,25 +138,27 @@ namespace JuvoPlayer.DataProviders.Dash
             if (nextSegTimeRange == null)
                 return false;
 
-            var timeBeforeDownload = GetSegmentMinimumFitDuration(nextSegTimeRange.Duration) - dataRequest.Duration;
-            timeBeforeDownload += DynamicSegmentAvailabilityOverhead;
-            var prevSegmentTimeIndex = nextSegTimeRange.Start - timeBeforeDownload;
+            var timeToNextSegmentDownload = (GetSegmentMinimumFitDuration(nextSegTimeRange.Duration)
+                                            - (_dataClockLimit - bufferTime))
+                                            + DynamicSegmentAvailabilityOverhead;
+
+            var prevSegmentTimeIndex = nextSegTimeRange.Start - timeToNextSegmentDownload;
 
             segmentId = currentStreams.NextSegmentId(prevSegmentTimeIndex);
 
             return segmentId.HasValue;
         }
 
-        public void SetDataNeeds(DataRequest request)
+        public void SetDataRequest(TimeSpan request)
         {
-            if (disposedValue)
+            if (cancellationTokenSource?.IsCancellationRequested != false)
                 return;
 
-            var oldDuration = dataRequest.Duration;
-            dataRequest = request;
+            // Reduce message output to changed end clock.
+            if (request != _dataClockLimit)
+                LogInfo($"Data clock update: {_dataClockLimit}->{request}");
 
-            if (oldDuration != dataRequest.Duration)
-                LogInfo($"Data request update: {dataRequest.Duration}");
+            _dataClockLimit = request;
 
             ScheduleNextSegDownload();
         }
@@ -189,6 +186,9 @@ namespace JuvoPlayer.DataProviders.Dash
 
             currentTime = seekToTimeRange.Start;
 
+            // Will get updated by first downloaded chunk
+            bufferTime = TimeSpan.Zero;
+
             LogInfo(
                 $"Seek Pos Req: {position} Seek to: ({seekToTimeRange.Start}-{seekToTimeRange.Start + seekToTimeRange.Duration}/{currentTime}) SegId: {currentSegmentId}");
 
@@ -205,9 +205,8 @@ namespace JuvoPlayer.DataProviders.Dash
             initInProgress = true;
             initDataDuration = currentStreams.GetDocumentParameters().Document.MinBufferTime ??
                                                MinimumBufferTime;
-            initSegmentReloadRequired = initReloadRequired;
 
-            LogInfo("DashClient start: " + dataRequest.Duration);
+            initSegmentReloadRequired = initReloadRequired;
 
             if (cancellationTokenSource == null || cancellationTokenSource?.IsCancellationRequested == true)
             {
@@ -224,9 +223,7 @@ namespace JuvoPlayer.DataProviders.Dash
                 trimOffset = currentRepresentation.AlignedTrimOffset;
 
             if (currentStreams.InitSegment == null)
-            {
                 initInProgress = false;
-            }
 
             downloadCompletedSubject.OnNext(Unit.Default);
         }
@@ -239,20 +236,23 @@ namespace JuvoPlayer.DataProviders.Dash
         private bool IsBufferSpaceAvailable()
         {
             if (lastDownloadSegmentTimeRange == null)
+                return _dataClockLimit > TimeSpan.Zero;
+
+            // Try not to overflow buffers. Download next segment if predefined
+            // amount will fit
+            var minFitDuration = GetSegmentMinimumFitDuration(lastDownloadSegmentTimeRange.Duration);
+
+            if (_dataClockLimit >= bufferTime + minFitDuration)
             {
-                if (dataRequest.Duration > TimeSpan.Zero) return true;
-            }
-            else
-            {
-                // Try not to overflow buffers. Download next segment if predefined
-                // amount will fit
-                var minFitDuration = GetSegmentMinimumFitDuration(lastDownloadSegmentTimeRange.Duration);
-
-                if (dataRequest.Duration >= minFitDuration) return true;
+                bufferAvailable = true;
+                return true;
             }
 
-            LogInfo($"Full buffer: {bufferTime}-{currentTime} ({bufferTime - currentTime}) {dataRequest.Duration}");
+            // Spam once per buffer available transition to false
+            if (bufferAvailable)
+                LogInfo($"Full buffer: {bufferTime} Limit {_dataClockLimit} MinFit {minFitDuration} ({bufferTime - currentTime})");
 
+            bufferAvailable = false;
             return false;
         }
 
@@ -281,13 +281,10 @@ namespace JuvoPlayer.DataProviders.Dash
                 if (currentStreams.InitSegment != null)
                 {
                     DownloadInitSegment(currentStreams.InitSegment, initSegmentReloadRequired);
-                }
-                else
-                {
-                    initInProgress = false;
+                    return;
                 }
 
-                return;
+                initInProgress = false;
             }
 
             var segment = currentStreams.MediaSegment(currentSegmentId);
@@ -308,7 +305,6 @@ namespace JuvoPlayer.DataProviders.Dash
 
         private void UpdateDataNeedsDuration(TimeSpan duration)
         {
-            dataRequest.Duration -= duration;
             if (initDataDuration > TimeSpan.Zero)
                 initDataDuration -= duration;
         }
@@ -317,7 +313,7 @@ namespace JuvoPlayer.DataProviders.Dash
         {
             // Grab a copy (its a struct) of cancellation token, so one token is used throughout entire operation
             var cancelToken = cancellationTokenSource.Token;
-            var chunkDownloadedHandler = new Action<byte[]>(bytes => { chunkReadySubject.OnNext(bytes); });
+            var chunkDownloadedHandler = new Action<byte[]>(chunkReadySubject.OnNext);
             downloadDataTask = CreateDownloadTask(segment, IsDynamic, currentSegmentId, chunkDownloadedHandler,
                 cancelToken);
             processDataTask = downloadDataTask.ContinueWith(response =>
@@ -508,12 +504,6 @@ namespace JuvoPlayer.DataProviders.Dash
             isEosSent = false;
             currentTime = TimeSpan.Zero;
             bufferTime = TimeSpan.Zero;
-            dataRequest = new DataRequest
-            {
-                Duration = TimeSpan.Zero,
-                IsBufferEmpty = true,
-                StreamType = streamType
-            };
 
         }
 
@@ -640,7 +630,7 @@ namespace JuvoPlayer.DataProviders.Dash
         {
             if (!IsDynamic)
                 return TimeSpan.MaxValue;
-            var timeout = TimeBufferDepthDefault;
+            var timeout = DataClockProviderConfig.TimeBufferDepthDefault;
             var averageThroughput = throughputHistory.GetAverageThroughput();
             if (averageThroughput > 0 && currentRepresentation.Bandwidth.HasValue && segment.Period != null)
             {
@@ -658,7 +648,6 @@ namespace JuvoPlayer.DataProviders.Dash
 
             return timeout;
         }
-
 
         public bool CanStreamSwitch()
         {

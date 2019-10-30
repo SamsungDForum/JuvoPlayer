@@ -16,14 +16,18 @@
  */
 
 using System;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using JuvoLogger;
 using JuvoPlayer.Common;
+using Nito.AsyncEx;
 
 namespace JuvoPlayer.Tests.Utils
 {
     public class StateChangedTask
     {
+        private readonly ILogger _logger = LoggerManager.GetInstance().GetLogger("UT");
         private readonly IPlayerService _service;
         private readonly PlayerState _expectedState;
         private readonly CancellationToken _cancellationToken;
@@ -42,15 +46,45 @@ namespace JuvoPlayer.Tests.Utils
         {
             return Task.Run(async () =>
             {
-                using (var timeoutCts = new CancellationTokenSource())
-                using (var linkedCts =
-                    CancellationTokenSource.CreateLinkedTokenSource(_cancellationToken, timeoutCts.Token))
+                var observedStates = new List<(DateTimeOffset timeStamp, PlayerState state)>();
+                var currentState = _service.State;
+                try
                 {
-                    timeoutCts.CancelAfter(_timeout);
-                    while (_service.State != _expectedState && !linkedCts.IsCancellationRequested)
+                    using (var timeoutCts = new CancellationTokenSource())
+                    using (var linkedCts =
+                        CancellationTokenSource.CreateLinkedTokenSource(_cancellationToken, timeoutCts.Token))
                     {
-                        await Task.Delay(100, linkedCts.Token);
+                        // Listening for result with delay can lead to false-failures.
+                        // i.e. consecutive events arrive faster then specified delay period
+                        var tcs = new TaskCompletionSource<bool>();
+
+                        using (_service.StateChanged().Subscribe((newState) =>
+                        {
+                            currentState = _service.State;
+                            observedStates.Add((DateTimeOffset.Now, newState));
+                            if (newState == _expectedState)
+                                tcs.TrySetResult(true);
+                        }, SynchronizationContext.Current))
+                        {
+                            timeoutCts.CancelAfter(_timeout);
+
+                            // Wait for new state might occur AFTER transition has already happened.
+                            // Verify such scenario and exit if in expected state.
+                            if (_service.State == _expectedState)
+                                return;
+                            await tcs.Task.WaitAsync(linkedCts.Token);
+                        }
                     }
+                }
+                catch (Exception)
+                {
+                    _logger.Error($"State change error. Timeout {_timeout} Expected: {_expectedState} Current: {currentState}");
+                    foreach (var state in observedStates)
+                    {
+                        _logger.Error($"{state.timeStamp} {state.state}");
+                    }
+
+                    throw;
                 }
             }, _cancellationToken);
         }

@@ -25,6 +25,7 @@ using System.Threading.Tasks;
 using JuvoLogger;
 using JuvoPlayer.Common;
 using JuvoPlayer.Drms;
+using JuvoPlayer.Player.EsPlayer;
 
 namespace JuvoPlayer.Player
 {
@@ -39,7 +40,6 @@ namespace JuvoPlayer.Player
         private readonly Dictionary<StreamType, IPacketStream> streams = new Dictionary<StreamType, IPacketStream>();
 
         private readonly CompositeDisposable subscriptions;
-        private readonly Subject<int> bufferingProgressSubject = new Subject<int>();
         private readonly Subject<string> streamErrorSubject = new Subject<string>();
 
         private readonly ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
@@ -64,14 +64,9 @@ namespace JuvoPlayer.Player
                 new PacketStream(StreamType.Video, this.player, drmManager, videoCodecExtraDataHandler);
         }
 
-        public IObservable<bool> BufferingStateChanged()
-        {
-            return player.BufferingStateChanged();
-        }
-
         public IObservable<int> BufferingProgress()
         {
-            return bufferingProgressSubject.AsObservable();
+            return player.BufferingProgress();
         }
 
         public IObservable<string> PlaybackError()
@@ -89,9 +84,9 @@ namespace JuvoPlayer.Player
             return player.StateChanged();
         }
 
-        public IObservable<DataRequest> DataStateChanged()
+        public IObservable<TimeSpan> DataClock()
         {
-            return player.DataNeedStateChanged();
+            return player.DataClock();
         }
 
         public void OnClipDurationChanged(TimeSpan duration)
@@ -136,6 +131,9 @@ namespace JuvoPlayer.Player
                     time = duration;
 
                 await player.Seek(time);
+
+                // Update "clock cache" with latest value
+                currentTime = PlayerClockProvider.LastClock;
             }
             catch (OperationCanceledException)
             {
@@ -178,33 +176,9 @@ namespace JuvoPlayer.Player
             streamErrorSubject.OnNext(errorMessage);
         }
 
-        public void OnBufferingStateChanged(bool bufferState)
-        {
-            if (bufferState)
-            {
-                OnBufferingStarted();
-            }
-            else
-            {
-                OnBufferingCompleted();
-            }
-        }
-
         public void OnSetPlaybackRate(float rate)
         {
             player.SetPlaybackRate(rate);
-        }
-
-        private void OnBufferingStarted()
-        {
-            bufferingProgressSubject.OnNext(0);
-            player.Pause();
-        }
-
-        private void OnBufferingCompleted()
-        {
-            player.Play();
-            bufferingProgressSubject.OnNext(100);
         }
 
         public IPlayerClient Client
@@ -234,7 +208,6 @@ namespace JuvoPlayer.Player
             subscriptions.Dispose();
 
             player?.Dispose();
-            bufferingProgressSubject.Dispose();
         }
     }
 }

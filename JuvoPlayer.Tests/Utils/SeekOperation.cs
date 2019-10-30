@@ -16,6 +16,7 @@
  */
 
 using System;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using JuvoLogger;
@@ -40,7 +41,7 @@ namespace JuvoPlayer.Tests.Utils
         {
             if (ReferenceEquals(null, obj)) return false;
             if (ReferenceEquals(this, obj)) return true;
-            return obj.GetType() == GetType() && Equals((SeekOperation) obj);
+            return obj.GetType() == GetType() && Equals((SeekOperation)obj);
         }
 
         public override int GetHashCode()
@@ -51,42 +52,75 @@ namespace JuvoPlayer.Tests.Utils
         public void Prepare(TestContext context)
         {
             var service = context.Service;
-            SeekPosition = context.SeekTime ?? RandomSeekTime(service);
+            var newSeekPos = context.SeekTime ?? RandomSeekTime(service);
+            SeekPosition = newSeekPos - TimeSpan.FromMilliseconds(newSeekPos.Milliseconds);
         }
 
         public async Task Execute(TestContext context)
         {
+            List<(TimeSpan clock, double diff)> clocks = new List<(TimeSpan clock, double diff)>();
+
             var service = context.Service;
+
+            var tcs = new TaskCompletionSource<bool>();
+            var seekDuringPause = service.State == PlayerState.Paused;
+
             _logger.Info($"Seeking to {SeekPosition}");
 
-            using (var timeoutCts = new CancellationTokenSource())
-            using (var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(timeoutCts.Token, context.Token))
+            try
             {
-                timeoutCts.CancelAfter(context.Timeout);
-
-                await service.SeekTo(SeekPosition).WithCancellation(linkedCts.Token);
-
-                if (service.State != PlayerState.Playing)
-                    return;
-
-                for (var i = 0; i < 100; i++)
+                using (PlayerClockProvider.GetInstance().PlayerClockObservable().Subscribe(clk =>
                 {
-                    var seekPos = SeekPosition;
-                    var curPos = service.CurrentPosition;
-                    var diffMs = Math.Abs((curPos - seekPos).TotalMilliseconds);
-                    if (diffMs < 500)
-                        return;
-                    await Task.Delay(200, linkedCts.Token);
-                }
+                    // Remove ms component.
+                    clk = clk - TimeSpan.FromMilliseconds(clk.Milliseconds);
+                    var diffMs = Math.Abs((clk - SeekPosition).TotalMilliseconds);
 
-                throw new Exception("Seek failed");
+                    if (diffMs <= 500)
+                    {
+                        tcs.TrySetResult(true);
+                        return;
+                    }
+
+                    clocks.Add((clk, diffMs));
+                }, SynchronizationContext.Current))
+                using (var timeoutCts = new CancellationTokenSource())
+                using (var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(timeoutCts.Token, context.Token))
+                {
+                    timeoutCts.CancelAfter(context.Timeout);
+
+                    var seekTask = service.SeekTo(SeekPosition);
+
+                    // Seek in paused state requires resume.
+                    if (seekDuringPause)
+                        service.Start();
+
+                    await seekTask.WithCancellation(linkedCts.Token);
+                    await tcs.Task.WithCancellation(linkedCts.Token);
+                }
+            }
+            catch (OperationCanceledException)
+            {
+                // If cancellation was not coused by timeout, don't report it. External
+                // cancellation are not reported.
+                if (!context.Token.IsCancellationRequested)
+                    throw;
+            }
+            catch (Exception)
+            {
+                _logger.Error($"Timeout: {context.Timeout}");
+                _logger.Error($"Seek To: {SeekPosition}");
+                foreach (var clock in clocks)
+                {
+                    _logger.Error($"Clock: {clock.clock} Diff: {clock.diff}");
+                }
+                throw;
             }
         }
 
         private static TimeSpan RandomSeekTime(IPlayerService service)
         {
             var rand = new Random();
-            return TimeSpan.FromSeconds(rand.Next((int) service.Duration.TotalSeconds - 10));
+            return TimeSpan.FromSeconds(rand.Next((int)service.Duration.TotalSeconds - 10));
         }
     }
 }
