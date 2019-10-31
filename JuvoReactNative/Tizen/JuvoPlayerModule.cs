@@ -127,13 +127,17 @@ namespace JuvoReactNative
             param.Add("State", "Completed");
             SendEvent("onPlaybackCompleted", param);
         }
-        public void OnDestroy()
+        private void DisposePlayerSubscribers()
         {
-            Logger?.Info("Destroying JuvoPlayerModule...");
-            seekCompletedSub.Dispose();
             playerStateChangeSub.Dispose();
             playbackErrorsSub.Dispose();
             bufferingProgressSub.Dispose();
+        }
+        public void OnDestroy()
+        {
+            Logger?.Info("Destroying JuvoPlayerModule...");
+            DisposePlayerSubscribers();
+            seekCompletedSub.Dispose();
         }
         public void OnResume()
         {
@@ -263,6 +267,7 @@ namespace JuvoReactNative
         public void StopPlayback()
         {
             Player?.Stop();
+            DisposePlayerSubscribers();
             Player?.Dispose();
             Player = null;
             seekLogic.IsSeekAccumulationInProgress = false;
