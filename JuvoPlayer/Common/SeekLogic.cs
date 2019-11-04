@@ -60,10 +60,16 @@ namespace JuvoPlayer.Common
         private CancellationTokenSource _seekCancellationTokenSource;
 
         private readonly ISeekLogicClient _client;
+        private StoryboardReader _storyboardReader;
 
         public SeekLogic(ISeekLogicClient client)
         {
             _client = client;
+        }
+
+        public StoryboardReader StoryboardReader
+        {
+            set => _storyboardReader = value;
         }
 
         public void Reset()
@@ -179,6 +185,16 @@ namespace JuvoPlayer.Common
         {
             var seekableStates = new[] { PlayerState.Playing, PlayerState.Paused };
             return seekableStates.Contains(state);
+        }
+
+        public bool ShallDisplaySeekPreview()
+        {
+            return _storyboardReader != null && IsSeekAccumulationInProgress;
+        }
+
+        public SubSkBitmap GetSeekPreviewFrame()
+        {
+            return ShallDisplaySeekPreview() ? _storyboardReader.GetFrame(CurrentPositionUI) : null;
         }
     }
 }
