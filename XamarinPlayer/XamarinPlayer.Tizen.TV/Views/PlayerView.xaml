@@ -2,6 +2,7 @@
 
 <ContentPage xmlns="http://xamarin.com/schemas/2014/forms"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:forms="clr-namespace:SkiaSharp.Views.Forms;assembly=SkiaSharp.Views.Forms"
              x:Class="XamarinPlayer.Views.PlayerView"
              ContentSource="{Binding Clip}">
     <ContentPage.Content>
@@ -50,6 +51,13 @@
                                    x:Name="CueTextLabel" HorizontalOptions="CenterAndExpand" WidthRequest="800"
                                    HorizontalTextAlignment="Center" />
                         </ContentView>
+                        <AbsoluteLayout x:Name="SeekPreviewContainer" HorizontalOptions="Fill" Margin="100, 0">
+                            <Frame x:Name="SeekPreviewFrame" IsVisible="false" Padding="1,1,1,1" HasShadow="False"
+                                   CornerRadius="5" BorderColor="DimGray" BackgroundColor="Black">
+                                <forms:SKCanvasView x:Name="SeekPreviewCanvas" HorizontalOptions="Center"
+                                                    PaintSurface="OnSeekPreviewCanvasOnPaintSurface" />
+                            </Frame>
+                        </AbsoluteLayout>
                         <AbsoluteLayout x:Name="Settings" IsVisible="false" BackgroundColor="#B0101010"
                                         HorizontalOptions="Center">
                             <StackLayout Padding="20, 10">
