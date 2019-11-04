@@ -25,4 +25,5 @@ namespace JuvoPlayer.Common
     {
         public SKBitmap Bitmap { get; set; }
         public SKRect SkRect { get; set; }
-    }}
+    }
+}
