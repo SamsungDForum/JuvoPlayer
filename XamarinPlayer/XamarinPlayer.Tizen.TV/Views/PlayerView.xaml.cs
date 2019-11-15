@@ -18,16 +18,19 @@
 using System;
 using System.Collections.Generic;
 using System.ComponentModel;
+using System.IO;
 using System.Reactive.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using JuvoLogger;
 using JuvoPlayer;
 using JuvoPlayer.Common;
+using SkiaSharp.Views.Forms;
 using Xamarin.Forms;
 using Xamarin.Forms.Xaml;
 using XamarinPlayer.Models;
 using XamarinPlayer.Services;
+using Application = Tizen.Applications.Application;
 
 namespace XamarinPlayer.Views
 {
@@ -39,12 +42,15 @@ namespace XamarinPlayer.Views
         private readonly TimeSpan UpdateInterval = TimeSpan.FromMilliseconds(100);
 
         private SeekLogic _seekLogic = null; // needs to be initialized in constructor!
+        private StoryboardReader _storyboardReader;
         private int _hideTime;
         private bool _isPageDisappeared;
         private bool _isShowing;
         private bool _hasFinished;
 
-        public static readonly BindableProperty ContentSourceProperty = BindableProperty.Create("ContentSource", typeof(object), typeof(PlayerView));
+        public static readonly BindableProperty ContentSourceProperty =
+            BindableProperty.Create("ContentSource", typeof(object), typeof(PlayerView));
+
         private PlayerState? suspendedPlayerState;
 
         public object ContentSource
@@ -77,6 +83,12 @@ namespace XamarinPlayer.Views
                 .Subscribe(OnBufferingProgress);
 
             PlayButton.Clicked += (s, e) => { Play(); };
+
+            Progressbar.PropertyChanged += (sender, args) =>
+            {
+                if (args.PropertyName == "Progress")
+                    UpdateSeekPreviewFramePosition();
+            };
 
             PropertyChanged += PlayerViewPropertyChanged;
 
@@ -336,8 +348,53 @@ namespace XamarinPlayer.Views
                 if (ContentSource == null)
                     return;
 
-                Player.SetSource(ContentSource as ClipDefinition);
+                var clipDefinition = ContentSource as ClipDefinition;
+                if (clipDefinition?.SeekPreviewPath != null)
+                {
+                    InitializeSeekPreview(clipDefinition.SeekPreviewPath);
+                }
+
+                Player.SetSource(clipDefinition);
             }
+        }
+
+        private void InitializeSeekPreview(string seekPreviewPath)
+        {
+            _storyboardReader?.Dispose();
+            _storyboardReader =
+                new StoryboardReader(Path.Combine(Application.Current.DirectoryInfo.Resource, seekPreviewPath));
+            _seekLogic.StoryboardReader = _storyboardReader;
+
+            var size = _storyboardReader.FrameSize;
+            SeekPreviewCanvas.WidthRequest = size.Width;
+            SeekPreviewCanvas.HeightRequest = size.Height;
+        }
+
+        private void OnSeekPreviewCanvasOnPaintSurface(object sender, SKPaintSurfaceEventArgs args)
+        {
+            var frame = _seekLogic.GetSeekPreviewFrame();
+            if (frame == null) return;
+
+            var surface = args.Surface;
+            var canvas = surface.Canvas;
+            var targetRect = args.Info.Rect;
+            
+            canvas.DrawBitmap(frame.Bitmap, frame.SkRect, targetRect);
+            canvas.Flush();
+        }
+
+        private void UpdateSeekPreviewFramePosition()
+        {
+            var progress = Progressbar.Progress;
+
+            var offset = progress * SeekPreviewContainer.Width - SeekPreviewFrame.Width / 2;
+            if (offset < 0)
+                offset = 0;
+            else if (offset + SeekPreviewFrame.Width > SeekPreviewContainer.Width)
+                offset = SeekPreviewContainer.Width - SeekPreviewFrame.Width;
+
+            AbsoluteLayout.SetLayoutBounds(SeekPreviewFrame,
+                new Rectangle(offset, .0, SeekPreviewFrame.Width, SeekPreviewFrame.Height));
         }
 
         protected override void OnAppearing()
@@ -365,6 +422,9 @@ namespace XamarinPlayer.Views
             {
                 if (!_isPageDisappeared)
                     return false;
+                _storyboardReader?.Dispose();
+                _seekLogic.StoryboardReader = null;
+                _storyboardReader = null;
                 Player?.Dispose();
                 Player = null;
 
@@ -457,6 +517,7 @@ namespace XamarinPlayer.Views
                 UpdatePlayTime();
                 UpdateCueTextLabel();
                 UpdateLoadingIndicator();
+                UpdateSeekPreview();
 
                 if (Settings.IsVisible)
                     return;
@@ -472,6 +533,18 @@ namespace XamarinPlayer.Views
             });
 
             return true;
+        }
+
+        private void UpdateSeekPreview()
+        {
+            if (_isShowing && _seekLogic.ShallDisplaySeekPreview())
+            {
+                if (!SeekPreviewFrame.IsVisible)
+                    SeekPreviewFrame.IsVisible = true;
+                SeekPreviewCanvas.InvalidateSurface();
+            }
+            else if (SeekPreviewFrame.IsVisible)
+                SeekPreviewFrame.IsVisible = false;
         }
 
         private void UpdatePlayTime()
