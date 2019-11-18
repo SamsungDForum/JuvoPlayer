@@ -3,71 +3,102 @@
  * https://github.com/facebook/react-native
  * @flow
  */
+
 'use strict'
-import React, { Component } from 'react';
+import React, {Component} from 'react';
 import {
   StyleSheet,
-  View,  
+  View,
   AppRegistry,
   NativeModules,
-  NativeEventEmitter  
+  NativeEventEmitter, ActivityIndicator
 } from 'react-native';
 
 import ContentCatalog from './src/views/ContentCatalog';
 import PlaybackView from './src/views/PlaybackView';
+import ResourceLoader from "./src/ResourceLoader";
 
-export default class JuvoReactNative extends Component {  
+export default class JuvoReactNative extends Component {
   constructor(props) {
-    super(props);    
+    super(props);
     this.state = {
-      components : {
+      loading: true,
+      components: {
         'isContentCatalogVisible': true,
-        'isPlaybackViewVisible': false  
+        'isPlaybackViewVisible': false
       }
-    }
+    };
     this.selectedClipIndex = 0;
     this.switchComponentsView = this.switchComponentsView.bind(this);
     this.handleSelectedIndexChange = this.handleSelectedIndexChange.bind(this);
+    this.handleDeepLink = this.handleDeepLink.bind(this);
     this.JuvoPlayer = NativeModules.JuvoPlayer;
     this.JuvoEventEmitter = new NativeEventEmitter(this.JuvoPlayer);
-  } 
-    
-  //It is assumed that at the only one component can be visible on the screen
-  switchComponentsView(componentName, visible) {       
+  }
+
+  componentWillMount() {
+    this.JuvoEventEmitter.addListener("handleDeepLink", this.handleDeepLink);
+    this.JuvoPlayer.AttachDeepLinkListener();
+  }
+
+//It is assumed that at the only one component can be visible on the screen
+  switchComponentsView(componentName) {
     switch (componentName) {
-        case 'ContentCatalog':            
-              this.setState({components: {
-                'isContentCatalogVisible': visible,
-                'isPlaybackViewVisible': !visible
-              }});              
-          break;
-        case 'PlaybackView':           
-              this.setState({components: {
-                'isContentCatalogVisible': !visible,
-                'isPlaybackViewVisible': visible
-              }});              
-          break;        
+      case 'ContentCatalog':
+        this.setState({
+          components: {
+            'isContentCatalogVisible': true,
+            'isPlaybackViewVisible': false
+          }
+        });
+        break;
+      case 'PlaybackView':
+        this.setState({
+          components: {
+            'isContentCatalogVisible': false,
+            'isPlaybackViewVisible': true
+          }
+        });
+        break;
     }
   }
 
-  handleSelectedIndexChange(index) {      
+  handleSelectedIndexChange(index) {
     this.selectedClipIndex = index;
   }
-  
-  render() {      
-    return (
-      <View style={styles.container}>         
-       <ContentCatalog styles={styles}                    
-                       visibility={this.state.components.isContentCatalogVisible}
-                       switchView={this.switchComponentsView}
-                       onSelectedIndexChange={this.handleSelectedIndexChange}/>   
-                               
-       <PlaybackView visibility={this.state.components.isPlaybackViewVisible}
-                         switchView={this.switchComponentsView}
-                         selectedIndex={this.selectedClipIndex} />
-         
-      </View>
-    );
+
+  handleDeepLink(deepLink) {
+    if (deepLink.url !== null) {
+      let index = ResourceLoader.clipsData.findIndex(e => e.url === deepLink.url);
+      if (index !== -1) {
+        this.handleSelectedIndexChange(index);
+        this.switchComponentsView('PlaybackView', true);
+      }
+    }
+
+    this.setState({loading: false});
+  }
+
+  render() {
+    if (this.state.loading === true) {
+      return (
+        <ActivityIndicator style={{height: '100%', backgroundColor: 'transparent'}} size='large' color='#00ff00'/>
+      );
+    } else {
+      return (
+        <View style={styles.container} visibility={false}>
+          <ContentCatalog styles={styles}
+                          visibility={this.state.components.isContentCatalogVisible}
+                          switchView={this.switchComponentsView}
+                          onSelectedIndexChange={this.handleSelectedIndexChange}/>
+
+          <PlaybackView visibility={this.state.components.isPlaybackViewVisible}
+                        switchView={this.switchComponentsView}
+                        selectedIndex={this.selectedClipIndex}/>
+
+        </View>
+      );
+    }
   }
 }
 

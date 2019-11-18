@@ -7,16 +7,18 @@ using ReactNative.Shell;
 using ReactNative.Modules.Core;
 using JuvoLogger;
 using JuvoLogger.Tizen;
+using JuvoPlayer.Common;
 using ILogger = JuvoLogger.ILogger;
 using Log = Tizen.Log;
 using Tizen.Applications;
 
 namespace JuvoReactNative
 {
-    class ReactNativeApp : ReactProgram
+    class ReactNativeApp : ReactProgram, IDeepLinkSender
     {
         private static ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoRN");
         public static readonly string Tag = "JuvoRN";
+        public event OnDeepLinkReceived OnDeepLinkReceived;
         public override string MainComponentName
         {
             get
@@ -48,7 +50,7 @@ namespace JuvoReactNative
                 return new List<IReactPackage>
                 {
                     new MainReactPackage(),
-                    new JuvoPlayerReactPackage()
+                    new JuvoPlayerReactPackage(this)
                 };
             }
         }
@@ -86,6 +88,16 @@ namespace JuvoReactNative
             ServicePointManager.DefaultConnectionLimit = 100;
             RootView.BackgroundColor = ElmSharp.Color.Transparent;
         }
+
+        protected override void OnAppControlReceived(AppControlReceivedEventArgs e)
+        {
+            base.OnAppControlReceived(e);
+            var payloadParser = new PayloadParser(e.ReceivedAppControl);
+            if (!payloadParser.TryGetUrl(out var url))
+                return;
+            OnDeepLinkReceived?.Invoke(url);
+        }
+
         static void Main(string[] args)
         {
             try

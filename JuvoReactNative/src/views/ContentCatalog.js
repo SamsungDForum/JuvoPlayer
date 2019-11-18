@@ -13,8 +13,7 @@ export default class ContentCatalog extends Component {
     this.state = {
       selectedClipIndex: 0
     };
-    this.visible = this.props.visibility;
-    this.bigPictureVisible = this.visible;
+    this.bigPictureVisible = this.props.visibility;
     this.keysListenningOff = false;
     this.toggleVisibility = this.toggleVisibility.bind(this);
     this.onTVKeyDown = this.onTVKeyDown.bind(this);
@@ -25,6 +24,7 @@ export default class ContentCatalog extends Component {
     this.JuvoPlayer = NativeModules.JuvoPlayer;
     this.JuvoEventEmitter = new NativeEventEmitter(this.JuvoPlayer);
   }
+
   componentWillMount() {
     this.JuvoEventEmitter.addListener("onTVKeyDown", this.onTVKeyDown);
     this.JuvoEventEmitter.addListener("onTVKeyUp", this.onTVKeyUp);
@@ -36,8 +36,8 @@ export default class ContentCatalog extends Component {
     return true;
   }
   toggleVisibility() {
-    this.visible = !this.visible;
-    this.props.switchView("PlaybackView", !this.visible);
+    this.props.visibility = !this.props.visibility;
+    this.props.switchView("PlaybackView");
   }
   rerender() {
     this.setState({
@@ -86,13 +86,11 @@ export default class ContentCatalog extends Component {
     const uri = ResourceLoader.tileNames[index];
     const path = ResourceLoader.tilePathSelect(uri);
     const overlay = ResourceLoader.tilesPath.contentDescriptionBackground;
-    const visibility = this.props.visibility ? this.props.visibility : this.visible;
-    this.visible = visibility;
-    this.keysListenningOff = !visibility;
+    this.keysListenningOff = !this.props.visibility;
     const showBigPicture = this.bigPictureVisible;
     return (
       <View>
-        <HideableView visible={visibility} duration={300}>
+        <HideableView visible={this.props.visibility} duration={300}>
           <HideableView visible={showBigPicture} duration={100}>
             <View
               style={{

@@ -81,7 +81,6 @@ export default class ContentScroll extends React.Component {
     const itemWidth = 454;
     const itemHeight = 260;
     const overlayPath = ResourceLoader.playbackIconsPathSelect("play");
-    const length = +this.props.contentURIs.length;
     const renderThumbs = (uri, i) => (
       <View key={i}>
         <Image resizeMode='cover' style={{ top: itemHeight / 2 + 35, left: itemWidth / 2 - 25 }} source={overlayPath} />
