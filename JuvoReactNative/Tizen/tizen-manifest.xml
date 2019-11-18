@@ -9,6 +9,7 @@
   <ui-application appid="U8QfWFqM.JuvoReactNative" exec="JuvoReactNative.dll" multiple="false" nodisplay="false" taskmanage="true" splash-screen-display="true" type="dotnet" launch_mode="single">
     <label>JuvoReactNative</label>
     <icon>JuvoReactNativeTizenTV.png</icon>
+    <metadata key="http://samsung.com/tv/metadata/use.preview" value="endpoint_URL=https://raw.githubusercontent.com/SamsungDForum/JuvoPlayer/master/smarthubpreview/juvoplayerclipsJSON.json" />
     <splash-screens>
       <!--Orientation needs to be set to portrait due to the platform bug-->
       <splash-screen src="JuvoReactNativeTizenTV_black.jpg" type="img" dpi="hdpi" orientation="portrait" indicator-display="false" />

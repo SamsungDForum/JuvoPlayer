@@ -23,24 +23,36 @@ namespace JuvoReactNative
         public readonly string Tag = "JuvoRN";
         EcoreEvent<EcoreKeyEventArgs> _keyDown;
         EcoreEvent<EcoreKeyEventArgs> _keyUp;
-        Window window = ReactProgram.RctWindow; //The main window of the application has to be transparent. 
+        Window window = ReactProgram.RctWindow; //The main window of the application has to be transparent.
         List<StreamDescription>[] allStreamsDescriptions = { null, null, null };
         public IPlayerService Player { get; private set; }
         private IDisposable seekCompletedSub;
         private IDisposable playerStateChangeSub;
         private IDisposable playbackErrorsSub;
         private IDisposable bufferingProgressSub;
+        private IDeepLinkSender deepLinkSender;
+        private string deepLinkUrl;
+        private bool hasDeepLinkListener;
 
-        public JuvoPlayerModule(ReactContext reactContext)
+        public JuvoPlayerModule(ReactContext reactContext, IDeepLinkSender deepLinkSender)
             : base(reactContext)
         {
             seekLogic = new SeekLogic(this);
+            this.deepLinkSender = deepLinkSender;
+            this.deepLinkSender.OnDeepLinkReceived += DeepLinkSenderOnOnDeepLinkReceived;
             seekCompletedSub = seekLogic.SeekCompleted().Subscribe(message =>
             {
                 var param = new JObject();
                 SendEvent("onSeekCompleted", param);
             });
         }
+
+        private void DeepLinkSenderOnOnDeepLinkReceived(string url)
+        {
+            deepLinkUrl = url;
+            SendDeepLinkIfNeeded();
+        }
+
         private void InitializeJuvoPlayer()
         {
             Player = new PlayerServiceProxy(new PlayerServiceImpl(window));
@@ -129,15 +141,16 @@ namespace JuvoReactNative
         }
         private void DisposePlayerSubscribers()
         {
-            playerStateChangeSub.Dispose();
-            playbackErrorsSub.Dispose();
-            bufferingProgressSub.Dispose();
+            playerStateChangeSub?.Dispose();
+            playbackErrorsSub?.Dispose();
+            bufferingProgressSub?.Dispose();
         }
         public void OnDestroy()
         {
             Logger?.Info("Destroying JuvoPlayerModule...");
             DisposePlayerSubscribers();
             seekCompletedSub.Dispose();
+            deepLinkSender.OnDeepLinkReceived -= DeepLinkSenderOnOnDeepLinkReceived;
         }
         public void OnResume()
         {
@@ -145,6 +158,15 @@ namespace JuvoReactNative
         public void OnSuspend()
         {
         }
+
+        private void SendDeepLinkIfNeeded()
+        {
+            if (!hasDeepLinkListener)
+                return;
+            SendEvent("handleDeepLink", new JObject {{"url", deepLinkUrl}});
+            deepLinkUrl = null;
+        }
+
         private void UpdateBufferingProgress(int percent)
         {
             //Propagate the bufffering progress event to JavaScript module
@@ -266,6 +288,7 @@ namespace JuvoReactNative
         [ReactMethod]
         public void StopPlayback()
         {
+            playbackTimer?.Dispose();
             Player?.Stop();
             DisposePlayerSubscribers();
             Player?.Dispose();
@@ -295,7 +318,11 @@ namespace JuvoReactNative
         {
             seekLogic.SeekBackward();
         }
-
-
+        [ReactMethod]
+        public void AttachDeepLinkListener()
+        {
+            hasDeepLinkListener = true;
+            SendDeepLinkIfNeeded();
+        }
     }
 }
