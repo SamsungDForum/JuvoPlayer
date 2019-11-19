@@ -28,5 +28,6 @@ namespace XamarinPlayer.Models
         public string Description { get; set; }
         public ICommand ContentFocusedCommand { get; set; }
         public object Clip { get; set; }
+        public string TilePreviewPath { get; set; }
     }
 }
