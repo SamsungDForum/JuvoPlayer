@@ -19,6 +19,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Xamarin.Forms;
 using Xamarin.Forms.Xaml;
+using XamarinPlayer.Tizen.TV.Controls;
 
 namespace XamarinPlayer.Controls
 {
@@ -55,7 +56,7 @@ namespace XamarinPlayer.Controls
             var nextIndex = index + 1;
             if (nextIndex == ContentLayout.Children.Count)
                 return false;
-            
+
             await SwapFocusedContent(ContentLayout.Children[nextIndex] as ContentItem);
             return true;
         }

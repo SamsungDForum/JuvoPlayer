@@ -15,16 +15,15 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-﻿using System.Collections.Generic;
+ using System.Collections.Generic;
 using System.ComponentModel;
-using System.IO;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Windows.Input;
 using Xamarin.Forms;
-using XamarinPlayer.Controls;
 using XamarinPlayer.Models;
 using XamarinPlayer.Services;
+using XamarinPlayer.Tizen.TV.Controls;
 
 namespace XamarinPlayer.ViewModels
 {
@@ -53,6 +52,7 @@ namespace XamarinPlayer.ViewModels
                 Image = o.Image,
                 Source = o.Source,
                 Title = o.Title,
+                TilePreviewPath =  o.TilePreviewPath
             }).ToList();
         }
 
