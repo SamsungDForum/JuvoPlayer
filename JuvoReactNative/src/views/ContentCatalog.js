@@ -36,7 +36,6 @@ export default class ContentCatalog extends Component {
     return true;
   }
   toggleVisibility() {
-    this.props.visibility = !this.props.visibility;
     this.props.switchView("PlaybackView");
   }
   rerender() {
