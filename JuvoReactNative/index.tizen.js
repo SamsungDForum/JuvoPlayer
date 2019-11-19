@@ -11,12 +11,14 @@ import {
   View,
   AppRegistry,
   NativeModules,
-  NativeEventEmitter, ActivityIndicator
+  NativeEventEmitter, ActivityIndicator, Text
 } from 'react-native';
 
 import ContentCatalog from './src/views/ContentCatalog';
 import PlaybackView from './src/views/PlaybackView';
 import ResourceLoader from "./src/ResourceLoader";
+import InProgressView from "./src/views/InProgressView";
+import HideableView from "./src/views/HideableView";
 
 export default class JuvoReactNative extends Component {
   constructor(props) {
@@ -80,13 +82,16 @@ export default class JuvoReactNative extends Component {
   }
 
   render() {
-    if (this.state.loading === true) {
+    if (this.state.loading) {
       return (
-        <ActivityIndicator style={{height: '100%', backgroundColor: 'transparent'}} size='large' color='#00ff00'/>
+        <View style={{ height: "100%", justifyContent: "center", alignItems: "center", backgroundColor: "black"}}>
+          <ActivityIndicator style={{margin: 10}} size='large' color='#00ff00' />
+          <Text style={{margin: 10, color: "#00ff00", fontSize: 18, fontWeight: "bold" }}>Please Wait...</Text>
+        </View>
       );
     } else {
       return (
-        <View style={styles.container} visibility={false}>
+        <View style={styles.container}>
           <ContentCatalog styles={styles}
                           visibility={this.state.components.isContentCatalogVisible}
                           switchView={this.switchComponentsView}

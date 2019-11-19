@@ -2,6 +2,8 @@
 using System.Collections.Generic;
 using System.Text;
 using System.Net;
+using System.Reactive.Linq;
+using System.Reactive.Subjects;
 using ReactNative;
 using ReactNative.Shell;
 using ReactNative.Modules.Core;
@@ -18,7 +20,8 @@ namespace JuvoReactNative
     {
         private static ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoRN");
         public static readonly string Tag = "JuvoRN";
-        public event OnDeepLinkReceived OnDeepLinkReceived;
+
+        private BehaviorSubject<string> deepLinkReceivedSubject = new BehaviorSubject<string>(null);
         public override string MainComponentName
         {
             get
@@ -95,7 +98,12 @@ namespace JuvoReactNative
             var payloadParser = new PayloadParser(e.ReceivedAppControl);
             if (!payloadParser.TryGetUrl(out var url))
                 return;
-            OnDeepLinkReceived?.Invoke(url);
+            deepLinkReceivedSubject.OnNext(url);
+        }
+
+        public IObservable<string> DeepLinkReceived()
+        {
+            return deepLinkReceivedSubject.AsObservable();
         }
 
         static void Main(string[] args)

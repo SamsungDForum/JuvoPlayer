@@ -30,16 +30,14 @@ namespace JuvoReactNative
         private IDisposable playerStateChangeSub;
         private IDisposable playbackErrorsSub;
         private IDisposable bufferingProgressSub;
+        private IDisposable deepLinkSub;
         private IDeepLinkSender deepLinkSender;
-        private string deepLinkUrl;
-        private bool hasDeepLinkListener;
 
         public JuvoPlayerModule(ReactContext reactContext, IDeepLinkSender deepLinkSender)
             : base(reactContext)
         {
             seekLogic = new SeekLogic(this);
             this.deepLinkSender = deepLinkSender;
-            this.deepLinkSender.OnDeepLinkReceived += DeepLinkSenderOnOnDeepLinkReceived;
             seekCompletedSub = seekLogic.SeekCompleted().Subscribe(message =>
             {
                 var param = new JObject();
@@ -47,10 +45,9 @@ namespace JuvoReactNative
             });
         }
 
-        private void DeepLinkSenderOnOnDeepLinkReceived(string url)
+        private void OnDeepLinkReceived(string url)
         {
-            deepLinkUrl = url;
-            SendDeepLinkIfNeeded();
+            SendEvent("handleDeepLink", new JObject {{"url", url}});
         }
 
         private void InitializeJuvoPlayer()
@@ -150,21 +147,13 @@ namespace JuvoReactNative
             Logger?.Info("Destroying JuvoPlayerModule...");
             DisposePlayerSubscribers();
             seekCompletedSub.Dispose();
-            deepLinkSender.OnDeepLinkReceived -= DeepLinkSenderOnOnDeepLinkReceived;
+            deepLinkSub?.Dispose();
         }
         public void OnResume()
         {
         }
         public void OnSuspend()
         {
-        }
-
-        private void SendDeepLinkIfNeeded()
-        {
-            if (!hasDeepLinkListener)
-                return;
-            SendEvent("handleDeepLink", new JObject {{"url", deepLinkUrl}});
-            deepLinkUrl = null;
         }
 
         private void UpdateBufferingProgress(int percent)
@@ -321,8 +310,8 @@ namespace JuvoReactNative
         [ReactMethod]
         public void AttachDeepLinkListener()
         {
-            hasDeepLinkListener = true;
-            SendDeepLinkIfNeeded();
+            if (deepLinkSub == null)
+                deepLinkSub = deepLinkSender.DeepLinkReceived().Subscribe(OnDeepLinkReceived);
         }
     }
 }
