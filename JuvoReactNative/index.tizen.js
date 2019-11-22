@@ -74,7 +74,7 @@ export default class JuvoReactNative extends Component {
       let index = ResourceLoader.clipsData.findIndex(e => e.url === deepLink.url);
       if (index !== -1) {
         this.handleSelectedIndexChange(index);
-        this.switchComponentsView('PlaybackView', true);
+        this.switchComponentsView('PlaybackView');
       }
     }
 
