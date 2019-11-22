@@ -17,7 +17,7 @@ export default class PlaybackView extends React.Component {
     this.playbackTimeCurrent = 0;
     this.playbackTimeTotal = 0;
     this.state = {
-      selectedIndex: 0
+      selectedIndex: this.props.selectedIndex
     };
     this.visible = false;
     this.keysListenningOff = false;

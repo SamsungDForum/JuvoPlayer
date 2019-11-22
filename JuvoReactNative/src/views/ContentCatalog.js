@@ -49,7 +49,6 @@ export default class ContentCatalog extends Component {
     //pressed.KeyCode
     if (this.keysListenningOff) return;
     switch (pressed.KeyName) {
-      case "XF86Back":
       case "XF86AudioStop":
       case "Return":
       case "XF86AudioPlay":
