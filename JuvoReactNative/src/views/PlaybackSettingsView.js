@@ -75,9 +75,9 @@ export default class PlaybackSettingsView extends React.Component {
   render() {
     const fadeduration = 300;
     return (
-      <View>
+      <View style={{width: 1600, height: 350}}>
         <HideableView visible={this.props.visible} duration={fadeduration}>
-          <View style={{ width: 1600, height: 350, justifyContent: "center", alignItems: "center", backgroundColor: "#000000", opacity: 0.8 }}>
+          <View style={{width: '100%', height: '100%', justifyContent: "center", alignItems: "center", backgroundColor: "#000000", opacity: 0.8 }}>
             <Picker
               selectedValue={this.settings.audioSetting}
               style={{ left: -500, top: 100, height: 30, width: 450, color: "#ffffff" }}
