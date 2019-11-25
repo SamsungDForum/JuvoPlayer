@@ -42,18 +42,20 @@ namespace JuvoPlayer.Player.EsPlayer
 
         private readonly IScheduler _scheduler;
 
-        // Do not filter output to distinc values. Clients may start listening (without resubscription)
+        // Do not filter output to distinct values. Clients may start listening (without re-subscription)
         // at their discretion.
         private readonly IConnectableObservable<TimeSpan> _dataClockSource;
         private readonly IObservable<TimeSpan> _dataClockObservable;
         private readonly Subject<TimeSpan> _dataClockSubject = new Subject<TimeSpan>();
         private readonly IDisposable _disabledClock = Disposable.Empty;
+        private readonly PlayerClockProvider _playerClock;
 
         private bool _isDisposed;
 
-        public DataClockProvider(IScheduler scheduler)
+        public DataClockProvider(IScheduler scheduler, PlayerClockProvider playerClock)
         {
             _scheduler = scheduler;
+            _playerClock = playerClock;
 
             _dataClockSource =
                 Observable.Interval(DataClockProviderConfig.ClockInterval, _scheduler)
@@ -135,7 +137,7 @@ namespace JuvoPlayer.Player.EsPlayer
             // Packet drops - Notify data provided on dropped packets OR what is common clock
             //                so counting of buffered data can be done from that point.
             //
-            var playerClock = PlayerClockProvider.LastClock;
+            var playerClock = _playerClock.LastClock;
             if (playerClock != PlayerClockProviderConfig.InvalidClock)
                 _sourceClock = playerClock;
 

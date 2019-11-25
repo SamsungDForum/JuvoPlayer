@@ -17,6 +17,7 @@
 
 using System;
 using System.Reactive.Concurrency;
+using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
 using JuvoLogger;
@@ -31,14 +32,12 @@ namespace JuvoPlayer.Player.EsPlayer
         private static readonly ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
 
         private PlayerClockFn _playerClock = InvalidClockFn;
-        public static TimeSpan LastClock { get; private set; } = InvalidClock;
+        public TimeSpan LastClock { get; private set; } = InvalidClock;
 
         private readonly IScheduler _scheduler;
         private IDisposable _playerClockSourceConnection;
         private readonly IConnectableObservable<TimeSpan> _playerClockConnectable;
         private bool _isDisposed;
-
-        private static volatile PlayerClockProvider _this;
 
         public PlayerClockProvider(IScheduler scheduler)
         {
@@ -50,13 +49,6 @@ namespace JuvoPlayer.Player.EsPlayer
                     .Where(clkValue => clkValue >= LastClock)
                     .Do(clkValue => LastClock = clkValue)
                     .Publish();
-
-            _this = this;
-        }
-
-        public static PlayerClockProvider GetInstance()
-        {
-            return _this;
         }
 
         public IObservable<TimeSpan> PlayerClockObservable()
@@ -66,12 +58,17 @@ namespace JuvoPlayer.Player.EsPlayer
 
         public void SetPlayerClockSource(PlayerClockFn clockFn)
         {
-            Logger.Info("");
             if (clockFn == null)
                 clockFn = InvalidClockFn;
 
-            _scheduler.Schedule(clockFn,
-                (args, _) => _playerClock = args);
+            _scheduler.Schedule(clockFn, SetClockFunction);
+        }
+
+        private IDisposable SetClockFunction(IScheduler scheduler, PlayerClockFn clockFn)
+        {
+            _playerClock = clockFn;
+            Logger.Info($"Clock Set: {clockFn}");
+            return Disposable.Empty;
         }
 
         private static TimeSpan InvalidClockFn()
@@ -98,6 +95,7 @@ namespace JuvoPlayer.Player.EsPlayer
             _playerClockSourceConnection?.Dispose();
             _playerClockSourceConnection = null;
             LastClock = InvalidClock;
+            Logger.Info("");
         }
 
         public void Dispose()
@@ -108,7 +106,6 @@ namespace JuvoPlayer.Player.EsPlayer
             _isDisposed = true;
             SetPlayerClockSource(null);
             DisableClock();
-            _this = null;
         }
     }
 }
