@@ -19,7 +19,6 @@ using System;
 using System.Reactive.Linq;
 using System.Reactive.Threading.Tasks;
 using System.Threading.Tasks;
-using JuvoLogger;
 using JuvoPlayer.Common;
 using NUnit.Framework;
 
@@ -29,7 +28,6 @@ namespace JuvoPlayer.Tests.Utils
     public class PrepareOperation : TestOperation
     {
         private Task _stateObservedTask = Task.CompletedTask;
-        private readonly ILogger _logger = LoggerManager.GetInstance().GetLogger("UT");
 
         public override bool Equals(object obj)
         {
@@ -47,9 +45,7 @@ namespace JuvoPlayer.Tests.Utils
         {
             _stateObservedTask = context.Service
                 .StateChanged()
-                .Do(s => _logger.Info($"*** *** PrepareOperation {s}"))
                 .FirstAsync(IsPreparedObserved)
-                .Do(s => _logger.Info($"*** *** PrepareOperation {s} Completed"))
                 .Timeout(context.Timeout)
                 .ToTask(context.Token);
         }
