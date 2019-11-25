@@ -49,7 +49,7 @@ export default class NotificationPopup extends Component {
   render() {
     const fadeduration = 300;
     return (
-      <View style={{width: 850, height: 430}}>
+      <View style={{ width: 850, height: 430 }}>
         <HideableView visible={this.props.visible} duration={fadeduration}>
           <View
             style={{
