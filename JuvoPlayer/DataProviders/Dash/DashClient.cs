@@ -159,8 +159,8 @@ namespace JuvoPlayer.DataProviders.Dash
                 LogInfo($"Data clock update: {_dataClockLimit}->{request}");
 
             _dataClockLimit = request;
-
-            ScheduleNextSegDownload();
+            bufferAvailable = true; // Set "bufferAvailable" flag. Provides more verbose output without over flooding.
+            downloadCompletedSubject.OnNext(Unit.Default);
         }
 
         public TimeSpan Seek(TimeSpan position)
@@ -268,6 +268,7 @@ namespace JuvoPlayer.DataProviders.Dash
                 return;
             }
 
+            Logger.Info($"{processDataTask?.Status} {processDataTask.IsCompleted} {cancellationTokenSource == null} {cancellationTokenSource?.IsCancellationRequested}");
             if (!processDataTask.IsCompleted || cancellationTokenSource == null || cancellationTokenSource.IsCancellationRequested)
                 return;
 
