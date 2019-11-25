@@ -1,6 +1,6 @@
 "use strict";
 import React from "react";
-import { View, Image, ScrollView, NativeModules, NativeEventEmitter } from "react-native";
+import {View, Image, ScrollView, NativeModules, NativeEventEmitter} from "react-native";
 
 import ContentPicture from "./ContentPicture";
 import ContentDescription from "./ContentDescription";
@@ -11,7 +11,7 @@ export default class ContentScroll extends React.Component {
     super(props);
     this._scrollView;
     this.curIndex = 0;
-    this.state = { selectedIndex: 0 };
+    this.state = {selectedIndex: 0};
     this.numItems = this.props.contentURIs.length;
     this.scrolloffset = 0;
     this.itemWidth = 454;
@@ -27,18 +27,18 @@ export default class ContentScroll extends React.Component {
     if (this.curIndex < this.numItems - 1) {
       this.curIndex++;
       this.scrolloffset = this.curIndex * this.itemWidth;
-      this._scrollView.scrollTo({ x: this.scrolloffset, y: 0, animated: true });
+      this._scrollView.scrollTo({x: this.scrolloffset, y: 0, animated: true});
     }
-    this.setState({ selectedIndex: this.curIndex });
+    this.setState({selectedIndex: this.curIndex});
   }
 
   handleButtonPressLeft() {
     if (this.curIndex > 0) {
       this.curIndex--;
       this.scrolloffset = this.curIndex * this.itemWidth;
-      this._scrollView.scrollTo({ x: this.scrolloffset, y: 0, animated: true });
+      this._scrollView.scrollTo({x: this.scrolloffset, y: 0, animated: true});
     }
-    this.setState({ selectedIndex: this.curIndex });
+    this.setState({selectedIndex: this.curIndex});
   }
 
   componentWillMount() {
@@ -66,7 +66,7 @@ export default class ContentScroll extends React.Component {
     if (this.props.keysListenningOff) return;
 
     this.props.onSelectedIndexChange(this.curIndex);
-    this.setState({ selectedIndex: this.curIndex });
+    this.setState({selectedIndex: this.curIndex});
   }
 
   shouldComponentUpdate(nextProps, nextState) {
@@ -84,7 +84,7 @@ export default class ContentScroll extends React.Component {
     const length = +this.props.contentURIs.length;
     const renderThumbs = (uri, i) => (
       <View key={i}>
-        <Image resizeMode='cover' style={{ top: itemHeight / 2 + 35, left: itemWidth / 2 - 25 }} source={overlayPath} />
+        <Image resizeMode='cover' style={{top: itemHeight / 2 + 35, left: itemWidth / 2 - 25}} source={overlayPath}/>
         <ContentPicture
           source={uri}
           myIndex={i}
@@ -128,8 +128,8 @@ export default class ContentScroll extends React.Component {
               width: 900,
               height: 800
             }}
-            headerStyle={{ fontSize: 60, color: "#ffffff" }}
-            bodyStyle={{ fontSize: 30, color: "#ffffff", top: 0 }}
+            headerStyle={{fontSize: 60, color: "#ffffff"}}
+            bodyStyle={{fontSize: 30, color: "#ffffff", top: 0}}
             headerText={title}
             bodyText={description}
           />

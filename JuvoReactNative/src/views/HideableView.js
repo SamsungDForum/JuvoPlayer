@@ -35,9 +35,9 @@ export default class HideableView extends Component {
 
     const width = this.props.width ? this.props.width : '100%';
     const height = this.props.height ? this.props.height : '100%';
-    
+
     return (
-      <View style={{position: this.props.position, width: width, height: height}}>
+      <View style={{ position: this.props.position, width: width, height: height }}>
         <Animated.View style={{ opacity: this.state.opacity }}>{this.props.children}</Animated.View>
       </View>
     );

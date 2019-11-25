@@ -11,7 +11,7 @@ export default class InProgressView extends React.Component {
   render() {
     const fadeduration = 300;
     return (
-      <View style={{ width: 200, height: 200}}>
+      <View style={{ width: 200, height: 200 }}>
         <HideableView visible={this.props.visible} duration={fadeduration}>
           <View style={{ width: '100%', height: '100%', justifyContent: "center", alignItems: "center", backgroundColor: "#000000", opacity: 0.6 }}>
             <ActivityIndicator style={{ left: 0, top: -10 }} size='large' color='#00ff00' />
