@@ -60,6 +60,12 @@ namespace JuvoPlayer.Tests.Utils
             var descriptions = service.GetStreamsDescription(StreamType);
             if (Index >= 0)
                 service.ChangeActiveStream(descriptions[Index]);
+
+            return Task.CompletedTask;
+        }
+
+        public Task Result(TestContext context)
+        {
             return Task.CompletedTask;
         }
 

@@ -30,7 +30,6 @@ using JuvoPlayer.Tests.Utils;
 using JuvoPlayer.Utils;
 using Nito.AsyncEx;
 using NUnit.Framework;
-using JuvoPlayer.Player.EsPlayer;
 using TestContext = JuvoPlayer.Tests.Utils.TestContext;
 
 namespace JuvoPlayer.TizenTests.IntegrationTests
@@ -86,13 +85,13 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
         {
             AsyncContext.Run(async () =>
             {
-                try
-                {
-                    _logger.Info($"Begin: {NUnit.Framework.TestContext.CurrentContext.Test.FullName}");
+                _logger.Info($"Begin: {NUnit.Framework.TestContext.CurrentContext.Test.FullName}");
 
-                    using (var cts = new CancellationTokenSource())
+                using (var cts = new CancellationTokenSource())
+                {
+                    using (var service = new PlayerService())
                     {
-                        using (var service = new PlayerService())
+                        try
                         {
                             var context = new TestContext
                             {
@@ -109,24 +108,32 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
                                     ? TimeSpan.FromSeconds(40)
                                     : TimeSpan.FromSeconds(20)
                             };
-                            await new PrepareOperation().Execute(context);
-                            await new StartOperation().Execute(context);
+                            var prepareOperation = new PrepareOperation();
+                            prepareOperation.Prepare(context);
+                            await prepareOperation.Execute(context);
+                            await prepareOperation.Result(context);
+
+                            var startOperation = new StartOperation();
+                            startOperation.Prepare(context);
+                            await startOperation.Execute(context);
+                            await startOperation.Result(context);
 
                             await testImpl(context);
                         }
+                        catch (Exception e)
+                        {
+                            _logger.Error($"Error: {NUnit.Framework.TestContext.CurrentContext.Test.FullName} {e.Message} {e.StackTrace}");
+                            throw;
+                        }
 
-                        // Test completed.
-                        // Do cancellation to terminate test's sub activities (if any)
+                        // Test completed. Cancel token to kill any test's sub activities.
+                        // Do so before PlayerService gets destroyed (in case those activities access it)
                         cts.Cancel();
                     }
+                }
 
-                    _logger.Info($"End: {NUnit.Framework.TestContext.CurrentContext.Test.FullName}");
-                }
-                catch (Exception e)
-                {
-                    _logger.Error($"Error: {NUnit.Framework.TestContext.CurrentContext.Test.FullName} {e.Message} {e.StackTrace}");
-                    throw;
-                }
+                _logger.Info($"End: {NUnit.Framework.TestContext.CurrentContext.Test.FullName}");
+
             });
         }
 
@@ -135,14 +142,22 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
         {
             RunPlayerTest(clipTitle, async context =>
             {
-                if (PlayerClockProvider.LastClock > TimeSpan.Zero)
-                    return;
+                try
+                {
+                    await context.Service
+                        .PlayerClock()
+                        .FirstAsync(pClock => pClock > TimeSpan.Zero)
+                        .Timeout(context.Timeout)
+                        .ToTask(context.Token)
+                        .ConfigureAwait(false);
 
-                await Task.Delay(TimeSpan.FromSeconds(1));
-
-                var clock = PlayerClockProvider.LastClock;
-
-                Assert.That(clock, Is.GreaterThan(TimeSpan.Zero));
+                }
+                catch (OperationCanceledException)
+                {
+                    // If cancellation was not caused by timeout, don't report it. 
+                    if (!context.Token.IsCancellationRequested)
+                        throw;
+                }
 
             });
         }
@@ -158,6 +173,7 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
                     var seekOperation = new SeekOperation();
                     seekOperation.Prepare(context);
                     await seekOperation.Execute(context);
+                    await seekOperation.Result(context);
                 }
             });
         }
@@ -191,6 +207,7 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
                     var seekOperation = new SeekOperation();
                     seekOperation.Prepare(context);
                     await seekOperation.Execute(context);
+                    await seekOperation.Result(context);
                 }
             });
         }
@@ -210,6 +227,7 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
                     var seekOperation = new SeekOperation();
                     seekOperation.Prepare(context);
                     await seekOperation.Execute(context);
+                    await seekOperation.Result(context);
                 }
             });
         }
@@ -223,21 +241,26 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
                 context.SeekTime = service.Duration;
                 try
                 {
+                    var clipCompletedTask = service.StateChanged()
+                        .AsCompletion()
+                        .FirstAsync()
+                        .Timeout(context.Timeout)
+                        .ToTask();
+
                     var seekOperation = new SeekOperation();
                     seekOperation.Prepare(context);
                     var seekTask = seekOperation.Execute(context);
 
-                    var clipCompletedTask = service.StateChanged()
-                        .AsCompletion()
-                        .Timeout(context.Timeout)
-                        .FirstAsync()
-                        .ToTask();
-
-                    await await Task.WhenAny(seekTask, clipCompletedTask);
+                    await await Task.WhenAny(seekTask, clipCompletedTask).ConfigureAwait(false);
                 }
                 catch (SeekException)
                 {
                     // ignored
+                }
+                catch (Exception e)
+                {
+                    _logger.Error(e);
+                    throw;
                 }
             });
         }
@@ -248,22 +271,24 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
             RunPlayerTest(clipTitle, async context =>
             {
                 var service = context.Service;
-
-                context.SeekTime = service.Duration - TimeSpan.FromSeconds(5);
-                var seekOperation = new SeekOperation();
-                seekOperation.Prepare(context);
-
                 var playbackErrorTask = service.PlaybackError()
                     .FirstAsync()
+                    .Timeout(context.Timeout)
                     .ToTask();
 
                 var clipCompletedTask = service.StateChanged()
                     .AsCompletion()
-                    .Timeout(context.Timeout)
                     .FirstAsync()
+                    .Timeout(context.Timeout)
                     .ToTask();
 
-                await await Task.WhenAny(seekOperation.Execute(context), clipCompletedTask, playbackErrorTask);
+                context.SeekTime = service.Duration - TimeSpan.FromSeconds(5);
+                var seekOperation = new SeekOperation();
+                seekOperation.Prepare(context);
+                await seekOperation.Execute(context);
+
+                await await Task.WhenAny(clipCompletedTask, playbackErrorTask).ConfigureAwait(false);
+
             });
         }
 
@@ -295,19 +320,19 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
                 context.DelayTime = TimeSpan.FromSeconds(2);
                 context.Timeout = TSPlayerServiceTestCaseSource.IsEncrypted(clipTitle) ? TimeSpan.FromSeconds(40) : TimeSpan.FromSeconds(20);
 
-                if (shouldPrepare)
-                    foreach (var operation in operations)
+                foreach (var operation in operations)
+                {
+                    if (shouldPrepare)
                     {
                         _logger.Info($"Prepare: {operation}");
                         operation.Prepare(context);
-                        _logger.Info($"Prepare Done: {operation}");
                     }
 
-                foreach (var operation in operations)
-                {
                     _logger.Info($"Execute: {operation}");
                     await operation.Execute(context);
-                    _logger.Info($"Execute Done: {operation}");
+                    _logger.Info($"Result {operation}");
+                    await operation.Result(context);
+                    _logger.Info($"Done: {operation}");
                 }
             });
         }

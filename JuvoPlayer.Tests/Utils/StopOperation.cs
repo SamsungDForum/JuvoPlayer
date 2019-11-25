@@ -15,6 +15,8 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+using System.Reactive.Linq;
+using System.Reactive.Threading.Tasks;
 using System.Threading.Tasks;
 using JuvoPlayer.Common;
 
@@ -22,6 +24,8 @@ namespace JuvoPlayer.Tests.Utils
 {
     public class StopOperation : TestOperation
     {
+        private Task _stateObservedTask;
+
         public override bool Equals(object obj)
         {
             if (ReferenceEquals(null, obj)) return false;
@@ -36,13 +40,26 @@ namespace JuvoPlayer.Tests.Utils
 
         public void Prepare(TestContext context)
         {
+            _stateObservedTask = context.Service
+                .StateChanged()
+                .FirstAsync(IsIdleObserved)
+                .Timeout(context.Timeout)
+                .ToTask(context.Token);
         }
+
+        private static bool IsIdleObserved(PlayerState playerState) =>
+            playerState == PlayerState.Idle;
 
         public Task Execute(TestContext context)
         {
             var service = context.Service;
             service.Stop();
-            return StateChangedTask.Observe(service, PlayerState.Idle, context.Token, context.Timeout);
+            return Task.CompletedTask;
+        }
+
+        public Task Result(TestContext context)
+        {
+            return _stateObservedTask;
         }
     }
 }
