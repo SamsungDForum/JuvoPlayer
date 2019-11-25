@@ -70,18 +70,18 @@ namespace JuvoPlayer.Player.EsPlayer
             set => streamControl.Client = value;
         }
 
-        public void Pause()
+        public Task Pause()
         {
             logger.Info("");
 
-            streamControl.Pause();
+            return streamControl.Pause();
         }
 
-        public void Play()
+        public Task Play()
         {
             logger.Info("");
 
-            streamControl.Play();
+            return streamControl.Play();
         }
 
         public void Stop()
@@ -125,9 +125,9 @@ namespace JuvoPlayer.Player.EsPlayer
             return streamControl.ErrorOccured();
         }
 
-        public IObservable<TimeSpan> TimeUpdated()
+        public IObservable<TimeSpan> PlayerClock()
         {
-            return streamControl.TimeUpdated();
+            return streamControl.PlayerClock();
         }
 
         public IObservable<int> BufferingProgress()
