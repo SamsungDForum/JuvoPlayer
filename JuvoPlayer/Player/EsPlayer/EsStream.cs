@@ -98,7 +98,7 @@ namespace JuvoPlayer.Player.EsPlayer
 
         private readonly Synchronizer _dataSynchronizer;
         private readonly SuspendResumeLogic _suspendResumeLogic;
-
+        private readonly PlayerClockProvider _playerClock;
 
         public IObservable<string> PlaybackError()
         {
@@ -112,13 +112,14 @@ namespace JuvoPlayer.Player.EsPlayer
 
         #region Public API
 
-        public EsStream(StreamType type, EsPlayerPacketStorage storage, Synchronizer synchronizer, SuspendResumeLogic suspendRedumeLogic)
+        public EsStream(StreamType type, EsPlayerPacketStorage storage, Synchronizer synchronizer, SuspendResumeLogic suspendRedumeLogic, PlayerClockProvider playerClock)
         {
             streamType = type;
             packetStorage = storage;
             _dataSynchronizer = synchronizer;
             _dataSynchronizer.Initialize(streamType);
             _suspendResumeLogic = suspendRedumeLogic;
+            _playerClock = playerClock;
 
             switch (streamType)
             {
@@ -378,7 +379,7 @@ namespace JuvoPlayer.Player.EsPlayer
         private async Task TransferTask()
         {
             CancellationToken token = transferCts.Token;
-            logger.Info($"{streamType}: Started");
+            logger.Info($"{streamType}: Started {Thread.CurrentThread.ManagedThreadId}");
 
             try
             {
@@ -451,7 +452,7 @@ namespace JuvoPlayer.Player.EsPlayer
             if (currentPacket == null)
             {
                 if (packetStorage.Count(streamType) == 0 &&
-                    (PlayerClockProvider.LastClock - currentPts).Duration() <= EsStreamConfig.BufferingEventThreshold)
+                    (_playerClock.LastClock - currentPts).Duration() <= EsStreamConfig.BufferingEventThreshold)
                 {
                     await _suspendResumeLogic.RequestBuffering(true);
                     currentPacket = packetStorage.GetPacket(streamType, token);

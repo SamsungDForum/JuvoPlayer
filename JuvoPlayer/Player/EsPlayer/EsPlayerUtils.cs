@@ -18,7 +18,6 @@
 using JuvoPlayer.Common;
 using System;
 using System.Collections.Generic;
-using System.Diagnostics;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
@@ -42,12 +41,12 @@ namespace JuvoPlayer.Player.EsPlayer
     {
         internal static TimeSpan FromNano(this ulong nanoTime)
         {
-            return TimeSpan.FromMilliseconds(nanoTime / (double) 1000000);
+            return TimeSpan.FromMilliseconds(nanoTime / (double)1000000);
         }
 
         internal static ulong TotalNanoseconds(this TimeSpan clock)
         {
-            return (ulong) (clock.TotalMilliseconds * 1000000);
+            return (ulong)(clock.TotalMilliseconds * 1000000);
         }
     }
 
@@ -60,7 +59,7 @@ namespace JuvoPlayer.Player.EsPlayer
         private static unsafe byte[] ToManagedBuffer(this INativeDataStorage storage)
         {
             var managedBuffer = new byte[storage.Length];
-            Marshal.Copy((IntPtr) storage.Data, managedBuffer, 0, storage.Length);
+            Marshal.Copy((IntPtr)storage.Data, managedBuffer, 0, storage.Length);
             return managedBuffer;
         }
 
@@ -70,7 +69,7 @@ namespace JuvoPlayer.Player.EsPlayer
             if (packet.Storage is IManagedDataStorage dataStorage)
                 buffer = dataStorage.Data;
             else
-                buffer = ((INativeDataStorage) packet.Storage).ToManagedBuffer();
+                buffer = ((INativeDataStorage)packet.Storage).ToManagedBuffer();
             return new ESPacket
             {
                 type = packet.StreamType.ESStreamType(),
@@ -117,8 +116,8 @@ namespace JuvoPlayer.Player.EsPlayer
             dispatchMap[(typeof(Packet), typeof(INativeDataStorage))] = SubmitManagedPriv;
             dispatchMap[(typeof(Packet), typeof(IManagedDataStorage))] = SubmitManagedPriv;
             dispatchMap[(typeof(DecryptedEMEPacket), null)] = (player, packet) =>
-                SubmitDecryptedPriv(player, (DecryptedEMEPacket) packet);
-            dispatchMap[(typeof(EOSPacket), null)] = (player, packet) => SubmitEOSPriv(player, (EOSPacket) packet);
+                SubmitDecryptedPriv(player, (DecryptedEMEPacket)packet);
+            dispatchMap[(typeof(EOSPacket), null)] = (player, packet) => SubmitEOSPriv(player, (EOSPacket)packet);
         }
 
         internal static SubmitStatus Submit(this ESPlayer player, Packet packet)
@@ -204,7 +203,7 @@ namespace JuvoPlayer.Player.EsPlayer
         {
             var tcs = new TaskCompletionSource<bool>();
             using (token.Register(
-                s => ((TaskCompletionSource<bool>) s).TrySetResult(true), tcs))
+                s => ((TaskCompletionSource<bool>)s).TrySetResult(true), tcs))
             {
                 if (nonCancellable != await Task.WhenAny(nonCancellable, tcs.Task).ConfigureAwait(false))
                     throw new OperationCanceledException(token.ToString());
@@ -217,13 +216,22 @@ namespace JuvoPlayer.Player.EsPlayer
         {
             var tcs = new TaskCompletionSource<bool>();
             using (token.Register(
-                s => ((TaskCompletionSource<bool>) s).TrySetResult(true), tcs))
+                s => ((TaskCompletionSource<bool>)s).TrySetResult(true), tcs))
             {
                 if (nonCancellable != await Task.WhenAny(nonCancellable, tcs.Task).ConfigureAwait(false))
                     throw new OperationCanceledException(token.ToString());
             }
 
             await nonCancellable;
+        }
+
+        public static async Task WithTimeout(this Task nonCancellable, TimeSpan timeout)
+        {
+            using (var cts = new CancellationTokenSource())
+            {
+                cts.CancelAfter(timeout);
+                await nonCancellable.WithCancellation(cts.Token);
+            }
         }
     }
 
@@ -313,7 +321,7 @@ namespace JuvoPlayer.Player.EsPlayer
             if (!(streamConfig is Common.VideoStreamConfig))
                 throw new ArgumentException("StreamConfig is not of VideoStreamConfig Type");
 
-            var videoConfig = (Common.VideoStreamConfig) streamConfig;
+            var videoConfig = (Common.VideoStreamConfig)streamConfig;
 
             // Sort configuration by FPS (lowest first) & get an entry matching codec & FPS
             var fpsOrderedConfigs = VideoConfigurations.OrderBy(entry => entry.Fps);
@@ -342,7 +350,7 @@ namespace JuvoPlayer.Player.EsPlayer
             if (!(streamConfig is Common.AudioStreamConfig))
                 throw new ArgumentException("StreamConfig is not of AudioStreamConfig Type");
 
-            var audioConfig = (Common.AudioStreamConfig) streamConfig;
+            var audioConfig = (Common.AudioStreamConfig)streamConfig;
 
             return new AudioStreamInfo
             {
