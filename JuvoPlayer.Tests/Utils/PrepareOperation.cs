@@ -16,7 +16,10 @@
  */
 
 using System;
+using System.Reactive.Linq;
+using System.Reactive.Threading.Tasks;
 using System.Threading.Tasks;
+using JuvoLogger;
 using JuvoPlayer.Common;
 using NUnit.Framework;
 
@@ -25,6 +28,9 @@ namespace JuvoPlayer.Tests.Utils
     [Serializable]
     public class PrepareOperation : TestOperation
     {
+        private Task _stateObservedTask = Task.CompletedTask;
+        private readonly ILogger _logger = LoggerManager.GetInstance().GetLogger("UT");
+
         public override bool Equals(object obj)
         {
             if (ReferenceEquals(null, obj)) return false;
@@ -39,7 +45,17 @@ namespace JuvoPlayer.Tests.Utils
 
         public void Prepare(TestContext context)
         {
+            _stateObservedTask = context.Service
+                .StateChanged()
+                .Do(s => _logger.Info($"*** *** PrepareOperation {s}"))
+                .FirstAsync(IsPreparedObserved)
+                .Do(s => _logger.Info($"*** *** PrepareOperation {s} Completed"))
+                .Timeout(context.Timeout)
+                .ToTask(context.Token);
         }
+
+        private static bool IsPreparedObserved(PlayerState playerState) =>
+            playerState == PlayerState.Prepared;
 
         public Task Execute(TestContext context)
         {
@@ -53,7 +69,12 @@ namespace JuvoPlayer.Tests.Utils
 
             service.SetSource(clip);
 
-            return StateChangedTask.Observe(service, PlayerState.Prepared, context.Token, context.Timeout);
+            return Task.CompletedTask;
+        }
+
+        public Task Result(TestContext context)
+        {
+            return _stateObservedTask;
         }
     }
 }

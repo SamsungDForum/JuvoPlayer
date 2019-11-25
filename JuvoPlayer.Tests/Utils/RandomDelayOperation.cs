@@ -34,7 +34,7 @@ namespace JuvoPlayer.Tests.Utils
         {
             if (ReferenceEquals(null, obj)) return false;
             if (ReferenceEquals(this, obj)) return true;
-            return obj.GetType() == GetType() && Equals((RandomDelayOperation) obj);
+            return obj.GetType() == GetType() && Equals((RandomDelayOperation)obj);
         }
 
         public override int GetHashCode()
@@ -46,13 +46,18 @@ namespace JuvoPlayer.Tests.Utils
         {
             var maxDelayTime = context.RandomMaxDelayTime;
             var rand = new Random();
-            var millisecondsDelay = rand.Next((int) maxDelayTime.TotalMilliseconds);
+            var millisecondsDelay = rand.Next((int)maxDelayTime.TotalMilliseconds);
             Delay = TimeSpan.FromMilliseconds(millisecondsDelay);
         }
 
         public Task Execute(TestContext context)
         {
             return Task.Delay(Delay);
+        }
+
+        public Task Result(TestContext context)
+        {
+            return Task.CompletedTask;
         }
     }
 }

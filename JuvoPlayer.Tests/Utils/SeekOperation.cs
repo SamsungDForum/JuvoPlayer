@@ -17,6 +17,9 @@
 
 using System;
 using System.Collections.Generic;
+using System.Reactive.Concurrency;
+using System.Reactive.Linq;
+using System.Reactive.Threading.Tasks;
 using System.Threading;
 using System.Threading.Tasks;
 using JuvoLogger;
@@ -31,6 +34,8 @@ namespace JuvoPlayer.Tests.Utils
         private readonly ILogger _logger = LoggerManager.GetInstance().GetLogger("UT");
 
         public TimeSpan SeekPosition { get; set; }
+
+        private Task _seekPositionReachedTask = Task.CompletedTask;
 
         private bool Equals(SeekOperation other)
         {
@@ -56,64 +61,61 @@ namespace JuvoPlayer.Tests.Utils
             SeekPosition = newSeekPos - TimeSpan.FromMilliseconds(newSeekPos.Milliseconds);
         }
 
+        private static Task GetPositionReachedTask(TestContext context, TimeSpan targetClock)
+        {
+            // don't set timeout on positionReached task. Timeout will be applied when awaiting result.
+            return context.Service
+                .PlayerClock()
+                .FirstAsync(pClock =>
+                {
+                    var clk = pClock - TimeSpan.FromMilliseconds(pClock.Milliseconds);
+                    var diffMs = Math.Abs((clk - targetClock).TotalMilliseconds);
+                    return diffMs <= 500;
+                })
+                .ToTask(context.Token);
+        }
+
         public async Task Execute(TestContext context)
         {
-            List<(TimeSpan clock, double diff)> clocks = new List<(TimeSpan clock, double diff)>();
-
             var service = context.Service;
 
-            var tcs = new TaskCompletionSource<bool>();
             var seekDuringPause = service.State == PlayerState.Paused;
 
             _logger.Info($"Seeking to {SeekPosition}");
 
             try
             {
-                using (PlayerClockProvider.GetInstance().PlayerClockObservable().Subscribe(clk =>
+                // Seek in paused state requires resume.
+                if (seekDuringPause)
                 {
-                    // Remove ms component.
-                    clk = clk - TimeSpan.FromMilliseconds(clk.Milliseconds);
-                    var diffMs = Math.Abs((clk - SeekPosition).TotalMilliseconds);
-
-                    if (diffMs <= 500)
-                    {
-                        tcs.TrySetResult(true);
-                        return;
-                    }
-
-                    clocks.Add((clk, diffMs));
-                }, SynchronizationContext.Current))
-                using (var timeoutCts = new CancellationTokenSource())
-                using (var linkedCts = CancellationTokenSource.CreateLinkedTokenSource(timeoutCts.Token, context.Token))
-                {
-                    timeoutCts.CancelAfter(context.Timeout);
-
-                    var seekTask = service.SeekTo(SeekPosition);
-
-                    // Seek in paused state requires resume.
-                    if (seekDuringPause)
-                        service.Start();
-
-                    await seekTask.WithCancellation(linkedCts.Token);
-                    await tcs.Task.WithCancellation(linkedCts.Token);
+                    _logger.Info($"Seeking in Paused state. Resuming playback");
+                    var startOperation = new StartOperation();
+                    await startOperation.Execute(context);
+                    await startOperation.Result(context);
                 }
+
+                var seek = service.SeekTo(SeekPosition);
+                _seekPositionReachedTask = GetPositionReachedTask(context, SeekPosition);
+
+                await seek.WithTimeout(context.Timeout);
             }
-            catch (OperationCanceledException)
+            catch (SeekException)
             {
-                // If cancellation was not coused by timeout, don't report it. External
-                // cancellation are not reported.
-                if (!context.Token.IsCancellationRequested)
-                    throw;
+                // Ignore
             }
-            catch (Exception)
+
+        }
+
+        public async Task Result(TestContext context)
+        {
+            _logger.Info($"Waiting for seek position: {SeekPosition}");
+            try
             {
-                _logger.Error($"Timeout: {context.Timeout}");
-                _logger.Error($"Seek To: {SeekPosition}");
-                foreach (var clock in clocks)
-                {
-                    _logger.Error($"Clock: {clock.clock} Diff: {clock.diff}");
-                }
-                throw;
+                await _seekPositionReachedTask.WithTimeout(context.Timeout);
+            }
+            catch (SeekException)
+            {
+                // Ignore
             }
         }
 
