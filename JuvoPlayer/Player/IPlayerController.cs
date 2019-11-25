@@ -24,8 +24,8 @@ namespace JuvoPlayer.Player
     public interface IPlayerController : IDisposable
     {
         #region ui_slots
-        void OnPause();
-        void OnPlay();
+        Task OnPause();
+        Task OnPlay();
         Task OnSeek(TimeSpan time);
         void OnSetPlaybackRate(float rate);
         void OnStop();
@@ -43,7 +43,6 @@ namespace JuvoPlayer.Player
 
         #region getters
 
-        TimeSpan CurrentTime { get; }
         TimeSpan ClipDuration { get; }
 
         #endregion
@@ -53,5 +52,6 @@ namespace JuvoPlayer.Player
         IObservable<TimeSpan> TimeUpdated();
         IObservable<PlayerState> StateChanged();
         IObservable<TimeSpan> DataClock();
+        IObservable<TimeSpan> PlayerClock();
     }
 }

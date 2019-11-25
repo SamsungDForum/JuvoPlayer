@@ -24,15 +24,15 @@ namespace JuvoPlayer.Player
     public interface IPlayer : IDisposable
     {
         IObservable<string> PlaybackError();
-        IObservable<TimeSpan> TimeUpdated();
+        IObservable<TimeSpan> PlayerClock();
         IObservable<PlayerState> StateChanged();
         IObservable<int> BufferingProgress();
         IObservable<TimeSpan> DataClock();
 
         IPlayerClient Client { get; set; }
 
-        void Pause();
-        void Play();
+        Task Pause();
+        Task Play();
         Task Seek(TimeSpan time);
         void SetDuration(TimeSpan duration);
         void SetPlaybackRate(float rate);
