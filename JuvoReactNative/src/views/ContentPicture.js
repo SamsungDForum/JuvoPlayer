@@ -16,7 +16,7 @@ export default class ContentPicture extends React.Component {
   }
 
   render() {
-    const index = this.props.myIndex ? this.props.myIndex : this.props.selectedIndex;
+    const index = typeof this.props.myIndex !== 'undefined' ? this.props.myIndex : this.props.selectedIndex;
     const path = this.props.path ? this.props.path : ResourceLoader.tilesPath.default;
     const imageWidth = this.props.width ? this.props.width : 1920;
     const imageHeight = this.props.height ? this.props.height : 1080;
