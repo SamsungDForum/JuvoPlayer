@@ -9,10 +9,10 @@ import ResourceLoader from "../ResourceLoader";
 export default class ContentScroll extends React.Component {
   constructor(props) {
     super(props);
-    this._scrollView;
     this.curIndex = 0;
     this.state = { selectedIndex: 0 };
     this.numItems = this.props.contentURIs.length;
+    this.deepLinkIndex = 0;
     this.scrolloffset = 0;
     this.itemWidth = 454;
     this.onTVKeyDown = this.onTVKeyDown.bind(this);
@@ -44,6 +44,17 @@ export default class ContentScroll extends React.Component {
   componentWillMount() {
     this.JuvoEventEmitter.addListener("onTVKeyDown", this.onTVKeyDown);
     this.JuvoEventEmitter.addListener("onTVKeyUp", this.onTVKeyUp);
+  }
+
+  componentWillReceiveProps(nextProps) {
+    if (this.deepLinkIndex === nextProps.deepLinkIndex)
+      return;
+
+    this.deepLinkIndex = nextProps.deepLinkIndex;
+    this.curIndex = this.deepLinkIndex;
+    this.scrolloffset = this.curIndex * this.itemWidth;
+    this._scrollView.scrollTo({ x: this.scrolloffset, y: 0, animated: false });
+    this.setState({ selectedIndex: this.curIndex });
   }
 
   onTVKeyDown(pressed) {

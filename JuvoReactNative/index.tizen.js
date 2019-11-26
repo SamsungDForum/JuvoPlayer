@@ -28,7 +28,8 @@ export default class JuvoReactNative extends Component {
       components: {
         'isContentCatalogVisible': true,
         'isPlaybackViewVisible': false
-      }
+      },
+      deepLinkIndex: 0
     };
     this.selectedClipIndex = 0;
     this.switchComponentsView = this.switchComponentsView.bind(this);
@@ -73,7 +74,8 @@ export default class JuvoReactNative extends Component {
     if (deepLink.url !== null) {
       let index = ResourceLoader.clipsData.findIndex(e => e.url === deepLink.url);
       if (index !== -1) {
-        this.handleSelectedIndexChange(index);
+        this.setState({deepLinkIndex: index});
+        this.handleSelectedIndexChange(this.state.deepLinkIndex);
         this.switchComponentsView('PlaybackView');
       }
     }
@@ -95,7 +97,8 @@ export default class JuvoReactNative extends Component {
           <ContentCatalog styles={styles}
                           visibility={this.state.components.isContentCatalogVisible}
                           switchView={this.switchComponentsView}
-                          onSelectedIndexChange={this.handleSelectedIndexChange}/>
+                          onSelectedIndexChange={this.handleSelectedIndexChange}
+                          deepLinkIndex={this.state.deepLinkIndex}/>
 
           <PlaybackView visibility={this.state.components.isPlaybackViewVisible}
                         switchView={this.switchComponentsView}
