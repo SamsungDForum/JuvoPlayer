@@ -124,6 +124,7 @@ export default class ContentCatalog extends Component {
               onSelectedIndexChange={this.handleSelectedIndexChange}
               contentURIs={ResourceLoader.tileNames}
               keysListenningOff={this.keysListenningOff}
+              deepLinkIndex={this.props.deepLinkIndex}
             />
           </View>
         </HideableView>
