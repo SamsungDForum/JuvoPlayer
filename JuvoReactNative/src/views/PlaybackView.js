@@ -1,6 +1,6 @@
 "use strict";
 import React from "react";
-import { View, Image, NativeModules, NativeEventEmitter, Text, Dimensions, StyleSheet } from "react-native";
+import { View, Image, NativeModules, NativeEventEmitter, Text, Dimensions, StyleSheet, ActivityIndicator } from "react-native";
 
 import ResourceLoader from "../ResourceLoader";
 import ContentDescription from "./ContentDescription";
@@ -308,6 +308,11 @@ export default class PlaybackView extends React.Component {
 
     return (
       <View style={{ position: 'absolute', width: width, height: height }}>
+        <View style={[ styles.page, {justifyContent: 'flex-end' } ]}>
+          <View style={[ subtitlesStyle, {paddingBottom: height/4} ]}>
+            <Text style={styles.textSubtitles}>subtitleText</Text>
+          </View>
+        </View>
         <HideableView position={'absolute'} visible={visibility} duration={fadeduration} height={height} width={width}>
           <HideableView position={'relative'} visible={true} duration={fadeduration} height={height} width={width}>
             <View style={[ styles.page, {position: 'relative'} ]}>
@@ -321,11 +326,7 @@ export default class PlaybackView extends React.Component {
                   <Image resizeMode='cover' style={styles.icon} source={settingsIconPath}/>
                 </View>
               </View>
-              <View style={[ styles.element, {flex: 8, justifyContent: 'flex-end'} ]}>
-                <View style={subtitlesStyle}>
-                  <Text style={styles.textSubtitles}>{subtitleText}</Text>
-                </View>
-              </View>
+              <View style={[ styles.element, {flex: 8, justifyContent: 'flex-end'} ]}/>
               <View style={[ styles.transparentPage, {flex: 2} ]}>
                 <View style={[ styles.element, {flex: 2, justifyContent: 'flex-start'} ]}>
                   <PlaybackProgressBar value={progress} color='green'/>
