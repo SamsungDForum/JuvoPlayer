@@ -1,6 +1,6 @@
 "use strict";
 import React from "react";
-import { View, Image, NativeModules, NativeEventEmitter, Text, Dimensions, StyleSheet, ActivityIndicator } from "react-native";
+import { View, Image, NativeModules, NativeEventEmitter, Text, Dimensions, StyleSheet } from "react-native";
 
 import ResourceLoader from "../ResourceLoader";
 import ContentDescription from "./ContentDescription";
