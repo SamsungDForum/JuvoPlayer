@@ -33,8 +33,8 @@ export default class HideableView extends Component {
       return this.visible && this.props.children;
     }
 
-    const width = this.props.width ? this.props.width : '100%';
-    const height = this.props.height ? this.props.height : '100%';
+    const width = this.props.width === undefined ? '100%' : this.props.width;
+    const height = this.props.height === undefined ? '100%' : this.props.height;
 
     return (
       <View style={{ position: this.props.position, width: width, height: height }}>
