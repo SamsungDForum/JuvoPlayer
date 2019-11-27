@@ -6,19 +6,12 @@
 
 'use strict'
 import React, {Component} from 'react';
-import {
-  StyleSheet,
-  View,
-  AppRegistry,
-  NativeModules,
-  NativeEventEmitter, ActivityIndicator, Text
-} from 'react-native';
+import {AppRegistry, NativeEventEmitter, NativeModules, StyleSheet, View} from 'react-native';
 
 import ContentCatalog from './src/views/ContentCatalog';
 import PlaybackView from './src/views/PlaybackView';
 import ResourceLoader from "./src/ResourceLoader";
 import InProgressView from "./src/views/InProgressView";
-import HideableView from "./src/views/HideableView";
 
 export default class JuvoReactNative extends Component {
   constructor(props) {
@@ -87,8 +80,7 @@ export default class JuvoReactNative extends Component {
     if (this.state.loading) {
       return (
         <View style={{ height: "100%", justifyContent: "center", alignItems: "center", backgroundColor: "black"}}>
-          <ActivityIndicator style={{margin: 10}} size='large' color='#00ff00' />
-          <Text style={{margin: 10, color: "#00ff00", fontSize: 18, fontWeight: "bold" }}>Please Wait...</Text>
+          <InProgressView visible={true} message="Please wait..."/>
         </View>
       );
     } else {
