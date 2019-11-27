@@ -1,6 +1,6 @@
 "use strict";
 import React from "react";
-import { View, Text, Picker, NativeModules, NativeEventEmitter } from "react-native";
+import { View, Text, Picker, NativeModules, NativeEventEmitter, StyleSheet } from "react-native";
 
 import HideableView from "./HideableView";
 import Native from "../Native";
@@ -77,64 +77,115 @@ export default class PlaybackSettingsView extends React.Component {
     return (
       <View style={{ width: 1600, height: 350 }}>
         <HideableView visible={this.props.visible} duration={fadeduration}>
-          <View style={{ width: '100%', height: '100%', justifyContent: "center", alignItems: "center", backgroundColor: "#000000", opacity: 0.8 }}>
-            <Picker
-              selectedValue={this.settings.audioSetting}
-              style={{ left: -500, top: 100, height: 30, width: 450, color: "#ffffff" }}
-              onValueChange={(itemValue, itemIndex) => {
-                this.JuvoPlayer.Log("itemValue = " + itemValue);
-                this.pickerChange(itemIndex, "Audio");
-              }}
-              enabled={this.props.visible}>
-              {this.props.streamsData.Audio.map((item, index) => {
-                if (item.Default === true && this.settings.audioSetting === -1) {
-                  this.settings.audioSetting = item.Id;
-                }
-                return <Picker.Item label={item.Description} value={item.Id} key={index} />;
-              })}
-            </Picker>
-            <Text style={{ left: -645, top: 30, color: "#ffffff", fontSize: 28, fontWeight: "bold" }}>Audio track</Text>
-            <Picker
-              selectedValue={this.settings.videoSetting}
-              style={{ left: 0, top: 33, height: 30, width: 450, color: "#ffffff" }}
-              onValueChange={(itemValue, itemIndex) => {
-                this.JuvoPlayer.Log("itemValue = " + itemValue);
-                this.pickerChange(itemIndex, "Video");
-              }}
-              enabled={this.props.visible}>
-              {this.props.streamsData.Video.map((item, index) => {
-                if (item.Default === true && this.settings.videoSetting === -1) {
-                  this.settings.videoSetting = item.Id;
-                }
-                return <Picker.Item label={item.Description} value={item.Id} key={index} />;
-              })}
-            </Picker>
-            <Text style={{ left: -130, top: -37, color: "#ffffff", fontSize: 28, fontWeight: "bold" }}>Video quality</Text>
-            <Picker
-              selectedValue={this.settings.subtitleSetting}
-              style={{ left: 500, top: -33, height: 30, width: 450, color: "#ffffff" }}
-              onValueChange={(itemValue, itemIndex) => {
-                this.JuvoPlayer.Log("itemValue = " + itemValue);
-                this.pickerChange(itemIndex, "Subtitle");
-                this.props.onSubtitleSelection(this.state.streamsData.Subtitle[itemIndex].Description);
-              }}
-              enabled={this.props.visible}>
-              {this.props.streamsData.Subtitle.map((item, index) => {
-                if (item.Default === true && this.settings.subtitleSetting === -1) {
-                  this.settings.subtitleSetting = item.Id;
-                }
-                return <Picker.Item label={item.Description} value={item.Id} key={index} />;
-              })}
-            </Picker>
-            <Text style={{ left: 340, top: -103, color: "#ffffff", fontSize: 28, fontWeight: "bold" }}>Subtitles</Text>
-            <Text style={{ top: -215, left: 0, fontSize: 30, color: "#ffffff", textAlign: "center", fontWeight: "bold" }}>
-              {" "}
-              Use arrow keys to navigate. Press enter key to select a setting.{" "}
-            </Text>
-            <Text style={{ top: 0, left: 0, fontSize: 20, color: "#ffffff", textAlign: "center" }}> Press return key to close </Text>
+          <View style={ styles.transparentPage }>
+            <View style={[ styles.textView, {flex: 1.5} ]}>
+              <Text style={styles.textHeader}>
+                {" "}Use arrow keys to navigate. Press enter key to select a setting.{" "}
+              </Text>
+            </View>
+            <View style={{ flex: 2, alignItems: "flex-start", flexDirection: 'row', backgroundColor: "transparent" }}>
+              <View style={{ flex: 1, alignItems: 'center' }}>
+                <View>
+                  <Text style={styles.textBody}>Audio track</Text>
+                  <Picker
+                    selectedValue={this.settings.audioSetting}
+                    style={styles.picker}
+                    onValueChange={(itemValue, itemIndex) => {
+                      this.JuvoPlayer.Log("itemValue = " + itemValue);
+                      this.pickerChange(itemIndex, "Audio");
+                    }}
+                    enabled={this.props.visible}>
+                    {this.props.streamsData.Audio.map((item, index) => {
+                      if (item.Default === true && this.settings.audioSetting === -1) {
+                        this.settings.audioSetting = item.Id;
+                      }
+                      return <Picker.Item label={item.Description} value={item.Id} key={index} />;
+                    })}
+                  </Picker>
+                </View>
+              </View>
+              <View style={{ flex: 1, alignItems: 'center' }}>
+                <View>
+                  <Text style={styles.textBody}>Video quality</Text>
+                  <Picker
+                    selectedValue={this.settings.videoSetting}
+                    style={styles.picker}
+                    onValueChange={(itemValue, itemIndex) => {
+                      this.JuvoPlayer.Log("itemValue = " + itemValue);
+                      this.pickerChange(itemIndex, "Video");
+                    }}
+                    enabled={this.props.visible}>
+                    {this.props.streamsData.Video.map((item, index) => {
+                      if (item.Default === true && this.settings.videoSetting === -1) {
+                        this.settings.videoSetting = item.Id;
+                      }
+                      return <Picker.Item label={item.Description} value={item.Id} key={index} />;
+                    })}
+                  </Picker>
+                </View>
+              </View>
+              <View style={{ flex: 1, alignItems: 'center' }}>
+                <View>
+                  <Text style={styles.textBody}>Subtitles</Text>
+                  <Picker
+                    selectedValue={this.settings.subtitleSetting}
+                    style={styles.picker}
+                    onValueChange={(itemValue, itemIndex) => {
+                      this.JuvoPlayer.Log("itemValue = " + itemValue);
+                      this.pickerChange(itemIndex, "Subtitle");
+                      this.props.onSubtitleSelection(this.state.streamsData.Subtitle[itemIndex].Description);
+                    }}
+                    enabled={this.props.visible}>
+                    {this.props.streamsData.Subtitle.map((item, index) => {
+                      if (item.Default === true && this.settings.subtitleSetting === -1) {
+                        this.settings.subtitleSetting = item.Id;
+                      }
+                      return <Picker.Item label={item.Description} value={item.Id} key={index} />;
+                    })}
+                  </Picker>
+                </View>
+              </View>
+            </View>
+            <View style={[ styles.textView, {flex: 1} ]}>
+              <Text style={styles.textFooter}> Press return key to close </Text>
+            </View>
           </View>
         </HideableView>
       </View>
     );
   }
 }
+
+const styles = StyleSheet.create({
+  picker: {
+    height: 30,
+    width: 450,
+    color: "#ffffff"
+  },
+  textView: {
+    justifyContent: "center",
+    backgroundColor: "transparent",
+    opacity: 1
+  }, 
+  transparentPage: {
+    width: '100%',
+    height: '100%',
+    backgroundColor: "black",
+    opacity: 0.8
+  },
+  textHeader: {
+    fontSize: 30,
+    color: "white",
+    alignSelf: "center",
+  },
+  textFooter: {
+    fontSize: 20,
+    color: "white",
+    textAlign: "center"
+  },
+  textBody: {
+    fontSize: 28,
+    color: "white",
+    fontWeight: "bold"
+  }
+});
