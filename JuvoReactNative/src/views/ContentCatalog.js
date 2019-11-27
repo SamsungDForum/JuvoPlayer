@@ -97,26 +97,22 @@ export default class ContentCatalog extends Component {
       <HideableView visible={visibility} duration={300}>
         <HideableView visible={showBigPicture} duration={100}>
           <View style={styles.page}>
-            <View style={[ styles.row, {flex: 7, flexDirection: 'row',} ]}>
-              <View style={[ styles.row, {flex: 1} ]}/>
-              <View style={[ styles.row, {flex: 2} ]}>
+            <View style={[ styles.cell, {height: '70%', flexDirection: 'row', justifyContent: 'flex-end'} ]}>
+              <View style={[ styles.cell, {width: '70%'} ]}>
                 <ContentPicture position={'absolute'} source={uri} selectedIndex={index} path={path}
-                                onLoadEnd={this.handleBigPicLoadEnd} onLoadStart={this.handleBigPicLoadStart}
-                                width={'100%'} height={'100%'}/>
-
+                                  onLoadEnd={this.handleBigPicLoadEnd} onLoadStart={this.handleBigPicLoadStart}
+                                  width={'100%'} height={'100%'}/>
                 <ContentPicture position={'absolute'} source={uri} selectedIndex={index} path={overlay}
                                 width={'100%'} height={'100%'}/>
               </View>
             </View>
-            <View style={[ styles.row, {flex: 3} ]}/>
           </View>
         </HideableView>
         <View style={[ styles.page, {position: 'absolute'} ]}>
           <ContentScroll
             onSelectedIndexChange={this.handleSelectedIndexChange}
             contentURIs={ResourceLoader.tileNames}
-            keysListenningOff={this.keysListenningOff}
-          />
+            keysListenningOff={this.keysListenningOff}/>
         </View>
       </HideableView>
     );
@@ -128,7 +124,7 @@ const styles = StyleSheet.create({
     width: width,
     height: height,
   },
-  row: {
+  cell: {
     backgroundColor: 'black',
   }
 });
