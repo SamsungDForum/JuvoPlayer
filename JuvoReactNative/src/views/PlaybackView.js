@@ -314,7 +314,7 @@ export default class PlaybackView extends React.Component {
           </View>
         </View>
         <HideableView position={'absolute'} visible={visibility} duration={fadeduration} height={height} width={width}>
-          <HideableView position={'relative'} visible={true} duration={fadeduration} height={height} width={width}>
+          <HideableView position={'relative'} visible={this.onScreenTimeOut >= 0} duration={fadeduration} height={height} width={width}>
             <View style={[ styles.page, {position: 'relative'} ]}>
               <View style={[ styles.transparentPage, {flex: 2, flexDirection: 'row'} ]}>
                 <View style={[ styles.element, {flex: 1} ]}/>
