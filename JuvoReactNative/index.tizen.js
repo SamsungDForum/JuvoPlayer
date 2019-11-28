@@ -5,8 +5,15 @@
  */
 
 'use strict'
-import React, {Component} from 'react';
-import {AppRegistry, NativeEventEmitter, NativeModules, StyleSheet, View} from 'react-native';
+import React, { Component } from 'react';
+import {
+  StyleSheet,
+  View,
+  AppRegistry,
+  NativeModules,
+  NativeEventEmitter,
+  Dimensions
+} from 'react-native';
 
 import ContentCatalog from './src/views/ContentCatalog';
 import PlaybackView from './src/views/PlaybackView';
@@ -84,20 +91,22 @@ export default class JuvoReactNative extends Component {
         </View>
       );
     } else {
-      return (
+    return (
+      <View style={styles.container}>
         <View style={styles.container}>
-          <ContentCatalog styles={styles}
-                          visibility={this.state.components.isContentCatalogVisible}
-                          switchView={this.switchComponentsView}
-                          onSelectedIndexChange={this.handleSelectedIndexChange}
-                          deepLinkIndex={this.state.deepLinkIndex}/>
-
-          <PlaybackView visibility={this.state.components.isPlaybackViewVisible}
-                        switchView={this.switchComponentsView}
-                        selectedIndex={this.selectedClipIndex}/>
-
+          <ContentCatalog
+            visibility={this.state.components.isContentCatalogVisible}
+            switchView={this.switchComponentsView}
+            onSelectedIndexChange={this.handleSelectedIndexChange}/>
         </View>
-      );
+        <View style={styles.container}>
+          <PlaybackView
+            visibility={this.state.components.isPlaybackViewVisible}
+            switchView={this.switchComponentsView}
+            selectedIndex={this.selectedClipIndex}/>
+        </View>
+      </View>
+    );
     }
   }
 }
@@ -106,8 +115,8 @@ const styles = StyleSheet.create({
   container: {
     position: 'absolute',
     backgroundColor: 'transparent',
-    width: 1920,
-    height: 1080
+    width: Dimensions.get('window').width,
+    height: Dimensions.get('window').height,
   }
 });
 

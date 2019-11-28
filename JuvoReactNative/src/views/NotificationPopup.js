@@ -49,22 +49,20 @@ export default class NotificationPopup extends Component {
   render() {
     const fadeduration = 300;
     return (
-      <View>
+      <View style={{ width: 850, height: 430 }}>
         <HideableView visible={this.props.visible} duration={fadeduration}>
           <View
             style={{
-              top: 0,
-              left: 0,
-              width: 850,
-              height: 430,
+              width: '100%',
+              height: '100%',
               justifyContent: "space-around",
               alignItems: "center",
               padding: 5,
               backgroundColor: "#ffffff",
               opacity: 0.8
             }}>
-            <Text style={{ top: 0, left: 0, fontSize: 40, color: "#000000", textAlign: "center" }}> {this.props.messageText} </Text>
-            <Text style={{ top: 0, left: 0, fontSize: 20, color: "#000000", textAlign: "center" }}> Press enter or return key to close </Text>
+            <Text style={{ fontSize: 40, color: "#000000", textAlign: "center" }}> {this.props.messageText} </Text>
+            <Text style={{ fontSize: 20, color: "#000000", textAlign: "center" }}> Press enter or return key to close </Text>
           </View>
         </HideableView>
       </View>

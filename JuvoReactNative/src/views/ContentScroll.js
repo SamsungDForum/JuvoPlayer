@@ -1,10 +1,13 @@
 "use strict";
 import React from "react";
-import { View, Image, ScrollView, NativeModules, NativeEventEmitter } from "react-native";
+import {View, Image, ScrollView, NativeModules, NativeEventEmitter, Dimensions} from "react-native";
 
 import ContentPicture from "./ContentPicture";
 import ContentDescription from "./ContentDescription";
 import ResourceLoader from "../ResourceLoader";
+
+const width = Dimensions.get('window').width;
+const height = Dimensions.get('window').height;
 
 export default class ContentScroll extends React.Component {
   constructor(props) {
@@ -108,14 +111,12 @@ export default class ContentScroll extends React.Component {
           stylesThumbSelected={{
             width: itemWidth,
             height: itemHeight,
-            top: 0,
             backgroundColor: "transparent",
             opacity: 0.3
           }}
           stylesThumb={{
             width: itemWidth,
             height: itemHeight,
-            top: 0,
             backgroundColor: "transparent",
             opacity: 1
           }}
@@ -123,20 +124,18 @@ export default class ContentScroll extends React.Component {
       </View>
     );
     return (
-      <View>
+      <View style={{height: height, width: width}}>
         <View
           style={{
-            top: 150,
-            left: 100,
+            top: '10%',
+            left: '5%',
             width: 900,
             height: 750
           }}>
           <ContentDescription
             viewStyle={{
-              top: 0,
-              left: 0,
-              width: 900,
-              height: 800
+              width: '100%',
+              height: '100%'
             }}
             headerStyle={{ fontSize: 60, color: "#ffffff" }}
             bodyStyle={{ fontSize: 30, color: "#ffffff", top: 0 }}

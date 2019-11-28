@@ -1,0 +1,34 @@
+{
+  "Columns": 5,
+  "FrameDuration": 0.2,
+  "FrameHeight": 180,
+  "FrameWidth": 320,
+  "Rows": 5,
+  "Storyboards": [
+    {
+      "Begin": 0.0,
+      "Filename": "sintel0000.jpg",
+      "FramesCount": 25
+    },
+    {
+      "Begin": 5.0,
+      "Filename": "sintel0001.jpg",
+      "FramesCount": 25
+    },
+    {
+      "Begin": 10.0,
+      "Filename": "sintel0002.jpg",
+      "FramesCount": 25
+    },
+    {
+      "Begin": 15.000000000000002,
+      "Filename": "sintel0003.jpg",
+      "FramesCount": 25
+    },
+    {
+      "Begin": 20.0,
+      "Filename": "sintel0004.jpg",
+      "FramesCount": 25
+    }
+  ]
+}

@@ -22,7 +22,7 @@ export default class PlaybackProgressBar extends React.Component {
     const color = this.props.color ? this.props.color : "red";
     return (
       <View>
-        <ProgressBarAndroid style={{ left: 10, top: -200, width: 1930, height: 10 }} value={value} horizontal={true} color={color} />
+        <ProgressBarAndroid style={{ width: 1930, height: 10 }} value={value} horizontal={true} color={color} />
       </View>
     );
   }
