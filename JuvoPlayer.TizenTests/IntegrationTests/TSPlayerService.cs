@@ -111,12 +111,10 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
                             var prepareOperation = new PrepareOperation();
                             prepareOperation.Prepare(context);
                             await prepareOperation.Execute(context);
-                            await prepareOperation.Result(context);
 
                             var startOperation = new StartOperation();
                             startOperation.Prepare(context);
                             await startOperation.Execute(context);
-                            await startOperation.Result(context);
 
                             await testImpl(context);
                         }
@@ -173,7 +171,6 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
                     var seekOperation = new SeekOperation();
                     seekOperation.Prepare(context);
                     await seekOperation.Execute(context);
-                    await seekOperation.Result(context);
                 }
             });
         }
@@ -207,7 +204,6 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
                     var seekOperation = new SeekOperation();
                     seekOperation.Prepare(context);
                     await seekOperation.Execute(context);
-                    await seekOperation.Result(context);
                 }
             });
         }
@@ -227,7 +223,6 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
                     var seekOperation = new SeekOperation();
                     seekOperation.Prepare(context);
                     await seekOperation.Execute(context);
-                    await seekOperation.Result(context);
                 }
             });
         }
@@ -285,7 +280,12 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
                 context.SeekTime = service.Duration - TimeSpan.FromSeconds(5);
                 var seekOperation = new SeekOperation();
                 seekOperation.Prepare(context);
-                await seekOperation.Execute(context);
+
+                // seek.execute() completes when seek position is reached. Do not wait for it!
+                // Desired clock may never be reached. Wait for desired state chnages only.
+#pragma warning disable 4014
+                seekOperation.Execute(context);
+#pragma warning restore 4014
 
                 await await Task.WhenAny(clipCompletedTask, playbackErrorTask).ConfigureAwait(false);
 
@@ -330,9 +330,9 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
 
                     _logger.Info($"Execute: {operation}");
                     await operation.Execute(context);
-                    _logger.Info($"Result {operation}");
-                    await operation.Result(context);
-                    _logger.Info($"Done: {operation}");
+                    //_logger.Info($"Result {operation}");
+                    //await operation.Result(context);
+                    //_logger.Info($"Done: {operation}");
                 }
             });
         }

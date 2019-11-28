@@ -24,7 +24,5 @@ namespace JuvoPlayer.Tests.Utils
         void Prepare(TestContext context);
 
         Task Execute(TestContext context);
-
-        Task Result(TestContext context);
     }
 }

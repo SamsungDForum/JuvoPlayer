@@ -95,10 +95,9 @@ namespace JuvoPlayer.DataProviders.Dash
 
         private TimeSpan initDataDuration;
         private bool initSegmentReloadRequired;
-        private bool bufferAvailable;
 
         private readonly Subject<string> errorSubject = new Subject<string>();
-        private readonly Subject<Unit> downloadCompletedSubject = new Subject<Unit>();
+        private readonly Subject<Unit> readySubject = new Subject<Unit>();
         private readonly Subject<byte[]> chunkReadySubject = new Subject<byte[]>();
 
         public DashClient(IThroughputHistory throughputHistory, StreamType streamType)
@@ -159,8 +158,7 @@ namespace JuvoPlayer.DataProviders.Dash
                 LogInfo($"Data clock update: {_dataClockLimit}->{request}");
 
             _dataClockLimit = request;
-            bufferAvailable = true; // Set "bufferAvailable" flag. Provides more verbose output without over flooding.
-            downloadCompletedSubject.OnNext(Unit.Default);
+            readySubject.OnNext(Unit.Default);
         }
 
         public TimeSpan Seek(TimeSpan position)
@@ -225,7 +223,7 @@ namespace JuvoPlayer.DataProviders.Dash
             if (currentStreams.InitSegment == null)
                 initInProgress = false;
 
-            downloadCompletedSubject.OnNext(Unit.Default);
+            readySubject.OnNext(Unit.Default);
         }
 
         private static TimeSpan GetSegmentMinimumFitDuration(TimeSpan segmentDuration)
@@ -243,16 +241,10 @@ namespace JuvoPlayer.DataProviders.Dash
             var minFitDuration = GetSegmentMinimumFitDuration(lastDownloadSegmentTimeRange.Duration);
 
             if (_dataClockLimit >= bufferTime + minFitDuration)
-            {
-                bufferAvailable = true;
                 return true;
-            }
 
-            // Spam once per buffer available transition to false
-            if (bufferAvailable)
-                LogInfo($"Full buffer: {bufferTime} Limit {_dataClockLimit} MinFit {minFitDuration} ({bufferTime - currentTime})");
+            LogInfo($"Full buffer: {bufferTime} Limit {_dataClockLimit} MinFit {minFitDuration} ({bufferTime - currentTime})");
 
-            bufferAvailable = false;
             return false;
         }
 
@@ -334,7 +326,7 @@ namespace JuvoPlayer.DataProviders.Dash
                     throw new Exception();
             }, TaskScheduler.Default);
             downloadCompletedTask = processDataTask.ContinueWith(
-                _ => downloadCompletedSubject.OnNext(Unit.Default),
+                _ => readySubject.OnNext(Unit.Default),
                 TaskContinuationOptions.OnlyOnRanToCompletion);
         }
 
@@ -389,7 +381,7 @@ namespace JuvoPlayer.DataProviders.Dash
                     _ =>
                     {
                         LogInfo("Init Done. Poking downloadCompleted");
-                        downloadCompletedSubject.OnNext(Unit.Default);
+                        readySubject.OnNext(Unit.Default);
                     },
                     TaskContinuationOptions.OnlyOnRanToCompletion);
             }
@@ -400,7 +392,7 @@ namespace JuvoPlayer.DataProviders.Dash
                 foreach (var chunk in initStreamBytes)
                     chunkReadySubject.OnNext(chunk);
                 InitDataDownloaded();
-                downloadCompletedSubject.OnNext(Unit.Default);
+                readySubject.OnNext(Unit.Default);
             }
         }
 
@@ -663,9 +655,9 @@ namespace JuvoPlayer.DataProviders.Dash
             return errorSubject.AsObservable();
         }
 
-        public IObservable<Unit> DownloadCompleted()
+        public IObservable<Unit> Ready()
         {
-            return downloadCompletedSubject.AsObservable();
+            return readySubject.AsObservable();
         }
 
         public IObservable<byte[]> ChunkReady()
@@ -717,7 +709,7 @@ namespace JuvoPlayer.DataProviders.Dash
                 return;
             cancellationTokenSource?.Dispose();
             errorSubject.Dispose();
-            downloadCompletedSubject.Dispose();
+            readySubject.Dispose();
             chunkReadySubject.Dispose();
             disposedValue = true;
         }

@@ -19,13 +19,12 @@ using System.Reactive.Linq;
 using System.Reactive.Threading.Tasks;
 using System.Threading.Tasks;
 using JuvoPlayer.Common;
+using JuvoPlayer.Player.EsPlayer;
 
 namespace JuvoPlayer.Tests.Utils
 {
     public class StartOperation : TestOperation
     {
-        private Task _stateObservedTask = Task.CompletedTask;
-
         public override bool Equals(object obj)
         {
             if (ReferenceEquals(null, obj)) return false;
@@ -40,25 +39,22 @@ namespace JuvoPlayer.Tests.Utils
 
         public void Prepare(TestContext context)
         {
-            _stateObservedTask = context.Service
-                .StateChanged()
-                .FirstAsync(IsPlayingObserved)
-                .Timeout(context.Timeout)
-                .ToTask(context.Token);
         }
 
         private static bool IsPlayingObserved(PlayerState playerState) =>
             playerState == PlayerState.Playing;
 
-        public Task Execute(TestContext context)
+        public async Task Execute(TestContext context)
         {
             var service = context.Service;
-            return service.Start();
-        }
+            var playerStateTask = context.Service
+                .StateChanged()
+                .FirstAsync(IsPlayingObserved)
+                .Timeout(context.Timeout)
+                .ToTask(context.Token);
 
-        public Task Result(TestContext context)
-        {
-            return _stateObservedTask;
+            await service.Start().WithTimeout(context.Timeout).ConfigureAwait(false);
+            await playerStateTask.ConfigureAwait(false);
         }
     }
 }

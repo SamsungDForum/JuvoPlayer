@@ -24,8 +24,6 @@ namespace JuvoPlayer.Tests.Utils
 {
     public class StopOperation : TestOperation
     {
-        private Task _stateObservedTask;
-
         public override bool Equals(object obj)
         {
             if (ReferenceEquals(null, obj)) return false;
@@ -40,11 +38,6 @@ namespace JuvoPlayer.Tests.Utils
 
         public void Prepare(TestContext context)
         {
-            _stateObservedTask = context.Service
-                .StateChanged()
-                .FirstAsync(IsIdleObserved)
-                .Timeout(context.Timeout)
-                .ToTask(context.Token);
         }
 
         private static bool IsIdleObserved(PlayerState playerState) =>
@@ -53,13 +46,14 @@ namespace JuvoPlayer.Tests.Utils
         public Task Execute(TestContext context)
         {
             var service = context.Service;
-            service.Stop();
-            return Task.CompletedTask;
-        }
+            var playerStateTask = context.Service
+                .StateChanged()
+                .FirstAsync(IsIdleObserved)
+                .Timeout(context.Timeout)
+                .ToTask(context.Token);
 
-        public Task Result(TestContext context)
-        {
-            return _stateObservedTask;
+            service.Stop();
+            return playerStateTask;
         }
     }
 }

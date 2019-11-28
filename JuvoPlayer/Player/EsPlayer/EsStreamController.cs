@@ -58,12 +58,6 @@ namespace JuvoPlayer.Player.EsPlayer
 
         // event callbacks
         private readonly Subject<string> playbackErrorSubject = new Subject<string>();
-
-        //private readonly BehaviorSubject<PlayerState> stateChangedSubject =
-        //    new BehaviorSubject<PlayerState>(PlayerState.Idle);
-        //private readonly ReplaySubject<PlayerState> stateChangedSubject =
-        //    new ReplaySubject<PlayerState>(1);
-
         private readonly Subject<PlayerState> stateChangedSubject = new Subject<PlayerState>();
 
         // Support for merged Pause()/Resume()/Buffering(on/off)
@@ -451,9 +445,7 @@ namespace JuvoPlayer.Player.EsPlayer
             logger.Info(eosArgs.ToString());
 
             // Stop and disable all initialized data streams.
-            DisableTransfer();
-            DisableInput();
-
+            TerminateAsyncOperations();
             stateChangedSubject.OnCompleted();
         }
 
@@ -472,11 +464,9 @@ namespace JuvoPlayer.Player.EsPlayer
             logger.Error(error);
 
             // Stop and disable all initialized data streams.
-            DisableTransfer();
-            DisableInput();
-
-            // Perform error notification
+            TerminateAsyncOperations();
             playbackErrorSubject.OnNext(error);
+
         }
 
         private void OnResourceConflicted(object sender, ESPlayer.ResourceConflictEventArgs e)
@@ -587,12 +577,7 @@ namespace JuvoPlayer.Player.EsPlayer
 
                     await ExecutePrepareAsync(token);
 
-                    //token.ThrowIfCancellationRequested();
                     stateChangedSubject.OnNext(PlayerState.Prepared);
-                    //player.Start();
-                    //StartClockGenerator();
-                    //_suspendResumeLogic.SetBuffering(false);
-                    //stateChangedSubject.OnNext(PlayerState.Playing);
                     _suspendResumeLogic.SetAsyncOpRunningState(false);
                     stateChangedSubject.OnNext(PlayerState.Prepared);
 
