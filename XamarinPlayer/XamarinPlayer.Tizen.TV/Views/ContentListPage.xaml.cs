@@ -22,6 +22,7 @@ using Xamarin.Forms;
 using Xamarin.Forms.Xaml;
 using XamarinPlayer.Controls;
 using XamarinPlayer.Services;
+using XamarinPlayer.Tizen.TV.Controls;
 using XamarinPlayer.ViewModels;
 
 namespace XamarinPlayer.Views

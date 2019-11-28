@@ -55,6 +55,13 @@ namespace JuvoPlayer.Common
             };
         }
 
+        public TimeSpan Duration()
+        {
+            var last = _data.Storyboards.Last();
+            if (last == null) return TimeSpan.Zero;
+            return GetStoryboardDuration(last).Item2;
+        }
+
         private Storyboard FindStoryboard(TimeSpan position)
         {
             return _data.Storyboards.FirstOrDefault(st => HasFrameForPosition(st, position));
