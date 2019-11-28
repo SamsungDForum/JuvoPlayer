@@ -95,19 +95,17 @@ export default class ContentCatalog extends Component {
     const showBigPicture = this.bigPictureVisible;
     return (
       <HideableView visible={visibility} duration={300}>
-        <HideableView visible={showBigPicture} duration={100}>
-          <View style={styles.page}>
-            <View style={[ styles.cell, {height: '70%', flexDirection: 'row', justifyContent: 'flex-end'} ]}>
-              <View style={[ styles.cell, {width: '70%'} ]}>
-                <ContentPicture position={'absolute'} source={uri} selectedIndex={index} path={path}
-                                  onLoadEnd={this.handleBigPicLoadEnd} onLoadStart={this.handleBigPicLoadStart}
-                                  width={'100%'} height={'100%'}/>
-                <ContentPicture position={'absolute'} source={uri} selectedIndex={index} path={overlay}
-                                width={'100%'} height={'100%'}/>
-              </View>
-            </View>
+        <View style={[ styles.page, {alignItems: 'flex-end'} ]}>
+          <View style={[ styles.cell, {height: '70%', width: '70%'} ]}>
+            <HideableView visible={showBigPicture} duration={100}>
+              <ContentPicture source={uri} selectedIndex={index} path={path}
+                              onLoadEnd={this.handleBigPicLoadEnd} onLoadStart={this.handleBigPicLoadStart}
+                              width={'100%'} height={'100%'}/>
+            </HideableView>
+            <ContentPicture position={'absolute'} source={uri} selectedIndex={index} path={overlay}
+                            width={'100%'} height={'100%'}/>
           </View>
-        </HideableView>
+        </View>
         <View style={[ styles.page, {position: 'absolute'} ]}>
           <ContentScroll
             onSelectedIndexChange={this.handleSelectedIndexChange}
