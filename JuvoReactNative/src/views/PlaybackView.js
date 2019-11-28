@@ -17,14 +17,14 @@ const height = Dimensions.get('window').height;
 export default class PlaybackView extends React.Component {
   constructor(props) {
     super(props);
-    this.curIndex = 0;
     this.playbackTimeCurrent = 0;
     this.playbackTimeTotal = 0;
     this.state = {
-      selectedIndex: 0
+      selectedIndex: this.props.selectedIndex
     };
     this.visible = false;
     this.keysListenningOff = false;
+    this.playbackStarted = false;
     this.playerState = "Idle";
     this.operationInProgress = false;
     this.inProgressDescription = "Please wait...";
@@ -81,10 +81,15 @@ export default class PlaybackView extends React.Component {
     this.JuvoEventEmitter.addListener("onPlaybackError", this.onPlaybackError);
     this.JuvoEventEmitter.addListener("onGotStreamsDescription", this.onGotStreamsDescription);
   }
+
   componentWillReceiveProps(nextProps) {
-    this.operationInProgress = nextProps.visibility;
-    this.currentSubtitleText = "";
+    if (this.state.selectedIndex !== nextProps.selectedIndex) {
+      this.resetPlaybackState();
+      this.refreshPlaybackInfo();
+    }
+    this.setState({selectedIndex: nextProps.selectedIndex});
   }
+
   getFormattedTime(milisecs) {
     var seconds = parseInt((milisecs / 1000) % 60);
     var minutes = parseInt((milisecs / (1000 * 60)) % 60);
@@ -97,6 +102,7 @@ export default class PlaybackView extends React.Component {
   resetPlaybackState() {
     this.resetPlaybackTime();
     this.handlePlaybackInfoDisappeard();
+    this.playbackStarted = false;
     this.showingSettingsView = false;
     this.playerState = "Idle";
     this.inProgressDescription = "Please wait...";
@@ -110,7 +116,7 @@ export default class PlaybackView extends React.Component {
     }
     //Manage hide/show state between the content catalog and the playback View
     this.visible = !this.visible;
-    this.props.switchView("PlaybackView", this.visible);
+    this.props.switchView("ContentCatalog");
   }
   handleSeek() {
     if (this.playerState == "Paused") return false;
@@ -184,7 +190,6 @@ export default class PlaybackView extends React.Component {
     //params.KeyName
     //params.KeyCode
     if (this.keysListenningOff) return;
-    const video = ResourceLoader.clipsData[this.props.selectedIndex];
     switch (pressed.KeyName) {
       case "Right":
         this.handleFastForwardKey();
@@ -195,10 +200,6 @@ export default class PlaybackView extends React.Component {
       case "Return":
       case "XF86AudioPlay":
       case "XF86PlayBack":
-        if (this.playerState === "Idle") {
-          let DRM = video.drmDatas ? JSON.stringify(video.drmDatas) : null;
-          this.JuvoPlayer.StartPlayback(video.url, DRM, video.type);
-        }
         if (this.playerState === "Paused" || this.playerState === "Playing") {
           //pause - resume
           this.JuvoPlayer.PauseResumePlayback();
@@ -287,7 +288,7 @@ export default class PlaybackView extends React.Component {
     });
   }
   render() {
-    const index = this.props.selectedIndex;
+    const index = this.state.selectedIndex;
     this.streamsData.selectedIndex = index;
     const title = ResourceLoader.clipsData[index].title;
     const fadeduration = 300;
@@ -297,6 +298,15 @@ export default class PlaybackView extends React.Component {
     const playIconPath = this.playerState !== "Playing" ? ResourceLoader.playbackIconsPathSelect("play") : ResourceLoader.playbackIconsPathSelect("pause");
     const visibility = this.props.visibility ? this.props.visibility : this.visible;
     this.visible = visibility;
+
+    if (this.playerState === "Idle" && this.visible && !this.playbackStarted) {
+      const video = ResourceLoader.clipsData[this.state.selectedIndex];
+      let DRM = video.drmDatas ? JSON.stringify(video.drmDatas) : null;
+      this.JuvoPlayer.StartPlayback(video.url, DRM, video.type);
+      this.playbackStarted = true;
+      this.operationInProgress = true;
+    }
+
     this.keysListenningOff = !visibility || this.showingSettingsView || this.showNotificationPopup;
     const total = this.playbackTimeTotal;
     const current = this.playbackTimeCurrent;

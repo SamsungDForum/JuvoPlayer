@@ -2,21 +2,26 @@
 using System.Collections.Generic;
 using System.Text;
 using System.Net;
+using System.Reactive.Linq;
+using System.Reactive.Subjects;
 using ReactNative;
 using ReactNative.Shell;
 using ReactNative.Modules.Core;
 using JuvoLogger;
 using JuvoLogger.Tizen;
+using JuvoPlayer.Common;
 using ILogger = JuvoLogger.ILogger;
 using Log = Tizen.Log;
 using Tizen.Applications;
 
 namespace JuvoReactNative
 {
-    class ReactNativeApp : ReactProgram
+    class ReactNativeApp : ReactProgram, IDeepLinkSender
     {
         private static ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoRN");
         public static readonly string Tag = "JuvoRN";
+
+        private BehaviorSubject<string> deepLinkReceivedSubject = new BehaviorSubject<string>(null);
         public override string MainComponentName
         {
             get
@@ -48,7 +53,7 @@ namespace JuvoReactNative
                 return new List<IReactPackage>
                 {
                     new MainReactPackage(),
-                    new JuvoPlayerReactPackage()
+                    new JuvoPlayerReactPackage(this)
                 };
             }
         }
@@ -86,6 +91,21 @@ namespace JuvoReactNative
             ServicePointManager.DefaultConnectionLimit = 100;
             RootView.BackgroundColor = ElmSharp.Color.Transparent;
         }
+
+        protected override void OnAppControlReceived(AppControlReceivedEventArgs e)
+        {
+            base.OnAppControlReceived(e);
+            var payloadParser = new PayloadParser(e.ReceivedAppControl);
+            if (!payloadParser.TryGetUrl(out var url))
+                return;
+            deepLinkReceivedSubject.OnNext(url);
+        }
+
+        public IObservable<string> DeepLinkReceived()
+        {
+            return deepLinkReceivedSubject.AsObservable();
+        }
+
         static void Main(string[] args)
         {
             try
