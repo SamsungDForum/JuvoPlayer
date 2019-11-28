@@ -69,5 +69,6 @@ namespace JuvoPlayer.Common
         public string Description { get; set; }
         public List<DRMDescription> DRMDatas { get; set; }
         public string SeekPreviewPath { get; set;}
+        public string TilePreviewPath { get; set; }
     }
 }

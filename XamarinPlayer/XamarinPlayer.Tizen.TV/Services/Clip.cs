@@ -24,5 +24,6 @@ namespace XamarinPlayer.Services
         public string Title { get; set; }
         public string Description { get; set; }
         public object ClipDetailsHandle { get; set; }
+        public string TilePreviewPath { get; set; }
     }
 }

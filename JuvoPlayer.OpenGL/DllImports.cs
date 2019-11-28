@@ -119,9 +119,6 @@ namespace JuvoPlayer.OpenGL
         [DllImport(GlDemoLib, EntryPoint = "SetIcon")]
         public static extern void SetIcon(ImageData image);
 
-        [DllImport(GlDemoLib, EntryPoint = "SwitchTextRenderingMode")]
-        public static extern void SwitchTextRenderingMode();
-
         // Menu management
 
         [DllImport(GlDemoLib, EntryPoint = "ShowMenu")]

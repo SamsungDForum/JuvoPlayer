@@ -32,7 +32,7 @@ export default class ContentPicture extends React.Component {
 
     if (this.props.selectedIndex == index) {
       return (
-        <HideableView visible={visible} duration={fadeDuration}>
+        <HideableView position={this.props.position} visible={visible} duration={fadeDuration}>
           <View style={stylesThumbSelected}>
             <Image
               resizeMode='cover'
@@ -51,7 +51,7 @@ export default class ContentPicture extends React.Component {
       );
     } else {
       return (
-        <HideableView visible={visible} duration={this.props.fadeDuration}>
+        <HideableView position={this.props.position} visible={visible} duration={this.props.fadeDuration}>
           <View style={stylesThumb}>
             <Image
               resizeMode='cover'

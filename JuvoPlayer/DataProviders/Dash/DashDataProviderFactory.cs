@@ -20,6 +20,7 @@ using JuvoPlayer.Common;
 using JuvoLogger;
 using JuvoPlayer.Demuxers;
 using JuvoPlayer.Demuxers.FFmpeg;
+using System.Runtime.InteropServices;
 
 namespace JuvoPlayer.DataProviders.Dash
 {
@@ -44,6 +45,8 @@ namespace JuvoPlayer.DataProviders.Dash
             var audioPipeline = CreateMediaPipeline(StreamType.Audio);
             audioPipeline.DisableAdaptiveStreaming = true;
             var videoPipeline = CreateMediaPipeline(StreamType.Video);
+            //For sake of the TV emulator performance it's important to stick with the lowest representation that is available.
+            videoPipeline.DisableAdaptiveStreaming = (RuntimeInformation.ProcessArchitecture == Architecture.X86);
 
             return new DashDataProvider(clip.Url, audioPipeline, videoPipeline);
         }
@@ -62,7 +65,7 @@ namespace JuvoPlayer.DataProviders.Dash
         {
             if (clip == null)
             {
-                throw new ArgumentNullException(nameof(clip), "Clip cannot be null.");
+                throw new ArgumentNullException(nameof(clip), "Clip cannot be null!");
             }
 
             return string.Equals(clip.Type, "Dash", StringComparison.CurrentCultureIgnoreCase);
