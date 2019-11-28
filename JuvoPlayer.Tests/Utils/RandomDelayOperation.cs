@@ -54,10 +54,5 @@ namespace JuvoPlayer.Tests.Utils
         {
             return Task.Delay(Delay);
         }
-
-        public Task Result(TestContext context)
-        {
-            return Task.CompletedTask;
-        }
     }
 }

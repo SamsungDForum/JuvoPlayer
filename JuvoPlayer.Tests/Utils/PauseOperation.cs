@@ -26,7 +26,6 @@ namespace JuvoPlayer.Tests.Utils
     [Serializable]
     public class PauseOperation : TestOperation
     {
-        private Task _stateObservedTask = Task.CompletedTask;
         public override bool Equals(object obj)
         {
             if (ReferenceEquals(null, obj)) return false;
@@ -41,25 +40,25 @@ namespace JuvoPlayer.Tests.Utils
 
         public void Prepare(TestContext context)
         {
-            _stateObservedTask = context.Service
-                .StateChanged()
-                .FirstAsync(IsPauseObserved)
-                .Timeout(context.Timeout)
-                .ToTask(context.Token);
+
         }
 
         private static bool IsPauseObserved(PlayerState playerState) =>
             playerState == PlayerState.Paused;
 
-        public Task Execute(TestContext context)
+        public async Task Execute(TestContext context)
         {
             var service = context.Service;
-            return service.Pause();
+
+            var playerStateTask = context.Service
+                .StateChanged()
+                .FirstAsync(IsPauseObserved)
+                .Timeout(context.Timeout)
+                .ToTask(context.Token);
+
+            await service.Pause().ConfigureAwait(false);
+            await playerStateTask.ConfigureAwait(false);
         }
 
-        public Task Result(TestContext context)
-        {
-            return _stateObservedTask;
-        }
     }
 }

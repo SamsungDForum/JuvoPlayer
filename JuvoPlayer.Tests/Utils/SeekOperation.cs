@@ -35,8 +35,6 @@ namespace JuvoPlayer.Tests.Utils
 
         public TimeSpan SeekPosition { get; set; }
 
-        private Task _seekPositionReachedTask = Task.CompletedTask;
-
         private bool Equals(SeekOperation other)
         {
             return SeekPosition.Equals(other.SeekPosition);
@@ -63,7 +61,6 @@ namespace JuvoPlayer.Tests.Utils
 
         private static Task GetPositionReachedTask(TestContext context, TimeSpan targetClock)
         {
-            // don't set timeout on positionReached task. Timeout will be applied when awaiting result.
             return context.Service
                 .PlayerClock()
                 .FirstAsync(pClock =>
@@ -72,6 +69,7 @@ namespace JuvoPlayer.Tests.Utils
                     var diffMs = Math.Abs((clk - targetClock).TotalMilliseconds);
                     return diffMs <= 500;
                 })
+                .Timeout(context.Timeout)
                 .ToTask(context.Token);
         }
 
@@ -91,32 +89,19 @@ namespace JuvoPlayer.Tests.Utils
                     _logger.Info($"Seeking in Paused state. Resuming playback");
                     var startOperation = new StartOperation();
                     await startOperation.Execute(context);
-                    await startOperation.Result(context);
                 }
 
-                var seek = service.SeekTo(SeekPosition);
-                _seekPositionReachedTask = GetPositionReachedTask(context, SeekPosition);
+                var positionReachedTask = GetPositionReachedTask(context, SeekPosition);
+                var seekTask = service.SeekTo(SeekPosition);
 
-                await seek.WithTimeout(context.Timeout);
+                await seekTask.WithTimeout(context.Timeout).ConfigureAwait(false);
+                await positionReachedTask.ConfigureAwait(false);
             }
             catch (SeekException)
             {
                 // Ignore
             }
 
-        }
-
-        public async Task Result(TestContext context)
-        {
-            _logger.Info($"Waiting for seek position: {SeekPosition}");
-            try
-            {
-                await _seekPositionReachedTask.WithTimeout(context.Timeout);
-            }
-            catch (SeekException)
-            {
-                // Ignore
-            }
         }
 
         private static TimeSpan RandomSeekTime(IPlayerService service)

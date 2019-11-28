@@ -17,7 +17,6 @@
 
 using System;
 using System.Reactive;
-using JuvoPlayer.Common;
 using MpdParser;
 
 namespace JuvoPlayer.DataProviders.Dash
@@ -36,6 +35,6 @@ namespace JuvoPlayer.DataProviders.Dash
         bool IsDataAvailable();
 
         IObservable<string> ErrorOccurred();
-        IObservable<Unit> DownloadCompleted();
+        IObservable<Unit> Ready();
     }
 }

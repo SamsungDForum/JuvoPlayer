@@ -27,8 +27,6 @@ namespace JuvoPlayer.Tests.Utils
     [Serializable]
     public class PrepareOperation : TestOperation
     {
-        private Task _stateObservedTask = Task.CompletedTask;
-
         public override bool Equals(object obj)
         {
             if (ReferenceEquals(null, obj)) return false;
@@ -43,11 +41,6 @@ namespace JuvoPlayer.Tests.Utils
 
         public void Prepare(TestContext context)
         {
-            _stateObservedTask = context.Service
-                .StateChanged()
-                .FirstAsync(IsPreparedObserved)
-                .Timeout(context.Timeout)
-                .ToTask(context.Token);
         }
 
         private static bool IsPreparedObserved(PlayerState playerState) =>
@@ -63,14 +56,16 @@ namespace JuvoPlayer.Tests.Utils
 
             Assert.That(clip, Is.Not.Null);
 
+            var playerStateTask = context.Service
+                .StateChanged()
+                .FirstAsync(IsPreparedObserved)
+                .Timeout(context.Timeout)
+                .ToTask(context.Token);
+
             service.SetSource(clip);
 
-            return Task.CompletedTask;
+            return playerStateTask;
         }
 
-        public Task Result(TestContext context)
-        {
-            return _stateObservedTask;
-        }
     }
 }
