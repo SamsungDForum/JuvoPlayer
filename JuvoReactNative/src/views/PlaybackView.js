@@ -1,6 +1,6 @@
 "use strict";
 import React from "react";
-import { View, Image, NativeModules, NativeEventEmitter, Text } from "react-native";
+import { View, Image, NativeModules, NativeEventEmitter, Text, Dimensions, StyleSheet } from "react-native";
 
 import ResourceLoader from "../ResourceLoader";
 import ContentDescription from "./ContentDescription";
@@ -10,6 +10,9 @@ import InProgressView from "./InProgressView";
 import PlaybackSettingsView from "./PlaybackSettingsView";
 import Native from "../Native";
 import NotificationPopup from "./NotificationPopup";
+
+const width = Dimensions.get('window').width;
+const height = Dimensions.get('window').height;
 
 export default class PlaybackView extends React.Component {
   constructor(props) {
@@ -301,56 +304,122 @@ export default class PlaybackView extends React.Component {
     const progress = Math.round(playbackTime * 100) / 100;
     const subtitleText = this.currentSubtitleText;
     var subtitlesStyle =
-      subtitleText == "" ? { top: -755, left: 0, width: 1920, height: 150, opacity: 0 } : { top: -755, left: 0, width: 1920, height: 150, opacity: 0.8 };
+      subtitleText == "" ? [styles.subtitles, {opacity: 0}] : [styles.subtitles, {opacity: 0.8}];
+
     return (
-      <View style={{ top: -2680, left: 0, width: 1920, height: 1080 }}>
-        <HideableView visible={visibility} duration={fadeduration}>
-          <HideableView visible={this.onScreenTimeOut >= 0} duration={fadeduration}>
-            <ContentDescription
-              viewStyle={{ top: 0, left: 0, width: 1920, height: 250, justifyContent: "center", alignSelf: "center", backgroundColor: "#000000", opacity: 0.8 }}
-              headerStyle={{ fontSize: 60, color: "#ffffff", alignSelf: "center", opacity: 1.0 }}
-              bodyStyle={{ fontSize: 30, color: "#ffffff", top: 0 }}
-              headerText={title}
-              bodyText={""}
-            />
-            <Image resizeMode='cover' style={{ width: 70, height: 70, top: -180, left: 1800 }} source={settingsIconPath} />
-            <View
-              style={{ top: 530, left: 0, width: 1920, height: 760, justifyContent: "center", alignSelf: "center", backgroundColor: "#000000", opacity: 0.6 }}>
-              <PlaybackProgressBar value={progress} color='green' />
-              <Image resizeMode='cover' style={{ width: 70, height: 70, top: -130, left: 70 }} source={revIconPath} />
-              <Image resizeMode='cover' style={{ width: 70, height: 70, top: -200, left: 930 }} source={playIconPath} />
-              <Image resizeMode='cover' style={{ width: 70, height: 70, top: -270, left: 1780 }} source={ffwIconPath} />
-              <Text style={{ width: 150, height: 30, top: -380, left: 60, fontSize: 30, color: "#ffffff" }}>
-                {this.getFormattedTime(this.playbackTimeCurrent)}
-              </Text>
-              <Text style={{ width: 150, height: 30, top: -410, left: 1760, fontSize: 30, color: "#ffffff" }}>
-                {this.getFormattedTime(this.playbackTimeTotal)}
-              </Text>
+      <View style={{ position: 'absolute', width: width, height: height }}>
+        <View style={[ styles.page, {justifyContent: 'flex-end' } ]}>
+          <View style={[ subtitlesStyle, {paddingBottom: height/4} ]}>
+            <Text style={styles.textSubtitles}>subtitleText</Text>
+          </View>
+        </View>
+        <HideableView position={'absolute'} visible={visibility} duration={fadeduration} height={height} width={width}>
+          <HideableView position={'relative'} visible={this.onScreenTimeOut >= 0} duration={fadeduration} height={height} width={width}>
+            <View style={[ styles.page, {position: 'relative'} ]}>
+              <View style={[ styles.transparentPage, {flex: 2, flexDirection: 'row'} ]}>
+                <View style={[ styles.element, {flex: 1} ]}/>
+                <View style={[ styles.element, {flex: 8} ]}>
+                  <ContentDescription viewStyle={styles.element} headerStyle={styles.textHeader}
+                                      bodyStyle={styles.textBody} headerText={title} bodyText={""}/>
+                </View>
+                <View style={[ styles.element, {flex: 1} ]}>
+                  <Image resizeMode='cover' style={styles.icon} source={settingsIconPath}/>
+                </View>
+              </View>
+              <View style={[ styles.element, {flex: 8, justifyContent: 'flex-end'} ]}/>
+              <View style={[ styles.transparentPage, {flex: 2} ]}>
+                <View style={[ styles.element, {flex: 2, justifyContent: 'flex-start'} ]}>
+                  <PlaybackProgressBar value={progress} color='green'/>
+                  <Text style={[ styles.time, {alignSelf: 'flex-start', marginLeft: 50} ]}>
+                    {this.getFormattedTime(this.playbackTimeCurrent)}
+                  </Text>
+                  <Text style={[ styles.time, {alignSelf: 'flex-end', marginLeft: 50} ]}>
+                    {this.getFormattedTime(this.playbackTimeTotal)}
+                  </Text>
+                </View>
+                <View style={{ flex: 5, backgroundColor: 'transparent', flexDirection: 'row' }}>
+                  <View style={[ styles.element, {flex: 1} ]}>
+                    <Image resizeMode='cover' style={styles.icon} source={revIconPath}/>
+                  </View>
+                  <View style={[ styles.element, {flex: 10} ]}>
+                    <Image resizeMode='cover' style={styles.icon} source={playIconPath}/>
+                  </View>
+                  <View style={[ styles.element, {flex: 1} ]}>
+                    <Image resizeMode='cover' style={styles.icon} source={ffwIconPath}/>
+                  </View>
+                </View>
+              </View>
+            </View>
+            <View style={[ styles.page, styles.element ]}>
+              <PlaybackSettingsView
+                visible={this.showingSettingsView}
+                onCloseSettingsView={this.handleSettingsViewDisappeared}
+                onSubtitleSelection={this.onSubtitleSelection}
+                streamsData={this.streamsData}
+              />
             </View>
           </HideableView>
-          <View style={{ top: -650, left: 870, width: 250, height: 250 }}>
-            <InProgressView visible={this.operationInProgress} message={this.inProgressDescription} />
+          <View style={[ styles.page, styles.element ]}>
+            <InProgressView visible={this.operationInProgress} message={this.inProgressDescription}/>
           </View>
-          <View style={{ top: -1075, left: 180 }}>
-            <PlaybackSettingsView
-              visible={this.showingSettingsView}
-              onCloseSettingsView={this.handleSettingsViewDisappeared}
-              onSubtitleSelection={this.onSubtitleSelection}
-              streamsData={this.streamsData}
+          <View style={[ styles.page, styles.element ]}>
+            <NotificationPopup
+              visible={this.showNotificationPopup}
+              onNotificationPopupDisappeared={this.handleNotificationPopupDisappeared}
+              messageText={this.popupMessage}
             />
           </View>
-          <View style={subtitlesStyle}>
-            <Text style={{ top: 0, left: 0, fontSize: 30, color: "#ffffff", textAlign: "center", backgroundColor: "#000000" }}>{subtitleText}</Text>
-          </View>
         </HideableView>
-        <View style={{ top: -1535, left: 520, width: 850, height: 430 }}>
-          <NotificationPopup
-            visible={this.showNotificationPopup}
-            onNotificationPopupDisappeared={this.handleNotificationPopupDisappeared}
-            messageText={this.popupMessage}
-          />
-        </View>
       </View>
     );
   }
 }
+
+const styles = StyleSheet.create({
+  page: {
+    position: 'absolute',
+    backgroundColor: 'transparent',
+    height: height,
+    width: width,
+  },
+  element: {
+    backgroundColor: 'transparent',
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  icon: {
+    width: 70,
+    height: 70,
+  },
+  time: {
+    marginTop: 25,
+    position: 'absolute',
+    width: 150,
+    height: 30,
+    fontSize: 30,
+    color: "white",
+  },
+  transparentPage: {
+    backgroundColor: 'black',
+    opacity: 0.9,
+  },
+  textHeader: {
+    fontSize: 60,
+    color: "white",
+    alignSelf: "center",
+  },
+  textBody: {
+    fontSize: 30,
+    color: "white",
+  },
+  textSubtitles: {
+    fontSize: 30,
+    color: "white",
+    textAlign: "center",
+    backgroundColor: "black"
+  },
+  subtitles: {
+    width: width,
+    height: 150,
+  }
+});
