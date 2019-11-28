@@ -7,10 +7,11 @@
 import React, { Component } from 'react';
 import {
   StyleSheet,
-  View,  
+  View,
   AppRegistry,
   NativeModules,
-  NativeEventEmitter  
+  NativeEventEmitter,
+  Dimensions
 } from 'react-native';
 
 import ContentCatalog from './src/views/ContentCatalog';
@@ -53,19 +54,22 @@ export default class JuvoReactNative extends Component {
   handleSelectedIndexChange(index) {      
     this.selectedClipIndex = index;
   }
-  
-  render() {      
+
+  render() {
     return (
-      <View style={styles.container}>         
-       <ContentCatalog styles={styles}                    
-                       visibility={this.state.components.isContentCatalogVisible}
-                       switchView={this.switchComponentsView}
-                       onSelectedIndexChange={this.handleSelectedIndexChange}/>   
-                               
-       <PlaybackView visibility={this.state.components.isPlaybackViewVisible}
-                         switchView={this.switchComponentsView}
-                         selectedIndex={this.selectedClipIndex} />
-         
+      <View style={styles.container}>
+        <View style={styles.container}>
+          <ContentCatalog
+            visibility={this.state.components.isContentCatalogVisible}
+            switchView={this.switchComponentsView}
+            onSelectedIndexChange={this.handleSelectedIndexChange}/>
+        </View>
+        <View style={styles.container}>
+          <PlaybackView
+            visibility={this.state.components.isPlaybackViewVisible}
+            switchView={this.switchComponentsView}
+            selectedIndex={this.selectedClipIndex}/>
+        </View>
       </View>
     );
   }
@@ -75,8 +79,8 @@ const styles = StyleSheet.create({
   container: {
     position: 'absolute',
     backgroundColor: 'transparent',
-    width: 1920,
-    height: 1080
+    width: Dimensions.get('window').width,
+    height: Dimensions.get('window').height,
   }
 });
 
