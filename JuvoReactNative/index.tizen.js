@@ -5,7 +5,7 @@
  */
 
 'use strict'
-import React, { Component } from 'react';
+import React, {Component} from 'react';
 import {
   StyleSheet,
   View,
@@ -86,27 +86,24 @@ export default class JuvoReactNative extends Component {
   render() {
     if (this.state.loading) {
       return (
-        <View style={{ height: "100%", justifyContent: "center", alignItems: "center", backgroundColor: "black"}}>
+        <View style={{height: "100%", justifyContent: "center", alignItems: "center", backgroundColor: "black"}}>
           <InProgressView visible={true} message="Please wait..."/>
         </View>
       );
     } else {
-    return (
-      <View style={styles.container}>
+      return (
         <View style={styles.container}>
           <ContentCatalog
             visibility={this.state.components.isContentCatalogVisible}
             switchView={this.switchComponentsView}
-            onSelectedIndexChange={this.handleSelectedIndexChange}/>
-        </View>
-        <View style={styles.container}>
+            onSelectedIndexChange={this.handleSelectedIndexChange}
+            deepLinkIndex={this.state.deepLinkIndex}/>
           <PlaybackView
             visibility={this.state.components.isPlaybackViewVisible}
             switchView={this.switchComponentsView}
             selectedIndex={this.selectedClipIndex}/>
         </View>
-      </View>
-    );
+      );
     }
   }
 }
