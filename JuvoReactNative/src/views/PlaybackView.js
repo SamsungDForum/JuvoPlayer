@@ -351,9 +351,6 @@ export default class PlaybackView extends React.Component {
               </View>
             </View>
             <View style={[ styles.page, styles.element ]}>
-              <InProgressView visible={this.operationInProgress} message={this.inProgressDescription}/>
-            </View>
-            <View style={[ styles.page, styles.element ]}>
               <PlaybackSettingsView
                 visible={this.showingSettingsView}
                 onCloseSettingsView={this.handleSettingsViewDisappeared}
@@ -369,6 +366,9 @@ export default class PlaybackView extends React.Component {
               />
             </View>
           </HideableView>
+          <View style={[ styles.page, styles.element ]}>
+            <InProgressView visible={this.operationInProgress} message={this.inProgressDescription}/>
+          </View>
         </HideableView>
       </View>
     );
