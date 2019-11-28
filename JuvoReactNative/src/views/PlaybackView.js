@@ -337,7 +337,7 @@ export default class PlaybackView extends React.Component {
                     {this.getFormattedTime(this.playbackTimeTotal)}
                   </Text>
                 </View>
-                <View style={{ flex: 2, backgroundColor: 'transparent', flexDirection: 'row' }}>
+                <View style={{ flex: 5, backgroundColor: 'transparent', flexDirection: 'row' }}>
                   <View style={[ styles.element, {flex: 1} ]}>
                     <Image resizeMode='cover' style={styles.icon} source={revIconPath}/>
                   </View>
@@ -358,16 +358,16 @@ export default class PlaybackView extends React.Component {
                 streamsData={this.streamsData}
               />
             </View>
-            <View style={[ styles.page, styles.element ]}>
-              <NotificationPopup
-                visible={this.showNotificationPopup}
-                onNotificationPopupDisappeared={this.handleNotificationPopupDisappeared}
-                messageText={this.popupMessage}
-              />
-            </View>
           </HideableView>
           <View style={[ styles.page, styles.element ]}>
             <InProgressView visible={this.operationInProgress} message={this.inProgressDescription}/>
+          </View>
+          <View style={[ styles.page, styles.element ]}>
+            <NotificationPopup
+              visible={this.showNotificationPopup}
+              onNotificationPopupDisappeared={this.handleNotificationPopupDisappeared}
+              messageText={this.popupMessage}
+            />
           </View>
         </HideableView>
       </View>
@@ -392,7 +392,7 @@ const styles = StyleSheet.create({
     height: 70,
   },
   time: {
-    marginTop: 20,
+    marginTop: 25,
     position: 'absolute',
     width: 150,
     height: 30,
