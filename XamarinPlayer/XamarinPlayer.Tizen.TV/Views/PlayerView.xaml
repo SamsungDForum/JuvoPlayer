@@ -51,8 +51,8 @@
                                    x:Name="CueTextLabel" HorizontalOptions="CenterAndExpand" WidthRequest="800"
                                    HorizontalTextAlignment="Center" />
                         </ContentView>
-                        <AbsoluteLayout x:Name="SeekPreviewContainer" HorizontalOptions="Fill" Margin="100, 0">
-                            <Frame x:Name="SeekPreviewFrame" IsVisible="false" Padding="1,1,1,1" HasShadow="False"
+                        <AbsoluteLayout x:Name="SeekPreviewContainer" IsVisible="false" HorizontalOptions="Fill" Margin="100, 0">
+                            <Frame x:Name="SeekPreviewFrame" Padding="1,1,1,1" HasShadow="False"
                                    CornerRadius="5" BorderColor="DimGray" BackgroundColor="Black">
                                 <forms:SKCanvasView x:Name="SeekPreviewCanvas" HorizontalOptions="Center"
                                                     PaintSurface="OnSeekPreviewCanvasOnPaintSurface" />
