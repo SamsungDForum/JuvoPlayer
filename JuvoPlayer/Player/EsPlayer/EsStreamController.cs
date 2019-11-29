@@ -257,6 +257,8 @@ namespace JuvoPlayer.Player.EsPlayer
             try
             {
                 var token = activeTaskCts.Token;
+                if (token.IsCancellationRequested)
+                    return;
 
                 if (resourceConflict)
                 {
@@ -573,11 +575,13 @@ namespace JuvoPlayer.Player.EsPlayer
             {
                 using (await asyncOpSerializer.LockAsync(token))
                 {
+                    if (token.IsCancellationRequested)
+                        return;
+
                     _suspendResumeLogic.SetAsyncOpRunningState(true);
 
                     await ExecutePrepareAsync(token);
 
-                    stateChangedSubject.OnNext(PlayerState.Prepared);
                     _suspendResumeLogic.SetAsyncOpRunningState(false);
                     stateChangedSubject.OnNext(PlayerState.Prepared);
 
@@ -605,10 +609,12 @@ namespace JuvoPlayer.Player.EsPlayer
             logger.Info("");
             using (await asyncOpSerializer.LockAsync(token))
             {
+                if (token.IsCancellationRequested)
+                    return;
+
                 player.Start();
                 StartClockGenerator();
                 stateChangedSubject.OnNext(PlayerState.Playing);
-                _suspendResumeLogic.SetBuffering(false);
             }
         }
 
@@ -771,17 +777,14 @@ namespace JuvoPlayer.Player.EsPlayer
             if (stream == StreamType.Video)
             {
                 esStreams[(int)StreamType.Video].Start();
-                //return;
             }
             else
             {
-                // Start first packet listner.
+                // Start first packet listener.
                 // Blocking calls, if executed from within (Prepare/Seek)Async() may cause deadlocks
                 // with packet submission (?!?)
                 _firstPacketTask = Task.Run(async () => await FirstPacketWait());
             }
-
-            logger.Info($"{stream} DONE");
         }
 
         private async Task FirstPacketWait()
@@ -899,6 +902,7 @@ namespace JuvoPlayer.Player.EsPlayer
                 return;
 
             logger.Info("");
+            _suspendResumeLogic.SetBuffering(false);
 
             TerminateAsyncOperations();
             WaitForAsyncOperationsCompletion();
@@ -978,19 +982,17 @@ namespace JuvoPlayer.Player.EsPlayer
 
         public IObservable<PlayerState> StateChanged()
         {
-            return stateChangedSubject
-                .AsObservable()
-                .ObserveOn(TaskPoolScheduler.Default);
+            return stateChangedSubject.AsObservable();
         }
 
         public IObservable<int> BufferingProgress()
         {
-            return _suspendResumeLogic.BufferingProgressObservable().ObserveOn(TaskPoolScheduler.Default);
+            return _suspendResumeLogic.BufferingProgressObservable();
         }
 
         public IObservable<TimeSpan> DataNeededStateChanged()
         {
-            return _dataClock.DataClock().ObserveOn(TaskPoolScheduler.Default);
+            return _dataClock.DataClock();
         }
 
         public IObservable<TimeSpan> PlayerClock()

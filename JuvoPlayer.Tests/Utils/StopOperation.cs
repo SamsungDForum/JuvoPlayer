@@ -18,7 +18,6 @@
 using System.Reactive.Linq;
 using System.Reactive.Threading.Tasks;
 using System.Threading.Tasks;
-using JuvoPlayer.Common;
 
 namespace JuvoPlayer.Tests.Utils
 {
@@ -40,17 +39,14 @@ namespace JuvoPlayer.Tests.Utils
         {
         }
 
-        private static bool IsIdleObserved(PlayerState playerState) =>
-            playerState == PlayerState.Idle;
-
         public Task Execute(TestContext context)
         {
             var service = context.Service;
-            var playerStateTask = context.Service
+            var playerStateTask = service
                 .StateChanged()
-                .FirstAsync(IsIdleObserved)
+                .AsCompletion()
                 .Timeout(context.Timeout)
-                .ToTask(context.Token);
+                .ToTask();
 
             service.Stop();
             return playerStateTask;

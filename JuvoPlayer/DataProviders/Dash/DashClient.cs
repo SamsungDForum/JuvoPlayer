@@ -260,7 +260,6 @@ namespace JuvoPlayer.DataProviders.Dash
                 return;
             }
 
-            Logger.Info($"{processDataTask?.Status} {processDataTask.IsCompleted} {cancellationTokenSource == null} {cancellationTokenSource?.IsCancellationRequested}");
             if (!processDataTask.IsCompleted || cancellationTokenSource == null || cancellationTokenSource.IsCancellationRequested)
                 return;
 

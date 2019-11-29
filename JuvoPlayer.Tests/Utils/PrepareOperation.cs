@@ -16,8 +16,6 @@
  */
 
 using System;
-using System.Reactive.Linq;
-using System.Reactive.Threading.Tasks;
 using System.Threading.Tasks;
 using JuvoPlayer.Common;
 using NUnit.Framework;
@@ -43,9 +41,6 @@ namespace JuvoPlayer.Tests.Utils
         {
         }
 
-        private static bool IsPreparedObserved(PlayerState playerState) =>
-            playerState == PlayerState.Prepared;
-
         public Task Execute(TestContext context)
         {
             var service = context.Service;
@@ -56,11 +51,8 @@ namespace JuvoPlayer.Tests.Utils
 
             Assert.That(clip, Is.Not.Null);
 
-            var playerStateTask = context.Service
-                .StateChanged()
-                .FirstAsync(IsPreparedObserved)
-                .Timeout(context.Timeout)
-                .ToTask(context.Token);
+            var playerStateTask =
+                StateChangedTask.Observe(service, PlayerState.Prepared, context.Token, context.Timeout);
 
             service.SetSource(clip);
 
