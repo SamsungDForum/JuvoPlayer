@@ -15,8 +15,6 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-using System.Reactive.Linq;
-using System.Reactive.Threading.Tasks;
 using System.Threading.Tasks;
 using JuvoPlayer.Common;
 using JuvoPlayer.Player.EsPlayer;
@@ -41,17 +39,11 @@ namespace JuvoPlayer.Tests.Utils
         {
         }
 
-        private static bool IsPlayingObserved(PlayerState playerState) =>
-            playerState == PlayerState.Playing;
-
         public async Task Execute(TestContext context)
         {
             var service = context.Service;
-            var playerStateTask = context.Service
-                .StateChanged()
-                .FirstAsync(IsPlayingObserved)
-                .Timeout(context.Timeout)
-                .ToTask(context.Token);
+            var playerStateTask =
+                StateChangedTask.Observe(service, PlayerState.Playing, context.Token, context.Timeout);
 
             await service.Start().WithTimeout(context.Timeout).ConfigureAwait(false);
             await playerStateTask.ConfigureAwait(false);

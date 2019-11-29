@@ -140,23 +140,12 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
         {
             RunPlayerTest(clipTitle, async context =>
             {
-                try
-                {
-                    await context.Service
-                        .PlayerClock()
-                        .FirstAsync(pClock => pClock > TimeSpan.Zero)
-                        .Timeout(context.Timeout)
-                        .ToTask(context.Token)
-                        .ConfigureAwait(false);
-
-                }
-                catch (OperationCanceledException)
-                {
-                    // If cancellation was not caused by timeout, don't report it. 
-                    if (!context.Token.IsCancellationRequested)
-                        throw;
-                }
-
+                await context.Service
+                    .PlayerClock()
+                    .FirstAsync(pClock => pClock > TimeSpan.Zero)
+                    .Timeout(context.Timeout)
+                    .ToTask(context.Token)
+                    .ConfigureAwait(false);
             });
         }
 
@@ -238,7 +227,6 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
                 {
                     var clipCompletedTask = service.StateChanged()
                         .AsCompletion()
-                        .FirstAsync()
                         .Timeout(context.Timeout)
                         .ToTask();
 
@@ -273,7 +261,6 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
 
                 var clipCompletedTask = service.StateChanged()
                     .AsCompletion()
-                    .FirstAsync()
                     .Timeout(context.Timeout)
                     .ToTask();
 
@@ -282,10 +269,8 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
                 seekOperation.Prepare(context);
 
                 // seek.execute() completes when seek position is reached. Do not wait for it!
-                // Desired clock may never be reached. Wait for desired state chnages only.
-#pragma warning disable 4014
-                seekOperation.Execute(context);
-#pragma warning restore 4014
+                // Desired clock may never be reached. Wait for desired state changes only.
+                var seekExecution = seekOperation.Execute(context);
 
                 await await Task.WhenAny(clipCompletedTask, playbackErrorTask).ConfigureAwait(false);
 
@@ -330,9 +315,6 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
 
                     _logger.Info($"Execute: {operation}");
                     await operation.Execute(context);
-                    //_logger.Info($"Result {operation}");
-                    //await operation.Result(context);
-                    //_logger.Info($"Done: {operation}");
                 }
             });
         }
