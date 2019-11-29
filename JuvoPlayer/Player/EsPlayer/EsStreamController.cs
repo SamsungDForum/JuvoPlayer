@@ -885,6 +885,9 @@ namespace JuvoPlayer.Player.EsPlayer
                 return;
 
             logger.Info("");
+            
+            // disable buffering (if on)
+            _suspendResumeLogic.SetBuffering(false);
 
             TerminateAsyncOperations();
             WaitForAsyncOperationsCompletion();
