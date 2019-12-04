@@ -77,14 +77,12 @@ export default class PlaybackSettingsView extends React.Component {
     return (
       <View style={{ width: 1600, height: 350 }}>
         <HideableView visible={this.props.visible} duration={fadeduration}>
-          <View style={ styles.transparentPage }>
-            <View style={[ styles.textView, {flex: 1.5} ]}>
-              <Text style={styles.textHeader}>
-                {" "}Use arrow keys to navigate. Press enter key to select a setting.{" "}
-              </Text>
+          <View style={styles.transparentPage}>
+            <View style={[styles.textView, { flex: 1.5 }]}>
+              <Text style={styles.textHeader}> Use arrow keys to navigate. Press enter key to select a setting. </Text>
             </View>
-            <View style={{ flex: 2, alignItems: "flex-start", flexDirection: 'row', backgroundColor: "transparent" }}>
-              <View style={{ flex: 1, alignItems: 'center' }}>
+            <View style={{ flex: 2, alignItems: "flex-start", flexDirection: "row", backgroundColor: "transparent" }}>
+              <View style={{ flex: 1, alignItems: "center" }}>
                 <View>
                   <Text style={styles.textBody}>Audio track</Text>
                   <Picker
@@ -104,7 +102,7 @@ export default class PlaybackSettingsView extends React.Component {
                   </Picker>
                 </View>
               </View>
-              <View style={{ flex: 1, alignItems: 'center' }}>
+              <View style={{ flex: 1, alignItems: "center" }}>
                 <View>
                   <Text style={styles.textBody}>Video quality</Text>
                   <Picker
@@ -124,7 +122,7 @@ export default class PlaybackSettingsView extends React.Component {
                   </Picker>
                 </View>
               </View>
-              <View style={{ flex: 1, alignItems: 'center' }}>
+              <View style={{ flex: 1, alignItems: "center" }}>
                 <View>
                   <Text style={styles.textBody}>Subtitles</Text>
                   <Picker
@@ -146,7 +144,7 @@ export default class PlaybackSettingsView extends React.Component {
                 </View>
               </View>
             </View>
-            <View style={[ styles.textView, {flex: 1} ]}>
+            <View style={[styles.textView, { flex: 1 }]}>
               <Text style={styles.textFooter}> Press return key to close </Text>
             </View>
           </View>
@@ -166,17 +164,17 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     backgroundColor: "transparent",
     opacity: 1
-  }, 
+  },
   transparentPage: {
-    width: '100%',
-    height: '100%',
+    width: "100%",
+    height: "100%",
     backgroundColor: "black",
     opacity: 0.8
   },
   textHeader: {
     fontSize: 30,
     color: "white",
-    alignSelf: "center",
+    alignSelf: "center"
   },
   textFooter: {
     fontSize: 20,

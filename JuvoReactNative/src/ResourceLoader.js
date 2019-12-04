@@ -1,22 +1,7 @@
 import videoclipsdata from "../videoclips.json";
 
 const ResourceLoader = {
-  tileNames: [
-    "car",
-    "bolid",
-    "sintel",
-    "oops",
-    "tosposter",
-    "artofwalking",
-    "tosposter",
-    "bunny",
-    "sintel",
-    "sacrecoeur",
-    "tosposter",
-    "canimals",
-    "testwatchscreen",
-    "bunny"
-  ],
+  tileNames: ["car", "bolid", "sintel", "oops", "tosposter", "artofwalking", "tosposter", "bunny", "sintel", "sacrecoeur", "tosposter", "canimals", "testwatchscreen", "bunny"],
   tilesPath: {
     car: require("../images/tiles/car.png"),
     bolid: require("../images/tiles/bolid.png"),

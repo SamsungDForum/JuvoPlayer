@@ -1,13 +1,13 @@
 "use strict";
 import React from "react";
-import {View, Image, ScrollView, NativeModules, NativeEventEmitter, Dimensions} from "react-native";
+import { View, Image, ScrollView, NativeModules, NativeEventEmitter, Dimensions } from "react-native";
 
 import ContentPicture from "./ContentPicture";
 import ContentDescription from "./ContentDescription";
 import ResourceLoader from "../ResourceLoader";
 
-const width = Dimensions.get('window').width;
-const height = Dimensions.get('window').height;
+const width = Dimensions.get("window").width;
+const height = Dimensions.get("window").height;
 
 export default class ContentScroll extends React.Component {
   constructor(props) {
@@ -50,8 +50,7 @@ export default class ContentScroll extends React.Component {
   }
 
   componentWillReceiveProps(nextProps) {
-    if (this.deepLinkIndex === nextProps.deepLinkIndex)
-      return;
+    if (this.deepLinkIndex === nextProps.deepLinkIndex) return;
 
     this.deepLinkIndex = nextProps.deepLinkIndex;
     this.curIndex = this.deepLinkIndex;
@@ -124,18 +123,18 @@ export default class ContentScroll extends React.Component {
       </View>
     );
     return (
-      <View style={{height: height, width: width}}>
+      <View style={{ height: height, width: width }}>
         <View
           style={{
-            top: '10%',
-            left: '5%',
+            top: "10%",
+            left: "5%",
             width: 900,
             height: 750
           }}>
           <ContentDescription
             viewStyle={{
-              width: '100%',
-              height: '100%'
+              width: "100%",
+              height: "100%"
             }}
             headerStyle={{ fontSize: 60, color: "#ffffff" }}
             bodyStyle={{ fontSize: 30, color: "#ffffff", top: 0 }}

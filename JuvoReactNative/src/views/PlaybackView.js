@@ -11,8 +11,8 @@ import PlaybackSettingsView from "./PlaybackSettingsView";
 import Native from "../Native";
 import NotificationPopup from "./NotificationPopup";
 
-const width = Dimensions.get('window').width;
-const height = Dimensions.get('window').height;
+const width = Dimensions.get("window").width;
+const height = Dimensions.get("window").height;
 
 export default class PlaybackView extends React.Component {
   constructor(props) {
@@ -87,7 +87,8 @@ export default class PlaybackView extends React.Component {
       this.resetPlaybackState();
       this.refreshPlaybackInfo();
     }
-    this.setState({selectedIndex: nextProps.selectedIndex});
+    this.currentSubtitleText = "";
+    this.setState({ selectedIndex: nextProps.selectedIndex });
   }
 
   getFormattedTime(milisecs) {
@@ -313,71 +314,61 @@ export default class PlaybackView extends React.Component {
     const playbackTime = total > 0 ? current / total : 0;
     const progress = Math.round(playbackTime * 100) / 100;
     const subtitleText = this.currentSubtitleText;
-    var subtitlesStyle =
-      subtitleText == "" ? [styles.subtitles, {opacity: 0}] : [styles.subtitles, {opacity: 0.8}];
+    var subtitlesStyle = subtitleText == "" ? [styles.subtitles, { opacity: 0 }] : [styles.subtitles, { opacity: 0.8 }];
 
     return (
-      <View style={{ position: 'absolute', width: width, height: height }}>
-        <View style={[ styles.page, {justifyContent: 'flex-end' } ]}>
-          <View style={[ subtitlesStyle, {paddingBottom: height/4} ]}>
-            <Text style={styles.textSubtitles}>subtitleText</Text>
-          </View>
-        </View>
-        <HideableView position={'absolute'} visible={visibility} duration={fadeduration} height={height} width={width}>
-          <HideableView position={'relative'} visible={this.onScreenTimeOut >= 0} duration={fadeduration} height={height} width={width}>
-            <View style={[ styles.page, {position: 'relative'} ]}>
-              <View style={[ styles.transparentPage, {flex: 2, flexDirection: 'row'} ]}>
-                <View style={[ styles.element, {flex: 1} ]}/>
-                <View style={[ styles.element, {flex: 8} ]}>
-                  <ContentDescription viewStyle={styles.element} headerStyle={styles.textHeader}
-                                      bodyStyle={styles.textBody} headerText={title} bodyText={""}/>
-                </View>
-                <View style={[ styles.element, {flex: 1} ]}>
-                  <Image resizeMode='cover' style={styles.icon} source={settingsIconPath}/>
-                </View>
-              </View>
-              <View style={[ styles.element, {flex: 8, justifyContent: 'flex-end'} ]}/>
-              <View style={[ styles.transparentPage, {flex: 2} ]}>
-                <View style={[ styles.element, {flex: 2, justifyContent: 'flex-start'} ]}>
-                  <PlaybackProgressBar value={progress} color='green'/>
-                  <Text style={[ styles.time, {alignSelf: 'flex-start', marginLeft: 50} ]}>
-                    {this.getFormattedTime(this.playbackTimeCurrent)}
-                  </Text>
-                  <Text style={[ styles.time, {alignSelf: 'flex-end', marginLeft: 50} ]}>
-                    {this.getFormattedTime(this.playbackTimeTotal)}
-                  </Text>
-                </View>
-                <View style={{ flex: 5, backgroundColor: 'transparent', flexDirection: 'row' }}>
-                  <View style={[ styles.element, {flex: 1} ]}>
-                    <Image resizeMode='cover' style={styles.icon} source={revIconPath}/>
-                  </View>
-                  <View style={[ styles.element, {flex: 10} ]}>
-                    <Image resizeMode='cover' style={styles.icon} source={playIconPath}/>
-                  </View>
-                  <View style={[ styles.element, {flex: 1} ]}>
-                    <Image resizeMode='cover' style={styles.icon} source={ffwIconPath}/>
-                  </View>
-                </View>
-              </View>
+      <View style={{ position: "absolute", width: width, height: height }}>
+        <HideableView position={"absolute"} visible={visibility} duration={fadeduration} height={height} width={width}>
+          <View style={[styles.page, { justifyContent: "flex-end" }]}>
+            <View style={[subtitlesStyle, { paddingBottom: height / 4.8 }]}>
+              <Text style={styles.textSubtitles}>{subtitleText}</Text>
             </View>
-            <View style={[ styles.page, styles.element ]}>
-              <PlaybackSettingsView
-                visible={this.showingSettingsView}
-                onCloseSettingsView={this.handleSettingsViewDisappeared}
-                onSubtitleSelection={this.onSubtitleSelection}
-                streamsData={this.streamsData}
-              />
+          </View>
+          <HideableView position={"relative"} visible={this.onScreenTimeOut >= 0} duration={fadeduration} height={height} width={width}>
+            <View style={[styles.page, { position: "relative" }]}>
+              <View style={[styles.transparentPage, { flex: 2, flexDirection: "row" }]}>
+                <View style={[styles.element, { flex: 1 }]} />
+                <View style={[styles.element, { flex: 8 }]}>
+                  <ContentDescription viewStyle={styles.element} headerStyle={styles.textHeader} bodyStyle={styles.textBody} headerText={title} bodyText={""} />
+                </View>
+                <View style={[styles.element, { flex: 1 }]}>
+                  <Image resizeMode='cover' style={styles.icon} source={settingsIconPath} />
+                </View>
+              </View>
+              <View style={[styles.element, { flex: 8, justifyContent: "flex-end" }]} />
+              <View style={[styles.transparentPage, { flex: 2 }]}>
+                <View style={[styles.element, { flex: 2, justifyContent: "flex-start" }]}>
+                  <PlaybackProgressBar value={progress} color='green' />
+                  <Text style={[styles.time, { alignSelf: "flex-start", marginLeft: 50 }]}>{this.getFormattedTime(this.playbackTimeCurrent)}</Text>
+                  <Text style={[styles.time, { alignSelf: "flex-end", marginLeft: 50 }]}>{this.getFormattedTime(this.playbackTimeTotal)}</Text>
+                </View>
+                <View style={{ flex: 5, backgroundColor: "transparent", flexDirection: "row" }}>
+                  <View style={[styles.element, { flex: 1 }]}>
+                    <Image resizeMode='cover' style={styles.icon} source={revIconPath} />
+                  </View>
+                  <View style={[styles.element, { flex: 10 }]}>
+                    <Image resizeMode='cover' style={styles.icon} source={playIconPath} />
+                  </View>
+                  <View style={[styles.element, { flex: 1 }]}>
+                    <Image resizeMode='cover' style={styles.icon} source={ffwIconPath} />
+                  </View>
+                </View>
+              </View>
             </View>
           </HideableView>
-          <View style={[ styles.page, styles.element ]}>
-            <InProgressView visible={this.operationInProgress} message={this.inProgressDescription}/>
-          </View>
-          <View style={[ styles.page, styles.element ]}>
-            <NotificationPopup
-              visible={this.showNotificationPopup}
-              onNotificationPopupDisappeared={this.handleNotificationPopupDisappeared}
-              messageText={this.popupMessage}
+          <View style={[styles.page, styles.element]}>
+            <PlaybackSettingsView
+              visible={this.showingSettingsView}
+              onCloseSettingsView={this.handleSettingsViewDisappeared}
+              onSubtitleSelection={this.onSubtitleSelection}
+              streamsData={this.streamsData}
             />
+          </View>
+          <View style={[styles.page, styles.element]}>
+            <InProgressView visible={this.operationInProgress} message={this.inProgressDescription} />
+          </View>
+          <View style={[styles.page, styles.element]}>
+            <NotificationPopup visible={this.showNotificationPopup} onNotificationPopupDisappeared={this.handleNotificationPopupDisappeared} messageText={this.popupMessage} />
           </View>
         </HideableView>
       </View>
@@ -387,40 +378,40 @@ export default class PlaybackView extends React.Component {
 
 const styles = StyleSheet.create({
   page: {
-    position: 'absolute',
-    backgroundColor: 'transparent',
+    position: "absolute",
+    backgroundColor: "transparent",
     height: height,
-    width: width,
+    width: width
   },
   element: {
-    backgroundColor: 'transparent',
-    alignItems: 'center',
-    justifyContent: 'center',
+    backgroundColor: "transparent",
+    alignItems: "center",
+    justifyContent: "center"
   },
   icon: {
     width: 70,
-    height: 70,
+    height: 70
   },
   time: {
     marginTop: 25,
-    position: 'absolute',
+    position: "absolute",
     width: 150,
     height: 30,
     fontSize: 30,
-    color: "white",
+    color: "white"
   },
   transparentPage: {
-    backgroundColor: 'black',
-    opacity: 0.9,
+    backgroundColor: "black",
+    opacity: 0.9
   },
   textHeader: {
     fontSize: 60,
     color: "white",
-    alignSelf: "center",
+    alignSelf: "center"
   },
   textBody: {
     fontSize: 30,
-    color: "white",
+    color: "white"
   },
   textSubtitles: {
     fontSize: 30,
@@ -430,6 +421,6 @@ const styles = StyleSheet.create({
   },
   subtitles: {
     width: width,
-    height: 150,
+    height: 150
   }
 });
