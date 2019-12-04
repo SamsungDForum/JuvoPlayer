@@ -378,7 +378,7 @@ namespace XamarinPlayer.Views
             var surface = args.Surface;
             var canvas = surface.Canvas;
             var targetRect = args.Info.Rect;
-            
+
             canvas.DrawBitmap(frame.Bitmap, frame.SkRect, targetRect);
             canvas.Flush();
         }
@@ -539,12 +539,12 @@ namespace XamarinPlayer.Views
         {
             if (_isShowing && _seekLogic.ShallDisplaySeekPreview())
             {
-                if (!SeekPreviewFrame.IsVisible)
-                    SeekPreviewFrame.IsVisible = true;
+                if (!SeekPreviewContainer.IsVisible)
+                    SeekPreviewContainer.IsVisible = true;
                 SeekPreviewCanvas.InvalidateSurface();
             }
-            else if (SeekPreviewFrame.IsVisible)
-                SeekPreviewFrame.IsVisible = false;
+            else if (SeekPreviewContainer.IsVisible)
+                SeekPreviewContainer.IsVisible = false;
         }
 
         private void UpdatePlayTime()
