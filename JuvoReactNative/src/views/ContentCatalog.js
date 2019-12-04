@@ -7,8 +7,8 @@ import ContentPicture from "./ContentPicture";
 import ContentScroll from "./ContentScroll";
 import ResourceLoader from "../ResourceLoader";
 
-const width = Dimensions.get('window').width;
-const height = Dimensions.get('window').height;
+const width = Dimensions.get("window").width;
+const height = Dimensions.get("window").height;
 
 export default class ContentCatalog extends Component {
   constructor(props) {
@@ -91,23 +91,21 @@ export default class ContentCatalog extends Component {
     const showBigPicture = this.bigPictureVisible;
     return (
       <HideableView visible={this.props.visibility} duration={300}>
-        <View style={[ styles.page, {alignItems: 'flex-end'} ]}>
-          <View style={[ styles.cell, {height: '70%', width: '70%'} ]}>
+        <View style={[styles.page, { alignItems: "flex-end" }]}>
+          <View style={[styles.cell, { height: "70%", width: "70%" }]}>
             <HideableView visible={showBigPicture} duration={100}>
-              <ContentPicture source={uri} selectedIndex={index} path={path}
-                              onLoadEnd={this.handleBigPicLoadEnd} onLoadStart={this.handleBigPicLoadStart}
-                              width={'100%'} height={'100%'}/>
+              <ContentPicture source={uri} selectedIndex={index} path={path} onLoadEnd={this.handleBigPicLoadEnd} onLoadStart={this.handleBigPicLoadStart} width={"100%"} height={"100%"} />
             </HideableView>
-            <ContentPicture position={'absolute'} source={uri} selectedIndex={index} path={overlay}
-                            width={'100%'} height={'100%'}/>
+            <ContentPicture position={"absolute"} source={uri} selectedIndex={index} path={overlay} width={"100%"} height={"100%"} />
           </View>
         </View>
-        <View style={[ styles.page, {position: 'absolute'} ]}>
+        <View style={[styles.page, { position: "absolute" }]}>
           <ContentScroll
             onSelectedIndexChange={this.handleSelectedIndexChange}
             contentURIs={ResourceLoader.tileNames}
             keysListenningOff={this.keysListenningOff}
-            deepLinkIndex={this.props.deepLinkIndex}/>
+            deepLinkIndex={this.props.deepLinkIndex}
+          />
         </View>
       </HideableView>
     );
@@ -117,9 +115,9 @@ export default class ContentCatalog extends Component {
 const styles = StyleSheet.create({
   page: {
     width: width,
-    height: height,
+    height: height
   },
   cell: {
-    backgroundColor: 'black',
+    backgroundColor: "black"
   }
 });
