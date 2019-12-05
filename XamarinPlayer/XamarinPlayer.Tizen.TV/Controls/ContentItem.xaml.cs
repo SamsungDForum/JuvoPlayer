@@ -85,8 +85,14 @@ namespace XamarinPlayer.Tizen.TV.Controls
         public async void SetFocus()
         {
             _isFocused = true;
+#pragma warning disable 4014
             this.ScaleTo(0.9);
+#pragma warning restore 4014
             InvalidateSurface();
+
+            if (ContentTilePreviewPath != null && _storyboardReader == null)
+                _storyboardReader = new StoryboardReader(Path.Combine(Application.Current.DirectoryInfo.Resource,
+                    ContentTilePreviewPath));
 
             await Task.Delay(TimeSpan.FromMilliseconds(500));
             if (_storyboardReader == null || !_isFocused) return;
@@ -106,7 +112,7 @@ namespace XamarinPlayer.Tizen.TV.Controls
                         tilePreviewDuration.TotalMilliseconds)
                 }
             };
-            animation.Commit(this, "Animation", 1000 / 30, 5000, repeat: () => true);
+            animation.Commit(this, "Animation", 1000 / 5, (uint) (tilePreviewDuration.TotalMilliseconds / 6), repeat: () => true);
         }
 
         public void SetUnfocus()
@@ -115,6 +121,7 @@ namespace XamarinPlayer.Tizen.TV.Controls
             this.AbortAnimation("Animation");
             this.ScaleTo(1, 334);
             _storyboardReader?.Dispose();
+            _storyboardReader = null;
             _previewBitmap = null;
             InvalidateSurface();
         }
@@ -134,14 +141,22 @@ namespace XamarinPlayer.Tizen.TV.Controls
 
             canvas.Clear();
 
-            var borderColor = _isFocused ? FocusedColor : UnfocusedColor;
-            canvas.DrawColor(borderColor);
-
-            var dstRect = SKRect.Inflate(info.Rect, -3, -3);
-
             var (bitmap, srcRect) = GetCurrentBitmap();
-            if (bitmap != null)
-                canvas.DrawBitmap(bitmap, srcRect, dstRect);
+            if (bitmap == null)
+                return;
+
+            var borderColor = _isFocused ? FocusedColor : UnfocusedColor;
+
+            using (var path = new SKPath())
+            using (var roundRect = new SKRoundRect(info.Rect, 30, 30))
+            using (var paint = new SKPaint
+                {Color = borderColor, IsAntialias = true, Style = SKPaintStyle.Stroke, StrokeWidth = 3})
+            {
+                path.AddRoundRect(roundRect);
+                canvas.ClipPath(path, antialias: true);
+                canvas.DrawBitmap(bitmap, srcRect, info.Rect);
+                canvas.DrawRoundRect(roundRect, paint);
+            }
         }
 
         private async void LoadSkBitmap()
@@ -187,12 +202,6 @@ namespace XamarinPlayer.Tizen.TV.Controls
             {
                 LoadSkBitmap();
                 InvalidateSurface();
-            }
-            else if (propertyName == "ContentTilePreviewPath")
-            {
-                _storyboardReader?.Dispose();
-                _storyboardReader = new StoryboardReader(Path.Combine(Application.Current.DirectoryInfo.Resource,
-                    ContentTilePreviewPath));
             }
         }
     }
