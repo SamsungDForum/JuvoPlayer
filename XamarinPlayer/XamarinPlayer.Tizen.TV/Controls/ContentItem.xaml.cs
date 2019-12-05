@@ -90,6 +90,10 @@ namespace XamarinPlayer.Tizen.TV.Controls
 #pragma warning restore 4014
             InvalidateSurface();
 
+            if (ContentTilePreviewPath != null && _storyboardReader == null)
+                _storyboardReader = new StoryboardReader(Path.Combine(Application.Current.DirectoryInfo.Resource,
+                    ContentTilePreviewPath));
+
             await Task.Delay(TimeSpan.FromMilliseconds(500));
             if (_storyboardReader == null || !_isFocused) return;
 
@@ -108,7 +112,7 @@ namespace XamarinPlayer.Tizen.TV.Controls
                         tilePreviewDuration.TotalMilliseconds)
                 }
             };
-            animation.Commit(this, "Animation", 1000 / 30, (uint) (tilePreviewDuration.TotalMilliseconds / 6), repeat: () => true);
+            animation.Commit(this, "Animation", 1000 / 5, (uint) (tilePreviewDuration.TotalMilliseconds / 6), repeat: () => true);
         }
 
         public void SetUnfocus()
@@ -117,6 +121,7 @@ namespace XamarinPlayer.Tizen.TV.Controls
             this.AbortAnimation("Animation");
             this.ScaleTo(1, 334);
             _storyboardReader?.Dispose();
+            _storyboardReader = null;
             _previewBitmap = null;
             InvalidateSurface();
         }
@@ -197,12 +202,6 @@ namespace XamarinPlayer.Tizen.TV.Controls
             {
                 LoadSkBitmap();
                 InvalidateSurface();
-            }
-            else if (propertyName == "ContentTilePreviewPath")
-            {
-                _storyboardReader?.Dispose();
-                _storyboardReader = new StoryboardReader(Path.Combine(Application.Current.DirectoryInfo.Resource,
-                    ContentTilePreviewPath));
             }
         }
     }
