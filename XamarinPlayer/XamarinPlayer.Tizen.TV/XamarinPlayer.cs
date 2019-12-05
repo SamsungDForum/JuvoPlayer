@@ -70,7 +70,11 @@ namespace XamarinPlayer
         public Task LoadUrl(string url)
         {
             if (_isInForeground)
+            {
+                _deepLinkUrl = null;
                 return LoadUrlImpl(url);
+            }
+
             _deepLinkUrl = url;
             return Task.CompletedTask;
         }
