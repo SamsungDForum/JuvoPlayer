@@ -43,6 +43,11 @@ namespace XamarinPlayer.Controls
             return ContentLayout.Children.ElementAt(index) as ContentItem;
         }
 
+        public Task SetFocusedContent(ContentItem contentItem)
+        {
+            return SwapFocusedContent(contentItem);
+        }
+
         public void SetFocus()
         {
             if (FocusedContent == null)
@@ -73,7 +78,9 @@ namespace XamarinPlayer.Controls
 
         private Task SwapFocusedContent(ContentItem newContent)
         {
-            FocusedContent.SetUnfocus();
+            if (FocusedContent == newContent)
+                return Task.CompletedTask;
+            FocusedContent?.SetUnfocus();
             FocusedContent = newContent;
             FocusedContent.SetFocus();
             return ScrollToAsync(FocusedContent, ScrollToPosition.Center, true);

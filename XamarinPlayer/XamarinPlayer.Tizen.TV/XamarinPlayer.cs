@@ -25,6 +25,9 @@ namespace XamarinPlayer
 {
     public class App : Application
     {
+        private string _deepLinkUrl;
+        private bool _isInForeground;
+
         public static NavigationPage AppMainPage { get; private set; }
 
         private static readonly ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
@@ -46,6 +49,7 @@ namespace XamarinPlayer
             Logger.Info("");
             if (AppMainPage.CurrentPage is ISuspendable suspendable)
                 suspendable.Suspend();
+            _isInForeground = false;
         }
 
         protected override void OnResume()
@@ -53,9 +57,25 @@ namespace XamarinPlayer
             Logger.Info("");
             if (AppMainPage.CurrentPage is ISuspendable suspendable)
                 suspendable.Resume();
+            _isInForeground = true;
+
+            if (_deepLinkUrl == null)
+                return;
+#pragma warning disable 4014
+            LoadUrlImpl(_deepLinkUrl);
+#pragma warning restore 4014
+            _deepLinkUrl = null;
         }
 
-        public async Task LoadUrl(string url)
+        public Task LoadUrl(string url)
+        {
+            if (_isInForeground)
+                return LoadUrlImpl(url);
+            _deepLinkUrl = url;
+            return Task.CompletedTask;
+        }
+
+        private async Task LoadUrlImpl(string url)
         {
             Logger.Info("");
             while (true)
