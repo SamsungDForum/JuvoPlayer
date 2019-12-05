@@ -1,9 +1,9 @@
-"use strict";
-import React from "react";
-import { View, Text, Picker, NativeModules, NativeEventEmitter, StyleSheet } from "react-native";
+'use strict';
+import React from 'react';
+import { View, Text, Picker, NativeModules, NativeEventEmitter, StyleSheet } from 'react-native';
 
-import HideableView from "./HideableView";
-import Native from "../Native";
+import HideableView from './HideableView';
+import Native from '../Native';
 
 export default class PlaybackSettingsView extends React.Component {
   constructor(props) {
@@ -24,7 +24,7 @@ export default class PlaybackSettingsView extends React.Component {
     this.pickerChange = this.pickerChange.bind(this);
   }
   componentWillMount() {
-    this.JuvoEventEmitter.addListener("onTVKeyDown", this.onTVKeyDown);
+    this.JuvoEventEmitter.addListener('onTVKeyDown', this.onTVKeyDown);
   }
   handleConfirmSettings() {
     this.keysListenningOff = true;
@@ -47,8 +47,8 @@ export default class PlaybackSettingsView extends React.Component {
   onTVKeyDown(pressed) {
     if (this.keysListenningOff) return;
     switch (pressed.KeyName) {
-      case "XF86Back":
-      case "XF86AudioStop":
+      case 'XF86Back':
+      case 'XF86AudioStop':
         this.handleConfirmSettings();
         break;
     }
@@ -58,13 +58,13 @@ export default class PlaybackSettingsView extends React.Component {
     this.state.streamsData[settingName].map((v, i) => {
       if (itemIndex === i) {
         switch (settingName) {
-          case "Audio":
+          case 'Audio':
             this.settings.audioSetting = this.state.streamsData.Audio[itemIndex].Id;
             break;
-          case "Video":
+          case 'Video':
             this.settings.videoSetting = this.state.streamsData.Video[itemIndex].Id;
             break;
-          case "Subtitle":
+          case 'Subtitle':
             this.settings.subtitleSetting = this.state.streamsData.Subtitle[itemIndex].Id;
             break;
         }
@@ -81,16 +81,16 @@ export default class PlaybackSettingsView extends React.Component {
             <View style={[styles.textView, { flex: 1.5 }]}>
               <Text style={styles.textHeader}> Use arrow keys to navigate. Press enter key to select a setting. </Text>
             </View>
-            <View style={{ flex: 2, alignItems: "flex-start", flexDirection: "row", backgroundColor: "transparent" }}>
-              <View style={{ flex: 1, alignItems: "center" }}>
+            <View style={{ flex: 2, alignItems: 'flex-start', flexDirection: 'row', backgroundColor: 'transparent' }}>
+              <View style={{ flex: 1, alignItems: 'center' }}>
                 <View>
                   <Text style={styles.textBody}>Audio track</Text>
                   <Picker
                     selectedValue={this.settings.audioSetting}
                     style={styles.picker}
                     onValueChange={(itemValue, itemIndex) => {
-                      this.JuvoPlayer.Log("itemValue = " + itemValue);
-                      this.pickerChange(itemIndex, "Audio");
+                      this.JuvoPlayer.Log('itemValue = ' + itemValue);
+                      this.pickerChange(itemIndex, 'Audio');
                     }}
                     enabled={this.props.visible}>
                     {this.props.streamsData.Audio.map((item, index) => {
@@ -102,15 +102,15 @@ export default class PlaybackSettingsView extends React.Component {
                   </Picker>
                 </View>
               </View>
-              <View style={{ flex: 1, alignItems: "center" }}>
+              <View style={{ flex: 1, alignItems: 'center' }}>
                 <View>
                   <Text style={styles.textBody}>Video quality</Text>
                   <Picker
                     selectedValue={this.settings.videoSetting}
                     style={styles.picker}
                     onValueChange={(itemValue, itemIndex) => {
-                      this.JuvoPlayer.Log("itemValue = " + itemValue);
-                      this.pickerChange(itemIndex, "Video");
+                      this.JuvoPlayer.Log('itemValue = ' + itemValue);
+                      this.pickerChange(itemIndex, 'Video');
                     }}
                     enabled={this.props.visible}>
                     {this.props.streamsData.Video.map((item, index) => {
@@ -122,15 +122,15 @@ export default class PlaybackSettingsView extends React.Component {
                   </Picker>
                 </View>
               </View>
-              <View style={{ flex: 1, alignItems: "center" }}>
+              <View style={{ flex: 1, alignItems: 'center' }}>
                 <View>
                   <Text style={styles.textBody}>Subtitles</Text>
                   <Picker
                     selectedValue={this.settings.subtitleSetting}
                     style={styles.picker}
                     onValueChange={(itemValue, itemIndex) => {
-                      this.JuvoPlayer.Log("itemValue = " + itemValue);
-                      this.pickerChange(itemIndex, "Subtitle");
+                      this.JuvoPlayer.Log('itemValue = ' + itemValue);
+                      this.pickerChange(itemIndex, 'Subtitle');
                       this.props.onSubtitleSelection(this.state.streamsData.Subtitle[itemIndex].Description);
                     }}
                     enabled={this.props.visible}>
@@ -158,32 +158,32 @@ const styles = StyleSheet.create({
   picker: {
     height: 30,
     width: 450,
-    color: "#ffffff"
+    color: '#ffffff'
   },
   textView: {
-    justifyContent: "center",
-    backgroundColor: "transparent",
+    justifyContent: 'center',
+    backgroundColor: 'transparent',
     opacity: 1
   },
   transparentPage: {
-    width: "100%",
-    height: "100%",
-    backgroundColor: "black",
+    width: '100%',
+    height: '100%',
+    backgroundColor: 'black',
     opacity: 0.8
   },
   textHeader: {
     fontSize: 30,
-    color: "white",
-    alignSelf: "center"
+    color: 'white',
+    alignSelf: 'center'
   },
   textFooter: {
     fontSize: 20,
-    color: "white",
-    textAlign: "center"
+    color: 'white',
+    textAlign: 'center'
   },
   textBody: {
     fontSize: 28,
-    color: "white",
-    fontWeight: "bold"
+    color: 'white',
+    fontWeight: 'bold'
   }
 });

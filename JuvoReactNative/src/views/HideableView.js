@@ -1,6 +1,6 @@
-"use strict";
-import React, { Component, PropTypes } from "react";
-import { View, Animated } from "react-native";
+'use strict';
+import React, { Component, PropTypes } from 'react';
+import { View, Animated } from 'react-native';
 
 export default class HideableView extends Component {
   constructor(props) {
@@ -33,8 +33,8 @@ export default class HideableView extends Component {
       return this.visible && this.props.children;
     }
 
-    const width = this.props.width === undefined ? "100%" : this.props.width;
-    const height = this.props.height === undefined ? "100%" : this.props.height;
+    const width = this.props.width === undefined ? '100%' : this.props.width;
+    const height = this.props.height === undefined ? '100%' : this.props.height;
 
     return (
       <View style={{ position: this.props.position, width: width, height: height }}>
