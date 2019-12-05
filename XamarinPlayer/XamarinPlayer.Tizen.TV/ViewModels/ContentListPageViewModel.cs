@@ -37,6 +37,20 @@ namespace XamarinPlayer.ViewModels
             get;
         }
 
+        private bool _isBusy;
+        public bool IsBusy
+        {
+            get
+            {
+                return _isBusy;
+            }
+            set
+            {
+                _isBusy = value;
+                OnPropertyChanged(nameof(IsBusy));
+            }
+        }
+
         public event PropertyChangedEventHandler PropertyChanged;
 
         public ContentListPageViewModel()
