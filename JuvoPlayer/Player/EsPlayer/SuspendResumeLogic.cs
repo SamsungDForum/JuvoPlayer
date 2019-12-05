@@ -149,8 +149,8 @@ namespace JuvoPlayer.Player.EsPlayer
                         return;
 
                     // Buffering event is fired on very first suspend.
-                    // _suspendCount 0->1 transistion
-                    BufferingRequestEvent?.Invoke(100);
+                    // _suspendCount 0->1 transition
+                    SetBuffering(true);
                     return;
                 }
 
@@ -158,8 +158,8 @@ namespace JuvoPlayer.Player.EsPlayer
                     return;
 
                 // Buffering event is fired on very first resume.
-                // _suspendCount 1->0 transistion
-                BufferingRequestEvent?.Invoke(0);
+                // _suspendCount 1->0 transition
+                SetBuffering(false);
 
             }
         }
