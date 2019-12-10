@@ -6,6 +6,7 @@
     <DefineConstants>
     </DefineConstants>
     <Version>1.5.1</Version>
+    <TizenTpkExcludePattern>runtimes\*\native\*.*</TizenTpkExcludePattern>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugType>portable</DebugType>
