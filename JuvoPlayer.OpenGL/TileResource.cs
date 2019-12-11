@@ -51,7 +51,8 @@ namespace JuvoPlayer.OpenGL
                     nameLen = _name.Length,
                     desc = desc,
                     descLen = _description.Length,
-                    format = (int) _image.Format
+                    format = (int) _image.Format,
+                    getStoryboardData = StoryboardManager.GetInstance().AddTile(_id)
                 });
             }
         }

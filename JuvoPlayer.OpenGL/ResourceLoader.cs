@@ -15,14 +15,13 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
- using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
-using JuvoLogger;
 using JuvoPlayer.Common;
 using JuvoPlayer.Utils;
 
@@ -31,7 +30,6 @@ namespace JuvoPlayer.OpenGL
     internal class ResourceLoader
     {
         public List<ClipDefinition> ContentList { get; private set; }
-        public ILogger Logger { private get; set; }
         public int TilesCount => ContentList?.Count ?? 0;
 
         public bool IsLoadingFinished { get; private set; }
@@ -41,6 +39,17 @@ namespace JuvoPlayer.OpenGL
         private readonly SynchronizationContext _synchronizationContext = SynchronizationContext.Current; // If "Current" is null, then the thread's current context is "new SynchronizationContext()", by convention.
         List<Task> baseTasks = new List<Task>();
         private Action _doAfterFinishedLoading;
+
+        private static ResourceLoader Instance;
+
+        protected ResourceLoader()
+        {
+        }
+
+        public static ResourceLoader GetInstance()
+        {
+            return Instance ?? (Instance = new ResourceLoader());
+        }
 
         public void LoadResources(string fullExecutablePath, Action doAfterFinishedLoading = null)
         {
