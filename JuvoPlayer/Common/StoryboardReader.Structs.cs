@@ -28,7 +28,7 @@ namespace JuvoPlayer.Common
         public uint FramesCount { get; set; }
     }
 
-    class AllStoryboards
+    class StoryboardsMap
     {
         public int Columns { get; set; }
         public int Rows { get; set; }

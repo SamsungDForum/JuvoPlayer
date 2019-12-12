@@ -17,9 +17,11 @@
 
 using System;
 using System.Collections.Generic;
-using System.IO;
+using System.Threading;
 using System.Threading.Tasks;
+using JuvoLogger;
 using JuvoPlayer.Common;
+using Nito.AsyncEx;
 using SkiaSharp;
 using SkiaSharp.Views.Forms;
 using Xamarin.Forms;
@@ -34,11 +36,12 @@ namespace XamarinPlayer.Tizen.TV.Controls
         private static SKColor FocusedColor = new SKColor(234, 234, 234);
         private static SKColor UnfocusedColor = new SKColor(32, 32, 32);
 
+        private ILogger _logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
         private SKBitmap _contentBitmap;
         private SubSkBitmap _previewBitmap;
         private double _height;
         private bool _isFocused;
-
+        private CancellationTokenSource _animationCts;
         private StoryboardReader _storyboardReader;
 
         public static readonly BindableProperty ContentImgProperty = BindableProperty.Create("ContentImg",
@@ -84,39 +87,62 @@ namespace XamarinPlayer.Tizen.TV.Controls
 
         public async void SetFocus()
         {
-            _isFocused = true;
-#pragma warning disable 4014
-            this.ScaleTo(0.9);
-#pragma warning restore 4014
-            InvalidateSurface();
-
-            if (ContentTilePreviewPath != null && _storyboardReader == null)
-                _storyboardReader = new StoryboardReader(Path.Combine(Application.Current.DirectoryInfo.Resource,
-                    ContentTilePreviewPath));
-
-            await Task.Delay(TimeSpan.FromMilliseconds(500));
-            if (_storyboardReader == null || !_isFocused) return;
-
-            var tilePreviewDuration = _storyboardReader.Duration();
-            var animation = new Animation
+            using (_animationCts = new CancellationTokenSource())
             {
+                var token = _animationCts.Token;
+                try
                 {
-                    0, 1, new Animation(t =>
+                    _isFocused = true;
+#pragma warning disable 4014
+                    this.ScaleTo(0.9);
+#pragma warning restore 4014
+                    InvalidateSurface();
+
+                    if (ContentTilePreviewPath != null && _storyboardReader == null)
+                        _storyboardReader = new StoryboardReader(ContentTilePreviewPath,
+                            StoryboardReader.PreloadingStrategy.PreloadOnlyRemoteSources);
+
+                    await Task.WhenAll(Task.Delay(500), _storyboardReader.LoadTask).WaitAsync(token);
+                    if (_storyboardReader == null || !_isFocused) return;
+
+                    var tilePreviewDuration = _storyboardReader.Duration();
+                    var animation = new Animation
+                    {
                         {
-                            var position = TimeSpan.FromMilliseconds(t);
-                            var previewBitmap = _storyboardReader.GetFrame(position);
-                            if (previewBitmap == null) return;
-                            _previewBitmap = previewBitmap;
-                            InvalidateSurface();
-                        }, 0,
-                        tilePreviewDuration.TotalMilliseconds)
+                            0, 1, new Animation(t =>
+                                {
+                                    var position = TimeSpan.FromMilliseconds(t);
+                                    var previewBitmap = _storyboardReader.GetFrame(position);
+                                    if (previewBitmap == null) return;
+                                    _previewBitmap = previewBitmap;
+                                    InvalidateSurface();
+                                }, 0,
+                                tilePreviewDuration.TotalMilliseconds)
+                        }
+                    };
+                    animation.Commit(this, "Animation", 1000 / 5, (uint) (tilePreviewDuration.TotalMilliseconds / 6),
+                        repeat: () => true);
                 }
-            };
-            animation.Commit(this, "Animation", 1000 / 5, (uint) (tilePreviewDuration.TotalMilliseconds / 6), repeat: () => true);
+                catch (TaskCanceledException)
+                {
+                }
+                catch (Exception ex)
+                {
+                    _logger.Error(ex);
+                }
+            }
         }
 
         public void SetUnfocus()
         {
+            try
+            {
+                _animationCts?.Cancel();
+            }
+            catch (ObjectDisposedException)
+            {
+            }
+
             _isFocused = false;
             this.AbortAnimation("Animation");
             this.ScaleTo(1, 334);

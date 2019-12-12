@@ -19,26 +19,78 @@
 
 using System;
 using System.Collections.Generic;
-using System.IO;
+using System.Diagnostics;
 using System.Linq;
-using JuvoPlayer.Utils;
+using System.Threading.Tasks;
 using SkiaSharp;
 
 namespace JuvoPlayer.Common
 {
     public class StoryboardReader : IDisposable
     {
-        private readonly AllStoryboards _data;
+        private StoryboardsMap _map;
         private readonly IDictionary<string, SKBitmapHolder> _bitmaps;
-        private readonly string _jsonDescPath;
+        private readonly IStoryboardSource _source;
+        private readonly PreloadingStrategy _preloadingStrategy;
 
-        public SKSize FrameSize => new SKSize(_data.FrameWidth, _data.FrameHeight);
+        public SKSize FrameSize => new SKSize(_map?.FrameWidth ?? 0, _map?.FrameHeight ?? 0);
 
-        public StoryboardReader(string jsonDescPath)
+        public Task LoadTask { get; }
+
+        public enum PreloadingStrategy
         {
-            _jsonDescPath = jsonDescPath;
-            _data = JSONFileReader.DeserializeJsonFile<AllStoryboards>(jsonDescPath);
+            DoNotPreload,
+            PreloadOnlyRemoteSources,
+            PreloadEverything,
+        }
+
+        public StoryboardReader(string jsonDescPath, PreloadingStrategy preloadingStrategy = PreloadingStrategy.DoNotPreload)
+        {
+            _source = CreateStoryboardSource(jsonDescPath);
+            _preloadingStrategy = preloadingStrategy;
             _bitmaps = new Dictionary<string, SKBitmapHolder>();
+            LoadTask = LoadMap();
+        }
+
+        private static IStoryboardSource CreateStoryboardSource(string path)
+        {
+            return IsRemotePath(path)
+                ? (IStoryboardSource) new RemoteStoryboardSource(path)
+                : new LocalStoryboardSource(path);
+        }
+
+        private static bool IsRemotePath(string path)
+        {
+            return path.StartsWith("http");
+        }
+
+        private async Task LoadMap()
+        {
+            _map = await _source.GetStoryboardsMap();
+
+            if (!ShallPreloadBitmaps()) return;
+            foreach (var storyboard in _map.Storyboards)
+                GetOrLoadBitmap(storyboard);
+        }
+
+        private bool ShallPreloadBitmaps()
+        {
+            switch (_preloadingStrategy)
+            {
+                case PreloadingStrategy.DoNotPreload:
+                    return false;
+                case PreloadingStrategy.PreloadOnlyRemoteSources:
+                    return HasRemoteSource();
+                case PreloadingStrategy.PreloadEverything:
+                    return true;
+                default:
+                    throw new ArgumentOutOfRangeException();
+            }
+        }
+
+        private bool HasRemoteSource()
+        {
+            return _source.GetType() == typeof(RemoteStoryboardSource);
         }
 
         public SubSkBitmap GetFrame(TimeSpan position)
@@ -57,14 +109,13 @@ namespace JuvoPlayer.Common
 
         public TimeSpan Duration()
         {
-            var last = _data.Storyboards.Last();
-            if (last == null) return TimeSpan.Zero;
-            return GetStoryboardDuration(last).Item2;
+            var last = _map?.Storyboards.Last();
+            return last == null ? TimeSpan.Zero : GetStoryboardDuration(last).Item2;
         }
 
         private Storyboard FindStoryboard(TimeSpan position)
         {
-            return _data.Storyboards.FirstOrDefault(st => HasFrameForPosition(st, position));
+            return _map?.Storyboards.FirstOrDefault(st => HasFrameForPosition(st, position));
         }
 
         private bool HasFrameForPosition(Storyboard st, TimeSpan position)
@@ -76,39 +127,37 @@ namespace JuvoPlayer.Common
         private (TimeSpan, TimeSpan) GetStoryboardDuration(Storyboard storyboard)
         {
             var begin = storyboard.Begin;
-            var end = begin + storyboard.FramesCount * _data.FrameDuration;
+            var end = begin + storyboard.FramesCount * _map.FrameDuration;
             return (TimeSpan.FromSeconds(begin), TimeSpan.FromSeconds(end));
         }
 
         private SKBitmap GetOrLoadBitmap(Storyboard storyboard)
         {
-            var key = storyboard.Filename;
-            if (!_bitmaps.ContainsKey(key))
-            {
-                _bitmaps[key] = new SKBitmapHolder
-                {
-                    Path = ResolveStoryboardPath(storyboard)
-                };
-            }
-            return _bitmaps[key].GetBitmap();
+            return GetOrCreateBitmapHolder(storyboard).GetBitmap();
         }
 
-        private string ResolveStoryboardPath(Storyboard storyboard)
+        private SKBitmapHolder GetOrCreateBitmapHolder(Storyboard storyboard)
         {
-            var dir = Path.GetDirectoryName(_jsonDescPath) ?? throw new InvalidOperationException();
-            return Path.Combine(dir, storyboard.Filename);
+            var key = storyboard.Filename;
+            if (_bitmaps.ContainsKey(key)) return _bitmaps[key];
+
+            var bitmapHolder = new SKBitmapHolder(_source.GetBitmap(storyboard));
+            _bitmaps[key] = bitmapHolder;
+            return bitmapHolder;
         }
 
         private SKRect CalculateFramePosition(Storyboard storyboard, TimeSpan position)
         {
+            Debug.Assert(_map != null, "Map shall be loaded");
+
             var begin = storyboard.Begin;
             var positionInStoryboard = position.TotalSeconds - begin;
-            var frameDuration = _data.FrameDuration;
+            var frameDuration = _map.FrameDuration;
 
             var idx = (int) (positionInStoryboard / frameDuration);
 
-            var left = idx % _data.Columns * _data.FrameWidth;
-            var top = idx / _data.Columns * _data.FrameHeight;
+            var left = idx % _map.Columns * _map.FrameWidth;
+            var top = idx / _map.Columns * _map.FrameHeight;
 
             return new SKRect
             {
