@@ -26,7 +26,6 @@ using SkiaSharp;
 using SkiaSharp.Views.Forms;
 using Xamarin.Forms;
 using Xamarin.Forms.Xaml;
-using Application = Tizen.Applications.Application;
 
 namespace XamarinPlayer.Tizen.TV.Controls
 {
@@ -98,7 +97,9 @@ namespace XamarinPlayer.Tizen.TV.Controls
 #pragma warning restore 4014
                     InvalidateSurface();
 
-                    if (ContentTilePreviewPath != null && _storyboardReader == null)
+                    if (ContentTilePreviewPath == null) return;
+
+                    if (_storyboardReader == null)
                         _storyboardReader = new StoryboardReader(ContentTilePreviewPath,
                             StoryboardReader.PreloadingStrategy.PreloadOnlyRemoteSources);
 
