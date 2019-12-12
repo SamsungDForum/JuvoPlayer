@@ -358,16 +358,24 @@ namespace XamarinPlayer.Views
             }
         }
 
-        private void InitializeSeekPreview(string seekPreviewPath)
+        private async void InitializeSeekPreview(string seekPreviewPath)
         {
             _storyboardReader?.Dispose();
-            _storyboardReader =
-                new StoryboardReader(Path.Combine(Application.Current.DirectoryInfo.Resource, seekPreviewPath));
+            _storyboardReader = new StoryboardReader(seekPreviewPath);
             _seekLogic.StoryboardReader = _storyboardReader;
 
-            var size = _storyboardReader.FrameSize;
-            SeekPreviewCanvas.WidthRequest = size.Width;
-            SeekPreviewCanvas.HeightRequest = size.Height;
+            try
+            {
+                await _storyboardReader.LoadTask;
+
+                var size = _storyboardReader.FrameSize;
+                SeekPreviewCanvas.WidthRequest = size.Width;
+                SeekPreviewCanvas.HeightRequest = size.Height;
+            }
+            catch (Exception ex)
+            {
+                Logger.Error(ex);
+            }
         }
 
         private void OnSeekPreviewCanvasOnPaintSurface(object sender, SKPaintSurfaceEventArgs args)
