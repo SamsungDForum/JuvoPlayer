@@ -1,6 +1,6 @@
-"use strict";
-import React, { Component, PropTypes } from "react";
-import { View, Animated } from "react-native";
+'use strict';
+import React, { Component, PropTypes } from 'react';
+import { View, Animated } from 'react-native';
 
 export default class HideableView extends Component {
   constructor(props) {

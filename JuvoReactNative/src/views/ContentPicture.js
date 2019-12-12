@@ -1,9 +1,9 @@
-"use strict";
-import React from "react";
-import { View, Image, NativeModules } from "react-native";
+'use strict';
+import React from 'react';
+import { View, Image, NativeModules } from 'react-native';
 
-import HideableView from "./HideableView";
-import ResourceLoader from "../ResourceLoader";
+import HideableView from './HideableView';
+import ResourceLoader from '../ResourceLoader';
 
 export default class ContentPicture extends React.Component {
   constructor(props) {
@@ -65,7 +65,7 @@ export default class ContentPicture extends React.Component {
               onLoadStart={this.props.onLoadStart}
               onLoadEnd={this.props.onLoadEnd}
               onError={error => {
-                this.JuvoPlayer.Log("Image loading error: " + error);
+                this.JuvoPlayer.Log('Image loading error: ' + error);
               }}
             />
           </View>

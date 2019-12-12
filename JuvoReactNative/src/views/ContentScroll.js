@@ -1,10 +1,10 @@
-"use strict";
-import React from "react";
-import {View, Image, ScrollView, NativeModules, NativeEventEmitter, Dimensions} from "react-native";
+'use strict';
+import React from 'react';
+import { View, Image, ScrollView, NativeModules, NativeEventEmitter, Dimensions } from 'react-native';
 
-import ContentPicture from "./ContentPicture";
-import ContentDescription from "./ContentDescription";
-import ResourceLoader from "../ResourceLoader";
+import ContentPicture from './ContentPicture';
+import ContentDescription from './ContentDescription';
+import ResourceLoader from '../ResourceLoader';
 
 const width = Dimensions.get('window').width;
 const height = Dimensions.get('window').height;
@@ -45,13 +45,12 @@ export default class ContentScroll extends React.Component {
   }
 
   componentWillMount() {
-    this.JuvoEventEmitter.addListener("onTVKeyDown", this.onTVKeyDown);
-    this.JuvoEventEmitter.addListener("onTVKeyUp", this.onTVKeyUp);
+    this.JuvoEventEmitter.addListener('onTVKeyDown', this.onTVKeyDown);
+    this.JuvoEventEmitter.addListener('onTVKeyUp', this.onTVKeyUp);
   }
 
   componentWillReceiveProps(nextProps) {
-    if (this.deepLinkIndex === nextProps.deepLinkIndex)
-      return;
+    if (this.deepLinkIndex === nextProps.deepLinkIndex) return;
 
     this.deepLinkIndex = nextProps.deepLinkIndex;
     this.curIndex = this.deepLinkIndex;
@@ -67,10 +66,10 @@ export default class ContentScroll extends React.Component {
     if (this.props.keysListenningOff) return;
 
     switch (pressed.KeyName) {
-      case "Right":
+      case 'Right':
         this.handleButtonPressRight();
         break;
-      case "Left":
+      case 'Left':
         this.handleButtonPressLeft();
         break;
     }
@@ -94,7 +93,7 @@ export default class ContentScroll extends React.Component {
     const description = ResourceLoader.clipsData[index].description;
     const itemWidth = 454;
     const itemHeight = 260;
-    const overlayPath = ResourceLoader.playbackIconsPathSelect("play");
+    const overlayPath = ResourceLoader.playbackIconsPathSelect('play');
     const renderThumbs = (uri, i) => (
       <View key={i}>
         <Image resizeMode='cover' style={{ top: itemHeight / 2 + 35, left: itemWidth / 2 - 25 }} source={overlayPath} />
@@ -111,20 +110,20 @@ export default class ContentScroll extends React.Component {
           stylesThumbSelected={{
             width: itemWidth,
             height: itemHeight,
-            backgroundColor: "transparent",
+            backgroundColor: 'transparent',
             opacity: 0.3
           }}
           stylesThumb={{
             width: itemWidth,
             height: itemHeight,
-            backgroundColor: "transparent",
+            backgroundColor: 'transparent',
             opacity: 1
           }}
         />
       </View>
     );
     return (
-      <View style={{height: height, width: width}}>
+      <View style={{ height: height, width: width }}>
         <View
           style={{
             top: '10%',
@@ -137,8 +136,8 @@ export default class ContentScroll extends React.Component {
               width: '100%',
               height: '100%'
             }}
-            headerStyle={{ fontSize: 60, color: "#ffffff" }}
-            bodyStyle={{ fontSize: 30, color: "#ffffff", top: 0 }}
+            headerStyle={{ fontSize: 60, color: '#ffffff' }}
+            bodyStyle={{ fontSize: 30, color: '#ffffff', top: 0 }}
             headerText={title}
             bodyText={description}
           />

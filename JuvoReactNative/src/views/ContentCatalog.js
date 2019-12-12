@@ -1,11 +1,11 @@
-"use strict";
-import React, { Component } from "react";
-import { View, NativeModules, NativeEventEmitter, Dimensions, StyleSheet } from "react-native";
+'use strict';
+import React, { Component } from 'react';
+import { View, NativeModules, NativeEventEmitter, Dimensions, StyleSheet } from 'react-native';
 
-import HideableView from "./HideableView";
-import ContentPicture from "./ContentPicture";
-import ContentScroll from "./ContentScroll";
-import ResourceLoader from "../ResourceLoader";
+import HideableView from './HideableView';
+import ContentPicture from './ContentPicture';
+import ContentScroll from './ContentScroll';
+import ResourceLoader from '../ResourceLoader';
 
 const width = Dimensions.get('window').width;
 const height = Dimensions.get('window').height;
@@ -29,8 +29,8 @@ export default class ContentCatalog extends Component {
   }
 
   componentWillMount() {
-    this.JuvoEventEmitter.addListener("onTVKeyDown", this.onTVKeyDown);
-    this.JuvoEventEmitter.addListener("onTVKeyUp", this.onTVKeyUp);
+    this.JuvoEventEmitter.addListener('onTVKeyDown', this.onTVKeyDown);
+    this.JuvoEventEmitter.addListener('onTVKeyUp', this.onTVKeyUp);
   }
   componentDidUpdate(prevProps, prevState) {
     this.bigPictureVisible = true;
@@ -39,7 +39,7 @@ export default class ContentCatalog extends Component {
     return true;
   }
   toggleVisibility() {
-    this.props.switchView("PlaybackView");
+    this.props.switchView('PlaybackView');
   }
   rerender() {
     this.setState({
@@ -52,13 +52,13 @@ export default class ContentCatalog extends Component {
     //pressed.KeyCode
     if (this.keysListenningOff) return;
     switch (pressed.KeyName) {
-      case "XF86AudioStop":
-      case "Return":
-      case "XF86AudioPlay":
-      case "XF86PlayBack":
+      case 'XF86AudioStop':
+      case 'Return':
+      case 'XF86AudioPlay':
+      case 'XF86PlayBack':
         this.toggleVisibility();
         break;
-      case ("Left", "Right"):
+      case ('Left', 'Right'):
         break;
     }
     if (this.bigPictureVisible) {
@@ -91,23 +91,21 @@ export default class ContentCatalog extends Component {
     const showBigPicture = this.bigPictureVisible;
     return (
       <HideableView visible={this.props.visibility} duration={300}>
-        <View style={[ styles.page, {alignItems: 'flex-end'} ]}>
-          <View style={[ styles.cell, {height: '70%', width: '70%'} ]}>
+        <View style={[styles.page, { alignItems: 'flex-end' }]}>
+          <View style={[styles.cell, { height: '70%', width: '70%' }]}>
             <HideableView visible={showBigPicture} duration={100}>
-              <ContentPicture source={uri} selectedIndex={index} path={path}
-                              onLoadEnd={this.handleBigPicLoadEnd} onLoadStart={this.handleBigPicLoadStart}
-                              width={'100%'} height={'100%'}/>
+              <ContentPicture source={uri} selectedIndex={index} path={path} onLoadEnd={this.handleBigPicLoadEnd} onLoadStart={this.handleBigPicLoadStart} width={'100%'} height={'100%'} />
             </HideableView>
-            <ContentPicture position={'absolute'} source={uri} selectedIndex={index} path={overlay}
-                            width={'100%'} height={'100%'}/>
+            <ContentPicture position={'absolute'} source={uri} selectedIndex={index} path={overlay} width={'100%'} height={'100%'} />
           </View>
         </View>
-        <View style={[ styles.page, {position: 'absolute'} ]}>
+        <View style={[styles.page, { position: 'absolute' }]}>
           <ContentScroll
             onSelectedIndexChange={this.handleSelectedIndexChange}
             contentURIs={ResourceLoader.tileNames}
             keysListenningOff={this.keysListenningOff}
-            deepLinkIndex={this.props.deepLinkIndex}/>
+            deepLinkIndex={this.props.deepLinkIndex}
+          />
         </View>
       </HideableView>
     );
@@ -117,9 +115,9 @@ export default class ContentCatalog extends Component {
 const styles = StyleSheet.create({
   page: {
     width: width,
-    height: height,
+    height: height
   },
   cell: {
-    backgroundColor: 'black',
+    backgroundColor: 'black'
   }
 });
