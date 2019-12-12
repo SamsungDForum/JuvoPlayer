@@ -1,6 +1,6 @@
-"use strict";
-import React, { Component } from "react";
-import { View, Text } from "react-native";
+'use strict';
+import React, { Component } from 'react';
+import { View, Text } from 'react-native';
 
 export default class ContentDescription extends Component {
   constructor(props) {

@@ -2,7 +2,7 @@
   <!-- Property Group for Tizen40 Project -->
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFramework>tizen40</TargetFramework>
+    <TargetFramework>tizen50</TargetFramework>
     <SignAssembly>false</SignAssembly>
     <AssemblyOriginatorKeyFile />
     <AssemblyName>JuvoPlayerXamarin.Tizen.TV</AssemblyName>
@@ -15,7 +15,7 @@
     <Company>Samsung Electronics VD</Company>
     <NeutralLanguage>en</NeutralLanguage>
     <Description>JuvoPlayerXamarin.Tizen.TV</Description>
-    <Version>1.5.0</Version>
+    <Version>1.5.1</Version>
     <TizenTpkExcludePattern>runtimes\*\native\*.*</TizenTpkExcludePattern>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
