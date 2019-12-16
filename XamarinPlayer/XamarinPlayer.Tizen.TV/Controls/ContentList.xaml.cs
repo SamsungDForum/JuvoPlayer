@@ -57,7 +57,7 @@ namespace XamarinPlayer.Controls
 
         public void ResetFocus()
         {
-            FocusedContent.ResetFocus();
+            FocusedContent?.ResetFocus();
         }
 
         public async Task<bool> ScrollToNext()
