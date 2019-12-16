@@ -16,7 +16,7 @@
     <NeutralLanguage>en</NeutralLanguage>
     <Description>JuvoPlayerXamarin.Tizen.TV</Description>
     <Version>1.5.1</Version>
-    <TizenTpkExcludePattern>runtimes\*\native\*.*</TizenTpkExcludePattern>
+    <TizenTpkExcludePattern>runtimes\*\native\*.*;res\storyboards\**\*</TizenTpkExcludePattern>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugType>portable</DebugType>

@@ -17,24 +17,14 @@
  *
  */
 
-using System.Collections.Generic;
+using System.IO;
+using System.Threading.Tasks;
 
 namespace JuvoPlayer.Common
 {
-    class Storyboard
+    interface IStoryboardSource
     {
-        public string Filename { get; set; }
-        public float Begin { get; set; }
-        public uint FramesCount { get; set; }
-    }
-
-    class StoryboardsMap
-    {
-        public int Columns { get; set; }
-        public int Rows { get; set; }
-        public int FrameWidth { get; set; }
-        public int FrameHeight { get; set; }
-        public float FrameDuration { get; set; }
-        public List<Storyboard> Storyboards { get; set; }
+        Task<StoryboardsMap> GetStoryboardsMap();
+        Task<Stream> GetBitmap(Storyboard storyboard);
     }
 }
