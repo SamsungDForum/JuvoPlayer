@@ -19,6 +19,7 @@ using System.Linq;
 using System.Threading.Tasks;
 using Xamarin.Forms;
 using Xamarin.Forms.Xaml;
+using XamarinPlayer.Tizen.TV.Controls;
 
 namespace XamarinPlayer.Controls
 {
@@ -42,6 +43,11 @@ namespace XamarinPlayer.Controls
             return ContentLayout.Children.ElementAt(index) as ContentItem;
         }
 
+        public Task SetFocusedContent(ContentItem contentItem)
+        {
+            return SwapFocusedContent(contentItem);
+        }
+
         public void SetFocus()
         {
             if (FocusedContent == null)
@@ -55,7 +61,7 @@ namespace XamarinPlayer.Controls
             var nextIndex = index + 1;
             if (nextIndex == ContentLayout.Children.Count)
                 return false;
-            
+
             await SwapFocusedContent(ContentLayout.Children[nextIndex] as ContentItem);
             return true;
         }
@@ -72,7 +78,9 @@ namespace XamarinPlayer.Controls
 
         private Task SwapFocusedContent(ContentItem newContent)
         {
-            FocusedContent.SetUnfocus();
+            if (FocusedContent == newContent)
+                return Task.CompletedTask;
+            FocusedContent?.SetUnfocus();
             FocusedContent = newContent;
             FocusedContent.SetFocus();
             return ScrollToAsync(FocusedContent, ScrollToPosition.Center, true);

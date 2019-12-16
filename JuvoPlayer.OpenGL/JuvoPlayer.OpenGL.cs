@@ -135,10 +135,7 @@ namespace JuvoPlayer.OpenGL
 
         private void InitMenu()
         {
-            _resourceLoader = new ResourceLoader
-            {
-                Logger = Logger
-            };
+            _resourceLoader = ResourceLoader.GetInstance();
             _resourceLoader.LoadResources(
                 Path.GetDirectoryName(Path.GetDirectoryName(Current.ApplicationInfo.ExecutablePath)),
                 HandleLoadingFinished);
@@ -203,7 +200,7 @@ namespace JuvoPlayer.OpenGL
         private void SetDefaultMenuState()
         {
             _selectedTile = 0;
-            DllImports.SelectTile(_selectedTile);
+            DllImports.SelectTile(_selectedTile, 0);
             _isMenuShown = false;
             DllImports.ShowLoader(1, 0);
 
@@ -307,7 +304,7 @@ namespace JuvoPlayer.OpenGL
             if (Player != null)
                 ClosePlayer();
             _selectedTile = tileNo;
-            DllImports.SelectTile(_selectedTile);
+            DllImports.SelectTile(_selectedTile, 0);
             if (_resourceLoader.IsLoadingFinished)
                 HandleExternalPlaybackStart();
         }
@@ -392,7 +389,7 @@ namespace JuvoPlayer.OpenGL
             {
                 if (_selectedTile < _resourceLoader.TilesCount - 1)
                     _selectedTile = (_selectedTile + 1) % _resourceLoader.TilesCount;
-                DllImports.SelectTile(_selectedTile);
+                DllImports.SelectTile(_selectedTile, 1);
             }
             else if (_options.Visible)
             {
@@ -410,7 +407,7 @@ namespace JuvoPlayer.OpenGL
             {
                 if (_selectedTile > 0)
                     _selectedTile = (_selectedTile - 1 + _resourceLoader.TilesCount) % _resourceLoader.TilesCount;
-                DllImports.SelectTile(_selectedTile);
+                DllImports.SelectTile(_selectedTile, 1);
             }
             else if (_options.Visible)
             {

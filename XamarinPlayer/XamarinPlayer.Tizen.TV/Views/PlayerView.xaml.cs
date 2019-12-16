@@ -358,16 +358,24 @@ namespace XamarinPlayer.Views
             }
         }
 
-        private void InitializeSeekPreview(string seekPreviewPath)
+        private async void InitializeSeekPreview(string seekPreviewPath)
         {
             _storyboardReader?.Dispose();
-            _storyboardReader =
-                new StoryboardReader(Path.Combine(Application.Current.DirectoryInfo.Resource, seekPreviewPath));
+            _storyboardReader = new StoryboardReader(seekPreviewPath);
             _seekLogic.StoryboardReader = _storyboardReader;
 
-            var size = _storyboardReader.FrameSize;
-            SeekPreviewCanvas.WidthRequest = size.Width;
-            SeekPreviewCanvas.HeightRequest = size.Height;
+            try
+            {
+                await _storyboardReader.LoadTask;
+
+                var size = _storyboardReader.FrameSize;
+                SeekPreviewCanvas.WidthRequest = size.Width;
+                SeekPreviewCanvas.HeightRequest = size.Height;
+            }
+            catch (Exception ex)
+            {
+                Logger.Error(ex);
+            }
         }
 
         private void OnSeekPreviewCanvasOnPaintSurface(object sender, SKPaintSurfaceEventArgs args)
@@ -378,7 +386,7 @@ namespace XamarinPlayer.Views
             var surface = args.Surface;
             var canvas = surface.Canvas;
             var targetRect = args.Info.Rect;
-            
+
             canvas.DrawBitmap(frame.Bitmap, frame.SkRect, targetRect);
             canvas.Flush();
         }
@@ -539,12 +547,12 @@ namespace XamarinPlayer.Views
         {
             if (_isShowing && _seekLogic.ShallDisplaySeekPreview())
             {
-                if (!SeekPreviewFrame.IsVisible)
-                    SeekPreviewFrame.IsVisible = true;
+                if (!SeekPreviewContainer.IsVisible)
+                    SeekPreviewContainer.IsVisible = true;
                 SeekPreviewCanvas.InvalidateSurface();
             }
-            else if (SeekPreviewFrame.IsVisible)
-                SeekPreviewFrame.IsVisible = false;
+            else if (SeekPreviewContainer.IsVisible)
+                SeekPreviewContainer.IsVisible = false;
         }
 
         private void UpdatePlayTime()

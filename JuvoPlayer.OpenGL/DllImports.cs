@@ -21,9 +21,10 @@ namespace JuvoPlayer.OpenGL
 {
     internal static unsafe class DllImports
     {
-        private const string GlDemoLib = "libgles.so";
+        private const string GlUiLib = "libgles.so";
 
         // Structures
+        public delegate StoryboardData GetStoryboardDataDelegate([MarshalAs(UnmanagedType.I8)] long position, int tileId);
 
         [StructLayout(LayoutKind.Sequential)]
         public struct TileData
@@ -37,6 +38,30 @@ namespace JuvoPlayer.OpenGL
             public byte* desc;
             public int descLen;
             public int format;
+            public GetStoryboardDataDelegate getStoryboardData;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        public struct StoryboardData
+        {
+            public int isStoryboardReaderReady;
+            public int isFrameReady;
+            public SubBitmap frame;
+            public long duration;
+        }
+
+        [StructLayout(LayoutKind.Sequential)]
+        public struct SubBitmap
+        {
+            public float rectLeft;
+            public float rectRight;
+            public float rectTop;
+            public float rectBottom;
+            public int bitmapWidth;
+            public int bitmapHeight;
+            public int bitmapInfoColorType;
+            public byte* bitmapBytes;
+            public int bitmapHash;
         }
 
         [StructLayout(LayoutKind.Sequential)]
@@ -96,70 +121,67 @@ namespace JuvoPlayer.OpenGL
 
         // Main functions
 
-        [DllImport(GlDemoLib, EntryPoint = "Create")]
+        [DllImport(GlUiLib, EntryPoint = "Create")]
         public static extern void Create();
 
-        [DllImport(GlDemoLib, EntryPoint = "Terminate")]
+        [DllImport(GlUiLib, EntryPoint = "Terminate")]
         public static extern void Terminate();
 
-        [DllImport(GlDemoLib, EntryPoint = "Draw")]
+        [DllImport(GlUiLib, EntryPoint = "Draw")]
         public static extern void Draw();
 
         // Resource management
 
-        [DllImport(GlDemoLib, EntryPoint = "AddTile")]
+        [DllImport(GlUiLib, EntryPoint = "AddTile")]
         public static extern int AddTile();
 
-        [DllImport(GlDemoLib, EntryPoint = "SetTileData")]
+        [DllImport(GlUiLib, EntryPoint = "SetTileData")]
         public static extern void SetTileData(TileData tileData);
 
-        [DllImport(GlDemoLib, EntryPoint = "AddFont")]
+        [DllImport(GlUiLib, EntryPoint = "AddFont")]
         public static extern int AddFont(byte* data, int size);
 
-        [DllImport(GlDemoLib, EntryPoint = "SetIcon")]
+        [DllImport(GlUiLib, EntryPoint = "SetIcon")]
         public static extern void SetIcon(ImageData image);
-
-        [DllImport(GlDemoLib, EntryPoint = "SwitchTextRenderingMode")]
-        public static extern void SwitchTextRenderingMode();
 
         // Menu management
 
-        [DllImport(GlDemoLib, EntryPoint = "ShowMenu")]
+        [DllImport(GlUiLib, EntryPoint = "ShowMenu")]
         public static extern void ShowMenu(int enable);
 
-        [DllImport(GlDemoLib, EntryPoint = "ShowLoader")]
+        [DllImport(GlUiLib, EntryPoint = "ShowLoader")]
         public static extern void ShowLoader(int enabled, int percent);
 
-        [DllImport(GlDemoLib, EntryPoint = "ShowSubtitle")]
+        [DllImport(GlUiLib, EntryPoint = "ShowSubtitle")]
         public static extern void ShowSubtitle(int duration, byte* text, int textLen);
 
-        [DllImport(GlDemoLib, EntryPoint = "SelectTile")]
-        public static extern void SelectTile(int tileNo);
+        [DllImport(GlUiLib, EntryPoint = "SelectTile")]
+        public static extern void SelectTile(int tileNo, int runPreview);
 
-        [DllImport(GlDemoLib, EntryPoint = "UpdatePlaybackControls")]
+        [DllImport(GlUiLib, EntryPoint = "UpdatePlaybackControls")]
         public static extern void UpdatePlaybackControls(PlaybackData playbackData);
 
-        [DllImport(GlDemoLib, EntryPoint = "SetFooter")]
+        [DllImport(GlUiLib, EntryPoint = "SetFooter")]
         public static extern void SetFooter(byte* footer, int footerLen);
 
-        [DllImport(GlDemoLib, EntryPoint = "OpenGLLibVersion")]
+        [DllImport(GlUiLib, EntryPoint = "OpenGLLibVersion")]
         public static extern int OpenGLLibVersion();
 
-        [DllImport(GlDemoLib, EntryPoint = "SelectAction")]
+        [DllImport(GlUiLib, EntryPoint = "SelectAction")]
         public static extern void SelectAction(int id);
 
         // Options menu
 
-        [DllImport(GlDemoLib, EntryPoint = "AddOption")]
+        [DllImport(GlUiLib, EntryPoint = "AddOption")]
         public static extern int AddOption(int id, byte* text, int textLen);
 
-        [DllImport(GlDemoLib, EntryPoint = "AddSuboption")]
+        [DllImport(GlUiLib, EntryPoint = "AddSuboption")]
         public static extern int AddSubOption(int parentId, int id, byte* text, int textLen);
 
-        [DllImport(GlDemoLib, EntryPoint = "UpdateSelection")]
+        [DllImport(GlUiLib, EntryPoint = "UpdateSelection")]
         public static extern int UpdateSelection(SelectionData selectionData);
 
-        [DllImport(GlDemoLib, EntryPoint = "ClearOptions")]
+        [DllImport(GlUiLib, EntryPoint = "ClearOptions")]
         public static extern void ClearOptions();
 
         // Metrics
@@ -167,34 +189,34 @@ namespace JuvoPlayer.OpenGL
         public const int wrongGraphId = -1;
         public const int fpsGraphId = 0; // computations handled by C lib
 
-        [DllImport(GlDemoLib, EntryPoint = "AddGraph")]
+        [DllImport(GlUiLib, EntryPoint = "AddGraph")]
         public static extern int AddGraph(GraphData graphData);
 
-        [DllImport(GlDemoLib, EntryPoint = "SetGraphVisibility")]
+        [DllImport(GlUiLib, EntryPoint = "SetGraphVisibility")]
         public static extern void SetGraphVisibility(int graphId, int visible);
 
-        [DllImport(GlDemoLib, EntryPoint = "UpdateGraphValues")]
+        [DllImport(GlUiLib, EntryPoint = "UpdateGraphValues")]
         public static extern void UpdateGraphValues(int graphId, float* values, int valuesCount);
 
-        [DllImport(GlDemoLib, EntryPoint = "UpdateGraphValue")]
+        [DllImport(GlUiLib, EntryPoint = "UpdateGraphValue")]
         public static extern void UpdateGraphValue(int graphId, float value);
 
-        [DllImport(GlDemoLib, EntryPoint = "UpdateGraphRange")]
+        [DllImport(GlUiLib, EntryPoint = "UpdateGraphRange")]
         public static extern void UpdateGraphRange(int graphId, float minVal, float maxVal);
 
-        [DllImport(GlDemoLib, EntryPoint = "SetLogConsoleVisibility")]
+        [DllImport(GlUiLib, EntryPoint = "SetLogConsoleVisibility")]
         public static extern void SetLogConsoleVisibility(int visible);
 
-        [DllImport(GlDemoLib, EntryPoint = "PushLog")]
+        [DllImport(GlUiLib, EntryPoint = "PushLog")]
         public static extern void PushLog(byte* log, int logLen);
 
-        [DllImport(GlDemoLib, EntryPoint = "ShowAlert")]
+        [DllImport(GlUiLib, EntryPoint = "ShowAlert")]
         public static extern void ShowAlert(AlertData alertData);
 
-        [DllImport(GlDemoLib, EntryPoint = "HideAlert")]
+        [DllImport(GlUiLib, EntryPoint = "HideAlert")]
         public static extern void HideAlert();
 
-        [DllImport(GlDemoLib, EntryPoint = "IsAlertVisible")]
+        [DllImport(GlUiLib, EntryPoint = "IsAlertVisible")]
         public static extern int IsAlertVisible();
     }
 }

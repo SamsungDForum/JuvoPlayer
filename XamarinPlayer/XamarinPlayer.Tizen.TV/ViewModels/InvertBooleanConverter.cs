@@ -1,6 +1,7 @@
 /*!
- * https://github.com/SamsungDForum/JuvoPlayer
- * Copyright 2018, Samsung Electronics Co., Ltd
+ *
+ * [https://github.com/SamsungDForum/JuvoPlayer])
+ * Copyright 2019, Samsung Electronics Co., Ltd
  * Licensed under the MIT license
  *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
@@ -13,11 +14,23 @@
  * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
  */
 
-﻿using XamarinPlayer.Controls;
+using System;
+using Xamarin.Forms;
 
-namespace XamarinPlayer.Services
+namespace XamarinPlayer.Tizen.TV.ViewModels
 {
-    public delegate void ContentSelectHandler(ContentItem item);
+    public class InvertBooleanConverter : IValueConverter
+    {
+        public object Convert (object value, Type targetType, object parameter, System.Globalization.CultureInfo culture)
+        {
+            return !(bool)value;
+        }
+        public object ConvertBack (object value, Type targetType, object parameter, System.Globalization.CultureInfo culture)
+        {
+            return !(bool)value;
+        }
+    }
 }

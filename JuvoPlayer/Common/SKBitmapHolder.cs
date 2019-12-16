@@ -18,6 +18,7 @@
  */
 
 using System;
+using System.IO;
 using System.Threading.Tasks;
 using SkiaSharp;
 
@@ -27,16 +28,21 @@ namespace JuvoPlayer.Common
     {
         private SKBitmap _bitmap;
         private bool _isDecoding;
+        private bool _isFaulted;
+        private readonly Task<Stream> _streamTask;
+        private bool IsDisposed { get; set; }
 
-        public string Path { get; set; }
-        public bool IsDisposed { get; set; }
+        public SKBitmapHolder(Task<Stream> streamTask)
+        {
+            _streamTask = streamTask;
+        }
 
         public SKBitmap GetBitmap()
         {
             if (IsDisposed) throw new ObjectDisposedException(nameof(SKBitmapHolder));
             if (_bitmap != null) return _bitmap;
-            if (_isDecoding) return null;
-            
+            if (_isDecoding || _isFaulted) return null;
+
             ScheduleBitmapDecode();
             _isDecoding = true;
             return null;
@@ -44,20 +50,24 @@ namespace JuvoPlayer.Common
 
         private void ScheduleBitmapDecode()
         {
-            Task.Run(() => DecodeBitmap())
+            Task.Run(DecodeBitmap)
                 .ContinueWith(OnBitmapDecoded, TaskScheduler.FromCurrentSynchronizationContext());
         }
 
-        private SKBitmap DecodeBitmap()
+        private async Task<SKBitmap> DecodeBitmap()
         {
-            using (var stream = new SKFileStream(Path))
+            using (var stream = await _streamTask)
                 return SKBitmap.Decode(stream);
         }
 
         private void OnBitmapDecoded(Task<SKBitmap> bitmapTask)
         {
             _isDecoding = false;
-            if (bitmapTask.Status != TaskStatus.RanToCompletion) return;
+            if (bitmapTask.Status != TaskStatus.RanToCompletion)
+            {
+                _isFaulted = true;
+                return;
+            }
 
             if (IsDisposed)
                 bitmapTask.Result.Dispose();

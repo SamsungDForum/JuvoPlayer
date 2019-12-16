@@ -42,7 +42,7 @@ namespace XamarinPlayer.Tizen.TV.Services
                 o => new Clip
                 {
                     Image = Path.Combine(ApplicationPath, "res", o.Poster), Description = o.Description, Source = o.Url, Title = o.Title,
-                    ClipDetailsHandle = o
+                    ClipDetailsHandle = o, TilePreviewPath = o.TilePreviewPath
                 }
             ).ToList();
         }

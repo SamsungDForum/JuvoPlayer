@@ -1,30 +1,33 @@
-"use strict";
-import React from "react";
-import { View, Image, NativeModules, NativeEventEmitter, Text } from "react-native";
+'use strict';
+import React from 'react';
+import { View, Image, NativeModules, NativeEventEmitter, Text, Dimensions, StyleSheet } from 'react-native';
 
-import ResourceLoader from "../ResourceLoader";
-import ContentDescription from "./ContentDescription";
-import HideableView from "./HideableView";
-import PlaybackProgressBar from "./PlaybackProgressBar";
-import InProgressView from "./InProgressView";
-import PlaybackSettingsView from "./PlaybackSettingsView";
-import Native from "../Native";
-import NotificationPopup from "./NotificationPopup";
+import ResourceLoader from '../ResourceLoader';
+import ContentDescription from './ContentDescription';
+import HideableView from './HideableView';
+import PlaybackProgressBar from './PlaybackProgressBar';
+import InProgressView from './InProgressView';
+import PlaybackSettingsView from './PlaybackSettingsView';
+import Native from '../Native';
+import NotificationPopup from './NotificationPopup';
+
+const width = Dimensions.get('window').width;
+const height = Dimensions.get('window').height;
 
 export default class PlaybackView extends React.Component {
   constructor(props) {
     super(props);
-    this.curIndex = 0;
     this.playbackTimeCurrent = 0;
     this.playbackTimeTotal = 0;
     this.state = {
-      selectedIndex: 0
+      selectedIndex: this.props.selectedIndex
     };
     this.visible = false;
     this.keysListenningOff = false;
-    this.playerState = "Idle";
+    this.playbackStarted = false;
+    this.playerState = 'Idle';
     this.operationInProgress = false;
-    this.inProgressDescription = "Please wait...";
+    this.inProgressDescription = 'Please wait...';
     this.playbackInfoInterval = -1;
     this.subtitleTextInterval = -1;
     this.onScreenTimeOut = -1;
@@ -40,8 +43,8 @@ export default class PlaybackView extends React.Component {
       Count: 4,
       selectedIndex: -1
     };
-    this.currentSubtitleText = "";
-    this.popupMessage = "";
+    this.currentSubtitleText = '';
+    this.popupMessage = '';
     this.onTVKeyDown = this.onTVKeyDown.bind(this);
     this.rerender = this.rerender.bind(this);
     this.toggleView = this.toggleView.bind(this);
@@ -69,34 +72,41 @@ export default class PlaybackView extends React.Component {
     this.resetPlaybackState = this.resetPlaybackState.bind(this);
   }
   componentWillMount() {
-    this.JuvoEventEmitter.addListener("onTVKeyDown", this.onTVKeyDown);
-    this.JuvoEventEmitter.addListener("onPlaybackCompleted", this.onPlaybackCompleted);
-    this.JuvoEventEmitter.addListener("onPlayerStateChanged", this.onPlayerStateChanged);
-    this.JuvoEventEmitter.addListener("onUpdateBufferingProgress", this.onUpdateBufferingProgress);
-    this.JuvoEventEmitter.addListener("onUpdatePlayTime", this.onUpdatePlayTime);
-    this.JuvoEventEmitter.addListener("onSeekCompleted", this.onSeekCompleted);
-    this.JuvoEventEmitter.addListener("onPlaybackError", this.onPlaybackError);
-    this.JuvoEventEmitter.addListener("onGotStreamsDescription", this.onGotStreamsDescription);
+    this.JuvoEventEmitter.addListener('onTVKeyDown', this.onTVKeyDown);
+    this.JuvoEventEmitter.addListener('onPlaybackCompleted', this.onPlaybackCompleted);
+    this.JuvoEventEmitter.addListener('onPlayerStateChanged', this.onPlayerStateChanged);
+    this.JuvoEventEmitter.addListener('onUpdateBufferingProgress', this.onUpdateBufferingProgress);
+    this.JuvoEventEmitter.addListener('onUpdatePlayTime', this.onUpdatePlayTime);
+    this.JuvoEventEmitter.addListener('onSeekCompleted', this.onSeekCompleted);
+    this.JuvoEventEmitter.addListener('onPlaybackError', this.onPlaybackError);
+    this.JuvoEventEmitter.addListener('onGotStreamsDescription', this.onGotStreamsDescription);
   }
+
   componentWillReceiveProps(nextProps) {
-    this.operationInProgress = nextProps.visibility;
-    this.currentSubtitleText = "";
+    if (this.state.selectedIndex !== nextProps.selectedIndex) {
+      this.resetPlaybackState();
+      this.refreshPlaybackInfo();
+    }
+    this.currentSubtitleText = '';
+    this.setState({ selectedIndex: nextProps.selectedIndex });
   }
+
   getFormattedTime(milisecs) {
     var seconds = parseInt((milisecs / 1000) % 60);
     var minutes = parseInt((milisecs / (1000 * 60)) % 60);
     var hours = parseInt((milisecs / (1000 * 60 * 60)) % 24);
-    return "%hours:%minutes:%seconds"
-      .replace("%hours", hours.toString().padStart(2, "0"))
-      .replace("%minutes", minutes.toString().padStart(2, "0"))
-      .replace("%seconds", seconds.toString().padStart(2, "0"));
+    return '%hours:%minutes:%seconds'
+      .replace('%hours', hours.toString().padStart(2, '0'))
+      .replace('%minutes', minutes.toString().padStart(2, '0'))
+      .replace('%seconds', seconds.toString().padStart(2, '0'));
   }
   resetPlaybackState() {
     this.resetPlaybackTime();
     this.handlePlaybackInfoDisappeard();
+    this.playbackStarted = false;
     this.showingSettingsView = false;
-    this.playerState = "Idle";
-    this.inProgressDescription = "Please wait...";
+    this.playerState = 'Idle';
+    this.inProgressDescription = 'Please wait...';
     this.JuvoPlayer.StopPlayback();
   }
   toggleView() {
@@ -107,12 +117,12 @@ export default class PlaybackView extends React.Component {
     }
     //Manage hide/show state between the content catalog and the playback View
     this.visible = !this.visible;
-    this.props.switchView("PlaybackView", this.visible);
+    this.props.switchView('ContentCatalog');
   }
   handleSeek() {
-    if (this.playerState == "Paused") return false;
+    if (this.playerState == 'Paused') return false;
     this.operationInProgress = true;
-    this.inProgressDescription = "Seeking...";
+    this.inProgressDescription = 'Seeking...';
     this.showPlaybackInfo();
     return true;
   }
@@ -139,11 +149,11 @@ export default class PlaybackView extends React.Component {
     this.toggleView();
   }
   onPlayerStateChanged(player) {
-    if (player.State === "Playing") {
+    if (player.State === 'Playing') {
       this.operationInProgress = false;
       this.showPlaybackInfo();
     }
-    if (player.State === "Idle") {
+    if (player.State === 'Idle') {
       this.resetPlaybackTime();
       this.rerender();
     }
@@ -151,10 +161,10 @@ export default class PlaybackView extends React.Component {
   }
   onUpdateBufferingProgress(buffering) {
     if (buffering.Percent == 100) {
-      this.inProgressDescription = "Please wait...";
+      this.inProgressDescription = 'Please wait...';
       this.operationInProgress = false;
     } else {
-      this.inProgressDescription = "Buffering...";
+      this.inProgressDescription = 'Buffering...';
       this.operationInProgress = true;
     }
     this.rerender();
@@ -166,7 +176,7 @@ export default class PlaybackView extends React.Component {
   }
   onSeekCompleted() {
     this.operationInProgress = false;
-    this.inProgressDescription = "Please wait...";
+    this.inProgressDescription = 'Please wait...';
   }
   onPlaybackError(error) {
     this.popupMessage = error.Message;
@@ -181,36 +191,31 @@ export default class PlaybackView extends React.Component {
     //params.KeyName
     //params.KeyCode
     if (this.keysListenningOff) return;
-    const video = ResourceLoader.clipsData[this.props.selectedIndex];
     switch (pressed.KeyName) {
-      case "Right":
+      case 'Right':
         this.handleFastForwardKey();
         break;
-      case "Left":
+      case 'Left':
         this.handleRewindKey();
         break;
-      case "Return":
-      case "XF86AudioPlay":
-      case "XF86PlayBack":
-        if (this.playerState === "Idle") {
-          let DRM = video.drmDatas ? JSON.stringify(video.drmDatas) : null;
-          this.JuvoPlayer.StartPlayback(video.url, DRM, video.type);
-        }
-        if (this.playerState === "Paused" || this.playerState === "Playing") {
+      case 'Return':
+      case 'XF86AudioPlay':
+      case 'XF86PlayBack':
+        if (this.playerState === 'Paused' || this.playerState === 'Playing') {
           //pause - resume
           this.JuvoPlayer.PauseResumePlayback();
           this.showPlaybackInfo();
         }
         break;
-      case "XF86Back":
-      case "XF86AudioStop":
+      case 'XF86Back':
+      case 'XF86AudioStop':
         if (this.playbackInfoInterval == -1) {
           this.toggleView();
         } else {
           this.stopPlaybackTime();
         }
         break;
-      case "Up":
+      case 'Up':
         //Show the settings view only if the playback controls are visible on the screen
         if (this.onScreenTimeOut >= 0) {
           //requesting the native module for details regarding the stream settings.
@@ -244,10 +249,10 @@ export default class PlaybackView extends React.Component {
       clearInterval(this.subtitleTextInterval);
       this.subtitleTextInterval = -1;
     }
-    if (Selected != "off") {
+    if (Selected != 'off') {
       this.subtitleTextInterval = this.setIntervalImmediately(this.rerender, 100);
     } else {
-      this.currentSubtitleText = "";
+      this.currentSubtitleText = '';
       this.rerender();
     }
   }
@@ -284,54 +289,74 @@ export default class PlaybackView extends React.Component {
     });
   }
   render() {
-    const index = this.props.selectedIndex;
+    const index = this.state.selectedIndex;
     this.streamsData.selectedIndex = index;
     const title = ResourceLoader.clipsData[index].title;
     const fadeduration = 300;
-    const revIconPath = ResourceLoader.playbackIconsPathSelect("rew");
-    const ffwIconPath = ResourceLoader.playbackIconsPathSelect("ffw");
-    const settingsIconPath = ResourceLoader.playbackIconsPathSelect("set");
-    const playIconPath = this.playerState !== "Playing" ? ResourceLoader.playbackIconsPathSelect("play") : ResourceLoader.playbackIconsPathSelect("pause");
+    const revIconPath = ResourceLoader.playbackIconsPathSelect('rew');
+    const ffwIconPath = ResourceLoader.playbackIconsPathSelect('ffw');
+    const settingsIconPath = ResourceLoader.playbackIconsPathSelect('set');
+    const playIconPath = this.playerState !== 'Playing' ? ResourceLoader.playbackIconsPathSelect('play') : ResourceLoader.playbackIconsPathSelect('pause');
     const visibility = this.props.visibility ? this.props.visibility : this.visible;
     this.visible = visibility;
+
+    if (this.playerState === 'Idle' && this.visible && !this.playbackStarted) {
+      const video = ResourceLoader.clipsData[this.state.selectedIndex];
+      let DRM = video.drmDatas ? JSON.stringify(video.drmDatas) : null;
+      this.JuvoPlayer.StartPlayback(video.url, DRM, video.type);
+      this.playbackStarted = true;
+      this.operationInProgress = true;
+    }
+
     this.keysListenningOff = !visibility || this.showingSettingsView || this.showNotificationPopup;
     const total = this.playbackTimeTotal;
     const current = this.playbackTimeCurrent;
     const playbackTime = total > 0 ? current / total : 0;
     const progress = Math.round(playbackTime * 100) / 100;
     const subtitleText = this.currentSubtitleText;
-    var subtitlesStyle =
-      subtitleText == "" ? { top: -755, left: 0, width: 1920, height: 150, opacity: 0 } : { top: -755, left: 0, width: 1920, height: 150, opacity: 0.8 };
+    var subtitlesStyle = subtitleText == '' ? [styles.subtitles, { opacity: 0 }] : [styles.subtitles, { opacity: 0.8 }];
+
     return (
-      <View style={{ top: -2680, left: 0, width: 1920, height: 1080 }}>
-        <HideableView visible={visibility} duration={fadeduration}>
-          <HideableView visible={this.onScreenTimeOut >= 0} duration={fadeduration}>
-            <ContentDescription
-              viewStyle={{ top: 0, left: 0, width: 1920, height: 250, justifyContent: "center", alignSelf: "center", backgroundColor: "#000000", opacity: 0.8 }}
-              headerStyle={{ fontSize: 60, color: "#ffffff", alignSelf: "center", opacity: 1.0 }}
-              bodyStyle={{ fontSize: 30, color: "#ffffff", top: 0 }}
-              headerText={title}
-              bodyText={""}
-            />
-            <Image resizeMode='cover' style={{ width: 70, height: 70, top: -180, left: 1800 }} source={settingsIconPath} />
-            <View
-              style={{ top: 530, left: 0, width: 1920, height: 760, justifyContent: "center", alignSelf: "center", backgroundColor: "#000000", opacity: 0.6 }}>
-              <PlaybackProgressBar value={progress} color='green' />
-              <Image resizeMode='cover' style={{ width: 70, height: 70, top: -130, left: 70 }} source={revIconPath} />
-              <Image resizeMode='cover' style={{ width: 70, height: 70, top: -200, left: 930 }} source={playIconPath} />
-              <Image resizeMode='cover' style={{ width: 70, height: 70, top: -270, left: 1780 }} source={ffwIconPath} />
-              <Text style={{ width: 150, height: 30, top: -380, left: 60, fontSize: 30, color: "#ffffff" }}>
-                {this.getFormattedTime(this.playbackTimeCurrent)}
-              </Text>
-              <Text style={{ width: 150, height: 30, top: -410, left: 1760, fontSize: 30, color: "#ffffff" }}>
-                {this.getFormattedTime(this.playbackTimeTotal)}
-              </Text>
+      <View style={{ position: 'absolute', width: width, height: height }}>
+        <HideableView position={'absolute'} visible={visibility} duration={fadeduration} height={height} width={width}>
+          <View style={[styles.page, { justifyContent: 'flex-end' }]}>
+            <View style={[subtitlesStyle, { paddingBottom: height / 4.8 }]}>
+              <Text style={styles.textSubtitles}>{subtitleText}</Text>
+            </View>
+          </View>
+          <HideableView position={'relative'} visible={this.onScreenTimeOut >= 0} duration={fadeduration} height={height} width={width}>
+            <View style={[styles.page, { position: 'relative' }]}>
+              <View style={[styles.transparentPage, { flex: 2, flexDirection: 'row' }]}>
+                <View style={[styles.element, { flex: 1 }]} />
+                <View style={[styles.element, { flex: 8 }]}>
+                  <ContentDescription viewStyle={styles.element} headerStyle={styles.textHeader} bodyStyle={styles.textBody} headerText={title} bodyText={''} />
+                </View>
+                <View style={[styles.element, { flex: 1 }]}>
+                  <Image resizeMode='cover' style={styles.icon} source={settingsIconPath} />
+                </View>
+              </View>
+              <View style={[styles.element, { flex: 8, justifyContent: 'flex-end' }]} />
+              <View style={[styles.transparentPage, { flex: 2 }]}>
+                <View style={[styles.element, { flex: 2, justifyContent: 'flex-start' }]}>
+                  <PlaybackProgressBar value={progress} color='green' />
+                  <Text style={[styles.time, { alignSelf: 'flex-start', marginLeft: 50 }]}>{this.getFormattedTime(this.playbackTimeCurrent)}</Text>
+                  <Text style={[styles.time, { alignSelf: 'flex-end', marginLeft: 50 }]}>{this.getFormattedTime(this.playbackTimeTotal)}</Text>
+                </View>
+                <View style={{ flex: 5, backgroundColor: 'transparent', flexDirection: 'row' }}>
+                  <View style={[styles.element, { flex: 1 }]}>
+                    <Image resizeMode='cover' style={styles.icon} source={revIconPath} />
+                  </View>
+                  <View style={[styles.element, { flex: 10 }]}>
+                    <Image resizeMode='cover' style={styles.icon} source={playIconPath} />
+                  </View>
+                  <View style={[styles.element, { flex: 1 }]}>
+                    <Image resizeMode='cover' style={styles.icon} source={ffwIconPath} />
+                  </View>
+                </View>
+              </View>
             </View>
           </HideableView>
-          <View style={{ top: -650, left: 870, width: 250, height: 250 }}>
-            <InProgressView visible={this.operationInProgress} message={this.inProgressDescription} />
-          </View>
-          <View style={{ top: -1075, left: 180 }}>
+          <View style={[styles.page, styles.element]}>
             <PlaybackSettingsView
               visible={this.showingSettingsView}
               onCloseSettingsView={this.handleSettingsViewDisappeared}
@@ -339,18 +364,63 @@ export default class PlaybackView extends React.Component {
               streamsData={this.streamsData}
             />
           </View>
-          <View style={subtitlesStyle}>
-            <Text style={{ top: 0, left: 0, fontSize: 30, color: "#ffffff", textAlign: "center", backgroundColor: "#000000" }}>{subtitleText}</Text>
+          <View style={[styles.page, styles.element]}>
+            <InProgressView visible={this.operationInProgress} message={this.inProgressDescription} />
+          </View>
+          <View style={[styles.page, styles.element]}>
+            <NotificationPopup visible={this.showNotificationPopup} onNotificationPopupDisappeared={this.handleNotificationPopupDisappeared} messageText={this.popupMessage} />
           </View>
         </HideableView>
-        <View style={{ top: -1535, left: 520, width: 850, height: 430 }}>
-          <NotificationPopup
-            visible={this.showNotificationPopup}
-            onNotificationPopupDisappeared={this.handleNotificationPopupDisappeared}
-            messageText={this.popupMessage}
-          />
-        </View>
       </View>
     );
   }
 }
+
+const styles = StyleSheet.create({
+  page: {
+    position: 'absolute',
+    backgroundColor: 'transparent',
+    height: height,
+    width: width
+  },
+  element: {
+    backgroundColor: 'transparent',
+    alignItems: 'center',
+    justifyContent: 'center'
+  },
+  icon: {
+    width: 70,
+    height: 70
+  },
+  time: {
+    marginTop: 25,
+    position: 'absolute',
+    width: 150,
+    height: 30,
+    fontSize: 30,
+    color: 'white'
+  },
+  transparentPage: {
+    backgroundColor: 'black',
+    opacity: 0.9
+  },
+  textHeader: {
+    fontSize: 60,
+    color: 'white',
+    alignSelf: 'center'
+  },
+  textBody: {
+    fontSize: 30,
+    color: 'white'
+  },
+  textSubtitles: {
+    fontSize: 30,
+    color: 'white',
+    textAlign: 'center',
+    backgroundColor: 'black'
+  },
+  subtitles: {
+    width: width,
+    height: 150
+  }
+});

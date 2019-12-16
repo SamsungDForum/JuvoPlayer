@@ -1,6 +1,6 @@
 /*!
  * https://github.com/SamsungDForum/JuvoPlayer
- * Copyright 2018, Samsung Electronics Co., Ltd
+ * Copyright 2019, Samsung Electronics Co., Ltd
  * Licensed under the MIT license
  *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
@@ -17,14 +17,32 @@
 
 using System;
 using System.Collections.Generic;
-using System.ComponentModel;
+using System.Threading;
+using System.Threading.Tasks;
+using JuvoLogger;
+using JuvoPlayer.Common;
+using Nito.AsyncEx;
+using SkiaSharp;
+using SkiaSharp.Views.Forms;
 using Xamarin.Forms;
-using XamarinPlayer.Services;
+using Xamarin.Forms.Xaml;
 
-namespace XamarinPlayer.Controls
+namespace XamarinPlayer.Tizen.TV.Controls
 {
-    public partial class ContentItem : AbsoluteLayout
+    [XamlCompilation(XamlCompilationOptions.Compile)]
+    public partial class ContentItem
     {
+        private static SKColor FocusedColor = new SKColor(234, 234, 234);
+        private static SKColor UnfocusedColor = new SKColor(32, 32, 32);
+
+        private ILogger _logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
+        private SKBitmap _contentBitmap;
+        private SubSkBitmap _previewBitmap;
+        private double _height;
+        private bool _isFocused;
+        private CancellationTokenSource _animationCts;
+        private StoryboardReader _storyboardReader;
+
         public static readonly BindableProperty ContentImgProperty = BindableProperty.Create("ContentImg",
             typeof(string), typeof(ContentItem), default(ICollection<string>));
 
@@ -52,36 +70,136 @@ namespace XamarinPlayer.Controls
             get { return (string) GetValue(ContentDescriptionProperty); }
         }
 
-        public ContentSelectHandler OnContentSelect;
+        public static readonly BindableProperty ContentTilePreviewPathProperty =
+            BindableProperty.Create("ContentTilePreviewPath", typeof(string), typeof(ContentItem), default(string));
 
-        private enum ItemState
+        public string ContentTilePreviewPath
         {
-            Unfocused,
-            Focused,
-            Selected
+            set { SetValue(ContentTilePreviewPathProperty, value); }
+            get { return (string) GetValue(ContentTilePreviewPathProperty); }
         }
-
-        private double _height;
 
         public ContentItem()
         {
             InitializeComponent();
-
-            SetItemState(ItemState.Unfocused);
-
-            _height = 0;
-
-            PropertyChanged += ContentPropertyChanged;
         }
 
-        public void SetFocus()
+        public async void SetFocus()
         {
-            SetItemState(ItemState.Focused);
+            using (_animationCts = new CancellationTokenSource())
+            {
+                var token = _animationCts.Token;
+                try
+                {
+                    _isFocused = true;
+#pragma warning disable 4014
+                    this.ScaleTo(0.9);
+#pragma warning restore 4014
+                    InvalidateSurface();
+
+                    if (ContentTilePreviewPath == null) return;
+
+                    if (_storyboardReader == null)
+                        _storyboardReader = new StoryboardReader(ContentTilePreviewPath,
+                            StoryboardReader.PreloadingStrategy.PreloadOnlyRemoteSources);
+
+                    await Task.WhenAll(Task.Delay(500), _storyboardReader.LoadTask).WaitAsync(token);
+                    if (_storyboardReader == null || !_isFocused) return;
+
+                    var tilePreviewDuration = _storyboardReader.Duration();
+                    var animation = new Animation
+                    {
+                        {
+                            0, 1, new Animation(t =>
+                                {
+                                    var position = TimeSpan.FromMilliseconds(t);
+                                    var previewBitmap = _storyboardReader.GetFrame(position);
+                                    if (previewBitmap == null) return;
+                                    _previewBitmap = previewBitmap;
+                                    InvalidateSurface();
+                                }, 0,
+                                tilePreviewDuration.TotalMilliseconds)
+                        }
+                    };
+                    animation.Commit(this, "Animation", 1000 / 5, (uint) (tilePreviewDuration.TotalMilliseconds / 6),
+                        repeat: () => true);
+                }
+                catch (TaskCanceledException)
+                {
+                }
+                catch (Exception ex)
+                {
+                    _logger.Error(ex);
+                }
+            }
         }
 
         public void SetUnfocus()
         {
-            SetItemState(ItemState.Unfocused);
+            try
+            {
+                _animationCts?.Cancel();
+            }
+            catch (ObjectDisposedException)
+            {
+            }
+
+            _isFocused = false;
+            this.AbortAnimation("Animation");
+            this.ScaleTo(1, 334);
+            _storyboardReader?.Dispose();
+            _storyboardReader = null;
+            _previewBitmap = null;
+            InvalidateSurface();
+        }
+
+        private void OnPaintSurface(object sender, SKPaintSurfaceEventArgs e)
+        {
+            (SKBitmap, SKRect) GetCurrentBitmap()
+            {
+                if (_previewBitmap != null) return (_previewBitmap.Bitmap, _previewBitmap.SkRect);
+                if (_contentBitmap != null) return (_contentBitmap, _contentBitmap.Info.Rect);
+                return (null, SKRect.Empty);
+            }
+
+            var info = e.Info;
+            var surface = e.Surface;
+            var canvas = surface.Canvas;
+
+            canvas.Clear();
+
+            var (bitmap, srcRect) = GetCurrentBitmap();
+            if (bitmap == null)
+                return;
+
+            var borderColor = _isFocused ? FocusedColor : UnfocusedColor;
+
+            using (var path = new SKPath())
+            using (var roundRect = new SKRoundRect(info.Rect, 30, 30))
+            using (var paint = new SKPaint
+                {Color = borderColor, IsAntialias = true, Style = SKPaintStyle.Stroke, StrokeWidth = 3})
+            {
+                path.AddRoundRect(roundRect);
+                canvas.ClipPath(path, antialias: true);
+                canvas.DrawBitmap(bitmap, srcRect, info.Rect);
+                canvas.DrawRoundRect(roundRect, paint);
+            }
+        }
+
+        private async void LoadSkBitmap()
+        {
+            var path = ContentImg;
+            var newBitmap = await Task.Run(() =>
+            {
+                using (var stream = new SKFileStream(path))
+                {
+                    return SKBitmap.Decode(stream);
+                }
+            });
+
+            _contentBitmap?.Dispose();
+            _contentBitmap = newBitmap;
+            InvalidateSurface();
         }
 
         public void SetHeight(double height)
@@ -89,32 +207,6 @@ namespace XamarinPlayer.Controls
             _height = height;
             HeightRequest = _height;
             WidthRequest = _height * 1.8;
-        }
-
-        private void SetItemState(ItemState st)
-        {
-            switch (st)
-            {
-                case ItemState.Focused:
-                    ImageBorder.BackgroundColor = Color.FromRgb(234, 234, 234);
-                    Dim.Color = Color.FromRgba(0, 0, 0, 0);
-                    PlayImage.Opacity = 0;
-                    break;
-                case ItemState.Unfocused:
-                    ImageBorder.BackgroundColor = Color.FromRgb(32, 32, 32);
-                    Dim.Color = Color.FromRgba(0, 0, 0, 64);
-                    PlayImage.Opacity = 0;
-                    this.ScaleTo(1, 334);
-                    break;
-                case ItemState.Selected:
-                    ImageBorder.BackgroundColor = Color.FromRgb(234, 234, 234);
-                    Dim.Color = Color.FromRgba(0, 0, 0, 192);
-                    PlayImage.Opacity = 1;
-                    this.ScaleTo(0.9);
-                    break;
-                default:
-                    return;
-            }
         }
 
         protected override void OnSizeAllocated(double width, double height)
@@ -129,11 +221,14 @@ namespace XamarinPlayer.Controls
                 WidthRequest = height * 1.8;
         }
 
-        private void ContentPropertyChanged(object sender, PropertyChangedEventArgs e)
+        protected override void OnPropertyChanged(string propertyName = null)
         {
-            if (e.PropertyName.Equals("ContentImg"))
+            base.OnPropertyChanged(propertyName);
+
+            if (propertyName == "ContentImg")
             {
-                ContentImage.Source = ContentImg;
+                LoadSkBitmap();
+                InvalidateSurface();
             }
         }
     }
