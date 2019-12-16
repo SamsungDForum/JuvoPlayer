@@ -1,30 +1,12 @@
-﻿<?xml version="1.0" encoding="utf-8" ?>
-<AbsoluteLayout xmlns="http://xamarin.com/schemas/2014/forms"
-            xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
-            x:Class="XamarinPlayer.Controls.ContentItem"
-            HorizontalOptions="Center"
-            ContentImg="{Binding Bg}"
-            ContentTitle="{Binding Title}"
-            ContentDescription ="{Binding Description}">
-    <BoxView x:Name="ImageBorder"
-             HorizontalOptions="Fill"
-             VerticalOptions="Fill"
-             AbsoluteLayout.LayoutBounds="0,0,1,1" AbsoluteLayout.LayoutFlags="All"/>
-    <Image x:Name="ContentImage"
-           HorizontalOptions="Center"
-           VerticalOptions="Center"
-           Aspect="Fill"
-           AbsoluteLayout.LayoutBounds="0,0,1,1" AbsoluteLayout.LayoutFlags="All"
-           Margin="3, 3, 3, 3"/>
-    <BoxView x:Name="Dim"
-             HorizontalOptions="Fill"
-             VerticalOptions="Fill"
-             Margin="3, 3, 3, 3"
-             AbsoluteLayout.LayoutBounds="0,0,1,1" AbsoluteLayout.LayoutFlags="All"/>
-    <Image x:Name="PlayImage"
-           Opacity="0"
-           Source="btn_viewer_control_play_normal.png"
-           HorizontalOptions="Center"
-           VerticalOptions="Center"
-           AbsoluteLayout.LayoutBounds="0,0,1,1" AbsoluteLayout.LayoutFlags="All"/>
-</AbsoluteLayout>
+﻿<?xml version="1.0" encoding="utf-8"?>
+
+<forms:SKCanvasView xmlns="http://xamarin.com/schemas/2014/forms"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:forms="clr-namespace:SkiaSharp.Views.Forms;assembly=SkiaSharp.Views.Forms"
+             x:Class="XamarinPlayer.Tizen.TV.Controls.ContentItem"
+             PaintSurface="OnPaintSurface"
+             ContentImg="{Binding Bg}"
+             ContentTitle="{Binding Title}"
+             ContentDescription ="{Binding Description}"
+             ContentTilePreviewPath="{Binding TilePreviewPath}">
+</forms:SKCanvasView>

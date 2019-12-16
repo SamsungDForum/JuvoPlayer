@@ -20,8 +20,8 @@ using System.IO;
 using System.Threading.Tasks;
 using Xamarin.Forms;
 using Xamarin.Forms.Xaml;
-using XamarinPlayer.Controls;
 using XamarinPlayer.Services;
+using XamarinPlayer.Tizen.TV.Controls;
 using XamarinPlayer.ViewModels;
 
 namespace XamarinPlayer.Views
@@ -157,12 +157,20 @@ namespace XamarinPlayer.Views
 
         public bool HandleUrl(string url)
         {
-            var contentList = ((ContentListPageViewModel) BindingContext).ContentList;
+            var contentListPageViewModel = (ContentListPageViewModel) BindingContext;
+            var contentList = contentListPageViewModel.ContentList;
             var index = contentList.FindIndex(content => content.Source.Equals(url));
             if (index == -1)
                 return false;
+            contentListPageViewModel.IsBusy = true;
             var item = ContentListView.GetItem(index);
-            ContentSelected(item);
+            ContentListView.SetFocusedContent(item).ContinueWith(async _ =>
+            {
+                await UpdateContentInfo();
+                await ContentSelected(ContentListView.FocusedContent);
+                contentListPageViewModel.IsBusy = false;
+            }, TaskScheduler.FromCurrentSynchronizationContext());
+
             return true;
         }
     }

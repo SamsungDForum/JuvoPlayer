@@ -5,7 +5,7 @@
     <OutputType>Library</OutputType>
     <TargetFramework>netstandard2.0</TargetFramework>
     <TizenCreateTpkOnBuild>false</TizenCreateTpkOnBuild>
-    <Version>1.5.0</Version>
+    <Version>1.5.1</Version>
     <PackageReleaseNotes>Release to be presented to the public. It will be uploaded to the SDF GitHub site.</PackageReleaseNotes>
     <Company>SRPOL MVS</Company>
     <Description>Reference for video streaming Tizen .Net TV applications.</Description>

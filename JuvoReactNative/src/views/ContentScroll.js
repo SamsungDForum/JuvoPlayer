@@ -1,18 +1,21 @@
-"use strict";
-import React from "react";
-import { View, Image, ScrollView, NativeModules, NativeEventEmitter } from "react-native";
+'use strict';
+import React from 'react';
+import { View, Image, ScrollView, NativeModules, NativeEventEmitter, Dimensions } from 'react-native';
 
-import ContentPicture from "./ContentPicture";
-import ContentDescription from "./ContentDescription";
-import ResourceLoader from "../ResourceLoader";
+import ContentPicture from './ContentPicture';
+import ContentDescription from './ContentDescription';
+import ResourceLoader from '../ResourceLoader';
+
+const width = Dimensions.get('window').width;
+const height = Dimensions.get('window').height;
 
 export default class ContentScroll extends React.Component {
   constructor(props) {
     super(props);
-    this._scrollView;
     this.curIndex = 0;
     this.state = { selectedIndex: 0 };
     this.numItems = this.props.contentURIs.length;
+    this.deepLinkIndex = 0;
     this.scrolloffset = 0;
     this.itemWidth = 454;
     this.onTVKeyDown = this.onTVKeyDown.bind(this);
@@ -42,8 +45,18 @@ export default class ContentScroll extends React.Component {
   }
 
   componentWillMount() {
-    this.JuvoEventEmitter.addListener("onTVKeyDown", this.onTVKeyDown);
-    this.JuvoEventEmitter.addListener("onTVKeyUp", this.onTVKeyUp);
+    this.JuvoEventEmitter.addListener('onTVKeyDown', this.onTVKeyDown);
+    this.JuvoEventEmitter.addListener('onTVKeyUp', this.onTVKeyUp);
+  }
+
+  componentWillReceiveProps(nextProps) {
+    if (this.deepLinkIndex === nextProps.deepLinkIndex) return;
+
+    this.deepLinkIndex = nextProps.deepLinkIndex;
+    this.curIndex = this.deepLinkIndex;
+    this.scrolloffset = this.curIndex * this.itemWidth;
+    this._scrollView.scrollTo({ x: this.scrolloffset, y: 0, animated: false });
+    this.setState({ selectedIndex: this.curIndex });
   }
 
   onTVKeyDown(pressed) {
@@ -53,10 +66,10 @@ export default class ContentScroll extends React.Component {
     if (this.props.keysListenningOff) return;
 
     switch (pressed.KeyName) {
-      case "Right":
+      case 'Right':
         this.handleButtonPressRight();
         break;
-      case "Left":
+      case 'Left':
         this.handleButtonPressLeft();
         break;
     }
@@ -80,8 +93,7 @@ export default class ContentScroll extends React.Component {
     const description = ResourceLoader.clipsData[index].description;
     const itemWidth = 454;
     const itemHeight = 260;
-    const overlayPath = ResourceLoader.playbackIconsPathSelect("play");
-    const length = +this.props.contentURIs.length;
+    const overlayPath = ResourceLoader.playbackIconsPathSelect('play');
     const renderThumbs = (uri, i) => (
       <View key={i}>
         <Image resizeMode='cover' style={{ top: itemHeight / 2 + 35, left: itemWidth / 2 - 25 }} source={overlayPath} />
@@ -98,38 +110,34 @@ export default class ContentScroll extends React.Component {
           stylesThumbSelected={{
             width: itemWidth,
             height: itemHeight,
-            top: 0,
-            backgroundColor: "transparent",
+            backgroundColor: 'transparent',
             opacity: 0.3
           }}
           stylesThumb={{
             width: itemWidth,
             height: itemHeight,
-            top: 0,
-            backgroundColor: "transparent",
+            backgroundColor: 'transparent',
             opacity: 1
           }}
         />
       </View>
     );
     return (
-      <View>
+      <View style={{ height: height, width: width }}>
         <View
           style={{
-            top: 150,
-            left: 100,
+            top: '10%',
+            left: '5%',
             width: 900,
             height: 750
           }}>
           <ContentDescription
             viewStyle={{
-              top: 0,
-              left: 0,
-              width: 900,
-              height: 800
+              width: '100%',
+              height: '100%'
             }}
-            headerStyle={{ fontSize: 60, color: "#ffffff" }}
-            bodyStyle={{ fontSize: 30, color: "#ffffff", top: 0 }}
+            headerStyle={{ fontSize: 60, color: '#ffffff' }}
+            bodyStyle={{ fontSize: 30, color: '#ffffff', top: 0 }}
             headerText={title}
             bodyText={description}
           />

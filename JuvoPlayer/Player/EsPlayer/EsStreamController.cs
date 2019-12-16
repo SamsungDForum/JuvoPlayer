@@ -263,7 +263,6 @@ namespace JuvoPlayer.Player.EsPlayer
                 if (resourceConflict)
                 {
                     logger.Info("Player Resource conflict. Trying to restart");
-
                     await RestartPlayer(token);
                     return;
                 }
@@ -790,7 +789,7 @@ namespace JuvoPlayer.Player.EsPlayer
         private async Task FirstPacketWait()
         {
             logger.Info(
-                $"{StreamType.Audio}: Waiting for {StreamType.Video} first data packet {Thread.CurrentThread.ManagedThreadId}");
+                $"{StreamType.Audio}: Waiting for {StreamType.Video} first data packet");
 
             try
             {
