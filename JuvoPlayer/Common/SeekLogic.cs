@@ -189,7 +189,9 @@ namespace JuvoPlayer.Common
 
         public bool ShallDisplaySeekPreview()
         {
-            return _storyboardReader != null && IsSeekAccumulationInProgress;
+            return IsSeekAccumulationInProgress
+                   && _storyboardReader != null
+                   && _storyboardReader.LoadTask.Status == TaskStatus.RanToCompletion;
         }
 
         public SubSkBitmap GetSeekPreviewFrame()
