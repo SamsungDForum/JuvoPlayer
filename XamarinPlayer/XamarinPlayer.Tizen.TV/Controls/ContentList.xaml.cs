@@ -55,6 +55,11 @@ namespace XamarinPlayer.Controls
             FocusedContent.SetFocus();
         }
 
+        public void ResetFocus()
+        {
+            FocusedContent.ResetFocus();
+        }
+
         public async Task<bool> ScrollToNext()
         {
             var index = ContentLayout.Children.IndexOf(FocusedContent);
@@ -80,7 +85,7 @@ namespace XamarinPlayer.Controls
         {
             if (FocusedContent == newContent)
                 return Task.CompletedTask;
-            FocusedContent?.SetUnfocus();
+            FocusedContent?.ResetFocus();
             FocusedContent = newContent;
             FocusedContent.SetFocus();
             return ScrollToAsync(FocusedContent, ScrollToPosition.Center, true);

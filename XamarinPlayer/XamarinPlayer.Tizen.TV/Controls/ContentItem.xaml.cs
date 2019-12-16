@@ -134,7 +134,7 @@ namespace XamarinPlayer.Tizen.TV.Controls
             }
         }
 
-        public void SetUnfocus()
+        public void ResetFocus()
         {
             try
             {
