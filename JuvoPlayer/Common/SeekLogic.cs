@@ -24,6 +24,8 @@ using System.Reactive.Subjects;
 using System.Threading;
 using System.Threading.Tasks;
 using static Configuration.SeekLogic;
+using JuvoLogger;
+using System.Reactive.Threading.Tasks;
 
 namespace JuvoPlayer.Common
 {
@@ -61,6 +63,9 @@ namespace JuvoPlayer.Common
 
         private readonly ISeekLogicClient _client;
         private StoryboardReader _storyboardReader;
+
+        private static ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
+
 
         public SeekLogic(ISeekLogicClient client)
         {
@@ -118,6 +123,7 @@ namespace JuvoPlayer.Common
 
         private async void Seek(TimeSpan seekInterval)
         {
+
             if (IsSeekingSupported == false || IsSeekInProgress)
                 return;
 
@@ -128,7 +134,18 @@ namespace JuvoPlayer.Common
             _seekCancellationTokenSource = new CancellationTokenSource();
             _seekDelay = Task.Delay(DefaultSeekAccumulateInterval, _seekCancellationTokenSource.Token);
 
-            try { await _seekDelay; } catch (TaskCanceledException) { return; }
+            try
+            {
+                await _seekDelay;
+                if (_client.Player.State != PlayerState.Playing)
+                {
+                    await _client.Player.StateChanged()
+                        .Where(state => state == PlayerState.Playing)
+                        .FirstAsync()
+                        .ToTask(_seekCancellationTokenSource.Token);
+                }
+            }
+            catch (TaskCanceledException) { return; }
 
             try
             {
@@ -163,9 +180,13 @@ namespace JuvoPlayer.Common
             if (IsStateSeekable(State))
             {
                 IsSeekInProgress = true;
+                Logger.Info($"PB: before IsSeekInProgress = {IsSeekInProgress}");
+                Logger.Info($"PB: before State = {State}");
                 await _client.Player?.SeekTo(_targetSeekTime);
                 IsSeekAccumulationInProgress = false;
                 IsSeekInProgress = false;
+                Logger.Info($"PB: after IsSeekInProgress = {IsSeekInProgress}");
+                Logger.Info($"PB: after State = {State}");
             }
 
             _seekDelay = null;
