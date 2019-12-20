@@ -27,7 +27,7 @@ using XamarinPlayer.ViewModels;
 namespace XamarinPlayer.Views
 {
     [XamlCompilation(XamlCompilationOptions.Compile)]
-    public partial class ContentListPage : ContentPage, IContentPayloadHandler
+    public partial class ContentListPage : ContentPage, IContentPayloadHandler, ISuspendable
     {
         NavigationPage AppMainPage;
 
@@ -172,6 +172,16 @@ namespace XamarinPlayer.Views
             }, TaskScheduler.FromCurrentSynchronizationContext());
 
             return true;
+        }
+
+        public void Suspend()
+        {
+            ContentListView.ResetFocus();
+        }
+
+        public void Resume()
+        {
+            ContentListView.SetFocus();
         }
     }
 }
