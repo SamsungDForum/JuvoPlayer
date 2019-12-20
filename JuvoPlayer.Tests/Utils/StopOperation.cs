@@ -15,8 +15,9 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+using System.Reactive.Linq;
+using System.Reactive.Threading.Tasks;
 using System.Threading.Tasks;
-using JuvoPlayer.Common;
 
 namespace JuvoPlayer.Tests.Utils
 {
@@ -41,8 +42,14 @@ namespace JuvoPlayer.Tests.Utils
         public Task Execute(TestContext context)
         {
             var service = context.Service;
+            var playerStateTask = service
+                .StateChanged()
+                .AsCompletion()
+                .Timeout(context.Timeout)
+                .ToTask();
+
             service.Stop();
-            return StateChangedTask.Observe(service, PlayerState.Idle, context.Token, context.Timeout);
+            return playerStateTask;
         }
     }
 }
