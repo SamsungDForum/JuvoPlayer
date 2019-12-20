@@ -17,15 +17,13 @@
 
 using System;
 using System.Collections.Generic;
-using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
-using System.Threading;
 using System.Threading.Tasks;
+using Configuration;
 using JuvoLogger;
 using JuvoPlayer.Common;
 using JuvoPlayer.Drms;
-using JuvoPlayer.Player.EsPlayer;
 
 namespace JuvoPlayer.Player
 {
@@ -39,7 +37,6 @@ namespace JuvoPlayer.Player
         private readonly IPlayer player;
         private readonly Dictionary<StreamType, IPacketStream> streams = new Dictionary<StreamType, IPacketStream>();
 
-        private readonly CompositeDisposable subscriptions;
         private readonly Subject<string> streamErrorSubject = new Subject<string>();
 
         private readonly ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
@@ -49,11 +46,6 @@ namespace JuvoPlayer.Player
             this.drmManager = drmManager ??
                               throw new ArgumentNullException(nameof(drmManager), "drmManager cannot be null");
             this.player = player ?? throw new ArgumentNullException(nameof(player), "player cannot be null");
-
-            subscriptions = new CompositeDisposable
-            {
-                TimeUpdated().Subscribe(time => currentTime = time, SynchronizationContext.Current)
-            };
 
             var audioCodecExtraDataHandler = new AudioCodecExtraDataHandler(player);
             var videoCodecExtraDataHandler = new VideoCodecExtraDataHandler(player);
@@ -76,7 +68,7 @@ namespace JuvoPlayer.Player
 
         public IObservable<TimeSpan> TimeUpdated()
         {
-            return player.TimeUpdated();
+            return player.PlayerClock().Sample(PlayerControllerConfig.TimeUpdatedInterval);
         }
 
         public IObservable<PlayerState> StateChanged()
@@ -87,6 +79,11 @@ namespace JuvoPlayer.Player
         public IObservable<TimeSpan> DataClock()
         {
             return player.DataClock();
+        }
+
+        public IObservable<TimeSpan> PlayerClock()
+        {
+            return player.PlayerClock();
         }
 
         public void OnClipDurationChanged(TimeSpan duration)
@@ -107,14 +104,14 @@ namespace JuvoPlayer.Player
             drmManager?.UpdateDrmConfiguration(description);
         }
 
-        public void OnPause()
+        public Task OnPause()
         {
-            player.Pause();
+            return player.Pause();
         }
 
-        public void OnPlay()
+        public Task OnPlay()
         {
-            player.Play();
+            return player.Play();
         }
 
         public async Task OnSeek(TimeSpan time)
@@ -131,9 +128,6 @@ namespace JuvoPlayer.Player
                     time = duration;
 
                 await player.Seek(time);
-
-                // Update "clock cache" with latest value
-                currentTime = PlayerClockProvider.LastClock;
             }
             catch (OperationCanceledException)
             {
@@ -189,8 +183,6 @@ namespace JuvoPlayer.Player
 
         #region getters
 
-        TimeSpan IPlayerController.CurrentTime => currentTime;
-
         TimeSpan IPlayerController.ClipDuration => duration;
 
         #endregion
@@ -204,8 +196,6 @@ namespace JuvoPlayer.Player
             // Remember to firstly dispose streams and later player
             foreach (var stream in streams.Values)
                 stream.Dispose();
-
-            subscriptions.Dispose();
 
             player?.Dispose();
         }

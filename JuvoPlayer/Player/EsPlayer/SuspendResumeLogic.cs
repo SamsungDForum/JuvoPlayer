@@ -31,7 +31,7 @@ namespace JuvoPlayer.Player.EsPlayer
 
         // Suspend/Resume logic may be accessed from multiple threads
         // Lock provides resource access serialization, volatiles cross thread data validity.
-        private readonly AsyncLock _requestSerializer = new AsyncLock();
+        private readonly AsyncLock _requestSerializer; //= new AsyncLock();
 
         // _suspendCount is shared between Pause/Buffering requests, allowing simpler handling
         // of unpause while buffering
@@ -72,9 +72,10 @@ namespace JuvoPlayer.Player.EsPlayer
         public IObservable<int> BufferingProgressObservable() =>
             _bufferingProgressObservable;
 
-        public SuspendResumeLogic(Action suspendPlayback, Action resumePlayback, Action<Common.PlayerState> setPlayerState,
+        public SuspendResumeLogic(AsyncLock asyncLock, Action suspendPlayback, Action resumePlayback, Action<Common.PlayerState> setPlayerState,
             Func<ESPlayerState> playerState, Action<bool> transferState, CancellationToken token)
         {
+            _requestSerializer = asyncLock;
             _suspendAction = suspendPlayback;
             _resumeAction = resumePlayback;
             _setPlayerStateAction = setPlayerState;
@@ -113,9 +114,9 @@ namespace JuvoPlayer.Player.EsPlayer
             }
         }
 
-        public void RequestPause()
+        public async Task RequestPause()
         {
-            using (_requestSerializer.Lock(_isRunningCt))
+            using (await _requestSerializer.LockAsync(_isRunningCt))
             {
                 // Cancelled tokens can acquire async lock.
                 // Non throwing exit for Pause() request.

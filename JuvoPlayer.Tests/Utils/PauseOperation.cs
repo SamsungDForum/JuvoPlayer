@@ -16,6 +16,8 @@
  */
 
 using System;
+using System.Reactive.Linq;
+using System.Reactive.Threading.Tasks;
 using System.Threading.Tasks;
 using JuvoPlayer.Common;
 
@@ -38,13 +40,25 @@ namespace JuvoPlayer.Tests.Utils
 
         public void Prepare(TestContext context)
         {
+
         }
 
-        public Task Execute(TestContext context)
+        private static bool IsPauseObserved(PlayerState playerState) =>
+            playerState == PlayerState.Paused;
+
+        public async Task Execute(TestContext context)
         {
             var service = context.Service;
-            service.Pause();
-            return StateChangedTask.Observe(service, PlayerState.Paused, context.Token, context.Timeout);
+
+            var playerStateTask = context.Service
+                .StateChanged()
+                .FirstAsync(IsPauseObserved)
+                .Timeout(context.Timeout)
+                .ToTask(context.Token);
+
+            await service.Pause().ConfigureAwait(false);
+            await playerStateTask.ConfigureAwait(false);
         }
+
     }
 }

@@ -119,9 +119,9 @@ namespace Configuration
         public static TimeSpan DecryptBufferFullSleepTime { get; set; } = TimeSpan.FromMilliseconds(1000);
     }
 
-    public static class EsStreamControllerConfig
+    public static class PlayerControllerConfig
     {
-        public static TimeSpan ClockInterval { get; set; } = TimeSpan.FromSeconds(0.5);
+        public static TimeSpan TimeUpdatedInterval { get; set; } = TimeSpan.FromSeconds(0.5);
     }
 
     public static class EsStreamConfig

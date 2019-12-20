@@ -20,7 +20,6 @@ using System.Collections.Generic;
 using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
-using System.Threading;
 using System.Threading.Tasks;
 using ElmSharp;
 using JuvoLogger;
@@ -45,27 +44,42 @@ namespace JuvoPlayer
         private IPlayerController playerController;
         private DataProviderConnector connector;
         private readonly DataProviderFactoryManager dataProviders;
-        private CompositeDisposable subscriptions;
+
+        private CompositeDisposable _playerControllerConnections;
+        private readonly CompositeDisposable _playerControllerDisposables;
 
         public TimeSpan Duration => playerController?.ClipDuration ?? TimeSpan.FromSeconds(0);
 
-        public TimeSpan CurrentPosition =>
-            dataProvider == null ? TimeSpan.FromSeconds(0) : playerController.CurrentTime;
+        public TimeSpan CurrentPosition { get; private set; }
 
         public bool IsSeekingSupported => dataProvider?.IsSeekingSupported() ?? false;
 
-        public PlayerState State { get; private set; } = PlayerState.Idle;
+        public PlayerState State => _playerStateSubject.Value;
 
         public string CurrentCueText => dataProvider?.CurrentCue?.Text;
 
         private Window playerWindow;
         private readonly IDrmManager drmManager;
-        private Subject<PlayerState> stateChangedSubject = new Subject<PlayerState>();
-        private Subject<string> playbackErrorSubject = new Subject<string>();
-        private Subject<int> bufferingProgressSubject = new Subject<int>();
+
+        // Dispatch PlayerState through behavior subject. Any "late subscribers" will receive
+        // current state upon subscription.
+        private readonly BehaviorSubject<PlayerState> _playerStateSubject =
+            new BehaviorSubject<PlayerState>(PlayerState.Idle);
+        private readonly Subject<string> _playerErrorSubject = new Subject<string>();
+        private readonly Subject<int> _playerBufferingSubject = new Subject<int>();
+        private readonly Subject<TimeSpan> _playerClockSubject = new Subject<TimeSpan>();
 
         public PlayerServiceImpl(Window window)
         {
+            _playerControllerDisposables = new CompositeDisposable
+            {
+                _playerStateSubject,
+                _playerErrorSubject,
+                _playerBufferingSubject,
+                _playerClockSubject
+            };
+
+
             dataProviders = new DataProviderFactoryManager();
             dataProviders.RegisterDataProviderFactory(new DashDataProviderFactory());
             dataProviders.RegisterDataProviderFactory(new HLSDataProviderFactory());
@@ -77,6 +91,7 @@ namespace JuvoPlayer
             playerWindow = window;
 
             CreatePlayerController();
+            ConnectPlayerControllerObservables();
         }
 
         private void CreatePlayerController()
@@ -86,25 +101,28 @@ namespace JuvoPlayer
             var player = new EsPlayer(playerWindow);
 
             playerController = new PlayerController(player, drmManager);
+        }
 
-            subscriptions = new CompositeDisposable
+        private void ConnectPlayerControllerObservables()
+        {
+            // Pass-through subscription are not run through SynchronizationContext. Intentional
+            // Event consumers do so, no need to go through SyncContext twice.
+            _playerControllerConnections = new CompositeDisposable
             {
-                playerController.StateChanged()
-                    .Subscribe(state =>
-                    {
-                        State = state;
-                        stateChangedSubject.OnNext(state);
-                    }, () => stateChangedSubject.OnCompleted(), SynchronizationContext.Current),
-                playerController.PlaybackError()
-                    .Subscribe(playbackErrorSubject.OnNext,SynchronizationContext.Current),
-                playerController.BufferingProgress()
-                    .Subscribe(bufferingProgressSubject.OnNext,SynchronizationContext.Current)
+                playerController.StateChanged().Subscribe(_playerStateSubject),
+                playerController.PlaybackError().Subscribe( _playerErrorSubject),
+                playerController.BufferingProgress().Subscribe(_playerBufferingSubject),
+                playerController.PlayerClock().Subscribe(_playerClockSubject),
+                playerController.TimeUpdated().Subscribe(SetClock)
             };
         }
 
-        public void Pause()
+        private void SetClock(TimeSpan clock) =>
+            CurrentPosition = clock;
+
+        public Task Pause()
         {
-            playerController.OnPause();
+            return playerController.OnPause();
         }
 
         public Task SeekTo(TimeSpan to)
@@ -145,17 +163,16 @@ namespace JuvoPlayer
             dataProvider.Start();
         }
 
-        public void Start()
+        public Task Start()
         {
             Logger.Info(State.ToString());
 
             if (!dataProvider.IsDataAvailable())
             {
                 RestartPlayerController();
-                return;
             }
 
-            playerController.OnPlay();
+            return playerController.OnPlay();
         }
 
         private void RestartPlayerController()
@@ -164,16 +181,15 @@ namespace JuvoPlayer
 
             drmManager.ClearCache();
             dataProvider.OnStopped();
-            subscriptions.Dispose();
+            _playerControllerConnections.Dispose();
             connector?.Dispose();
             playerController?.Dispose();
 
             CreatePlayerController();
-
             connector = new DataProviderConnector(playerController, dataProvider);
+            ConnectPlayerControllerObservables();
 
             dataProvider.Start();
-            playerController.OnPlay();
         }
 
         public void Stop()
@@ -194,32 +210,35 @@ namespace JuvoPlayer
             if (disposing)
             {
                 drmManager.ClearCache();
-                subscriptions.Dispose();
+                _playerControllerConnections.Dispose();
+                _playerControllerDisposables.Dispose();
                 connector?.Dispose();
                 playerController?.Dispose();
                 playerController = null;
                 dataProvider?.Dispose();
                 dataProvider = null;
-                stateChangedSubject.Dispose();
-                playbackErrorSubject.Dispose();
-                bufferingProgressSubject.Dispose();
                 GC.Collect();
             }
         }
 
         public IObservable<PlayerState> StateChanged()
         {
-            return stateChangedSubject.AsObservable();
+            return _playerStateSubject.AsObservable();
         }
 
         public IObservable<string> PlaybackError()
         {
-            return playbackErrorSubject.AsObservable();
+            return _playerErrorSubject.AsObservable();
         }
 
         public IObservable<int> BufferingProgress()
         {
-            return bufferingProgressSubject.AsObservable();
+            return _playerBufferingSubject.AsObservable();
+        }
+
+        public IObservable<TimeSpan> PlayerClock()
+        {
+            return _playerClockSubject.AsObservable();
         }
     }
 }

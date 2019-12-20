@@ -17,6 +17,7 @@
 
 using System.Threading.Tasks;
 using JuvoPlayer.Common;
+using JuvoPlayer.Player.EsPlayer;
 
 namespace JuvoPlayer.Tests.Utils
 {
@@ -38,11 +39,14 @@ namespace JuvoPlayer.Tests.Utils
         {
         }
 
-        public Task Execute(TestContext context)
+        public async Task Execute(TestContext context)
         {
             var service = context.Service;
-            service.Start();
-            return StateChangedTask.Observe(service, PlayerState.Playing, context.Token, context.Timeout);
+            var playerStateTask =
+                StateChangedTask.Observe(service, PlayerState.Playing, context.Token, context.Timeout);
+
+            await service.Start().WithTimeout(context.Timeout).ConfigureAwait(false);
+            await playerStateTask.ConfigureAwait(false);
         }
     }
 }

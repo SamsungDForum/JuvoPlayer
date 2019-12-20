@@ -36,14 +36,14 @@ namespace JuvoPlayer.Tests.Utils
         {
             if (ReferenceEquals(null, obj)) return false;
             if (ReferenceEquals(this, obj)) return true;
-            return obj.GetType() == GetType() && Equals((ChangeRepresentationOperation) obj);
+            return obj.GetType() == GetType() && Equals((ChangeRepresentationOperation)obj);
         }
 
         public override int GetHashCode()
         {
             unchecked
             {
-                return (Index * 397) ^ (int) StreamType;
+                return (Index * 397) ^ (int)StreamType;
             }
         }
 
@@ -60,6 +60,7 @@ namespace JuvoPlayer.Tests.Utils
             var descriptions = service.GetStreamsDescription(StreamType);
             if (Index >= 0)
                 service.ChangeActiveStream(descriptions[Index]);
+
             return Task.CompletedTask;
         }
 
@@ -67,7 +68,7 @@ namespace JuvoPlayer.Tests.Utils
         {
             var values = Enum.GetValues(typeof(StreamType));
             var random = new Random();
-            return (StreamType) values.GetValue(random.Next(values.Length));
+            return (StreamType)values.GetValue(random.Next(values.Length));
         }
 
         private static int GetRandomStreamDescriptionIndex(IPlayerService service, StreamType streamType)

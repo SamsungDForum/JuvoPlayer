@@ -104,7 +104,7 @@ namespace JuvoPlayer.DataProviders.Dash
 
         private IDisposable demuxerPacketReadySub;
         private IDisposable demuxerStreamConfigReadySub;
-        private IDisposable downloadCompletedSub;
+        private IDisposable clientReadySub;
 
         public Func<Packet, bool> PacketPredicate { get; set; }
         private static readonly TimeSpan timeBufferDepthDefault = TimeSpan.FromSeconds(10);
@@ -124,8 +124,8 @@ namespace JuvoPlayer.DataProviders.Dash
                                          "throughputHistory cannot be null");
             StreamType = streamType;
 
-            downloadCompletedSub = dashClient.DownloadCompleted()
-                .Subscribe(async unit => await OnDownloadCompleted(), SynchronizationContext.Current);
+            clientReadySub = dashClient.Ready()
+                .Subscribe(async unit => await OnClientReady(), SynchronizationContext.Current);
             SubscribeDemuxerEvents();
 
         }
@@ -136,7 +136,7 @@ namespace JuvoPlayer.DataProviders.Dash
         public void SetDataRequest(TimeSpan request) =>
             dashClient.SetDataRequest(request);
 
-        private async Task OnDownloadCompleted()
+        private async Task OnClientReady()
         {
             try
             {
@@ -810,7 +810,7 @@ namespace JuvoPlayer.DataProviders.Dash
             DisposeAllSubjects();
 
             DisposeDemuxerSubscriptions();
-            downloadCompletedSub.Dispose();
+            clientReadySub.Dispose();
         }
 
         private void DisposeAllSubjects()

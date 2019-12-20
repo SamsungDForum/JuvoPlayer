@@ -124,7 +124,7 @@ namespace JuvoPlayer.Player.EsPlayer
 
         private Task StreamSync(SynchronizationData streamState, CancellationToken token)
         {
-            var playerClock = PlayerClockProvider.LastClock;
+            var playerClock = _playerClockSource.LastClock;
             if (playerClock < TimeSpan.Zero)
                 playerClock = streamState.FirstPts;
 
@@ -141,10 +141,10 @@ namespace JuvoPlayer.Player.EsPlayer
                 .ToTask(token);
         }
 
-        private static bool IsTransferredDurationCompleted(SynchronizationData streamState)
+        private bool IsTransferredDurationCompleted(SynchronizationData streamState)
         {
             if (streamState.SyncState == SynchronizationState.PlayerClockSynchronize)
-                return streamState.Dts - PlayerClockProvider.LastClock >= StreamClockMaximumOverhead;
+                return streamState.Dts - _playerClockSource.LastClock >= StreamClockMaximumOverhead;
 
             return streamState.TransferredDuration >= streamState.NeededDuration;
         }
