@@ -119,7 +119,6 @@ namespace JuvoPlayer.Common
 
         private async void Seek(TimeSpan seekInterval)
         {
-
             if (IsSeekingSupported == false || IsSeekInProgress)
                 return;
 
