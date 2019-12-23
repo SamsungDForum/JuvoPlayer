@@ -139,8 +139,7 @@ namespace XamarinPlayer.Views
             if (e.Contains("Back") && !e.Contains("XF86PlayBack"))
             {
                 //If the 'return' button on standard or back arrow on the smart remote control was pressed do react depending on the playback state
-                if (Player.State < PlayerState.Playing ||
-                    Player.State >= PlayerState.Playing && !_isShowing)
+                if (!_isShowing && !Settings.IsVisible)
                 {
                     //return to the main menu showing all the video contents list
                     Navigation.RemovePage(this);
@@ -154,7 +153,9 @@ namespace XamarinPlayer.Views
                         PlayButton.Focus();
                     }
                     else
+                    {
                         Hide();
+                    }
                 }
             }
             else
@@ -267,7 +268,7 @@ namespace XamarinPlayer.Views
                     return;
                 }
 
-                var stream = (StreamDescription) Subtitles.ItemsSource[Subtitles.SelectedIndex];
+                var stream = (StreamDescription)Subtitles.ItemsSource[Subtitles.SelectedIndex];
                 try
                 {
                     Player.ChangeActiveStream(stream);
@@ -305,7 +306,7 @@ namespace XamarinPlayer.Views
             {
                 if (picker.SelectedIndex != -1)
                 {
-                    var stream = (StreamDescription) picker.ItemsSource[picker.SelectedIndex];
+                    var stream = (StreamDescription)picker.ItemsSource[picker.SelectedIndex];
 
                     Player.ChangeActiveStream(stream);
                 }
@@ -435,7 +436,6 @@ namespace XamarinPlayer.Views
                 _storyboardReader = null;
                 Player?.Dispose();
                 Player = null;
-
                 return false;
             });
             MessagingCenter.Unsubscribe<IKeyEventSender, string>(this, "KeyDown");
@@ -469,21 +469,21 @@ namespace XamarinPlayer.Views
             switch (state)
             {
                 case PlayerState.Prepared:
-                {
-                    if (Player.IsSeekingSupported)
                     {
-                        BackButton.IsEnabled = true;
-                        ForwardButton.IsEnabled = true;
+                        if (Player.IsSeekingSupported)
+                        {
+                            BackButton.IsEnabled = true;
+                            ForwardButton.IsEnabled = true;
+                        }
+
+                        PlayButton.IsEnabled = true;
+                        SettingsButton.IsEnabled = true;
+                        PlayButton.Focus();
+
+                        Player.Start();
+                        Show();
+                        break;
                     }
-
-                    PlayButton.IsEnabled = true;
-                    SettingsButton.IsEnabled = true;
-                    PlayButton.Focus();
-
-                    Player.Start();
-                    Show();
-                    break;
-                }
                 case PlayerState.Playing:
                     PlayImage.Source = ImageSource.FromFile("btn_viewer_control_pause_normal.png");
                     break;
@@ -517,7 +517,7 @@ namespace XamarinPlayer.Views
 
             Device.BeginInvokeOnMainThread(() =>
             {
-                if (Player.State < PlayerState.Playing)
+                if (Player.State < PlayerState.Paused)
                 {
                     return;
                 }
@@ -532,7 +532,7 @@ namespace XamarinPlayer.Views
 
                 if (_hideTime > 0)
                 {
-                    _hideTime -= (int) UpdateInterval.TotalMilliseconds;
+                    _hideTime -= (int)UpdateInterval.TotalMilliseconds;
                     if (_hideTime <= 0)
                     {
                         Hide();
@@ -601,7 +601,7 @@ namespace XamarinPlayer.Views
         private void UpdateLoadingIndicator()
         {
             var isSeeking = _seekLogic.IsSeekInProgress || _seekLogic.IsSeekAccumulationInProgress;
-            if (isSeeking || _isBuffering)
+            if ((isSeeking || _isBuffering) && (Player.State != PlayerState.Paused))
             {
                 LoadingIndicator.IsRunning = true;
                 LoadingIndicator.IsVisible = true;
