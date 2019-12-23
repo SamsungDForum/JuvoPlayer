@@ -24,6 +24,7 @@ using System.Reactive.Subjects;
 using System.Threading;
 using System.Threading.Tasks;
 using static Configuration.SeekLogic;
+using System.Reactive.Threading.Tasks;
 
 namespace JuvoPlayer.Common
 {
@@ -128,7 +129,18 @@ namespace JuvoPlayer.Common
             _seekCancellationTokenSource = new CancellationTokenSource();
             _seekDelay = Task.Delay(DefaultSeekAccumulateInterval, _seekCancellationTokenSource.Token);
 
-            try { await _seekDelay; } catch (TaskCanceledException) { return; }
+            try
+            {
+                await _seekDelay;
+                if (_client.Player.State != PlayerState.Playing)
+                {
+                    await _client.Player.StateChanged()
+                        .Where(state => state == PlayerState.Playing)
+                        .FirstAsync()
+                        .ToTask(_seekCancellationTokenSource.Token);
+                }
+            }
+            catch (TaskCanceledException) { return; }
 
             try
             {
