@@ -149,8 +149,8 @@ namespace XamarinPlayer.Views
                     if (Settings.IsVisible)
                     {
                         Settings.IsVisible = false;
-                        PlayButton.IsEnabled = true;                      
-                        PlayButton.Focus();                        
+                        PlayButton.IsEnabled = true;
+                        PlayButton.Focus();
                     }
                     else
                     {
@@ -339,7 +339,7 @@ namespace XamarinPlayer.Views
         {
             TopBar.IsVisible = false;
             BottomBar.IsVisible = false;
-            _isShowing = false;            
+            _isShowing = false;
         }
 
         private void PlayerViewPropertyChanged(object sender, PropertyChangedEventArgs e)

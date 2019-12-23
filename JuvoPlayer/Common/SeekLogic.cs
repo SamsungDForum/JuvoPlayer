@@ -24,7 +24,6 @@ using System.Reactive.Subjects;
 using System.Threading;
 using System.Threading.Tasks;
 using static Configuration.SeekLogic;
-using JuvoLogger;
 using System.Reactive.Threading.Tasks;
 
 namespace JuvoPlayer.Common
@@ -63,9 +62,6 @@ namespace JuvoPlayer.Common
 
         private readonly ISeekLogicClient _client;
         private StoryboardReader _storyboardReader;
-
-        private static ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
-
 
         public SeekLogic(ISeekLogicClient client)
         {
@@ -180,13 +176,9 @@ namespace JuvoPlayer.Common
             if (IsStateSeekable(State))
             {
                 IsSeekInProgress = true;
-                Logger.Info($"PB: before IsSeekInProgress = {IsSeekInProgress}");
-                Logger.Info($"PB: before State = {State}");
                 await _client.Player?.SeekTo(_targetSeekTime);
                 IsSeekAccumulationInProgress = false;
                 IsSeekInProgress = false;
-                Logger.Info($"PB: after IsSeekInProgress = {IsSeekInProgress}");
-                Logger.Info($"PB: after State = {State}");
             }
 
             _seekDelay = null;
