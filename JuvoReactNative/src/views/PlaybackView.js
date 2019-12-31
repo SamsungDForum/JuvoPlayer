@@ -136,7 +136,7 @@ export default class PlaybackView extends React.Component {
     this.stopPlaybackTime();
     this.rerender();
   }
-  handleSettingsViewDisappeared(playbackSettings) {
+  handleSettingsViewDisappeared() {
     this.showingSettingsView = false;
     this.rerender();
   }
