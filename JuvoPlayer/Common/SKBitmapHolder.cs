@@ -18,8 +18,8 @@
  */
 
 using System;
-using System.IO;
 using System.Threading.Tasks;
+using JuvoPlayer.ResourceLoaders;
 using SkiaSharp;
 
 namespace JuvoPlayer.Common
@@ -29,12 +29,12 @@ namespace JuvoPlayer.Common
         private SKBitmap _bitmap;
         private bool _isDecoding;
         private bool _isFaulted;
-        private readonly Task<Stream> _streamTask;
+        private readonly IResource _resource;
         private bool IsDisposed { get; set; }
 
-        public SKBitmapHolder(Task<Stream> streamTask)
+        public SKBitmapHolder(IResource resource)
         {
-            _streamTask = streamTask;
+            _resource = resource;
         }
 
         public SKBitmap GetBitmap()
@@ -56,21 +56,27 @@ namespace JuvoPlayer.Common
 
         private async Task<SKBitmap> DecodeBitmap()
         {
-            using (var stream = await _streamTask)
+            using (var stream = await _resource.ReadAsStreamAsync())
                 return SKBitmap.Decode(stream);
         }
 
         private void OnBitmapDecoded(Task<SKBitmap> bitmapTask)
         {
             _isDecoding = false;
+
             if (bitmapTask.Status != TaskStatus.RanToCompletion)
             {
+                if (IsDisposed)
+                    _resource.Dispose();
                 _isFaulted = true;
                 return;
             }
 
             if (IsDisposed)
+            {
+                _resource.Dispose();
                 bitmapTask.Result.Dispose();
+            }
             else
                 _bitmap = bitmapTask.Result;
         }
@@ -78,6 +84,8 @@ namespace JuvoPlayer.Common
         public void Dispose()
         {
             if (IsDisposed) return;
+            if (!_isDecoding)
+                _resource.Dispose();
             _bitmap?.Dispose();
             IsDisposed = true;
         }
