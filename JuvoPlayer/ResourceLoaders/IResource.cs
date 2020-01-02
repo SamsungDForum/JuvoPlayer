@@ -1,7 +1,7 @@
 /*!
  *
  * [https://github.com/SamsungDForum/JuvoPlayer])
- * Copyright 2019, Samsung Electronics Co., Ltd
+ * Copyright 2020, Samsung Electronics Co., Ltd
  * Licensed under the MIT license
  *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
@@ -17,14 +17,16 @@
  *
  */
 
+using System;
 using System.IO;
 using System.Threading.Tasks;
 
-namespace JuvoPlayer.Common
+namespace JuvoPlayer.ResourceLoaders
 {
-    interface IStoryboardSource
+    public interface IResource : IDisposable
     {
-        Task<StoryboardsMap> GetStoryboardsMap();
-        Task<Stream> GetBitmap(Storyboard storyboard);
+        Task<Stream> ReadAsStreamAsync();
+        Task<string> ReadAsStringAsync();
+        IResource Resolve(string path);
     }
 }
