@@ -42,18 +42,24 @@ namespace JuvoPlayer.ResourceLoaders
             _path = path;
         }
 
-        public async Task<Stream> ReadAsStreamAsync()
+        public Task<Stream> ReadAsStreamAsync()
         {
-            var response = await GetAsync();
-            response.EnsureSuccessStatusCode();
-            return await response.Content.ReadAsStreamAsync();
+            return Task.Run(async () =>
+            {
+                var response = await GetAsync();
+                response.EnsureSuccessStatusCode();
+                return await response.Content.ReadAsStreamAsync();
+            });
         }
 
-        public async Task<string> ReadAsStringAsync()
+        public Task<string> ReadAsStringAsync()
         {
-            var response = await GetAsync();
-            response.EnsureSuccessStatusCode();
-            return await response.Content.ReadAsStringAsync();
+            return Task.Run(async () =>
+            {
+                var response = await GetAsync();
+                response.EnsureSuccessStatusCode();
+                return await response.Content.ReadAsStringAsync();
+            });
         }
 
         private Task<HttpResponseMessage> GetAsync()
