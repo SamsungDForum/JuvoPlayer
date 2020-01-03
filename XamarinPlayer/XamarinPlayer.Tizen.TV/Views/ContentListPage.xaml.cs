@@ -63,14 +63,23 @@ namespace XamarinPlayer.Views
             }
         }
 
+        // private int pendingUpdatesCount;
+
         private async Task UpdateContentInfo()
         {
-            var focusedContent = ContentListView.FocusedContent;
-            ContentTitle.Text = focusedContent.ContentTitle;
-            ContentDesc.Text = focusedContent.ContentDescription;
-            ContentImage.Source = ImageSource.FromStream(() => File.OpenRead(focusedContent.ContentImg));
-            ContentImage.Opacity = 0;
-            await ContentImage.FadeTo(1, 1000);
+            await Task.CompletedTask;
+            // var focusedContent = ContentListView.FocusedContent;
+            // ++pendingUpdatesCount;
+            // await Task.Delay(TimeSpan.FromSeconds(1));
+            // --pendingUpdatesCount;
+            // if (pendingUpdatesCount > 0) return;
+            //
+            // ContentTitle.Text = focusedContent.ContentTitle;
+            // ContentDesc.Text = focusedContent.ContentDescription;
+            // ContentImage.Source = ImageSource.FromStream(() => File.OpenRead(focusedContent.ContentImg));
+            // ContentImage.Opacity = 0;
+            // ContentImage.AbortAnimation("FadeTo");
+            // await ContentImage.FadeTo(1, 1000);
         }
 
         protected override async void OnAppearing()
