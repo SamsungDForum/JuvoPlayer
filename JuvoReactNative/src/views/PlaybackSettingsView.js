@@ -9,13 +9,9 @@ export default class PlaybackSettingsView extends React.Component {
   constructor(props) {
     super(props);
     this.state = {
-      streamsData: -1
+      selectedIndex: -1
     };
-    this.settings = {
-      audioSetting: -1,
-      videoSetting: -1,
-      subtitleSetting: -1
-    };
+    this.uniqueKey = 0;
     this.JuvoPlayer = NativeModules.JuvoPlayer;
     this.JuvoEventEmitter = new NativeEventEmitter(this.JuvoPlayer);
     this.keysListenningOff = false;
@@ -23,27 +19,38 @@ export default class PlaybackSettingsView extends React.Component {
     this.onTVKeyDown = this.onTVKeyDown.bind(this);
     this.pickerChange = this.pickerChange.bind(this);
   }
+
   componentWillMount() {
     this.JuvoEventEmitter.addListener('onTVKeyDown', this.onTVKeyDown);
   }
+
   handleConfirmSettings() {
     this.keysListenningOff = true;
-    this.props.onCloseSettingsView(this.settings);
+    this.props.onCloseSettingsView();
   }
+
   componentWillReceiveProps(nextProps) {
-    const result = this.state.streamsData.selectedIndex !== nextProps.streamsData.selectedIndex;
-    if (result) {
-      this.settings = {
-        audioSetting: -1,
-        videoSetting: -1,
-        subtitleSetting: -1
-      };
-      this.setState({
-        streamsData: nextProps.streamsData
-      });
+    if (this.state.selectedIndex !== nextProps.streamsData.selectedIndex) {
+      this.uniqueKey = this.uniqueKey + 1;
+      this.setState({selectedIndex: nextProps.streamsData.selectedIndex});
     }
     this.keysListenningOff = false;
   }
+
+  getDefaultStreamDescription(streams) {
+    let defaultStream = this.getDefaultStream(streams);
+    if (defaultStream !== undefined) return defaultStream.Description;
+    return '';
+  }
+
+  getDefaultStream(streams) {
+    for (let stream of streams) {
+      if (stream.Default === true) {
+        return stream;
+      }
+    }
+  }
+
   onTVKeyDown(pressed) {
     if (this.keysListenningOff) return;
     switch (pressed.KeyName) {
@@ -53,29 +60,16 @@ export default class PlaybackSettingsView extends React.Component {
         break;
     }
   }
+
   pickerChange(itemIndex, settingName) {
     //Apply the playback setttings to the playback
-    this.state.streamsData[settingName].map((v, i) => {
-      if (itemIndex === i) {
-        switch (settingName) {
-          case 'Audio':
-            this.settings.audioSetting = this.state.streamsData.Audio[itemIndex].Id;
-            break;
-          case 'Video':
-            this.settings.videoSetting = this.state.streamsData.Video[itemIndex].Id;
-            break;
-          case 'Subtitle':
-            this.settings.subtitleSetting = this.state.streamsData.Subtitle[itemIndex].Id;
-            break;
-        }
-      }
-    });
     this.JuvoPlayer.SetStream(itemIndex, Native.JuvoPlayer.Common.StreamType[settingName]);
   }
+
   render() {
     const fadeduration = 300;
     return (
-      <View style={{ width: 1600, height: 350 }}>
+      <View style={{ width: 1600, height: 350 }} key={this.uniqueKey}>
         <HideableView visible={this.props.visible} duration={fadeduration}>
           <View style={styles.transparentPage}>
             <View style={[styles.textView, { flex: 1.5 }]}>
@@ -86,7 +80,7 @@ export default class PlaybackSettingsView extends React.Component {
                 <View>
                   <Text style={styles.textBody}>Audio track</Text>
                   <Picker
-                    selectedValue={this.settings.audioSetting}
+                    title={this.getDefaultStreamDescription(this.props.streamsData.Audio)}
                     style={styles.picker}
                     onValueChange={(itemValue, itemIndex) => {
                       this.JuvoPlayer.Log('itemValue = ' + itemValue);
@@ -94,9 +88,6 @@ export default class PlaybackSettingsView extends React.Component {
                     }}
                     enabled={this.props.visible}>
                     {this.props.streamsData.Audio.map((item, index) => {
-                      if (item.Default === true && this.settings.audioSetting === -1) {
-                        this.settings.audioSetting = item.Id;
-                      }
                       return <Picker.Item label={item.Description} value={item.Id} key={index} />;
                     })}
                   </Picker>
@@ -106,7 +97,7 @@ export default class PlaybackSettingsView extends React.Component {
                 <View>
                   <Text style={styles.textBody}>Video quality</Text>
                   <Picker
-                    selectedValue={this.settings.videoSetting}
+                    title={this.getDefaultStreamDescription(this.props.streamsData.Video)}
                     style={styles.picker}
                     onValueChange={(itemValue, itemIndex) => {
                       this.JuvoPlayer.Log('itemValue = ' + itemValue);
@@ -114,9 +105,6 @@ export default class PlaybackSettingsView extends React.Component {
                     }}
                     enabled={this.props.visible}>
                     {this.props.streamsData.Video.map((item, index) => {
-                      if (item.Default === true && this.settings.videoSetting === -1) {
-                        this.settings.videoSetting = item.Id;
-                      }
                       return <Picker.Item label={item.Description} value={item.Id} key={index} />;
                     })}
                   </Picker>
@@ -126,18 +114,15 @@ export default class PlaybackSettingsView extends React.Component {
                 <View>
                   <Text style={styles.textBody}>Subtitles</Text>
                   <Picker
-                    selectedValue={this.settings.subtitleSetting}
+                    title={this.getDefaultStreamDescription(this.props.streamsData.Subtitle)}
                     style={styles.picker}
                     onValueChange={(itemValue, itemIndex) => {
                       this.JuvoPlayer.Log('itemValue = ' + itemValue);
                       this.pickerChange(itemIndex, 'Subtitle');
-                      this.props.onSubtitleSelection(this.state.streamsData.Subtitle[itemIndex].Description);
+                      this.props.onSubtitleSelection(this.props.streamsData.Subtitle[itemIndex].Description);
                     }}
                     enabled={this.props.visible}>
                     {this.props.streamsData.Subtitle.map((item, index) => {
-                      if (item.Default === true && this.settings.subtitleSetting === -1) {
-                        this.settings.subtitleSetting = item.Id;
-                      }
                       return <Picker.Item label={item.Description} value={item.Id} key={index} />;
                     })}
                   </Picker>
