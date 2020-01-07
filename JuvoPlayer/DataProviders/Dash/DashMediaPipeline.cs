@@ -136,6 +136,8 @@ namespace JuvoPlayer.DataProviders.Dash
         public void SetDataRequest(TimeSpan request) =>
             dashClient.SetDataRequest(request);
 
+        public bool AlowStreamSwitch { get; set; } = false;
+
         private async Task OnClientReady()
         {
             try
@@ -223,7 +225,7 @@ namespace JuvoPlayer.DataProviders.Dash
 
             try
             {
-                if (!CanSwitchStream())
+                if (DisableAdaptiveStreaming || !AlowStreamSwitch)
                     return;
 
                 if (currentStream == null && pendingStream == null)
@@ -268,8 +270,6 @@ namespace JuvoPlayer.DataProviders.Dash
             // in progress, next stream switch can safely be ignored, thus use of monitor
             // rather then lock.
 
-            Logger.Info($"{StreamType}");
-
             if (!Monitor.TryEnter(switchStreamLock))
                 return;
 
@@ -278,20 +278,20 @@ namespace JuvoPlayer.DataProviders.Dash
                 if (pendingStream == null)
                     return;
 
-                Logger.Info($"{StreamType} Changing stream");
-
-                if (currentStream == null)
+                if (!AlowStreamSwitch)
                 {
-                    StartPipeline(pendingStream);
+                    // Start scenario - AllowStreamSwitch should be false &
+                    // no current stream
+                    if (currentStream != null) return;
                 }
-                else
+
+                if (currentStream != null)
                 {
                     await FlushPipeline();
-                    StartPipeline(pendingStream);
                 }
 
-                // Update current stream. AdaptToNetConditions uses it to perform stream switching.
-                currentStream = pendingStream;
+                StartPipeline(pendingStream);
+
                 pendingStream = null;
             }
             finally
@@ -479,7 +479,6 @@ namespace JuvoPlayer.DataProviders.Dash
             if (!pipelineStarted)
                 return;
 
-            Logger.Info($"{StreamType}:");
             // Stop demuxer and dashclient
             dashClient.Reset();
             demuxerController.Reset();
@@ -494,7 +493,6 @@ namespace JuvoPlayer.DataProviders.Dash
             if (!pipelineStarted)
                 return;
 
-            Logger.Info($"{StreamType}:");
             // Stop demuxer and dashclient
             dashClient.Reset();
             await demuxerController.Flush();
@@ -792,13 +790,6 @@ namespace JuvoPlayer.DataProviders.Dash
 
                 lastSeek = null;
             }
-        }
-
-        public bool CanSwitchStream()
-        {
-            // Allow adaptive stream switching if Client is in correct state and
-            // Adaptive Streaming enabled.
-            return dashClient.CanStreamSwitch() && !DisableAdaptiveStreaming;
         }
 
         public void Dispose()

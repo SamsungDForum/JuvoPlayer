@@ -20,6 +20,7 @@ using System.Collections.Generic;
 using System.Reactive.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using Configuration;
 using JuvoLogger;
 using JuvoPlayer.Common;
 using JuvoPlayer.Subtitles;
@@ -41,6 +42,8 @@ namespace JuvoPlayer.DataProviders.Dash
 
         private bool disposed;
         private readonly IDisposable manifestReadySub;
+        private PlayerState _playerState = PlayerState.Idle;
+        private TimeSpan _seekPosition = TimeSpan.Zero;
 
         public DashDataProvider(
             string clipUrl,
@@ -140,6 +143,7 @@ namespace JuvoPlayer.DataProviders.Dash
 
         public void OnStateChanged(PlayerState state)
         {
+            _playerState = state;
         }
 
         private void OnDeactivateSubtitleStream()
@@ -165,7 +169,7 @@ namespace JuvoPlayer.DataProviders.Dash
         public void OnDataClock(TimeSpan dataClock)
         {
             audioPipeline.SetDataRequest(dataClock);
-            videoPipeline.SetDataRequest(dataClock);   
+            videoPipeline.SetDataRequest(dataClock);
         }
 
         public Task<TimeSpan> Seek(TimeSpan time, CancellationToken token)
@@ -173,18 +177,24 @@ namespace JuvoPlayer.DataProviders.Dash
             if (!IsSeekingSupported())
                 throw new SeekException("Seeking is not supported");
 
+            // Invalidate currentTime to disable stream switching till async operations complete indicated by
+            // arrival of new time.
+            currentTime = PlayerClockProviderConfig.InvalidClock;
+            SetStreamSwitching();
+
             videoPipeline.Pause();
             audioPipeline.Pause();
 
-            var videoSegmentStart = videoPipeline.Seek(time);
-            audioPipeline.Seek(videoSegmentStart);
+            _seekPosition = videoPipeline.Seek(time);
 
-            audioPipeline.PacketPredicate = packet => !packet.ContainsData() || packet.Pts >= videoSegmentStart;
+            audioPipeline.Seek(_seekPosition);
+
+            audioPipeline.PacketPredicate = packet => !packet.ContainsData() || packet.Pts >= _seekPosition;
 
             videoPipeline.Resume();
             audioPipeline.Resume();
 
-            return Task.FromResult(videoSegmentStart);
+            return Task.FromResult(_seekPosition);
         }
 
         public bool IsDataAvailable()
@@ -245,6 +255,23 @@ namespace JuvoPlayer.DataProviders.Dash
 
             audioPipeline.OnTimeUpdated(time);
             videoPipeline.OnTimeUpdated(time);
+
+            SetStreamSwitching();
+        }
+
+        private void SetStreamSwitching()
+        {
+            // Allow stream switching when no async operations take place.
+            // _playerState does not carry information regarding seek operations.
+            // Use currentTime & requested seek position to determine if seek op is in progress.
+            // Requires currentTime to be invalidated during seek to handle backward seeks.
+            var streamSwitchFlag = currentTime > _seekPosition && _playerState == PlayerState.Playing;
+            if (videoPipeline.AlowStreamSwitch == streamSwitchFlag)
+                return;
+
+            Logger.Info($"Stream switch allowed: {streamSwitchFlag}");
+            videoPipeline.AlowStreamSwitch = streamSwitchFlag;
+            audioPipeline.AlowStreamSwitch = streamSwitchFlag;
         }
 
         public void Dispose()
