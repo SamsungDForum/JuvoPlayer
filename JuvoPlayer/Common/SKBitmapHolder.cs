@@ -64,30 +64,26 @@ namespace JuvoPlayer.Common
         {
             _isDecoding = false;
 
-            if (bitmapTask.Status != TaskStatus.RanToCompletion)
-            {
-                if (IsDisposed)
-                    _resource.Dispose();
-                _isFaulted = true;
-                return;
-            }
-
             if (IsDisposed)
             {
                 _resource.Dispose();
-                bitmapTask.Result.Dispose();
-            }
+                Task.Run(() => bitmapTask.Result.Dispose());
+            } else if (bitmapTask.Status != TaskStatus.RanToCompletion)
+                _isFaulted = true;
             else
                 _bitmap = bitmapTask.Result;
         }
 
         public void Dispose()
         {
-            if (IsDisposed) return;
-            if (!_isDecoding)
-                _resource.Dispose();
-            _bitmap?.Dispose();
+            if (IsDisposed)
+                return;
             IsDisposed = true;
+            if (_isDecoding)
+                return;
+            _resource.Dispose();
+            if (_bitmap != null)
+                Task.Run(() => _bitmap.Dispose());
         }
     }
 }

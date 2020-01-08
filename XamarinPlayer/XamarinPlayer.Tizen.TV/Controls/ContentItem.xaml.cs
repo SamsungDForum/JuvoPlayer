@@ -93,9 +93,8 @@ namespace XamarinPlayer.Tizen.TV.Controls
                 try
                 {
                     _isFocused = true;
-// #pragma warning disable 4014
-//                     await this.ScaleTo(0.9);
-// #pragma warning restore 4014
+                    this.AbortAnimation("ScaleTo");
+                    await this.ScaleTo(0.9);
                     InvalidateSurface();
 
                     if (ContentTilePreviewPath == null) return;
@@ -146,9 +145,9 @@ namespace XamarinPlayer.Tizen.TV.Controls
             }
 
             _isFocused = false;
-            // this.AbortAnimation("ScaleTo");
+            this.AbortAnimation("ScaleTo");
             this.AbortAnimation("Animation");
-            // this.ScaleTo(1, 334);
+            this.ScaleTo(1);
             _storyboardReader?.Dispose();
             _storyboardReader = null;
             _previewBitmap = null;
@@ -168,18 +167,18 @@ namespace XamarinPlayer.Tizen.TV.Controls
             var surface = e.Surface;
             var canvas = surface.Canvas;
 
-            var dstRect = info.Rect;
-
             var (bitmap, srcRect) = GetCurrentBitmap();
             if (bitmap == null)
                 return;
 
+            var dstRect = info.Rect;
             var borderColor = _isFocused ? FocusedColor : UnfocusedColor;
             _paint.Color = borderColor;
 
             using (var path = new SKPath())
             using (var roundRect = new SKRoundRect(dstRect, 30, 30))
             {
+                canvas.Clear();
                 path.AddRoundRect(roundRect);
                 canvas.ClipPath(path, antialias: true);
                 canvas.DrawBitmap(bitmap, srcRect, dstRect);
