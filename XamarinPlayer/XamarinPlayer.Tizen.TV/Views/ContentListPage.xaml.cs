@@ -31,6 +31,8 @@ namespace XamarinPlayer.Views
     {
         NavigationPage AppMainPage;
 
+        private int _pendingUpdatesCount;
+
         public ContentListPage(NavigationPage page)
         {
             InitializeComponent();
@@ -63,23 +65,20 @@ namespace XamarinPlayer.Views
             }
         }
 
-        // private int pendingUpdatesCount;
-
         private async Task UpdateContentInfo()
         {
-            await Task.CompletedTask;
-            // var focusedContent = ContentListView.FocusedContent;
-            // ++pendingUpdatesCount;
-            // await Task.Delay(TimeSpan.FromSeconds(1));
-            // --pendingUpdatesCount;
-            // if (pendingUpdatesCount > 0) return;
-            //
-            // ContentTitle.Text = focusedContent.ContentTitle;
-            // ContentDesc.Text = focusedContent.ContentDescription;
-            // ContentImage.Source = ImageSource.FromStream(() => File.OpenRead(focusedContent.ContentImg));
-            // ContentImage.Opacity = 0;
-            // ContentImage.AbortAnimation("FadeTo");
-            // await ContentImage.FadeTo(1, 1000);
+            var focusedContent = ContentListView.FocusedContent;
+            ++_pendingUpdatesCount;
+            await Task.Delay(TimeSpan.FromSeconds(1));
+            --_pendingUpdatesCount;
+            if (_pendingUpdatesCount > 0) return;
+
+            ContentTitle.Text = focusedContent.ContentTitle;
+            ContentDesc.Text = focusedContent.ContentDescription;
+            ContentImage.Source = ImageSource.FromStream(() => File.OpenRead(focusedContent.ContentImg));
+            ContentImage.Opacity = 0;
+            ContentImage.AbortAnimation("FadeTo");
+            await ContentImage.FadeTo(1, 1000);
         }
 
         protected override async void OnAppearing()
