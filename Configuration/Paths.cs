@@ -17,17 +17,11 @@
  *
  */
 
-using System;
-using System.IO;
-using System.Threading.Tasks;
-
-namespace JuvoPlayer.ResourceLoaders
+namespace Configuration
 {
-    public interface IResource : IDisposable
+    public static class Paths
     {
-        Task<Stream> ReadAsStreamAsync();
-        Task<string> ReadAsStringAsync();
-        IResource Resolve(string path);
-        string AbsolutePath { get; }
+        public const string VideoClipJsonPath =
+             "https://raw.githubusercontent.com/ppaneksamsung/JuvoPlayer/master/Resources/videoclips.json";
     }
 }

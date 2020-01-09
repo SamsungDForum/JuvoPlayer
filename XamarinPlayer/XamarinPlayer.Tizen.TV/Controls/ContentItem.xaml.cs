@@ -21,6 +21,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using JuvoLogger;
 using JuvoPlayer.Common;
+using JuvoPlayer.ResourceLoaders;
 using Nito.AsyncEx;
 using SkiaSharp;
 using SkiaSharp.Views.Forms;
@@ -188,18 +189,19 @@ namespace XamarinPlayer.Tizen.TV.Controls
 
         private async void LoadSkBitmap()
         {
-            var path = ContentImg;
-            var newBitmap = await Task.Run(() =>
+            using (var resource = ResourceFactory.Create(ContentImg))
             {
-                using (var stream = new SKFileStream(path))
+                var newBitmap = await Task.Run(async () =>
                 {
-                    return SKBitmap.Decode(stream);
-                }
-            });
-
-            _contentBitmap?.Dispose();
-            _contentBitmap = newBitmap;
-            InvalidateSurface();
+                    using (var stream = await resource.ReadAsStreamAsync())
+                    {
+                        return SKBitmap.Decode(stream);
+                    }
+                });
+                _contentBitmap?.Dispose();
+                _contentBitmap = newBitmap;
+                InvalidateSurface();
+            }
         }
 
         public void SetHeight(double height)

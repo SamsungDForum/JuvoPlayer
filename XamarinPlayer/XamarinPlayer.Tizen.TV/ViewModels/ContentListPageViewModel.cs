@@ -55,7 +55,7 @@ namespace XamarinPlayer.ViewModels
 
         public ContentListPageViewModel()
         {
-            var clips = DependencyService.Get<IClipReaderService>(DependencyFetchTarget.NewInstance).ReadClips();
+            var clips = DependencyService.Get<IClipReaderService>(DependencyFetchTarget.NewInstance).ReadClips().Result;
 
             ContentList = clips.Select(o => new DetailContentData()
             {

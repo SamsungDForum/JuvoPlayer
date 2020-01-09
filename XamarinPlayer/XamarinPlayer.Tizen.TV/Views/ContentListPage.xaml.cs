@@ -18,6 +18,7 @@
 using System;
 using System.IO;
 using System.Threading.Tasks;
+using JuvoPlayer.ResourceLoaders;
 using Xamarin.Forms;
 using Xamarin.Forms.Xaml;
 using XamarinPlayer.Services;
@@ -75,7 +76,8 @@ namespace XamarinPlayer.Views
 
             ContentTitle.Text = focusedContent.ContentTitle;
             ContentDesc.Text = focusedContent.ContentDescription;
-            ContentImage.Source = ImageSource.FromStream(() => File.OpenRead(focusedContent.ContentImg));
+            ContentImage.Source = ImageSource.FromStream(() =>
+                ResourceFactory.Create(focusedContent.ContentImg).ReadAsStreamAsync().Result);
             ContentImage.Opacity = 0;
             ContentImage.AbortAnimation("FadeTo");
             await ContentImage.FadeTo(1, 1000);
@@ -84,10 +86,7 @@ namespace XamarinPlayer.Views
         protected override async void OnAppearing()
         {
             base.OnAppearing();
-            MessagingCenter.Subscribe<IKeyEventSender, string>(this, "KeyDown", (s, e) =>
-            {
-                HandleKeyEvent(e);
-            });
+            MessagingCenter.Subscribe<IKeyEventSender, string>(this, "KeyDown", (s, e) => { HandleKeyEvent(e); });
             ContentListView.SetFocus();
             await UpdateContentInfo();
         }

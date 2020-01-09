@@ -25,13 +25,14 @@ namespace JuvoPlayer.ResourceLoaders
 {
     public class FileResource : IResource
     {
-        private readonly string _path;
         private Stream _stream;
         private bool _disposed;
 
+        public string AbsolutePath { get; }
+
         public FileResource(string path)
         {
-            _path = ToAbsolute(path);
+            AbsolutePath = ToAbsolute(path);
         }
 
         private static string ToAbsolute(string path)
@@ -56,13 +57,13 @@ namespace JuvoPlayer.ResourceLoaders
         private Stream OpenRead()
         {
             if (_stream != null) return _stream;
-            _stream = File.OpenRead(_path);
+            _stream = File.OpenRead(AbsolutePath);
             return _stream;
         }
 
         public IResource Resolve(string path)
         {
-            var parentDirectory = Path.GetDirectoryName(_path);
+            var parentDirectory = Path.GetDirectoryName(AbsolutePath);
             return new FileResource(Path.Combine(parentDirectory, path));
         }
 
