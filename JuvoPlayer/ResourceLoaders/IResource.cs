@@ -28,5 +28,6 @@ namespace JuvoPlayer.ResourceLoaders
         Task<Stream> ReadAsStreamAsync();
         Task<string> ReadAsStringAsync();
         IResource Resolve(string path);
+        string AbsolutePath { get; }
     }
 }

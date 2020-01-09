@@ -32,6 +32,8 @@ namespace JuvoPlayer.ResourceLoaders
         private Task<HttpResponseMessage> _responseTask;
         private bool _disposed;
 
+        public string AbsolutePath => _path.ToString();
+
         public HttpResource(string path)
         {
             _path = new Uri(path);

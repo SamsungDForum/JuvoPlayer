@@ -16,11 +16,12 @@
  */
 
 using System.Collections.Generic;
+using System.Threading.Tasks;
 
 namespace XamarinPlayer.Services
 {
     public interface IClipReaderService
     {
-        List<Clip> ReadClips();
+        Task<List<Clip>> ReadClips();
     }
 }
