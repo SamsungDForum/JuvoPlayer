@@ -130,9 +130,15 @@ namespace JuvoPlayer
             return playerController.OnSeek(to);
         }
 
-        public void ChangeActiveStream(StreamDescription streamDescription)
+        public Task ChangeActiveStream(StreamDescription streamDescription)
         {
-            dataProvider.OnChangeActiveStream(streamDescription);
+            // Change stream and seek to "current time". Forces new presentation to be played as soon as
+            // seek completes.
+            var canReposition = dataProvider.ChangeActiveStream(streamDescription)
+                                && dataProvider.IsSeekingSupported()
+                                && (streamDescription.StreamType == StreamType.Video || streamDescription.StreamType == StreamType.Audio);
+
+            return canReposition ? SeekTo(CurrentPosition) : Task.CompletedTask;
         }
 
         public void DeactivateStream(StreamType streamType)

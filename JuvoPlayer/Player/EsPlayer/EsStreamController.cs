@@ -32,7 +32,6 @@ using JuvoPlayer.Common;
 using JuvoPlayer.Utils;
 using Nito.AsyncEx.Synchronous;
 using System.Runtime.InteropServices;
-using Nito.AsyncEx;
 using AsyncLock = Nito.AsyncEx.AsyncLock;
 using PlayerState = JuvoPlayer.Common.PlayerState;
 
@@ -93,6 +92,8 @@ namespace JuvoPlayer.Player.EsPlayer
         {
             logger.Info(stream.ToString());
 
+            OpenPlayer();
+
             if (esStreams[(int)stream] != null)
             {
                 throw new ArgumentException($"Stream {stream} already initialized");
@@ -127,8 +128,6 @@ namespace JuvoPlayer.Player.EsPlayer
 
             displayWindow = window;
 
-            CreatePlayer();
-
             packetStorage = storage;
 
             // Create placeholder to data streams & chunk states
@@ -136,8 +135,6 @@ namespace JuvoPlayer.Player.EsPlayer
             streamReconfigureSubs = new IDisposable[(int)StreamType.Count];
             playbackErrorSubs = new IDisposable[(int)StreamType.Count];
             dataSynchronizer = new Synchronizer(_playerClock);
-
-            AttachEventHandlers();
         }
 
         private PlayerClockFn CreatePlayerClockFunction(ESPlayer.ESPlayer playerInstance)
@@ -195,27 +192,33 @@ namespace JuvoPlayer.Player.EsPlayer
 
             logger.Info($"{streamType}:");
 
+            if (config.Config is BufferStreamConfig metaData)
+            {
+                // Use video only for buffer depth.
+                if (config.StreamType != StreamType.Video) return;
+
+                await _dataClock.UpdateBufferDepth(metaData.BufferDuration);
+                return;
+            }
+
+            esStreams[(int)streamType].StoreConfiguration(config);
+            if (esStreams[(int)streamType].IsConfigured)
+            {
+                AppendPacket(config);
+                return;
+            }
+
+            if (!esStreams[(int)StreamType.Audio].HaveConfig || !esStreams[(int)StreamType.Video].HaveConfig)
+                return;
+
             try
             {
-                if (config.Config is BufferStreamConfig metaData)
-                    await _dataClock.UpdateBufferDepth(metaData.StreamType(), metaData.BufferDuration);
+                esStreams[(int)StreamType.Video].PushStreamConfiguration();
+                esStreams[(int)StreamType.Audio].PushStreamConfiguration();
 
-                var pushResult = esStreams[(int)streamType].SetStreamConfiguration(config);
+                await StreamPrepare(activeTaskCts.Token);
+                logger.Info($"{streamType}: Prepare Done");
 
-                if (pushResult == EsStream.SetStreamConfigResult.QueueConfiguration)
-                {
-                    AppendPacket(config);
-                    return;
-                }
-
-                esStreams[(int)streamType].PushStreamConfiguration();
-
-                // Check if all initialized streams are configured
-                if (!AllStreamsConfigured)
-                    return;
-
-                var token = activeTaskCts.Token;
-                await StreamPrepare(token);
             }
             catch (NullReferenceException)
             {
@@ -328,6 +331,8 @@ namespace JuvoPlayer.Player.EsPlayer
                 StopClockGenerator();
 
                 player.Stop();
+                ClosePlayer();
+
                 stateChangedSubject.OnNext(PlayerState.Idle);
             }
             catch (InvalidOperationException ioe)
@@ -359,10 +364,10 @@ namespace JuvoPlayer.Player.EsPlayer
                 }
 
                 await SeekStreamInitialize(token);
-                var seekTotime = await Client.Seek(time, token);
+                var seekToTime = await Client.Seek(time, token);
                 EnableInput();
                 await _dataClock.SetClock(time, token);
-                await StreamSeek(seekTotime, resumeNeeded, token);
+                await StreamSeek(seekToTime, resumeNeeded, token);
             }
             catch (SeekException e)
             {
@@ -552,9 +557,7 @@ namespace JuvoPlayer.Player.EsPlayer
 
             logger.Info("Player.PrepareAsync()");
 
-            var asyncOp = player.PrepareAsync(EnableTransfer);
-            dataSynchronizer.SetAsyncOperation(asyncOp);
-            await asyncOp.WithCancellation(token);
+            await player.PrepareAsync(EnableTransfer).WithCancellation(token);
 
             _suspendResumeLogic.SetBuffering(false);
             logger.Info("Player.PrepareAsync() Completed");
@@ -664,6 +667,26 @@ namespace JuvoPlayer.Player.EsPlayer
             }
         }
 
+        private void ClosePlayer()
+        {
+            if (player == null)
+                return;
+
+            _playerClock.SetPlayerClockSource(null);
+            DetachEventHandlers();
+            player.Dispose();
+            player = null;
+        }
+        private void OpenPlayer()
+        {
+            if (player != null)
+                return;
+
+            logger.Info("");
+            CreatePlayer();
+            AttachEventHandlers();
+        }
+
         private void RecreatePlayer()
         {
             logger.Info("");
@@ -707,7 +730,6 @@ namespace JuvoPlayer.Player.EsPlayer
 
             EmptyStreams();
             token.ThrowIfCancellationRequested();
-            logger.Info("Buffer reset confirmed");
 
             esStreams[(int)StreamType.Video].RequestFirstDataPacketNotification();
         }
@@ -722,11 +744,7 @@ namespace JuvoPlayer.Player.EsPlayer
 
                 logger.Info($"Player.SeekAsync(): Resume needed: {resumeNeeded} {player.GetState()}");
 
-                var asyncOp = player.SeekAsync(time, EnableTransfer);
-
-                dataSynchronizer.SetAsyncOperation(asyncOp);
-                await asyncOp.WithCancellation(token);
-
+                await player.SeekAsync(time, EnableTransfer).WithCancellation(token);
                 logger.Info("Player.SeekAsync() Completed");
 
                 token.ThrowIfCancellationRequested();
@@ -752,14 +770,23 @@ namespace JuvoPlayer.Player.EsPlayer
 
         private void EmptyStreams()
         {
+            logger.Info("Emptying all buffers");
             foreach (var stream in esStreams)
                 stream?.EmptyStorage();
         }
 
         private void EnableInput()
         {
+            logger.Info("Enable all buffers");
             foreach (var stream in esStreams)
-                stream?.EnableStorage();
+                stream?.EnableInput();
+        }
+
+        private void DisableInput()
+        {
+            logger.Info("Disable all buffers");
+            foreach (var stream in esStreams)
+                stream?.DisableInput();
         }
 
         private void EnableTransfer(ESPlayer.StreamType stream, TimeSpan time) =>
@@ -817,18 +844,6 @@ namespace JuvoPlayer.Player.EsPlayer
                 player.SubmitEosPacket(ESPlayer.StreamType.Video);
                 player.SubmitEosPacket(ESPlayer.StreamType.Audio);
             }
-        }
-
-        /// <summary>
-        /// Disables all initialized data streams preventing
-        /// any further new input collection
-        /// </summary>
-        private void DisableInput()
-        {
-            logger.Info("Stop and Disable all data streams");
-
-            foreach (var esStream in esStreams)
-                esStream?.Disable();
         }
 
         /// <summary>
@@ -909,7 +924,7 @@ namespace JuvoPlayer.Player.EsPlayer
             logger.Info("Stopping playback");
             try
             {
-                player.Stop();
+                player?.Stop();
             }
             catch (Exception e)
             {
@@ -932,7 +947,7 @@ namespace JuvoPlayer.Player.EsPlayer
             // Shut down player
             logger.Info("Disposing ESPlayer");
             // Don't call Close. Dispose does that. Otherwise exceptions will fly
-            player.Dispose();
+            player?.Dispose();
             if (usesExternalWindow == false)
                 WindowUtils.DestroyElmSharpWindow(displayWindow);
 
@@ -955,6 +970,9 @@ namespace JuvoPlayer.Player.EsPlayer
         {
             // Detach event handlers
             logger.Info("Detaching event handlers");
+
+            if (player == null)
+                return;
 
             player.EOSEmitted -= OnEos;
             player.ErrorOccurred -= OnESPlayerError;

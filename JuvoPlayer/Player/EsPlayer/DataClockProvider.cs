@@ -16,7 +16,7 @@
  */
 
 using System;
-using System.Linq;
+using System.Reactive;
 using System.Reactive.Concurrency;
 using System.Reactive.Disposables;
 using System.Reactive.Linq;
@@ -25,7 +25,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using Configuration;
 using JuvoLogger;
-using JuvoPlayer.Common;
 
 namespace JuvoPlayer.Player.EsPlayer
 {
@@ -34,7 +33,7 @@ namespace JuvoPlayer.Player.EsPlayer
         private static readonly ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
         private TimeSpan _dataLimit = DataClockProviderConfig.TimeBufferDepthDefault;
 
-        private readonly TimeSpan[] _streamDataLimits = new TimeSpan[(int)StreamType.Count];
+        //private readonly TimeSpan[] _streamDataLimits = new TimeSpan[(int)StreamType.Count];
         private TimeSpan _sourceClock;
 
         // Start / Stop may be called from multiple threads.
@@ -78,27 +77,26 @@ namespace JuvoPlayer.Player.EsPlayer
         {
             _dataClockConnection?.Dispose();
 
-            await Observable.Start(() =>
-            {
-                _sourceClock = newClock;
-                Logger.Info($"Clock set: {_sourceClock}");
-            }, _scheduler);
+            await SetClockValue(newClock);
 
             token.ThrowIfCancellationRequested();
 
             Start();
         }
 
-        public async Task UpdateBufferDepth(StreamType stream, TimeSpan newDataLimit)
+        private IObservable<Unit> SetClockValue(TimeSpan clockValue)
+        {
+            return Observable.Start(() =>
+            {
+                _sourceClock = clockValue;
+                Logger.Info($"Clock set: {_sourceClock}");
+            }, _scheduler);
+        }
+        public async Task UpdateBufferDepth(TimeSpan newDataLimit)
         {
             var isUpdated = await Observable.Start(() =>
             {
-                _streamDataLimits[(int)stream] = newDataLimit;
-                var currentHighest = _streamDataLimits.Max();
-                if (_dataLimit == currentHighest)
-                    return false;
-
-                _dataLimit = currentHighest;
+                _dataLimit = newDataLimit;
                 return true;
 
             }, _scheduler);
@@ -138,7 +136,7 @@ namespace JuvoPlayer.Player.EsPlayer
             //                so counting of buffered data can be done from that point.
             //
             var playerClock = _playerClock.LastClock;
-            if (playerClock != PlayerClockProviderConfig.InvalidClock)
+            if (playerClock > _sourceClock)
                 _sourceClock = playerClock;
 
             return _sourceClock + _dataLimit;
@@ -146,6 +144,7 @@ namespace JuvoPlayer.Player.EsPlayer
 
         public void Stop()
         {
+            SetClockValue(PlayerClockProviderConfig.InvalidClock);
             _dataClockConnection?.Dispose();
             _dataClockConnection = _disabledClock;
             _dataClockSubject.OnNext(PlayerClockProviderConfig.InvalidClock);
