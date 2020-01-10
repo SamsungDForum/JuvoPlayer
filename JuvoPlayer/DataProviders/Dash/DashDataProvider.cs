@@ -20,7 +20,6 @@ using System.Collections.Generic;
 using System.Reactive.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using Configuration;
 using JuvoLogger;
 using JuvoPlayer.Common;
 using JuvoPlayer.Subtitles;
@@ -42,8 +41,6 @@ namespace JuvoPlayer.DataProviders.Dash
 
         private bool disposed;
         private readonly IDisposable manifestReadySub;
-        private PlayerState _playerState = PlayerState.Idle;
-        private TimeSpan _seekPosition = TimeSpan.Zero;
 
         public DashDataProvider(
             string clipUrl,
@@ -114,20 +111,24 @@ namespace JuvoPlayer.DataProviders.Dash
                 .Merge(videoPipeline.StreamError());
         }
 
-        public void OnChangeActiveStream(StreamDescription stream)
+        public bool ChangeActiveStream(StreamDescription stream)
         {
+            Logger.Info("");
+
             switch (stream.StreamType)
             {
                 case StreamType.Audio:
-                    audioPipeline.ChangeStream(stream);
-                    break;
+                    return audioPipeline.ChangeStream(stream);
+
                 case StreamType.Video:
-                    videoPipeline.ChangeStream(stream);
-                    break;
+                    return videoPipeline.ChangeStream(stream);
+
                 case StreamType.Subtitle:
                     OnChangeActiveSubtitleStream(stream);
-                    break;
+                    return true;
             }
+
+            return false;
         }
 
         public void OnDeactivateStream(StreamType streamType)
@@ -143,7 +144,7 @@ namespace JuvoPlayer.DataProviders.Dash
 
         public void OnStateChanged(PlayerState state)
         {
-            _playerState = state;
+
         }
 
         private void OnDeactivateSubtitleStream()
@@ -172,30 +173,35 @@ namespace JuvoPlayer.DataProviders.Dash
             videoPipeline.SetDataRequest(dataClock);
         }
 
+        private TimeSpan RepositionPipelines(TimeSpan timeIndex)
+        {
+            Logger.Info("");
+
+            var newPosition = videoPipeline.Seek(timeIndex);
+
+            audioPipeline.Seek(newPosition);
+
+            audioPipeline.PacketPredicate = packet => !packet.ContainsData() || packet.Pts >= newPosition;
+
+            return newPosition;
+        }
+
         public Task<TimeSpan> Seek(TimeSpan time, CancellationToken token)
         {
             if (!IsSeekingSupported())
                 throw new SeekException("Seeking is not supported");
 
-            // Invalidate currentTime to disable stream switching till async operations complete indicated by
-            // arrival of new time.
-            currentTime = PlayerClockProviderConfig.InvalidClock;
-            SetStreamSwitching();
-
             videoPipeline.Pause();
             audioPipeline.Pause();
 
-            _seekPosition = videoPipeline.Seek(time);
-
-            audioPipeline.Seek(_seekPosition);
-
-            audioPipeline.PacketPredicate = packet => !packet.ContainsData() || packet.Pts >= _seekPosition;
+            var seekPosition = RepositionPipelines(time);
 
             videoPipeline.Resume();
             audioPipeline.Resume();
 
-            return Task.FromResult(_seekPosition);
+            return Task.FromResult(seekPosition);
         }
+
 
         public bool IsDataAvailable()
         {
@@ -255,23 +261,6 @@ namespace JuvoPlayer.DataProviders.Dash
 
             audioPipeline.OnTimeUpdated(time);
             videoPipeline.OnTimeUpdated(time);
-
-            SetStreamSwitching();
-        }
-
-        private void SetStreamSwitching()
-        {
-            // Allow stream switching when no async operations take place.
-            // _playerState does not carry information regarding seek operations.
-            // Use currentTime & requested seek position to determine if seek op is in progress.
-            // Requires currentTime to be invalidated during seek to handle backward seeks.
-            var streamSwitchFlag = currentTime > _seekPosition && _playerState == PlayerState.Playing;
-            if (videoPipeline.AlowStreamSwitch == streamSwitchFlag)
-                return;
-
-            Logger.Info($"Stream switch allowed: {streamSwitchFlag}");
-            videoPipeline.AlowStreamSwitch = streamSwitchFlag;
-            audioPipeline.AlowStreamSwitch = streamSwitchFlag;
         }
 
         public void Dispose()

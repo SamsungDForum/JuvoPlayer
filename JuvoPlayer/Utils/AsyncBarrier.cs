@@ -16,50 +16,44 @@
  */
 
 using System;
+using System.Linq;
 using System.Threading.Tasks;
 
 namespace JuvoPlayer.Utils
 {
-    class AsyncBarrier
+    class AsyncBarrier<T>
     {
         private volatile int _participantCount;
         private volatile int _currentCount;
-        private volatile object _message;
+        private volatile T[] _messages;
         private readonly object _locker = new object();
-        private TaskCompletionSource<object> _waitTcs;
+        private volatile TaskCompletionSource<T[]> _waitTcs;
 
-        private Task<object> GetWaitTask()
+        private Task<T[]> GetWaitTask()
         {
             if (_waitTcs == null)
-                _waitTcs = new TaskCompletionSource<object>(TaskCreationOptions.RunContinuationsAsynchronously);
+                _waitTcs = new TaskCompletionSource<T[]>(TaskCreationOptions.RunContinuationsAsynchronously);
 
             return _waitTcs.Task;
         }
 
-        private bool ReleaseIfReached(int value, bool valueIsParticipantCount)
+        private void ReleaseIfReached(int currentCount)
         {
-            int participants;
-            int currently;
+            if (currentCount < _participantCount)
+                return;
 
-            if (valueIsParticipantCount)
+            var currentTcs = _waitTcs;
+            _waitTcs = null;
+            _currentCount = 0;
+            if (_participantCount != _messages.Length)
             {
-                participants = value;
-                currently = _currentCount;
+                currentTcs?.SetResult(_messages.Take(_participantCount).ToArray());
+                _messages = new T[_participantCount];
             }
             else
             {
-                participants = _participantCount;
-                currently = value;
+                currentTcs?.SetResult(_messages);
             }
-
-            if (currently < participants)
-                return false;
-
-            _currentCount = 0;
-            _waitTcs?.SetResult(_message);
-            _message = null;
-            _waitTcs = null;
-            return true;
         }
 
         public void Reset()
@@ -75,7 +69,11 @@ namespace JuvoPlayer.Utils
         {
             lock (_locker)
             {
-                _participantCount++;
+                var newCount = ++_participantCount;
+                var currentMessages = _messages;
+                Array.Resize(ref currentMessages, newCount);
+                _messages = currentMessages;
+
             }
         }
 
@@ -83,28 +81,23 @@ namespace JuvoPlayer.Utils
         {
             lock (_locker)
             {
-                var newCount = _participantCount - 1;
+                var newCount = --_participantCount;
                 if (newCount < 0)
                     throw new ArgumentOutOfRangeException(nameof(_participantCount) + "<0");
 
-                _participantCount = newCount;
-                ReleaseIfReached(newCount, true);
+                ReleaseIfReached(newCount);
             }
         }
 
-        public Task<object> Signal(object msg = null)
+        public Task<T[]> Signal(T message)
         {
             lock (_locker)
             {
-                if (msg != null)
-                    _message = msg;
+                var newCount = ++_currentCount;
+                _messages[newCount-1] = message;
 
-                var newCurrentCount = _currentCount + 1;
                 var currentWaitTask = GetWaitTask();
-                if (ReleaseIfReached(newCurrentCount, false))
-                    return currentWaitTask;
-
-                _currentCount = newCurrentCount;
+                ReleaseIfReached(newCount);
                 return currentWaitTask;
             }
         }

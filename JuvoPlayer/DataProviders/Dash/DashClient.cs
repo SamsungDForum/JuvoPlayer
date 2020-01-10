@@ -202,8 +202,12 @@ namespace JuvoPlayer.DataProviders.Dash
                 throw new Exception("currentRepresentation has not been set");
 
             initInProgress = true;
-
             initSegmentReloadRequired = initReloadRequired;
+
+            // Clear init bytes early. If client terminates before new init segment is downloaded
+            // (i.e. seek operation), stale init data will be present.
+            if (initReloadRequired)
+                initStreamBytes.Clear();
 
             if (cancellationTokenSource == null || cancellationTokenSource?.IsCancellationRequested == true)
             {
@@ -223,15 +227,20 @@ namespace JuvoPlayer.DataProviders.Dash
                 initInProgress = false;
 
             LogInfo($"{streamType}: Started");
-            readySubject.OnNext(Unit.Default);
+            ScheduleNextSegDownload();
         }
 
         private bool IsBufferSpaceAvailable()
         {
-            if (_dataClockLimit > bufferTime)
+            if (!currentSegmentId.HasValue)
+                return _dataClockLimit > TimeSpan.Zero;
+
+            var currentChunk = currentStreams.SegmentTimeRange(currentSegmentId).Duration;
+
+            if (_dataClockLimit >= bufferTime + currentChunk)
                 return true;
 
-            LogInfo($"Full buffer: {bufferTime} Limit {_dataClockLimit} ({bufferTime - currentTime})");
+            LogInfo($"Full buffer: {bufferTime} This {currentChunk} Limit {_dataClockLimit}  ({bufferTime - currentTime})");
 
             return false;
         }
@@ -271,6 +280,7 @@ namespace JuvoPlayer.DataProviders.Dash
             }
 
             var segment = currentStreams.MediaSegment(currentSegmentId);
+
             if (segment == null)
             {
                 LogInfo($"Segment: [{currentSegmentId}] NULL stream");

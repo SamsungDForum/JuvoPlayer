@@ -136,8 +136,6 @@ namespace JuvoPlayer.DataProviders.Dash
         public void SetDataRequest(TimeSpan request) =>
             dashClient.SetDataRequest(request);
 
-        public bool AlowStreamSwitch { get; set; } = false;
-
         private async Task OnClientReady()
         {
             try
@@ -225,7 +223,8 @@ namespace JuvoPlayer.DataProviders.Dash
 
             try
             {
-                if (DisableAdaptiveStreaming || !AlowStreamSwitch)
+                //if (DisableAdaptiveStreaming || !AlowStreamSwitch)
+                if (DisableAdaptiveStreaming)
                     return;
 
                 if (currentStream == null && pendingStream == null)
@@ -278,21 +277,37 @@ namespace JuvoPlayer.DataProviders.Dash
                 if (pendingStream == null)
                     return;
 
-                if (!AlowStreamSwitch)
-                {
-                    // Start scenario - AllowStreamSwitch should be false &
-                    // no current stream
-                    if (currentStream != null) return;
-                }
-
-                if (currentStream != null)
+                if (pipelineStarted)
                 {
                     await FlushPipeline();
                 }
 
                 StartPipeline(pendingStream);
-
                 pendingStream = null;
+            }
+            finally
+            {
+                Monitor.Exit(switchStreamLock);
+            }
+        }
+
+        private void SetStream(DashStream newStream)
+        {
+            Logger.Info("");
+            Monitor.Enter(switchStreamLock);
+            try
+            {
+                //if (pipelineStarted)
+                //{
+                //    await FlushPipeline();
+                //}
+
+                ResetPipeline();
+                DisableAdaptiveStreaming = true;
+                pendingStream = null;
+
+                StartPipeline(newStream);
+
             }
             finally
             {
@@ -450,10 +465,8 @@ namespace JuvoPlayer.DataProviders.Dash
             }
         }
 
-        public void ChangeStream(StreamDescription stream)
+        public bool ChangeStream(StreamDescription stream)
         {
-            Logger.Info("");
-
             if (stream == null)
                 throw new ArgumentNullException(nameof(stream), "stream cannot be null");
 
@@ -467,17 +480,24 @@ namespace JuvoPlayer.DataProviders.Dash
             if (currentStream.Media.Type.Value != newMedia.Type.Value)
                 throw new ArgumentException("wrong media type");
 
-            lock (switchStreamLock)
+            if (newStream.Equals(currentStream))
             {
-                pendingStream = newStream;
-                DisableAdaptiveStreaming = true;
+                Logger.Info($"Selected stream {stream.Id} {stream.Description} already playing. Not changing.");
+                return false;
+
             }
+
+            SetStream(newStream);
+            Logger.Info($"Stream {stream.Id} {stream.Description} set.");
+            return true;
         }
 
         private void ResetPipeline()
         {
             if (!pipelineStarted)
                 return;
+
+            Logger.Info($"{StreamType}:");
 
             // Stop demuxer and dashclient
             dashClient.Reset();
@@ -492,6 +512,8 @@ namespace JuvoPlayer.DataProviders.Dash
         {
             if (!pipelineStarted)
                 return;
+
+            Logger.Info($"{StreamType}:");
 
             // Stop demuxer and dashclient
             dashClient.Reset();

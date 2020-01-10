@@ -52,12 +52,12 @@ namespace JuvoPlayer.DataProviders.HLS
             return lastReceivedPts - currentTime > MaxBufferHealth;
         }
 
-        public void OnChangeActiveStream(StreamDescription stream)
+        public bool ChangeActiveStream(StreamDescription stream)
         {
             if (stream.StreamType == StreamType.Subtitle)
             {
                 OnChangeActiveSubtitleStream(stream);
-                return;
+                return true;
             }
 
             throw new NotImplementedException();
