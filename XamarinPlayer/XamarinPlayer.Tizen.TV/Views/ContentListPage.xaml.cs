@@ -76,8 +76,7 @@ namespace XamarinPlayer.Views
 
             ContentTitle.Text = focusedContent.ContentTitle;
             ContentDesc.Text = focusedContent.ContentDescription;
-            ContentImage.Source = ImageSource.FromStream(() =>
-                ResourceFactory.Create(focusedContent.ContentImg).ReadAsStreamAsync().Result);
+            ContentImage.Source = ResourceFactory.Create(focusedContent.ContentImg).AbsolutePath;
             ContentImage.Opacity = 0;
             ContentImage.AbortAnimation("FadeTo");
             await ContentImage.FadeTo(1, 1000);

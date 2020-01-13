@@ -75,6 +75,7 @@ namespace JuvoPlayer.Common
 
         public void Reset()
         {
+            _seekCancellationTokenSource?.Cancel();
             IsSeekInProgress = false;
             IsSeekAccumulationInProgress = false;
             _seekStopwatch.Reset();
@@ -132,9 +133,12 @@ namespace JuvoPlayer.Common
             try
             {
                 await _seekDelay;
-                if (_client.Player.State != PlayerState.Playing)
+                var player = _client.Player;
+                if (player == null)
+                    return;
+                if (player.State != PlayerState.Playing)
                 {
-                    await _client.Player.StateChanged()
+                    await player.StateChanged()
                         .Where(state => state == PlayerState.Playing)
                         .FirstAsync()
                         .ToTask(_seekCancellationTokenSource.Token);
