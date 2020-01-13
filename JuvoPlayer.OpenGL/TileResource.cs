@@ -15,14 +15,16 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+using System.Threading.Tasks;
+
 namespace JuvoPlayer.OpenGL
 {
     class TileResource : Resource
     {
-        private int _id;
+        private readonly int _id;
         private ImageData _image;
-        private string _name;
-        private string _description;
+        private readonly string _name;
+        private readonly string _description;
 
         public TileResource(int id, string path, string name, string description)
         {
@@ -32,9 +34,9 @@ namespace JuvoPlayer.OpenGL
             _description = description;
         }
 
-        public override void Load()
+        public override async Task Load()
         {
-            _image = GetImage(_image.Path);
+            _image = await GetImage(_image.Path);
         }
 
         public override unsafe void Push()
