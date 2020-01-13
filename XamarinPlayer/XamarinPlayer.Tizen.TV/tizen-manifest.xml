@@ -13,7 +13,6 @@
     <metadata key="http://samsung.com/tv/metadata/devel.api.version" value="2.4" />
     <metadata key="http://samsung.com/tv/metadata/use.preview" value="endpoint_URL=https://raw.githubusercontent.com/SamsungDForum/JuvoPlayer/master/smarthubpreview/juvoplayerclipsJSON.json" />
     <metadata key="http://samsung.com/tv/metadata/appbootingsupport" />
-    <metadata key="http://tizen.org/metadata/prefer_dotnet_aot" value="true" />
     <splash-screens>
       <!--Orientation needs to be set to portrait due to the platform bug-->
       <splash-screen src="JuvoPlayerXamarinTizenTV_black.jpg" type="img" dpi="hdpi" orientation="portrait" indicator-display="false" />
