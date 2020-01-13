@@ -122,27 +122,27 @@ namespace JuvoPlayer.OpenGL
         // Main functions
 
         [DllImport(GlUiLib, EntryPoint = "Create")]
-        public static extern void Create();
+        public static extern void Create(); // needs to be called from OpenGL context synchronized method and thread
 
         [DllImport(GlUiLib, EntryPoint = "Terminate")]
-        public static extern void Terminate();
+        public static extern void Terminate(); // needs to be called from OpenGL context synchronized method and thread
 
         [DllImport(GlUiLib, EntryPoint = "Draw")]
-        public static extern void Draw();
+        public static extern void Draw(); // needs to be called from OpenGL context synchronized method and thread
 
         // Resource management
 
         [DllImport(GlUiLib, EntryPoint = "AddTile")]
-        public static extern int AddTile();
+        public static extern int AddTile(); // needs to be called from OpenGL context synchronized method and thread
 
         [DllImport(GlUiLib, EntryPoint = "SetTileData")]
-        public static extern void SetTileData(TileData tileData);
+        public static extern void SetTileData(TileData tileData); // needs to be called from OpenGL context synchronized method and thread
 
         [DllImport(GlUiLib, EntryPoint = "AddFont")]
-        public static extern int AddFont(byte* data, int size);
+        public static extern int AddFont(byte* data, int size); // needs to be called from OpenGL context synchronized method and thread
 
         [DllImport(GlUiLib, EntryPoint = "SetIcon")]
-        public static extern void SetIcon(ImageData image);
+        public static extern void SetIcon(ImageData image); // needs to be called from OpenGL context synchronized method and thread
 
         // Menu management
 
