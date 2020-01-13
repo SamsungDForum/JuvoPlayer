@@ -1,0 +1,170 @@
+﻿[
+  {
+    "title": "Clean byte range MPEG DASH",
+    "url": "http://yt-dash-mse-test.commondatastorage.googleapis.com/media/car-20120827-manifest.mpd",
+    "type": "dash",
+    "poster": "car.jpg",
+    "description": "1920x1080, Codecs: H264 MPEG-4 AVC, MPEG AAC. Google Self Driving Car video. URI: http://dash-mse-test.appspot.com/media.html car-20120827-manifest.mpd",
+    "seekPreviewPath": "storyboards/seek_preview/car/car.json",
+    "tilePreviewPath": "storyboards/tile_preview/car/car.json"
+  },
+  {
+    "title": "Clean fMP4 MPEG DASH",
+    "url": "http://dash.edgesuite.net/envivio/dashpr/clear/Manifest.mpd",
+    "type": "dash",
+    "poster": "bolid.jpg",
+    "description": "1280x720 Codecs: H264 - MPEG4 AVC, MPEG AAC, Formula 1 Racing Car video. Origin http://pederson3.rssing.com/chan-1060344/all_p42.html. URI: http://dash.edgesuite.net/envivio/dashpr/clear/Manifest.mpd",
+    "seekPreviewPath": "storyboards/seek_preview/bolid/bolid.json",
+    "tilePreviewPath": "storyboards/tile_preview/bolid/bolid.json"
+  },
+  {
+    "title": "Clean fMP4 MPEG DASH - multiple languages",
+    "url": "https://bitdash-a.akamaihd.net/content/sintel/sintel.mpd",
+    "type": "dash",
+    "poster": "sintel.jpg",
+    "description": "1920x818 (adaptive) Codecs: H264 - MPEG4 AVC, MPEG AAC, The Blender Foundation - Sintel. Origin https://bitmovin.com/multi-language-multi-audio/. URI: https://bitdash-a.akamaihd.net/content/sintel/sintel.mpd",
+    "seekPreviewPath": "storyboards/seek_preview/sintel_dash/sintel_dash.json",
+    "tilePreviewPath": "storyboards/tile_preview/sintel/sintel.json"
+  },
+  {
+    "title": "FHD Multi DRM Encrypted MPEG DASH",
+    "url": "http://yt-dash-mse-test.commondatastorage.googleapis.com/media/oops_cenc-20121114-signedlicenseurl-manifest.mpd",
+    "type": "dash",
+    "poster": "oops.jpg",
+    "description": "1920x1080 (adaptive) Codecs: H264 - MPEG4 AVC, MPEG AAC. Available DRMs: Widevine, PlayReady, ClearKey. Google Nexus Q video. Origin http://dash-mse-test.appspot.com/media.html. URI: http://yt-dash-mse-test.commondatastorage.googleapis.com/media/oops_cenc-20121114-signedlicenseurl-manifest.mpd",
+    "drmDatas": [
+      {
+        "scheme": "playready",
+        "licenceUrl": "https://dash-mse-test.appspot.com/api/drm/playready?drm_system=playready&source=YOUTUBE&ip=0.0.0.0&ipbits=0&expire=19000000000&sparams=ip,ipbits,expire,drm_system,source,video_id&video_id=03681262dc412c06&signature=448279561E2755699618BE0A2402189D4A30B03B.0CD6A27286BD2DAF00577FFA21928665DCD320C2&key=test_key1",
+        "keyRequestProperties": {
+          "Content-Type": "text/xml; charset=utf-8"
+        },
+        "isImmutable": true
+      },
+      {
+        "scheme": "widevine",
+        "licenceUrl": "https://dash-mse-test.appspot.com/api/drm/widevine?drm_system=widevine&source=YOUTUBE&ip=0.0.0.0&ipbits=0&expire=19000000000&key=test_key1&sparams=ip,ipbits,expire,drm_system,source,video_id&video_id=03681262dc412c06&signature=9C4BE99E6F517B51FED1F0B3B31966D3C5DAB9D6.6A1F30BB35F3A39A4CA814B731450D4CBD198FFD",
+        "keyRequestProperties": {
+          "Content-Type": "text/xml; charset=utf-8"
+        },
+        "isImmutable": true
+      }
+    ]
+  },
+  {
+    "title": "4K PLAY READY Encrypted MPEG DASH",
+    "url": "http://profficialsite.origin.mediaservices.windows.net/c51358ea-9a5e-4322-8951-897d640fdfd7/tearsofsteel_4k.ism/manifest(format=mpd-time-csf)",
+    "type": "dash",
+    "description": "1280x572 AZURE MEDIA SERVICES ON DEMAND H264 AAC 4K CENC PLAYREADY 2.0. Origin https://test.playready.microsoft.com/Content/Content2X. URI: http://profficialsite.origin.mediaservices.windows.net/c51358ea-9a5e-4322-8951-897d640fdfd7/tearsofsteel_4k.ism/manifest(format=mpd-time-csf)",
+    "poster": "tos-poster.jpg",
+    "drmDatas": [
+      {
+        "scheme": "playready",
+        "licenceUrl": "http://playready-testserver.azurewebsites.net/rightsmanager.asmx?PlayRight=1&UseSimpleNonPersistentLicense=1",
+        "keyRequestProperties": {
+          "Content-Type": "text/xml; charset=utf-8"
+        }
+      }
+    ]
+  },
+  {
+    "title": "FHD Widevine Encrypted MPEG DASH",
+    "url": "https://bitmovin-a.akamaihd.net/content/art-of-motion_drm/mpds/11331.mpd",
+    "type": "dash",
+    "description": "CENC Widevine, Art Of Motion, HD URI: https://bitmovin-a.akamaihd.net/content/art-of-motion_drm/mpds/11331.mpd)",
+    "poster": "artofwalking.jpg",
+    "drmDatas": [
+      {
+        "scheme": "widevine",
+        "licenceUrl": "https://widevine-proxy.appspot.com/proxy",
+        "keyRequestProperties": {
+          "Content-Type": "text/xml; charset=utf-8"
+        }
+      }
+    ]
+  },
+  {
+    "title": "4K Widevine Encrypted MPEG DASH",
+    "url": "https://storage.googleapis.com/wvmedia/cenc/h264/tears/tears_uhd.mpd",
+    "type": "dash",
+    "description": "CENC Widevine, Tears Of Steel, UHD. URI: https://storage.googleapis.com/wvmedia/cenc/h264/tears/tears_uhd.mpd",
+    "poster": "tos-poster.jpg",
+    "drmDatas": [
+      {
+        "scheme": "widevine",
+        "licenceUrl": "https://proxy.uat.widevine.com/proxy?provider=widevine_test",
+        "keyRequestProperties": {
+          "Content-Type": "text/xml; charset=utf-8"
+        }
+      }
+    ]
+  },
+  {
+    "title": "Clean FHD MP4 over HTTP",
+    "url": "http://distribution.bbb3d.renderfarming.net/video/mp4/bbb_sunflower_1080p_30fps_normal.mp4",
+    "type": "url",
+    "poster": "bunny.jpg",
+    "description": "1920x1080. No adaptive streaming. Codecs: H264 - MPEG4 AVC, MPEG AAC. Big Buck Bunny over http. Origin http://distribution.bbb3d.renderfarming.net/video/mp4/. URI: http://distribution.bbb3d.renderfarming.net/video/mp4/bbb_sunflower_1080p_30fps_normal.mp4",
+    "seekPreviewPath": "storyboards/seek_preview/bunny/bunny.json",
+    "tilePreviewPath": "storyboards/tile_preview/bunny/bunny.json",
+    "subtitles": [
+      {
+        "path": "res.subs.media_player_subs_windows-1250.srt",
+        "encoding": "windows-1250",
+        "language": "ru",
+        "id": "11"
+      },
+      {
+        "path": "res.subs.media_player_subs_windows-1252.srt",
+        "language": "we",
+        "id": "10",
+        "encoding": "windows-1252"
+      }
+    ]
+  },
+  {
+    "title": "FHD Clean HLS",
+    "url": "http://multiplatform-f.akamaihd.net/i/multi/april11/sintel/sintel-hd_,512x288_450_b,640x360_700_b,768x432_1000_b,1024x576_1400_m,.mp4.csmil/master.m3u8",
+    "type": "hls",
+    "poster": "sintel.jpg",
+    "description": "1024x576 Codecs: H264 - MPEG4 AVC. The Blender Foundation - Sintel. URI: http://multiplatform-f.akamaihd.net/i/multi/april11/sintel/sintel-hd_,512x288_450_b,640x360_700_b,768x432_1000_b,1024x576_1400_m,.mp4.csmil/master.m3u8.  Origin https://players.akamai.com/hls/",
+    "seekPreviewPath": "storyboards/seek_preview/sintel_hls/sintel_hls.json",
+    "tilePreviewPath": "storyboards/tile_preview/sintel/sintel.json"
+  },
+  {
+    "title": "4K Clean HEVC MPEG DASH",
+    "url": "http://download.tsi.telecom-paristech.fr/gpac/dataset/dash/uhd/dashevc-live-2s/dashevc-live-2s-4k.mpd",
+    "type": "dash",
+    "poster": "sacrecoeur.jpg",
+    "description": "3840x2160 with bitrates ranging from 4 Mbps to 8 Mbps, in Main profile (8 bpp). URI http://download.tsi.telecom-paristech.fr/gpac/dataset/dash/uhd/ UHD DASH Sequences.",
+    "seekPreviewPath": "storyboards/seek_preview/paris/paris.json"
+  },
+  {
+    "title": "FHD H264 MPEG-4 looped 20 hours playback",
+    "url": "http://stream-srv.sprc.samsung.pl/pnacl/MediaFramework/content/DASH_streams/ToS-4k-1920p-20hrs/stream.mpd",
+    "type": "dash",
+    "poster": "tos-poster.jpg",
+    "description": "1920x800 H264 MPEG-4 AVC video AAC audio 20h 23' of playback. URI: http://stream-srv.sprc.samsung.pl/pnacl/MediaFramework/content/DASH_streams/ToS-4k-1920p-20hrs/stream.mpd"
+  },
+  {
+    "title": "RTSP multicast streaming",
+    "url": "rtsp://10.88.91.96/canimals.ts",
+    "type": "rtsp",
+    "poster": "canimals.jpg",
+    "description": "Fixed URI rtsp://xxx.xxx.xxx.xxx/canimals.ts!!! IPTV multicast protocol H264 + AAC. RTSP streaming, 1920x1080 MPEG1/2 video (mpgv) + AC3 codecs."
+  },
+  {
+    "title": "Live Clock MPEG DASH Stream",
+    "url": "http://vm2.dashif.org/livesim-dev/segtimeline_1/testpic_2s/Manifest.mpd",
+    "type": "dash",
+    "poster": "testwatchscreen.jpg",
+    "description": "Media Presentation from DASH-IF live simulator. URI: http://vm2.dashif.org/livesim-dev/segtimeline_1/testpic_2s/Manifest.mpd "
+  },
+  {
+    "title": "Live streamed movie",
+    "url": "http://wowzaec2demo.streamlock.net/live/bigbuckbunny/manifest_mvtime.mpd",
+    "type": "dash",
+    "poster": "bunny.jpg",
+    "description": "Wowza Streaming Engine 4 Subscription Edition 4.7.5.01 build21752. For more info, visit https://www.wowza.com/. URI: http://wowzaec2demo.streamlock.net/live/bigbuckbunny/manifest_mvtime.mpd"
+  }
+]

@@ -1,0 +1,49 @@
+{
+  "Columns": 5,
+  "FrameDuration": 5.0,
+  "FrameHeight": 135,
+  "FrameWidth": 320,
+  "Rows": 5,
+  "Storyboards": [
+    {
+      "Begin": 0.0,
+      "Filename": "sintel_dash0000.jpg",
+      "FramesCount": 25
+    },
+    {
+      "Begin": 125.0,
+      "Filename": "sintel_dash0001.jpg",
+      "FramesCount": 25
+    },
+    {
+      "Begin": 250.0,
+      "Filename": "sintel_dash0002.jpg",
+      "FramesCount": 25
+    },
+    {
+      "Begin": 375.0,
+      "Filename": "sintel_dash0003.jpg",
+      "FramesCount": 25
+    },
+    {
+      "Begin": 500.0,
+      "Filename": "sintel_dash0004.jpg",
+      "FramesCount": 25
+    },
+    {
+      "Begin": 625.0,
+      "Filename": "sintel_dash0005.jpg",
+      "FramesCount": 25
+    },
+    {
+      "Begin": 750.0,
+      "Filename": "sintel_dash0006.jpg",
+      "FramesCount": 25
+    },
+    {
+      "Begin": 875.0,
+      "Filename": "sintel_dash0007.jpg",
+      "FramesCount": 3
+    }
+  ]
+}
