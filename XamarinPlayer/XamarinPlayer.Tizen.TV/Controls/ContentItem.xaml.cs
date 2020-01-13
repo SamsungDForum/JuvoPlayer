@@ -96,6 +96,9 @@ namespace XamarinPlayer.Tizen.TV.Controls
                     _isFocused = true;
                     this.AbortAnimation("ScaleTo");
                     await this.ScaleTo(0.9);
+                    if (!_isFocused)
+                        return;
+
                     InvalidateSurface();
 
                     if (ContentTilePreviewPath == null) return;
