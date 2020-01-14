@@ -40,6 +40,7 @@ namespace JuvoPlayer.Player.EsPlayer
         private class SynchronizationData
         {
             public DateTimeOffset BeginTime;
+            public DateTimeOffset EndTime;
             public TimeSpan Dts;
             public TimeSpan Pts;
             public TimeSpan NeededDuration;
@@ -94,35 +95,36 @@ namespace JuvoPlayer.Player.EsPlayer
             Logger.Info($"{packet.StreamType}: KeyFrame {packet.Dts}/{packet.Pts}");
         }
 
-        private static Task DelayStream(SynchronizationData streamState, bool keyFramesSeen, CancellationToken token)
+        private static async Task DelayStream(SynchronizationData streamState, bool keyFramesSeen, CancellationToken token)
         {
-            var transferTime = (DateTimeOffset.Now - streamState.BeginTime);
+            var transferTime = (streamState.EndTime - streamState.BeginTime);
             if (transferTime >= streamState.TransferredDuration)
-                return Task.CompletedTask;
+                return;
 
             var delay = streamState.TransferredDuration - transferTime;
             Logger.Info($"{streamState.StreamType}: Delaying {delay}");
 
             ResetTransferChunk(streamState, delay, keyFramesSeen);
 
-            return Task.Delay(delay, token);
+            await Task.Delay(delay, token).ConfigureAwait(false);
         }
 
-        private Task StreamSync(SynchronizationData streamState, CancellationToken token)
+        private async Task StreamSync(SynchronizationData streamState, CancellationToken token)
         {
             var playerClock = _playerClockSource.LastClock;
 
             var clockDiff = streamState.Pts - playerClock - StreamClockMinimumOverhead;
             if (clockDiff <= TimeSpan.Zero)
-                return Task.CompletedTask;
+                return;
 
             var desiredClock = playerClock + clockDiff;
 
-            Logger.Info($"{streamState.StreamType}: Sync {streamState.Dts} to {playerClock} ({clockDiff}) Restart {desiredClock}");
+            Logger.Info($"{streamState.StreamType}: Sync {streamState.Dts} to {playerClock} Restart ({desiredClock})");
 
-            return _playerClockSource.PlayerClockObservable()
+            await _playerClockSource.PlayerClockObservable()
                 .FirstAsync(pClock => pClock >= desiredClock)
-                .ToTask(token);
+                .ToTask(token)
+                .ConfigureAwait(false);
         }
 
         private bool IsPlayerClockRunning() =>
@@ -135,7 +137,7 @@ namespace JuvoPlayer.Player.EsPlayer
                 : streamState.TransferredDuration >= streamState.NeededDuration;
         }
 
-        public async ValueTask Synchronize(StreamType streamType, CancellationToken token)
+        public async Task Synchronize(StreamType streamType, CancellationToken token)
         {
             var streamState = _streamSyncData[(int)streamType];
 
@@ -145,28 +147,30 @@ namespace JuvoPlayer.Player.EsPlayer
             switch (streamState.SyncState)
             {
                 case SynchronizationState.ClockStart:
+                    // Grab end time before going into sync barrier. Otherwise first stream entering barrier
+                    // will have overly long transfer time due to wait for second stream.
+                    streamState.EndTime = DateTimeOffset.Now;
                     Logger.Info($"{streamState.StreamType}: Sync. Pushed/Pts {streamState.TransferredDuration}/{streamState.Pts}");
-                    var keyFrames = await _streamSyncBarrier.Signal(streamState.KeyFrameSeen).WithCancellation(token);
-
-                    // Pushing +300ms post key frame may not complete async ops on certain streams
-                    // Async op completion also does not guarantee playback will commence.
-                    // Use running clock to switch from ClockStart to PlayerClock synchronization
-                    if (IsPlayerClockRunning())
-                    {
-                        Logger.Info($"{streamState.StreamType}: Clock started {_playerClockSource.LastClock}");
-                        streamState.SyncState = SynchronizationState.PlayerClockSynchronize;
-                        return;
-                    }
+                    var keyFrames = await _streamSyncBarrier.Signal(streamState.KeyFrameSeen, token);
 
                     // Use key frame to determine drip feed value.
                     // Before all streams report key frame, use PreKeyFrameTransferDuration otherwise
                     // use PostKeyFrameTransferDuration
                     var allKeyFramesSeen = keyFrames.All(keyFrameSeen => keyFrameSeen);
-                    await DelayStream(streamState, allKeyFramesSeen, token).ConfigureAwait(false);
+                    await DelayStream(streamState, allKeyFramesSeen, token);
+
+                    // Pushing +300ms post key frame may not complete async ops on certain streams
+                    // Async op completion also does not guarantee playback will commence.
+                    // Use running clock to switch from ClockStart to PlayerClock synchronization
+                    if (!IsPlayerClockRunning()) return;
+
+                    Logger.Info($"{streamState.StreamType}: Clock started {_playerClockSource.LastClock}");
+                    _streamSyncBarrier.RemoveParticipant();
+                    streamState.SyncState = SynchronizationState.PlayerClockSynchronize;
                     return;
 
                 case SynchronizationState.PlayerClockSynchronize:
-                    await StreamSync(streamState, token).ConfigureAwait(false);
+                    await StreamSync(streamState, token);
                     return;
             }
         }
@@ -211,6 +215,7 @@ namespace JuvoPlayer.Player.EsPlayer
 
                 state.SyncState = SynchronizationState.ClockStart;
                 state.BeginTime = initClock;
+                state.EndTime = initClock;
                 state.TransferredDuration = TimeSpan.Zero;
                 state.NeededDuration = PreKeyFrameTransferDuration;
                 state.Pts = PlayerClockProviderConfig.InvalidClock;

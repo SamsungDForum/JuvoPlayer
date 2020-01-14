@@ -21,7 +21,6 @@ using System.Linq;
 using System.Reactive.Concurrency;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
-using System.Reactive.Threading.Tasks;
 using System.Threading;
 using ESPlayer = Tizen.TV.Multimedia;
 using System.Threading.Tasks;
@@ -192,12 +191,13 @@ namespace JuvoPlayer.Player.EsPlayer
 
             logger.Info($"{streamType}:");
 
+            var token = activeTaskCts.Token;
             if (config.Config is BufferStreamConfig metaData)
             {
                 // Use video only for buffer depth.
                 if (config.StreamType != StreamType.Video) return;
 
-                await _dataClock.UpdateBufferDepth(metaData.BufferDuration);
+                await _dataClock.UpdateBufferDepth(metaData.BufferDuration, token);
                 return;
             }
 
@@ -216,7 +216,7 @@ namespace JuvoPlayer.Player.EsPlayer
                 esStreams[(int)StreamType.Video].PushStreamConfiguration();
                 esStreams[(int)StreamType.Audio].PushStreamConfiguration();
 
-                await StreamPrepare(activeTaskCts.Token);
+                await StreamPrepare(token);
                 logger.Info($"{streamType}: Prepare Done");
 
             }
@@ -270,8 +270,6 @@ namespace JuvoPlayer.Player.EsPlayer
                     return;
                 }
 
-                var asyncOpRunning = IsAsyncOpRunning();
-                logger.Info($"Async Op Running: {asyncOpRunning}");
                 switch (state)
                 {
                     case ESPlayer.ESPlayerState.Playing:
@@ -279,10 +277,6 @@ namespace JuvoPlayer.Player.EsPlayer
 
                     case ESPlayer.ESPlayerState.Ready:
                         await StreamStart(token);
-                        return;
-
-                    case ESPlayer.ESPlayerState.Paused when asyncOpRunning:
-                        stateChangedSubject.OnNext(PlayerState.Playing);
                         return;
 
                     case ESPlayer.ESPlayerState.Paused:
@@ -348,26 +342,16 @@ namespace JuvoPlayer.Player.EsPlayer
 
             try
             {
-                var resumeNeeded = player.GetState() == ESPlayer.ESPlayerState.Paused;
-                if (resumeNeeded)
+                using (await asyncOpSerializer.LockAsync(token))
                 {
-                    _suspendResumeLogic.SetAsyncOpRunningState(true);
-
-                    await stateChangedSubject
-                        .AsObservable()
-                        .FirstAsync(state => state == PlayerState.Playing)
-                        .ToTask(token);
-
-                    token.ThrowIfCancellationRequested();
-
-                    _suspendResumeLogic.SetAsyncOpRunningState(false);
+                    await SeekStreamInitialize(token);
+                    var seekToTime = await Client.Seek(time, token);
+                    EnableInput();
+                    await _dataClock.SetClock(time, token);
+                    _dataClock.Start();
+                    await StreamSeek(seekToTime, token);
                 }
 
-                await SeekStreamInitialize(token);
-                var seekToTime = await Client.Seek(time, token);
-                EnableInput();
-                await _dataClock.SetClock(time, token);
-                await StreamSeek(seekToTime, resumeNeeded, token);
             }
             catch (SeekException e)
             {
@@ -653,6 +637,7 @@ namespace JuvoPlayer.Player.EsPlayer
                     player.Start();
                     StartClockGenerator();
                     await _dataClock.SetClock(_suspendClock, token);
+                    _dataClock.Start();
                 }
             }
             catch (OperationCanceledException)
@@ -734,26 +719,18 @@ namespace JuvoPlayer.Player.EsPlayer
             esStreams[(int)StreamType.Video].RequestFirstDataPacketNotification();
         }
 
-        private async Task StreamSeek(TimeSpan time, bool resumeNeeded, CancellationToken token)
+        private async Task StreamSeek(TimeSpan time, CancellationToken token)
         {
-            using (await asyncOpSerializer.LockAsync(token))
-            {
-                token.ThrowIfCancellationRequested();
+            token.ThrowIfCancellationRequested();
 
-                dataSynchronizer.Prepare();
+            dataSynchronizer.Prepare();
 
-                logger.Info($"Player.SeekAsync(): Resume needed: {resumeNeeded} {player.GetState()}");
+            await player.SeekAsync(time, EnableTransfer).WithCancellation(token);
+            logger.Info("Player.SeekAsync() Completed");
 
-                await player.SeekAsync(time, EnableTransfer).WithCancellation(token);
-                logger.Info("Player.SeekAsync() Completed");
+            token.ThrowIfCancellationRequested();
 
-                token.ThrowIfCancellationRequested();
-
-                if (resumeNeeded)
-                    player.Resume();
-
-                StartClockGenerator();
-            }
+            StartClockGenerator();
         }
 
         /// <summary>
