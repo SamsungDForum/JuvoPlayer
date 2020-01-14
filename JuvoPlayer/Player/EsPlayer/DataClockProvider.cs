@@ -16,11 +16,10 @@
  */
 
 using System;
-using System.Reactive;
 using System.Reactive.Concurrency;
-using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
+using System.Reactive.Threading.Tasks;
 using System.Threading;
 using System.Threading.Tasks;
 using Configuration;
@@ -32,13 +31,10 @@ namespace JuvoPlayer.Player.EsPlayer
     {
         private static readonly ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
         private TimeSpan _dataLimit = DataClockProviderConfig.TimeBufferDepthDefault;
-
-        //private readonly TimeSpan[] _streamDataLimits = new TimeSpan[(int)StreamType.Count];
         private TimeSpan _sourceClock;
 
         // Start / Stop may be called from multiple threads.
         private volatile IDisposable _dataClockConnection;
-
         private readonly IScheduler _scheduler;
 
         // Do not filter output to distinct values. Clients may start listening (without re-subscription)
@@ -46,7 +42,6 @@ namespace JuvoPlayer.Player.EsPlayer
         private readonly IConnectableObservable<TimeSpan> _dataClockSource;
         private readonly IObservable<TimeSpan> _dataClockObservable;
         private readonly Subject<TimeSpan> _dataClockSubject = new Subject<TimeSpan>();
-        private readonly IDisposable _disabledClock = Disposable.Empty;
         private readonly PlayerClockProvider _playerClock;
 
         private bool _isDisposed;
@@ -73,45 +68,42 @@ namespace JuvoPlayer.Player.EsPlayer
             return _dataClockObservable;
         }
 
-        public async Task SetClock(TimeSpan newClock, CancellationToken token)
+        public Task SetClock(TimeSpan newClock, CancellationToken token)
         {
-            _dataClockConnection?.Dispose();
+            Logger.Info("");
 
-            await SetClockValue(newClock);
-
-            token.ThrowIfCancellationRequested();
-
-            Start();
-        }
-
-        private IObservable<Unit> SetClockValue(TimeSpan clockValue)
-        {
             return Observable.Start(() =>
             {
-                _sourceClock = clockValue;
+                if (token.IsCancellationRequested)
+                {
+                    Logger.Info($"Clock set: {newClock} Cancelled");
+                    return;
+                }
+
+                _sourceClock = newClock;
                 Logger.Info($"Clock set: {_sourceClock}");
-            }, _scheduler);
+            }, _scheduler).ToTask(token);
         }
-        public async Task UpdateBufferDepth(TimeSpan newDataLimit)
+
+        public Task UpdateBufferDepth(TimeSpan newDataLimit, CancellationToken token)
         {
-            var isUpdated = await Observable.Start(() =>
+            Logger.Info("");
+
+            return Observable.Start(() =>
             {
+                if (token.IsCancellationRequested)
+                {
+                    Logger.Info($"A/V Buffer depth set to: {newDataLimit} Cancelled");
+                    return;
+                }
                 _dataLimit = newDataLimit;
-                return true;
-
-            }, _scheduler);
-
-            if (isUpdated)
-                Logger.Info($"A/V Buffer depth set to {newDataLimit}");
+                Logger.Info($"A/V Buffer depth set to: {_dataLimit}");
+            }, _scheduler).ToTask(token);
         }
 
         private IObservable<TimeSpan> StartOnSubscription()
         {
-            // Null identifies very fist subscription. 
-            // internal enable/disabled is done with _disabledClock to differentiate
-            // between first/connection, any subsequent connections.
-            if (_dataClockConnection == null)
-                _dataClockConnection = _dataClockSource.Connect();
+            Start();
 
             return _dataClockSource.AsObservable();
         }
@@ -136,6 +128,10 @@ namespace JuvoPlayer.Player.EsPlayer
             //                so counting of buffered data can be done from that point.
             //
             var playerClock = _playerClock.LastClock;
+
+            // Don't set lower clock value then already present.
+            // When clock starts, it may report lower value then set via SetClock.
+            // this may halt downloaders relying on data clock due to lack of buffers
             if (playerClock > _sourceClock)
                 _sourceClock = playerClock;
 
@@ -144,19 +140,19 @@ namespace JuvoPlayer.Player.EsPlayer
 
         public void Stop()
         {
-            SetClockValue(PlayerClockProviderConfig.InvalidClock);
             _dataClockConnection?.Dispose();
-            _dataClockConnection = _disabledClock;
+            _dataClockConnection = null;
             _dataClockSubject.OnNext(PlayerClockProviderConfig.InvalidClock);
             Logger.Info("");
         }
 
         public void Start()
         {
-            if (!ReferenceEquals(_dataClockConnection, _disabledClock)) return;
+            Logger.Info("");
+            if (_dataClockConnection != null) return;
 
             _dataClockConnection = _dataClockSource.Connect();
-            Logger.Info("");
+            Logger.Info($"Started. SourceClock {_sourceClock} Limit {_dataLimit}");
         }
 
         public void Dispose()

@@ -17,11 +17,13 @@
 
 using System;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
+using JuvoPlayer.Player.EsPlayer;
 
 namespace JuvoPlayer.Utils
 {
-    class AsyncBarrier<T>
+    internal class AsyncBarrier<T>
     {
         private volatile int _participantCount;
         private volatile int _currentCount;
@@ -89,17 +91,20 @@ namespace JuvoPlayer.Utils
             }
         }
 
-        public Task<T[]> Signal(T message)
+        public async Task<T[]> Signal(T message, CancellationToken token)
         {
+            Task<T[]> waitTask;
+
             lock (_locker)
             {
                 var newCount = ++_currentCount;
-                _messages[newCount-1] = message;
+                _messages[newCount - 1] = message;
 
-                var currentWaitTask = GetWaitTask();
+                waitTask = GetWaitTask();
                 ReleaseIfReached(newCount);
-                return currentWaitTask;
             }
+
+            return await waitTask.WithCancellation(token).ConfigureAwait(false);
         }
     }
 }

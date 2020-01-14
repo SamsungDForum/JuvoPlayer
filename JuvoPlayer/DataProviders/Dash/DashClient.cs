@@ -240,7 +240,7 @@ namespace JuvoPlayer.DataProviders.Dash
             if (_dataClockLimit >= bufferTime + currentChunk)
                 return true;
 
-            LogInfo($"Full buffer: {bufferTime} This {currentChunk} Limit {_dataClockLimit}  ({bufferTime - currentTime})");
+            LogInfo($"Full. BufferTime {bufferTime} Max {_dataClockLimit} Chunk {currentChunk} ({bufferTime - currentTime})");
 
             return false;
         }
