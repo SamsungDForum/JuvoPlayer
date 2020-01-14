@@ -89,6 +89,7 @@ namespace JuvoPlayer.OpenGL
         protected override bool OnUpdate()
         {
             UpdateUI();
+            NativeActions.GetInstance().Execute();
             DllImports.Draw();
             return true;
         }
@@ -99,7 +100,6 @@ namespace JuvoPlayer.OpenGL
             if (!payloadParser.TryGetUrl(out var url))
                 return;
             HandleExternalTileSelection(url);
-
             base.OnAppControlReceived(e);
         }
 
@@ -200,6 +200,7 @@ namespace JuvoPlayer.OpenGL
         private void SetDefaultMenuState()
         {
             _isMenuShown = false;
+
             DllImports.ShowLoader(1, 0);
 
             _lastKeyPressTime = DateTime.Now;

@@ -85,7 +85,7 @@ namespace JuvoPlayer.OpenGL
                 await resource.Load();
             });
 
-            resource.Push();
+            NativeActions.GetInstance().Enqueue(resource.Push);
             ++_resourcesLoadedCount;
             UpdateLoadingState();
         }
@@ -117,7 +117,7 @@ namespace JuvoPlayer.OpenGL
         {
             _resourcesTargetCount += ContentList.Count;
             foreach (var contentItem in ContentList)
-                LoadAndSchedule(new TileResource(DllImports.AddTile(), contentItem.Poster, contentItem.Title ?? "", contentItem.Description ?? ""));
+                NativeActions.GetInstance().Enqueue(() => LoadAndSchedule(new TileResource(DllImports.AddTile(), contentItem.Poster, contentItem.Title ?? "", contentItem.Description ?? "")));
         }
 
         private void LoadIcons(string dirPath)
