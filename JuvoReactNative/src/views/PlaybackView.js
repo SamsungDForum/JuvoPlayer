@@ -81,7 +81,7 @@ export default class PlaybackView extends React.Component {
     this.JuvoEventEmitter.addListener('onPlaybackError', this.onPlaybackError);
     this.JuvoEventEmitter.addListener('onGotStreamsDescription', this.onGotStreamsDescription);
   }
-  
+
   componentWillUnmount() {
     DeviceEventEmitter.removeListener('PlaybackView/onTVKeyDown', this.onTVKeyDown);
     this.JuvoEventEmitter.removeListener('onPlaybackCompleted', this.onPlaybackCompleted);
