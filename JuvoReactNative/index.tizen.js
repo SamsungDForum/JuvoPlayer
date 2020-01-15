@@ -85,12 +85,12 @@ export default class JuvoReactNative extends Component {
     this.JuvoEventEmitter.addListener("handleDeepLink", this.handleDeepLink);
     this.JuvoPlayer.AttachDeepLinkListener();
   }
-  
+
   currentView()
   {
     return this.state.navState.routes[this.state.navState.index].key;
   }
-  
+
 //It is assumed that at the only one component can be visible on the screen
   switchComponentsView(componentName) {
     switch (componentName) {
