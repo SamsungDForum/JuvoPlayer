@@ -30,7 +30,7 @@ export default class ContentCatalog extends Component {
 
   componentWillMount() {
     DeviceEventEmitter.addListener('ContentCatalog/onTVKeyDown', this.onTVKeyDown);
-    DeviceEventEmitter.addListener('ContentCatalog/onTVKeyDown', this.onTVKeyUp);
+    DeviceEventEmitter.addListener('ContentCatalog/onTVKeyUp', this.onTVKeyUp);
   }
   componentDidUpdate(prevProps, prevState) {
     this.bigPictureVisible = true;

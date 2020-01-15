@@ -49,7 +49,7 @@ function createReducer(initialState) {
 const NavReducer = createReducer({
   index: 0,
   key: 'App',
-  routes: [{key: 'Catalog'}]
+  routes: [{key: 'ContentCatalog'}]
 });
 
 export default class JuvoReactNative extends Component {
@@ -59,8 +59,8 @@ export default class JuvoReactNative extends Component {
       loading: true,
       navState: NavReducer(undefined, {}),
       deepLinkIndex: 0,
+      currentView: 'ContentCatalog'
     };
-    this.currentView = 'ContentCatalog';
     this.selectedClipIndex = 0;
     this.switchComponentsView = this.switchComponentsView.bind(this);
     this.handleSelectedIndexChange = this.handleSelectedIndexChange.bind(this);
@@ -72,11 +72,11 @@ export default class JuvoReactNative extends Component {
   }
 
   onTVKeyDown(pressed) {
-    DeviceEventEmitter.emit(`${this.currentView}/onTVKeyDown`, pressed);
+    DeviceEventEmitter.emit(`${this.state.currentView}/onTVKeyDown`, pressed);
   }
 
   onTVKeyUp(pressed) {
-    DeviceEventEmitter.emit(`${this.currentView}/onTVKeyUp`, pressed);
+    DeviceEventEmitter.emit(`${this.state.currentView}/onTVKeyUp`, pressed);
   }
 
   componentWillMount() {
@@ -90,12 +90,12 @@ export default class JuvoReactNative extends Component {
   switchComponentsView(componentName) {
     switch (componentName) {
       case 'ContentCatalog':
-        this.currentView = 'ContentCatalog';
-        this._handleAction({type: 'pop'});
+        this.handleAction({type: 'pop'});
+        this.setState({currentView: 'ContentCatalog'});
         break;
       case 'PlaybackView':
-        this.currentView = 'PlaybackView';
-        this._handleAction({type: 'push', key: 'Playback'});
+        this.handleAction({type: 'push', key: 'PlaybackView'});
+        this.setState({currentView: 'PlaybackView'});
         break;
     }
   }
@@ -117,7 +117,7 @@ export default class JuvoReactNative extends Component {
     this.setState({loading: false});
   }
 
-  _handleAction(action) {
+  handleAction(action) {
     const newState = NavReducer(this.state.navState, action);
     if (newState === this.state.navState) {
       return false;
@@ -128,30 +128,24 @@ export default class JuvoReactNative extends Component {
     return true;
   }
 
-  handleBackAction() {
-    return this._handleAction({type: 'pop'});
-  }
-
-  _renderRoute(key) {
-    if (key === 'Catalog') {
+  renderRoute(key) {
+    if (key === 'ContentCatalog') {
       return <ContentCatalog
         visibility={true}
         switchView={this.switchComponentsView}
-        stateView={this.currentView}
         onSelectedIndexChange={this.handleSelectedIndexChange}
         deepLinkIndex={this.state.deepLinkIndex}/>
     }
-    if (key === 'Playback') {
+    if (key === 'PlaybackView') {
       return <PlaybackView
         visibility={true}
-        stateView={this.currentView}
         switchView={this.switchComponentsView}
         selectedIndex={this.selectedClipIndex}/>
     }
   }
 
-  _renderScene(props) {
-    const ComponentToRender = this._renderRoute(props.scene.route.key);
+  renderScene(props) {
+    const ComponentToRender = this.renderRoute(props.scene.route.key);
     return (
       ComponentToRender
     );
@@ -169,8 +163,8 @@ export default class JuvoReactNative extends Component {
         <NavigationCardStack
           cardStyle={{backgroundColor: 'transparent'}}
           navigationState={this.state.navState}
-          onNavigate={this._handleAction.bind(this)}
-          renderScene={this._renderScene.bind(this)}/>
+          onNavigate={this.handleAction.bind(this)}
+          renderScene={this.renderScene.bind(this)}/>
       );
     }
   }
