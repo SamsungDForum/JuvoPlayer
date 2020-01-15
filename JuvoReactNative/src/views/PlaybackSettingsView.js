@@ -21,10 +21,11 @@ export default class PlaybackSettingsView extends React.Component {
   }
 
   componentWillMount() {
-    DeviceEventEmitter.addListener("PlaybackView/onTVKeyDown", this.onTVKeyDown);
+    DeviceEventEmitter.addListener('PlaybackView/onTVKeyDown', this.onTVKeyDown);
   }
+  
   componentWillUnmount() {
-    DeviceEventEmitter.removeListener("PlaybackView/onTVKeyDown", this.onTVKeyDown);
+    DeviceEventEmitter.removeListener('PlaybackView/onTVKeyDown', this.onTVKeyDown);
   }
   handleConfirmSettings() {
     this.keysListenningOff = true;

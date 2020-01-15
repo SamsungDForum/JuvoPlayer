@@ -72,25 +72,27 @@ export default class PlaybackView extends React.Component {
     this.resetPlaybackState = this.resetPlaybackState.bind(this);
   }
   componentWillMount() {
-    DeviceEventEmitter.addListener("PlaybackView/onTVKeyDown", this.onTVKeyDown);
-    this.JuvoEventEmitter.addListener("onPlaybackCompleted", this.onPlaybackCompleted);
-    this.JuvoEventEmitter.addListener("onPlayerStateChanged", this.onPlayerStateChanged);
-    this.JuvoEventEmitter.addListener("onUpdateBufferingProgress", this.onUpdateBufferingProgress);
-    this.JuvoEventEmitter.addListener("onUpdatePlayTime", this.onUpdatePlayTime);
-    this.JuvoEventEmitter.addListener("onSeekCompleted", this.onSeekCompleted);
-    this.JuvoEventEmitter.addListener("onPlaybackError", this.onPlaybackError);
-    this.JuvoEventEmitter.addListener("onGotStreamsDescription", this.onGotStreamsDescription);
-    this.resetPlaybackState();
+    DeviceEventEmitter.addListener('PlaybackView/onTVKeyDown', this.onTVKeyDown);
+    this.JuvoEventEmitter.addListener('onPlaybackCompleted', this.onPlaybackCompleted);
+    this.JuvoEventEmitter.addListener('onPlayerStateChanged', this.onPlayerStateChanged);
+    this.JuvoEventEmitter.addListener('onUpdateBufferingProgress', this.onUpdateBufferingProgress);
+    this.JuvoEventEmitter.addListener('onUpdatePlayTime', this.onUpdatePlayTime);
+    this.JuvoEventEmitter.addListener('onSeekCompleted', this.onSeekCompleted);
+    this.JuvoEventEmitter.addListener('onPlaybackError', this.onPlaybackError);
+    this.JuvoEventEmitter.addListener('onGotStreamsDescription', this.onGotStreamsDescription);
   }
+  
   componentWillUnmount() {
-    DeviceEventEmitter.removeListener("PlaybackView/onTVKeyDown", this.onTVKeyDown);
-    this.JuvoEventEmitter.removeListener("onPlaybackCompleted", this.onPlaybackCompleted);
-    this.JuvoEventEmitter.removeListener("onPlayerStateChanged", this.onPlayerStateChanged);
-    this.JuvoEventEmitter.removeListener("onUpdateBufferingProgress", this.onUpdateBufferingProgress);
-    this.JuvoEventEmitter.removeListener("onUpdatePlayTime", this.onUpdatePlayTime);
-    this.JuvoEventEmitter.removeListener("onSeekCompleted", this.onSeekCompleted);
-    this.JuvoEventEmitter.removeListener("onPlaybackError", this.onPlaybackError);
-    this.JuvoEventEmitter.removeListener("onGotStreamsDescription", this.onGotStreamsDescription);
+    DeviceEventEmitter.removeListener('PlaybackView/onTVKeyDown', this.onTVKeyDown);
+    this.JuvoEventEmitter.removeListener('onPlaybackCompleted', this.onPlaybackCompleted);
+    this.JuvoEventEmitter.removeListener('onPlayerStateChanged', this.onPlayerStateChanged);
+    this.JuvoEventEmitter.removeListener('onUpdateBufferingProgress', this.onUpdateBufferingProgress);
+    this.JuvoEventEmitter.removeListener('onUpdatePlayTime', this.onUpdatePlayTime);
+    this.JuvoEventEmitter.removeListener('onSeekCompleted', this.onSeekCompleted);
+    this.JuvoEventEmitter.removeListener('onPlaybackError', this.onPlaybackError);
+    this.JuvoEventEmitter.removeListener('onGotStreamsDescription', this.onGotStreamsDescription);
+    clearInterval(this.subtitleTextInterval);
+    this.subtitleTextInterval = -1;
     this.resetPlaybackState();
   }
 
@@ -179,7 +181,7 @@ export default class PlaybackView extends React.Component {
   }
   onSeekCompleted() {
     this.operationInProgress = false;
-    this.inProgressDescription = "Please wait...";
+    this.inProgressDescription = 'Please wait...';
   }
   onPlaybackError(error) {
     this.popupMessage = error.Message;
@@ -195,30 +197,30 @@ export default class PlaybackView extends React.Component {
     //params.KeyCode
     if (this.keysListenningOff) return;
     switch (pressed.KeyName) {
-      case "Right":
+      case 'Right':
         this.handleFastForwardKey();
         break;
-      case "Left":
+      case 'Left':
         this.handleRewindKey();
         break;
-      case "Return":
-      case "XF86AudioPlay":
-      case "XF86PlayBack":
-        if (this.playerState === "Paused" || this.playerState === "Playing") {
+      case 'Return':
+      case 'XF86AudioPlay':
+      case 'XF86PlayBack':
+        if (this.playerState === 'Paused' || this.playerState === 'Playing') {
           //pause - resume
           this.JuvoPlayer.PauseResumePlayback();
           this.showPlaybackInfo();
         }
         break;
-      case "XF86Back":
-      case "XF86AudioStop":
+      case 'XF86Back':
+      case 'XF86AudioStop':
         if (this.playbackInfoInterval == -1) {
           this.toggleView();
         } else {
           this.stopPlaybackTime();
         }
         break;
-      case "Up":
+      case 'Up':
         //Show the settings view only if the playback controls are visible on the screen
         if (this.onScreenTimeOut >= 0) {
           //requesting the native module for details regarding the stream settings.
@@ -252,10 +254,10 @@ export default class PlaybackView extends React.Component {
       clearInterval(this.subtitleTextInterval);
       this.subtitleTextInterval = -1;
     }
-    if (Selected != "off") {
+    if (Selected != 'off') {
       this.subtitleTextInterval = this.setIntervalImmediately(this.rerender, 100);
     } else {
-      this.currentSubtitleText = "";
+      this.currentSubtitleText = '';
       this.rerender();
     }
   }
@@ -296,14 +298,14 @@ export default class PlaybackView extends React.Component {
     this.streamsData.selectedIndex = index;
     const title = ResourceLoader.clipsData[index].title;
     const fadeduration = 300;
-    const revIconPath = ResourceLoader.playbackIconsPathSelect("rew");
-    const ffwIconPath = ResourceLoader.playbackIconsPathSelect("ffw");
-    const settingsIconPath = ResourceLoader.playbackIconsPathSelect("set");
-    const playIconPath = this.playerState !== "Playing" ? ResourceLoader.playbackIconsPathSelect("play") : ResourceLoader.playbackIconsPathSelect("pause");
+    const revIconPath = ResourceLoader.playbackIconsPathSelect('rew');
+    const ffwIconPath = ResourceLoader.playbackIconsPathSelect('ffw');
+    const settingsIconPath = ResourceLoader.playbackIconsPathSelect('set');
+    const playIconPath = this.playerState !== 'Playing' ? ResourceLoader.playbackIconsPathSelect('play') : ResourceLoader.playbackIconsPathSelect('pause');
     const visibility = this.props.visibility ? this.props.visibility : this.visible;
     this.visible = visibility;
 
-    if (this.playerState === "Idle" && this.visible && !this.playbackStarted) {
+    if (this.playerState === 'Idle' && this.visible && !this.playbackStarted) {
       const video = ResourceLoader.clipsData[this.state.selectedIndex];
       let DRM = video.drmDatas ? JSON.stringify(video.drmDatas) : null;
       this.JuvoPlayer.StartPlayback(video.url, DRM, video.type);
@@ -384,16 +386,16 @@ const styles = StyleSheet.create({
     position: 'absolute',
     backgroundColor: 'transparent',
     height: height,
-    width: width,
+    width: width
   },
   element: {
     backgroundColor: 'transparent',
     alignItems: 'center',
-    justifyContent: 'center',
+    justifyContent: 'center'
   },
   icon: {
     width: 70,
-    height: 70,
+    height: 70
   },
   time: {
     marginTop: 25,
@@ -401,29 +403,29 @@ const styles = StyleSheet.create({
     width: 150,
     height: 30,
     fontSize: 30,
-    color: "white",
+    color: 'white'
   },
   transparentPage: {
     backgroundColor: 'black',
-    opacity: 0.9,
+    opacity: 0.9
   },
   textHeader: {
     fontSize: 60,
-    color: "white",
-    alignSelf: "center",
+    color: 'white',
+    alignSelf: 'center'
   },
   textBody: {
     fontSize: 30,
-    color: "white",
+    color: 'white'
   },
   textSubtitles: {
     fontSize: 30,
-    color: "white",
-    textAlign: "center",
-    backgroundColor: "black"
+    color: 'white',
+    textAlign: 'center',
+    backgroundColor: 'black'
   },
   subtitles: {
     width: width,
-    height: 150,
+    height: 150
   }
 });
