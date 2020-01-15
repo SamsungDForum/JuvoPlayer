@@ -58,8 +58,7 @@ export default class JuvoReactNative extends Component {
     this.state = {
       loading: true,
       navState: NavReducer(undefined, {}),
-      deepLinkIndex: 0,
-      currentView: 'ContentCatalog'
+      deepLinkIndex: 0
     };
     this.selectedClipIndex = 0;
     this.switchComponentsView = this.switchComponentsView.bind(this);
@@ -67,16 +66,17 @@ export default class JuvoReactNative extends Component {
     this.handleDeepLink = this.handleDeepLink.bind(this);
     this.onTVKeyDown = this.onTVKeyDown.bind(this);
     this.onTVKeyUp = this.onTVKeyUp.bind(this);
+    this.currentView = this.currentView.bind(this);
     this.JuvoPlayer = NativeModules.JuvoPlayer;
     this.JuvoEventEmitter = new NativeEventEmitter(this.JuvoPlayer);
   }
 
   onTVKeyDown(pressed) {
-    DeviceEventEmitter.emit(`${this.state.currentView}/onTVKeyDown`, pressed);
+    DeviceEventEmitter.emit(`${this.currentView()}/onTVKeyDown`, pressed);
   }
 
   onTVKeyUp(pressed) {
-    DeviceEventEmitter.emit(`${this.state.currentView}/onTVKeyUp`, pressed);
+    DeviceEventEmitter.emit(`${this.currentView()}/onTVKeyUp`, pressed);
   }
 
   componentWillMount() {
@@ -85,19 +85,25 @@ export default class JuvoReactNative extends Component {
     this.JuvoEventEmitter.addListener("handleDeepLink", this.handleDeepLink);
     this.JuvoPlayer.AttachDeepLinkListener();
   }
-
+  
+  currentView()
+  {
+    return this.state.navState.routes[this.state.navState.index].key;
+  }
+  
 //It is assumed that at the only one component can be visible on the screen
   switchComponentsView(componentName) {
     switch (componentName) {
-      case 'ContentCatalog':
+      case 'Previous':
         this.handleAction({type: 'pop'});
-        this.setState({currentView: 'ContentCatalog'});
         break;
       case 'PlaybackView':
         this.handleAction({type: 'push', key: 'PlaybackView'});
-        this.setState({currentView: 'PlaybackView'});
         break;
+      default:
+        alert('Undefined view');
     }
+    this.setState({});
   }
 
   handleSelectedIndexChange(index) {
