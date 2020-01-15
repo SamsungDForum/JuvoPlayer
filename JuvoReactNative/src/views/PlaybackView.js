@@ -122,7 +122,7 @@ export default class PlaybackView extends React.Component {
     }
     //Manage hide/show state between the content catalog and the playback View
     this.visible = !this.visible;
-    this.props.switchView('ContentCatalog');
+    this.props.switchView('Previous');
   }
   handleSeek() {
     if (this.playerState == 'Paused') return false;
