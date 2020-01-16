@@ -80,7 +80,7 @@ namespace JuvoPlayer.ResourceLoaders
         private Task<HttpResponseMessage> GetAsync()
         {
             if (_responseTask != null) return _responseTask;
-            const int retryCount = 1;
+            const int retryCount = 2;
             _responseTask = Policy
                 .Handle<OperationCanceledException>()
                 .Or<HttpRequestException>()
