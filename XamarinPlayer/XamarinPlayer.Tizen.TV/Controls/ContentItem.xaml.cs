@@ -75,6 +75,8 @@ namespace XamarinPlayer.Tizen.TV.Controls
         public static readonly BindableProperty ContentTilePreviewPathProperty =
             BindableProperty.Create("ContentTilePreviewPath", typeof(string), typeof(ContentItem), default(string));
 
+        private static readonly string DefaultImagePath = "tiles/default_bg.png";
+
         public string ContentTilePreviewPath
         {
             set { SetValue(ContentTilePreviewPathProperty, value); }
@@ -190,17 +192,34 @@ namespace XamarinPlayer.Tizen.TV.Controls
             }
         }
 
-        private async void LoadSkBitmap()
+        private async Task<SKBitmap> GetBitmap(string imagePath)
         {
-            using (var resource = ResourceFactory.Create(ContentImg))
+            using (var resource = ResourceFactory.Create(imagePath))
             {
-                var newBitmap = await Task.Run(async () =>
+                return await Task.Run(async () =>
                 {
                     using (var stream = await resource.ReadAsStreamAsync())
                     {
                         return SKBitmap.Decode(stream);
                     }
                 });
+            }
+        }
+
+        private async void LoadSkBitmap()
+        {
+            SKBitmap newBitmap = null;
+            try
+            {
+                newBitmap = await GetBitmap(ContentImg);
+            }
+            catch (Exception ex)
+            {
+                _logger.Error(ex);
+                newBitmap = await GetBitmap(DefaultImagePath);
+            }
+            finally
+            {
                 _contentBitmap?.Dispose();
                 _contentBitmap = newBitmap;
                 InvalidateSurface();

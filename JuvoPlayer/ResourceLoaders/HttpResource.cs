@@ -19,18 +19,37 @@
 
 using System;
 using System.IO;
+using System.Linq;
+using System.Net;
 using System.Net.Http;
 using System.Threading.Tasks;
+using JuvoLogger;
+using Polly;
+using Polly.Retry;
 
 namespace JuvoPlayer.ResourceLoaders
 {
     public class HttpResource : IResource
     {
-        private static readonly HttpClient HttpClient = new HttpClient();
+        private static readonly HttpClient HttpClient = new HttpClient
+        {
+            Timeout = TimeSpan.FromSeconds(10)
+        };
+
+        private readonly ILogger _logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
 
         private readonly Uri _path;
         private Task<HttpResponseMessage> _responseTask;
         private bool _disposed;
+
+        private static readonly HttpStatusCode[] httpStatusCodesWorthRetrying =
+        {
+            HttpStatusCode.RequestTimeout,
+            HttpStatusCode.InternalServerError,
+            HttpStatusCode.BadGateway,
+            HttpStatusCode.ServiceUnavailable,
+            HttpStatusCode.GatewayTimeout
+        };
 
         public string AbsolutePath => _path.ToString();
 
@@ -61,7 +80,18 @@ namespace JuvoPlayer.ResourceLoaders
         private Task<HttpResponseMessage> GetAsync()
         {
             if (_responseTask != null) return _responseTask;
-            _responseTask = HttpClient.GetAsync(_path);
+            const int retryCount = 1;
+            _responseTask = Policy
+                .Handle<OperationCanceledException>()
+                .Or<HttpRequestException>()
+                .OrResult<HttpResponseMessage>(r => httpStatusCodesWorthRetrying.Contains(r.StatusCode))
+                .RetryAsync(retryCount,
+                    (result, i) =>
+                    {
+                        _logger.Warn(
+                            $"Cannot download {_path} due to {result.Exception.Message}, retry count {i} of {retryCount}");
+                    })
+                .ExecuteAsync(() => HttpClient.GetAsync(_path));
             return _responseTask;
         }
 
