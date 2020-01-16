@@ -1,6 +1,6 @@
 'use strict';
 import React from 'react';
-import { View, Text, Picker, NativeModules, NativeEventEmitter, StyleSheet } from 'react-native';
+import { View, Text, Picker, NativeModules, NativeEventEmitter, StyleSheet, DeviceEventEmitter } from 'react-native';
 
 import HideableView from './HideableView';
 import Native from '../Native';
@@ -21,7 +21,11 @@ export default class PlaybackSettingsView extends React.Component {
   }
 
   componentWillMount() {
-    this.JuvoEventEmitter.addListener('onTVKeyDown', this.onTVKeyDown);
+    DeviceEventEmitter.addListener('PlaybackView/onTVKeyDown', this.onTVKeyDown);
+  }
+
+  componentWillUnmount() {
+    DeviceEventEmitter.removeListener('PlaybackView/onTVKeyDown', this.onTVKeyDown);
   }
 
   handleConfirmSettings() {
