@@ -1,6 +1,6 @@
 'use strict';
 import React from 'react';
-import { View, Image, NativeModules, NativeEventEmitter, Text, Dimensions, StyleSheet } from 'react-native';
+import { View, Image, NativeModules, NativeEventEmitter, Text, Dimensions, StyleSheet, DeviceEventEmitter } from 'react-native';
 
 import ResourceLoader from '../ResourceLoader';
 import ContentDescription from './ContentDescription';
@@ -72,7 +72,7 @@ export default class PlaybackView extends React.Component {
     this.resetPlaybackState = this.resetPlaybackState.bind(this);
   }
   componentWillMount() {
-    this.JuvoEventEmitter.addListener('onTVKeyDown', this.onTVKeyDown);
+    DeviceEventEmitter.addListener('PlaybackView/onTVKeyDown', this.onTVKeyDown);
     this.JuvoEventEmitter.addListener('onPlaybackCompleted', this.onPlaybackCompleted);
     this.JuvoEventEmitter.addListener('onPlayerStateChanged', this.onPlayerStateChanged);
     this.JuvoEventEmitter.addListener('onUpdateBufferingProgress', this.onUpdateBufferingProgress);
@@ -82,13 +82,18 @@ export default class PlaybackView extends React.Component {
     this.JuvoEventEmitter.addListener('onGotStreamsDescription', this.onGotStreamsDescription);
   }
 
-  componentWillReceiveProps(nextProps) {
-    if (this.state.selectedIndex !== nextProps.selectedIndex) {
-      this.resetPlaybackState();
-      this.refreshPlaybackInfo();
-    }
-    this.currentSubtitleText = '';
-    this.setState({ selectedIndex: nextProps.selectedIndex });
+  componentWillUnmount() {
+    DeviceEventEmitter.removeListener('PlaybackView/onTVKeyDown', this.onTVKeyDown);
+    this.JuvoEventEmitter.removeListener('onPlaybackCompleted', this.onPlaybackCompleted);
+    this.JuvoEventEmitter.removeListener('onPlayerStateChanged', this.onPlayerStateChanged);
+    this.JuvoEventEmitter.removeListener('onUpdateBufferingProgress', this.onUpdateBufferingProgress);
+    this.JuvoEventEmitter.removeListener('onUpdatePlayTime', this.onUpdatePlayTime);
+    this.JuvoEventEmitter.removeListener('onSeekCompleted', this.onSeekCompleted);
+    this.JuvoEventEmitter.removeListener('onPlaybackError', this.onPlaybackError);
+    this.JuvoEventEmitter.removeListener('onGotStreamsDescription', this.onGotStreamsDescription);
+    clearInterval(this.subtitleTextInterval);
+    this.subtitleTextInterval = -1;
+    this.resetPlaybackState();
   }
 
   getFormattedTime(milisecs) {
@@ -117,7 +122,7 @@ export default class PlaybackView extends React.Component {
     }
     //Manage hide/show state between the content catalog and the playback View
     this.visible = !this.visible;
-    this.props.switchView('ContentCatalog');
+    this.props.switchView('Previous');
   }
   handleSeek() {
     if (this.playerState == 'Paused') return false;
