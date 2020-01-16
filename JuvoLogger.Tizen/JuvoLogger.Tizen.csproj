@@ -1,28 +1,16 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Tizen.NET.Sdk/1.0.9">
 
   <!-- Property Group for Tizen Project -->
-  <PropertyGroup>
-    <TargetFramework>netstandard2.0</TargetFramework>
+  <PropertyGroup>    
     <TizenCreateTpkOnBuild>false</TizenCreateTpkOnBuild>
+    <TargetFramework>tizen50</TargetFramework>
   </PropertyGroup>
-
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugType>portable</DebugType>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
     <DebugType>None</DebugType>
   </PropertyGroup>
-
-  <!-- Include Nuget Package for Tizen Project building -->
-  <ItemGroup>
-    <!-- Tizen.* packages are excluded from runtime -->
-    <PackageReference Include="Tizen.NET" Version="5.0.0.14629">
-      <ExcludeAssets>Runtime</ExcludeAssets>
-    </PackageReference>
-    <PackageReference Include="Tizen.NET.Sdk" Version="1.0.1">
-      <ExcludeAssets>Runtime</ExcludeAssets>
-    </PackageReference>
-  </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\JuvoLogger\JuvoLogger.csproj" />
   </ItemGroup>
