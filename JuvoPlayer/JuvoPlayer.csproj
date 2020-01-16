@@ -24,11 +24,6 @@
     <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
   </PropertyGroup>
   <ItemGroup>
-    <Compile Remove="res\**" />
-    <EmbeddedResource Remove="res\**" />
-    <None Remove="res\**" />
-  </ItemGroup>
-  <ItemGroup>
     <Compile Remove="Common\UI.cs" />
   </ItemGroup>
 
@@ -89,6 +84,7 @@
     <None Update="lib\libswscale-juvo.so.4">
       <CopyToOutputDirectory>Always</CopyToOutputDirectory>
     </None>
+    <None Include="res\tiles\default_bg.png" />
   </ItemGroup>
 </Project>
 

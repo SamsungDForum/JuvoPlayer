@@ -15,16 +15,22 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+using System;
 using System.Threading.Tasks;
+using JuvoLogger;
+using JuvoPlayer.ResourceLoaders;
 
 namespace JuvoPlayer.OpenGL
 {
     class TileResource : Resource
     {
+        private readonly ILogger _logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
         private readonly int _id;
         private ImageData _image;
         private readonly string _name;
         private readonly string _description;
+
+        private const string DefaultImage = "tiles/default_bg.png";
 
         public TileResource(int id, string path, string name, string description)
         {
@@ -36,7 +42,22 @@ namespace JuvoPlayer.OpenGL
 
         public override async Task Load()
         {
-            _image = await GetImage(_image.Path);
+            try
+            {
+                _image = await GetImage(_image.Path);
+            }
+            catch (Exception ex)
+            {
+                _logger.Error(ex);
+
+                if (!_image.Path.EndsWith(DefaultImage))
+                {
+                    _image.Path = ResourceFactory.Create(DefaultImage).AbsolutePath;
+                    await Load();
+                }
+                else
+                    throw;
+            }
         }
 
         public override unsafe void Push()

@@ -108,6 +108,7 @@ namespace JuvoPlayer.OpenGL
 
         protected override void OnPause()
         {
+            base.OnPause();
             if (Player == null || Player.State != Common.PlayerState.Playing)
                 return;
 
@@ -117,6 +118,7 @@ namespace JuvoPlayer.OpenGL
 
         protected override void OnResume()
         {
+            base.OnResume();
             if (!_appPaused)
                 return;
 
