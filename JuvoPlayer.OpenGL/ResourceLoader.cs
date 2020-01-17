@@ -35,6 +35,7 @@ namespace JuvoPlayer.OpenGL
         public int TilesCount => ContentList?.Count ?? 0;
 
         public bool IsLoadingFinished { get; private set; }
+        public bool IsQueueingFinished { get; private set; }
 
         private int _resourcesLoadedCount;
         private int _resourcesTargetCount;
@@ -54,6 +55,7 @@ namespace JuvoPlayer.OpenGL
 
         public async void LoadResources(string fullExecutablePath, Action doAfterFinishedLoading = null)
         {
+            IsQueueingFinished = false;
             IsLoadingFinished = false;
             _doAfterFinishedLoading = doAfterFinishedLoading;
 
@@ -66,6 +68,8 @@ namespace JuvoPlayer.OpenGL
             LoadFonts(localResourcesDirPath);
             LoadIcons(localResourcesDirPath);
             LoadTiles();
+
+            IsQueueingFinished = true;
         }
 
         public static byte[] GetBytes(string str)
@@ -141,10 +145,8 @@ namespace JuvoPlayer.OpenGL
         private void UpdateLoadingState()
         {
             UpdateLoadingScreen();
-            if (_resourcesLoadedCount >= _resourcesTargetCount)
-            {
+            if (IsQueueingFinished && _resourcesLoadedCount >= _resourcesTargetCount)
                 FinishLoading();
-            }
         }
 
         private void UpdateLoadingScreen()
