@@ -80,6 +80,7 @@ namespace JuvoPlayer.Common
         public bool Compatible(VideoStreamConfig other)
         {
             return other != null &&
+                   base.IsCompatible(other) &&
                    Codec == other.Codec &&
                    FrameRate == other.FrameRate;
         }

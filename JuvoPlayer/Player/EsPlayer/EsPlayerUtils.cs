@@ -256,17 +256,7 @@ namespace JuvoPlayer.Player.EsPlayer
 
         public bool Compatible(BufferConfigurationPacket packet)
         {
-            switch (packet.Config)
-            {
-                case AudioStreamConfig audioConfig:
-                    return (Config as AudioStreamConfig)?.Compatible(audioConfig) ?? false;
-
-                case VideoStreamConfig videoConfig:
-                    return (Config as VideoStreamConfig)?.Compatible(videoConfig) ?? false;
-
-                default:
-                    return false;
-            }
+            return Config.IsCompatible(packet.Config);
         }
     };
 

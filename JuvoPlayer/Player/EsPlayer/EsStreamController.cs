@@ -185,17 +185,17 @@ namespace JuvoPlayer.Player.EsPlayer
         /// Sets provided configuration to appropriate stream.
         /// </summary>
         /// <param name="config">StreamConfig</param>
-        public async Task SetStreamConfiguration(BufferConfigurationPacket config)
+        public async Task SetStreamConfiguration(StreamConfig config)
         {
-            var streamType = config.StreamType;
+            var streamType = config.StreamType();
 
             logger.Info($"{streamType}:");
 
             var token = activeTaskCts.Token;
-            if (config.Config is BufferStreamConfig metaData)
+            if (config is BufferStreamConfig metaData)
             {
                 // Use video only for buffer depth.
-                if (config.StreamType != StreamType.Video) return;
+                if (streamType != StreamType.Video) return;
 
                 await _dataClock.UpdateBufferDepth(metaData.BufferDuration, token);
                 return;
@@ -204,7 +204,7 @@ namespace JuvoPlayer.Player.EsPlayer
             esStreams[(int)streamType].StoreConfiguration(config);
             if (esStreams[(int)streamType].IsConfigured)
             {
-                AppendPacket(config);
+                AppendPacket(BufferConfigurationPacket.Create(config));
                 return;
             }
 
