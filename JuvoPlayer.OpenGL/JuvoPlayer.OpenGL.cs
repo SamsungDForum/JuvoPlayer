@@ -24,6 +24,7 @@ using System.Reactive.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using ElmSharp;
+using SkiaSharp;
 using Tizen.Applications;
 using Tizen.System;
 
@@ -137,6 +138,8 @@ namespace JuvoPlayer.OpenGL
 
         private void InitMenu()
         {
+            SetLoaderLogo(Path.Combine(Path.GetDirectoryName(Path.GetDirectoryName(Current.ApplicationInfo.ExecutablePath)), "shared", "res", "JuvoPlayerOpenGLNativeTizenTV.png"));
+
             _resourceLoader = ResourceLoader.GetInstance();
             _resourceLoader.LoadResources(
                 Path.GetDirectoryName(Path.GetDirectoryName(Current.ApplicationInfo.ExecutablePath)),
@@ -146,6 +149,25 @@ namespace JuvoPlayer.OpenGL
             SetMenuFooter();
             SetupOptionsMenu();
             SetDefaultMenuState();
+        }
+
+        private unsafe void SetLoaderLogo(string path)
+        {
+            SKBitmap bitmap = SKBitmap.Decode(new SKFileStream(path));
+            if (!SkiaUtils.IsColorTypeSupported(bitmap.ColorType))
+                throw new Exception($"Unsupported color type: {bitmap.ColorType}!");
+
+            fixed (byte* pixels = bitmap.Bytes)
+            {
+                DllImports.SetLoaderLogo(new DllImports.ImageData
+                {
+                    id = 0,
+                    pixels = pixels,
+                    width = bitmap.Width,
+                    height = bitmap.Height,
+                    format = (int)SkiaUtils.ConvertToFormat(bitmap.ColorType)
+                });
+            }
         }
 
         private void SetMetrics()
