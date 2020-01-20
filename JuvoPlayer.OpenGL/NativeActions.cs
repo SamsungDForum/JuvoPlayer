@@ -1,6 +1,6 @@
-/*!
+﻿/*!
  * https://github.com/SamsungDForum/JuvoPlayer
- * Copyright 2018, Samsung Electronics Co., Ltd
+ * Copyright 2020, Samsung Electronics Co., Ltd
  * Licensed under the MIT license
  *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
@@ -15,32 +15,31 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-using System.Threading.Tasks;
+using System;
+using System.Collections.Generic;
 
 namespace JuvoPlayer.OpenGL
 {
-    class FontResource : Resource
+    class NativeActions
     {
-        private readonly string _path;
-        private byte[] _data;
+        private static NativeActions Instance;
 
-        public FontResource(string path) : base()
+        public static NativeActions GetInstance()
         {
-            _path = path;
+            return Instance ?? (Instance = new NativeActions());
         }
 
-        public override Task Load()
+        private readonly Queue<Action> _actions = new Queue<Action>();
+
+        public void Execute()
         {
-            _data = GetData(_path);
-            return Task.CompletedTask;
+            while (_actions.Count > 0)
+                _actions.Dequeue().Invoke();
         }
 
-        public override unsafe void Push()
+        public void Enqueue(Action action)
         {
-            fixed (byte* p = _data)
-            {
-                DllImports.AddFont(p, _data.Length);
-            }
+            _actions.Enqueue(action);
         }
     }
 }

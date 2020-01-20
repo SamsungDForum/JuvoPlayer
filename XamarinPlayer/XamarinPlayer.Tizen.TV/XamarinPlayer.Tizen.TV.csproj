@@ -30,11 +30,6 @@
     <None Remove="shared\res\videoclips.json" />
   </ItemGroup>
   <ItemGroup>
-    <Content Include="shared\res\videoclips.json">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </Content>
-  </ItemGroup>
-  <ItemGroup>
     <EmbeddedResource Include="res\subs\media_player_subs_windows-1250.srt" />
     <EmbeddedResource Include="res\subs\media_player_subs_windows-1252.srt" />
   </ItemGroup>

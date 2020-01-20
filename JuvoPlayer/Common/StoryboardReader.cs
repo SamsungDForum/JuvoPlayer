@@ -22,6 +22,8 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading.Tasks;
+using JuvoPlayer.ResourceLoaders;
+using JuvoPlayer.Utils;
 using SkiaSharp;
 
 namespace JuvoPlayer.Common
@@ -30,7 +32,7 @@ namespace JuvoPlayer.Common
     {
         private StoryboardsMap _map;
         private readonly IDictionary<string, SKBitmapHolder> _bitmaps;
-        private readonly IStoryboardSource _source;
+        private readonly IResource _mapResource;
         private readonly PreloadingStrategy _preloadingStrategy;
 
         public SKSize FrameSize => new SKSize(_map?.FrameWidth ?? 0, _map?.FrameHeight ?? 0);
@@ -46,27 +48,16 @@ namespace JuvoPlayer.Common
 
         public StoryboardReader(string jsonDescPath, PreloadingStrategy preloadingStrategy = PreloadingStrategy.DoNotPreload)
         {
-            _source = CreateStoryboardSource(jsonDescPath);
+            _mapResource = ResourceFactory.Create(jsonDescPath);
             _preloadingStrategy = preloadingStrategy;
             _bitmaps = new Dictionary<string, SKBitmapHolder>();
             LoadTask = LoadMap();
         }
 
-        private static IStoryboardSource CreateStoryboardSource(string path)
-        {
-            return IsRemotePath(path)
-                ? (IStoryboardSource) new RemoteStoryboardSource(path)
-                : new LocalStoryboardSource(path);
-        }
-
-        private static bool IsRemotePath(string path)
-        {
-            return path.StartsWith("http");
-        }
-
         private async Task LoadMap()
         {
-            _map = await _source.GetStoryboardsMap();
+            var text = await _mapResource.ReadAsStringAsync();
+            _map = JSONFileReader.DeserializeJsonText<StoryboardsMap>(text);
 
             if (!ShallPreloadBitmaps()) return;
             foreach (var storyboard in _map.Storyboards)
@@ -90,7 +81,7 @@ namespace JuvoPlayer.Common
 
         private bool HasRemoteSource()
         {
-            return _source.GetType() == typeof(RemoteStoryboardSource);
+            return _mapResource.GetType() == typeof(HttpResource);
         }
 
         public SubSkBitmap GetFrame(TimeSpan position)
@@ -141,7 +132,7 @@ namespace JuvoPlayer.Common
             var key = storyboard.Filename;
             if (_bitmaps.ContainsKey(key)) return _bitmaps[key];
 
-            var bitmapHolder = new SKBitmapHolder(_source.GetBitmap(storyboard));
+            var bitmapHolder = new SKBitmapHolder(_mapResource.Resolve(storyboard.Filename));
             _bitmaps[key] = bitmapHolder;
             return bitmapHolder;
         }
@@ -172,6 +163,7 @@ namespace JuvoPlayer.Common
             foreach (var bitmapHolder in _bitmaps.Values)
                 bitmapHolder.Dispose();
             _bitmaps.Clear();
+            _mapResource.Dispose();
         }
     }
 }

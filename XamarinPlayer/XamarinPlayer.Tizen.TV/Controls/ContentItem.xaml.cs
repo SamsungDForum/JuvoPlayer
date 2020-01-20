@@ -21,6 +21,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using JuvoLogger;
 using JuvoPlayer.Common;
+using JuvoPlayer.ResourceLoaders;
 using Nito.AsyncEx;
 using SkiaSharp;
 using SkiaSharp.Views.Forms;
@@ -38,6 +39,7 @@ namespace XamarinPlayer.Tizen.TV.Controls
         private ILogger _logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
         private SKBitmap _contentBitmap;
         private SubSkBitmap _previewBitmap;
+        private SKPaint _paint = new SKPaint {IsAntialias = true, Style = SKPaintStyle.Stroke, StrokeWidth = 3};
         private double _height;
         private bool _isFocused;
         private CancellationTokenSource _animationCts;
@@ -73,6 +75,8 @@ namespace XamarinPlayer.Tizen.TV.Controls
         public static readonly BindableProperty ContentTilePreviewPathProperty =
             BindableProperty.Create("ContentTilePreviewPath", typeof(string), typeof(ContentItem), default(string));
 
+        private static readonly string DefaultImagePath = "tiles/default_bg.png";
+
         public string ContentTilePreviewPath
         {
             set { SetValue(ContentTilePreviewPathProperty, value); }
@@ -92,9 +96,11 @@ namespace XamarinPlayer.Tizen.TV.Controls
                 try
                 {
                     _isFocused = true;
-#pragma warning disable 4014
-                    this.ScaleTo(0.9);
-#pragma warning restore 4014
+                    this.AbortAnimation("ScaleTo");
+                    await this.ScaleTo(0.9);
+                    if (!_isFocused)
+                        return;
+
                     InvalidateSurface();
 
                     if (ContentTilePreviewPath == null) return;
@@ -145,8 +151,9 @@ namespace XamarinPlayer.Tizen.TV.Controls
             }
 
             _isFocused = false;
+            this.AbortAnimation("ScaleTo");
             this.AbortAnimation("Animation");
-            this.ScaleTo(1, 334);
+            this.ScaleTo(1);
             _storyboardReader?.Dispose();
             _storyboardReader = null;
             _previewBitmap = null;
@@ -166,40 +173,57 @@ namespace XamarinPlayer.Tizen.TV.Controls
             var surface = e.Surface;
             var canvas = surface.Canvas;
 
-            canvas.Clear();
-
             var (bitmap, srcRect) = GetCurrentBitmap();
             if (bitmap == null)
                 return;
 
+            var dstRect = info.Rect;
             var borderColor = _isFocused ? FocusedColor : UnfocusedColor;
+            _paint.Color = borderColor;
 
             using (var path = new SKPath())
-            using (var roundRect = new SKRoundRect(info.Rect, 30, 30))
-            using (var paint = new SKPaint
-                {Color = borderColor, IsAntialias = true, Style = SKPaintStyle.Stroke, StrokeWidth = 3})
+            using (var roundRect = new SKRoundRect(dstRect, 30, 30))
             {
+                canvas.Clear();
                 path.AddRoundRect(roundRect);
                 canvas.ClipPath(path, antialias: true);
-                canvas.DrawBitmap(bitmap, srcRect, info.Rect);
-                canvas.DrawRoundRect(roundRect, paint);
+                canvas.DrawBitmap(bitmap, srcRect, dstRect);
+                canvas.DrawRoundRect(roundRect, _paint);
+            }
+        }
+
+        private async Task<SKBitmap> GetBitmap(string imagePath)
+        {
+            using (var resource = ResourceFactory.Create(imagePath))
+            {
+                return await Task.Run(async () =>
+                {
+                    using (var stream = await resource.ReadAsStreamAsync())
+                    {
+                        return SKBitmap.Decode(stream);
+                    }
+                });
             }
         }
 
         private async void LoadSkBitmap()
         {
-            var path = ContentImg;
-            var newBitmap = await Task.Run(() =>
+            SKBitmap newBitmap = null;
+            try
             {
-                using (var stream = new SKFileStream(path))
-                {
-                    return SKBitmap.Decode(stream);
-                }
-            });
-
-            _contentBitmap?.Dispose();
-            _contentBitmap = newBitmap;
-            InvalidateSurface();
+                newBitmap = await GetBitmap(ContentImg);
+            }
+            catch (Exception ex)
+            {
+                _logger.Error(ex);
+                newBitmap = await GetBitmap(DefaultImagePath);
+            }
+            finally
+            {
+                _contentBitmap?.Dispose();
+                _contentBitmap = newBitmap;
+                InvalidateSurface();
+            }
         }
 
         public void SetHeight(double height)

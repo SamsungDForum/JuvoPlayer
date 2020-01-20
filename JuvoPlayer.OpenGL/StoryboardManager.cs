@@ -17,15 +17,14 @@
 
 using System;
 using System.Collections.Generic;
-using System.IO;
 using JuvoPlayer.Common;
-using Tizen.Applications;
 
 namespace JuvoPlayer.OpenGL
 {
     class StoryboardManager
     {
         private static StoryboardManager Instance;
+
         public static StoryboardManager GetInstance()
         {
             return Instance ?? (Instance = new StoryboardManager());
@@ -35,20 +34,25 @@ namespace JuvoPlayer.OpenGL
         {
         }
 
-        private Dictionary<int, StoryboardReader> storyboardReaders = new Dictionary<int, StoryboardReader>();
-        private DllImports.GetStoryboardDataDelegate getStoryboardDataDelegate = GetStoryboardData; // so it's not GC-ed while used in native code
+        private readonly Dictionary<int, StoryboardReader> storyboardReaders = new Dictionary<int, StoryboardReader>();
+
+        private readonly DllImports.GetStoryboardDataDelegate
+            getStoryboardDataDelegate = GetStoryboardData; // so it's not GC-ed while used in native code
 
         public DllImports.GetStoryboardDataDelegate AddTile(int tileId)
         {
             if (ResourceLoader.GetInstance().ContentList[tileId].TilePreviewPath != null)
-                storyboardReaders.Add(tileId, new StoryboardReader(Path.Combine(Application.Current.DirectoryInfo.Resource, ResourceLoader.GetInstance().ContentList[tileId].TilePreviewPath)));
+                storyboardReaders.Add(tileId,
+                    new StoryboardReader(ResourceLoader.GetInstance().ContentList[tileId].TilePreviewPath,
+                        StoryboardReader.PreloadingStrategy.PreloadOnlyRemoteSources));
+
             return getStoryboardDataDelegate;
         }
 
         public static unsafe DllImports.StoryboardData GetStoryboardData(long position, int tileId)
         {
-            float TilePreviewTimeScale = 10.0f / 3.0f;
-            
+            const float TilePreviewTimeScale = 10.0f / 3.0f;
+
             if (!GetInstance().storyboardReaders.ContainsKey(tileId))
                 return new DllImports.StoryboardData
                 {
@@ -57,16 +61,19 @@ namespace JuvoPlayer.OpenGL
                     duration = 0
                 };
 
-            SubSkBitmap subSkBitmap = GetInstance().storyboardReaders[tileId].GetFrame(TimeSpan.FromMilliseconds(position) * TilePreviewTimeScale);
-            if(subSkBitmap == null)
+            var subSkBitmap = GetInstance().storyboardReaders[tileId]
+                .GetFrame(TimeSpan.FromMilliseconds(position) * TilePreviewTimeScale);
+            if (subSkBitmap == null)
                 return new DllImports.StoryboardData
                 {
                     isStoryboardReaderReady = 1,
                     isFrameReady = 0,
-                    duration = (long) (GetInstance().storyboardReaders[tileId].Duration().TotalMilliseconds / TilePreviewTimeScale)
+                    duration = (long) (GetInstance().storyboardReaders[tileId].Duration().TotalMilliseconds /
+                                       TilePreviewTimeScale)
                 };
 
-            return new DllImports.StoryboardData {
+            return new DllImports.StoryboardData
+            {
                 isStoryboardReaderReady = 1,
                 isFrameReady = 1,
                 frame = new DllImports.SubBitmap
@@ -77,11 +84,12 @@ namespace JuvoPlayer.OpenGL
                     rectBottom = subSkBitmap.SkRect.Bottom,
                     bitmapWidth = subSkBitmap.Bitmap.Width,
                     bitmapHeight = subSkBitmap.Bitmap.Height,
-                    bitmapInfoColorType = (int)SkiaUtils.ConvertToFormat(subSkBitmap.Bitmap.Info.ColorType),
-                    bitmapBytes = (byte*)subSkBitmap.Bitmap.GetPixels(),
+                    bitmapInfoColorType = (int) SkiaUtils.ConvertToFormat(subSkBitmap.Bitmap.Info.ColorType),
+                    bitmapBytes = (byte*) subSkBitmap.Bitmap.GetPixels(),
                     bitmapHash = subSkBitmap.SkRect.GetHashCode()
                 },
-                duration = (long)(GetInstance().storyboardReaders[tileId].Duration().TotalMilliseconds / TilePreviewTimeScale)
+                duration = (long) (GetInstance().storyboardReaders[tileId].Duration().TotalMilliseconds /
+                                   TilePreviewTimeScale)
             };
         }
     }

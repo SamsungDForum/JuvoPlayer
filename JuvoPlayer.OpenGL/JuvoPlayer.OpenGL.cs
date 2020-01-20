@@ -89,6 +89,7 @@ namespace JuvoPlayer.OpenGL
         protected override bool OnUpdate()
         {
             UpdateUI();
+            NativeActions.GetInstance().Execute();
             DllImports.Draw();
             return true;
         }
@@ -99,7 +100,6 @@ namespace JuvoPlayer.OpenGL
             if (!payloadParser.TryGetUrl(out var url))
                 return;
             HandleExternalTileSelection(url);
-
             base.OnAppControlReceived(e);
         }
 
@@ -108,6 +108,7 @@ namespace JuvoPlayer.OpenGL
 
         protected override void OnPause()
         {
+            base.OnPause();
             if (Player == null || Player.State != Common.PlayerState.Playing)
                 return;
 
@@ -117,6 +118,7 @@ namespace JuvoPlayer.OpenGL
 
         protected override void OnResume()
         {
+            base.OnResume();
             if (!_appPaused)
                 return;
 
@@ -199,9 +201,8 @@ namespace JuvoPlayer.OpenGL
 
         private void SetDefaultMenuState()
         {
-            _selectedTile = 0;
-            DllImports.SelectTile(_selectedTile, 0);
             _isMenuShown = false;
+
             DllImports.ShowLoader(1, 0);
 
             _lastKeyPressTime = DateTime.Now;
@@ -318,6 +319,9 @@ namespace JuvoPlayer.OpenGL
             _playerWindow.Show();
             _playerWindow.Lower();
 
+            _selectedTile = 0;
+            DllImports.SelectTile(_selectedTile, 0);
+
             if (_startedFromDeepLink)
                 HandleExternalPlaybackStart();
             else
@@ -354,7 +358,8 @@ namespace JuvoPlayer.OpenGL
 
         private unsafe void ShowAlert(string title, string body, string button)
         {
-            fixed (byte* titleBytes = ResourceLoader.GetBytes(title), bodyBytes = ResourceLoader.GetBytes(body), buttonBytes = ResourceLoader.GetBytes(button))
+            fixed (byte* titleBytes = ResourceLoader.GetBytes(title), bodyBytes =
+                ResourceLoader.GetBytes(body), buttonBytes = ResourceLoader.GetBytes(button))
             {
                 DllImports.ShowAlert(new DllImports.AlertData()
                 {
@@ -366,6 +371,7 @@ namespace JuvoPlayer.OpenGL
                     buttonLen = button.Length
                 });
             }
+
             _isAlertShown = true;
         }
 
@@ -661,14 +667,18 @@ namespace JuvoPlayer.OpenGL
                 Logger?.Info(
                     $"{(DateTime.Now - _lastKeyPressTime).TotalMilliseconds} ms of inactivity, hiding progress bar.");
             }
+
+            if (!_resourceLoader.IsLoadingFinished)
+                return;
+
             fixed (byte* name = ResourceLoader.GetBytes(_resourceLoader.ContentList[_selectedTile].Title))
             {
                 DllImports.UpdatePlaybackControls(new DllImports.PlaybackData()
                 {
                     show = _progressBarShown ? 1 : 0,
-                    state = (int)ToPlayerState(Player?.State ?? Common.PlayerState.Idle),
-                    currentTime = (int)_seekLogic.CurrentPositionUI.TotalMilliseconds,
-                    totalTime = (int)_seekLogic.Duration.TotalMilliseconds,
+                    state = (int) ToPlayerState(Player?.State ?? Common.PlayerState.Idle),
+                    currentTime = (int) _seekLogic.CurrentPositionUI.TotalMilliseconds,
+                    totalTime = (int) _seekLogic.Duration.TotalMilliseconds,
                     text = name,
                     textLen = _resourceLoader.ContentList[_selectedTile].Title.Length,
                     buffering = _bufferingInProgress ? 1 : 0,

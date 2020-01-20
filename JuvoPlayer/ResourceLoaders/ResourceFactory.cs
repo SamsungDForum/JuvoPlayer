@@ -1,6 +1,7 @@
 /*!
- * https://github.com/SamsungDForum/JuvoPlayer
- * Copyright 2018, Samsung Electronics Co., Ltd
+ *
+ * [https://github.com/SamsungDForum/JuvoPlayer])
+ * Copyright 2020, Samsung Electronics Co., Ltd
  * Licensed under the MIT license
  *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
@@ -13,34 +14,21 @@
  * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
  */
 
-using System.Threading.Tasks;
-
-namespace JuvoPlayer.OpenGL
+namespace JuvoPlayer.ResourceLoaders
 {
-    class FontResource : Resource
+    public static class ResourceFactory
     {
-        private readonly string _path;
-        private byte[] _data;
-
-        public FontResource(string path) : base()
+        public static IResource Create(string path)
         {
-            _path = path;
+            return IsRemotePath(path) ? (IResource) new HttpResource(path) : new FileResource(path);
         }
 
-        public override Task Load()
+        private static bool IsRemotePath(string path)
         {
-            _data = GetData(_path);
-            return Task.CompletedTask;
-        }
-
-        public override unsafe void Push()
-        {
-            fixed (byte* p = _data)
-            {
-                DllImports.AddFont(p, _data.Length);
-            }
+            return path.StartsWith("http");
         }
     }
 }
