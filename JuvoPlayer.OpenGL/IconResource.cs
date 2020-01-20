@@ -16,7 +16,6 @@
  */
 
 using System.Threading.Tasks;
-using Tizen;
 
 namespace JuvoPlayer.OpenGL
 {
