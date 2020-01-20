@@ -144,6 +144,9 @@ namespace JuvoPlayer.OpenGL
         [DllImport(GlUiLib, EntryPoint = "SetIcon")]
         public static extern void SetIcon(ImageData image); // needs to be called from OpenGL context synchronized method and thread
 
+        [DllImport(GlUiLib, EntryPoint = "SetLoaderLogo")]
+        public static extern void SetLoaderLogo(ImageData image); // needs to be called from OpenGL context synchronized method and thread
+
         // Menu management
 
         [DllImport(GlUiLib, EntryPoint = "ShowMenu")]
