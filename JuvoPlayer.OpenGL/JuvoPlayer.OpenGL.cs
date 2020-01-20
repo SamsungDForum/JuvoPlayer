@@ -151,18 +151,24 @@ namespace JuvoPlayer.OpenGL
             SetDefaultMenuState();
         }
 
-        private static unsafe void SetLoaderLogo(string path)
+        private async void SetLoaderLogo(string path)
         {
-            var imageData = Resource.GetImage(path).Result;
-            fixed (byte* pixels = imageData.Pixels)
-                DllImports.SetLoaderLogo(new DllImports.ImageData
+            var imageData = await Resource.GetImage(path);
+            NativeActions.GetInstance().Enqueue(() =>
+            {
+                unsafe
                 {
-                    id = 0,
-                    pixels = pixels,
-                    width = imageData.Width,
-                    height = imageData.Height,
-                    format = (int)imageData.Format
-                });
+                    fixed (byte* pixels = imageData.Pixels)
+                        DllImports.SetLoaderLogo(new DllImports.ImageData
+                        {
+                            id = 0,
+                            pixels = pixels,
+                            width = imageData.Width,
+                            height = imageData.Height,
+                            format = (int) imageData.Format
+                        });
+                }
+            });
         }
 
         private void SetMetrics()
