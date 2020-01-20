@@ -24,6 +24,7 @@ using System.Reactive.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using ElmSharp;
+using SkiaSharp;
 using Tizen.Applications;
 using Tizen.System;
 
@@ -137,6 +138,8 @@ namespace JuvoPlayer.OpenGL
 
         private void InitMenu()
         {
+            SetLoaderLogo(Path.Combine(Current.DirectoryInfo.SharedResource, "JuvoPlayerOpenGLNativeTizenTV.png"));
+
             _resourceLoader = ResourceLoader.GetInstance();
             _resourceLoader.LoadResources(
                 Path.GetDirectoryName(Path.GetDirectoryName(Current.ApplicationInfo.ExecutablePath)),
@@ -146,6 +149,26 @@ namespace JuvoPlayer.OpenGL
             SetMenuFooter();
             SetupOptionsMenu();
             SetDefaultMenuState();
+        }
+
+        private async void SetLoaderLogo(string path)
+        {
+            var imageData = await Resource.GetImage(path);
+            NativeActions.GetInstance().Enqueue(() =>
+            {
+                unsafe
+                {
+                    fixed (byte* pixels = imageData.Pixels)
+                        DllImports.SetLoaderLogo(new DllImports.ImageData
+                        {
+                            id = 0,
+                            pixels = pixels,
+                            width = imageData.Width,
+                            height = imageData.Height,
+                            format = (int) imageData.Format
+                        });
+                }
+            });
         }
 
         private void SetMetrics()
