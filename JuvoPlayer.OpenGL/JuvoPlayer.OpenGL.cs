@@ -138,7 +138,7 @@ namespace JuvoPlayer.OpenGL
 
         private void InitMenu()
         {
-            SetLoaderLogo(Path.Combine(Path.GetDirectoryName(Path.GetDirectoryName(Current.ApplicationInfo.ExecutablePath)), "shared", "res", "JuvoPlayerOpenGLNativeTizenTV.png"));
+            SetLoaderLogo(Path.Combine(Current.DirectoryInfo.SharedResource, "JuvoPlayerOpenGLNativeTizenTV.png"));
 
             _resourceLoader = ResourceLoader.GetInstance();
             _resourceLoader.LoadResources(
@@ -151,23 +151,18 @@ namespace JuvoPlayer.OpenGL
             SetDefaultMenuState();
         }
 
-        private unsafe void SetLoaderLogo(string path)
+        private static unsafe void SetLoaderLogo(string path)
         {
-            SKBitmap bitmap = SKBitmap.Decode(new SKFileStream(path));
-            if (!SkiaUtils.IsColorTypeSupported(bitmap.ColorType))
-                throw new Exception($"Unsupported color type: {bitmap.ColorType}!");
-
-            fixed (byte* pixels = bitmap.Bytes)
-            {
+            var imageData = Resource.GetImage(path).Result;
+            fixed (byte* pixels = imageData.Pixels)
                 DllImports.SetLoaderLogo(new DllImports.ImageData
                 {
                     id = 0,
                     pixels = pixels,
-                    width = bitmap.Width,
-                    height = bitmap.Height,
-                    format = (int)SkiaUtils.ConvertToFormat(bitmap.ColorType)
+                    width = imageData.Width,
+                    height = imageData.Height,
+                    format = (int)imageData.Format
                 });
-            }
         }
 
         private void SetMetrics()
