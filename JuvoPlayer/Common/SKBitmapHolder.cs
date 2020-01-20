@@ -18,8 +18,8 @@
  */
 
 using System;
-using System.IO;
 using System.Threading.Tasks;
+using JuvoPlayer.ResourceLoaders;
 using SkiaSharp;
 
 namespace JuvoPlayer.Common
@@ -29,12 +29,12 @@ namespace JuvoPlayer.Common
         private SKBitmap _bitmap;
         private bool _isDecoding;
         private bool _isFaulted;
-        private readonly Task<Stream> _streamTask;
+        private readonly IResource _resource;
         private bool IsDisposed { get; set; }
 
-        public SKBitmapHolder(Task<Stream> streamTask)
+        public SKBitmapHolder(IResource resource)
         {
-            _streamTask = streamTask;
+            _resource = resource;
         }
 
         public SKBitmap GetBitmap()
@@ -56,30 +56,34 @@ namespace JuvoPlayer.Common
 
         private async Task<SKBitmap> DecodeBitmap()
         {
-            using (var stream = await _streamTask)
+            using (var stream = await _resource.ReadAsStreamAsync())
                 return SKBitmap.Decode(stream);
         }
 
         private void OnBitmapDecoded(Task<SKBitmap> bitmapTask)
         {
             _isDecoding = false;
-            if (bitmapTask.Status != TaskStatus.RanToCompletion)
-            {
-                _isFaulted = true;
-                return;
-            }
 
             if (IsDisposed)
-                bitmapTask.Result.Dispose();
+            {
+                _resource.Dispose();
+                Task.Run(() => bitmapTask.Result.Dispose());
+            } else if (bitmapTask.Status != TaskStatus.RanToCompletion)
+                _isFaulted = true;
             else
                 _bitmap = bitmapTask.Result;
         }
 
         public void Dispose()
         {
-            if (IsDisposed) return;
-            _bitmap?.Dispose();
+            if (IsDisposed)
+                return;
             IsDisposed = true;
+            if (_isDecoding)
+                return;
+            _resource.Dispose();
+            if (_bitmap != null)
+                Task.Run(() => _bitmap.Dispose());
         }
     }
 }

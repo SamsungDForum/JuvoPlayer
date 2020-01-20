@@ -25,6 +25,7 @@
                                 RelativeLayout.XConstraint="{ConstraintExpression Type=RelativeToParent, Property=Width, Factor=0.3}">
                     <forms:CachedImage x:Name="ContentImage"
                                        Aspect="AspectFill"
+                                       ErrorPlaceholder="tiles/default_bg.png"
                                        RelativeLayout.HeightConstraint="{ConstraintExpression Type=RelativeToParent, Property=Height, Factor=1}"
                                        RelativeLayout.WidthConstraint="{ConstraintExpression Type=RelativeToParent, Property=Width, Factor=1}" />
                     <Image x:Name="BgImage"

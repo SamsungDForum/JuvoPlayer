@@ -17,7 +17,8 @@
 
 using System.IO;
 using System.Text;
-using JuvoLogger;
+using System.Threading.Tasks;
+using JuvoPlayer.ResourceLoaders;
 using SkiaSharp;
 using static JuvoPlayer.OpenGL.SkiaUtils;
 
@@ -25,7 +26,7 @@ namespace JuvoPlayer.OpenGL
 {
     abstract class Resource
     {
-        public abstract void Load();
+        public abstract Task Load();
 
         public abstract void Push(); // must be run from the main thread (thread with main OpenGL context)
 
@@ -34,9 +35,10 @@ namespace JuvoPlayer.OpenGL
             return Encoding.ASCII.GetBytes(str);
         }
 
-        protected ImageData GetImage(string path)
+        protected async Task<ImageData> GetImage(string path)
         {
-            using (var stream = new SKFileStream(path))
+            using (var resource = ResourceFactory.Create(path))
+            using (var stream = await resource.ReadAsStreamAsync())
             using (var bitmap = SKBitmap.Decode(stream))
             {
                 ConvertBitmapIfNecessary(bitmap);
