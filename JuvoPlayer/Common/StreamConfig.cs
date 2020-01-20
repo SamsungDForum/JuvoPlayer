@@ -15,7 +15,6 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-using JuvoPlayer.Common.Utils;
 using JuvoPlayer.Utils;
 
 namespace JuvoPlayer.Common
@@ -25,6 +24,11 @@ namespace JuvoPlayer.Common
         public byte[] CodecExtraData = null;
 
         public abstract StreamType StreamType();
+
+        public virtual bool IsCompatible(StreamConfig other)
+        {
+            return StreamType() == other.StreamType();
+        }
 
         public override string ToString()
         {

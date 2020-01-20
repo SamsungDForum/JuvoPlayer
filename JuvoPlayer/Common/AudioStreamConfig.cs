@@ -73,6 +73,11 @@ namespace JuvoPlayer.Common
 
         // Audio compatibility criteria: 
         // All parameters must match
-        public bool Compatible(AudioStreamConfig other) => Equals(other);
+        public override bool IsCompatible(StreamConfig other)
+        {
+            return other != null &&
+                   base.IsCompatible(other) && 
+                   Equals(other);
+        } 
     }
 }

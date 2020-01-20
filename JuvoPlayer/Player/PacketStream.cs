@@ -78,14 +78,14 @@ namespace JuvoPlayer.Player
             if (config.StreamType() != streamType)
                 throw new ArgumentException("config type doesn't match");
 
+            if (this.config != null && this.config.Equals(config))
+                return;
+
             if (config is BufferStreamConfig)
             {
                 player.SetStreamConfig(config);
                 return;
             }
-
-            if (this.config != null && this.config.Equals(config))
-                return;
 
             forceDrmChange = (this.config != null);
 

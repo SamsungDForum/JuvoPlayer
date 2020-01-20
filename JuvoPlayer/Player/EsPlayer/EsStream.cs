@@ -56,12 +56,6 @@ namespace JuvoPlayer.Player.EsPlayer
     /// </summary>
     internal class EsStream : IDisposable
     {
-        internal enum SetStreamConfigResult
-        {
-            SetConfiguration,
-            QueueConfiguration
-        }
-
         private readonly ILogger logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
 
         /// Delegate holding PushConfigMethod. Different for Audio and Video
@@ -81,11 +75,12 @@ namespace JuvoPlayer.Player.EsPlayer
         // Stream type for this instance to EsStream.
         private readonly StreamType streamType;
 
-        public StreamType GetStreamType() => streamType;
-
         // Buffer configuration and supporting info
-        public BufferConfigurationPacket CurrentConfig { get; internal set; }
-        public BufferConfigurationPacket LastQueuedConfig { get; set; }
+        //public BufferConfigurationPacket CurrentConfig { get; internal set; }
+        //public BufferConfigurationPacket LastQueuedConfig { get; set; }
+
+        public StreamConfig CurrentConfig { get; internal set; }
+        public StreamConfig LastQueuedConfig { get; internal set; }
 
         public bool IsConfigured => (CurrentConfig != null);
         public bool HaveConfig => (LastQueuedConfig != null);
@@ -154,12 +149,12 @@ namespace JuvoPlayer.Player.EsPlayer
         /// Configured stream - stream config will be enqueue in packet storage
         /// and processed once retrieved.
         /// </summary>
-        /// <param name="bufferConfig">BufferConfigurationPacket</param>
-        public void StoreConfiguration(BufferConfigurationPacket bufferConfig)
+        /// <param name="config">stream configuration</param>
+        public void StoreConfiguration(StreamConfig config)
         {
             logger.Info($"{streamType}");
 
-            LastQueuedConfig = bufferConfig;
+            LastQueuedConfig = config;
         }
 
         /// <summary>
@@ -171,7 +166,7 @@ namespace JuvoPlayer.Player.EsPlayer
         {
             logger.Info($"{streamType}");
 
-            PushStreamConfig(LastQueuedConfig.Config);
+            PushStreamConfig(LastQueuedConfig);
             CurrentConfig = LastQueuedConfig;
         }
 
@@ -340,9 +335,14 @@ namespace JuvoPlayer.Player.EsPlayer
                     break;
 
                 case BufferConfigurationPacket bufferConfigPacket:
-                    CurrentConfig = bufferConfigPacket;
+                    // Video is always compatible
+                    var isCompatible = CurrentConfig.StreamType() == StreamType.Video
+                                       || (CurrentConfig.StreamType() == StreamType.Audio
+                                            && !CurrentConfig.IsCompatible(bufferConfigPacket.Config));
 
-                    if (CurrentConfig.StreamType == StreamType.Audio && !CurrentConfig.Compatible(bufferConfigPacket))
+                    CurrentConfig = bufferConfigPacket.Config;
+
+                    if (!isCompatible)
                     {
                         logger.Warn($"{streamType}: Incompatible Stream config change.");
                         streamReconfigureSubject.OnNext(Unit.Default);
