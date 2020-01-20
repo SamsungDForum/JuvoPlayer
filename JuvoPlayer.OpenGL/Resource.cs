@@ -35,7 +35,7 @@ namespace JuvoPlayer.OpenGL
             return Encoding.ASCII.GetBytes(str);
         }
 
-        protected async Task<ImageData> GetImage(string path)
+        public static async Task<ImageData> GetImage(string path)
         {
             using (var resource = ResourceFactory.Create(path))
             using (var stream = await resource.ReadAsStreamAsync())
