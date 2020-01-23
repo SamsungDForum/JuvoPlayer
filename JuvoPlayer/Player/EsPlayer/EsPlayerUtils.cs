@@ -115,6 +115,7 @@ namespace JuvoPlayer.Player.EsPlayer
         {
             dispatchMap[(typeof(Packet), typeof(INativeDataStorage))] = SubmitManagedPriv;
             dispatchMap[(typeof(Packet), typeof(IManagedDataStorage))] = SubmitManagedPriv;
+            dispatchMap[(typeof(CodecDataPacket), typeof(IManagedDataStorage))] = SubmitManagedPriv;
             dispatchMap[(typeof(DecryptedEMEPacket), null)] = (player, packet) =>
                 SubmitDecryptedPriv(player, (DecryptedEMEPacket)packet);
             dispatchMap[(typeof(EOSPacket), null)] = (player, packet) => SubmitEOSPriv(player, (EOSPacket)packet);

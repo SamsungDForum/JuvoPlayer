@@ -18,6 +18,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.InteropServices;
 using JuvoLogger;
 using JuvoPlayer.Common;
 
@@ -49,6 +50,28 @@ namespace JuvoPlayer.Player
             if (!packet.IsKeyFrame)
                 return;
 
+            var storage = new ManagedDataStorage
+            {
+                Data = new byte[packet.Storage.Length + parsedExtraData.Length]
+            };
+            
+            var codecSourceSpan = parsedExtraData.AsSpan();
+            var codecDestSpan = storage.Data.AsSpan();
+            codecSourceSpan.CopyTo(codecDestSpan);
+
+            //Array.Copy(storage.Data,parsedExtraData,parsedExtraData.Length);
+
+            Span<byte> frameSourceSpan;
+            unsafe
+            {
+                frameSourceSpan = new Span<byte>(((INativeDataStorage)packet.Storage).Data,packet.Storage.Length);
+            }
+
+            var frameDestSpan = storage.Data.AsSpan(parsedExtraData.Length);
+            frameSourceSpan.CopyTo(frameDestSpan);
+            packet.Storage.Dispose();
+            packet.Storage = storage;
+            /*
             var configPacket = new Packet
             {
                 Storage = new ManagedDataStorage
@@ -57,11 +80,12 @@ namespace JuvoPlayer.Player
                 },
                 Dts = packet.Dts,
                 Pts = packet.Pts,
-                IsKeyFrame = true,
+                //IsKeyFrame = true,
                 StreamType = StreamType.Video
             };
 
             player.AppendPacket(configPacket);
+            */
         }
 
         public void OnStreamConfigChanged(StreamConfig config)
