@@ -43,6 +43,7 @@
     <PackageReference Include="Nito.AsyncEx" Version="5.0.0-pre-05" />
     <PackageReference Include="Nito.AsyncEx.Context" Version="5.0.0-pre-05" />
     <PackageReference Include="Overby.Extensions.AsyncBinaryReaderWriter" Version="1.0.39" />
+    <PackageReference Include="System.Memory" Version="4.5.3" />
     <PackageReference Include="System.Reactive" Version="4.1.2" />
     <PackageReference Include="System.Text.Encoding.CodePages" Version="4.5.0" />
     <PackageReference Include="System.Threading.Channels" Version="4.5.0" />
