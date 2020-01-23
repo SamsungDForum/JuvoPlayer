@@ -1,6 +1,6 @@
 'use strict';
 import React from 'react';
-import {View, Image, ScrollView, NativeModules, NativeEventEmitter, Dimensions, DeviceEventEmitter} from 'react-native';
+import { View, Image, ScrollView, NativeModules, NativeEventEmitter, Dimensions, DeviceEventEmitter } from 'react-native';
 
 import ContentPicture from './ContentPicture';
 import ContentDescription from './ContentDescription';

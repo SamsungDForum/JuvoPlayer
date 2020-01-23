@@ -69,8 +69,8 @@ export default class ContentCatalog extends Component {
     }
   }
   onTVKeyUp(pressed) {
-    if (this.keysListenningOff) return;
     DeviceEventEmitter.emit('ContentScroll/onTVKeyUp', pressed);
+    if (this.keysListenningOff) return;
     this.bigPictureVisible = true;
     this.rerender();
   }
