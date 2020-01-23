@@ -36,8 +36,13 @@
   <!-- If solution already has PCL project, will reference -->
   <!-- Include Nuget Package for Tizen Project building -->
   <ItemGroup>
-    <PackageReference Include="SkiaSharp.Views.Forms" Version="1.60.3" />
-    <PackageReference Include="Xamarin.Forms" Version="3.5.0.274416" />
+    <PackageReference Include="Xamarin.Forms" Version="4.4.0.991477" />
+    <Reference Include="SkiaSharp.Views.Forms, Version=1.60.0.0, Culture=neutral, PublicKeyToken=null">
+      <HintPath>packages\SkiaSharp.Views.Forms.dll</HintPath>
+    </Reference>
+    <Reference Include="SkiaSharp.Views.Tizen, Version=1.60.0.0, Culture=neutral, PublicKeyToken=0738eb9f132ed756">
+      <HintPath>packages\SkiaSharp.Views.Tizen.dll</HintPath>
+    </Reference>
     <Reference Include="FFImageLoading, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null">
       <HintPath>packages\FFImageLoading.dll</HintPath>
     </Reference>
