@@ -50,6 +50,7 @@ export default class ContentCatalog extends Component {
     //There are two parameters available:
     //pressed.KeyName
     //pressed.KeyCode
+    DeviceEventEmitter.emit('ContentScroll/onTVKeyDown', pressed);
     if (this.keysListenningOff) return;
     switch (pressed.KeyName) {
       case 'XF86AudioStop':
@@ -68,6 +69,7 @@ export default class ContentCatalog extends Component {
     }
   }
   onTVKeyUp(pressed) {
+    DeviceEventEmitter.emit('ContentScroll/onTVKeyUp', pressed);
     if (this.keysListenningOff) return;
     this.bigPictureVisible = true;
     this.rerender();
