@@ -215,10 +215,12 @@ export default class PlaybackView extends React.Component {
         break;
       case 'XF86Back':
       case 'XF86AudioStop':
-        if (this.playbackInfoInterval == -1) {
+        if (this.onScreenTimeOut == -1) {
           this.toggleView();
         } else {
           this.stopPlaybackTime();
+          this.operationInProgress = false;
+          this.rerender();
         }
         break;
       case 'Up':
@@ -274,12 +276,15 @@ export default class PlaybackView extends React.Component {
     if (this.playbackInfoInterval >= 0) {
       clearInterval(this.playbackInfoInterval);
       this.playbackInfoInterval = -1;
-      this.stopInProgressAnimation();
     }
+    this.stopInProgressAnimation();
   }
   stopInProgressAnimation() {
-    clearTimeout(this.onScreenTimeOut);
-    this.onScreenTimeOut = -1;
+    if (this.onScreenTimeOut >= 0) {
+      clearTimeout(this.onScreenTimeOut);
+      this.onScreenTimeOut = -1;
+      this.showingSettingsView = false;
+    }
   }
   refreshPlaybackInfo() {
     this.onScreenTimeOut = setTimeout(this.handlePlaybackInfoDisappeard, 10000);
