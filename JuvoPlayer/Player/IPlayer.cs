@@ -34,6 +34,9 @@ namespace JuvoPlayer.Player
         Task Pause();
         Task Play();
         Task Seek(TimeSpan time);
+        Task Suspend();
+        Task Resume();
+
         void SetDuration(TimeSpan duration);
         void SetPlaybackRate(float rate);
         void Stop();

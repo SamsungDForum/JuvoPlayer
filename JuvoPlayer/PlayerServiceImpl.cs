@@ -20,6 +20,7 @@ using System.Collections.Generic;
 using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
+using System.Threading;
 using System.Threading.Tasks;
 using ElmSharp;
 using JuvoLogger;
@@ -113,7 +114,7 @@ namespace JuvoPlayer
                 playerController.PlaybackError().Subscribe( _playerErrorSubject),
                 playerController.BufferingProgress().Subscribe(_playerBufferingSubject),
                 playerController.PlayerClock().Subscribe(_playerClockSubject),
-                playerController.TimeUpdated().Subscribe(SetClock)
+                playerController.TimeUpdated().Subscribe(SetClock,SynchronizationContext.Current)
             };
         }
 
@@ -169,6 +170,7 @@ namespace JuvoPlayer
 
             if (!dataProvider.IsDataAvailable())
             {
+                // Live content
                 RestartPlayerController();
             }
 
@@ -198,6 +200,16 @@ namespace JuvoPlayer
             playerController.OnStop();
             drmManager.ClearCache();
             connector.Dispose();
+        }
+
+        public Task Suspend()
+        {
+            return playerController.OnSuspend();
+        }
+
+        public Task Resume()
+        {
+            return playerController.OnResume();
         }
 
         public void Dispose()

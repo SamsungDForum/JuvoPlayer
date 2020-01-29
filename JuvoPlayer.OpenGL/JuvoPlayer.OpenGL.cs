@@ -110,11 +110,9 @@ namespace JuvoPlayer.OpenGL
         protected override void OnPause()
         {
             base.OnPause();
-            if (Player == null || Player.State != Common.PlayerState.Playing)
-                return;
+            Player?.Suspend();
 
             _appPaused = true;
-            Player.Pause();
         }
 
         protected override void OnResume()
@@ -129,7 +127,7 @@ namespace JuvoPlayer.OpenGL
             {
                 ShowMenu(false);
                 KeyPressedMenuUpdate(); // Playback UI should be visible when starting playback after app execution is resumed
-                Player.Start();
+                Player.Resume();
                 return;
             }
 
@@ -165,7 +163,7 @@ namespace JuvoPlayer.OpenGL
                             pixels = pixels,
                             width = imageData.Width,
                             height = imageData.Height,
-                            format = (int) imageData.Format
+                            format = (int)imageData.Format
                         });
                 }
             });
@@ -173,10 +171,10 @@ namespace JuvoPlayer.OpenGL
 
         private void SetMetrics()
         {
-            _systemMemoryBottom = (float) _systemMemoryUsage.Used / 1024;
-            _systemMemoryTop = (float) _systemMemoryUsage.Total / 1024;
-            _systemMemoryUsageGraphId = _metricsHandler.AddMetric("MEM", (float) _systemMemoryUsage.Used / 1024,
-                (float) _systemMemoryUsage.Total / 1024, 100,
+            _systemMemoryBottom = (float)_systemMemoryUsage.Used / 1024;
+            _systemMemoryTop = (float)_systemMemoryUsage.Total / 1024;
+            _systemMemoryUsageGraphId = _metricsHandler.AddMetric("MEM", (float)_systemMemoryUsage.Used / 1024,
+                (float)_systemMemoryUsage.Total / 1024, 100,
                 () =>
                 {
                     try
@@ -188,14 +186,14 @@ namespace JuvoPlayer.OpenGL
                         /* ignore */
                     }
 
-                    if (_systemMemoryBottom > (float) _systemMemoryUsage.Used / 1024)
+                    if (_systemMemoryBottom > (float)_systemMemoryUsage.Used / 1024)
                     {
-                        _systemMemoryBottom = (float) _systemMemoryUsage.Used / 1024;
+                        _systemMemoryBottom = (float)_systemMemoryUsage.Used / 1024;
                         _metricsHandler.UpdateGraphRange(_systemMemoryUsageGraphId, _systemMemoryBottom,
                             _systemMemoryTop);
                     }
 
-                    return (float) _systemMemoryUsage.Used / 1024;
+                    return (float)_systemMemoryUsage.Used / 1024;
                 });
 
             _metricsHandler.AddMetric("CPU", 0, 100, 100,
@@ -210,7 +208,7 @@ namespace JuvoPlayer.OpenGL
                         /* ignore */
                     } // underlying code is broken - it takes only one sample from /proc/stat, so it's giving average load from system boot till now (like "top -n1" => us + sy + ni)
 
-                    return (float) (_systemCpuUsage.User + _systemCpuUsage.Nice + _systemCpuUsage.System);
+                    return (float)(_systemCpuUsage.User + _systemCpuUsage.Nice + _systemCpuUsage.System);
                 });
         }
 
@@ -699,9 +697,9 @@ namespace JuvoPlayer.OpenGL
                 DllImports.UpdatePlaybackControls(new DllImports.PlaybackData()
                 {
                     show = _progressBarShown ? 1 : 0,
-                    state = (int) ToPlayerState(Player?.State ?? Common.PlayerState.Idle),
-                    currentTime = (int) _seekLogic.CurrentPositionUI.TotalMilliseconds,
-                    totalTime = (int) _seekLogic.Duration.TotalMilliseconds,
+                    state = (int)ToPlayerState(Player?.State ?? Common.PlayerState.Idle),
+                    currentTime = (int)_seekLogic.CurrentPositionUI.TotalMilliseconds,
+                    totalTime = (int)_seekLogic.Duration.TotalMilliseconds,
                     text = name,
                     textLen = _resourceLoader.ContentList[_selectedTile].Title.Length,
                     buffering = _bufferingInProgress ? 1 : 0,

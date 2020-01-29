@@ -47,7 +47,7 @@ namespace JuvoReactNative
 
         private void OnDeepLinkReceived(string url)
         {
-            SendEvent("handleDeepLink", new JObject {{"url", url}});
+            SendEvent("handleDeepLink", new JObject { { "url", url } });
         }
 
         private void InitializeJuvoPlayer()
@@ -151,9 +151,11 @@ namespace JuvoReactNative
         }
         public void OnResume()
         {
+            Player.Resume();
         }
         public void OnSuspend()
         {
+            Player.Suspend();
         }
 
         private void UpdateBufferingProgress(int percent)

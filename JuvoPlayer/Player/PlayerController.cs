@@ -85,6 +85,7 @@ namespace JuvoPlayer.Player
         {
             return player.PlayerClock();
         }
+        
 
         public void OnClipDurationChanged(TimeSpan duration)
         {
@@ -147,6 +148,16 @@ namespace JuvoPlayer.Player
                 stream.OnClearStream();
 
             player.Stop();
+        }
+
+        public Task OnSuspend()
+        {
+            return player.Suspend();
+        }
+
+        public Task OnResume()
+        {
+            return player.Resume();
         }
 
         public void OnStreamConfigReady(StreamConfig config)

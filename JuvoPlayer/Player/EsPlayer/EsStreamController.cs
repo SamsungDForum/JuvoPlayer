@@ -32,7 +32,6 @@ using JuvoPlayer.Common;
 using JuvoPlayer.Utils;
 using Nito.AsyncEx.Synchronous;
 using System.Runtime.InteropServices;
-using Nito.AsyncEx;
 using AsyncLock = Nito.AsyncEx.AsyncLock;
 using PlayerState = JuvoPlayer.Common.PlayerState;
 
@@ -58,10 +57,8 @@ namespace JuvoPlayer.Player.EsPlayer
 
         // event callbacks
         private readonly Subject<string> playbackErrorSubject = new Subject<string>();
-        private readonly Subject<PlayerState> stateChangedSubject = new Subject<PlayerState>();
-
-        // Support for merged Pause()/Resume()/Buffering(on/off)
-        private readonly SuspendResumeLogic _suspendResumeLogic;
+        private readonly BehaviorSubject<PlayerState> stateChangedSubject =
+            new BehaviorSubject<PlayerState>(PlayerState.Idle);
 
         // Returns configuration status of all underlying streams.
         // True - all initialized streams are configures
@@ -69,10 +66,12 @@ namespace JuvoPlayer.Player.EsPlayer
         private bool AllStreamsConfigured => esStreams.All(streamEntry =>
             streamEntry?.IsConfigured ?? true);
 
+        private bool AllStreamsHaveConfiguration => esStreams.All(streamEntry =>
+            streamEntry?.HaveConfiguration ?? true);
         public IPlayerClient Client { get; set; }
 
         // Termination & serialization objects for async operations.
-        private readonly CancellationTokenSource activeTaskCts = new CancellationTokenSource();
+        private CancellationTokenSource activeTaskCts = new CancellationTokenSource();
         private readonly AsyncLock asyncOpSerializer = new AsyncLock();
         private volatile Task _firstPacketTask = Task.CompletedTask;
 
@@ -85,7 +84,9 @@ namespace JuvoPlayer.Player.EsPlayer
         private readonly IScheduler _clockScheduler = new EventLoopScheduler();
         private readonly PlayerClockProvider _playerClock;
         private readonly DataClockProvider _dataClock;
+
         private TimeSpan _suspendClock;
+        private ESPlayer.ESPlayerState _suspendState;
 
         #region Public API
 
@@ -100,9 +101,8 @@ namespace JuvoPlayer.Player.EsPlayer
 
             dataSynchronizer.Initialize(stream);
 
-            var esStream = new EsStream(stream, packetStorage, dataSynchronizer, _suspendResumeLogic, _playerClock);
+            var esStream = new EsStream(stream, packetStorage, dataSynchronizer, _playerClock);
             esStream.SetPlayer(player);
-
             streamReconfigureSubs[(int)stream] = esStream.StreamReconfigure()
                 .Subscribe(async _ => await OnStreamReconfigure(), SynchronizationContext.Current);
             playbackErrorSubs[(int)stream] = esStream.PlaybackError()
@@ -120,16 +120,11 @@ namespace JuvoPlayer.Player.EsPlayer
 
         public EsStreamController(EsPlayerPacketStorage storage, Window window)
         {
+            if (SynchronizationContext.Current == null)
+                throw new ArgumentNullException(nameof(SynchronizationContext.Current));
+
             _playerClock = new PlayerClockProvider(_clockScheduler);
             _dataClock = new DataClockProvider(_clockScheduler, _playerClock);
-            _suspendResumeLogic = new SuspendResumeLogic(asyncOpSerializer, SuspendPlayback, ResumePlayback, SetPlayerState,
-                GetVideoPlayerState, SetDataTransferState, activeTaskCts.Token);
-
-            displayWindow = window;
-
-            CreatePlayer();
-
-            packetStorage = storage;
 
             // Create placeholder to data streams & chunk states
             esStreams = new EsStream[(int)StreamType.Count];
@@ -137,7 +132,10 @@ namespace JuvoPlayer.Player.EsPlayer
             playbackErrorSubs = new IDisposable[(int)StreamType.Count];
             dataSynchronizer = new Synchronizer(_playerClock);
 
-            AttachEventHandlers();
+            packetStorage = storage;
+            displayWindow = window;
+
+            OpenPlayer();
         }
 
         private PlayerClockFn CreatePlayerClockFunction(ESPlayer.ESPlayer playerInstance)
@@ -162,7 +160,7 @@ namespace JuvoPlayer.Player.EsPlayer
             return Del;
         }
 
-        private void CreatePlayer()
+        private void OpenPlayer()
         {
             logger.Info("");
             player = new ESPlayer.ESPlayer();
@@ -175,6 +173,16 @@ namespace JuvoPlayer.Player.EsPlayer
             resourceConflict = false;
 
             _playerClock.SetPlayerClockSource(CreatePlayerClockFunction(player));
+
+            AttachEventHandlers();
+        }
+
+        private void SetPlayer()
+        {
+            logger.Info("");
+
+            foreach (var stream in esStreams)
+                stream?.SetPlayer(player);
         }
 
         private void AttachEventHandlers()
@@ -198,24 +206,33 @@ namespace JuvoPlayer.Player.EsPlayer
             try
             {
                 if (config.Config is BufferStreamConfig metaData)
+                {
                     await _dataClock.UpdateBufferDepth(metaData.StreamType(), metaData.BufferDuration);
+                    return;
+                }
 
-                var pushResult = esStreams[(int)streamType].SetStreamConfiguration(config);
+                esStreams[(int)streamType].StoreStreamConfiguration(config);
 
-                if (pushResult == EsStream.SetStreamConfigResult.QueueConfiguration)
+                if (esStreams[(int)streamType].IsConfigured)
                 {
                     AppendPacket(config);
                     return;
                 }
 
-                esStreams[(int)streamType].PushStreamConfiguration();
-
                 // Check if all initialized streams are configured
-                if (!AllStreamsConfigured)
+                if (!AllStreamsHaveConfiguration)
                     return;
 
+                if (activeTaskCts.IsCancellationRequested)
+                    return;
+
+                UpdatePlayerConfiguration();
+                SetPlayerConfiguration();
                 var token = activeTaskCts.Token;
-                await StreamPrepare(token);
+
+                await PreparePlayback(token);
+                SetState(PlayerState.Prepared);
+
             }
             catch (NullReferenceException)
             {
@@ -245,9 +262,6 @@ namespace JuvoPlayer.Player.EsPlayer
         /// </summary>
         public async Task Play()
         {
-            var state = player.GetState();
-            logger.Info($"{state}");
-
             if (!AllStreamsConfigured)
             {
                 logger.Info("Initialized streams are not configured. Start will occur after receiving configurations");
@@ -260,35 +274,26 @@ namespace JuvoPlayer.Player.EsPlayer
                 if (token.IsCancellationRequested)
                     return;
 
-                if (resourceConflict)
-                {
-                    logger.Info("Player Resource conflict. Trying to restart");
-                    await RestartPlayer(token);
-                    return;
-                }
+                var state = player.GetState();
 
-                var asyncOpRunning = IsAsyncOpRunning();
-                logger.Info($"Async Op Running: {asyncOpRunning}");
                 switch (state)
                 {
                     case ESPlayer.ESPlayerState.Playing:
                         return;
 
                     case ESPlayer.ESPlayerState.Ready:
-                        await StreamStart(token);
-                        return;
-
-                    case ESPlayer.ESPlayerState.Paused when asyncOpRunning:
-                        stateChangedSubject.OnNext(PlayerState.Playing);
-                        return;
+                        await StartPlayback(token);
+                        break;
 
                     case ESPlayer.ESPlayerState.Paused:
-                        await _suspendResumeLogic.RequestPlay();
-                        return;
+                        await ResumePlayback(token);
+                        break;
 
                     default:
                         throw new InvalidOperationException($"Play called in invalid state: {state}");
                 }
+
+                SetState(PlayerState.Playing);
             }
             catch (InvalidOperationException ioe)
             {
@@ -305,9 +310,7 @@ namespace JuvoPlayer.Player.EsPlayer
         /// </summary>
         public Task Pause()
         {
-            logger.Info("");
-
-            return _suspendResumeLogic.RequestPause();
+            return PausePlayback(activeTaskCts.Token);
         }
 
         /// <summary>
@@ -323,12 +326,11 @@ namespace JuvoPlayer.Player.EsPlayer
 
             try
             {
-                _dataClock.Stop();
-                DisableTransfer();
+                StopTransfer();
                 StopClockGenerator();
 
                 player.Stop();
-                stateChangedSubject.OnNext(PlayerState.Idle);
+                SetState(PlayerState.Idle);
             }
             catch (InvalidOperationException ioe)
             {
@@ -346,7 +348,6 @@ namespace JuvoPlayer.Player.EsPlayer
                 var resumeNeeded = player.GetState() == ESPlayer.ESPlayerState.Paused;
                 if (resumeNeeded)
                 {
-                    _suspendResumeLogic.SetAsyncOpRunningState(true);
 
                     await stateChangedSubject
                         .AsObservable()
@@ -355,7 +356,6 @@ namespace JuvoPlayer.Player.EsPlayer
 
                     token.ThrowIfCancellationRequested();
 
-                    _suspendResumeLogic.SetAsyncOpRunningState(false);
                 }
 
                 await SeekStreamInitialize(token);
@@ -400,6 +400,169 @@ namespace JuvoPlayer.Player.EsPlayer
             }
         }
 
+        public async Task Suspend()
+        {
+            if (activeTaskCts.IsCancellationRequested)
+                return;
+
+            _suspendState = player.GetState();
+
+            switch (_suspendState)
+            {
+                // Suspend while playing. Pause playback.
+                case ESPlayer.ESPlayerState.Playing:
+                    await PausePlayback(activeTaskCts.Token);
+                    break;
+
+                // Suspend while paused. Nothing to do.
+                case ESPlayer.ESPlayerState.Paused:
+                    break;
+
+                // Suspend during startup. Stop transfer
+                default:
+                    _suspendClock = TimeSpan.Zero;
+                    StopTransfer();
+                    StopClockGenerator();
+                    break;
+            }
+
+            // Cancel token. During prepare, will send player to Davy Jones locker and prevent event
+            // generation via SetState().
+            activeTaskCts.Cancel();
+
+            logger.Info($"Suspended {_suspendState}/{_suspendClock}");
+        }
+
+        public async Task Resume()
+        {
+            if (!activeTaskCts.IsCancellationRequested)
+                return;
+
+            activeTaskCts = new CancellationTokenSource();
+            var token = activeTaskCts.Token;
+            var wasConflicted = resourceConflict;
+
+            logger.Info($"Resuming {_suspendState}/{_suspendClock} Conflicted: {resourceConflict}");
+
+            // If suspend happened before or during PrepareAsync, suspend state will be Idle
+            // There is no state "have configuration" based on which prepare operation would be invoked,
+            // as such we need to get to Ready state when suspend occured in Idle
+            var targetState = _suspendState == ESPlayer.ESPlayerState.Idle
+                ? ESPlayer.ESPlayerState.Ready : _suspendState;
+
+            var resumeState = ESPlayer.ESPlayerState.None;
+
+            // Loop through startup states till target state reached.
+            do
+            {
+                switch (resumeState)
+                {
+                    // Player conflict. ReCreate player
+                    case ESPlayer.ESPlayerState.None when wasConflicted:
+                        ClosePlayer();
+                        OpenPlayer();
+                        SetPlayer();
+                        resumeState = ESPlayer.ESPlayerState.Idle;
+                        break;
+
+                    // Player untouched. Move along
+                    case ESPlayer.ESPlayerState.None:
+                        logger.Info($"{resumeState}");
+                        resumeState = ESPlayer.ESPlayerState.Idle;
+                        break;
+
+                    // Player Conflict. New player created.
+                    case ESPlayer.ESPlayerState.Idle when wasConflicted:
+
+                        // Push current configuration (if available)
+                        if (!AllStreamsHaveConfiguration)
+                        {
+                            logger.Info(
+                                $"Have Configuration. Audio: {esStreams[(int)StreamType.Audio].HaveConfiguration}  Video: {esStreams[(int)StreamType.Video].HaveConfiguration}");
+                            return;
+                        }
+
+                        SetPlayerConfiguration();
+
+                        // Set data clock to suspend time and perform preparation
+                        var dataClock = _suspendClock == PlayerClockProviderConfig.InvalidClock
+                            ? TimeSpan.Zero
+                            : _suspendClock;
+
+                        await Task.WhenAll(_dataClock.SetClock(dataClock, token), PreparePlayback(token));
+                        if (token.IsCancellationRequested)
+                            return;
+
+                        resumeState = ESPlayer.ESPlayerState.Ready;
+                        break;
+
+                    // Player untouched. Suspend occured before or during prepare async.
+                    case ESPlayer.ESPlayerState.Idle when _suspendState == ESPlayer.ESPlayerState.Idle:
+
+                        // Push current configuration (if available)
+                        if (!AllStreamsHaveConfiguration)
+                        {
+                            logger.Info(
+                                $"Have Configuration. Audio: {esStreams[(int)StreamType.Audio].HaveConfiguration}  Video: {esStreams[(int)StreamType.Video].HaveConfiguration}");
+                            return;
+                        }
+
+                        SetPlayerConfiguration();
+                        // Do prepare. No need to set data clock.
+                        await PreparePlayback(token);
+                        if (token.IsCancellationRequested)
+                            return;
+
+                        resumeState = ESPlayer.ESPlayerState.Ready;
+                        break;
+
+                    // Player untouched. Suspend occured after prepare async completed. Move along
+                    case ESPlayer.ESPlayerState.Idle:
+                        resumeState = ESPlayer.ESPlayerState.Ready;
+                        break;
+
+                    // Player conflict. Player prepared. Suspended in pause state.
+                    // Resume cannot be called, use start/pause to get back to paused state.
+                    case ESPlayer.ESPlayerState.Ready when wasConflicted && _suspendState == ESPlayer.ESPlayerState.Paused:
+                        player.Start();
+                        player.Pause();
+                        resumeState = ESPlayer.ESPlayerState.Paused;
+                        break;
+
+                    // Player conflict. Player prepared. Suspended in play state
+                    case ESPlayer.ESPlayerState.Ready when wasConflicted && _suspendState == ESPlayer.ESPlayerState.Playing:
+                        player.Start();
+                        resumeState = ESPlayer.ESPlayerState.Playing;
+                        break;
+
+                    // Player untouched. Suspended in paused state. Move to pause.
+                    case ESPlayer.ESPlayerState.Ready when _suspendState == ESPlayer.ESPlayerState.Paused:
+                        resumeState = ESPlayer.ESPlayerState.Paused;
+                        break;
+
+                    // Player untouched. Suspended in playing state. Start clocks, transfer and resume playback.
+                    case ESPlayer.ESPlayerState.Ready when _suspendState == ESPlayer.ESPlayerState.Playing:
+                        StartClockGenerator();
+                        player.Resume();
+                        ResumeTransfer();
+                        resumeState = ESPlayer.ESPlayerState.Playing;
+                        break;
+                }
+
+            } while (resumeState != targetState && !token.IsCancellationRequested);
+
+            // Push out target state.
+            switch (resumeState)
+            {
+                case ESPlayer.ESPlayerState.Ready:
+                    SetState(PlayerState.Prepared);
+                    break;
+                case ESPlayer.ESPlayerState.Playing:
+                    SetState(PlayerState.Playing);
+                    break;
+            }
+
+        }
         #endregion
 
         #region Private Methods
@@ -413,7 +576,17 @@ namespace JuvoPlayer.Player.EsPlayer
             try
             {
                 var token = activeTaskCts.Token;
-                await RestartPlayer(token);
+                // Stop data streams & clock
+                StopTransfer();
+
+                // Stop any underlying async ops
+                await WaitForAsyncOperationsCompletionAsync().WithCancellation(token);
+                token.ThrowIfCancellationRequested();
+
+                _suspendClock = _playerClock.LastClock;
+                StopClockGenerator();
+
+                await RestartPlayback(token);
             }
             catch (OperationCanceledException)
             {
@@ -472,7 +645,6 @@ namespace JuvoPlayer.Player.EsPlayer
 
         private void OnResourceConflicted(object sender, ESPlayer.ResourceConflictEventArgs e)
         {
-            logger.Info("");
             resourceConflict = true;
         }
 
@@ -481,7 +653,7 @@ namespace JuvoPlayer.Player.EsPlayer
             logger.Error(error);
 
             // Stop and disable all initialized data streams.
-            DisableTransfer();
+            StopTransfer();
             DisableInput();
 
             // Perform error notification
@@ -495,69 +667,11 @@ namespace JuvoPlayer.Player.EsPlayer
 
         #endregion
 
-        private void SuspendPlayback()
+        private void SetState(PlayerState newState)
         {
-            // Get most current player time.
-            _suspendClock = _playerClock.LastClock;
-
-            // Stop data clock to halt data providers. Not required for UI based operation
-            // but needed for multitasking with player preemption. Prevents data clock difference
-            // between player & data provider.
-            _dataClock.Stop();
-            StopClockGenerator();
-            player.Pause();
-
-            logger.Info($"Playback time {_suspendClock}");
-        }
-
-        private void ResumePlayback()
-        {
-            player.Resume();
-            StartClockGenerator();
-            _dataClock.Start();
-            logger.Info("");
-        }
-
-        private void SetPlayerState(PlayerState state)
-        {
-            logger.Info(state.ToString());
-            stateChangedSubject.OnNext(state);
-        }
-
-        private ESPlayer.ESPlayerState GetVideoPlayerState()
-        {
-            return player.GetState();
-        }
-
-        private void SetDataTransferState(bool isRunning)
-        {
-            logger.Info($"{isRunning}");
-            if (isRunning)
-            {
-                EnableTransfer(StreamType.Video);
-                EnableTransfer(StreamType.Audio);
+            if (activeTaskCts.IsCancellationRequested)
                 return;
-            }
-
-            DisableTransfer();
-            WaitForAsyncOperationsCompletion();
-        }
-
-        private async Task ExecutePrepareAsync(CancellationToken token)
-        {
-            _suspendResumeLogic.SetBuffering(true);
-            esStreams[(int)StreamType.Video].RequestFirstDataPacketNotification();
-
-            dataSynchronizer.Prepare();
-
-            logger.Info("Player.PrepareAsync()");
-
-            var asyncOp = player.PrepareAsync(EnableTransfer);
-            dataSynchronizer.SetAsyncOperation(asyncOp);
-            await asyncOp.WithCancellation(token);
-
-            _suspendResumeLogic.SetBuffering(false);
-            logger.Info("Player.PrepareAsync() Completed");
+            stateChangedSubject.OnNext(newState);
         }
         /// <summary>
         /// Method executes PrepareAsync on ESPlayer. On success, notifies
@@ -566,7 +680,7 @@ namespace JuvoPlayer.Player.EsPlayer
         /// <returns>bool
         /// True - AsyncPrepare
         /// </returns>
-        private async Task StreamPrepare(CancellationToken token)
+        private async Task PreparePlayback(CancellationToken token)
         {
             logger.Info("");
 
@@ -574,17 +688,21 @@ namespace JuvoPlayer.Player.EsPlayer
             {
                 using (await asyncOpSerializer.LockAsync(token))
                 {
-                    if (token.IsCancellationRequested)
-                        return;
+                    esStreams[(int)StreamType.Video].RequestFirstDataPacketNotification();
 
-                    _suspendResumeLogic.SetAsyncOpRunningState(true);
+                    dataSynchronizer.Prepare();
 
-                    await ExecutePrepareAsync(token);
+                    StartClockGenerator();
 
-                    _suspendResumeLogic.SetAsyncOpRunningState(false);
-                    stateChangedSubject.OnNext(PlayerState.Prepared);
+                    logger.Info("Player.PrepareAsync()");
 
+                    var asyncOp = player.PrepareAsync(StartTransfer);
+                    dataSynchronizer.SetAsyncOperation(asyncOp);
+                    await asyncOp.WithCancellation(token);
+
+                    logger.Info("Player.PrepareAsync() Done");
                 }
+
             }
             catch (InvalidOperationException ioe)
             {
@@ -594,7 +712,7 @@ namespace JuvoPlayer.Player.EsPlayer
             catch (OperationCanceledException)
             {
                 logger.Info("Operation Cancelled");
-                DisableTransfer();
+                StopTransfer();
             }
             catch (Exception e)
             {
@@ -603,17 +721,50 @@ namespace JuvoPlayer.Player.EsPlayer
             }
         }
 
-        private async Task StreamStart(CancellationToken token)
+        private async Task StartPlayback(CancellationToken token)
         {
-            logger.Info("");
             using (await asyncOpSerializer.LockAsync(token))
             {
-                if (token.IsCancellationRequested)
-                    return;
+                token.ThrowIfCancellationRequested();
 
                 player.Start();
+
+                logger.Info("");
+            }
+        }
+
+        private async Task ResumePlayback(CancellationToken token)
+        {
+            using (await asyncOpSerializer.LockAsync(token))
+            {
+                token.ThrowIfCancellationRequested();
+
                 StartClockGenerator();
-                stateChangedSubject.OnNext(PlayerState.Playing);
+                player.Resume();
+                ResumeTransfer();
+
+                logger.Info("");
+            }
+        }
+
+        private async Task PausePlayback(CancellationToken token)
+        {
+            using (await asyncOpSerializer.LockAsync(token))
+            {
+                token.ThrowIfCancellationRequested();
+
+                var currentState = player.GetState();
+
+                logger.Info($"Current State: {currentState}");
+                if (currentState != ESPlayer.ESPlayerState.Playing)
+                    return;
+
+                _suspendClock = _playerClock.LastClock;
+                StopTransfer();
+                StopClockGenerator();
+                player.Pause();
+
+                SetState(PlayerState.Paused);
             }
         }
 
@@ -624,38 +775,32 @@ namespace JuvoPlayer.Player.EsPlayer
         private IEnumerable<Task> GetActiveTasks() =>
             esStreams.Where(esStream => esStream != null).Select(esStream => esStream.GetActiveTask());
 
-        private async Task RestartPlayer(CancellationToken token)
+        private async Task RestartPlayback(CancellationToken token)
         {
             logger.Info("");
 
             try
             {
-                using (await asyncOpSerializer.LockAsync(token))
-                {
-                    token.ThrowIfCancellationRequested();
+                // ReCreate player object.
+                ClosePlayer();
+                OpenPlayer();
 
-                    // Stop data streams & clock
-                    DisableTransfer();
-                    StopClockGenerator();
+                // Set newly player to esStreams & push last known configuration
+                SetPlayer();
+                SetPlayerConfiguration();
 
-                    // Stop any underlying async ops
-                    await WaitForAsyncOperationsCompletionAsync().WithCancellation(token);
+                // Set data clock to pause time.
+                await _dataClock.SetClock(_suspendClock, token);
 
-                    token.ThrowIfCancellationRequested();
+                // Prepare & start playback.
+                await PreparePlayback(token);
+                player.Start();
 
-                    RecreatePlayer();
-
-                    await ExecutePrepareAsync(token);
-
-                    player.Start();
-                    StartClockGenerator();
-                    await _dataClock.SetClock(_suspendClock, token);
-                }
             }
             catch (OperationCanceledException)
             {
                 logger.Info("Operation Cancelled");
-                DisableTransfer();
+                StopTransfer();
             }
             catch (Exception e)
             {
@@ -664,7 +809,23 @@ namespace JuvoPlayer.Player.EsPlayer
             }
         }
 
-        private void RecreatePlayer()
+        private void UpdatePlayerConfiguration()
+        {
+            logger.Info("");
+
+            foreach (var esStream in esStreams)
+                esStream?.UpdateStreamConfiguration();
+        }
+
+        private void SetPlayerConfiguration()
+        {
+            logger.Info("");
+
+            foreach (var esStream in esStreams)
+                esStream?.SetStreamConfiguration();
+        }
+
+        private void ClosePlayer()
         {
             logger.Info("");
 
@@ -674,19 +835,6 @@ namespace JuvoPlayer.Player.EsPlayer
 
             player.Stop();
             player.Dispose();
-
-            CreatePlayer();
-
-            AttachEventHandlers();
-
-            foreach (var esStream in esStreams)
-            {
-                if (esStream == null)
-                    continue;
-
-                esStream.SetPlayer(player);
-                esStream.PushStreamConfiguration();
-            }
         }
 
         private async Task SeekStreamInitialize(CancellationToken token)
@@ -695,10 +843,9 @@ namespace JuvoPlayer.Player.EsPlayer
 
             // Stop data streams. They will be restarted from
             // SeekAsync handler.
-            _dataClock.Stop();
-            DisableInput();
-            DisableTransfer();
             StopClockGenerator();
+            DisableInput();
+            StopTransfer();
 
             // Make sure data transfer is stopped!
             // SeekAsync behaves unpredictably when data transfer to player
@@ -722,7 +869,7 @@ namespace JuvoPlayer.Player.EsPlayer
 
                 logger.Info($"Player.SeekAsync(): Resume needed: {resumeNeeded} {player.GetState()}");
 
-                var asyncOp = player.SeekAsync(time, EnableTransfer);
+                var asyncOp = player.SeekAsync(time, StartTransfer);
 
                 dataSynchronizer.SetAsyncOperation(asyncOp);
                 await asyncOp.WithCancellation(token);
@@ -742,12 +889,20 @@ namespace JuvoPlayer.Player.EsPlayer
         /// Stops all initialized data streams preventing transfer of data from associated
         /// data queue to underlying player. When stopped, stream can still accept new data
         /// </summary>
-        private void DisableTransfer()
+        private void StopTransfer()
         {
             logger.Info("Stopping all data streams");
 
             foreach (var esStream in esStreams)
                 esStream?.Stop();
+        }
+
+        private void ResumeTransfer()
+        {
+            logger.Info("Resuming all data streams");
+
+            foreach (var esStream in esStreams)
+                esStream?.Start();
         }
 
         private void EmptyStreams()
@@ -762,13 +917,13 @@ namespace JuvoPlayer.Player.EsPlayer
                 stream?.EnableStorage();
         }
 
-        private void EnableTransfer(ESPlayer.StreamType stream, TimeSpan time) =>
-            EnableTransfer(stream.JuvoStreamType());
+        private void StartTransfer(ESPlayer.StreamType stream, TimeSpan time) =>
+            StartTransfer(stream.JuvoStreamType());
 
-        private void EnableTransfer(ESPlayer.StreamType stream) =>
-            EnableTransfer(stream.JuvoStreamType());
+        private void StartTransfer(ESPlayer.StreamType stream) =>
+            StartTransfer(stream.JuvoStreamType());
 
-        private void EnableTransfer(StreamType stream)
+        private void StartTransfer(StreamType stream)
         {
             logger.Info($"{stream}");
 
@@ -837,7 +992,8 @@ namespace JuvoPlayer.Player.EsPlayer
         private void StartClockGenerator()
         {
             logger.Info("");
-            _playerClock.EnableClock();
+            _dataClock.Start();
+            _playerClock.Start();
         }
 
         /// <summary>
@@ -846,7 +1002,8 @@ namespace JuvoPlayer.Player.EsPlayer
         private void StopClockGenerator()
         {
             logger.Info("");
-            _playerClock.DisableClock();
+            _dataClock.Stop();
+            _playerClock.Stop();
         }
 
         private bool IsAsyncOpRunning()
@@ -877,10 +1034,9 @@ namespace JuvoPlayer.Player.EsPlayer
 
             activeTaskCts.Cancel();
 
-            _dataClock.Stop();
             StopClockGenerator();
 
-            DisableTransfer();
+            StopTransfer();
             DisableInput();
             activeTaskCts.Cancel();
 
@@ -901,7 +1057,6 @@ namespace JuvoPlayer.Player.EsPlayer
                 return;
 
             logger.Info("");
-            _suspendResumeLogic.SetBuffering(false);
 
             TerminateAsyncOperations();
             WaitForAsyncOperationsCompletion();
@@ -939,6 +1094,7 @@ namespace JuvoPlayer.Player.EsPlayer
             logger.Info("Disposing Tokens");
             // Clean up internal object
             activeTaskCts.Dispose();
+            activeTaskCts = null;
 
             isDisposed = true;
         }
@@ -967,6 +1123,7 @@ namespace JuvoPlayer.Player.EsPlayer
             playbackErrorSubject.Dispose();
             stateChangedSubject.OnCompleted();
             stateChangedSubject.Dispose();
+
         }
 
         private void DisposeAllSubscriptions()
@@ -979,6 +1136,7 @@ namespace JuvoPlayer.Player.EsPlayer
 
         #endregion
 
+
         public IObservable<PlayerState> StateChanged()
         {
             return stateChangedSubject.AsObservable();
@@ -986,7 +1144,9 @@ namespace JuvoPlayer.Player.EsPlayer
 
         public IObservable<int> BufferingProgress()
         {
-            return _suspendResumeLogic.BufferingProgressObservable();
+            return esStreams[(int)StreamType.Video].StreamBuffering()
+                .CombineLatest(esStreams[(int)StreamType.Audio].StreamBuffering(),
+                    (v, a) => a || v ? 0 : 100);
         }
 
         public IObservable<TimeSpan> DataNeededStateChanged()
