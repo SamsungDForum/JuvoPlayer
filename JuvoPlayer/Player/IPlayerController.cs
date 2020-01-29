@@ -29,6 +29,9 @@ namespace JuvoPlayer.Player
         Task OnSeek(TimeSpan time);
         void OnSetPlaybackRate(float rate);
         void OnStop();
+        Task OnSuspend();
+        Task OnResume();
+
         #endregion
 
         #region data_provider_slots

@@ -166,7 +166,7 @@ namespace JuvoPlayer.Player.EsPlayer
             sb.Append(videoConf.den);
             sb.AppendLine(" (" + (videoConf.num / (videoConf.den == 0 ? 1 : videoConf.den)) + ")");
             sb.AppendLine("\tCodec Data:");
-            sb.AppendLine(HexDumper.HexDump(videoConf.codecData));
+            sb.AppendLine(DumpTools.HexDump(videoConf.codecData));
 
             return sb.ToString();
         }
@@ -183,7 +183,7 @@ namespace JuvoPlayer.Player.EsPlayer
             sb.Append("\tchannels = ");
             sb.AppendLine(audioConf.channels.ToString());
             sb.AppendLine("\tCodec Data:");
-            sb.AppendLine(HexDumper.HexDump(audioConf.codecData));
+            sb.AppendLine(DumpTools.HexDump(audioConf.codecData));
             return sb.ToString();
         }
     }

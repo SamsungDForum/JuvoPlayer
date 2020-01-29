@@ -67,7 +67,7 @@ namespace JuvoPlayer.Player.EsPlayer
         private IDisposable SetClockFunction(IScheduler scheduler, PlayerClockFn clockFn)
         {
             _playerClock = clockFn;
-            Logger.Info($"Clock Set: {clockFn}");
+            Logger.Info($"Clock Set: {nameof(clockFn)}");
             return Disposable.Empty;
         }
 
@@ -77,7 +77,7 @@ namespace JuvoPlayer.Player.EsPlayer
             return NoClockReturnValue;
         }
 
-        public void EnableClock()
+        public void Start()
         {
             if (_playerClockSourceConnection != null)
                 return;
@@ -90,7 +90,7 @@ namespace JuvoPlayer.Player.EsPlayer
             Logger.Info($"{currentClock}");
         }
 
-        public void DisableClock()
+        public void Stop()
         {
             _playerClockSourceConnection?.Dispose();
             _playerClockSourceConnection = null;
@@ -105,7 +105,7 @@ namespace JuvoPlayer.Player.EsPlayer
 
             _isDisposed = true;
             SetPlayerClockSource(null);
-            DisableClock();
+            Stop();
         }
     }
 }

@@ -17,6 +17,7 @@
 
 using System;
 using System.Collections.Generic;
+using JuvoLogger;
 
 namespace JuvoPlayer.Utils
 {
@@ -25,8 +26,17 @@ namespace JuvoPlayer.Utils
     // https://www.codeproject.com/Articles/36747/Quick-and-Dirty-HexDump-of-a-Byte-Array
     // https://blogs.msdn.microsoft.com/ericwhite/2010/03/12/hex-dump-using-linq-in-7-lines-of-code/
 
-    public static class HexDumper
+    public static class DumpTools
     {
+        public static void LineDump(this string data, ILogger logger, char lineSeparator='\n')
+        {
+            var src = data.Split(lineSeparator);
+            foreach (var t in src)
+            {
+                logger.Info(t);
+            }
+        }
+
         /// <summary>
         /// Dumps last N bytes from byte array in human readable format.
         /// Method internally calls HexDump() method
@@ -88,7 +98,7 @@ namespace JuvoPlayer.Utils
         ///
         /// </summary>
         /// <param name="bytes">Byte array to be displayed</param>
-        /// <param name="index">Optional. Start Index from which byte array is to be dumped.</param>
+        /// <param name="index">Optional. EnableClock Index from which byte array is to be dumped.</param>
         /// <param name="length">Optional. Length of data to be dumped</param>
         /// <param name="doTextDump">Optional. True (default) - dump printable text along with hex dump
         /// False - Do not display text, just hex dump</param>

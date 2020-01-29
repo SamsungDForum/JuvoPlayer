@@ -86,6 +86,16 @@ namespace JuvoPlayer
             playerThread.Factory.StartNew(() => proxied.Stop());
         }
 
+        public Task Suspend()
+        {
+            return playerThread.Factory.StartNew(async () => await proxied.Suspend()).Unwrap();
+        }
+
+        public Task Resume()
+        {
+            return playerThread.Factory.StartNew(async () => await proxied.Resume()).Unwrap();
+        }
+
         public IObservable<PlayerState> StateChanged()
         {
             return proxied.StateChanged();

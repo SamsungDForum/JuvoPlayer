@@ -97,6 +97,16 @@ namespace JuvoPlayer.Player.EsPlayer
             return streamControl.Seek(time);
         }
 
+        public Task Suspend()
+        {
+            return streamControl.Suspend();
+        }
+
+        public Task Resume()
+        {
+            return streamControl.Resume();
+        }
+
         public void SetDuration(TimeSpan duration)
         {
             logger.Info("");

@@ -19,6 +19,7 @@ using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.IO;
+using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using System.Threading;
 using System.Threading.Tasks;
@@ -47,11 +48,12 @@ namespace XamarinPlayer.Views
         private bool _isPageDisappeared;
         private bool _isShowing;
         private bool _hasFinished;
-
+        private readonly CompositeDisposable _subscriptions;
         public static readonly BindableProperty ContentSourceProperty =
             BindableProperty.Create("ContentSource", typeof(object), typeof(PlayerView));
 
         private PlayerState? suspendedPlayerState;
+        private ClipDefinition currentClip;
 
         public object ContentSource
         {
@@ -70,17 +72,20 @@ namespace XamarinPlayer.Views
 
             Player = DependencyService.Get<IPlayerService>(DependencyFetchTarget.NewInstance);
 
-            Player.StateChanged()
-                .ObserveOn(SynchronizationContext.Current)
-                .Subscribe(OnPlayerStateChanged, OnPlayerCompleted);
+            _subscriptions = new CompositeDisposable
+            {
+                Player.StateChanged()
+                    .ObserveOn(SynchronizationContext.Current)
+                    .Subscribe(OnPlayerStateChanged, OnPlayerCompleted),
 
-            Player.PlaybackError()
-                .ObserveOn(SynchronizationContext.Current)
-                .Subscribe(async message => await OnPlaybackError(message));
+                Player.PlaybackError()
+                    .ObserveOn(SynchronizationContext.Current)
+                    .Subscribe(async message => await OnPlaybackError(message)),
 
-            Player.BufferingProgress()
-                .ObserveOn(SynchronizationContext.Current)
-                .Subscribe(OnBufferingProgress);
+                Player.BufferingProgress()
+                    .ObserveOn(SynchronizationContext.Current)
+                    .Subscribe(OnBufferingProgress)
+            };
 
             PlayButton.Clicked += (s, e) => { Play(); };
 
@@ -434,6 +439,7 @@ namespace XamarinPlayer.Views
                 _storyboardReader?.Dispose();
                 _seekLogic.StoryboardReader = null;
                 _storyboardReader = null;
+                _subscriptions.Dispose();
                 Player?.Dispose();
                 Player = null;
                 return false;
@@ -588,14 +594,12 @@ namespace XamarinPlayer.Views
 
         public void Suspend()
         {
-            suspendedPlayerState = Player?.State;
-            Player?.Pause();
+            Player?.Suspend();
         }
 
         public void Resume()
         {
-            if (suspendedPlayerState == PlayerState.Playing)
-                Player?.Start();
+            Player?.Resume();
         }
 
         private void UpdateLoadingIndicator()

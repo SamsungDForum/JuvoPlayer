@@ -87,6 +87,7 @@ namespace JuvoPlayer.Player.EsPlayer
         public BufferConfigurationPacket CurrentConfig { get; internal set; }
         public BufferConfigurationPacket LastQueuedConfig { get; internal set; }
 
+        public bool HaveConfiguration => LastQueuedConfig != null;
         public bool IsConfigured => (CurrentConfig != null);
 
         // Events
@@ -97,8 +98,14 @@ namespace JuvoPlayer.Player.EsPlayer
         private TimeSpan currentPts;
 
         private readonly Synchronizer _dataSynchronizer;
-        private readonly SuspendResumeLogic _suspendResumeLogic;
         private readonly PlayerClockProvider _playerClock;
+
+        private readonly Subject<bool> _bufferingSubject = new Subject<bool>();
+
+        public IObservable<bool> StreamBuffering()
+        {
+            return _bufferingSubject.AsObservable().DistinctUntilChanged();
+        }
 
         public IObservable<string> PlaybackError()
         {
@@ -112,13 +119,12 @@ namespace JuvoPlayer.Player.EsPlayer
 
         #region Public API
 
-        public EsStream(StreamType type, EsPlayerPacketStorage storage, Synchronizer synchronizer, SuspendResumeLogic suspendRedumeLogic, PlayerClockProvider playerClock)
+        public EsStream(StreamType type, EsPlayerPacketStorage storage, Synchronizer synchronizer, PlayerClockProvider playerClock)
         {
             streamType = type;
             packetStorage = storage;
             _dataSynchronizer = synchronizer;
             _dataSynchronizer.Initialize(streamType);
-            _suspendResumeLogic = suspendRedumeLogic;
             _playerClock = playerClock;
 
             switch (streamType)
@@ -154,31 +160,29 @@ namespace JuvoPlayer.Player.EsPlayer
         /// </summary>
         /// <param name="bufferConfig">BufferConfigurationPacket</param>
         /// <returns>SetStreamConfigResult</returns>
-        public SetStreamConfigResult SetStreamConfiguration(BufferConfigurationPacket bufferConfig)
+        public void StoreStreamConfiguration(BufferConfigurationPacket bufferConfig)
         {
             logger.Info($"{streamType}");
-
             LastQueuedConfig = bufferConfig;
-
-            if (!IsConfigured)
-                return SetStreamConfigResult.SetConfiguration;
-
-            logger.Info($"{streamType}: New configuration needs queuing");
-            return SetStreamConfigResult.QueueConfiguration;
-
         }
 
+        public void UpdateStreamConfiguration()
+        {
+            logger.Info($"{streamType}");
+            CurrentConfig = LastQueuedConfig;
+        }
         /// <summary>
         /// Method resets current config. When config change occurs as a result
         /// of config packet being queued, CurrentConfig holds value of new configuration
         /// which needs to be pushed to player
         /// </summary>
-        public void PushStreamConfiguration()
+        public void SetStreamConfiguration()
         {
             logger.Info($"{streamType}");
+            if (CurrentConfig == null)
+                throw new ArgumentNullException(nameof(CurrentConfig));
 
-            PushStreamConfig(LastQueuedConfig.Config);
-            CurrentConfig = LastQueuedConfig;
+            PushStreamConfig(CurrentConfig.Config);
         }
 
         /// <summary>
@@ -380,7 +384,7 @@ namespace JuvoPlayer.Player.EsPlayer
         {
             CancellationToken token = transferCts.Token;
             logger.Info($"{streamType}: Started {Thread.CurrentThread.ManagedThreadId}");
-
+            _bufferingSubject.OnNext(true);
             try
             {
                 while (!token.IsCancellationRequested)
@@ -427,6 +431,8 @@ namespace JuvoPlayer.Player.EsPlayer
                         new OperationCanceledException("Terminated before notifying first data packet"));
                 }
 
+                _bufferingSubject.OnNext(false);
+
                 logger.Info($"{streamType}: Terminated. ");
             }
         }
@@ -451,19 +457,13 @@ namespace JuvoPlayer.Player.EsPlayer
         {
             if (currentPacket == null)
             {
-                if (packetStorage.Count(streamType) == 0 &&
-                    (_playerClock.LastClock - currentPts).Duration() <= EsStreamConfig.BufferingEventThreshold)
-                {
-                    await _suspendResumeLogic.RequestBuffering(true);
-                    currentPacket = packetStorage.GetPacket(streamType, token);
-#pragma warning disable 4014 // No need to wait for dissapear. Will happen.. eventually.
-                    _suspendResumeLogic.RequestBuffering(false);
-#pragma warning restore 4014
-                }
-                else
-                {
-                    currentPacket = packetStorage.GetPacket(streamType, token);
-                }
+                var displayBuffering =
+                    packetStorage.Count(streamType) == 0 &&
+                    (_playerClock.LastClock - currentPts).Duration() <= EsStreamConfig.BufferingEventThreshold;
+
+                _bufferingSubject.OnNext(displayBuffering);
+
+                currentPacket = packetStorage.GetPacket(streamType, token);
 
                 currentPts = currentPacket.Pts;
             }
@@ -527,11 +527,10 @@ namespace JuvoPlayer.Player.EsPlayer
         {
             if (!dataPacket.DrmSession.CanDecrypt())
             {
-#pragma warning disable 4014    // No await intentional. Do not care much when buffering will be displayed
-                _suspendResumeLogic.RequestBuffering(true);
+                _bufferingSubject.OnNext(true);
                 await dataPacket.DrmSession.WaitForInitialization(token);
-                _suspendResumeLogic.RequestBuffering(false);
-#pragma warning restore 4014    // of hidden for that matter.
+                _bufferingSubject.OnNext(false);
+
                 logger.Info($"{streamType}: DRM Initialization complete");
             }
 
@@ -624,6 +623,9 @@ namespace JuvoPlayer.Player.EsPlayer
 
             playbackErrorSubject.Dispose();
             streamReconfigureSubject.Dispose();
+
+            _bufferingSubject.OnCompleted();
+            _bufferingSubject.Dispose();
 
             transferCts?.Dispose();
             currentPacket?.Dispose();

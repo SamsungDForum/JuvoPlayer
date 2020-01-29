@@ -28,7 +28,7 @@ namespace JuvoPlayer.Common
 
         public override string ToString()
         {
-            return "\tCodecData:\n" + HexDumper.HexDump(CodecExtraData);
+            return "\tCodecData:\n" + DumpTools.HexDump(CodecExtraData);
         }
     }
 }
