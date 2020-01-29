@@ -1,6 +1,6 @@
 'use strict';
 import React from 'react';
-import { View, Image, ScrollView, NativeModules, NativeEventEmitter, Dimensions } from 'react-native';
+import { View, Image, ScrollView, NativeModules, NativeEventEmitter, Dimensions, DeviceEventEmitter } from 'react-native';
 
 import ContentPicture from './ContentPicture';
 import ContentDescription from './ContentDescription';
@@ -23,7 +23,6 @@ export default class ContentScroll extends React.Component {
     this.handleButtonPressRight = this.handleButtonPressRight.bind(this);
     this.handleButtonPressLeft = this.handleButtonPressLeft.bind(this);
     this.JuvoPlayer = NativeModules.JuvoPlayer;
-    this.JuvoEventEmitter = new NativeEventEmitter(this.JuvoPlayer);
   }
 
   handleButtonPressRight() {
@@ -45,8 +44,13 @@ export default class ContentScroll extends React.Component {
   }
 
   componentWillMount() {
-    this.JuvoEventEmitter.addListener('onTVKeyDown', this.onTVKeyDown);
-    this.JuvoEventEmitter.addListener('onTVKeyUp', this.onTVKeyUp);
+    DeviceEventEmitter.addListener('ContentScroll/onTVKeyDown', this.onTVKeyDown);
+    DeviceEventEmitter.addListener('ContentScroll/onTVKeyUp', this.onTVKeyUp);
+  }
+  
+  componentWillUnmount() {
+    DeviceEventEmitter.removeListener('ContentScroll/onTVKeyDown', this.onTVKeyDown);
+    DeviceEventEmitter.removeListener('ContentScroll/onTVKeyUp', this.onTVKeyUp);
   }
 
   componentWillReceiveProps(nextProps) {
