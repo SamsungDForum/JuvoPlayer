@@ -22,7 +22,9 @@ using System.Linq;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using Configuration;
 using JuvoPlayer.Common;
+using JuvoPlayer.ResourceLoaders;
 using JuvoPlayer.Utils;
 
 namespace JuvoPlayer.OpenGL
@@ -33,11 +35,11 @@ namespace JuvoPlayer.OpenGL
         public int TilesCount => ContentList?.Count ?? 0;
 
         public bool IsLoadingFinished { get; private set; }
+        public bool IsQueueingFinished { get; private set; }
 
         private int _resourcesLoadedCount;
         private int _resourcesTargetCount;
         private readonly SynchronizationContext _synchronizationContext = SynchronizationContext.Current; // If "Current" is null, then the thread's current context is "new SynchronizationContext()", by convention.
-        List<Task> baseTasks = new List<Task>();
         private Action _doAfterFinishedLoading;
 
         private static ResourceLoader Instance;
@@ -51,22 +53,23 @@ namespace JuvoPlayer.OpenGL
             return Instance ?? (Instance = new ResourceLoader());
         }
 
-        public void LoadResources(string fullExecutablePath, Action doAfterFinishedLoading = null)
+        public async void LoadResources(string fullExecutablePath, Action doAfterFinishedLoading = null)
         {
+            IsQueueingFinished = false;
             IsLoadingFinished = false;
             _doAfterFinishedLoading = doAfterFinishedLoading;
 
             InitLoadingScreen();
-            var clipsFilePath = Path.Combine(fullExecutablePath, "shared", "res", "videoclips.json");
-            LoadContentList(clipsFilePath);
 
-            var resourcesDirPath = Path.Combine(fullExecutablePath, "res");
+            var localResourcesDirPath = Path.Combine(fullExecutablePath, "res");
 
-            LoadFonts(resourcesDirPath);
-            LoadIcons(resourcesDirPath);
-            LoadTiles(resourcesDirPath);
-            foreach (var baseTask in baseTasks)
-                baseTask.Start();
+            await LoadContentList(Paths.VideoClipJsonPath);
+
+            LoadFonts(localResourcesDirPath);
+            LoadIcons(localResourcesDirPath);
+            LoadTiles();
+
+            IsQueueingFinished = true;
         }
 
         public static byte[] GetBytes(string str)
@@ -79,23 +82,16 @@ namespace JuvoPlayer.OpenGL
             _synchronizationContext.Post(delegate { lambda.Invoke(); }, null);
         }
 
-        private void LoadAndSchedule(Resource resource)
+        private async void LoadAndSchedule(Resource resource)
         {
-            var baseTask = new Task<Resource>(() =>
+            await Task.Run(async () =>
             {
-                resource.Load();
-                return resource;
+                await resource.Load();
             });
-            baseTask.ContinueWith(task =>
-            {
-                ScheduleToBeLoadedInMainThread(() =>
-                {
-                    task.Result.Push();
-                    ++_resourcesLoadedCount;
-                    UpdateLoadingState();
-                });
-            });
-            baseTasks.Add(baseTask);
+
+            NativeActions.GetInstance().Enqueue(resource.Push);
+            ++_resourcesLoadedCount;
+            UpdateLoadingState();
         }
 
         private void FinishLoading()
@@ -105,16 +101,27 @@ namespace JuvoPlayer.OpenGL
                 ScheduleToBeLoadedInMainThread(_doAfterFinishedLoading); // it's already called from the main thread since last job calls this method, but just to be safe let's schedule it for the main thread
         }
 
-        private void LoadContentList(string filePath)
+        private async Task LoadContentList(string uri)
         {
-            ContentList = JSONFileReader.DeserializeJsonFile<List<ClipDefinition>>(filePath).ToList();
+            using (var resource = ResourceFactory.Create(uri))
+            {
+                var content = await resource.ReadAsStringAsync();
+                ContentList = JSONFileReader.DeserializeJsonText<List<ClipDefinition>>(content).ToList();
+                foreach (var definition in ContentList)
+                {
+                    definition.Poster = resource.Resolve(definition.Poster).AbsolutePath;
+                    if (definition.TilePreviewPath != null)
+                        definition.TilePreviewPath = resource.Resolve(definition.TilePreviewPath).AbsolutePath;
+                    if (definition.SeekPreviewPath != null)
+                        definition.SeekPreviewPath = resource.Resolve(definition.SeekPreviewPath).AbsolutePath;
+                }
+            }
         }
-
-        private void LoadTiles(string dirPath)
+        private void LoadTiles()
         {
             _resourcesTargetCount += ContentList.Count;
             foreach (var contentItem in ContentList)
-                LoadAndSchedule(new TileResource(DllImports.AddTile(), Path.Combine(dirPath, "tiles", contentItem.Poster), contentItem.Title ?? "", contentItem.Description ?? ""));
+                NativeActions.GetInstance().Enqueue(() => LoadAndSchedule(new TileResource(DllImports.AddTile(), contentItem.Poster, contentItem.Title ?? "", contentItem.Description ?? "")));
         }
 
         private void LoadIcons(string dirPath)
@@ -138,11 +145,8 @@ namespace JuvoPlayer.OpenGL
         private void UpdateLoadingState()
         {
             UpdateLoadingScreen();
-            if (_resourcesLoadedCount >= _resourcesTargetCount)
-            {
-                baseTasks.Clear();
+            if (IsQueueingFinished && _resourcesLoadedCount >= _resourcesTargetCount)
                 FinishLoading();
-            }
         }
 
         private void UpdateLoadingScreen()

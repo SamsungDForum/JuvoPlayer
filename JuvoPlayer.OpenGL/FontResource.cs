@@ -15,11 +15,13 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-﻿namespace JuvoPlayer.OpenGL
+using System.Threading.Tasks;
+
+namespace JuvoPlayer.OpenGL
 {
     class FontResource : Resource
     {
-        private string _path;
+        private readonly string _path;
         private byte[] _data;
 
         public FontResource(string path) : base()
@@ -27,9 +29,10 @@
             _path = path;
         }
 
-        public override void Load()
+        public override Task Load()
         {
             _data = GetData(_path);
+            return Task.CompletedTask;
         }
 
         public override unsafe void Push()

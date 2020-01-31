@@ -15,11 +15,13 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+using System.Threading.Tasks;
+
 namespace JuvoPlayer.OpenGL
 {
     class IconResource : Resource
     {
-        private IconType _type;
+        private readonly IconType _type;
         private ImageData _image;
 
         public IconResource(IconType iconType, string path)
@@ -28,9 +30,9 @@ namespace JuvoPlayer.OpenGL
             _image.Path = path;
         }
 
-        public override void Load()
+        public override async Task Load()
         {
-            _image = GetImage(_image.Path);
+            _image = await GetImage(_image.Path);
         }
 
         public override unsafe void Push()
@@ -39,11 +41,11 @@ namespace JuvoPlayer.OpenGL
             {
                 DllImports.SetIcon(new DllImports.ImageData
                 {
-                        id = (int)_type,
-                        pixels = p,
-                        width = _image.Width,
-                        height = _image.Height,
-                        format = (int) _image.Format
+                    id = (int) _type,
+                    pixels = p,
+                    width = _image.Width,
+                    height = _image.Height,
+                    format = (int) _image.Format
                 });
             }
         }

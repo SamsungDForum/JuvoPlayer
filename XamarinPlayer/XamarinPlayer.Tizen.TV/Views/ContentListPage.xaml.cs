@@ -18,6 +18,7 @@
 using System;
 using System.IO;
 using System.Threading.Tasks;
+using JuvoPlayer.ResourceLoaders;
 using Xamarin.Forms;
 using Xamarin.Forms.Xaml;
 using XamarinPlayer.Services;
@@ -30,6 +31,8 @@ namespace XamarinPlayer.Views
     public partial class ContentListPage : ContentPage, IContentPayloadHandler, ISuspendable
     {
         NavigationPage AppMainPage;
+
+        private int _pendingUpdatesCount;
 
         public ContentListPage(NavigationPage page)
         {
@@ -66,20 +69,23 @@ namespace XamarinPlayer.Views
         private async Task UpdateContentInfo()
         {
             var focusedContent = ContentListView.FocusedContent;
+            ++_pendingUpdatesCount;
+            await Task.Delay(TimeSpan.FromSeconds(1));
+            --_pendingUpdatesCount;
+            if (_pendingUpdatesCount > 0) return;
+
             ContentTitle.Text = focusedContent.ContentTitle;
             ContentDesc.Text = focusedContent.ContentDescription;
-            ContentImage.Source = ImageSource.FromStream(() => File.OpenRead(focusedContent.ContentImg));
+            ContentImage.Source = ResourceFactory.Create(focusedContent.ContentImg).AbsolutePath;
             ContentImage.Opacity = 0;
+            ContentImage.AbortAnimation("FadeTo");
             await ContentImage.FadeTo(1, 1000);
         }
 
         protected override async void OnAppearing()
         {
             base.OnAppearing();
-            MessagingCenter.Subscribe<IKeyEventSender, string>(this, "KeyDown", (s, e) =>
-            {
-                HandleKeyEvent(e);
-            });
+            MessagingCenter.Subscribe<IKeyEventSender, string>(this, "KeyDown", (s, e) => { HandleKeyEvent(e); });
             ContentListView.SetFocus();
             await UpdateContentInfo();
         }

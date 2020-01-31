@@ -1,6 +1,6 @@
 'use strict';
 import React, { Component } from 'react';
-import { View, NativeModules, NativeEventEmitter, Dimensions, StyleSheet } from 'react-native';
+import { View, NativeModules, NativeEventEmitter, Dimensions, StyleSheet, DeviceEventEmitter } from 'react-native';
 
 import HideableView from './HideableView';
 import ContentPicture from './ContentPicture';
@@ -29,8 +29,8 @@ export default class ContentCatalog extends Component {
   }
 
   componentWillMount() {
-    this.JuvoEventEmitter.addListener('onTVKeyDown', this.onTVKeyDown);
-    this.JuvoEventEmitter.addListener('onTVKeyUp', this.onTVKeyUp);
+    DeviceEventEmitter.addListener('ContentCatalog/onTVKeyDown', this.onTVKeyDown);
+    DeviceEventEmitter.addListener('ContentCatalog/onTVKeyUp', this.onTVKeyUp);
   }
   componentDidUpdate(prevProps, prevState) {
     this.bigPictureVisible = true;
@@ -50,6 +50,7 @@ export default class ContentCatalog extends Component {
     //There are two parameters available:
     //pressed.KeyName
     //pressed.KeyCode
+    DeviceEventEmitter.emit('ContentScroll/onTVKeyDown', pressed);
     if (this.keysListenningOff) return;
     switch (pressed.KeyName) {
       case 'XF86AudioStop':
@@ -68,6 +69,7 @@ export default class ContentCatalog extends Component {
     }
   }
   onTVKeyUp(pressed) {
+    DeviceEventEmitter.emit('ContentScroll/onTVKeyUp', pressed);
     if (this.keysListenningOff) return;
     this.bigPictureVisible = true;
     this.rerender();
