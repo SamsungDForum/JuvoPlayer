@@ -25,7 +25,6 @@ namespace JuvoPlayer.Player
 {
     internal class PacketStream : IPacketStream
     {
-        private readonly ICodecExtraDataHandler codecExtraDataHandler;
         private readonly IDrmManager drmManager;
         private readonly IPlayer player;
         private IDrmSession drmSession;
@@ -34,14 +33,12 @@ namespace JuvoPlayer.Player
         private readonly ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
         private bool forceDrmChange;
 
-        public PacketStream(StreamType streamType, IPlayer player, IDrmManager drmManager, ICodecExtraDataHandler codecExtraDataHandler)
+        public PacketStream(StreamType streamType, IPlayer player, IDrmManager drmManager)
         {
             this.streamType = streamType;
             this.drmManager = drmManager ??
                               throw new ArgumentNullException(nameof(drmManager), "drmManager cannot be null");
             this.player = player ?? throw new ArgumentNullException(nameof(player), "player cannot be null");
-            this.codecExtraDataHandler = codecExtraDataHandler ??
-                              throw new ArgumentNullException(nameof(codecExtraDataHandler), "codecExtraDataHandler cannot be null");
         }
 
         public void OnAppendPacket(Packet packet)
@@ -62,8 +59,6 @@ namespace JuvoPlayer.Player
 
                 encryptedPacket.DrmSession = drmSession;
             }
-
-            codecExtraDataHandler.OnAppendPacket(packet);
 
             player.AppendPacket(packet);
         }
@@ -90,8 +85,6 @@ namespace JuvoPlayer.Player
             forceDrmChange = (this.config != null);
 
             this.config = config;
-
-            codecExtraDataHandler.OnStreamConfigChanged(config);
 
             player.SetStreamConfig(this.config);
         }

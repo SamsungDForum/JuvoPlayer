@@ -15,16 +15,15 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-﻿using JuvoPlayer.Common;
+using JuvoPlayer.Common;
 using System;
-using System.Collections.Generic;
-using System.Text;
 
 namespace JuvoPlayer.Player
 {
     public interface ICodecExtraDataHandler
     {
-        void OnAppendPacket(Packet packet);
-        void OnStreamConfigChanged(StreamConfig config);
+        byte[] GetParsedData();
+
+        void ParseData(ReadOnlySpan<byte> rawData, VideoCodec codec);
     }
 }
