@@ -232,7 +232,6 @@ namespace JuvoPlayer.Demuxers.FFmpeg
                 packet.Dts = dts.Ticks >= 0 ? dts : TimeSpan.Zero;
                 packet.Duration = Rescale(pkt.duration, stream);
 
-                Logger.Info($"*** {packet.StreamType}: {pkt.flags}");
                 packet.IsKeyFrame = pkt.flags == 1;
                 packet.Storage = new FFmpegDataStorage { Packet = pkt, StreamType = packet.StreamType };
                 return packet;
