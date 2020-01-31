@@ -18,9 +18,9 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Runtime.InteropServices;
 using JuvoLogger;
 using JuvoPlayer.Common;
+
 
 namespace JuvoPlayer.Player
 {
@@ -28,85 +28,24 @@ namespace JuvoPlayer.Player
     {
         private readonly ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
 
-        private readonly IPlayer player;
         private byte[] parsedExtraData = new byte[0];
 
-        public VideoCodecExtraDataHandler(IPlayer player)
+        public byte[] GetParsedData()
         {
-            this.player = player ?? throw new ArgumentNullException(nameof(player), "player cannot be null");
+            return parsedExtraData;
         }
 
-        public void OnAppendPacket(Packet packet)
+        public void ParseData(ReadOnlySpan<byte> extraData, VideoCodec codec)
         {
-            if (packet == null)
-                return;
+            parsedExtraData = null;
 
-            if (packet.StreamType != StreamType.Video)
-                throw new ArgumentException("invalid packet type");
-
-            if (!parsedExtraData.Any())
-                return;
-
-            if (!packet.IsKeyFrame)
-                return;
-
-            var storage = new ManagedDataStorage
-            {
-                Data = new byte[packet.Storage.Length + parsedExtraData.Length]
-            };
-            
-            var codecSourceSpan = parsedExtraData.AsSpan();
-            var codecDestSpan = storage.Data.AsSpan();
-            codecSourceSpan.CopyTo(codecDestSpan);
-
-            //Array.Copy(storage.Data,parsedExtraData,parsedExtraData.Length);
-
-            Span<byte> frameSourceSpan;
-            unsafe
-            {
-                frameSourceSpan = new Span<byte>(((INativeDataStorage)packet.Storage).Data,packet.Storage.Length);
-            }
-
-            var frameDestSpan = storage.Data.AsSpan(parsedExtraData.Length);
-            frameSourceSpan.CopyTo(frameDestSpan);
-            packet.Storage.Dispose();
-            packet.Storage = storage;
-            /*
-            var configPacket = new Packet
-            {
-                Storage = new ManagedDataStorage
-                {
-                    Data = parsedExtraData.ToArray()
-                },
-                Dts = packet.Dts,
-                Pts = packet.Pts,
-                //IsKeyFrame = true,
-                StreamType = StreamType.Video
-            };
-
-            player.AppendPacket(configPacket);
-            */
-        }
-
-        public void OnStreamConfigChanged(StreamConfig config)
-        {
-            parsedExtraData = new byte[0];
-
-            if (!(config is VideoStreamConfig))
-                throw new ArgumentException("invalid config type");
-
-            if (config.CodecExtraData == null)
-                return;
-
-            var videoConfig = (VideoStreamConfig)config;
-
-            switch (videoConfig.Codec)
+            switch (codec)
             {
                 case VideoCodec.H264:
-                    ExtractH264ExtraData(videoConfig);
+                    ExtractH264ExtraData(extraData);
                     break;
                 case VideoCodec.H265:
-                    ExtractH265ExtraData(videoConfig);
+                    ExtractH265ExtraData(extraData);
                     break;
             }
         }
@@ -183,16 +122,13 @@ namespace JuvoPlayer.Player
         //  |
         //  | SPS length (4 bytes)
         //  after that header original ES packet bytes are appended
-        private void ExtractH264ExtraData(VideoStreamConfig videoConfig)
+        private void ExtractH264ExtraData(ReadOnlySpan<byte> extraData)
         {
-            if (videoConfig.CodecExtraData.Length < 6)
+            if (extraData.Length < 6)
             {  // Min first 5 byte + num_sps
                 Logger.Error("extra_data is too short to pass valid SPS/PPS header");
                 return;
             }
-
-            var extraData = new byte[videoConfig.CodecExtraData.Length];
-            Buffer.BlockCopy(videoConfig.CodecExtraData, 0, extraData, 0, videoConfig.CodecExtraData.Length);
 
             var idx = 0;
             var version = ReadByte(extraData, ref idx);
@@ -248,7 +184,7 @@ namespace JuvoPlayer.Player
             CopySet(lengthSize, ppses, ref offset);
         }
 
-        private List<byte[]> ReadH264ParameterSets(byte[] extraData, uint count, ref int idx)
+        private List<byte[]> ReadH264ParameterSets(ReadOnlySpan<byte> extraData, uint count, ref int idx)
         {
             var sets = new List<byte[]>();
             for (var i = 0; i < count; i++)
@@ -266,9 +202,7 @@ namespace JuvoPlayer.Player
                     return null;
                 }
 
-                var elem = new byte[length];
-                Buffer.BlockCopy(extraData, idx, elem, 0, (int)length);
-                sets.Add(elem);
+                sets.Add(extraData.Slice(idx, (int)length).ToArray());
                 idx += (int)length;
             }
             return sets;
@@ -340,16 +274,14 @@ namespace JuvoPlayer.Player
         //       (BigEndian)
         //     write nalUnit (without any modifications)
         //   append video packet data
-        private void ExtractH265ExtraData(VideoStreamConfig videoConfig)
+
+        private void ExtractH265ExtraData(ReadOnlySpan<byte> extraData)
         {
-            if (videoConfig.CodecExtraData.Length < 21)
+            if (extraData.Length < 21)
             {  // Min first 5 byte + num_sps
                 Logger.Error("extra_data is too short to pass valid SPS/PPS header");
                 return;
             }
-
-            var extraData = new byte[videoConfig.CodecExtraData.Length];
-            Buffer.BlockCopy(videoConfig.CodecExtraData, 0, extraData, 0, videoConfig.CodecExtraData.Length);
 
             var idx = 21;
             var lengthSize = (ReadByte(extraData, ref idx) & 0x3u) + 1;
@@ -380,9 +312,7 @@ namespace JuvoPlayer.Player
                         return;
                     }
 
-                    var elem = new byte[nalUnitLength];
-                    Buffer.BlockCopy(extraData, idx, elem, 0, nalUnitLength);
-                    nals.Add(elem);
+                    nals.Add(extraData.Slice(idx, (int)nalUnitLength).ToArray());
                     idx += nalUnitLength;
                 }
             }
@@ -394,12 +324,12 @@ namespace JuvoPlayer.Player
             CopySet(lengthSize, nals, ref offset);
         }
 
-        private byte ReadByte(byte[] adata, ref int idx)
+        private byte ReadByte(ReadOnlySpan<byte> adata, ref int idx)
         {
             return adata[idx++];
         }
 
-        private UInt16 ReadUInt16(byte[] adata, ref int idx)
+        private UInt16 ReadUInt16(ReadOnlySpan<byte> adata, ref int idx)
         {
             ushort res = 0;
             for (var i = 0; i < 2; ++i)

@@ -15,25 +15,17 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-﻿using System;
-using System.Collections.Generic;
-using System.Text;
+using System;
 using JuvoPlayer.Common;
 
 namespace JuvoPlayer.Player
 {
     class AudioCodecExtraDataHandler : ICodecExtraDataHandler
     {
-        public AudioCodecExtraDataHandler(IPlayer player)
+        public byte[] GetParsedData() => null;
+        public void ParseData(ReadOnlySpan<byte> rawData, VideoCodec codec)
         {
-        }
 
-        public void OnAppendPacket(Packet packet)
-        {
-        }
-
-        public void OnStreamConfigChanged(StreamConfig config)
-        {
         }
     }
 }
