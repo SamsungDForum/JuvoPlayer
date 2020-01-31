@@ -29,7 +29,6 @@ export default class PlaybackSettingsView extends React.Component {
   }
 
   handleConfirmSettings() {
-    this.keysListenningOff = true;
     this.props.onCloseSettingsView();
   }
 
@@ -38,7 +37,6 @@ export default class PlaybackSettingsView extends React.Component {
       this.uniqueKey = this.uniqueKey + 1;
       this.setState({selectedIndex: nextProps.streamsData.selectedIndex});
     }
-    this.keysListenningOff = false;
   }
 
   getDefaultStreamDescription(streams) {
@@ -56,7 +54,6 @@ export default class PlaybackSettingsView extends React.Component {
   }
 
   onTVKeyDown(pressed) {
-    if (this.keysListenningOff) return;
     switch (pressed.KeyName) {
       case 'XF86Back':
       case 'XF86AudioStop':
