@@ -76,9 +76,6 @@ namespace JuvoPlayer.Player.EsPlayer
         private readonly StreamType streamType;
 
         // Buffer configuration and supporting info
-        //public BufferConfigurationPacket CurrentConfig { get; internal set; }
-        //public BufferConfigurationPacket LastQueuedConfig { get; set; }
-
         public StreamConfig CurrentConfig { get; internal set; }
         public StreamConfig LastQueuedConfig { get; internal set; }
 
