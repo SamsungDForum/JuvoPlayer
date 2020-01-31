@@ -21,31 +21,42 @@ using System.Linq;
 using JuvoLogger;
 using JuvoPlayer.Common;
 
-
 namespace JuvoPlayer.Player
 {
     class VideoCodecExtraDataHandler : ICodecExtraDataHandler
     {
         private readonly ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
 
-        private byte[] parsedExtraData = new byte[0];
+        private byte[] _parsedExtraData = new byte[0];
 
-        public byte[] GetParsedData()
+        public void PrependPacket(Packet packet)
         {
-            return parsedExtraData;
+            if (!packet.IsKeyFrame || _parsedExtraData.Length == 0)
+                return;
+
+            packet.Prepend(_parsedExtraData);
         }
 
-        public void ParseData(ReadOnlySpan<byte> extraData, VideoCodec codec)
+        public void OnStreamConfigChanged(StreamConfig config)
         {
-            parsedExtraData = null;
+            _parsedExtraData = new byte[0];
 
-            switch (codec)
+            if (!(config is VideoStreamConfig videoConfig))
+                throw new ArgumentException("invalid config type");
+
+            if (config.CodecExtraData == null)
+                return;
+
+            switch (videoConfig.Codec)
             {
                 case VideoCodec.H264:
-                    ExtractH264ExtraData(extraData);
+                    ExtractH264ExtraData(videoConfig);
                     break;
                 case VideoCodec.H265:
-                    ExtractH265ExtraData(extraData);
+                    ExtractH265ExtraData(videoConfig);
+                    break;
+                default:
+                    Logger.Warn($"Unsupported codec {videoConfig.Codec}");
                     break;
             }
         }
@@ -122,8 +133,10 @@ namespace JuvoPlayer.Player
         //  |
         //  | SPS length (4 bytes)
         //  after that header original ES packet bytes are appended
-        private void ExtractH264ExtraData(ReadOnlySpan<byte> extraData)
+        private void ExtractH264ExtraData(VideoStreamConfig vconf)
         {
+            var extraData = vconf.CodecExtraData;
+
             if (extraData.Length < 6)
             {  // Min first 5 byte + num_sps
                 Logger.Error("extra_data is too short to pass valid SPS/PPS header");
@@ -177,14 +190,14 @@ namespace JuvoPlayer.Player
             var size = spses.Sum(o => lengthSize + o.Length)
                 + ppses.Sum(o => lengthSize + o.Length);
 
-            parsedExtraData = new byte[size];
+            _parsedExtraData = new byte[size];
             var offset = 0;
 
             CopySet(lengthSize, spses, ref offset);
             CopySet(lengthSize, ppses, ref offset);
         }
 
-        private List<byte[]> ReadH264ParameterSets(ReadOnlySpan<byte> extraData, uint count, ref int idx)
+        private List<byte[]> ReadH264ParameterSets(byte[] extraData, uint count, ref int idx)
         {
             var sets = new List<byte[]>();
             for (var i = 0; i < count; i++)
@@ -202,7 +215,7 @@ namespace JuvoPlayer.Player
                     return null;
                 }
 
-                sets.Add(extraData.Slice(idx, (int)length).ToArray());
+                sets.Add(extraData.AsSpan(idx, (int)length).ToArray());
                 idx += (int)length;
             }
             return sets;
@@ -213,9 +226,9 @@ namespace JuvoPlayer.Player
             foreach (var pps in nals)
             {
                 var len = AsBytesMSB((uint)pps.Length, (int)lengthSize);
-                Buffer.BlockCopy(len, 0, parsedExtraData, offset, len.Length);
+                Buffer.BlockCopy(len, 0, _parsedExtraData, offset, len.Length);
                 offset += len.Length;
-                Buffer.BlockCopy(pps, 0, parsedExtraData, offset, pps.Length);
+                Buffer.BlockCopy(pps, 0, _parsedExtraData, offset, pps.Length);
                 offset += pps.Length;
             }
         }
@@ -274,9 +287,9 @@ namespace JuvoPlayer.Player
         //       (BigEndian)
         //     write nalUnit (without any modifications)
         //   append video packet data
-
-        private void ExtractH265ExtraData(ReadOnlySpan<byte> extraData)
+        private void ExtractH265ExtraData(VideoStreamConfig vconf)
         {
+            var extraData = vconf.CodecExtraData;
             if (extraData.Length < 21)
             {  // Min first 5 byte + num_sps
                 Logger.Error("extra_data is too short to pass valid SPS/PPS header");
@@ -312,24 +325,24 @@ namespace JuvoPlayer.Player
                         return;
                     }
 
-                    nals.Add(extraData.Slice(idx, (int)nalUnitLength).ToArray());
+                    nals.Add(extraData.AsSpan().Slice(idx, nalUnitLength).ToArray());
                     idx += nalUnitLength;
                 }
             }
             var size = nals.Sum(o => lengthSize + o.Length);
 
-            parsedExtraData = new byte[size];
+            _parsedExtraData = new byte[size];
 
             var offset = 0;
             CopySet(lengthSize, nals, ref offset);
         }
 
-        private byte ReadByte(ReadOnlySpan<byte> adata, ref int idx)
+        private byte ReadByte(byte[] adata, ref int idx)
         {
             return adata[idx++];
         }
 
-        private UInt16 ReadUInt16(ReadOnlySpan<byte> adata, ref int idx)
+        private UInt16 ReadUInt16(byte[] adata, ref int idx)
         {
             ushort res = 0;
             for (var i = 0; i < 2; ++i)

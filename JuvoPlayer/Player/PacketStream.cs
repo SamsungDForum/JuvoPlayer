@@ -32,34 +32,34 @@ namespace JuvoPlayer.Player
         private readonly StreamType streamType;
         private readonly ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
         private bool forceDrmChange;
+        private readonly ICodecExtraDataHandler _codecHandler;
 
-        public PacketStream(StreamType streamType, IPlayer player, IDrmManager drmManager)
+        public PacketStream(StreamType streamType, IPlayer player, IDrmManager drmManager, ICodecExtraDataHandler handler)
         {
             this.streamType = streamType;
             this.drmManager = drmManager ??
                               throw new ArgumentNullException(nameof(drmManager), "drmManager cannot be null");
             this.player = player ?? throw new ArgumentNullException(nameof(player), "player cannot be null");
+            _codecHandler = handler ?? throw new ArgumentNullException(nameof(handler), "handler cannot be null");
         }
 
         public void OnAppendPacket(Packet packet)
         {
-
             if (packet.StreamType != streamType)
                 throw new ArgumentException("packet type doesn't match");
 
             if (config == null)
                 throw new InvalidOperationException("Packet stream is not configured");
 
-            if (packet is EncryptedPacket)
+            if (packet is EncryptedPacket encPacket)
             {
-                var encryptedPacket = (EncryptedPacket)packet;
-
                 // Increment reference counter on DRM session
                 drmSession.Share();
 
-                encryptedPacket.DrmSession = drmSession;
+                encPacket.DrmSession = drmSession;
             }
 
+            _codecHandler.PrependPacket(packet);
             player.AppendPacket(packet);
         }
 
@@ -73,9 +73,6 @@ namespace JuvoPlayer.Player
             if (config.StreamType() != streamType)
                 throw new ArgumentException("config type doesn't match");
 
-            if (this.config != null && this.config.Equals(config))
-                return;
-
             if (config is BufferStreamConfig)
             {
                 player.SetStreamConfig(config);
@@ -86,6 +83,7 @@ namespace JuvoPlayer.Player
 
             this.config = config;
 
+            _codecHandler.OnStreamConfigChanged(this.config);
             player.SetStreamConfig(this.config);
         }
 

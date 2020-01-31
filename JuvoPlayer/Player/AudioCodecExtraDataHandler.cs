@@ -14,7 +14,6 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
-
 using System;
 using JuvoPlayer.Common;
 
@@ -22,10 +21,12 @@ namespace JuvoPlayer.Player
 {
     class AudioCodecExtraDataHandler : ICodecExtraDataHandler
     {
-        public byte[] GetParsedData() => null;
-        public void ParseData(ReadOnlySpan<byte> rawData, VideoCodec codec)
+        public void PrependPacket(Packet packet)
         {
+        }
 
+        public void OnStreamConfigChanged(StreamConfig config)
+        {
         }
     }
 }

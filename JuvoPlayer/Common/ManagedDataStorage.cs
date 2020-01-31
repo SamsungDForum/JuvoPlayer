@@ -27,6 +27,16 @@ namespace JuvoPlayer.Common
         public byte[] Data { get; set; }
 
         public int Length => Data?.Length ?? 0;
+        public void Prepend(byte[] prependData)
+        {
+            var prependLength = prependData.Length;
+            var newData = new byte[prependLength + Length];
+
+            Array.Copy(prependData, newData, prependLength);
+            Array.Copy(Data, 0, newData, prependLength, Length);
+
+            Data = newData;
+        }
 
         public void Dispose()
         {
