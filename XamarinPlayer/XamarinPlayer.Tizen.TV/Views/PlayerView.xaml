@@ -35,7 +35,7 @@
                         <Label x:Name="VideoTitle"
                                Text="{Binding Title}"
                                TextColor="White"
-                               FontSize="Large"
+                               FontSize="100"
                                HorizontalOptions="Center"
                                VerticalOptions="Center" />
                     </StackLayout>
@@ -64,12 +64,12 @@
                                 <StackLayout Orientation="Horizontal">
                                     <Label Text="Audio track" TextColor="White" HorizontalOptions="Start"
                                            VerticalOptions="Center" WidthRequest="200" />
-                                    <Picker x:Name="AudioTrack" WidthRequest="300" />
+                                    <Picker x:Name="AudioTrack" WidthRequest="400"/>
                                 </StackLayout>
                                 <StackLayout Orientation="Horizontal">
                                     <Label Text="Video quality" TextColor="White" HorizontalOptions="Start"
                                            VerticalOptions="Center" WidthRequest="200" />
-                                    <Picker x:Name="VideoQuality" WidthRequest="300">
+                                    <Picker x:Name="VideoQuality" WidthRequest="400">
                                         <Picker.Items>
                                             <x:String>auto</x:String>
                                         </Picker.Items>
@@ -79,7 +79,7 @@
                                 <StackLayout Orientation="Horizontal">
                                     <Label Text="Video speed" TextColor="White" HorizontalOptions="Start"
                                            VerticalOptions="Center" WidthRequest="200" />
-                                    <Picker x:Name="VideoSpeed" WidthRequest="300">
+                                    <Picker x:Name="VideoSpeed" WidthRequest="400">
                                         <Picker.Items>
                                             <x:String>normal</x:String>
                                         </Picker.Items>
@@ -89,7 +89,7 @@
                                 <StackLayout Orientation="Horizontal">
                                     <Label Text="Subtitles" TextColor="White" HorizontalOptions="Start"
                                            VerticalOptions="Center" WidthRequest="200" />
-                                    <Picker x:Name="Subtitles" WidthRequest="300">
+                                    <Picker x:Name="Subtitles" WidthRequest="400">
                                         <Picker.Items>
                                             <x:String>off</x:String>
                                         </Picker.Items>

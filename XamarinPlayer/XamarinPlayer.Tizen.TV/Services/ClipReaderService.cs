@@ -18,8 +18,12 @@
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Threading.Tasks;
+using Configuration;
 using JuvoPlayer.Common;
+using JuvoPlayer.ResourceLoaders;
 using JuvoPlayer.Utils;
+using Tizen;
 using Xamarin.Forms;
 using XamarinPlayer.Services;
 using XamarinPlayer.Tizen.TV.Services;
@@ -34,17 +38,31 @@ namespace XamarinPlayer.Tizen.TV.Services
         private string ApplicationPath => Path.GetDirectoryName(
             Path.GetDirectoryName(Application.Current.ApplicationInfo.ExecutablePath));
 
-        public List<Clip> ReadClips()
+        public Task<List<Clip>> ReadClips()
         {
-            var clipsPath = Path.Combine(ApplicationPath, "shared", "res", "videoclips.json");
-
-            return JSONFileReader.DeserializeJsonFile<List<ClipDefinition>>(clipsPath).Select(
-                o => new Clip
+            return Task.Run(async () =>
+            {
+                using (var resource = ResourceFactory.Create(Paths.VideoClipJsonPath))
                 {
-                    Image = Path.Combine(ApplicationPath, "res", o.Poster), Description = o.Description, Source = o.Url, Title = o.Title,
-                    ClipDetailsHandle = o, TilePreviewPath = o.TilePreviewPath
+                    var content = await resource.ReadAsStringAsync();
+                    return JSONFileReader.DeserializeJsonText<List<ClipDefinition>>(content).Select(o =>
+                    {
+                        if (o.SeekPreviewPath != null)
+                            o.SeekPreviewPath = resource.Resolve(o.SeekPreviewPath).AbsolutePath;
+                        if (o.TilePreviewPath != null)
+                            o.TilePreviewPath = resource.Resolve(o.TilePreviewPath).AbsolutePath;
+                        o.Poster = resource.Resolve(o.Poster).AbsolutePath;
+
+                        var clip = new Clip
+                        {
+                            Image = o.Poster, Description = o.Description, Source = o.Url,
+                            Title = o.Title,
+                            ClipDetailsHandle = o, TilePreviewPath = o.TilePreviewPath
+                        };
+                        return clip;
+                    }).ToList();
                 }
-            ).ToList();
+            });
         }
     }
 }

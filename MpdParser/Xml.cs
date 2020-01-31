@@ -15,7 +15,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
@@ -23,8 +23,6 @@ using System.Text;
 using System.Threading.Tasks;
 using System.Xml;
 using MpdParser.Node;
-using Tizen.Network.Nsd;
-
 namespace MpdParser.Xml
 {
     public class Element : System.Attribute
@@ -103,7 +101,7 @@ namespace MpdParser.Xml
     {
         public static T[] ToArray<T>(string val, Func<string, T> conv)
         {
-            string[] split = val.Split(new[] {',', ' '}, StringSplitOptions.RemoveEmptyEntries);
+            string[] split = val.Split(new[] { ',', ' ' }, StringSplitOptions.RemoveEmptyEntries);
             T[] result = new T[split.Length];
             for (int i = 0; i < split.Length; ++i)
                 result[i] = conv(split[i]);
@@ -335,7 +333,7 @@ namespace MpdParser.Xml
                 {
                     if (!(attr is Attribute))
                         continue;
-                    string xmlname = ((Attribute) attr).Name(prop.Name);
+                    string xmlname = ((Attribute)attr).Name(prop.Name);
                     attrs.Add(xmlname, prop);
                 }
             }
@@ -396,13 +394,13 @@ namespace MpdParser.Xml
                     Type listType = typeof(List<>).MakeGenericType(type);
                     ConstructorInfo ci = listType.GetConstructor(new Type[] { });
                     container = ci.Invoke(new object[] { });
-                    add = listType.GetMethod("Add", new[] {type});
+                    add = listType.GetMethod("Add", new[] { type });
                     toArray = listType.GetMethod("ToArray");
                     PropertyInfo info = listType.GetProperty("Count");
                     count = info.GetGetMethod();
                 }
 
-                add.Invoke(container, new[] {item});
+                add.Invoke(container, new[] { item });
             }
 
             public void Store<T>(T result)
@@ -567,9 +565,9 @@ namespace MpdParser.Xml
 
         private static object Create<T>(Type type, T parent)
         {
-            ConstructorInfo c = type.GetConstructor(new[] {parent.GetType()});
+            ConstructorInfo c = type.GetConstructor(new[] { parent.GetType() });
             if (c != null)
-                return c.Invoke(new object[] {parent});
+                return c.Invoke(new object[] { parent });
 
             return Activator.CreateInstance(type);
         }
@@ -598,7 +596,7 @@ namespace MpdParser.Xml
 
         public static async Task ParseAsync<T>(TextReader io, T result, string name)
         {
-            var reader = XmlReader.Create(io, new XmlReaderSettings {Async = true});
+            var reader = XmlReader.Create(io, new XmlReaderSettings { Async = true });
             while (await reader.ReadAsync())
             {
                 switch (reader.NodeType)

@@ -1,6 +1,6 @@
 'use strict';
 import React from 'react';
-import { View, Text, Picker, NativeModules, NativeEventEmitter, StyleSheet } from 'react-native';
+import { View, Text, Picker, NativeModules, NativeEventEmitter, StyleSheet, DeviceEventEmitter } from 'react-native';
 
 import HideableView from './HideableView';
 import Native from '../Native';
@@ -21,11 +21,14 @@ export default class PlaybackSettingsView extends React.Component {
   }
 
   componentWillMount() {
-    this.JuvoEventEmitter.addListener('onTVKeyDown', this.onTVKeyDown);
+    DeviceEventEmitter.addListener('PlaybackSettingsView/onTVKeyDown', this.onTVKeyDown);
+  }
+
+  componentWillUnmount() {
+    DeviceEventEmitter.removeListener('PlaybackSettingsView/onTVKeyDown', this.onTVKeyDown);
   }
 
   handleConfirmSettings() {
-    this.keysListenningOff = true;
     this.props.onCloseSettingsView();
   }
 
@@ -34,7 +37,6 @@ export default class PlaybackSettingsView extends React.Component {
       this.uniqueKey = this.uniqueKey + 1;
       this.setState({selectedIndex: nextProps.streamsData.selectedIndex});
     }
-    this.keysListenningOff = false;
   }
 
   getDefaultStreamDescription(streams) {
@@ -52,7 +54,6 @@ export default class PlaybackSettingsView extends React.Component {
   }
 
   onTVKeyDown(pressed) {
-    if (this.keysListenningOff) return;
     switch (pressed.KeyName) {
       case 'XF86Back':
       case 'XF86AudioStop':
