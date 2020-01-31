@@ -25,9 +25,6 @@ using JuvoLogger;
 using JuvoPlayer.Common;
 using JuvoPlayer.Demuxers.FFmpeg.Interop;
 using JuvoPlayer.Drms;
-using JuvoPlayer.Player;
-using JuvoPlayer.Utils;
-using Tizen;
 
 namespace JuvoPlayer.Demuxers.FFmpeg
 {
@@ -39,7 +36,6 @@ namespace JuvoPlayer.Demuxers.FFmpeg
         private AVIOContextWrapper avioContext;
 
         private const int MillisecondsPerSecond = 1000;
-        private ICodecExtraDataHandler[] _codecDataHandlers = new ICodecExtraDataHandler[(int)AVMediaType.AVMEDIA_TYPE_NB];
 
         private readonly AVRational millsBase = new AVRational
         {
@@ -52,8 +48,6 @@ namespace JuvoPlayer.Demuxers.FFmpeg
             formatContext = Interop.FFmpeg.avformat_alloc_context();
             if (formatContext == null)
                 throw new FFmpegException("Cannot allocate AVFormatContext");
-
-            _codecDataHandlers[(int)AVMediaType.AVMEDIA_TYPE_VIDEO] = new VideoCodecExtraDataHandler();
         }
 
         public long ProbeSize
@@ -219,11 +213,9 @@ namespace JuvoPlayer.Demuxers.FFmpeg
                 var pts = Rescale(pkt.pts, stream);
                 var dts = Rescale(pkt.dts, stream);
 
-                var offset = PrependCodecData(&pkt, stream->codec->codec_type);
-
                 var sideData = Interop.FFmpeg.av_packet_get_side_data(&pkt,
                     AVPacketSideDataType.AV_PKT_DATA_ENCRYPT_INFO, null);
-                var packet = sideData != null ? CreateEncryptedPacket(sideData, offset) : new Packet();
+                var packet = sideData != null ? CreateEncryptedPacket(sideData) : new Packet();
 
                 packet.StreamType = stream->codec->codec_type == AVMediaType.AVMEDIA_TYPE_AUDIO
                     ? StreamType.Audio
@@ -236,33 +228,6 @@ namespace JuvoPlayer.Demuxers.FFmpeg
                 packet.Storage = new FFmpegDataStorage { Packet = pkt, StreamType = packet.StreamType };
                 return packet;
             } while (true);
-        }
-
-        private uint PrependCodecData(AVPacket* packet, AVMediaType type)
-        {
-            var parsedCodecData = packet->flags == 1
-                ? _codecDataHandlers[(int)type]?.GetParsedData()
-                : null;
-
-            if (parsedCodecData == null)
-                return 0;
-
-            var codecDataLen = parsedCodecData.Length;
-
-            var orgSize = packet->size;
-            if (Interop.FFmpeg.av_grow_packet(packet, parsedCodecData.Length) < 0)
-            {
-                Logger.Error("GrowPacket failed. Better cow poo needed then what's on screen.");
-                return 0;
-            }
-
-            var packetSpan = new Span<byte>(packet->data, packet->size);
-
-            // Regions overlap. Copy of source data will be made.
-            packetSpan.Slice(0, orgSize).CopyTo(packetSpan.Slice(codecDataLen));
-            parsedCodecData.AsSpan().CopyTo(packetSpan);
-
-            return (uint)codecDataLen;
         }
 
         private TimeSpan Rescale(long ffmpegTime, AVStream* stream)
@@ -314,7 +279,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg
             return (target, FFmpegMacros.AVSEEK_FLAG_ANY);
         }
 
-        private static Packet CreateEncryptedPacket(byte* sideData, uint startOffset)
+        private static Packet CreateEncryptedPacket(byte* sideData)
         {
             var encInfo = (AVEncInfo*)sideData;
             int subsampleCount = encInfo->subsample_count;
@@ -334,10 +299,8 @@ namespace JuvoPlayer.Demuxers.FFmpeg
             var subsamples = &encInfo->subsamples;
             for (var i = 0; i < subsampleCount; ++i)
             {
-                packet.Subsamples[i].ClearData = subsamples[i].bytes_of_clear_data + startOffset;
+                packet.Subsamples[i].ClearData = subsamples[i].bytes_of_clear_data;
                 packet.Subsamples[i].EncData = subsamples[i].bytes_of_enc_data;
-
-                startOffset = 0;
             }
 
             return packet;
@@ -385,11 +348,6 @@ namespace JuvoPlayer.Demuxers.FFmpeg
                 config.CodecExtraData = new byte[stream->codecpar->extradata_size];
                 Marshal.Copy((IntPtr)stream->codecpar->extradata, config.CodecExtraData, 0,
                     stream->codecpar->extradata_size);
-
-
-                _codecDataHandlers[(int)stream->codec->codec_type]?.ParseData(
-                    new ReadOnlySpan<byte>(stream->codecpar->extradata, stream->codecpar->extradata_size),
-                    config.Codec);
             }
 
             return config;

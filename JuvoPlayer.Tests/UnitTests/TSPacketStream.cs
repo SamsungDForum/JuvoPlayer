@@ -60,7 +60,7 @@ namespace JuvoPlayer.Tests.UnitTests
 
         protected virtual IPacketStream CreatePacketStream(StreamType streamType, IPlayer player, IDrmManager drmManager, ICodecExtraDataHandler codecExtraDataHandler)
         {
-            return new PacketStream(streamType, player, drmManager);
+            return new PacketStream(streamType, player, drmManager, codecExtraDataHandler);
         }
 
         [Test]
@@ -99,6 +99,25 @@ namespace JuvoPlayer.Tests.UnitTests
                 stream.OnAppendPacket(packet);
 
                 playerMock.Received().AppendPacket(Arg.Any<Packet>());
+            }
+        }
+
+        [Test]
+        public void OnAppendPacket_WhenConfigured_CallsContextExtraDataHandler()
+        {
+            var codecExtraDataHandlerStub = Substitute.For<ICodecExtraDataHandler>();
+            var drmManagerStub = Substitute.For<IDrmManager>();
+            var playerMock = Substitute.For<IPlayer>();
+
+            using (var stream = CreatePacketStream(StreamType.Audio, playerMock, drmManagerStub, codecExtraDataHandlerStub))
+            {
+                var packet = new Packet { StreamType = StreamType.Audio };
+                var config = new AudioStreamConfig();
+
+                stream.OnStreamConfigChanged(config);
+                stream.OnAppendPacket(packet);
+
+                codecExtraDataHandlerStub.Received().PrependPacket(Arg.Any<Packet>());
             }
         }
 
@@ -144,6 +163,24 @@ namespace JuvoPlayer.Tests.UnitTests
             using (var stream = CreatePacketStream(StreamType.Audio))
             {
                 Assert.Throws<ArgumentNullException>(() => stream.OnStreamConfigChanged(null));
+            }
+        }
+
+        [Test]
+        public void OnStreamConfigChanged_WhenStreamConfigIsValid_CallsContextExtraDataHandler()
+        {
+            var codecExtraDataHandlerStub = Substitute.For<ICodecExtraDataHandler>();
+            var drmManagerStub = Substitute.For<IDrmManager>();
+            var playerMock = Substitute.For<IPlayer>();
+
+            using (var stream = CreatePacketStream(StreamType.Audio, playerMock, drmManagerStub, codecExtraDataHandlerStub))
+            {
+                var packet = new Packet { StreamType = StreamType.Audio };
+                var config = new AudioStreamConfig();
+
+                stream.OnStreamConfigChanged(config);
+
+                codecExtraDataHandlerStub.Received().OnStreamConfigChanged(Arg.Any<StreamConfig>());
             }
         }
 
