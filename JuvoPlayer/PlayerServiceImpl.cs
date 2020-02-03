@@ -70,8 +70,15 @@ namespace JuvoPlayer
         private readonly Subject<int> _playerBufferingSubject = new Subject<int>();
         private readonly Subject<TimeSpan> _playerClockSubject = new Subject<TimeSpan>();
 
-        public PlayerServiceImpl(Window window)
+        private readonly SynchronizationContext _syncCtx;
+
+        public PlayerServiceImpl()
         {
+            if (SynchronizationContext.Current == null)
+                throw new ArgumentNullException(nameof(SynchronizationContext.Current), "Null synchronization context");
+
+            _syncCtx = SynchronizationContext.Current;
+
             _playerControllerDisposables = new CompositeDisposable
             {
                 _playerStateSubject,
@@ -88,7 +95,10 @@ namespace JuvoPlayer
 
             drmManager = new DrmManager();
             drmManager.RegisterDrmHandler(new CencHandler());
+        }
 
+        public void SetWindow(Window window)
+        {
             playerWindow = window;
 
             CreatePlayerController();
@@ -106,15 +116,15 @@ namespace JuvoPlayer
 
         private void ConnectPlayerControllerObservables()
         {
-            // Pass-through subscription are not run through SynchronizationContext. Intentional
-            // Event consumers do so, no need to go through SyncContext twice.
+            // Subscribed observables are exposed to outside world through
+            // ObserveOn(_syncCtx). This should accomodate UIs without context
             _playerControllerConnections = new CompositeDisposable
             {
                 playerController.StateChanged().Subscribe(_playerStateSubject),
                 playerController.PlaybackError().Subscribe( _playerErrorSubject),
                 playerController.BufferingProgress().Subscribe(_playerBufferingSubject),
                 playerController.PlayerClock().Subscribe(_playerClockSubject),
-                playerController.TimeUpdated().Subscribe(SetClock,SynchronizationContext.Current)
+                playerController.TimeUpdated().Subscribe(SetClock,_syncCtx)
             };
         }
 
@@ -235,22 +245,22 @@ namespace JuvoPlayer
 
         public IObservable<PlayerState> StateChanged()
         {
-            return _playerStateSubject.AsObservable();
+            return _playerStateSubject.AsObservable().ObserveOn(_syncCtx);
         }
 
         public IObservable<string> PlaybackError()
         {
-            return _playerErrorSubject.AsObservable();
+            return _playerErrorSubject.AsObservable().ObserveOn(_syncCtx);
         }
 
         public IObservable<int> BufferingProgress()
         {
-            return _playerBufferingSubject.AsObservable();
+            return _playerBufferingSubject.AsObservable().ObserveOn(_syncCtx);
         }
 
         public IObservable<TimeSpan> PlayerClock()
         {
-            return _playerClockSubject.AsObservable();
+            return _playerClockSubject.AsObservable().ObserveOn(_syncCtx);
         }
     }
 }

@@ -383,7 +383,7 @@ namespace JuvoPlayer.Player.EsPlayer
         private async Task TransferTask()
         {
             CancellationToken token = transferCts.Token;
-            logger.Info($"{streamType}: Started {Thread.CurrentThread.ManagedThreadId}");
+            logger.Info($"{streamType}: Started");
             _bufferingSubject.OnNext(true);
             try
             {
@@ -499,7 +499,7 @@ namespace JuvoPlayer.Player.EsPlayer
                 var submitStatus = player.Submit(dataPacket);
 
                 logger.Debug(
-                    $"{dataPacket.StreamType}: ({submitStatus} )PTS: {dataPacket.Pts} Duration: {dataPacket.Duration}");
+                    $"{dataPacket.StreamType}: ({submitStatus}) PTS: {dataPacket.Pts} Duration: {dataPacket.Duration}");
 
                 if (submitStatus == ESPlayer.SubmitStatus.Success)
                     return;

@@ -20,22 +20,36 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using ElmSharp;
 using JuvoPlayer.Common;
 using Nito.AsyncEx;
+using Nito.AsyncEx.Synchronous;
 
 namespace JuvoPlayer
 {
-    public class PlayerServiceProxy : IPlayerService
+    public class PlayerServiceProxy<T> : IPlayerService where T : IPlayerService, new()
     {
         private readonly AsyncContextThread playerThread;
-        private readonly IPlayerService proxied;
+        private IPlayerService proxied;
 
-        public PlayerServiceProxy(IPlayerService proxied)
+        public PlayerServiceProxy()
         {
-            this.proxied = proxied;
             playerThread = new AsyncContextThread();
+
+            // Create proxy object from within playerThread. This should assure valid 
+            // SynchronizationContext.Current, separate of caller SynchronizationContext.
+            // proxied is "set twice" to keep playerThread and caller with current proxied object
+            proxied = playerThread.Factory.StartNew(() =>
+            {
+                proxied = new T();
+                return proxied;
+            }).WaitAndUnwrapException();
         }
 
+        public void SetWindow(Window window)
+        {
+            playerThread.Factory.StartNew(() => proxied.SetWindow(window));
+        }
         public TimeSpan Duration => proxied.Duration;
 
         public TimeSpan CurrentPosition => proxied.CurrentPosition;

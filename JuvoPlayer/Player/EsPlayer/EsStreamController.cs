@@ -88,6 +88,8 @@ namespace JuvoPlayer.Player.EsPlayer
         private TimeSpan _suspendClock;
         private ESPlayer.ESPlayerState _suspendState;
 
+        private SynchronizationContext _syncCtx;
+
         #region Public API
 
         public void Initialize(StreamType stream)
@@ -104,9 +106,9 @@ namespace JuvoPlayer.Player.EsPlayer
             var esStream = new EsStream(stream, packetStorage, dataSynchronizer, _playerClock);
             esStream.SetPlayer(player);
             streamReconfigureSubs[(int)stream] = esStream.StreamReconfigure()
-                .Subscribe(async _ => await OnStreamReconfigure(), SynchronizationContext.Current);
+                .Subscribe(async _ => await OnStreamReconfigure(), _syncCtx);
             playbackErrorSubs[(int)stream] = esStream.PlaybackError()
-                .Subscribe(OnEsStreamError, SynchronizationContext.Current);
+                .Subscribe(OnEsStreamError, _syncCtx);
 
             esStreams[(int)stream] = esStream;
         }
@@ -122,6 +124,8 @@ namespace JuvoPlayer.Player.EsPlayer
         {
             if (SynchronizationContext.Current == null)
                 throw new ArgumentNullException(nameof(SynchronizationContext.Current));
+
+            _syncCtx = SynchronizationContext.Current;
 
             _playerClock = new PlayerClockProvider(_clockScheduler);
             _dataClock = new DataClockProvider(_clockScheduler, _playerClock);
