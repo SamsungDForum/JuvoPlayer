@@ -18,6 +18,7 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using ElmSharp;
 using JuvoPlayer.Common;
 
 namespace JuvoPlayer
@@ -43,5 +44,6 @@ namespace JuvoPlayer
         IObservable<string> PlaybackError();
         IObservable<int> BufferingProgress();
         IObservable<TimeSpan> PlayerClock();
+        void SetWindow(Window window);
     }
 }

@@ -24,11 +24,11 @@ using XamarinPlayer.Tizen.Services;
 
 namespace XamarinPlayer.Tizen.Services
 {
-    sealed class PlayerService : PlayerServiceProxy
+    sealed class PlayerService : PlayerServiceProxy<PlayerServiceImpl>
     {
         public PlayerService()
-            : base(new PlayerServiceImpl(((FormsApplication) Forms.Context).MainWindow))
         {
+            SetWindow(((FormsApplication)Forms.Context).MainWindow);
         }
     }
 }
