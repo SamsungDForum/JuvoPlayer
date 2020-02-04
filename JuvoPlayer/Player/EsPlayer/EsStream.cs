@@ -338,7 +338,7 @@ namespace JuvoPlayer.Player.EsPlayer
                                             && CurrentConfig.IsCompatible(bufferConfigPacket.Config));
 
                     CurrentConfig = bufferConfigPacket.Config;
-
+                 
                     if (!isCompatible)
                     {
                         logger.Warn($"{streamType}: Incompatible Stream config change.");
