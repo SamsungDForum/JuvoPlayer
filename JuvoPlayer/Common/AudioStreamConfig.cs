@@ -34,12 +34,12 @@ namespace JuvoPlayer.Common
 
         public bool Equals(AudioStreamConfig other)
         {
+            // Channel layout is intentionally ignored. Does not seem to affect playback behaviour.
+            // bit rate.. well, that varies for same audio track, thus can't be used.
             return other != null &&
                    Codec == other.Codec &&
-                   ChannelLayout == other.ChannelLayout &&
                    SampleRate == other.SampleRate &&
-                   BitsPerChannel == other.BitsPerChannel &&
-                   BitRate == other.BitRate;
+                   BitsPerChannel == other.BitsPerChannel;
         }
 
         public override int GetHashCode()
@@ -71,12 +71,10 @@ namespace JuvoPlayer.Common
             return sb.ToString();
         }
 
-        // Audio compatibility criteria: 
-        // All parameters must match
         public override bool IsCompatible(StreamConfig other)
         {
             return other != null &&
-                   base.IsCompatible(other) && 
+                   base.IsCompatible(other as AudioStreamConfig) && 
                    Equals(other);
         } 
     }
