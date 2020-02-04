@@ -29,7 +29,7 @@ namespace JuvoPlayer.Player
 
         private byte[] _parsedExtraData = new byte[0];
 
-        public void PrependPacket(Packet packet)
+        public void PrependCodecData(Packet packet)
         {
             if (!packet.IsKeyFrame || _parsedExtraData.Length == 0)
                 return;
@@ -133,9 +133,9 @@ namespace JuvoPlayer.Player
         //  |
         //  | SPS length (4 bytes)
         //  after that header original ES packet bytes are appended
-        private void ExtractH264ExtraData(VideoStreamConfig vconf)
+        private void ExtractH264ExtraData(VideoStreamConfig videoConfig)
         {
-            var extraData = vconf.CodecExtraData;
+            var extraData = videoConfig.CodecExtraData;
 
             if (extraData.Length < 6)
             {  // Min first 5 byte + num_sps

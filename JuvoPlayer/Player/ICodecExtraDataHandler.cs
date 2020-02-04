@@ -22,7 +22,7 @@ namespace JuvoPlayer.Player
 {
     public interface ICodecExtraDataHandler
     {
-        void PrependPacket(Packet packet);
+        void PrependCodecData(Packet packet);
         void OnStreamConfigChanged(StreamConfig config);
     }
 }

@@ -59,7 +59,7 @@ namespace JuvoPlayer.Player
                 encPacket.DrmSession = drmSession;
             }
 
-            _codecHandler.PrependPacket(packet);
+            _codecHandler.PrependCodecData(packet);
             player.AppendPacket(packet);
         }
 

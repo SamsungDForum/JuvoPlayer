@@ -21,7 +21,7 @@ namespace JuvoPlayer.Player
 {
     class AudioCodecExtraDataHandler : ICodecExtraDataHandler
     {
-        public void PrependPacket(Packet packet)
+        public void PrependCodecData(Packet packet)
         {
         }
 

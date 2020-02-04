@@ -117,7 +117,7 @@ namespace JuvoPlayer.Tests.UnitTests
                 stream.OnStreamConfigChanged(config);
                 stream.OnAppendPacket(packet);
 
-                codecExtraDataHandlerStub.Received().PrependPacket(Arg.Any<Packet>());
+                codecExtraDataHandlerStub.Received().PrependCodecData(Arg.Any<Packet>());
             }
         }
 
