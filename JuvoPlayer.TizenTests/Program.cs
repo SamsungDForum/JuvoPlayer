@@ -53,7 +53,7 @@ namespace JuvoPlayer.TizenTests
 
             mainWindow = new Window("Main Window") {Geometry = new ElmSharp.Rect(0, 0, 1920, 1080)};
             mainWindow.Show();
-            PlayerService.SetWindow(mainWindow);
+            PlayerService.SetWindowValue(mainWindow);
         }
 
         private void ExtractNunitArgs()
