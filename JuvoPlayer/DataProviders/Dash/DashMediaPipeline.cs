@@ -223,7 +223,6 @@ namespace JuvoPlayer.DataProviders.Dash
 
             try
             {
-                //if (DisableAdaptiveStreaming || !AlowStreamSwitch)
                 if (DisableAdaptiveStreaming)
                     return;
 
@@ -297,11 +296,6 @@ namespace JuvoPlayer.DataProviders.Dash
             Monitor.Enter(switchStreamLock);
             try
             {
-                //if (pipelineStarted)
-                //{
-                //    await FlushPipeline();
-                //}
-
                 ResetPipeline();
                 DisableAdaptiveStreaming = true;
                 pendingStream = null;
@@ -513,7 +507,7 @@ namespace JuvoPlayer.DataProviders.Dash
             if (!pipelineStarted)
                 return;
 
-            Logger.Info($"{StreamType}:");
+            Logger.Info($"{StreamType}");
 
             // Stop demuxer and dashclient
             dashClient.Reset();

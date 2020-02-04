@@ -210,11 +210,6 @@ namespace JuvoPlayer.Player.EsPlayer
             packetStorage.Empty(streamType);
         }
 
-        public void EmptyBuffer()
-        {
-            packetStorage.Empty(streamType);
-        }
-
         public void RequestFirstDataPacketNotification()
         {
             // Note. RequestFirstDataPacketNotification() is not thread safe.
@@ -338,7 +333,7 @@ namespace JuvoPlayer.Player.EsPlayer
                                             && CurrentConfig.IsCompatible(bufferConfigPacket.Config));
 
                     CurrentConfig = bufferConfigPacket.Config;
-                 
+
                     if (!isCompatible)
                     {
                         logger.Warn($"{streamType}: Incompatible Stream config change.");
