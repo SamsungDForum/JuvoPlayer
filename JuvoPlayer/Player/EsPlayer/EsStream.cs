@@ -335,7 +335,7 @@ namespace JuvoPlayer.Player.EsPlayer
                     // Video is always compatible
                     var isCompatible = CurrentConfig.StreamType() == StreamType.Video
                                        || (CurrentConfig.StreamType() == StreamType.Audio
-                                            && !CurrentConfig.IsCompatible(bufferConfigPacket.Config));
+                                            && CurrentConfig.IsCompatible(bufferConfigPacket.Config));
 
                     CurrentConfig = bufferConfigPacket.Config;
 
