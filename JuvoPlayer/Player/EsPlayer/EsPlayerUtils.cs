@@ -253,11 +253,6 @@ namespace JuvoPlayer.Player.EsPlayer
         }
 
         public StreamConfig Config { get; private set; }
-
-        public bool Compatible(BufferConfigurationPacket packet)
-        {
-            return Config.IsCompatible(packet.Config);
-        }
     };
 
     /// <summary>
@@ -413,6 +408,37 @@ namespace JuvoPlayer.Player.EsPlayer
                     throw new ArgumentOutOfRangeException(
                         $"No mapping from Juvo audio codec {audioCodec} to ESPlayer audio codec");
             }
+        }
+    }
+
+    internal static class StreamConfigExtensions
+    {
+        internal static bool IsCompatible(this StreamConfig config, StreamConfig otherConfig)
+        {
+            switch (config)
+            {
+                case VideoStreamConfig videoConfig:
+                    return videoConfig.IsCompatible(otherConfig as VideoStreamConfig);
+                case AudioStreamConfig audioConfig:
+                    return audioConfig.IsCompatible(otherConfig as AudioStreamConfig);
+                default:
+                    throw new ArgumentException("Unsupported configuration type", nameof(config));
+            }
+        }
+
+        internal static bool IsCompatible(this VideoStreamConfig config, VideoStreamConfig otherConfig)
+        {
+            return otherConfig != null &&
+                   config.Codec == otherConfig.Codec &&
+                   config.FrameRate == otherConfig.FrameRate;
+        }
+
+        internal static bool IsCompatible(this AudioStreamConfig config, AudioStreamConfig otherConfig)
+        {
+            return otherConfig != null &&
+                   config.Codec == otherConfig.Codec &&
+                   config.SampleRate == otherConfig.SampleRate &&
+                   config.BitsPerChannel == otherConfig.BitsPerChannel;
         }
     }
 }

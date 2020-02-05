@@ -26,11 +26,6 @@ namespace JuvoPlayer.Common
 
         public abstract StreamType StreamType();
 
-        public virtual bool IsCompatible(StreamConfig other)
-        {
-            return StreamType() == other.StreamType();
-        }
-
         public override string ToString()
         {
             return "\tCodecData:\n" + HexDumper.HexDump(CodecExtraData);
