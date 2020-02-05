@@ -76,13 +76,5 @@ namespace JuvoPlayer.Common
 
             return sb.ToString();
         }
-
-        public bool Compatible(VideoStreamConfig other)
-        {
-            return other != null &&
-                   base.IsCompatible(other) &&
-                   Codec == other.Codec &&
-                   FrameRate == other.FrameRate;
-        }
     }
 }
