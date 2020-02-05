@@ -123,9 +123,7 @@ namespace JuvoPlayer.Player.EsPlayer
         {
             logger.Info(config.StreamType().ToString());
 
-            var configPacket = BufferConfigurationPacket.Create(config);
-
-            streamControl.SetStreamConfiguration(configPacket);
+            streamControl.SetStreamConfiguration(config);
         }
 
         #region IPlayer Interface event callbacks

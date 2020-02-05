@@ -116,8 +116,6 @@ namespace JuvoPlayer
 
         private void ConnectPlayerControllerObservables()
         {
-            // Subscribed observables are exposed to outside world through
-            // ObserveOn(_syncCtx). This should accomodate UIs without context
             _playerControllerConnections = new CompositeDisposable
             {
                 playerController.StateChanged().Subscribe(_playerStateSubject),
@@ -245,22 +243,22 @@ namespace JuvoPlayer
 
         public IObservable<PlayerState> StateChanged()
         {
-            return _playerStateSubject.AsObservable().ObserveOn(_syncCtx);
+            return _playerStateSubject.AsObservable();
         }
 
         public IObservable<string> PlaybackError()
         {
-            return _playerErrorSubject.AsObservable().ObserveOn(_syncCtx);
+            return _playerErrorSubject.AsObservable();
         }
 
         public IObservable<int> BufferingProgress()
         {
-            return _playerBufferingSubject.AsObservable().ObserveOn(_syncCtx);
+            return _playerBufferingSubject.AsObservable();
         }
 
         public IObservable<TimeSpan> PlayerClock()
         {
-            return _playerClockSubject.AsObservable().ObserveOn(_syncCtx);
+            return _playerClockSubject.AsObservable();
         }
     }
 }

@@ -98,7 +98,7 @@ namespace JuvoPlayer.Utils
         ///
         /// </summary>
         /// <param name="bytes">Byte array to be displayed</param>
-        /// <param name="index">Optional. EnableClock Index from which byte array is to be dumped.</param>
+        /// <param name="index">Optional. Start Index from which byte array is to be dumped.</param>
         /// <param name="length">Optional. Length of data to be dumped</param>
         /// <param name="doTextDump">Optional. True (default) - dump printable text along with hex dump
         /// False - Do not display text, just hex dump</param>

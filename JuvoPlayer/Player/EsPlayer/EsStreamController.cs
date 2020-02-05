@@ -88,7 +88,7 @@ namespace JuvoPlayer.Player.EsPlayer
         private TimeSpan _suspendClock;
         private ESPlayer.ESPlayerState _suspendState;
 
-        private SynchronizationContext _syncCtx;
+        private readonly SynchronizationContext _syncCtx;
 
         #region Public API
 
@@ -105,6 +105,7 @@ namespace JuvoPlayer.Player.EsPlayer
 
             var esStream = new EsStream(stream, packetStorage, dataSynchronizer, _playerClock);
             esStream.SetPlayer(player);
+
             streamReconfigureSubs[(int)stream] = esStream.StreamReconfigure()
                 .Subscribe(async _ => await OnStreamReconfigure(), _syncCtx);
             playbackErrorSubs[(int)stream] = esStream.PlaybackError()
@@ -176,18 +177,14 @@ namespace JuvoPlayer.Player.EsPlayer
             player.SetDisplay(displayWindow);
             resourceConflict = false;
 
+            foreach (var stream in esStreams)
+                stream?.SetPlayer(player);
+
             _playerClock.SetPlayerClockSource(CreatePlayerClockFunction(player));
 
             AttachEventHandlers();
         }
-
-        private void SetPlayer()
-        {
-            logger.Info("");
-
-            foreach (var stream in esStreams)
-                stream?.SetPlayer(player);
-        }
+        
 
         private void AttachEventHandlers()
         {
@@ -201,27 +198,30 @@ namespace JuvoPlayer.Player.EsPlayer
         /// Sets provided configuration to appropriate stream.
         /// </summary>
         /// <param name="config">StreamConfig</param>
-        public async Task SetStreamConfiguration(BufferConfigurationPacket config)
+        public async Task SetStreamConfiguration(StreamConfig config)
         {
-            var streamType = config.StreamType;
+            var streamType = config.StreamType();
 
             logger.Info($"{streamType}:");
 
             try
             {
-                if (config.Config is BufferStreamConfig metaData)
+                if (config is BufferStreamConfig metaData)
                 {
                     await _dataClock.UpdateBufferDepth(metaData.StreamType(), metaData.BufferDuration);
                     return;
                 }
 
-                esStreams[(int)streamType].StoreStreamConfiguration(config);
-
                 if (esStreams[(int)streamType].IsConfigured)
                 {
-                    AppendPacket(config);
+                    AppendPacket(BufferConfigurationPacket.Create(config));
                     return;
                 }
+
+                // Don't push config yet. Just store it. Configs may arrive
+                // after player gets disowned. Configs should not be pushed, but
+                // configuration is needed in order to restore player configuration.
+                esStreams[(int)streamType].StoreStreamConfiguration(config);
 
                 // Check if all initialized streams are configured
                 if (!AllStreamsHaveConfiguration)
@@ -230,10 +230,9 @@ namespace JuvoPlayer.Player.EsPlayer
                 if (activeTaskCts.IsCancellationRequested)
                     return;
 
-                UpdatePlayerConfiguration();
-                SetPlayerConfiguration();
                 var token = activeTaskCts.Token;
 
+                SetPlayerConfiguration();
                 await PreparePlayback(token);
                 SetState(PlayerState.Prepared);
 
@@ -434,7 +433,7 @@ namespace JuvoPlayer.Player.EsPlayer
             // generation via SetState().
             activeTaskCts.Cancel();
 
-            logger.Info($"Suspended {_suspendState}/{_suspendClock}");
+            logger.Info($"Suspended State/Clock: {_suspendState}/{_suspendClock}");
         }
 
         public async Task Resume()
@@ -446,7 +445,7 @@ namespace JuvoPlayer.Player.EsPlayer
             var token = activeTaskCts.Token;
             var wasConflicted = resourceConflict;
 
-            logger.Info($"Resuming {_suspendState}/{_suspendClock} Conflicted: {resourceConflict}");
+            logger.Info($"Resuming State/Clock {_suspendState}/{_suspendClock} Player dead: {resourceConflict}");
 
             // If suspend happened before or during PrepareAsync, suspend state will be Idle
             // There is no state "have configuration" based on which prepare operation would be invoked,
@@ -454,29 +453,28 @@ namespace JuvoPlayer.Player.EsPlayer
             var targetState = _suspendState == ESPlayer.ESPlayerState.Idle
                 ? ESPlayer.ESPlayerState.Ready : _suspendState;
 
-            var resumeState = ESPlayer.ESPlayerState.None;
+            // When conflicted, start with idle to restore player state.
+            // No conflict - player is as ready as it will ever be.
+            var currentState = wasConflicted
+                ?ESPlayer.ESPlayerState.None:ESPlayer.ESPlayerState.Ready;
 
             // Loop through startup states till target state reached.
             do
             {
-                switch (resumeState)
+                switch (currentState)
                 {
                     // Player conflict. ReCreate player
                     case ESPlayer.ESPlayerState.None when wasConflicted:
                         ClosePlayer();
                         OpenPlayer();
-                        SetPlayer();
-                        resumeState = ESPlayer.ESPlayerState.Idle;
+                        currentState = ESPlayer.ESPlayerState.Idle;
                         break;
 
-                    // Player untouched. Move along
-                    case ESPlayer.ESPlayerState.None:
-                        logger.Info($"{resumeState}");
-                        resumeState = ESPlayer.ESPlayerState.Idle;
-                        break;
 
                     // Player Conflict. New player created.
+                    // Player untouched. Suspend occured before or during prepare async.
                     case ESPlayer.ESPlayerState.Idle when wasConflicted:
+                    case ESPlayer.ESPlayerState.Idle when _suspendState == ESPlayer.ESPlayerState.Idle:
 
                         // Push current configuration (if available)
                         if (!AllStreamsHaveConfiguration)
@@ -497,51 +495,26 @@ namespace JuvoPlayer.Player.EsPlayer
                         if (token.IsCancellationRequested)
                             return;
 
-                        resumeState = ESPlayer.ESPlayerState.Ready;
+                        currentState = ESPlayer.ESPlayerState.Ready;
                         break;
-
-                    // Player untouched. Suspend occured before or during prepare async.
-                    case ESPlayer.ESPlayerState.Idle when _suspendState == ESPlayer.ESPlayerState.Idle:
-
-                        // Push current configuration (if available)
-                        if (!AllStreamsHaveConfiguration)
-                        {
-                            logger.Info(
-                                $"Have Configuration. Audio: {esStreams[(int)StreamType.Audio].HaveConfiguration}  Video: {esStreams[(int)StreamType.Video].HaveConfiguration}");
-                            return;
-                        }
-
-                        SetPlayerConfiguration();
-                        // Do prepare. No need to set data clock.
-                        await PreparePlayback(token);
-                        if (token.IsCancellationRequested)
-                            return;
-
-                        resumeState = ESPlayer.ESPlayerState.Ready;
-                        break;
-
-                    // Player untouched. Suspend occured after prepare async completed. Move along
-                    case ESPlayer.ESPlayerState.Idle:
-                        resumeState = ESPlayer.ESPlayerState.Ready;
-                        break;
-
+                        
                     // Player conflict. Player prepared. Suspended in pause state.
                     // Resume cannot be called, use start/pause to get back to paused state.
                     case ESPlayer.ESPlayerState.Ready when wasConflicted && _suspendState == ESPlayer.ESPlayerState.Paused:
                         player.Start();
                         player.Pause();
-                        resumeState = ESPlayer.ESPlayerState.Paused;
+                        currentState = ESPlayer.ESPlayerState.Paused;
                         break;
 
                     // Player conflict. Player prepared. Suspended in play state
                     case ESPlayer.ESPlayerState.Ready when wasConflicted && _suspendState == ESPlayer.ESPlayerState.Playing:
                         player.Start();
-                        resumeState = ESPlayer.ESPlayerState.Playing;
+                        currentState = ESPlayer.ESPlayerState.Playing;
                         break;
 
                     // Player untouched. Suspended in paused state. Move to pause.
                     case ESPlayer.ESPlayerState.Ready when _suspendState == ESPlayer.ESPlayerState.Paused:
-                        resumeState = ESPlayer.ESPlayerState.Paused;
+                        currentState = ESPlayer.ESPlayerState.Paused;
                         break;
 
                     // Player untouched. Suspended in playing state. Start clocks, transfer and resume playback.
@@ -549,14 +522,14 @@ namespace JuvoPlayer.Player.EsPlayer
                         StartClockGenerator();
                         player.Resume();
                         ResumeTransfer();
-                        resumeState = ESPlayer.ESPlayerState.Playing;
+                        currentState = ESPlayer.ESPlayerState.Playing;
                         break;
                 }
 
-            } while (resumeState != targetState && !token.IsCancellationRequested);
+            } while (currentState != targetState && !token.IsCancellationRequested);
 
             // Push out target state.
-            switch (resumeState)
+            switch (currentState)
             {
                 case ESPlayer.ESPlayerState.Ready:
                     SetState(PlayerState.Prepared);
@@ -789,8 +762,9 @@ namespace JuvoPlayer.Player.EsPlayer
                 ClosePlayer();
                 OpenPlayer();
 
-                // Set newly player to esStreams & push last known configuration
-                SetPlayer();
+                // Push last known configuration
+                if(!AllStreamsHaveConfiguration)
+
                 SetPlayerConfiguration();
 
                 // Set data clock to pause time.
@@ -813,20 +787,15 @@ namespace JuvoPlayer.Player.EsPlayer
             }
         }
 
-        private void UpdatePlayerConfiguration()
-        {
-            logger.Info("");
-
-            foreach (var esStream in esStreams)
-                esStream?.UpdateStreamConfiguration();
-        }
-
         private void SetPlayerConfiguration()
         {
             logger.Info("");
 
             foreach (var esStream in esStreams)
-                esStream?.SetStreamConfiguration();
+            {
+                if(esStream != null && !esStream.IsConfigured)
+                    esStream?.SetStreamConfiguration();
+            }
         }
 
         private void ClosePlayer()
@@ -839,6 +808,10 @@ namespace JuvoPlayer.Player.EsPlayer
 
             player.Stop();
             player.Dispose();
+            foreach (var esStream in esStreams)
+            {
+                if (esStream != null) esStream.IsConfigured = false;
+            }
         }
 
         private async Task SeekStreamInitialize(CancellationToken token)

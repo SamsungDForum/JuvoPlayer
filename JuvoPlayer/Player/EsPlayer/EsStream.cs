@@ -25,6 +25,7 @@ using Configuration;
 using JuvoLogger;
 using JuvoPlayer.Common;
 using JuvoPlayer.Drms;
+using Nito.AsyncEx;
 using ESPlayer = Tizen.TV.Multimedia;
 using StreamType = JuvoPlayer.Common.StreamType;
 
@@ -56,12 +57,6 @@ namespace JuvoPlayer.Player.EsPlayer
     /// </summary>
     internal class EsStream : IDisposable
     {
-        internal enum SetStreamConfigResult
-        {
-            SetConfiguration,
-            QueueConfiguration
-        }
-
         private readonly ILogger logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
 
         /// Delegate holding PushConfigMethod. Different for Audio and Video
@@ -84,11 +79,10 @@ namespace JuvoPlayer.Player.EsPlayer
         public StreamType GetStreamType() => streamType;
 
         // Buffer configuration and supporting info
-        public BufferConfigurationPacket CurrentConfig { get; internal set; }
-        public BufferConfigurationPacket LastQueuedConfig { get; internal set; }
+        public StreamConfig Configuration { get; internal set; }
 
-        public bool HaveConfiguration => LastQueuedConfig != null;
-        public bool IsConfigured => (CurrentConfig != null);
+        public bool HaveConfiguration => Configuration != null;
+        public bool IsConfigured { get; set; }
 
         // Events
         private readonly Subject<string> playbackErrorSubject = new Subject<string>();
@@ -150,39 +144,51 @@ namespace JuvoPlayer.Player.EsPlayer
         {
             logger.Info($"{streamType}");
             player = newPlayer;
+            IsConfigured = false;
         }
 
         /// <summary>
-        /// Sets Stream configuration
-        /// Non configured stream - stream config will be pushed directly to ES Player.
-        /// Configured stream - stream config will be enqueue in packet storage
-        /// and processed once retrieved.
+        /// Stores provided configuration but does not push it to player
         /// </summary>
-        /// <param name="bufferConfig">BufferConfigurationPacket</param>
+        /// <param name="config">StreamConfig</param>
         /// <returns>SetStreamConfigResult</returns>
-        public void StoreStreamConfiguration(BufferConfigurationPacket bufferConfig)
+
+        public void StoreStreamConfiguration(StreamConfig config)
         {
             logger.Info($"{streamType}");
-            LastQueuedConfig = bufferConfig;
+            Configuration = config;
         }
 
+        /*
         public void UpdateStreamConfiguration()
         {
             logger.Info($"{streamType}");
-            CurrentConfig = LastQueuedConfig;
+            CurrentConfiguration = StoredConfiguration;
         }
+        */
         /// <summary>
-        /// Method resets current config. When config change occurs as a result
-        /// of config packet being queued, CurrentConfig holds value of new configuration
-        /// which needs to be pushed to player
+        /// Sets Stream configuration
+        /// If no argument is provided, current configuration will be pushed.
+        /// Otherwise provided configuration will be set as current and pushed.
         /// </summary>
-        public void SetStreamConfiguration()
+        /// <param name="config">StreamConfig</param>
+        /// </summary>
+        public void SetStreamConfiguration(StreamConfig config=null)
         {
-            logger.Info($"{streamType}");
-            if (CurrentConfig == null)
-                throw new ArgumentNullException(nameof(CurrentConfig));
+            logger.Info($"{streamType}: Using {(config==null?"stored":"provided")} configuration");
 
-            PushStreamConfig(CurrentConfig.Config);
+            if (config == null)
+            {
+                if(Configuration == null)
+                    throw new ArgumentNullException(nameof(Configuration), "Current configuration is null");
+            }
+            else
+            {
+                Configuration = config;
+            }
+            
+            PushStreamConfig(Configuration);
+            IsConfigured = true;
         }
 
         /// <summary>
@@ -266,7 +272,7 @@ namespace JuvoPlayer.Player.EsPlayer
             logger.Info(streamInfo.DumpConfig());
 
             player.SetStream(streamInfo);
-
+            
             logger.Info($"{streamType}: Stream configuration set");
         }
 
@@ -344,9 +350,9 @@ namespace JuvoPlayer.Player.EsPlayer
                     break;
 
                 case BufferConfigurationPacket bufferConfigPacket:
-                    CurrentConfig = bufferConfigPacket;
-
-                    if (CurrentConfig.StreamType == StreamType.Audio && !CurrentConfig.Compatible(bufferConfigPacket))
+                    
+                    if (Configuration.StreamType() == StreamType.Audio && 
+                        !Configuration.IsCompatible(bufferConfigPacket.Config))
                     {
                         logger.Warn($"{streamType}: Incompatible Stream config change.");
                         streamReconfigureSubject.OnNext(Unit.Default);
@@ -356,6 +362,7 @@ namespace JuvoPlayer.Player.EsPlayer
                         continueProcessing = false;
                     }
 
+                    Configuration = bufferConfigPacket.Config;
                     break;
 
                 case EncryptedPacket encryptedPacket:
