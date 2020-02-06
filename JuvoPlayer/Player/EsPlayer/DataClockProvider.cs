@@ -76,7 +76,7 @@ namespace JuvoPlayer.Player.EsPlayer
                     return;
                 }
                 _sourceClock = newClock;
-                Logger.Info($"Clock set: {_sourceClock}");
+                Logger.Info($"Clock set: {_sourceClock + _dataLimit}");
             }, _scheduler);
 
         }
@@ -141,7 +141,7 @@ namespace JuvoPlayer.Player.EsPlayer
             if (_dataClockConnection != null) return;
 
             _dataClockConnection = _dataClockSource.Connect();
-            Logger.Info("");
+            Logger.Info($"Clock Started: {_sourceClock + _dataLimit}");
         }
 
         public void Dispose()

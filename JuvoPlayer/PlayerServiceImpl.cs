@@ -118,6 +118,7 @@ namespace JuvoPlayer
             _playerControllerConnections = new CompositeDisposable
             {
                 playerController.StateChanged().Subscribe(SetState,_syncCtx),
+                playerController.StateChanged().Subscribe(_playerStateSubject),
                 playerController.PlaybackError().Subscribe( _playerErrorSubject),
                 playerController.BufferingProgress().Subscribe(_playerBufferingSubject),
                 playerController.PlayerClock().Subscribe(_playerClockSubject),
@@ -128,11 +129,8 @@ namespace JuvoPlayer
         private void SetClock(TimeSpan clock) =>
             CurrentPosition = clock;
 
-        private void SetState(PlayerState state)
-        {
+        private void SetState(PlayerState state) =>
             State = state;
-            _playerStateSubject.OnNext(state);
-        }
 
         public void Pause()
         {
