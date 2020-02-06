@@ -27,54 +27,25 @@ namespace JuvoPlayer.Player
     {
         private readonly ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
 
-        private readonly IPlayer player;
-        private byte[] parsedExtraData = new byte[0];
+        private byte[] _parsedExtraData = new byte[0];
 
-        public VideoCodecExtraDataHandler(IPlayer player)
+        public void PrependCodecData(Packet packet)
         {
-            this.player = player ?? throw new ArgumentNullException(nameof(player), "player cannot be null");
-        }
-
-        public void OnAppendPacket(Packet packet)
-        {
-            if (packet == null)
+            if (!packet.IsKeyFrame || _parsedExtraData.Length == 0)
                 return;
 
-            if (packet.StreamType != StreamType.Video)
-                throw new ArgumentException("invalid packet type");
-
-            if (!parsedExtraData.Any())
-                return;
-
-            if (!packet.IsKeyFrame)
-                return;
-
-            var configPacket = new Packet
-            {
-                Storage = new ManagedDataStorage
-                {
-                    Data = parsedExtraData.ToArray()
-                },
-                Dts = packet.Dts,
-                Pts = packet.Pts,
-                IsKeyFrame = true,
-                StreamType = StreamType.Video
-            };
-
-            player.AppendPacket(configPacket);
+            packet.Prepend(_parsedExtraData);
         }
 
         public void OnStreamConfigChanged(StreamConfig config)
         {
-            parsedExtraData = new byte[0];
+            _parsedExtraData = new byte[0];
 
-            if (!(config is VideoStreamConfig))
+            if (!(config is VideoStreamConfig videoConfig))
                 throw new ArgumentException("invalid config type");
 
             if (config.CodecExtraData == null)
                 return;
-
-            var videoConfig = (VideoStreamConfig)config;
 
             switch (videoConfig.Codec)
             {
@@ -83,6 +54,9 @@ namespace JuvoPlayer.Player
                     break;
                 case VideoCodec.H265:
                     ExtractH265ExtraData(videoConfig);
+                    break;
+                default:
+                    Logger.Warn($"Unsupported codec {videoConfig.Codec}");
                     break;
             }
         }
@@ -161,14 +135,13 @@ namespace JuvoPlayer.Player
         //  after that header original ES packet bytes are appended
         private void ExtractH264ExtraData(VideoStreamConfig videoConfig)
         {
-            if (videoConfig.CodecExtraData.Length < 6)
+            var extraData = videoConfig.CodecExtraData;
+
+            if (extraData.Length < 6)
             {  // Min first 5 byte + num_sps
                 Logger.Error("extra_data is too short to pass valid SPS/PPS header");
                 return;
             }
-
-            var extraData = new byte[videoConfig.CodecExtraData.Length];
-            Buffer.BlockCopy(videoConfig.CodecExtraData, 0, extraData, 0, videoConfig.CodecExtraData.Length);
 
             var idx = 0;
             var version = ReadByte(extraData, ref idx);
@@ -217,7 +190,7 @@ namespace JuvoPlayer.Player
             var size = spses.Sum(o => lengthSize + o.Length)
                 + ppses.Sum(o => lengthSize + o.Length);
 
-            parsedExtraData = new byte[size];
+            _parsedExtraData = new byte[size];
             var offset = 0;
 
             CopySet(lengthSize, spses, ref offset);
@@ -242,9 +215,7 @@ namespace JuvoPlayer.Player
                     return null;
                 }
 
-                var elem = new byte[length];
-                Buffer.BlockCopy(extraData, idx, elem, 0, (int)length);
-                sets.Add(elem);
+                sets.Add(extraData.AsSpan(idx, (int)length).ToArray());
                 idx += (int)length;
             }
             return sets;
@@ -255,9 +226,9 @@ namespace JuvoPlayer.Player
             foreach (var pps in nals)
             {
                 var len = AsBytesMSB((uint)pps.Length, (int)lengthSize);
-                Buffer.BlockCopy(len, 0, parsedExtraData, offset, len.Length);
+                Buffer.BlockCopy(len, 0, _parsedExtraData, offset, len.Length);
                 offset += len.Length;
-                Buffer.BlockCopy(pps, 0, parsedExtraData, offset, pps.Length);
+                Buffer.BlockCopy(pps, 0, _parsedExtraData, offset, pps.Length);
                 offset += pps.Length;
             }
         }
@@ -316,16 +287,14 @@ namespace JuvoPlayer.Player
         //       (BigEndian)
         //     write nalUnit (without any modifications)
         //   append video packet data
-        private void ExtractH265ExtraData(VideoStreamConfig videoConfig)
+        private void ExtractH265ExtraData(VideoStreamConfig vconf)
         {
-            if (videoConfig.CodecExtraData.Length < 21)
+            var extraData = vconf.CodecExtraData;
+            if (extraData.Length < 21)
             {  // Min first 5 byte + num_sps
                 Logger.Error("extra_data is too short to pass valid SPS/PPS header");
                 return;
             }
-
-            var extraData = new byte[videoConfig.CodecExtraData.Length];
-            Buffer.BlockCopy(videoConfig.CodecExtraData, 0, extraData, 0, videoConfig.CodecExtraData.Length);
 
             var idx = 21;
             var lengthSize = (ReadByte(extraData, ref idx) & 0x3u) + 1;
@@ -356,15 +325,13 @@ namespace JuvoPlayer.Player
                         return;
                     }
 
-                    var elem = new byte[nalUnitLength];
-                    Buffer.BlockCopy(extraData, idx, elem, 0, nalUnitLength);
-                    nals.Add(elem);
+                    nals.Add(extraData.AsSpan().Slice(idx, nalUnitLength).ToArray());
                     idx += nalUnitLength;
                 }
             }
             var size = nals.Sum(o => lengthSize + o.Length);
 
-            parsedExtraData = new byte[size];
+            _parsedExtraData = new byte[size];
 
             var offset = 0;
             CopySet(lengthSize, nals, ref offset);

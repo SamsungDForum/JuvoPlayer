@@ -208,18 +208,22 @@ namespace JuvoPlayer.Demuxers.FFmpeg
                 var streamIndex = pkt.stream_index;
                 if (streamIndexes.All(index => index != streamIndex))
                     continue;
+
                 var stream = formatContext->streams[streamIndex];
                 var pts = Rescale(pkt.pts, stream);
                 var dts = Rescale(pkt.dts, stream);
+
                 var sideData = Interop.FFmpeg.av_packet_get_side_data(&pkt,
                     AVPacketSideDataType.AV_PKT_DATA_ENCRYPT_INFO, null);
                 var packet = sideData != null ? CreateEncryptedPacket(sideData) : new Packet();
+
                 packet.StreamType = stream->codec->codec_type == AVMediaType.AVMEDIA_TYPE_AUDIO
                     ? StreamType.Audio
                     : StreamType.Video;
                 packet.Pts = pts.Ticks >= 0 ? pts : TimeSpan.Zero;
                 packet.Dts = dts.Ticks >= 0 ? dts : TimeSpan.Zero;
                 packet.Duration = Rescale(pkt.duration, stream);
+
                 packet.IsKeyFrame = pkt.flags == 1;
                 packet.Storage = new FFmpegDataStorage { Packet = pkt, StreamType = packet.StreamType };
                 return packet;
@@ -279,13 +283,11 @@ namespace JuvoPlayer.Demuxers.FFmpeg
         {
             var encInfo = (AVEncInfo*)sideData;
             int subsampleCount = encInfo->subsample_count;
-            var keyId = encInfo->kid.ToArray();
-            var iv = new byte[encInfo->iv_size];
-            Buffer.BlockCopy(encInfo->iv.ToArray(), 0, iv, 0, encInfo->iv_size);
+
             var packet = new EncryptedPacket
             {
-                KeyId = keyId,
-                Iv = iv
+                KeyId = encInfo->kid.ToArray(),
+                Iv = encInfo->iv.ToArray()
             };
             if (subsampleCount <= 0)
                 return packet;

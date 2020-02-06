@@ -18,12 +18,15 @@
  */
 
 using System;
+using JuvoLogger;
 using JuvoPlayer.Demuxers.FFmpeg.Interop;
 
 namespace JuvoPlayer.Common
 {
     internal class FFmpegDataStorage : INativeDataStorage
     {
+        private static readonly ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
+
         private static readonly byte[] AudioPES =
             {0xC0, 0x00, 0x00, 0x00, 0x01, 0xCE, 0x8C, 0x4D, 0x9D, 0x10, 0x8E, 0x25, 0xE9, 0xFE};
 
@@ -36,6 +39,29 @@ namespace JuvoPlayer.Common
 
         public unsafe byte* Data => Packet.data;
         public int Length => GetLength();
+        public void Prepend(byte[] prependData)
+        {
+            var prependLen = prependData.Length;
+            var orgLen = Packet.size;
+            var pkt = Packet;
+
+            Span<byte> packetSpan;
+            unsafe
+            {
+                if (FFmpeg.av_grow_packet(&pkt, prependLen) < 0)
+                {
+                    Logger.Error("GrowPacket failed");
+                    return;
+                }
+                packetSpan = new Span<byte>(pkt.data, pkt.size);
+            }
+
+            // Regions overlap. Copy of source data will be made.
+            packetSpan.Slice(0, orgLen).CopyTo(packetSpan.Slice(prependLen));
+            prependData.AsSpan().CopyTo(packetSpan);
+
+            Packet = pkt;
+        }
 
         public AVPacket Packet { get; set; }
 

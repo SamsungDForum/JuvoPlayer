@@ -15,9 +15,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-using JuvoPlayer.Drms;
 using System;
-using System.Runtime.ExceptionServices;
 using System.Xml.Serialization;
 using System.Threading;
 using System.Threading.Tasks;
@@ -48,6 +46,16 @@ namespace JuvoPlayer.Drms
                 throw new InvalidOperationException("Decrypt called without DrmSession");
 
             return DrmSession.DecryptPacket(this, token);
+        }
+
+        public override void Prepend(byte[] prependData)
+        {
+            if (Subsamples.Length == 0)
+                throw new ArgumentOutOfRangeException(nameof(Subsamples));
+
+            base.Prepend(prependData);
+
+            Subsamples[0].ClearData += (uint)prependData.Length;
         }
 
         #region Disposable support

@@ -93,7 +93,6 @@ namespace JuvoPlayer.DataProviders.Dash
         /// </summary>
         private bool initInProgress;
 
-        private TimeSpan initDataDuration;
         private bool initSegmentReloadRequired;
 
         private readonly Subject<string> errorSubject = new Subject<string>();
@@ -137,8 +136,7 @@ namespace JuvoPlayer.DataProviders.Dash
             if (nextSegTimeRange == null)
                 return false;
 
-            var timeToNextSegmentDownload = (GetSegmentMinimumFitDuration(nextSegTimeRange.Duration)
-                                            - (_dataClockLimit - bufferTime))
+            var timeToNextSegmentDownload = _dataClockLimit - bufferTime
                                             + DynamicSegmentAvailabilityOverhead;
 
             var prevSegmentTimeIndex = nextSegTimeRange.Start - timeToNextSegmentDownload;
@@ -158,7 +156,7 @@ namespace JuvoPlayer.DataProviders.Dash
                 LogInfo($"Data clock update: {_dataClockLimit}->{request}");
 
             _dataClockLimit = request;
-            readySubject.OnNext(Unit.Default);
+            ScheduleNextSegDownload();
         }
 
         public TimeSpan Seek(TimeSpan position)
@@ -182,10 +180,13 @@ namespace JuvoPlayer.DataProviders.Dash
                 throw new ArgumentOutOfRangeException();
             }
 
-            currentTime = seekToTimeRange.Start;
+            // Seek operation clears all buffered data (bufferTime=0). bufferTime is set to currentTime
+            // during Start(). bufferTime will get updated after chunk download.
+            currentTime = TimeSpan.Zero;
 
-            // Will get updated by first downloaded chunk
-            bufferTime = TimeSpan.Zero;
+            // Clear dataClockLimit. Download will start after new dataClockLimit is
+            // received.
+            _dataClockLimit = TimeSpan.Zero;
 
             LogInfo(
                 $"Seek Pos Req: {position} Seek to: ({seekToTimeRange.Start}-{seekToTimeRange.Start + seekToTimeRange.Duration}/{currentTime}) SegId: {currentSegmentId}");
@@ -201,10 +202,12 @@ namespace JuvoPlayer.DataProviders.Dash
                 throw new Exception("currentRepresentation has not been set");
 
             initInProgress = true;
-            initDataDuration = currentStreams.GetDocumentParameters().Document.MinBufferTime ??
-                                               MinimumBufferTime;
-
             initSegmentReloadRequired = initReloadRequired;
+
+            // Clear init bytes early. If client terminates before new init segment is downloaded
+            // (i.e. seek operation), stale init data will be present.
+            if (initReloadRequired)
+                initStreamBytes.Clear();
 
             if (cancellationTokenSource == null || cancellationTokenSource?.IsCancellationRequested == true)
             {
@@ -223,27 +226,21 @@ namespace JuvoPlayer.DataProviders.Dash
             if (currentStreams.InitSegment == null)
                 initInProgress = false;
 
-            readySubject.OnNext(Unit.Default);
-        }
-
-        private static TimeSpan GetSegmentMinimumFitDuration(TimeSpan segmentDuration)
-        {
-            return TimeSpan.FromMilliseconds(segmentDuration.TotalMilliseconds * MinimumSegmentFitRatio);
+            LogInfo($"{streamType}: Started");
+            ScheduleNextSegDownload();
         }
 
         private bool IsBufferSpaceAvailable()
         {
-            if (lastDownloadSegmentTimeRange == null)
+            if (!currentSegmentId.HasValue)
                 return _dataClockLimit > TimeSpan.Zero;
 
-            // Try not to overflow buffers. Download next segment if predefined
-            // amount will fit
-            var minFitDuration = GetSegmentMinimumFitDuration(lastDownloadSegmentTimeRange.Duration);
+            var currentChunk = currentStreams.SegmentTimeRange(currentSegmentId).Duration;
 
-            if (_dataClockLimit >= bufferTime + minFitDuration)
+            if (_dataClockLimit >= bufferTime + currentChunk)
                 return true;
 
-            LogInfo($"Full buffer: {bufferTime} Limit {_dataClockLimit} MinFit {minFitDuration} ({bufferTime - currentTime})");
+            LogInfo($"Full. BufferTime {bufferTime} Max {_dataClockLimit} Chunk {currentChunk} ({bufferTime - currentTime})");
 
             return false;
         }
@@ -252,11 +249,14 @@ namespace JuvoPlayer.DataProviders.Dash
         {
             if (IsEndOfContent(bufferTime))
             {
+                LogInfo("End of content");
                 // DashClient termination. This may be happening as part of scheduleDownloadNextTask.
                 // Clear reference held in scheduleDownloadNextTask to prevent Stop() from trying to wait
                 // for itself. Otherwise DashClient will try to chase its own tail (deadlock)
                 downloadCompletedTask = null;
-                Stop();
+
+                // Generate EOS asap
+                StopAsync();
                 return;
             }
 
@@ -280,6 +280,7 @@ namespace JuvoPlayer.DataProviders.Dash
             }
 
             var segment = currentStreams.MediaSegment(currentSegmentId);
+
             if (segment == null)
             {
                 LogInfo($"Segment: [{currentSegmentId}] NULL stream");
@@ -288,17 +289,12 @@ namespace JuvoPlayer.DataProviders.Dash
 
                 LogWarn("Stopping player");
 
-                Stop();
+                // Generate EOS asap
+                StopAsync();
                 return;
             }
 
             DownloadSegment(segment);
-        }
-
-        private void UpdateDataNeedsDuration(TimeSpan duration)
-        {
-            if (initDataDuration > TimeSpan.Zero)
-                initDataDuration -= duration;
         }
 
         private void DownloadSegment(Segment segment)
@@ -408,7 +404,6 @@ namespace JuvoPlayer.DataProviders.Dash
             lastDownloadSegmentTimeRange = segment.Period.Copy();
             bufferTime = segment.Period.Start + segment.Period.Duration - (trimOffset ?? TimeSpan.Zero);
             currentSegmentId = currentStreams.NextSegmentId(currentSegmentId);
-            UpdateDataNeedsDuration(segment.Period.Duration);
 
             var timeInfo = segment.Period.ToString();
             LogInfo($"Segment: {responseResult.SegmentId} enqueued {timeInfo}");
@@ -572,11 +567,6 @@ namespace JuvoPlayer.DataProviders.Dash
 
         private void SendEosEvent()
         {
-            // Send EOS only when init data has been processed.
-            // Stops demuxer being blown to high heavens.
-            if (initStreamBytes.Count == 0)
-                return;
-
             chunkReadySubject.OnNext(null);
 
             isEosSent = true;
@@ -639,14 +629,6 @@ namespace JuvoPlayer.DataProviders.Dash
             }
 
             return timeout;
-        }
-
-        public bool CanStreamSwitch()
-        {
-            // Allow stream change ONLY if not performing initialization.
-            // If needed, initInProgress flag could be used to delay stream switching
-            // i.e. reset not after INIT segment but INIT + whatever number of data segments.
-            return !initInProgress && initDataDuration <= TimeSpan.Zero;
         }
 
         public IObservable<string> ErrorOccurred()

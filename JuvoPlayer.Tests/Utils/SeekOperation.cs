@@ -16,11 +16,8 @@
  */
 
 using System;
-using System.Collections.Generic;
-using System.Reactive.Concurrency;
 using System.Reactive.Linq;
 using System.Reactive.Threading.Tasks;
-using System.Threading;
 using System.Threading.Tasks;
 using JuvoLogger;
 using JuvoPlayer.Common;
@@ -77,20 +74,10 @@ namespace JuvoPlayer.Tests.Utils
         {
             var service = context.Service;
 
-            var seekDuringPause = service.State == PlayerState.Paused;
-
             _logger.Info($"Seeking to {SeekPosition}");
 
             try
             {
-                // Seek in paused state requires resume.
-                if (seekDuringPause)
-                {
-                    _logger.Info($"Seeking in Paused state. Resuming playback");
-                    var startOperation = new StartOperation();
-                    await startOperation.Execute(context);
-                }
-
                 var positionReachedTask = GetPositionReachedTask(context, SeekPosition);
                 var seekTask = service.SeekTo(SeekPosition);
 

@@ -56,12 +56,6 @@ namespace JuvoPlayer.Player.EsPlayer
     /// </summary>
     internal class EsStream : IDisposable
     {
-        internal enum SetStreamConfigResult
-        {
-            SetConfiguration,
-            QueueConfiguration
-        }
-
         private readonly ILogger logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
 
         /// Delegate holding PushConfigMethod. Different for Audio and Video
@@ -81,13 +75,12 @@ namespace JuvoPlayer.Player.EsPlayer
         // Stream type for this instance to EsStream.
         private readonly StreamType streamType;
 
-        public StreamType GetStreamType() => streamType;
-
         // Buffer configuration and supporting info
-        public BufferConfigurationPacket CurrentConfig { get; internal set; }
-        public BufferConfigurationPacket LastQueuedConfig { get; internal set; }
+        public StreamConfig CurrentConfig { get; internal set; }
+        public StreamConfig LastQueuedConfig { get; internal set; }
 
         public bool IsConfigured => (CurrentConfig != null);
+        public bool HaveConfig => (LastQueuedConfig != null);
 
         // Events
         private readonly Subject<string> playbackErrorSubject = new Subject<string>();
@@ -95,6 +88,7 @@ namespace JuvoPlayer.Player.EsPlayer
 
         private Packet currentPacket;
         private TimeSpan currentPts;
+
 
         private readonly Synchronizer _dataSynchronizer;
         private readonly SuspendResumeLogic _suspendResumeLogic;
@@ -152,20 +146,12 @@ namespace JuvoPlayer.Player.EsPlayer
         /// Configured stream - stream config will be enqueue in packet storage
         /// and processed once retrieved.
         /// </summary>
-        /// <param name="bufferConfig">BufferConfigurationPacket</param>
-        /// <returns>SetStreamConfigResult</returns>
-        public SetStreamConfigResult SetStreamConfiguration(BufferConfigurationPacket bufferConfig)
+        /// <param name="config">stream configuration</param>
+        public void StoreConfiguration(StreamConfig config)
         {
             logger.Info($"{streamType}");
 
-            LastQueuedConfig = bufferConfig;
-
-            if (!IsConfigured)
-                return SetStreamConfigResult.SetConfiguration;
-
-            logger.Info($"{streamType}: New configuration needs queuing");
-            return SetStreamConfigResult.QueueConfiguration;
-
+            LastQueuedConfig = config;
         }
 
         /// <summary>
@@ -177,7 +163,7 @@ namespace JuvoPlayer.Player.EsPlayer
         {
             logger.Info($"{streamType}");
 
-            PushStreamConfig(LastQueuedConfig.Config);
+            PushStreamConfig(LastQueuedConfig);
             CurrentConfig = LastQueuedConfig;
         }
 
@@ -218,16 +204,11 @@ namespace JuvoPlayer.Player.EsPlayer
 
         public void EmptyStorage()
         {
-            packetStorage.Disable(streamType);
-
             currentPacket?.Dispose();
             currentPacket = null;
 
             packetStorage.Empty(streamType);
         }
-
-        public void EnableStorage() =>
-            packetStorage.Enable(streamType);
 
         public void RequestFirstDataPacketNotification()
         {
@@ -322,10 +303,16 @@ namespace JuvoPlayer.Player.EsPlayer
         /// Disables further data transfer. Existing data in queue will continue
         /// to be pushed to the player.
         /// </summary>
-        private void DisableInput()
+        public void DisableInput()
         {
             logger.Info($"{streamType}:");
             packetStorage.Disable(streamType);
+        }
+
+        public void EnableInput()
+        {
+            logger.Info($"{streamType}:");
+            packetStorage.Enable(streamType);
         }
 
         private async ValueTask<bool> ProcessPacket(Packet packet, CancellationToken transferToken)
@@ -340,9 +327,14 @@ namespace JuvoPlayer.Player.EsPlayer
                     break;
 
                 case BufferConfigurationPacket bufferConfigPacket:
-                    CurrentConfig = bufferConfigPacket;
+                    // Video is always compatible
+                    var isCompatible = CurrentConfig.StreamType() == StreamType.Video
+                                       || (CurrentConfig.StreamType() == StreamType.Audio
+                                            && CurrentConfig.IsCompatible(bufferConfigPacket.Config));
 
-                    if (CurrentConfig.StreamType == StreamType.Audio && !CurrentConfig.Compatible(bufferConfigPacket))
+                    CurrentConfig = bufferConfigPacket.Config;
+
+                    if (!isCompatible)
                     {
                         logger.Warn($"{streamType}: Incompatible Stream config change.");
                         streamReconfigureSubject.OnNext(Unit.Default);
@@ -379,7 +371,7 @@ namespace JuvoPlayer.Player.EsPlayer
         private async Task TransferTask()
         {
             CancellationToken token = transferCts.Token;
-            logger.Info($"{streamType}: Started {Thread.CurrentThread.ManagedThreadId}");
+            logger.Info($"{streamType}: Started");
 
             try
             {
@@ -447,26 +439,31 @@ namespace JuvoPlayer.Player.EsPlayer
             logger.Info($"{currentPacket.StreamType}: First Packet is EOS");
         }
 
+
+        private async ValueTask<Packet> GetPacket(CancellationToken token)
+        {
+            var bufferingNeeded = packetStorage.Count(streamType) == 0
+                                  && (_playerClock.LastClock - currentPts).Duration() <=
+                                  EsStreamConfig.BufferingEventThreshold;
+
+            if (bufferingNeeded)
+                await _suspendResumeLogic.RequestBuffering(true).ConfigureAwait(false);
+
+            var packet = packetStorage.GetPacket(streamType, token);
+
+            if (bufferingNeeded)
+            {
+#pragma warning disable 4014 // No need to wait for dissapear. Will happen.. eventually.
+                _suspendResumeLogic.RequestBuffering(false);
+#pragma warning restore 4014
+            }
+
+            return packet;
+
+        }
         private async ValueTask<bool> ProcessNextPacket(CancellationToken token)
         {
-            if (currentPacket == null)
-            {
-                if (packetStorage.Count(streamType) == 0 &&
-                    (_playerClock.LastClock - currentPts).Duration() <= EsStreamConfig.BufferingEventThreshold)
-                {
-                    await _suspendResumeLogic.RequestBuffering(true);
-                    currentPacket = packetStorage.GetPacket(streamType, token);
-#pragma warning disable 4014 // No need to wait for dissapear. Will happen.. eventually.
-                    _suspendResumeLogic.RequestBuffering(false);
-#pragma warning restore 4014
-                }
-                else
-                {
-                    currentPacket = packetStorage.GetPacket(streamType, token);
-                }
-
-                currentPts = currentPacket.Pts;
-            }
+            currentPacket = currentPacket ?? packetStorage.GetPacket(streamType, token);
 
             var shouldContinue = await ProcessPacket(currentPacket, token);
 
