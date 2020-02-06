@@ -79,7 +79,6 @@ namespace JuvoPlayer.Player.EsPlayer
         private readonly IDisposable[] playbackErrorSubs;
 
         private bool isDisposed;
-        private bool resourceConflict;
 
         private readonly IScheduler _clockScheduler = new EventLoopScheduler();
         private readonly PlayerClockProvider _playerClock;
@@ -139,6 +138,7 @@ namespace JuvoPlayer.Player.EsPlayer
             packetStorage = storage;
             displayWindow = window;
 
+            player = new ESPlayer.ESPlayer();
             OpenPlayer();
         }
 
@@ -167,14 +167,12 @@ namespace JuvoPlayer.Player.EsPlayer
         private void OpenPlayer()
         {
             logger.Info("");
-            player = new ESPlayer.ESPlayer();
             player.Open();
 
             //The Tizen TV emulator is based on the x86 architecture. Using trust zone (DRM'ed content playback) is not supported by the emulator.
             if (RuntimeInformation.ProcessArchitecture != Architecture.X86) player.SetTrustZoneUse(true);
 
             player.SetDisplay(displayWindow);
-            resourceConflict = false;
 
             foreach (var stream in esStreams)
                 stream?.SetPlayer(player);
@@ -184,6 +182,27 @@ namespace JuvoPlayer.Player.EsPlayer
             AttachEventHandlers();
         }
 
+        private void ClosePlayer()
+        {
+            logger.Info("");
+
+            DetachEventHandlers();
+
+            _playerClock.SetPlayerClockSource(null);
+
+            player.Stop();
+            player.Close();
+            player.Dispose();
+            player = new ESPlayer.ESPlayer();
+
+            foreach (var stream in esStreams)
+            {
+                if (stream == null) continue;
+
+                stream.IsConfigured = false;
+                stream.SetPlayer(player);
+            }
+        }
         private void AttachEventHandlers()
         {
             player.EOSEmitted += OnEos;
@@ -369,11 +388,11 @@ namespace JuvoPlayer.Player.EsPlayer
 
                 }
 
-                // Set suspend clock. Clock is not available during seek, but required during Suspend/Resume
-                _suspendClock = time;
-
                 using (await asyncOpSerializer.LockAsync(token))
                 {
+                    // Set suspend clock. Clock is not available during seek, but required during Suspend/Resume
+                    _suspendClock = time;
+
                     token.ThrowIfCancellationRequested();
 
                     await SeekStreamInitialize(token);
@@ -384,8 +403,10 @@ namespace JuvoPlayer.Player.EsPlayer
                     _dataClock.Start();
 
                     await StreamSeek(seekToTime, resumeNeeded, token);
-                }
 
+                    // Invalidate _suspendClock
+                    _suspendClock = PlayerClockProviderConfig.InvalidClock;
+                }
             }
             catch (SeekException e)
             {
@@ -434,28 +455,17 @@ namespace JuvoPlayer.Player.EsPlayer
             // and prevent event generation via SetState().
             activeTaskCts.Cancel();
             _suspendState = player.GetState();
-            logger.Info($"Current State: {_suspendState}");
 
-            switch (_suspendState)
-            {
-                // Suspend while playing. Pause playback.
-                case ESPlayer.ESPlayerState.Playing:
-                    PausePlayback();
-                    // Token already cancelled. Set directly
-                    stateChangedSubject.OnNext(PlayerState.Paused);
-                    break;
+            StopTransfer();
+            StopClockGenerator();
+            player.Stop();
+            ClosePlayer();
 
-                // Suspend while paused. Nothing to do.
-                case ESPlayer.ESPlayerState.Paused:
-                    break;
+            if (_suspendClock == PlayerClockProviderConfig.InvalidClock)
+                _suspendClock = esStreams[(int)StreamType.Video].CurrentPts;
 
-                // Suspend during startup. Stop transfer
-                default:
-                    _suspendClock = TimeSpan.Zero;
-                    StopTransfer();
-                    StopClockGenerator();
-                    break;
-            }
+            // Token already cancelled. Set directly
+            stateChangedSubject.OnNext(PlayerState.Paused);
 
             logger.Info($"Suspended State/Clock: {_suspendState}/{_suspendClock}");
         }
@@ -467,9 +477,8 @@ namespace JuvoPlayer.Player.EsPlayer
 
             activeTaskCts = new CancellationTokenSource();
             var token = activeTaskCts.Token;
-            var wasConflicted = resourceConflict;
 
-            logger.Info($"Resuming State/Clock {_suspendState}/{_suspendClock} Player dead: {resourceConflict}");
+            logger.Info($"Resuming State/Clock {_suspendState}/{_suspendClock}");
 
             // If suspend happened before or during PrepareAsync, suspend state will be Idle
             // There is no state "have configuration" based on which prepare operation would be invoked,
@@ -477,10 +486,7 @@ namespace JuvoPlayer.Player.EsPlayer
             var targetState = _suspendState == ESPlayer.ESPlayerState.Idle
                 ? ESPlayer.ESPlayerState.Ready : _suspendState;
 
-            // When conflicted, start with idle to restore player state.
-            // No conflict - player is in suspend state
-            var currentState = wasConflicted
-                ? ESPlayer.ESPlayerState.None : _suspendState;
+            var currentState = ESPlayer.ESPlayerState.None;
 
             // Loop through startup states till target state reached, performing start activities
             // corresponding to each start step.
@@ -488,23 +494,17 @@ namespace JuvoPlayer.Player.EsPlayer
             {
                 switch (currentState)
                 {
-                    // Player conflict. ReCreate player
-                    case ESPlayer.ESPlayerState.None when wasConflicted:
-                        ClosePlayer();
+                    // Open player
+                    case ESPlayer.ESPlayerState.None:
                         OpenPlayer();
                         currentState = ESPlayer.ESPlayerState.Idle;
                         break;
 
-                    // Player Conflict. New player created.
-                    // Player untouched. Suspend occured before or during prepare async.
-                    case ESPlayer.ESPlayerState.Idle when wasConflicted:
-                    case ESPlayer.ESPlayerState.Idle when _suspendState == ESPlayer.ESPlayerState.Idle:
+                    // Prepare playback
+                    case ESPlayer.ESPlayerState.Idle:
 
                         // Set'n'start clocks to suspend time.
-                        var dataClock = _suspendClock == PlayerClockProviderConfig.InvalidClock
-                            ? TimeSpan.Zero
-                            : _suspendClock;
-                        _dataClock.SetClock(dataClock, token);
+                        _dataClock.SetClock(_suspendClock, token);
                         StartClockGenerator();
 
                         // Push current configuration (if available)
@@ -529,31 +529,15 @@ namespace JuvoPlayer.Player.EsPlayer
                         currentState = ESPlayer.ESPlayerState.Ready;
                         break;
 
-                    // Player conflict. Player prepared. Suspended in pause state.
-                    // Resume cannot be called, use start/pause to get back to paused state.
-                    case ESPlayer.ESPlayerState.Ready when wasConflicted && _suspendState == ESPlayer.ESPlayerState.Paused:
+                    // Suspended in Pause. Start then pause
+                    case ESPlayer.ESPlayerState.Ready:
                         player.Start();
+                        currentState = ESPlayer.ESPlayerState.Playing;
+                        break;
+
+                    case ESPlayer.ESPlayerState.Playing:
                         player.Pause();
                         currentState = ESPlayer.ESPlayerState.Paused;
-                        break;
-
-                    // Player conflict. Player prepared. Suspended in play state
-                    case ESPlayer.ESPlayerState.Ready when wasConflicted && _suspendState == ESPlayer.ESPlayerState.Playing:
-                        player.Start();
-                        currentState = ESPlayer.ESPlayerState.Playing;
-                        break;
-
-                    // Player untouched. Suspended in paused state. Move to pause.
-                    case ESPlayer.ESPlayerState.Ready when _suspendState == ESPlayer.ESPlayerState.Paused:
-                        currentState = ESPlayer.ESPlayerState.Paused;
-                        break;
-
-                    // Player untouched. Suspended in playing state. Start clocks, transfer and resume playback.
-                    case ESPlayer.ESPlayerState.Ready when _suspendState == ESPlayer.ESPlayerState.Playing:
-                        StartClockGenerator();
-                        player.Resume();
-                        ResumeTransfer(token);
-                        currentState = ESPlayer.ESPlayerState.Playing;
                         break;
                 }
 
@@ -590,7 +574,6 @@ namespace JuvoPlayer.Player.EsPlayer
                 await WaitForAsyncOperationsCompletionAsync().WithCancellation(token);
                 token.ThrowIfCancellationRequested();
 
-                _suspendClock = _playerClock.LastClock;
                 StopClockGenerator();
 
                 await RestartPlayback(token);
@@ -625,8 +608,6 @@ namespace JuvoPlayer.Player.EsPlayer
         {
             logger.Info(eosArgs.ToString());
 
-            // Stop and disable all initialized data streams.
-            TerminateAsyncOperations();
             stateChangedSubject.OnCompleted();
         }
 
@@ -644,8 +625,6 @@ namespace JuvoPlayer.Player.EsPlayer
 
             logger.Error(error);
 
-            // Stop and disable all initialized data streams.
-            TerminateAsyncOperations();
             playbackErrorSubject.OnNext(error);
 
         }
@@ -653,7 +632,6 @@ namespace JuvoPlayer.Player.EsPlayer
         private void OnResourceConflicted(object sender, ESPlayer.ResourceConflictEventArgs e)
         {
             logger.Info("");
-            resourceConflict = true;
         }
 
         private void OnEsStreamError(string error)
@@ -731,10 +709,6 @@ namespace JuvoPlayer.Player.EsPlayer
 
         private void PausePlayback()
         {
-            var clk = _playerClock.LastClock;
-            if (clk != PlayerClockProviderConfig.InvalidClock)
-                _suspendClock = clk;
-
             StopTransfer();
             StopClockGenerator();
             player.Pause();
@@ -765,7 +739,7 @@ namespace JuvoPlayer.Player.EsPlayer
                     SetPlayerConfiguration();
 
                 // Set data clock to pause time.
-                _dataClock.SetClock(_suspendClock, token);
+                _dataClock.SetClock(esStreams[(int)StreamType.Video].CurrentPts, token);
 
                 // Prepare & start playback.
                 await PreparePlayback(token);
@@ -795,21 +769,7 @@ namespace JuvoPlayer.Player.EsPlayer
             }
         }
 
-        private void ClosePlayer()
-        {
-            logger.Info("");
 
-            DetachEventHandlers();
-
-            _playerClock.SetPlayerClockSource(null);
-
-            player.Stop();
-            player.Dispose();
-            foreach (var esStream in esStreams)
-            {
-                if (esStream != null) esStream.IsConfigured = false;
-            }
-        }
 
         private async Task SeekStreamInitialize(CancellationToken token)
         {
@@ -954,8 +914,6 @@ namespace JuvoPlayer.Player.EsPlayer
         {
             // Stop clock & async operations
             logger.Info("");
-
-            activeTaskCts.Cancel();
 
             StopClockGenerator();
 

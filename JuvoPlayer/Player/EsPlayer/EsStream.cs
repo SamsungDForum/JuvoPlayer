@@ -87,6 +87,7 @@ namespace JuvoPlayer.Player.EsPlayer
 
         private Packet currentPacket;
         private TimeSpan currentPts;
+        public TimeSpan CurrentPts => currentPts;
 
         private readonly Synchronizer _dataSynchronizer;
         private readonly PlayerClockProvider _playerClock;
@@ -413,9 +414,8 @@ namespace JuvoPlayer.Player.EsPlayer
         {
             if (currentPacket == null)
             {
-                var displayBuffering =
-                    packetStorage.Count(streamType) == 0 &&
-                    (_playerClock.LastClock - currentPts).Duration() <= EsStreamConfig.BufferingEventThreshold;
+                var displayBuffering = packetStorage.Count(streamType) == 0 &&
+                                       (_playerClock.LastClock - currentPts).Duration() <= EsStreamConfig.BufferingEventThreshold;
 
                 _bufferingSubject.OnNext(displayBuffering);
 
