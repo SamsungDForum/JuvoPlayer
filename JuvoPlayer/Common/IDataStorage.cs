@@ -24,5 +24,7 @@ namespace JuvoPlayer.Common
     public interface IDataStorage : IDisposable
     {
         int Length { get; }
+
+        void Prepend(byte[] data);
     }
 }
