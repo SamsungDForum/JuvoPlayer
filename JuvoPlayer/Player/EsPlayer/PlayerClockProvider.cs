@@ -74,7 +74,7 @@ namespace JuvoPlayer.Player.EsPlayer
         private static TimeSpan InvalidClockFn()
         {
             Logger.Info("");
-            return NoClockReturnValue;
+            return InvalidClock;
         }
 
         public void Start()

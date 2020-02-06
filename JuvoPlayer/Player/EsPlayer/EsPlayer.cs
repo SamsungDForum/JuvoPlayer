@@ -70,24 +70,21 @@ namespace JuvoPlayer.Player.EsPlayer
             set => streamControl.Client = value;
         }
 
-        public Task Pause()
+        public void Pause()
         {
             logger.Info("");
-
-            return streamControl.Pause();
+            streamControl.Pause();
         }
 
-        public Task Play()
+        public void Play()
         {
             logger.Info("");
-
-            return streamControl.Play();
+            streamControl.Play();
         }
 
         public void Stop()
         {
             logger.Info("");
-
             streamControl.Stop();
         }
 
@@ -97,13 +94,15 @@ namespace JuvoPlayer.Player.EsPlayer
             return streamControl.Seek(time);
         }
 
-        public Task Suspend()
+        public void Suspend()
         {
-            return streamControl.Suspend();
+            logger.Info("");
+            streamControl.Suspend();
         }
 
         public Task Resume()
         {
+            logger.Info("");
             return streamControl.Resume();
         }
 
@@ -119,11 +118,11 @@ namespace JuvoPlayer.Player.EsPlayer
             throw new NotImplementedException();
         }
 
-        public void SetStreamConfig(StreamConfig config)
+        public Task SetStreamConfig(StreamConfig config)
         {
             logger.Info(config.StreamType().ToString());
 
-            streamControl.SetStreamConfiguration(config);
+            return streamControl.SetStreamConfiguration(config);
         }
 
         #region IPlayer Interface event callbacks

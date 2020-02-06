@@ -85,7 +85,7 @@ namespace JuvoPlayer.Player
         {
             return player.PlayerClock();
         }
-        
+
 
         public void OnClipDurationChanged(TimeSpan duration)
         {
@@ -105,14 +105,14 @@ namespace JuvoPlayer.Player
             drmManager?.UpdateDrmConfiguration(description);
         }
 
-        public Task OnPause()
+        public void OnPause()
         {
-            return player.Pause();
+            player.Pause();
         }
 
-        public Task OnPlay()
+        public void OnPlay()
         {
-            return player.Play();
+            player.Play();
         }
 
         public async Task OnSeek(TimeSpan time)
@@ -150,9 +150,9 @@ namespace JuvoPlayer.Player
             player.Stop();
         }
 
-        public Task OnSuspend()
+        public void OnSuspend()
         {
-            return player.Suspend();
+            player.Suspend();
         }
 
         public Task OnResume()

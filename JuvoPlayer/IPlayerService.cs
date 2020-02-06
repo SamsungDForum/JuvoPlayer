@@ -30,15 +30,15 @@ namespace JuvoPlayer
         bool IsSeekingSupported { get; }
         PlayerState State { get; }
         string CurrentCueText { get; }
-        Task Pause();
+        void Pause();
         Task SeekTo(TimeSpan to);
         void ChangeActiveStream(StreamDescription streamDescription);
         void DeactivateStream(StreamType streamType);
         List<StreamDescription> GetStreamsDescription(StreamType streamType);
         void SetSource(ClipDefinition clip);
-        Task Start();
+        void Start();
         void Stop();
-        Task Suspend();
+        void Suspend();
         Task Resume();
         IObservable<PlayerState> StateChanged();
         IObservable<string> PlaybackError();
