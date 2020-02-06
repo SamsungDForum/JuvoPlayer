@@ -26,7 +26,7 @@ namespace JuvoPlayer.DataProviders
 {
     public interface IDataProvider : IDisposable
     {
-        void OnChangeActiveStream(StreamDescription stream);
+        bool ChangeActiveStream(StreamDescription stream);
         void OnDeactivateStream(StreamType streamType);
         void OnStateChanged(PlayerState state);
         void OnStopped();

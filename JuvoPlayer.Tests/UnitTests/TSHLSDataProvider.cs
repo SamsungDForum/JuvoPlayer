@@ -55,7 +55,7 @@ namespace JuvoPlayer.Tests.UnitTests
                 StreamType = StreamType.Subtitle
             };
 
-            Assert.Throws<ArgumentException>(() => dataProvider.OnChangeActiveStream(streamDescription));
+            Assert.Throws<ArgumentException>(() => dataProvider.ChangeActiveStream(streamDescription));
         }
 
         [Test]

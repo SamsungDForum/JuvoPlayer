@@ -96,7 +96,6 @@ namespace JuvoPlayer.Player.EsPlayer
 
         public IObservable<bool> StreamBuffering()
         {
-            var x = typeof(bool);
             return _bufferingSubject.AsObservable().DistinctUntilChanged();
         }
 
@@ -153,7 +152,6 @@ namespace JuvoPlayer.Player.EsPlayer
         /// </summary>
         /// <param name="config">StreamConfig</param>
         /// <returns>SetStreamConfigResult</returns>
-
         public void StoreStreamConfiguration(StreamConfig config)
         {
             logger.Info($"{streamType}");
@@ -164,7 +162,6 @@ namespace JuvoPlayer.Player.EsPlayer
         /// Sets Stream configuration
         /// If no argument is provided, current configuration will be pushed.
         /// Otherwise provided configuration will be set as current and pushed.
-        /// </summary>
         /// <param name="config">StreamConfig</param>
         /// </summary>
         public void SetStreamConfiguration(StreamConfig config = null)
@@ -202,15 +199,6 @@ namespace JuvoPlayer.Player.EsPlayer
         }
 
         /// <summary>
-        /// Public API for disabling data transfer. Once called, no further
-        /// data transfer will be possible.
-        /// </summary>
-        public void Disable()
-        {
-            DisableInput();
-        }
-
-        /// <summary>
         /// Awaitable function. Will return when a running task terminates.
         /// </summary>
         /// <returns></returns>
@@ -230,8 +218,26 @@ namespace JuvoPlayer.Player.EsPlayer
             packetStorage.Empty(streamType);
         }
 
-        public void EnableStorage() =>
+        /// <summary>
+        /// Disables packet queue input. No new packets will be added
+        /// to packet queue.
+        /// to be pushed to the player.
+        /// </summary>
+        public void DisableInput()
+        {
+            logger.Info($"{streamType}:");
+            packetStorage.Disable(streamType);
+        }
+
+        /// <summary>
+        /// Enables packet queue input. New packets can be appended to packet queue.
+        /// to be pushed to the player.
+        /// </summary>
+        public void EnableInput()
+        {
+            logger.Info($"{streamType}:");
             packetStorage.Enable(streamType);
+        }
 
         #endregion
 
@@ -305,16 +311,6 @@ namespace JuvoPlayer.Player.EsPlayer
             transferCts?.Cancel();
         }
 
-        /// <summary>
-        /// Disables further data transfer. Existing data in queue will continue
-        /// to be pushed to the player.
-        /// </summary>
-        private void DisableInput()
-        {
-            logger.Info($"{streamType}:");
-            packetStorage.Disable(streamType);
-        }
-
         private async ValueTask<bool> ProcessPacket(Packet packet, CancellationToken transferToken)
         {
             var continueProcessing = true;
@@ -327,7 +323,6 @@ namespace JuvoPlayer.Player.EsPlayer
                     break;
 
                 case BufferConfigurationPacket bufferConfigPacket:
-
                     if (Configuration.StreamType() == StreamType.Audio &&
                         !Configuration.IsCompatible(bufferConfigPacket.Config))
                     {
@@ -458,7 +453,7 @@ namespace JuvoPlayer.Player.EsPlayer
                 var submitStatus = player.Submit(dataPacket);
 
                 logger.Debug(
-                    $"{dataPacket.StreamType}: ({submitStatus}) PTS: {dataPacket.Pts} Duration: {dataPacket.Duration}");
+                    $"{dataPacket.StreamType}: ({submitStatus} )PTS: {dataPacket.Pts} Duration: {dataPacket.Duration}");
 
                 if (submitStatus == ESPlayer.SubmitStatus.Success)
                     return;

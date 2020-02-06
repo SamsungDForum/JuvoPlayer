@@ -29,12 +29,10 @@ namespace JuvoPlayer.Player.EsPlayer
     {
         private static readonly ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
         private TimeSpan _dataLimit = DataClockProviderConfig.TimeBufferDepthDefault;
-
         private TimeSpan _sourceClock;
 
         // Start / Stop may be called from multiple threads.
         private volatile IDisposable _dataClockConnection;
-
         private readonly IScheduler _scheduler;
 
         // Do not filter output to distinct values. Clients may start listening (without re-subscription)

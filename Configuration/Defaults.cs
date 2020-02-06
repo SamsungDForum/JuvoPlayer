@@ -24,7 +24,6 @@ namespace Configuration
         public static TimeSpan DefaultSeekInterval { get; set; } = TimeSpan.FromSeconds(5);
         public static TimeSpan DefaultSeekAccumulateInterval { get; set; } = TimeSpan.FromSeconds(2);
         public static double DefaultMaximumSeekIntervalPercentOfContentTotalTime { get; set; } = 1.0;
-
         public static TimeSpan DefaultSeekIntervalValueThreshold { get; set; } =
                 TimeSpan.FromMilliseconds(200); // time between key events when key is being hold is ~100ms   
     }
@@ -43,8 +42,8 @@ namespace Configuration
 
     public static class DataSynchronizerConfig
     {
-        public static TimeSpan KeyFrameTransferDuration { get; set; } = TimeSpan.FromSeconds(0.3);
-        public static TimeSpan DefaultTransferDuration { get; set; } = TimeSpan.FromSeconds(0.5);
+        public static TimeSpan PostKeyFrameTransferDuration { get; set; } = TimeSpan.FromSeconds(0.15);
+        public static TimeSpan PreKeyFrameTransferDuration { get; set; } = TimeSpan.FromSeconds(0.3);
         public static TimeSpan StreamClockMaximumOverhead { get; set; } = TimeSpan.FromSeconds(1.25);
         public static TimeSpan StreamClockMinimumOverhead { get; set; } = TimeSpan.FromSeconds(0.75);
         public static TimeSpan StreamClockDiscontinuityThreshold { get; set; } = TimeSpan.FromSeconds(0.1);
@@ -52,8 +51,6 @@ namespace Configuration
 
     public static class DashClient
     {
-        public static double MinimumSegmentFitRatio { get; set; } = 0.7;
-        public static TimeSpan MinimumBufferTime { get; set; } = TimeSpan.FromSeconds(3);
         public static TimeSpan DynamicSegmentAvailabilityOverhead = TimeSpan.FromSeconds(2);
     }
 
@@ -98,7 +95,6 @@ namespace Configuration
         public static int MaxMeasurementsToKeep { get; set; } = 20;
         public static int AverageThroughputSampleAmount { get; set; } = 4;
         public static int MinimumThroughputSampleAmount { get; set; } = 2;
-
         public static double ThroughputDecreaseScale { get; set; } = 1.3;
         public static double ThroughputIncreaseScale { get; set; } = 1.3;
     }

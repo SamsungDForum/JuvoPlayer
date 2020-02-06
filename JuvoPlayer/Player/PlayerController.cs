@@ -47,13 +47,10 @@ namespace JuvoPlayer.Player
                               throw new ArgumentNullException(nameof(drmManager), "drmManager cannot be null");
             this.player = player ?? throw new ArgumentNullException(nameof(player), "player cannot be null");
 
-            var audioCodecExtraDataHandler = new AudioCodecExtraDataHandler(player);
-            var videoCodecExtraDataHandler = new VideoCodecExtraDataHandler(player);
-
             streams[StreamType.Audio] =
-                new PacketStream(StreamType.Audio, this.player, drmManager, audioCodecExtraDataHandler);
+                new PacketStream(StreamType.Audio, this.player, drmManager, new AudioCodecExtraDataHandler());
             streams[StreamType.Video] =
-                new PacketStream(StreamType.Video, this.player, drmManager, videoCodecExtraDataHandler);
+                new PacketStream(StreamType.Video, this.player, drmManager, new VideoCodecExtraDataHandler());
         }
 
         public IObservable<int> BufferingProgress()

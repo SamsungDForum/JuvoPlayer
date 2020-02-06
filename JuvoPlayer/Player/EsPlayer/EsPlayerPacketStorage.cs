@@ -169,9 +169,12 @@ namespace JuvoPlayer.Player.EsPlayer
         private void DisposeQueue(StreamType stream, BlockingCollection<Packet> queue)
         {
             var packetCount = queue.Count;
-
+            var configsDropped = 0;
             foreach (var packet in queue)
             {
+                if (packet is BufferConfigurationPacket)
+                    configsDropped++;
+
                 packet.Dispose();
             }
 
@@ -180,7 +183,9 @@ namespace JuvoPlayer.Player.EsPlayer
             if (!queue.IsAddingCompleted)
                 queue.Dispose();
 
-            logger.Info($"{stream}: Disposed {packetCount} packets");
+            // Reclaim memory after queue purge
+            GC.Collect();
+            logger.Info($"{stream}: Disposed {packetCount}/{configsDropped} data/config packets");
 
         }
 
