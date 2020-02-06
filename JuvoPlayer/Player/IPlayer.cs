@@ -31,17 +31,17 @@ namespace JuvoPlayer.Player
 
         IPlayerClient Client { get; set; }
 
-        Task Pause();
-        Task Play();
+        void Pause();
+        void Play();
         Task Seek(TimeSpan time);
-        Task Suspend();
+        void Suspend();
         Task Resume();
 
         void SetDuration(TimeSpan duration);
         void SetPlaybackRate(float rate);
         void Stop();
 
-        void SetStreamConfig(StreamConfig config);
+        Task SetStreamConfig(StreamConfig config);
         void AppendPacket(Packet packet);
     }
 }

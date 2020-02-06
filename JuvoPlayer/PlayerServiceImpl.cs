@@ -55,7 +55,7 @@ namespace JuvoPlayer
 
         public bool IsSeekingSupported => dataProvider?.IsSeekingSupported() ?? false;
 
-        public PlayerState State => _playerStateSubject.Value;
+        public PlayerState State { get; private set; }
 
         public string CurrentCueText => dataProvider?.CurrentCue?.Text;
 
@@ -64,8 +64,7 @@ namespace JuvoPlayer
 
         // Dispatch PlayerState through behavior subject. Any "late subscribers" will receive
         // current state upon subscription.
-        private readonly BehaviorSubject<PlayerState> _playerStateSubject =
-            new BehaviorSubject<PlayerState>(PlayerState.Idle);
+        private readonly Subject<PlayerState> _playerStateSubject = new Subject<PlayerState>();
         private readonly Subject<string> _playerErrorSubject = new Subject<string>();
         private readonly Subject<int> _playerBufferingSubject = new Subject<int>();
         private readonly Subject<TimeSpan> _playerClockSubject = new Subject<TimeSpan>();
@@ -118,7 +117,7 @@ namespace JuvoPlayer
         {
             _playerControllerConnections = new CompositeDisposable
             {
-                playerController.StateChanged().Subscribe(_playerStateSubject),
+                playerController.StateChanged().Subscribe(SetState,_syncCtx),
                 playerController.PlaybackError().Subscribe( _playerErrorSubject),
                 playerController.BufferingProgress().Subscribe(_playerBufferingSubject),
                 playerController.PlayerClock().Subscribe(_playerClockSubject),
@@ -129,9 +128,15 @@ namespace JuvoPlayer
         private void SetClock(TimeSpan clock) =>
             CurrentPosition = clock;
 
-        public Task Pause()
+        private void SetState(PlayerState state)
         {
-            return playerController.OnPause();
+            State = state;
+            _playerStateSubject.OnNext(state);
+        }
+
+        public void Pause()
+        {
+            playerController.OnPause();
         }
 
         public Task SeekTo(TimeSpan to)
@@ -172,7 +177,7 @@ namespace JuvoPlayer
             dataProvider.Start();
         }
 
-        public Task Start()
+        public void Start()
         {
             Logger.Info(State.ToString());
 
@@ -182,7 +187,7 @@ namespace JuvoPlayer
                 RestartPlayerController();
             }
 
-            return playerController.OnPlay();
+            playerController.OnPlay();
         }
 
         private void RestartPlayerController()
@@ -210,9 +215,9 @@ namespace JuvoPlayer
             connector.Dispose();
         }
 
-        public Task Suspend()
+        public void Suspend()
         {
-            return playerController.OnSuspend();
+            playerController.OnSuspend();
         }
 
         public Task Resume()

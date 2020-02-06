@@ -60,9 +60,9 @@ namespace JuvoPlayer
 
         public string CurrentCueText => proxied.CurrentCueText;
 
-        public Task Pause()
+        public void Pause()
         {
-            return playerThread.Factory.StartNew(async () => await proxied.Pause()).Unwrap();
+            playerThread.Factory.StartNew(() => proxied.Pause());
         }
 
         public Task SeekTo(TimeSpan time)
@@ -90,9 +90,9 @@ namespace JuvoPlayer
             playerThread.Factory.StartNew(() => proxied.SetSource(clip));
         }
 
-        public Task Start()
+        public void Start()
         {
-            return playerThread.Factory.StartNew(async () => await proxied.Start()).Unwrap();
+            playerThread.Factory.StartNew(() => proxied.Start());
         }
 
         public void Stop()
@@ -100,9 +100,9 @@ namespace JuvoPlayer
             playerThread.Factory.StartNew(() => proxied.Stop());
         }
 
-        public Task Suspend()
+        public void Suspend()
         {
-            return playerThread.Factory.StartNew(async () => await proxied.Suspend()).Unwrap();
+            playerThread.Factory.StartNew(() => proxied.Suspend());
         }
 
         public Task Resume()

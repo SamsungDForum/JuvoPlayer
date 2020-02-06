@@ -33,7 +33,6 @@ namespace Configuration
     {
         public static TimeSpan ClockInterval { get; set; } = TimeSpan.FromSeconds(0.1);
         public static readonly TimeSpan InvalidClock = TimeSpan.FromSeconds(-1);
-        public static readonly TimeSpan NoClockReturnValue = TimeSpan.FromSeconds(-2);
     }
 
     public static class DataClockProviderConfig

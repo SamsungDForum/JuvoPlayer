@@ -25,7 +25,6 @@ using Configuration;
 using JuvoLogger;
 using JuvoPlayer.Common;
 using JuvoPlayer.Drms;
-using Nito.AsyncEx;
 using ESPlayer = Tizen.TV.Multimedia;
 using StreamType = JuvoPlayer.Common.StreamType;
 
@@ -71,8 +70,6 @@ namespace JuvoPlayer.Player.EsPlayer
         private Task activeTask = Task.CompletedTask;
         private CancellationTokenSource transferCts;
 
-        private TaskCompletionSource<object> _firstDataPacketTcs;
-
         // Stream type for this instance to EsStream.
         private readonly StreamType streamType;
 
@@ -95,9 +92,11 @@ namespace JuvoPlayer.Player.EsPlayer
         private readonly PlayerClockProvider _playerClock;
 
         private readonly Subject<bool> _bufferingSubject = new Subject<bool>();
+        private readonly Subject<Type> _packetProcessed = new Subject<Type>();
 
         public IObservable<bool> StreamBuffering()
         {
+            var x = typeof(bool);
             return _bufferingSubject.AsObservable().DistinctUntilChanged();
         }
 
@@ -111,6 +110,10 @@ namespace JuvoPlayer.Player.EsPlayer
             return streamReconfigureSubject.AsObservable();
         }
 
+        public IObservable<Type> PacketProcessed()
+        {
+            return _packetProcessed.AsObservable();
+        }
         #region Public API
 
         public EsStream(StreamType type, EsPlayerPacketStorage storage, Synchronizer synchronizer, PlayerClockProvider playerClock)
@@ -132,8 +135,6 @@ namespace JuvoPlayer.Player.EsPlayer
                 default:
                     throw new ArgumentException($"Stream Type {streamType} is unsupported");
             }
-
-            _firstDataPacketTcs = new TaskCompletionSource<object>();
         }
 
         /// <summary>
@@ -159,13 +160,6 @@ namespace JuvoPlayer.Player.EsPlayer
             Configuration = config;
         }
 
-        /*
-        public void UpdateStreamConfiguration()
-        {
-            logger.Info($"{streamType}");
-            CurrentConfiguration = StoredConfiguration;
-        }
-        */
         /// <summary>
         /// Sets Stream configuration
         /// If no argument is provided, current configuration will be pushed.
@@ -173,20 +167,20 @@ namespace JuvoPlayer.Player.EsPlayer
         /// </summary>
         /// <param name="config">StreamConfig</param>
         /// </summary>
-        public void SetStreamConfiguration(StreamConfig config=null)
+        public void SetStreamConfiguration(StreamConfig config = null)
         {
-            logger.Info($"{streamType}: Using {(config==null?"stored":"provided")} configuration");
+            logger.Info($"{streamType}: Using {(config == null ? "stored" : "provided")} configuration");
 
             if (config == null)
             {
-                if(Configuration == null)
+                if (Configuration == null)
                     throw new ArgumentNullException(nameof(Configuration), "Current configuration is null");
             }
             else
             {
                 Configuration = config;
             }
-            
+
             PushStreamConfig(Configuration);
             IsConfigured = true;
         }
@@ -194,9 +188,9 @@ namespace JuvoPlayer.Player.EsPlayer
         /// <summary>
         /// Public API for starting data transfer
         /// </summary>
-        public void Start()
+        public void Start(CancellationToken token)
         {
-            EnableTransfer();
+            EnableTransfer(token);
         }
 
         /// <summary>
@@ -239,23 +233,6 @@ namespace JuvoPlayer.Player.EsPlayer
         public void EnableStorage() =>
             packetStorage.Enable(streamType);
 
-        public void RequestFirstDataPacketNotification()
-        {
-            // Note. RequestFirstDataPacketNotification() is not thread safe.
-            // It is to be called once per first packet need.
-            // Currently, this is async Ops (Seek/Prepare). Not by Pause/Resume
-
-            if (!GetFirstDataPacketNotificationTask().IsCompleted)
-                return;
-
-            _firstDataPacketTcs = new TaskCompletionSource<object>(streamType, TaskCreationOptions.RunContinuationsAsynchronously);
-
-            logger.Info($"{streamType}: Data packet processed confirmation requested");
-        }
-
-        public Task<object> GetFirstDataPacketNotificationTask() =>
-            _firstDataPacketTcs?.Task ?? Task.FromResult<object>(null);
-
         #endregion
 
         #region Private Methods
@@ -272,7 +249,7 @@ namespace JuvoPlayer.Player.EsPlayer
             logger.Info(streamInfo.DumpConfig());
 
             player.SetStream(streamInfo);
-            
+
             logger.Info($"{streamType}: Stream configuration set");
         }
 
@@ -297,7 +274,7 @@ namespace JuvoPlayer.Player.EsPlayer
         /// Starts data transfer, if not already running, by starting
         /// transfer task.
         /// </summary>
-        private void EnableTransfer()
+        private void EnableTransfer(CancellationToken token)
         {
             logger.Info($"{streamType}:");
 
@@ -316,7 +293,7 @@ namespace JuvoPlayer.Player.EsPlayer
             transferCts?.Dispose();
             transferCts = new CancellationTokenSource();
 
-            activeTask = Task.Run(async () => await TransferTask());
+            activeTask = Task.Run(async () => await TransferTask(transferCts.Token), token);
         }
 
         /// <summary>
@@ -350,8 +327,8 @@ namespace JuvoPlayer.Player.EsPlayer
                     break;
 
                 case BufferConfigurationPacket bufferConfigPacket:
-                    
-                    if (Configuration.StreamType() == StreamType.Audio && 
+
+                    if (Configuration.StreamType() == StreamType.Audio &&
                         !Configuration.IsCompatible(bufferConfigPacket.Config))
                     {
                         logger.Warn($"{streamType}: Incompatible Stream config change.");
@@ -387,9 +364,8 @@ namespace JuvoPlayer.Player.EsPlayer
         /// to ESPlayer
         /// </summary>
         /// <param name="token">CancellationToken</param>
-        private async Task TransferTask()
+        private async Task TransferTask(CancellationToken token)
         {
-            CancellationToken token = transferCts.Token;
             logger.Info($"{streamType}: Started");
             _bufferingSubject.OnNext(true);
             try
@@ -431,33 +407,11 @@ namespace JuvoPlayer.Player.EsPlayer
             }
             finally
             {
-                if (_firstDataPacketTcs?.Task.IsCompleted == false)
-                {
-                    logger.Info($"{streamType}: Cancelling first data packet request");
-                    _firstDataPacketTcs.TrySetException(
-                        new OperationCanceledException("Terminated before notifying first data packet"));
-                }
-
+                _packetProcessed.OnNext(typeof(EOSPacket));
                 _bufferingSubject.OnNext(false);
 
                 logger.Info($"{streamType}: Terminated. ");
             }
-        }
-
-        private void ConfirmFirstDataPacket()
-        {
-            if (currentPacket.ContainsData())
-            {
-                _firstDataPacketTcs.SetResult(null);
-                logger.Info($"{currentPacket.StreamType}: First packet is DATA. {currentPacket.Dts}");
-                return;
-            }
-
-            if (!(currentPacket is EOSPacket))
-                return;
-
-            _firstDataPacketTcs.SetException(new OperationCanceledException("First packet is EOS"));
-            logger.Info($"{currentPacket.StreamType}: First Packet is EOS");
         }
 
         private async ValueTask<bool> ProcessNextPacket(CancellationToken token)
@@ -478,13 +432,11 @@ namespace JuvoPlayer.Player.EsPlayer
             var shouldContinue = await ProcessPacket(currentPacket, token);
 
             _dataSynchronizer.DataOut(currentPacket);
-
-            if (_firstDataPacketTcs?.Task.IsCompleted == false)
-                ConfirmFirstDataPacket();
-
+            var packetType = currentPacket.GetType();
             currentPacket.Dispose();
             currentPacket = null;
 
+            _packetProcessed.OnNext(packetType);
             return shouldContinue;
         }
 
@@ -536,6 +488,7 @@ namespace JuvoPlayer.Player.EsPlayer
             {
                 _bufferingSubject.OnNext(true);
                 await dataPacket.DrmSession.WaitForInitialization(token);
+                // If exception occurs, Transfer task will restore correct buffering state
                 _bufferingSubject.OnNext(false);
 
                 logger.Info($"{streamType}: DRM Initialization complete");
@@ -633,6 +586,8 @@ namespace JuvoPlayer.Player.EsPlayer
 
             _bufferingSubject.OnCompleted();
             _bufferingSubject.Dispose();
+            _packetProcessed.OnCompleted();
+            _packetProcessed.Dispose();
 
             transferCts?.Dispose();
             currentPacket?.Dispose();
