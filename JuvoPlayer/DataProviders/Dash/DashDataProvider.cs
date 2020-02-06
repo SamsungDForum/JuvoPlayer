@@ -111,20 +111,24 @@ namespace JuvoPlayer.DataProviders.Dash
                 .Merge(videoPipeline.StreamError());
         }
 
-        public void OnChangeActiveStream(StreamDescription stream)
+        public bool ChangeActiveStream(StreamDescription stream)
         {
+            Logger.Info("");
+
             switch (stream.StreamType)
             {
                 case StreamType.Audio:
-                    audioPipeline.ChangeStream(stream);
-                    break;
+                    return audioPipeline.ChangeStream(stream);
+
                 case StreamType.Video:
-                    videoPipeline.ChangeStream(stream);
-                    break;
+                    return videoPipeline.ChangeStream(stream);
+
                 case StreamType.Subtitle:
                     OnChangeActiveSubtitleStream(stream);
-                    break;
+                    return true;
             }
+
+            return false;
         }
 
         public void OnDeactivateStream(StreamType streamType)
@@ -140,6 +144,7 @@ namespace JuvoPlayer.DataProviders.Dash
 
         public void OnStateChanged(PlayerState state)
         {
+
         }
 
         private void OnDeactivateSubtitleStream()
@@ -165,7 +170,20 @@ namespace JuvoPlayer.DataProviders.Dash
         public void OnDataClock(TimeSpan dataClock)
         {
             audioPipeline.SetDataRequest(dataClock);
-            videoPipeline.SetDataRequest(dataClock);   
+            videoPipeline.SetDataRequest(dataClock);
+        }
+
+        private TimeSpan RepositionPipelines(TimeSpan timeIndex)
+        {
+            Logger.Info("");
+
+            var newPosition = videoPipeline.Seek(timeIndex);
+
+            audioPipeline.Seek(newPosition);
+
+            audioPipeline.PacketPredicate = packet => !packet.ContainsData() || packet.Pts >= newPosition;
+
+            return newPosition;
         }
 
         public Task<TimeSpan> Seek(TimeSpan time, CancellationToken token)
@@ -176,16 +194,14 @@ namespace JuvoPlayer.DataProviders.Dash
             videoPipeline.Pause();
             audioPipeline.Pause();
 
-            var videoSegmentStart = videoPipeline.Seek(time);
-            audioPipeline.Seek(videoSegmentStart);
-
-            audioPipeline.PacketPredicate = packet => !packet.ContainsData() || packet.Pts >= videoSegmentStart;
+            var seekPosition = RepositionPipelines(time);
 
             videoPipeline.Resume();
             audioPipeline.Resume();
 
-            return Task.FromResult(videoSegmentStart);
+            return Task.FromResult(seekPosition);
         }
+
 
         public bool IsDataAvailable()
         {

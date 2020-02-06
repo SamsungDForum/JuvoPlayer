@@ -25,7 +25,6 @@ namespace JuvoPlayer.Player
 {
     internal class PacketStream : IPacketStream
     {
-        private readonly ICodecExtraDataHandler codecExtraDataHandler;
         private readonly IDrmManager drmManager;
         private readonly IPlayer player;
         private IDrmSession drmSession;
@@ -33,38 +32,34 @@ namespace JuvoPlayer.Player
         private readonly StreamType streamType;
         private readonly ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
         private bool forceDrmChange;
+        private readonly ICodecExtraDataHandler _codecHandler;
 
-        public PacketStream(StreamType streamType, IPlayer player, IDrmManager drmManager, ICodecExtraDataHandler codecExtraDataHandler)
+        public PacketStream(StreamType streamType, IPlayer player, IDrmManager drmManager, ICodecExtraDataHandler handler)
         {
             this.streamType = streamType;
             this.drmManager = drmManager ??
                               throw new ArgumentNullException(nameof(drmManager), "drmManager cannot be null");
             this.player = player ?? throw new ArgumentNullException(nameof(player), "player cannot be null");
-            this.codecExtraDataHandler = codecExtraDataHandler ??
-                              throw new ArgumentNullException(nameof(codecExtraDataHandler), "codecExtraDataHandler cannot be null");
+            _codecHandler = handler ?? throw new ArgumentNullException(nameof(handler), "handler cannot be null");
         }
 
         public void OnAppendPacket(Packet packet)
         {
-
             if (packet.StreamType != streamType)
                 throw new ArgumentException("packet type doesn't match");
 
             if (config == null)
                 throw new InvalidOperationException("Packet stream is not configured");
 
-            if (packet is EncryptedPacket)
+            if (packet is EncryptedPacket encPacket)
             {
-                var encryptedPacket = (EncryptedPacket)packet;
-
                 // Increment reference counter on DRM session
                 drmSession.Share();
 
-                encryptedPacket.DrmSession = drmSession;
+                encPacket.DrmSession = drmSession;
             }
 
-            codecExtraDataHandler.OnAppendPacket(packet);
-
+            _codecHandler.PrependCodecData(packet);
             player.AppendPacket(packet);
         }
 
@@ -84,15 +79,11 @@ namespace JuvoPlayer.Player
                 return;
             }
 
-            if (this.config != null && this.config.Equals(config))
-                return;
-
             forceDrmChange = (this.config != null);
 
             this.config = config;
 
-            codecExtraDataHandler.OnStreamConfigChanged(config);
-
+            _codecHandler.OnStreamConfigChanged(this.config);
             player.SetStreamConfig(this.config);
         }
 

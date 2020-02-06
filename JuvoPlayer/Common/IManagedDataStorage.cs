@@ -17,6 +17,8 @@
  *
  */
 
+using System;
+
 namespace JuvoPlayer.Common
 {
     public interface IManagedDataStorage : IDataStorage

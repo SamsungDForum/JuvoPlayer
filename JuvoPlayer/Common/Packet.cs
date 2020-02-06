@@ -53,6 +53,9 @@ namespace JuvoPlayer.Common
             return Storage != null;
         }
 
+        public virtual void Prepend(byte[] prependData) =>
+            Storage.Prepend(prependData);
+
         #region Disposable Support
 
         public void Dispose()
