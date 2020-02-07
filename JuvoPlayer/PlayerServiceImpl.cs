@@ -20,6 +20,7 @@ using System.Collections.Generic;
 using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
+using System.Threading;
 using System.Threading.Tasks;
 using ElmSharp;
 using JuvoLogger;
@@ -54,7 +55,7 @@ namespace JuvoPlayer
 
         public bool IsSeekingSupported => dataProvider?.IsSeekingSupported() ?? false;
 
-        public PlayerState State => _playerStateSubject.Value;
+        public PlayerState State { get; private set; }
 
         public string CurrentCueText => dataProvider?.CurrentCue?.Text;
 
@@ -63,14 +64,20 @@ namespace JuvoPlayer
 
         // Dispatch PlayerState through behavior subject. Any "late subscribers" will receive
         // current state upon subscription.
-        private readonly BehaviorSubject<PlayerState> _playerStateSubject =
-            new BehaviorSubject<PlayerState>(PlayerState.Idle);
+        private readonly Subject<PlayerState> _playerStateSubject = new Subject<PlayerState>();
         private readonly Subject<string> _playerErrorSubject = new Subject<string>();
         private readonly Subject<int> _playerBufferingSubject = new Subject<int>();
         private readonly Subject<TimeSpan> _playerClockSubject = new Subject<TimeSpan>();
 
-        public PlayerServiceImpl(Window window)
+        private readonly SynchronizationContext _syncCtx;
+
+        public PlayerServiceImpl()
         {
+            if (SynchronizationContext.Current == null)
+                throw new ArgumentNullException(nameof(SynchronizationContext.Current), "Null synchronization context");
+
+            _syncCtx = SynchronizationContext.Current;
+
             _playerControllerDisposables = new CompositeDisposable
             {
                 _playerStateSubject,
@@ -87,7 +94,10 @@ namespace JuvoPlayer
 
             drmManager = new DrmManager();
             drmManager.RegisterDrmHandler(new CencHandler());
+        }
 
+        public void SetWindow(Window window)
+        {
             playerWindow = window;
 
             CreatePlayerController();
@@ -105,24 +115,26 @@ namespace JuvoPlayer
 
         private void ConnectPlayerControllerObservables()
         {
-            // Pass-through subscription are not run through SynchronizationContext. Intentional
-            // Event consumers do so, no need to go through SyncContext twice.
             _playerControllerConnections = new CompositeDisposable
             {
+                playerController.StateChanged().Subscribe(SetState,_syncCtx),
                 playerController.StateChanged().Subscribe(_playerStateSubject),
                 playerController.PlaybackError().Subscribe( _playerErrorSubject),
                 playerController.BufferingProgress().Subscribe(_playerBufferingSubject),
                 playerController.PlayerClock().Subscribe(_playerClockSubject),
-                playerController.TimeUpdated().Subscribe(SetClock)
+                playerController.TimeUpdated().Subscribe(SetClock,_syncCtx)
             };
         }
 
         private void SetClock(TimeSpan clock) =>
             CurrentPosition = clock;
 
-        public Task Pause()
+        private void SetState(PlayerState state) =>
+            State = state;
+
+        public void Pause()
         {
-            return playerController.OnPause();
+            playerController.OnPause();
         }
 
         public Task SeekTo(TimeSpan to)
@@ -172,16 +184,17 @@ namespace JuvoPlayer
             dataProvider.Start();
         }
 
-        public Task Start()
+        public void Start()
         {
             Logger.Info(State.ToString());
 
             if (!dataProvider.IsDataAvailable())
             {
+                // Live content
                 RestartPlayerController();
             }
 
-            return playerController.OnPlay();
+            playerController.OnPlay();
         }
 
         private void RestartPlayerController()
@@ -207,6 +220,16 @@ namespace JuvoPlayer
             playerController.OnStop();
             drmManager.ClearCache();
             connector.Dispose();
+        }
+
+        public void Suspend()
+        {
+            playerController.OnSuspend();
+        }
+
+        public Task Resume()
+        {
+            return playerController.OnResume();
         }
 
         public void Dispose()

@@ -1,6 +1,5 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.Reactive.Linq;
 using System.Threading;
 using ReactNative;
 using ReactNative.Bridge;
@@ -47,12 +46,13 @@ namespace JuvoReactNative
 
         private void OnDeepLinkReceived(string url)
         {
-            SendEvent("handleDeepLink", new JObject {{"url", url}});
+            SendEvent("handleDeepLink", new JObject { { "url", url } });
         }
 
         private void InitializeJuvoPlayer()
         {
-            Player = new PlayerServiceProxy(new PlayerServiceImpl(window));
+            Player = new PlayerServiceProxy<PlayerServiceImpl>();
+            Player.SetWindow(window);
             playerStateChangeSub = Player.StateChanged()
                .Subscribe(OnPlayerStateChanged, OnPlaybackCompleted);
             playbackErrorsSub = Player.PlaybackError()
@@ -151,9 +151,11 @@ namespace JuvoReactNative
         }
         public void OnResume()
         {
+            Player?.Resume();
         }
         public void OnSuspend()
         {
+            Player?.Suspend();
         }
 
         private void UpdateBufferingProgress(int percent)

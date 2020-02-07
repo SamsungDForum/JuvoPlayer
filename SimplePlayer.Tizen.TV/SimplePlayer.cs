@@ -15,7 +15,7 @@ namespace SimplePlayer
     {
         private TVMultimedia.Player platformPlayer;
         private TVMultimedia.DRMManager platformDrmMgr;
-        private PlayerServiceProxy juvoPlayer;
+        private PlayerServiceProxy<PlayerServiceImpl> juvoPlayer;
 
         public CodeButtonClickPage()
         {
@@ -40,7 +40,7 @@ namespace SimplePlayer
                 await PlayPlatformMediaClean(videoSourceURL, player);
             }
 
-            void PlayJuvoPlayerClean(String videoSourceURL, PlayerServiceProxy player)
+            void PlayJuvoPlayerClean(String videoSourceURL, IPlayerService player)
             {
                 player.SetSource(new ClipDefinition
                 {
@@ -62,7 +62,7 @@ namespace SimplePlayer
                     });
             }
 
-            void PlayJuvoPlayerDRMed(String videoSourceURL, String licenseServerURL, String drmScheme, PlayerServiceProxy player)
+            void PlayJuvoPlayerDRMed(String videoSourceURL, String licenseServerURL, String drmScheme, IPlayerService player)
             {
                 var drmData = new List<DRMDescription>();
                 drmData.Add(new DRMDescription
@@ -125,7 +125,7 @@ namespace SimplePlayer
                 //await PlayPlatformMediaDRMed(url, license, platformPlayer);
 
                 //////The JuvoPlayer backend (elementary stream data source).
-                juvoPlayer = new PlayerServiceProxy(new PlayerServiceImpl(window));
+                juvoPlayer = new PlayerServiceProxy<PlayerServiceImpl>();
                 PlayJuvoPlayerClean(url, juvoPlayer);
                 //PlayJuvoPlayerDRMed(url, license, "playready", juvoPlayer);
                 //PlayJuvoPlayerDRMed(url, license, "widevine", juvoPlayer);
@@ -156,7 +156,7 @@ namespace SimplePlayer
             };
 
             button.Clicked += async (sender, args) => await Play();
-            Appearing += (sender, e) => button.Focus(); 
+            Appearing += (sender, e) => button.Focus();
         }
         public void Dispose()
         {

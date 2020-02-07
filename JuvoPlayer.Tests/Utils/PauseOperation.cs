@@ -56,7 +56,7 @@ namespace JuvoPlayer.Tests.Utils
                 .Timeout(context.Timeout)
                 .ToTask(context.Token);
 
-            await service.Pause().ConfigureAwait(false);
+            service.Pause();
             await playerStateTask.ConfigureAwait(false);
         }
 

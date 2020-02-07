@@ -17,7 +17,6 @@
 
 using System.Threading.Tasks;
 using JuvoPlayer.Common;
-using JuvoPlayer.Player.EsPlayer;
 
 namespace JuvoPlayer.Tests.Utils
 {
@@ -45,7 +44,7 @@ namespace JuvoPlayer.Tests.Utils
             var playerStateTask =
                 StateChangedTask.Observe(service, PlayerState.Playing, context.Token, context.Timeout);
 
-            await service.Start().WithTimeout(context.Timeout).ConfigureAwait(false);
+            service.Start();
             await playerStateTask.ConfigureAwait(false);
         }
     }

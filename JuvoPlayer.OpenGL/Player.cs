@@ -20,11 +20,11 @@ using ElmSharp;
 
 namespace JuvoPlayer.OpenGL
 {
-    class Player : PlayerServiceProxy
+    class Player : PlayerServiceProxy<PlayerServiceImpl>
     {
         public Player(Window playerWindow)
-            : base(new PlayerServiceImpl(playerWindow))
         {
+            SetWindow(playerWindow);
         }
     }
 }
