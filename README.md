@@ -40,10 +40,10 @@ The reference for developers of streaming live TV and VOD Tizen .Net application
 * JuvoReactNative
 * SimplePlayer
 
-Important
+### Important
 > Due to it's 'hybrid' nature, The JuvoReactNative projects requires additinal step. Before the first build or any JS part modifications it needs creation of the bundles to be included in the Tizen .NET shared\res folder. See the 'React Native bundle preparation' for details. 
     
-React Native bundle preparation
+### React Native bundle preparation
 * Make sure Nodejs and Yarn have been succesfully instaled in Your system.
 * Go to the JuvoReactNative root directory in the command line window.
 * Type the `yarn` command without any parameters. Wait untill all the dependencies have been installed.
@@ -52,16 +52,16 @@ React Native bundle preparation
   - Go and delete the JuvoReactNative\Tizen\shared\res\assets\assets folder which is redundant (React Native Tizen bundle script issue: https://github.com/Samsung/react-native-tizen-dotnet/issues/30#issue-533804121)
   - Build the JuvoReactNative with MS Visual Studio.
 * Debug mode   
-  - Follow the 'Release mode' instructions but replace the first step with:  `yarn bundle --dev` command at the first step.
+  - Follow the 'Release mode' instructions but replace the first step with:  `yarn bundle --dev` command.
 
 ## Application launch 
-1. Connect with a TV set (or emulator) using the 'Device Manager' tool (SDK) installed together with the Tizen Tools (SDK) see more in [https://developer.samsung.com/tv/tizen-net-tv][tizendotnettvlink]
-2. Start the select in Visual Studio solution tree GUI project by pressing F5 (debug) or ctrl+F5 (release). The app requires Partner Level privilege generated widh the Certificate Manager tool (SDK). Before the first launch please, make sure that you have created one and have sent by 'Permit to install' command with the Device Manager tool (SDK).
+1. Connect with a TV set (or emulator) using the Device Manager tool (member of SDK) installed together with the Tizen Tools (SDK) see more in [https://developer.samsung.com/tv/tizen-net-tv][tizendotnettvlink]
+2. Start the select in Visual Studio solution tree GUI project by pressing F5 (debug) or ctrl+F5 (release). The app requires Partner Level privilege generated widh the Certificate Manager tool (member of SDK). Before the first launch please, make sure that you have created one and have sent it by 'Permit to install' command using the Device Manager tool.
 
-Important
-> Every phisical Tizen .NET TV device for JuvoPlayer application development needs to be equiped with a set of electronic signatures (keys). To get the keys, a developer has to contact Samsung Content Manager (CM) person in his country of residence. The CM can request the signatures from Samsung R&D. This step is mandatory since the JuvoPlayer uses sensitive API's (native binaries and DRM access). There is no need to make such a request in case launching the JuvoPlayer on the TV emulator. In this case however, it is not possible to playback any DRM'ed contents (PlayReady, Widevine). Moreover, the consequence of the clean video playback in resolutions highier then 640×480 (VGA) is significant video playback fluency degradation. The reason of this latter phenomena is limited TV emulator's performance. This drawback do not appear on the phisical TV set units.
+### Important
+> Every phisical Tizen .NET TV device being used for JuvoPlayer application development needs a set of electronic signatures (keys). To get the keys a developer has to contact Samsung Content Manager (CM) person in his country of residence. The CM can request the signatures from Samsung R&D. This step is mandatory since the JuvoPlayer uses sensitive API's (native binaries and DRM access). There is no need to make such a request in case launching the JuvoPlayer on the TV emulator. In this case however, it is not possible to playback any DRM'ed contents (PlayReady, Widevine). Moreover, the consequence of the clean video playback in resolutions highier then 640×480 (VGA) is significant video playback fluency degradation. The reason of this latter phenomena is limited performance of the TV emulator. This drawback do not appear on the phisical TV set units.
 
-Live coding React Native Tizen application
+### Live coding React Native Tizen application
 > It is possible to launch and work on the JuvoReactNative GUI using facebook 'hot module reloading' engine (https://facebook.github.io/react-native/blog/2016/03/24/introducing-hot-reloading.html). To configure it follow the below guide:
 
 ### Emulator TV 2019 (Tizen 5.0)
@@ -72,7 +72,7 @@ Live coding React Native Tizen application
      * Source (Local host) port = 9998 (can be any free value but the same as in the "config"->"tvip" port)
      * to destination  (10.0.2.15) port = 8081 (npm server port)
 
-  Important
+  ### Important
   > Step 2. needs to be repeated every time the TV emulator reboots.
   3. Edit package.json in the application root folder writting: 
   ```javascript
@@ -106,9 +106,9 @@ From now on You can modify JavaScript part of the application code and see the u
 
 3. Includes all the steps from 4. to 10. described previously in the 'Launch TV emulator' section.
 
-## Features and release notes
+## Release notes
 **JuvoPlayer 1.5.3 (beta)**
-1. Features:
+### ### 1. Features:
 * All features of the JuvoPlayer 1.5.1
 * Support for Tizen.Sdk version up to 1.0.9
 * Xamarin UI and OpenGL: Common resources (tiles, videoclips.json) excluded to a separate project.
@@ -123,13 +123,13 @@ From now on You can modify JavaScript part of the application code and see the u
 * JuvoPlayer backend 
   * DASH representation change during segment download
   * Stability improvements in switching to another application and back (multitasking).
-  * Fix of the FFW and REW operations on the sample 4K HEVS video does not end issue.
-2. Known issues:
+  * Fix for the issue: 'FFW and REW operations on the sample 4K HEVS video does not end'.
+### ### 2. Known issues:
 * Right after the finishing seek in HLS streams there is a short video pause until the audio catch up. It is a result of FFmpeg 'seek' function specific.
 * The FFW and REW operations on MPEG DASH sample videos result in app crash on the 2020 TV emulator (Tizen 5.5).
 
 **JuvoPlayer 1.5.1 (beta)**
-1. Features:
+### 1. Features:
 * All features of the JuvoPlayer 1.5.0
 * JuvoReactNative GUI 
   * Smart Hub preview deeplinks launching
@@ -142,21 +142,21 @@ From now on You can modify JavaScript part of the application code and see the u
   * Buffering event notification issue fix
   * Missing seek completion signaling issue fix
   * Switching off the MPEG DASH adaptive streaming when run on the TV emulator. It makes playback stick to the lowest quality representation but improves comfort of testing on the emulator.
-2. Known issues:
+### 2. Known issues:
 * Right after the finishing seek in HLS streams there is a short video pause until the audio catch up. It is a result of FFmpeg 'seek' function specific.
 * JuvoReactNative GUI playback settings view does not support setting default values (limitation of the React Native Tizen's Picker component).
 * JuvoReactNative GUI does not resume playback after switching from another app (no support for multitasking).
 * The FFW and REW operations on the sample 4K HEVS video does not end.
-* The FFW and REW operations on MPEG DASH sample videos result in app crash on the TV emulator.
+* The FFW and REW operations on MPEG DASH sample videos result in app crash on the 2020 TV emulator (Tizen 5.5).
 
 **JuvoPlayer 1.5.0 (beta)**
-1. Features:
+### 1. Features:
 * All features of the JuvoPlayer 1.4.9
 * JuvoReactNative GUI - based on React Native Tizen project https://github.com/Samsung/react-native-tizen-dotnet
 * JuvoPlayerXamarin JuvoPlayerOpenGL animation and picture loading performance improvements.
 * Bixby (voice control) basic playback functions (JuvoPlayerXamarin, JuvoPlayerOpenGL, JuvoReactNative )
 * JuvoPlayer backend stability and performance improvements 
-2. Known issues:
+### 2. Known issues:
 * Right after the finishing seek in HLS streams there is a short video pause until the audio catch up. It is a result of FFmpeg 'seek' function specific.
 * JuvoReactNative seek in HLS, HTTP streams does not hide the activity indicator (missing seek completion signaling).
 * JuvoReactNative GUI does not support deeplinked shortcuts for SmartHub preview feature.
@@ -164,56 +164,56 @@ From now on You can modify JavaScript part of the application code and see the u
 * JuvoReactNative GUI does not resume playback after switching from another app (no multitasking).
 
 **JuvoPlayer 1.4.9 (beta)**
-1. Features:
+### 1. Features:
 * All features of the JuvoPlayer 1.4.8
 * JuvoPlayer backend stability improvements 
-2. Known issues:
+### 2. Known issues:
 * Right after the finishing seek in HLS streams there is a short video pause until the audio catch up. It is a result of FFmpeg 'seek' function specific.
   
 **JuvoPlayer 1.4.8 (beta)**
-1. Features:
+### 1. Features:
 * All features of the JuvoPlayer 1.4.7
 * JuvoPlayer backend stability improvements
 * Multitasking issue solved (see known issues in v1.4.7)
 * HLS and MP4 over HTTP seek in stream (FFW, REW) function implementation.
-2. Known issues:
+### 2. Known issues:
 * Right after the finishing seek in HLS streams there is a short video pause until the audio catch up. It is a result of FFmpeg 'seek' function specific.
 
 **JuvoPlayer 1.4.7 (beta)**
-1. Features:
+### 1. Features:
 * All features of the JuvoPlayer 1.4.6
 * Static splash screens for Open GL and Xamarin GUIs
 * JuvoPlayer backend stability improvements
-2. Known issues:
+### 2. Known issues:
 * Multitasking - switching between runing apps - video sometimes do not recover
 
 **JuvoPlayer 1.4.6 (beta)**
-1. Features:
+### 1. Features:
 * All features of the JuvoPlayer 1.4.5
 * Update - sync with the original GitHub project - of the RTSP module code (see dependencies)
 * Memory management optimizations (stability improvements)
 * Support for x86 processors architecture (TV emulator)
 * SimplePlayer GUI project added for illustrating simple playback scenario
-2. Known issues:
+### 2. Known issues:
 * Multitasking - switching between runing apps - video sometimes do not recover
 
 **JuvoPlayer 1.4.5 (beta)**
-1. Features:
+### 1. Features:
 * All features of the JuvoPlayer 1.4.4
 * The FFW and REW 'in progress' on screen notification
 * Live Stream sample change to 'Big Buck Bunny' video clip
-2. Known issues:
+### 2. Known issues:
 * RTP/RTSP playback does not start (regresion)
 * Not enoght memory for UHD Widevine DRMed video (Tears of steel)
 * Multitasking - switching between runing apps - video sometimes do not recover
 
 **JuvoPlayer 1.4.4 (beta)** 
-1. Features:
+### 1. Features:
 * All features of the JuvoPlayer 1.4.3
 * The Smart Hub Preview related modifications (deep links backend change)
 * Multitasking requirement implementation (https://developer.samsung.com/tv/develop/guides/fundamentals/multitasking)
 * Widevine DRMed content playback (unstable)
-2. Known issues:
+### 2. Known issues:
 * RTP/RTSP playback does not start (regresion)
 * Not enoght memory for UHD Widevine DRMed video (Tears of steel)
 * Multitasking - switching between runing apps - video sometimes do not recover
