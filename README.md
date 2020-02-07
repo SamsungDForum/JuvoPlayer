@@ -63,7 +63,8 @@ Important
 
 Live coding React Native Tizen application
 > It is possible to launch and work on the JuvoReactNative GUI using facebook 'hot module reloading' engine (https://facebook.github.io/react-native/blog/2016/03/24/introducing-hot-reloading.html). To configure it follow the below guide:
-* Emulator TV 2019 (Tizen 5.0)
+
+### Emulator TV 2019 (Tizen 5.0)
   1. Launch TV emulator. 
   > JuvoReactNative application contains complementary binaries for ARM and x86. They are located in subfolders with the appropriate names. The React native Tizen applications based on the default template do not follow this rule. Launching it on emulator needs actions mentioned here: https://github.com/Samsung/react-native-tizen-dotnet/issues/18#issuecomment-521515750
 
@@ -92,7 +93,7 @@ Live coding React Native Tizen application
 
 From now on You can modify JavaScript part of the application code and see the update result right after saving it on the PC.
 
-* TV set unit
+### TV set unit
 1. Switch on the TV set
 2. Edit package.json in the application root folder writting: 
   ```javascript
@@ -109,20 +110,23 @@ From now on You can modify JavaScript part of the application code and see the u
 **JuvoPlayer 1.5.3 (beta)**
 1. Features:
 * All features of the JuvoPlayer 1.5.1
+* Support for Tizen.Sdk version up to 1.0.9
+* Xamarin UI and OpenGL: Common resources (tiles, videoclips.json) excluded to a separate project.
+* JuvoPlayerOpenGL 
+  * Seek preview and animated focused video clip tiles added
 * JuvoReactNative GUI
   * Playback settings view presents default values.
+  * Resume playback after switching to another application and back (support for multitasking).
+  * Incorporating NavigationExperimental component. Changed the way of handling the remote controll events in 'views'.
 * JuvoPlayerXamarin GUI
-  
+  * XamarinForms library version up to "4.4.0.991640" 
 * JuvoPlayer backend 
-  * Buffering event notification issue fix
-  * Missing seek completion signaling issue fix
-  * Switching off the MPEG DASH adaptive streaming when run on the TV emulator. It makes playback stick to the lowest quality representation but improves comfort of testing on the emulator.
+  * DASH representation change during segment download
+  * Stability improvements in switching to another application and back (multitasking).
+  * Fix of the FFW and REW operations on the sample 4K HEVS video does not end issue.
 2. Known issues:
 * Right after the finishing seek in HLS streams there is a short video pause until the audio catch up. It is a result of FFmpeg 'seek' function specific.
-* 
-* JuvoReactNative GUI does not resume playback after switching from another app (no support for multitasking).
-* The FFW and REW operations on the sample 4K HEVS video does not end.
-* The FFW and REW operations on MPEG DASH sample videos result in app crash on the TV emulator.
+* The FFW and REW operations on MPEG DASH sample videos result in app crash on the 2020 TV emulator (Tizen 5.5).
 
 **JuvoPlayer 1.5.1 (beta)**
 1. Features:
