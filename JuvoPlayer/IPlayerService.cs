@@ -18,6 +18,7 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using ElmSharp;
 using JuvoPlayer.Common;
 
 namespace JuvoPlayer
@@ -29,17 +30,20 @@ namespace JuvoPlayer
         bool IsSeekingSupported { get; }
         PlayerState State { get; }
         string CurrentCueText { get; }
-        Task Pause();
+        void Pause();
         Task SeekTo(TimeSpan to);
         Task ChangeActiveStream(StreamDescription streamDescription);
         void DeactivateStream(StreamType streamType);
         List<StreamDescription> GetStreamsDescription(StreamType streamType);
         void SetSource(ClipDefinition clip);
-        Task Start();
+        void Start();
         void Stop();
+        void Suspend();
+        Task Resume();
         IObservable<PlayerState> StateChanged();
         IObservable<string> PlaybackError();
         IObservable<int> BufferingProgress();
         IObservable<TimeSpan> PlayerClock();
+        void SetWindow(Window window);
     }
 }

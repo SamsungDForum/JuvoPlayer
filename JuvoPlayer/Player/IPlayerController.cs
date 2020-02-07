@@ -24,11 +24,14 @@ namespace JuvoPlayer.Player
     public interface IPlayerController : IDisposable
     {
         #region ui_slots
-        Task OnPause();
-        Task OnPlay();
+        void OnPause();
+        void OnPlay();
         Task OnSeek(TimeSpan time);
         void OnSetPlaybackRate(float rate);
         void OnStop();
+        void OnSuspend();
+        Task OnResume();
+
         #endregion
 
         #region data_provider_slots

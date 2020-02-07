@@ -29,11 +29,11 @@ namespace JuvoPlayer.Tests.Utils
         private static Window window;
 
         public PlayerService()
-            : base(window)
         {
+            SetWindow(window);
         }
 
-        public static void SetWindow(Window w)
+        public static void SetWindowValue(Window w)
         {
             window = w;
         }

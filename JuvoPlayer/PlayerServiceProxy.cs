@@ -20,22 +20,36 @@
 using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
+using ElmSharp;
 using JuvoPlayer.Common;
 using Nito.AsyncEx;
+using Nito.AsyncEx.Synchronous;
 
 namespace JuvoPlayer
 {
-    public class PlayerServiceProxy : IPlayerService
+    public class PlayerServiceProxy<T> : IPlayerService where T : IPlayerService, new()
     {
         private readonly AsyncContextThread playerThread;
-        private readonly IPlayerService proxied;
+        private IPlayerService proxied;
 
-        public PlayerServiceProxy(IPlayerService proxied)
+        public PlayerServiceProxy()
         {
-            this.proxied = proxied;
             playerThread = new AsyncContextThread();
+
+            // Create proxy object from within playerThread. This should assure valid 
+            // SynchronizationContext.Current, separate of caller SynchronizationContext.
+            // proxied is "set twice" to keep playerThread and caller with current proxied object
+            proxied = playerThread.Factory.StartNew(() =>
+            {
+                proxied = new T();
+                return proxied;
+            }).WaitAndUnwrapException();
         }
 
+        public void SetWindow(Window window)
+        {
+            playerThread.Factory.StartNew(() => proxied.SetWindow(window));
+        }
         public TimeSpan Duration => proxied.Duration;
 
         public TimeSpan CurrentPosition => proxied.CurrentPosition;
@@ -46,9 +60,9 @@ namespace JuvoPlayer
 
         public string CurrentCueText => proxied.CurrentCueText;
 
-        public Task Pause()
+        public void Pause()
         {
-            return playerThread.Factory.StartNew(async () => await proxied.Pause()).Unwrap();
+            playerThread.Factory.StartNew(() => proxied.Pause());
         }
 
         public Task SeekTo(TimeSpan time)
@@ -76,14 +90,24 @@ namespace JuvoPlayer
             playerThread.Factory.StartNew(() => proxied.SetSource(clip));
         }
 
-        public Task Start()
+        public void Start()
         {
-            return playerThread.Factory.StartNew(async () => await proxied.Start()).Unwrap();
+            playerThread.Factory.StartNew(() => proxied.Start());
         }
 
         public void Stop()
         {
             playerThread.Factory.StartNew(() => proxied.Stop());
+        }
+
+        public void Suspend()
+        {
+            playerThread.Factory.StartNew(() => proxied.Suspend());
+        }
+
+        public Task Resume()
+        {
+            return playerThread.Factory.StartNew(async () => await proxied.Resume()).Unwrap();
         }
 
         public IObservable<PlayerState> StateChanged()
