@@ -108,7 +108,7 @@ From now on You can modify JavaScript part of the application code and see the u
 
 ## Release notes
 **JuvoPlayer 1.5.3 (beta)**
-### ### 1. Features:
+### 1. Features:
 * All features of the JuvoPlayer 1.5.1
 * Support for Tizen.Sdk version up to 1.0.9
 * Xamarin UI and OpenGL: Common resources (tiles, videoclips.json) excluded to a separate project.
@@ -124,7 +124,8 @@ From now on You can modify JavaScript part of the application code and see the u
   * DASH representation change during segment download
   * Stability improvements in switching to another application and back (multitasking).
   * Fix for the issue: 'FFW and REW operations on the sample 4K HEVS video does not end'.
-### ### 2. Known issues:
+### 2. Known issues:
+* Switching to another application and back (multitasking) does not work with playback over RTSP.
 * Right after the finishing seek in HLS streams there is a short video pause until the audio catch up. It is a result of FFmpeg 'seek' function specific.
 * The FFW and REW operations on MPEG DASH sample videos result in app crash on the 2020 TV emulator (Tizen 5.5).
 
