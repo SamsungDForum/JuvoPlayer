@@ -52,9 +52,6 @@ namespace XamarinPlayer.Views
         public static readonly BindableProperty ContentSourceProperty =
             BindableProperty.Create("ContentSource", typeof(object), typeof(PlayerView));
 
-        private PlayerState? suspendedPlayerState;
-        private ClipDefinition currentClip;
-
         public object ContentSource
         {
             set { SetValue(ContentSourceProperty, value); }

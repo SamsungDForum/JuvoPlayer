@@ -21,7 +21,9 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Threading;
 using System.Threading.Tasks;
+using JuvoPlayer.Common.Utils.IReferenceCountableExtensions;
 using JuvoPlayer.ResourceLoaders;
 using JuvoPlayer.Utils;
 using SkiaSharp;
@@ -31,13 +33,16 @@ namespace JuvoPlayer.Common
     public class StoryboardReader : IDisposable
     {
         private StoryboardsMap _map;
-        private readonly IDictionary<string, SKBitmapHolder> _bitmaps;
+        private readonly IDictionary<string, SKBitmapRefCounted> _bitmaps;
         private readonly IResource _mapResource;
         private readonly PreloadingStrategy _preloadingStrategy;
+        private readonly SKBitmapCache _bitmapCache;
 
         public SKSize FrameSize => new SKSize(_map?.FrameWidth ?? 0, _map?.FrameHeight ?? 0);
 
         public Task LoadTask { get; }
+
+        public bool IsDisposed { get; private set; }
 
         public enum PreloadingStrategy
         {
@@ -46,11 +51,12 @@ namespace JuvoPlayer.Common
             PreloadEverything,
         }
 
-        public StoryboardReader(string jsonDescPath, PreloadingStrategy preloadingStrategy = PreloadingStrategy.DoNotPreload)
+        public StoryboardReader(string jsonDescPath, PreloadingStrategy preloadingStrategy = PreloadingStrategy.DoNotPreload,  SKBitmapCache cache = null)
         {
             _mapResource = ResourceFactory.Create(jsonDescPath);
             _preloadingStrategy = preloadingStrategy;
-            _bitmaps = new Dictionary<string, SKBitmapHolder>();
+            _bitmapCache = cache ?? new SKBitmapCache();
+            _bitmaps = new Dictionary<string, SKBitmapRefCounted>();
             LoadTask = LoadMap();
         }
 
@@ -124,17 +130,27 @@ namespace JuvoPlayer.Common
 
         private SKBitmap GetOrLoadBitmap(Storyboard storyboard)
         {
-            return GetOrCreateBitmapHolder(storyboard).GetBitmap();
+            var key = storyboard.Filename;
+            if (_bitmaps.TryGetValue(key, out var bitmap))
+                return bitmap.Value;
+            LoadBitmap(storyboard);
+            return null;
         }
 
-        private SKBitmapHolder GetOrCreateBitmapHolder(Storyboard storyboard)
+        private async void LoadBitmap(Storyboard storyboard)
         {
-            var key = storyboard.Filename;
-            if (_bitmaps.ContainsKey(key)) return _bitmaps[key];
-
-            var bitmapHolder = new SKBitmapHolder(_mapResource.Resolve(storyboard.Filename));
-            _bitmaps[key] = bitmapHolder;
-            return bitmapHolder;
+            using (var resource = _mapResource.Resolve(storyboard.Filename))
+            {
+                var key = storyboard.Filename;
+                var bitmap = await _bitmapCache.GetBitmap(resource);
+                if (_bitmaps.TryGetValue(key, out _))
+                {
+                    bitmap.Release();
+                    return;
+                }
+                if (!_bitmaps.ContainsKey(key))
+                    _bitmaps.Add(key, bitmap);
+            }
         }
 
         private SKRect CalculateFramePosition(Storyboard storyboard, TimeSpan position)
@@ -160,9 +176,18 @@ namespace JuvoPlayer.Common
 
         public void Dispose()
         {
-            foreach (var bitmapHolder in _bitmaps.Values)
-                bitmapHolder.Dispose();
-            _bitmaps.Clear();
+            if (IsDisposed)
+                return;
+            IsDisposed = true;
+
+            var bitmaps = _bitmaps;
+
+            Task.Run(() =>
+            {
+                foreach (var bitmap in _bitmaps)
+                    bitmap.Value.Release();
+                bitmaps.Clear();
+            });
             _mapResource.Dispose();
         }
     }

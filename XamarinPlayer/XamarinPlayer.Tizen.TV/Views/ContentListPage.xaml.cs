@@ -16,13 +16,16 @@
  */
 
 using System;
-using System.IO;
 using System.Threading.Tasks;
-using JuvoPlayer.ResourceLoaders;
+using JuvoPlayer.Common;
+using JuvoPlayer.Common.Utils.IReferenceCountableExtensions;
+using SkiaSharp;
+using SkiaSharp.Views.Forms;
 using Xamarin.Forms;
 using Xamarin.Forms.Xaml;
 using XamarinPlayer.Services;
 using XamarinPlayer.Tizen.TV.Controls;
+using XamarinPlayer.Tizen.TV.Services;
 using XamarinPlayer.ViewModels;
 
 namespace XamarinPlayer.Views
@@ -33,6 +36,8 @@ namespace XamarinPlayer.Views
         NavigationPage AppMainPage;
 
         private int _pendingUpdatesCount;
+        private readonly SKBitmapCache _skBitmapCache;
+        private SKBitmapRefCounted _backgroundBitmap;
 
         public ContentListPage(NavigationPage page)
         {
@@ -41,6 +46,9 @@ namespace XamarinPlayer.Views
             AppMainPage = page;
 
             UpdateItem();
+
+            var cacheService = DependencyService.Get<ISKBitmapCacheService>();
+            _skBitmapCache = cacheService.GetCache();
 
             NavigationPage.SetHasNavigationBar(this, false);
         }
@@ -76,10 +84,15 @@ namespace XamarinPlayer.Views
 
             ContentTitle.Text = focusedContent.ContentTitle;
             ContentDesc.Text = focusedContent.ContentDescription;
-            ContentImage.Source = ResourceFactory.Create(focusedContent.ContentImg).AbsolutePath;
+
+            _backgroundBitmap?.Release();
+            _backgroundBitmap = null;
+            _backgroundBitmap = await _skBitmapCache.GetBitmap(focusedContent.ContentImg);
+
+            ContentImage.InvalidateSurface();
             ContentImage.Opacity = 0;
             ContentImage.AbortAnimation("FadeTo");
-            await ContentImage.FadeTo(1, 1000);
+            await ContentImage.FadeTo(0.75);
         }
 
         protected override async void OnAppearing()
@@ -188,6 +201,27 @@ namespace XamarinPlayer.Views
         public void Resume()
         {
             ContentListView.SetFocus();
+        }
+
+        private void SKCanvasView_OnPaintSurface(object sender, SKPaintSurfaceEventArgs e)
+        {
+            if (_backgroundBitmap == null) return;
+
+            var info = e.Info;
+            var rect = info.Rect;
+            var surface = e.Surface;
+            var canvas = surface.Canvas;
+
+            using (var paint = new SKPaint())
+            {
+                paint.Shader = SKShader.CreateLinearGradient(new SKPoint(rect.Left, rect.Top),
+                    new SKPoint(rect.Left, rect.Bottom),
+                    new[] {SKColors.Empty, SKColors.Black},
+                    new[] {0.6F, 0.8F},
+                    SKShaderTileMode.Repeat);
+                canvas.DrawBitmap(_backgroundBitmap.Value, rect);
+                canvas.DrawRect(rect, paint);
+            }
         }
     }
 }

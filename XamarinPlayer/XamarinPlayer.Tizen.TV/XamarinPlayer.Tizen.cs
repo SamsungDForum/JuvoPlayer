@@ -20,7 +20,6 @@ using System.Net;
 using System.Text;
 using System.Threading.Tasks;
 using ElmSharp;
-using FFImageLoading.Forms.Platform;
 using JuvoPlayer.Common;
 using JuvoLogger;
 using JuvoLogger.Tizen;
@@ -134,7 +133,6 @@ namespace XamarinPlayer.Tizen
             var app = new Program();
 
             Forms.Init(app);
-            CachedImageRenderer.Init(app);
             app.Run(args);
         }
     }
