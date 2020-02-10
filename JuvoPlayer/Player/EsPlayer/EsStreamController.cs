@@ -873,6 +873,7 @@ namespace JuvoPlayer.Player.EsPlayer
                 if (firstPacketType == typeof(EOSPacket))
                 {
                     logger.Info("Won't start audio");
+                    player.SubmitEosPacket(ESPlayer.StreamType.Audio);
                     return;
                 }
                 esStreams[(int)StreamType.Audio].Start(token);
