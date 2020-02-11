@@ -3,7 +3,7 @@
     <OutputType>Exe</OutputType>
     <TargetFramework>tizen50</TargetFramework>
     <AssemblyName>JuvoPlayerOpenGLNative.Tizen.TV</AssemblyName>
-    <Version>1.5.1</Version>
+    <Version>1.5.3</Version>
     <Description>C++ native GUI for the JuvoPlayer backend. For animation peformance optimization the Open GL framework has been used.</Description>
     <TizenTpkExcludePattern>runtimes\*\native\*.*</TizenTpkExcludePattern>
   </PropertyGroup>

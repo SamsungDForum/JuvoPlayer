@@ -600,6 +600,7 @@ namespace XamarinPlayer.Views
         public void Resume()
         {
             Player?.Resume();
+            PlayButton.Focus();
         }
 
         private void UpdateLoadingIndicator()
