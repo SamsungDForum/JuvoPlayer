@@ -22,6 +22,7 @@ using System.IO;
 using System.Reactive.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using System.Windows.Input;
 using System.Xml.Resolvers;
 using Configuration;
 using JuvoLogger;
@@ -74,9 +75,6 @@ namespace XamarinPlayer.Views
             get { return GetValue(ContentSourceProperty); }
         }
 
-        private bool _isBuffering;
-        private bool _isBound;
-        
         public PlayerView()
         {
             InitializeComponent();
@@ -85,14 +83,13 @@ namespace XamarinPlayer.Views
             SetBinding(PlayButtonFocusProperty, new Binding(nameof(PlayerViewModel.PlayButtonFocus)));
             SetBinding(SeekPreviewProperty, new Binding(nameof(PlayerViewModel.SeekPreview)));
 
-            PlayButton.Clicked += (s, e) => { (BindingContext as PlayerViewModel)?.Play(); };
+            PlayButton.Clicked += (s, e) => { (BindingContext as PlayerViewModel)?.PlayCommand.Execute(null); };
 
             Progressbar.PropertyChanged += (sender, args) =>
             {
                 if (args.PropertyName == "Progress")
                     UpdateSeekPreviewFramePosition();
             };
-            
             PropertyChanged += PlayerViewPropertyChanged;
         }
 
@@ -109,21 +106,21 @@ namespace XamarinPlayer.Views
                     InitializeSeekPreview(clipDefinition.SeekPreviewPath);
                 }
 
-                (BindingContext as PlayerViewModel)?.SetSource(clipDefinition);
+                (BindingContext as PlayerViewModel)?.SetSourceCommand.Execute(clipDefinition);
             }
         }
 
         private void InitializeSeekPreview(string seekPreviewPath)
         {
-            var size = (BindingContext as PlayerViewModel).InitializeSeekPreview(Path.Combine(Application.Current.DirectoryInfo.Resource, seekPreviewPath));
-            
+            (BindingContext as PlayerViewModel).InitializeSeekPreviewCommand.Execute(Path.Combine(Application.Current.DirectoryInfo.Resource, seekPreviewPath));
+            var size = (BindingContext as PlayerViewModel).PreviewFrameSize;
             SeekPreviewCanvas.WidthRequest = size.Width;
             SeekPreviewCanvas.HeightRequest = size.Height;
         }
 
         private void OnSeekPreviewCanvasOnPaintSurface(object sender, SKPaintSurfaceEventArgs args)
         {
-            var frame = (BindingContext as PlayerViewModel)?.GetSeekPreviewFrame();
+            var frame = (BindingContext as PlayerViewModel)?.PreviewFrame;
             if (frame == null) return;
 
             var surface = args.Surface;
@@ -153,6 +150,7 @@ namespace XamarinPlayer.Views
             base.OnAppearing();
             MessagingCenter.Subscribe<IKeyEventSender, string>(this, "KeyDown", (s, e) => { KeyEventHandler(e); });
 
+            SettingsButton.IsEnabled = true;
             PlayButton.IsEnabled = true;
             PlayButton.Focus();
         }
@@ -166,9 +164,21 @@ namespace XamarinPlayer.Views
             if (e.Contains("Back") && !e.Contains("XF86PlayBack"))
             {
                 //If the 'return' button on standard or back arrow on the smart remote control was pressed do react depending on the playback state
-                if ((BindingContext as PlayerViewModel).Back())
+                (BindingContext as PlayerViewModel).BackCommand.Execute(null);
+                if (!(BindingContext as PlayerViewModel).Playing)
                 {
                     Navigation.RemovePage(this);
+                }
+                else
+                {
+                    if (Settings.IsVisible)
+                    {
+                        Settings.IsVisible = false;
+                        PlayButton.IsEnabled = true;
+                        PlayButton.Focus();
+                    }
+                    else
+                        (BindingContext as PlayerViewModel).HideCommand.Execute(null);
                 }
             }
             else
@@ -178,39 +188,44 @@ namespace XamarinPlayer.Views
                     return;
                 }
         
-                if ((BindingContext as PlayerViewModel).IsShowing)
+                if ((BindingContext as PlayerViewModel).Overlay)
                 {
                     if(e.Contains("XF86PlayBack"))
                     {
-                        (BindingContext as PlayerViewModel).StartPause();
+                        (BindingContext as PlayerViewModel).PlayCommand.Execute(null);
+                        // (BindingContext as PlayerViewModel).StartPause();
                     }
                     else if (e.Contains("Pause"))
                     {
-                        (BindingContext as PlayerViewModel).Pause();
+                        (BindingContext as PlayerViewModel).PauseCommand.Execute(null);
+                        // (BindingContext as PlayerViewModel).Pause();
                     }
                     else if (e.Contains("Play"))
                     {
-                        (BindingContext as PlayerViewModel).Start();
+                        (BindingContext as PlayerViewModel).StartCommand.Execute(null);
+                        // (BindingContext as PlayerViewModel).Start();
                     }
         
                     if ((e.Contains("Next") || e.Contains("Right")))
                     {
-                        (BindingContext as PlayerViewModel).Forward();
+                        (BindingContext as PlayerViewModel).ForwardCommand.Execute(null);
+                        // (BindingContext as PlayerViewModel).Forward();
                     }
                     else if ((e.Contains("Rewind") || e.Contains("Left")))
                     {
-                        (BindingContext as PlayerViewModel).Rewind();
+                        (BindingContext as PlayerViewModel).RewindCommand.Execute(null);
+                        // (BindingContext as PlayerViewModel).Rewind();
                     }
                     else if ((e.Contains("Up")))
                     {
-                        if ((BindingContext as PlayerViewModel).HandleSettings())
-                        {
-                            AudioTrack.Focus();
-                        }
+                        (BindingContext as PlayerViewModel).HandleSettingsCommand.Execute(null);
+                        Settings.IsVisible = true;
+                        PlayButton.IsEnabled = false;
+                        AudioTrack.Focus();
                     }
 
                     //expand the time that playback control bar is on the screen
-                    (BindingContext as PlayerViewModel).ExpandPlayback();
+                    (BindingContext as PlayerViewModel).ExpandPlaybackCommand.Execute(null);
                 }
                 else
                 {
@@ -221,7 +236,7 @@ namespace XamarinPlayer.Views
                     else
                     {
                         //Make the playback control bar visible on the screen
-                        (BindingContext as PlayerViewModel).Show();
+                        (BindingContext as PlayerViewModel).ShowCommand.Execute(null);
                     }
                 }
             }
@@ -231,18 +246,18 @@ namespace XamarinPlayer.Views
         {
             base.OnDisappearing();
 
-            (BindingContext as PlayerViewModel)?.Dispose();
+            (BindingContext as PlayerViewModel)?.DisposeCommand.Execute(null);
             MessagingCenter.Unsubscribe<IKeyEventSender, string>(this, "KeyDown");
         }
 
         void OnTapGestureRecognizerControllerTapped(object sender, EventArgs args)
         {
-            (BindingContext as PlayerViewModel).Hide();
+            (BindingContext as PlayerViewModel).HideCommand.Execute(null);
         }
 
         void OnTapGestureRecognizerViewTapped(object sender, EventArgs args)
         {
-            (BindingContext as PlayerViewModel).Show();
+            (BindingContext as PlayerViewModel).ShowCommand.Execute(null);
         }
 
         protected override bool OnBackButtonPressed()
@@ -258,12 +273,12 @@ namespace XamarinPlayer.Views
 
         public void Suspend()
         {
-            (BindingContext as PlayerViewModel)?.Suspend();
+            (BindingContext as PlayerViewModel)?.SuspendCommand.Execute(null);
         }
 
         public void Resume()
         {
-            (BindingContext as PlayerViewModel)?.Resume();
+            (BindingContext as PlayerViewModel)?.ResumeCommand.Execute(null);
         }
     }
 }

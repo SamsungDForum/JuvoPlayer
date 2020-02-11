@@ -4,6 +4,7 @@
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              xmlns:vm="clr-namespace:XamarinPlayer.ViewModels"
              xmlns:forms="clr-namespace:SkiaSharp.Views.Forms;assembly=SkiaSharp.Views.Forms"
+             xmlns:viewModels="clr-namespace:XamarinPlayer.Tizen.TV.ViewModels;assembly=JuvoPlayerXamarin.Tizen.TV"
              x:Class="XamarinPlayer.Views.PlayerView"
              ContentSource="{Binding Clip}">
     <ContentPage.Content>
@@ -20,7 +21,7 @@
                     <StackLayout BackgroundColor="#B0101010"
                                  Padding="0, 20"
                                  x:Name="TopBar"
-                                 IsVisible="{Binding TopBarVisible}">
+                                 IsVisible="{Binding Overlay}">
                         <AbsoluteLayout HorizontalOptions="End">
                             <Image x:Name="SettingsImage"
                                    Source="btn_viewer_control_settings_normal.png"
@@ -32,8 +33,8 @@
                                    AbsoluteLayout.LayoutBounds="0,0,1,1" AbsoluteLayout.LayoutFlags="All"
                                    HorizontalOptions="Fill"
                                    VerticalOptions="Fill"
-                                   WidthRequest="80" 
-                                   IsEnabled="{Binding SettingsButtonEnabled}"/>
+                                   WidthRequest="80"
+                                   IsEnabled="False"/>
                         </AbsoluteLayout>
                         <Label x:Name="VideoTitle"
                                Text="{Binding Title}"
@@ -50,7 +51,7 @@
                             </BoxView.GestureRecognizers>
                         </BoxView>
                         <ContentView Padding="30, 30" HorizontalOptions="CenterAndExpand">
-                            <Label BackgroundColor="#B0101010" IsVisible="{Binding CueVisible}" FontSize="Medium" TextColor="White"
+                            <Label BackgroundColor="#B0101010" IsVisible="{Binding CueText, Converter={viewModels:CueVisibilityConverter}}" FontSize="Medium" TextColor="White"
                                    x:Name="CueTextLabel" HorizontalOptions="CenterAndExpand" WidthRequest="800"
                                    HorizontalTextAlignment="Center" Text="{Binding CueText}"/>
                         </ContentView>
@@ -61,7 +62,7 @@
                                                     PaintSurface="OnSeekPreviewCanvasOnPaintSurface" />
                             </Frame>
                         </AbsoluteLayout>
-                        <AbsoluteLayout x:Name="Settings" IsVisible="{Binding SettingsVisible}" BackgroundColor="#B0101010"
+                        <AbsoluteLayout x:Name="Settings" IsVisible="False" BackgroundColor="#B0101010"
                                         HorizontalOptions="Center">
                             <StackLayout Padding="20, 10">
                                 <StackLayout Orientation="Horizontal">
@@ -110,7 +111,7 @@
                     <StackLayout BackgroundColor="#B0101010"
                                  Padding="20, 10"
                                  x:Name="BottomBar"
-                                 IsVisible="{Binding BottomBarVisible}">
+                                 IsVisible="{Binding Overlay}">
                         <RelativeLayout>
                             <BoxView Color="#20303030"
                                      HeightRequest="4"
@@ -159,9 +160,7 @@
                                         AbsoluteLayout.LayoutBounds="0,0,1,1" AbsoluteLayout.LayoutFlags="All"
                                         HorizontalOptions="Fill"
                                         VerticalOptions="Fill"
-                                        WidthRequest="100"
-                                        IsEnabled="{Binding PlayButtonEnabled}"
-                                        />
+                                        WidthRequest="100"/>
                             </AbsoluteLayout>
                             <AbsoluteLayout HorizontalOptions="EndAndExpand">
                                 <Image x:Name="ForwardImage"
@@ -190,8 +189,8 @@
                                    AbsoluteLayout.LayoutFlags="PositionProportional"
                                    Color="White"
                                    VerticalOptions="Center"
-                                   IsVisible="{Binding LoadingVisible}"
-                                   IsRunning="{Binding LoadingRunning}"
+                                   IsVisible="{Binding Loading}"
+                                   IsRunning="{Binding Loading}"
                                    HeightRequest="100"
                                    WidthRequest="100" />
             </AbsoluteLayout>
