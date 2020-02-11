@@ -65,9 +65,6 @@ namespace JuvoPlayer.Player.EsPlayer
         // Returns configuration status of all underlying streams.
         // True - all initialized streams are configures
         // False - at least one underlying stream is not configured
-        private bool AllStreamsConfigured => esStreams.All(streamEntry =>
-            streamEntry?.IsConfigured ?? true);
-
         private bool AllStreamsHaveConfiguration => esStreams.All(streamEntry =>
             streamEntry?.HaveConfiguration ?? true);
         public IPlayerClient Client { get; set; }
@@ -199,13 +196,9 @@ namespace JuvoPlayer.Player.EsPlayer
             player = new ESPlayer.ESPlayer();
 
             foreach (var stream in esStreams)
-            {
-                if (stream == null) continue;
-
-                stream.IsConfigured = false;
-                stream.SetPlayer(player);
-            }
+                stream?.SetPlayer(player);
         }
+
         private void AttachEventHandlers()
         {
             player.EOSEmitted += OnEos;
@@ -234,7 +227,7 @@ namespace JuvoPlayer.Player.EsPlayer
                     return;
                 }
 
-                if (esStreams[(int)streamType].IsConfigured)
+                if (esStreams[(int)streamType].HaveConfiguration)
                 {
                     logger.Info($"{streamType}: Queuing configuration");
                     AppendPacket(BufferConfigurationPacket.Create(config));
@@ -244,14 +237,13 @@ namespace JuvoPlayer.Player.EsPlayer
                 // Don't push config yet. Just store it. Configs may arrive
                 // after player gets disowned. Configs should not be pushed, but
                 // configuration is needed in order to restore player configuration.
-                esStreams[(int)streamType].StoreStreamConfiguration(config);
+                esStreams[(int)streamType].SetStreamConfiguration(config);
 
                 // Check if all initialized streams have configuration &
                 // can be started
                 if (!AllStreamsHaveConfiguration || activeTaskCts.IsCancellationRequested)
                     return;
 
-                SetPlayerConfiguration();
                 await PreparePlayback(activeTaskCts.Token);
                 SetState(PlayerState.Prepared);
 
@@ -288,7 +280,7 @@ namespace JuvoPlayer.Player.EsPlayer
         /// </summary>
         public void Play()
         {
-            if (!AllStreamsConfigured)
+            if (!AllStreamsHaveConfiguration)
             {
                 logger.Info("Initialized streams are not configured. Start will occur after receiving configurations");
                 return;
@@ -826,10 +818,7 @@ namespace JuvoPlayer.Player.EsPlayer
             logger.Info("");
 
             foreach (var esStream in esStreams)
-            {
-                if (esStream != null && !esStream.IsConfigured)
-                    esStream?.SetStreamConfiguration();
-            }
+                esStream?.SetStreamConfiguration();
         }
 
 
