@@ -86,8 +86,7 @@ namespace JuvoPlayer.Player.EsPlayer
         private readonly Subject<Unit> streamReconfigureSubject = new Subject<Unit>();
 
         private Packet currentPacket;
-        private TimeSpan currentPts;
-        public TimeSpan CurrentPts => currentPts;
+        public TimeSpan CurrentPts { get; private set; }
 
         private readonly Synchronizer _dataSynchronizer;
         private readonly PlayerClockProvider _playerClock;
@@ -97,7 +96,8 @@ namespace JuvoPlayer.Player.EsPlayer
 
         public IObservable<bool> StreamBuffering()
         {
-            return _bufferingSubject.AsObservable().DistinctUntilChanged();
+            return _bufferingSubject.AsObservable()
+                .DistinctUntilChanged(); // State gets updated "per packet". Only change is required.
         }
 
         public IObservable<string> PlaybackError()
@@ -340,12 +340,12 @@ namespace JuvoPlayer.Player.EsPlayer
 
                 case EncryptedPacket encryptedPacket:
                     await PushEncryptedPacket(encryptedPacket, transferToken);
-                    currentPts = packet.Pts;
+                    CurrentPts = packet.Pts;
                     break;
 
                 case Packet dataPacket:
                     await PushUnencryptedPacket(dataPacket, transferToken);
-                    currentPts = packet.Pts;
+                    CurrentPts = packet.Pts;
                     break;
 
                 default:
@@ -415,13 +415,11 @@ namespace JuvoPlayer.Player.EsPlayer
             if (currentPacket == null)
             {
                 var displayBuffering = packetStorage.Count(streamType) == 0 &&
-                                       (_playerClock.LastClock - currentPts).Duration() <= EsStreamConfig.BufferingEventThreshold;
+                                       (_playerClock.LastClock - CurrentPts).Duration() <= EsStreamConfig.BufferingEventThreshold;
 
                 _bufferingSubject.OnNext(displayBuffering);
 
                 currentPacket = packetStorage.GetPacket(streamType, token);
-
-                currentPts = currentPacket.Pts;
             }
 
             var shouldContinue = await ProcessPacket(currentPacket, token);
