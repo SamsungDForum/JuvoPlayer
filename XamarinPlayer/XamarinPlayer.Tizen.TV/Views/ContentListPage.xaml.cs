@@ -21,6 +21,7 @@ using System.Threading.Tasks;
 using JuvoPlayer.ResourceLoaders;
 using Xamarin.Forms;
 using Xamarin.Forms.Xaml;
+using XamarinPlayer.Models;
 using XamarinPlayer.Services;
 using XamarinPlayer.Tizen.TV.Controls;
 using XamarinPlayer.ViewModels;
@@ -49,7 +50,7 @@ namespace XamarinPlayer.Views
         {
             var playerView = new PlayerView
             {
-                BindingContext = item.BindingContext
+                BindingContext = new PlayerViewModel(item.BindingContext as DetailContentData)
             };
             return AppMainPage.PushAsync(playerView);
         }
