@@ -79,7 +79,6 @@ namespace JuvoPlayer.Player.EsPlayer
         public StreamConfig Configuration { get; internal set; }
 
         public bool HaveConfiguration => Configuration != null;
-        public bool IsConfigured { get; set; }
 
         // Events
         private readonly Subject<string> playbackErrorSubject = new Subject<string>();
@@ -145,18 +144,6 @@ namespace JuvoPlayer.Player.EsPlayer
         {
             logger.Info($"{streamType}");
             player = newPlayer;
-            IsConfigured = false;
-        }
-
-        /// <summary>
-        /// Stores provided configuration but does not push it to player
-        /// </summary>
-        /// <param name="config">StreamConfig</param>
-        /// <returns>SetStreamConfigResult</returns>
-        public void StoreStreamConfiguration(StreamConfig config)
-        {
-            logger.Info($"{streamType}");
-            Configuration = config;
         }
 
         /// <summary>
@@ -180,7 +167,6 @@ namespace JuvoPlayer.Player.EsPlayer
             }
 
             PushStreamConfig(Configuration);
-            IsConfigured = true;
         }
 
         /// <summary>
@@ -290,11 +276,6 @@ namespace JuvoPlayer.Player.EsPlayer
             {
                 logger.Info($"{streamType}: Already running: {activeTask.Status}");
                 return;
-            }
-
-            if (!IsConfigured)
-            {
-                throw new InvalidOperationException($"{streamType}: Not Configured");
             }
 
             transferCts?.Dispose();
