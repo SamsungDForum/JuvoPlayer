@@ -384,9 +384,6 @@ namespace JuvoPlayer.Player.EsPlayer
             }
             finally
             {
-                _packetProcessed.OnNext(typeof(EOSPacket));
-                _bufferingSubject.OnNext(false);
-
                 logger.Info($"{streamType}: Terminated. ");
             }
         }
