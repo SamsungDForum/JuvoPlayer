@@ -31,27 +31,39 @@ namespace XamarinPlayer.ViewModels
         private bool _isPageDisappeared;
         private bool _hasFinished;
         private bool _isBuffering;
-        private bool _isShowing;
         private bool _isSeekingSupported;
-        private bool _topBarVisible;
-        private bool _bottomBarVisible;
-        private bool _settingsVisible;
-        private bool _playButtonEnabled;
-        private bool _settingsButtonEnabled;
+        private bool _overlay;
+        private bool _settingsOpen;
         private bool _seekPreviewVisible;
         private string _currentTime = "00:00";
         private string _totalTime = "00:00";
         private double _progress = 0;
         private string _cueText;
-        private bool _cueVisible;
-        private bool _loadingVisible;
-        private bool _loadingRunning;
+        private bool _loading;
         private ImageSource _playImageSource = ImageSource.FromFile("btn_viewer_control_play_normal.png");
         public PickerViewModel _audio = new PickerViewModel{Type = StreamType.Audio};
         public PickerViewModel _video = new PickerViewModel{Type = StreamType.Video};
         public PickerViewModel _subtitles = new PickerViewModel{Type = StreamType.Subtitle};
         
         public event PropertyChangedEventHandler PropertyChanged;
+        public ICommand PlayCommand => new Command(Play);
+        public ICommand BackCommand => new Command(Back);
+        public ICommand HideCommand => new Command(Hide);
+        public ICommand ShowCommand => new Command(Show);
+        public ICommand ExpandPlaybackCommand => new Command(ExpandPlayback );
+        public ICommand PauseCommand => new Command(Pause);
+        public ICommand StartCommand => new Command(Start);
+        public ICommand ForwardCommand => new Command(Forward);
+        public ICommand RewindCommand => new Command(Rewind);
+        public ICommand HandleSettingsCommand => new Command(HandleSettings);
+        public ICommand SuspendCommand => new Command(Suspend);
+        public ICommand ResumeCommand => new Command(Resume);
+        public ICommand DisposeCommand => new Command(Dispose);
+
+        public ICommand SetSourceCommand {
+            get{return new Command(param => SetSource((ClipDefinition)param) ); } }
+        public ICommand InitializeSeekPreviewCommand {
+            get{return new Command(param => InitializeSeekPreview((string)param) ); } }
 
         public PlayerViewModel(DetailContentData data)
         {
@@ -78,79 +90,45 @@ namespace XamarinPlayer.ViewModels
             _seekLogic = new SeekLogic(this);
         }
 
-        public void Play()
-        {
-            if (Player.State == PlayerState.Playing)
-                Player.Pause();
-            else
-                Player.Start();
-        }
-        
-        public SKSize InitializeSeekPreview(string seekPreviewPath)
-        {
-            _storyboardReader?.Dispose();
-            _storyboardReader =
-                new StoryboardReader(seekPreviewPath);
-            _seekLogic.StoryboardReader = _storyboardReader;
-
-            var size = _storyboardReader.FrameSize;
-            return size;
-        }
-
-        public SubSkBitmap GetSeekPreviewFrame()
-        {
-            return _seekLogic.GetSeekPreviewFrame();
-        }
-
-        public void SetSource(ClipDefinition clip)
-        {
-            Player.SetSource(clip);
-        }
-        
-        protected void OnPropertyChanged([CallerMemberName] string propertyName = null)
-        {
-            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
-        }
-        
         public string Image
         {
-            get { return ContentData.Image;}
-            set { ContentData.Image = value; }
+            get => ContentData.Image;
+            set => ContentData.Image = value;
         }
         public string Bg 
         {
-            get { return ContentData.Bg;}
-            set { ContentData.Bg = value; }
+            get => ContentData.Bg;
+            set => ContentData.Bg = value;
         }
         public string Source 
         {
-            get { return ContentData.Source;}
-            set { ContentData.Source = value; }
+            get => ContentData.Source;
+            set => ContentData.Source = value;
         }
         public string Title 
         {
-            get { return ContentData.Title;}
-            set { ContentData.Title = value; }
+            get => ContentData.Title;
+            set => ContentData.Title = value;
         }
         public string Description
         {
-            get { return ContentData.Description;}
-            set { ContentData.Description = value; }
+            get => ContentData.Description;
+            set => ContentData.Description = value;
         }
         public ICommand ContentFocusedCommand
         {
-            get { return ContentData.ContentFocusedCommand;}
-            set { ContentData.ContentFocusedCommand = value; }
+            get => ContentData.ContentFocusedCommand;
+            set => ContentData.ContentFocusedCommand = value;
         }
         public object Clip
         {
-            get { return ContentData.Clip;}
-            set { ContentData.Clip = value; }
+            get => ContentData.Clip;
+            set => ContentData.Clip = value;
         }
         public string TilePreviewPath
         {
-            get { return ContentData.TilePreviewPath;}
-            set { ContentData.TilePreviewPath = value; }
+            get => ContentData.TilePreviewPath;
+            set => ContentData.TilePreviewPath = value;
         }
 
         public bool IsSeekingSupported
@@ -158,16 +136,22 @@ namespace XamarinPlayer.ViewModels
             get => _isSeekingSupported;
             set
             {
-                if (value != Player.IsSeekingSupported)
-                {
-                    _isSeekingSupported = value;
-                    OnPropertyChanged();
-                }
-
+                if (value == Player.IsSeekingSupported) return;
+                _isSeekingSupported = value;
+                OnPropertyChanged();
             }
         }
-
+        
         private bool _playButtonFocus;
+
+        public bool Playing =>
+            !(Player.State < PlayerState.Playing ||
+              Player.State >= PlayerState.Playing && !_overlay);
+
+        public SubSkBitmap PreviewFrame => GetSeekPreviewFrame();
+        
+        public SKSize PreviewFrameSize => _storyboardReader.FrameSize;
+
         public bool PlayButtonFocus
         {
             get => _playButtonFocus;
@@ -199,76 +183,14 @@ namespace XamarinPlayer.ViewModels
             }
         }
         
-        public bool TopBarVisible
+        public bool Overlay
         {
-            get => _topBarVisible;
+            get => _overlay;
             set
             {
-                if (value != _topBarVisible)
-                {
-                    _topBarVisible = value;
-                    OnPropertyChanged();
-                }
-            }
-        }
-
-        public bool BottomBarVisible
-        {
-            get => _bottomBarVisible;
-            set
-            {
-                if (value != _bottomBarVisible)
-                {
-                    _bottomBarVisible = value;
-                    OnPropertyChanged();
-                }
-            }
-        }
-        
-        public bool PlayButtonEnabled
-        {
-            get => _playButtonEnabled;
-            set
-            {
-                _playButtonEnabled = value;
+                if (value == _overlay) return;
+                _overlay = value;
                 OnPropertyChanged();
-            }
-        }
-        public bool SettingsButtonEnabled
-        {
-            get => _settingsButtonEnabled;
-            set
-            {
-                if (value != _settingsButtonEnabled)
-                {
-                    _settingsButtonEnabled = value;
-                    OnPropertyChanged();
-                }
-            }
-        }
-        public bool SettingsVisible
-        {
-            get => _settingsVisible;
-            set
-            {
-                if (value != _settingsVisible)
-                {
-                    _settingsVisible = value;
-                    OnPropertyChanged();
-                }
-            }
-        }
-        
-        public bool IsShowing
-        {
-            get => _isShowing;
-            set
-            {
-                if (value != _isShowing)
-                {
-                    _isShowing = value;
-                    OnPropertyChanged();
-                }
             }
         }
 
@@ -337,39 +259,16 @@ namespace XamarinPlayer.ViewModels
             }
         }
         
-        public bool CueVisible
+        public bool Loading
         {
-            get => _cueVisible;
+            get => _loading;
             set
             {
-                if (value != _cueVisible)
+                if (value != _loading)
                 {
-                    _cueVisible = value;
+                    _loading = value;
                     OnPropertyChanged();
                 }
-            }
-        }
-        
-        public bool LoadingVisible
-        {
-            get => _loadingVisible;
-            set
-            {
-                if (value != _loadingVisible)
-                {
-                    _loadingVisible = value;
-                    OnPropertyChanged();
-                }
-            }
-        }
-        
-        public bool LoadingRunning
-        {
-            get => _loadingRunning;
-            set
-            {
-                _loadingRunning = value;
-                OnPropertyChanged();
             }
         }
 
@@ -468,6 +367,37 @@ namespace XamarinPlayer.ViewModels
 
         public IPlayerService Player { get; private set; }
         
+        private void Play()
+        {
+            if (Player.State == PlayerState.Playing)
+                Player.Pause();
+            else
+                Player.Start();
+        }
+        
+        private void InitializeSeekPreview(string seekPreviewPath)
+        {
+            _storyboardReader?.Dispose();
+            _storyboardReader =
+                new StoryboardReader(seekPreviewPath);
+            _seekLogic.StoryboardReader = _storyboardReader;
+        }
+
+        private SubSkBitmap GetSeekPreviewFrame()
+        {
+            return _seekLogic.GetSeekPreviewFrame();
+        }
+
+        private void SetSource(ClipDefinition clip)
+        {
+            Player.SetSource(clip);
+        }
+        
+        protected void OnPropertyChanged([CallerMemberName] string propertyName = null)
+        {
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+        }
+        
         private void OnPlayerStateChanged(PlayerState state)
         {
             Logger.Info($"Player State Changed: {state}");
@@ -486,12 +416,6 @@ namespace XamarinPlayer.ViewModels
                     {
                         IsSeekingSupported = true;
                     }
-
-                    PlayButtonEnabled = true;
-                    SettingsButtonEnabled = true;
-                    PlayButtonFocus = !PlayButtonFocus;
-                    // BindStreams();
-                    // Bind = true;
 
                     Player.Start();
                     Show();
@@ -539,140 +463,83 @@ namespace XamarinPlayer.ViewModels
             _isBuffering = progress < 100;
         }
         
-        public void Hide()
+        private void Hide()
         {
-            TopBarVisible = false;
-            BottomBarVisible = false;
-            IsShowing = false;
+            Overlay = false;
         }
         
-        public void Show()
+        private void Show()
         {
             Show(DefaultTimeout);
         }
         
-        public void Show(int timeout)
+        private void Show(int timeout)
         {
             // Do not show anything if error handling in progress.
             if (_hasFinished)
                 return;
 
-            if (!_isShowing)
-            {
-                PlayButtonFocus = !PlayButtonFocus;
-                IsShowing = true;
-            }
-
-            TopBarVisible = true;
-            BottomBarVisible = true;
+            PlayButtonFocus = !PlayButtonFocus;
+            
+            Overlay = true;
             _hideTime = timeout;
         }
 
-        public bool Back()
+        private void Back()
         {
             if (Player.State < PlayerState.Playing ||
-                Player.State >= PlayerState.Playing && !_isShowing)
+                Player.State >= PlayerState.Playing && !_overlay)
             {
                 //return to the main menu showing all the video contents list
-                return true;
-            }
-            else
-            {
-                if (SettingsVisible)
-                {
-                    SettingsVisible = false;
-                    PlayButtonEnabled = true;
-                    PlayButtonFocus = !PlayButtonFocus;
-                }
-                else
-                    Hide();
+                return;
             }
 
-            return false;
+            if (_settingsOpen)
+                _settingsOpen = false;
+
         }
 
-        public void Start()
+        private void Start()
         {
-            if (_isShowing &&
+            if (_overlay &&
                 Player.State == PlayerState.Paused)
             {
                 Player.Start();
             }
         }
         
-        public void StartPause()
+        private void Pause()
         {
-            if (_isShowing)
-            {
-                if(Player.State == PlayerState.Playing)
-                    Player.Pause();
-                else if(Player.State == PlayerState.Paused)
-                    Player.Start();
-            }
-        }
-        
-        public void Pause()
-        {
-            if (_isShowing &&
+            if (_overlay &&
                 Player.State == PlayerState.Playing)
             {
                 Player.Pause();
             }
         }
         
-        private static void InitializePicker(Picker picker, List<StreamDescription> streams)
+        private void HandleSettings()
         {
-            picker.ItemsSource = streams;
-            picker.ItemDisplayBinding = new Binding("Description");
-            picker.SelectedIndex = 0;
-        }
-
-        private static void SelectDefaultStreamForPicker(Picker picker, List<StreamDescription> streams)
-        {
-            for (var i = 0; i < streams.Count; ++i)
-            {
-                if (streams[i].Default)
-                {
-                    picker.SelectedIndex = i;
-                    return;
-                }
-            }
-        }
-        
-        public bool HandleSettings()
-        {
-            if (!SettingsVisible)
+            if (!_settingsOpen)
             {
                 if (AudioSource == null)
                 {
                     BindStreamPicker(_audio);
-                    OnPropertyChanged("AudioSource");
-                    OnPropertyChanged("AudioSelectedIndex");
                 }
                 if (VideoSource == null)
                 {
                     BindStreamPicker(_video);
-                    OnPropertyChanged("VideoSource");
-                    OnPropertyChanged("VideoSelectedIndex");
                 }
                 if (SubtitlesSource == null)
                 {
                     BindSubtitleStreamPicker();
-                    OnPropertyChanged("SubtitlesSource");
-                    OnPropertyChanged("SubtitlesSelectedIndex");
                 }
-                SettingsVisible = !SettingsVisible;
-                PlayButtonEnabled = false;
-
-                return true;
+                _settingsOpen = true;
             }
-
-            return false;
         }
 
-        public void ExpandPlayback()
+        private void ExpandPlayback()
         {
-            if(_isShowing)
+            if(_overlay)
                 _hideTime = DefaultTimeout;
         }
         
@@ -684,6 +551,9 @@ namespace XamarinPlayer.ViewModels
             picker.SelectedIndex = 0;
 
             SelectDefaultStreamForPicker(picker);
+            OnPropertyChanged($"{picker.Type}Source");
+            OnPropertyChanged($"{picker.Type}SelectedIndex");
+            
         }
         
         private void SelectDefaultStreamForPicker(PickerViewModel picker)
@@ -717,14 +587,16 @@ namespace XamarinPlayer.ViewModels
             _subtitles.SelectedIndex = 0;
 
             SelectDefaultStreamForPicker(_subtitles);
+            OnPropertyChanged($"{_subtitles.Type}Source");
+            OnPropertyChanged($"{_subtitles.Type}SelectedIndex");
         }
         
-        public void Forward()
+        private void Forward()
         {
             _seekLogic.SeekForward();
         }
 
-        public void Rewind()
+        private void Rewind()
         {
             _seekLogic.SeekBackward();
         }
@@ -753,7 +625,7 @@ namespace XamarinPlayer.ViewModels
                 UpdateLoadingIndicator();
                 UpdateSeekPreview();
 
-                if (SettingsVisible)
+                if (_settingsOpen)
                     return;
 
                 if (_hideTime > 0)
@@ -771,7 +643,7 @@ namespace XamarinPlayer.ViewModels
         
         private void UpdateSeekPreview()
         {
-            if (_isShowing && _seekLogic.ShallDisplaySeekPreview())
+            if (_overlay && _seekLogic.ShallDisplaySeekPreview())
             {
                 if (!SeekPreviewVisible)
                     SeekPreviewVisible = true;
@@ -796,14 +668,8 @@ namespace XamarinPlayer.ViewModels
         private void UpdateCueTextLabel()
         {
             var cueText = Player.CurrentCueText ?? string.Empty;
-            if (string.IsNullOrEmpty(cueText))
-            {
-                CueVisible = false;
-                return;
-            }
 
             CueText = cueText;
-            CueVisible = true;
         }
         
         private void UpdateLoadingIndicator()
@@ -811,13 +677,11 @@ namespace XamarinPlayer.ViewModels
             var isSeeking = _seekLogic.IsSeekInProgress || _seekLogic.IsSeekAccumulationInProgress;
             if (isSeeking || _isBuffering)
             {
-                LoadingRunning = true;
-                LoadingVisible = true;
+                Loading = true;
             }
             else
             {
-                LoadingRunning = false;
-                LoadingVisible = false;
+                Loading = false;
             }
         }
         

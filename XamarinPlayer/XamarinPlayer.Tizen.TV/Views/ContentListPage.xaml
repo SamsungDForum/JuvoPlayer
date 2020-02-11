@@ -25,7 +25,6 @@
                                 RelativeLayout.XConstraint="{ConstraintExpression Type=RelativeToParent, Property=Width, Factor=0.3}">
                     <forms:CachedImage x:Name="ContentImage"
                                        Aspect="AspectFill"
-                                       ErrorPlaceholder="tiles/default_bg.png"
                                        RelativeLayout.HeightConstraint="{ConstraintExpression Type=RelativeToParent, Property=Height, Factor=1}"
                                        RelativeLayout.WidthConstraint="{ConstraintExpression Type=RelativeToParent, Property=Width, Factor=1}" />
                     <Image x:Name="BgImage"
@@ -41,10 +40,10 @@
                              RelativeLayout.XConstraint="{ConstraintExpression Type=RelativeToParent, Property=Width, Factor=0.03}">
                     <Label x:Name="ContentTitle"
                            TextColor="#ffffff"
-                           FontSize="100" />
+                           FontSize="Large" />
                     <BoxView HeightRequest="20" />
                     <Label x:Name="ContentDesc"
-                           FontSize="60"
+                           FontSize="Small"
                            TextColor="#999999" />
                 </StackLayout>
                 <Controls:ContentList x:Name="ContentListView"
