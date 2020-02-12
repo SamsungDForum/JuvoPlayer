@@ -15,25 +15,24 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-using System;
-using Xamarin.Forms;
+using System.Collections.Generic;
+using System.ComponentModel;
+using System.Runtime.CompilerServices;
+using JuvoPlayer.Common;
 
 namespace XamarinPlayer.Tizen.TV.ViewModels
 {
-    public class CueVisibilityConverter: IValueConverter
+    public class SettingsPickerViewModel:INotifyPropertyChanged
     {
-        public object Convert (object value, Type targetType, object parameter, System.Globalization.CultureInfo culture)
-        {
-            if (string.IsNullOrEmpty((string)value))
-            {
-                return false;
-            }
+        public int SelectedIndex { get; set; }
+        public List<StreamDescription> Source { get; set; }
+        public StreamType Type { get; set; }
+        
+        public event PropertyChangedEventHandler PropertyChanged;
 
-            return true;
-        }
-        public object ConvertBack (object value, Type targetType, object parameter, System.Globalization.CultureInfo culture)
+        protected virtual void OnPropertyChanged([CallerMemberName] string propertyName = null)
         {
-            return !(bool)value;
+            PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
         }
     }
 }
