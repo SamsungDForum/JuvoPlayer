@@ -21,7 +21,7 @@
                     <StackLayout BackgroundColor="#B0101010"
                                  Padding="0, 20"
                                  x:Name="TopBar"
-                                 IsVisible="{Binding Overlay}">
+                                 IsVisible="True">
                         <AbsoluteLayout HorizontalOptions="End">
                             <Image x:Name="SettingsImage"
                                    Source="btn_viewer_control_settings_normal.png"
@@ -55,7 +55,7 @@
                                    x:Name="CueTextLabel" HorizontalOptions="CenterAndExpand" WidthRequest="800"
                                    HorizontalTextAlignment="Center" Text="{Binding CueText}"/>
                         </ContentView>
-                        <AbsoluteLayout x:Name="SeekPreviewContainer" IsVisible="{Binding SeekPreviewVisible}" HorizontalOptions="Fill" Margin="100, 0">
+                        <AbsoluteLayout x:Name="SeekPreviewContainer" IsVisible="{Binding ShallDisplaySeekPreview}" HorizontalOptions="Fill" Margin="100, 0">
                             <Frame x:Name="SeekPreviewFrame" Padding="1,1,1,1" HasShadow="False"
                                    CornerRadius="5" BorderColor="DimGray" BackgroundColor="Black">
                                 <forms:SKCanvasView x:Name="SeekPreviewCanvas" HorizontalOptions="Center"
@@ -111,7 +111,7 @@
                     <StackLayout BackgroundColor="#B0101010"
                                  Padding="20, 10"
                                  x:Name="BottomBar"
-                                 IsVisible="{Binding Overlay}">
+                                 IsVisible="True">
                         <RelativeLayout>
                             <BoxView Color="#20303030"
                                      HeightRequest="4"
@@ -125,12 +125,12 @@
                         <StackLayout Orientation="Horizontal">
                             <Label x:Name="CurrentTime"
                                    HorizontalOptions="StartAndExpand"
-                                   Text="{Binding CurrentTime}"
+                                   Text="{Binding CurrentTime, Converter={viewModels:TimeSpanConverter}}"
                                    TextColor="White"
                                    FontSize="Small" />
                             <Label x:Name="TotalTime"
                                    HorizontalOptions="EndAndExpand"
-                                   Text="{Binding TotalTime}"
+                                   Text="{Binding TotalTime, Converter={viewModels:TimeSpanConverter}}"
                                    TextColor="White"
                                    FontSize="Small" />
                         </StackLayout>
@@ -151,8 +151,8 @@
                             </AbsoluteLayout>
                             <AbsoluteLayout HorizontalOptions="Center">
                                 <Image x:Name="PlayImage"
-                                       Source="{Binding PlayImageSource}"
                                        HorizontalOptions="Center"
+                                       Source="btn_viewer_control_play_normal.png"
                                        VerticalOptions="Center"
                                        AbsoluteLayout.LayoutBounds="0,0,1,1" AbsoluteLayout.LayoutFlags="All" />
                                 <Button x:Name="PlayButton"
