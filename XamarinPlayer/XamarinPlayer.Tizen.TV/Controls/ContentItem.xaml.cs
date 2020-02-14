@@ -22,7 +22,6 @@ using System.Threading.Tasks;
 using JuvoLogger;
 using JuvoPlayer.Common;
 using JuvoPlayer.Common.Utils.IReferenceCountableExtensions;
-using JuvoPlayer.ResourceLoaders;
 using Nito.AsyncEx;
 using SkiaSharp;
 using SkiaSharp.Views.Forms;
@@ -35,26 +34,26 @@ namespace XamarinPlayer.Tizen.TV.Controls
     [XamlCompilation(XamlCompilationOptions.Compile)]
     public partial class ContentItem
     {
-        private static SKColor FocusedColor = new SKColor(234, 234, 234);
-        private static SKColor UnfocusedColor = new SKColor(32, 32, 32);
+        private static readonly SKColor FocusedColor = new SKColor(234, 234, 234);
+        private static readonly SKColor UnfocusedColor = new SKColor(32, 32, 32);
 
-        private ILogger _logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
+        private readonly ILogger _logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
         private SKBitmapRefCounted _contentBitmap;
         private SubSkBitmap _previewBitmap;
-        private SKPaint _paint = new SKPaint {IsAntialias = true, Style = SKPaintStyle.Stroke, StrokeWidth = 3};
+        private readonly SKPaint _paint = new SKPaint {IsAntialias = true, Style = SKPaintStyle.Stroke, StrokeWidth = 3};
         private double _height;
         private bool _isFocused;
         private CancellationTokenSource _animationCts;
         private StoryboardReader _storyboardReader;
-        private SKBitmapCache _skBitmapCache;
+        private readonly SKBitmapCache _skBitmapCache;
 
         public static readonly BindableProperty ContentImgProperty = BindableProperty.Create("ContentImg",
             typeof(string), typeof(ContentItem), default(ICollection<string>));
 
         public string ContentImg
         {
-            set { SetValue(ContentImgProperty, value); }
-            get { return (string) GetValue(ContentImgProperty); }
+            set => SetValue(ContentImgProperty, value);
+            get => (string) GetValue(ContentImgProperty);
         }
 
         public static readonly BindableProperty ContentTitleProperty =
@@ -62,8 +61,8 @@ namespace XamarinPlayer.Tizen.TV.Controls
 
         public string ContentTitle
         {
-            set { SetValue(ContentTitleProperty, value); }
-            get { return (string) GetValue(ContentTitleProperty); }
+            set => SetValue(ContentTitleProperty, value);
+            get => (string) GetValue(ContentTitleProperty);
         }
 
         public static readonly BindableProperty ContentDescriptionProperty =
@@ -71,19 +70,19 @@ namespace XamarinPlayer.Tizen.TV.Controls
 
         public string ContentDescription
         {
-            set { SetValue(ContentDescriptionProperty, value); }
-            get { return (string) GetValue(ContentDescriptionProperty); }
+            set => SetValue(ContentDescriptionProperty, value);
+            get => (string) GetValue(ContentDescriptionProperty);
         }
 
         public static readonly BindableProperty ContentTilePreviewPathProperty =
             BindableProperty.Create("ContentTilePreviewPath", typeof(string), typeof(ContentItem), default(string));
 
-        private static readonly string DefaultImagePath = "tiles/default_bg.png";
+        private const string DefaultImagePath = "tiles/default_bg.png";
 
         public string ContentTilePreviewPath
         {
-            set { SetValue(ContentTilePreviewPathProperty, value); }
-            get { return (string) GetValue(ContentTilePreviewPathProperty); }
+            set => SetValue(ContentTilePreviewPathProperty, value);
+            get => (string) GetValue(ContentTilePreviewPathProperty);
         }
 
         public ContentItem()
@@ -245,11 +244,10 @@ namespace XamarinPlayer.Tizen.TV.Controls
         {
             base.OnPropertyChanged(propertyName);
 
-            if (propertyName == "ContentImg")
-            {
-                LoadSkBitmap();
-                InvalidateSurface();
-            }
+            if (propertyName != "ContentImg")
+                return;
+            LoadSkBitmap();
+            InvalidateSurface();
         }
     }
 }

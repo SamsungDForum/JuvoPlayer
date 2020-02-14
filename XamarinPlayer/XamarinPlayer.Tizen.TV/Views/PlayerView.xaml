@@ -3,7 +3,7 @@
 <ContentPage xmlns="http://xamarin.com/schemas/2014/forms"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              xmlns:forms="clr-namespace:SkiaSharp.Views.Forms;assembly=SkiaSharp.Views.Forms"
-             x:Class="XamarinPlayer.Views.PlayerView"
+             x:Class="XamarinPlayer.Tizen.TV.Views.PlayerView"
              ContentSource="{Binding Clip}">
     <ContentPage.Content>
         <Grid>
@@ -14,14 +14,13 @@
                         Tapped="OnTapGestureRecognizerViewTapped" />
                 </StackLayout.GestureRecognizers>
                 <StackLayout HorizontalOptions="FillAndExpand"
-                             VerticalOptions="FillAndExpand"
-                             x:Name="Controller">
+                             VerticalOptions="FillAndExpand">
                     <StackLayout BackgroundColor="#B0101010"
                                  Padding="0, 20"
                                  x:Name="TopBar">
                         <AbsoluteLayout HorizontalOptions="End">
-                            <Image x:Name="SettingsImage"
-                                   Source="btn_viewer_control_settings_normal.png"
+                            <Image
+                                Source="btn_viewer_control_settings_normal.png"
                                    HorizontalOptions="Center"
                                    VerticalOptions="Start"
                                    AbsoluteLayout.LayoutBounds="0,0,1,1" AbsoluteLayout.LayoutFlags="All" />
@@ -32,8 +31,8 @@
                                    VerticalOptions="Fill"
                                    WidthRequest="80" />
                         </AbsoluteLayout>
-                        <Label x:Name="VideoTitle"
-                               Text="{Binding Title}"
+                        <Label
+                            Text="{Binding Title}"
                                TextColor="White"
                                FontSize="100"
                                HorizontalOptions="Center"
@@ -79,7 +78,7 @@
                                 <StackLayout Orientation="Horizontal">
                                     <Label Text="Video speed" TextColor="White" HorizontalOptions="Start"
                                            VerticalOptions="Center" WidthRequest="200" />
-                                    <Picker x:Name="VideoSpeed" WidthRequest="400">
+                                    <Picker WidthRequest="400">
                                         <Picker.Items>
                                             <x:String>normal</x:String>
                                         </Picker.Items>
@@ -126,8 +125,8 @@
                         </StackLayout>
                         <StackLayout Orientation="Horizontal" HorizontalOptions="Fill">
                             <AbsoluteLayout HorizontalOptions="StartAndExpand">
-                                <Image x:Name="BackImage"
-                                       Source="btn_viewer_control_back_normal.png"
+                                <Image
+                                    Source="btn_viewer_control_back_normal.png"
                                        HorizontalOptions="Center"
                                        VerticalOptions="Center"
                                        AbsoluteLayout.LayoutBounds="0,0,1,1" AbsoluteLayout.LayoutFlags="All" />
@@ -153,8 +152,8 @@
                                         IsEnabled="False" />
                             </AbsoluteLayout>
                             <AbsoluteLayout HorizontalOptions="EndAndExpand">
-                                <Image x:Name="ForwardImage"
-                                       Source="btn_viewer_control_forward_normal.png"
+                                <Image
+                                    Source="btn_viewer_control_forward_normal.png"
                                        HorizontalOptions="Center"
                                        VerticalOptions="Center"
                                        AbsoluteLayout.LayoutBounds="0,0,1,1" AbsoluteLayout.LayoutFlags="All" />

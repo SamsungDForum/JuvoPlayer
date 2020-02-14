@@ -16,6 +16,7 @@
  */
 
 using System;
+using System.Linq;
 using System.Threading.Tasks;
 using JuvoPlayer.Common;
 using JuvoPlayer.Common.Utils.IReferenceCountableExtensions;
@@ -23,17 +24,16 @@ using SkiaSharp;
 using SkiaSharp.Views.Forms;
 using Xamarin.Forms;
 using Xamarin.Forms.Xaml;
-using XamarinPlayer.Services;
 using XamarinPlayer.Tizen.TV.Controls;
 using XamarinPlayer.Tizen.TV.Services;
-using XamarinPlayer.ViewModels;
+using XamarinPlayer.Tizen.TV.ViewModels;
 
-namespace XamarinPlayer.Views
+namespace XamarinPlayer.Tizen.TV.Views
 {
     [XamlCompilation(XamlCompilationOptions.Compile)]
-    public partial class ContentListPage : ContentPage, IContentPayloadHandler, ISuspendable
+    public partial class ContentListPage : IContentPayloadHandler, ISuspendable
     {
-        NavigationPage AppMainPage;
+        private readonly NavigationPage _appMainPage;
 
         private int _pendingUpdatesCount;
         private readonly SKBitmapCache _skBitmapCache;
@@ -43,7 +43,7 @@ namespace XamarinPlayer.Views
         {
             InitializeComponent();
 
-            AppMainPage = page;
+            _appMainPage = page;
 
             UpdateItem();
 
@@ -53,23 +53,22 @@ namespace XamarinPlayer.Views
             NavigationPage.SetHasNavigationBar(this, false);
         }
 
-        private Task ContentSelected(ContentItem item)
+        private Task ContentSelected(BindableObject item)
         {
             var playerView = new PlayerView
             {
                 BindingContext = item.BindingContext
             };
-            return AppMainPage.PushAsync(playerView);
+            return _appMainPage.PushAsync(playerView);
         }
 
         private void UpdateItem()
         {
-            foreach (var content in ((ContentListPageViewModel) BindingContext).ContentList)
+            foreach (var item in ((ContentListPageViewModel) BindingContext).ContentList.Select(content => new ContentItem
             {
-                var item = new ContentItem
-                {
-                    BindingContext = content
-                };
+                BindingContext = content
+            }))
+            {
                 ContentListView.Add(item);
             }
         }
@@ -146,9 +145,15 @@ namespace XamarinPlayer.Views
         {
             Task<bool> ScrollTask()
             {
-                if (keyCode == KeyCode.Next) return ContentListView.ScrollToNext();
-                if (keyCode == KeyCode.Previous) return ContentListView.ScrollToPrevious();
-                throw new ArgumentOutOfRangeException(nameof(keyCode), keyCode, null);
+                switch (keyCode)
+                {
+                    case KeyCode.Next:
+                        return ContentListView.ScrollToNext();
+                    case KeyCode.Previous:
+                        return ContentListView.ScrollToPrevious();
+                    default:
+                        throw new ArgumentOutOfRangeException(nameof(keyCode), keyCode, null);
+                }
             }
 
             var listScrolled = await ScrollTask();
