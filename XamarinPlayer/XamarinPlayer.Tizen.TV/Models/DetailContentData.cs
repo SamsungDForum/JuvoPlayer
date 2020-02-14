@@ -17,7 +17,7 @@
 
 using System.Windows.Input;
 
-namespace XamarinPlayer.Models
+namespace XamarinPlayer.Tizen.TV.Models
 {
     public class DetailContentData
     {

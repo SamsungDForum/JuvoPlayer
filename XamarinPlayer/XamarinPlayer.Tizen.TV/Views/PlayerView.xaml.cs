@@ -16,9 +16,9 @@
  */
 
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.ComponentModel;
-using System.IO;
 using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using System.Threading;
@@ -29,20 +29,19 @@ using JuvoPlayer.Common;
 using SkiaSharp.Views.Forms;
 using Xamarin.Forms;
 using Xamarin.Forms.Xaml;
-using XamarinPlayer.Models;
-using XamarinPlayer.Services;
-using Application = Tizen.Applications.Application;
+using XamarinPlayer.Tizen.TV.Models;
+using XamarinPlayer.Tizen.TV.Services;
 
-namespace XamarinPlayer.Views
+namespace XamarinPlayer.Tizen.TV.Views
 {
     [XamlCompilation(XamlCompilationOptions.Compile)]
-    public partial class PlayerView : ContentPage, IContentPayloadHandler, ISuspendable, ISeekLogicClient
+    public partial class PlayerView : IContentPayloadHandler, ISuspendable, ISeekLogicClient
     {
-        private static ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
-        private readonly int DefaultTimeout = 5000;
-        private readonly TimeSpan UpdateInterval = TimeSpan.FromMilliseconds(100);
+        private static readonly ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
+        private const int DefaultTimeout = 5000;
+        private readonly TimeSpan _updateInterval = TimeSpan.FromMilliseconds(100);
 
-        private SeekLogic _seekLogic = null; // needs to be initialized in constructor!
+        private readonly SeekLogic _seekLogic; // needs to be initialized in constructor!
         private StoryboardReader _storyboardReader;
         private int _hideTime;
         private bool _isPageDisappeared;
@@ -54,8 +53,8 @@ namespace XamarinPlayer.Views
 
         public object ContentSource
         {
-            set { SetValue(ContentSourceProperty, value); }
-            get { return GetValue(ContentSourceProperty); }
+            set => SetValue(ContentSourceProperty, value);
+            get => GetValue(ContentSourceProperty);
         }
 
         private bool _isBuffering;
@@ -180,15 +179,15 @@ namespace XamarinPlayer.Views
                         Player.Pause();
                     }
 
-                    if ((e.Contains("Next") || e.Contains("Right")))
+                    if (e.Contains("Next") || e.Contains("Right"))
                     {
                         Forward();
                     }
-                    else if ((e.Contains("Rewind") || e.Contains("Left")))
+                    else if (e.Contains("Rewind") || e.Contains("Left"))
                     {
                         Rewind();
                     }
-                    else if ((e.Contains("Up")))
+                    else if (e.Contains("Up"))
                     {
                         HandleSettings();
                     }
@@ -214,19 +213,18 @@ namespace XamarinPlayer.Views
         private void HandleSettings()
         {
             Settings.IsVisible = !Settings.IsVisible;
-            if (Settings.IsVisible)
-            {
-                if (AudioTrack.ItemsSource == null)
-                    BindStreamPicker(AudioTrack, StreamType.Audio);
-                if (VideoQuality.ItemsSource == null)
-                    BindStreamPicker(VideoQuality, StreamType.Video);
-                if (Subtitles.ItemsSource == null)
-                    BindSubtitleStreamPicker();
+            if (!Settings.IsVisible)
+                return;
+            if (AudioTrack.ItemsSource == null)
+                BindStreamPicker(AudioTrack, StreamType.Audio);
+            if (VideoQuality.ItemsSource == null)
+                BindStreamPicker(VideoQuality, StreamType.Video);
+            if (Subtitles.ItemsSource == null)
+                BindSubtitleStreamPicker();
 
-                PlayButton.IsEnabled = false;
+            PlayButton.IsEnabled = false;
 
-                AudioTrack.Focus();
-            }
+            AudioTrack.Focus();
         }
 
         private void BindStreamPicker(Picker picker, StreamType streamType)
@@ -283,22 +281,21 @@ namespace XamarinPlayer.Views
             };
         }
 
-        private static void InitializePicker(Picker picker, List<StreamDescription> streams)
+        private static void InitializePicker(Picker picker, IList streams)
         {
             picker.ItemsSource = streams;
             picker.ItemDisplayBinding = new Binding("Description");
             picker.SelectedIndex = 0;
         }
 
-        private static void SelectDefaultStreamForPicker(Picker picker, List<StreamDescription> streams)
+        private static void SelectDefaultStreamForPicker(Picker picker, IReadOnlyList<StreamDescription> streams)
         {
             for (var i = 0; i < streams.Count; ++i)
             {
-                if (streams[i].Default)
-                {
-                    picker.SelectedIndex = i;
-                    return;
-                }
+                if (!streams[i].Default)
+                    continue;
+                picker.SelectedIndex = i;
+                return;
             }
         }
 
@@ -306,21 +303,15 @@ namespace XamarinPlayer.Views
         {
             picker.SelectedIndexChanged += (sender, args) =>
             {
-                if (picker.SelectedIndex != -1)
-                {
-                    var stream = (StreamDescription)picker.ItemsSource[picker.SelectedIndex];
+                if (picker.SelectedIndex == -1)
+                    return;
+                var stream = (StreamDescription)picker.ItemsSource[picker.SelectedIndex];
 
-                    Player.ChangeActiveStream(stream);
-                }
+                Player.ChangeActiveStream(stream);
             };
         }
 
-        public void Show()
-        {
-            Show(DefaultTimeout);
-        }
-
-        public void Show(int timeout)
+        private void Show(int timeout = DefaultTimeout)
         {
             // Do not show anything if error handling in progress.
             if (_hasFinished)
@@ -337,7 +328,7 @@ namespace XamarinPlayer.Views
             _hideTime = timeout;
         }
 
-        public void Hide()
+        private void Hide()
         {
             TopBar.IsVisible = false;
             BottomBar.IsVisible = false;
@@ -346,19 +337,18 @@ namespace XamarinPlayer.Views
 
         private void PlayerViewPropertyChanged(object sender, PropertyChangedEventArgs e)
         {
-            if (e.PropertyName.Equals("ContentSource"))
+            if (!e.PropertyName.Equals("ContentSource"))
+                return;
+            if (ContentSource == null)
+                return;
+
+            var clipDefinition = ContentSource as ClipDefinition;
+            if (clipDefinition?.SeekPreviewPath != null)
             {
-                if (ContentSource == null)
-                    return;
-
-                var clipDefinition = ContentSource as ClipDefinition;
-                if (clipDefinition?.SeekPreviewPath != null)
-                {
-                    InitializeSeekPreview(clipDefinition.SeekPreviewPath);
-                }
-
-                Player.SetSource(clipDefinition);
+                InitializeSeekPreview(clipDefinition.SeekPreviewPath);
             }
+
+            Player.SetSource(clipDefinition);
         }
 
         private async void InitializeSeekPreview(string seekPreviewPath)
@@ -415,7 +405,7 @@ namespace XamarinPlayer.Views
             MessagingCenter.Subscribe<IKeyEventSender, string>(this, "KeyDown", (s, e) => { KeyEventHandler(e); });
 
             PlayButton.Focus();
-            Device.StartTimer(UpdateInterval, UpdatePlayerControl);
+            Device.StartTimer(_updateInterval, UpdatePlayerControl);
         }
 
         protected override void OnDisappearing()
@@ -444,12 +434,12 @@ namespace XamarinPlayer.Views
             MessagingCenter.Unsubscribe<IKeyEventSender, string>(this, "KeyDown");
         }
 
-        void OnTapGestureRecognizerControllerTapped(object sender, EventArgs args)
+        private void OnTapGestureRecognizerControllerTapped(object sender, EventArgs args)
         {
             Hide();
         }
 
-        void OnTapGestureRecognizerViewTapped(object sender, EventArgs args)
+        private void OnTapGestureRecognizerViewTapped(object sender, EventArgs args)
         {
             Show();
         }
@@ -493,12 +483,16 @@ namespace XamarinPlayer.Views
                 case PlayerState.Paused:
                     PlayImage.Source = ImageSource.FromFile("btn_viewer_control_play_normal.png");
                     break;
+                case PlayerState.Idle:
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(state), state, null);
             }
         }
 
         private void OnPlayerCompleted()
         {
-            Logger.Info($"Player State completed");
+            Logger.Info("Player State completed");
             if (_hasFinished)
                 return;
 
@@ -506,11 +500,9 @@ namespace XamarinPlayer.Views
             Navigation.RemovePage(this);
         }
 
-        private string GetFormattedTime(TimeSpan time)
+        private static string GetFormattedTime(TimeSpan time)
         {
-            if (time.TotalHours > 1)
-                return time.ToString(@"hh\:mm\:ss");
-            return time.ToString(@"mm\:ss");
+            return time.ToString(time.TotalHours > 1 ? @"hh\:mm\:ss" : @"mm\:ss");
         }
 
         private bool UpdatePlayerControl()
@@ -533,13 +525,12 @@ namespace XamarinPlayer.Views
                 if (Settings.IsVisible)
                     return;
 
-                if (_hideTime > 0)
+                if (_hideTime <= 0)
+                    return;
+                _hideTime -= (int)_updateInterval.TotalMilliseconds;
+                if (_hideTime <= 0)
                 {
-                    _hideTime -= (int)UpdateInterval.TotalMilliseconds;
-                    if (_hideTime <= 0)
-                    {
-                        Hide();
-                    }
+                    Hide();
                 }
             });
 
@@ -602,7 +593,7 @@ namespace XamarinPlayer.Views
         private void UpdateLoadingIndicator()
         {
             var isSeeking = _seekLogic.IsSeekInProgress || _seekLogic.IsSeekAccumulationInProgress;
-            if ((isSeeking || _isBuffering) && (Player.State != PlayerState.Paused))
+            if ((isSeeking || _isBuffering) && Player.State != PlayerState.Paused)
             {
                 LoadingIndicator.IsRunning = true;
                 LoadingIndicator.IsVisible = true;

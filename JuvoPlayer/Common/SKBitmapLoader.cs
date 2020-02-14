@@ -19,7 +19,6 @@
 
 using System.Threading;
 using System.Threading.Tasks;
-using JuvoLogger;
 using JuvoPlayer.ResourceLoaders;
 using SkiaSharp;
 

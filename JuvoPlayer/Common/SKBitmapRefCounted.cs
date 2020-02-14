@@ -29,7 +29,7 @@ namespace JuvoPlayer.Common
 
         public SKBitmap Value { get; }
 
-        public bool IsDisposed { get; set; }
+        public bool IsDisposed { get; private set; }
 
         public SKBitmapRefCounted(SKBitmap bitmap)
         {

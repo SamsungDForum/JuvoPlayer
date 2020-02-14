@@ -15,35 +15,26 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
- using System.Collections.Generic;
+using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Windows.Input;
 using Xamarin.Forms;
-using XamarinPlayer.Models;
-using XamarinPlayer.Services;
 using XamarinPlayer.Tizen.TV.Controls;
+using XamarinPlayer.Tizen.TV.Models;
+using XamarinPlayer.Tizen.TV.Services;
 
-namespace XamarinPlayer.ViewModels
+namespace XamarinPlayer.Tizen.TV.ViewModels
 {
-    class ContentListPageViewModel : INotifyPropertyChanged
+    internal class ContentListPageViewModel : INotifyPropertyChanged
     {
-        public List<DetailContentData> ContentList { get; set; }
-        public ContentItem FocusedContent { get; set; }
-        public ICommand ContentFocusedCommand
-        {
-            protected set;
-            get;
-        }
+        public List<DetailContentData> ContentList { get; }
 
         private bool _isBusy;
         public bool IsBusy
         {
-            get
-            {
-                return _isBusy;
-            }
+            get => _isBusy;
             set
             {
                 _isBusy = value;
@@ -57,7 +48,7 @@ namespace XamarinPlayer.ViewModels
         {
             var clips = DependencyService.Get<IClipReaderService>(DependencyFetchTarget.NewInstance).ReadClips().Result;
 
-            ContentList = clips.Select(o => new DetailContentData()
+            ContentList = clips.Select(o => new DetailContentData
             {
                 Bg = o.Image,
                 Clip = o.ClipDetailsHandle,
@@ -70,18 +61,17 @@ namespace XamarinPlayer.ViewModels
             }).ToList();
         }
 
-        protected ICommand CreateFocusedCommand()
+        private ICommand CreateFocusedCommand()
         {
-            ICommand command = new Command<ContentItem>((item) =>
+            ICommand command = new Command<ContentItem>(item =>
             {
-                FocusedContent = item;
                 OnPropertyChanged("FocusedContent");
             });
 
             return command;
         }
 
-        protected void OnPropertyChanged([CallerMemberName] string propertyName = null)
+        private void OnPropertyChanged([CallerMemberName] string propertyName = null)
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
         }
