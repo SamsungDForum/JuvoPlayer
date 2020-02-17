@@ -17,6 +17,7 @@
 
 using System;
 using System.Collections.Generic;
+using JuvoLogger;
 using JuvoPlayer.Common;
 
 namespace JuvoPlayer.OpenGL
@@ -34,47 +35,81 @@ namespace JuvoPlayer.OpenGL
         {
         }
 
-        private readonly Dictionary<int, StoryboardReader> storyboardReaders = new Dictionary<int, StoryboardReader>();
+        public void Dispose()
+        {
+            tilePreviewReader?.Dispose();
+            seekPreviewReader?.Dispose();
+        }
 
-        private readonly DllImports.GetStoryboardDataDelegate
-            getStoryboardDataDelegate = GetStoryboardData; // so it's not GC-ed while used in native code
+        private StoryboardReader tilePreviewReader;
+        private int tilePreviewReaderId = -1;
+        private readonly Dictionary<int, string> tilePreviewPath = new Dictionary<int, string>();
+
+        private SeekLogic seekLogic;
+        private StoryboardReader seekPreviewReader;
+
+        private readonly DllImports.GetStoryboardDataDelegate getStoryboardDataDelegate = GetStoryboardData; // so it's not GC-ed while used in native code
+        private readonly DllImports.GetSeekPreviewStoryboardDataDelegate getSeekPreviewStoryboardDataDelegate = GetSeekPreviewStoryboardDataDelegate; // so it's not GC-ed while used in native code
 
         public DllImports.GetStoryboardDataDelegate AddTile(int tileId)
         {
             if (ResourceLoader.GetInstance().ContentList[tileId].TilePreviewPath != null)
-                storyboardReaders.Add(tileId,
-                    new StoryboardReader(ResourceLoader.GetInstance().ContentList[tileId].TilePreviewPath,
-                        StoryboardReader.PreloadingStrategy.PreloadOnlyRemoteSources));
+                tilePreviewPath.Add(tileId, ResourceLoader.GetInstance().ContentList[tileId].TilePreviewPath);
 
             return getStoryboardDataDelegate;
         }
 
+        public void UnloadTilePreview()
+        {
+            tilePreviewReaderId = -1;
+            tilePreviewReader?.Dispose();
+            tilePreviewReader = null;
+        }
+
+        private static readonly ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
         public static unsafe DllImports.StoryboardData GetStoryboardData(long position, int tileId)
         {
             const float TilePreviewTimeScale = 10.0f / 3.0f;
 
-            if (!GetInstance().storyboardReaders.ContainsKey(tileId))
+            if (tileId != GetInstance().tilePreviewReaderId)
+            {
+                GetInstance().tilePreviewReaderId = tileId;
+                GetInstance().tilePreviewReader?.Dispose();
+                if (GetInstance().tilePreviewPath.ContainsKey(tileId))
+                    GetInstance().tilePreviewReader = new StoryboardReader(
+                        ResourceLoader.GetInstance().ContentList[tileId].TilePreviewPath,
+                        StoryboardReader.PreloadingStrategy.PreloadOnlyRemoteSources);
+                else
+                    GetInstance().tilePreviewReader = null;
+            }
+
+            if (!GetInstance().tilePreviewPath.ContainsKey(tileId))
                 return new DllImports.StoryboardData
                 {
-                    isStoryboardReaderReady = 0,
-                    isFrameReady = 0,
-                    duration = 0
+                    isStoryboardValid = 0
                 };
 
-            var subSkBitmap = GetInstance().storyboardReaders[tileId]
-                .GetFrame(TimeSpan.FromMilliseconds(position) * TilePreviewTimeScale);
+            if(!GetInstance().tilePreviewReader.LoadTask.IsCompletedSuccessfully)
+                return new DllImports.StoryboardData
+                {
+                    isStoryboardValid = 1,
+                    isStoryboardReady = 0
+                };
+
+            var subSkBitmap = GetInstance().tilePreviewReader.GetFrame(TimeSpan.FromMilliseconds(position) * TilePreviewTimeScale);
             if (subSkBitmap == null)
                 return new DllImports.StoryboardData
                 {
-                    isStoryboardReaderReady = 1,
+                    isStoryboardValid = 1,
+                    isStoryboardReady = 1,
                     isFrameReady = 0,
-                    duration = (long) (GetInstance().storyboardReaders[tileId].Duration().TotalMilliseconds /
-                                       TilePreviewTimeScale)
+                    duration = (long) (GetInstance().tilePreviewReader.Duration().TotalMilliseconds / TilePreviewTimeScale)
                 };
 
             return new DllImports.StoryboardData
             {
-                isStoryboardReaderReady = 1,
+                isStoryboardValid = 1,
+                isStoryboardReady = 1,
                 isFrameReady = 1,
                 frame = new DllImports.SubBitmap
                 {
@@ -84,12 +119,69 @@ namespace JuvoPlayer.OpenGL
                     rectBottom = subSkBitmap.SkRect.Bottom,
                     bitmapWidth = subSkBitmap.Bitmap.Width,
                     bitmapHeight = subSkBitmap.Bitmap.Height,
-                    bitmapInfoColorType = (int) SkiaUtils.ConvertToFormat(subSkBitmap.Bitmap.Info.ColorType),
-                    bitmapBytes = (byte*) subSkBitmap.Bitmap.GetPixels(),
+                    bitmapInfoColorType = (int)SkiaUtils.ConvertToFormat(subSkBitmap.Bitmap.Info.ColorType),
+                    bitmapBytes = (byte*)subSkBitmap.Bitmap.GetPixels(),
                     bitmapHash = subSkBitmap.SkRect.GetHashCode()
                 },
-                duration = (long) (GetInstance().storyboardReaders[tileId].Duration().TotalMilliseconds /
-                                   TilePreviewTimeScale)
+                duration = (long)(GetInstance().tilePreviewReader.Duration().TotalMilliseconds / TilePreviewTimeScale)
+            };
+        }
+
+        public void SetSeekPreviewReader(StoryboardReader storyboardReader, SeekLogic seekLogic)
+        {
+            seekPreviewReader?.Dispose();
+            seekPreviewReader = storyboardReader;
+            seekLogic.StoryboardReader = seekPreviewReader;
+            DllImports.SetSeekPreviewCallback(getSeekPreviewStoryboardDataDelegate);
+            this.seekLogic = seekLogic;
+        }
+
+        public SubSkBitmap GetSeekPreviewFrame()
+        {
+            return seekLogic?.GetSeekPreviewFrame();
+        }
+
+        public bool ShallDisplaySeekPreview()
+        {
+            return seekLogic?.ShallDisplaySeekPreview() ?? false;
+        }
+
+        public static unsafe DllImports.StoryboardData GetSeekPreviewStoryboardDataDelegate()
+        {
+            if (!GetInstance().ShallDisplaySeekPreview())
+                return new DllImports.StoryboardData
+                {
+                    isStoryboardValid = 0,
+                    isStoryboardReady = 0,
+                    isFrameReady = 0
+                };
+
+            var subSkBitmap = GetInstance().GetSeekPreviewFrame();
+            if (subSkBitmap == null)
+                return new DllImports.StoryboardData
+                {
+                    isStoryboardValid = 1,
+                    isStoryboardReady = 1,
+                    isFrameReady = 0
+                };
+
+            return new DllImports.StoryboardData
+            {
+                isStoryboardValid = 1,
+                isStoryboardReady = 1,
+                isFrameReady = 1,
+                frame = new DllImports.SubBitmap
+                {
+                    rectLeft = subSkBitmap.SkRect.Left,
+                    rectRight = subSkBitmap.SkRect.Right,
+                    rectTop = subSkBitmap.SkRect.Top,
+                    rectBottom = subSkBitmap.SkRect.Bottom,
+                    bitmapWidth = subSkBitmap.Bitmap.Width,
+                    bitmapHeight = subSkBitmap.Bitmap.Height,
+                    bitmapInfoColorType = (int)SkiaUtils.ConvertToFormat(subSkBitmap.Bitmap.Info.ColorType),
+                    bitmapBytes = (byte*)subSkBitmap.Bitmap.GetPixels(),
+                    bitmapHash = subSkBitmap.SkRect.GetHashCode()
+                }
             };
         }
     }
