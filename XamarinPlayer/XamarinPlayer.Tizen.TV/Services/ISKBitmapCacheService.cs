@@ -1,6 +1,7 @@
 /*!
- * https://github.com/SamsungDForum/JuvoPlayer
- * Copyright 2018, Samsung Electronics Co., Ltd
+ *
+ * [https://github.com/SamsungDForum/JuvoPlayer])
+ * Copyright 2020, Samsung Electronics Co., Ltd
  * Licensed under the MIT license
  *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
@@ -13,11 +14,15 @@
  * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
  */
 
- namespace XamarinPlayer.Tizen.TV.Services
+using JuvoPlayer.Common;
+
+namespace XamarinPlayer.Tizen.TV.Services
 {
-    public interface IKeyEventSender
+    public interface ISKBitmapCacheService
     {
+        SKBitmapCache GetCache();
     }
 }

@@ -19,14 +19,13 @@ using System.Linq;
 using System.Threading.Tasks;
 using Xamarin.Forms;
 using Xamarin.Forms.Xaml;
-using XamarinPlayer.Tizen.TV.Controls;
 
-namespace XamarinPlayer.Controls
+namespace XamarinPlayer.Tizen.TV.Controls
 {
     [XamlCompilation(XamlCompilationOptions.Compile)]
-    public partial class ContentList : ScrollView
+    public partial class ContentList
     {
-        public ContentItem FocusedContent { get; set; }
+        public ContentItem FocusedContent { get; private set; }
 
         public ContentList()
         {
