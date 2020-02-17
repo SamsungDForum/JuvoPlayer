@@ -25,6 +25,7 @@ namespace JuvoPlayer.OpenGL
 
         // Structures
         public delegate StoryboardData GetStoryboardDataDelegate([MarshalAs(UnmanagedType.I8)] long position, int tileId);
+        public delegate StoryboardData GetSeekPreviewStoryboardDataDelegate();
 
         [StructLayout(LayoutKind.Sequential)]
         public struct TileData
@@ -44,7 +45,8 @@ namespace JuvoPlayer.OpenGL
         [StructLayout(LayoutKind.Sequential)]
         public struct StoryboardData
         {
-            public int isStoryboardReaderReady;
+            public int isStoryboardValid;
+            public int isStoryboardReady;
             public int isFrameReady;
             public SubBitmap frame;
             public long duration;
@@ -146,6 +148,9 @@ namespace JuvoPlayer.OpenGL
 
         [DllImport(GlUiLib, EntryPoint = "SetLoaderLogo")]
         public static extern void SetLoaderLogo(ImageData image); // needs to be called from OpenGL context synchronized method and thread
+
+        [DllImport(GlUiLib, EntryPoint = "SetSeekPreviewCallback")]
+        public static extern void SetSeekPreviewCallback(GetSeekPreviewStoryboardDataDelegate seekPreviewCallback);
 
         // Menu management
 
