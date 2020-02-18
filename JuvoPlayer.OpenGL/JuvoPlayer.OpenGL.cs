@@ -38,7 +38,7 @@ namespace JuvoPlayer.OpenGL
         private SeekLogic _seekLogic = null; // needs to be initialized in OnCreate!
 
         private DateTime _lastKeyPressTime;
-        private int _selectedTile;
+        private int _selectedTile = -1;
         private bool _isMenuShown;
         private bool _progressBarShown;
 
@@ -320,7 +320,7 @@ namespace JuvoPlayer.OpenGL
             var tileNo = _resourceLoader.ContentList.FindIndex(content =>
                 string.Equals(content.Url, _deepLinkUrl, StringComparison.OrdinalIgnoreCase));
             _deepLinkUrl = "";
-            if (tileNo == -1)
+            if (tileNo == -1 || tileNo == _selectedTile)
                 return;
             if (Player != null)
                 ClosePlayer();
@@ -704,7 +704,8 @@ namespace JuvoPlayer.OpenGL
             if (!_resourceLoader.IsLoadingFinished)
                 return;
 
-            fixed (byte* name = ResourceLoader.GetBytes(_resourceLoader.ContentList[_selectedTile].Title))
+            string title = _selectedTile > -1 ? _resourceLoader.ContentList[_selectedTile].Title : "";
+            fixed (byte* name = ResourceLoader.GetBytes(title))
             {
                 DllImports.UpdatePlaybackControls(new DllImports.PlaybackData()
                 {
@@ -713,7 +714,7 @@ namespace JuvoPlayer.OpenGL
                     currentTime = (int)_seekLogic.CurrentPositionUI.TotalMilliseconds,
                     totalTime = (int)_seekLogic.Duration.TotalMilliseconds,
                     text = name,
-                    textLen = _resourceLoader.ContentList[_selectedTile].Title.Length,
+                    textLen = title.Length,
                     buffering = _bufferingInProgress ? 1 : 0,
                     bufferingPercent = _bufferingProgress,
                     seeking = (_seekLogic.IsSeekInProgress || _seekLogic.IsSeekAccumulationInProgress) ? 1 : 0
