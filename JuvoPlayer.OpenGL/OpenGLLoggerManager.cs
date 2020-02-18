@@ -24,7 +24,7 @@ using JuvoLogger.Tizen;
 
 namespace JuvoPlayer.OpenGL
 {
-    class OpenGLLoggerManager : LoggerManager
+    class OpenGlLoggerManager : LoggerManager
     {
         private static SynchronizationContext _uiContext = null;
 
@@ -35,7 +35,7 @@ namespace JuvoPlayer.OpenGL
 
             var composite = new CompositeLogger(channel, level);
             composite.Add(new TizenLogger(channel, level));
-            composite.Add(new OpenGLLogger(channel, level, _uiContext));
+            composite.Add(new OpenGlLogger(channel, level, _uiContext));
             return composite;
         }
 
