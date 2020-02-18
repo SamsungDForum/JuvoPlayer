@@ -54,7 +54,7 @@ namespace JuvoPlayer.OpenGL
         private MetricsHandler _metricsHandler;
 
         private bool _isAlertShown;
-        private bool _startedFromDeepLink;
+        private string _deepLinkUrl = "";
 
         private readonly SystemMemoryUsage _systemMemoryUsage = new SystemMemoryUsage();
         private int _systemMemoryUsageGraphId;
@@ -99,7 +99,9 @@ namespace JuvoPlayer.OpenGL
             var payloadParser = new PayloadParser(e.ReceivedAppControl);
             if (!payloadParser.TryGetUrl(out var url))
                 return;
-            HandleExternalTileSelection(url);
+            _deepLinkUrl = url;
+            if (_resourceLoader.IsLoadingFinished)
+                HandleExternalTileSelection();
             base.OnAppControlReceived(e);
         }
 
@@ -313,21 +315,18 @@ namespace JuvoPlayer.OpenGL
             KeyPressedMenuUpdate();
         }
 
-        private void HandleExternalTileSelection(string url)
+        private void HandleExternalTileSelection()
         {
-            _startedFromDeepLink = true;
             var tileNo = _resourceLoader.ContentList.FindIndex(content =>
-                string.Equals(content.Url, url, StringComparison.OrdinalIgnoreCase));
-            if (tileNo < 0)
-                return;
-            if (tileNo == _selectedTile)
+                string.Equals(content.Url, _deepLinkUrl, StringComparison.OrdinalIgnoreCase));
+            _deepLinkUrl = "";
+            if (tileNo == -1)
                 return;
             if (Player != null)
                 ClosePlayer();
             _selectedTile = tileNo;
             DllImports.SelectTile(_selectedTile, 0);
-            if (_resourceLoader.IsLoadingFinished)
-                HandleExternalPlaybackStart();
+            HandleExternalPlaybackStart();
         }
 
         private void HandleLoadingFinished()
@@ -339,13 +338,14 @@ namespace JuvoPlayer.OpenGL
             _playerWindow.Show();
             _playerWindow.Lower();
 
-            _selectedTile = 0;
-            DllImports.SelectTile(_selectedTile, 0);
-
-            if (_startedFromDeepLink)
-                HandleExternalPlaybackStart();
+            if (!_deepLinkUrl.Equals(""))
+                HandleExternalTileSelection();
             else
+            {
+                _selectedTile = 0;
+                DllImports.SelectTile(_selectedTile, 0);
                 ShowMenu(true);
+            }
         }
 
         private void HandleExternalPlaybackStart()
