@@ -75,7 +75,7 @@ namespace JuvoPlayer.OpenGL
         protected override void OnCreate()
         {
             _uiContext = SynchronizationContext.Current;
-            OpenGLLoggerManager.Configure(_uiContext);
+            OpenGlLoggerManager.Configure(_uiContext);
             _seekLogic = new SeekLogic(this);
             DllImports.Create();
             InitMenu();
@@ -88,7 +88,7 @@ namespace JuvoPlayer.OpenGL
 
         protected override bool OnUpdate()
         {
-            UpdateUI();
+            UpdateUi();
             NativeActions.GetInstance().Execute();
             DllImports.Draw();
             return true;
@@ -109,11 +109,9 @@ namespace JuvoPlayer.OpenGL
         protected override void OnPause()
         {
             base.OnPause();
-            if (Player == null || Player.State != Common.PlayerState.Playing)
-                return;
+            Player?.Suspend();
 
             _appPaused = true;
-            Player.Pause();
         }
 
         protected override void OnResume()
@@ -128,7 +126,7 @@ namespace JuvoPlayer.OpenGL
             {
                 ShowMenu(false);
                 KeyPressedMenuUpdate(); // Playback UI should be visible when starting playback after app execution is resumed
-                Player.Start();
+                Player.Resume();
                 return;
             }
 
@@ -723,7 +721,7 @@ namespace JuvoPlayer.OpenGL
             }
         }
 
-        private void UpdateUI()
+        private void UpdateUi()
         {
             UpdateSubtitles();
             UpdatePlaybackCompleted();
