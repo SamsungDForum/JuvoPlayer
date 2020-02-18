@@ -22,11 +22,11 @@ namespace JuvoPlayer.OpenGL
 {
     class NativeActions
     {
-        private static NativeActions Instance;
+        private static NativeActions _instance;
 
         public static NativeActions GetInstance()
         {
-            return Instance ?? (Instance = new NativeActions());
+            return _instance ?? (_instance = new NativeActions());
         }
 
         private readonly Queue<Action> _actions = new Queue<Action>();

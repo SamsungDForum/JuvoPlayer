@@ -24,7 +24,6 @@ using System.Reactive.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using ElmSharp;
-using SkiaSharp;
 using Tizen.Applications;
 using Tizen.System;
 
@@ -76,7 +75,7 @@ namespace JuvoPlayer.OpenGL
         protected override void OnCreate()
         {
             _uiContext = SynchronizationContext.Current;
-            OpenGLLoggerManager.Configure(_uiContext);
+            OpenGlLoggerManager.Configure(_uiContext);
             _seekLogic = new SeekLogic(this);
             DllImports.Create();
             InitMenu();
@@ -89,7 +88,7 @@ namespace JuvoPlayer.OpenGL
 
         protected override bool OnUpdate()
         {
-            UpdateUI();
+            UpdateUi();
             NativeActions.GetInstance().Execute();
             DllImports.Draw();
             return true;
@@ -533,9 +532,17 @@ namespace JuvoPlayer.OpenGL
                 $"Playing {_resourceLoader.ContentList[_selectedTile].Title} ({_resourceLoader.ContentList[_selectedTile].Url})");
             Player.SetSource(_resourceLoader.ContentList[_selectedTile]);
             _options.ClearOptionsMenu();
-            _seekLogic.IsSeekInProgress = false;
+            SetSeekLogicAndSeekPreview();
             _bufferingInProgress = false;
             _bufferingProgress = 0;
+        }
+
+        private void SetSeekLogicAndSeekPreview()
+        {
+            _seekLogic.IsSeekInProgress = false;
+            string previewPath = _resourceLoader.ContentList[_selectedTile].SeekPreviewPath;
+            StoryboardReader seekPreviewReader = previewPath != null ? new StoryboardReader(previewPath) : null;
+            StoryboardManager.GetInstance().SetSeekPreviewReader(seekPreviewReader, _seekLogic);
         }
 
         private void UpdateBufferingProgress(int percent)
@@ -547,6 +554,7 @@ namespace JuvoPlayer.OpenGL
 
         private void ReturnToMainMenu()
         {
+            _seekLogic.Reset();
             ResetPlaybackControls();
             ShowMenu(true);
             _progressBarShown = false;
@@ -625,6 +633,9 @@ namespace JuvoPlayer.OpenGL
             if (show == _isMenuShown)
                 return;
 
+            if(!show)
+                StoryboardManager.GetInstance().UnloadTilePreview();
+
             _isMenuShown = show;
             DllImports.ShowMenu(_isMenuShown ? 1 : 0);
         }
@@ -650,6 +661,7 @@ namespace JuvoPlayer.OpenGL
                 return;
             _progressBarShown = false;
             _options.Hide();
+            _seekLogic.Reset();
             ResetPlaybackControls();
             ShowMenu(true);
             ClosePlayer();
@@ -709,7 +721,7 @@ namespace JuvoPlayer.OpenGL
             }
         }
 
-        private void UpdateUI()
+        private void UpdateUi()
         {
             UpdateSubtitles();
             UpdatePlaybackCompleted();
