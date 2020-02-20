@@ -70,9 +70,9 @@ namespace JuvoPlayer
             return playerThread.Factory.StartNew(async () => await proxied.SeekTo(time)).Unwrap();
         }
 
-        public Task ChangeActiveStream(StreamDescription streamDescription)
+        public void ChangeActiveStream(StreamDescription streamDescription)
         {
-            return playerThread.Factory.StartNew(async () => await proxied.ChangeActiveStream(streamDescription));
+            playerThread.Factory.StartNew(() => proxied.ChangeActiveStream(streamDescription));
         }
 
         public void DeactivateStream(StreamType streamType)

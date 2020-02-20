@@ -38,7 +38,6 @@ namespace JuvoPlayer.Player.EsPlayer
         // Do not filter output to distinct values. Clients may start listening (without re-subscription)
         // at their discretion.
         private readonly IConnectableObservable<TimeSpan> _dataClockSource;
-        private readonly IObservable<TimeSpan> _dataClockObservable;
         private readonly Subject<TimeSpan> _dataClockSubject = new Subject<TimeSpan>();
         private readonly PlayerClockProvider _playerClock;
 
@@ -55,15 +54,12 @@ namespace JuvoPlayer.Player.EsPlayer
                     .Select(GetDataClock)
                     .Multicast(_dataClockSubject);
 
-            // Defer connection of IConnectObservable till very first subscription
-            _dataClockObservable = Observable.Defer(StartOnSubscription);
-
             Logger.Info($"Initial Data Clock: {_sourceClock + _dataLimit}");
         }
 
         public IObservable<TimeSpan> DataClock()
         {
-            return _dataClockObservable;
+            return _dataClockSource.AsObservable();
         }
 
         public void SetClock(TimeSpan newClock, CancellationToken token)
@@ -89,17 +85,6 @@ namespace JuvoPlayer.Player.EsPlayer
                 Logger.Info($"A/V Buffer depth set to {newDataLimit}");
 
             }, _scheduler);
-        }
-
-        private IObservable<TimeSpan> StartOnSubscription()
-        {
-            // Null identifies very fist subscription. 
-            // internal enable/disabled is done with _disabledClock to differentiate
-            // between first/connection, any subsequent connections.
-            if (_dataClockConnection == null)
-                _dataClockConnection = _dataClockSource.Connect();
-
-            return _dataClockSource.AsObservable();
         }
 
         private TimeSpan GetDataClock(long i)

@@ -76,13 +76,12 @@ namespace JuvoPlayer.Player.EsPlayer
         public StreamType GetStreamType() => streamType;
 
         // Buffer configuration and supporting info
-        public StreamConfig Configuration { get; internal set; }
+        public StreamConfig Configuration { get; set; }
 
         public bool HaveConfiguration => Configuration != null;
 
         // Events
         private readonly Subject<string> playbackErrorSubject = new Subject<string>();
-        private readonly Subject<Unit> streamReconfigureSubject = new Subject<Unit>();
 
         private Packet currentPacket;
         public TimeSpan CurrentPts { get; private set; }
@@ -104,14 +103,9 @@ namespace JuvoPlayer.Player.EsPlayer
             return playbackErrorSubject.AsObservable();
         }
 
-        public IObservable<Unit> StreamReconfigure()
-        {
-            return streamReconfigureSubject.AsObservable();
-        }
-
         public IObservable<Type> PacketProcessed()
         {
-            return _packetProcessed.AsObservable();
+            return _packetProcessed.AsObservable().Do(_ => logger.Info($"{streamType}: Packet Done"));
         }
         #region Public API
 
@@ -305,17 +299,6 @@ namespace JuvoPlayer.Player.EsPlayer
                     break;
 
                 case BufferConfigurationPacket bufferConfigPacket:
-                    if (Configuration.StreamType() == StreamType.Audio &&
-                        !Configuration.IsCompatible(bufferConfigPacket.Config))
-                    {
-                        logger.Warn($"{streamType}: Incompatible Stream config change.");
-                        streamReconfigureSubject.OnNext(Unit.Default);
-
-                        // exit transfer task. This will prevent further transfers
-                        // Stops/Restarts will be called by reconfiguration handler.
-                        continueProcessing = false;
-                    }
-
                     Configuration = bufferConfigPacket.Config;
                     break;
 
@@ -388,7 +371,7 @@ namespace JuvoPlayer.Player.EsPlayer
             }
         }
 
-        private async ValueTask<bool> ProcessNextPacket(CancellationToken token)
+        private async Task<bool> ProcessNextPacket(CancellationToken token)
         {
             if (currentPacket == null)
             {
@@ -397,7 +380,7 @@ namespace JuvoPlayer.Player.EsPlayer
 
                 _bufferingSubject.OnNext(displayBuffering);
 
-                currentPacket = packetStorage.GetPacket(streamType, token);
+                currentPacket = await packetStorage.GetPacket(streamType, token);
             }
 
             var shouldContinue = await ProcessPacket(currentPacket, token);
@@ -429,7 +412,7 @@ namespace JuvoPlayer.Player.EsPlayer
                 var submitStatus = player.Submit(dataPacket);
 
                 logger.Debug(
-                    $"{dataPacket.StreamType}: ({submitStatus} )PTS: {dataPacket.Pts} Duration: {dataPacket.Duration}");
+                    $"{dataPacket.StreamType}: ({submitStatus}) PTS: {dataPacket.Pts} Duration: {dataPacket.Duration}");
 
                 if (submitStatus == ESPlayer.SubmitStatus.Success)
                     return;
@@ -459,7 +442,6 @@ namespace JuvoPlayer.Player.EsPlayer
             {
                 _bufferingSubject.OnNext(true);
                 await dataPacket.DrmSession.WaitForInitialization(token);
-                // If exception occurs, Transfer task will restore correct buffering state
                 _bufferingSubject.OnNext(false);
 
                 logger.Info($"{streamType}: DRM Initialization complete");
@@ -553,7 +535,6 @@ namespace JuvoPlayer.Player.EsPlayer
             DisableTransfer();
 
             playbackErrorSubject.Dispose();
-            streamReconfigureSubject.Dispose();
 
             _bufferingSubject.OnCompleted();
             _bufferingSubject.Dispose();

@@ -155,6 +155,16 @@ namespace JuvoPlayer.DataProviders.HLS
             return new List<StreamDescription>();
         }
 
+        public void Pause()
+        {
+            throw new NotImplementedException();
+        }
+
+        public void Resume()
+        {
+            throw new NotImplementedException();
+        }
+
         public IObservable<TimeSpan> ClipDurationChanged()
         {
             return demuxerController.ClipDurationFound();

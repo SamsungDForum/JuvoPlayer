@@ -71,6 +71,10 @@ namespace JuvoPlayer
 
         private readonly SynchronizationContext _syncCtx;
 
+        private IDisposable _configurationSub;
+
+        private IPlayer _player;
+
         public PlayerServiceImpl()
         {
             if (SynchronizationContext.Current == null)
@@ -104,13 +108,13 @@ namespace JuvoPlayer
             ConnectPlayerControllerObservables();
         }
 
-        private void CreatePlayerController()
+        private void CreatePlayerController(object playerStateSnapshot = null)
         {
             if (playerWindow == null)
                 playerWindow = WindowUtils.CreateElmSharpWindow();
-            var player = new EsPlayer(playerWindow);
+            _player = new EsPlayer(playerWindow, playerStateSnapshot);
 
-            playerController = new PlayerController(player, drmManager);
+            playerController = new PlayerController(_player, drmManager);
         }
 
         private void ConnectPlayerControllerObservables()
@@ -122,10 +126,44 @@ namespace JuvoPlayer
                 playerController.PlaybackError().Subscribe( _playerErrorSubject),
                 playerController.BufferingProgress().Subscribe(_playerBufferingSubject),
                 playerController.PlayerClock().Subscribe(_playerClockSubject),
-                playerController.TimeUpdated().Subscribe(SetClock,_syncCtx)
+                playerController.TimeUpdated().Subscribe(SetClock,_syncCtx),
+
             };
         }
 
+        private async Task OnNewConfiguration(bool reconfigurationRequired)
+        {
+            Logger.Info($"Reconfigure: {reconfigurationRequired}");
+
+            _configurationSub?.Dispose();
+            _configurationSub = null;
+
+            if (reconfigurationRequired)
+            {
+                // Data provider must be stopped prior to player controller
+                // re-creation. Otherwise data provider may fill player with packets
+                // before calling seek.
+                dataProvider.Pause();
+                var playerStateSnapshot = EsPlayer.GetStateSnapshot(_player);
+
+                _playerControllerConnections.Dispose();
+                connector?.Dispose();
+
+                playerController.OnStop();
+                playerController?.Dispose();
+
+                CreatePlayerController(playerStateSnapshot);
+                ConnectPlayerControllerObservables();
+
+                connector = new DataProviderConnector(playerController, dataProvider);
+
+                // Seek resumes data provider
+                await dataProvider.Seek(CurrentPosition, CancellationToken.None);
+                return;
+            }
+
+            await SeekTo(CurrentPosition);
+        }
         private void SetClock(TimeSpan clock) =>
             CurrentPosition = clock;
 
@@ -142,18 +180,21 @@ namespace JuvoPlayer
             return playerController.OnSeek(to);
         }
 
-        public async Task ChangeActiveStream(StreamDescription streamDescription)
+        public void ChangeActiveStream(StreamDescription streamDescription)
         {
-            // Change stream and seek to "current time". Forces new presentation to be played as soon as
-            // seek completes.
-            var canReposition = dataProvider.ChangeActiveStream(streamDescription)
-                                && dataProvider.IsSeekingSupported()
-                                && (streamDescription.StreamType == StreamType.Video || streamDescription.StreamType == StreamType.Audio);
+            // Note: Although we should get away with current model as video changes are not destructive
+            // and audio does not use adaptive streaming, handler may pick up different stream change
+            // then one about to be invoked: 
+            // - adaptive stream switch
+            // - Manual representation change
+            // - First stream config may come from adaptive streaming
+            if (streamDescription.StreamType == StreamType.Audio || streamDescription.StreamType == StreamType.Video)
+            {
+                _configurationSub = playerController.ConfigurationChanged(streamDescription.StreamType)
+                    .Subscribe(async r => await OnNewConfiguration(r).ConfigureAwait(false), _syncCtx);
+            }
 
-            if (!canReposition)
-                return;
-
-            await SeekTo(CurrentPosition);
+            dataProvider.ChangeActiveStream(streamDescription);
         }
 
         public void DeactivateStream(StreamType streamType)
@@ -241,6 +282,7 @@ namespace JuvoPlayer
         {
             if (disposing)
             {
+                _configurationSub?.Dispose();
                 drmManager.ClearCache();
                 _playerControllerConnections.Dispose();
                 _playerControllerDisposables.Dispose();
