@@ -96,18 +96,32 @@ namespace JuvoPlayer.Demuxers.FFmpeg
 
         private ClipConfiguration InitDemuxer(Action initAction)
         {
-            ffmpegGlue.Initialize();
+            Logger.Info("");
 
-            initAction();
+            try
+            {
+                ffmpegGlue.Initialize();
+                Logger.Info("Initialize done");
 
-            var clipConfiguration = new ClipConfiguration();
+                initAction();
 
-            FindStreamsInfo();
-            ReadDuration(ref clipConfiguration);
-            ReadStreamConfigs(ref clipConfiguration);
-            ReadContentProtectionConfigs(ref clipConfiguration);
+                Logger.Info("Init action done");
 
-            return clipConfiguration;
+                var clipConfiguration = new ClipConfiguration();
+
+                FindStreamsInfo();
+                ReadDuration(ref clipConfiguration);
+                ReadStreamConfigs(ref clipConfiguration);
+                ReadContentProtectionConfigs(ref clipConfiguration);
+
+                return clipConfiguration;
+            }
+            catch (DemuxerException de)
+            {
+                Logger.Warn("Operation abandoned");
+                Logger.Warn(de);
+                return new ClipConfiguration();
+            }
         }
 
         private void ReadDuration(ref ClipConfiguration clipConfiguration)

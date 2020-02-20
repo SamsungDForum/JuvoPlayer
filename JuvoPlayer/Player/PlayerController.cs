@@ -30,7 +30,6 @@ namespace JuvoPlayer.Player
     public class PlayerController : IPlayerController
     {
         private bool seeking;
-        private TimeSpan currentTime;
         private TimeSpan duration;
 
         private readonly IDrmManager drmManager;
@@ -38,6 +37,7 @@ namespace JuvoPlayer.Player
         private readonly Dictionary<StreamType, IPacketStream> streams = new Dictionary<StreamType, IPacketStream>();
 
         private readonly Subject<string> streamErrorSubject = new Subject<string>();
+        private readonly Subject<bool> reconfigureSubject = new Subject<bool>();
 
         private readonly ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
 
@@ -81,6 +81,14 @@ namespace JuvoPlayer.Player
         public IObservable<TimeSpan> PlayerClock()
         {
             return player.PlayerClock();
+        }
+
+        public IObservable<bool> ConfigurationChanged(StreamType stream)
+        {
+            if (!streams.ContainsKey(stream))
+                throw new ArgumentException("Unconfigured stream", nameof(stream));
+
+            return streams[stream].ConfigurationChanged();
         }
 
 
@@ -186,7 +194,12 @@ namespace JuvoPlayer.Player
         public IPlayerClient Client
         {
             get => player.Client;
-            set => player.Client = value;
+            set
+            {
+                player.Client = value;
+
+                Logger.Info($"*** CLIENT SET {value}");
+            }
         }
 
         #region getters
@@ -206,6 +219,8 @@ namespace JuvoPlayer.Player
                 stream.Dispose();
 
             player?.Dispose();
+            streamErrorSubject.Dispose();
+            reconfigureSubject.Dispose();
         }
     }
 }

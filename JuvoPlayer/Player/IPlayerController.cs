@@ -56,5 +56,6 @@ namespace JuvoPlayer.Player
         IObservable<PlayerState> StateChanged();
         IObservable<TimeSpan> DataClock();
         IObservable<TimeSpan> PlayerClock();
+        IObservable<bool> ConfigurationChanged(StreamType stream);
     }
 }

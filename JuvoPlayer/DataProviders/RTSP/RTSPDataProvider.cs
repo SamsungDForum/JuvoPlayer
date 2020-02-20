@@ -47,6 +47,11 @@ namespace JuvoPlayer.DataProviders.RTSP
                 currentClip ?? throw new ArgumentNullException(nameof(currentClip), "clip cannot be null");
         }
 
+        public void Resume()
+        {
+            throw new NotImplementedException();
+        }
+
         public IObservable<TimeSpan> ClipDurationChanged()
         {
             return demuxerController.ClipDurationFound();
@@ -172,6 +177,11 @@ namespace JuvoPlayer.DataProviders.RTSP
         public List<StreamDescription> GetStreamsDescription(StreamType streamType)
         {
             return new List<StreamDescription>();
+        }
+
+        public void Pause()
+        {
+            throw new NotImplementedException();
         }
     }
 }

@@ -17,11 +17,12 @@
 
 using System;
 using System.Collections.Concurrent;
-using System.Linq;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using JuvoLogger;
 using JuvoPlayer.Common;
+using Nito.AsyncEx;
 
 namespace JuvoPlayer.Player.EsPlayer
 {
@@ -30,10 +31,11 @@ namespace JuvoPlayer.Player.EsPlayer
     /// </summary>
     internal sealed class EsPlayerPacketStorage : IDisposable
     {
-        private class DataStorage
+        private struct DataStorage
         {
-            public BlockingCollection<Packet> packetQueue;
-            public StreamType StreamType;
+            public AsyncCollection<Packet> Collection;
+            public ConcurrentQueue<Packet> Queue;
+            public bool IsDisabled;
         }
 
         private readonly ILogger logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
@@ -54,21 +56,11 @@ namespace JuvoPlayer.Player.EsPlayer
         {
             logger.Info(stream.ToString());
 
-            // Grab "old" queue
-            var storage = packetQueues[(int)stream];
+            if (packetQueues[(int)stream].Queue != null)
+                throw new ArgumentException($"{stream} Already initialized", nameof(packetQueues));
 
             // Create new queue in its place
-            packetQueues[(int)stream] = new DataStorage
-            {
-                packetQueue = new BlockingCollection<Packet>(),
-                StreamType = stream
-            };
-
-            if (storage == null)
-                return;
-
-            // Remove previous data if existed in first place...
-            EmptyQueue(stream, ref storage.packetQueue);
+            packetQueues[(int)stream] = CreateStorage();
         }
 
 
@@ -76,9 +68,10 @@ namespace JuvoPlayer.Player.EsPlayer
         /// Adds packet to internal packet storage.
         /// </summary>
         /// <param name="packet">Packet to be added</param>
-        public void AddPacket(Packet packet)
+        public Task AddPacket(Packet packet)
         {
-            packetQueues[(int)packet.StreamType].packetQueue.Add(packet);
+            return packetQueues[(int)packet.StreamType].Collection.AddAsync(packet);
+            //packetQueues[(int)packet.StreamType].Queue.Add(packet);
         }
 
         /// <summary>
@@ -87,7 +80,7 @@ namespace JuvoPlayer.Player.EsPlayer
         ///
         /// </summary>
         /// <param name="stream">stream for which packet is to be retrieved</param>
-        /// <param name="extStopToken">external cancellation token for stopping retrieval</param>
+        /// <param name="token">external cancellation token for stopping retrieval</param>
         /// <returns>Packet. May be null!</returns>
         /// <exception cref="InvalidOperationException">
         /// Internal System.Collections.Concurrent.BlockingCollection Indexed by Packet.StreamType
@@ -99,9 +92,9 @@ namespace JuvoPlayer.Player.EsPlayer
         /// <remarks>
         /// All Other exceptions, return EOS packet as data source is unusable
         /// </remarks>
-        public Packet GetPacket(StreamType stream, CancellationToken extStopToken)
+        public Task<Packet> GetPacket(StreamType stream, CancellationToken token)
         {
-            return packetQueues[(int)stream].packetQueue.Take(extStopToken);
+            return packetQueues[(int)stream].Collection.TakeAsync(token);
         }
 
         /// <summary>
@@ -111,33 +104,29 @@ namespace JuvoPlayer.Player.EsPlayer
         /// <param name="stream">stream for which packet is to be retrieved</param>
         public void Disable(StreamType stream)
         {
-            packetQueues[(int)stream].packetQueue.CompleteAdding();
+            packetQueues[(int)stream].Collection.CompleteAdding();
+            packetQueues[(int)stream].IsDisabled = true;
         }
 
         public int Count(StreamType stream)
         {
-            return packetQueues[(int)stream].packetQueue.Count;
+            return packetQueues[(int)stream].Queue.Count;
         }
 
         public void Empty(StreamType stream)
         {
-            var storage = packetQueues[(int)stream];
-
-            EmptyQueue(stream, ref storage.packetQueue);
+            EmptyQueue(stream);
         }
 
         public void Enable(StreamType stream)
         {
-            var storage = packetQueues[(int)stream];
-
-            if (!storage.packetQueue.IsAddingCompleted)
+            if (!packetQueues[(int)stream].IsDisabled)
             {
                 logger.Warn($"{stream}: Not disabled");
                 return;
             }
 
-            storage.packetQueue.Dispose();
-            storage.packetQueue = new BlockingCollection<Packet>();
+            packetQueues[(int)stream] = CreateStorage();
 
             logger.Info("");
         }
@@ -146,42 +135,44 @@ namespace JuvoPlayer.Player.EsPlayer
 
         #region Private Methods
 
+        private DataStorage CreateStorage()
+        {
+            // Create new queue in its place
+            var pq = new ConcurrentQueue<Packet>();
+            return new DataStorage
+            {
+                Queue = pq,
+                Collection = new AsyncCollection<Packet>(pq),
+                IsDisabled = false
+            };
+        }
+
         /// <summary>
         /// Empties individual data queue
         /// </summary>
         /// <param name="queue">BlockingCollection(packet)></param>
         /// <param name="stream">Stream to be emptied</param>
         ///
-        private void EmptyQueue(StreamType stream, ref BlockingCollection<Packet> queue)
+        private void EmptyQueue(StreamType stream)
         {
-            if (queue == null)
-                return;
-
-            var queueRef = queue;
-
+            Task.Run(() => DisposeQueue(stream, packetQueues[(int)stream].Collection.GetConsumingEnumerable()));
             // Don't create new queue till next enable
-            if (!queue.IsAddingCompleted)
-                queue = new BlockingCollection<Packet>();
-
-            Task.Run(() => DisposeQueue(stream, queueRef));
+            if (!packetQueues[(int)stream].IsDisabled)
+                packetQueues[(int)stream] = CreateStorage();
         }
 
-        private void DisposeQueue(StreamType stream, BlockingCollection<Packet> queue)
+        private void DisposeQueue(StreamType stream, IEnumerable<Packet> queue)
         {
-            var packetCount = queue.Count;
+            var packetCount = 0;
             var configsDropped = 0;
             foreach (var packet in queue)
             {
+                packetCount++;
                 if (packet is BufferConfigurationPacket)
                     configsDropped++;
 
                 packet.Dispose();
             }
-
-            // Don't dispose queue itself if it was disabled.
-            // Queue Dispose/Creation will be done by Enable()
-            if (!queue.IsAddingCompleted)
-                queue.Dispose();
 
             // Reclaim memory after queue purge
             GC.Collect();
@@ -200,20 +191,8 @@ namespace JuvoPlayer.Player.EsPlayer
                 return;
 
             logger.Info("");
-            // We have an array of blocking collection now, we can
-            // dispose of them by calling EmptyQueue on each.
-            packetQueues.ToArray().AsParallel().ForAll(storage =>
-            {
-                if (storage == null)
-                    return;
-
-                var disposeQueue = storage.packetQueue.IsAddingCompleted;
-                EmptyQueue(storage.StreamType, ref storage.packetQueue);
-                if (disposeQueue)
-                    storage.packetQueue.Dispose();
-
-                logger.Info($"{storage.StreamType}: Disposed.");
-            });
+            for (var i = (StreamType)0; i < StreamType.Count; i++)
+                EmptyQueue(i);
 
             isDisposed = true;
         }

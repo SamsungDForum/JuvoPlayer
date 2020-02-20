@@ -22,6 +22,7 @@ using JuvoPlayer.Common;
 using JuvoLogger;
 using JuvoPlayer.Utils;
 
+
 namespace JuvoPlayer.Player.EsPlayer
 {
     public class EsPlayer : IPlayer
@@ -31,12 +32,12 @@ namespace JuvoPlayer.Player.EsPlayer
         private EsPlayerPacketStorage packetStorage;
         private EsStreamController streamControl;
 
-        public EsPlayer()
-            : this(WindowUtils.CreateElmSharpWindow())
+        public EsPlayer(object stateSnapshot = null)
+            : this(WindowUtils.CreateElmSharpWindow(), stateSnapshot)
         {
         }
 
-        public EsPlayer(Window window)
+        public EsPlayer(Window window, object stateSnapshot = null)
         {
             try
             {
@@ -44,7 +45,7 @@ namespace JuvoPlayer.Player.EsPlayer
                 packetStorage.Initialize(StreamType.Audio);
                 packetStorage.Initialize(StreamType.Video);
 
-                streamControl = new EsStreamController(packetStorage, window);
+                streamControl = new EsStreamController(packetStorage, window, stateSnapshot);
                 streamControl.Initialize(StreamType.Audio);
                 streamControl.Initialize(StreamType.Video);
             }
@@ -150,6 +151,14 @@ namespace JuvoPlayer.Player.EsPlayer
 
         #endregion
         #endregion
+
+        public static object GetStateSnapshot(IPlayer player)
+        {
+            if (player is EsPlayer esp)
+                return esp.streamControl.GetStateSnapshot();
+
+            throw new ArgumentException("Invalid type. Must be EsPlayer", nameof(player));
+        }
 
         #region IDisposable Support
         private bool disposedValue; // To detect redundant calls
