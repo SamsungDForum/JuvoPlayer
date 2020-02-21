@@ -86,10 +86,6 @@ namespace JuvoPlayer.Player
 
             var isCompatible = EsPlayer.StreamConfigExtensions.IsCompatible(this.config, config);
 
-            Logger.Info($"{streamType}: Compatible: {isCompatible}");
-            Logger.Info($"Current: {this.config}");
-            Logger.Info($"New: {config}");
-
             this.config = config;
 
             _codecHandler.OnStreamConfigChanged(this.config);
