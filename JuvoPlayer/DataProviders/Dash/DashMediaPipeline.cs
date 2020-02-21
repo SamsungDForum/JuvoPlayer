@@ -249,6 +249,10 @@ namespace JuvoPlayer.DataProviders.Dash
 
                 Logger.Info("Changing stream to bandwidth: " + stream.Representation.Bandwidth);
                 pendingStream = stream;
+
+                // Note: Pending stream will not have information on AlignedStartSegmentId.
+                // If dash client will be in first segment download stage... playback will terminate
+                // TODO: Add segment realignment. Will require DashDataProvider signaling to update A&V
             }
             finally
             {

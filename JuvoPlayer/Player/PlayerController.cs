@@ -194,12 +194,7 @@ namespace JuvoPlayer.Player
         public IPlayerClient Client
         {
             get => player.Client;
-            set
-            {
-                player.Client = value;
-
-                Logger.Info($"*** CLIENT SET {value}");
-            }
+            set => player.Client = value;
         }
 
         #region getters

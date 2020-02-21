@@ -96,16 +96,10 @@ namespace JuvoPlayer.Demuxers.FFmpeg
 
         private ClipConfiguration InitDemuxer(Action initAction)
         {
-            Logger.Info("");
-
             try
             {
                 ffmpegGlue.Initialize();
-                Logger.Info("Initialize done");
-
                 initAction();
-
-                Logger.Info("Init action done");
 
                 var clipConfiguration = new ClipConfiguration();
 
