@@ -18,7 +18,7 @@
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
-namespace XamarinPlayer.Services
+namespace XamarinPlayer.Tizen.TV.Services
 {
     public interface IClipReaderService
     {

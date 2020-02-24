@@ -43,7 +43,7 @@ namespace JuvoPlayer.OpenGL
             }
         }
 
-        internal static SKColorType ConvertToSKColorType(Format format)
+        internal static SKColorType ConvertToSkColorType(Format format)
         {
             switch (format)
             {

@@ -16,28 +16,21 @@
  */
 
 using System.Collections.Generic;
-using System.IO;
 using System.Linq;
 using System.Threading.Tasks;
 using Configuration;
 using JuvoPlayer.Common;
 using JuvoPlayer.ResourceLoaders;
 using JuvoPlayer.Utils;
-using Tizen;
 using Xamarin.Forms;
-using XamarinPlayer.Services;
 using XamarinPlayer.Tizen.TV.Services;
-using Application = Tizen.Applications.Application;
 
 [assembly: Dependency(typeof(ClipReaderService))]
 
 namespace XamarinPlayer.Tizen.TV.Services
 {
-    class ClipReaderService : IClipReaderService
+    internal class ClipReaderService : IClipReaderService
     {
-        private string ApplicationPath => Path.GetDirectoryName(
-            Path.GetDirectoryName(Application.Current.ApplicationInfo.ExecutablePath));
-
         public Task<List<Clip>> ReadClips()
         {
             return Task.Run(async () =>

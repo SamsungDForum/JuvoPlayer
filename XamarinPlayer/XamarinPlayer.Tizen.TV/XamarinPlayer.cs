@@ -18,17 +18,17 @@
 using System.Threading.Tasks;
 using JuvoLogger;
 using Xamarin.Forms;
-using XamarinPlayer.Services;
-using XamarinPlayer.Views;
+using XamarinPlayer.Tizen.TV.Services;
+using XamarinPlayer.Tizen.TV.Views;
 
-namespace XamarinPlayer
+namespace XamarinPlayer.Tizen.TV
 {
     public class App : Application
     {
         private string _deepLinkUrl;
         private bool _isInForeground;
 
-        public static NavigationPage AppMainPage { get; private set; }
+        private static NavigationPage AppMainPage { get; set; }
 
         private static readonly ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
 
@@ -79,7 +79,7 @@ namespace XamarinPlayer
             return Task.CompletedTask;
         }
 
-        private async Task LoadUrlImpl(string url)
+        private static async Task LoadUrlImpl(string url)
         {
             Logger.Info("");
             while (true)

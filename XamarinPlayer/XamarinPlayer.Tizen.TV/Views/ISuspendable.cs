@@ -15,7 +15,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-namespace XamarinPlayer.Views
+namespace XamarinPlayer.Tizen.TV.Views
 {
     public interface ISuspendable
     {

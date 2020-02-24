@@ -24,7 +24,6 @@ using System.Reactive.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using ElmSharp;
-using SkiaSharp;
 using Tizen.Applications;
 using Tizen.System;
 
@@ -39,7 +38,7 @@ namespace JuvoPlayer.OpenGL
         private SeekLogic _seekLogic = null; // needs to be initialized in OnCreate!
 
         private DateTime _lastKeyPressTime;
-        private int _selectedTile;
+        private int _selectedTile = -1;
         private bool _isMenuShown;
         private bool _progressBarShown;
 
@@ -55,7 +54,7 @@ namespace JuvoPlayer.OpenGL
         private MetricsHandler _metricsHandler;
 
         private bool _isAlertShown;
-        private bool _startedFromDeepLink;
+        private string _deepLinkUrl = "";
 
         private readonly SystemMemoryUsage _systemMemoryUsage = new SystemMemoryUsage();
         private int _systemMemoryUsageGraphId;
@@ -76,7 +75,7 @@ namespace JuvoPlayer.OpenGL
         protected override void OnCreate()
         {
             _uiContext = SynchronizationContext.Current;
-            OpenGLLoggerManager.Configure(_uiContext);
+            OpenGlLoggerManager.Configure(_uiContext);
             _seekLogic = new SeekLogic(this);
             DllImports.Create();
             InitMenu();
@@ -89,7 +88,7 @@ namespace JuvoPlayer.OpenGL
 
         protected override bool OnUpdate()
         {
-            UpdateUI();
+            UpdateUi();
             NativeActions.GetInstance().Execute();
             DllImports.Draw();
             return true;
@@ -100,7 +99,9 @@ namespace JuvoPlayer.OpenGL
             var payloadParser = new PayloadParser(e.ReceivedAppControl);
             if (!payloadParser.TryGetUrl(out var url))
                 return;
-            HandleExternalTileSelection(url);
+            _deepLinkUrl = url;
+            if (_resourceLoader.IsLoadingFinished)
+                HandleExternalTileSelection();
             base.OnAppControlReceived(e);
         }
 
@@ -314,21 +315,18 @@ namespace JuvoPlayer.OpenGL
             KeyPressedMenuUpdate();
         }
 
-        private void HandleExternalTileSelection(string url)
+        private void HandleExternalTileSelection()
         {
-            _startedFromDeepLink = true;
             var tileNo = _resourceLoader.ContentList.FindIndex(content =>
-                string.Equals(content.Url, url, StringComparison.OrdinalIgnoreCase));
-            if (tileNo < 0)
-                return;
-            if (tileNo == _selectedTile)
+                string.Equals(content.Url, _deepLinkUrl, StringComparison.OrdinalIgnoreCase));
+            _deepLinkUrl = "";
+            if (tileNo == -1 || tileNo == _selectedTile)
                 return;
             if (Player != null)
                 ClosePlayer();
             _selectedTile = tileNo;
             DllImports.SelectTile(_selectedTile, 0);
-            if (_resourceLoader.IsLoadingFinished)
-                HandleExternalPlaybackStart();
+            HandleExternalPlaybackStart();
         }
 
         private void HandleLoadingFinished()
@@ -340,13 +338,14 @@ namespace JuvoPlayer.OpenGL
             _playerWindow.Show();
             _playerWindow.Lower();
 
-            _selectedTile = 0;
-            DllImports.SelectTile(_selectedTile, 0);
-
-            if (_startedFromDeepLink)
-                HandleExternalPlaybackStart();
+            if (!_deepLinkUrl.Equals(""))
+                HandleExternalTileSelection();
             else
+            {
+                _selectedTile = 0;
+                DllImports.SelectTile(_selectedTile, 0);
                 ShowMenu(true);
+            }
         }
 
         private void HandleExternalPlaybackStart()
@@ -533,9 +532,17 @@ namespace JuvoPlayer.OpenGL
                 $"Playing {_resourceLoader.ContentList[_selectedTile].Title} ({_resourceLoader.ContentList[_selectedTile].Url})");
             Player.SetSource(_resourceLoader.ContentList[_selectedTile]);
             _options.ClearOptionsMenu();
-            _seekLogic.IsSeekInProgress = false;
+            SetSeekLogicAndSeekPreview();
             _bufferingInProgress = false;
             _bufferingProgress = 0;
+        }
+
+        private void SetSeekLogicAndSeekPreview()
+        {
+            _seekLogic.IsSeekInProgress = false;
+            string previewPath = _resourceLoader.ContentList[_selectedTile].SeekPreviewPath;
+            StoryboardReader seekPreviewReader = previewPath != null ? new StoryboardReader(previewPath) : null;
+            StoryboardManager.GetInstance().SetSeekPreviewReader(seekPreviewReader, _seekLogic);
         }
 
         private void UpdateBufferingProgress(int percent)
@@ -547,6 +554,7 @@ namespace JuvoPlayer.OpenGL
 
         private void ReturnToMainMenu()
         {
+            _seekLogic.Reset();
             ResetPlaybackControls();
             ShowMenu(true);
             _progressBarShown = false;
@@ -625,6 +633,9 @@ namespace JuvoPlayer.OpenGL
             if (show == _isMenuShown)
                 return;
 
+            if(!show)
+                StoryboardManager.GetInstance().UnloadTilePreview();
+
             _isMenuShown = show;
             DllImports.ShowMenu(_isMenuShown ? 1 : 0);
         }
@@ -650,6 +661,7 @@ namespace JuvoPlayer.OpenGL
                 return;
             _progressBarShown = false;
             _options.Hide();
+            _seekLogic.Reset();
             ResetPlaybackControls();
             ShowMenu(true);
             ClosePlayer();
@@ -692,7 +704,8 @@ namespace JuvoPlayer.OpenGL
             if (!_resourceLoader.IsLoadingFinished)
                 return;
 
-            fixed (byte* name = ResourceLoader.GetBytes(_resourceLoader.ContentList[_selectedTile].Title))
+            string title = _selectedTile > -1 ? _resourceLoader.ContentList[_selectedTile].Title : "";
+            fixed (byte* name = ResourceLoader.GetBytes(title))
             {
                 DllImports.UpdatePlaybackControls(new DllImports.PlaybackData()
                 {
@@ -701,7 +714,7 @@ namespace JuvoPlayer.OpenGL
                     currentTime = (int)_seekLogic.CurrentPositionUI.TotalMilliseconds,
                     totalTime = (int)_seekLogic.Duration.TotalMilliseconds,
                     text = name,
-                    textLen = _resourceLoader.ContentList[_selectedTile].Title.Length,
+                    textLen = title.Length,
                     buffering = _bufferingInProgress ? 1 : 0,
                     bufferingPercent = _bufferingProgress,
                     seeking = (_seekLogic.IsSeekInProgress || _seekLogic.IsSeekAccumulationInProgress) ? 1 : 0
@@ -709,7 +722,7 @@ namespace JuvoPlayer.OpenGL
             }
         }
 
-        private void UpdateUI()
+        private void UpdateUi()
         {
             UpdateSubtitles();
             UpdatePlaybackCompleted();
