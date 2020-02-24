@@ -79,15 +79,13 @@ namespace JuvoPlayer.Player.EsPlayer
         public StreamConfig Configuration { get; internal set; }
 
         public bool HaveConfiguration => Configuration != null;
-        public bool IsConfigured { get; set; }
 
         // Events
         private readonly Subject<string> playbackErrorSubject = new Subject<string>();
         private readonly Subject<Unit> streamReconfigureSubject = new Subject<Unit>();
 
         private Packet currentPacket;
-        private TimeSpan currentPts;
-        public TimeSpan CurrentPts => currentPts;
+        public TimeSpan CurrentPts { get; private set; }
 
         private readonly Synchronizer _dataSynchronizer;
         private readonly PlayerClockProvider _playerClock;
@@ -97,7 +95,8 @@ namespace JuvoPlayer.Player.EsPlayer
 
         public IObservable<bool> StreamBuffering()
         {
-            return _bufferingSubject.AsObservable().DistinctUntilChanged();
+            return _bufferingSubject.AsObservable()
+                .DistinctUntilChanged(); // State gets updated "per packet". Only change is required.
         }
 
         public IObservable<string> PlaybackError()
@@ -145,18 +144,6 @@ namespace JuvoPlayer.Player.EsPlayer
         {
             logger.Info($"{streamType}");
             player = newPlayer;
-            IsConfigured = false;
-        }
-
-        /// <summary>
-        /// Stores provided configuration but does not push it to player
-        /// </summary>
-        /// <param name="config">StreamConfig</param>
-        /// <returns>SetStreamConfigResult</returns>
-        public void StoreStreamConfiguration(StreamConfig config)
-        {
-            logger.Info($"{streamType}");
-            Configuration = config;
         }
 
         /// <summary>
@@ -180,7 +167,6 @@ namespace JuvoPlayer.Player.EsPlayer
             }
 
             PushStreamConfig(Configuration);
-            IsConfigured = true;
         }
 
         /// <summary>
@@ -292,11 +278,6 @@ namespace JuvoPlayer.Player.EsPlayer
                 return;
             }
 
-            if (!IsConfigured)
-            {
-                throw new InvalidOperationException($"{streamType}: Not Configured");
-            }
-
             transferCts?.Dispose();
             transferCts = new CancellationTokenSource();
 
@@ -340,12 +321,12 @@ namespace JuvoPlayer.Player.EsPlayer
 
                 case EncryptedPacket encryptedPacket:
                     await PushEncryptedPacket(encryptedPacket, transferToken);
-                    currentPts = packet.Pts;
+                    CurrentPts = packet.Pts;
                     break;
 
                 case Packet dataPacket:
                     await PushUnencryptedPacket(dataPacket, transferToken);
-                    currentPts = packet.Pts;
+                    CurrentPts = packet.Pts;
                     break;
 
                 default:
@@ -403,9 +384,6 @@ namespace JuvoPlayer.Player.EsPlayer
             }
             finally
             {
-                _packetProcessed.OnNext(typeof(EOSPacket));
-                _bufferingSubject.OnNext(false);
-
                 logger.Info($"{streamType}: Terminated. ");
             }
         }
@@ -415,13 +393,11 @@ namespace JuvoPlayer.Player.EsPlayer
             if (currentPacket == null)
             {
                 var displayBuffering = packetStorage.Count(streamType) == 0 &&
-                                       (_playerClock.LastClock - currentPts).Duration() <= EsStreamConfig.BufferingEventThreshold;
+                                       (_playerClock.LastClock - CurrentPts).Duration() <= EsStreamConfig.BufferingEventThreshold;
 
                 _bufferingSubject.OnNext(displayBuffering);
 
                 currentPacket = packetStorage.GetPacket(streamType, token);
-
-                currentPts = currentPacket.Pts;
             }
 
             var shouldContinue = await ProcessPacket(currentPacket, token);

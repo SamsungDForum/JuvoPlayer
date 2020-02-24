@@ -18,13 +18,13 @@
 using JuvoPlayer;
 using Xamarin.Forms;
 using Xamarin.Forms.Platform.Tizen;
-using XamarinPlayer.Tizen.Services;
+using XamarinPlayer.Tizen.TV.Services;
 
 [assembly: Dependency(typeof(PlayerService))]
 
-namespace XamarinPlayer.Tizen.Services
+namespace XamarinPlayer.Tizen.TV.Services
 {
-    sealed class PlayerService : PlayerServiceProxy<PlayerServiceImpl>
+    internal sealed class PlayerService : PlayerServiceProxy<PlayerServiceImpl>
     {
         public PlayerService()
         {

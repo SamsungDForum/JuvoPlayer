@@ -15,13 +15,14 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-﻿using System.ComponentModel;
+using System.ComponentModel;
 using Xamarin.Forms;
 using Xamarin.Forms.Platform.Tizen;
-using XamarinPlayer.Controls;
+using XamarinPlayer.Tizen.TV.Controls;
+using XamarinPlayer.Tizen.TV.Renderer;
 
 [assembly: ExportRenderer(typeof(ContentList), typeof(ContentListRenderer))]
-namespace XamarinPlayer.Controls
+namespace XamarinPlayer.Tizen.TV.Renderer
 {
     public class ContentListRenderer : ScrollViewRenderer
     {

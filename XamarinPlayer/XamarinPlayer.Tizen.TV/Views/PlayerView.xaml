@@ -2,7 +2,6 @@
 
 <ContentPage xmlns="http://xamarin.com/schemas/2014/forms"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
-             xmlns:vm="clr-namespace:XamarinPlayer.ViewModels"
              xmlns:forms="clr-namespace:SkiaSharp.Views.Forms;assembly=SkiaSharp.Views.Forms"
              xmlns:viewModels="clr-namespace:XamarinPlayer.Tizen.TV.ViewModels;assembly=JuvoPlayerXamarin.Tizen.TV"
              x:Class="XamarinPlayer.Views.PlayerView"

@@ -21,37 +21,39 @@ using System.Threading;
 using System.Threading.Tasks;
 using JuvoLogger;
 using JuvoPlayer.Common;
-using JuvoPlayer.ResourceLoaders;
+using JuvoPlayer.Common.Utils.IReferenceCountableExtensions;
 using Nito.AsyncEx;
 using SkiaSharp;
 using SkiaSharp.Views.Forms;
 using Xamarin.Forms;
 using Xamarin.Forms.Xaml;
+using XamarinPlayer.Tizen.TV.Services;
 
 namespace XamarinPlayer.Tizen.TV.Controls
 {
     [XamlCompilation(XamlCompilationOptions.Compile)]
     public partial class ContentItem
     {
-        private static SKColor FocusedColor = new SKColor(234, 234, 234);
-        private static SKColor UnfocusedColor = new SKColor(32, 32, 32);
+        private static readonly SKColor FocusedColor = new SKColor(234, 234, 234);
+        private static readonly SKColor UnfocusedColor = new SKColor(32, 32, 32);
 
-        private ILogger _logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
-        private SKBitmap _contentBitmap;
+        private readonly ILogger _logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
+        private SKBitmapRefCounted _contentBitmap;
         private SubSkBitmap _previewBitmap;
-        private SKPaint _paint = new SKPaint {IsAntialias = true, Style = SKPaintStyle.Stroke, StrokeWidth = 3};
+        private readonly SKPaint _paint = new SKPaint {IsAntialias = true, Style = SKPaintStyle.Stroke, StrokeWidth = 3};
         private double _height;
         private bool _isFocused;
         private CancellationTokenSource _animationCts;
         private StoryboardReader _storyboardReader;
+        private readonly SKBitmapCache _skBitmapCache;
 
         public static readonly BindableProperty ContentImgProperty = BindableProperty.Create("ContentImg",
             typeof(string), typeof(ContentItem), default(ICollection<string>));
 
         public string ContentImg
         {
-            set { SetValue(ContentImgProperty, value); }
-            get { return (string) GetValue(ContentImgProperty); }
+            set => SetValue(ContentImgProperty, value);
+            get => (string) GetValue(ContentImgProperty);
         }
 
         public static readonly BindableProperty ContentTitleProperty =
@@ -59,8 +61,8 @@ namespace XamarinPlayer.Tizen.TV.Controls
 
         public string ContentTitle
         {
-            set { SetValue(ContentTitleProperty, value); }
-            get { return (string) GetValue(ContentTitleProperty); }
+            set => SetValue(ContentTitleProperty, value);
+            get => (string) GetValue(ContentTitleProperty);
         }
 
         public static readonly BindableProperty ContentDescriptionProperty =
@@ -68,24 +70,26 @@ namespace XamarinPlayer.Tizen.TV.Controls
 
         public string ContentDescription
         {
-            set { SetValue(ContentDescriptionProperty, value); }
-            get { return (string) GetValue(ContentDescriptionProperty); }
+            set => SetValue(ContentDescriptionProperty, value);
+            get => (string) GetValue(ContentDescriptionProperty);
         }
 
         public static readonly BindableProperty ContentTilePreviewPathProperty =
             BindableProperty.Create("ContentTilePreviewPath", typeof(string), typeof(ContentItem), default(string));
 
-        private static readonly string DefaultImagePath = "tiles/default_bg.png";
+        private const string DefaultImagePath = "tiles/default_bg.png";
 
         public string ContentTilePreviewPath
         {
-            set { SetValue(ContentTilePreviewPathProperty, value); }
-            get { return (string) GetValue(ContentTilePreviewPathProperty); }
+            set => SetValue(ContentTilePreviewPathProperty, value);
+            get => (string) GetValue(ContentTilePreviewPathProperty);
         }
 
         public ContentItem()
         {
             InitializeComponent();
+            var cacheService = DependencyService.Get<ISKBitmapCacheService>();
+            _skBitmapCache = cacheService.GetCache();
         }
 
         public async void SetFocus()
@@ -107,7 +111,7 @@ namespace XamarinPlayer.Tizen.TV.Controls
 
                     if (_storyboardReader == null)
                         _storyboardReader = new StoryboardReader(ContentTilePreviewPath,
-                            StoryboardReader.PreloadingStrategy.PreloadOnlyRemoteSources);
+                            StoryboardReader.PreloadingStrategy.PreloadOnlyRemoteSources, _skBitmapCache);
 
                     await Task.WhenAll(Task.Delay(500), _storyboardReader.LoadTask).WaitAsync(token);
                     if (_storyboardReader == null || !_isFocused) return;
@@ -165,7 +169,7 @@ namespace XamarinPlayer.Tizen.TV.Controls
             (SKBitmap, SKRect) GetCurrentBitmap()
             {
                 if (_previewBitmap != null) return (_previewBitmap.Bitmap, _previewBitmap.SkRect);
-                if (_contentBitmap != null) return (_contentBitmap, _contentBitmap.Info.Rect);
+                if (_contentBitmap != null) return (_contentBitmap.Value, _contentBitmap.Value.Info.Rect);
                 return (null, SKRect.Empty);
             }
 
@@ -192,23 +196,14 @@ namespace XamarinPlayer.Tizen.TV.Controls
             }
         }
 
-        private async Task<SKBitmap> GetBitmap(string imagePath)
+        private Task<SKBitmapRefCounted> GetBitmap(string imagePath)
         {
-            using (var resource = ResourceFactory.Create(imagePath))
-            {
-                return await Task.Run(async () =>
-                {
-                    using (var stream = await resource.ReadAsStreamAsync())
-                    {
-                        return SKBitmap.Decode(stream);
-                    }
-                });
-            }
+            return _skBitmapCache.GetBitmap(imagePath);
         }
 
         private async void LoadSkBitmap()
         {
-            SKBitmap newBitmap = null;
+            SKBitmapRefCounted newBitmap = null;
             try
             {
                 newBitmap = await GetBitmap(ContentImg);
@@ -220,7 +215,7 @@ namespace XamarinPlayer.Tizen.TV.Controls
             }
             finally
             {
-                _contentBitmap?.Dispose();
+                _contentBitmap?.Release();
                 _contentBitmap = newBitmap;
                 InvalidateSurface();
             }
@@ -249,11 +244,10 @@ namespace XamarinPlayer.Tizen.TV.Controls
         {
             base.OnPropertyChanged(propertyName);
 
-            if (propertyName == "ContentImg")
-            {
-                LoadSkBitmap();
-                InvalidateSurface();
-            }
+            if (propertyName != "ContentImg")
+                return;
+            LoadSkBitmap();
+            InvalidateSurface();
         }
     }
 }

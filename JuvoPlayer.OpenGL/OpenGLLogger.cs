@@ -20,11 +20,11 @@ using JuvoLogger;
 
 namespace JuvoPlayer.OpenGL
 {
-    public class OpenGLLogger : LoggerBase
+    public class OpenGlLogger : LoggerBase
     {
         private readonly SynchronizationContext _uiContext = null;
 
-        public OpenGLLogger(string channel, LogLevel level, SynchronizationContext uiContext) : base(channel, level)
+        public OpenGlLogger(string channel, LogLevel level, SynchronizationContext uiContext) : base(channel, level)
         {
             _uiContext = uiContext;
         }
