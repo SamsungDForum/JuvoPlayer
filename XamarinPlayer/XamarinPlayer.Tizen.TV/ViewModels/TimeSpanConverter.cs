@@ -1,6 +1,6 @@
 /*!
  * https://github.com/SamsungDForum/JuvoPlayer
- * Copyright 2018, Samsung Electronics Co., Ltd
+ * Copyright 2020, Samsung Electronics Co., Ltd
  * Licensed under the MIT license
  *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
@@ -20,15 +20,17 @@ using Xamarin.Forms;
 
 namespace XamarinPlayer.Tizen.TV.ViewModels
 {
-    public class TimeSpanConverter: IValueConverter
+    public class TimeSpanConverter : IValueConverter
     {
-        public object Convert (object value, Type targetType, object parameter, System.Globalization.CultureInfo culture)
+        public object Convert(object value, Type targetType, object parameter, System.Globalization.CultureInfo culture)
         {
             return ((TimeSpan) value).ToString(@"mm\:ss");
         }
-        public object ConvertBack (object value, Type targetType, object parameter, System.Globalization.CultureInfo culture)
+
+        public object ConvertBack(object value, Type targetType, object parameter,
+            System.Globalization.CultureInfo culture)
         {
-            return TimeSpan.Parse((string)value);
+            return TimeSpan.Parse((string) value);
         }
     }
 }

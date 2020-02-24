@@ -1,6 +1,6 @@
 /*!
  * https://github.com/SamsungDForum/JuvoPlayer
- * Copyright 2018, Samsung Electronics Co., Ltd
+ * Copyright 2020, Samsung Electronics Co., Ltd
  * Licensed under the MIT license
  *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
@@ -22,12 +22,42 @@ using JuvoPlayer.Common;
 
 namespace XamarinPlayer.Tizen.TV.ViewModels
 {
-    public class SettingsPickerViewModel:INotifyPropertyChanged
+    public class SettingsViewModel : INotifyPropertyChanged
     {
-        public int SelectedIndex { get; set; }
-        public List<StreamDescription> Source { get; set; }
-        public StreamType Type { get; set; }
-        
+        private List<StreamDescription> _source;
+        private int _selectedIndex;
+        private StreamType _type;
+
+        public int SelectedIndex
+        {
+            get => _selectedIndex;
+            set
+            {
+                _selectedIndex = value;
+                OnPropertyChanged();
+            }
+        }
+
+        public List<StreamDescription> Source
+        {
+            get => _source;
+            set
+            {
+                _source = value;
+                OnPropertyChanged();
+            }
+        }
+
+        public StreamType Type
+        {
+            get => _type;
+            set
+            {
+                _type = value;
+                OnPropertyChanged();
+            }
+        }
+
         public event PropertyChangedEventHandler PropertyChanged;
 
         protected virtual void OnPropertyChanged([CallerMemberName] string propertyName = null)
