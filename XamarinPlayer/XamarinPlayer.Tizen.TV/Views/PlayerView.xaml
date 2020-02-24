@@ -6,7 +6,8 @@
              xmlns:forms="clr-namespace:SkiaSharp.Views.Forms;assembly=SkiaSharp.Views.Forms"
              xmlns:viewModels="clr-namespace:XamarinPlayer.Tizen.TV.ViewModels;assembly=JuvoPlayerXamarin.Tizen.TV"
              x:Class="XamarinPlayer.Views.PlayerView"
-             ContentSource="{Binding Clip}">
+             ContentSource="{Binding Clip}"
+             x:Name="root">
     <ContentPage.Content>
         <Grid>
             <StackLayout HorizontalOptions="FillAndExpand"
@@ -34,12 +35,12 @@
                                    HorizontalOptions="Fill"
                                    VerticalOptions="Fill"
                                    WidthRequest="80"
-                                   IsEnabled="False"/>
+                                   IsEnabled="False" />
                         </AbsoluteLayout>
                         <Label x:Name="VideoTitle"
                                Text="{Binding Title}"
                                TextColor="White"
-                               FontSize="Large"
+                               FontSize="100"
                                HorizontalOptions="Center"
                                VerticalOptions="Center" />
                     </StackLayout>
@@ -51,25 +52,22 @@
                             </BoxView.GestureRecognizers>
                         </BoxView>
                         <ContentView Padding="30, 30" HorizontalOptions="CenterAndExpand">
-                            <Label BackgroundColor="#B0101010" IsVisible="{Binding CueText, Converter={viewModels:CueVisibilityConverter}}" FontSize="Medium" TextColor="White"
+                            <Label BackgroundColor="#B0101010"
+                                   IsVisible="{Binding CueText, Converter={viewModels:TextFieldVisibilityConverter}}"
+                                   FontSize="Medium" TextColor="White"
                                    x:Name="CueTextLabel" HorizontalOptions="CenterAndExpand" WidthRequest="800"
-                                   HorizontalTextAlignment="Center" Text="{Binding CueText}"/>
+                                   HorizontalTextAlignment="Center" Text="{Binding CueText}" />
                         </ContentView>
-                        <AbsoluteLayout x:Name="SeekPreviewContainer" IsVisible="{Binding ShallDisplaySeekPreview}" HorizontalOptions="Fill" Margin="100, 0">
-                            <Frame x:Name="SeekPreviewFrame" Padding="1,1,1,1" HasShadow="False"
-                                   CornerRadius="5" BorderColor="DimGray" BackgroundColor="Black">
-                                <forms:SKCanvasView x:Name="SeekPreviewCanvas" HorizontalOptions="Center"
-                                                    PaintSurface="OnSeekPreviewCanvasOnPaintSurface" />
-                            </Frame>
-                        </AbsoluteLayout>
                         <AbsoluteLayout x:Name="Settings" IsVisible="False" BackgroundColor="#B0101010"
                                         HorizontalOptions="Center">
                             <StackLayout Padding="20, 10">
                                 <StackLayout Orientation="Horizontal">
                                     <Label Text="Audio track" TextColor="White" HorizontalOptions="Start"
                                            VerticalOptions="Center" WidthRequest="200" />
-                                    <Picker x:Name="AudioTrack" WidthRequest="300"
-                                            ItemsSource="{Binding AudioSource}" SelectedIndex="{Binding AudioSelectedIndex}" ItemDisplayBinding="{Binding Description}">
+                                    <Picker x:Name="AudioTrack" WidthRequest="400"
+                                            ItemsSource="{Binding Audio.Source}"
+                                            SelectedIndex="{Binding AudioSelectedIndex}"
+                                            ItemDisplayBinding="{Binding Description}">
                                         <Picker.Items>
                                             <x:String>auto</x:String>
                                         </Picker.Items>
@@ -78,8 +76,10 @@
                                 <StackLayout Orientation="Horizontal">
                                     <Label Text="Video quality" TextColor="White" HorizontalOptions="Start"
                                            VerticalOptions="Center" WidthRequest="200" />
-                                    <Picker x:Name="VideoQuality" WidthRequest="300"
-                                            ItemsSource="{Binding VideoSource}" SelectedIndex="{Binding VideoSelectedIndex}" ItemDisplayBinding="{Binding Description}">
+                                    <Picker x:Name="VideoQuality" WidthRequest="400"
+                                            ItemsSource="{Binding Video.Source}"
+                                            SelectedIndex="{Binding VideoSelectedIndex}"
+                                            ItemDisplayBinding="{Binding Description}">
                                         <Picker.Items>
                                             <x:String>auto</x:String>
                                         </Picker.Items>
@@ -88,7 +88,7 @@
                                 <StackLayout Orientation="Horizontal">
                                     <Label Text="Video speed" TextColor="White" HorizontalOptions="Start"
                                            VerticalOptions="Center" WidthRequest="200" />
-                                    <Picker x:Name="VideoSpeed" WidthRequest="300">
+                                    <Picker x:Name="VideoSpeed" WidthRequest="400">
                                         <Picker.Items>
                                             <x:String>normal</x:String>
                                         </Picker.Items>
@@ -98,14 +98,24 @@
                                 <StackLayout Orientation="Horizontal">
                                     <Label Text="Subtitles" TextColor="White" HorizontalOptions="Start"
                                            VerticalOptions="Center" WidthRequest="200" />
-                                    <Picker x:Name="Subtitles" WidthRequest="300"
-                                            ItemsSource="{Binding SubtitlesSource}" SelectedIndex="{Binding SubtitlesSelectedIndex}" ItemDisplayBinding="{Binding Description}">
+                                    <Picker x:Name="Subtitles" WidthRequest="400"
+                                            ItemsSource="{Binding Subtitle.Source}"
+                                            SelectedIndex="{Binding SubtitleSelectedIndex}"
+                                            ItemDisplayBinding="{Binding Description}">
                                         <Picker.Items>
                                             <x:String>off</x:String>
                                         </Picker.Items>
                                     </Picker>
                                 </StackLayout>
                             </StackLayout>
+                        </AbsoluteLayout>
+                        <AbsoluteLayout x:Name="SeekPreviewContainer" IsVisible="{Binding ShallDisplaySeekPreview}"
+                                        HorizontalOptions="Fill" Margin="100, 0">
+                            <Frame x:Name="SeekPreviewFrame" Padding="1,1,1,1" HasShadow="False"
+                                   CornerRadius="5" BorderColor="DimGray" BackgroundColor="Black">
+                                <forms:SKCanvasView x:Name="SeekPreviewCanvas" HorizontalOptions="Center"
+                                                    PaintSurface="OnSeekPreviewCanvasOnPaintSurface" />
+                            </Frame>
                         </AbsoluteLayout>
                     </StackLayout>
                     <StackLayout BackgroundColor="#B0101010"
@@ -146,8 +156,8 @@
                                        AbsoluteLayout.LayoutBounds="0,0,1,1" AbsoluteLayout.LayoutFlags="All"
                                        HorizontalOptions="Fill"
                                        VerticalOptions="Fill"
-                                       WidthRequest="100" 
-                                       IsEnabled="{Binding IsSeekingSupported}"/>
+                                       WidthRequest="100"
+                                       IsEnabled="{Binding IsSeekingSupported}" />
                             </AbsoluteLayout>
                             <AbsoluteLayout HorizontalOptions="Center">
                                 <Image x:Name="PlayImage"
@@ -160,7 +170,7 @@
                                         AbsoluteLayout.LayoutBounds="0,0,1,1" AbsoluteLayout.LayoutFlags="All"
                                         HorizontalOptions="Fill"
                                         VerticalOptions="Fill"
-                                        WidthRequest="100"/>
+                                        WidthRequest="100" />
                             </AbsoluteLayout>
                             <AbsoluteLayout HorizontalOptions="EndAndExpand">
                                 <Image x:Name="ForwardImage"
@@ -173,8 +183,8 @@
                                        AbsoluteLayout.LayoutBounds="0,0,1,1" AbsoluteLayout.LayoutFlags="All"
                                        HorizontalOptions="Fill"
                                        VerticalOptions="Fill"
-                                       WidthRequest="100" 
-                                       IsEnabled="{Binding IsSeekingSupported}"/>
+                                       WidthRequest="100"
+                                       IsEnabled="{Binding IsSeekingSupported}" />
                             </AbsoluteLayout>
                         </StackLayout>
                     </StackLayout>

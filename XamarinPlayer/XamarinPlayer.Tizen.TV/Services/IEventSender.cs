@@ -1,6 +1,6 @@
 /*!
  * https://github.com/SamsungDForum/JuvoPlayer
- * Copyright 2018, Samsung Electronics Co., Ltd
+ * Copyright 2020, Samsung Electronics Co., Ltd
  * Licensed under the MIT license
  *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
@@ -15,25 +15,9 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-using System;
-using Xamarin.Forms;
-
-namespace XamarinPlayer.Tizen.TV.ViewModels
+namespace XamarinPlayer.Tizen.TV.Services
 {
-    public class CueVisibilityConverter: IValueConverter
+    public interface IEventSender
     {
-        public object Convert (object value, Type targetType, object parameter, System.Globalization.CultureInfo culture)
-        {
-            if (string.IsNullOrEmpty((string)value))
-            {
-                return false;
-            }
-
-            return true;
-        }
-        public object ConvertBack (object value, Type targetType, object parameter, System.Globalization.CultureInfo culture)
-        {
-            return !(bool)value;
-        }
     }
 }

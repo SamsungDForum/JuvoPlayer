@@ -20,17 +20,22 @@ using Xamarin.Forms;
 
 namespace XamarinPlayer.Tizen.TV.ViewModels
 {
-    public class TimeSpanConverter : IValueConverter
+    public class TextFieldVisibilityConverter : IValueConverter
     {
         public object Convert(object value, Type targetType, object parameter, System.Globalization.CultureInfo culture)
         {
-            return ((TimeSpan) value).ToString(@"mm\:ss");
+            if (string.IsNullOrEmpty((string) value))
+            {
+                return false;
+            }
+
+            return true;
         }
 
         public object ConvertBack(object value, Type targetType, object parameter,
             System.Globalization.CultureInfo culture)
         {
-            return TimeSpan.Parse((string) value);
+            return !(bool) value;
         }
     }
 }

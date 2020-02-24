@@ -16,23 +16,18 @@
  */
 
 using System;
-using System.Collections.Generic;
 using System.ComponentModel;
 using System.IO;
 using System.Reactive.Linq;
+using System.Reactive.Subjects;
 using System.Threading;
-using System.Threading.Tasks;
-using System.Windows.Input;
-using System.Xml.Resolvers;
-using Configuration;
 using JuvoLogger;
-using JuvoPlayer;
 using JuvoPlayer.Common;
 using SkiaSharp.Views.Forms;
 using Xamarin.Forms;
 using Xamarin.Forms.Xaml;
-using XamarinPlayer.Models;
 using XamarinPlayer.Services;
+using XamarinPlayer.Tizen.TV.Services;
 using XamarinPlayer.ViewModels;
 using Application = Tizen.Applications.Application;
 
@@ -41,7 +36,6 @@ namespace XamarinPlayer.Views
     [XamlCompilation(XamlCompilationOptions.Compile)]
     public partial class PlayerView : ContentPage, IContentPayloadHandler, ISuspendable
     {
-        private static ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
         public static readonly BindableProperty ContentSourceProperty =
             BindableProperty.Create("ContentSource", typeof(object), typeof(PlayerView));
 
@@ -59,16 +53,16 @@ namespace XamarinPlayer.Views
                     {
                         case JuvoPlayer.Common.PlayerState.Prepared:
                         {
-                            ((PlayerView)b).Show();
+                            ((PlayerView) b).Show();
                             break;
                         }
                         case JuvoPlayer.Common.PlayerState.Playing:
                         {
-                            ((PlayerView)b).PlayImage.Source = "btn_viewer_control_pause_normal.png";
+                            ((PlayerView) b).PlayImage.Source = "btn_viewer_control_pause_normal.png";
                             break;
                         }
                         case JuvoPlayer.Common.PlayerState.Paused:
-                            ((PlayerView)b).PlayImage.Source = "btn_viewer_control_play_normal.png";
+                            ((PlayerView) b).PlayImage.Source = "btn_viewer_control_play_normal.png";
                             break;
                     }
                 });
@@ -82,8 +76,8 @@ namespace XamarinPlayer.Views
                 defaultBindingMode: BindingMode.OneWay,
                 propertyChanged: (b, o, n) =>
                 {
-                    if(n!=null)
-                        ((PlayerView)b).SeekPreviewCanvas.InvalidateSurface();
+                    if (n != null)
+                        ((PlayerView) b).SeekPreviewCanvas.InvalidateSurface();
                 });
 
         public object ContentSource
@@ -91,40 +85,43 @@ namespace XamarinPlayer.Views
             set { SetValue(ContentSourceProperty, value); }
             get { return GetValue(ContentSourceProperty); }
         }
+
         public object PlayerState
         {
             set { SetValue(PlayerStateProperty, value); }
             get { return GetValue(PlayerStateProperty); }
         }
+
         public object SeekPreview
         {
             set { SetValue(SeekPreviewProperty, value); }
             get { return GetValue(SeekPreviewProperty); }
         }
-        
-        private readonly TimeSpan UpdateInterval = TimeSpan.FromMilliseconds(100);
-        private int _hideTime;
+
+        // private readonly TimeSpan UpdateInterval = TimeSpan.FromMilliseconds(100);
+        // private int _hideTime;
+        private Subject<string> _keys;
+        private IDisposable _keySubscription;
+
         private readonly int DefaultTimeout = 5000;
 
         public PlayerView()
         {
             InitializeComponent();
             NavigationPage.SetHasNavigationBar(this, false);
-            
+
             SetBinding(SeekPreviewProperty, new Binding(nameof(PlayerViewModel.PreviewFrame)));
             SetBinding(PlayerStateProperty, new Binding(nameof(PlayerViewModel.PlayerState)));
 
-            PlayButton.Clicked += (s, e) => { (BindingContext as PlayerViewModel)?.PlayCommand.Execute(null); };
+            PlayButton.Clicked += (s, e) => { (BindingContext as PlayerViewModel)?.PlayPauseCommand.Execute(null); };
 
             Progressbar.PropertyChanged += (sender, args) =>
             {
                 if (args.PropertyName == "Progress")
                     UpdateSeekPreviewFramePosition();
             };
-            PlayImage.Source = ImageSource.FromFile("btn_viewer_control_play_normal.png");
-            Settings.IsVisible = false;
+            PlayImage.Source = "btn_viewer_control_play_normal.png";
             PropertyChanged += PlayerViewPropertyChanged;
-            Device.StartTimer(UpdateInterval, OnTimerTick);
         }
 
         private void PlayerViewPropertyChanged(object sender, PropertyChangedEventArgs e)
@@ -144,26 +141,10 @@ namespace XamarinPlayer.Views
             }
         }
 
-        private bool OnTimerTick()
-        {
-            if (Settings.IsVisible)
-                return true;
-
-            if (_hideTime > 0)
-            {
-                _hideTime -= (int) UpdateInterval.TotalMilliseconds;
-                if (_hideTime <= 0)
-                {
-                    Hide();
-                }
-            }
-
-            return true;
-        }
-
         private void InitializeSeekPreview(string seekPreviewPath)
         {
-            (BindingContext as PlayerViewModel).InitializeSeekPreviewCommand.Execute(Path.Combine(Application.Current.DirectoryInfo.Resource, seekPreviewPath));
+            (BindingContext as PlayerViewModel).InitializeSeekPreviewCommand.Execute(
+                Path.Combine(Application.Current.DirectoryInfo.Resource, seekPreviewPath));
             var size = (BindingContext as PlayerViewModel).PreviewFrameSize;
             SeekPreviewCanvas.WidthRequest = size.Width;
             SeekPreviewCanvas.HeightRequest = size.Height;
@@ -200,24 +181,29 @@ namespace XamarinPlayer.Views
         {
             base.OnAppearing();
             MessagingCenter.Subscribe<IKeyEventSender, string>(this, "KeyDown", (s, e) => { KeyEventHandler(e); });
+            MessagingCenter.Subscribe<IEventSender, string>(this, "PlaybackError",
+                (s, e) => { DisplayAlert("Playback Error", e, "OK"); });
+            MessagingCenter.Subscribe<IEventSender, string>(this, "Pop", (s, e) => { Navigation.PopAsync(); });
 
             SettingsButton.IsEnabled = true;
             PlayButton.IsEnabled = true;
             PlayButton.Focus();
+            SetupDebounce();
         }
-        
+
         private void KeyEventHandler(string e)
         {
             // Prevents key handling & focus change in Show().
             // Consider adding a call Focus(Focusable Object) where focus would be set in one place
             // and error status could be handled.
-            
+            _keys.OnNext(e);
+
             if (e.Contains("Back") && !e.Contains("XF86PlayBack"))
             {
                 //If the 'return' button on standard or back arrow on the smart remote control was pressed do react depending on the playback state
-                var ps = (PlayerState)Enum.Parse(typeof(PlayerState), PlayerState.ToString());
+                var ps = (PlayerState) Enum.Parse(typeof(PlayerState), PlayerState.ToString());
                 if (ps < JuvoPlayer.Common.PlayerState.Playing ||
-                ps >= JuvoPlayer.Common.PlayerState.Playing && !BottomBar.IsVisible)
+                    ps >= JuvoPlayer.Common.PlayerState.Playing && !BottomBar.IsVisible)
                 {
                     Hide();
                     Navigation.RemovePage(this);
@@ -240,12 +226,12 @@ namespace XamarinPlayer.Views
                 {
                     return;
                 }
-        
+
                 if (BottomBar.IsVisible)
                 {
-                    if(e.Contains("XF86PlayBack"))
+                    if (e.Contains("XF86PlayBack"))
                     {
-                        (BindingContext as PlayerViewModel).PlayCommand.Execute(null);
+                        (BindingContext as PlayerViewModel).PlayPauseCommand.Execute(null);
                     }
                     else if (e.Contains("Pause"))
                     {
@@ -255,7 +241,7 @@ namespace XamarinPlayer.Views
                     {
                         (BindingContext as PlayerViewModel).StartCommand.Execute(null);
                     }
-        
+
                     if ((e.Contains("Next") || e.Contains("Right")))
                     {
                         (BindingContext as PlayerViewModel).ForwardCommand.Execute(null);
@@ -266,14 +252,12 @@ namespace XamarinPlayer.Views
                     }
                     else if ((e.Contains("Up")))
                     {
-                        (BindingContext as PlayerViewModel).HandleSettingsCommand.Execute(null);
                         Settings.IsVisible = true;
                         PlayButton.IsEnabled = false;
                         AudioTrack.Focus();
                     }
 
                     //expand the time that playback control bar is on the screen
-                    ExpandPlayback();
                 }
                 else
                 {
@@ -294,8 +278,11 @@ namespace XamarinPlayer.Views
         {
             base.OnDisappearing();
 
-            (BindingContext as PlayerViewModel)?.DisposeCommand.Execute(null);
             MessagingCenter.Unsubscribe<IKeyEventSender, string>(this, "KeyDown");
+            MessagingCenter.Unsubscribe<IEventSender, string>(this, "PlaybackError");
+            MessagingCenter.Unsubscribe<IEventSender, string>(this, "Pop");
+            _keySubscription?.Dispose();
+            (BindingContext as PlayerViewModel)?.DisposeCommand.Execute(null);
         }
 
         void OnTapGestureRecognizerControllerTapped(object sender, EventArgs args)
@@ -307,31 +294,19 @@ namespace XamarinPlayer.Views
         {
             Show();
         }
-        
+
         private void Show()
-        {
-            Show(DefaultTimeout);
-        }
-        
-        private void Show(int timeout)
         {
             // Do not show anything if error handling in progress.
             PlayButton.Focus();
             TopBar.IsVisible = true;
             BottomBar.IsVisible = true;
-            _hideTime = timeout;
         }
 
         private void Hide()
         {
             TopBar.IsVisible = false;
             BottomBar.IsVisible = false;
-        }
-        
-        private void ExpandPlayback()
-        {
-            if(TopBar.IsVisible)
-                _hideTime = DefaultTimeout;
         }
 
         protected override bool OnBackButtonPressed()
@@ -353,6 +328,19 @@ namespace XamarinPlayer.Views
         public void Resume()
         {
             (BindingContext as PlayerViewModel)?.ResumeCommand.Execute(null);
+        }
+
+        private void SetupDebounce()
+        {
+            _keySubscription?.Dispose();
+            _keys = new Subject<string>();
+            var keysThrottled = _keys.Throttle(TimeSpan.FromSeconds(5));
+            _keySubscription = keysThrottled.Subscribe(i =>
+            {
+                if (!Settings.IsVisible) Hide();
+            }, SynchronizationContext.Current);
+
+            _keys.OnNext("first");
         }
     }
 }
