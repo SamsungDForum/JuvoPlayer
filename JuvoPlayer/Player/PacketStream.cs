@@ -22,6 +22,7 @@ using JuvoLogger;
 using JuvoPlayer.Common;
 using JuvoPlayer.Common.Utils.IReferenceCountableExtensions;
 using JuvoPlayer.Drms;
+using JuvoPlayer.Player.EsPlayer;
 
 namespace JuvoPlayer.Player
 {
@@ -84,7 +85,7 @@ namespace JuvoPlayer.Player
 
             forceDrmChange = (this.config != null);
 
-            var isCompatible = EsPlayer.StreamConfigExtensions.IsCompatible(this.config, config);
+            var isCompatible = this.config?.IsCompatible(config) ?? true;
 
             this.config = config;
 

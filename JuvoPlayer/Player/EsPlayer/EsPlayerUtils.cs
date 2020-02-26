@@ -424,29 +424,23 @@ namespace JuvoPlayer.Player.EsPlayer
                     return audioConfig.IsCompatible(otherConfig as AudioStreamConfig);
 
                 case null:
-                    return true;
+                    throw new ArgumentNullException(nameof(config), "Config cannot be null");
 
                 default:
                     throw new ArgumentException("Unsupported configuration type", nameof(config));
             }
         }
 
-        internal static bool IsCompatible(this VideoStreamConfig config, VideoStreamConfig otherConfig)
+        private static bool IsCompatible(this VideoStreamConfig config, VideoStreamConfig otherConfig)
         {
-            // No config with config is compatible
-            if (otherConfig == null)
-                return true;
-
-            return config.Codec == otherConfig.Codec;
+            return otherConfig != null &&
+                   config.Codec == otherConfig.Codec;
         }
 
-        internal static bool IsCompatible(this AudioStreamConfig config, AudioStreamConfig otherConfig)
+        private static bool IsCompatible(this AudioStreamConfig config, AudioStreamConfig otherConfig)
         {
-            // No config with config is compatible.
-            if (otherConfig == null)
-                return true;
-
-            return config.Codec == otherConfig.Codec &&
+            return otherConfig != null &&
+                   config.Codec == otherConfig.Codec &&
                    config.SampleRate == otherConfig.SampleRate &&
                    config.BitsPerChannel == otherConfig.BitsPerChannel;
         }
