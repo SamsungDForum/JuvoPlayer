@@ -17,7 +17,6 @@
 
 using System;
 using System.Collections.Concurrent;
-using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using JuvoLogger;
@@ -33,8 +32,8 @@ namespace JuvoPlayer.Player.EsPlayer
     {
         private struct DataStorage
         {
-            public AsyncCollection<Packet> Collection;
-            public ConcurrentQueue<Packet> Queue;
+            public AsyncCollection<Packet> Queue;
+            public ConcurrentQueue<Packet> QueueDataStorage;
             public volatile bool IsDisabled;
         }
 
@@ -56,7 +55,7 @@ namespace JuvoPlayer.Player.EsPlayer
         {
             logger.Info(stream.ToString());
 
-            if (packetQueues[(int)stream].Queue != null)
+            if (packetQueues[(int)stream].QueueDataStorage != null)
                 throw new ArgumentException($"{stream} Already initialized", nameof(packetQueues));
 
             // Create new queue in its place
@@ -73,7 +72,7 @@ namespace JuvoPlayer.Player.EsPlayer
             if (packetQueues[(int)packet.StreamType].IsDisabled)
                 throw new InvalidOperationException();
 
-            return packetQueues[(int)packet.StreamType].Collection.AddAsync(packet);
+            return packetQueues[(int)packet.StreamType].Queue.AddAsync(packet);
         }
 
         /// <summary>
@@ -96,7 +95,7 @@ namespace JuvoPlayer.Player.EsPlayer
         /// </remarks>
         public Task<Packet> GetPacket(StreamType stream, CancellationToken token)
         {
-            return packetQueues[(int)stream].Collection.TakeAsync(token);
+            return packetQueues[(int)stream].Queue.TakeAsync(token);
         }
 
         /// <summary>
@@ -106,13 +105,13 @@ namespace JuvoPlayer.Player.EsPlayer
         /// <param name="stream">stream for which packet is to be retrieved</param>
         public void Disable(StreamType stream)
         {
-            packetQueues[(int)stream].Collection.CompleteAdding();
+            packetQueues[(int)stream].Queue.CompleteAdding();
             packetQueues[(int)stream].IsDisabled = true;
         }
 
         public int Count(StreamType stream)
         {
-            return packetQueues[(int)stream].Queue.Count;
+            return packetQueues[(int)stream].QueueDataStorage.Count;
         }
 
         public void Empty(StreamType stream)
@@ -143,8 +142,8 @@ namespace JuvoPlayer.Player.EsPlayer
             var pq = new ConcurrentQueue<Packet>();
             return new DataStorage
             {
-                Queue = pq,
-                Collection = new AsyncCollection<Packet>(pq),
+                QueueDataStorage = pq,
+                Queue = new AsyncCollection<Packet>(pq),
                 IsDisabled = isDisabled
             };
         }
@@ -167,7 +166,7 @@ namespace JuvoPlayer.Player.EsPlayer
         {
             var packetCount = 0;
             var configsDropped = 0;
-            var packetEnumerable = ds.Collection.GetConsumingEnumerable();
+            var packetEnumerable = ds.Queue.GetConsumingEnumerable();
             foreach (var packet in packetEnumerable)
             {
                 packetCount++;
