@@ -5,7 +5,6 @@
              xmlns:forms="clr-namespace:SkiaSharp.Views.Forms;assembly=SkiaSharp.Views.Forms"
              xmlns:viewModels="clr-namespace:XamarinPlayer.Tizen.TV.ViewModels;assembly=JuvoPlayerXamarin.Tizen.TV"
              x:Class="XamarinPlayer.Views.PlayerView"
-             ContentSource="{Binding Clip}"
              x:Name="root">
     <ContentPage.Content>
         <Grid>

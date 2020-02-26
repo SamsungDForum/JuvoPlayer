@@ -23,17 +23,18 @@ using System.Threading.Tasks;
 using System.Windows.Input;
 using System;
 using System.Collections.Generic;
+using System.Reactive.Disposables;
 using JuvoLogger;
 using JuvoPlayer;
 using JuvoPlayer.Common;
 using SkiaSharp;
+using Tizen.NUI;
 using Xamarin.Forms;
-using XamarinPlayer.Models;
+using XamarinPlayer.Tizen.TV.Models;
 using XamarinPlayer.Tizen.TV.Services;
-using XamarinPlayer.Tizen.TV.ViewModels;
-using XamarinPlayer.Views;
+using XamarinPlayer.Tizen.TV.Views;
 
-namespace XamarinPlayer.ViewModels
+namespace XamarinPlayer.Tizen.TV.ViewModels
 {
     public class PlayerViewModel : INotifyPropertyChanged, ISeekLogicClient, ISuspendable, IDisposable, IEventSender
     {
@@ -41,8 +42,8 @@ namespace XamarinPlayer.ViewModels
         private DetailContentData _contentData;
         private SeekLogic _seekLogic; // needs to be initialized in constructor!
         private StoryboardReader _storyboardReader;
+        private readonly CompositeDisposable _subscriptions;
         private static readonly TimeSpan UpdateInterval = TimeSpan.FromMilliseconds(100);
-        private PlayerState? suspendedPlayerState;
         private bool _isPlayerDestroyed;
         private bool _hasFinished;
         private bool _isBuffering;
@@ -67,8 +68,6 @@ namespace XamarinPlayer.ViewModels
         public ICommand SuspendCommand => new Command(Suspend);
         public ICommand ResumeCommand => new Command(Resume);
         public ICommand DisposeCommand => new Command(Dispose);
-        public ICommand SetSourceCommand => new Command(param => SetSource((ClipDefinition) param));
-        public ICommand InitializeSeekPreviewCommand => new Command(param => InitializeSeekPreview((string) param));
 
         public PlayerViewModel(DetailContentData data)
         {
@@ -87,16 +86,31 @@ namespace XamarinPlayer.ViewModels
             Player.BufferingProgress()
                 .ObserveOn(SynchronizationContext.Current)
                 .Subscribe(OnBufferingProgress);
+            
+            _subscriptions = new CompositeDisposable
+            {
+                Player.StateChanged()
+                    .ObserveOn(SynchronizationContext.Current)
+                    .Subscribe(OnPlayerStateChanged, OnPlayerCompleted),
+                
+                Player.PlaybackError()
+                .ObserveOn(SynchronizationContext.Current)
+                .Subscribe(async message => await OnPlaybackError(message)),
+                
+                Player.BufferingProgress()
+                .ObserveOn(SynchronizationContext.Current)
+                .Subscribe(OnBufferingProgress)
+            };
 
+            InitializeSeekPreview();
+            SetSource(_contentData.Clip as ClipDefinition);
+            
             Device.StartTimer(UpdateInterval, UpdatePlayerControl);
-
-            _seekLogic = new SeekLogic(this);
         }
 
         public string Source => _contentData.Source;
         public string Title => _contentData.Title;
         public string Description => _contentData.Description;
-        public object Clip => _contentData.Clip;
 
         public bool IsSeekingSupported
         {
@@ -333,12 +347,30 @@ namespace XamarinPlayer.ViewModels
                 Player.Start();
         }
 
-        private void InitializeSeekPreview(string seekPreviewPath)
+        private void InitializeSeekPreview()
+        {
+            _seekLogic = new SeekLogic(this);
+            var clipDefinition = _contentData.Clip as ClipDefinition;
+            if (clipDefinition?.SeekPreviewPath != null)
+            {
+                InitializeSeekPreview(clipDefinition.SeekPreviewPath);
+            }
+        }
+
+        private async void InitializeSeekPreview(string seekPreviewPath)
         {
             _storyboardReader?.Dispose();
             _storyboardReader =
                 new StoryboardReader(seekPreviewPath);
             _seekLogic.StoryboardReader = _storyboardReader;
+            try
+            {
+                await _storyboardReader.LoadTask;
+            }
+            catch (Exception ex)
+            {
+                Logger.Error(ex);
+            }
         }
 
         private SubSkBitmap GetSeekPreviewFrame()
@@ -389,7 +421,7 @@ namespace XamarinPlayer.ViewModels
                 return;
 
             _hasFinished = true;
-            // Application.Current.MainPage.Navigation.PopAsync();
+            
             MessagingCenter.Send<IEventSender, string>(this, "Pop", null);
         }
 
@@ -404,9 +436,7 @@ namespace XamarinPlayer.ViewModels
                 Player.Stop();
                 if (!string.IsNullOrEmpty(message))
                     MessagingCenter.Send<IEventSender, string>(this, "PlaybackError", null);
-                // await Application.Current.MainPage.DisplayAlert("Playback Error", message, "OK");
 
-                // Application.Current.MainPage.Navigation.PopAsync();
                 MessagingCenter.Send<IEventSender, string>(this, "Pop", null);
             }
         }
@@ -487,13 +517,6 @@ namespace XamarinPlayer.ViewModels
             _seekLogic.SeekBackward();
         }
 
-        private string GetFormattedTime(TimeSpan time)
-        {
-            if (time.TotalHours > 1)
-                return time.ToString(@"hh\:mm\:ss");
-            return time.ToString(@"mm\:ss");
-        }
-
         private bool UpdatePlayerControl()
         {
             if (_isPlayerDestroyed)
@@ -524,10 +547,6 @@ namespace XamarinPlayer.ViewModels
 
         private void UpdatePlayTime()
         {
-            // CurrentTime = TimeSpan.ParseExact(GetFormattedTime(_seekLogic.CurrentPositionUI), @"mm\:ss",
-            //     CultureInfo.CurrentCulture, TimeSpanStyles.AssumeNegative);
-            // TotalTime = TimeSpan.ParseExact(GetFormattedTime(_seekLogic.Duration), @"mm\:ss",
-            //     CultureInfo.CurrentCulture, TimeSpanStyles.AssumeNegative);
             CurrentTime = _seekLogic.CurrentPositionUI;
             TotalTime = _seekLogic.Duration;
 
@@ -560,14 +579,12 @@ namespace XamarinPlayer.ViewModels
 
         public void Suspend()
         {
-            suspendedPlayerState = Player?.State;
-            Player?.Pause();
+            Player?.Suspend();
         }
 
         public void Resume()
         {
-            if (suspendedPlayerState == PlayerState.Playing)
-                Player?.Start();
+            Player?.Resume();
         }
 
         public void Dispose()
@@ -581,6 +598,7 @@ namespace XamarinPlayer.ViewModels
             _isPlayerDestroyed = true;
             _storyboardReader?.Dispose();
             _storyboardReader = null;
+            _subscriptions.Dispose();
             Player?.Dispose();
             Player = null;
         }
