@@ -21,14 +21,13 @@ using System.IO;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
 using System.Threading;
-using JuvoLogger;
 using JuvoPlayer.Common;
 using SkiaSharp.Views.Forms;
 using Xamarin.Forms;
 using Xamarin.Forms.Xaml;
-using XamarinPlayer.Services;
 using XamarinPlayer.Tizen.TV.Services;
-using XamarinPlayer.ViewModels;
+using XamarinPlayer.Tizen.TV.ViewModels;
+using XamarinPlayer.Tizen.TV.Views;
 using Application = Tizen.Applications.Application;
 
 namespace XamarinPlayer.Views
@@ -36,9 +35,6 @@ namespace XamarinPlayer.Views
     [XamlCompilation(XamlCompilationOptions.Compile)]
     public partial class PlayerView : ContentPage, IContentPayloadHandler, ISuspendable
     {
-        public static readonly BindableProperty ContentSourceProperty =
-            BindableProperty.Create("ContentSource", typeof(object), typeof(PlayerView));
-
         public static readonly BindableProperty PlayerStateProperty =
             BindableProperty.Create(
                 propertyName: "PlayerState",
@@ -80,12 +76,6 @@ namespace XamarinPlayer.Views
                         ((PlayerView) b).SeekPreviewCanvas.InvalidateSurface();
                 });
 
-        public object ContentSource
-        {
-            set { SetValue(ContentSourceProperty, value); }
-            get { return GetValue(ContentSourceProperty); }
-        }
-
         public object PlayerState
         {
             set { SetValue(PlayerStateProperty, value); }
@@ -98,8 +88,6 @@ namespace XamarinPlayer.Views
             get { return GetValue(SeekPreviewProperty); }
         }
 
-        // private readonly TimeSpan UpdateInterval = TimeSpan.FromMilliseconds(100);
-        // private int _hideTime;
         private Subject<string> _keys;
         private IDisposable _keySubscription;
 
@@ -121,30 +109,10 @@ namespace XamarinPlayer.Views
                     UpdateSeekPreviewFramePosition();
             };
             PlayImage.Source = "btn_viewer_control_play_normal.png";
-            PropertyChanged += PlayerViewPropertyChanged;
         }
 
-        private void PlayerViewPropertyChanged(object sender, PropertyChangedEventArgs e)
+        private void InitializeSeekPreview()
         {
-            if (e.PropertyName.Equals("ContentSource"))
-            {
-                if (ContentSource == null)
-                    return;
-
-                var clipDefinition = ContentSource as ClipDefinition;
-                if (clipDefinition?.SeekPreviewPath != null)
-                {
-                    InitializeSeekPreview(clipDefinition.SeekPreviewPath);
-                }
-
-                (BindingContext as PlayerViewModel)?.SetSourceCommand.Execute(clipDefinition);
-            }
-        }
-
-        private void InitializeSeekPreview(string seekPreviewPath)
-        {
-            (BindingContext as PlayerViewModel).InitializeSeekPreviewCommand.Execute(
-                Path.Combine(Application.Current.DirectoryInfo.Resource, seekPreviewPath));
             var size = (BindingContext as PlayerViewModel).PreviewFrameSize;
             SeekPreviewCanvas.WidthRequest = size.Width;
             SeekPreviewCanvas.HeightRequest = size.Height;
@@ -189,6 +157,7 @@ namespace XamarinPlayer.Views
             PlayButton.IsEnabled = true;
             PlayButton.Focus();
             SetupDebounce();
+            InitializeSeekPreview();
         }
 
         private void KeyEventHandler(string e)
@@ -328,6 +297,7 @@ namespace XamarinPlayer.Views
         public void Resume()
         {
             (BindingContext as PlayerViewModel)?.ResumeCommand.Execute(null);
+            PlayButton.Focus();
         }
 
         private void SetupDebounce()
