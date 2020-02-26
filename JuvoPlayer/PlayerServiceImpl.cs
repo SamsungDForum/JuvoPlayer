@@ -126,8 +126,7 @@ namespace JuvoPlayer
                 playerController.PlaybackError().Subscribe( _playerErrorSubject),
                 playerController.BufferingProgress().Subscribe(_playerBufferingSubject),
                 playerController.PlayerClock().Subscribe(_playerClockSubject),
-                playerController.TimeUpdated().Subscribe(SetClock,_syncCtx),
-
+                playerController.TimeUpdated().Subscribe(SetClock,_syncCtx)
             };
         }
 
@@ -138,32 +137,33 @@ namespace JuvoPlayer
             _configurationSub?.Dispose();
             _configurationSub = null;
 
-            if (reconfigurationRequired)
+            if (!reconfigurationRequired)
             {
-                // Data provider must be stopped prior to player controller
-                // re-creation. Otherwise data provider may fill player with packets
-                // before calling seek.
-                dataProvider.Pause();
-                var playerStateSnapshot = EsPlayer.GetStateSnapshot(_player);
-
-                _playerControllerConnections.Dispose();
-                connector?.Dispose();
-
-                playerController.OnStop();
-                playerController?.Dispose();
-
-                CreatePlayerController(playerStateSnapshot);
-                ConnectPlayerControllerObservables();
-
-                connector = new DataProviderConnector(playerController, dataProvider);
-
-                // Seek resumes data provider
-                await dataProvider.Seek(CurrentPosition, CancellationToken.None);
+                await SeekTo(CurrentPosition);
                 return;
             }
 
-            await SeekTo(CurrentPosition);
+            // Data provider must be stopped prior to player controller
+            // re-creation. Otherwise data provider may fill player with packets
+            // before calling seek.
+            dataProvider.Pause();
+            var playerStateSnapshot = EsPlayer.GetStateSnapshot(_player);
+
+            _playerControllerConnections.Dispose();
+            connector?.Dispose();
+
+            playerController.OnStop();
+            playerController?.Dispose();
+
+            CreatePlayerController(playerStateSnapshot);
+            ConnectPlayerControllerObservables();
+
+            connector = new DataProviderConnector(playerController, dataProvider);
+
+            // Seek resumes data provider
+            await dataProvider.Seek(CurrentPosition, CancellationToken.None);
         }
+
         private void SetClock(TimeSpan clock) =>
             CurrentPosition = clock;
 
