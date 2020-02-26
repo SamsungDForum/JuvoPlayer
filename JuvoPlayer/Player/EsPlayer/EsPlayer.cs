@@ -22,7 +22,6 @@ using JuvoPlayer.Common;
 using JuvoLogger;
 using JuvoPlayer.Utils;
 
-
 namespace JuvoPlayer.Player.EsPlayer
 {
     public class EsPlayer : IPlayer
