@@ -28,7 +28,6 @@ using JuvoLogger;
 using JuvoPlayer;
 using JuvoPlayer.Common;
 using SkiaSharp;
-using Tizen.NUI;
 using Xamarin.Forms;
 using XamarinPlayer.Tizen.TV.Models;
 using XamarinPlayer.Tizen.TV.Services;

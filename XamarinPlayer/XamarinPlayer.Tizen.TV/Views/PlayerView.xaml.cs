@@ -16,8 +16,6 @@
  */
 
 using System;
-using System.ComponentModel;
-using System.IO;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
 using System.Threading;
@@ -28,7 +26,6 @@ using Xamarin.Forms.Xaml;
 using XamarinPlayer.Tizen.TV.Services;
 using XamarinPlayer.Tizen.TV.ViewModels;
 using XamarinPlayer.Tizen.TV.Views;
-using Application = Tizen.Applications.Application;
 
 namespace XamarinPlayer.Views
 {
