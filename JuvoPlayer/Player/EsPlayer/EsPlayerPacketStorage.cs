@@ -35,6 +35,13 @@ namespace JuvoPlayer.Player.EsPlayer
             public AsyncCollection<Packet> Queue;
             public ConcurrentQueue<Packet> QueueDataStorage;
             public volatile bool IsDisabled;
+
+            public DataStorage(bool isDisabled)
+            {
+                QueueDataStorage = new ConcurrentQueue<Packet>();
+                Queue = new AsyncCollection<Packet>(QueueDataStorage);
+                IsDisabled = isDisabled;
+            }
         }
 
         private readonly ILogger logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
@@ -59,7 +66,7 @@ namespace JuvoPlayer.Player.EsPlayer
                 throw new ArgumentException($"{stream} Already initialized", nameof(packetQueues));
 
             // Create new queue in its place
-            packetQueues[(int)stream] = CreateStorage(false);
+            packetQueues[(int)stream] = new DataStorage(false);
         }
 
 
@@ -136,18 +143,6 @@ namespace JuvoPlayer.Player.EsPlayer
 
         #region Private Methods
 
-        private DataStorage CreateStorage(bool isDisabled)
-        {
-            // Create new queue in its place
-            var pq = new ConcurrentQueue<Packet>();
-            return new DataStorage
-            {
-                QueueDataStorage = pq,
-                Queue = new AsyncCollection<Packet>(pq),
-                IsDisabled = isDisabled
-            };
-        }
-
         /// <summary>
         /// Empties individual data queue
         /// </summary>
@@ -157,7 +152,7 @@ namespace JuvoPlayer.Player.EsPlayer
         private void EmptyQueue(StreamType stream)
         {
             var dataStorage = packetQueues[(int)stream];
-            packetQueues[(int)stream] = CreateStorage(dataStorage.IsDisabled);
+            packetQueues[(int)stream] = new DataStorage(dataStorage.IsDisabled);
 
             Task.Run(() => DisposeQueue(stream, dataStorage));
         }
