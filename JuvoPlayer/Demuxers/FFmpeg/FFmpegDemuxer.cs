@@ -112,8 +112,11 @@ namespace JuvoPlayer.Demuxers.FFmpeg
             }
             catch (DemuxerException de)
             {
-                Logger.Warn("Operation abandoned");
-                Logger.Warn(de);
+                if (!cancellationTokenSource.IsCancellationRequested)
+                    throw;
+
+                Logger.Info("Operation Cancelled");
+
                 return new ClipConfiguration();
             }
         }
