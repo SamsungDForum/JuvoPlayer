@@ -157,12 +157,12 @@ namespace JuvoPlayer.DataProviders.HLS
 
         public void Pause()
         {
-            throw new NotImplementedException();
+            demuxerController.Pause();
         }
 
         public void Resume()
         {
-            throw new NotImplementedException();
+            demuxerController.Resume();
         }
 
         public IObservable<TimeSpan> ClipDurationChanged()
