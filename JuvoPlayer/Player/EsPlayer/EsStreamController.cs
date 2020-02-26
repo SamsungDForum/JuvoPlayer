@@ -96,7 +96,7 @@ namespace JuvoPlayer.Player.EsPlayer
         private ESPlayer.ESPlayerState _suspendState;
 
         private readonly SynchronizationContext _syncCtx;
-        
+
 
         #region Public API
 
@@ -483,9 +483,9 @@ namespace JuvoPlayer.Player.EsPlayer
 
             if (_suspendClock == PlayerClockProviderConfig.InvalidClock)
                 _suspendClock = esStreams[(int)StreamType.Video].CurrentPts;
-            
+
             SetState(PlayerState.Paused, CancellationToken.None);
-            
+
             logger.Info($"Suspended State/Clock: {_suspendState}/{_suspendClock}");
         }
 
@@ -752,28 +752,27 @@ namespace JuvoPlayer.Player.EsPlayer
 
                     logger.Info("Player.PrepareAsync()");
 
-                    await player.PrepareAsync( s =>
-                       {
-                           logger.Info($"PrepareAsync {s}");
+                    await player.PrepareAsync(s =>
+                      {
+                          logger.Info($"PrepareAsync {s}");
 
-                           if (token.IsCancellationRequested)
-                           {
-                               player.SubmitEosPacket(s);
-                               return;
-                           }
-                           if (s == ESPlayer.StreamType.Audio)
-                               return;
+                          if (token.IsCancellationRequested)
+                          {
+                              player.SubmitEosPacket(s);
+                              return;
+                          }
+                          if (s == ESPlayer.StreamType.Audio)
+                              return;
 
-                           _asyncOpTask = StartTransfer(token);
-                       }).WithCancellation(token).ConfigureAwait(false);
+                          _asyncOpTask = StartTransfer(token);
+                      }).WithCancellation(token).ConfigureAwait(false);
 
                     var startOk = await _asyncOpTask.ConfigureAwait(false);
                     logger.Info("Player.PrepareAsync() Done");
 
                     StartClockGenerator();
 
-                    // bitwise or is intentional
-                    if (token.IsCancellationRequested | !startOk)
+                    if (token.IsCancellationRequested || !startOk)
                         throw new OperationCanceledException();
                 }
             }
@@ -866,10 +865,9 @@ namespace JuvoPlayer.Player.EsPlayer
 
             logger.Info($"Player.SeekAsync() Completed {player.GetState()}");
 
-            // bitwise or is intentional
-            if (token.IsCancellationRequested | !startOk)
+            if (token.IsCancellationRequested || !startOk)
                 throw new OperationCanceledException();
-            
+
             if (resumeNeeded)
                 player.Resume();
         }
