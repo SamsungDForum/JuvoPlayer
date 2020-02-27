@@ -226,8 +226,6 @@ namespace JuvoPlayer.DataProviders.Dash
             if (!IsSeekingSupported())
                 throw new SeekException("Seeking is not supported");
 
-            Logger.Info("");
-
             videoPipeline.Pause();
             audioPipeline.Pause();
 
