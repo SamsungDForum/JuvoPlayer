@@ -83,11 +83,11 @@ namespace JuvoPlayer.Player.EsPlayer
 
             var clockDiff = streamState.Dts - lastClock;
 
-            if (clockDiff > StreamClockDiscontinuityThreshold || clockDiff <= TimeSpan.Zero)
-                Logger.Info($"{streamState.StreamType}: Discontinuity {clockDiff}");
             // Ignore clock discontinuities
-            clockDiff = clockDiff > StreamClockDiscontinuityThreshold || clockDiff <= TimeSpan.Zero
-                        ? StreamClockDiscontinuityThreshold : clockDiff;
+            if (clockDiff > StreamClockDiscontinuityThreshold)
+                clockDiff = StreamClockDiscontinuityThreshold;
+            else if (clockDiff < TimeSpan.Zero)
+                clockDiff = TimeSpan.Zero;
 
             streamState.TransferredDuration += clockDiff;
 
