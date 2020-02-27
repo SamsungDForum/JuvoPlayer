@@ -715,11 +715,9 @@ namespace JuvoPlayer.Player.EsPlayer
             switch (newState)
             {
                 case PlayerState.Prepared:
-                    logger.Info("Issuing Play()");
                     Play();
                     return;
-                case PlayerState.Playing when _restorePoint?.State == PlayerState.Playing:
-                    break;
+                
                 case PlayerState.Playing when _restorePoint?.State == PlayerState.Paused:
                     Pause();
                     break;
