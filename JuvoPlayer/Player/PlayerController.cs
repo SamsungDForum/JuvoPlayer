@@ -37,7 +37,6 @@ namespace JuvoPlayer.Player
         private readonly Dictionary<StreamType, IPacketStream> streams = new Dictionary<StreamType, IPacketStream>();
 
         private readonly Subject<string> streamErrorSubject = new Subject<string>();
-        private readonly Subject<bool> reconfigureSubject = new Subject<bool>();
 
         private readonly ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
 
@@ -215,7 +214,6 @@ namespace JuvoPlayer.Player
 
             player?.Dispose();
             streamErrorSubject.Dispose();
-            reconfigureSubject.Dispose();
         }
     }
 }
