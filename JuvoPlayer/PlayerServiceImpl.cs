@@ -147,7 +147,7 @@ namespace JuvoPlayer
             // re-creation. Otherwise data provider may fill player with packets
             // before calling seek.
             dataProvider.Pause();
-            var playerStateSnapshot = EsPlayer.GetStateSnapshot(_player);
+            var playerStateSnapshot = _player.GetStateSnapshot();
 
             _playerControllerConnections.Dispose();
             connector?.Dispose();

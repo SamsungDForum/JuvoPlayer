@@ -151,12 +151,9 @@ namespace JuvoPlayer.Player.EsPlayer
         #endregion
         #endregion
 
-        public static object GetStateSnapshot(IPlayer player)
+        public object GetStateSnapshot()
         {
-            if (player is EsPlayer esp)
-                return esp.streamControl.GetStateSnapshot();
-
-            throw new ArgumentException("Invalid type. Must be EsPlayer", nameof(player));
+            return streamControl.GetStateSnapshot();
         }
 
         #region IDisposable Support
