@@ -302,7 +302,9 @@ namespace JuvoPlayer.DataProviders.Dash
             {
                 DisableAdaptiveStreaming = true;
                 pendingStream = newStream;
-
+                dashClient.UpdateRepresentation(pendingStream.Representation);
+                ParseDrms(pendingStream.Media);
+                PushMetaDataConfiguration();
             }
             finally
             {
@@ -356,11 +358,9 @@ namespace JuvoPlayer.DataProviders.Dash
             if (pipelineStarted)
                 return;
 
-            // Stream Switch scenario. DisableAdaptiveStreaming=true.
-            // Force DC representation update 
-            if (newStream != null || (DisableAdaptiveStreaming && pendingStream != null))
+            if (newStream != null)
             {
-                currentStream = newStream ?? pendingStream;
+                currentStream = newStream;
 
                 Logger.Info($"{StreamType}: Dash pipeline start.");
                 Logger.Info($"{StreamType}: Media: {currentStream.Media}");
@@ -368,6 +368,7 @@ namespace JuvoPlayer.DataProviders.Dash
 
                 dashClient.UpdateRepresentation(currentStream.Representation);
                 ParseDrms(currentStream.Media);
+                PushMetaDataConfiguration();
             }
 
             if (!trimOffset.HasValue)
@@ -379,11 +380,6 @@ namespace JuvoPlayer.DataProviders.Dash
             dashClient.Start(fullInitRequired);
 
             pipelineStarted = true;
-
-            if (newStream != null)
-            {
-                PushMetaDataConfiguration();
-            }
         }
 
         private static AdaptationSet GetDefaultMedia(ICollection<AdaptationSet> medias)
