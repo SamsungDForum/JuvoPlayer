@@ -96,29 +96,17 @@ namespace JuvoPlayer.Demuxers.FFmpeg
 
         private ClipConfiguration InitDemuxer(Action initAction)
         {
-            try
-            {
-                ffmpegGlue.Initialize();
-                initAction();
+            ffmpegGlue.Initialize();
+            initAction();
 
-                var clipConfiguration = new ClipConfiguration();
+            var clipConfiguration = new ClipConfiguration();
 
-                FindStreamsInfo();
-                ReadDuration(ref clipConfiguration);
-                ReadStreamConfigs(ref clipConfiguration);
-                ReadContentProtectionConfigs(ref clipConfiguration);
+            FindStreamsInfo();
+            ReadDuration(ref clipConfiguration);
+            ReadStreamConfigs(ref clipConfiguration);
+            ReadContentProtectionConfigs(ref clipConfiguration);
 
-                return clipConfiguration;
-            }
-            catch (DemuxerException de)
-            {
-                if (!cancellationTokenSource.IsCancellationRequested)
-                    throw;
-
-                Logger.Info("Operation Cancelled");
-
-                return new ClipConfiguration();
-            }
+            return clipConfiguration;
         }
 
         private void ReadDuration(ref ClipConfiguration clipConfiguration)
@@ -157,6 +145,11 @@ namespace JuvoPlayer.Demuxers.FFmpeg
             catch (FFmpegException ex)
             {
                 DeallocFFmpeg();
+
+                // Report init errors resulting from reset as cancellation
+                if (cancellationTokenSource.IsCancellationRequested)
+                    throw new TaskCanceledException();
+
                 Logger.Error(ex);
                 throw new DemuxerException("Cannot open formatContext", ex);
             }
