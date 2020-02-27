@@ -32,14 +32,15 @@ namespace JuvoPlayer.Player.EsPlayer
     {
         private struct DataStorage
         {
-            public AsyncCollection<Packet> Queue;
-            public ConcurrentQueue<Packet> QueueDataStorage;
+            private readonly ConcurrentQueue<Packet> _queueDataStorage;
+            public readonly AsyncCollection<Packet> Queue;
             public volatile bool IsDisabled;
+            public int Count => _queueDataStorage.Count;
 
             public DataStorage(bool isDisabled)
             {
-                QueueDataStorage = new ConcurrentQueue<Packet>();
-                Queue = new AsyncCollection<Packet>(QueueDataStorage);
+                _queueDataStorage = new ConcurrentQueue<Packet>();
+                Queue = new AsyncCollection<Packet>(_queueDataStorage);
                 IsDisabled = isDisabled;
             }
         }
@@ -61,9 +62,6 @@ namespace JuvoPlayer.Player.EsPlayer
         public void Initialize(StreamType stream)
         {
             logger.Info(stream.ToString());
-
-            if (packetQueues[(int)stream].QueueDataStorage != null)
-                throw new ArgumentException($"{stream} Already initialized", nameof(packetQueues));
 
             // Create new queue in its place
             packetQueues[(int)stream] = new DataStorage(false);
@@ -118,7 +116,7 @@ namespace JuvoPlayer.Player.EsPlayer
 
         public int Count(StreamType stream)
         {
-            return packetQueues[(int)stream].QueueDataStorage.Count;
+            return packetQueues[(int)stream].Count;
         }
 
         public void Empty(StreamType stream)
