@@ -25,8 +25,10 @@ using SkiaSharp.Views.Forms;
 using Xamarin.Forms;
 using Xamarin.Forms.Xaml;
 using XamarinPlayer.Tizen.TV.Controls;
+using XamarinPlayer.Tizen.TV.Models;
 using XamarinPlayer.Tizen.TV.Services;
 using XamarinPlayer.Tizen.TV.ViewModels;
+using XamarinPlayer.Views;
 
 namespace XamarinPlayer.Tizen.TV.Views
 {
@@ -57,7 +59,7 @@ namespace XamarinPlayer.Tizen.TV.Views
         {
             var playerView = new PlayerView
             {
-                BindingContext = item.BindingContext
+                BindingContext = new PlayerViewModel(item.BindingContext as DetailContentData)
             };
             return _appMainPage.PushAsync(playerView);
         }

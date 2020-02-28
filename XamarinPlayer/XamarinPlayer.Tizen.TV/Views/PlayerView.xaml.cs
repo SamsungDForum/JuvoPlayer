@@ -16,364 +16,113 @@
  */
 
 using System;
-using System.Collections;
-using System.Collections.Generic;
-using System.ComponentModel;
-using System.Reactive.Disposables;
 using System.Reactive.Linq;
+using System.Reactive.Subjects;
 using System.Threading;
-using System.Threading.Tasks;
-using JuvoLogger;
-using JuvoPlayer;
 using JuvoPlayer.Common;
+using SkiaSharp;
 using SkiaSharp.Views.Forms;
 using Xamarin.Forms;
 using Xamarin.Forms.Xaml;
-using XamarinPlayer.Tizen.TV.Models;
 using XamarinPlayer.Tizen.TV.Services;
+using XamarinPlayer.Tizen.TV.ViewModels;
+using XamarinPlayer.Tizen.TV.Views;
 
-namespace XamarinPlayer.Tizen.TV.Views
+namespace XamarinPlayer.Views
 {
     [XamlCompilation(XamlCompilationOptions.Compile)]
-    public partial class PlayerView : IContentPayloadHandler, ISuspendable, ISeekLogicClient
+    public partial class PlayerView : ContentPage, IContentPayloadHandler, ISuspendable
     {
-        private static readonly ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
-        private const int DefaultTimeout = 5000;
-        private readonly TimeSpan _updateInterval = TimeSpan.FromMilliseconds(100);
+        public static readonly BindableProperty PlayerStateProperty =
+            BindableProperty.Create(
+                propertyName: "PlayerState",
+                returnType: typeof(object),
+                typeof(PlayerView),
+                defaultValue: false,
+                defaultBindingMode: BindingMode.OneWay,
+                propertyChanged: (b, o, n) =>
+                {
+                    var playerView = ((PlayerView) b);
+                    var state = (PlayerState) n;
+                    switch (state)
+                    {
+                        case JuvoPlayer.Common.PlayerState.Prepared:
+                        {
+                            playerView.Show();
+                            break;
+                        }
+                        case JuvoPlayer.Common.PlayerState.Playing:
+                        {
+                            playerView.PlayImage.Source = "btn_viewer_control_pause_normal.png";
+                            break;
+                        }
+                        case JuvoPlayer.Common.PlayerState.Paused:
+                            playerView.PlayImage.Source = "btn_viewer_control_play_normal.png";
+                            break;
+                    }
+                });
 
-        private readonly SeekLogic _seekLogic; // needs to be initialized in constructor!
-        private StoryboardReader _storyboardReader;
-        private int _hideTime;
-        private bool _isPageDisappeared;
-        private bool _isShowing;
-        private bool _hasFinished;
-        private readonly CompositeDisposable _subscriptions;
-        public static readonly BindableProperty ContentSourceProperty =
-            BindableProperty.Create("ContentSource", typeof(object), typeof(PlayerView));
+        public static readonly BindableProperty SeekPreviewProperty =
+            BindableProperty.Create(
+                propertyName: "SeekPreview",
+                returnType: typeof(object),
+                typeof(PlayerView),
+                defaultValue: false,
+                defaultBindingMode: BindingMode.OneWay,
+                propertyChanged: (b, o, n) =>
+                {
+                    if (n != null)
+                        ((PlayerView) b).SeekPreviewCanvas.InvalidateSurface();
+                });
 
-        public object ContentSource
+        public object PlayerState
         {
-            set => SetValue(ContentSourceProperty, value);
-            get => GetValue(ContentSourceProperty);
+            set { SetValue(PlayerStateProperty, value); }
+            get { return GetValue(PlayerStateProperty); }
         }
 
-        private bool _isBuffering;
-        public IPlayerService Player { get; private set; }
+        public object SeekPreview
+        {
+            set { SetValue(SeekPreviewProperty, value); }
+            get { return GetValue(SeekPreviewProperty); }
+        }
+
+        private Subject<string> _keys;
+        private IDisposable _keySubscription;
+
+        private readonly int DefaultTimeout = 5000;
 
         public PlayerView()
         {
             InitializeComponent();
-
             NavigationPage.SetHasNavigationBar(this, false);
 
-            Player = DependencyService.Get<IPlayerService>(DependencyFetchTarget.NewInstance);
+            SetBinding(SeekPreviewProperty, new Binding(nameof(PlayerViewModel.PreviewFrame)));
+            SetBinding(PlayerStateProperty, new Binding(nameof(PlayerViewModel.PlayerState)));
 
-            _subscriptions = new CompositeDisposable
-            {
-                Player.StateChanged()
-                    .ObserveOn(SynchronizationContext.Current)
-                    .Subscribe(OnPlayerStateChanged, OnPlayerCompleted),
-
-                Player.PlaybackError()
-                    .ObserveOn(SynchronizationContext.Current)
-                    .Subscribe(async message => await OnPlaybackError(message)),
-
-                Player.BufferingProgress()
-                    .ObserveOn(SynchronizationContext.Current)
-                    .Subscribe(OnBufferingProgress)
-            };
-
-            PlayButton.Clicked += (s, e) => { Play(); };
+            PlayButton.Clicked += (s, e) => { (BindingContext as PlayerViewModel)?.PlayOrPauseCommand.Execute(null); };
 
             Progressbar.PropertyChanged += (sender, args) =>
             {
                 if (args.PropertyName == "Progress")
                     UpdateSeekPreviewFramePosition();
             };
-
-            PropertyChanged += PlayerViewPropertyChanged;
-
-            _seekLogic = new SeekLogic(this);
+            PlayImage.Source = "btn_viewer_control_play_normal.png";
         }
 
-        private void Play()
+        private void InitializeSeekPreview()
         {
-            if (Player.State == PlayerState.Playing)
-                Player.Pause();
-            else
-                Player.Start();
-        }
-
-        private async Task OnPlaybackError(string message)
-        {
-            // Prevent multiple popups from occuring, display them only
-            // if it is a very first error event.
-            if (_hasFinished == false)
+            var size = (BindingContext as PlayerViewModel).PreviewFrameSize;
+            if (size != null)
             {
-                _hasFinished = true;
-
-                Hide();
-                Player.Stop();
-                if (!string.IsNullOrEmpty(message))
-                    await DisplayAlert("Playback Error", message, "OK");
-
-                Navigation.RemovePage(this);
-            }
-        }
-
-        private void OnBufferingProgress(int progress)
-        {
-            _isBuffering = progress < 100;
-        }
-
-        private void KeyEventHandler(string e)
-        {
-            // Prevents key handling & focus change in Show().
-            // Consider adding a call Focus(Focusable Object) where focus would be set in one place
-            // and error status could be handled.
-
-            if (_hasFinished)
-            {
-                return;
-            }
-
-            if (e.Contains("Back") && !e.Contains("XF86PlayBack"))
-            {
-                //If the 'return' button on standard or back arrow on the smart remote control was pressed do react depending on the playback state
-                if (!_isShowing && !Settings.IsVisible)
-                {
-                    //return to the main menu showing all the video contents list
-                    Navigation.RemovePage(this);
-                }
-                else
-                {
-                    if (Settings.IsVisible)
-                    {
-                        Settings.IsVisible = false;
-                        PlayButton.IsEnabled = true;
-                        PlayButton.Focus();
-                    }
-                    else
-                    {
-                        Hide();
-                    }
-                }
-            }
-            else
-            {
-                if (Settings.IsVisible)
-                {
-                    return;
-                }
-
-                if (_isShowing)
-                {
-                    if ((e.Contains("Play") || e.Contains("XF86PlayBack")) &&
-                        Player.State == PlayerState.Paused)
-                    {
-                        Player.Start();
-                    }
-                    else if ((e.Contains("Pause") || e.Contains("XF86PlayBack")) &&
-                             Player.State == PlayerState.Playing)
-                    {
-                        Player.Pause();
-                    }
-
-                    if (e.Contains("Next") || e.Contains("Right"))
-                    {
-                        Forward();
-                    }
-                    else if (e.Contains("Rewind") || e.Contains("Left"))
-                    {
-                        Rewind();
-                    }
-                    else if (e.Contains("Up"))
-                    {
-                        HandleSettings();
-                    }
-
-                    //expand the time that playback control bar is on the screen
-                    _hideTime = DefaultTimeout;
-                }
-                else
-                {
-                    if (e.Contains("Stop"))
-                    {
-                        Navigation.RemovePage(this);
-                    }
-                    else
-                    {
-                        //Make the playback control bar visible on the screen
-                        Show();
-                    }
-                }
-            }
-        }
-
-        private void HandleSettings()
-        {
-            Settings.IsVisible = !Settings.IsVisible;
-            if (!Settings.IsVisible)
-                return;
-            if (AudioTrack.ItemsSource == null)
-                BindStreamPicker(AudioTrack, StreamType.Audio);
-            if (VideoQuality.ItemsSource == null)
-                BindStreamPicker(VideoQuality, StreamType.Video);
-            if (Subtitles.ItemsSource == null)
-                BindSubtitleStreamPicker();
-
-            PlayButton.IsEnabled = false;
-
-            AudioTrack.Focus();
-        }
-
-        private void BindStreamPicker(Picker picker, StreamType streamType)
-        {
-            var streams = Player.GetStreamsDescription(streamType);
-
-            InitializePicker(picker, streams);
-
-            SelectDefaultStreamForPicker(picker, streams);
-
-            RegisterSelectedIndexChangeEventForPicker(picker);
-        }
-
-        private void BindSubtitleStreamPicker()
-        {
-            var streams = new List<StreamDescription>
-            {
-                new StreamDescription
-                {
-                    Default = true,
-                    Description = "off",
-                    Id = 0,
-                    StreamType = StreamType.Subtitle
-                }
-            };
-
-            streams.AddRange(Player.GetStreamsDescription(StreamType.Subtitle));
-
-            InitializePicker(Subtitles, streams);
-
-            SelectDefaultStreamForPicker(Subtitles, streams);
-
-            Subtitles.SelectedIndexChanged += (sender, args) =>
-            {
-                if (Subtitles.SelectedIndex == -1)
-                    return;
-
-                if (Subtitles.SelectedIndex == 0)
-                {
-                    Player.DeactivateStream(StreamType.Subtitle);
-                    return;
-                }
-
-                var stream = (StreamDescription)Subtitles.ItemsSource[Subtitles.SelectedIndex];
-                try
-                {
-                    Player.ChangeActiveStream(stream);
-                }
-                catch (Exception ex)
-                {
-                    Logger.Error(ex);
-                    Subtitles.SelectedIndex = 0;
-                }
-            };
-        }
-
-        private static void InitializePicker(Picker picker, IList streams)
-        {
-            picker.ItemsSource = streams;
-            picker.ItemDisplayBinding = new Binding("Description");
-            picker.SelectedIndex = 0;
-        }
-
-        private static void SelectDefaultStreamForPicker(Picker picker, IReadOnlyList<StreamDescription> streams)
-        {
-            for (var i = 0; i < streams.Count; ++i)
-            {
-                if (!streams[i].Default)
-                    continue;
-                picker.SelectedIndex = i;
-                return;
-            }
-        }
-
-        private void RegisterSelectedIndexChangeEventForPicker(Picker picker)
-        {
-            picker.SelectedIndexChanged += (sender, args) =>
-            {
-                if (picker.SelectedIndex == -1)
-                    return;
-                var stream = (StreamDescription)picker.ItemsSource[picker.SelectedIndex];
-
-                Player.ChangeActiveStream(stream);
-            };
-        }
-
-        private void Show(int timeout = DefaultTimeout)
-        {
-            // Do not show anything if error handling in progress.
-            if (_hasFinished)
-                return;
-
-            if (!_isShowing)
-            {
-                PlayButton.Focus();
-                _isShowing = true;
-            }
-
-            TopBar.IsVisible = true;
-            BottomBar.IsVisible = true;
-            _hideTime = timeout;
-        }
-
-        private void Hide()
-        {
-            TopBar.IsVisible = false;
-            BottomBar.IsVisible = false;
-            _isShowing = false;
-        }
-
-        private void PlayerViewPropertyChanged(object sender, PropertyChangedEventArgs e)
-        {
-            if (!e.PropertyName.Equals("ContentSource"))
-                return;
-            if (ContentSource == null)
-                return;
-
-            var clipDefinition = ContentSource as ClipDefinition;
-            if (clipDefinition?.SeekPreviewPath != null)
-            {
-                InitializeSeekPreview(clipDefinition.SeekPreviewPath);
-            }
-
-            Player.SetSource(clipDefinition);
-        }
-
-        private async void InitializeSeekPreview(string seekPreviewPath)
-        {
-            _storyboardReader?.Dispose();
-            _storyboardReader = new StoryboardReader(seekPreviewPath);
-            _seekLogic.StoryboardReader = _storyboardReader;
-
-            try
-            {
-                await _storyboardReader.LoadTask;
-
-                var size = _storyboardReader.FrameSize;
-                SeekPreviewCanvas.WidthRequest = size.Width;
-                SeekPreviewCanvas.HeightRequest = size.Height;
-            }
-            catch (Exception ex)
-            {
-                Logger.Error(ex);
+                SeekPreviewCanvas.WidthRequest = ((SKSize) size).Width;
+                SeekPreviewCanvas.HeightRequest = ((SKSize) size).Height;
             }
         }
 
         private void OnSeekPreviewCanvasOnPaintSurface(object sender, SKPaintSurfaceEventArgs args)
         {
-            var frame = _seekLogic.GetSeekPreviewFrame();
+            var frame = SeekPreview as SubSkBitmap;
             if (frame == null) return;
 
             var surface = args.Surface;
@@ -401,47 +150,134 @@ namespace XamarinPlayer.Tizen.TV.Views
         protected override void OnAppearing()
         {
             base.OnAppearing();
-            _isPageDisappeared = false;
             MessagingCenter.Subscribe<IKeyEventSender, string>(this, "KeyDown", (s, e) => { KeyEventHandler(e); });
+            MessagingCenter.Subscribe<IEventSender, string>(this, "PlaybackError",
+                (s, e) => { DisplayAlert("Playback Error", e, "OK"); });
+            MessagingCenter.Subscribe<IEventSender, string>(this, "Pop", (s, e) => { Navigation.PopAsync(); });
 
+            SettingsButton.IsEnabled = true;
+            PlayButton.IsEnabled = true;
             PlayButton.Focus();
-            Device.StartTimer(_updateInterval, UpdatePlayerControl);
+            SetupDebounce();
+            InitializeSeekPreview();
+        }
+
+        private void KeyEventHandler(string e)
+        {
+            // Prevents key handling & focus change in Show().
+            // Consider adding a call Focus(Focusable Object) where focus would be set in one place
+            // and error status could be handled.
+            _keys.OnNext(e);
+
+            if (e.Contains("Back") && !e.Contains("XF86PlayBack"))
+            {
+                //If the 'return' button on standard or back arrow on the smart remote control was pressed do react depending on the playback state
+                var playerState = (PlayerState) PlayerState;
+                if (playerState < JuvoPlayer.Common.PlayerState.Playing ||
+                    playerState >= JuvoPlayer.Common.PlayerState.Playing && !BottomBar.IsVisible)
+                {
+                    Hide();
+                    Navigation.RemovePage(this);
+                }
+                else
+                {
+                    if (Settings.IsVisible)
+                    {
+                        Settings.IsVisible = false;
+                        PlayButton.IsEnabled = true;
+                        PlayButton.Focus();
+                    }
+                    else
+                        Hide();
+                }
+            }
+            else
+            {
+                if (Settings.IsVisible)
+                {
+                    return;
+                }
+
+                if (BottomBar.IsVisible)
+                {
+                    if (e.Contains("XF86PlayBack"))
+                    {
+                        (BindingContext as PlayerViewModel).PlayOrPauseCommand.Execute(null);
+                    }
+                    else if (e.Contains("Pause"))
+                    {
+                        (BindingContext as PlayerViewModel).PauseCommand.Execute(null);
+                    }
+                    else if (e.Contains("Play"))
+                    {
+                        (BindingContext as PlayerViewModel).StartCommand.Execute(null);
+                    }
+
+                    if ((e.Contains("Next") || e.Contains("Right")))
+                    {
+                        (BindingContext as PlayerViewModel).ForwardCommand.Execute(null);
+                    }
+                    else if ((e.Contains("Rewind") || e.Contains("Left")))
+                    {
+                        (BindingContext as PlayerViewModel).RewindCommand.Execute(null);
+                    }
+                    else if ((e.Contains("Up")))
+                    {
+                        Settings.IsVisible = true;
+                        PlayButton.IsEnabled = false;
+                        AudioTrack.Focus();
+                    }
+
+                    //expand the time that playback control bar is on the screen
+                }
+                else
+                {
+                    if (e.Contains("Stop"))
+                    {
+                        Navigation.RemovePage(this);
+                    }
+                    else
+                    {
+                        //Make the playback control bar visible on the screen
+                        Show();
+                    }
+                }
+            }
         }
 
         protected override void OnDisappearing()
         {
             base.OnDisappearing();
-            // Moved marking _isPageDisappeared flag to very beginning.
-            // OnPlayerStateChanged event handler may receive events accessing
-            // _playerService while _playerService is being disposed/nullified
-            // Not something we want...
-            // Reproducible with fast playback start/exit before start completes.
-            //
-            _isPageDisappeared = true;
 
-            Device.StartTimer(TimeSpan.FromMilliseconds(0), () =>
-            {
-                if (!_isPageDisappeared)
-                    return false;
-                _storyboardReader?.Dispose();
-                _seekLogic.StoryboardReader = null;
-                _storyboardReader = null;
-                _subscriptions.Dispose();
-                Player?.Dispose();
-                Player = null;
-                return false;
-            });
             MessagingCenter.Unsubscribe<IKeyEventSender, string>(this, "KeyDown");
+            MessagingCenter.Unsubscribe<IEventSender, string>(this, "PlaybackError");
+            MessagingCenter.Unsubscribe<IEventSender, string>(this, "Pop");
+            _keySubscription?.Dispose();
+            (BindingContext as PlayerViewModel)?.DisposeCommand.Execute(null);
         }
 
-        private void OnTapGestureRecognizerControllerTapped(object sender, EventArgs args)
+        void OnTapGestureRecognizerControllerTapped(object sender, EventArgs args)
         {
             Hide();
         }
 
-        private void OnTapGestureRecognizerViewTapped(object sender, EventArgs args)
+        void OnTapGestureRecognizerViewTapped(object sender, EventArgs args)
         {
             Show();
+        }
+
+        private void Show()
+        {
+            // Do not show anything if error handling in progress.
+            PlayButton.Focus();
+            TopBar.IsVisible = true;
+            BottomBar.IsVisible = true;
+        }
+
+        private void Hide()
+        {
+            TopBar.IsVisible = false;
+            BottomBar.IsVisible = false;
         }
 
         protected override bool OnBackButtonPressed()
@@ -449,171 +285,34 @@ namespace XamarinPlayer.Tizen.TV.Views
             return true;
         }
 
-        private void OnPlayerStateChanged(PlayerState state)
-        {
-            Logger.Info($"Player State Changed: {state}");
-
-            if (_isPageDisappeared)
-            {
-                Logger.Warn("Page scheduled for disappearing or already disappeared. Stale Event? Not Processed.");
-                return;
-            }
-
-            switch (state)
-            {
-                case PlayerState.Prepared:
-                    {
-                        if (Player.IsSeekingSupported)
-                        {
-                            BackButton.IsEnabled = true;
-                            ForwardButton.IsEnabled = true;
-                        }
-
-                        PlayButton.IsEnabled = true;
-                        SettingsButton.IsEnabled = true;
-                        PlayButton.Focus();
-
-                        Player.Start();
-                        Show();
-                        break;
-                    }
-                case PlayerState.Playing:
-                    PlayImage.Source = ImageSource.FromFile("btn_viewer_control_pause_normal.png");
-                    break;
-                case PlayerState.Paused:
-                    PlayImage.Source = ImageSource.FromFile("btn_viewer_control_play_normal.png");
-                    break;
-                case PlayerState.Idle:
-                    break;
-                default:
-                    throw new ArgumentOutOfRangeException(nameof(state), state, null);
-            }
-        }
-
-        private void OnPlayerCompleted()
-        {
-            Logger.Info("Player State completed");
-            if (_hasFinished)
-                return;
-
-            _hasFinished = true;
-            Navigation.RemovePage(this);
-        }
-
-        private static string GetFormattedTime(TimeSpan time)
-        {
-            return time.ToString(time.TotalHours > 1 ? @"hh\:mm\:ss" : @"mm\:ss");
-        }
-
-        private bool UpdatePlayerControl()
-        {
-            if (_isPageDisappeared)
-                return false;
-
-            Device.BeginInvokeOnMainThread(() =>
-            {
-                if (Player.State < PlayerState.Paused)
-                {
-                    return;
-                }
-
-                UpdatePlayTime();
-                UpdateCueTextLabel();
-                UpdateLoadingIndicator();
-                UpdateSeekPreview();
-
-                if (Settings.IsVisible)
-                    return;
-
-                if (_hideTime <= 0)
-                    return;
-                _hideTime -= (int)_updateInterval.TotalMilliseconds;
-                if (_hideTime <= 0)
-                {
-                    Hide();
-                }
-            });
-
-            return true;
-        }
-
-        private void UpdateSeekPreview()
-        {
-            if (_isShowing && _seekLogic.ShallDisplaySeekPreview())
-            {
-                if (!SeekPreviewContainer.IsVisible)
-                    SeekPreviewContainer.IsVisible = true;
-                SeekPreviewCanvas.InvalidateSurface();
-            }
-            else if (SeekPreviewContainer.IsVisible)
-                SeekPreviewContainer.IsVisible = false;
-        }
-
-        private void UpdatePlayTime()
-        {
-            CurrentTime.Text = GetFormattedTime(_seekLogic.CurrentPositionUI);
-            TotalTime.Text = GetFormattedTime(_seekLogic.Duration);
-
-            if (_seekLogic.Duration.TotalMilliseconds > 0)
-                Progressbar.Progress = _seekLogic.CurrentPositionUI.TotalMilliseconds /
-                                       _seekLogic.Duration.TotalMilliseconds;
-            else
-                Progressbar.Progress = 0;
-        }
-
-        private void UpdateCueTextLabel()
-        {
-            var cueText = Player.CurrentCueText ?? string.Empty;
-            if (string.IsNullOrEmpty(cueText))
-            {
-                CueTextLabel.IsVisible = false;
-                return;
-            }
-
-            CueTextLabel.Text = cueText;
-            CueTextLabel.IsVisible = true;
-        }
-
         public bool HandleUrl(string url)
         {
-            var currentClipUrl = (BindingContext as DetailContentData)?.Source;
+            var currentClipUrl = (BindingContext as PlayerViewModel)?.Source;
             return currentClipUrl?.Equals(url) ?? false;
         }
 
         public void Suspend()
         {
-            Player?.Suspend();
+            (BindingContext as PlayerViewModel)?.SuspendCommand.Execute(null);
         }
 
         public void Resume()
         {
-            Player?.Resume();
+            (BindingContext as PlayerViewModel)?.ResumeCommand.Execute(null);
             PlayButton.Focus();
         }
 
-        private void UpdateLoadingIndicator()
+        private void SetupDebounce()
         {
-            var isSeeking = _seekLogic.IsSeekInProgress || _seekLogic.IsSeekAccumulationInProgress;
-            if ((isSeeking || _isBuffering) && Player.State != PlayerState.Paused)
+            _keySubscription?.Dispose();
+            _keys = new Subject<string>();
+            var keysThrottled = _keys.Throttle(TimeSpan.FromMilliseconds(DefaultTimeout));
+            _keySubscription = keysThrottled.Subscribe(i =>
             {
-                LoadingIndicator.IsRunning = true;
-                LoadingIndicator.IsVisible = true;
-            }
-            else
-            {
-                LoadingIndicator.IsRunning = false;
-                LoadingIndicator.IsVisible = false;
-            }
-        }
+                if (!Settings.IsVisible) Hide();
+            }, SynchronizationContext.Current);
 
-        private void Forward()
-        {
-            _seekLogic.SeekForward();
-        }
-
-        private void Rewind()
-        {
-            _seekLogic.SeekBackward();
+            _keys.OnNext("first");
         }
     }
 }
