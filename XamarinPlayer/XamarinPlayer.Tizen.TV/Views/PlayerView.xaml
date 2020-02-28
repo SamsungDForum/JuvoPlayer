@@ -3,8 +3,9 @@
 <ContentPage xmlns="http://xamarin.com/schemas/2014/forms"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
              xmlns:forms="clr-namespace:SkiaSharp.Views.Forms;assembly=SkiaSharp.Views.Forms"
-             x:Class="XamarinPlayer.Tizen.TV.Views.PlayerView"
-             ContentSource="{Binding Clip}">
+             xmlns:viewModels="clr-namespace:XamarinPlayer.Tizen.TV.ViewModels;assembly=JuvoPlayerXamarin.Tizen.TV"
+             x:Class="XamarinPlayer.Views.PlayerView"
+             x:Name="root">
     <ContentPage.Content>
         <Grid>
             <StackLayout HorizontalOptions="FillAndExpand"
@@ -14,13 +15,14 @@
                         Tapped="OnTapGestureRecognizerViewTapped" />
                 </StackLayout.GestureRecognizers>
                 <StackLayout HorizontalOptions="FillAndExpand"
-                             VerticalOptions="FillAndExpand">
+                             VerticalOptions="FillAndExpand"
+                             x:Name="Controller">
                     <StackLayout BackgroundColor="#B0101010"
                                  Padding="0, 20"
                                  x:Name="TopBar">
                         <AbsoluteLayout HorizontalOptions="End">
-                            <Image
-                                Source="btn_viewer_control_settings_normal.png"
+                            <Image x:Name="SettingsImage"
+                                   Source="btn_viewer_control_settings_normal.png"
                                    HorizontalOptions="Center"
                                    VerticalOptions="Start"
                                    AbsoluteLayout.LayoutBounds="0,0,1,1" AbsoluteLayout.LayoutFlags="All" />
@@ -29,10 +31,11 @@
                                    AbsoluteLayout.LayoutBounds="0,0,1,1" AbsoluteLayout.LayoutFlags="All"
                                    HorizontalOptions="Fill"
                                    VerticalOptions="Fill"
-                                   WidthRequest="80" />
+                                   WidthRequest="80"
+                                   IsEnabled="False" />
                         </AbsoluteLayout>
-                        <Label
-                            Text="{Binding Title}"
+                        <Label x:Name="VideoTitle"
+                               Text="{Binding Title}"
                                TextColor="White"
                                FontSize="100"
                                HorizontalOptions="Center"
@@ -46,39 +49,43 @@
                             </BoxView.GestureRecognizers>
                         </BoxView>
                         <ContentView Padding="30, 30" HorizontalOptions="CenterAndExpand">
-                            <Label BackgroundColor="#B0101010" IsVisible="false" FontSize="Medium" TextColor="White"
+                            <Label BackgroundColor="#B0101010"
+                                   IsVisible="{Binding CueText, Converter={viewModels:StringToBoolConverter}}"
+                                   FontSize="Medium" TextColor="White"
                                    x:Name="CueTextLabel" HorizontalOptions="CenterAndExpand" WidthRequest="800"
-                                   HorizontalTextAlignment="Center" />
+                                   HorizontalTextAlignment="Center" Text="{Binding CueText}" />
                         </ContentView>
-                        <AbsoluteLayout x:Name="SeekPreviewContainer" IsVisible="false" HorizontalOptions="Fill" Margin="100, 0">
-                            <Frame x:Name="SeekPreviewFrame" Padding="1,1,1,1" HasShadow="False"
-                                   CornerRadius="5" BorderColor="DimGray" BackgroundColor="Black">
-                                <forms:SKCanvasView x:Name="SeekPreviewCanvas" HorizontalOptions="Center"
-                                                    PaintSurface="OnSeekPreviewCanvasOnPaintSurface" />
-                            </Frame>
-                        </AbsoluteLayout>
-                        <AbsoluteLayout x:Name="Settings" IsVisible="false" BackgroundColor="#B0101010"
+                        <AbsoluteLayout x:Name="Settings" IsVisible="False" BackgroundColor="#B0101010"
                                         HorizontalOptions="Center">
                             <StackLayout Padding="20, 10">
                                 <StackLayout Orientation="Horizontal">
                                     <Label Text="Audio track" TextColor="White" HorizontalOptions="Start"
                                            VerticalOptions="Center" WidthRequest="200" />
-                                    <Picker x:Name="AudioTrack" WidthRequest="400"/>
+                                    <Picker x:Name="AudioTrack" WidthRequest="400"
+                                            ItemsSource="{Binding Audio.Source}"
+                                            SelectedIndex="{Binding AudioSelectedIndex}"
+                                            ItemDisplayBinding="{Binding Description}">
+                                        <Picker.Items>
+                                            <x:String>auto</x:String>
+                                        </Picker.Items>
+                                    </Picker>
                                 </StackLayout>
                                 <StackLayout Orientation="Horizontal">
                                     <Label Text="Video quality" TextColor="White" HorizontalOptions="Start"
                                            VerticalOptions="Center" WidthRequest="200" />
-                                    <Picker x:Name="VideoQuality" WidthRequest="400">
+                                    <Picker x:Name="VideoQuality" WidthRequest="400"
+                                            ItemsSource="{Binding Video.Source}"
+                                            SelectedIndex="{Binding VideoSelectedIndex}"
+                                            ItemDisplayBinding="{Binding Description}">
                                         <Picker.Items>
                                             <x:String>auto</x:String>
                                         </Picker.Items>
-                                        <Picker.SelectedIndex>0</Picker.SelectedIndex>
                                     </Picker>
                                 </StackLayout>
                                 <StackLayout Orientation="Horizontal">
                                     <Label Text="Video speed" TextColor="White" HorizontalOptions="Start"
                                            VerticalOptions="Center" WidthRequest="200" />
-                                    <Picker WidthRequest="400">
+                                    <Picker x:Name="VideoSpeed" WidthRequest="400">
                                         <Picker.Items>
                                             <x:String>normal</x:String>
                                         </Picker.Items>
@@ -88,14 +95,24 @@
                                 <StackLayout Orientation="Horizontal">
                                     <Label Text="Subtitles" TextColor="White" HorizontalOptions="Start"
                                            VerticalOptions="Center" WidthRequest="200" />
-                                    <Picker x:Name="Subtitles" WidthRequest="400">
+                                    <Picker x:Name="Subtitles" WidthRequest="400"
+                                            ItemsSource="{Binding Subtitle.Source}"
+                                            SelectedIndex="{Binding SubtitleSelectedIndex}"
+                                            ItemDisplayBinding="{Binding Description}">
                                         <Picker.Items>
                                             <x:String>off</x:String>
                                         </Picker.Items>
-                                        <Picker.SelectedIndex>0</Picker.SelectedIndex>
                                     </Picker>
                                 </StackLayout>
                             </StackLayout>
+                        </AbsoluteLayout>
+                        <AbsoluteLayout x:Name="SeekPreviewContainer" IsVisible="{Binding ShallDisplaySeekPreview}"
+                                        HorizontalOptions="Fill" Margin="100, 0">
+                            <Frame x:Name="SeekPreviewFrame" Padding="1,1,1,1" HasShadow="False"
+                                   CornerRadius="5" BorderColor="DimGray" BackgroundColor="Black">
+                                <forms:SKCanvasView x:Name="SeekPreviewCanvas" HorizontalOptions="Center"
+                                                    PaintSurface="OnSeekPreviewCanvasOnPaintSurface" />
+                            </Frame>
                         </AbsoluteLayout>
                     </StackLayout>
                     <StackLayout BackgroundColor="#B0101010"
@@ -107,26 +124,26 @@
                                      RelativeLayout.WidthConstraint="{ConstraintExpression Type=RelativeToParent, Property=Width, Factor=0.898}"
                                      RelativeLayout.XConstraint="{ConstraintExpression Type=RelativeToParent, Property=Width, Factor=0.051}" />
                             <ProgressBar x:Name="Progressbar"
-                                         Progress=".0"
+                                         Progress="{Binding Progress}"
                                          RelativeLayout.WidthConstraint="{ConstraintExpression Type=RelativeToParent, Property=Width, Factor=1.0}"
                                          RelativeLayout.XConstraint="{ConstraintExpression Type=RelativeToParent, Property=Width, Factor=0.0}" />
                         </RelativeLayout>
                         <StackLayout Orientation="Horizontal">
                             <Label x:Name="CurrentTime"
                                    HorizontalOptions="StartAndExpand"
-                                   Text="00:00"
+                                   Text="{Binding CurrentTime, Converter={viewModels:TimeSpanConverter}}"
                                    TextColor="White"
                                    FontSize="Small" />
                             <Label x:Name="TotalTime"
                                    HorizontalOptions="EndAndExpand"
-                                   Text="00:00"
+                                   Text="{Binding TotalTime, Converter={viewModels:TimeSpanConverter}}"
                                    TextColor="White"
                                    FontSize="Small" />
                         </StackLayout>
                         <StackLayout Orientation="Horizontal" HorizontalOptions="Fill">
                             <AbsoluteLayout HorizontalOptions="StartAndExpand">
-                                <Image
-                                    Source="btn_viewer_control_back_normal.png"
+                                <Image x:Name="BackImage"
+                                       Source="btn_viewer_control_back_normal.png"
                                        HorizontalOptions="Center"
                                        VerticalOptions="Center"
                                        AbsoluteLayout.LayoutBounds="0,0,1,1" AbsoluteLayout.LayoutFlags="All" />
@@ -135,12 +152,13 @@
                                        AbsoluteLayout.LayoutBounds="0,0,1,1" AbsoluteLayout.LayoutFlags="All"
                                        HorizontalOptions="Fill"
                                        VerticalOptions="Fill"
-                                       WidthRequest="100" />
+                                       WidthRequest="100"
+                                       IsEnabled="{Binding IsSeekingSupported}" />
                             </AbsoluteLayout>
                             <AbsoluteLayout HorizontalOptions="Center">
                                 <Image x:Name="PlayImage"
-                                       Source="btn_viewer_control_play_normal.png"
                                        HorizontalOptions="Center"
+                                       Source="btn_viewer_control_play_normal.png"
                                        VerticalOptions="Center"
                                        AbsoluteLayout.LayoutBounds="0,0,1,1" AbsoluteLayout.LayoutFlags="All" />
                                 <Button x:Name="PlayButton"
@@ -148,12 +166,11 @@
                                         AbsoluteLayout.LayoutBounds="0,0,1,1" AbsoluteLayout.LayoutFlags="All"
                                         HorizontalOptions="Fill"
                                         VerticalOptions="Fill"
-                                        WidthRequest="100"
-                                        IsEnabled="False" />
+                                        WidthRequest="100" />
                             </AbsoluteLayout>
                             <AbsoluteLayout HorizontalOptions="EndAndExpand">
-                                <Image
-                                    Source="btn_viewer_control_forward_normal.png"
+                                <Image x:Name="ForwardImage"
+                                       Source="btn_viewer_control_forward_normal.png"
                                        HorizontalOptions="Center"
                                        VerticalOptions="Center"
                                        AbsoluteLayout.LayoutBounds="0,0,1,1" AbsoluteLayout.LayoutFlags="All" />
@@ -162,7 +179,8 @@
                                        AbsoluteLayout.LayoutBounds="0,0,1,1" AbsoluteLayout.LayoutFlags="All"
                                        HorizontalOptions="Fill"
                                        VerticalOptions="Fill"
-                                       WidthRequest="100" />
+                                       WidthRequest="100"
+                                       IsEnabled="{Binding IsSeekingSupported}" />
                             </AbsoluteLayout>
                         </StackLayout>
                     </StackLayout>
@@ -177,7 +195,8 @@
                                    AbsoluteLayout.LayoutFlags="PositionProportional"
                                    Color="White"
                                    VerticalOptions="Center"
-                                   IsVisible="False"
+                                   IsVisible="{Binding Loading}"
+                                   IsRunning="{Binding Loading}"
                                    HeightRequest="100"
                                    WidthRequest="100" />
             </AbsoluteLayout>
