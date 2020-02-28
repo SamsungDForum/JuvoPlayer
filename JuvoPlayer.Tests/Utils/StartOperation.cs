@@ -41,14 +41,19 @@ namespace JuvoPlayer.Tests.Utils
         public async Task Execute(TestContext context)
         {
             var service = context.Service;
+
+            // In playing state, issue pause but don't wait for
+            // PlayerState.Playing event.
+            if (service.State == PlayerState.Playing)
+            {
+                service.Start();
+                return;
+            }
+
             var playerStateTask =
                 StateChangedTask.Observe(service, PlayerState.Playing, context.Token, context.Timeout);
 
             service.Start();
-
-            // If play is called in playing state, new PlayerState.Playing event is not expected.
-            if (service.State == PlayerState.Playing)
-                return;
 
             await playerStateTask.ConfigureAwait(false);
         }
