@@ -50,6 +50,14 @@ namespace JuvoPlayer.Tests.Utils
         {
             var service = context.Service;
 
+            // In paused state, issue pause but don't wait for
+            // PlayerState.Paused event.
+            if (service.State == PlayerState.Paused)
+            {
+                service.Pause();
+                return;
+            }
+
             var playerStateTask = context.Service
                 .StateChanged()
                 .FirstAsync(IsPauseObserved)
@@ -57,11 +65,6 @@ namespace JuvoPlayer.Tests.Utils
                 .ToTask(context.Token);
 
             service.Pause();
-
-            // When already paused, PlayerState.Paused is not expected
-            if (context.Service.State == PlayerState.Paused)
-                return;
-
             await playerStateTask.ConfigureAwait(false);
         }
 
