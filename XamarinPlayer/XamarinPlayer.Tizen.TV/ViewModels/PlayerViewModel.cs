@@ -73,25 +73,25 @@ namespace XamarinPlayer.Tizen.TV.ViewModels
             _contentData = data;
 
             Player = DependencyService.Get<IPlayerService>(DependencyFetchTarget.NewInstance);
-            
+
             _subscriptions = new CompositeDisposable
             {
                 Player.StateChanged()
                     .ObserveOn(SynchronizationContext.Current)
                     .Subscribe(OnPlayerStateChanged, OnPlayerCompleted),
-                
+
                 Player.PlaybackError()
-                .ObserveOn(SynchronizationContext.Current)
-                .Subscribe(async message => await OnPlaybackError(message)),
-                
+                    .ObserveOn(SynchronizationContext.Current)
+                    .Subscribe(async message => await OnPlaybackError(message)),
+
                 Player.BufferingProgress()
-                .ObserveOn(SynchronizationContext.Current)
-                .Subscribe(OnBufferingProgress)
+                    .ObserveOn(SynchronizationContext.Current)
+                    .Subscribe(OnBufferingProgress)
             };
 
             InitializeSeekPreview();
             SetSource(_contentData.Clip as ClipDefinition);
-            
+
             Device.StartTimer(UpdateInterval, UpdatePlayerControl);
         }
 
@@ -354,7 +354,7 @@ namespace XamarinPlayer.Tizen.TV.ViewModels
                 return;
 
             _hasFinished = true;
-            
+
             MessagingCenter.Send<IEventSender, string>(this, "Pop", null);
         }
 
