@@ -45,6 +45,11 @@ namespace JuvoPlayer.Tests.Utils
                 StateChangedTask.Observe(service, PlayerState.Playing, context.Token, context.Timeout);
 
             service.Start();
+
+            // If play is called in playing state, new PlayerState.Playing event is not expected.
+            if (service.State == PlayerState.Playing)
+                return;
+
             await playerStateTask.ConfigureAwait(false);
         }
     }
