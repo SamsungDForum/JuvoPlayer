@@ -115,8 +115,8 @@ namespace XamarinPlayer.Views
             var size = (BindingContext as PlayerViewModel).PreviewFrameSize;
             if (size != null)
             {
-                SeekPreviewCanvas.WidthRequest = ((SKSize)size).Width;
-                SeekPreviewCanvas.HeightRequest = ((SKSize)size).Height;
+                SeekPreviewCanvas.WidthRequest = ((SKSize) size).Width;
+                SeekPreviewCanvas.HeightRequest = ((SKSize) size).Height;
             }
         }
 
@@ -172,7 +172,7 @@ namespace XamarinPlayer.Views
             if (e.Contains("Back") && !e.Contains("XF86PlayBack"))
             {
                 //If the 'return' button on standard or back arrow on the smart remote control was pressed do react depending on the playback state
-                var playerState = (PlayerState)PlayerState;
+                var playerState = (PlayerState) PlayerState;
                 if (playerState < JuvoPlayer.Common.PlayerState.Playing ||
                     playerState >= JuvoPlayer.Common.PlayerState.Playing && !BottomBar.IsVisible)
                 {
