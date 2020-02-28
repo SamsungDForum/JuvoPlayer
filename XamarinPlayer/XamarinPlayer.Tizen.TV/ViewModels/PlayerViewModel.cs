@@ -59,7 +59,7 @@ namespace XamarinPlayer.Tizen.TV.ViewModels
         private SettingsViewModel _subtitles = new SettingsViewModel {Type = StreamType.Subtitle};
 
         public event PropertyChangedEventHandler PropertyChanged;
-        public ICommand PlayPauseCommand => new Command(PlayPause);
+        public ICommand PlayOrPauseCommand => new Command(PlayOrPause);
         public ICommand PauseCommand => new Command(Pause);
         public ICommand StartCommand => new Command(Start);
         public ICommand ForwardCommand => new Command(Forward);
@@ -73,18 +73,6 @@ namespace XamarinPlayer.Tizen.TV.ViewModels
             _contentData = data;
 
             Player = DependencyService.Get<IPlayerService>(DependencyFetchTarget.NewInstance);
-
-            Player.StateChanged()
-                .ObserveOn(SynchronizationContext.Current)
-                .Subscribe(OnPlayerStateChanged, OnPlayerCompleted);
-
-            Player.PlaybackError()
-                .ObserveOn(SynchronizationContext.Current)
-                .Subscribe(async message => await OnPlaybackError(message));
-
-            Player.BufferingProgress()
-                .ObserveOn(SynchronizationContext.Current)
-                .Subscribe(OnBufferingProgress);
             
             _subscriptions = new CompositeDisposable
             {
@@ -110,17 +98,7 @@ namespace XamarinPlayer.Tizen.TV.ViewModels
         public string Source => _contentData.Source;
         public string Title => _contentData.Title;
         public string Description => _contentData.Description;
-
-        public bool IsSeekingSupported
-        {
-            get => _isSeekingSupported;
-            set
-            {
-                if (value == Player.IsSeekingSupported) return;
-                _isSeekingSupported = value;
-                OnPropertyChanged();
-            }
-        }
+        public bool IsSeekingSupported => Player.IsSeekingSupported;
 
         public PlayerState PlayerState => Player.State;
 
@@ -136,7 +114,7 @@ namespace XamarinPlayer.Tizen.TV.ViewModels
             }
         }
 
-        public SKSize PreviewFrameSize => _storyboardReader.FrameSize;
+        public SKSize? PreviewFrameSize => _storyboardReader?.FrameSize;
 
         public bool ShallDisplaySeekPreview
         {
@@ -234,19 +212,6 @@ namespace XamarinPlayer.Tizen.TV.ViewModels
             set => _subtitles = value;
         }
 
-        public List<StreamDescription> AudioSource
-        {
-            get => _audio.Source;
-            set
-            {
-                if (_audio.Source != value)
-                {
-                    _audio.Source = value;
-                    OnPropertyChanged();
-                }
-            }
-        }
-
         public int AudioSelectedIndex
         {
             get => _audio.SelectedIndex;
@@ -255,22 +220,9 @@ namespace XamarinPlayer.Tizen.TV.ViewModels
                 if (_audio.SelectedIndex != value && value != -1)
                 {
                     _audio.SelectedIndex = value;
-                    var stream = AudioSource[_audio.SelectedIndex];
+                    var stream = Audio.Source[_audio.SelectedIndex];
 
                     Player.ChangeActiveStream(stream);
-                    OnPropertyChanged();
-                }
-            }
-        }
-
-        public List<StreamDescription> VideoSource
-        {
-            get => Video.Source;
-            set
-            {
-                if (Video.Source != value)
-                {
-                    Video.Source = value;
                     OnPropertyChanged();
                 }
             }
@@ -284,22 +236,9 @@ namespace XamarinPlayer.Tizen.TV.ViewModels
                 if (Video.SelectedIndex != value && value != -1)
                 {
                     Video.SelectedIndex = value;
-                    var stream = VideoSource[Video.SelectedIndex];
+                    var stream = Video.Source[Video.SelectedIndex];
 
                     Player.ChangeActiveStream(stream);
-                    OnPropertyChanged();
-                }
-            }
-        }
-
-        public List<StreamDescription> SubtitleSource
-        {
-            get => Subtitle.Source;
-            set
-            {
-                if (Subtitle.Source != value)
-                {
-                    Subtitle.Source = value;
                     OnPropertyChanged();
                 }
             }
@@ -322,7 +261,7 @@ namespace XamarinPlayer.Tizen.TV.ViewModels
                     return;
                 }
 
-                var stream = SubtitleSource[Subtitle.SelectedIndex];
+                var stream = Subtitle.Source[Subtitle.SelectedIndex];
                 try
                 {
                     Player.ChangeActiveStream(stream);
@@ -338,7 +277,7 @@ namespace XamarinPlayer.Tizen.TV.ViewModels
 
         public IPlayerService Player { get; set; }
 
-        private void PlayPause()
+        private void PlayOrPause()
         {
             if (Player.State == PlayerState.Playing)
                 Player.Pause();
@@ -400,14 +339,9 @@ namespace XamarinPlayer.Tizen.TV.ViewModels
 
             if (state == PlayerState.Prepared)
             {
-                if (Player.IsSeekingSupported)
-                {
-                    IsSeekingSupported = true;
-                }
-
-                BindStreamPicker(_audio);
-                BindStreamPicker(Video);
-                BindSubtitleStreamPicker();
+                BindStreamSettings(Audio);
+                BindStreamSettings(Video);
+                BindSubtitleStreamSettings();
 
                 Player.Start();
             }
@@ -461,18 +395,18 @@ namespace XamarinPlayer.Tizen.TV.ViewModels
             }
         }
 
-        private void BindStreamPicker(SettingsViewModel settings)
+        private void BindStreamSettings(SettingsViewModel settings)
         {
             var streams = Player.GetStreamsDescription(settings.Type);
 
             settings.Source = streams;
             settings.SelectedIndex = 0;
 
-            SelectDefaultStreamForPicker(settings);
+            SelectDefaultStream(settings);
             OnPropertyChanged($"{settings.Type}SelectedIndex");
         }
 
-        private void SelectDefaultStreamForPicker(SettingsViewModel settings)
+        private void SelectDefaultStream(SettingsViewModel settings)
         {
             for (var i = 0; i < settings.Source.Count; ++i)
             {
@@ -484,7 +418,7 @@ namespace XamarinPlayer.Tizen.TV.ViewModels
             }
         }
 
-        private void BindSubtitleStreamPicker()
+        private void BindSubtitleStreamSettings()
         {
             var streams = new List<StreamDescription>
             {
@@ -502,7 +436,7 @@ namespace XamarinPlayer.Tizen.TV.ViewModels
             Subtitle.Source = streams;
             Subtitle.SelectedIndex = 0;
 
-            SelectDefaultStreamForPicker(Subtitle);
+            SelectDefaultStream(Subtitle);
             OnPropertyChanged($"{Subtitle.Type}SelectedIndex");
         }
 

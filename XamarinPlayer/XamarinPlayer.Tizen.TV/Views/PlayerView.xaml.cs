@@ -20,6 +20,7 @@ using System.Reactive.Linq;
 using System.Reactive.Subjects;
 using System.Threading;
 using JuvoPlayer.Common;
+using SkiaSharp;
 using SkiaSharp.Views.Forms;
 using Xamarin.Forms;
 using Xamarin.Forms.Xaml;
@@ -41,21 +42,22 @@ namespace XamarinPlayer.Views
                 defaultBindingMode: BindingMode.OneWay,
                 propertyChanged: (b, o, n) =>
                 {
+                    var playerView = ((PlayerView) b);
                     var state = (PlayerState) n;
                     switch (state)
                     {
                         case JuvoPlayer.Common.PlayerState.Prepared:
                         {
-                            ((PlayerView) b).Show();
+                            playerView.Show();
                             break;
                         }
                         case JuvoPlayer.Common.PlayerState.Playing:
                         {
-                            ((PlayerView) b).PlayImage.Source = "btn_viewer_control_pause_normal.png";
+                            playerView.PlayImage.Source = "btn_viewer_control_pause_normal.png";
                             break;
                         }
                         case JuvoPlayer.Common.PlayerState.Paused:
-                            ((PlayerView) b).PlayImage.Source = "btn_viewer_control_play_normal.png";
+                            playerView.PlayImage.Source = "btn_viewer_control_play_normal.png";
                             break;
                     }
                 });
@@ -98,7 +100,7 @@ namespace XamarinPlayer.Views
             SetBinding(SeekPreviewProperty, new Binding(nameof(PlayerViewModel.PreviewFrame)));
             SetBinding(PlayerStateProperty, new Binding(nameof(PlayerViewModel.PlayerState)));
 
-            PlayButton.Clicked += (s, e) => { (BindingContext as PlayerViewModel)?.PlayPauseCommand.Execute(null); };
+            PlayButton.Clicked += (s, e) => { (BindingContext as PlayerViewModel)?.PlayOrPauseCommand.Execute(null); };
 
             Progressbar.PropertyChanged += (sender, args) =>
             {
@@ -111,8 +113,11 @@ namespace XamarinPlayer.Views
         private void InitializeSeekPreview()
         {
             var size = (BindingContext as PlayerViewModel).PreviewFrameSize;
-            SeekPreviewCanvas.WidthRequest = size.Width;
-            SeekPreviewCanvas.HeightRequest = size.Height;
+            if (size != null)
+            {
+                SeekPreviewCanvas.WidthRequest = ((SKSize)size).Width;
+                SeekPreviewCanvas.HeightRequest = ((SKSize)size).Height;
+            }
         }
 
         private void OnSeekPreviewCanvasOnPaintSurface(object sender, SKPaintSurfaceEventArgs args)
@@ -167,7 +172,8 @@ namespace XamarinPlayer.Views
             if (e.Contains("Back") && !e.Contains("XF86PlayBack"))
             {
                 //If the 'return' button on standard or back arrow on the smart remote control was pressed do react depending on the playback state
-                var ps = (PlayerState) Enum.Parse(typeof(PlayerState), PlayerState.ToString());
+                // var ps = (PlayerState) Enum.Parse(typeof(PlayerState), PlayerState.ToString());
+                var ps = (PlayerState)PlayerState;
                 if (ps < JuvoPlayer.Common.PlayerState.Playing ||
                     ps >= JuvoPlayer.Common.PlayerState.Playing && !BottomBar.IsVisible)
                 {
@@ -197,7 +203,7 @@ namespace XamarinPlayer.Views
                 {
                     if (e.Contains("XF86PlayBack"))
                     {
-                        (BindingContext as PlayerViewModel).PlayPauseCommand.Execute(null);
+                        (BindingContext as PlayerViewModel).PlayOrPauseCommand.Execute(null);
                     }
                     else if (e.Contains("Pause"))
                     {
@@ -301,7 +307,7 @@ namespace XamarinPlayer.Views
         {
             _keySubscription?.Dispose();
             _keys = new Subject<string>();
-            var keysThrottled = _keys.Throttle(TimeSpan.FromSeconds(5));
+            var keysThrottled = _keys.Throttle(TimeSpan.FromMilliseconds(DefaultTimeout));
             _keySubscription = keysThrottled.Subscribe(i =>
             {
                 if (!Settings.IsVisible) Hide();

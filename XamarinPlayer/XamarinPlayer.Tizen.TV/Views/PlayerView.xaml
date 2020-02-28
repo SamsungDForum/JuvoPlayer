@@ -19,8 +19,7 @@
                              x:Name="Controller">
                     <StackLayout BackgroundColor="#B0101010"
                                  Padding="0, 20"
-                                 x:Name="TopBar"
-                                 IsVisible="True">
+                                 x:Name="TopBar">
                         <AbsoluteLayout HorizontalOptions="End">
                             <Image x:Name="SettingsImage"
                                    Source="btn_viewer_control_settings_normal.png"
@@ -51,7 +50,7 @@
                         </BoxView>
                         <ContentView Padding="30, 30" HorizontalOptions="CenterAndExpand">
                             <Label BackgroundColor="#B0101010"
-                                   IsVisible="{Binding CueText, Converter={viewModels:TextFieldVisibilityConverter}}"
+                                   IsVisible="{Binding CueText, Converter={viewModels:StringToBoolConverter}}"
                                    FontSize="Medium" TextColor="White"
                                    x:Name="CueTextLabel" HorizontalOptions="CenterAndExpand" WidthRequest="800"
                                    HorizontalTextAlignment="Center" Text="{Binding CueText}" />
@@ -118,8 +117,7 @@
                     </StackLayout>
                     <StackLayout BackgroundColor="#B0101010"
                                  Padding="20, 10"
-                                 x:Name="BottomBar"
-                                 IsVisible="True">
+                                 x:Name="BottomBar">
                         <RelativeLayout>
                             <BoxView Color="#20303030"
                                      HeightRequest="4"
