@@ -172,10 +172,9 @@ namespace XamarinPlayer.Views
             if (e.Contains("Back") && !e.Contains("XF86PlayBack"))
             {
                 //If the 'return' button on standard or back arrow on the smart remote control was pressed do react depending on the playback state
-                // var ps = (PlayerState) Enum.Parse(typeof(PlayerState), PlayerState.ToString());
-                var ps = (PlayerState)PlayerState;
-                if (ps < JuvoPlayer.Common.PlayerState.Playing ||
-                    ps >= JuvoPlayer.Common.PlayerState.Playing && !BottomBar.IsVisible)
+                var playerState = (PlayerState)PlayerState;
+                if (playerState < JuvoPlayer.Common.PlayerState.Playing ||
+                    playerState >= JuvoPlayer.Common.PlayerState.Playing && !BottomBar.IsVisible)
                 {
                     Hide();
                     Navigation.RemovePage(this);
