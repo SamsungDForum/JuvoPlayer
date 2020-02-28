@@ -57,6 +57,11 @@ namespace JuvoPlayer.Tests.Utils
                 .ToTask(context.Token);
 
             service.Pause();
+
+            // When already paused, PlayerState.Paused is not expected
+            if (context.Service.State == PlayerState.Paused)
+                return;
+
             await playerStateTask.ConfigureAwait(false);
         }
 

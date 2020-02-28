@@ -76,18 +76,11 @@ namespace JuvoPlayer.Tests.Utils
 
             _logger.Info($"Seeking to {SeekPosition}");
 
-            try
-            {
-                var positionReachedTask = GetPositionReachedTask(context, SeekPosition);
-                var seekTask = service.SeekTo(SeekPosition);
+            var positionReachedTask = GetPositionReachedTask(context, SeekPosition);
+            var seekTask = service.SeekTo(SeekPosition);
 
-                await seekTask.WithTimeout(context.Timeout).ConfigureAwait(false);
-                await positionReachedTask.ConfigureAwait(false);
-            }
-            catch (SeekException)
-            {
-                // Ignore
-            }
+            await seekTask.WithTimeout(context.Timeout).ConfigureAwait(false);
+            await positionReachedTask.ConfigureAwait(false);
 
         }
 
