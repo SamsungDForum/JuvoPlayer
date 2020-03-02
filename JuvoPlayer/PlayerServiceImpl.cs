@@ -20,6 +20,7 @@ using System.Collections.Generic;
 using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
+using System.Reactive.Threading.Tasks;
 using System.Threading;
 using System.Threading.Tasks;
 using ElmSharp;
@@ -64,15 +65,14 @@ namespace JuvoPlayer
 
         // Dispatch PlayerState through behavior subject. Any "late subscribers" will receive
         // current state upon subscription.
-        private readonly Subject<PlayerState> _playerStateSubject = new Subject<PlayerState>();
+        private readonly ReplaySubject<PlayerState> _playerStateSubject = new ReplaySubject<PlayerState>(1);
         private readonly Subject<string> _playerErrorSubject = new Subject<string>();
         private readonly Subject<int> _playerBufferingSubject = new Subject<int>();
         private readonly Subject<TimeSpan> _playerClockSubject = new Subject<TimeSpan>();
-
         private readonly SynchronizationContext _syncCtx;
 
-        private IDisposable _configurationSub;
-
+        private Task _currentActivity = Task.CompletedTask;
+        private CancellationTokenSource _changeStreamCts;
         private IPlayer _player;
 
         public PlayerServiceImpl()
@@ -121,8 +121,7 @@ namespace JuvoPlayer
         {
             _playerControllerConnections = new CompositeDisposable
             {
-                playerController.StateChanged().Subscribe(SetState,_syncCtx),
-                playerController.StateChanged().Subscribe(_playerStateSubject),
+                playerController.StateChanged().Subscribe(SetState,_playerStateSubject.OnCompleted,_syncCtx),
                 playerController.PlaybackError().Subscribe( _playerErrorSubject),
                 playerController.BufferingProgress().Subscribe(_playerBufferingSubject),
                 playerController.PlayerClock().Subscribe(_playerClockSubject),
@@ -134,18 +133,14 @@ namespace JuvoPlayer
         {
             Logger.Info($"Reconfigure: {reconfigurationRequired}");
 
-            _configurationSub?.Dispose();
-            _configurationSub = null;
-
             if (!reconfigurationRequired)
             {
+                // Non destructive configuration change
                 await SeekTo(CurrentPosition);
                 return;
             }
 
-            // Data provider must be stopped prior to player controller
-            // re-creation. Otherwise data provider may fill player with packets
-            // before calling seek.
+            // Destructive configuration change
             dataProvider.Pause();
             var playerStateSnapshot = _player.GetStateSnapshot();
 
@@ -167,8 +162,11 @@ namespace JuvoPlayer
         private void SetClock(TimeSpan clock) =>
             CurrentPosition = clock;
 
-        private void SetState(PlayerState state) =>
+        private void SetState(PlayerState state)
+        {
             State = state;
+            _playerStateSubject.OnNext(State);
+        }
 
         public void Pause()
         {
@@ -177,24 +175,46 @@ namespace JuvoPlayer
 
         public Task SeekTo(TimeSpan to)
         {
+            // TODO: cancel any pending stream request & wait for their completion
+            // TODO: Could be change stream/seek operation
             return playerController.OnSeek(to);
         }
 
-        public void ChangeActiveStream(StreamDescription streamDescription)
+
+        public Task ChangeActiveStream(StreamDescription streamDescription)
         {
-            // Note: Although we should get away with current model as video changes are not destructive
-            // and audio does not use adaptive streaming, handler may pick up different stream change
-            // then one about to be invoked: 
-            // - adaptive stream switch
-            // - Manual representation change
-            // - First stream config may come from adaptive streaming
-            if (streamDescription.StreamType == StreamType.Audio || streamDescription.StreamType == StreamType.Video)
+            if (streamDescription.StreamType != StreamType.Audio &&
+                streamDescription.StreamType != StreamType.Video)
             {
-                _configurationSub = playerController.ConfigurationChanged(streamDescription.StreamType)
-                    .Subscribe(async r => await OnNewConfiguration(r).ConfigureAwait(false), _syncCtx);
+                // Non A/V stream change
+                dataProvider.ChangeActiveStream(streamDescription);
+                return Task.CompletedTask;
             }
 
-            dataProvider.ChangeActiveStream(streamDescription);
+            // Cancel any pending stream changes.
+            _changeStreamCts?.Cancel();
+            _changeStreamCts?.Dispose();
+            _changeStreamCts = new CancellationTokenSource();
+            var token = _changeStreamCts.Token;
+
+            // TODO: Need to wait for current activity completion.
+            // TODO: Could be change stream/seek operation
+
+            dataProvider.Pause();
+
+            // On successful config change, create stream change completion task which will complete
+            // when new configuration gets processed.
+            // On failed change (same configuration selected), report stream change as completed.
+            _currentActivity = dataProvider.ChangeActiveStream(streamDescription)
+                ? playerController.ConfigurationChanged(streamDescription.StreamType)
+                    .ObserveOn(_syncCtx)
+                    .FirstAsync()
+                    .Do(async reconfigureNeeded => await OnNewConfiguration(reconfigureNeeded))
+                    .ToTask(token)
+                : Task.CompletedTask;
+
+            dataProvider.Resume();
+            return _currentActivity;
         }
 
         public void DeactivateStream(StreamType streamType)
@@ -282,7 +302,8 @@ namespace JuvoPlayer
         {
             if (disposing)
             {
-                _configurationSub?.Dispose();
+                _changeStreamCts?.Cancel();
+                _changeStreamCts?.Dispose();
                 drmManager.ClearCache();
                 _playerControllerConnections.Dispose();
                 _playerControllerDisposables.Dispose();

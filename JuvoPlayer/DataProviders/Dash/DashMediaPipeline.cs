@@ -472,6 +472,9 @@ namespace JuvoPlayer.DataProviders.Dash
             if (availableStreams.Count <= stream.Id)
                 throw new ArgumentOutOfRangeException();
 
+            if (pipelineStarted)
+                throw new InvalidOperationException("Pipeline not paused");
+
             var newMedia = availableStreams[stream.Id].Media;
             var newRepresentation = availableStreams[stream.Id].Representation;
 

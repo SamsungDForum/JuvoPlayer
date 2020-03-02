@@ -18,6 +18,7 @@
 using System;
 using System.Threading.Tasks;
 using JuvoPlayer.Common;
+using JuvoPlayer.Player.EsPlayer;
 
 namespace JuvoPlayer.Tests.Utils
 {
@@ -54,14 +55,21 @@ namespace JuvoPlayer.Tests.Utils
             Index = GetRandomStreamDescriptionIndex(service, StreamType);
         }
 
-        public Task Execute(TestContext context)
+        public async Task Execute(TestContext context)
         {
             var service = context.Service;
             var descriptions = service.GetStreamsDescription(StreamType);
-            if (Index >= 0)
-                service.ChangeActiveStream(descriptions[Index]);
+            if (Index == -1)
+                return;
 
-            return Task.CompletedTask;
+            var currentState = service.State;
+            var changeTask = service.ChangeActiveStream(descriptions[Index]).WithTimeout(context.Timeout);
+
+            // When paused, change task is not expected to complete until playback is resumed
+            if (currentState == PlayerState.Paused)
+                return;
+
+            await changeTask;
         }
 
         private static StreamType GetRandomStreamType()

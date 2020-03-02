@@ -70,18 +70,21 @@ namespace JuvoPlayer.Tests.Utils
                 .ToTask(context.Token);
         }
 
-        public async Task Execute(TestContext context)
+        public Task Execute(TestContext context)
         {
             var service = context.Service;
+            var seekStartState = service.State;
 
-            _logger.Info($"Seeking to {SeekPosition}");
+            _logger.Info($"Seeking to {SeekPosition} in state {seekStartState}");
 
             var positionReachedTask = GetPositionReachedTask(context, SeekPosition);
             var seekTask = service.SeekTo(SeekPosition);
 
-            await seekTask.WithTimeout(context.Timeout).ConfigureAwait(false);
-            await positionReachedTask.ConfigureAwait(false);
-
+            // When seeking in paused state, seek Task and thus position task
+            // will not complete until playback is resumed. Return a completed task.
+            return seekStartState == PlayerState.Paused
+                ? Task.CompletedTask
+                : Task.WhenAll(seekTask, positionReachedTask).WithTimeout(context.Timeout);
         }
 
         private static TimeSpan RandomSeekTime(IPlayerService service)
