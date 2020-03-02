@@ -249,6 +249,10 @@ namespace JuvoPlayer.DataProviders.Dash
 
                 Logger.Info("Changing stream to bandwidth: " + stream.Representation.Bandwidth);
                 pendingStream = stream;
+
+                // Note: Pending stream will not have information on AlignedStartSegmentId.
+                // If dash client will be in first segment download stage... playback will terminate
+                // TODO: Add segment realignment. Will require DashDataProvider signaling to update A&V
             }
             finally
             {
@@ -296,12 +300,11 @@ namespace JuvoPlayer.DataProviders.Dash
             Monitor.Enter(switchStreamLock);
             try
             {
-                ResetPipeline();
                 DisableAdaptiveStreaming = true;
-                pendingStream = null;
-
-                StartPipeline(newStream);
-
+                pendingStream = newStream;
+                dashClient.UpdateRepresentation(pendingStream.Representation);
+                ParseDrms(pendingStream.Media);
+                PushMetaDataConfiguration();
             }
             finally
             {
@@ -365,22 +368,18 @@ namespace JuvoPlayer.DataProviders.Dash
 
                 dashClient.UpdateRepresentation(currentStream.Representation);
                 ParseDrms(currentStream.Media);
+                PushMetaDataConfiguration();
             }
 
             if (!trimOffset.HasValue)
                 trimOffset = currentStream.Representation.AlignedTrimOffset;
 
-            var fullInitRequired = (newStream != null);
+            var fullInitRequired = (newStream != null) || DisableAdaptiveStreaming;
 
             demuxerController.StartForEs();
             dashClient.Start(fullInitRequired);
 
             pipelineStarted = true;
-
-            if (newStream != null)
-            {
-                PushMetaDataConfiguration();
-            }
         }
 
         private static AdaptationSet GetDefaultMedia(ICollection<AdaptationSet> medias)
@@ -440,6 +439,12 @@ namespace JuvoPlayer.DataProviders.Dash
 
         }
 
+        public void ResetTrimOffset()
+        {
+            Logger.Info(StreamType.ToString());
+            trimOffset = null;
+        }
+
         public void OnTimeUpdated(TimeSpan time)
         {
             dashClient.OnTimeUpdated(time);
@@ -478,8 +483,8 @@ namespace JuvoPlayer.DataProviders.Dash
             {
                 Logger.Info($"Selected stream {stream.Id} {stream.Description} already playing. Not changing.");
                 return false;
-
             }
+
 
             SetStream(newStream);
             Logger.Info($"Stream {stream.Id} {stream.Description} set.");
@@ -495,6 +500,7 @@ namespace JuvoPlayer.DataProviders.Dash
 
             // Stop demuxer and dashclient
             dashClient.Reset();
+
             demuxerController.Reset();
             DisposeDemuxerSubscriptions();
             SubscribeDemuxerEvents();

@@ -30,7 +30,6 @@ namespace JuvoPlayer.Player
     public class PlayerController : IPlayerController
     {
         private bool seeking;
-        private TimeSpan currentTime;
         private TimeSpan duration;
 
         private readonly IDrmManager drmManager;
@@ -81,6 +80,14 @@ namespace JuvoPlayer.Player
         public IObservable<TimeSpan> PlayerClock()
         {
             return player.PlayerClock();
+        }
+
+        public IObservable<bool> ConfigurationChanged(StreamType stream)
+        {
+            if (!streams.ContainsKey(stream))
+                throw new ArgumentException("Unconfigured stream", nameof(stream));
+
+            return streams[stream].ConfigurationChanged();
         }
 
 
@@ -206,6 +213,7 @@ namespace JuvoPlayer.Player
                 stream.Dispose();
 
             player?.Dispose();
+            streamErrorSubject.Dispose();
         }
     }
 }

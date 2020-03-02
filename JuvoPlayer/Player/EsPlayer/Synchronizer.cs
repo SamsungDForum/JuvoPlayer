@@ -84,8 +84,10 @@ namespace JuvoPlayer.Player.EsPlayer
             var clockDiff = streamState.Dts - lastClock;
 
             // Ignore clock discontinuities
-            clockDiff = clockDiff > StreamClockDiscontinuityThreshold || clockDiff <= TimeSpan.Zero
-                        ? TimeSpan.Zero : clockDiff;
+            if (clockDiff > StreamClockDiscontinuityThreshold)
+                clockDiff = StreamClockDiscontinuityThreshold;
+            else if (clockDiff < TimeSpan.Zero)
+                clockDiff = TimeSpan.Zero;
 
             streamState.TransferredDuration += clockDiff;
 
@@ -97,14 +99,16 @@ namespace JuvoPlayer.Player.EsPlayer
 
         private static async Task DelayStream(SynchronizationData streamState, bool keyFramesSeen, CancellationToken token)
         {
-            var transferTime = (streamState.EndTime - streamState.BeginTime);
-            if (transferTime >= streamState.TransferredDuration)
-                return;
-
-            var delay = streamState.TransferredDuration - transferTime;
-            Logger.Info($"{streamState.StreamType}: Delaying {delay}");
+            var transferTime = streamState.EndTime - streamState.BeginTime;
+            var transferredDuration = streamState.TransferredDuration;
+            var delay = transferTime >= transferredDuration
+                ? TimeSpan.Zero
+                : transferredDuration - transferTime;
 
             ResetTransferChunk(streamState, delay, keyFramesSeen);
+            Logger.Info($"{streamState.StreamType}: Delaying {delay}");
+            if (delay == TimeSpan.Zero)
+                return;
 
             await Task.Delay(delay, token).ConfigureAwait(false);
         }
@@ -150,7 +154,7 @@ namespace JuvoPlayer.Player.EsPlayer
                     // Grab end time before going into sync barrier. Otherwise first stream entering barrier
                     // will have overly long transfer time due to wait for second stream.
                     streamState.EndTime = DateTimeOffset.Now;
-                    Logger.Info($"{streamState.StreamType}: Sync. Pushed/Pts {streamState.TransferredDuration}/{streamState.Pts}");
+                    Logger.Info($"{streamState.StreamType}: Sync. Pushed/Needed/Pts {streamState.TransferredDuration}/{streamState.NeededDuration}/{streamState.Pts}");
                     var keyFrames = await _streamSyncBarrier.Signal(streamState.KeyFrameSeen, token);
 
                     // Use key frame to determine drip feed value.

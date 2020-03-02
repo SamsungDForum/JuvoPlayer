@@ -43,5 +43,7 @@ namespace JuvoPlayer.Player
 
         Task SetStreamConfig(StreamConfig config);
         void AppendPacket(Packet packet);
+
+        object GetStateSnapshot();
     }
 }

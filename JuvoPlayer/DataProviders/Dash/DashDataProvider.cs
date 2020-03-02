@@ -75,6 +75,17 @@ namespace JuvoPlayer.DataProviders.Dash
             }
         }
 
+        public void Resume()
+        {
+            videoPipeline.Resume();
+            audioPipeline.Resume();
+        }
+        public void Pause()
+        {
+            videoPipeline.Pause();
+            audioPipeline.Pause();
+        }
+
         public IObservable<TimeSpan> ClipDurationChanged()
         {
             return manifestProvider.ClipDurationChanged();
@@ -118,17 +129,41 @@ namespace JuvoPlayer.DataProviders.Dash
             switch (stream.StreamType)
             {
                 case StreamType.Audio:
-                    return audioPipeline.ChangeStream(stream);
+
+                    videoPipeline.Pause();
+                    audioPipeline.Pause();
+                    videoPipeline.ResetTrimOffset();
+                    audioPipeline.ResetTrimOffset();
+
+                    audioPipeline.ChangeStream(stream);
+                    break;
 
                 case StreamType.Video:
-                    return videoPipeline.ChangeStream(stream);
+
+                    videoPipeline.Pause();
+                    audioPipeline.Pause();
+                    videoPipeline.ResetTrimOffset();
+                    audioPipeline.ResetTrimOffset();
+
+                    videoPipeline.ChangeStream(stream);
+                    break;
 
                 case StreamType.Subtitle:
                     OnChangeActiveSubtitleStream(stream);
                     return true;
+
+                default:
+                    return false;
             }
 
-            return false;
+            // New stream. Synch is required to determine start segment.
+            // Needed if pipeline is first segment download stage.
+            audioPipeline.SynchronizeWith(videoPipeline);
+
+            videoPipeline.Resume();
+            audioPipeline.Resume();
+
+            return true;
         }
 
         public void OnDeactivateStream(StreamType streamType)
