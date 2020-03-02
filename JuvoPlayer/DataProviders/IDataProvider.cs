@@ -39,6 +39,9 @@ namespace JuvoPlayer.DataProviders
         void Start();
         Cue CurrentCue { get; }
         List<StreamDescription> GetStreamsDescription(StreamType streamType);
+        void Pause();
+        void Resume();
+
 
         IObservable<TimeSpan> ClipDurationChanged();
         IObservable<DRMInitData> DRMInitDataFound();
