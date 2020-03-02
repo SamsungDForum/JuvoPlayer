@@ -126,26 +126,16 @@ namespace JuvoPlayer.DataProviders.Dash
         {
             Logger.Info("");
 
+            bool isChanged;
+
             switch (stream.StreamType)
             {
                 case StreamType.Audio:
-
-                    videoPipeline.Pause();
-                    audioPipeline.Pause();
-                    videoPipeline.ResetTrimOffset();
-                    audioPipeline.ResetTrimOffset();
-
-                    audioPipeline.ChangeStream(stream);
+                    isChanged = audioPipeline.ChangeStream(stream);
                     break;
 
                 case StreamType.Video:
-
-                    videoPipeline.Pause();
-                    audioPipeline.Pause();
-                    videoPipeline.ResetTrimOffset();
-                    audioPipeline.ResetTrimOffset();
-
-                    videoPipeline.ChangeStream(stream);
+                    isChanged = videoPipeline.ChangeStream(stream);
                     break;
 
                 case StreamType.Subtitle:
@@ -156,12 +146,13 @@ namespace JuvoPlayer.DataProviders.Dash
                     return false;
             }
 
+            if (!isChanged) return false;
+
             // New stream. Synch is required to determine start segment.
             // Needed if pipeline is first segment download stage.
+            videoPipeline.ResetTrimOffset();
+            audioPipeline.ResetTrimOffset();
             audioPipeline.SynchronizeWith(videoPipeline);
-
-            videoPipeline.Resume();
-            audioPipeline.Resume();
 
             return true;
         }
