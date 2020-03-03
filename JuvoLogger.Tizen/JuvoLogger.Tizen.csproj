@@ -4,6 +4,7 @@
   <PropertyGroup>    
     <TizenCreateTpkOnBuild>false</TizenCreateTpkOnBuild>
     <TargetFramework>tizen50</TargetFramework>
+    <LangVersion>latest</LangVersion>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugType>portable</DebugType>
