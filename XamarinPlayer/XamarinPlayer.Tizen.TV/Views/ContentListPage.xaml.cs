@@ -59,7 +59,7 @@ namespace XamarinPlayer.Tizen.TV.Views
         {
             var playerView = new PlayerView
             {
-                BindingContext = new PlayerViewModel(item.BindingContext as DetailContentData)
+                BindingContext = new PlayerViewModel(item.BindingContext as DetailContentData, new DialogService())
             };
             return _appMainPage.PushAsync(playerView);
         }
