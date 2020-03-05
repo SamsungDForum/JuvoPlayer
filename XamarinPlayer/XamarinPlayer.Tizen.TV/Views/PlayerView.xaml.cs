@@ -72,8 +72,29 @@ namespace XamarinPlayer.Views
                 propertyChanged: (b, o, n) =>
                 {
                     if (n != null)
+                    {
                         ((PlayerView) b).SeekPreviewCanvas.InvalidateSurface();
+                    }
                 });
+
+        public static readonly BindableProperty PreviewFrameSizeProperty =
+            BindableProperty.Create(
+                propertyName: "PreviewFrameSize",
+                returnType: typeof(object),
+                typeof(SKSize),
+                defaultValue: false,
+                defaultBindingMode: BindingMode.OneWay,
+                propertyChanged: (b, o, n) =>
+                {
+                    if (!(n is null))
+                        ((PlayerView) b).SetSeekPreviewFrameSize((SKSize) n);
+                });
+
+        public object PreviewFrameSize
+        {
+            set { SetValue(PreviewFrameSizeProperty, value); }
+            get { return GetValue(PreviewFrameSizeProperty); }
+        }
 
         public object PlayerState
         {
@@ -99,6 +120,7 @@ namespace XamarinPlayer.Views
 
             SetBinding(SeekPreviewProperty, new Binding(nameof(PlayerViewModel.PreviewFrame)));
             SetBinding(PlayerStateProperty, new Binding(nameof(PlayerViewModel.PlayerState)));
+            SetBinding(PreviewFrameSizeProperty, new Binding(nameof(PlayerViewModel.PreviewFrameSize)));
 
             PlayButton.Clicked += (s, e) => { (BindingContext as PlayerViewModel)?.PlayOrPauseCommand.Execute(null); };
 
@@ -107,17 +129,12 @@ namespace XamarinPlayer.Views
                 if (args.PropertyName == "Progress")
                     UpdateSeekPreviewFramePosition();
             };
-            PlayImage.Source = "btn_viewer_control_play_normal.png";
         }
 
-        private void InitializeSeekPreview()
+        private void SetSeekPreviewFrameSize(SKSize size)
         {
-            var size = (BindingContext as PlayerViewModel).PreviewFrameSize;
-            if (size != null)
-            {
-                SeekPreviewCanvas.WidthRequest = ((SKSize) size).Width;
-                SeekPreviewCanvas.HeightRequest = ((SKSize) size).Height;
-            }
+            SeekPreviewCanvas.WidthRequest = size.Width;
+            SeekPreviewCanvas.HeightRequest = size.Height;
         }
 
         private void OnSeekPreviewCanvasOnPaintSurface(object sender, SKPaintSurfaceEventArgs args)
@@ -144,7 +161,8 @@ namespace XamarinPlayer.Views
                 offset = SeekPreviewContainer.Width - SeekPreviewFrame.Width;
 
             AbsoluteLayout.SetLayoutBounds(SeekPreviewFrame,
-                new Rectangle(offset, .0, SeekPreviewFrame.Width, SeekPreviewFrame.Height));
+                new Rectangle(offset, SeekPreviewContainer.Height - SeekPreviewFrame.Height, SeekPreviewFrame.Width,
+                    SeekPreviewFrame.Height));
         }
 
         protected override void OnAppearing()
@@ -159,7 +177,6 @@ namespace XamarinPlayer.Views
             PlayButton.IsEnabled = true;
             PlayButton.Focus();
             SetupDebounce();
-            InitializeSeekPreview();
         }
 
         private void KeyEventHandler(string e)
@@ -172,9 +189,7 @@ namespace XamarinPlayer.Views
             if (e.Contains("Back") && !e.Contains("XF86PlayBack"))
             {
                 //If the 'return' button on standard or back arrow on the smart remote control was pressed do react depending on the playback state
-                var playerState = (PlayerState) PlayerState;
-                if (playerState < JuvoPlayer.Common.PlayerState.Playing ||
-                    playerState >= JuvoPlayer.Common.PlayerState.Playing && !BottomBar.IsVisible)
+                if (!BottomBar.IsVisible)
                 {
                     Hide();
                     Navigation.RemovePage(this);
@@ -186,6 +201,7 @@ namespace XamarinPlayer.Views
                         Settings.IsVisible = false;
                         PlayButton.IsEnabled = true;
                         PlayButton.Focus();
+                        SeekPreviewContainer.Opacity = 1;
                     }
                     else
                         Hide();
@@ -226,6 +242,7 @@ namespace XamarinPlayer.Views
                         Settings.IsVisible = true;
                         PlayButton.IsEnabled = false;
                         AudioTrack.Focus();
+                        SeekPreviewContainer.Opacity = 0;
                     }
 
                     //expand the time that playback control bar is on the screen
@@ -272,12 +289,14 @@ namespace XamarinPlayer.Views
             PlayButton.Focus();
             TopBar.IsVisible = true;
             BottomBar.IsVisible = true;
+            SeekPreviewContainer.Opacity = 1;
         }
 
         private void Hide()
         {
             TopBar.IsVisible = false;
             BottomBar.IsVisible = false;
+            SeekPreviewContainer.Opacity = 0;
         }
 
         protected override bool OnBackButtonPressed()
