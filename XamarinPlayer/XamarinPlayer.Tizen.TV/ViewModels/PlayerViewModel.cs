@@ -46,20 +46,21 @@ namespace XamarinPlayer.Tizen.TV.ViewModels
         private bool _isPlayerDestroyed;
         private bool _hasFinished;
         private bool _isBuffering;
-        private bool _isSeekingSupported;
-        private bool _shallDisplaySeekPreview;
+        private bool _hasSeekPreview;
         private TimeSpan _currentTime = TimeSpan.Zero;
         private TimeSpan _totalTime = TimeSpan.Zero;
         private double _progress;
         private string _cueText;
         private bool _loading;
         private SubSkBitmap _previewFrame;
+        private SKSize? _previewFrameSize;
         private SettingsViewModel _audio = new SettingsViewModel {Type = StreamType.Audio};
         private SettingsViewModel _video = new SettingsViewModel {Type = StreamType.Video};
         private SettingsViewModel _subtitles = new SettingsViewModel {Type = StreamType.Subtitle};
 
         public event PropertyChangedEventHandler PropertyChanged;
         public ICommand PlayOrPauseCommand => new Command(PlayOrPause);
+        public ICommand InitializeSeekPreviewCommand => new Command(InitializeSeekPreview);
         public ICommand PauseCommand => new Command(Pause);
         public ICommand StartCommand => new Command(Start);
         public ICommand ForwardCommand => new Command(Forward);
@@ -114,16 +115,27 @@ namespace XamarinPlayer.Tizen.TV.ViewModels
             }
         }
 
-        public SKSize? PreviewFrameSize => _storyboardReader?.FrameSize;
-
-        public bool ShallDisplaySeekPreview
+        public SKSize? PreviewFrameSize
         {
-            get => _shallDisplaySeekPreview;
+            get => _previewFrameSize;
             set
             {
-                if (value != _shallDisplaySeekPreview)
+                if (value != _previewFrameSize)
                 {
-                    _shallDisplaySeekPreview = value;
+                    _previewFrameSize = value;
+                    OnPropertyChanged();
+                }
+            }
+        }
+
+        public bool HasSeekPreview
+        {
+            get => _hasSeekPreview;
+            set
+            {
+                if (value != _hasSeekPreview)
+                {
+                    _hasSeekPreview = value;
                     OnPropertyChanged();
                 }
             }
@@ -304,6 +316,7 @@ namespace XamarinPlayer.Tizen.TV.ViewModels
             try
             {
                 await _storyboardReader.LoadTask;
+                PreviewFrameSize = _storyboardReader?.FrameSize;
             }
             catch (Exception ex)
             {
@@ -470,12 +483,12 @@ namespace XamarinPlayer.Tizen.TV.ViewModels
         {
             if (_seekLogic.ShallDisplaySeekPreview())
             {
-                if (!ShallDisplaySeekPreview)
-                    ShallDisplaySeekPreview = true;
+                if (!HasSeekPreview)
+                    HasSeekPreview = true;
                 PreviewFrame = GetSeekPreviewFrame();
             }
-            else if (ShallDisplaySeekPreview)
-                ShallDisplaySeekPreview = false;
+            else if (HasSeekPreview)
+                HasSeekPreview = false;
         }
 
         private void UpdatePlayTime()
