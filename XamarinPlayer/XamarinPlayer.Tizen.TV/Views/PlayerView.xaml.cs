@@ -126,7 +126,7 @@ namespace XamarinPlayer.Views
 
             Progressbar.PropertyChanged += (sender, args) =>
             {
-                if (args.PropertyName == "Progress" || args.PropertyName == "HasSeekPreview")
+                if (args.PropertyName == "Progress")
                     UpdateSeekPreviewFramePosition();
             };
         }
