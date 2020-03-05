@@ -126,7 +126,7 @@ namespace XamarinPlayer.Views
 
             Progressbar.PropertyChanged += (sender, args) =>
             {
-                if (args.PropertyName == "Progress")
+                if (args.PropertyName == "Progress" || args.PropertyName == "HasSeekPreview")
                     UpdateSeekPreviewFramePosition();
             };
         }
@@ -169,9 +169,8 @@ namespace XamarinPlayer.Views
         {
             base.OnAppearing();
             MessagingCenter.Subscribe<IKeyEventSender, string>(this, "KeyDown", (s, e) => { KeyEventHandler(e); });
-            MessagingCenter.Subscribe<IEventSender, string>(this, "PlaybackError",
-                (s, e) => { DisplayAlert("Playback Error", e, "OK"); });
-            MessagingCenter.Subscribe<IEventSender, string>(this, "Pop", (s, e) => { Navigation.PopAsync(); });
+            MessagingCenter.Subscribe<IEventSender, string>(this, "Pop",
+                async (s, e) => { await Navigation.PopAsync(); });
 
             SettingsButton.IsEnabled = true;
             PlayButton.IsEnabled = true;
@@ -267,7 +266,6 @@ namespace XamarinPlayer.Views
             base.OnDisappearing();
 
             MessagingCenter.Unsubscribe<IKeyEventSender, string>(this, "KeyDown");
-            MessagingCenter.Unsubscribe<IEventSender, string>(this, "PlaybackError");
             MessagingCenter.Unsubscribe<IEventSender, string>(this, "Pop");
             _keySubscription?.Dispose();
             (BindingContext as PlayerViewModel)?.DisposeCommand.Execute(null);
