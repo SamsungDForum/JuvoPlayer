@@ -112,7 +112,7 @@
                         </Picker.Items>
                     </Picker>
                 </Grid>
-                <AbsoluteLayout x:Name="SeekPreviewContainer" IsVisible="{Binding HasSeekPreview}"
+                <AbsoluteLayout x:Name="SeekPreviewContainer" IsVisible="{Binding IsSeekInProgress}"
                                 Margin="100, 0"
                                 AbsoluteLayout.LayoutFlags="All"
                                 AbsoluteLayout.LayoutBounds="0,0,1,1">

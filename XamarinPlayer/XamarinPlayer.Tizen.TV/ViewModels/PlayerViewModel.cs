@@ -47,7 +47,7 @@ namespace XamarinPlayer.Tizen.TV.ViewModels
         private bool _isPlayerDestroyed;
         private bool _hasFinished;
         private bool _isBuffering;
-        private bool _hasSeekPreview;
+        private bool _isSeekInProgress;
         private TimeSpan _currentTime = TimeSpan.Zero;
         private TimeSpan _totalTime = TimeSpan.Zero;
         private double _progress;
@@ -128,14 +128,14 @@ namespace XamarinPlayer.Tizen.TV.ViewModels
             }
         }
 
-        public bool HasSeekPreview
+        public bool IsSeekInProgress
         {
-            get => _hasSeekPreview;
+            get => _isSeekInProgress;
             set
             {
-                if (value != _hasSeekPreview)
+                if (value != _isSeekInProgress)
                 {
-                    _hasSeekPreview = value;
+                    _isSeekInProgress = value;
                     OnPropertyChanged();
                 }
             }
@@ -482,12 +482,12 @@ namespace XamarinPlayer.Tizen.TV.ViewModels
         {
             if (_seekLogic.ShallDisplaySeekPreview())
             {
-                if (!HasSeekPreview)
-                    HasSeekPreview = true;
+                if (!IsSeekInProgress)
+                    IsSeekInProgress = true;
                 PreviewFrame = GetSeekPreviewFrame();
             }
-            else if (HasSeekPreview)
-                HasSeekPreview = false;
+            else if (IsSeekInProgress)
+                IsSeekInProgress = false;
         }
 
         private void UpdatePlayTime()
