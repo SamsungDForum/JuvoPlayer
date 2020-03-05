@@ -39,6 +39,7 @@ namespace XamarinPlayer.Tizen.TV.ViewModels
     {
         private static readonly ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
         private DetailContentData _contentData;
+        private IDialogService _dialog;
         private SeekLogic _seekLogic; // needs to be initialized in constructor!
         private StoryboardReader _storyboardReader;
         private readonly CompositeDisposable _subscriptions;
@@ -60,7 +61,6 @@ namespace XamarinPlayer.Tizen.TV.ViewModels
 
         public event PropertyChangedEventHandler PropertyChanged;
         public ICommand PlayOrPauseCommand => new Command(PlayOrPause);
-        public ICommand InitializeSeekPreviewCommand => new Command(InitializeSeekPreview);
         public ICommand PauseCommand => new Command(Pause);
         public ICommand StartCommand => new Command(Start);
         public ICommand ForwardCommand => new Command(Forward);
@@ -69,10 +69,10 @@ namespace XamarinPlayer.Tizen.TV.ViewModels
         public ICommand ResumeCommand => new Command(Resume);
         public ICommand DisposeCommand => new Command(Dispose);
 
-        public PlayerViewModel(DetailContentData data)
+        public PlayerViewModel(DetailContentData data, IDialogService dialog)
         {
             _contentData = data;
-
+            _dialog = dialog;
             Player = DependencyService.Get<IPlayerService>(DependencyFetchTarget.NewInstance);
 
             _subscriptions = new CompositeDisposable
@@ -381,9 +381,8 @@ namespace XamarinPlayer.Tizen.TV.ViewModels
 
                 Player.Stop();
                 if (!string.IsNullOrEmpty(message))
-                    MessagingCenter.Send<IEventSender, string>(this, "PlaybackError", null);
-
-                MessagingCenter.Send<IEventSender, string>(this, "Pop", null);
+                    await _dialog.ShowError(message, "Playback Error", "OK",
+                        () => MessagingCenter.Send<IEventSender, string>(this, "Pop", null));
             }
         }
 
@@ -468,12 +467,12 @@ namespace XamarinPlayer.Tizen.TV.ViewModels
             if (_isPlayerDestroyed)
                 return false;
 
+            UpdatePlayTime();
+            UpdateLoadingState();
+            UpdateSeekPreview();
             if (Player.State >= PlayerState.Playing)
             {
-                UpdatePlayTime();
                 UpdateCueText();
-                UpdateLoadingState();
-                UpdateSeekPreview();
             }
 
             return true;
@@ -541,6 +540,7 @@ namespace XamarinPlayer.Tizen.TV.ViewModels
             // Not something we want...
             // Reproducible with fast playback start/exit before start completes.
             //
+            if (_isPlayerDestroyed) return;
             _isPlayerDestroyed = true;
             _storyboardReader?.Dispose();
             _storyboardReader = null;
