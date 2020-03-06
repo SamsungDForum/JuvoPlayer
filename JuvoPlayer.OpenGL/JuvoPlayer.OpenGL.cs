@@ -1,6 +1,6 @@
 /*!
  * https://github.com/SamsungDForum/JuvoPlayer
- * Copyright 2018, Samsung Electronics Co., Ltd
+ * Copyright 2020, Samsung Electronics Co., Ltd
  * Licensed under the MIT license
  *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
@@ -16,6 +16,7 @@
  */
 
 using System;
+using System.Collections.Generic;
 using System.IO;
 using JuvoPlayer.Common;
 using JuvoLogger;
@@ -78,6 +79,7 @@ namespace JuvoPlayer.OpenGL
             OpenGlLoggerManager.Configure(_uiContext);
             _seekLogic = new SeekLogic(this);
             DllImports.Create();
+            InitializeKeyHandlersMap();
             InitMenu();
         }
 
@@ -243,6 +245,33 @@ namespace JuvoPlayer.OpenGL
             };
         }
 
+        private delegate void KeyHandlerDelegate();
+
+        private Dictionary<string, KeyHandlerDelegate> _keyHandlersMap;
+
+        private void InitializeKeyHandlersMap()
+        {
+            _keyHandlersMap = new Dictionary<string, KeyHandlerDelegate>()
+            {
+                { "Right", HandleKeyRight },
+                { "Left", HandleKeyLeft },
+                { "Up", HandleKeyUp },
+                { "Down", HandleKeyDown },
+                { "Return", HandleKeyReturn },
+                { "Back", HandleKeyBack },
+                { "Exit", HandleKeyExit },
+                { "Play", HandleKeyPlay },
+                { "3XSpeed", HandleKeyPlay },
+                { "Pause", HandleKeyPause },
+                { "Stop", HandleKeyStop },
+                { "3D", HandleKeyStop },
+                { "Rewind", HandleKeyRewind },
+                { "Next", HandleKeySeekForward },
+                { "Red", HandleKeyRed },
+                { "Green", HandleKeyGreen }
+            };
+        }
+
         protected override void OnKeyEvent(Key key)
         {
             if (key.State != Key.StateType.Down)
@@ -251,65 +280,12 @@ namespace JuvoPlayer.OpenGL
             if (_isAlertShown && !key.KeyPressedName.Contains("Return") && !key.KeyPressedName.Contains("Exit"))
                 return;
 
-            if (key.KeyPressedName.Contains("Right"))
+            foreach ((string keyName, KeyHandlerDelegate keyHandler) in _keyHandlersMap)
             {
-                HandleKeyRight();
-            }
-            else if (key.KeyPressedName.Contains("Left"))
-            {
-                HandleKeyLeft();
-            }
-            else if (key.KeyPressedName.Contains("Up"))
-            {
-                HandleKeyUp();
-            }
-            else if (key.KeyPressedName.Contains("Down"))
-            {
-                HandleKeyDown();
-            }
-            else if (key.KeyPressedName.Contains("Return"))
-            {
-                HandleKeyReturn();
-            }
-            else if (key.KeyPressedName.Contains("Back"))
-            {
-                HandleKeyBack();
-            }
-            else if (key.KeyPressedName.Contains("Exit"))
-            {
-                HandleKeyExit();
-            }
-            else if (key.KeyPressedName.Contains("Play") || key.KeyPressedName.Contains("3XSpeed"))
-            {
-                HandleKeyPlay();
-            }
-            else if (key.KeyPressedName.Contains("Pause"))
-            {
-                HandleKeyPause();
-            }
-            else if (key.KeyPressedName.Contains("Stop") || key.KeyPressedName.Contains("3D"))
-            {
-                HandleKeyStop();
-            }
-            else if (key.KeyPressedName.Contains("Rewind"))
-            {
-                HandleKeyRewind();
-            }
-            else if (key.KeyPressedName.Contains("Next"))
-            {
-                HandleKeySeekForward();
-            }
-            else if (key.KeyPressedName.Contains("Red"))
-            {
-                _metricsHandler.SwitchVisibility();
-            }
-            else if (key.KeyPressedName.Contains("Green"))
-            {
-                GC.Collect();
-            }
-            else
-            {
-                Logger?.Warn($"Unknown key pressed: {key.KeyPressedName}");
+                if (!key.KeyPressedName.Contains(keyName))
+                    continue;
+                keyHandler?.Invoke();
+                break;
             }
 
             KeyPressedMenuUpdate();
@@ -621,6 +597,16 @@ namespace JuvoPlayer.OpenGL
         private void HandleKeySeekForward()
         {
             _seekLogic.SeekForward();
+        }
+
+        private void HandleKeyRed()
+        {
+            _metricsHandler.SwitchVisibility();
+        }
+
+        private void HandleKeyGreen()
+        {
+            GC.Collect();
         }
 
         private static void ResetPlaybackControls()
