@@ -62,10 +62,7 @@ namespace JuvoLogger.Tizen
             else
             {
                 foreach (var messagePart in SplitMessage(message))
-                {
-                    global::Tizen.Log.Warn("UT", $"{messagePart.Length}");
                     tizenLog(Channel, messagePart, file, method, line);
-                }
             }
         }
 
