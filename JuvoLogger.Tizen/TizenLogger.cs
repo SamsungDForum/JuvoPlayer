@@ -15,10 +15,14 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+using System.Collections.Generic;
+
 namespace JuvoLogger.Tizen
 {
     public class TizenLogger : LoggerBase
     {
+        private const int MaxLen = 800;
+
         private delegate void LogMethod(string tag, string message, string file, string func, int line);
 
         public TizenLogger(string channel, LogLevel level) : base(channel, level)
@@ -53,7 +57,46 @@ namespace JuvoLogger.Tizen
                     break;
             }
 
-            tizenLog(Channel, message, file, method, line);
+            if (message.Length <= MaxLen)
+                tizenLog(Channel, message, file, method, line);
+            else
+            {
+                foreach (var messagePart in SplitMessage(message))
+                {
+                    global::Tizen.Log.Warn("UT", $"{messagePart.Length}");
+                    tizenLog(Channel, messagePart, file, method, line);
+                }
+            }
+        }
+
+        private static IEnumerable<string> SplitMessage(string message)
+        {
+            // Rules:
+            // 1. If a message is less than or equal maxLen, then it's not split.
+            // 2. If a message is greater than maxLen, then it's split firstly by a new line character.
+            // 3. If a particular line is greater than maxLen, then it's split by maxLen size.
+            //
+            // Note: dlog's max log size is about 950 characters.
+
+            if (message.Length <= MaxLen)
+                return new[] {message};
+            var result = new List<string>();
+            foreach (var line in message.Split('\n'))
+            {
+                if (line.Length <= MaxLen)
+                    result.Add(line);
+                else
+                {
+                    var start = 0;
+                    for (var end = MaxLen; end < line.Length; end += MaxLen)
+                    {
+                        result.Add(line.Substring(start, MaxLen));
+                        start = end;
+                    }
+                    result.Add(line.Substring(start));
+                }
+            }
+            return result;
         }
     }
 }
