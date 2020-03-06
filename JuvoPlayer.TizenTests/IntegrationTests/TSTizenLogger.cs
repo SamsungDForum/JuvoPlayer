@@ -15,9 +15,9 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+using System.Text;
 using JuvoLogger;
 using JuvoLogger.Tizen;
-using JuvoPlayer.Tests;
 using JuvoPlayer.Tests.UnitTests;
 using NUnit.Framework;
 
@@ -33,6 +33,50 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
             var logger = new TizenLogger(dummyChannel, LogLevel.Verbose);
             var loggerClient = new LoggerClient(logger);
             loggerClient.Func();
+        }
+
+        [Test]
+        public void LongLog_SingleLongLine_SplitsByMaxLineSize()
+        {
+            var logger = new TizenLogger("TizenLog", LogLevel.Verbose);
+            var stringBuilder = new StringBuilder();
+            for (var i = 0; i < 2000; i++)
+                stringBuilder.Append($"{i % 10}");
+
+            var longLine = stringBuilder.ToString();
+            logger.Debug(longLine);
+        }
+
+        [Test]
+        public void LongLog_MultipleShortLines_SplitsByNewLineCharacter()
+        {
+            var logger = new TizenLogger("TizenLog", LogLevel.Verbose);
+            var stringBuilder = new StringBuilder();
+            for (var i = 0; i < 3; i++)
+            {
+                for (var j = 0; j < 300; j++)
+                    stringBuilder.Append($"{j % 10}");
+                stringBuilder.Append("\n");
+            }
+
+            var longLines = stringBuilder.ToString();
+            logger.Debug(longLines);
+        }
+
+        [Test]
+        public void LongLog_MultipleLongLines_SplitsByNewLineCharacterAndMaxLineSize()
+        {
+            var logger = new TizenLogger("TizenLog", LogLevel.Verbose);
+            var stringBuilder = new StringBuilder();
+            for (var i = 0; i < 2; i++)
+            {
+                for (var j = 0; j < 900; j++)
+                    stringBuilder.Append($"{j % 10}");
+                stringBuilder.Append("\n");
+            }
+
+            var longLines = stringBuilder.ToString();
+            logger.Debug(longLines);
         }
     }
 }
