@@ -81,7 +81,7 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
     {
         private readonly ILogger _logger = LoggerManager.GetInstance().GetLogger("UT");
 
-        private void RunPlayerTest(string clipTitle, Func<TestContext, Task> testImpl)
+      private void RunPlayerTest(string clipTitle, Func<TestContext, Task> testImpl, bool executeStart = true)
         {
             AsyncContext.Run(async () =>
             {
@@ -108,13 +108,17 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
                                     ? TimeSpan.FromSeconds(40)
                                     : TimeSpan.FromSeconds(20)
                             };
+
                             var prepareOperation = new PrepareOperation();
                             prepareOperation.Prepare(context);
                             await prepareOperation.Execute(context);
 
-                            var startOperation = new StartOperation();
-                            startOperation.Prepare(context);
-                            await startOperation.Execute(context);
+                            if (executeStart)
+                            {
+                                var startOperation = new StartOperation();
+                                startOperation.Prepare(context);
+                                await startOperation.Execute(context);
+                            }
 
                             await testImpl(context);
                         }
@@ -147,6 +151,25 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
                     .ToTask(context.Token)
                     .ConfigureAwait(false);
             });
+        }
+
+        [Test, TestCaseSource(typeof(TSPlayerServiceTestCaseSource), nameof(TSPlayerServiceTestCaseSource.AllClips))]
+        public void Playback_Starts_From_the_90th_Second(string clipTitle)
+        {
+            RunPlayerTest(clipTitle, async context =>
+            {
+                context.SeekTime = TimeSpan.FromSeconds(90);
+                var seekOperation = new SeekOperation();
+                seekOperation.Prepare(context);
+                Task seek = seekOperation.Execute(context);
+
+                var startOperation = new StartOperation();
+                startOperation.Prepare(context);
+                await startOperation.Execute(context);
+
+                await seek;
+
+            }, false);
         }
 
         [Test, TestCaseSource(typeof(TSPlayerServiceTestCaseSource), nameof(TSPlayerServiceTestCaseSource.AllClips))]
