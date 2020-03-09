@@ -19,6 +19,7 @@ using System.Collections.Generic;
 using System.IO;
 using System.Linq;
 using System.Text;
+using System.Threading;
 using AutoFixture;
 using AutoFixture.Kernel;
 using JuvoPlayer.Tests.Utils;
@@ -79,6 +80,9 @@ namespace JuvoPlayer.Tests.IntegrationTests
 
         private static TestOperation[] TestOperations()
         {
+            // Dummy synchronization context. Keeps random operation creation
+            // from blowing up with exceptions
+            SynchronizationContext.SetSynchronizationContext(new SynchronizationContext());
             var fixture = new Fixture();
             var context = new SpecimenContext(fixture);
             var allOpTypes = AllOperations.GetAllTypes();
