@@ -31,7 +31,8 @@ namespace JuvoPlayer.Tests.Utils
         private readonly IPlayerService _service;
         private readonly PlayerState _expectedState;
         private readonly CancellationToken _cancellationToken;
-        private TimeSpan _timeout;
+        private readonly TimeSpan _timeout;
+        private readonly SynchronizationContext _syncCtx;
 
         public StateChangedTask(IPlayerService service, PlayerState expectedState, CancellationToken token,
             TimeSpan timeout)
@@ -40,6 +41,12 @@ namespace JuvoPlayer.Tests.Utils
             _expectedState = expectedState;
             _cancellationToken = token;
             _timeout = timeout;
+
+            // Grab synchronization context as it's not inherited to Task.Run()
+            if (SynchronizationContext.Current == null)
+                throw new ArgumentNullException(nameof(SynchronizationContext.Current), "Synchronization context cannot be null");
+
+            _syncCtx = SynchronizationContext.Current;
         }
 
         public Task Observe()
@@ -64,7 +71,7 @@ namespace JuvoPlayer.Tests.Utils
                             observedStates.Add((DateTimeOffset.Now, newState));
                             if (newState == _expectedState)
                                 tcs.TrySetResult(true);
-                        }, SynchronizationContext.Current))
+                        }, _syncCtx))
                         {
                             timeoutCts.CancelAfter(_timeout);
 

@@ -20,7 +20,6 @@ using System.Collections.Generic;
 using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
-using System.Reactive.Threading.Tasks;
 using System.Threading;
 using System.Threading.Tasks;
 using ElmSharp;
@@ -67,12 +66,13 @@ namespace JuvoPlayer
         // current state upon subscription.
         private readonly ReplaySubject<PlayerState> _playerStateSubject = new ReplaySubject<PlayerState>(1);
         private readonly Subject<string> _playerErrorSubject = new Subject<string>();
-        private readonly Subject<int> _playerBufferingSubject = new Subject<int>();
+        private readonly ReplaySubject<int> _playerBufferingSubject = new ReplaySubject<int>(1);
         private readonly Subject<TimeSpan> _playerClockSubject = new Subject<TimeSpan>();
         private readonly SynchronizationContext _syncCtx;
 
-        private Task _currentActivity = Task.CompletedTask;
-        private CancellationTokenSource _changeStreamCts;
+        private readonly TaskCompletionSource<object>[] _streamConfigurationSetTcs;
+        private TimeSpan? _pendingSeekClock;
+
         private IPlayer _player;
 
         public PlayerServiceImpl()
@@ -98,6 +98,14 @@ namespace JuvoPlayer
 
             drmManager = new DrmManager();
             drmManager.RegisterDrmHandler(new CencHandler());
+
+            _streamConfigurationSetTcs = new TaskCompletionSource<object>[(int)StreamType.Count];
+            var completedTcs = new TaskCompletionSource<object>();
+            completedTcs.SetResult(null);
+            for (int i = 0; i < (int)StreamType.Count; i++)
+            {
+                _streamConfigurationSetTcs[i] = completedTcs;
+            }
         }
 
         public void SetWindow(Window window)
@@ -108,11 +116,11 @@ namespace JuvoPlayer
             ConnectPlayerControllerObservables();
         }
 
-        private void CreatePlayerController(object playerStateSnapshot = null)
+        private void CreatePlayerController()
         {
             if (playerWindow == null)
                 playerWindow = WindowUtils.CreateElmSharpWindow();
-            _player = new EsPlayer(playerWindow, playerStateSnapshot);
+            _player = new EsPlayer(playerWindow);
 
             playerController = new PlayerController(_player, drmManager);
         }
@@ -125,38 +133,57 @@ namespace JuvoPlayer
                 playerController.PlaybackError().Subscribe( _playerErrorSubject),
                 playerController.BufferingProgress().Subscribe(_playerBufferingSubject),
                 playerController.PlayerClock().Subscribe(_playerClockSubject),
-                playerController.TimeUpdated().Subscribe(SetClock,_syncCtx)
+                playerController.TimeUpdated().Subscribe(SetClock,_syncCtx),
+                playerController.ConfigurationChanged()
+                    .Subscribe(async sr=> await OnNewConfiguration(sr), _syncCtx)
             };
         }
 
-        private async Task OnNewConfiguration(bool reconfigurationRequired)
+        private async Task OnNewConfiguration((StreamType stream, bool reconfigurationRequired) args)
         {
-            Logger.Info($"Reconfigure: {reconfigurationRequired}");
+            var (stream, reconfigurationRequired) = args;
+
+            Logger.Info($"{stream} Reconfigure {reconfigurationRequired}");
 
             if (!reconfigurationRequired)
             {
-                // Non destructive configuration change
-                await SeekTo(CurrentPosition);
+                _streamConfigurationSetTcs[(int)stream].TrySetResult(null);
                 return;
             }
 
-            // Destructive configuration change
+            // Destructive configuration change. Need to complete.
             dataProvider.Pause();
+
+            // Player & PlayerSevice snapshot
             var playerStateSnapshot = _player.GetStateSnapshot();
+            var clipDuration = Duration;
 
-            _playerControllerConnections.Dispose();
-            connector?.Dispose();
-
+            // Destroy player controller & its connections
             playerController.OnStop();
+            connector?.Dispose();
+            _playerControllerConnections.Dispose();
             playerController?.Dispose();
 
-            CreatePlayerController(playerStateSnapshot);
+            // Create player controller & its connections
+            CreatePlayerController();
             ConnectPlayerControllerObservables();
-
             connector = new DataProviderConnector(playerController, dataProvider);
 
-            // Seek resumes data provider
-            await dataProvider.Seek(CurrentPosition, CancellationToken.None);
+            // Restore clip duration & player state
+            playerController.OnClipDurationChanged(clipDuration);
+            var restoreTask = _player.RestoreStateSnapshot(playerStateSnapshot);
+
+            // Reposition data provider to compensate for packet loss during tear down
+            // Seek starts data provider.
+            var dataProviderPosition = _pendingSeekClock ?? CurrentPosition;
+            var repositionTask = dataProvider.Seek(dataProviderPosition, CancellationToken.None);
+
+            Logger.Info($"{stream} Reconfigure {reconfigurationRequired} Waiting player restore");
+
+            await repositionTask;
+            _streamConfigurationSetTcs[(int)stream].TrySetResult(null);
+
+            Logger.Info($"{stream} Reconfigure {reconfigurationRequired} Player restore");
         }
 
         private void SetClock(TimeSpan clock) =>
@@ -166,6 +193,7 @@ namespace JuvoPlayer
         {
             State = state;
             _playerStateSubject.OnNext(State);
+            Logger.Info($"State Set: {State}");
         }
 
         public void Pause()
@@ -173,48 +201,48 @@ namespace JuvoPlayer
             playerController.OnPause();
         }
 
-        public Task SeekTo(TimeSpan to)
+
+        public async Task SeekTo(TimeSpan to)
         {
-            // TODO: cancel any pending stream request & wait for their completion
-            // TODO: Could be change stream/seek operation
-            return playerController.OnSeek(to);
+            _pendingSeekClock = to;
+            var seekClock = await playerController.OnSeek(to);
+
+            // clear pending seek position if completed seek
+            if (_pendingSeekClock == seekClock)
+                _pendingSeekClock = null;
         }
 
-
-        public Task ChangeActiveStream(StreamDescription streamDescription)
+        public async Task ChangeActiveStream(StreamDescription streamDescription)
         {
+            Logger.Info($"ChangeActiveStream {streamDescription.StreamType} {streamDescription.Id} {streamDescription.Description}");
+
             if (streamDescription.StreamType != StreamType.Audio &&
                 streamDescription.StreamType != StreamType.Video)
             {
                 // Non A/V stream change
                 dataProvider.ChangeActiveStream(streamDescription);
-                return Task.CompletedTask;
+                return;
             }
 
-            // Cancel any pending stream changes.
-            _changeStreamCts?.Cancel();
-            _changeStreamCts?.Dispose();
-            _changeStreamCts = new CancellationTokenSource();
-            var token = _changeStreamCts.Token;
-
-            // TODO: Need to wait for current activity completion.
-            // TODO: Could be change stream/seek operation
-
             dataProvider.Pause();
+            if (!dataProvider.ChangeActiveStream(streamDescription))
+            {
+                dataProvider.Resume();
+                return;
+            }
 
-            // On successful config change, create stream change completion task which will complete
-            // when new configuration gets processed.
-            // On failed change (same configuration selected), report stream change as completed.
-            _currentActivity = dataProvider.ChangeActiveStream(streamDescription)
-                ? playerController.ConfigurationChanged(streamDescription.StreamType)
-                    .ObserveOn(_syncCtx)
-                    .FirstAsync()
-                    .Do(async reconfigureNeeded => await OnNewConfiguration(reconfigureNeeded))
-                    .ToTask(token)
-                : Task.CompletedTask;
+            _streamConfigurationSetTcs[(int)streamDescription.StreamType] =
+                new TaskCompletionSource<object>(TaskCreationOptions.RunContinuationsAsynchronously);
 
-            dataProvider.Resume();
-            return _currentActivity;
+            var targetClock = _pendingSeekClock ?? CurrentPosition;
+            var repositionTask = dataProvider.Seek(targetClock, CancellationToken.None);
+
+            await SeekTo(targetClock);
+
+            // Await stream changed confirmation to prevent shooting requests at player while
+            // it is down on all fours as this operation may result in player tear down.
+            Logger.Info($"ChangeActiveStream {streamDescription.StreamType} {streamDescription.Id} {streamDescription.Description} Waiting for confirmation");
+            await _streamConfigurationSetTcs[(int)streamDescription.StreamType].Task;
         }
 
         public void DeactivateStream(StreamType streamType)
@@ -302,8 +330,6 @@ namespace JuvoPlayer
         {
             if (disposing)
             {
-                _changeStreamCts?.Cancel();
-                _changeStreamCts?.Dispose();
                 drmManager.ClearCache();
                 _playerControllerConnections.Dispose();
                 _playerControllerDisposables.Dispose();

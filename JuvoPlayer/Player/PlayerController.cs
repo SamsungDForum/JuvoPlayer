@@ -29,7 +29,6 @@ namespace JuvoPlayer.Player
 {
     public class PlayerController : IPlayerController
     {
-        private bool seeking;
         private TimeSpan duration;
 
         private readonly IDrmManager drmManager;
@@ -82,12 +81,14 @@ namespace JuvoPlayer.Player
             return player.PlayerClock();
         }
 
-        public IObservable<bool> ConfigurationChanged(StreamType stream)
+        public IObservable<(StreamType, bool)> ConfigurationChanged()
         {
-            if (!streams.ContainsKey(stream))
-                throw new ArgumentException("Unconfigured stream", nameof(stream));
+            var videoSource = streams[StreamType.Video].ConfigurationChanged()
+                .Select(reconfigure => (StreamType.Video, reconfigure));
+            var audioSource = streams[StreamType.Audio].ConfigurationChanged()
+                .Select(reconfigure => (StreamType.Video, reconfigure));
 
-            return streams[stream].ConfigurationChanged();
+            return videoSource.Merge(audioSource);
         }
 
 
@@ -119,16 +120,10 @@ namespace JuvoPlayer.Player
             player.Play();
         }
 
-        public async Task OnSeek(TimeSpan time)
+        public async Task<TimeSpan> OnSeek(TimeSpan time)
         {
-            if (seeking)
-                throw new InvalidOperationException("Seek already in progress");
-
             try
             {
-                // prevent simultaneously seeks
-                seeking = true;
-
                 if (time > duration)
                     time = duration;
 
@@ -138,10 +133,8 @@ namespace JuvoPlayer.Player
             {
                 Logger.Info("Operation Canceled");
             }
-            finally
-            {
-                seeking = false;
-            }
+
+            return time;
         }
 
         public void OnStop()

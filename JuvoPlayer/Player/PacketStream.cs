@@ -86,7 +86,12 @@ namespace JuvoPlayer.Player
             forceDrmChange = (this.config != null);
 
             var isCompatible = this.config?.IsCompatible(config) ?? true;
-
+            if (!isCompatible)
+            {
+                Logger.Debug("Incompatible configs");
+                Logger.Debug($"Current: {this.config}");
+                Logger.Debug($"New: {config}");
+            }
             this.config = config;
 
             _codecHandler.OnStreamConfigChanged(this.config);

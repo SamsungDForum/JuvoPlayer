@@ -17,6 +17,7 @@
 
 using System;
 using System.Threading.Tasks;
+using JuvoLogger;
 using JuvoPlayer.Common;
 using JuvoPlayer.Player.EsPlayer;
 
@@ -25,6 +26,8 @@ namespace JuvoPlayer.Tests.Utils
     [Serializable]
     public class ChangeRepresentationOperation : TestOperation
     {
+        private readonly ILogger _logger = LoggerManager.GetInstance().GetLogger("UT");
+
         public int Index { get; set; }
         public StreamType StreamType { get; set; }
 
@@ -65,11 +68,22 @@ namespace JuvoPlayer.Tests.Utils
             var currentState = service.State;
             var changeTask = service.ChangeActiveStream(descriptions[Index]).WithTimeout(context.Timeout);
 
-            // When paused, change task is not expected to complete until playback is resumed
-            if (currentState == PlayerState.Paused)
+            // In non playing state, change task is not expected to complete until playback is resumed
+            if (currentState != PlayerState.Playing)
                 return;
 
-            await changeTask;
+            try
+            {
+                await changeTask;
+            }
+            catch (Exception e)
+            {
+                _logger.Error(e);
+                _logger.Error($"Task State: {changeTask.Status}");
+                _logger.Error($"{descriptions[Index].StreamType} {descriptions[Index].Id} {descriptions[Index].Description}");
+                throw;
+            }
+
         }
 
         private static StreamType GetRandomStreamType()

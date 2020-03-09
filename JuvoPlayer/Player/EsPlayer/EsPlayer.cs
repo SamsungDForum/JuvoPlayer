@@ -31,12 +31,12 @@ namespace JuvoPlayer.Player.EsPlayer
         private EsPlayerPacketStorage packetStorage;
         private EsStreamController streamControl;
 
-        public EsPlayer(object stateSnapshot = null)
-            : this(WindowUtils.CreateElmSharpWindow(), stateSnapshot)
+        public EsPlayer()
+            : this(WindowUtils.CreateElmSharpWindow())
         {
         }
 
-        public EsPlayer(Window window, object stateSnapshot = null)
+        public EsPlayer(Window window)
         {
             try
             {
@@ -44,7 +44,7 @@ namespace JuvoPlayer.Player.EsPlayer
                 packetStorage.Initialize(StreamType.Audio);
                 packetStorage.Initialize(StreamType.Video);
 
-                streamControl = new EsStreamController(packetStorage, window, stateSnapshot);
+                streamControl = new EsStreamController(packetStorage, window);
                 streamControl.Initialize(StreamType.Audio);
                 streamControl.Initialize(StreamType.Video);
             }
@@ -154,6 +154,11 @@ namespace JuvoPlayer.Player.EsPlayer
         public object GetStateSnapshot()
         {
             return streamControl.GetStateSnapshot();
+        }
+
+        public Task RestoreStateSnapshot(object snapshot)
+        {
+            return streamControl.RestoreStateSnapshot(snapshot);
         }
 
         #region IDisposable Support
