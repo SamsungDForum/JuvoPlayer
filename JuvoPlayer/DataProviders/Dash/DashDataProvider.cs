@@ -201,11 +201,11 @@ namespace JuvoPlayer.DataProviders.Dash
 
         private TimeSpan RepositionPipelines(TimeSpan timeIndex)
         {
-            Logger.Info("");
-
             var newPosition = videoPipeline.Seek(timeIndex);
 
-            audioPipeline.Seek(newPosition);
+            var audioPosition = audioPipeline.Seek(newPosition);
+
+            Logger.Info($"Request Postion {timeIndex} Video {newPosition} Audio {audioPosition}");
 
             audioPipeline.PacketPredicate = packet => !packet.ContainsData() || packet.Pts >= newPosition;
 

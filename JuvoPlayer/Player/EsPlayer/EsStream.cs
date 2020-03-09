@@ -16,7 +16,6 @@
  */
 
 using System;
-using System.Reactive;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
 using System.Threading;
@@ -89,7 +88,7 @@ namespace JuvoPlayer.Player.EsPlayer
         private readonly Synchronizer _dataSynchronizer;
         private readonly PlayerClockProvider _playerClock;
 
-        private readonly Subject<bool> _bufferingSubject = new Subject<bool>();
+        private readonly ReplaySubject<bool> _bufferingSubject = new ReplaySubject<bool>(1);
         private readonly Subject<Type> _packetProcessed = new Subject<Type>();
 
         public IObservable<bool> StreamBuffering()

@@ -20,6 +20,10 @@ using JuvoPlayer.Common;
 
 namespace JuvoPlayer.Tests.Utils
 {
+    public class test<T> where T : struct
+    {
+
+    }
     public class StartOperation : TestOperation
     {
         public override bool Equals(object obj)
@@ -42,13 +46,11 @@ namespace JuvoPlayer.Tests.Utils
         {
             var service = context.Service;
 
-            // State subscription will replay current state. If playing,
-            // before calling start(), playerStateTask shall be completed.
-            var playerStateTask = StateChangedTask.Observe(service, PlayerState.Playing, context.Token, context.Timeout);
-
             service.Start();
 
-            return playerStateTask;
+            // State subscription will replay current state. If playing,
+            // before calling start(), playerStateTask shall be completed.
+            return StateChangedTask.Observe(service, PlayerState.Playing, context.Token, context.Timeout); ;
         }
     }
 }

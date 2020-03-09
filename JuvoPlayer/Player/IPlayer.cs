@@ -45,5 +45,7 @@ namespace JuvoPlayer.Player
         void AppendPacket(Packet packet);
 
         object GetStateSnapshot();
+
+        Task RestoreStateSnapshot(object snapshot);
     }
 }

@@ -147,11 +147,11 @@ namespace JuvoPlayer.DataProviders.Dash
             }
             catch (TaskCanceledException ex)
             {
-                Logger.Warn(ex, "Doesn't schedule next segment to download");
+                Logger.Warn(ex, $"{StreamType}: Doesn't schedule next segment to download");
             }
             catch (OperationCanceledException ex)
             {
-                Logger.Warn(ex, "Doesn't schedule next segment to download");
+                Logger.Warn(ex, $"{StreamType}: Doesn't schedule next segment to download");
             }
         }
 
@@ -677,6 +677,7 @@ namespace JuvoPlayer.DataProviders.Dash
         {
             return demuxerStreamConfigReadySubject
                 .Merge(metaDataStreamConfigSubject).AsObservable();
+
         }
 
         private void DisposeDemuxerSubscriptions()
@@ -808,9 +809,11 @@ namespace JuvoPlayer.DataProviders.Dash
                     // Add last seek value to packet clock. Forcing last seek value looses
                     // PTS/DTS differences causing lip sync issues.
                     //
+                    var pts = packet.Pts;
+                    var dts = packet.Pts;
                     demuxerClock = (PacketTimeStamp)packet + lastSeek.Value;
 
-                    Logger.Warn($"{StreamType}: Badly timestamped packet. Adjusting demuxerClock to: {demuxerClock}");
+                    Logger.Warn($"{StreamType}: Badly timestamped packet PTS/DTS {pts}/{dts}. Last seek {lastSeek}. Adjusting demuxerClock to: {demuxerClock}");
                 }
 
                 lastSeek = null;

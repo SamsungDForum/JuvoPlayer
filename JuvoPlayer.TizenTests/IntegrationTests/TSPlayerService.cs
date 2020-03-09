@@ -140,12 +140,7 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
         {
             RunPlayerTest(clipTitle, async context =>
             {
-                await context.Service
-                    .PlayerClock()
-                    .FirstAsync(pClock => pClock > TimeSpan.Zero)
-                    .Timeout(context.Timeout)
-                    .ToTask(context.Token)
-                    .ConfigureAwait(false);
+                await RunningClockTask.Observe(context.Service, context.Token, context.Timeout);
             });
         }
 
@@ -226,19 +221,16 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
                 try
                 {
                     var clipCompletedTask = service.StateChanged()
+                        .ObserveOn(SynchronizationContext.Current)
                         .AsCompletion()
                         .Timeout(context.Timeout)
-                        .ToTask();
+                        .ToTask(context.Token);
 
                     var seekOperation = new SeekOperation();
                     seekOperation.Prepare(context);
                     var seekTask = seekOperation.Execute(context);
 
-                    await await Task.WhenAny(seekTask, clipCompletedTask).ConfigureAwait(false);
-                }
-                catch (SeekException)
-                {
-                    // ignored
+                    await await Task.WhenAny(seekTask, clipCompletedTask);
                 }
                 catch (Exception e)
                 {
@@ -272,8 +264,105 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
                 // Desired clock may never be reached. Wait for desired state changes only.
                 var seekExecution = seekOperation.Execute(context);
 
-                await await Task.WhenAny(clipCompletedTask, playbackErrorTask).ConfigureAwait(false);
+                await await Task.WhenAny(clipCompletedTask, playbackErrorTask);
+            });
+        }
 
+        [Test, TestCaseSource(typeof(TSPlayerServiceTestCaseSource), nameof(TSPlayerServiceTestCaseSource.AllClips))]
+        public void Random_10Pending_Seeks(string clipTitle)
+        {
+            RunPlayerTest(clipTitle, async context =>
+            {
+                var service = context.Service;
+                await StateChangedTask.Observe(service, PlayerState.Playing, context.Token, context.Timeout);
+
+                var pauseOp = new PauseOperation();
+                pauseOp.Prepare(context);
+                await pauseOp.Execute(context);
+
+                context.SeekTime = null;
+                var seekPosition = TimeSpan.Zero;
+                for (var i = 0; i <= 10; ++i)
+                {
+                    var pendingSeekOp = new SeekOperation();
+                    pendingSeekOp.Prepare(context);
+                    seekPosition = pendingSeekOp.SeekPosition;
+                    await pendingSeekOp.Execute(context);
+                }
+
+                var runningClock = RunningClockTask.Observe(service, seekPosition, context.Token, context.Timeout);
+
+                var startOp = new StartOperation();
+                startOp.Prepare(context);
+                var startTask = startOp.Execute(context);
+
+                await Task.WhenAll(startTask, runningClock);
+            });
+        }
+
+        [TestCase("Clean byte range MPEG DASH")]
+        public void Destructive_Representation_Change(string clipTitle)
+        {
+            RunPlayerTest(clipTitle, async context =>
+            {
+                var service = context.Service;
+                var descriptions = service.GetStreamsDescription(StreamType.Audio);
+                if (descriptions.Count == 0)
+                    return;
+
+                await StateChangedTask.Observe(service, PlayerState.Playing, context.Token, context.Timeout);
+
+                foreach (var entry in descriptions)
+                {
+                    var changeOp = new ChangeRepresentationOperation
+                    {
+                        Index = entry.Id,
+                        StreamType = StreamType.Audio
+                    };
+                    changeOp.Prepare(context);
+                    var changeTask = changeOp.Execute(context);
+                    var runningClockTask = RunningClockTask.Observe(context.Service, context.Token, context.Timeout);
+
+                    await Task.WhenAll(changeTask, runningClockTask);
+                }
+            });
+        }
+
+        [TestCase("Clean byte range MPEG DASH")]
+        public void Seek_Then_Change_Representation(string clipTitle)
+        {
+            RunPlayerTest(clipTitle, async context =>
+            {
+                var streams = new[] { StreamType.Video, StreamType.Audio };
+                var service = context.Service;
+
+                await StateChangedTask.Observe(service, PlayerState.Playing, context.Token, context.Timeout);
+
+                foreach (var stream in streams)
+                {
+                    var descriptions = service.GetStreamsDescription(StreamType.Audio);
+                    if (descriptions.Count == 0)
+                        continue;
+
+                    context.SeekTime = null;
+                    foreach (var entry in descriptions)
+                    {
+                        var seekOp = new SeekOperation();
+                        seekOp.Prepare(context);
+                        await seekOp.Execute(context);
+
+                        var changeOp = new ChangeRepresentationOperation
+                        {
+                            Index = entry.Id,
+                            StreamType = stream
+                        };
+                        changeOp.Prepare(context);
+                        var changeTask = changeOp.Execute(context);
+                        var runningClockTask = RunningClockTask.Observe(context.Service, context.Token, context.Timeout);
+
+                        await Task.WhenAll(changeTask, runningClockTask);
+                    }
+                }
             });
         }
 
@@ -315,6 +404,7 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
 
                     _logger.Info($"Execute: {operation}");
                     await operation.Execute(context);
+                    _logger.Info($"Done: {operation}");
                 }
             });
         }
