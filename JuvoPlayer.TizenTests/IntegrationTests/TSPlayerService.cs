@@ -81,7 +81,7 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
     {
         private readonly ILogger _logger = LoggerManager.GetInstance().GetLogger("UT");
 
-      private void RunPlayerTest(string clipTitle, Func<TestContext, Task> testImpl, bool executeStart = true)
+        private void RunPlayerTest(string clipTitle, Func<TestContext, Task> testImpl, bool executeStart = true)
         {
             AsyncContext.Run(async () =>
             {
@@ -154,14 +154,14 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
         }
 
         [Test, TestCaseSource(typeof(TSPlayerServiceTestCaseSource), nameof(TSPlayerServiceTestCaseSource.AllClips))]
-        public void Playback_Starts_From_the_90th_Second(string clipTitle)
+        public void Playback_StartFromThe90thSecond_PreparesAndStarts(string clipTitle)
         {
             RunPlayerTest(clipTitle, async context =>
             {
                 context.SeekTime = TimeSpan.FromSeconds(90);
                 var seekOperation = new SeekOperation();
                 seekOperation.Prepare(context);
-                Task seek = seekOperation.Execute(context);
+                var seek = seekOperation.Execute(context);
 
                 var startOperation = new StartOperation();
                 startOperation.Prepare(context);
