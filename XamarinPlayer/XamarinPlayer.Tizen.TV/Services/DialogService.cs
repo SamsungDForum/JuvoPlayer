@@ -11,10 +11,12 @@ namespace XamarinPlayer.Tizen.TV.Services
             string buttonText,
             Action afterHideCallback)
         {
+            Application.Current.MainPage.IsEnabled = false;
             await Application.Current.MainPage.DisplayAlert(
                 title,
                 message,
                 buttonText);
+            Application.Current.MainPage.IsEnabled = true;
             if (afterHideCallback != null)
             {
                 afterHideCallback();
