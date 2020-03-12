@@ -39,12 +39,12 @@ namespace XamarinPlayer.Tizen.TV.ViewModels
     {
         private static readonly ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
         private DetailContentData _contentData;
-        private IDialogService _dialog;
+        private readonly IDialogService _dialog;
         private SeekLogic _seekLogic; // needs to be initialized in constructor!
         private StoryboardReader _storyboardReader;
         private readonly CompositeDisposable _subscriptions;
         private static readonly TimeSpan UpdateInterval = TimeSpan.FromMilliseconds(100);
-        private bool _isPlayerDestroyed;
+        private bool _isDisposed;
         private bool _hasFinished;
         private bool _isBuffering;
         private bool _isSeekInProgress;
@@ -344,7 +344,7 @@ namespace XamarinPlayer.Tizen.TV.ViewModels
             OnPropertyChanged("PlayerState");
             Logger.Info($"Player State Changed: {state}");
 
-            if (_isPlayerDestroyed)
+            if (_isDisposed)
             {
                 Logger.Info("Player has been disposed.");
                 return;
@@ -464,12 +464,12 @@ namespace XamarinPlayer.Tizen.TV.ViewModels
 
         private bool UpdatePlayerControl()
         {
-            if (_isPlayerDestroyed)
+            if (_isDisposed)
                 return false;
 
-            UpdatePlayTime();
             UpdateLoadingState();
             UpdateSeekPreview();
+            UpdatePlayTime();
             if (Player.State >= PlayerState.Playing)
             {
                 UpdateCueText();
@@ -480,21 +480,15 @@ namespace XamarinPlayer.Tizen.TV.ViewModels
 
         private void UpdateSeekPreview()
         {
-            if (_seekLogic.ShallDisplaySeekPreview())
-            {
-                if (!IsSeekInProgress)
-                    IsSeekInProgress = true;
+            IsSeekInProgress = _seekLogic.IsSeekAccumulationInProgress || _seekLogic.IsSeekInProgress;
+            if (IsSeekInProgress)
                 PreviewFrame = GetSeekPreviewFrame();
-            }
-            else if (IsSeekInProgress)
-                IsSeekInProgress = false;
         }
 
         private void UpdatePlayTime()
         {
             CurrentTime = _seekLogic.CurrentPositionUI;
             TotalTime = _seekLogic.Duration;
-
             if (_seekLogic.Duration.TotalMilliseconds > 0)
                 Progress = _seekLogic.CurrentPositionUI.TotalMilliseconds /
                            _seekLogic.Duration.TotalMilliseconds;
@@ -534,14 +528,14 @@ namespace XamarinPlayer.Tizen.TV.ViewModels
 
         public void Dispose()
         {
-            // _isPageDisappeared flag should be marked at the very beginning.
+            // _isDisposed flag should be marked at the very beginning.
             // OnPlayerStateChanged event handler may receive events accessing
             // _playerService while _playerService is being disposed/nullified
             // Not something we want...
             // Reproducible with fast playback start/exit before start completes.
             //
-            if (_isPlayerDestroyed) return;
-            _isPlayerDestroyed = true;
+            if (_isDisposed) return;
+            _isDisposed = true;
             _storyboardReader?.Dispose();
             _storyboardReader = null;
             _subscriptions.Dispose();
