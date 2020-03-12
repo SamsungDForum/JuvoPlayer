@@ -454,14 +454,12 @@ namespace XamarinPlayer.Tizen.TV.ViewModels
 
         private void Forward()
         {
-            if (_seekLogic.IsSeekingSupported)
-                _seekLogic.SeekForward();
+            _seekLogic.SeekForward();
         }
 
         private void Rewind()
         {
-            if (_seekLogic.IsSeekingSupported)
-                _seekLogic.SeekBackward();
+            _seekLogic.SeekBackward();
         }
 
         private bool UpdatePlayerControl()
