@@ -118,8 +118,9 @@
                                 AbsoluteLayout.LayoutBounds="0,0,1,1">
                     <Frame x:Name="SeekPreviewFrame" Padding="1,1,1,1" HasShadow="False"
                            CornerRadius="5" BorderColor="DimGray" BackgroundColor="Black"
-                           VerticalOptions="EndAndExpand">
-                        <forms:SKCanvasView x:Name="SeekPreviewCanvas" HorizontalOptions="Center"
+                           VerticalOptions="EndAndExpand" IsVisible="False">
+                        <forms:SKCanvasView x:Name="SeekPreviewCanvas" HorizontalOptions="Center" WidthRequest="0"
+                                            HeightRequest="0"
                                             PaintSurface="OnSeekPreviewCanvasOnPaintSurface" />
                     </Frame>
                 </AbsoluteLayout>
