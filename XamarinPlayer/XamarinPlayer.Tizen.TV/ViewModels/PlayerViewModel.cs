@@ -149,7 +149,8 @@ namespace XamarinPlayer.Tizen.TV.ViewModels
                 if (value != _currentTime)
                 {
                     _currentTime = value;
-                    OnPropertyChanged();
+                    if (PlayerState > PlayerState.Prepared)
+                        OnPropertyChanged();
                 }
             }
         }
@@ -454,12 +455,14 @@ namespace XamarinPlayer.Tizen.TV.ViewModels
 
         private void Forward()
         {
-            _seekLogic.SeekForward();
+            if (_seekLogic.IsSeekingSupported)
+                _seekLogic.SeekForward();
         }
 
         private void Rewind()
         {
-            _seekLogic.SeekBackward();
+            if (_seekLogic.IsSeekingSupported)
+                _seekLogic.SeekBackward();
         }
 
         private bool UpdatePlayerControl()
@@ -468,7 +471,7 @@ namespace XamarinPlayer.Tizen.TV.ViewModels
                 return false;
 
             UpdateLoadingState();
-            UpdateSeekPreview();
+            UpdateIsSeekInProgress();
             UpdatePlayTime();
             if (Player.State >= PlayerState.Playing)
             {
@@ -478,11 +481,12 @@ namespace XamarinPlayer.Tizen.TV.ViewModels
             return true;
         }
 
-        private void UpdateSeekPreview()
+        private void UpdateIsSeekInProgress()
         {
-            IsSeekInProgress = _seekLogic.IsSeekAccumulationInProgress || _seekLogic.IsSeekInProgress;
-            if (IsSeekInProgress)
+            var seekInProgress = _seekLogic.IsSeekAccumulationInProgress || _seekLogic.IsSeekInProgress;
+            if (seekInProgress)
                 PreviewFrame = GetSeekPreviewFrame();
+            IsSeekInProgress = seekInProgress;
         }
 
         private void UpdatePlayTime()

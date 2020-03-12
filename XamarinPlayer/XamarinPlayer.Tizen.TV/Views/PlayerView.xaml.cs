@@ -72,9 +72,7 @@ namespace XamarinPlayer.Views
                 propertyChanged: (b, o, n) =>
                 {
                     if (n != null)
-                    {
                         ((PlayerView) b).SeekPreviewCanvas.InvalidateSurface();
-                    }
                 });
 
         public static readonly BindableProperty PreviewFrameSizeProperty =
@@ -129,10 +127,14 @@ namespace XamarinPlayer.Views
                 if (args.PropertyName == "Progress")
                     UpdateSeekPreviewFramePosition();
             };
+            SeekPreviewCanvas.WidthRequest = 0;
+            SeekPreviewCanvas.HeightRequest = 0;
+            SeekPreviewFrame.IsVisible = false;
         }
 
         private void SetSeekPreviewFrameSize(SKSize size)
         {
+            SeekPreviewFrame.IsVisible = true;
             SeekPreviewCanvas.WidthRequest = size.Width;
             SeekPreviewCanvas.HeightRequest = size.Height;
         }
