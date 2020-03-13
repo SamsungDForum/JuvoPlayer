@@ -488,8 +488,7 @@ namespace XamarinPlayer.Tizen.TV.ViewModels
 
         private void UpdatePlayTime()
         {
-            if (_seekLogic.CurrentPositionUI >= TimeSpan.Zero)
-                CurrentTime = _seekLogic.CurrentPositionUI;
+            CurrentTime = _seekLogic.CurrentPositionUI;
             TotalTime = _seekLogic.Duration;
             if (_seekLogic.Duration.TotalMilliseconds > 0)
                 Progress = _seekLogic.CurrentPositionUI.TotalMilliseconds /
