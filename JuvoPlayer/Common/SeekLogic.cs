@@ -35,11 +35,16 @@ namespace JuvoPlayer.Common
             get
             {
                 if (IsSeekAccumulationInProgress == false && IsSeekInProgress == false)
-                    _currentPositionUI = CurrentPositionPlayer;
+                {
+                    _currentPositionUI = Clamp(CurrentPositionPlayer, TimeSpan.Zero,
+                        Duration > TimeSpan.Zero ? Duration : TimeSpan.MaxValue);
+                }
+
                 return _currentPositionUI;
             }
             set => _currentPositionUI = value;
         }
+
         private TimeSpan _currentPositionUI;
         public TimeSpan CurrentPositionPlayer => _client.Player?.CurrentPosition ?? TimeSpan.Zero;
         public TimeSpan Duration => _client.Player?.Duration ?? TimeSpan.Zero;
@@ -50,6 +55,7 @@ namespace JuvoPlayer.Common
         public bool IsSeekAccumulationInProgress { get; set; }
 
         private Subject<Unit> _seekCompleted = new Subject<Unit>();
+
         public IObservable<Unit> SeekCompleted()
         {
             return _seekCompleted.AsObservable();
@@ -114,6 +120,7 @@ namespace JuvoPlayer.Common
                 _seekStopwatch.Stop();
                 interval = _seekStopwatch.Elapsed;
             }
+
             _seekStopwatch.Restart();
             return interval;
         }
@@ -170,6 +177,7 @@ namespace JuvoPlayer.Common
             {
                 _targetSeekTime = CurrentPositionPlayer + seekInterval;
             }
+
             _targetSeekTime = Clamp(_targetSeekTime, TimeSpan.Zero, Duration);
             CurrentPositionUI = _targetSeekTime;
             IsSeekAccumulationInProgress = true;
@@ -202,7 +210,7 @@ namespace JuvoPlayer.Common
 
         private static bool IsStateSeekable(PlayerState state)
         {
-            var seekableStates = new[] { PlayerState.Playing, PlayerState.Paused };
+            var seekableStates = new[] {PlayerState.Playing, PlayerState.Paused};
             return seekableStates.Contains(state);
         }
 
