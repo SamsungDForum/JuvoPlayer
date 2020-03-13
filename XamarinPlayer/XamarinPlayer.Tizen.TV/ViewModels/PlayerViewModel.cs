@@ -39,21 +39,22 @@ namespace XamarinPlayer.Tizen.TV.ViewModels
     {
         private static readonly ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
         private DetailContentData _contentData;
+        private readonly IDialogService _dialog;
         private SeekLogic _seekLogic; // needs to be initialized in constructor!
         private StoryboardReader _storyboardReader;
         private readonly CompositeDisposable _subscriptions;
         private static readonly TimeSpan UpdateInterval = TimeSpan.FromMilliseconds(100);
-        private bool _isPlayerDestroyed;
+        private bool _isDisposed;
         private bool _hasFinished;
         private bool _isBuffering;
-        private bool _isSeekingSupported;
-        private bool _shallDisplaySeekPreview;
+        private bool _isSeekInProgress;
         private TimeSpan _currentTime = TimeSpan.Zero;
         private TimeSpan _totalTime = TimeSpan.Zero;
         private double _progress;
         private string _cueText;
         private bool _loading;
         private SubSkBitmap _previewFrame;
+        private SKSize? _previewFrameSize;
         private SettingsViewModel _audio = new SettingsViewModel {Type = StreamType.Audio};
         private SettingsViewModel _video = new SettingsViewModel {Type = StreamType.Video};
         private SettingsViewModel _subtitles = new SettingsViewModel {Type = StreamType.Subtitle};
@@ -68,10 +69,10 @@ namespace XamarinPlayer.Tizen.TV.ViewModels
         public ICommand ResumeCommand => new Command(Resume);
         public ICommand DisposeCommand => new Command(Dispose);
 
-        public PlayerViewModel(DetailContentData data)
+        public PlayerViewModel(DetailContentData data, IDialogService dialog)
         {
             _contentData = data;
-
+            _dialog = dialog;
             Player = DependencyService.Get<IPlayerService>(DependencyFetchTarget.NewInstance);
 
             _subscriptions = new CompositeDisposable
@@ -114,16 +115,27 @@ namespace XamarinPlayer.Tizen.TV.ViewModels
             }
         }
 
-        public SKSize? PreviewFrameSize => _storyboardReader?.FrameSize;
-
-        public bool ShallDisplaySeekPreview
+        public SKSize? PreviewFrameSize
         {
-            get => _shallDisplaySeekPreview;
+            get => _previewFrameSize;
             set
             {
-                if (value != _shallDisplaySeekPreview)
+                if (value != _previewFrameSize)
                 {
-                    _shallDisplaySeekPreview = value;
+                    _previewFrameSize = value;
+                    OnPropertyChanged();
+                }
+            }
+        }
+
+        public bool IsSeekInProgress
+        {
+            get => _isSeekInProgress;
+            set
+            {
+                if (value != _isSeekInProgress)
+                {
+                    _isSeekInProgress = value;
                     OnPropertyChanged();
                 }
             }
@@ -304,6 +316,7 @@ namespace XamarinPlayer.Tizen.TV.ViewModels
             try
             {
                 await _storyboardReader.LoadTask;
+                PreviewFrameSize = _storyboardReader?.FrameSize;
             }
             catch (Exception ex)
             {
@@ -331,7 +344,7 @@ namespace XamarinPlayer.Tizen.TV.ViewModels
             OnPropertyChanged("PlayerState");
             Logger.Info($"Player State Changed: {state}");
 
-            if (_isPlayerDestroyed)
+            if (_isDisposed)
             {
                 Logger.Info("Player has been disposed.");
                 return;
@@ -368,9 +381,8 @@ namespace XamarinPlayer.Tizen.TV.ViewModels
 
                 Player.Stop();
                 if (!string.IsNullOrEmpty(message))
-                    MessagingCenter.Send<IEventSender, string>(this, "PlaybackError", null);
-
-                MessagingCenter.Send<IEventSender, string>(this, "Pop", null);
+                    await _dialog.ShowError(message, "Playback Error", "OK",
+                        () => MessagingCenter.Send<IEventSender, string>(this, "Pop", null));
             }
         }
 
@@ -452,37 +464,32 @@ namespace XamarinPlayer.Tizen.TV.ViewModels
 
         private bool UpdatePlayerControl()
         {
-            if (_isPlayerDestroyed)
+            if (_isDisposed)
                 return false;
 
+            UpdateLoadingState();
+            UpdateIsSeekInProgress();
+            UpdatePlayTime();
             if (Player.State >= PlayerState.Playing)
             {
-                UpdatePlayTime();
                 UpdateCueText();
-                UpdateLoadingState();
-                UpdateSeekPreview();
             }
 
             return true;
         }
 
-        private void UpdateSeekPreview()
+        private void UpdateIsSeekInProgress()
         {
-            if (_seekLogic.ShallDisplaySeekPreview())
-            {
-                if (!ShallDisplaySeekPreview)
-                    ShallDisplaySeekPreview = true;
+            var seekInProgress = _seekLogic.IsSeekAccumulationInProgress || _seekLogic.IsSeekInProgress;
+            if (seekInProgress)
                 PreviewFrame = GetSeekPreviewFrame();
-            }
-            else if (ShallDisplaySeekPreview)
-                ShallDisplaySeekPreview = false;
+            IsSeekInProgress = seekInProgress;
         }
 
         private void UpdatePlayTime()
         {
             CurrentTime = _seekLogic.CurrentPositionUI;
             TotalTime = _seekLogic.Duration;
-
             if (_seekLogic.Duration.TotalMilliseconds > 0)
                 Progress = _seekLogic.CurrentPositionUI.TotalMilliseconds /
                            _seekLogic.Duration.TotalMilliseconds;
@@ -522,13 +529,14 @@ namespace XamarinPlayer.Tizen.TV.ViewModels
 
         public void Dispose()
         {
-            // _isPageDisappeared flag should be marked at the very beginning.
+            // _isDisposed flag should be marked at the very beginning.
             // OnPlayerStateChanged event handler may receive events accessing
             // _playerService while _playerService is being disposed/nullified
             // Not something we want...
             // Reproducible with fast playback start/exit before start completes.
             //
-            _isPlayerDestroyed = true;
+            if (_isDisposed) return;
+            _isDisposed = true;
             _storyboardReader?.Dispose();
             _storyboardReader = null;
             _subscriptions.Dispose();
