@@ -38,15 +38,18 @@ namespace JuvoPlayer.Player.EsPlayer
         private readonly IConnectableObservable<TimeSpan> _dataClockSource;
         private readonly Subject<TimeSpan> _dataClockSubject = new Subject<TimeSpan>();
         private readonly PlayerClockProvider _playerClock;
-
+        private IDisposable _synchronizerSubscription;
+        private TimeSpan _synchronizerClock = PlayerClockProviderConfig.InvalidClock;
         private bool _isDisposed;
+        private readonly IScheduler _scheduler;
 
         public DataClockProvider(IScheduler scheduler, PlayerClockProvider playerClock)
         {
             _playerClock = playerClock;
+            _scheduler = scheduler;
 
             _dataClockSource =
-                Observable.Interval(DataClockProviderConfig.ClockInterval, scheduler)
+                Observable.Interval(DataClockProviderConfig.ClockInterval, _scheduler)
                     .TakeWhile(_ => !_isDisposed)
                     .Select(GetDataClock)
                     .Multicast(_dataClockSubject);
@@ -79,10 +82,19 @@ namespace JuvoPlayer.Player.EsPlayer
             //                so counting of buffered data can be done from that point.
             //
             var playerClock = _playerClock.LastClock;
-            if (playerClock != PlayerClockProviderConfig.InvalidClock)
+            if (playerClock == PlayerClockProviderConfig.InvalidClock)
+                playerClock = _synchronizerClock;
+
+            if (playerClock > Clock)
                 Clock = playerClock;
 
             return Clock + BufferLimit;
+        }
+
+        private void SetSynchronizerClock(TimeSpan clock)
+        {
+            if (clock > _synchronizerClock)
+                _synchronizerClock = clock;
         }
 
         public void Stop()
@@ -97,8 +109,19 @@ namespace JuvoPlayer.Player.EsPlayer
         {
             if (_dataClockConnection != null) return;
 
+            if (Clock == PlayerClockProviderConfig.InvalidClock)
+                Clock = TimeSpan.Zero;
+
+            _synchronizerClock = PlayerClockProviderConfig.InvalidClock;
+
             _dataClockConnection = _dataClockSource.Connect();
             Logger.Info($"Clock {Clock} + Limit {BufferLimit} = {Clock + BufferLimit}");
+        }
+
+        public void SetSynchronizerSource(IObservable<TimeSpan> source)
+        {
+            _synchronizerSubscription = source.ObserveOn(_scheduler)
+                .Subscribe(SetSynchronizerClock);
         }
 
         public void Dispose()
@@ -111,6 +134,7 @@ namespace JuvoPlayer.Player.EsPlayer
             _dataClockConnection?.Dispose();
             _dataClockConnection = null;
             _dataClockSubject.Dispose();
+            _synchronizerSubscription?.Dispose();
 
             Logger.Info("");
         }

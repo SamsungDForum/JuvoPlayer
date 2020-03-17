@@ -29,7 +29,7 @@ namespace JuvoPlayer.Tests.Utils
     {
         private readonly ILogger _logger = LoggerManager.GetInstance().GetLogger("UT");
         private readonly IPlayerService _service;
-        private const int ConsecutiveClocks = 5;
+        private const int ConsecutiveClocks = 3;
         private readonly CancellationToken _cancellationToken;
         private readonly TimeSpan _timeout;
         private readonly TimeSpan _initialClock;
@@ -80,7 +80,7 @@ namespace JuvoPlayer.Tests.Utils
                 }
                 catch (Exception)
                 {
-                    _logger.Error($"Running clock error. Timeout {_timeout} ");
+                    _logger.Error($"Running clock error. Timeout {_timeout} Expected: {_initialClock}");
                     foreach (var clockEntry in observedClocks)
                     {
                         _logger.Error($"{clockEntry.timeStamp} {clockEntry.clock}");

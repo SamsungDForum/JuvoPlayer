@@ -28,7 +28,6 @@ namespace JuvoPlayer.Player
         IObservable<PlayerState> StateChanged();
         IObservable<int> BufferingProgress();
         IObservable<TimeSpan> DataClock();
-
         IPlayerClient Client { get; set; }
 
         void Pause();
@@ -41,11 +40,9 @@ namespace JuvoPlayer.Player
         void SetPlaybackRate(float rate);
         void Stop();
 
-        Task SetStreamConfig(StreamConfig config);
-        void AppendPacket(Packet packet);
+        void SetStreamConfig(StreamConfig config);
+        Task AppendPacket(Packet packet);
 
-        object GetStateSnapshot();
-
-        Task RestoreStateSnapshot(object snapshot);
+        (Task ready, Task<TimeSpan> position, Task done) ChangeRepresentation();
     }
 }

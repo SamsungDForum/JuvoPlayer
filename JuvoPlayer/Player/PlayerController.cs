@@ -38,6 +38,7 @@ namespace JuvoPlayer.Player
         private readonly Subject<string> streamErrorSubject = new Subject<string>();
 
         private readonly ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
+        private bool isSeeking;
 
         public PlayerController(IPlayer player, IDrmManager drmManager)
         {
@@ -76,21 +77,12 @@ namespace JuvoPlayer.Player
             return player.DataClock();
         }
 
-        public IObservable<TimeSpan> PlayerClock()
+
+
+        public (Task ready, Task<TimeSpan> position, Task done) OnRepresentationChanged()
         {
-            return player.PlayerClock();
+            return player.ChangeRepresentation();
         }
-
-        public IObservable<(StreamType, bool)> ConfigurationChanged()
-        {
-            var videoSource = streams[StreamType.Video].ConfigurationChanged()
-                .Select(reconfigure => (StreamType.Video, reconfigure));
-            var audioSource = streams[StreamType.Audio].ConfigurationChanged()
-                .Select(reconfigure => (StreamType.Video, reconfigure));
-
-            return videoSource.Merge(audioSource);
-        }
-
 
         public void OnClipDurationChanged(TimeSpan duration)
         {
@@ -120,21 +112,24 @@ namespace JuvoPlayer.Player
             player.Play();
         }
 
-        public async Task<TimeSpan> OnSeek(TimeSpan time)
+        public async Task OnSeek(TimeSpan time)
         {
+            if (isSeeking)
+                throw new InvalidOperationException("Seek in progress");
+
+            isSeeking = true;
+
+            if (time > duration)
+                time = duration;
+
             try
             {
-                if (time > duration)
-                    time = duration;
-
                 await player.Seek(time);
             }
-            catch (OperationCanceledException)
+            finally
             {
-                Logger.Info("Operation Canceled");
+                isSeeking = false;
             }
-
-            return time;
         }
 
         public void OnStop()

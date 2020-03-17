@@ -24,9 +24,7 @@ using JuvoPlayer.Utils;
 
 namespace JuvoPlayer.Tests.Utils
 {
-    // Run UTs through proxy rather then player service directly. Reflects closer
-    // UI<->Player service behaviour including proxy serialization of calls/messages.
-    public class PlayerService : JuvoPlayer.PlayerServiceProxy<PlayerServiceImpl>
+    public class PlayerService : JuvoPlayer.PlayerServiceImpl
     {
         private static Window window;
 

@@ -22,6 +22,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using JuvoLogger;
 using JuvoPlayer.Common;
+using JuvoPlayer.Player.EsPlayer;
 
 namespace JuvoPlayer.Tests.Utils
 {
@@ -29,17 +30,9 @@ namespace JuvoPlayer.Tests.Utils
     public class SeekOperation : TestOperation
     {
         private readonly ILogger _logger = LoggerManager.GetInstance().GetLogger("UT");
-        private readonly SynchronizationContext _syncCtx;
+
         public TimeSpan SeekPosition { get; set; }
 
-        public SeekOperation()
-        {
-            // Grab synchronization context as it's not inherited to Task.Run()
-            if (SynchronizationContext.Current == null)
-                throw new ArgumentNullException(nameof(SynchronizationContext.Current), "Synchronization context cannot be null");
-
-            _syncCtx = SynchronizationContext.Current;
-        }
         private bool Equals(SeekOperation other)
         {
             return SeekPosition.Equals(other.SeekPosition);
@@ -68,43 +61,44 @@ namespace JuvoPlayer.Tests.Utils
         {
             return context.Service
                 .PlayerClock()
-                .ObserveOn(_syncCtx)
                 .FirstAsync(pClock =>
                 {
                     var clk = pClock - TimeSpan.FromMilliseconds(pClock.Milliseconds);
                     var diffMs = Math.Abs((clk - targetClock).TotalMilliseconds);
                     return diffMs <= 500;
                 })
-                .Timeout(context.Timeout)
                 .ToTask(context.Token);
         }
 
-        public Task Execute(TestContext context)
+        public async Task Execute(TestContext context)
         {
             var service = context.Service;
-            var seekStartState = service.State;
 
-            _logger.Info($"Seeking to {SeekPosition} in state {seekStartState}");
-
-            var positionReachedTask = GetPositionReachedTask(context, SeekPosition);
+            var positionTask = GetPositionReachedTask(context, SeekPosition);
             var seekTask = service.SeekTo(SeekPosition);
 
-            // When seeking in paused state, seek Task and thus position task
-            // will not complete until playback is resumed. Return a completed task.
-            return seekStartState == PlayerState.Playing
-                ? Task.WhenAll(seekTask, positionReachedTask)
-                : Task.CompletedTask;
+            try
+            {
+                if (context.Timeout != TimeSpan.Zero)
+                {
+                    seekTask = seekTask.WithTimeout(context.Timeout);
+                    positionTask = positionTask.WithTimeout(context.Timeout);
+                }
 
+                // Await seek & position individually. Seek failures may be expected
+                // under certain circumstance.
+                await seekTask.WithCancellation(context.Token);
+                await positionTask.WithCancellation(context.Token);
+            }
+            catch (Exception)
+            {
+                _logger.Error($"Seek To {SeekPosition} SeekTask: {seekTask.Status} PositionTask: {positionTask.Status}");
+                throw;
+            }
         }
 
         private TimeSpan RandomSeekTime(IPlayerService service)
         {
-            if (service.Duration < TimeSpan.FromSeconds(10))
-            {
-                _logger.Warn($"Unable to determine random seek time. Clip duration {service.Duration.TotalSeconds}. Will seek to {TimeSpan.Zero}");
-                return TimeSpan.Zero;
-            }
-
             var rand = new Random();
             return TimeSpan.FromSeconds(rand.Next((int)service.Duration.TotalSeconds - 10));
         }

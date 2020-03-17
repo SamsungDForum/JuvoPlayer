@@ -98,7 +98,7 @@ namespace JuvoPlayer.DataProviders.RTSP
             // Input handler empty
         }
 
-        public bool ChangeActiveStream(StreamDescription stream)
+        public void ChangeActiveStream(StreamDescription stream)
         {
             throw new NotImplementedException();
         }

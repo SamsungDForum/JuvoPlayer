@@ -122,39 +122,31 @@ namespace JuvoPlayer.DataProviders.Dash
                 .Merge(videoPipeline.StreamError());
         }
 
-        public bool ChangeActiveStream(StreamDescription stream)
+        public void ChangeActiveStream(StreamDescription stream)
         {
             Logger.Info("");
-
-            bool isChanged;
 
             switch (stream.StreamType)
             {
                 case StreamType.Audio:
-                    isChanged = audioPipeline.ChangeStream(stream);
+                    audioPipeline.ChangeStream(stream);
                     break;
 
                 case StreamType.Video:
-                    isChanged = videoPipeline.ChangeStream(stream);
+                    videoPipeline.ChangeStream(stream);
                     break;
 
                 case StreamType.Subtitle:
                     OnChangeActiveSubtitleStream(stream);
-                    return true;
+                    return;
 
                 default:
-                    return false;
+                    return;
             }
-
-            if (!isChanged) return false;
 
             // New stream. Synch is required to determine start segment.
             // Needed if pipeline is first segment download stage.
-            videoPipeline.ResetTrimOffset();
-            audioPipeline.ResetTrimOffset();
             audioPipeline.SynchronizeWith(videoPipeline);
-
-            return true;
         }
 
         public void OnDeactivateStream(StreamType streamType)
@@ -201,15 +193,15 @@ namespace JuvoPlayer.DataProviders.Dash
 
         private TimeSpan RepositionPipelines(TimeSpan timeIndex)
         {
-            var newPosition = videoPipeline.Seek(timeIndex);
+            var videoPosition = videoPipeline.Seek(timeIndex);
 
-            var audioPosition = audioPipeline.Seek(newPosition);
+            var audioPosition = audioPipeline.Seek(videoPosition);
 
-            Logger.Info($"Request Postion {timeIndex} Video {newPosition} Audio {audioPosition}");
+            Logger.Info($"Request Postion {timeIndex} Video {videoPosition} Audio {audioPosition}");
 
-            audioPipeline.PacketPredicate = packet => !packet.ContainsData() || packet.Pts >= newPosition;
+            audioPipeline.PacketPredicate = packet => !packet.ContainsData() || packet.Pts >= videoPosition;
 
-            return newPosition;
+            return videoPosition;
         }
 
         public Task<TimeSpan> Seek(TimeSpan time, CancellationToken token)

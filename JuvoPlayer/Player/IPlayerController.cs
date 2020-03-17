@@ -26,11 +26,12 @@ namespace JuvoPlayer.Player
         #region ui_slots
         void OnPause();
         void OnPlay();
-        Task<TimeSpan> OnSeek(TimeSpan time);
+        Task OnSeek(TimeSpan time);
         void OnSetPlaybackRate(float rate);
         void OnStop();
         void OnSuspend();
         Task OnResume();
+        (Task ready, Task<TimeSpan> position, Task done) OnRepresentationChanged();
 
         #endregion
 
@@ -55,7 +56,5 @@ namespace JuvoPlayer.Player
         IObservable<TimeSpan> TimeUpdated();
         IObservable<PlayerState> StateChanged();
         IObservable<TimeSpan> DataClock();
-        IObservable<TimeSpan> PlayerClock();
-        IObservable<(StreamType, bool)> ConfigurationChanged();
     }
 }
