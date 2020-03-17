@@ -20,10 +20,7 @@ using JuvoPlayer.Common;
 
 namespace JuvoPlayer.Tests.Utils
 {
-    public class test<T> where T : struct
-    {
 
-    }
     public class StartOperation : TestOperation
     {
         public override bool Equals(object obj)

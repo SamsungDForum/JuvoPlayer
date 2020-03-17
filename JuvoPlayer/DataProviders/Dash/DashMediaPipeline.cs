@@ -301,10 +301,9 @@ namespace JuvoPlayer.DataProviders.Dash
             try
             {
                 DisableAdaptiveStreaming = true;
-                pendingStream = newStream;
-                dashClient.UpdateRepresentation(pendingStream.Representation);
-                ParseDrms(pendingStream.Media);
-                PushMetaDataConfiguration();
+                currentStream = newStream;
+                pendingStream = null;
+                dashClient.UpdateRepresentation(currentStream.Representation);
             }
             finally
             {
@@ -439,12 +438,6 @@ namespace JuvoPlayer.DataProviders.Dash
 
         }
 
-        public void ResetTrimOffset()
-        {
-            Logger.Info(StreamType.ToString());
-            trimOffset = null;
-        }
-
         public void OnTimeUpdated(TimeSpan time)
         {
             dashClient.OnTimeUpdated(time);
@@ -471,9 +464,6 @@ namespace JuvoPlayer.DataProviders.Dash
 
             if (availableStreams.Count <= stream.Id)
                 throw new ArgumentOutOfRangeException();
-
-            if (pipelineStarted)
-                throw new InvalidOperationException("Pipeline not paused");
 
             var newMedia = availableStreams[stream.Id].Media;
             var newRepresentation = availableStreams[stream.Id].Representation;

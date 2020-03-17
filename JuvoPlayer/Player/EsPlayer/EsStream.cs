@@ -192,6 +192,7 @@ namespace JuvoPlayer.Player.EsPlayer
         {
             packetStorage.Disable(streamType);
 
+
             currentPacket?.Dispose();
             currentPacket = null;
 
@@ -298,7 +299,15 @@ namespace JuvoPlayer.Player.EsPlayer
                     break;
 
                 case BufferConfigurationPacket bufferConfigPacket:
+                    var oldConfiguration = Configuration;
                     Configuration = bufferConfigPacket.Config;
+                    if (!oldConfiguration.IsCompatible(Configuration))
+                    {
+                        logger.Error($"{streamType}: Incompatible configuration");
+                        playbackErrorSubject.OnNext("Incompatible configuration");
+                        continueProcessing = false;
+                    }
+
                     break;
 
                 case EncryptedPacket encryptedPacket:

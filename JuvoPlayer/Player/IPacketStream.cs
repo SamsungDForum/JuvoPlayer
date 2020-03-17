@@ -26,6 +26,5 @@ namespace JuvoPlayer.Player
         void OnDRMFound(DRMInitData data);
         void OnStreamConfigChanged(StreamConfig config);
         void OnClearStream();
-        IObservable<bool> ConfigurationChanged();
     }
 }

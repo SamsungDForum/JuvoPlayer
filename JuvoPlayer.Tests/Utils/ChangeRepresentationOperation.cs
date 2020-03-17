@@ -65,22 +65,19 @@ namespace JuvoPlayer.Tests.Utils
             if (Index == -1)
                 return;
 
-            var currentState = service.State;
-            var changeTask = service.ChangeActiveStream(descriptions[Index]).WithTimeout(context.Timeout);
-
-            // In non playing state, change task is not expected to complete until playback is resumed
-            if (currentState != PlayerState.Playing)
-                return;
+            var changeTask = service.ChangeActiveStream(descriptions[Index]);
 
             try
             {
-                await changeTask;
+                if (context.Timeout != TimeSpan.Zero)
+                    changeTask = changeTask.WithTimeout(context.Timeout);
+
+                await changeTask.WithCancellation(context.Token);
             }
             catch (Exception e)
             {
-                _logger.Error(e);
-                _logger.Error($"Task State: {changeTask.Status}");
-                _logger.Error($"{descriptions[Index].StreamType} {descriptions[Index].Id} {descriptions[Index].Description}");
+                _logger.Error(e,
+                    $"State: {changeTask.Status} {descriptions[Index].StreamType} {descriptions[Index].Id} {descriptions[Index].Description}");
                 throw;
             }
 
