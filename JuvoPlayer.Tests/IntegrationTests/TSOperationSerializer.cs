@@ -80,9 +80,6 @@ namespace JuvoPlayer.Tests.IntegrationTests
 
         private static TestOperation[] TestOperations()
         {
-            // Dummy synchronization context. Keeps random operation creation
-            // from blowing up with exceptions
-            SynchronizationContext.SetSynchronizationContext(new SynchronizationContext());
             var fixture = new Fixture();
             var context = new SpecimenContext(fixture);
             var allOpTypes = AllOperations.GetAllTypes();
