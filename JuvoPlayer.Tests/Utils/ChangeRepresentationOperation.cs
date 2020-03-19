@@ -19,7 +19,6 @@ using System;
 using System.Threading.Tasks;
 using JuvoLogger;
 using JuvoPlayer.Common;
-using JuvoPlayer.Player.EsPlayer;
 
 namespace JuvoPlayer.Tests.Utils
 {

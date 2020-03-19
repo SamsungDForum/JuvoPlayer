@@ -33,7 +33,6 @@ namespace JuvoPlayer.Tests.Utils
         private readonly CancellationToken _cancellationToken;
         private readonly TimeSpan _timeout;
         private readonly TimeSpan _initialClock;
-        private readonly SynchronizationContext _syncCtx;
 
         public RunningClockTask(IPlayerService service, CancellationToken token, TimeSpan timeout, TimeSpan initialClock)
         {
@@ -41,12 +40,6 @@ namespace JuvoPlayer.Tests.Utils
             _cancellationToken = token;
             _timeout = timeout;
             _initialClock = initialClock;
-
-            // Grab synchronization context as it's not inherited to Task.Run()
-            if (SynchronizationContext.Current == null)
-                throw new ArgumentNullException(nameof(SynchronizationContext.Current), "Synchronization context cannot be null");
-
-            _syncCtx = SynchronizationContext.Current;
         }
 
         public Task Observe()
@@ -61,7 +54,6 @@ namespace JuvoPlayer.Tests.Utils
                     var lastObservedClock = _initialClock;
 
                     await _service.PlayerClock()
-                        .ObserveOn(_syncCtx)
                         .FirstAsync(clk =>
                         {
                             observedClocks.Add((DateTimeOffset.Now, clk));
@@ -76,14 +68,13 @@ namespace JuvoPlayer.Tests.Utils
                         })
                         .Timeout(_timeout)
                         .ToTask(_cancellationToken);
-
                 }
                 catch (Exception)
                 {
                     _logger.Error($"Running clock error. Timeout {_timeout} Expected: {_initialClock}");
-                    foreach (var clockEntry in observedClocks)
+                    foreach (var (timeStamp, clock) in observedClocks)
                     {
-                        _logger.Error($"{clockEntry.timeStamp} {clockEntry.clock}");
+                        _logger.Error($"{timeStamp} {clock}");
                     }
 
                     throw;

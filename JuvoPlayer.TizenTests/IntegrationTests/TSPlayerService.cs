@@ -26,7 +26,6 @@ using System.Threading;
 using System.Threading.Tasks;
 using JuvoLogger;
 using JuvoPlayer.Common;
-using JuvoPlayer.Player.EsPlayer;
 using JuvoPlayer.Tests.Utils;
 using JuvoPlayer.Utils;
 using Nito.AsyncEx;
@@ -232,13 +231,6 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
 
                     await await Task.WhenAny(seekTask, clipCompletedTask);
                 }
-                catch (SeekException se)
-                {
-                    // Seek can be expected when stream duration differs
-                    // from content metadata used for seeking
-                    _logger.Info(se.Message);
-                    return;
-                }
                 catch (Exception e)
                 {
                     _logger.Error(e);
@@ -276,14 +268,14 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
         }
         
         [TestCase("Clean byte range MPEG DASH")]
-        public void Destructive_Representation_Change(string clipTitle)
+        public void Destructive_RepresentationChange_Succeeds(string clipTitle)
         {
             RunPlayerTest(clipTitle, async context =>
             {
                 var service = context.Service;
                 var descriptions = service.GetStreamsDescription(StreamType.Audio);
                 if (descriptions.Count == 0)
-                    return;
+                    Assert.Ignore("No streams for representation change");
 
                 for(var i =0 ; i < descriptions.Count;i++)
                 {
@@ -303,7 +295,7 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
         }
 
         [TestCase("Clean byte range MPEG DASH")]
-        public void Seek_Then_Change_Representation(string clipTitle)
+        public void RepresentationChange_While_Seeking_Succeeds(string clipTitle)
         {
             RunPlayerTest(clipTitle, async context =>
             {
@@ -386,6 +378,9 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
                 {
                     if(anyFailed)
                         throw new Exception("Pending operations failed to complete");
+
+                    // No failures till cancellation request - exit
+                    return;
                 }
             }
         }
@@ -460,7 +455,7 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
                 {
                     foreach (var pt in pendingTasks)
                     {
-                        _logger.Info($"{pt.when} {pt.operationType} {pt.task.Status}");
+                        _logger.Warn($"{pt.when} {pt.operationType} {pt.task.Status}");
                     }
 
                     throw;

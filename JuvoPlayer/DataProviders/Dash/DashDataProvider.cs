@@ -197,7 +197,7 @@ namespace JuvoPlayer.DataProviders.Dash
 
             var audioPosition = audioPipeline.Seek(videoPosition);
 
-            Logger.Info($"Request Postion {timeIndex} Video {videoPosition} Audio {audioPosition}");
+            Logger.Info($"Request Position {timeIndex} Video {videoPosition} Audio {audioPosition}");
 
             audioPipeline.PacketPredicate = packet => !packet.ContainsData() || packet.Pts >= videoPosition;
 

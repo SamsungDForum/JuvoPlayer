@@ -46,8 +46,8 @@ namespace JuvoPlayer.Tests.Utils
             var service = context.Service;
 
             service.Pause();
-            // State subscription will replay current state. If paused,
-            // before calling start(), playerStateTask shall be completed.
+            // Upon state subscription, current state will be replayed to subscriber.
+            // When pausing already paused service, pause state will be replayed.
             return StateChangedTask.Observe(service, PlayerState.Paused, context.Token, context.Timeout);
         }
 
