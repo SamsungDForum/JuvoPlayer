@@ -147,7 +147,7 @@ namespace JuvoPlayer
             return playerController.OnSeek(to);
         }
 
-        public async Task ChangeActiveStream(StreamDescription streamDescription)
+        public Task ChangeActiveStream(StreamDescription streamDescription)
         {
             Logger.Info($"ChangeActiveStream {streamDescription.StreamType} {streamDescription.Id} {streamDescription.Description}");
 
@@ -157,26 +157,10 @@ namespace JuvoPlayer
             if (!isAV)
             {
                 dataProvider.ChangeActiveStream(streamDescription);
-                return;
+                return Task.CompletedTask;
             }
 
-            try
-            {
-                var (ready, position, done) = playerController.OnRepresentationChanged();
-                await ready;
-                dataProvider.Pause();
-                var dataPosition = await position;
-                dataProvider.ChangeActiveStream(streamDescription);
-                // Seek resumes dataProvider
-                var dpSeek = dataProvider.Seek(dataPosition, CancellationToken.None);
-                await Task.WhenAll(dpSeek, done);
-
-            }
-            catch (OperationCanceledException)
-            {
-                // may get cancelled. Termination/Suspend.
-                Logger.Info("Operation Cancelled");
-            }
+            return playerController.OnRepresentationChanged(streamDescription);
         }
 
         public void DeactivateStream(StreamType streamType)

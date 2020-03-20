@@ -51,6 +51,19 @@ namespace JuvoPlayer.DataProviders
                     connector.ConnectDataProvider();
                 }
             }
+
+            public async Task<TimeSpan> ChangeRepresentation(TimeSpan position, object representation, CancellationToken token)
+            {
+                var stream = representation as StreamDescription;
+                if (stream == null)
+                    throw new ArgumentException($"Argument is not of type {typeof(StreamDescription)}", nameof(representation));
+
+                // Perform change & seek as an "atomic" ChangeRepresentation task resulting in data
+                // provider running with new representation.
+                dataProvider.Pause();
+                dataProvider.ChangeActiveStream(stream);
+                return await dataProvider.Seek(position, token);
+            }
         }
 
         private CompositeDisposable dataProviderSubscriptions;

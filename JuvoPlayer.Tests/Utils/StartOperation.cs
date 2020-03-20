@@ -47,7 +47,7 @@ namespace JuvoPlayer.Tests.Utils
 
             // State subscription will replay current state. If playing,
             // before calling start(), playerStateTask shall be completed.
-            return StateChangedTask.Observe(service, PlayerState.Playing, context.Token, context.Timeout); ;
+            return WaitForState.Observe(service, PlayerState.Playing, context.Token, context.Timeout); ;
         }
     }
 }
