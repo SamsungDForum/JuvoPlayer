@@ -302,7 +302,7 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
                 var streams = new[] { StreamType.Video, StreamType.Audio };
                 var service = context.Service;
                 context.SeekTime = null;    // Perform random seeks.
-
+                var defaultTimeout = context.Timeout;
                 foreach (var stream in streams)
                 {
                     var descriptions = service.GetStreamsDescription(stream);
@@ -313,8 +313,13 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
                     {
                         var seekOp = new SeekOperation();
 
+                        // Wait for seekOp after ChangeRepresentation executes.
+                        // Otherwise, position task of SeekOp may timeout as position may not be available
+                        // till ChangeRepresentation completes.
+                        context.Timeout = TimeSpan.Zero;
                         seekOp.Prepare(context);
                         var seekTask = seekOp.Execute(context);
+                        context.Timeout = defaultTimeout;
 
                         var changeOp = new ChangeRepresentationOperation
                         {
@@ -323,8 +328,8 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
                         };
 
                         var changeTask = changeOp.Execute(context);
-                        var runningClockTask = RunningClockTask.Observe(context.Service, context.Token, context.Timeout);
-                        await Task.WhenAll(seekTask, changeTask, runningClockTask).WithCancellation(context.Token);
+                        seekTask = seekTask.WithTimeout(context.Timeout);
+                        await Task.WhenAll(seekTask, changeTask).WithCancellation(context.Token);
                     }
                 }
             });
