@@ -38,7 +38,6 @@ namespace JuvoPlayer.Player
         private readonly Subject<string> streamErrorSubject = new Subject<string>();
 
         private readonly ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
-        private bool isSeeking;
 
         public PlayerController(IPlayer player, IDrmManager drmManager)
         {
@@ -79,9 +78,9 @@ namespace JuvoPlayer.Player
 
 
 
-        public (Task ready, Task<TimeSpan> position, Task done) OnRepresentationChanged()
+        public Task OnRepresentationChanged(object representation)
         {
-            return player.ChangeRepresentation();
+            return player.ChangeRepresentation(representation);
         }
 
         public void OnClipDurationChanged(TimeSpan duration)
@@ -112,24 +111,12 @@ namespace JuvoPlayer.Player
             player.Play();
         }
 
-        public async Task OnSeek(TimeSpan time)
+        public Task OnSeek(TimeSpan time)
         {
-            if (isSeeking)
-                throw new InvalidOperationException("Seek in progress");
-
-            isSeeking = true;
-
             if (time > duration)
                 time = duration;
 
-            try
-            {
-                await player.Seek(time);
-            }
-            finally
-            {
-                isSeeking = false;
-            }
+            return player.Seek(time);
         }
 
         public void OnStop()

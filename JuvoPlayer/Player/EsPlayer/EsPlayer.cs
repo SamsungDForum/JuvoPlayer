@@ -63,9 +63,9 @@ namespace JuvoPlayer.Player.EsPlayer
             return streamControl.AppendPacket(packet);
         }
 
-        public (Task ready, Task<TimeSpan> position, Task done) ChangeRepresentation()
+        public Task ChangeRepresentation(object streamRepresentation)
         {
-            return streamControl.ChangeRepresentation();
+            return streamControl.ChangeRepresentation(streamRepresentation);
         }
 
         public IObservable<PlayerState> StateChanged()
@@ -127,11 +127,11 @@ namespace JuvoPlayer.Player.EsPlayer
             throw new NotImplementedException();
         }
 
-        public void SetStreamConfig(StreamConfig config)
+        public Task SetStreamConfig(StreamConfig config)
         {
             logger.Info(config.StreamType().ToString());
 
-            streamControl.SetStreamConfiguration(config);
+            return streamControl.SetStreamConfiguration(config);
         }
 
         #region IPlayer Interface event callbacks

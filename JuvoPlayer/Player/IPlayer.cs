@@ -40,9 +40,9 @@ namespace JuvoPlayer.Player
         void SetPlaybackRate(float rate);
         void Stop();
 
-        void SetStreamConfig(StreamConfig config);
+        Task SetStreamConfig(StreamConfig config);
         Task AppendPacket(Packet packet);
 
-        (Task ready, Task<TimeSpan> position, Task done) ChangeRepresentation();
+        Task ChangeRepresentation(object streamRepresentation);
     }
 }

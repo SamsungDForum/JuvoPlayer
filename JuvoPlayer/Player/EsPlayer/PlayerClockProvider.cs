@@ -90,7 +90,7 @@ namespace JuvoPlayer.Player.EsPlayer
             if (_playerClockSourceConnection != null)
                 return;
 
-            LastClock = _playerClock();
+            SetClock(_playerClock());
 
             _playerClockSourceConnection = _playerClockConnectable.Connect();
             Logger.Info($"Player Clock: {LastClock} Pending Clock {PendingClock}");

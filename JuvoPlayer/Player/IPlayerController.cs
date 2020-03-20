@@ -31,7 +31,7 @@ namespace JuvoPlayer.Player
         void OnStop();
         void OnSuspend();
         Task OnResume();
-        (Task ready, Task<TimeSpan> position, Task done) OnRepresentationChanged();
+        Task OnRepresentationChanged(object representation);
 
         #endregion
 

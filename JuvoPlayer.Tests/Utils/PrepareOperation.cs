@@ -52,7 +52,7 @@ namespace JuvoPlayer.Tests.Utils
             Assert.That(clip, Is.Not.Null);
 
             var playerStateTask =
-                StateChangedTask.Observe(service, PlayerState.Prepared, context.Token, context.Timeout);
+                WaitForState.Observe(service, PlayerState.Prepared, context.Token, context.Timeout);
 
             service.SetSource(clip);
 

@@ -266,7 +266,7 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
                 await await Task.WhenAny(clipCompletedTask, playbackErrorTask);
             });
         }
-        
+
         [TestCase("Clean byte range MPEG DASH")]
         public void Destructive_RepresentationChange_Succeeds(string clipTitle)
         {
@@ -277,7 +277,7 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
                 if (descriptions.Count == 0)
                     Assert.Ignore("No streams for representation change");
 
-                for(var i =0 ; i < descriptions.Count;i++)
+                for (var i = 0; i < descriptions.Count; i++)
                 {
                     var changeOp = new ChangeRepresentationOperation
                     {
@@ -286,10 +286,10 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
                     };
                     var entry = descriptions[i];
                     _logger.Info($"Changing to {entry.Id} {entry.StreamType} { entry.Description}");
-                    
+
                     await changeOp.Execute(context);
                     _logger.Info($"Changing to {entry.Id} {entry.StreamType} { entry.Description} Done");
-                    
+
                 }
             });
         }
@@ -301,6 +301,7 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
             {
                 var streams = new[] { StreamType.Video, StreamType.Audio };
                 var service = context.Service;
+                context.SeekTime = null;    // Perform random seeks.
 
                 foreach (var stream in streams)
                 {
@@ -308,13 +309,10 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
                     if (descriptions.Count == 0)
                         continue;
 
-                    context.SeekTime = null;
                     for (var i = 0; i < descriptions.Count; i++)
                     {
                         var seekOp = new SeekOperation();
 
-                        // Seek operation is not expected complete.
-                        // SeekTask yes. Position task no.
                         seekOp.Prepare(context);
                         var seekTask = seekOp.Execute(context);
 
@@ -323,11 +321,10 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
                             Index = i,
                             StreamType = stream
                         };
-                        
+
                         var changeTask = changeOp.Execute(context);
                         var runningClockTask = RunningClockTask.Observe(context.Service, context.Token, context.Timeout);
-
-                        await Task.WhenAll(changeTask, runningClockTask).WithCancellation(context.Token);
+                        await Task.WhenAll(seekTask, changeTask, runningClockTask).WithCancellation(context.Token);
                     }
                 }
             });
@@ -376,7 +373,7 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
 
                 if (context.Token.IsCancellationRequested)
                 {
-                    if(anyFailed)
+                    if (anyFailed)
                         throw new Exception("Pending operations failed to complete");
 
                     // No failures till cancellation request - exit
@@ -393,7 +390,7 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
                 context.Timeout = TSPlayerServiceTestCaseSource.IsEncrypted(clipTitle) ? TimeSpan.FromSeconds(40) : TimeSpan.FromSeconds(20);
 
                 var pendingTasks = new List<(Task task, Type operationType, DateTimeOffset when)>();
-                
+
                 var service = context.Service;
                 var defaultTimeout = context.Timeout;
 

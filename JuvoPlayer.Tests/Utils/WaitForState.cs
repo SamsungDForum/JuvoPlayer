@@ -25,7 +25,7 @@ using Nito.AsyncEx;
 
 namespace JuvoPlayer.Tests.Utils
 {
-    public class StateChangedTask
+    public class WaitForState
     {
         private readonly ILogger _logger = LoggerManager.GetInstance().GetLogger("UT");
         private readonly IPlayerService _service;
@@ -33,7 +33,7 @@ namespace JuvoPlayer.Tests.Utils
         private readonly CancellationToken _cancellationToken;
         private readonly TimeSpan _timeout;
 
-        public StateChangedTask(IPlayerService service, PlayerState expectedState, CancellationToken token,
+        public WaitForState(IPlayerService service, PlayerState expectedState, CancellationToken token,
             TimeSpan timeout)
         {
             _service = service;
@@ -92,7 +92,7 @@ namespace JuvoPlayer.Tests.Utils
         public static Task Observe(IPlayerService service, PlayerState expectedState, CancellationToken token,
             TimeSpan timeout)
         {
-            return new StateChangedTask(service, expectedState, token, timeout).Observe();
+            return new WaitForState(service, expectedState, token, timeout).Observe();
         }
     }
 }
