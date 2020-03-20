@@ -375,7 +375,7 @@ namespace JuvoPlayer.Player.EsPlayer
                 StopTransfer();
                 StopClockGenerator();
                 player.Stop();
-                SetState(PlayerState.Idle, activeTaskCts.Token);
+                SetState(PlayerState.Idle, CancellationToken.None);
             }
             catch (InvalidOperationException ioe)
             {
@@ -455,22 +455,20 @@ namespace JuvoPlayer.Player.EsPlayer
             {
                 logger.Info($"SeekAsync({s},{t})");
 
-                if (token.IsCancellationRequested)
-                {
-                    player.SubmitEosPacket(s);
-                    return;
-                }
                 if (s == ESPlayer.StreamType.Audio)
                     return;
 
                 _asyncOpTask = StartTransfer(token);
-            }).WithCancellation(token);
+            });
 
-            await seekAsyncTask;
-            var startOk = await _asyncOpTask;
+            await seekAsyncTask.WithCancellation(token);
+            var startOk = await _asyncOpTask.WithCancellation(token);
 
-            if (token.IsCancellationRequested || !startOk)
-                throw new OperationCanceledException();
+            if (!startOk)
+            {
+                logger.Info($"Player.SeekAsync({time}) EOS");
+                return;
+            }
 
             logger.Info($"Player.SeekAsync({time}) Done");
             StartClockGenerator();
@@ -748,7 +746,7 @@ namespace JuvoPlayer.Player.EsPlayer
             if (token.IsCancellationRequested)
             {
                 logger.Info($"Cancelled. Event {newState} not dispatched");
-                return;
+                throw new OperationCanceledException();
             }
 
             stateChangedSubject.OnNext(newState);
@@ -841,26 +839,24 @@ namespace JuvoPlayer.Player.EsPlayer
 
             logger.Info("Player.PrepareAsync()");
 
-            await player.PrepareAsync(s =>
+            var prepareAsyncTask = player.PrepareAsync(s =>
             {
                 logger.Info($"PrepareAsync {s}");
-
-                if (token.IsCancellationRequested)
-                {
-                    player.SubmitEosPacket(s);
-                    return;
-                }
 
                 if (s == ESPlayer.StreamType.Audio)
                     return;
 
                 _asyncOpTask = StartTransfer(token);
-            }).WithCancellation(token);
+            });
 
-            var startOk = await _asyncOpTask;
+            await prepareAsyncTask.WithCancellation(token);
+            var startOk = await _asyncOpTask.WithCancellation(token);
 
-            if (token.IsCancellationRequested || !startOk)
-                throw new OperationCanceledException();
+            if (!startOk)
+            {
+                logger.Info("Player.PrepareAsync() EOS");
+                return;
+            }
 
             logger.Info("Player.PrepareAsync() Done");
 
@@ -956,18 +952,18 @@ namespace JuvoPlayer.Player.EsPlayer
                 esStreams[(int)StreamType.Audio].Start(token);
                 return true;
             }
-            catch (TaskCanceledException)
+            catch (OperationCanceledException)
             {
                 logger.Info("Operation cancelled");
+                player.SubmitEosPacket(ESPlayer.StreamType.Audio);
+                player.SubmitEosPacket(ESPlayer.StreamType.Video);
+                throw;
             }
             catch (Exception e)
             {
                 logger.Error(e, "Operation failed");
+                throw;
             }
-
-            player.SubmitEosPacket(ESPlayer.StreamType.Audio);
-            player.SubmitEosPacket(ESPlayer.StreamType.Video);
-            return false;
         }
 
         /// <summary>
