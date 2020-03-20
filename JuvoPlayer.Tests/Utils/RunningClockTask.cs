@@ -51,17 +51,25 @@ namespace JuvoPlayer.Tests.Utils
                 try
                 {
                     var observedCount = 0;
-                    var lastObservedClock = _initialClock;
+                    var currentClock = _initialClock;
 
                     await _service.PlayerClock()
                         .FirstAsync(clk =>
                         {
                             observedClocks.Add((DateTimeOffset.Now, clk));
 
-                            if (clk <= lastObservedClock)
+                            var lastObservedClock = currentClock;
+                            currentClock = clk;
+
+                            if (currentClock < lastObservedClock)
+                            {
+                                observedCount = 0;
+                                return false;
+                            }
+
+                            if (currentClock == lastObservedClock)
                                 return false;
 
-                            lastObservedClock = clk;
                             observedCount++;
 
                             return observedCount >= ConsecutiveClocks;
