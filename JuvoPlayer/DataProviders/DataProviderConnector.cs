@@ -58,11 +58,21 @@ namespace JuvoPlayer.DataProviders
                 if (stream == null)
                     throw new ArgumentException($"Argument is not of type {typeof(StreamDescription)}", nameof(representation));
 
-                // Perform change & seek as an "atomic" ChangeRepresentation task resulting in data
-                // provider running with new representation.
-                dataProvider.Pause();
-                dataProvider.ChangeActiveStream(stream);
-                return await dataProvider.Seek(position, token);
+                try
+                {
+                    connector.DisconnectPlayerController();
+                    connector.DisconnectDataProvider();
+                    // Perform change & seek as an "atomic" ChangeRepresentation task resulting in data
+                    // provider running with new representation.
+                    dataProvider.Pause();
+                    dataProvider.ChangeActiveStream(stream);
+                    return await dataProvider.Seek(position, token);
+                }
+                finally
+                {
+                    connector.ConnectPlayerController();
+                    connector.ConnectDataProvider();
+                }
             }
         }
 
