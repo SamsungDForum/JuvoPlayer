@@ -32,7 +32,7 @@ namespace JuvoPlayer
         string CurrentCueText { get; }
         void Pause();
         Task SeekTo(TimeSpan to);
-        void ChangeActiveStream(StreamDescription streamDescription);
+        Task ChangeActiveStream(StreamDescription streamDescription);
         void DeactivateStream(StreamType streamType);
         List<StreamDescription> GetStreamsDescription(StreamType streamType);
         void SetSource(ClipDefinition clip);
