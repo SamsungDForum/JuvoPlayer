@@ -28,15 +28,15 @@ namespace JuvoPlayer.Player.EsPlayer
     {
         private static readonly ILogger logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
 
-        private EsPlayerPacketStorage packetStorage;
-        private EsStreamController streamControl;
+        private readonly EsPlayerPacketStorage packetStorage;
+        private readonly EsStreamController streamControl;
 
-        public EsPlayer(object stateSnapshot = null)
-            : this(WindowUtils.CreateElmSharpWindow(), stateSnapshot)
+        public EsPlayer()
+            : this(WindowUtils.CreateElmSharpWindow())
         {
         }
 
-        public EsPlayer(Window window, object stateSnapshot = null)
+        public EsPlayer(Window window)
         {
             try
             {
@@ -44,9 +44,10 @@ namespace JuvoPlayer.Player.EsPlayer
                 packetStorage.Initialize(StreamType.Audio);
                 packetStorage.Initialize(StreamType.Video);
 
-                streamControl = new EsStreamController(packetStorage, window, stateSnapshot);
+                streamControl = new EsStreamController(packetStorage, window);
                 streamControl.Initialize(StreamType.Audio);
                 streamControl.Initialize(StreamType.Video);
+
             }
             catch (InvalidOperationException ioe)
             {
@@ -56,8 +57,16 @@ namespace JuvoPlayer.Player.EsPlayer
         }
 
         #region IPlayer Interface Implementation
-        public void AppendPacket(Packet packet) =>
-            streamControl.AppendPacket(packet);
+
+        public Task AppendPacket(Packet packet)
+        {
+            return streamControl.AppendPacket(packet);
+        }
+
+        public Task ChangeRepresentation(object streamRepresentation)
+        {
+            return streamControl.ChangeRepresentation(streamRepresentation);
+        }
 
         public IObservable<PlayerState> StateChanged()
         {
@@ -150,11 +159,6 @@ namespace JuvoPlayer.Player.EsPlayer
 
         #endregion
         #endregion
-
-        public object GetStateSnapshot()
-        {
-            return streamControl.GetStateSnapshot();
-        }
 
         #region IDisposable Support
         private bool disposedValue; // To detect redundant calls

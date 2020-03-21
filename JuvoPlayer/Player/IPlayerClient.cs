@@ -24,5 +24,7 @@ namespace JuvoPlayer.Player
     public interface IPlayerClient
     {
         Task<TimeSpan> Seek(TimeSpan position, CancellationToken token);
+
+        Task<TimeSpan> ChangeRepresentation(TimeSpan position, object representation, CancellationToken token);
     }
 }

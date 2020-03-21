@@ -116,7 +116,7 @@ namespace Configuration
 
     public static class PlayerControllerConfig
     {
-        public static TimeSpan TimeUpdatedInterval { get; set; } = TimeSpan.FromSeconds(0.5);
+        public static TimeSpan TimeUpdatedInterval { get; set; } = TimeSpan.FromSeconds(0.33);
     }
 
     public static class EsStreamConfig

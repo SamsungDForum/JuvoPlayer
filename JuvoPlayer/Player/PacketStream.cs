@@ -16,13 +16,10 @@
  */
 
 using System;
-using System.Reactive.Linq;
-using System.Reactive.Subjects;
 using JuvoLogger;
 using JuvoPlayer.Common;
 using JuvoPlayer.Common.Utils.IReferenceCountableExtensions;
 using JuvoPlayer.Drms;
-using JuvoPlayer.Player.EsPlayer;
 
 namespace JuvoPlayer.Player
 {
@@ -36,7 +33,6 @@ namespace JuvoPlayer.Player
         private readonly ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
         private bool forceDrmChange;
         private readonly ICodecExtraDataHandler _codecHandler;
-        private readonly Subject<bool> configChangedSubject = new Subject<bool>();
 
         public PacketStream(StreamType streamType, IPlayer player, IDrmManager drmManager, ICodecExtraDataHandler handler)
         {
@@ -59,7 +55,6 @@ namespace JuvoPlayer.Player
             {
                 // Increment reference counter on DRM session
                 drmSession.Share();
-
                 encPacket.DrmSession = drmSession;
             }
 
@@ -85,14 +80,10 @@ namespace JuvoPlayer.Player
 
             forceDrmChange = (this.config != null);
 
-            var isCompatible = this.config?.IsCompatible(config) ?? true;
-
             this.config = config;
 
             _codecHandler.OnStreamConfigChanged(this.config);
             player.SetStreamConfig(this.config);
-
-            configChangedSubject.OnNext(!isCompatible);
         }
 
         public void OnClearStream()
@@ -106,11 +97,6 @@ namespace JuvoPlayer.Player
 
             drmSession = null;
             config = null;
-        }
-
-        public IObservable<bool> ConfigurationChanged()
-        {
-            return configChangedSubject.AsObservable();
         }
 
         public void OnDRMFound(DRMInitData data)

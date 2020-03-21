@@ -31,6 +31,7 @@ namespace JuvoPlayer.Player
         void OnStop();
         void OnSuspend();
         Task OnResume();
+        Task OnRepresentationChanged(object representation);
 
         #endregion
 
@@ -55,7 +56,5 @@ namespace JuvoPlayer.Player
         IObservable<TimeSpan> TimeUpdated();
         IObservable<PlayerState> StateChanged();
         IObservable<TimeSpan> DataClock();
-        IObservable<TimeSpan> PlayerClock();
-        IObservable<bool> ConfigurationChanged(StreamType stream);
     }
 }

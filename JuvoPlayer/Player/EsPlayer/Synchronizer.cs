@@ -20,6 +20,7 @@ using JuvoPlayer.Common;
 using System;
 using System.Linq;
 using System.Reactive.Linq;
+using System.Reactive.Subjects;
 using System.Reactive.Threading.Tasks;
 using System.Threading;
 using System.Threading.Tasks;
@@ -54,7 +55,7 @@ namespace JuvoPlayer.Player.EsPlayer
         private readonly SynchronizationData[] _streamSyncData = new SynchronizationData[(int)StreamType.Count];
         private readonly AsyncBarrier<bool> _streamSyncBarrier = new AsyncBarrier<bool>();
         private readonly PlayerClockProvider _playerClockSource;
-
+        private readonly Subject<TimeSpan> _ptsSubject = new Subject<TimeSpan>();
         public Synchronizer(PlayerClockProvider playerClockSource)
         {
             _playerClockSource = playerClockSource;
@@ -117,13 +118,13 @@ namespace JuvoPlayer.Player.EsPlayer
         {
             var playerClock = _playerClockSource.LastClock;
 
-            var clockDiff = streamState.Pts - playerClock - StreamClockMinimumOverhead;
+            var clockDiff = streamState.Dts - playerClock - StreamClockMinimumOverhead;
             if (clockDiff <= TimeSpan.Zero)
                 return;
 
             var desiredClock = playerClock + clockDiff;
 
-            Logger.Info($"{streamState.StreamType}: Sync {streamState.Dts} to {playerClock} Restart ({desiredClock})");
+            Logger.Info($"{streamState.StreamType}: DTS {streamState.Dts} to {playerClock} Restart ({desiredClock})");
 
             await _playerClockSource.PlayerClockObservable()
                 .FirstAsync(pClock => pClock >= desiredClock)
@@ -162,6 +163,10 @@ namespace JuvoPlayer.Player.EsPlayer
                     // use PostKeyFrameTransferDuration
                     var allKeyFramesSeen = keyFrames.All(keyFrameSeen => keyFrameSeen);
                     await DelayStream(streamState, allKeyFramesSeen, token);
+
+                    // Push pts out
+                    if (streamState.StreamType == StreamType.Video)
+                        _ptsSubject.OnNext(streamState.Pts);
 
                     // Pushing +300ms post key frame may not complete async ops on certain streams
                     // Async op completion also does not guarantee playback will commence.
@@ -225,16 +230,22 @@ namespace JuvoPlayer.Player.EsPlayer
                 state.Pts = PlayerClockProviderConfig.InvalidClock;
                 state.Dts = PlayerClockProviderConfig.InvalidClock;
                 state.KeyFrameSeen = false;
-
                 _streamSyncBarrier.AddParticipant();
             }
 
             Logger.Info("");
         }
 
+        public IObservable<TimeSpan> Pts()
+        {
+            return _ptsSubject.AsObservable();
+        }
+
         public void Dispose()
         {
             Logger.Info("");
+            _ptsSubject.OnCompleted();
+            _ptsSubject.Dispose();
             _streamSyncBarrier.Reset();
         }
     }
