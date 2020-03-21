@@ -295,7 +295,7 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
         }
 
         [TestCase("Clean byte range MPEG DASH")]
-        public void RepresentationChange_While_Seeking_Succeeds(string clipTitle)
+        public void RepresentationChange_WhileSeeking_Succeeds(string clipTitle)
         {
             RunPlayerTest(clipTitle, async context =>
             {
