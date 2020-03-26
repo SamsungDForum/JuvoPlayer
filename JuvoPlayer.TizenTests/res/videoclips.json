@@ -133,6 +133,6 @@
         "url": "http://106.120.45.49/First_8K_Video_from_Space/manifest8k.mpd",
         "type": "dash",
         "poster": "car.jpg",
-        "description": "Resolution 7680x4320, Codecs: H265 MPEG-4 HEVC, MPEG AAC. International Space Station footage of Earth and the science experiments in 8k resolution. Origin https://images.nasa.gov/details-iss056e200804.html"
+        "description": "Resolution 7680x4320, Codecs: H265 MPEG-4 HEVC, MPEG AAC. International Space Station footage of Earth and the science experiments in 8k resolution. Origin https://images.nasa.gov/details-First-8K-Video-from-Space.html"
     }
 ]
