@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+
+<ContentPage xmlns="http://xamarin.com/schemas/2014/forms"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             x:Class="XamarinPlayer.Tizen.TV.Views.LoadingScreen">
+    <ContentPage.Content>
+        <AbsoluteLayout>
+            <Image AbsoluteLayout.LayoutBounds=".5,0,.6,.5" x:Name="LoadingImage"
+                   AbsoluteLayout.LayoutFlags="All"/>
+            <ActivityIndicator 
+                AbsoluteLayout.LayoutBounds=".5,.75,.5,.5"
+                AbsoluteLayout.LayoutFlags="All"
+                   Color="White"
+                   InputTransparent="True"
+                    IsRunning="True"
+                   VerticalOptions="Center"
+                   HorizontalOptions="Center"
+                   HeightRequest="100"
+                   WidthRequest="100" />
+        </AbsoluteLayout>
+    </ContentPage.Content>
+</ContentPage>
