@@ -37,7 +37,7 @@ namespace XamarinPlayer.Tizen.TV
             MainPage = new NavigationPage();
             AppMainPage = MainPage as NavigationPage;
             AppMainPage.PushAsync(new LoadingScreen());
-            LoadContent();
+            PrepareContent();
         }
 
         protected override void OnStart()
@@ -68,7 +68,7 @@ namespace XamarinPlayer.Tizen.TV
             _deepLinkUrl = null;
         }
 
-        public async Task LoadContent()
+        public async Task PrepareContent()
         {
             await Task.Yield();
             var contentListPage = new ContentListPage(AppMainPage);
