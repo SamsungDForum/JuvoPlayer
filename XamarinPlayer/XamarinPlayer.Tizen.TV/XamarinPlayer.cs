@@ -27,6 +27,7 @@ namespace XamarinPlayer.Tizen.TV
     {
         private string _deepLinkUrl;
         private bool _isInForeground;
+        
         private static Page _loadingScreen;
         private static Task _loadingScreenTask;
         private static Task _prepareTask;
@@ -75,7 +76,6 @@ namespace XamarinPlayer.Tizen.TV
         {
             await Task.Yield();
             var contentListPage = new ContentListPage(AppMainPage);
-            await Task.Delay(3000);
             await _loadingScreenTask;
             AppMainPage.Navigation.InsertPageBefore(contentListPage,_loadingScreen);
             await AppMainPage.Navigation.PopAsync();
