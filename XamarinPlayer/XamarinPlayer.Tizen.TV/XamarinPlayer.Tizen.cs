@@ -25,6 +25,7 @@ using JuvoPlayer.Common;
 using Tizen.Applications;
 using Tizen.System;
 using Xamarin.Forms;
+using Xamarin.Forms.GenGridView.Tizen;
 using Xamarin.Forms.Platform.Tizen;
 using XamarinPlayer.Tizen.TV.Services;
 using Log = Tizen.Log;
@@ -129,6 +130,7 @@ namespace XamarinPlayer.Tizen.TV
 
             var app = new Program();
 
+            GenGridView.Init();
             Forms.Init(app);
             app.Run(args);
         }
