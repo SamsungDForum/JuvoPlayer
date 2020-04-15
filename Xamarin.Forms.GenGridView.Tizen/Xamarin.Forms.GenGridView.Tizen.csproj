@@ -1,0 +1,16 @@
+<Project Sdk="Microsoft.NET.Sdk">
+
+    <PropertyGroup>
+        <TargetFramework>tizen50</TargetFramework>
+        <RootNamespace>GenGridViewSample.Tizen</RootNamespace>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Tizen.NET" Version="5.0.0.14629" />
+    </ItemGroup>
+
+    <ItemGroup>
+      <ProjectReference Include="..\Xamarin.Forms.GenGridView\Xamarin.Forms.GenGridView.csproj" />
+    </ItemGroup>
+
+</Project>

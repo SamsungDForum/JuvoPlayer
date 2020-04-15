@@ -18,6 +18,7 @@
 using System;
 using System.Linq;
 using System.Threading.Tasks;
+using JuvoLogger;
 using JuvoPlayer.Common;
 using JuvoPlayer.Common.Utils.IReferenceCountableExtensions;
 using SkiaSharp;
@@ -29,6 +30,7 @@ using XamarinPlayer.Tizen.TV.Models;
 using XamarinPlayer.Tizen.TV.Services;
 using XamarinPlayer.Tizen.TV.ViewModels;
 using XamarinPlayer.Views;
+using Xamarin.Forms.GenGridView.Tizen;
 
 namespace XamarinPlayer.Tizen.TV.Views
 {
@@ -36,7 +38,7 @@ namespace XamarinPlayer.Tizen.TV.Views
     public partial class ContentListPage : IContentPayloadHandler, ISuspendable
     {
         private readonly NavigationPage _appMainPage;
-
+        private static readonly ILogger Logger = LoggerManager.GetInstance().GetLogger("remote");
         private int _pendingUpdatesCount;
         private readonly SKBitmapCache _skBitmapCache;
         private SKBitmapRefCounted _backgroundBitmap;
@@ -66,18 +68,13 @@ namespace XamarinPlayer.Tizen.TV.Views
 
         private void UpdateItem()
         {
-            foreach (var item in ((ContentListPageViewModel) BindingContext).ContentList.Select(content => new ContentItem
-            {
-                BindingContext = content
-            }))
-            {
-                ContentListView.Add(item);
-            }
+            GenGrid.ItemsSource = ((ContentListPageViewModel) BindingContext).ContentList;
+            Logger.Info($"After update: {GenGrid.Items.Count}");
         }
 
         private async Task UpdateContentInfo()
         {
-            var focusedContent = ContentListView.FocusedContent;
+            var focusedContent = (ContentItem) (GenGrid.FocusedItem);
             ++_pendingUpdatesCount;
             await Task.Delay(TimeSpan.FromSeconds(1));
             --_pendingUpdatesCount;
@@ -100,7 +97,8 @@ namespace XamarinPlayer.Tizen.TV.Views
         {
             base.OnAppearing();
             MessagingCenter.Subscribe<IKeyEventSender, string>(this, "KeyDown", (s, e) => { HandleKeyEvent(e); });
-            ContentListView.SetFocus();
+            GenGrid.FocusedItem = GenGrid.Items[0];
+            ((ContentItem) (GenGrid.FocusedItem)).SetFocus();
             await UpdateContentInfo();
         }
 
@@ -150,9 +148,21 @@ namespace XamarinPlayer.Tizen.TV.Views
                 switch (keyCode)
                 {
                     case KeyCode.Next:
-                        return ContentListView.ScrollToNext();
+                        return Task.Run(() =>
+                        {
+                            int index = GenGrid.Items.IndexOf(GenGrid.FocusedItem as View);
+                            if (index >= GenGrid.Items.Count - 1) return false;
+                            GenGrid.ScrollTo(GenGrid.Items.IndexOf(GenGrid.FocusedItem as View)+1);
+                            return true;
+                        });
                     case KeyCode.Previous:
-                        return ContentListView.ScrollToPrevious();
+                        return Task.Run(() =>
+                        {
+                            int index = GenGrid.Items.IndexOf(GenGrid.FocusedItem as View);
+                            if (index <= 0) return false;
+                            GenGrid.ScrollTo(GenGrid.Items.IndexOf(GenGrid.FocusedItem as View)-1);
+                            return true;
+                        });
                     default:
                         throw new ArgumentOutOfRangeException(nameof(keyCode), keyCode, null);
                 }
@@ -165,7 +175,7 @@ namespace XamarinPlayer.Tizen.TV.Views
 
         private Task HandleEnterEvent()
         {
-            return ContentSelected(ContentListView.FocusedContent);
+            return ContentSelected((ContentItem)(GenGrid.FocusedItem));
         }
 
         protected override void OnSizeAllocated(double width, double height)
@@ -178,7 +188,7 @@ namespace XamarinPlayer.Tizen.TV.Views
             // FIXME: Workaround for Tizen
             // Sometimes height of list is calculated as wrong
             // Set the height explicitly for fixing this issue
-            ContentListView.SetHeight(height * 0.21);
+            GenGrid.HeightRequest = (height * 0.21);
         }
 
         public bool HandleUrl(string url)
@@ -189,25 +199,36 @@ namespace XamarinPlayer.Tizen.TV.Views
             if (index == -1)
                 return false;
             contentListPageViewModel.IsBusy = true;
-            var item = ContentListView.GetItem(index);
-            ContentListView.SetFocusedContent(item).ContinueWith(async _ =>
+            var item = (ContentItem) (GenGrid.Items[index]);
+            var t = Task.Run(() =>
+            {
+                GenGrid.FocusedItem = item;
+                //maybe ScrollTo()
+            });
+            t.ContinueWith(async _ =>
+            {
+                await UpdateContentInfo();
+                await ContentSelected(GenGrid.FocusedItem as ContentItem);
+                contentListPageViewModel.IsBusy = false;
+            }, TaskScheduler.FromCurrentSynchronizationContext());
+            /*ContentListView.SetFocusedContent(item).ContinueWith(async _ =>
             {
                 await UpdateContentInfo();
                 await ContentSelected(ContentListView.FocusedContent);
                 contentListPageViewModel.IsBusy = false;
-            }, TaskScheduler.FromCurrentSynchronizationContext());
+            }, TaskScheduler.FromCurrentSynchronizationContext());*/
 
             return true;
         }
 
         public void Suspend()
         {
-            ContentListView.ResetFocus();
+            (GenGrid.FocusedItem as ContentItem)?.ResetFocus();
         }
 
         public void Resume()
         {
-            ContentListView.SetFocus();
+            (GenGrid.FocusedItem as ContentItem)?.SetFocus();
         }
 
         private void SKCanvasView_OnPaintSurface(object sender, SKPaintSurfaceEventArgs e)
