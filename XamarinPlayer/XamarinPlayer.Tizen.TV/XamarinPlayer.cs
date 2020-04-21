@@ -28,7 +28,7 @@ namespace XamarinPlayer.Tizen.TV
         private string _deepLinkUrl;
         private bool _isInForeground;
         
-        private static Page _loadingScreen;
+        private static Page _loadingScreenPage;
         private static Task _loadingScreenTask;
         private static Task _prepareTask;
         private static NavigationPage AppMainPage { get; set; }
@@ -39,8 +39,8 @@ namespace XamarinPlayer.Tizen.TV
         {
             MainPage = new NavigationPage();
             AppMainPage = MainPage as NavigationPage;
-            _loadingScreen = new LoadingScreen();
-            _loadingScreenTask = AppMainPage.PushAsync(_loadingScreen);
+            _loadingScreenPage = new LoadingScreen();
+            _loadingScreenTask = AppMainPage.PushAsync(_loadingScreenPage);
             _prepareTask = PrepareContent();
         }
 
@@ -77,7 +77,7 @@ namespace XamarinPlayer.Tizen.TV
             await Task.Yield();
             var contentListPage = new ContentListPage(AppMainPage);
             await _loadingScreenTask;
-            AppMainPage.Navigation.InsertPageBefore(contentListPage,_loadingScreen);
+            AppMainPage.Navigation.InsertPageBefore(contentListPage,_loadingScreenPage);
             await AppMainPage.Navigation.PopAsync(true);
         }
         public Task LoadUrl(string url)
