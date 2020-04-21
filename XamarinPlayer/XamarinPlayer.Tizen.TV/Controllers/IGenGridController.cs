@@ -11,8 +11,8 @@ namespace XamarinPlayer.Tizen.TV.Controllers
         ContentItem FocusedItem { get; }
         GenGridView GenGrid { get; }
         void SetItemsSource(List<DetailContentData> source);
-        Task<bool> ScrollToNext();
-        Task<bool> ScrollToPrevious();
+        bool ScrollToNext();
+        bool ScrollToPrevious();
         Task SetFocusedContent(ContentItem contentItem);
     }
 }

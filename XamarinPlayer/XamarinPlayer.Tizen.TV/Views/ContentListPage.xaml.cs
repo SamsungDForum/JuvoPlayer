@@ -30,7 +30,6 @@ using XamarinPlayer.Tizen.TV.Models;
 using XamarinPlayer.Tizen.TV.Services;
 using XamarinPlayer.Tizen.TV.ViewModels;
 using XamarinPlayer.Views;
-using Xamarin.Forms.GenGridView.Tizen;
 using XamarinPlayer.Tizen.TV.Controllers;
 
 namespace XamarinPlayer.Tizen.TV.Views
@@ -43,10 +42,8 @@ namespace XamarinPlayer.Tizen.TV.Views
         private int _pendingUpdatesCount;
         private readonly SKBitmapCache _skBitmapCache;
         private SKBitmapRefCounted _backgroundBitmap;
-        private static readonly ILogger Logger = LoggerManager.GetInstance().GetLogger("remote");
-        
         private readonly IGenGridController _ggController;
-        
+
         public ContentListPage(NavigationPage page)
         {
             InitializeComponent();
@@ -54,10 +51,11 @@ namespace XamarinPlayer.Tizen.TV.Views
             _appMainPage = page;
 
             _ggController = new GenGridController(GenGrid);
-            
             UpdateItem();
+
             var cacheService = DependencyService.Get<ISKBitmapCacheService>();
             _skBitmapCache = cacheService.GetCache();
+
             NavigationPage.SetHasNavigationBar(this, false);
         }
 
@@ -144,22 +142,20 @@ namespace XamarinPlayer.Tizen.TV.Views
 
         private async Task HandleScrollEvent(KeyCode keyCode)
         {
-            Task<bool> ScrollTask()
+            bool scrolled;
+            switch (keyCode) 
             {
-                switch (keyCode)
-                {
-                    case KeyCode.Next:
-                        //GenGrid.ScrollTo(9, ScrollToPosition.Center, true);
-                        return _ggController.ScrollToNext();
-                    case KeyCode.Previous:
-                        return _ggController.ScrollToPrevious();
-                    default:
-                        throw new ArgumentOutOfRangeException(nameof(keyCode), keyCode, null);
-                }
+                case KeyCode.Next:
+                    scrolled = _ggController.ScrollToNext();
+                    break;
+                case KeyCode.Previous:
+                    scrolled = _ggController.ScrollToPrevious();
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(keyCode), keyCode, null);
             }
-
-            var listScrolled = await ScrollTask();
-            if (listScrolled)
+            
+            if (scrolled)
                 await UpdateContentInfo();
         }
 
@@ -199,7 +195,7 @@ namespace XamarinPlayer.Tizen.TV.Views
 
             return true;
         }
-    
+
         public void Suspend()
         {
             _ggController.FocusedItem?.ResetFocus();

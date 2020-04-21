@@ -51,22 +51,22 @@ namespace XamarinPlayer.Tizen.TV.Controllers
             return Task.CompletedTask;
         }
         
-        public Task<bool> ScrollToNext()
+        public bool ScrollToNext()
         {
             int index = _genGrid.Items.IndexOf(_focusedItem);
-            if (index >= _genGrid.Items.Count - 1) return Task.Run(() => false);
+            if (index >= _genGrid.Items.Count - 1) return false;
             var item = (ContentItem) GenGrid.Items[index + 1];
             GenGrid.ScrollTo(item);
-            return Task.Run(() => true);
+            return true;
         }
 
-        public Task<bool> ScrollToPrevious()
+        public bool ScrollToPrevious()
         {
             int index = _genGrid.Items.IndexOf(_focusedItem);
-            if (index <= 0) return Task.Run(() => false);
+            if (index <= 0) return false;
             var item = (ContentItem) GenGrid.Items[index - 1];
             GenGrid.ScrollTo(item);
-            return Task.Run(() => true);
+            return true;
         }
 
         public Task SetFocusedContent(ContentItem contentItem)
