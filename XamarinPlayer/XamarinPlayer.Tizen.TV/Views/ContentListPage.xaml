@@ -43,7 +43,7 @@
                                 ControlMode="Custom"
                                 HorizontalScrollBarVisibility="Never"
                                 VerticalScrollBarVisibility="Never"
-                                IsHorizontal="True" BackgroundColor="Red">
+                                IsHorizontal="True">
                                 <gg:GenGridView.ItemTemplate>
                                     <DataTemplate>
                                         <controls:ContentItem/>
