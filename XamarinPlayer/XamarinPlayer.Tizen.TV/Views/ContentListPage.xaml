@@ -39,8 +39,6 @@
                            TextColor="#ffffff" />
                 </StackLayout>
                 <gg:GenGridView x:Name="GenGrid"
-                                HorizontalOptions="Fill"
-                                VerticalOptions="Fill"
                                 Grid.Row="1"
                                 ControlMode="Custom"
                                 HorizontalScrollBarVisibility="Never"

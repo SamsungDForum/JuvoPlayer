@@ -122,7 +122,9 @@ namespace XamarinPlayer.Tizen.TV.Controls
                         {
                             0, 1, new Animation(t =>
                                 {
+                                    if (_storyboardReader == null) return;
                                     var position = TimeSpan.FromMilliseconds(t);
+                                    _logger.Info($"position!: {position.ToString()} \n storyboard: {_storyboardReader}");
                                     var previewBitmap = _storyboardReader.GetFrame(position);
                                     if (previewBitmap == null) return;
                                     _previewBitmap = previewBitmap;
