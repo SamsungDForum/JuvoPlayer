@@ -2,12 +2,14 @@
 
 <ContentPage xmlns="http://xamarin.com/schemas/2014/forms"
              xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:forms="clr-namespace:SkiaSharp.Views.Forms;assembly=SkiaSharp.Views.Forms"
              x:Class="XamarinPlayer.Tizen.TV.Views.LoadingScreen">
     <ContentPage.Content>
         <AbsoluteLayout>
-            <Image AbsoluteLayout.LayoutBounds=".5,0,.6,.5" x:Name="LoadingImage"
-                   AbsoluteLayout.LayoutFlags="All"/>
-            <ActivityIndicator 
+            <forms:SKCanvasView AbsoluteLayout.LayoutBounds=".5,0.1,.5,.4"
+                                AbsoluteLayout.LayoutFlags="All" PaintSurface="SKCanvasView_OnPaintSurface" />
+                   
+            <ActivityIndicator
                 AbsoluteLayout.LayoutBounds=".5,.75,.5,.5"
                 AbsoluteLayout.LayoutFlags="All"
                    Color="White"

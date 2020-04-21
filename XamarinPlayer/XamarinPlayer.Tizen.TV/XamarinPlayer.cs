@@ -78,7 +78,7 @@ namespace XamarinPlayer.Tizen.TV
             var contentListPage = new ContentListPage(AppMainPage);
             await _loadingScreenTask;
             AppMainPage.Navigation.InsertPageBefore(contentListPage,_loadingScreen);
-            await AppMainPage.Navigation.PopAsync();
+            await AppMainPage.Navigation.PopAsync(true);
         }
         public Task LoadUrl(string url)
         {
