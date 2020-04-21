@@ -12,13 +12,13 @@
             <ActivityIndicator
                 AbsoluteLayout.LayoutBounds=".5,.75,.5,.5"
                 AbsoluteLayout.LayoutFlags="All"
-                   Color="White"
-                   InputTransparent="True"
+                    Color="White"
+                    InputTransparent="True"
                     IsRunning="True"
-                   VerticalOptions="Center"
-                   HorizontalOptions="Center"
-                   HeightRequest="100"
-                   WidthRequest="100" />
+                    VerticalOptions="Center"
+                    HorizontalOptions="Center"
+                    HeightRequest="100"
+                    WidthRequest="100" />
         </AbsoluteLayout>
     </ContentPage.Content>
 </ContentPage>
