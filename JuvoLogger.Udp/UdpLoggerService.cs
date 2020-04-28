@@ -1,57 +1,93 @@
-﻿using System;
+﻿/*!
+ * https://github.com/SamsungDForum/JuvoPlayer
+ * Copyright 2020, Samsung Electronics Co., Ltd
+ * Licensed under the MIT license
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER BE LIABLE FOR ANY
+ * DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+ * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+ * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+ * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+ * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
 
-using System.Net.Sockets;
+using System;
 using System.Text;
-using System.Threading.Tasks;
+using System.Threading;
 using System.Threading.Channels;
-
+using System.Threading.Tasks;
 
 namespace JuvoLogger.Udp
 {
-    internal class UdpLoggerService
+    internal class UdpLoggerService : IDisposable
     {
-        private UdpClient _udpClent = new UdpClient();
-        private Channel<string> _logChannel;
+        private Channel<object[]> _logChannel;
+        private CancellationTokenSource _cts;
 
-        public UdpLoggerService(string ip, int port)
+        public UdpLoggerService(int udpPort, string logFormat)
         {
-            _udpClent.Connect(ip, port);
-            _logChannel = Channel.CreateUnbounded<string>(new UnboundedChannelOptions()
+            _cts = new CancellationTokenSource();
+
+            _logChannel = Channel.CreateUnbounded<object[]>(new UnboundedChannelOptions()
             {
                 SingleReader = true,
                 SingleWriter = false
             });
 
-            Run(_logChannel.Reader);
+            Task.Run(async () => await Run(udpPort, logFormat));
         }
 
-        public void Log(string msg)
+        public void Log(params object[] args)
         {
-            var allGood = _logChannel.Writer.TryWrite(msg);
+            _logChannel.Writer.TryWrite(args);
         }
 
-        private async Task Run(ChannelReader<string> reader)
+        private async Task Run(int port, string logFormat)
         {
-            var byteBufferSize = 66;
-            var byteBuffer = new byte[byteBufferSize];
-
-            while (true)
+            using (var socketSession = new SocketSession(_cts.Token))
             {
-                var msg = await reader.ReadAsync();
-                var msgLen = msg.Length;
-                if(msgLen > byteBufferSize-2)
+                try
                 {
-                    byteBufferSize = msgLen + 2;
-                    byteBuffer = new byte[byteBufferSize];
+                    socketSession.Start(port);
+                    var messageBuilder = new StringBuilder(socketSession.MaxPayloadSize);
+                    var reader = _logChannel.Reader;
+
+                    while (true)
+                    {
+                        var msg = await reader.ReadAsync(_cts.Token);
+                        if (socketSession.PauseOutput)
+                            continue;
+
+                        messageBuilder.AppendFormat(logFormat, msg);
+                        await socketSession.SendMessage(messageBuilder.ToString());
+                        messageBuilder.Clear();
+                    }
                 }
-
-                Encoding.UTF8.GetBytes(msg, 0, msgLen, byteBuffer, 0);
-                byteBuffer[msgLen] = (byte)'\r';
-                byteBuffer[msgLen+1] = (byte)'\n';
-
-                await _udpClent.SendAsync(byteBuffer, msgLen+2);
+                catch (Exception e)
+                when (!(e is OperationCanceledException))
+                {
+                    socketSession?.TryLogException(e);
+                    throw;
+                }
+                finally
+                {
+                    _cts?.Cancel();
+                    _logChannel.Writer.Complete();
+                    await socketSession.Stop();
+                }
             }
         }
+
+        public void Dispose()
+        {
+            var currentCts = _cts;
+            _cts = null;
+            currentCts.Cancel();
+            currentCts.Dispose();
+        }
     }
-   
 }
