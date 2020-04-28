@@ -1,0 +1,9 @@
+
+****************************
+*   JuvoPlayer UDP logger  *
+*                          *  
+* 1 UDP packet to:         *
+*   - pause                *
+*   - resume               *
+*   - hijack connection    *
+****************************
