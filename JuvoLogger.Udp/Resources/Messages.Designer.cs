@@ -66,8 +66,12 @@ namespace JuvoLogger.Udp.Resources {
         ///*   JuvoPlayer UDP logger  *
         ///*                          *  
         ///* 1 UDP packet to:         *
-        ///*   - pause                *
-        ///*   - resume               *
+        ///*   - stop output          *
+        ///*     logs will be dropped *
+        ///*   - start output         *
+        ///*   - hijack connection    *
+        ///****************************
+        ///*         Started          *
         ///****************************
         ///.
         /// </summary>
@@ -93,26 +97,26 @@ namespace JuvoLogger.Udp.Resources {
         /// <summary>
         ///   Looks up a localized string similar to 
         ///****************************
-        ///*          Paused          *
+        ///*         Started          *
         ///****************************
         ///.
         /// </summary>
-        internal static string PauseMessage {
+        internal static string StartMessage {
             get {
-                return ResourceManager.GetString("PauseMessage", resourceCulture);
+                return ResourceManager.GetString("StartMessage", resourceCulture);
             }
         }
         
         /// <summary>
         ///   Looks up a localized string similar to 
         ///****************************
-        ///*         Resumed          *
+        ///*         Stopped          *
         ///****************************
         ///.
         /// </summary>
-        internal static string ResumeMessage {
+        internal static string StopMessage {
             get {
-                return ResourceManager.GetString("ResumeMessage", resourceCulture);
+                return ResourceManager.GetString("StopMessage", resourceCulture);
             }
         }
         
