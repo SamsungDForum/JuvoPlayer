@@ -19,215 +19,157 @@ using System;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
-using System.Threading;
-using System.Threading.Tasks;
-using System.Threading.Channels;
-using System.Linq;
-using Nito.AsyncEx;
-using System.Diagnostics;
 
 namespace JuvoLogger.Udp
 {
     internal class SocketSession : IDisposable
     {
-        public bool PauseOutput { get; private set; } = true;
-        public int MaxPayloadSize { get; private set; }
+        public bool StopOutput { get; private set; } = true;
+        public int MaxPayloadSize { get; } = UdpLoggerToolBox.GetLowestCommonMtu() - MaxUdpHeader;
 
-        private static readonly byte[] ConnectMessage = Encoding.UTF8.GetBytes(Resources.Messages.ConnectMessage);
-        private static readonly byte[] PauseMessage = Encoding.UTF8.GetBytes(Resources.Messages.PauseMessage);
-        private static readonly byte[] ResumeMessage = Encoding.UTF8.GetBytes(Resources.Messages.ResumeMessage);
-        private static readonly byte[] TerminateMessage = Encoding.UTF8.GetBytes(Resources.Messages.TerminationMessage);
-        private static readonly byte[] HijackMessage = Encoding.UTF8.GetBytes(Resources.Messages.HijackMessage);
+        private enum Message { Connect, Stop, Start, Terminate, Hijack };
+        // Any way to get processed (encoded) byte arrays directly from resources?
+        private readonly byte[][] _messageData = {
+            Encoding.UTF8.GetBytes(Resources.Messages.ConnectMessage),
+            Encoding.UTF8.GetBytes(Resources.Messages.StopMessage),
+            Encoding.UTF8.GetBytes(Resources.Messages.StartMessage),
+            Encoding.UTF8.GetBytes(Resources.Messages.TerminationMessage),
+            Encoding.UTF8.GetBytes(Resources.Messages.HijackMessage)};
 
-        private readonly CancellationToken _token;
-        private EndPoint _currentEndPoint;
-        private Socket _socket;
-        private readonly Channel<EndPoint> _endPointChannel;
-        private readonly Channel<string> _messageChannel;
         private const int MaxUdpHeader = 48; // IP6 UDP header.
-        private const int MaxPacketBuffers = 64;
-        private static readonly TimeSpan BufferFlushInterval = TimeSpan.FromMilliseconds(300);
+        private const int MaxPacketBuffers = 16;
 
-        public SocketSession(CancellationToken token)
+        private Socket _socket;
+        private EndPoint _clientEndPoint;
+        private readonly MtuBuffer _clientListenerBuffer;
+        private readonly Func<EndPoint> GetListeningEndPoint;
+        private readonly ObjectPool<MtuBuffer> _bufferPool;
+
+        public SocketSession(int port)
         {
-            _token = token;
-            MaxPayloadSize = UdpLoggerToolBox.GetLowestCommonMtu() - MaxUdpHeader;
-            _endPointChannel = Channel.CreateUnbounded<EndPoint>(new UnboundedChannelOptions()
-            {
-                SingleReader = true,
-                SingleWriter = true
-            });
-            _messageChannel = Channel.CreateUnbounded<string>(new UnboundedChannelOptions()
-            {
-                SingleReader = true,
-                SingleWriter = true
-            });
+            GetListeningEndPoint = () => new IPEndPoint(IPAddress.Any, port);
+
+            _socket = new Socket(SocketType.Dgram, ProtocolType.Udp);
+            _socket.Bind(GetListeningEndPoint());
+
+            _bufferPool = new ObjectPool<MtuBuffer>(MaxPacketBuffers, CreateMtuBuffer, false, false);
+
+            // connection receiver
+            _clientListenerBuffer = new MtuBuffer(1, OnConnected);
+            ReceiveFromEndPoint(_clientListenerBuffer);
         }
-
-        public async Task Stop()
+        public void Stop()
         {
-            if (_currentEndPoint != null)
-                await WriteToSocket(_currentEndPoint, TerminateMessage, TerminateMessage.Length, new AsyncAutoResetEvent());
-
-            _endPointChannel.Writer.Complete();
-            _messageChannel.Writer.Complete();
-
             _socket.Close();
         }
-
-        public void Start(int port)
-        {
-            _socket = new Socket(SocketType.Dgram, ProtocolType.Udp);
-            _socket.Bind(new IPEndPoint(IPAddress.Any, port));
-
-            Task.Run(async () => await EndPointListener());
-            Task.Run(async () => await SocketWriter());
-        }
-
-        public ValueTask SendMessage(in string message) =>
-            _messageChannel.Writer.WriteAsync(message, _token);
-
         public void TryLogException(Exception e, in string message = null)
         {
-            if (_currentEndPoint == null)
+            if (_clientEndPoint == null)
                 return;
 
-            var exceptionData = message == null ? e.ToString() + e.StackTrace : message + e.ToString() + e.StackTrace;
-            var pb = new PacketBuffer(this);
-            pb.Append(exceptionData);
-            pb.Flush();
+            var buffer = new MtuBuffer(MaxPayloadSize, OnCompleted, UdpLoggerToolBox.Dispose);
+            if (message != null)
+                buffer.Append(message);
+            buffer.Append(e.ToString() + e.StackTrace);
+
+            SendTo(_clientEndPoint, buffer);
         }
-
-        public Task WriteToSocket(byte[] data, int length, AsyncAutoResetEvent readyToWrite) =>
-            WriteToSocket(_currentEndPoint, data, length, readyToWrite);
-
-        private async Task WriteToSocket(EndPoint destinationEp, byte[] data, int length, AsyncAutoResetEvent readyToWrite)
+        public void SendMessage(in string message)
         {
-            var asyncResult = _socket.BeginSendTo(data, 0, length, SocketFlags.None, destinationEp, OnSocketReady, readyToWrite);
-            await readyToWrite.WaitAsync(_token);
-            _socket.EndSendTo(asyncResult);
+            // Migrate to chunk/slice append taken directly from 
+            // string builder sourcing this method - if migrated to core 2.x
+            var buffer = _bufferPool.Take().Append(message);
+            SendTo(_clientEndPoint, buffer);
         }
-
-        private static void OnSocketReady(IAsyncResult asyncResult) =>
-            ((AsyncAutoResetEvent)asyncResult.AsyncState).Set();
-
-        private async Task EndPointListener()
+        private MtuBuffer CreateMtuBuffer() => new MtuBuffer(MaxPayloadSize, OnCompleted, ReturnMtuBufferToPool);
+        private void ReturnMtuBufferToPool(MtuBuffer buffer) => _bufferPool.Return(buffer);
+        private void OnCompleted(object o, SocketAsyncEventArgs asyncState)
         {
-            AsyncAutoResetEvent readToRead = new AsyncAutoResetEvent();
-            var buffer = new byte[1];
+            // asyncState.SocketError: Which errors are recoverable, if any?
+            // Send*Async()s: Possible scenario?
+            // - Expected transmission = buffer[0..Size-1]
+            // - args.BytesTransferred < Expected transmission
+            asyncState.SetBuffer(asyncState.Offset, 0);
+            MtuBuffer.Complete(asyncState);
+        }
+        private void OnConnected(object o, SocketAsyncEventArgs asyncState)
+        {
+            if (asyncState.SocketError == SocketError.Success)
+                ProcessEndPoint(asyncState.RemoteEndPoint);
+
+            ReceiveFromEndPoint(asyncState);
+        }
+        private void ReceiveFromEndPoint(SocketAsyncEventArgs asyncState)
+        {
             try
             {
-                while (true)
-                {
-                    var clientEp = await ReadEndPointFromSocket(buffer, readToRead);
-                    await ProcessEndPoint(clientEp);
-                }
+                asyncState.RemoteEndPoint = GetListeningEndPoint();
+                asyncState.SetBuffer(asyncState.Offset, asyncState.Buffer.Length);
+                if (!_socket.ReceiveFromAsync(asyncState))
+                    MtuBuffer.CompleteAsync(asyncState);
             }
             catch (Exception e)
-            when (!(e is OperationCanceledException))
             {
                 TryLogException(e);
                 throw;
             }
         }
-
-        private Task ProcessEndPoint(EndPoint newEp)
+        private void SendTo(in EndPoint target, in MtuBuffer buffer)
         {
-            if (!newEp.SameAs(_currentEndPoint))
-            {
-                var hijackSendTask = _currentEndPoint != null
-                    ? WriteToSocket(_currentEndPoint, HijackMessage, HijackMessage.Length, new AsyncAutoResetEvent())
-                    : Task.CompletedTask;
-
-                var connectSendTask = WriteToSocket(newEp, ConnectMessage, ConnectMessage.Length, new AsyncAutoResetEvent());
-
-                _currentEndPoint = newEp;
-                PauseOutput = false;
-                return Task.WhenAll(hijackSendTask, connectSendTask);
-            }
-
-            PauseOutput = !PauseOutput;
-            var pauseResumeMsg = PauseOutput ? PauseMessage : ResumeMessage;
-            return WriteToSocket(_currentEndPoint, pauseResumeMsg, pauseResumeMsg.Length, new AsyncAutoResetEvent());
-        }
-
-        private async Task<EndPoint> ReadEndPointFromSocket(byte[] buffer, AsyncAutoResetEvent readyToRead)
-        {
-            EndPoint clientEp = new IPEndPoint(IPAddress.Any, 0);
-            var asyncResult = _socket.BeginReceiveFrom(buffer, 0, buffer.Length, SocketFlags.None, ref clientEp, OnSocketReady, readyToRead);
-            await readyToRead.WaitAsync(_token);
-            _socket.EndReceiveFrom(asyncResult, ref clientEp);
-            return clientEp;
-        }
-
-        private async Task SocketWriter()
-        {
-            var packetBuffers = new PacketBuffer[MaxPacketBuffers];
-            for (var i = 0; i < MaxPacketBuffers; i++)
-                packetBuffers[i] = new PacketBuffer(this);
-
-            var readyBuffers = packetBuffers.Select(pb => pb.Flushing);
-            PacketBuffer currentBuffer = packetBuffers[0];
-            var reader = _messageChannel.Reader;
-            var stopWatch = Stopwatch.StartNew();
-
             try
             {
-                while (true)
-                {
-                    if (!reader.TryRead(out var message))
-                    {
-                        currentBuffer = currentBuffer?.Flush();
-                        stopWatch.Stop();
-                        stopWatch.Reset();
-                        while (!await reader.WaitToReadAsync(_token)) ;
-                        stopWatch.Start();
-                        continue;
-                    }
-
-                    if (currentBuffer == null)
-                        currentBuffer = await await Task.WhenAny(readyBuffers);
-
-                    if (!currentBuffer.Append(message))
-                    {
-                        currentBuffer.Flush();
-                        stopWatch.Restart();
-                        currentBuffer = await await Task.WhenAny(readyBuffers);
-                        currentBuffer.Append(message);
-                        continue;
-                    }
-
-                    if (stopWatch.Elapsed > BufferFlushInterval)
-                    {
-                        currentBuffer = currentBuffer.Flush();
-                        stopWatch.Restart();
-                    }
-                }
+                var asyncState = (SocketAsyncEventArgs)buffer;
+                asyncState.RemoteEndPoint = target;
+                if (!_socket.SendToAsync(asyncState))
+                    MtuBuffer.CompleteAsync(buffer);
             }
             catch (Exception e)
-            when (!(e is OperationCanceledException))
             {
                 TryLogException(e);
-                throw;
+                // Be an Englishmen. Silently ignore. In UDP world things get lost
+                // "Disconnect" client perhaps?
             }
+        }
+
+        // Run fixed messages buffers outside of mtuBufferPool. Not expecting that many of them.
+        // Less fiddling with mtu buffer restore / message copying.
+        private MtuBuffer BufferFromMessage(in Message msg) =>
+            new MtuBuffer(_messageData[(int)msg], OnCompleted, UdpLoggerToolBox.Dispose);
+
+        private void ProcessEndPoint(in EndPoint newEp)
+        {
+            if (!newEp.SameAs(_clientEndPoint))
+            {
+                if (_clientEndPoint != null)
+                    SendTo(_clientEndPoint, BufferFromMessage(Message.Hijack));
+
+                SendTo(newEp, BufferFromMessage(Message.Connect));
+                _clientEndPoint = newEp;
+                StopOutput = false;
+                return;
+            }
+
+            StopOutput = !StopOutput;
+            SendTo(_clientEndPoint, BufferFromMessage(StopOutput ? Message.Stop : Message.Start));
         }
 
         #region IDisposable Support
         private bool disposedValue = false;
-
         protected virtual void Dispose(bool disposing)
         {
             if (!disposedValue)
             {
                 if (disposing)
                 {
+                    _socket.Close();
+                    _clientListenerBuffer.Dispose();
+                    _bufferPool.Dispose();
                     _socket.Dispose();
                 }
 
                 disposedValue = true;
             }
         }
-
         public void Dispose()
         {
             Dispose(true);

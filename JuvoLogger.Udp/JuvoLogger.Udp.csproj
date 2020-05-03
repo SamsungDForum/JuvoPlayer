@@ -1,13 +1,14 @@
-﻿<Project Sdk="Microsoft.NET.Sdk">
+﻿<Project Sdk="Tizen.NET.Sdk/1.0.9">
 
+  <!-- Property Group for Tizen Project -->
   <PropertyGroup>
+    <OutputType>Library</OutputType>
     <TargetFrameworks>netstandard2.0</TargetFrameworks>
+    <TizenCreateTpkOnBuild>false</TizenCreateTpkOnBuild>
     <LangVersion>7.3</LangVersion>
   </PropertyGroup>
-
   <ItemGroup>
     <PackageReference Include="Nito.AsyncEx" Version="5.0.0-pre-05" />
-    <PackageReference Include="Nito.AsyncEx.Context" Version="5.0.0-pre-05" />
     <PackageReference Include="System.Memory" Version="4.5.3" />
     <PackageReference Include="System.Net.Sockets" Version="4.3.0" />
     <PackageReference Include="System.Threading.Channels" Version="4.5.0" />

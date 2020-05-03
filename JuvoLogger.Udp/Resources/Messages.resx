@@ -124,11 +124,11 @@
   <data name="HijackMessage" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>HijackMessage.txt;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;windows-1250</value>
   </data>
-  <data name="PauseMessage" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>PauseMessage.txt;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;windows-1250</value>
+  <data name="StartMessage" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>StartMessage.txt;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;windows-1250</value>
   </data>
-  <data name="ResumeMessage" type="System.Resources.ResXFileRef, System.Windows.Forms">
-    <value>ResumeMessage.txt;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;windows-1250</value>
+  <data name="StopMessage" type="System.Resources.ResXFileRef, System.Windows.Forms">
+    <value>StopMessage.txt;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;windows-1250</value>
   </data>
   <data name="TerminationMessage" type="System.Resources.ResXFileRef, System.Windows.Forms">
     <value>TerminationMessage.txt;System.String, mscorlib, Version=4.0.0.0, Culture=neutral, PublicKeyToken=b77a5c561934e089;windows-1250</value>

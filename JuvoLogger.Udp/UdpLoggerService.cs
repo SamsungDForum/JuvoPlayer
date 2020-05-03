@@ -25,46 +25,139 @@ namespace JuvoLogger.Udp
 {
     internal class UdpLoggerService : IDisposable
     {
-        private Channel<object[]> _logChannel;
-        private CancellationTokenSource _cts;
+        private struct LineSelector
+        {
+            private readonly LineReader[] _readers;
+            private readonly ValueTask<bool>[] _results;
+            private int _readerIdx;
+
+            public LineSelector(params LineReader[] readers)
+            {
+                _readers = readers;
+                _results = new ValueTask<bool>[_readers.Length];
+                _readerIdx = 0;
+            }
+            public int Read(in bool flushWhenNoData)
+            {
+                _readerIdx = ++_readerIdx % _readers.Length;
+                _results[_readerIdx] = _readers[_readerIdx].Read(flushWhenNoData);
+                return _readerIdx;
+            }
+
+            public async ValueTask<(bool flush, StringBuilder lineData)> GetData(int idx)
+            {
+                var flush = await _results[idx];
+                var lineData = _readers[idx].Get();
+                return (flush, lineData);
+            }
+
+        }
+        private readonly struct LineReader
+        {
+            private readonly StringBuilder _builder;
+            private readonly CancellationToken _token;
+            private readonly ChannelReader<object[]> _reader;
+            private readonly string _format;
+            public StringBuilder Get() => _builder;
+
+            public LineReader(in ChannelReader<object[]> reader, in int initialSize, in string format, in CancellationToken token)
+            {
+                _builder = new StringBuilder(initialSize);
+                _token = token;
+                _reader = reader;
+                _format = format;
+            }
+            public async ValueTask<bool> Read(bool flushWhenNoData)
+            {
+                _builder.Clear();
+
+                if (!_reader.TryRead(out var lineData))
+                {
+                    if (flushWhenNoData)
+                        return true;
+
+                    lineData = await _reader.ReadAsync(_token);
+                }
+
+                _builder.AppendFormat(_format, lineData);
+                return false;
+            }
+        }
+
+        private readonly Channel<object[]> _logChannel;
+        private readonly CancellationTokenSource _cts;
+        private readonly string _logFormat;
 
         public UdpLoggerService(int udpPort, string logFormat)
         {
-            _cts = new CancellationTokenSource();
 
+            _cts = new CancellationTokenSource();
             _logChannel = Channel.CreateUnbounded<object[]>(new UnboundedChannelOptions()
             {
                 SingleReader = true,
                 SingleWriter = false
             });
-
-            Task.Run(async () => await Run(udpPort, logFormat));
+            _logFormat = logFormat;
+            Task.Run(async () => await Run(udpPort));
         }
-
         public void Log(params object[] args)
         {
             _logChannel.Writer.TryWrite(args);
         }
 
-        private async Task Run(int port, string logFormat)
+        private async Task Run(int udpPort)
         {
-            using (var socketSession = new SocketSession(_cts.Token))
+            using (var socketSession = new SocketSession(udpPort))
             {
+                var maxMtu = socketSession.MaxPayloadSize;
+
+                // For issuing "early reads" before data processing.
+                // Even with... observed saturation of object pool is 4-5 mtu buffers.. :-/
+                var lineSelector = new LineSelector(
+                    new LineReader(_logChannel.Reader, maxMtu, _logFormat, _cts.Token),
+                    new LineReader(_logChannel.Reader, maxMtu, _logFormat, _cts.Token));
+                var currentLine = lineSelector.Read(false);
+                var message = new StringBuilder(maxMtu);
+
                 try
                 {
-                    socketSession.Start(port);
-                    var messageBuilder = new StringBuilder(socketSession.MaxPayloadSize);
-                    var reader = _logChannel.Reader;
-
                     while (true)
                     {
-                        var msg = await reader.ReadAsync(_cts.Token);
-                        if (socketSession.PauseOutput)
-                            continue;
+                        var (flush, lineData) = await lineSelector.GetData(currentLine);
 
-                        messageBuilder.AppendFormat(logFormat, msg);
-                        await socketSession.SendMessage(messageBuilder.ToString());
-                        messageBuilder.Clear();
+                        if (socketSession.StopOutput)
+                        {
+                            currentLine = lineSelector.Read(false);
+                            // Flush current message if present
+                            if (message.Length > 0)
+                            {
+                                socketSession.SendMessage(message.ToString());
+                                message.Clear();
+                            }
+
+                            continue;
+                        }
+
+                        if (flush)
+                        {
+                            currentLine = lineSelector.Read(false);
+                            socketSession.SendMessage(message.ToString());
+                            message.Clear();
+
+                            continue;
+                        }
+
+                        currentLine = lineSelector.Read(true);
+
+                        if (lineData.Length + message.Length < maxMtu)
+                        {
+                            message.Append(lineData);
+                            continue;
+                        }
+
+                        socketSession.SendMessage(message.ToString());
+                        message.Clear();
+                        message.Append(lineData);
                     }
                 }
                 catch (Exception e)
@@ -75,19 +168,16 @@ namespace JuvoLogger.Udp
                 }
                 finally
                 {
-                    _cts?.Cancel();
-                    _logChannel.Writer.Complete();
-                    await socketSession.Stop();
+                    socketSession.Stop();
                 }
             }
         }
 
         public void Dispose()
         {
-            var currentCts = _cts;
-            _cts = null;
-            currentCts.Cancel();
-            currentCts.Dispose();
+            _logChannel.Writer.Complete();
+            _cts.Cancel();
+            _cts.Dispose();
         }
     }
 }

@@ -28,7 +28,7 @@ namespace JuvoLogger.Udp
             var thisEp = (IPEndPoint)a;
             var otherEp = (IPEndPoint)b;
 
-            return thisEp.Port == otherEp?.Port && thisEp.Address == otherEp?.Address;
+            return thisEp.Port == otherEp?.Port && thisEp.Address.Equals(otherEp?.Address);
         }
 
         public static int GetLowestCommonMtu()
@@ -44,5 +44,7 @@ namespace JuvoLogger.Udp
 
             return lowestMtu;
         }
+
+        public static void Dispose<T>(this T obj) => ((IDisposable)obj).Dispose();
     }
 }
