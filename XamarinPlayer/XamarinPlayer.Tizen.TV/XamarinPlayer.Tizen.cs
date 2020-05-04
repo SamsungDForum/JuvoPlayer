@@ -21,7 +21,6 @@ using System.Text;
 using System.Threading.Tasks;
 using ElmSharp;
 using JuvoLogger.Tizen;
-using JuvoLogger.Udp;
 using JuvoPlayer.Common;
 using Tizen.Applications;
 using Tizen.System;
@@ -125,21 +124,13 @@ namespace XamarinPlayer.Tizen.TV
 
         private static void Main(string[] args)
         {
-            //TizenLoggerManager.Configure();
-            UdpLoggerManager.Configure(2222);
+            TizenLoggerManager.Configure();
             AppDomain.CurrentDomain.UnhandledException += UnhandledException;
 
-            try
-            {
-                var app = new Program();
+            var app = new Program();
 
-                Forms.Init(app);
-                app.Run(args);
-            }
-            finally
-            {
-                UdpLoggerManager.Terminate();
-            }
+            Forms.Init(app);
+            app.Run(args);
         }
     }
 }
