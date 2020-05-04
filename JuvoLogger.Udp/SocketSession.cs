@@ -70,7 +70,7 @@ namespace JuvoLogger.Udp
             var buffer = new MtuBuffer(MaxPayloadSize, OnCompleted, UdpLoggerToolBox.Dispose);
             if (message != null)
                 buffer.Append(message);
-            buffer.Append(e.ToString() + e.StackTrace);
+            buffer.Append(e.ToString());
 
             SendTo(_clientEndPoint, buffer);
         }

@@ -47,7 +47,6 @@
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\JuvoLogger.Tizen\JuvoLogger.Tizen.csproj" />
-    <ProjectReference Include="..\..\JuvoLogger.Udp\JuvoLogger.Udp.csproj" />
     <ProjectReference Include="..\..\JuvoPlayer\JuvoPlayer.csproj" />
   </ItemGroup>
   <ItemGroup>

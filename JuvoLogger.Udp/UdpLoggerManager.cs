@@ -38,7 +38,7 @@ namespace JuvoLogger.Udp
         {
             var currentService = _loggerService;
             _loggerService = null;
-            currentService.Dispose();
+            currentService?.Dispose();
         }
     }
 }
