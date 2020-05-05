@@ -16,22 +16,52 @@
  */
 
 using System;
+using System.IO;
+using System.Reflection;
+using System.Text.RegularExpressions;
 
 namespace JuvoLogger.Udp
 {
     public class UdpLoggerManager : LoggerManager
     {
+        public static bool IsRunning { get; private set; } = false;
+        private const string UdpPortPattern = @"UdpPort\s*=\s*([0-9]+)";
         private static UdpLoggerService _loggerService;
         private static LoggerBase CreateLogger(string channel, LogLevel level) => new UdpLogger(channel, level, GetLoggingService);
 
         private static UdpLoggerService GetLoggingService()
         {
-            return _loggerService;
+            return _loggerService?.StopOutput??true?null:_loggerService;
         }
-        public static void Configure(int port)
+        public static void Configure()
         {
+            var configFilename = Path.Combine(
+                Path.GetDirectoryName(Path.GetDirectoryName(Assembly.GetExecutingAssembly().Location)),"res", "logger.config");
+
+            if (!File.Exists(configFilename)) return;
+            
+            var contents = File.ReadAllText(configFilename);
+            IsRunning = GetUdpPort(contents, out var port);
+            if (!IsRunning) return;
+
             _loggerService = _loggerService ?? new UdpLoggerService(port, UdpLogger.LogFormat);
-            Configure(CreateLogger);
+            Configure(contents,CreateLogger);
+        }
+
+        private static bool GetUdpPort(in string config, out int port)
+        {
+            var regEx = new Regex(UdpPortPattern, RegexOptions.IgnoreCase | RegexOptions.Multiline);
+            var match = regEx.Match(config);
+            if (!match.Success)
+            {
+                port = -1;
+                return false;
+            }
+            
+            if (!int.TryParse(match.Groups[1].Value, out port) || port < 0 || port > ushort.MaxValue)
+                return false;
+
+            return true;
         }
 
         public static void Terminate()

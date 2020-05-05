@@ -21,26 +21,26 @@ using System.Text;
 
 namespace JuvoLogger.Udp
 {
-    internal class MtuBuffer : IDisposable
+    internal class UdpPacket : IDisposable
     {
         public delegate void AsyncDone(object o, SocketAsyncEventArgs args);
-        public delegate void BufferDone(MtuBuffer buffer);
+        public delegate void PacketDone(UdpPacket packet);
 
         private readonly AsyncDone _completeAsyncHandler;
-        private readonly BufferDone _completedHandler;
+        private readonly PacketDone _completedPacketHandler;
         private readonly SocketAsyncEventArgs _asyncState;
 
-        public MtuBuffer(in int bufferCapacity, in AsyncDone asyncHandler, in BufferDone bufferHandler = null)
+        public UdpPacket(in int bufferCapacity, in AsyncDone asyncHandler, in PacketDone packetHandler = null)
         {
             _completeAsyncHandler = asyncHandler;
-            _completedHandler = bufferHandler;
+            _completedPacketHandler = packetHandler;
             _asyncState = CreateSocketAsyncEventArgs();
             _asyncState.SetBuffer(new byte[bufferCapacity], 0, 0); // Mark buffer as "empty"
         }
-        public MtuBuffer(in byte[] message, in AsyncDone asyncHandler, in BufferDone bufferHandler = null)
+        public UdpPacket(in byte[] message, in AsyncDone asyncHandler, in PacketDone packetHandler = null)
         {
             _completeAsyncHandler = asyncHandler;
-            _completedHandler = bufferHandler;
+            _completedPacketHandler = packetHandler;
             _asyncState = CreateSocketAsyncEventArgs();
             _asyncState.SetBuffer(message, 0, message.Length); // Mark buffer as "containing data"
         }
@@ -53,28 +53,28 @@ namespace JuvoLogger.Udp
             asyncState.Completed += new EventHandler<SocketAsyncEventArgs>(_completeAsyncHandler);
             return asyncState;
         }
-        public MtuBuffer Append(in string message)
+        public int Append(in string message, int startIndex, int count)
         {
             var buffer = _asyncState.Buffer;
             var bufferedBytes = _asyncState.Count;
 
             // Truncate input message to available buffer space.
-            var consumeLength = Math.Min(message.Length, buffer.Length - bufferedBytes);
+            var consumeLength = Math.Min(count, buffer.Length - bufferedBytes);
 
-            Encoding.UTF8.GetBytes(message, 0, consumeLength, buffer, bufferedBytes);
+            Encoding.UTF8.GetBytes(message, startIndex, consumeLength, buffer, bufferedBytes);
             _asyncState.SetBuffer(_asyncState.Offset, bufferedBytes + consumeLength);
-            return this;
+            return consumeLength;
         }
 
-        public static void Complete(in MtuBuffer buffer) => buffer._completedHandler?.Invoke(buffer);
-        public static void CompleteAsync(in MtuBuffer buffer) => buffer._completeAsyncHandler(null, buffer._asyncState);
+        public static void Complete(in UdpPacket packet) => packet._completedPacketHandler?.Invoke(packet);
+        public static void CompleteAsync(in UdpPacket packet) => packet._completeAsyncHandler(null, packet._asyncState);
 
         public void Dispose()
         {
             _asyncState.Dispose();
         }
 
-        public static implicit operator SocketAsyncEventArgs(in MtuBuffer buffer) => buffer._asyncState;
-        public static implicit operator MtuBuffer(in SocketAsyncEventArgs asyncState) => (MtuBuffer)asyncState.UserToken;
+        public static implicit operator SocketAsyncEventArgs(in UdpPacket packet) => packet._asyncState;
+        public static implicit operator UdpPacket(in SocketAsyncEventArgs asyncState) => (UdpPacket)asyncState.UserToken;
     }
 }

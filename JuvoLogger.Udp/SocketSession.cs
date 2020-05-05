@@ -41,9 +41,9 @@ namespace JuvoLogger.Udp
 
         private Socket _socket;
         private EndPoint _clientEndPoint;
-        private readonly MtuBuffer _clientListenerBuffer;
+        private readonly UdpPacket _clientListenerPacket;
         private readonly Func<EndPoint> GetListeningEndPoint;
-        private readonly ObjectPool<MtuBuffer> _bufferPool;
+        private readonly ObjectPool<UdpPacket> _packetPool;
 
         public SocketSession(int port)
         {
@@ -52,37 +52,36 @@ namespace JuvoLogger.Udp
             _socket = new Socket(SocketType.Dgram, ProtocolType.Udp);
             _socket.Bind(GetListeningEndPoint());
 
-            _bufferPool = new ObjectPool<MtuBuffer>(MaxPacketBuffers, CreateMtuBuffer, false, false);
+            _packetPool = new ObjectPool<UdpPacket>(MaxPacketBuffers, CreatePoolPacket, false, false);
 
             // connection receiver
-            _clientListenerBuffer = new MtuBuffer(1, OnConnected);
-            ReceiveFromEndPoint(_clientListenerBuffer);
+            _clientListenerPacket = new UdpPacket(1, OnConnected);
+            ReceiveFromEndPoint(_clientListenerPacket);
         }
         public void Stop()
         {
             _socket.Close();
         }
-        public void TryLogException(Exception e, in string message = null)
+       
+        public void SendMessage(in string message)
         {
             if (_clientEndPoint == null)
                 return;
 
-            var buffer = new MtuBuffer(MaxPayloadSize, OnCompleted, UdpLoggerToolBox.Dispose);
-            if (message != null)
-                buffer.Append(message);
-            buffer.Append(e.ToString());
-
-            SendTo(_clientEndPoint, buffer);
-        }
-        public void SendMessage(in string message)
-        {
             // Migrate to chunk/slice append taken directly from 
             // string builder sourcing this method - if migrated to core 2.x
-            var buffer = _bufferPool.Take().Append(message);
-            SendTo(_clientEndPoint, buffer);
+            var bytesSent = 0;
+            var msgLength = message.Length;
+            do
+            {
+                var buffer = _packetPool.Take();
+                bytesSent += buffer.Append(message,bytesSent, msgLength - bytesSent);
+                SendTo(_clientEndPoint, buffer);
+            } while (msgLength > bytesSent);            
         }
-        private MtuBuffer CreateMtuBuffer() => new MtuBuffer(MaxPayloadSize, OnCompleted, ReturnMtuBufferToPool);
-        private void ReturnMtuBufferToPool(MtuBuffer buffer) => _bufferPool.Return(buffer);
+
+        private UdpPacket CreatePoolPacket() => new UdpPacket(MaxPayloadSize, OnCompleted, ReturnPacketToPool);
+        private void ReturnPacketToPool(UdpPacket packet) => _packetPool.Return(packet);
         private void OnCompleted(object o, SocketAsyncEventArgs asyncState)
         {
             // asyncState.SocketError: Which errors are recoverable, if any?
@@ -90,7 +89,7 @@ namespace JuvoLogger.Udp
             // - Expected transmission = buffer[0..Size-1]
             // - args.BytesTransferred < Expected transmission
             asyncState.SetBuffer(asyncState.Offset, 0);
-            MtuBuffer.Complete(asyncState);
+            UdpPacket.Complete(asyncState);
         }
         private void OnConnected(object o, SocketAsyncEventArgs asyncState)
         {
@@ -106,51 +105,53 @@ namespace JuvoLogger.Udp
                 asyncState.RemoteEndPoint = GetListeningEndPoint();
                 asyncState.SetBuffer(asyncState.Offset, asyncState.Buffer.Length);
                 if (!_socket.ReceiveFromAsync(asyncState))
-                    MtuBuffer.CompleteAsync(asyncState);
+                    UdpPacket.CompleteAsync(asyncState);
             }
             catch (Exception e)
             {
-                TryLogException(e);
+                SendMessage(e.ToString());
                 throw;
             }
         }
-        private void SendTo(in EndPoint target, in MtuBuffer buffer)
+        private void SendTo(in EndPoint target, in UdpPacket buffer)
         {
             try
             {
                 var asyncState = (SocketAsyncEventArgs)buffer;
                 asyncState.RemoteEndPoint = target;
                 if (!_socket.SendToAsync(asyncState))
-                    MtuBuffer.CompleteAsync(buffer);
+                    UdpPacket.CompleteAsync(buffer);
             }
-            catch (Exception e)
+            catch (Exception)
             {
-                TryLogException(e);
-                // Be an Englishmen. Silently ignore. In UDP world things get lost
-                // "Disconnect" client perhaps?
+                // If we've failed to send message to end point... 
+                // no point in trying to send exception which caused this failure.
+                // Disconnect client
+                StopOutput = true;
+                _clientEndPoint = null;
             }
         }
 
-        // Run fixed messages buffers outside of mtuBufferPool. Not expecting that many of them.
-        // Less fiddling with mtu buffer restore / message copying.
-        private MtuBuffer BufferFromMessage(in Message msg) =>
-            new MtuBuffer(_messageData[(int)msg], OnCompleted, UdpLoggerToolBox.Dispose);
+        // Run fixed messages buffers outside of packet pool. Not expecting that much traffic here.
+        // Less fiddling then buffer restore / message copying.
+        private UdpPacket PacketFromMessage(in Message msg) =>
+            new UdpPacket(_messageData[(int)msg], OnCompleted, UdpLoggerToolBox.Dispose);
 
         private void ProcessEndPoint(in EndPoint newEp)
         {
             if (!newEp.SameAs(_clientEndPoint))
             {
                 if (_clientEndPoint != null)
-                    SendTo(_clientEndPoint, BufferFromMessage(Message.Hijack));
+                    SendTo(_clientEndPoint, PacketFromMessage(Message.Hijack));
 
-                SendTo(newEp, BufferFromMessage(Message.Connect));
+                SendTo(newEp, PacketFromMessage(Message.Connect));
                 _clientEndPoint = newEp;
                 StopOutput = false;
                 return;
             }
 
             StopOutput = !StopOutput;
-            SendTo(_clientEndPoint, BufferFromMessage(StopOutput ? Message.Stop : Message.Start));
+            SendTo(_clientEndPoint, PacketFromMessage(StopOutput ? Message.Stop : Message.Start));
         }
 
         #region IDisposable Support
@@ -162,8 +163,8 @@ namespace JuvoLogger.Udp
                 if (disposing)
                 {
                     _socket.Close();
-                    _clientListenerBuffer.Dispose();
-                    _bufferPool.Dispose();
+                    _clientListenerPacket.Dispose();
+                    _packetPool.Dispose();
                     _socket.Dispose();
                 }
 
