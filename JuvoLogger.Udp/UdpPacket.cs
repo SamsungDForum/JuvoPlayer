@@ -37,6 +37,7 @@ namespace JuvoLogger.Udp
             _asyncState = CreateSocketAsyncEventArgs();
             _asyncState.SetBuffer(new byte[bufferCapacity], 0, 0); // Mark buffer as "empty"
         }
+
         public UdpPacket(in byte[] message, in AsyncDone asyncHandler, in PacketDone packetHandler = null)
         {
             _completeAsyncHandler = asyncHandler;
@@ -44,6 +45,7 @@ namespace JuvoLogger.Udp
             _asyncState = CreateSocketAsyncEventArgs();
             _asyncState.SetBuffer(message, 0, message.Length); // Mark buffer as "containing data"
         }
+
         private SocketAsyncEventArgs CreateSocketAsyncEventArgs()
         {
             SocketAsyncEventArgs asyncState = new SocketAsyncEventArgs
@@ -53,6 +55,7 @@ namespace JuvoLogger.Udp
             asyncState.Completed += new EventHandler<SocketAsyncEventArgs>(_completeAsyncHandler);
             return asyncState;
         }
+
         public int Append(in string message, int startIndex, int count)
         {
             var buffer = _asyncState.Buffer;
@@ -67,6 +70,7 @@ namespace JuvoLogger.Udp
         }
 
         public static void Complete(in UdpPacket packet) => packet._completedPacketHandler?.Invoke(packet);
+
         public static void CompleteAsync(in UdpPacket packet) => packet._completeAsyncHandler(null, packet._asyncState);
 
         public void Dispose()

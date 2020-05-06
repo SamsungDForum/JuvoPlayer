@@ -27,20 +27,16 @@ namespace JuvoLogger.Udp
     {
         private readonly struct LineReader
         {
-            private readonly StringBuilder _builder;
             private readonly CancellationToken _token;
             private readonly ChannelReader<object[]> _reader;
-            private readonly string _format;
 
-            public LineReader(in ChannelReader<object[]> reader, in int initialSize, in string format, in CancellationToken token)
+            public LineReader(in ChannelReader<object[]> reader, in CancellationToken token)
             {
-                _builder = new StringBuilder(initialSize);
                 _token = token;
                 _reader = reader;
-                _format = format;
             }
-           
-            public async ValueTask<(bool flush,StringBuilder lineData)> Read(bool flushWhenNoData)
+
+            public async ValueTask<(bool flush, object[] lineData)> Read(bool flushWhenNoData)
             {
                 if (!_reader.TryRead(out var lineData))
                 {
@@ -49,28 +45,27 @@ namespace JuvoLogger.Udp
 
                     lineData = await _reader.ReadAsync(_token);
                 }
-                _builder.Clear();
-                return (false, _builder.AppendFormat(_format, lineData));
+
+                return (false, lineData);
             }
         }
 
+        private const float SendThreshold = 0.87f;
         private readonly Channel<object[]> _logChannel;
         private readonly CancellationTokenSource _cts;
-        private readonly string _logFormat;
         public bool StopOutput { get => _socketSession?.StopOutput ?? true; }
         private SocketSession _socketSession;
 
         public UdpLoggerService(int udpPort, string logFormat)
         {
-
             _cts = new CancellationTokenSource();
             _logChannel = Channel.CreateUnbounded<object[]>(new UnboundedChannelOptions()
             {
                 SingleReader = true,
                 SingleWriter = false
             });
-            _logFormat = logFormat;
-            Task.Run(async () => await Run(udpPort));
+
+            Task.Run(async () => await Run(udpPort, logFormat));
         }
 
         public void Log(params object[] args)
@@ -78,15 +73,16 @@ namespace JuvoLogger.Udp
             _logChannel.Writer.TryWrite(args);
         }
 
-        private async Task Run(int udpPort)
+        private async Task Run(int udpPort, string logFormat)
         {
             using (var socketSession = new SocketSession(udpPort))
             {
                 var maxMtu = socketSession.MaxPayloadSize;
+                int sendThresholdValue = (int)(maxMtu * SendThreshold);
                 var message = new StringBuilder(maxMtu);
                 _socketSession = socketSession;
 
-                var lineReader = new LineReader(_logChannel.Reader, maxMtu, _logFormat, _cts.Token);
+                var lineReader = new LineReader(_logChannel.Reader, _cts.Token);
 
                 try
                 {
@@ -100,16 +96,13 @@ namespace JuvoLogger.Udp
                             message.Clear();
                             continue;
                         }
-                        
-                        if (lineData.Length + message.Length < maxMtu)
-                        {
-                            message.Append(lineData);
+
+                        message.AppendFormat(logFormat, lineData);
+                        if (message.Length < sendThresholdValue)
                             continue;
-                        }
 
                         socketSession.SendMessage(message.ToString());
                         message.Clear();
-                        message.Append(lineData);
                     }
                 }
                 catch (Exception e)
