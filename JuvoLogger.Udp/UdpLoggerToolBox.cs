@@ -31,6 +31,19 @@ namespace JuvoLogger.Udp
             return thisEp.Port == otherEp?.Port && thisEp.Address.Equals(otherEp?.Address);
         }
 
+        public static bool IsAddressValid(this EndPoint ep) => !((IPEndPoint)ep).Address.Equals(IPAddress.None);
+
+        public static EndPoint InvalidateAddress(this EndPoint ep)
+        {
+            ((IPEndPoint)ep).Address = IPAddress.None;
+            return ep;
+        }
+
+        public static void CopyTo(this EndPoint sourceEp, EndPoint destinationEp)
+        {
+            ((IPEndPoint)destinationEp).Address = ((IPEndPoint)sourceEp).Address;
+            ((IPEndPoint)destinationEp).Port = ((IPEndPoint)sourceEp).Port;
+        }
         public static int GetLowestCommonMtu()
         {
             var lowestMtu = int.MaxValue;
@@ -46,5 +59,8 @@ namespace JuvoLogger.Udp
         }
 
         public static void Dispose<T>(this T obj) => ((IDisposable)obj).Dispose();
+
+        public static TOutput[] ConvertAll<TInput, TOutput>(Converter<TInput, TOutput> converter, params TInput[] data) =>
+            Array.ConvertAll(data, converter);
     }
 }

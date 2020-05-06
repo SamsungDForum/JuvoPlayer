@@ -19,6 +19,7 @@ using System;
 using System.Net;
 using System.Net.Sockets;
 using System.Text;
+using System.Threading;
 
 namespace JuvoLogger.Udp
 {
@@ -29,43 +30,38 @@ namespace JuvoLogger.Udp
 
         private enum Message { Connect, Stop, Start, Terminate, Hijack };
         // Any way to get processed (encoded) byte arrays directly from resources?
-        private readonly byte[][] _messageData = {
-            Encoding.UTF8.GetBytes(Resources.Messages.ConnectMessage),
-            Encoding.UTF8.GetBytes(Resources.Messages.StopMessage),
-            Encoding.UTF8.GetBytes(Resources.Messages.StartMessage),
-            Encoding.UTF8.GetBytes(Resources.Messages.TerminationMessage),
-            Encoding.UTF8.GetBytes(Resources.Messages.HijackMessage)};
+        private readonly byte[][] _messageData = UdpLoggerToolBox.ConvertAll(Encoding.UTF8.GetBytes,
+                Resources.Messages.ConnectMessage,
+                Resources.Messages.StopMessage,
+                Resources.Messages.StartMessage,
+                Resources.Messages.TerminationMessage,
+                Resources.Messages.HijackMessage);
 
         private const int MaxUdpHeader = 48; // IP6 UDP header.
-        private const int MaxPacketBuffers = 16;
-
         private Socket _socket;
-        private EndPoint _clientEndPoint;
+        private EndPoint _clientEndPoint = new IPEndPoint(IPAddress.None, 0);
         private readonly UdpPacket _clientListenerPacket;
-        private readonly Func<EndPoint> GetListeningEndPoint;
-        private readonly ObjectPool<UdpPacket> _packetPool;
+        private UdpPacket _clientDataPacket;
 
         public SocketSession(int port)
         {
-            GetListeningEndPoint = () => new IPEndPoint(IPAddress.Any, port);
-
             _socket = new Socket(SocketType.Dgram, ProtocolType.Udp);
-            _socket.Bind(GetListeningEndPoint());
-
-            _packetPool = new ObjectPool<UdpPacket>(MaxPacketBuffers, CreatePoolPacket, false, false);
+            _socket.Bind(new IPEndPoint(IPAddress.Any, port));
 
             // connection receiver
             _clientListenerPacket = new UdpPacket(1, OnConnected);
+            ((SocketAsyncEventArgs)_clientListenerPacket).RemoteEndPoint = new IPEndPoint(IPAddress.None, 0);
             ReceiveFromEndPoint(_clientListenerPacket);
         }
+
         public void Stop()
         {
             _socket.Close();
         }
-       
+
         public void SendMessage(in string message)
         {
-            if (_clientEndPoint == null)
+            if (!_clientEndPoint.IsAddressValid())
                 return;
 
             // Migrate to chunk/slice append taken directly from 
@@ -74,14 +70,23 @@ namespace JuvoLogger.Udp
             var msgLength = message.Length;
             do
             {
-                var buffer = _packetPool.Take();
-                bytesSent += buffer.Append(message,bytesSent, msgLength - bytesSent);
+                var buffer = GetPacket();
+                bytesSent += buffer.Append(message, bytesSent, msgLength - bytesSent);
                 SendTo(_clientEndPoint, buffer);
-            } while (msgLength > bytesSent);            
+            } while (msgLength > bytesSent);
         }
 
-        private UdpPacket CreatePoolPacket() => new UdpPacket(MaxPayloadSize, OnCompleted, ReturnPacketToPool);
-        private void ReturnPacketToPool(UdpPacket packet) => _packetPool.Return(packet);
+        private UdpPacket GetPacket()
+        {
+            var packet = Interlocked.Exchange(ref _clientDataPacket, null);
+            return packet != null ? packet : new UdpPacket(MaxPayloadSize, OnCompleted, ReturnPacket);
+        }
+        private void ReturnPacket(UdpPacket packet)
+        {
+            if (Interlocked.CompareExchange(ref _clientDataPacket, packet, null) != null)
+                packet.Dispose();
+        }
+
         private void OnCompleted(object o, SocketAsyncEventArgs asyncState)
         {
             // asyncState.SocketError: Which errors are recoverable, if any?
@@ -91,6 +96,7 @@ namespace JuvoLogger.Udp
             asyncState.SetBuffer(asyncState.Offset, 0);
             UdpPacket.Complete(asyncState);
         }
+
         private void OnConnected(object o, SocketAsyncEventArgs asyncState)
         {
             if (asyncState.SocketError == SocketError.Success)
@@ -98,11 +104,11 @@ namespace JuvoLogger.Udp
 
             ReceiveFromEndPoint(asyncState);
         }
+
         private void ReceiveFromEndPoint(SocketAsyncEventArgs asyncState)
         {
             try
             {
-                asyncState.RemoteEndPoint = GetListeningEndPoint();
                 asyncState.SetBuffer(asyncState.Offset, asyncState.Buffer.Length);
                 if (!_socket.ReceiveFromAsync(asyncState))
                     UdpPacket.CompleteAsync(asyncState);
@@ -113,6 +119,7 @@ namespace JuvoLogger.Udp
                 throw;
             }
         }
+
         private void SendTo(in EndPoint target, in UdpPacket buffer)
         {
             try
@@ -128,7 +135,7 @@ namespace JuvoLogger.Udp
                 // no point in trying to send exception which caused this failure.
                 // Disconnect client
                 StopOutput = true;
-                _clientEndPoint = null;
+                _clientEndPoint.InvalidateAddress();
             }
         }
 
@@ -145,7 +152,7 @@ namespace JuvoLogger.Udp
                     SendTo(_clientEndPoint, PacketFromMessage(Message.Hijack));
 
                 SendTo(newEp, PacketFromMessage(Message.Connect));
-                _clientEndPoint = newEp;
+                newEp.CopyTo(_clientEndPoint);
                 StopOutput = false;
                 return;
             }
@@ -164,7 +171,6 @@ namespace JuvoLogger.Udp
                 {
                     _socket.Close();
                     _clientListenerPacket.Dispose();
-                    _packetPool.Dispose();
                     _socket.Dispose();
                 }
 
