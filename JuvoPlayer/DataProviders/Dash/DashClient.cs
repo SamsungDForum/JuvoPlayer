@@ -85,7 +85,7 @@ namespace JuvoPlayer.DataProviders.Dash
         /// Used in Trimming Packet Handler to truncate down PTS/DTS values.
         /// First packet seen acts as flip switch. Fill initial values or not.
         /// </summary>
-        private TimeSpan? trimOffset;
+        //private TimeSpan? trimOffset;
 
         /// <summary>
         /// Flag indicating if DashClient is initializing. During INIT, adaptive bitrate switching is not
@@ -220,8 +220,8 @@ namespace JuvoPlayer.DataProviders.Dash
             if (currentSegmentId.HasValue == false)
                 currentSegmentId = currentRepresentation.AlignedStartSegmentID;
 
-            if (!trimOffset.HasValue)
-                trimOffset = currentRepresentation.AlignedTrimOffset;
+            //if (!trimOffset.HasValue)
+            //    trimOffset = currentRepresentation.AlignedTrimOffset;
 
             if (currentStreams.InitSegment == null)
                 initInProgress = false;
@@ -237,10 +237,14 @@ namespace JuvoPlayer.DataProviders.Dash
 
             var currentChunk = currentStreams.SegmentTimeRange(currentSegmentId).Duration;
 
-            if (_dataClockLimit >= bufferTime + currentChunk)
+            var limit = _dataClockLimit;
+            var offset = currentRepresentation.AlignedTrimOffset ?? TimeSpan.Zero;
+            if (limit < offset)
+                limit += offset;
+            if (limit >= bufferTime + currentChunk)
                 return true;
 
-            LogInfo($"Full. BufferTime {bufferTime} Max {_dataClockLimit} Chunk {currentChunk} ({bufferTime - currentTime})");
+            LogInfo($"Full. BufferTime {bufferTime} Max {limit} Chunk {currentChunk} ({bufferTime - currentTime})");
 
             return false;
         }
@@ -402,7 +406,7 @@ namespace JuvoPlayer.DataProviders.Dash
                 return DownloadLoopStatus.GiveUp;
             var segment = responseResult.DownloadSegment;
             lastDownloadSegmentTimeRange = segment.Period.Copy();
-            bufferTime = segment.Period.Start + segment.Period.Duration - (trimOffset ?? TimeSpan.Zero);
+            bufferTime = segment.Period.Start + segment.Period.Duration;// - (trimOffset ?? TimeSpan.Zero);
             currentSegmentId = currentStreams.NextSegmentId(currentSegmentId);
 
             var timeInfo = segment.Period.ToString();
@@ -487,7 +491,7 @@ namespace JuvoPlayer.DataProviders.Dash
             // Set state variables to initial values
             lastDownloadSegmentTimeRange = null;
             currentSegmentId = null;
-            trimOffset = null;
+            //trimOffset = null;
             isEosSent = false;
             currentTime = TimeSpan.Zero;
             bufferTime = TimeSpan.Zero;

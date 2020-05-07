@@ -363,8 +363,8 @@ namespace JuvoPlayer.DataProviders.Dash
                 PushMetaDataConfiguration();
             }
 
-            if (!trimOffset.HasValue)
-                trimOffset = currentStream.Representation.AlignedTrimOffset;
+            //if (!trimOffset.HasValue)
+             //   trimOffset = currentStream.Representation.AlignedTrimOffset;
 
             var fullInitRequired = (newStream != null) || DisableAdaptiveStreaming;
 
