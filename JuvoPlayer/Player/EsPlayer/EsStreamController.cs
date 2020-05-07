@@ -322,14 +322,14 @@ namespace JuvoPlayer.Player.EsPlayer
                     case ESPlayer.ESPlayerState.Paused:
                         player.Resume();
                         _dataClock.Clock = _playerClock.LastClock;
-                        StartClockGenerator();
+                        //StartClockGenerator();
                         ResumeTransfer(token);
                         break;
 
                     default:
                         throw new InvalidOperationException($"Play called in invalid state: {state}");
                 }
-
+                StartClockGenerator();
                 SubscribeBufferingEvent();
                 SetState(PlayerState.Playing, token);
 
@@ -861,8 +861,6 @@ namespace JuvoPlayer.Player.EsPlayer
             logger.Info("Player.PrepareAsync() Done");
 
             SetState(PlayerState.Prepared, token);
-
-            StartClockGenerator();
         }
 
         private void PausePlayback()
