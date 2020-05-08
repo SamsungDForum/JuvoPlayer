@@ -5,7 +5,7 @@
                     xmlns:forms="clr-namespace:SkiaSharp.Views.Forms;assembly=SkiaSharp.Views.Forms"
                     x:Class="XamarinPlayer.Tizen.TV.Controls.ContentItem"
                     PaintSurface="OnPaintSurface"
-                    WidthRequest="230"
+                    WidthRequest="409"
                     HeightRequest="230"
                     ContentImg="{Binding Bg}"
                     ContentTitle="{Binding Title}"
