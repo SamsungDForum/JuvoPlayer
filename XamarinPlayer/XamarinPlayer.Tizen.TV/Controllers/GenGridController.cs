@@ -1,6 +1,6 @@
 /*!
  * https://github.com/SamsungDForum/JuvoPlayer
- * Copyright 2018, Samsung Electronics Co., Ltd
+ * Copyright 2020, Samsung Electronics Co., Ltd
  * Licensed under the MIT license
  *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
@@ -15,7 +15,9 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+using System;
 using System.Collections.Generic;
+using System.Collections.Specialized;
 using System.Threading.Tasks;
 using Xamarin.Forms;
 using Xamarin.Forms.GenGridView;
@@ -36,22 +38,27 @@ namespace XamarinPlayer.Tizen.TV.Controllers
         public GenGridController(GenGridView genGrid)
         {
             _genGrid = genGrid;
-            GenGrid.FocusedItemChanged += (sender, args) =>
-            {
-                _focusedItem?.ResetFocus();
-                _focusedItem = args.SelectedItem as ContentItem;
-                _focusedItem.SetFocus();
-            };
-            GenGrid.ItemsChanged += (sender, args) =>
-            {
-                if ((args.OldItems == null || args.OldItems.Count == 0) && args.NewItems != null &&
-                    args.NewItems.Count > 0)
-                {
-                    _focusedItem = GenGrid.Items[0] as ContentItem;
-                }
-            };
+            GenGrid.FocusedItemChanged += OnFocusedItemChanged ;
+            GenGrid.ItemsChanged += OnItemsChanged;
         }
-        
+
+        private void OnItemsChanged(object sender, NotifyCollectionChangedEventArgs e)
+        {
+            if ((e.OldItems == null || e.OldItems.Count == 0) && e.NewItems != null &&
+                e.NewItems.Count > 0)
+            {
+                _focusedItem = GenGrid.Items[0] as ContentItem;
+            }
+        }
+
+        private void OnFocusedItemChanged(object sender, FocusedItemChangedEventArgs e)
+        {
+            _focusedItem?.ResetFocus();
+            _focusedItem = e.SelectedItem as ContentItem;
+            _focusedItem.SetFocus();
+        }
+
+
         public void SetItemsSource(List<DetailContentData> source)
         {
             GenGrid.ItemsSource = source;
@@ -61,9 +68,7 @@ namespace XamarinPlayer.Tizen.TV.Controllers
         {
             if (_focusedItem == newContent)
                 return Task.CompletedTask;
-            //_focusedItem?.ResetFocus();
             _focusedItem = newContent;
-            ///_focusedItem.SetFocus();
             GenGrid.ScrollTo(_genGrid.Items.IndexOf(_focusedItem), ScrollToPosition.Center, true);
             return Task.CompletedTask;
         }
@@ -86,9 +91,15 @@ namespace XamarinPlayer.Tizen.TV.Controllers
             return true;
         }
 
-        public Task SetFocusedContent(ContentItem contentItem)
+        public Task SetFocusedContent(ContentItem contentItem)   
         {
             return SwapFocusedContent(contentItem);
+        }
+
+        public void Dispose()
+        {
+            GenGrid.FocusedItemChanged -= OnFocusedItemChanged ;
+            GenGrid.ItemsChanged -= OnItemsChanged;
         }
     }
 }

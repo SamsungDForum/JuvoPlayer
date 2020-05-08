@@ -1,6 +1,6 @@
 /*!
  * https://github.com/SamsungDForum/JuvoPlayer
- * Copyright 2018, Samsung Electronics Co., Ltd
+ * Copyright 2020, Samsung Electronics Co., Ltd
  * Licensed under the MIT license
  *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
@@ -15,6 +15,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 using Xamarin.Forms.GenGridView;
@@ -23,7 +24,7 @@ using XamarinPlayer.Tizen.TV.Models;
 
 namespace XamarinPlayer.Tizen.TV.Controllers
 {
-    public interface IGenGridController
+    public interface IGenGridController : IDisposable
     {
         ContentItem FocusedItem { get; }
         GenGridView GenGrid { get; }
