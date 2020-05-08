@@ -44,11 +44,16 @@
     <Reference Include="SkiaSharp.Views.Tizen, Version=1.60.0.0, Culture=neutral, PublicKeyToken=0738eb9f132ed756">
       <HintPath>packages\SkiaSharp.Views.Tizen.dll</HintPath>
     </Reference>
+    <Reference Include="Xamarin.Forms.GenGridView, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null">
+      <HintPath>packages\Xamarin.Forms.GenGridView.dll</HintPath>
+    </Reference>
+    <Reference Include="Xamarin.Forms.GenGridView.Tizen, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null">
+      <HintPath>packages\Xamarin.Forms.GenGridView.Tizen.dll</HintPath>
+    </Reference>
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\JuvoLogger.Tizen\JuvoLogger.Tizen.csproj" />
     <ProjectReference Include="..\..\JuvoPlayer\JuvoPlayer.csproj" />
-    <ProjectReference Include="..\..\Xamarin.Forms.GenGridView.Tizen\Xamarin.Forms.GenGridView.Tizen.csproj" />
   </ItemGroup>
   <ItemGroup>
     <Compile Update="Properties\Resources.Designer.cs">
