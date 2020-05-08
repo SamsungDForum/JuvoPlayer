@@ -34,16 +34,15 @@ namespace XamarinPlayer.Tizen.TV.Views
 
         private void SKCanvasView_OnPaintSurface(object sender, SKPaintSurfaceEventArgs e)
         {
-            SKBitmap bitmap;
-            bitmap = SKBitmap.Decode(Path.Combine(Application.Current.DirectoryInfo.SharedResource,
-                "JuvoPlayerXamarinTizenTV.png"));
-            
-            var info = e.Info;
-            var rect = info.Rect;
-            var surface = e.Surface;
-            var canvas = surface.Canvas;
-            
-            canvas.DrawBitmap(bitmap, rect);
+            using (var bitmap = SKBitmap.Decode(Path.Combine(Application.Current.DirectoryInfo.SharedResource, 
+                "JuvoPlayerXamarinTizenTV.png")))
+            {
+                var info = e.Info;
+                var rect = info.Rect;
+                var surface = e.Surface;
+                var canvas = surface.Canvas;
+                canvas.DrawBitmap(bitmap, rect);
+            }
         }
     }
 }
