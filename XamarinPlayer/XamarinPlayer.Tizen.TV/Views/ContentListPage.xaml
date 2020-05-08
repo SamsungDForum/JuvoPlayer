@@ -38,7 +38,7 @@
                            FontSize="60"
                            TextColor="#ffffff" />
                 </StackLayout>
-                <gg:GenGridView x:Name="GenGrid"
+                <gg:GenGridView x:Name="ContentGrid"
                                 Grid.Row="1"
                                 ControlMode="Custom"
                                 HorizontalScrollBarVisibility="Never"
@@ -50,8 +50,6 @@
                                     </DataTemplate>
                                 </gg:GenGridView.ItemTemplate>
                 </gg:GenGridView>
-                
-                
             </Grid>
         </AbsoluteLayout>
     </ContentPage.Content>
