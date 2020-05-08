@@ -15,18 +15,16 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-using System;
 using System.Collections.Generic;
 using System.Collections.Specialized;
 using System.Threading.Tasks;
-using Xamarin.Forms;
 using Xamarin.Forms.GenGridView;
 using XamarinPlayer.Tizen.TV.Controls;
 using XamarinPlayer.Tizen.TV.Models;
 
 namespace XamarinPlayer.Tizen.TV.Controllers
 {
-    public class GenGridController : IGenGridController
+    public class ContentGridController : IContentGridController
     {
         private ContentItem _focusedItem;
         private readonly GenGridView _genGrid;
@@ -35,7 +33,7 @@ namespace XamarinPlayer.Tizen.TV.Controllers
 
         public GenGridView GenGrid => _genGrid;
 
-        public GenGridController(GenGridView genGrid)
+        public ContentGridController(GenGridView genGrid)
         {
             _genGrid = genGrid;
             GenGrid.FocusedItemChanged += OnFocusedItemChanged ;
@@ -64,13 +62,12 @@ namespace XamarinPlayer.Tizen.TV.Controllers
             GenGrid.ItemsSource = source;
         }
 
-        private Task SwapFocusedContent(ContentItem newContent)
+        private void SwapFocusedContent(ContentItem newContent)
         {
             if (_focusedItem == newContent)
-                return Task.CompletedTask;
+                return;
             _focusedItem = newContent;
-            GenGrid.ScrollTo(_genGrid.Items.IndexOf(_focusedItem), ScrollToPosition.Center, true);
-            return Task.CompletedTask;
+            GenGrid.ScrollTo(_genGrid.Items.IndexOf(_focusedItem));
         }
         
         public bool ScrollToNext()
@@ -93,7 +90,8 @@ namespace XamarinPlayer.Tizen.TV.Controllers
 
         public Task SetFocusedContent(ContentItem contentItem)   
         {
-            return SwapFocusedContent(contentItem);
+            SwapFocusedContent(contentItem);
+            return Task.CompletedTask;
         }
 
         public void Dispose()

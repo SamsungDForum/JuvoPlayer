@@ -16,9 +16,7 @@
  */
 
 using System;
-using System.Linq;
 using System.Threading.Tasks;
-using JuvoLogger;
 using JuvoPlayer.Common;
 using JuvoPlayer.Common.Utils.IReferenceCountableExtensions;
 using SkiaSharp;
@@ -42,7 +40,7 @@ namespace XamarinPlayer.Tizen.TV.Views
         private int _pendingUpdatesCount;
         private readonly SKBitmapCache _skBitmapCache;
         private SKBitmapRefCounted _backgroundBitmap;
-        private readonly IGenGridController _ggController;
+        private readonly IContentGridController _contentGridController;
 
         public ContentListPage(NavigationPage page)
         {
@@ -50,7 +48,7 @@ namespace XamarinPlayer.Tizen.TV.Views
 
             _appMainPage = page;
 
-            _ggController = new GenGridController(GenGrid);
+            _contentGridController = new ContentGridController(ContentGrid);
             UpdateItem();
 
             var cacheService = DependencyService.Get<ISKBitmapCacheService>();
@@ -70,12 +68,12 @@ namespace XamarinPlayer.Tizen.TV.Views
 
         private void UpdateItem()
         {
-            _ggController.SetItemsSource(((ContentListPageViewModel) BindingContext).ContentList);
+            _contentGridController.SetItemsSource(((ContentListPageViewModel) BindingContext).ContentList);
         }
 
         private async Task UpdateContentInfo()
         {
-            var focusedContent = _ggController.FocusedItem;
+            var focusedContent = _contentGridController.FocusedItem;
             ++_pendingUpdatesCount;
             await Task.Delay(TimeSpan.FromSeconds(1));
             --_pendingUpdatesCount;
@@ -105,7 +103,7 @@ namespace XamarinPlayer.Tizen.TV.Views
         {
             base.OnDisappearing();
             MessagingCenter.Unsubscribe<IKeyEventSender, string>(this, "KeyDown");
-            _ggController.Dispose();
+            _contentGridController.Dispose();
         }
 
         private enum KeyCode
@@ -147,10 +145,10 @@ namespace XamarinPlayer.Tizen.TV.Views
             switch (keyCode) 
             {
                 case KeyCode.Next:
-                    scrolled = _ggController.ScrollToNext();
+                    scrolled = _contentGridController.ScrollToNext();
                     break;
                 case KeyCode.Previous:
-                    scrolled = _ggController.ScrollToPrevious();
+                    scrolled = _contentGridController.ScrollToPrevious();
                     break;
                 default:
                     throw new ArgumentOutOfRangeException(nameof(keyCode), keyCode, null);
@@ -162,7 +160,7 @@ namespace XamarinPlayer.Tizen.TV.Views
 
         private Task HandleEnterEvent()
         {
-            return ContentSelected(_ggController.FocusedItem);
+            return ContentSelected(_contentGridController.FocusedItem);
         }
 
         protected override void OnSizeAllocated(double width, double height)
@@ -175,7 +173,7 @@ namespace XamarinPlayer.Tizen.TV.Views
             // FIXME: Workaround for Tizen
             // Sometimes height of list is calculated as wrong
             // Set the height explicitly for fixing this issue
-            GenGrid.HeightRequest = (height * 0.21);
+            ContentGrid.HeightRequest = (height * 0.21);
         }
 
         public bool HandleUrl(string url)
@@ -186,11 +184,11 @@ namespace XamarinPlayer.Tizen.TV.Views
             if (index == -1)
                 return false;
             contentListPageViewModel.IsBusy = true;
-            var item = (ContentItem) (GenGrid.Items[index]);
-            _ggController.SetFocusedContent(item).ContinueWith(async _ =>
+            var item = (ContentItem) (ContentGrid.Items[index]);
+            _contentGridController.SetFocusedContent(item).ContinueWith(async _ =>
             {
                 await UpdateContentInfo();
-                await ContentSelected(_ggController.FocusedItem);
+                await ContentSelected(_contentGridController.FocusedItem);
                 contentListPageViewModel.IsBusy = false;
             }, TaskScheduler.FromCurrentSynchronizationContext());
 
@@ -199,12 +197,12 @@ namespace XamarinPlayer.Tizen.TV.Views
 
         public void Suspend()
         {
-            _ggController.FocusedItem?.ResetFocus();
+            _contentGridController.FocusedItem?.ResetFocus();
         }
 
         public void Resume()
         {
-            _ggController.FocusedItem?.SetFocus();
+            _contentGridController.FocusedItem?.SetFocus();
         }
 
         private void SKCanvasView_OnPaintSurface(object sender, SKPaintSurfaceEventArgs e)
