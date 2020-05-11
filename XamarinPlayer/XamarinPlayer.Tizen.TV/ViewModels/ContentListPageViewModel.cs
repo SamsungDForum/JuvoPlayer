@@ -50,6 +50,7 @@ namespace XamarinPlayer.Tizen.TV.ViewModels
                 Title = o.Title,
                 TilePreviewPath =  o.TilePreviewPath
             }).ToList();
+            CurrentContent = ContentList[0];
         }
         
         public List<DetailContentData> ContentList

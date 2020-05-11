@@ -24,7 +24,6 @@ using SkiaSharp;
 using SkiaSharp.Views.Forms;
 using Xamarin.Forms;
 using Xamarin.Forms.Xaml;
-using XamarinPlayer.Tizen.TV.Controls;
 using XamarinPlayer.Tizen.TV.Models;
 using XamarinPlayer.Tizen.TV.Services;
 using XamarinPlayer.Tizen.TV.ViewModels;
@@ -114,12 +113,12 @@ namespace XamarinPlayer.Tizen.TV.Views
             --_pendingUpdatesCount;
             if (_pendingUpdatesCount > 0) return;
 
-            ContentTitle.Text = (FocusedContent as ContentItem)?.ContentTitle;
-            ContentDesc.Text = (FocusedContent as ContentItem)?.ContentDescription;
+            ContentTitle.Text = (FocusedContent as DetailContentData)?.Title;
+            ContentDesc.Text = (FocusedContent as DetailContentData)?.Description;
 
             _backgroundBitmap?.Release();
             _backgroundBitmap = null;
-            _backgroundBitmap = await _skBitmapCache.GetBitmap((FocusedContent as ContentItem)?.ContentImg);
+            _backgroundBitmap = await _skBitmapCache.GetBitmap(_contentGridController.FocusedItem?.ContentImg);
 
             ContentImage.InvalidateSurface();
             ContentImage.Opacity = 0;
@@ -138,7 +137,6 @@ namespace XamarinPlayer.Tizen.TV.Views
         {
             base.OnDisappearing();
             MessagingCenter.Unsubscribe<IKeyEventSender, string>(this, "KeyDown");
-            _contentGridController.Dispose();
         }
 
         private enum KeyCode
