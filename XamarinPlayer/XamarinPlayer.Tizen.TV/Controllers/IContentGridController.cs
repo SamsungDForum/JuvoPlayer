@@ -24,7 +24,7 @@ using XamarinPlayer.Tizen.TV.Models;
 
 namespace XamarinPlayer.Tizen.TV.Controllers
 {
-    public interface IContentGridController : IDisposable
+    public interface IContentGridController
     {
         ContentItem FocusedItem { get; }
         GenGridView GenGrid { get; }
