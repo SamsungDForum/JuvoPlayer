@@ -29,21 +29,12 @@ namespace XamarinPlayer.Tizen.TV.ViewModels
 {
     internal class ContentListPageViewModel : INotifyPropertyChanged
     {
-        public List<DetailContentData> ContentList { get; }
-
-        private bool _isBusy;
-        public bool IsBusy
-        {
-            get => _isBusy;
-            set
-            {
-                _isBusy = value;
-                OnPropertyChanged(nameof(IsBusy));
-            }
-        }
+        private DetailContentData _currentContent;
+        private List<DetailContentData> _contentList;
 
         public event PropertyChangedEventHandler PropertyChanged;
-
+        public ICommand NextCommand => new Command(Next);
+        public ICommand PreviousCommand => new Command(Previous);
         public ContentListPageViewModel()
         {
             var clips = DependencyService.Get<IClipReaderService>(DependencyFetchTarget.NewInstance).ReadClips().Result;
@@ -60,6 +51,29 @@ namespace XamarinPlayer.Tizen.TV.ViewModels
                 TilePreviewPath =  o.TilePreviewPath
             }).ToList();
         }
+        
+        public List<DetailContentData> ContentList
+        {
+            get => _contentList;
+            set
+            {
+                if (_contentList == value)
+                    return;
+                _contentList = value;
+                OnPropertyChanged();
+            }
+        }
+        public DetailContentData CurrentContent
+        {
+            get => _currentContent;
+            set
+            {
+                if (_currentContent == value)
+                    return;
+                _currentContent = value;
+                OnPropertyChanged();
+            }
+        }
 
         private ICommand CreateFocusedCommand()
         {
@@ -70,7 +84,21 @@ namespace XamarinPlayer.Tizen.TV.ViewModels
 
             return command;
         }
-
+        
+        public void Next()
+        {
+            int index = ContentList.IndexOf(_currentContent);
+            if (index >= ContentList.Count - 1)
+                return;
+            CurrentContent = ContentList[index + 1];
+        }
+        public void Previous()
+        {
+            int index = ContentList.IndexOf(_currentContent);
+            if (index <= 0) 
+                return;
+            CurrentContent = ContentList[index - 1];
+        }
         private void OnPropertyChanged([CallerMemberName] string propertyName = null)
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
