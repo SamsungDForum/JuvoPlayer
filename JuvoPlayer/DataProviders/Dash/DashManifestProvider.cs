@@ -297,8 +297,6 @@ namespace JuvoPlayer.DataProviders.Dash
 
             videoPipeline.UpdateMedia(period);
             token.ThrowIfCancellationRequested();
-
-            audioPipeline.SynchronizeWith(videoPipeline);
         }
 
         private void BuildSubtitleInfos(Period period)
