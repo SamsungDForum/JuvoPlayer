@@ -16,6 +16,7 @@
  */
 
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using JuvoPlayer.Common;
 using JuvoPlayer.Common.Utils.IReferenceCountableExtensions;
@@ -35,6 +36,45 @@ namespace XamarinPlayer.Tizen.TV.Views
     [XamlCompilation(XamlCompilationOptions.Compile)]
     public partial class ContentListPage : IContentPayloadHandler, ISuspendable
     {
+        public static readonly BindableProperty ContentListProperty =
+            BindableProperty.Create(
+                propertyName: "ContentList",
+                returnType: typeof(object),
+                typeof(ContentListPage),
+                defaultValue: false,
+                defaultBindingMode: BindingMode.OneWay,
+                propertyChanged: (b, o, n) =>
+                {
+                    var page = ((ContentListPage) b);
+                    if (n != null)
+                        page._contentGridController.SetItemsSource((List<DetailContentData>)n);
+                });
+        
+        public object ContentList
+        {
+            set { SetValue(ContentListProperty, value); }
+            get { return GetValue(ContentListProperty); }
+        }
+        public static readonly BindableProperty FocusedContentProperty =
+            BindableProperty.Create(
+                propertyName: "ContentList",
+                returnType: typeof(object),
+                typeof(ContentListPage),
+                defaultValue: false,
+                defaultBindingMode: BindingMode.OneWay,
+                propertyChanged: (b, o, n) =>
+                {
+                    var page = ((ContentListPage) b);
+                    if (n != null)
+                        page._contentGridController.SetFocusedContent((DetailContentData) n);
+                });
+        
+        public object FocusedContent
+        {
+            set { SetValue(FocusedContentProperty, value); }
+            get { return GetValue(FocusedContentProperty); }
+        }
+        
         private readonly NavigationPage _appMainPage;
 
         private int _pendingUpdatesCount;
@@ -49,42 +89,37 @@ namespace XamarinPlayer.Tizen.TV.Views
             _appMainPage = page;
 
             _contentGridController = new ContentGridController(ContentGrid);
-            UpdateItem();
-
+            SetBinding(ContentListProperty, new Binding(nameof(ContentListPageViewModel.ContentList)));
+            SetBinding(FocusedContentProperty, new Binding(nameof(ContentListPageViewModel.CurrentContent)));
+            
             var cacheService = DependencyService.Get<ISKBitmapCacheService>();
             _skBitmapCache = cacheService.GetCache();
 
             NavigationPage.SetHasNavigationBar(this, false);
         }
 
-        private Task ContentSelected(BindableObject item)
+        private Task ContentSelected(DetailContentData data)
         {
             var playerView = new PlayerView
             {
-                BindingContext = new PlayerViewModel(item.BindingContext as DetailContentData, new DialogService())
+                BindingContext = new PlayerViewModel(data, new DialogService())
             };
             return _appMainPage.PushAsync(playerView);
         }
 
-        private void UpdateItem()
-        {
-            _contentGridController.SetItemsSource(((ContentListPageViewModel) BindingContext).ContentList);
-        }
-
         private async Task UpdateContentInfo()
         {
-            var focusedContent = _contentGridController.FocusedItem;
             ++_pendingUpdatesCount;
             await Task.Delay(TimeSpan.FromSeconds(1));
             --_pendingUpdatesCount;
             if (_pendingUpdatesCount > 0) return;
 
-            ContentTitle.Text = focusedContent.ContentTitle;
-            ContentDesc.Text = focusedContent.ContentDescription;
+            ContentTitle.Text = (FocusedContent as ContentItem)?.ContentTitle;
+            ContentDesc.Text = (FocusedContent as ContentItem)?.ContentDescription;
 
             _backgroundBitmap?.Release();
             _backgroundBitmap = null;
-            _backgroundBitmap = await _skBitmapCache.GetBitmap(focusedContent.ContentImg);
+            _backgroundBitmap = await _skBitmapCache.GetBitmap((FocusedContent as ContentItem)?.ContentImg);
 
             ContentImage.InvalidateSurface();
             ContentImage.Opacity = 0;
@@ -141,26 +176,24 @@ namespace XamarinPlayer.Tizen.TV.Views
 
         private async Task HandleScrollEvent(KeyCode keyCode)
         {
-            bool scrolled;
             switch (keyCode) 
             {
                 case KeyCode.Next:
-                    scrolled = _contentGridController.ScrollToNext();
+                    (BindingContext as ContentListPageViewModel)?.NextCommand.Execute(null);
                     break;
                 case KeyCode.Previous:
-                    scrolled = _contentGridController.ScrollToPrevious();
+                    (BindingContext as ContentListPageViewModel)?.PreviousCommand.Execute(null);
                     break;
                 default:
                     throw new ArgumentOutOfRangeException(nameof(keyCode), keyCode, null);
             }
             
-            if (scrolled)
-                await UpdateContentInfo();
+            await UpdateContentInfo();
         }
 
         private Task HandleEnterEvent()
         {
-            return ContentSelected(_contentGridController.FocusedItem);
+            return ContentSelected(FocusedContent as DetailContentData);
         }
 
         protected override void OnSizeAllocated(double width, double height)
@@ -178,18 +211,16 @@ namespace XamarinPlayer.Tizen.TV.Views
 
         public bool HandleUrl(string url)
         {
-            var contentListPageViewModel = (ContentListPageViewModel) BindingContext;
-            var contentList = contentListPageViewModel.ContentList;
-            var index = contentList.FindIndex(content => content.Source.Equals(url));
-            if (index == -1)
+            var contentList = (List<DetailContentData>)ContentList;
+            var data = contentList?.Find(content => content.Source.Equals(url));
+            if (data is null)
                 return false;
-            contentListPageViewModel.IsBusy = true;
-            var item = (ContentItem) (ContentGrid.Items[index]);
-            _contentGridController.SetFocusedContent(item).ContinueWith(async _ =>
+            Hide();
+            _contentGridController.SetFocusedContent(data).ContinueWith(async _ =>
             {
                 await UpdateContentInfo();
-                await ContentSelected(_contentGridController.FocusedItem);
-                contentListPageViewModel.IsBusy = false;
+                await ContentSelected(data);
+                Show();
             }, TaskScheduler.FromCurrentSynchronizationContext());
 
             return true;
@@ -224,6 +255,18 @@ namespace XamarinPlayer.Tizen.TV.Views
                 canvas.DrawBitmap(_backgroundBitmap.Value, rect);
                 canvas.DrawRect(rect, paint);
             }
+        }
+        
+        private void Show()
+        {
+            Content.IsVisible = true;
+            Loading.IsVisible = false;
+        }
+        
+        private void Hide()
+        {
+            Content.IsVisible = false;
+            Loading.IsVisible = true;
         }
     }
 }
