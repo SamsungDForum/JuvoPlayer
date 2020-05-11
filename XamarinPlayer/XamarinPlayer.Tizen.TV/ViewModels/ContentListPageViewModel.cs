@@ -35,6 +35,7 @@ namespace XamarinPlayer.Tizen.TV.ViewModels
         public event PropertyChangedEventHandler PropertyChanged;
         public ICommand NextCommand => new Command(Next);
         public ICommand PreviousCommand => new Command(Previous);
+
         public ContentListPageViewModel()
         {
             var clips = DependencyService.Get<IClipReaderService>(DependencyFetchTarget.NewInstance).ReadClips().Result;
@@ -48,11 +49,11 @@ namespace XamarinPlayer.Tizen.TV.ViewModels
                 Image = o.Image,
                 Source = o.Source,
                 Title = o.Title,
-                TilePreviewPath =  o.TilePreviewPath
+                TilePreviewPath = o.TilePreviewPath
             }).ToList();
             CurrentContent = ContentList[0];
         }
-        
+
         public List<DetailContentData> ContentList
         {
             get => _contentList;
@@ -64,6 +65,7 @@ namespace XamarinPlayer.Tizen.TV.ViewModels
                 OnPropertyChanged();
             }
         }
+
         public DetailContentData CurrentContent
         {
             get => _currentContent;
@@ -78,14 +80,11 @@ namespace XamarinPlayer.Tizen.TV.ViewModels
 
         private ICommand CreateFocusedCommand()
         {
-            ICommand command = new Command<ContentItem>(item =>
-            {
-                OnPropertyChanged("FocusedContent");
-            });
+            ICommand command = new Command<ContentItem>(item => { OnPropertyChanged("FocusedContent"); });
 
             return command;
         }
-        
+
         public void Next()
         {
             int index = ContentList.IndexOf(_currentContent);
@@ -93,13 +92,15 @@ namespace XamarinPlayer.Tizen.TV.ViewModels
                 return;
             CurrentContent = ContentList[index + 1];
         }
+
         public void Previous()
         {
             int index = ContentList.IndexOf(_currentContent);
-            if (index <= 0) 
+            if (index <= 0)
                 return;
             CurrentContent = ContentList[index - 1];
         }
+
         private void OnPropertyChanged([CallerMemberName] string propertyName = null)
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));

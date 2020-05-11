@@ -46,14 +46,15 @@ namespace XamarinPlayer.Tizen.TV.Views
                 {
                     var page = ((ContentListPage) b);
                     if (n != null)
-                        page._contentGridController.SetItemsSource((List<DetailContentData>)n);
+                        page._contentGridController.SetItemsSource((List<DetailContentData>) n);
                 });
-        
+
         public object ContentList
         {
             set { SetValue(ContentListProperty, value); }
             get { return GetValue(ContentListProperty); }
         }
+
         public static readonly BindableProperty FocusedContentProperty =
             BindableProperty.Create(
                 propertyName: "ContentList",
@@ -67,13 +68,13 @@ namespace XamarinPlayer.Tizen.TV.Views
                     if (n != null)
                         page._contentGridController.SetFocusedContent((DetailContentData) n);
                 });
-        
+
         public object FocusedContent
         {
             set { SetValue(FocusedContentProperty, value); }
             get { return GetValue(FocusedContentProperty); }
         }
-        
+
         private readonly NavigationPage _appMainPage;
 
         private int _pendingUpdatesCount;
@@ -90,7 +91,7 @@ namespace XamarinPlayer.Tizen.TV.Views
             _contentGridController = new ContentGridController(ContentGrid);
             SetBinding(ContentListProperty, new Binding(nameof(ContentListPageViewModel.ContentList)));
             SetBinding(FocusedContentProperty, new Binding(nameof(ContentListPageViewModel.CurrentContent)));
-            
+
             var cacheService = DependencyService.Get<ISKBitmapCacheService>();
             _skBitmapCache = cacheService.GetCache();
 
@@ -174,7 +175,7 @@ namespace XamarinPlayer.Tizen.TV.Views
 
         private async Task HandleScrollEvent(KeyCode keyCode)
         {
-            switch (keyCode) 
+            switch (keyCode)
             {
                 case KeyCode.Next:
                     (BindingContext as ContentListPageViewModel)?.NextCommand.Execute(null);
@@ -185,7 +186,7 @@ namespace XamarinPlayer.Tizen.TV.Views
                 default:
                     throw new ArgumentOutOfRangeException(nameof(keyCode), keyCode, null);
             }
-            
+
             await UpdateContentInfo();
         }
 
@@ -209,7 +210,7 @@ namespace XamarinPlayer.Tizen.TV.Views
 
         public bool HandleUrl(string url)
         {
-            var contentList = (List<DetailContentData>)ContentList;
+            var contentList = (List<DetailContentData>) ContentList;
             var data = contentList?.Find(content => content.Source.Equals(url));
             if (data is null)
                 return false;
@@ -254,13 +255,13 @@ namespace XamarinPlayer.Tizen.TV.Views
                 canvas.DrawRect(rect, paint);
             }
         }
-        
+
         private void Show()
         {
             Content.IsVisible = true;
             Loading.IsVisible = false;
         }
-        
+
         private void Hide()
         {
             Content.IsVisible = false;
