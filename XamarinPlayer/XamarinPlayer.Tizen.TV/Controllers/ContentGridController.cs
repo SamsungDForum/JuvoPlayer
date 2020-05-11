@@ -40,26 +40,32 @@ namespace XamarinPlayer.Tizen.TV.Controllers
             GenGrid.ItemsChanged += OnItemsChanged;
         }
 
-        private void OnItemsChanged(object sender, NotifyCollectionChangedEventArgs e)
-        {
-            if ((e.OldItems == null || e.OldItems.Count == 0) && e.NewItems != null &&
-                e.NewItems.Count > 0)
-            {
-                _focusedItem = GenGrid.Items[0] as ContentItem;
-            }
-        }
-
-        private void OnFocusedItemChanged(object sender, FocusedItemChangedEventArgs e)
-        {
-            _focusedItem?.ResetFocus();
-            _focusedItem = e.SelectedItem as ContentItem;
-            _focusedItem.SetFocus();
-        }
-
 
         public void SetItemsSource(List<DetailContentData> source)
         {
             GenGrid.ItemsSource = source;
+        }
+
+        public Task SetFocusedContent(DetailContentData contentData)
+        {
+            var index = IndexOf(_genGrid.ItemsSource as IEnumerable<DetailContentData>, contentData);
+            if (index == -1)
+                return Task.CompletedTask;
+            var newContent = (ContentItem)_genGrid.Items[index];
+            SwapFocusedContent(newContent);
+            return Task.CompletedTask;
+        }
+        
+        public static int IndexOf<T>(IEnumerable<T> source, T value)
+        {
+            int index = 0;
+            var comparer = EqualityComparer<T>.Default; // or pass in as a parameter
+            foreach (T item in source)
+            {
+                if (comparer.Equals(item, value)) return index;
+                index++;
+            }
+            return -1;
         }
 
         private void SwapFocusedContent(ContentItem newContent)
@@ -93,7 +99,21 @@ namespace XamarinPlayer.Tizen.TV.Controllers
             SwapFocusedContent(contentItem);
             return Task.CompletedTask;
         }
+        private void OnItemsChanged(object sender, NotifyCollectionChangedEventArgs e)
+        {
+            if ((e.OldItems == null || e.OldItems.Count == 0) && e.NewItems != null &&
+                e.NewItems.Count > 0)
+            {
+                _focusedItem = GenGrid.Items[0] as ContentItem;
+            }
+        }
 
+        private void OnFocusedItemChanged(object sender, FocusedItemChangedEventArgs e)
+        {
+            _focusedItem?.ResetFocus();
+            _focusedItem = e.SelectedItem as ContentItem;
+            _focusedItem.SetFocus();
+        }
         public void Dispose()
         {
             GenGrid.FocusedItemChanged -= OnFocusedItemChanged ;
