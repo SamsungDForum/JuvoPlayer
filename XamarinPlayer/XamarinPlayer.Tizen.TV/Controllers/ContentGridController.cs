@@ -94,7 +94,7 @@ namespace XamarinPlayer.Tizen.TV.Controllers
             return Task.CompletedTask;
         }
 
-        public void Dispose()
+        ~ContentGridController()
         {
             GenGrid.FocusedItemChanged -= OnFocusedItemChanged ;
             GenGrid.ItemsChanged -= OnItemsChanged;

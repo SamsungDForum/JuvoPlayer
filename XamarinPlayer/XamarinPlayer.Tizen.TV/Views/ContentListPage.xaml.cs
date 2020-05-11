@@ -103,7 +103,6 @@ namespace XamarinPlayer.Tizen.TV.Views
         {
             base.OnDisappearing();
             MessagingCenter.Unsubscribe<IKeyEventSender, string>(this, "KeyDown");
-            _contentGridController.Dispose();
         }
 
         private enum KeyCode
