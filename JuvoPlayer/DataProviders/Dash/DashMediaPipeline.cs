@@ -72,7 +72,7 @@ namespace JuvoPlayer.DataProviders.Dash
         /// <summary>
         /// Holds smaller of the two (PTS/DTS) from the initial packet.
         /// </summary>
-        private TimeSpan? trimOffset;
+        //private TimeSpan? trimOffset;
 
         private readonly IDashClient dashClient;
         private readonly IDemuxerController demuxerController;
@@ -153,24 +153,6 @@ namespace JuvoPlayer.DataProviders.Dash
             return pendingStream?.Representation ?? currentStream?.Representation;
         }
 
-        public void SynchronizeWith(DashMediaPipeline synchronizeWith)
-        {
-            var myRepresentation = GetRepresentation();
-            var syncRepresentation = synchronizeWith.GetRepresentation();
-
-            var myGood = myRepresentation != null;
-            var syncGood = syncRepresentation != null;
-
-            if (!myGood || !syncGood)
-                throw new ArgumentNullException(
-                    $"{StreamType}: Null or Failed Init. Representation. {myGood}/{syncGood}");
-
-            myRepresentation.AlignStartSegmentsWith(syncRepresentation);
-
-            Logger.Info(
-                $"Segment Alignment: {StreamType}={myRepresentation.AlignedStartSegmentID} {synchronizeWith.StreamType}={syncRepresentation.AlignedStartSegmentID} TrimOffset={myRepresentation.AlignedTrimOffset}");
-        }
-
         public void UpdateMedia(Period period)
         {
             var media = period.GetAdaptationSets(ToMediaType(StreamType));
@@ -242,10 +224,6 @@ namespace JuvoPlayer.DataProviders.Dash
 
                 Logger.Info("Changing stream to bandwidth: " + stream.Representation.Bandwidth);
                 pendingStream = stream;
-
-                // Note: Pending stream will not have information on AlignedStartSegmentId.
-                // If dash client will be in first segment download stage... playback will terminate
-                // TODO: Add segment realignment. Will require DashDataProvider signaling to update A&V
             }
             finally
             {
@@ -363,9 +341,6 @@ namespace JuvoPlayer.DataProviders.Dash
                 PushMetaDataConfiguration();
             }
 
-            //if (!trimOffset.HasValue)
-             //   trimOffset = currentStream.Representation.AlignedTrimOffset;
-
             var fullInitRequired = (newStream != null) || DisableAdaptiveStreaming;
 
             demuxerController.StartForEs();
@@ -421,7 +396,6 @@ namespace JuvoPlayer.DataProviders.Dash
 
             ResetPipeline();
 
-            trimOffset = null;
             currentStream = null;
             pendingStream = null;
         }
@@ -612,17 +586,8 @@ namespace JuvoPlayer.DataProviders.Dash
         public IObservable<Packet> PacketReady()
         {
             return packetReadySubject.AsObservable()
-                .Select(packet =>
-                {
-                    if (packet == null)
-                        return EOSPacket.Create(StreamType);
-
-                    // This is yet another evil we *should* get rid off.
-                    if (trimOffset.HasValue)
-                        packet -= trimOffset.Value;
-
-                    return packet;
-                }).Where(packet => PacketPredicate == null || PacketPredicate.Invoke(packet));
+                .Select(packet => packet == null ? EOSPacket.Create(StreamType) : packet)
+                .Where(packet => PacketPredicate == null || PacketPredicate.Invoke(packet));
         }
 
         public IObservable<DRMDescription> SetDrmConfiguration()
