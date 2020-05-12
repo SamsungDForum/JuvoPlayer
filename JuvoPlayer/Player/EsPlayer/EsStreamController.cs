@@ -322,7 +322,6 @@ namespace JuvoPlayer.Player.EsPlayer
                     case ESPlayer.ESPlayerState.Paused:
                         player.Resume();
                         _dataClock.Clock = _playerClock.LastClock;
-                        //StartClockGenerator();
                         ResumeTransfer(token);
                         break;
 

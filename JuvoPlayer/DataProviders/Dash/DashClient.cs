@@ -402,7 +402,7 @@ namespace JuvoPlayer.DataProviders.Dash
                 return DownloadLoopStatus.GiveUp;
             var segment = responseResult.DownloadSegment;
             lastDownloadSegmentTimeRange = segment.Period.Copy();
-            bufferTime = segment.Period.Start + segment.Period.Duration;// - (trimOffset ?? TimeSpan.Zero);
+            bufferTime = segment.Period.Start + segment.Period.Duration;
             currentSegmentId = currentStreams.NextSegmentId(currentSegmentId);
 
             var timeInfo = segment.Period.ToString();
@@ -531,7 +531,6 @@ namespace JuvoPlayer.DataProviders.Dash
 
             if (lastDownloadSegmentTimeRange == null)
             {
-                //currentSegmentId = currentRepresentation.AlignedStartSegmentID;
                 currentSegmentId = currentRepresentation.Segments.StartSegmentId();
                 firstSegmentClock = currentStreams.SegmentTimeRange(currentSegmentId).Start;
                 LogInfo($"Rep. Swap. Start Seg: [{currentSegmentId}]");
