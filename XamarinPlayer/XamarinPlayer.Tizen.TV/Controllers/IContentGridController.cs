@@ -32,5 +32,7 @@ namespace XamarinPlayer.Tizen.TV.Controllers
         bool ScrollToNext();
         bool ScrollToPrevious();
         Task SetFocusedContent(ContentItem contentItem);
+        void Subscribe();
+        void Unsubscribe();
     }
 }
