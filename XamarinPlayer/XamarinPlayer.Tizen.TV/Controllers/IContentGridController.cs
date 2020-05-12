@@ -26,6 +26,6 @@ namespace XamarinPlayer.Tizen.TV.Controllers
     {
         ContentItem FocusedItem { get; }
         void SetItemsSource(List<DetailContentData> source);
-        Task SetFocusedContent(DetailContentData contentItem);
+        void SetFocusedContent(DetailContentData contentItem);
     }
 }

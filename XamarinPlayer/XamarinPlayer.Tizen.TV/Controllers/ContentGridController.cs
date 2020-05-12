@@ -31,13 +31,11 @@ namespace XamarinPlayer.Tizen.TV.Controllers
 
         public ContentItem FocusedItem => _focusedItem;
 
-        public GenGridView GenGrid => _genGrid;
-
         public ContentGridController(GenGridView genGrid)
         {
             _genGrid = genGrid;
-            GenGrid.FocusedItemChanged += OnFocusedItemChanged;
-            GenGrid.ItemsChanged += OnItemsChanged;
+            _genGrid.FocusedItemChanged += OnFocusedItemChanged;
+            _genGrid.ItemsChanged += OnItemsChanged;
         }
 
         private void OnItemsChanged(object sender, NotifyCollectionChangedEventArgs e)
@@ -45,7 +43,7 @@ namespace XamarinPlayer.Tizen.TV.Controllers
             if ((e.OldItems == null || e.OldItems.Count == 0) && e.NewItems != null &&
                 e.NewItems.Count > 0)
             {
-                _focusedItem = GenGrid.Items[0] as ContentItem;
+                _focusedItem = _genGrid.Items[0] as ContentItem;
             }
         }
 
@@ -59,17 +57,16 @@ namespace XamarinPlayer.Tizen.TV.Controllers
 
         public void SetItemsSource(List<DetailContentData> source)
         {
-            GenGrid.ItemsSource = source;
+            _genGrid.ItemsSource = source;
         }
 
-        public Task SetFocusedContent(DetailContentData contentData)
+        public void SetFocusedContent(DetailContentData contentData)
         {
             var index = IndexOf(_genGrid.ItemsSource as IEnumerable<DetailContentData>, contentData);
             if (index == -1)
-                return Task.CompletedTask;
+                return;
             var newContent = (ContentItem) _genGrid.Items[index];
             SwapFocusedContent(newContent);
-            return Task.CompletedTask;
         }
 
         public static int IndexOf<T>(IEnumerable<T> source, T value)
@@ -87,13 +84,13 @@ namespace XamarinPlayer.Tizen.TV.Controllers
 
         private void SwapFocusedContent(ContentItem newContent)
         {
-            GenGrid.ScrollTo(_genGrid.Items.IndexOf(newContent));
+            _genGrid.ScrollTo(_genGrid.Items.IndexOf(newContent));
         }
 
         ~ContentGridController()
         {
-            GenGrid.FocusedItemChanged -= OnFocusedItemChanged;
-            GenGrid.ItemsChanged -= OnItemsChanged;
+            _genGrid.FocusedItemChanged -= OnFocusedItemChanged;
+            _genGrid.ItemsChanged -= OnItemsChanged;
         }
     }
 }
