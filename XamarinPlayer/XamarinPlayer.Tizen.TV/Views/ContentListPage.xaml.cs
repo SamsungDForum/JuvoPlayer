@@ -42,11 +42,11 @@ namespace XamarinPlayer.Tizen.TV.Views
                 typeof(ContentListPage),
                 defaultValue: false,
                 defaultBindingMode: BindingMode.OneWay,
-                propertyChanged: (b, o, n) =>
+                propertyChanged: (bindable, oldValue, newValue) =>
                 {
-                    var page = ((ContentListPage) b);
-                    if (n != null)
-                        page._contentGridController.SetItemsSource((List<DetailContentData>) n);
+                    var page = ((ContentListPage) bindable);
+                    if (newValue != null)
+                        page._contentGridController.SetItemsSource((List<DetailContentData>) newValue);
                 });
 
         public object ContentDataList
@@ -62,11 +62,11 @@ namespace XamarinPlayer.Tizen.TV.Views
                 typeof(ContentListPage),
                 defaultValue: false,
                 defaultBindingMode: BindingMode.OneWay,
-                propertyChanged: (b, o, n) =>
+                propertyChanged: (bindable, oldValue, newValue) =>
                 {
-                    var page = ((ContentListPage) b);
-                    if (n != null)
-                        page._contentGridController.SetFocusedContent((DetailContentData) n);
+                    var page = ((ContentListPage) bindable);
+                    if (newValue != null)
+                        page._contentGridController.SetFocusedContent((DetailContentData) newValue);
                 });
 
         public object FocusedContent
