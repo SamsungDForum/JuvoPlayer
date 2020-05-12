@@ -67,7 +67,8 @@ namespace XamarinPlayer.Tizen.TV.Controllers
         public bool ScrollToNext()
         {
             int index = _genGrid.Items.IndexOf(_focusedItem);
-            if (index >= _genGrid.Items.Count - 1) return false;
+            if (index >= _genGrid.Items.Count - 1) 
+                return false;
             var item = (ContentItem) GenGrid.Items[index + 1];
             GenGrid.ScrollTo(item);
             return true;
