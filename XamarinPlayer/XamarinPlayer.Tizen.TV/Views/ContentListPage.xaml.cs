@@ -35,9 +35,9 @@ namespace XamarinPlayer.Tizen.TV.Views
     [XamlCompilation(XamlCompilationOptions.Compile)]
     public partial class ContentListPage : IContentPayloadHandler, ISuspendable
     {
-        public static readonly BindableProperty ContentListProperty =
+        public static readonly BindableProperty ContentDataListProperty =
             BindableProperty.Create(
-                propertyName: "ContentList",
+                propertyName: "ContentDataList",
                 returnType: typeof(object),
                 typeof(ContentListPage),
                 defaultValue: false,
@@ -49,10 +49,10 @@ namespace XamarinPlayer.Tizen.TV.Views
                         page._contentGridController.SetItemsSource((List<DetailContentData>) n);
                 });
 
-        public object ContentList
+        public object ContentDataList
         {
-            set { SetValue(ContentListProperty, value); }
-            get { return GetValue(ContentListProperty); }
+            set { SetValue(ContentDataListProperty, value); }
+            get { return GetValue(ContentDataListProperty); }
         }
 
         public static readonly BindableProperty FocusedContentProperty =
@@ -89,7 +89,7 @@ namespace XamarinPlayer.Tizen.TV.Views
             _appMainPage = page;
 
             _contentGridController = new ContentGridController(ContentGrid);
-            SetBinding(ContentListProperty, new Binding(nameof(ContentListPageViewModel.ContentList)));
+            SetBinding(ContentDataListProperty, new Binding(nameof(ContentListPageViewModel.ContentList)));
             SetBinding(FocusedContentProperty, new Binding(nameof(ContentListPageViewModel.CurrentContent)));
 
             var cacheService = DependencyService.Get<ISKBitmapCacheService>();
@@ -210,21 +210,22 @@ namespace XamarinPlayer.Tizen.TV.Views
 
         public bool HandleUrl(string url)
         {
-            var contentList = (List<DetailContentData>) ContentList;
+            var contentList = (List<DetailContentData>) ContentDataList;
             var data = contentList?.Find(content => content.Source.Equals(url));
             if (data is null)
                 return false;
             Hide();
-            _contentGridController.SetFocusedContent(data).ContinueWith(async _ =>
-            {
-                await UpdateContentInfo();
-                await ContentSelected(data);
-                Show();
-            }, TaskScheduler.FromCurrentSynchronizationContext());
-
+            _contentGridController.SetFocusedContent(data);
+            SelectContent(data);
             return true;
         }
 
+        private async void SelectContent(DetailContentData data)
+        {
+            await UpdateContentInfo();
+            await ContentSelected(data);
+            Show();
+        }
         public void Suspend()
         {
             _contentGridController.FocusedItem?.ResetFocus();
