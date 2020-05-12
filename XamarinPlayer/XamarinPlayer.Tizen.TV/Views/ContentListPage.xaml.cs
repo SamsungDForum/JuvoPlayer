@@ -95,6 +95,7 @@ namespace XamarinPlayer.Tizen.TV.Views
         protected override async void OnAppearing()
         {
             base.OnAppearing();
+            _contentGridController.Subscribe();
             MessagingCenter.Subscribe<IKeyEventSender, string>(this, "KeyDown", (s, e) => { HandleKeyEvent(e); });
             await UpdateContentInfo();
         }
@@ -103,6 +104,7 @@ namespace XamarinPlayer.Tizen.TV.Views
         {
             base.OnDisappearing();
             MessagingCenter.Unsubscribe<IKeyEventSender, string>(this, "KeyDown");
+            _contentGridController.Unsubscribe();
         }
 
         private enum KeyCode
