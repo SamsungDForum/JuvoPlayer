@@ -47,7 +47,7 @@ namespace JuvoPlayer.Player.EsPlayer
             public TimeSpan TransferredDuration;
             public StreamType StreamType;
             public SynchronizationState SyncState;
-            public TimeSpan? FirstKeyFrameClock;
+            public TimeSpan? FirstKeyFramePts;
         }
 
         private static readonly ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
@@ -91,9 +91,9 @@ namespace JuvoPlayer.Player.EsPlayer
 
             streamState.TransferredDuration += clockDiff;
 
-            if (streamState.FirstKeyFrameClock.HasValue || !packet.IsKeyFrame) return;
+            if (streamState.FirstKeyFramePts.HasValue || !packet.IsKeyFrame) return;
 
-            streamState.FirstKeyFrameClock = packet.Pts;
+            streamState.FirstKeyFramePts = packet.Pts;
             Logger.Info($"{packet.StreamType}: KeyFrame {packet.Dts}/{packet.Pts}");
         }
 
@@ -130,8 +130,8 @@ namespace JuvoPlayer.Player.EsPlayer
         }
 
         private bool IsPlayerClockRunning() =>
-            _streamSyncData[(int)StreamType.Video].FirstKeyFrameClock.HasValue &&
-            _playerClockSource.LastClock >= _streamSyncData[(int)StreamType.Video].FirstKeyFrameClock;
+            _streamSyncData[(int)StreamType.Video].FirstKeyFramePts.HasValue &&
+            _playerClockSource.LastClock >= _streamSyncData[(int)StreamType.Video].FirstKeyFramePts;
 
         private bool IsTransferredDurationCompleted(SynchronizationData streamState)
         {
@@ -154,7 +154,7 @@ namespace JuvoPlayer.Player.EsPlayer
                     // will have overly long transfer time due to wait for second stream.
                     streamState.EndTime = DateTimeOffset.Now;
                     Logger.Info($"{streamState.StreamType}: Sync. Pushed/Needed/Pts {streamState.TransferredDuration}/{streamState.NeededDuration}/{streamState.Pts}");
-                    var keyFrames = await _streamSyncBarrier.Signal(streamState.FirstKeyFrameClock.HasValue, token);
+                    var keyFrames = await _streamSyncBarrier.Signal(streamState.FirstKeyFramePts.HasValue, token);
 
                     // Use key frame to determine drip feed value.
                     // Before all streams report key frame, use PreKeyFrameTransferDuration otherwise
@@ -227,7 +227,7 @@ namespace JuvoPlayer.Player.EsPlayer
                 state.NeededDuration = PreKeyFrameTransferDuration;
                 state.Pts = null;
                 state.Dts = null;
-                state.FirstKeyFrameClock = null;
+                state.FirstKeyFramePts = null;
                 _streamSyncBarrier.AddParticipant();
             }
 
