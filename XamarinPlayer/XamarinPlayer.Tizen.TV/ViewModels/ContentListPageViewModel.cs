@@ -21,7 +21,6 @@ using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Windows.Input;
 using Xamarin.Forms;
-using XamarinPlayer.Tizen.TV.Controls;
 using XamarinPlayer.Tizen.TV.Models;
 using XamarinPlayer.Tizen.TV.Services;
 
@@ -44,14 +43,13 @@ namespace XamarinPlayer.Tizen.TV.ViewModels
             {
                 Bg = o.Image,
                 Clip = o.ClipDetailsHandle,
-                ContentFocusedCommand = CreateFocusedCommand(),
                 Description = o.Description,
                 Image = o.Image,
                 Source = o.Source,
                 Title = o.Title,
                 TilePreviewPath = o.TilePreviewPath
             }).ToList();
-            CurrentContent = ContentList[0];
+            CurrentContent = ContentList == null || ContentList.Count == 0 ? null : ContentList[0];
         }
 
         public List<DetailContentData> ContentList
@@ -76,13 +74,6 @@ namespace XamarinPlayer.Tizen.TV.ViewModels
                 _currentContent = value;
                 OnPropertyChanged();
             }
-        }
-
-        private ICommand CreateFocusedCommand()
-        {
-            ICommand command = new Command<ContentItem>(item => { OnPropertyChanged("FocusedContent"); });
-
-            return command;
         }
 
         public void Next()
