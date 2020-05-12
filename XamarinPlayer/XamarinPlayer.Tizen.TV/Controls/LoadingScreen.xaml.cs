@@ -1,4 +1,4 @@
-/*!
+﻿/*!
  * https://github.com/SamsungDForum/JuvoPlayer
  * Copyright 2020, Samsung Electronics Co., Ltd
  * Licensed under the MIT license
@@ -22,10 +22,10 @@ using Xamarin.Forms;
 using Xamarin.Forms.Xaml;
 using Application = Tizen.Applications.Application;
 
-namespace XamarinPlayer.Tizen.TV.Views
+namespace XamarinPlayer.Tizen.TV.Controls
 {
     [XamlCompilation(XamlCompilationOptions.Compile)]
-    public partial class LoadingScreen : ContentPage
+    public partial class LoadingScreen : AbsoluteLayout
     {
         public LoadingScreen()
         {

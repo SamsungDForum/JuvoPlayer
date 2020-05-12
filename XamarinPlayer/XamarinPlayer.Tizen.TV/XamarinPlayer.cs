@@ -27,9 +27,8 @@ namespace XamarinPlayer.Tizen.TV
     {
         private string _deepLinkUrl;
         private bool _isInForeground;
-        
-        private static Task _prepareTask;
         private static NavigationPage AppMainPage { get; set; }
+        private static ContentListPage ContentPage { get; set; }
 
         private static readonly ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
 
@@ -37,9 +36,8 @@ namespace XamarinPlayer.Tizen.TV
         {
             MainPage = new NavigationPage();
             AppMainPage = MainPage as NavigationPage;
-            var loadingScreenPage = new LoadingScreen();
-            var loadingScreenTask = AppMainPage.PushAsync(loadingScreenPage);
-            _prepareTask = PrepareContent(loadingScreenPage, loadingScreenTask);
+            ContentPage = new ContentListPage(AppMainPage);
+            AppMainPage.PushAsync(ContentPage);
         }
 
         protected override void OnStart()
@@ -70,14 +68,6 @@ namespace XamarinPlayer.Tizen.TV
             _deepLinkUrl = null;
         }
 
-        public async Task PrepareContent(Page loadingScreenPage, Task loadingScreenTask)
-        {
-            await Task.Yield();
-            var contentListPage = new ContentListPage(AppMainPage);
-            await loadingScreenTask;
-            AppMainPage.Navigation.InsertPageBefore(contentListPage,loadingScreenPage);
-            await AppMainPage.Navigation.PopAsync(true);
-        }
         public Task LoadUrl(string url)
         {
             if (_isInForeground)
@@ -92,7 +82,7 @@ namespace XamarinPlayer.Tizen.TV
 
         private static async Task LoadUrlImpl(string url)
         {
-            await _prepareTask;
+            await ContentPage.ContentLoaded.Task;
             Logger.Info("");
             while (true)
             {

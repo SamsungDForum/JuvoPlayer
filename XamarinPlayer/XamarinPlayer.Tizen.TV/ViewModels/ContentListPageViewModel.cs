@@ -19,6 +19,7 @@ using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
 using System.Runtime.CompilerServices;
+using System.Threading.Tasks;
 using System.Windows.Input;
 using Xamarin.Forms;
 using XamarinPlayer.Tizen.TV.Models;
@@ -30,26 +31,28 @@ namespace XamarinPlayer.Tizen.TV.ViewModels
     {
         private DetailContentData _currentContent;
         private List<DetailContentData> _contentList;
+        private bool _isBusy = true;
 
         public event PropertyChangedEventHandler PropertyChanged;
         public ICommand NextCommand => new Command(Next);
         public ICommand PreviousCommand => new Command(Previous);
+        public ICommand LoadCommand => new Command(Load);
+        public ICommand UnloadCommand => new Command(Unload);
 
         public ContentListPageViewModel()
         {
-            var clips = DependencyService.Get<IClipReaderService>(DependencyFetchTarget.NewInstance).ReadClips().Result;
-
-            ContentList = clips.Select(o => new DetailContentData
+            PrepareContent();
+        }
+        public bool IsBusy
+        {
+            get => _isBusy;
+            set
             {
-                Bg = o.Image,
-                Clip = o.ClipDetailsHandle,
-                Description = o.Description,
-                Image = o.Image,
-                Source = o.Source,
-                Title = o.Title,
-                TilePreviewPath = o.TilePreviewPath
-            }).ToList();
-            CurrentContent = ContentList == null || ContentList.Count == 0 ? null : ContentList[0];
+                if (_isBusy == value)
+                    return;
+                _isBusy = value;
+                OnPropertyChanged();
+            }
         }
 
         public List<DetailContentData> ContentList
@@ -75,8 +78,27 @@ namespace XamarinPlayer.Tizen.TV.ViewModels
                 OnPropertyChanged();
             }
         }
+        
+        private async void PrepareContent()
+        {
+            await Task.Yield();
+            var clips = DependencyService.Get<IClipReaderService>(DependencyFetchTarget.NewInstance).ReadClips().Result;
 
-        public void Next()
+            ContentList = clips.Select(o => new DetailContentData
+            {
+                Bg = o.Image,
+                Clip = o.ClipDetailsHandle,
+                Description = o.Description,
+                Image = o.Image,
+                Source = o.Source,
+                Title = o.Title,
+                TilePreviewPath = o.TilePreviewPath
+            }).ToList();
+            CurrentContent = ContentList == null || ContentList.Count == 0 ? null : ContentList[0];
+            IsBusy = false;
+        }
+
+        private void Next()
         {
             int index = ContentList.IndexOf(_currentContent);
             if (index >= ContentList.Count - 1)
@@ -84,12 +106,22 @@ namespace XamarinPlayer.Tizen.TV.ViewModels
             CurrentContent = ContentList[index + 1];
         }
 
-        public void Previous()
+        private void Previous()
         {
             int index = ContentList.IndexOf(_currentContent);
             if (index <= 0)
                 return;
             CurrentContent = ContentList[index - 1];
+        }
+        
+        private void Load()
+        {
+            IsBusy = false;
+        }
+
+        private void Unload()
+        {
+            IsBusy = true;
         }
 
         private void OnPropertyChanged([CallerMemberName] string propertyName = null)
