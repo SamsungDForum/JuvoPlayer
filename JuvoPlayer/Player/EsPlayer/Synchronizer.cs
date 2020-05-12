@@ -15,8 +15,6 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-using JuvoLogger;
-using JuvoPlayer.Common;
 using System;
 using System.Linq;
 using System.Reactive.Linq;
@@ -24,10 +22,11 @@ using System.Reactive.Subjects;
 using System.Reactive.Threading.Tasks;
 using System.Threading;
 using System.Threading.Tasks;
-using Configuration;
+using JuvoLogger;
+using JuvoPlayer.Common;
 using JuvoPlayer.Utils;
 using static Configuration.DataSynchronizerConfig;
-using TimeSpan = System.TimeSpan;
+
 
 namespace JuvoPlayer.Player.EsPlayer
 {
@@ -82,7 +81,7 @@ namespace JuvoPlayer.Player.EsPlayer
             streamState.Dts = packet.Dts;
             streamState.Pts = packet.Pts;
 
-            var clockDiff = lastClock.HasValue?streamState.Dts.Value - lastClock.Value:TimeSpan.Zero;
+            var clockDiff = lastClock.HasValue ? streamState.Dts.Value - lastClock.Value : TimeSpan.Zero;
 
             // Ignore clock discontinuities
             if (clockDiff > StreamClockDiscontinuityThreshold)
@@ -131,8 +130,8 @@ namespace JuvoPlayer.Player.EsPlayer
         }
 
         private bool IsPlayerClockRunning() =>
-            _streamSyncData[(int) StreamType.Video].FirstKeyFrameClock.HasValue &&
-            _playerClockSource.LastClock >= _streamSyncData[(int) StreamType.Video].FirstKeyFrameClock;
+            _streamSyncData[(int)StreamType.Video].FirstKeyFrameClock.HasValue &&
+            _playerClockSource.LastClock >= _streamSyncData[(int)StreamType.Video].FirstKeyFrameClock;
 
         private bool IsTransferredDurationCompleted(SynchronizationData streamState)
         {

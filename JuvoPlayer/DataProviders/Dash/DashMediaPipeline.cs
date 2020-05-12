@@ -69,11 +69,6 @@ namespace JuvoPlayer.DataProviders.Dash
 
         private static readonly ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
 
-        /// <summary>
-        /// Holds smaller of the two (PTS/DTS) from the initial packet.
-        /// </summary>
-        //private TimeSpan? trimOffset;
-
         private readonly IDashClient dashClient;
         private readonly IDemuxerController demuxerController;
         private readonly IThroughputHistory throughputHistory;
