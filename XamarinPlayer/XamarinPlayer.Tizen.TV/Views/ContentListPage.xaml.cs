@@ -46,7 +46,10 @@ namespace XamarinPlayer.Tizen.TV.Views
                 {
                     var page = ((ContentListPage) bindable);
                     if (newValue != null)
+                    {
                         page._contentGridController.SetItemsSource((List<DetailContentData>) newValue);
+                        page.UpdateContentInfo();
+                    }
                 });
 
         public object ContentDataList
@@ -74,6 +77,27 @@ namespace XamarinPlayer.Tizen.TV.Views
             set { SetValue(FocusedContentProperty, value); }
             get { return GetValue(FocusedContentProperty); }
         }
+        public static readonly BindableProperty LoadingProperty =
+            BindableProperty.Create(
+                propertyName: "ContentList",
+                returnType: typeof(object),
+                typeof(ContentListPage),
+                defaultValue: false,
+                defaultBindingMode: BindingMode.OneWay,
+                propertyChanged: (bindable, oldValue, newValue) =>
+                {
+                    var page = (ContentListPage) bindable;
+                    if ((bool) newValue)
+                        page.ContentLoaded.SetResult(true);
+                    else
+                        page.ContentLoaded = new TaskCompletionSource<bool>();
+                });
+
+        public object Loading
+        {
+            set { SetValue(FocusedContentProperty, value); }
+            get { return GetValue(FocusedContentProperty); }
+        }
 
         private readonly NavigationPage _appMainPage;
 
@@ -81,6 +105,7 @@ namespace XamarinPlayer.Tizen.TV.Views
         private readonly SKBitmapCache _skBitmapCache;
         private SKBitmapRefCounted _backgroundBitmap;
         private readonly IContentGridController _contentGridController;
+        public TaskCompletionSource<bool> ContentLoaded = new TaskCompletionSource<bool>();
 
         public ContentListPage(NavigationPage page)
         {
@@ -91,6 +116,7 @@ namespace XamarinPlayer.Tizen.TV.Views
             _contentGridController = new ContentGridController(ContentGrid);
             SetBinding(ContentDataListProperty, new Binding(nameof(ContentListPageViewModel.ContentList)));
             SetBinding(FocusedContentProperty, new Binding(nameof(ContentListPageViewModel.CurrentContent)));
+            SetBinding(LoadingProperty, new Binding(nameof(ContentListPageViewModel.IsBusy)));
 
             var cacheService = DependencyService.Get<ISKBitmapCacheService>();
             _skBitmapCache = cacheService.GetCache();
@@ -131,7 +157,6 @@ namespace XamarinPlayer.Tizen.TV.Views
         {
             base.OnAppearing();
             MessagingCenter.Subscribe<IKeyEventSender, string>(this, "KeyDown", (s, e) => { HandleKeyEvent(e); });
-            await UpdateContentInfo();
         }
 
         protected override void OnDisappearing()
@@ -214,7 +239,7 @@ namespace XamarinPlayer.Tizen.TV.Views
             var data = contentList?.Find(content => content.Source.Equals(url));
             if (data is null)
                 return false;
-            Hide();
+            (BindingContext as ContentListPageViewModel)?.UnloadCommand.Execute(null);
             _contentGridController.SetFocusedContent(data);
             SelectContent(data);
             return true;
@@ -224,7 +249,7 @@ namespace XamarinPlayer.Tizen.TV.Views
         {
             await UpdateContentInfo();
             await ContentSelected(data);
-            Show();
+            (BindingContext as ContentListPageViewModel)?.LoadCommand.Execute(null);
         }
         public void Suspend()
         {
@@ -255,18 +280,6 @@ namespace XamarinPlayer.Tizen.TV.Views
                 canvas.DrawBitmap(_backgroundBitmap.Value, rect);
                 canvas.DrawRect(rect, paint);
             }
-        }
-
-        private void Show()
-        {
-            Content.IsVisible = true;
-            Loading.IsVisible = false;
-        }
-
-        private void Hide()
-        {
-            Content.IsVisible = false;
-            Loading.IsVisible = true;
         }
     }
 }

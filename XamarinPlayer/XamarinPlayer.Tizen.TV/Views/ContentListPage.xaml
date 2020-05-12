@@ -13,10 +13,10 @@
     </ContentPage.BindingContext>
     <ContentPage.Content>
         <AbsoluteLayout>
-            <ActivityIndicator x:Name="Loading" Color="White" HeightRequest="100" WidthRequest="100" IsRunning="True"
-                               IsVisible="False" AbsoluteLayout.LayoutBounds=".5,.5,.5,.5"
+            <controls:LoadingScreen IsVisible="{Binding IsBusy}" HeightRequest="100" WidthRequest="100"
+                               AbsoluteLayout.LayoutBounds="0,0,1,1"
                                AbsoluteLayout.LayoutFlags="All" />
-            <Grid x:Name="Content"
+            <Grid IsVisible="{Binding IsBusy, Converter={viewModels:InvertBooleanConverter}}"
                   AbsoluteLayout.LayoutBounds="0,0,1,1" AbsoluteLayout.LayoutFlags="All">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="7*" />
