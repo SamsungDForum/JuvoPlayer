@@ -21,6 +21,7 @@ using System.Reactive.Concurrency;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
 using System.Reactive.Threading.Tasks;
+using System.Runtime.CompilerServices;
 using System.Threading;
 using ESPlayer = Tizen.TV.Multimedia;
 using System.Threading.Tasks;
@@ -450,24 +451,22 @@ namespace JuvoPlayer.Player.EsPlayer
 
             logger.Info($"Player.SeekAsync({time})");
 
-            var seekAsyncTask = player.SeekAsync(time, (s, t) =>
-            {
-                logger.Info($"SeekAsync({s},{t})");
+            var (needData, seekComplete) = StartStreams(time, ESPlayer.StreamType.Video, ESPlayer.StreamType.Audio);
 
-                if (s == ESPlayer.StreamType.Audio)
-                    return;
+            logger.Info($"Player.SeekAsync({time}) Waiting for ready to seek");
+            await needData.WithCancellation(token);
 
-                _asyncOpTask = StartTransfer(token);
-            });
-
-            await seekAsyncTask.WithCancellation(token);
+            logger.Info($"Player.SeekAsync({time}) Starting transfer");
+            _asyncOpTask = StartTransfer(token);
             var startOk = await _asyncOpTask.WithCancellation(token);
-
             if (!startOk)
             {
                 logger.Info($"Player.SeekAsync({time}) EOS");
                 return;
             }
+
+            logger.Info($"Player.SeekAsync({time}) Waiting for seek completion");
+            await seekComplete.WithCancellation(token);
 
             logger.Info($"Player.SeekAsync({time}) Done");
             StartClockGenerator();
@@ -838,28 +837,49 @@ namespace JuvoPlayer.Player.EsPlayer
 
             logger.Info("Player.PrepareAsync()");
 
-            var prepareAsyncTask = player.PrepareAsync(s =>
-            {
-                logger.Info($"PrepareAsync {s}");
+            var (needData, startComplete) = StartStreams(ESPlayer.StreamType.Audio, ESPlayer.StreamType.Video);
 
-                if (s == ESPlayer.StreamType.Audio)
-                    return;
+            logger.Info("Player.PrepareAsync() Waiting for ready to prepare");
+            await needData.WithCancellation(token);
 
-                _asyncOpTask = StartTransfer(token);
-            });
-
-            await prepareAsyncTask.WithCancellation(token);
+            logger.Info("Player.PrepareAsync() Starting transfer");
+            _asyncOpTask = StartTransfer(token);
             var startOk = await _asyncOpTask.WithCancellation(token);
-
             if (!startOk)
             {
                 logger.Info("Player.PrepareAsync() EOS");
                 return;
             }
 
-            logger.Info("Player.PrepareAsync() Done");
+            logger.Info("Player.PrepareAsync() Waiting for completion");
+            await startComplete.WithCancellation(token);
 
+            logger.Info("Player.PrepareAsync() Done");
             SetState(PlayerState.Prepared, token);
+        }
+
+        private (Task needData, Task startComplete) StartStreams(params ESPlayer.StreamType[] streams) =>
+            StartStreams(null, streams);
+        private (Task needData, Task startComplete) StartStreams(in TimeSpan? time = null, params ESPlayer.StreamType[] streams)
+        {
+            var needDataTcs = new TaskCompletionSource<object>(TaskCreationOptions.RunContinuationsAsynchronously);
+            var readyState = new bool[streams.Length];
+
+            void UpdateReadyState(in ESPlayer.StreamType stream)
+            {
+                var streamIdx = Array.IndexOf(streams, stream);
+                if (streamIdx == -1)
+                    return;
+
+                readyState[streamIdx] = true;
+                logger.Info($"{stream}: Ready for data");
+                if (Array.TrueForAll(readyState, streamReady => streamReady))
+                    needDataTcs.TrySetResult(null);
+            }
+
+            return (needDataTcs.Task, time.HasValue
+                ? player.SeekAsync(time.Value, (s, t) => UpdateReadyState(s))
+                : player.PrepareAsync(s => UpdateReadyState(s)));
         }
 
         private void PausePlayback()
