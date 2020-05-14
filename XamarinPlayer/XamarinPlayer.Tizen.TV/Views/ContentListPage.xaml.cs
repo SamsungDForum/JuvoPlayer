@@ -16,7 +16,6 @@
  */
 
 using System;
-using System.Linq;
 using System.Threading.Tasks;
 using JuvoPlayer.Common;
 using JuvoPlayer.Common.Utils.IReferenceCountableExtensions;
@@ -29,6 +28,7 @@ using XamarinPlayer.Tizen.TV.Models;
 using XamarinPlayer.Tizen.TV.Services;
 using XamarinPlayer.Tizen.TV.ViewModels;
 using XamarinPlayer.Views;
+using XamarinPlayer.Tizen.TV.Controllers;
 
 namespace XamarinPlayer.Tizen.TV.Views
 {
@@ -40,6 +40,7 @@ namespace XamarinPlayer.Tizen.TV.Views
         private int _pendingUpdatesCount;
         private readonly SKBitmapCache _skBitmapCache;
         private SKBitmapRefCounted _backgroundBitmap;
+        private readonly IContentGridController _contentGridController;
 
         public ContentListPage(NavigationPage page)
         {
@@ -47,6 +48,7 @@ namespace XamarinPlayer.Tizen.TV.Views
 
             _appMainPage = page;
 
+            _contentGridController = new ContentGridController(ContentGrid);
             UpdateItem();
 
             var cacheService = DependencyService.Get<ISKBitmapCacheService>();
@@ -66,18 +68,12 @@ namespace XamarinPlayer.Tizen.TV.Views
 
         private void UpdateItem()
         {
-            foreach (var item in ((ContentListPageViewModel) BindingContext).ContentList.Select(content => new ContentItem
-            {
-                BindingContext = content
-            }))
-            {
-                ContentListView.Add(item);
-            }
+            _contentGridController.SetItemsSource(((ContentListPageViewModel) BindingContext).ContentList);
         }
 
         private async Task UpdateContentInfo()
         {
-            var focusedContent = ContentListView.FocusedContent;
+            var focusedContent = _contentGridController.FocusedItem;
             ++_pendingUpdatesCount;
             await Task.Delay(TimeSpan.FromSeconds(1));
             --_pendingUpdatesCount;
@@ -99,8 +95,8 @@ namespace XamarinPlayer.Tizen.TV.Views
         protected override async void OnAppearing()
         {
             base.OnAppearing();
+            _contentGridController.Subscribe();
             MessagingCenter.Subscribe<IKeyEventSender, string>(this, "KeyDown", (s, e) => { HandleKeyEvent(e); });
-            ContentListView.SetFocus();
             await UpdateContentInfo();
         }
 
@@ -108,6 +104,7 @@ namespace XamarinPlayer.Tizen.TV.Views
         {
             base.OnDisappearing();
             MessagingCenter.Unsubscribe<IKeyEventSender, string>(this, "KeyDown");
+            _contentGridController.Unsubscribe();
         }
 
         private enum KeyCode
@@ -145,27 +142,26 @@ namespace XamarinPlayer.Tizen.TV.Views
 
         private async Task HandleScrollEvent(KeyCode keyCode)
         {
-            Task<bool> ScrollTask()
+            bool scrolled;
+            switch (keyCode) 
             {
-                switch (keyCode)
-                {
-                    case KeyCode.Next:
-                        return ContentListView.ScrollToNext();
-                    case KeyCode.Previous:
-                        return ContentListView.ScrollToPrevious();
-                    default:
-                        throw new ArgumentOutOfRangeException(nameof(keyCode), keyCode, null);
-                }
+                case KeyCode.Next:
+                    scrolled = _contentGridController.ScrollToNext();
+                    break;
+                case KeyCode.Previous:
+                    scrolled = _contentGridController.ScrollToPrevious();
+                    break;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(keyCode), keyCode, null);
             }
-
-            var listScrolled = await ScrollTask();
-            if (listScrolled)
+            
+            if (scrolled)
                 await UpdateContentInfo();
         }
 
         private Task HandleEnterEvent()
         {
-            return ContentSelected(ContentListView.FocusedContent);
+            return ContentSelected(_contentGridController.FocusedItem);
         }
 
         protected override void OnSizeAllocated(double width, double height)
@@ -178,7 +174,7 @@ namespace XamarinPlayer.Tizen.TV.Views
             // FIXME: Workaround for Tizen
             // Sometimes height of list is calculated as wrong
             // Set the height explicitly for fixing this issue
-            ContentListView.SetHeight(height * 0.21);
+            ContentGrid.HeightRequest = (height * 0.21);
         }
 
         public bool HandleUrl(string url)
@@ -189,11 +185,11 @@ namespace XamarinPlayer.Tizen.TV.Views
             if (index == -1)
                 return false;
             contentListPageViewModel.IsBusy = true;
-            var item = ContentListView.GetItem(index);
-            ContentListView.SetFocusedContent(item).ContinueWith(async _ =>
+            var item = (ContentItem) (ContentGrid.Items[index]);
+            _contentGridController.SetFocusedContent(item).ContinueWith(async _ =>
             {
                 await UpdateContentInfo();
-                await ContentSelected(ContentListView.FocusedContent);
+                await ContentSelected(_contentGridController.FocusedItem);
                 contentListPageViewModel.IsBusy = false;
             }, TaskScheduler.FromCurrentSynchronizationContext());
 
@@ -202,12 +198,12 @@ namespace XamarinPlayer.Tizen.TV.Views
 
         public void Suspend()
         {
-            ContentListView.ResetFocus();
+            _contentGridController.FocusedItem?.ResetFocus();
         }
 
         public void Resume()
         {
-            ContentListView.SetFocus();
+            _contentGridController.FocusedItem?.SetFocus();
         }
 
         private void SKCanvasView_OnPaintSurface(object sender, SKPaintSurfaceEventArgs e)
