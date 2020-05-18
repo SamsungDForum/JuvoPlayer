@@ -49,6 +49,7 @@ namespace XamarinPlayer.Tizen.TV.Views
                     {
                         page._contentGridController.SetItemsSource((List<DetailContentData>) newValue);
                         page.UpdateContentInfo();
+                        page.ContentLoaded.SetResult(true);
                     }
                 });
 
@@ -77,27 +78,6 @@ namespace XamarinPlayer.Tizen.TV.Views
             set { SetValue(FocusedContentProperty, value); }
             get { return GetValue(FocusedContentProperty); }
         }
-        public static readonly BindableProperty LoadingProperty =
-            BindableProperty.Create(
-                propertyName: "ContentList",
-                returnType: typeof(object),
-                typeof(ContentListPage),
-                defaultValue: false,
-                defaultBindingMode: BindingMode.OneWay,
-                propertyChanged: (bindable, oldValue, newValue) =>
-                {
-                    var page = (ContentListPage) bindable;
-                    if ((bool) newValue)
-                        page.ContentLoaded.SetResult(true);
-                    else
-                        page.ContentLoaded = new TaskCompletionSource<bool>();
-                });
-
-        public object Loading
-        {
-            set { SetValue(FocusedContentProperty, value); }
-            get { return GetValue(FocusedContentProperty); }
-        }
 
         private readonly NavigationPage _appMainPage;
 
@@ -116,7 +96,6 @@ namespace XamarinPlayer.Tizen.TV.Views
             _contentGridController = new ContentGridController(ContentGrid);
             SetBinding(ContentDataListProperty, new Binding(nameof(ContentListPageViewModel.ContentList)));
             SetBinding(FocusedContentProperty, new Binding(nameof(ContentListPageViewModel.CurrentContent)));
-            SetBinding(LoadingProperty, new Binding(nameof(ContentListPageViewModel.IsBusy)));
 
             var cacheService = DependencyService.Get<ISKBitmapCacheService>();
             _skBitmapCache = cacheService.GetCache();
@@ -153,7 +132,7 @@ namespace XamarinPlayer.Tizen.TV.Views
             await ContentImage.FadeTo(0.75);
         }
 
-        protected override async void OnAppearing()
+        protected override void OnAppearing()
         {
             base.OnAppearing();
             _contentGridController.Subscribe();
