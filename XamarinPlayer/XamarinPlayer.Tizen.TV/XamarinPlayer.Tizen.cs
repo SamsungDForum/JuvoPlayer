@@ -135,6 +135,7 @@ namespace XamarinPlayer.Tizen.TV
             {
                 var app = new Program();
 
+                GenGridView.Init();
                 Forms.Init(app);
                 app.Run(args);
             }
