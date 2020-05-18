@@ -14,8 +14,8 @@
     <ContentPage.Content>
         <AbsoluteLayout>
             <controls:LoadingScreen IsVisible="{Binding IsBusy}" HeightRequest="100" WidthRequest="100"
-                               AbsoluteLayout.LayoutBounds="0.5,0.7,0.75,0.75"
-                               AbsoluteLayout.LayoutFlags="All" />
+                                    AbsoluteLayout.LayoutBounds="0.5,0.7,0.75,0.75"
+                                    AbsoluteLayout.LayoutFlags="All" />
             <Grid IsVisible="{Binding IsBusy, Converter={viewModels:InvertBooleanConverter}}"
                   AbsoluteLayout.LayoutBounds="0,0,1,1" AbsoluteLayout.LayoutFlags="All">
                 <Grid.RowDefinitions>

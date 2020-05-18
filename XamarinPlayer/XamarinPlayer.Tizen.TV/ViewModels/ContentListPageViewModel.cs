@@ -43,6 +43,7 @@ namespace XamarinPlayer.Tizen.TV.ViewModels
         {
             PrepareContent();
         }
+
         public bool IsBusy
         {
             get => _isBusy;
@@ -78,7 +79,7 @@ namespace XamarinPlayer.Tizen.TV.ViewModels
                 OnPropertyChanged();
             }
         }
-        
+
         private async void PrepareContent()
         {
             await Task.Yield();
@@ -113,7 +114,7 @@ namespace XamarinPlayer.Tizen.TV.ViewModels
                 return;
             CurrentContent = ContentList[index - 1];
         }
-        
+
         private void Load()
         {
             IsBusy = false;
