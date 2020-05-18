@@ -127,7 +127,7 @@ namespace XamarinPlayer.Tizen.TV
         private static void Main(string[] args)
         {
             UdpLoggerManager.Configure();
-            if (!UdpLoggerManager.IsRunning)
+            if(!UdpLoggerManager.IsRunning)
                 TizenLoggerManager.Configure();
             AppDomain.CurrentDomain.UnhandledException += UnhandledException;
 
