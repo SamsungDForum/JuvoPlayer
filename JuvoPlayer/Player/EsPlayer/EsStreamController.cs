@@ -450,7 +450,8 @@ namespace JuvoPlayer.Player.EsPlayer
 
             logger.Info($"Player.SeekAsync({time})");
 
-            var (needData, seekComplete) = StartStreams(time, ESPlayer.StreamType.Video, ESPlayer.StreamType.Audio);
+            var (needData, asyncHandler) = PrepareStreamStart(ESPlayer.StreamType.Audio, ESPlayer.StreamType.Video);
+            var seekTask = player.SeekAsync(time, (s, _) => asyncHandler(s));
 
             logger.Info($"Player.SeekAsync({time}) Waiting for ready to seek");
             await needData.WithCancellation(token);
@@ -465,7 +466,7 @@ namespace JuvoPlayer.Player.EsPlayer
             }
 
             logger.Info($"Player.SeekAsync({time}) Waiting for seek completion");
-            await seekComplete.WithCancellation(token);
+            await seekTask.WithCancellation(token);
 
             logger.Info($"Player.SeekAsync({time}) Done");
             StartClockGenerator();
@@ -836,7 +837,8 @@ namespace JuvoPlayer.Player.EsPlayer
 
             logger.Info("Player.PrepareAsync()");
 
-            var (needData, startComplete) = StartStreams(ESPlayer.StreamType.Audio, ESPlayer.StreamType.Video);
+            var (needData, asyncHandler) = PrepareStreamStart(ESPlayer.StreamType.Audio, ESPlayer.StreamType.Video);
+            var prepareTask = player.PrepareAsync(asyncHandler);
 
             logger.Info("Player.PrepareAsync() Waiting for ready to prepare");
             await needData.WithCancellation(token);
@@ -851,20 +853,18 @@ namespace JuvoPlayer.Player.EsPlayer
             }
 
             logger.Info("Player.PrepareAsync() Waiting for completion");
-            await startComplete.WithCancellation(token);
+            await prepareTask.WithCancellation(token);
 
             logger.Info("Player.PrepareAsync() Done");
             SetState(PlayerState.Prepared, token);
         }
 
-        private (Task needData, Task startComplete) StartStreams(params ESPlayer.StreamType[] streams) =>
-            StartStreams(null, streams);
-        private (Task needData, Task startComplete) StartStreams(in TimeSpan? time = null, params ESPlayer.StreamType[] streams)
+
+        private (Task needData, Action<ESPlayer.StreamType> asyncHandler) PrepareStreamStart(params ESPlayer.StreamType[] streams)
         {
             var needDataTcs = new TaskCompletionSource<object>(TaskCreationOptions.RunContinuationsAsynchronously);
             var readyState = new bool[streams.Length];
-
-            void UpdateReadyState(in ESPlayer.StreamType stream)
+            var handler = new Action<ESPlayer.StreamType>(stream =>
             {
                 var streamIdx = Array.IndexOf(streams, stream);
                 if (streamIdx == -1)
@@ -874,11 +874,9 @@ namespace JuvoPlayer.Player.EsPlayer
                 logger.Info($"{stream}: Ready for data");
                 if (Array.TrueForAll(readyState, streamReady => streamReady))
                     needDataTcs.TrySetResult(null);
-            }
+            });
 
-            return (needDataTcs.Task, time.HasValue
-                ? player.SeekAsync(time.Value, (s, t) => UpdateReadyState(s))
-                : player.PrepareAsync(s => UpdateReadyState(s)));
+            return (needDataTcs.Task, handler);
         }
 
         private void PausePlayback()
