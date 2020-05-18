@@ -179,7 +179,7 @@ namespace XamarinPlayer.Tizen.TV.Views
             return code == KeyCode.Next || code == KeyCode.Previous;
         }
 
-        private async void HandleScrollEvent(KeyCode keyCode)
+        private void HandleScrollEvent(KeyCode keyCode)
         {
             switch (keyCode)
             {
