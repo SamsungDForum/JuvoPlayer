@@ -16,7 +16,6 @@
  */
 
 using System.Collections.Generic;
-using System.Threading.Tasks;
 using XamarinPlayer.Tizen.TV.Controls;
 using XamarinPlayer.Tizen.TV.Models;
 
@@ -26,6 +25,8 @@ namespace XamarinPlayer.Tizen.TV.Controllers
     {
         ContentItem FocusedItem { get; }
         void SetItemsSource(List<DetailContentData> source);
+        void Subscribe();
+        void Unsubscribe();
         void SetFocusedContent(DetailContentData contentItem);
     }
 }

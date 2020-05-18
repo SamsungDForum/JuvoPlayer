@@ -133,7 +133,7 @@ namespace XamarinPlayer.Tizen.TV.Views
             return _appMainPage.PushAsync(playerView);
         }
 
-        private async Task UpdateContentInfo()
+        private async void UpdateContentInfo()
         {
             ++_pendingUpdatesCount;
             await Task.Delay(TimeSpan.FromSeconds(1));
@@ -156,6 +156,7 @@ namespace XamarinPlayer.Tizen.TV.Views
         protected override async void OnAppearing()
         {
             base.OnAppearing();
+            _contentGridController.Subscribe();
             MessagingCenter.Subscribe<IKeyEventSender, string>(this, "KeyDown", (s, e) => { HandleKeyEvent(e); });
         }
 
@@ -163,6 +164,7 @@ namespace XamarinPlayer.Tizen.TV.Views
         {
             base.OnDisappearing();
             MessagingCenter.Unsubscribe<IKeyEventSender, string>(this, "KeyDown");
+            _contentGridController.Unsubscribe();
         }
 
         private enum KeyCode
@@ -177,7 +179,7 @@ namespace XamarinPlayer.Tizen.TV.Views
         {
             var keyCode = ConvertToKeyCode(e);
             if (IsScrollEvent(keyCode))
-                await HandleScrollEvent(keyCode);
+                HandleScrollEvent(keyCode);
             else if (keyCode == KeyCode.Enter)
                 await HandleEnterEvent();
         }
@@ -198,7 +200,7 @@ namespace XamarinPlayer.Tizen.TV.Views
             return code == KeyCode.Next || code == KeyCode.Previous;
         }
 
-        private async Task HandleScrollEvent(KeyCode keyCode)
+        private async void HandleScrollEvent(KeyCode keyCode)
         {
             switch (keyCode)
             {
@@ -212,7 +214,7 @@ namespace XamarinPlayer.Tizen.TV.Views
                     throw new ArgumentOutOfRangeException(nameof(keyCode), keyCode, null);
             }
 
-            await UpdateContentInfo();
+            UpdateContentInfo();
         }
 
         private Task HandleEnterEvent()
@@ -247,10 +249,11 @@ namespace XamarinPlayer.Tizen.TV.Views
 
         private async void SelectContent(DetailContentData data)
         {
-            await UpdateContentInfo();
+            UpdateContentInfo();
             await ContentSelected(data);
             (BindingContext as ContentListPageViewModel)?.LoadCommand.Execute(null);
         }
+
         public void Suspend()
         {
             _contentGridController.FocusedItem?.ResetFocus();
