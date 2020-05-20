@@ -23,6 +23,7 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using JuvoLogger;
 using JuvoPlayer.Drms;
 using JuvoPlayer.Utils;
 using Tizen.TV.Multimedia;
@@ -231,6 +232,18 @@ namespace JuvoPlayer.Player.EsPlayer
             {
                 cts.CancelAfter(timeout);
                 await nonCancellable.WithCancellation(cts.Token);
+            }
+        }
+
+        public static async Task WithoutException(this Task task, ILogger logger = null)
+        {
+            try
+            {
+                await task.ConfigureAwait(false);
+            }
+            catch (Exception e)
+            {
+                logger?.Error(e);
             }
         }
     }
