@@ -143,10 +143,6 @@ namespace JuvoPlayer.DataProviders.Dash
                 default:
                     return;
             }
-
-            // New stream. Synch is required to determine start segment.
-            // Needed if pipeline is first segment download stage.
-            audioPipeline.SynchronizeWith(videoPipeline);
         }
 
         public void OnDeactivateStream(StreamType streamType)
