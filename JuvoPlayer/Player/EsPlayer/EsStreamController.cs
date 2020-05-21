@@ -213,16 +213,8 @@ namespace JuvoPlayer.Player.EsPlayer
 
             _playerClock.SetPlayerClockSource(null);
 
-            logger.Info("Stopping player");
             player.Stop();
-            logger.Info("Closing player");
             player.Close();
-            logger.Info("That's all folks!");
-            //player.Dispose();
-            //player = new ESPlayer.ESPlayer();
-
-            //foreach (var stream in esStreams)
-            //    stream?.SetPlayer(player);
         }
 
         private void AttachEventHandlers()

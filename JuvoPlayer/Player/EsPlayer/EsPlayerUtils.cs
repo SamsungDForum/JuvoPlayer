@@ -243,7 +243,7 @@ namespace JuvoPlayer.Player.EsPlayer
             }
             catch (Exception e)
             {
-                logger?.Error(e);
+                logger?.Warn(e);
             }
         }
     }
