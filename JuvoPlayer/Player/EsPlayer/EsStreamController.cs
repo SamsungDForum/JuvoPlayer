@@ -322,14 +322,13 @@ namespace JuvoPlayer.Player.EsPlayer
                     case ESPlayer.ESPlayerState.Paused:
                         player.Resume();
                         _dataClock.Clock = _playerClock.LastClock;
-                        StartClockGenerator();
                         ResumeTransfer(token);
                         break;
 
                     default:
                         throw new InvalidOperationException($"Play called in invalid state: {state}");
                 }
-
+                StartClockGenerator();
                 SubscribeBufferingEvent();
                 SetState(PlayerState.Playing, token);
 
@@ -451,24 +450,23 @@ namespace JuvoPlayer.Player.EsPlayer
 
             logger.Info($"Player.SeekAsync({time})");
 
-            var seekAsyncTask = player.SeekAsync(time, (s, t) =>
-            {
-                logger.Info($"SeekAsync({s},{t})");
+            var (needData, asyncHandler) = PrepareStreamStart(ESPlayer.StreamType.Audio, ESPlayer.StreamType.Video);
+            var seekTask = player.SeekAsync(time, (s, _) => asyncHandler(s));
 
-                if (s == ESPlayer.StreamType.Audio)
-                    return;
+            logger.Info($"Player.SeekAsync({time}) Waiting for ready to seek");
+            await needData.WithCancellation(token);
 
-                _asyncOpTask = StartTransfer(token);
-            });
-
-            await seekAsyncTask.WithCancellation(token);
+            logger.Info($"Player.SeekAsync({time}) Starting transfer");
+            _asyncOpTask = StartTransfer(token);
             var startOk = await _asyncOpTask.WithCancellation(token);
-
             if (!startOk)
             {
                 logger.Info($"Player.SeekAsync({time}) EOS");
                 return;
             }
+
+            logger.Info($"Player.SeekAsync({time}) Waiting for seek completion");
+            await seekTask.WithCancellation(token);
 
             logger.Info($"Player.SeekAsync({time}) Done");
             StartClockGenerator();
@@ -839,30 +837,46 @@ namespace JuvoPlayer.Player.EsPlayer
 
             logger.Info("Player.PrepareAsync()");
 
-            var prepareAsyncTask = player.PrepareAsync(s =>
-            {
-                logger.Info($"PrepareAsync {s}");
+            var (needData, asyncHandler) = PrepareStreamStart(ESPlayer.StreamType.Audio, ESPlayer.StreamType.Video);
+            var prepareTask = player.PrepareAsync(asyncHandler);
 
-                if (s == ESPlayer.StreamType.Audio)
-                    return;
+            logger.Info("Player.PrepareAsync() Waiting for ready to prepare");
+            await needData.WithCancellation(token);
 
-                _asyncOpTask = StartTransfer(token);
-            });
-
-            await prepareAsyncTask.WithCancellation(token);
+            logger.Info("Player.PrepareAsync() Starting transfer");
+            _asyncOpTask = StartTransfer(token);
             var startOk = await _asyncOpTask.WithCancellation(token);
-
             if (!startOk)
             {
                 logger.Info("Player.PrepareAsync() EOS");
                 return;
             }
 
+            logger.Info("Player.PrepareAsync() Waiting for completion");
+            await prepareTask.WithCancellation(token);
+
             logger.Info("Player.PrepareAsync() Done");
-
             SetState(PlayerState.Prepared, token);
+        }
 
-            StartClockGenerator();
+
+        private (Task needData, Action<ESPlayer.StreamType> asyncHandler) PrepareStreamStart(params ESPlayer.StreamType[] streams)
+        {
+            var needDataTcs = new TaskCompletionSource<object>(TaskCreationOptions.RunContinuationsAsynchronously);
+            var readyState = new bool[streams.Length];
+            var handler = new Action<ESPlayer.StreamType>(stream =>
+            {
+                var streamIdx = Array.IndexOf(streams, stream);
+                if (streamIdx == -1)
+                    return;
+
+                readyState[streamIdx] = true;
+                logger.Info($"{stream}: Ready for data");
+                if (Array.TrueForAll(readyState, streamReady => streamReady))
+                    needDataTcs.TrySetResult(null);
+            });
+
+            return (needDataTcs.Task, handler);
         }
 
         private void PausePlayback()
