@@ -45,7 +45,6 @@ namespace JuvoPlayer.Player.EsPlayer
             public TimeSpan Clock;
             public TimeSpan BufferDepth;
             public PlayerState State;
-            public TaskCompletionSource<object> StateRestoredTcs;
         }
 
         private StateSnapshot _restorePoint;
@@ -777,6 +776,7 @@ namespace JuvoPlayer.Player.EsPlayer
                 {
                     token.ThrowIfCancellationRequested();
                     await ExecutePreparePlayback(token);
+                    SetState(PlayerState.Prepared, token);
                 }
 
             }
@@ -825,7 +825,6 @@ namespace JuvoPlayer.Player.EsPlayer
             await prepareTask.WithCancellation(token);
 
             logger.Info("Player.PrepareAsync() Done");
-            SetState(PlayerState.Prepared, token);
         }
 
 
@@ -993,7 +992,6 @@ namespace JuvoPlayer.Player.EsPlayer
                 Clock = _playerClock.PendingOrLastClock,
                 BufferDepth = _dataClock.BufferLimit,
                 State = ps,
-                StateRestoredTcs = new TaskCompletionSource<object>(TaskCreationOptions.RunContinuationsAsynchronously)
             };
 
             logger.Info($"State snapshot. State {res.State} Clock {res.Clock} Buffer Depth {res.BufferDepth}");
@@ -1008,15 +1006,15 @@ namespace JuvoPlayer.Player.EsPlayer
             logger.Info($"Restoring snapshot. State {_restorePoint.State} Clock {_restorePoint.Clock} Buffer Depth {_restorePoint.BufferDepth}");
 
             SetPlayerConfiguration();
+            if (_restorePoint.State == PlayerState.Idle)
+                return;
 
             _dataClock.Clock = _restorePoint.Clock == PlayerClockProviderConfig.InvalidClock
                 ? TimeSpan.Zero : _restorePoint.Clock;
             _dataClock.BufferLimit = _restorePoint.BufferDepth;
 
-            // don't wait for restore point completion if prepare async fails.
-            var restoreTask = _restorePoint.StateRestoredTcs.Task;
             await ExecutePreparePlayback(token);
-            await restoreTask.WithCancellation(token);
+            Play();
         }
         #endregion
 
@@ -1033,7 +1031,6 @@ namespace JuvoPlayer.Player.EsPlayer
 
             activeTaskCts.Cancel();
 
-            _restorePoint?.StateRestoredTcs.TrySetCanceled();
             _playStateNotifier?.TrySetCanceled();
 
             logger.Info("Clock/AsyncOps shutdown");
