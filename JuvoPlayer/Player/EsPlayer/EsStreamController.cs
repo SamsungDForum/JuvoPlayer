@@ -1006,9 +1006,8 @@ namespace JuvoPlayer.Player.EsPlayer
             logger.Info($"Restoring snapshot. State {_restorePoint.State} Clock {_restorePoint.Clock} Buffer Depth {_restorePoint.BufferDepth}");
 
             SetPlayerConfiguration();
-            if (_restorePoint.State == PlayerState.Idle)
-                return;
-
+            if (_restorePoint.State == PlayerState.Idle) return;
+            
             _dataClock.Clock = _restorePoint.Clock == PlayerClockProviderConfig.InvalidClock
                 ? TimeSpan.Zero : _restorePoint.Clock;
             _dataClock.BufferLimit = _restorePoint.BufferDepth;
