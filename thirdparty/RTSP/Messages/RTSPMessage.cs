@@ -90,24 +90,24 @@ namespace Rtsp.Messages
                 if (value == null)
                     commandArray = new string[] { String.Empty };
                 else
-                    commandArray = value.Split(new char[] {' '}, 3);
+                    commandArray = value.Split(new char[] { ' ' }, 3);
             }
         }
 
 
-		/// <summary>
+        /// <summary>
         /// Gets the Method of the message (eg OPTIONS, DESCRIBE, SETUP, PLAY).
         /// </summary>
         /// <value>The Method</value>
         public string Method
-		{
-			get
-			{
-				if (commandArray == null)
-					return string.Empty;
-				return commandArray[0];
-			}
-		}
+        {
+            get
+            {
+                if (commandArray == null)
+                    return string.Empty;
+                return commandArray[0];
+            }
+        }
 
 
         /// <summary>
@@ -246,14 +246,15 @@ namespace Rtsp.Messages
             }
             outputString.Append("\r\n");
             byte[] buffer = encoder.GetBytes(outputString.ToString());
-            lock(stream) {
+            lock (stream)
+            {
                 stream.Write(buffer, 0, buffer.Length);
 
                 // Output data
                 if (Data.Length > 0)
                     stream.Write(Data, 0, Data.Length);
 
-                }
+            }
             stream.Flush();
         }
 
@@ -265,15 +266,15 @@ namespace Rtsp.Messages
         /// <param name="aLevel">A log level.</param>
         public override void LogMessage()
         {
-            _logger.Debug($"Commande : {Command}");
+            _logger.Info($"Commande : {Command}");
             foreach (KeyValuePair<string, string> item in _headers)
             {
-                _logger.Debug($"Header : {item.Key}: {item.Value}");
+                _logger.Info($"Header : {item.Key}: {item.Value}");
             }
 
             if (Data.Length > 0)
             {
-                _logger.Debug($"Data :-{ASCIIEncoding.ASCII.GetString(Data)}-");
+                _logger.Info($"Data :-{ASCIIEncoding.ASCII.GetString(Data)}-");
             }
         }
 

@@ -20,6 +20,7 @@ using System.Collections.Generic;
 using System.Reactive.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using JuvoLogger;
 using JuvoPlayer.Common;
 using JuvoPlayer.Demuxers;
 using JuvoPlayer.Subtitles;
@@ -29,6 +30,7 @@ namespace JuvoPlayer.DataProviders.RTSP
 {
     internal class RTSPDataProvider : IDataProvider
     {
+        private static readonly ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
         private readonly IDemuxerController demuxerController;
         private readonly IRTSPClient rtspClient;
         private readonly ClipDefinition currentClip;
@@ -110,6 +112,7 @@ namespace JuvoPlayer.DataProviders.RTSP
 
         public void OnStateChanged(PlayerState state)
         {
+            Logger.Info($"Started {rtspClient?.IsStarted} state {state}");
             if (rtspClient == null || rtspClient.IsStarted == false)
                 return;
 
@@ -141,6 +144,7 @@ namespace JuvoPlayer.DataProviders.RTSP
 
         public void Stop()
         {
+            Logger.Info("");
             _startCancellationTokenSource?.Cancel();
         }
 
@@ -148,6 +152,8 @@ namespace JuvoPlayer.DataProviders.RTSP
         {
             if (rtspClient == null)
                 return;
+
+            Logger.Info("");
 
             // Start demuxer before client. Demuxer start clears
             // underlying buffer. We do not want that to happen after client
@@ -170,8 +176,24 @@ namespace JuvoPlayer.DataProviders.RTSP
 
         public void Dispose()
         {
-            rtspClient?.Stop();
-            demuxerController.Dispose();
+            Logger.Info("");
+
+            _startCancellationTokenSource?.Cancel();
+            _startCancellationTokenSource?.Dispose();
+            if (rtspClient == null)
+            {
+                demuxerController.Dispose();
+                return;
+            }
+
+            Task.Run(async () =>
+            {
+                await rtspClient.Stop();
+                rtspClient.Dispose();
+                demuxerController.Dispose();
+            });
+
+
         }
 
         public List<StreamDescription> GetStreamsDescription(StreamType streamType)

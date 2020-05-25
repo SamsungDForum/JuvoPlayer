@@ -22,13 +22,13 @@ using JuvoPlayer.Common;
 
 namespace JuvoPlayer.DataProviders.RTSP
 {
-    internal interface IRTSPClient
+    internal interface IRTSPClient : IDisposable
     {
         void Pause();
         void Play();
         void Seek(int position);
         Task Start(ClipDefinition clip, CancellationToken ct);
-        void Stop();
+        Task Stop();
         IObservable<string> RTSPError();
         bool IsStarted { get; }
     }
