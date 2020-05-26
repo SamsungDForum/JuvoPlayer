@@ -31,6 +31,7 @@ using Tizen.TV.Security.DrmDecrypt;
 using Tizen.TV.Security.DrmDecrypt.emeCDM;
 using JuvoPlayer.Common.Utils.IReferenceCountable;
 using JuvoPlayer.Player.EsPlayer;
+using JuvoPlayer.Utils;
 using static Configuration.CencSession;
 
 namespace JuvoPlayer.Drms.Cenc
