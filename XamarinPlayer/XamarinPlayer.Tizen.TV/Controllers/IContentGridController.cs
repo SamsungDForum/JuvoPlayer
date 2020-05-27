@@ -1,6 +1,6 @@
 /*!
  * https://github.com/SamsungDForum/JuvoPlayer
- * Copyright 2018, Samsung Electronics Co., Ltd
+ * Copyright 2020, Samsung Electronics Co., Ltd
  * Licensed under the MIT license
  *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
@@ -16,20 +16,23 @@
  */
 
 using System;
-using System.Threading;
+using System.Collections.Generic;
 using System.Threading.Tasks;
-using JuvoPlayer.Common;
+using Xamarin.Forms.GenGridView;
+using XamarinPlayer.Tizen.TV.Controls;
+using XamarinPlayer.Tizen.TV.Models;
 
-namespace JuvoPlayer.DataProviders.RTSP
+namespace XamarinPlayer.Tizen.TV.Controllers
 {
-    internal interface IRTSPClient : IDisposable
+    public interface IContentGridController
     {
-        void Pause();
-        void Play();
-        void Seek(int position);
-        Task Start(ClipDefinition clip, CancellationToken ct);
-        Task Stop();
-        IObservable<string> RTSPError();
-        bool IsStarted { get; }
+        ContentItem FocusedItem { get; }
+        GenGridView GenGrid { get; }
+        void SetItemsSource(List<DetailContentData> source);
+        bool ScrollToNext();
+        bool ScrollToPrevious();
+        Task SetFocusedContent(ContentItem contentItem);
+        void Subscribe();
+        void Unsubscribe();
     }
 }
