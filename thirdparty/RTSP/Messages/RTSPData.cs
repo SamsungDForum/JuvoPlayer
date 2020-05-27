@@ -20,11 +20,11 @@ namespace Rtsp.Messages
         /// </summary>
         public override void LogMessage()
         {
-            _logger.Debug("Data message");
+            _logger.Info("Data message");
             if (Data == null)
-                _logger.Debug("Data : null");
+                _logger.Info("Data : null");
             else
-                _logger.Debug($"Data length :-{Data.Length}-");
+                _logger.Info($"Data length :-{Data.Length}-");
         }
 
         public int Channel { get; set; }

@@ -27,7 +27,6 @@ using System.Threading.Tasks;
 using JuvoLogger;
 using JuvoPlayer.Common;
 using JuvoPlayer.Tests.Utils;
-using JuvoPlayer.Utils;
 using Nito.AsyncEx;
 using NUnit.Framework;
 using TestContext = JuvoPlayer.Tests.Utils.TestContext;
@@ -45,7 +44,7 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
         {
             var applicationPath = Paths.ApplicationPath;
             var clipsPath = Path.Combine(applicationPath, "res", "videoclips.json");
-            return JSONFileReader.DeserializeJsonFile<List<ClipDefinition>>(clipsPath).ToList();
+            return JuvoPlayer.Utils.JSONFileReader.DeserializeJsonFile<List<ClipDefinition>>(clipsPath).ToList();
         }
 
         static TSPlayerServiceTestCaseSource()
