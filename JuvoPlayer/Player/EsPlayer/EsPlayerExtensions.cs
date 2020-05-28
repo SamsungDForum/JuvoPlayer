@@ -37,39 +37,39 @@ namespace JuvoPlayer.Player.EsPlayer
 
     static class EsPlayerExtensions
     {
-        private static Dictionary<string, IntPtr> GetNativePacket(ESPacket packet, uint handleSize = 0)
+        private static Dictionary<string, IntPtr> GetNativePacket(ESPacket packet)
         {
             var dictionary = new Dictionary<string, IntPtr>();
-            var destination1 = IntPtr.Zero;
-            var num1 = handleSize;
-            if (handleSize == 0U)
+            try
             {
                 if (packet.buffer == null)
                     return null;
                 var length = packet.buffer.Length;
-                destination1 = Marshal.AllocHGlobal(length * Marshal.SizeOf(packet.buffer[0]));
-                Marshal.Copy(packet.buffer, 0, destination1, length);
-                num1 = (uint)length;
+                var unmanagedBufferPtr = Marshal.AllocHGlobal(length * Marshal.SizeOf(packet.buffer[0]));
+                dictionary.Add("unmanagedBuffer", unmanagedBufferPtr);
+                Marshal.Copy(packet.buffer, 0, unmanagedBufferPtr, length);
+                var nativePacket = new NativePacket
+                {
+                    type = packet.type,
+                    buffer = unmanagedBufferPtr,
+                    bufferSize = (uint) packet.buffer.Length,
+                    pts = packet.pts / 1000000UL,
+                    duration = packet.duration,
+                    matroskaColorInfo = IntPtr.Zero,
+                    hdr10pMetadataSize = 0,
+                    hdr10pMetadata = IntPtr.Zero
+                };
+                var unmanagedNativePacketPtr = Marshal.AllocHGlobal(Marshal.SizeOf(nativePacket));
+                dictionary.Add("unmanagedNativePacket", unmanagedNativePacketPtr);
+                Marshal.StructureToPtr(nativePacket, unmanagedNativePacketPtr, false);
+                return dictionary;
             }
-            var ptr1 = IntPtr.Zero;
-            var destination2 = IntPtr.Zero;
-            const uint num2 = 0;
-            var structure = new NativePacket
+            catch (Exception)
             {
-                type = packet.type,
-                buffer = destination1,
-                bufferSize = num1,
-                pts = packet.pts / 1000000UL,
-                duration = packet.duration,
-                matroskaColorInfo = ptr1,
-                hdr10pMetadataSize = num2,
-                hdr10pMetadata = destination2
-            };
-            var ptr2 = Marshal.AllocHGlobal(Marshal.SizeOf(structure));
-            Marshal.StructureToPtr(structure, ptr2, false);
-            dictionary.Add("unmanagedNativePacket", ptr2);
-            dictionary.Add("unmanagedBuffer", destination1);
-            return dictionary;
+                foreach (var kv in dictionary)
+                    Marshal.FreeHGlobal(kv.Value);
+                throw;
+            }
         }
 
         public static SubmitStatus SubmitPacketExt(this ESPlayer player, ESPacket packet)
@@ -77,29 +77,49 @@ namespace JuvoPlayer.Player.EsPlayer
             Dictionary<string, IntPtr> unmanagedMemories = null;
             try
             {
-                unmanagedMemories = GetNativePacket(packet, 0U);
+                unmanagedMemories = GetNativePacket(packet);
                 var playerType = typeof(ESPlayer);
-                var nativePlayerField = playerType.GetField("player", BindingFlags.NonPublic | BindingFlags.Instance);
-                var interop = playerType.Assembly.GetType("Interop");
-                var nativeEsPlusPlayer = interop.GetNestedType("NativeESPlusPlayer", BindingFlags.NonPublic | BindingFlags.Static);
-                var submitPacketMethod = nativeEsPlusPlayer.GetMethod("SubmitPacket", BindingFlags.NonPublic | BindingFlags.Static, Type.DefaultBinder, new Type[] { typeof(IntPtr), typeof(IntPtr)}, new ParameterModifier[0]);
-                return (SubmitStatus) submitPacketMethod.Invoke(null, new object[] { nativePlayerField.GetValue(player), unmanagedMemories["unmanagedNativePacket"] });
+                var submitPacketMethod = GetSubmitPacketMethod(playerType);
+                return (SubmitStatus) submitPacketMethod.Invoke(
+                    null,
+                    new[]
+                    {
+                        GetNativePlayerHandle(playerType, player),
+                        unmanagedMemories["unmanagedNativePacket"]
+                    });
             }
-            catch (Exception ex)
+            catch (Exception)
             {
-                throw new InvalidOperationException("Submitting espacket to native pipeline is failed.");
+                throw new InvalidOperationException("Submitting espacket to native pipeline has failed.");
             }
             finally
             {
                 if (unmanagedMemories != null)
-                {
                     foreach (var kv in unmanagedMemories)
-                    {
                         Marshal.FreeHGlobal(kv.Value);
-                    }
-                }
             }
         }
 
+        private static MethodInfo GetSubmitPacketMethod(Type playerType)
+        {
+            var interop = playerType.Assembly.GetType("Interop");
+            var nativeEsPlusPlayer = interop.GetNestedType(
+                "NativeESPlusPlayer",
+                BindingFlags.NonPublic | BindingFlags.Static);
+            return nativeEsPlusPlayer.GetMethod(
+                "SubmitPacket",
+                BindingFlags.NonPublic | BindingFlags.Static,
+                Type.DefaultBinder,
+                new[] {typeof(IntPtr), typeof(IntPtr)},
+                new ParameterModifier[0]);
+        }
+
+        private static object GetNativePlayerHandle(Type playerType, ESPlayer player)
+        {
+            var nativePlayerField = playerType.GetField(
+                "player",
+                BindingFlags.NonPublic | BindingFlags.Instance);
+            return nativePlayerField.GetValue(player);
+        }
     }
 }
