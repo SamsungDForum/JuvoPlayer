@@ -129,7 +129,9 @@ namespace JuvoPlayer.Player.EsPlayer
         private static SubmitStatus SubmitManagedPriv(ESPlayer player, Packet packet)
         {
             var esPacket = packet.ToESPacket();
-            return player.SubmitPacket(esPacket);
+            return RuntimeInformation.ProcessArchitecture != Architecture.X86
+                ? player.SubmitPacket(esPacket)
+                : player.SubmitPacketExt(esPacket);
         }
 
         private static SubmitStatus SubmitDecryptedPriv(ESPlayer player, DecryptedEMEPacket packet)
