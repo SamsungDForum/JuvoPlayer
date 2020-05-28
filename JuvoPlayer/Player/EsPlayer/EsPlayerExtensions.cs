@@ -18,6 +18,7 @@
 using System;
 using System.Collections.Generic;
 using System.Reflection;
+using System.Reflection.Emit;
 using System.Runtime.InteropServices;
 using Tizen.TV.Multimedia;
 
@@ -37,6 +38,44 @@ namespace JuvoPlayer.Player.EsPlayer
 
     static class EsPlayerExtensions
     {
+        private static Func<ESPlayer, IntPtr> _nativePlayerFieldGetter;
+        private static Func<IntPtr, IntPtr, SubmitStatus> _submitPacketMethodCaller;
+
+        public static void Init()
+        {
+            if (_nativePlayerFieldGetter != null && _submitPacketMethodCaller != null)
+                return;
+            var playerType = typeof(ESPlayer);
+            var nativePlayerField = GetNativePlayerField(playerType);
+            var submitPacketMethod = GetSubmitPacketMethod(playerType);
+            _nativePlayerFieldGetter = CreateGetter<ESPlayer, IntPtr>(nativePlayerField);
+            _submitPacketMethodCaller =
+                (Func<IntPtr, IntPtr, SubmitStatus>) Delegate.CreateDelegate(
+                    typeof(Func<IntPtr, IntPtr, SubmitStatus>), null, submitPacketMethod);
+        }
+
+        public static SubmitStatus SubmitPacketExt(this ESPlayer player, ESPacket packet)
+        {
+            Dictionary<string, IntPtr> unmanagedMemories = null;
+            try
+            {
+                unmanagedMemories = GetNativePacket(packet);
+
+                var nativePlayerHandle = _nativePlayerFieldGetter.Invoke(player);
+                return _submitPacketMethodCaller.Invoke(nativePlayerHandle, unmanagedMemories["unmanagedNativePacket"]);
+            }
+            catch (Exception)
+            {
+                throw new InvalidOperationException("Submitting espacket to native pipeline has failed.");
+            }
+            finally
+            {
+                if (unmanagedMemories != null)
+                    foreach (var kv in unmanagedMemories)
+                        Marshal.FreeHGlobal(kv.Value);
+            }
+        }
+
         private static Dictionary<string, IntPtr> GetNativePacket(ESPacket packet)
         {
             var dictionary = new Dictionary<string, IntPtr>();
@@ -72,34 +111,6 @@ namespace JuvoPlayer.Player.EsPlayer
             }
         }
 
-        public static SubmitStatus SubmitPacketExt(this ESPlayer player, ESPacket packet)
-        {
-            Dictionary<string, IntPtr> unmanagedMemories = null;
-            try
-            {
-                unmanagedMemories = GetNativePacket(packet);
-                var playerType = typeof(ESPlayer);
-                var submitPacketMethod = GetSubmitPacketMethod(playerType);
-                return (SubmitStatus) submitPacketMethod.Invoke(
-                    null,
-                    new[]
-                    {
-                        GetNativePlayerHandle(playerType, player),
-                        unmanagedMemories["unmanagedNativePacket"]
-                    });
-            }
-            catch (Exception)
-            {
-                throw new InvalidOperationException("Submitting espacket to native pipeline has failed.");
-            }
-            finally
-            {
-                if (unmanagedMemories != null)
-                    foreach (var kv in unmanagedMemories)
-                        Marshal.FreeHGlobal(kv.Value);
-            }
-        }
-
         private static MethodInfo GetSubmitPacketMethod(Type playerType)
         {
             var interop = playerType.Assembly.GetType("Interop");
@@ -114,12 +125,31 @@ namespace JuvoPlayer.Player.EsPlayer
                 new ParameterModifier[0]);
         }
 
-        private static object GetNativePlayerHandle(Type playerType, ESPlayer player)
+        private static FieldInfo GetNativePlayerField(Type playerType)
         {
-            var nativePlayerField = playerType.GetField(
+            return playerType.GetField(
                 "player",
                 BindingFlags.NonPublic | BindingFlags.Instance);
-            return nativePlayerField.GetValue(player);
+        }
+
+        private static Func<S, T> CreateGetter<S, T>(FieldInfo field)
+        {
+#if !NETSTANDARD
+            var methodName = field.ReflectedType.FullName + ".get_" + field.Name;
+            var setterMethod = new DynamicMethod(methodName, typeof(T), new Type[1] { typeof(S) }, true);
+            var gen = setterMethod.GetILGenerator();
+            if (field.IsStatic)
+                gen.Emit(OpCodes.Ldsfld, field);
+            else
+            {
+                gen.Emit(OpCodes.Ldarg_0);
+                gen.Emit(OpCodes.Ldfld, field);
+            }
+            gen.Emit(OpCodes.Ret);
+            return (Func<S, T>)setterMethod.CreateDelegate(typeof(Func<S, T>));
+#else
+            return null;
+#endif
         }
     }
 }
