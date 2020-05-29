@@ -1,19 +1,19 @@
 ﻿/*!
- * https://github.com/SamsungDForum/JuvoPlayer
- * Copyright 2020, Samsung Electronics Co., Ltd
- * Licensed under the MIT license
- *
- * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
- * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
- * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
- * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER BE LIABLE FOR ANY
- * DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
- * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
- * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
- * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
- * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
- * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- */
+* https://github.com/SamsungDForum/JuvoPlayer
+* Copyright 2020, Samsung Electronics Co., Ltd
+* Licensed under the MIT license
+*
+* THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+* AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+* IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+* ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER BE LIABLE FOR ANY
+* DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+* (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+* LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+* ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+* (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+* SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+*/
 
 using System;
 using System.Collections.Generic;
@@ -38,20 +38,95 @@ namespace JuvoPlayer.Player.EsPlayer
 
     static class EsPlayerExtensions
     {
+        private static bool _resolvedIsWorkaroundNeeded;
+        private static bool _isWorkaroundNeeded;
         private static Func<ESPlayer, IntPtr> _nativePlayerFieldGetter;
         private static Func<IntPtr, IntPtr, SubmitStatus> _submitPacketMethodCaller;
 
         public static void Init()
         {
-            if (_nativePlayerFieldGetter != null && _submitPacketMethodCaller != null)
+            IsWorkaroundNeeded();
+        }
+
+        public static bool IsWorkaroundNeeded()
+        {
+            if (!_resolvedIsWorkaroundNeeded)
+            {
+                ResolveIsWorkaroundNeeded();
+                _resolvedIsWorkaroundNeeded = true;
+                if (_isWorkaroundNeeded)
+                    LoadDelegates();
+            }
+
+            return _isWorkaroundNeeded;
+        }
+
+        private static void ResolveIsWorkaroundNeeded()
+        {
+            if (RuntimeInformation.ProcessArchitecture != Architecture.X86)
                 return;
             var playerType = typeof(ESPlayer);
-            var nativePlayerField = GetNativePlayerField(playerType);
+            var nativePacketType = playerType.Assembly.GetType("Tizen.TV.Multimedia.NativePacket");
+            if (nativePacketType == null)
+                return;
+            if (!(nativePacketType.GetField("matroskaColorInfo") != null
+                  && nativePacketType.GetField("hdr10pMetadataSize") == null
+                  && nativePacketType.GetField("hdr10pMetadata") == null))
+                return;
+            _isWorkaroundNeeded = true;
+        }
+
+        private static void LoadDelegates()
+        {
+            var playerType = typeof(ESPlayer);
             var submitPacketMethod = GetSubmitPacketMethod(playerType);
+            var nativePlayerField = GetNativePlayerField(playerType);
             _nativePlayerFieldGetter = CreateGetter<ESPlayer, IntPtr>(nativePlayerField);
             _submitPacketMethodCaller =
                 (Func<IntPtr, IntPtr, SubmitStatus>) Delegate.CreateDelegate(
                     typeof(Func<IntPtr, IntPtr, SubmitStatus>), null, submitPacketMethod);
+        }
+
+        private static MethodInfo GetSubmitPacketMethod(Type playerType)
+        {
+            var interop = playerType.Assembly.GetType("Interop");
+            var nativeEsPlusPlayer = interop.GetNestedType(
+                "NativeESPlusPlayer",
+                BindingFlags.NonPublic | BindingFlags.Static);
+            return nativeEsPlusPlayer.GetMethod(
+                "SubmitPacket",
+                BindingFlags.NonPublic | BindingFlags.Static,
+                Type.DefaultBinder,
+                new[] {typeof(IntPtr), typeof(IntPtr)},
+                new ParameterModifier[0]);
+        }
+
+        private static FieldInfo GetNativePlayerField(Type playerType)
+        {
+            return playerType.GetField(
+                "player",
+                BindingFlags.NonPublic | BindingFlags.Instance);
+        }
+
+        private static Func<S, T> CreateGetter<S, T>(FieldInfo field)
+        {
+#if !NETSTANDARD
+            var methodName = field.ReflectedType.FullName + ".get_" + field.Name;
+            var setterMethod = new DynamicMethod(methodName, typeof(T), new Type[1] {typeof(S)}, true);
+            var gen = setterMethod.GetILGenerator();
+            if (field.IsStatic)
+                gen.Emit(OpCodes.Ldsfld, field);
+            else
+            {
+                gen.Emit(OpCodes.Ldarg_0);
+                gen.Emit(OpCodes.Ldfld, field);
+            }
+
+            gen.Emit(OpCodes.Ret);
+            return (Func<S, T>) setterMethod.CreateDelegate(typeof(Func<S, T>));
+#else
+            return null;
+#endif
         }
 
         public static SubmitStatus SubmitPacketExt(this ESPlayer player, ESPacket packet)
@@ -62,7 +137,9 @@ namespace JuvoPlayer.Player.EsPlayer
                 unmanagedMemories = GetNativePacket(packet);
 
                 var nativePlayerHandle = _nativePlayerFieldGetter.Invoke(player);
-                return _submitPacketMethodCaller.Invoke(nativePlayerHandle, unmanagedMemories["unmanagedNativePacket"]);
+                var result =
+                    _submitPacketMethodCaller.Invoke(nativePlayerHandle, unmanagedMemories["unmanagedNativePacket"]);
+                return result;
             }
             catch (Exception)
             {
@@ -109,47 +186,6 @@ namespace JuvoPlayer.Player.EsPlayer
                     Marshal.FreeHGlobal(kv.Value);
                 throw;
             }
-        }
-
-        private static MethodInfo GetSubmitPacketMethod(Type playerType)
-        {
-            var interop = playerType.Assembly.GetType("Interop");
-            var nativeEsPlusPlayer = interop.GetNestedType(
-                "NativeESPlusPlayer",
-                BindingFlags.NonPublic | BindingFlags.Static);
-            return nativeEsPlusPlayer.GetMethod(
-                "SubmitPacket",
-                BindingFlags.NonPublic | BindingFlags.Static,
-                Type.DefaultBinder,
-                new[] {typeof(IntPtr), typeof(IntPtr)},
-                new ParameterModifier[0]);
-        }
-
-        private static FieldInfo GetNativePlayerField(Type playerType)
-        {
-            return playerType.GetField(
-                "player",
-                BindingFlags.NonPublic | BindingFlags.Instance);
-        }
-
-        private static Func<S, T> CreateGetter<S, T>(FieldInfo field)
-        {
-#if !NETSTANDARD
-            var methodName = field.ReflectedType.FullName + ".get_" + field.Name;
-            var setterMethod = new DynamicMethod(methodName, typeof(T), new Type[1] { typeof(S) }, true);
-            var gen = setterMethod.GetILGenerator();
-            if (field.IsStatic)
-                gen.Emit(OpCodes.Ldsfld, field);
-            else
-            {
-                gen.Emit(OpCodes.Ldarg_0);
-                gen.Emit(OpCodes.Ldfld, field);
-            }
-            gen.Emit(OpCodes.Ret);
-            return (Func<S, T>)setterMethod.CreateDelegate(typeof(Func<S, T>));
-#else
-            return null;
-#endif
         }
     }
 }
