@@ -178,6 +178,7 @@ namespace JuvoPlayer
             drmManager.ClearCache();
             connector?.Dispose();
 
+            clip.Url = "rtsp://192.168.1.43:/test.ts";
             dataProvider = dataProviders.CreateDataProvider(clip);
 
             if (clip.DRMDatas != null)

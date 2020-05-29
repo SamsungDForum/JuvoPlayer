@@ -24,7 +24,6 @@ using JuvoLogger;
 using JuvoPlayer.Common;
 using JuvoPlayer.Demuxers;
 using JuvoPlayer.Subtitles;
-using static Configuration.RTSPDataProvider;
 
 namespace JuvoPlayer.DataProviders.RTSP
 {
@@ -34,7 +33,6 @@ namespace JuvoPlayer.DataProviders.RTSP
         private readonly IDemuxerController demuxerController;
         private readonly IRTSPClient rtspClient;
         private readonly ClipDefinition currentClip;
-        private CancellationTokenSource _startCancellationTokenSource;
 
         public Cue CurrentCue { get; }
 
@@ -94,11 +92,8 @@ namespace JuvoPlayer.DataProviders.RTSP
                 .Merge(rtspClient.RTSPError());
         }
 
-        public void OnDataClock(TimeSpan dataClock)
-        {
-            // RTSP Data Provider does not support data dataClock events
-            // Input handler empty
-        }
+        public void OnDataClock(TimeSpan dataClock) =>
+            rtspClient.SetDataClock(dataClock);
 
         public void ChangeActiveStream(StreamDescription stream)
         {
@@ -112,10 +107,6 @@ namespace JuvoPlayer.DataProviders.RTSP
 
         public void OnStateChanged(PlayerState state)
         {
-            Logger.Info($"Started {rtspClient?.IsStarted} state {state}");
-            if (rtspClient == null || rtspClient.IsStarted == false)
-                return;
-
             switch (state)
             {
                 case PlayerState.Paused:
@@ -144,15 +135,11 @@ namespace JuvoPlayer.DataProviders.RTSP
 
         public void Stop()
         {
-            Logger.Info("");
-            _startCancellationTokenSource?.Cancel();
+
         }
 
         public void Start()
         {
-            if (rtspClient == null)
-                return;
-
             Logger.Info("");
 
             // Start demuxer before client. Demuxer start clears
@@ -161,9 +148,7 @@ namespace JuvoPlayer.DataProviders.RTSP
             demuxerController.StartForEs();
 
             // start RTSP client
-            _startCancellationTokenSource = new CancellationTokenSource();
-            _startCancellationTokenSource.CancelAfter(ConnectionTimeout);
-            rtspClient.Start(currentClip, _startCancellationTokenSource.Token);
+            rtspClient.Start(currentClip);
         }
 
         public void OnStopped()
@@ -178,22 +163,12 @@ namespace JuvoPlayer.DataProviders.RTSP
         {
             Logger.Info("");
 
-            _startCancellationTokenSource?.Cancel();
-            _startCancellationTokenSource?.Dispose();
-            if (rtspClient == null)
-            {
-                demuxerController.Dispose();
-                return;
-            }
-
             Task.Run(async () =>
             {
                 await rtspClient.Stop();
                 rtspClient.Dispose();
                 demuxerController.Dispose();
             });
-
-
         }
 
         public List<StreamDescription> GetStreamsDescription(StreamType streamType)

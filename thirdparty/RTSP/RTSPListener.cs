@@ -42,8 +42,6 @@ namespace Rtsp
             Contract.EndContractBlock();
 
             _transport = connection;
-            _stream = connection.GetStream();
-
             _rtspErrorSubject = rtspErrorSubject;
         }
 
@@ -64,6 +62,7 @@ namespace Rtsp
         /// </summary>
         public void Start()
         {
+            _stream = _transport.GetStream();
             _listenTask = new Task(DoJob);
             _listenTask.ContinueWith((task) =>
             {
@@ -270,11 +269,10 @@ namespace Rtsp
             //TODO handle lost message (for example every minute cleanup old message)
             if (message is RtspRequest)
             {
-                RtspMessage originalMessage = message;
-                // Do not modify original message
-                message = message.Clone() as RtspMessage;
-                _sequenceNumber++;
-                message.CSeq = _sequenceNumber;
+                // Original message has CSeq set. Make it so.
+                message.CSeq = ++_sequenceNumber;
+                RtspMessage originalMessage = message.Clone() as RtspMessage;
+
                 lock (_sentMessage)
                 {
                     _sentMessage.Add(message.CSeq, originalMessage as RtspRequest);
