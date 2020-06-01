@@ -12,7 +12,6 @@ namespace Rtsp
     /// </summary>
     public class RtspTcpTransport : IRtspTransport, IDisposable
     {
-        private IPEndPoint _currentEndPoint;
         private TcpClient _RtspServerClient;
 
         /// <summary>
@@ -25,7 +24,6 @@ namespace Rtsp
                 throw new ArgumentNullException("tcpConnection");
             Contract.EndContractBlock();
 
-            _currentEndPoint = (IPEndPoint)tcpConnection.Client.RemoteEndPoint;
             _RtspServerClient = tcpConnection;
         }
 
@@ -59,7 +57,7 @@ namespace Rtsp
         {
             get
             {
-                return string.Format(CultureInfo.InvariantCulture,"{0}:{1}", _currentEndPoint.Address, _currentEndPoint.Port);
+                return _RtspServerClient.Client?.RemoteEndPoint.ToString() ?? "Not connected";
             }
         }
 
@@ -89,8 +87,17 @@ namespace Rtsp
         {
             if (Connected)
                 return;
+
+            var remoteAddress = ((IPEndPoint)_RtspServerClient.Client?.RemoteEndPoint)?.Address;
+            var remotePort = ((IPEndPoint)_RtspServerClient.Client?.RemoteEndPoint)?.Port;
+            if (remoteAddress == null || !remotePort.HasValue)
+                return;
+
+            _RtspServerClient.Close();
+            _RtspServerClient.Dispose();
+
             _RtspServerClient = new TcpClient();
-            _RtspServerClient.Connect(_currentEndPoint);
+            _RtspServerClient.Connect(remoteAddress, remotePort.Value);
         }
 
         #endregion
@@ -105,7 +112,8 @@ namespace Rtsp
         {
             if (disposing)
             {
-                _RtspServerClient.Close();
+                _RtspServerClient?.Close();
+
                 /*   // free managed resources
                    if (managedResource != null)
                    {
