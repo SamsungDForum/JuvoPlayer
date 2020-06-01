@@ -99,9 +99,9 @@ namespace JuvoPlayer.Player.EsPlayer
 
         public void Stop()
         {
+            _dataClockSubject.OnNext(TimeSpan.Zero);
             _dataClockConnection?.Dispose();
             _dataClockConnection = null;
-            _dataClockSubject.OnNext(PlayerClockProviderConfig.InvalidClock);
             Logger.Info("");
         }
 
