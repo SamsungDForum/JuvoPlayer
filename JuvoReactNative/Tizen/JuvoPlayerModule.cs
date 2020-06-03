@@ -107,11 +107,19 @@ namespace JuvoReactNative
             {
                 case PlayerState.Prepared:
                     Player.Start();
-                    playbackTimer = new Timer(
-                        callback: new TimerCallback(UpdatePlayTime),
-                        state: seekLogic.CurrentPositionUI,
-                        dueTime: 0,
-                        period: interval);
+                    if (playbackTimer == null)
+                    {
+                        playbackTimer = new Timer(
+                            callback: new TimerCallback(UpdatePlayTime),
+                            state: seekLogic.CurrentPositionUI,
+                            dueTime: 0,
+                            period: interval);
+                    }
+                    else
+                    {
+                        playbackTimer.Change(0, interval); //resume progress info update
+                    }
+
                     value = "Prepared";
                     break;
                 case PlayerState.Playing:
@@ -123,8 +131,8 @@ namespace JuvoReactNative
                     playbackTimer.Change(Timeout.Infinite, Timeout.Infinite); //suspend progress info update
                     break;
                 case PlayerState.Idle:
-                    playbackTimer?.Dispose();
-                    break;
+                    playbackTimer.Change(Timeout.Infinite, Timeout.Infinite); //suspend progress info update
+                    return; // Don't push "idle". We're suspended.
             }
             var param = new JObject();
             param.Add("State", value);
@@ -132,12 +140,14 @@ namespace JuvoReactNative
         }
         private void OnPlaybackCompleted()
         {
+            Logger.Info("");
             var param = new JObject();
             param.Add("State", "Completed");
             SendEvent("onPlaybackCompleted", param);
         }
         private void DisposePlayerSubscribers()
         {
+            Logger.Info("");
             playerStateChangeSub?.Dispose();
             playbackErrorsSub?.Dispose();
             bufferingProgressSub?.Dispose();
@@ -148,6 +158,7 @@ namespace JuvoReactNative
             DisposePlayerSubscribers();
             seekCompletedSub.Dispose();
             deepLinkSub?.Dispose();
+            playbackTimer.Dispose();
         }
         public void OnResume()
         {
@@ -262,6 +273,8 @@ namespace JuvoReactNative
         [ReactMethod]
         public void StartPlayback(string videoURI, string drmDatasJSON, string streamingProtocol)
         {
+            Logger.Info("");
+
             try
             {
                 var drmDataList = (drmDatasJSON != null) ? JuvoPlayer.Utils.JSONFileReader.DeserializeJsonText<List<DRMDescription>>(drmDatasJSON) : new List<DRMDescription>();
@@ -279,6 +292,7 @@ namespace JuvoReactNative
         [ReactMethod]
         public void StopPlayback()
         {
+            Logger.Info("");
             playbackTimer?.Dispose();
             Player?.Stop();
             DisposePlayerSubscribers();
