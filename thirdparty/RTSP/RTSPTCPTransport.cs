@@ -4,6 +4,7 @@ using System.Net;
 using System.Net.Sockets;
 using System.Diagnostics.Contracts;
 using System.Globalization;
+using System.Threading.Tasks;
 
 namespace Rtsp
 {
@@ -37,6 +38,10 @@ namespace Rtsp
         {
         }
 
+        public RtspTcpTransport()
+            : this(new TcpClient())
+        {
+        }
 
         #region IRtspTransport Membres
 
@@ -57,7 +62,7 @@ namespace Rtsp
         {
             get
             {
-                return _RtspServerClient.Client?.RemoteEndPoint.ToString() ?? "Not connected";
+                return _RtspServerClient.Client.RemoteEndPoint?.ToString() ?? null;
             }
         }
 
@@ -88,18 +93,24 @@ namespace Rtsp
             if (Connected)
                 return;
 
-            var remoteAddress = ((IPEndPoint)_RtspServerClient.Client?.RemoteEndPoint)?.Address;
-            var remotePort = ((IPEndPoint)_RtspServerClient.Client?.RemoteEndPoint)?.Port;
-            if (remoteAddress == null || !remotePort.HasValue)
-                return;
+            var oldClient = _RtspServerClient;
 
-            _RtspServerClient.Close();
-            _RtspServerClient.Dispose();
-
+            // reconnecting without prior connection will throw
             _RtspServerClient = new TcpClient();
-            _RtspServerClient.Connect(remoteAddress, remotePort.Value);
+            _RtspServerClient.Connect((IPEndPoint)_RtspServerClient.Client.RemoteEndPoint);
+
+            oldClient.Close();
+            oldClient.Dispose();
         }
 
+        public Task Connect(string url)
+        {
+            if (Connected)
+                return Task.CompletedTask;
+
+            Uri connectUrl = new Uri(url);
+            return _RtspServerClient.ConnectAsync(connectUrl.Host, connectUrl.Port > 0 ? connectUrl.Port : 554);
+        }
         #endregion
 
         public void Dispose()
@@ -112,14 +123,8 @@ namespace Rtsp
         {
             if (disposing)
             {
-                _RtspServerClient?.Close();
-
-                /*   // free managed resources
-                   if (managedResource != null)
-                   {
-                       managedResource.Dispose();
-                       managedResource = null;
-                   }*/
+                _RtspServerClient?.Dispose();
+                _RtspServerClient = null;
             }
         }
     }
