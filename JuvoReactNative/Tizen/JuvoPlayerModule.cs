@@ -42,6 +42,11 @@ namespace JuvoReactNative
                 var param = new JObject();
                 SendEvent("onSeekCompleted", param);
             });
+
+            playbackTimer = new Timer(
+                            callback: new TimerCallback(UpdatePlayTime),
+                            state: seekLogic.CurrentPositionUI,
+                            Timeout.Infinite, Timeout.Infinite);
         }
 
         private void OnDeepLinkReceived(string url)
@@ -107,11 +112,7 @@ namespace JuvoReactNative
             {
                 case PlayerState.Prepared:
                     Player.Start();
-                    playbackTimer = new Timer(
-                        callback: new TimerCallback(UpdatePlayTime),
-                        state: seekLogic.CurrentPositionUI,
-                        dueTime: 0,
-                        period: interval);
+                    playbackTimer.Change(0, interval); //resume progress info update
                     value = "Prepared";
                     break;
                 case PlayerState.Playing:
@@ -123,8 +124,8 @@ namespace JuvoReactNative
                     playbackTimer.Change(Timeout.Infinite, Timeout.Infinite); //suspend progress info update
                     break;
                 case PlayerState.Idle:
-                    playbackTimer?.Dispose();
-                    break;
+                    playbackTimer.Change(Timeout.Infinite, Timeout.Infinite); //suspend progress info update
+                    return; // Don't push "idle". We're suspended.
             }
             var param = new JObject();
             param.Add("State", value);
@@ -148,6 +149,9 @@ namespace JuvoReactNative
             DisposePlayerSubscribers();
             seekCompletedSub.Dispose();
             deepLinkSub?.Dispose();
+            playbackTimer.Dispose();
+            Player?.Dispose();
+            Player = null;
         }
         public void OnResume()
         {
@@ -279,11 +283,8 @@ namespace JuvoReactNative
         [ReactMethod]
         public void StopPlayback()
         {
-            playbackTimer?.Dispose();
+            playbackTimer.Change(Timeout.Infinite, Timeout.Infinite);
             Player?.Stop();
-            DisposePlayerSubscribers();
-            Player?.Dispose();
-            Player = null;
             seekLogic.IsSeekAccumulationInProgress = false;
         }
         [ReactMethod]
