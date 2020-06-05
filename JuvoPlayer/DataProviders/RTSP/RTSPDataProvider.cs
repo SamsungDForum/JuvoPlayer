@@ -49,7 +49,8 @@ namespace JuvoPlayer.DataProviders.RTSP
 
         public void Resume()
         {
-            throw new NotImplementedException();
+            Logger.Info("");
+            rtspClient.Play();
         }
 
         public IObservable<TimeSpan> ClipDurationChanged()
@@ -107,15 +108,7 @@ namespace JuvoPlayer.DataProviders.RTSP
 
         public void OnStateChanged(PlayerState state)
         {
-            switch (state)
-            {
-                case PlayerState.Paused:
-                    rtspClient.Pause();
-                    break;
-                case PlayerState.Playing:
-                    rtspClient.Play();
-                    break;
-            }
+            // Not used.
         }
 
         public Task<TimeSpan> Seek(TimeSpan time, CancellationToken token)
@@ -178,7 +171,8 @@ namespace JuvoPlayer.DataProviders.RTSP
 
         public void Pause()
         {
-            throw new NotImplementedException();
+            Logger.Info("");
+            rtspClient.Pause();
         }
     }
 }

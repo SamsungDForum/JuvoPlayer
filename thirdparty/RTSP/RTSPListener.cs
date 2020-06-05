@@ -12,6 +12,7 @@ namespace Rtsp
     using System.IO;
     using System.Net.Sockets;
     using System.Text;
+    using System.Threading;
     using Rtsp.Messages;
 
     /// <summary>
@@ -30,6 +31,7 @@ namespace Rtsp
 
         private Dictionary<int, RtspRequest> _sentMessage = new Dictionary<int, RtspRequest>();
         private Subject<string> _rtspErrorSubject;
+
 
         /// <summary>
         /// Initializes a new instance of the <see cref="RtspListener"/> class from a TCP connection.
@@ -60,13 +62,14 @@ namespace Rtsp
         /// <summary>
         /// Starts this instance.
         /// </summary>
-        public void Start()
+        public void Start(CancellationToken token)
         {
             _stream = _transport.GetStream();
-            _listenTask = new Task(DoJob);
+
+            _listenTask = new Task((o) => DoJob(token), token);
             _listenTask.ContinueWith((task) =>
             {
-                if (task.Exception != null)
+                if (task.Exception != null && !((CancellationToken)task.AsyncState).IsCancellationRequested)
                 {
                     _rtspErrorSubject?.OnNext(task.Exception.Message);
                 }
@@ -133,15 +136,17 @@ namespace Rtsp
         /// If it a response it add the associate question.
         /// The stopping is made by the closing of the TCP connection.
         /// </remarks>
-        private void DoJob()
+        private void DoJob(CancellationToken token)
         {
             try
             {
-                _logger.Info("Connection Open");
-                while (_transport.Connected)
+                _logger.Info($"RTSP Connection with {_transport.RemoteAddress} started");
+
+                // token & _transport determine object's status
+                while (!token.IsCancellationRequested && _transport?.Connected == true)
                 {
                     // La lectuer est blocking sauf si la connection est coupé
-                    RtspChunk currentMessage = ReadOneMessage(_stream);
+                    RtspChunk currentMessage = ReadOneMessage();
 
                     if (currentMessage != null)
                     {
@@ -173,7 +178,6 @@ namespace Rtsp
                             }
 
                             OnMessageReceived(new RtspChunkEventArgs(response));
-
                         }
                         else if (currentMessage is RtspRequest)
                         {
@@ -187,28 +191,29 @@ namespace Rtsp
                     else
                     {
                         _stream.Close();
-                        _transport.Close();
+                        break;
                     }
                 }
             }
             catch (OperationCanceledException)
             {
-                _logger.Info("Operation cancelled");
+                _logger.Info("Operation canceled");
                 _stream.Close();
-                _transport.Close();
             }
+            // Don't report IO/Socket errors when canceled.
+            // May occur as a result of connection termination
             catch (IOException error)
+            when (!token.IsCancellationRequested)
             {
                 _logger.Error("IO Error" + error);
                 _stream.Close();
-                _transport.Close();
                 throw;
             }
             catch (SocketException error)
+            when (!token.IsCancellationRequested)
             {
                 _logger.Error("Socket Error" + error);
                 _stream.Close();
-                _transport.Close();
                 throw;
             }
             catch (ObjectDisposedException error)
@@ -218,11 +223,13 @@ namespace Rtsp
             }
             catch (Exception error)
             {
-                _logger.Error("Unknow Error" + error);
+                _logger.Error("Unknown Error" + error);
                 throw;
             }
-
-            _logger.Info("Connection Close");
+            finally
+            {
+                _logger.Info($"RTSP Connection with {_transport.RemoteAddress} terminated");
+            }
         }
 
         [Serializable]
@@ -281,8 +288,13 @@ namespace Rtsp
 
             _logger.Info("Send Message");
             message.LogMessage();
-            message.SendTo(_stream);
+            message.SendTo(_transport.GetStream());
             return true;
+        }
+
+        public Task Connect(string url)
+        {
+            return _transport.Connect(url);
         }
 
         /// <summary>
@@ -307,16 +319,17 @@ namespace Rtsp
 
             // If listen thread exist restart it
             if (_listenTask != null)
-                Start();
+                Start((CancellationToken)_listenTask.AsyncState);
         }
 
         /// <summary>
         /// Reads one message.
         /// </summary>
-        /// <param name="commandStream">The Rtsp stream.</param>
-        /// <returns>Message readen</returns>
-        public RtspChunk ReadOneMessage(Stream commandStream)
+        /// <param name="commandStream">The Rtsp stream reader</param>
+        /// <returns>Message reader</returns>
+        public RtspChunk ReadOneMessage()
         {
+            var commandStream = _transport.GetStream();
             if (commandStream == null)
                 throw new ArgumentNullException("commandStream");
             Contract.EndContractBlock();
@@ -573,10 +586,10 @@ namespace Rtsp
         {
             if (disposing)
             {
-                Stop();
-                if (_stream != null)
-                    _stream.Dispose();
-
+                // Dispose "owned" elements only.                
+                _stream?.Dispose();
+                _stream = null;
+                _transport = null;  // Not owned
             }
         }
 
