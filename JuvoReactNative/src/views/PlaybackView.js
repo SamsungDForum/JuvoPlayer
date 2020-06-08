@@ -55,6 +55,7 @@ export default class PlaybackView extends React.Component {
     this.resetPlaybackTime = this.resetPlaybackTime.bind(this);
     this.onSeekCompleted = this.onSeekCompleted.bind(this);
     this.onPlaybackError = this.onPlaybackError.bind(this);
+    this.onPlaybackViewOpened = this.onPlaybackViewOpened.bind(this);
     this.handleFastForwardKey = this.handleFastForwardKey.bind(this);
     this.handleRewindKey = this.handleRewindKey.bind(this);
     this.getFormattedTime = this.getFormattedTime.bind(this);
@@ -83,6 +84,9 @@ export default class PlaybackView extends React.Component {
     this.JuvoEventEmitter.addListener('onSeekCompleted', this.onSeekCompleted);
     this.JuvoEventEmitter.addListener('onPlaybackError', this.onPlaybackError);
     this.JuvoEventEmitter.addListener('onGotStreamsDescription', this.onGotStreamsDescription);
+    this.JuvoEventEmitter.addListener('onPlaybackViewOpened', this.onPlaybackViewOpened);
+
+    DeviceEventEmitter.emit('onPlaybackViewOpened');
   }
 
   componentWillUnmount() {
@@ -94,6 +98,7 @@ export default class PlaybackView extends React.Component {
     this.JuvoEventEmitter.removeListener('onSeekCompleted', this.onSeekCompleted);
     this.JuvoEventEmitter.removeListener('onPlaybackError', this.onPlaybackError);
     this.JuvoEventEmitter.removeListener('onGotStreamsDescription', this.onGotStreamsDescription);
+    this.JuvoEventEmitter.removeListener('onPlaybackViewOpened', this.onPlaybackViewOpened);
     this.clearSubtitleTextCallbackID();
     this.resetPlaybackStatus();
   }
@@ -108,6 +113,7 @@ export default class PlaybackView extends React.Component {
       .replace('%seconds', seconds.toString().padStart(2, '0'));
   }
   resetPlaybackStatus() {
+    this.JuvoPlayer.Log('resetPlaybackStatus()');
     this.resetPlaybackTime();
     this.handleInfoHiden();
     this.playbackStarted = false;
@@ -151,6 +157,16 @@ export default class PlaybackView extends React.Component {
     this.redraw();
     this.toggleView();
   }
+
+  onPlaybackViewOpened() {
+    this.JuvoPlayer.Log('onPlaybackViewOpened()');
+    const video = ResourceLoader.clipsData[this.state.selectedIndex];
+    let DRM = video.drmDatas ? JSON.stringify(video.drmDatas) : null;
+    this.JuvoPlayer.StartPlayback(video.url, DRM, video.type);
+    this.playbackStarted = true;
+    this.operationInProgress = true;
+  }
+
   onPlaybackCompleted(param) {
     this.toggleView();
   }
@@ -198,7 +214,7 @@ export default class PlaybackView extends React.Component {
     //There are two parameters available:
     //params.KeyName
     //params.KeyCode
-    DeviceEventEmitter.emit('PlaybackSettingsView/onTVKeyDown', pressed);
+
     if (this.keysListenningOff) return;
     switch (pressed.KeyName) {
       case 'Right':
@@ -219,8 +235,10 @@ export default class PlaybackView extends React.Component {
       case 'XF86Back':
       case 'XF86AudioStop':
         if (this.infoHideWasRequested()) {
+          this.JuvoPlayer.Log('onTVKeyDown: '+pressed.KeyName+". toggleView()");
           this.toggleView();
         } else {
+          this.JuvoPlayer.Log('onTVKeyDown: '+pressed.KeyName+". requestInfoHide()->redraw()");
           this.requestInfoHide();
           this.redraw();
         }
@@ -324,14 +342,6 @@ export default class PlaybackView extends React.Component {
     const settingsIconPath = ResourceLoader.playbackIconsPathSelect('set');
     const playIconPath = this.playerState !== 'Playing' ? ResourceLoader.playbackIconsPathSelect('play') : ResourceLoader.playbackIconsPathSelect('pause');
     const visibility = this.props.visibility ? this.props.visibility : true;
-
-    if (this.playerState === 'Idle' && !this.playbackStarted) {
-      const video = ResourceLoader.clipsData[this.state.selectedIndex];
-      let DRM = video.drmDatas ? JSON.stringify(video.drmDatas) : null;
-      this.JuvoPlayer.StartPlayback(video.url, DRM, video.type);
-      this.playbackStarted = true;
-      this.operationInProgress = true;
-    }
 
     this.keysListenningOff = this.showSettingsView || this.showNotificationPopup;
     const total = this.playbackTimeTotal;
