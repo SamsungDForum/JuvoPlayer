@@ -108,14 +108,14 @@ namespace JuvoReactNative
 
         static void Main(string[] args)
         {
-            UdpLoggerManager.Configure();
-            if (!UdpLoggerManager.IsRunning)
-                TizenLoggerManager.Configure();
+            AppDomain.CurrentDomain.UnhandledException += UnhandledException;
 
             try
             {
-                //TizenLoggerManager.Configure();
-                AppDomain.CurrentDomain.UnhandledException += UnhandledException;
+                UdpLoggerManager.Configure();
+                if (!UdpLoggerManager.IsRunning)
+                    TizenLoggerManager.Configure();
+
                 ReactNativeApp app = new ReactNativeApp();
                 app.Run(args);
             }
