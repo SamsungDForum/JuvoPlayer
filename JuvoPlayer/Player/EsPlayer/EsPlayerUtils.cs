@@ -23,6 +23,7 @@ using System.Runtime.InteropServices;
 using System.Text;
 using System.Threading;
 using System.Threading.Tasks;
+using JuvoLogger;
 using JuvoPlayer.Drms;
 using JuvoPlayer.Utils;
 using Tizen.TV.Multimedia;
@@ -128,7 +129,9 @@ namespace JuvoPlayer.Player.EsPlayer
         private static SubmitStatus SubmitManagedPriv(ESPlayer player, Packet packet)
         {
             var esPacket = packet.ToESPacket();
-            return player.SubmitPacket(esPacket);
+            return EsPlayerExtensions.IsWorkaroundNeeded()
+                ? player.SubmitPacketExt(esPacket)
+                : player.SubmitPacket(esPacket);
         }
 
         private static SubmitStatus SubmitDecryptedPriv(ESPlayer player, DecryptedEMEPacket packet)
@@ -185,53 +188,6 @@ namespace JuvoPlayer.Player.EsPlayer
             sb.AppendLine("\tCodec Data:");
             sb.AppendLine(DumpTools.HexDump(audioConf.codecData));
             return sb.ToString();
-        }
-    }
-
-    /// <summary>
-    /// Helper class for cancelling non cancellable async operations
-    /// SeekAsync, PrepareAsync, etc.
-    /// Idea snatched from:
-    ///
-    /// https://blogs.msdn.microsoft.com/pfxteam/2012/10/05/how-do-i-cancel-non-cancelable-async-operations/
-    /// https://docs.microsoft.com/en-us/dotnet/api/microsoft.visualstudio.threading.threadingtools.withcancellation?view=visualstudiosdk-2017
-    ///
-    /// </summary>
-    public static class TaskExtensions
-    {
-        public static async Task<T> WithCancellation<T>(this Task<T> nonCancellable, CancellationToken token)
-        {
-            var tcs = new TaskCompletionSource<bool>();
-            using (token.Register(
-                s => ((TaskCompletionSource<bool>)s).TrySetResult(true), tcs))
-            {
-                if (nonCancellable != await Task.WhenAny(nonCancellable, tcs.Task).ConfigureAwait(false))
-                    throw new OperationCanceledException(token.ToString());
-            }
-
-            return await nonCancellable;
-        }
-
-        public static async Task WithCancellation(this Task nonCancellable, CancellationToken token)
-        {
-            var tcs = new TaskCompletionSource<bool>();
-            using (token.Register(
-                s => ((TaskCompletionSource<bool>)s).TrySetResult(true), tcs))
-            {
-                if (nonCancellable != await Task.WhenAny(nonCancellable, tcs.Task).ConfigureAwait(false))
-                    throw new OperationCanceledException(token.ToString());
-            }
-
-            await nonCancellable;
-        }
-
-        public static async Task WithTimeout(this Task nonCancellable, TimeSpan timeout)
-        {
-            using (var cts = new CancellationTokenSource())
-            {
-                cts.CancelAfter(timeout);
-                await nonCancellable.WithCancellation(cts.Token);
-            }
         }
     }
 

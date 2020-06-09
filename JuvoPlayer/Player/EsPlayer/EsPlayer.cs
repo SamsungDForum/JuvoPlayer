@@ -38,6 +38,7 @@ namespace JuvoPlayer.Player.EsPlayer
 
         public EsPlayer(Window window)
         {
+            EsPlayerExtensions.Init();
             try
             {
                 packetStorage = new EsPlayerPacketStorage();
