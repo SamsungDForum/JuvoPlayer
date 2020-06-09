@@ -55,7 +55,7 @@ export default class PlaybackView extends React.Component {
     this.resetPlaybackTime = this.resetPlaybackTime.bind(this);
     this.onSeekCompleted = this.onSeekCompleted.bind(this);
     this.onPlaybackError = this.onPlaybackError.bind(this);
-    this.onPlaybackViewOpened = this.onPlaybackViewOpened.bind(this);
+    this.launchThePlayback = this.launchThePlayback.bind(this);
     this.handleFastForwardKey = this.handleFastForwardKey.bind(this);
     this.handleRewindKey = this.handleRewindKey.bind(this);
     this.getFormattedTime = this.getFormattedTime.bind(this);
@@ -84,9 +84,9 @@ export default class PlaybackView extends React.Component {
     this.JuvoEventEmitter.addListener('onSeekCompleted', this.onSeekCompleted);
     this.JuvoEventEmitter.addListener('onPlaybackError', this.onPlaybackError);
     this.JuvoEventEmitter.addListener('onGotStreamsDescription', this.onGotStreamsDescription);
-    this.JuvoEventEmitter.addListener('onPlaybackViewOpened', this.onPlaybackViewOpened);
-
-    DeviceEventEmitter.emit('onPlaybackViewOpened');
+    //this.JuvoEventEmitter.addListener('onPlaybackViewOpened', this.onPlaybackViewOpened);
+    //DeviceEventEmitter.emit('onPlaybackViewOpened');
+    this.launchThePlayback();
   }
 
   componentWillUnmount() {
@@ -98,7 +98,7 @@ export default class PlaybackView extends React.Component {
     this.JuvoEventEmitter.removeListener('onSeekCompleted', this.onSeekCompleted);
     this.JuvoEventEmitter.removeListener('onPlaybackError', this.onPlaybackError);
     this.JuvoEventEmitter.removeListener('onGotStreamsDescription', this.onGotStreamsDescription);
-    this.JuvoEventEmitter.removeListener('onPlaybackViewOpened', this.onPlaybackViewOpened);
+   // this.JuvoEventEmitter.removeListener('onPlaybackViewOpened', this.onPlaybackViewOpened);
     this.clearSubtitleTextCallbackID();
     this.resetPlaybackStatus();
   }
@@ -158,8 +158,8 @@ export default class PlaybackView extends React.Component {
     this.toggleView();
   }
 
-  onPlaybackViewOpened() {
-    this.JuvoPlayer.Log('onPlaybackViewOpened()');
+  launchThePlayback() {
+    this.JuvoPlayer.Log('launchThePlayback()');
     const video = ResourceLoader.clipsData[this.state.selectedIndex];
     let DRM = video.drmDatas ? JSON.stringify(video.drmDatas) : null;
     this.JuvoPlayer.StartPlayback(video.url, DRM, video.type);
