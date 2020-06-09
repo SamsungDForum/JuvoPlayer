@@ -16,8 +16,8 @@
  */
 
 using System.Collections.Generic;
+using System.Linq;
 using Xamarin.Forms.GenGridView;
-using Xamarin.Forms.Internals;
 using XamarinPlayer.Tizen.TV.Controls;
 using XamarinPlayer.Tizen.TV.Models;
 
@@ -55,7 +55,7 @@ namespace XamarinPlayer.Tizen.TV.Controllers
 
         public void SetFocusedContent(DetailContentData contentData)
         {
-            var index = (_genGrid.ItemsSource as IEnumerable<DetailContentData>).IndexOf(contentData);
+            var index = (_genGrid.ItemsSource as IEnumerable<DetailContentData>).ToList().IndexOf(contentData);
             if (index == -1)
                 return;
             var newContent = (ContentItem) _genGrid.Items[index];
