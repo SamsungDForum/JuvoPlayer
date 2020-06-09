@@ -93,8 +93,12 @@ namespace JuvoPlayer.DataProviders.RTSP
                 .Merge(rtspClient.RTSPError());
         }
 
-        public void OnDataClock(TimeSpan dataClock) =>
-            rtspClient.SetDataClock(dataClock);
+        public void OnDataClock(TimeSpan dataPosition)
+        {
+            // dataPosition indicates Pause/Resume RTSP download.
+            // used for Multitasking Suspend/Resume. Overrides Pause/Resume UI requests.
+            rtspClient.SetDataClock(dataPosition);
+        }
 
         public void ChangeActiveStream(StreamDescription stream)
         {
@@ -128,7 +132,8 @@ namespace JuvoPlayer.DataProviders.RTSP
 
         public void Stop()
         {
-
+            // RTSP Data provider.. unstoppable!
+            // Original client model implies Stop by disposure. 
         }
 
         public void Start()
@@ -146,10 +151,12 @@ namespace JuvoPlayer.DataProviders.RTSP
 
         public void OnStopped()
         {
+            // Not used
         }
 
         public void OnTimeUpdated(TimeSpan time)
         {
+            // Not used
         }
 
         public void Dispose()
