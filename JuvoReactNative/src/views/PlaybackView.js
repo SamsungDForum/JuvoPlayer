@@ -84,8 +84,6 @@ export default class PlaybackView extends React.Component {
     this.JuvoEventEmitter.addListener('onSeekCompleted', this.onSeekCompleted);
     this.JuvoEventEmitter.addListener('onPlaybackError', this.onPlaybackError);
     this.JuvoEventEmitter.addListener('onGotStreamsDescription', this.onGotStreamsDescription);
-    //this.JuvoEventEmitter.addListener('onPlaybackViewOpened', this.onPlaybackViewOpened);
-    //DeviceEventEmitter.emit('onPlaybackViewOpened');
     this.launchThePlayback();
   }
 
@@ -98,7 +96,6 @@ export default class PlaybackView extends React.Component {
     this.JuvoEventEmitter.removeListener('onSeekCompleted', this.onSeekCompleted);
     this.JuvoEventEmitter.removeListener('onPlaybackError', this.onPlaybackError);
     this.JuvoEventEmitter.removeListener('onGotStreamsDescription', this.onGotStreamsDescription);
-   // this.JuvoEventEmitter.removeListener('onPlaybackViewOpened', this.onPlaybackViewOpened);
     this.clearSubtitleTextCallbackID();
     this.resetPlaybackStatus();
   }
