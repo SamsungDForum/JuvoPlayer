@@ -1,4 +1,4 @@
-﻿using System;
+using System;
 using System.Collections.Generic;
 using System.Threading;
 using ReactNative;
@@ -42,6 +42,11 @@ namespace JuvoReactNative
                 var param = new JObject();
                 SendEvent("onSeekCompleted", param);
             });
+
+            playbackTimer = new Timer(
+                            callback: new TimerCallback(UpdatePlayTime),
+                            state: seekLogic.CurrentPositionUI,
+                            Timeout.Infinite, Timeout.Infinite);
         }
 
         private void OnDeepLinkReceived(string url)
@@ -305,7 +310,6 @@ namespace JuvoReactNative
             Logger.Info("");
 
             OnDestroy();
-            seekLogic.IsSeekAccumulationInProgress = false;
         }
         [ReactMethod]
         public void PauseResumePlayback()
