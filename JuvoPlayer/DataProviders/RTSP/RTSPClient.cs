@@ -18,7 +18,6 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
-using System.Net.Sockets;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
 using System.Threading;
@@ -26,10 +25,11 @@ using System.Threading.Tasks;
 using JuvoPlayer.Common;
 using JuvoLogger;
 using JuvoPlayer.Utils;
-using Nito.AsyncEx;
 using Rtsp.Messages;
 using Rtsp.Sdp;
 using static Configuration.RTSPClient;
+using System.Threading.Channels;
+using Rtsp;
 
 namespace JuvoPlayer.DataProviders.RTSP
 {
@@ -37,33 +37,50 @@ namespace JuvoPlayer.DataProviders.RTSP
     {
         private static readonly ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
 
+        private enum State { Idle, Playing, Paused };
+        private State _currentState = State.Idle;
+
         RTPTransportType rtpTransportType = RTPTransportType.TCP; // Mode, either RTP over UDP or RTP over TCP using the RTSP socket
         UDPSocketPair udpSocketPair; // Pair of UDP ports used in RTP over UDP mode or in MULTICAST mode
         Rtsp.RtspListener rtspListener;
         Rtsp.RtspTcpTransport rtspSocket;
-        private TcpClient _tcpClient;
 
         string rtspUrl = "";
-        string rtspSession = "";
+        string rtspSession = null;
         int videoDataChannel = -1; // RTP Channel Number used for the video stream or the UDP port number
         int videoRTCPChannel = -1; // RTP Channel Number used for the rtcp status report messages OR the UDP port number
         int videoPayloadType = -1; // Payload Type for the Video. (often 96 which is the first dynamic payload value)
 
-        Timer timer;
-        AutoResetEvent timerResetEvent;
-
         private readonly Subject<byte[]> chunkReadySubject = new Subject<byte[]>();
         private readonly Subject<string> rtspErrorSubject = new Subject<string>();
 
-        public bool IsStarted { get; private set; }
+        private Channel<RtspMessage> _rtspChannel;
+        private Task _rtspTask = Task.CompletedTask;
+        private CancellationTokenSource _rtpRtspCts;
+        private bool _suspendTransfer;
 
-        private readonly object _lock = new object();
+        private static readonly TimeSpan PingPongTimeout = TimeSpan.FromSeconds(10);
+        bool _pingPongRunning = false;
+
+        public RTSPClient()
+        {
+            _rtspChannel = Channel.CreateUnbounded<RtspMessage>(new UnboundedChannelOptions()
+            {
+                SingleReader = true,
+                SingleWriter = false
+            });
+
+            rtspSocket = new RtspTcpTransport();
+            rtspListener = new RtspListener(rtspSocket, rtspErrorSubject);
+            rtspListener.MessageReceived += (_, args) => _rtspChannel?.Writer.TryWrite(args.Message as RtspResponse);
+            rtspListener.DataReceived += RtpDataReceived;
+            rtspListener.AutoReconnect = false;
+        }
 
         public IObservable<byte[]> ChunkReady()
         {
             return chunkReadySubject.AsObservable();
         }
-
 
         private void PushChunk(byte[] chunk)
         {
@@ -78,27 +95,42 @@ namespace JuvoPlayer.DataProviders.RTSP
         public void Pause()
         {
             Logger.Info("");
-            RtspRequest pauseMessage = new RtspRequestPause
+            PauseInternal();
+        }
+
+        private void PauseInternal(object context = null)
+        {
+            PostRequest(new RtspRequestPause
             {
                 RtspUri = new Uri(rtspUrl),
-                Session = rtspSession
-            };
-
-            if (!rtspListener.SendMessage(pauseMessage))
-                Logger.Warn("Pause failed");
+                Session = rtspSession,
+                ContextData = context
+            });
         }
 
         public void Play()
         {
             Logger.Info("");
-            RtspRequest playMessage = new RtspRequestPlay
+            PlayInternal();
+        }
+
+        private void PlayInternal(object context = null)
+        {
+            PostRequest(new RtspRequestPlay
             {
                 RtspUri = new Uri(rtspUrl),
-                Session = rtspSession
-            };
+                Session = rtspSession,
+                ContextData = context
+            });
+        }
 
-            if (!rtspListener.SendMessage(playMessage))
-                Logger.Warn("Play failed");
+        public void SetDataClock(TimeSpan dataPosition)
+        {
+            // suspend transfer state change occurred.
+            if (dataPosition == TimeSpan.Zero)
+                PauseInternal(true);
+            else
+                PlayInternal(true);
         }
 
         public void Seek(int position)
@@ -106,134 +138,153 @@ namespace JuvoPlayer.DataProviders.RTSP
             throw new NotImplementedException();
         }
 
-        public async Task Start(ClipDefinition clip, CancellationToken ctx)
+        private void PostRequest(RtspRequest request)
         {
-            Logger.Info("");
-
             try
             {
-                IsStarted = false;
-                await Connect(clip, ctx);
-                IsStarted = true;
-
-                rtspListener = new Rtsp.RtspListener(rtspSocket, rtspErrorSubject);
-                rtspListener.MessageReceived += RtspMessageReceived;
-                rtspListener.DataReceived += RtpDataReceived;
-                rtspListener.AutoReconnect = false;
-                rtspListener.Start();
-
-                RtspRequest optionsMessage = new RtspRequestOptions
-                {
-                    RtspUri = new Uri(rtspUrl)
-                };
-
-                if (!rtspListener.SendMessage(optionsMessage))
-                    Logger.Warn("Options failed");
+                if (!_rtspChannel.Writer.TryWrite(request))
+                    Logger.Warn($"Posting {request} failed");
             }
-            catch (TaskCanceledException)
-            {
-                rtspErrorSubject.OnNext("Connection timeout.");
-            }
+            catch (ChannelClosedException)
+            { }
             catch (Exception e)
             {
-                rtspErrorSubject.OnNext(e.Message);
+                Logger.Error(e);
             }
         }
 
-        private async Task Connect(ClipDefinition clip, CancellationToken ctx)
+        private async void Ping()
         {
-            if (clip == null)
-                throw new ArgumentNullException(nameof(clip), "Clip cannot be null.");
-
-            if (clip.Url.Length < 7)
-                throw new ArgumentException("Clip URL cannot be empty.");
-
-            rtspUrl = clip.Url;
-            _tcpClient = new TcpClient();
-            _tcpClient.SendTimeout = 10000;
-            _tcpClient.ReceiveTimeout = 10000;
             try
             {
-                Uri uri = new Uri(rtspUrl);
-                await _tcpClient.ConnectAsync(uri.Host, uri.Port > 0 ? uri.Port : 554).WaitAsync(ctx);
+                await Task.Delay(PingPongTimeout, _rtpRtspCts.Token);
+                Logger.Info($"Ping {rtspListener.RemoteAdress}");
+                SendOptions();
+            }
+            catch (TaskCanceledException)
+            {
+                // ignore/
+            }
+        }
+
+        private async Task RtspReader()
+        {
+            Logger.Info("RtspReader started");
+
+            try
+            {
+                if (false == await Connect())
+                    return;
+
+                rtspListener.Start(_rtpRtspCts.Token);
+                SendOptions();
+
+                while (!_rtpRtspCts.IsCancellationRequested && rtspSocket.Connected)
+                {
+                    var message = await _rtspChannel.Reader.ReadAsync(_rtpRtspCts.Token);
+
+                    switch (message)
+                    {
+                        case RtspResponse response:
+                            RtspMessageReceived(response);
+
+                            // Exit if response is a result of teardown request.
+                            if (response.OriginalRequest is RtspRequestTeardown)
+                                return;
+
+                            break;
+
+                        case RtspRequest request:
+                            RtspRequestReceived(request);
+                            break;
+                    }
+                }
+            }
+            catch (Exception ex)
+            when (!(ex is OperationCanceledException || ex is TaskCanceledException || ex is ChannelClosedException))
+            {
+                // Ignorable exceptions listed above
+                Logger.Error(ex);
+                rtspErrorSubject.OnNext($"Error. {ex.Message}");
+            }
+            finally
+            {
+                // Send EOS
+                PushChunk(null);
+
+                // Assures EOS is dispatched before termination
+                await Task.Yield();
+                ProcessTeardownResponse();
+
+                Logger.Info("RtspReader stopped");
+            }
+        }
+
+        private void SendOptions()
+        {
+            if (!rtspListener.SendMessage(new RtspRequestOptions
+            {
+                RtspUri = new Uri(rtspUrl),
+                Session = rtspSession
+            }))
+            {
+                Logger.Warn("Options failed");
+            }
+        }
+        public void Start(ClipDefinition clip)
+        {
+            rtspUrl = clip.Url;
+            _rtpRtspCts = new CancellationTokenSource();
+            _rtspTask = Task.Run(async () => await RtspReader());
+        }
+
+        private async Task<bool> Connect()
+        {
+            try
+            {
+                if (rtspUrl == null)
+                    throw new ArgumentNullException(nameof(rtspUrl), "Url cannot be null.");
+
+                Logger.Info($"Connecting to {rtspUrl} with timeout {ConnectionTimeout}");
+
+                await rtspListener.Connect(rtspUrl).WithTimeout(ConnectionTimeout);
+
+                Logger.Info($"Connected to {rtspListener.RemoteAdress}");
+
+                return true;
+            }
+            catch (OperationCanceledException)
+            {
+
+                var msg = $"Connect attempt {rtspUrl} timed out {ConnectionTimeout}";
+                Logger.Error(msg);
+                rtspErrorSubject.OnNext(msg);
             }
             catch (Exception e)
             {
                 Logger.Error(e);
-                throw;
+                rtspErrorSubject.OnNext($"Connection error {e.Message}");
             }
 
-            rtspSocket = new Rtsp.RtspTcpTransport(_tcpClient);
-            if (rtspSocket.Connected == false)
-                throw new Exception("RTSP server not available at this time.");
+            return false;
         }
 
-        private void CloseConnection()
-        {
-            Logger.Info("");
-            lock (_lock)
-            {
-                if (!IsStarted)
-                {
-                    Logger.Warn("Not started");
-                    return;
-                }
-
-                if (timer != null)
-                {
-                    timer.Dispose();
-                    timer = null;
-                }
-
-                _tcpClient.Close(); // Close underlying socket to stop job processing.
-                udpSocketPair?.Stop(); // No one cares about udp sockets.
-                rtspListener?.Stop(); // Drop the RTSP session. Do so prior to underlying socket cleanup
-                // tcpSocket is closed by rtspListener - however, to stop jobs, tcpSocket needs to be closed.
-                // tcpClient is closed by tcpSocket
-                chunkReadySubject.OnCompleted();
-                rtspErrorSubject.OnCompleted();
-
-                IsStarted = false;
-            }
-
-        }
         public async Task Stop()
         {
             Logger.Info("");
 
-            if (!IsStarted || rtspListener == null)
+            if (_rtspTask.IsCompleted != true)
             {
-                Logger.Info("Not started");
-                return;
+                PostRequest(new RtspRequestTeardown
+                {
+                    RtspUri = new Uri(rtspUrl),
+                    Session = rtspSession
+                });
+
+                await _rtspTask.WithTimeout(RtspCommandTimeout).WithoutException(Logger);
             }
 
-            timer?.Dispose(); // Stop the keepalive timer
-            timer = null;
-
-            _tcpClient.NoDelay = true;
-            var teardownTcs = new TaskCompletionSource<object>();
-            if (rtspListener?.SendMessage(new RtspRequestTeardown
-            {
-                RtspUri = new Uri(rtspUrl),
-                Session = rtspSession,
-                ContextData = teardownTcs
-            }) == false)
-            {
-                Logger.Warn("Teardown failed");
-                CloseConnection();
-                return;
-            }
-
-            Logger.Info("Waiting Teardown completion");
-            try
-            {
-                await teardownTcs.Task.WithTimeout(RtspCommandTimeout);
-            }
-            catch (OperationCanceledException)
-            {
-                Logger.Info("Teardown timeout");
-                CloseConnection();
-            }
+            ProcessTeardownResponse();
         }
 
         private bool IsRtcpGoodbye(RtspData rtspData)
@@ -257,36 +308,38 @@ namespace JuvoPlayer.DataProviders.RTSP
             return true; // It's a RTCP Sender Report Goodbye compound packet, EoS.
         }
 
-        private void HandleRtcpGoodbye(TaskCompletionSource<object> notify = null)
+        private void ProcessTeardownResponse()
         {
-            Logger.Info("");
+            // Someone beat us to it
+            if (_rtpRtspCts?.IsCancellationRequested == true)
+                return;
 
-            CloseConnection();
-            if (notify == null)
+            Logger.Info("");
+            // or start never occurred
+            _rtpRtspCts?.Cancel();
+
+            if (_currentState != State.Idle)
             {
-                PushChunk(null);
+                rtspListener.Stop();
+                udpSocketPair?.Stop();
             }
-            else
-            {
-                notify.TrySetResult(null);
-            }
+            _currentState = State.Idle;
+            rtspSession = null;
+            _pingPongRunning = false;
+
+            chunkReadySubject.OnCompleted();
+            rtspErrorSubject.OnCompleted();
         }
 
-        public void RtpDataReceived(object sender, Rtsp.RtspChunkEventArgs chunkEventArgs)
+        public void RtpDataReceived(object sender, RtspChunkEventArgs chunkEventArgs)
         {
-            if (!IsStarted)
-            {
-                Logger.Warn("Not started.");
-                return;
-            }
-
             try
             {
                 RtspData rtpData = chunkEventArgs.Message as RtspData;
 
                 if (IsRtcpGoodbye(rtpData))
                 {
-                    HandleRtcpGoodbye();
+                    ProcessTeardownResponse();
                     return;
                 }
 
@@ -367,17 +420,79 @@ namespace JuvoPlayer.DataProviders.RTSP
             PushChunk(rtp_payload);
         }
 
-        // RTSP Messages are OPTIONS, DESCRIBE, SETUP, PLAY etc
-        private void RtspMessageReceived(object sender, Rtsp.RtspChunkEventArgs chunkEventArgs)
+        private void RtspRequestReceived(RtspRequest request)
         {
-            RtspResponse message = chunkEventArgs.Message as RtspResponse;
+            switch (request)
+            {
+                case RtspRequestPlay _ when request.ContextData is bool:
+                    // already suspended. Do nothing.
+                    if (_suspendTransfer == false)
+                        return;
+
+                    Logger.Info($"Resuming session {rtspSession}");
+                    _suspendTransfer = false;
+
+                    // Resume.
+                    // If session exists, always resume playback.
+                    if (rtspSession == null)
+                        return;
+
+                    break;
+
+                case RtspRequestPause _ when request.ContextData is bool:
+                    // already resumed. Do nothing.
+                    if (_suspendTransfer == true)
+                        return;
+
+                    Logger.Info($"Suspending session {rtspSession}");
+                    _suspendTransfer = true;
+
+                    // Suspend. 
+                    // Always issue pause regardless of state (if sessionId exists)
+                    // Pause->Play transition might have been requested, but not confirmed by server.
+                    if (rtspSession == null)
+                        return;
+
+                    break;
+
+                case RtspRequestPlay _ when _currentState != State.Paused || _suspendTransfer:
+                case RtspRequestPause _ when _currentState != State.Playing || _suspendTransfer:
+                    Logger.Info($"Invalid Request for State/SuspendTransfer {request.GetType()} {_currentState}/{_suspendTransfer}. Ignored");
+                    return;
+            }
+
+            Logger.Info($"Sending {request}");
+            if (rtspListener.SendMessage(request))
+                return;
+
+            Logger.Warn($"Send {request} failed");
+            // Use "existing" model for now. Fails are dropped. 
+            // Failed requests can be posted back to queue for re-processing. 
+        }
+
+        // RTSP Messages are OPTIONS, DESCRIBE, SETUP, PLAY etc
+        private void RtspMessageReceived(RtspResponse message)
+        {
+            Logger.Info($"Response {message.OriginalRequest}");
+            if (_rtpRtspCts.IsCancellationRequested)
+            {
+                // Ignore requests when canceled. There's a change of pong getting returned
+                // during termination
+                Logger.Info("Response ignored. Cancellation requested.");
+                return;
+            }
             if (message?.OriginalRequest == null)
                 return;
 
-            Logger.Info($"Received {message.OriginalRequest}");
-            if (!IsStarted)
+            if (message.CSeq != message.OriginalRequest.CSeq)
             {
-                Logger.Warn("Not Started");
+                Logger.Warn($"CSeq mismatch. Request {message.OriginalRequest.CSeq} Response {message.CSeq}");
+                // Resending may be in order
+                return;
+            }
+            if (!message.IsOk)
+            {
+                Logger.Warn($"Error response {message.ReturnCode} {message.ReturnMessage}");
                 return;
             }
 
@@ -385,45 +500,54 @@ namespace JuvoPlayer.DataProviders.RTSP
             {
                 if (message.OriginalRequest is RtspRequestOptions)
                 {
-                    ProcessOptionsRequest(message);
+                    // PingPong started - don't process response to options.
+                    if (_pingPongRunning)
+                    {
+                        Logger.Info($"Pong {rtspListener.RemoteAdress}");
+                        Ping();
+                        return;
+                    }
+                    ProcessOptionsResponse();
                 }
                 else if (message.OriginalRequest is RtspRequestDescribe)
                 {
-                    ProcessDescribeRequest(message);
+                    ProcessDescribeResponse(message);
                 }
                 else if (message.OriginalRequest is RtspRequestSetup)
                 {
-                    ProcessSetupRequest(message);
+                    ProcessSetupResponse(message);
                 }
                 else if (message.OriginalRequest is RtspRequestPlay)
                 {
-                    ProcessPlayRequest(message);
+                    // Play confirmed. Start PingPong if not running.
+                    if (!_pingPongRunning)
+                    {
+                        _pingPongRunning = true;
+                        Ping();
+                    }
+
+                    _currentState = State.Playing;
+                }
+                else if (message.OriginalRequest is RtspRequestPause)
+                {
+                    _currentState = State.Paused;
                 }
                 else if (message.OriginalRequest is RtspRequestTeardown)
                 {
-                    HandleRtcpGoodbye(message.OriginalRequest.ContextData as TaskCompletionSource<object>);
+                    ProcessTeardownResponse();
                 }
             }
             catch (Exception e)
             {
                 Logger.Error(e);
-                rtspErrorSubject.OnNext("RTSP error occured.");
+                rtspErrorSubject.OnNext($"RTSP error. {e.Message}");
             }
         }
 
-        private static void ProcessPlayRequest(RtspResponse message)
+        private void ProcessSetupResponse(RtspResponse message)
         {
-            // If we get a reply to PLAY (which was our fourth command), then we should have video being received
-            Logger.Info("Got reply from Play  " + message.Command);
-        }
-
-        private void ProcessSetupRequest(RtspResponse message)
-        {
-            // If we get a reply to SETUP (which was our third command), then process then send PLAY
-
-            Logger.Info("Got reply from Setup. Session is " + message.Session);
-
             rtspSession = message.Session; // Session value used with Play, Pause, Teardown
+            Logger.Info($"RTSP session: {rtspSession}");
 
             if (message.Headers.ContainsKey(RtspHeaderNames.Transport))
             {
@@ -442,17 +566,22 @@ namespace JuvoPlayer.DataProviders.RTSP
                 }
             }
 
-            if (!rtspListener.SendMessage(new RtspRequestPlay
+            if (_suspendTransfer)
+            {
+                // Transfer suspended. Set state to playing but do not issue play request.
+                // Play request will be sent upon resume.
+                _currentState = State.Playing;
+                return;
+            }
+            _currentState = State.Paused;
+            PostRequest(new RtspRequestPlay
             {
                 RtspUri = new Uri(rtspUrl),
                 Session = rtspSession
-            }))
-            {
-                Logger.Warn("Play failed");
-            }
+            });
         }
 
-        private void ProcessDescribeRequest(RtspResponse message)
+        private void ProcessDescribeResponse(RtspResponse message)
         {
             // Got a reply for DESCRIBE
             // Examine the SDP
@@ -496,9 +625,7 @@ namespace JuvoPlayer.DataProviders.RTSP
                     var transport = GetRTSPTransport();
                     setupMessage.AddTransport(transport);
 
-                    if (!rtspListener.SendMessage(setupMessage))
-                        Logger.Warn("Setup failed");
-
+                    PostRequest(setupMessage);
                 }
             }
         }
@@ -563,17 +690,8 @@ namespace JuvoPlayer.DataProviders.RTSP
             }
         }
 
-        private void ProcessOptionsRequest(RtspResponse message)
+        private void ProcessOptionsResponse()
         {
-            // If we get a reply to OPTIONS and CSEQ is 1 (which was our first command), then send the DESCRIBE
-            // If we fer a reply to OPTIONS and CSEQ is not 1, it must have been a keepalive command
-            if (message.CSeq != 1)
-                return;
-
-            // Start a Timer to send an OPTIONS command (for keepalive) every 20 seconds
-            timerResetEvent = new AutoResetEvent(false);
-            timer = new Timer(Timeout, timerResetEvent, 20 * 1000, 20 * 1000);
-
             // send the Describe
             RtspRequest describeMessage = new RtspRequestDescribe
             {
@@ -582,27 +700,6 @@ namespace JuvoPlayer.DataProviders.RTSP
 
             if (!rtspListener.SendMessage(describeMessage))
                 Logger.Warn("Describe failed");
-        }
-
-        void Timeout(object stateInfo)
-        {
-            // Send Keepalive message
-            RtspRequest optionsMessage = new RtspRequestOptions
-            {
-                RtspUri = new Uri(rtspUrl)
-            };
-
-            try
-            {
-                Logger.Info("Keepalive Options");
-                if (rtspListener.SendMessage(optionsMessage) == false)
-                    rtspErrorSubject.OnNext("Connection timeout.");
-            }
-            catch (Exception e)
-            {
-                Logger.Info(e.ToString());
-                rtspErrorSubject.OnNext("Connection timeout.");
-            }
         }
 
         // Output an array of NAL Units.
@@ -623,8 +720,12 @@ namespace JuvoPlayer.DataProviders.RTSP
 
         public void Dispose()
         {
-            rtspListener?.Dispose();
-            rtspSocket?.Dispose();
+            _rtpRtspCts?.Cancel();
+            _rtpRtspCts?.Dispose();
+            _rtpRtspCts = null;
+
+            rtspListener.Dispose();
+            rtspSocket.Dispose();
 
             chunkReadySubject.Dispose();
             rtspErrorSubject.Dispose();

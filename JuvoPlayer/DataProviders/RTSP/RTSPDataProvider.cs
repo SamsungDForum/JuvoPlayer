@@ -24,7 +24,6 @@ using JuvoLogger;
 using JuvoPlayer.Common;
 using JuvoPlayer.Demuxers;
 using JuvoPlayer.Subtitles;
-using static Configuration.RTSPDataProvider;
 
 namespace JuvoPlayer.DataProviders.RTSP
 {
@@ -34,7 +33,6 @@ namespace JuvoPlayer.DataProviders.RTSP
         private readonly IDemuxerController demuxerController;
         private readonly IRTSPClient rtspClient;
         private readonly ClipDefinition currentClip;
-        private CancellationTokenSource _startCancellationTokenSource;
 
         public Cue CurrentCue { get; }
 
@@ -51,7 +49,8 @@ namespace JuvoPlayer.DataProviders.RTSP
 
         public void Resume()
         {
-            throw new NotImplementedException();
+            Logger.Info("");
+            rtspClient.Play();
         }
 
         public IObservable<TimeSpan> ClipDurationChanged()
@@ -94,10 +93,11 @@ namespace JuvoPlayer.DataProviders.RTSP
                 .Merge(rtspClient.RTSPError());
         }
 
-        public void OnDataClock(TimeSpan dataClock)
+        public void OnDataClock(TimeSpan dataPosition)
         {
-            // RTSP Data Provider does not support data dataClock events
-            // Input handler empty
+            // dataPosition indicates Pause/Resume RTSP download.
+            // used for Multitasking Suspend/Resume. Overrides Pause/Resume UI requests.
+            rtspClient.SetDataClock(dataPosition);
         }
 
         public void ChangeActiveStream(StreamDescription stream)
@@ -112,19 +112,7 @@ namespace JuvoPlayer.DataProviders.RTSP
 
         public void OnStateChanged(PlayerState state)
         {
-            Logger.Info($"Started {rtspClient?.IsStarted} state {state}");
-            if (rtspClient == null || rtspClient.IsStarted == false)
-                return;
-
-            switch (state)
-            {
-                case PlayerState.Paused:
-                    rtspClient.Pause();
-                    break;
-                case PlayerState.Playing:
-                    rtspClient.Play();
-                    break;
-            }
+            // Not used.
         }
 
         public Task<TimeSpan> Seek(TimeSpan time, CancellationToken token)
@@ -144,15 +132,12 @@ namespace JuvoPlayer.DataProviders.RTSP
 
         public void Stop()
         {
-            Logger.Info("");
-            _startCancellationTokenSource?.Cancel();
+            // RTSP Data provider.. unstoppable!
+            // Original client model implies Stop by disposure. 
         }
 
         public void Start()
         {
-            if (rtspClient == null)
-                return;
-
             Logger.Info("");
 
             // Start demuxer before client. Demuxer start clears
@@ -161,30 +146,22 @@ namespace JuvoPlayer.DataProviders.RTSP
             demuxerController.StartForEs();
 
             // start RTSP client
-            _startCancellationTokenSource = new CancellationTokenSource();
-            _startCancellationTokenSource.CancelAfter(ConnectionTimeout);
-            rtspClient.Start(currentClip, _startCancellationTokenSource.Token);
+            rtspClient.Start(currentClip);
         }
 
         public void OnStopped()
         {
+            // Not used
         }
 
         public void OnTimeUpdated(TimeSpan time)
         {
+            // Not used
         }
 
         public void Dispose()
         {
             Logger.Info("");
-
-            _startCancellationTokenSource?.Cancel();
-            _startCancellationTokenSource?.Dispose();
-            if (rtspClient == null)
-            {
-                demuxerController.Dispose();
-                return;
-            }
 
             Task.Run(async () =>
             {
@@ -192,8 +169,6 @@ namespace JuvoPlayer.DataProviders.RTSP
                 rtspClient.Dispose();
                 demuxerController.Dispose();
             });
-
-
         }
 
         public List<StreamDescription> GetStreamsDescription(StreamType streamType)
@@ -203,7 +178,8 @@ namespace JuvoPlayer.DataProviders.RTSP
 
         public void Pause()
         {
-            throw new NotImplementedException();
+            Logger.Info("");
+            rtspClient.Pause();
         }
     }
 }
