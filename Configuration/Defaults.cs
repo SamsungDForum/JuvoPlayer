@@ -77,15 +77,12 @@ namespace Configuration
         public static TimeSpan MaxBufferHealth { get; set; } = TimeSpan.FromSeconds(10);
     }
 
-    public static class RTSPDataProvider
-    {
-        public static TimeSpan ConnectionTimeout { get; set; } = TimeSpan.FromSeconds(2);
-    }
-
     public static class RTSPClient
     {
         public static TimeSpan RtspCommandTimeout { get; set; } = TimeSpan.FromSeconds(2);
+        public static TimeSpan ConnectionTimeout { get; set; } = TimeSpan.FromSeconds(2);
     }
+
     public static class EWMAThroughputHistory
     {
         public static double SlowEWMACoeff { get; set; } = 0.99;
