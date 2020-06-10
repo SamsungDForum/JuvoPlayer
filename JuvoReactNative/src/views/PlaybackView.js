@@ -211,7 +211,7 @@ export default class PlaybackView extends React.Component {
     //There are two parameters available:
     //params.KeyName
     //params.KeyCode
-
+    DeviceEventEmitter.emit('PlaybackSettingsView/onTVKeyDown',pressed);
     if (this.keysListenningOff) return;
     switch (pressed.KeyName) {
       case 'Right':

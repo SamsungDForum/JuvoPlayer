@@ -95,37 +95,42 @@ namespace JuvoPlayer.DataProviders.RTSP
         public void Pause()
         {
             Logger.Info("");
+            PauseInternal();
+        }
+
+        private void PauseInternal(object context = null)
+        {
             PostRequest(new RtspRequestPause
             {
                 RtspUri = new Uri(rtspUrl),
-                Session = rtspSession
+                Session = rtspSession,
+                ContextData = context
             });
         }
 
         public void Play()
         {
             Logger.Info("");
+            PlayInternal();
+        }
+
+        private void PlayInternal(object context = null)
+        {
             PostRequest(new RtspRequestPlay
             {
                 RtspUri = new Uri(rtspUrl),
-                Session = rtspSession
+                Session = rtspSession,
+                ContextData = context
             });
         }
 
         public void SetDataClock(TimeSpan dataPosition)
         {
-            var previousSuspendState = _suspendTransfer;
-            _suspendTransfer = dataPosition == TimeSpan.Zero;
-
-            // ignore no state change.
-            if (previousSuspendState == _suspendTransfer)
-                return;
-
             // suspend transfer state change occurred.
-            if (_suspendTransfer)
-                Pause();
+            if (dataPosition == TimeSpan.Zero)
+                PauseInternal(true);
             else
-                Play();
+                PlayInternal(true);
         }
 
         public void Seek(int position)
@@ -164,7 +169,7 @@ namespace JuvoPlayer.DataProviders.RTSP
 
         private async Task RtspReader()
         {
-            Logger.Info("RTSP Reader started");
+            Logger.Info("RtspReader started");
 
             try
             {
@@ -207,12 +212,11 @@ namespace JuvoPlayer.DataProviders.RTSP
                 // Send EOS
                 PushChunk(null);
 
-                // Let hamster run the wheel.
                 // Assures EOS is dispatched before termination
                 await Task.Yield();
                 ProcessTeardownResponse();
 
-                Logger.Info("Hasta luego RtspReader");
+                Logger.Info("RtspReader stopped");
             }
         }
 
@@ -418,13 +422,42 @@ namespace JuvoPlayer.DataProviders.RTSP
 
         private void RtspRequestReceived(RtspRequest request)
         {
-            // Reject "negative" cases.
-            // RC "turbo finger" mitigations (pause/play vs multitasking)
             switch (request)
             {
-                case RtspRequestPlay _ when _currentState != State.Paused:
-                case RtspRequestPause _ when _currentState != State.Playing:
-                    Logger.Info($"Invalid Request/State {request.GetType()}/{_currentState}. Ignored");
+                case RtspRequestPlay _ when request.ContextData is bool:
+                    // already suspended. Do nothing.
+                    if (_suspendTransfer == false)
+                        return;
+
+                    Logger.Info($"Resuming session {rtspSession}");
+                    _suspendTransfer = false;
+
+                    // Resume.
+                    // If session exists, always resume playback.
+                    if (rtspSession == null)
+                        return;
+
+                    break;
+
+                case RtspRequestPause _ when request.ContextData is bool:
+                    // already resumed. Do nothing.
+                    if (_suspendTransfer == true)
+                        return;
+
+                    Logger.Info($"Suspending session {rtspSession}");
+                    _suspendTransfer = true;
+
+                    // Suspend. 
+                    // Always issue pause regardless of state (if sessionId exists)
+                    // Pause->Play transition might have been requested, but not confirmed by server.
+                    if (rtspSession == null)
+                        return;
+
+                    break;
+
+                case RtspRequestPlay _ when _currentState != State.Paused || _suspendTransfer:
+                case RtspRequestPause _ when _currentState != State.Playing || _suspendTransfer:
+                    Logger.Info($"Invalid Request for State/SuspendTransfer {request.GetType()} {_currentState}/{_suspendTransfer}. Ignored");
                     return;
             }
 
@@ -533,11 +566,14 @@ namespace JuvoPlayer.DataProviders.RTSP
                 }
             }
 
-            // Ready, not playing yet.
-            _currentState = State.Paused;
             if (_suspendTransfer)
+            {
+                // Transfer suspended. Set state to playing but do not issue play request.
+                // Play request will be sent upon resume.
+                _currentState = State.Playing;
                 return;
-
+            }
+            _currentState = State.Paused;
             PostRequest(new RtspRequestPlay
             {
                 RtspUri = new Uri(rtspUrl),
