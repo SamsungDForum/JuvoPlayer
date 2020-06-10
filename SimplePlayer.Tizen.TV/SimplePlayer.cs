@@ -126,6 +126,7 @@ namespace SimplePlayer
 
                 //////The JuvoPlayer backend (elementary stream data source).
                 juvoPlayer = new PlayerServiceProxy<PlayerServiceImpl>();
+                juvoPlayer.SetWindow(window);
                 PlayJuvoPlayerClean(url, juvoPlayer);
                 //PlayJuvoPlayerDRMed(url, license, "playready", juvoPlayer);
                 //PlayJuvoPlayerDRMed(url, license, "widevine", juvoPlayer);

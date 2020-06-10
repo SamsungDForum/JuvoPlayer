@@ -1,4 +1,5 @@
 ﻿using System;
+using System.Threading.Tasks;
 
 namespace Rtsp
 {
@@ -39,5 +40,7 @@ namespace Rtsp
         /// </summary>
         /// <exception cref="System.Net.Sockets.SocketException">Error during socket </exception>
         void Reconnect();
+
+        Task Connect(string url);
     }
 }
