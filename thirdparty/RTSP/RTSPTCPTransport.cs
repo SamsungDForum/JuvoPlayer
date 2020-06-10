@@ -4,6 +4,7 @@ using System.Net;
 using System.Net.Sockets;
 using System.Diagnostics.Contracts;
 using System.Globalization;
+using System.Threading.Tasks;
 
 namespace Rtsp
 {
@@ -12,7 +13,6 @@ namespace Rtsp
     /// </summary>
     public class RtspTcpTransport : IRtspTransport, IDisposable
     {
-        private IPEndPoint _currentEndPoint;
         private TcpClient _RtspServerClient;
 
         /// <summary>
@@ -25,7 +25,6 @@ namespace Rtsp
                 throw new ArgumentNullException("tcpConnection");
             Contract.EndContractBlock();
 
-            _currentEndPoint = (IPEndPoint)tcpConnection.Client.RemoteEndPoint;
             _RtspServerClient = tcpConnection;
         }
 
@@ -39,6 +38,10 @@ namespace Rtsp
         {
         }
 
+        public RtspTcpTransport()
+            : this(new TcpClient())
+        {
+        }
 
         #region IRtspTransport Membres
 
@@ -59,7 +62,7 @@ namespace Rtsp
         {
             get
             {
-                return string.Format(CultureInfo.InvariantCulture,"{0}:{1}", _currentEndPoint.Address, _currentEndPoint.Port);
+                return _RtspServerClient.Client.RemoteEndPoint?.ToString() ?? null;
             }
         }
 
@@ -89,10 +92,25 @@ namespace Rtsp
         {
             if (Connected)
                 return;
+
+            var oldClient = _RtspServerClient;
+
+            // reconnecting without prior connection will throw
             _RtspServerClient = new TcpClient();
-            _RtspServerClient.Connect(_currentEndPoint);
+            _RtspServerClient.Connect((IPEndPoint)_RtspServerClient.Client.RemoteEndPoint);
+
+            oldClient.Close();
+            oldClient.Dispose();
         }
 
+        public Task Connect(string url)
+        {
+            if (Connected)
+                return Task.CompletedTask;
+
+            Uri connectUrl = new Uri(url);
+            return _RtspServerClient.ConnectAsync(connectUrl.Host, connectUrl.Port > 0 ? connectUrl.Port : 554);
+        }
         #endregion
 
         public void Dispose()
@@ -105,13 +123,8 @@ namespace Rtsp
         {
             if (disposing)
             {
-                _RtspServerClient.Close();
-                /*   // free managed resources
-                   if (managedResource != null)
-                   {
-                       managedResource.Dispose();
-                       managedResource = null;
-                   }*/
+                _RtspServerClient?.Dispose();
+                _RtspServerClient = null;
             }
         }
     }
