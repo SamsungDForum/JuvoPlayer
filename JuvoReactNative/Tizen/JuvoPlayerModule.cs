@@ -64,6 +64,13 @@ namespace JuvoReactNative
                 });
             bufferingProgressSub = Player.BufferingProgress()
                 .Subscribe(UpdateBufferingProgress);
+
+            playbackTimer = new Timer(
+                callback: new TimerCallback(UpdatePlayTime),
+                state: seekLogic.CurrentPositionUI,
+                dueTime: Timeout.Infinite,
+                period: Timeout.Infinite);
+
         }
         public override string Name
         {
@@ -101,43 +108,48 @@ namespace JuvoReactNative
         }
         private void OnPlayerStateChanged(PlayerState state)
         {
+            Logger.Info($"{state}");
             string value = "Idle";
             int interval = 100;
             switch (state)
             {
                 case PlayerState.Prepared:
-                    Player.Start();
-                    playbackTimer = new Timer(
-                        callback: new TimerCallback(UpdatePlayTime),
-                        state: seekLogic.CurrentPositionUI,
-                        dueTime: 0,
-                        period: interval);
+                    Player?.Start();
+                    playbackTimer?.Change(0, interval); //resume progress info update
                     value = "Prepared";
                     break;
+
                 case PlayerState.Playing:
                     value = "Playing";
-                    playbackTimer.Change(0, interval); //resume progress info update
+                    playbackTimer?.Change(0, interval); //resume progress info update
                     break;
                 case PlayerState.Paused:
                     value = "Paused";
-                    playbackTimer.Change(Timeout.Infinite, Timeout.Infinite); //suspend progress info update
+                    playbackTimer?.Change(Timeout.Infinite, Timeout.Infinite); //suspend progress info update
                     break;
+
+                // "Stop" clears active Player preventing dispatch of extra stop calls.
                 case PlayerState.Idle:
-                    playbackTimer?.Dispose();
+                    playbackTimer?.Change(Timeout.Infinite, Timeout.Infinite); //suspend progress info update
                     break;
             }
+
+            Logger.Info($"onPlayerStateChanged('{value}')");
             var param = new JObject();
             param.Add("State", value);
             SendEvent("onPlayerStateChanged", param);
         }
+
         private void OnPlaybackCompleted()
         {
+            Logger.Info("");
             var param = new JObject();
             param.Add("State", "Completed");
             SendEvent("onPlaybackCompleted", param);
         }
         private void DisposePlayerSubscribers()
         {
+            Logger.Info("");
             playerStateChangeSub?.Dispose();
             playbackErrorsSub?.Dispose();
             bufferingProgressSub?.Dispose();
@@ -148,13 +160,19 @@ namespace JuvoReactNative
             DisposePlayerSubscribers();
             seekCompletedSub.Dispose();
             deepLinkSub?.Dispose();
+            playbackTimer?.Dispose();
+            playbackTimer = null;
+            Player?.Dispose();
+            Player = null;
         }
         public void OnResume()
         {
+            Logger.Info("");
             Player?.Resume();
         }
         public void OnSuspend()
         {
+            Logger.Info("");
             Player?.Suspend();
         }
 
@@ -262,6 +280,8 @@ namespace JuvoReactNative
         [ReactMethod]
         public void StartPlayback(string videoURI, string drmDatasJSON, string streamingProtocol)
         {
+            Logger.Info("");
+
             try
             {
                 var drmDataList = (drmDatasJSON != null) ? JuvoPlayer.Utils.JSONFileReader.DeserializeJsonText<List<DRMDescription>>(drmDatasJSON) : new List<DRMDescription>();
@@ -279,23 +299,27 @@ namespace JuvoReactNative
         [ReactMethod]
         public void StopPlayback()
         {
-            playbackTimer?.Dispose();
-            Player?.Stop();
-            DisposePlayerSubscribers();
-            Player?.Dispose();
-            Player = null;
+            if (Player == null)
+                return;
+
+            Logger.Info("");
+
+            OnDestroy();
             seekLogic.IsSeekAccumulationInProgress = false;
         }
         [ReactMethod]
         public void PauseResumePlayback()
         {
+            if (Player == null)
+                return;
+
             switch (Player.State)
             {
                 case JuvoPlayer.Common.PlayerState.Playing:
-                    Player?.Pause();
+                    Player.Pause();
                     break;
                 case JuvoPlayer.Common.PlayerState.Paused:
-                    Player?.Start();
+                    Player.Start();
                     break;
             }
         }
