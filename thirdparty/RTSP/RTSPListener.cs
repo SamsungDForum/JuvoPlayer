@@ -274,11 +274,12 @@ namespace Rtsp
             // if it it a request  we store the original message
             // and we renumber it.
             //TODO handle lost message (for example every minute cleanup old message)
-            if (message is RtspRequest)
+            if (message is RtspRequest requestMsg)
             {
                 // Original message has CSeq set. Make it so.
                 message.CSeq = ++_sequenceNumber;
                 RtspMessage originalMessage = message.Clone() as RtspMessage;
+                ((RtspRequest)originalMessage).ContextData = requestMsg.ContextData;
 
                 lock (_sentMessage)
                 {
