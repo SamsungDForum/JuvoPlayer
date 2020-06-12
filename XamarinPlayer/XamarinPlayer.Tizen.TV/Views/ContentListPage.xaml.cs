@@ -96,6 +96,8 @@ namespace XamarinPlayer.Tizen.TV.Views
             SetBinding(ContentDataListProperty, new Binding(nameof(ContentListPageViewModel.ContentList)));
             SetBinding(FocusedContentProperty, new Binding(nameof(ContentListPageViewModel.CurrentContent)));
 
+            MessagingCenter.Subscribe<IEventSender, string>(this, "Pop",
+                async (s, e) => { await Navigation.PopAsync(); });
             var cacheService = DependencyService.Get<ISKBitmapCacheService>();
             _skBitmapCache = cacheService.GetCache();
 
@@ -116,7 +118,7 @@ namespace XamarinPlayer.Tizen.TV.Views
             ++_pendingUpdatesCount;
             await Task.Delay(TimeSpan.FromSeconds(1));
             --_pendingUpdatesCount;
-            if (_pendingUpdatesCount > 0) return;
+            if (_pendingUpdatesCount > 0 || FocusedContent == null) return;
 
             ContentTitle.Text = (FocusedContent as DetailContentData)?.Title;
             ContentDesc.Text = (FocusedContent as DetailContentData)?.Description;
@@ -143,6 +145,7 @@ namespace XamarinPlayer.Tizen.TV.Views
             base.OnDisappearing();
             MessagingCenter.Unsubscribe<IKeyEventSender, string>(this, "KeyDown");
             _contentGridController.Unsubscribe();
+            (BindingContext as ContentListPageViewModel)?.DisposeCommand.Execute(null);
         }
 
         private enum KeyCode

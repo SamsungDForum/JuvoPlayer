@@ -15,10 +15,14 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+using System;
 using System.Collections.Generic;
 using System.ComponentModel;
 using System.Linq;
+using System.Reactive.Disposables;
+using System.Reactive.Linq;
 using System.Runtime.CompilerServices;
+using System.Threading;
 using System.Threading.Tasks;
 using System.Windows.Input;
 using Xamarin.Forms;
@@ -27,31 +31,44 @@ using XamarinPlayer.Tizen.TV.Services;
 
 namespace XamarinPlayer.Tizen.TV.ViewModels
 {
-    internal class ContentListPageViewModel : INotifyPropertyChanged
+    internal class ContentListPageViewModel : INotifyPropertyChanged, IEventSender, IDisposable
     {
+        private IClipReaderService _clipReader;
+        private IDialogService _dialog;
+        private readonly CompositeDisposable _subscriptions;
+
         private DetailContentData _currentContent;
         private List<DetailContentData> _contentList;
-        private bool _isBusy = true;
+        private bool _isActive;
 
         public event PropertyChangedEventHandler PropertyChanged;
         public ICommand NextCommand => new Command(Next);
         public ICommand PreviousCommand => new Command(Previous);
         public ICommand ActivateCommand => new Command(Activate);
         public ICommand DeactivateCommand => new Command(Deactivate);
+        public ICommand DisposeCommand => new Command(Dispose);
 
-        public ContentListPageViewModel()
+        public ContentListPageViewModel(IDialogService dialog)
         {
+            _dialog = dialog;
+            _clipReader = DependencyService.Get<IClipReaderService>(DependencyFetchTarget.NewInstance);
+            _subscriptions = new CompositeDisposable
+            {
+                _clipReader.ClipReaderError()
+                    .ObserveOn(SynchronizationContext.Current)
+                    .Subscribe(async message => await OnReadError(message))
+            };
             Task.Run(PrepareContent);
         }
 
-        public bool IsBusy
+        public bool IsActive
         {
-            get => _isBusy;
+            get => _isActive;
             set
             {
-                if (_isBusy == value)
+                if (_isActive == value)
                     return;
-                _isBusy = value;
+                _isActive = value;
                 OnPropertyChanged();
             }
         }
@@ -80,9 +97,9 @@ namespace XamarinPlayer.Tizen.TV.ViewModels
             }
         }
 
-        private void PrepareContent()
+        private async void PrepareContent()
         {
-            var clips = DependencyService.Get<IClipReaderService>(DependencyFetchTarget.NewInstance).ReadClips().Result;
+            var clips = await _clipReader.ReadClips();
 
             ContentList = clips.Select(o => new DetailContentData
             {
@@ -95,7 +112,7 @@ namespace XamarinPlayer.Tizen.TV.ViewModels
                 TilePreviewPath = o.TilePreviewPath
             }).ToList();
             CurrentContent = ContentList.Count == 0 ? null : ContentList[0];
-            IsBusy = false;
+            IsActive = true;
         }
 
         private void Next()
@@ -116,17 +133,29 @@ namespace XamarinPlayer.Tizen.TV.ViewModels
 
         private void Activate()
         {
-            IsBusy = false;
+            IsActive = true;
         }
 
         private void Deactivate()
         {
-            IsBusy = true;
+            IsActive = false;
+        }
+
+        private async Task OnReadError(string message)
+        {
+            if (!string.IsNullOrEmpty(message))
+                await _dialog.ShowError(message, "Clips Reading Error", "OK",
+                    () => MessagingCenter.Send<IEventSender, string>(this, "Pop", null));
         }
 
         private void OnPropertyChanged([CallerMemberName] string propertyName = null)
         {
             PropertyChanged?.Invoke(this, new PropertyChangedEventArgs(propertyName));
+        }
+
+        public void Dispose()
+        {
+            _subscriptions.Dispose();
         }
     }
 }

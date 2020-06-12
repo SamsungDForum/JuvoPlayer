@@ -15,8 +15,10 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reactive.Subjects;
 using System.Threading.Tasks;
 using Configuration;
 using JuvoPlayer.Common;
@@ -31,31 +33,47 @@ namespace XamarinPlayer.Tizen.TV.Services
 {
     internal class ClipReaderService : IClipReaderService
     {
+        private readonly Subject<string> _clipReaderErrorSubject = new Subject<string>();
+
         public Task<List<Clip>> ReadClips()
         {
             return Task.Run(async () =>
             {
-                using (var resource = ResourceFactory.Create(Paths.VideoClipJsonPath))
+                try
                 {
-                    var content = await resource.ReadAsStringAsync();
-                    return JSONFileReader.DeserializeJsonText<List<ClipDefinition>>(content).Select(o =>
+                    using (var resource = ResourceFactory.Create(Paths.VideoClipJsonPath))
                     {
-                        if (o.SeekPreviewPath != null)
-                            o.SeekPreviewPath = resource.Resolve(o.SeekPreviewPath).AbsolutePath;
-                        if (o.TilePreviewPath != null)
-                            o.TilePreviewPath = resource.Resolve(o.TilePreviewPath).AbsolutePath;
-                        o.Poster = resource.Resolve(o.Poster).AbsolutePath;
-
-                        var clip = new Clip
+                        var content = await resource.ReadAsStringAsync();
+                        return JSONFileReader.DeserializeJsonText<List<ClipDefinition>>(content).Select(o =>
                         {
-                            Image = o.Poster, Description = o.Description, Source = o.Url,
-                            Title = o.Title,
-                            ClipDetailsHandle = o, TilePreviewPath = o.TilePreviewPath
-                        };
-                        return clip;
-                    }).ToList();
+                            if (o.SeekPreviewPath != null)
+                                o.SeekPreviewPath = resource.Resolve(o.SeekPreviewPath).AbsolutePath;
+                            if (o.TilePreviewPath != null)
+                                o.TilePreviewPath = resource.Resolve(o.TilePreviewPath).AbsolutePath;
+                            o.Poster = resource.Resolve(o.Poster).AbsolutePath;
+
+                            var clip = new Clip
+                            {
+                                Image = o.Poster, Description = o.Description, Source = o.Url,
+                                Title = o.Title,
+                                ClipDetailsHandle = o, TilePreviewPath = o.TilePreviewPath
+                            };
+                            return clip;
+                        }).ToList();
+                    }
                 }
+                catch (Exception e)
+                {
+                    _clipReaderErrorSubject.OnNext(e.Message);
+                }
+
+                return new List<Clip>();
             });
+        }
+
+        public IObservable<string> ClipReaderError()
+        {
+            return _clipReaderErrorSubject;
         }
     }
 }
