@@ -19,6 +19,7 @@ using System.Threading.Tasks;
 using JuvoLogger;
 using Xamarin.Forms;
 using XamarinPlayer.Tizen.TV.Services;
+using XamarinPlayer.Tizen.TV.ViewModels;
 using XamarinPlayer.Tizen.TV.Views;
 
 namespace XamarinPlayer.Tizen.TV
@@ -36,7 +37,10 @@ namespace XamarinPlayer.Tizen.TV
         {
             MainPage = new NavigationPage();
             AppMainPage = MainPage as NavigationPage;
-            ContentPage = new ContentListPage(AppMainPage);
+            ContentPage = new ContentListPage(AppMainPage)
+            {
+                BindingContext = new ContentListPageViewModel(new DialogService())
+            };
             AppMainPage.PushAsync(ContentPage);
         }
 
