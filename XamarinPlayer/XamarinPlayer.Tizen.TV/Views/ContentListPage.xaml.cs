@@ -49,7 +49,7 @@ namespace XamarinPlayer.Tizen.TV.Views
                     {
                         page._contentGridController.SetItemsSource((List<DetailContentData>) newValue);
                         page.UpdateContentInfo();
-                        page.ContentLoaded.SetResult(true);
+                        page._contentListLoaded.SetResult(true);
                     }
                 });
 
@@ -85,14 +85,13 @@ namespace XamarinPlayer.Tizen.TV.Views
         private readonly SKBitmapCache _skBitmapCache;
         private SKBitmapRefCounted _backgroundBitmap;
         private readonly IContentGridController _contentGridController;
-        public TaskCompletionSource<bool> ContentLoaded = new TaskCompletionSource<bool>();
+        private TaskCompletionSource<bool> _contentListLoaded = new TaskCompletionSource<bool>();
 
         public ContentListPage(NavigationPage page)
         {
             InitializeComponent();
 
             _appMainPage = page;
-
             _contentGridController = new ContentGridController(ContentGrid);
             SetBinding(ContentDataListProperty, new Binding(nameof(ContentListPageViewModel.ContentList)));
             SetBinding(FocusedContentProperty, new Binding(nameof(ContentListPageViewModel.CurrentContent)));
@@ -216,7 +215,7 @@ namespace XamarinPlayer.Tizen.TV.Views
 
         public async Task<bool> HandleUrl(string url)
         {
-            await ContentLoaded.Task;
+            await _contentListLoaded.Task;
             var contentList = (List<DetailContentData>) ContentDataList;
             var data = contentList?.Find(content => content.Source.Equals(url));
             if (data is null)
