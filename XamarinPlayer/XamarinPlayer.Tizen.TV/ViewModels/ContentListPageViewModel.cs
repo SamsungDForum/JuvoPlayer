@@ -36,8 +36,8 @@ namespace XamarinPlayer.Tizen.TV.ViewModels
         public event PropertyChangedEventHandler PropertyChanged;
         public ICommand NextCommand => new Command(Next);
         public ICommand PreviousCommand => new Command(Previous);
-        public ICommand LoadCommand => new Command(Load);
-        public ICommand UnloadCommand => new Command(Unload);
+        public ICommand ActivateCommand => new Command(Activate);
+        public ICommand DeactivateCommand => new Command(Deactivate);
 
         public ContentListPageViewModel()
         {
@@ -114,12 +114,12 @@ namespace XamarinPlayer.Tizen.TV.ViewModels
             CurrentContent = ContentList[index - 1];
         }
 
-        private void Load()
+        private void Activate()
         {
             IsBusy = false;
         }
 
-        private void Unload()
+        private void Deactivate()
         {
             IsBusy = true;
         }
