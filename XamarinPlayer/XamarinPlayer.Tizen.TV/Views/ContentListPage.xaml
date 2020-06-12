@@ -44,11 +44,11 @@
                                 HorizontalScrollBarVisibility="Never"
                                 VerticalScrollBarVisibility="Never"
                                 IsHorizontal="True">
-                    <gg:GenGridView.ItemTemplate>
-                        <DataTemplate>
-                            <controls:ContentItem />
-                        </DataTemplate>
-                    </gg:GenGridView.ItemTemplate>
+                                <gg:GenGridView.ItemTemplate>
+                                    <DataTemplate>
+                                        <controls:ContentItem/>
+                                    </DataTemplate>
+                                </gg:GenGridView.ItemTemplate>
                 </gg:GenGridView>
             </Grid>
         </AbsoluteLayout>

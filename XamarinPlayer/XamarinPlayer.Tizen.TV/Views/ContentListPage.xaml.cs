@@ -214,8 +214,9 @@ namespace XamarinPlayer.Tizen.TV.Views
             ContentGrid.HeightRequest = (height * 0.21);
         }
 
-        public bool HandleUrl(string url)
+        public async Task<bool> HandleUrl(string url)
         {
+            await ContentLoaded.Task;
             var contentList = (List<DetailContentData>) ContentDataList;
             var data = contentList?.Find(content => content.Source.Equals(url));
             if (data is null)

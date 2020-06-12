@@ -82,11 +82,10 @@ namespace XamarinPlayer.Tizen.TV
 
         private static async Task LoadUrlImpl(string url)
         {
-            await ContentPage.ContentLoaded.Task;
             Logger.Info("");
             while (true)
             {
-                if (AppMainPage.CurrentPage is IContentPayloadHandler handler && handler.HandleUrl(url))
+                if (AppMainPage.CurrentPage is IContentPayloadHandler handler && await handler.HandleUrl(url))
                     return;
                 var page = await AppMainPage.PopAsync();
                 if (page == null)
