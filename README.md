@@ -64,11 +64,12 @@ The reference for developers of streaming live TV and VOD Tizen .Net application
 ### Live coding React Native Tizen application
 > It is possible to launch and work on the JuvoReactNative GUI using facebook 'hot module reloading' engine (https://facebook.github.io/react-native/blog/2016/03/24/introducing-hot-reloading.html). To configure it follow the below guide:
 
-### Emulator TV 2019 (Tizen 5.0)
+### Emulator TV 2019, 2020 (Tizen 5.x)
   1. Launch TV emulator. 
+ 
   > JuvoReactNative application contains complementary binaries for ARM and x86. They are located in subfolders with the appropriate names. The React native Tizen applications based on the default template do not follow this rule. Launching it on emulator needs actions mentioned here: https://github.com/Samsung/react-native-tizen-dotnet/issues/18#issuecomment-521515750
 
-  2. Set the port redirection in 'Emulator control panel->Network' menu: 
+  1. Set the port redirection in 'Emulator control panel->Network' menu: 
      * Source (Local host) port = 9998 (can be any free value but the same as in the "config"->"tvip" port)
      * to destination  (10.0.2.15) port = 8081 (npm server port)
 
@@ -106,9 +107,62 @@ From now on You can modify JavaScript part of the application code and see the u
 
 3. Includes all the steps from 4. to 10. described previously in the 'Launch TV emulator' section.
 
+## Debugging
+JuvoLogger.Udp allows JuvoPlayer log capture, via UDP, from devices which do not provide access to console logging. Usage of UDP logger does not require application rebuild. It does require amendment of logger.config file.
+* Editing in source code tree, logger.config is located in:
+  * <application_root>/XamarinPlayer/XamarinPlayer.Tizen.TV/res
+  * <application_root>/JuvoPlayer.OpenGL/res
+  * <application_root>/JuvoReactNative/Tizen/res
+
+To make the logger work follow the steps:
+1. Enable Udp logging by adding the listening port value to config file. Port# defines listening port (example port: 2222) to which client can "connect to"
+```javascript
+  JuvoPlayer=Info
+  UdpPort=<Port#>  
+  ```
+2. Start application or build and launch
+3. In order to connect to device, use any UDP client software, like netcat (https://nmap.org/ncat/). 
+
+4. Connect to JuvoPlayer typing with Your PC CLI and confirm by enter key:
+```javascript
+  ncat -u <IP of device> <Port>
+  ```
+>  
+> Upon connection, send any data to JuvoPlayer to "connect to" logging service. If everything is working fine, following information should be received by the client: 
+> 
+ ```javascript
+    ****************************
+    *   JuvoPlayer UDP logger  *
+    *                          * 
+    * 1 UDP packet to:         *
+    *   - stop output          *
+    *     logs will be dropped *
+    *   - start output         *
+    *   - hijack connection    *
+    ****************************
+    *         Started          *
+    ****************************
+  ```
+> Hint
+> 
+>  It happens that on Windows 10 (ncat), more than just one 'enter' click is needed to see the log messages on the screen. Please, try to confirm connection several times if it fails at first.
+
+
 ## Release notes
+**JuvoPlayer 1.5.4 (beta)**
+### Features:
+* All features of the JuvoPlayer 1.5.3 
+* JuvoReactNative GUI
+  * Fix for defect in switching to another application and back (multitasking) with playback over RTSP.
+* JuvoPlayer backend
+  * Workaround for the 'playback start operation results in the app crash run on 2020 TV emulator (Tizen 5.5)' issue. This patch gonna be included until the Tizen TV emulator is ready to use the fixed elementary stream player API. With this patch all the JuvoPlayer GUI apps can play video with the Tizen 5.5 TV (2020) emulator. 
+  * The logger.UDP module for collecting messages from the retail TV devices. The module works in readonly mode and provides messages signaled inside the JuvoPlayer code. See more in the 'Debugging' section.
+### Known issues:
+* Right after the finishing seek in HLS streams there is a short video pause until the audio catch up. It is a result of FFmpeg 'seek' function specific.
+
+
 **JuvoPlayer 1.5.3 (beta)**
-### 1. Features:
+### Features:
 * All features of the JuvoPlayer 1.5.1
 * Support for Tizen.Sdk version up to 1.0.9
 * Xamarin UI and OpenGL: Common resources (tiles, videoclips.json) excluded to a separate project.
@@ -124,13 +178,13 @@ From now on You can modify JavaScript part of the application code and see the u
   * DASH representation change during segment download
   * Stability improvements in switching to another application and back (multitasking).
   * Fix for the issue: 'FFW and REW operations on the sample 4K HEVC video does not end'.
-### 2. Known issues:
+### Known issues:
 * Switching to another application and back (multitasking) does not work with playback over RTSP.
 * Right after the finishing seek in HLS streams there is a short video pause until the audio catch up. It is a result of FFmpeg 'seek' function specific.
 * The playback start operation results in the app crash run on 2020 TV emulator (Tizen 5.5). Issue discovered in the TV platform API. It does not appear on actual 2020 TV set hardware. Fix is expected with the next Tizen SDK release.
 
 **JuvoPlayer 1.5.1 (beta)**
-### 1. Features:
+### Features:
 * All features of the JuvoPlayer 1.5.0
 * JuvoReactNative GUI 
   * Smart Hub preview deeplinks launching
@@ -143,7 +197,7 @@ From now on You can modify JavaScript part of the application code and see the u
   * Buffering event notification issue fix
   * Missing seek completion signaling issue fix
   * Switching off the MPEG DASH adaptive streaming when run on the TV emulator. It makes playback stick to the lowest quality representation but improves comfort of testing on the emulator.
-### 2. Known issues:
+### Known issues:
 * Right after the finishing seek in HLS streams there is a short video pause until the audio catch up. It is a result of FFmpeg 'seek' function specific.
 * JuvoReactNative GUI playback settings view does not support setting default values (limitation of the React Native Tizen's Picker component).
 * JuvoReactNative GUI does not resume playback after switching from another app (no support for multitasking).
@@ -151,13 +205,13 @@ From now on You can modify JavaScript part of the application code and see the u
 * The FFW and REW operations on MPEG DASH sample videos result in app crash on the 2020 TV emulator (Tizen 5.5).
 
 **JuvoPlayer 1.5.0 (beta)**
-### 1. Features:
+### Features:
 * All features of the JuvoPlayer 1.4.9
 * JuvoReactNative GUI - based on React Native Tizen project https://github.com/Samsung/react-native-tizen-dotnet
 * JuvoPlayerXamarin JuvoPlayerOpenGL animation and picture loading performance improvements.
 * Bixby (voice control) basic playback functions (JuvoPlayerXamarin, JuvoPlayerOpenGL, JuvoReactNative )
 * JuvoPlayer backend stability and performance improvements 
-### 2. Known issues:
+### Known issues:
 * Right after the finishing seek in HLS streams there is a short video pause until the audio catch up. It is a result of FFmpeg 'seek' function specific.
 * JuvoReactNative seek in HLS, HTTP streams does not hide the activity indicator (missing seek completion signaling).
 * JuvoReactNative GUI does not support deeplinked shortcuts for SmartHub preview feature.
@@ -165,56 +219,56 @@ From now on You can modify JavaScript part of the application code and see the u
 * JuvoReactNative GUI does not resume playback after switching from another app (no multitasking).
 
 **JuvoPlayer 1.4.9 (beta)**
-### 1. Features:
+### Features:
 * All features of the JuvoPlayer 1.4.8
 * JuvoPlayer backend stability improvements 
-### 2. Known issues:
+### Known issues:
 * Right after the finishing seek in HLS streams there is a short video pause until the audio catch up. It is a result of FFmpeg 'seek' function specific.
   
 **JuvoPlayer 1.4.8 (beta)**
-### 1. Features:
+### Features:
 * All features of the JuvoPlayer 1.4.7
 * JuvoPlayer backend stability improvements
 * Multitasking issue solved (see known issues in v1.4.7)
 * HLS and MP4 over HTTP seek in stream (FFW, REW) function implementation.
-### 2. Known issues:
+### Known issues:
 * Right after the finishing seek in HLS streams there is a short video pause until the audio catch up. It is a result of FFmpeg 'seek' function specific.
 
 **JuvoPlayer 1.4.7 (beta)**
-### 1. Features:
+### Features:
 * All features of the JuvoPlayer 1.4.6
 * Static splash screens for Open GL and Xamarin GUIs
 * JuvoPlayer backend stability improvements
-### 2. Known issues:
+### Known issues:
 * Multitasking - switching between runing apps - video sometimes do not recover
 
 **JuvoPlayer 1.4.6 (beta)**
-### 1. Features:
+### Features:
 * All features of the JuvoPlayer 1.4.5
 * Update - sync with the original GitHub project - of the RTSP module code (see dependencies)
 * Memory management optimizations (stability improvements)
 * Support for x86 processors architecture (TV emulator)
 * SimplePlayer GUI project added for illustrating simple playback scenario
-### 2. Known issues:
+### Known issues:
 * Multitasking - switching between runing apps - video sometimes do not recover
 
 **JuvoPlayer 1.4.5 (beta)**
-### 1. Features:
+### Features:
 * All features of the JuvoPlayer 1.4.4
 * The FFW and REW 'in progress' on screen notification
 * Live Stream sample change to 'Big Buck Bunny' video clip
-### 2. Known issues:
+### Known issues:
 * RTP/RTSP playback does not start (regresion)
 * Not enoght memory for UHD Widevine DRMed video (Tears of steel)
 * Multitasking - switching between runing apps - video sometimes do not recover
 
 **JuvoPlayer 1.4.4 (beta)** 
-### 1. Features:
+### Features:
 * All features of the JuvoPlayer 1.4.3
 * The Smart Hub Preview related modifications (deep links backend change)
 * Multitasking requirement implementation (https://developer.samsung.com/tv/develop/guides/fundamentals/multitasking)
 * Widevine DRMed content playback (unstable)
-### 2. Known issues:
+### Known issues:
 * RTP/RTSP playback does not start (regresion)
 * Not enoght memory for UHD Widevine DRMed video (Tears of steel)
 * Multitasking - switching between runing apps - video sometimes do not recover
