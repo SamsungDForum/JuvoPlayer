@@ -41,7 +41,7 @@ namespace XamarinPlayer.Tizen.TV.ViewModels
 
         public ContentListPageViewModel()
         {
-            PrepareContent();
+            Task.Run(PrepareContent);
         }
 
         public bool IsBusy
@@ -80,9 +80,8 @@ namespace XamarinPlayer.Tizen.TV.ViewModels
             }
         }
 
-        private async void PrepareContent()
+        private void PrepareContent()
         {
-            await Task.Yield();
             var clips = DependencyService.Get<IClipReaderService>(DependencyFetchTarget.NewInstance).ReadClips().Result;
 
             ContentList = clips.Select(o => new DetailContentData
@@ -95,7 +94,7 @@ namespace XamarinPlayer.Tizen.TV.ViewModels
                 Title = o.Title,
                 TilePreviewPath = o.TilePreviewPath
             }).ToList();
-            CurrentContent = ContentList == null || ContentList.Count == 0 ? null : ContentList[0];
+            CurrentContent = ContentList.Count == 0 ? null : ContentList[0];
             IsBusy = false;
         }
 
