@@ -220,7 +220,7 @@ namespace XamarinPlayer.Tizen.TV.Views
             var data = contentList?.Find(content => content.Source.Equals(url));
             if (data is null)
                 return false;
-            (BindingContext as ContentListPageViewModel)?.UnloadCommand.Execute(null);
+            (BindingContext as ContentListPageViewModel)?.DeactivateCommand.Execute(null);
             _contentGridController.SetFocusedContent(data);
             SelectContent(data);
             return true;
@@ -230,7 +230,7 @@ namespace XamarinPlayer.Tizen.TV.Views
         {
             UpdateContentInfo();
             await ContentSelected(data);
-            (BindingContext as ContentListPageViewModel)?.LoadCommand.Execute(null);
+            (BindingContext as ContentListPageViewModel)?.ActivateCommand.Execute(null);
         }
 
         public void Suspend()
