@@ -20,8 +20,6 @@ using System.Reactive.Linq;
 using System.Reactive.Threading.Tasks;
 using System.Threading.Tasks;
 using JuvoLogger;
-using JuvoPlayer.Common;
-using JuvoPlayer.Player.EsPlayer;
 
 namespace JuvoPlayer.Tests.Utils
 {
@@ -56,7 +54,7 @@ namespace JuvoPlayer.Tests.Utils
             SeekPosition = newSeekPos - TimeSpan.FromMilliseconds(newSeekPos.Milliseconds);
         }
 
-        private static Task GetPositionReachedTask(TestContext context, TimeSpan targetClock)
+        private Task GetPositionReachedTask(TestContext context, TimeSpan targetClock)
         {
             return context.Service
                 .PlayerClock()
@@ -66,7 +64,6 @@ namespace JuvoPlayer.Tests.Utils
                     var diffMs = Math.Abs((clk - targetClock).TotalMilliseconds);
                     return diffMs <= 500;
                 })
-                .Timeout(context.Timeout)
                 .ToTask(context.Token);
         }
 
@@ -74,24 +71,30 @@ namespace JuvoPlayer.Tests.Utils
         {
             var service = context.Service;
 
-            _logger.Info($"Seeking to {SeekPosition}");
+            var positionTask = GetPositionReachedTask(context, SeekPosition);
+            var seekTask = service.SeekTo(SeekPosition);
 
             try
             {
-                var positionReachedTask = GetPositionReachedTask(context, SeekPosition);
-                var seekTask = service.SeekTo(SeekPosition);
+                if (context.Timeout != TimeSpan.Zero)
+                {
+                    seekTask = seekTask.WithTimeout(context.Timeout);
+                    positionTask = positionTask.WithTimeout(context.Timeout);
+                }
 
-                await seekTask.WithTimeout(context.Timeout).ConfigureAwait(false);
-                await positionReachedTask.ConfigureAwait(false);
+                // Await seek & position individually. Seek failures may be expected
+                // under certain circumstance.
+                await seekTask.WithCancellation(context.Token);
+                await positionTask.WithCancellation(context.Token);
             }
-            catch (SeekException)
+            catch (Exception)
             {
-                // Ignore
+                _logger.Error($"Seek To {SeekPosition} SeekTask: {seekTask.Status} PositionTask: {positionTask.Status}");
+                throw;
             }
-
         }
 
-        private static TimeSpan RandomSeekTime(IPlayerService service)
+        private TimeSpan RandomSeekTime(IPlayerService service)
         {
             var rand = new Random();
             return TimeSpan.FromSeconds(rand.Next((int)service.Duration.TotalSeconds - 10));

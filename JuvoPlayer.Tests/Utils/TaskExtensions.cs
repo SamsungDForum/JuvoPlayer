@@ -17,6 +17,8 @@
  *
  */
 
+using System;
+using System.Threading;
 using System.Threading.Tasks;
 
 namespace JuvoPlayer.Tests.Utils
@@ -32,6 +34,41 @@ namespace JuvoPlayer.Tests.Utils
         {
             var tcs = new TaskCompletionSource<T>();
             return tcs.Task;
+        }
+
+        public static async Task<T> WithCancellation<T>(this Task<T> nonCancellable, CancellationToken token)
+        {
+            var tcs = new TaskCompletionSource<bool>();
+            using (token.Register(
+                s => ((TaskCompletionSource<bool>)s).TrySetResult(true), tcs))
+            {
+                if (nonCancellable != await Task.WhenAny(nonCancellable, tcs.Task).ConfigureAwait(false))
+                    throw new OperationCanceledException(token.ToString());
+            }
+
+            return await nonCancellable;
+        }
+
+        public static async Task WithCancellation(this Task nonCancellable, CancellationToken token)
+        {
+            var tcs = new TaskCompletionSource<bool>();
+            using (token.Register(
+                s => ((TaskCompletionSource<bool>)s).TrySetResult(true), tcs))
+            {
+                if (nonCancellable != await Task.WhenAny(nonCancellable, tcs.Task).ConfigureAwait(false))
+                    throw new OperationCanceledException(token.ToString());
+            }
+
+            await nonCancellable;
+        }
+
+        public static async Task WithTimeout(this Task nonCancellable, TimeSpan timeout)
+        {
+            using (var cts = new CancellationTokenSource())
+            {
+                cts.CancelAfter(timeout);
+                await nonCancellable.WithCancellation(cts.Token);
+            }
         }
     }
 }

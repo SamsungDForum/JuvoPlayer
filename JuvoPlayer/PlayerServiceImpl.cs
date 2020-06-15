@@ -64,12 +64,13 @@ namespace JuvoPlayer
 
         // Dispatch PlayerState through behavior subject. Any "late subscribers" will receive
         // current state upon subscription.
-        private readonly Subject<PlayerState> _playerStateSubject = new Subject<PlayerState>();
+        private readonly ReplaySubject<PlayerState> _playerStateSubject = new ReplaySubject<PlayerState>(1);
         private readonly Subject<string> _playerErrorSubject = new Subject<string>();
-        private readonly Subject<int> _playerBufferingSubject = new Subject<int>();
+        private readonly ReplaySubject<int> _playerBufferingSubject = new ReplaySubject<int>(1);
         private readonly Subject<TimeSpan> _playerClockSubject = new Subject<TimeSpan>();
-
         private readonly SynchronizationContext _syncCtx;
+
+        private IPlayer _player;
 
         public PlayerServiceImpl()
         {
@@ -108,29 +109,33 @@ namespace JuvoPlayer
         {
             if (playerWindow == null)
                 playerWindow = WindowUtils.CreateElmSharpWindow();
-            var player = new EsPlayer(playerWindow);
+            _player = new EsPlayer(playerWindow);
 
-            playerController = new PlayerController(player, drmManager);
+            playerController = new PlayerController(_player, drmManager);
         }
 
         private void ConnectPlayerControllerObservables()
         {
             _playerControllerConnections = new CompositeDisposable
             {
-                playerController.StateChanged().Subscribe(SetState,_syncCtx),
-                playerController.StateChanged().Subscribe(_playerStateSubject),
+                playerController.StateChanged().Subscribe(SetState,_playerStateSubject.OnCompleted,_syncCtx),
                 playerController.PlaybackError().Subscribe( _playerErrorSubject),
                 playerController.BufferingProgress().Subscribe(_playerBufferingSubject),
-                playerController.PlayerClock().Subscribe(_playerClockSubject),
-                playerController.TimeUpdated().Subscribe(SetClock,_syncCtx)
+                playerController.TimeUpdated().Subscribe(SetClock,_syncCtx),
             };
         }
 
-        private void SetClock(TimeSpan clock) =>
+        private void SetClock(TimeSpan clock)
+        {
             CurrentPosition = clock;
+            _playerClockSubject.OnNext(clock);
+        }
 
-        private void SetState(PlayerState state) =>
+        private void SetState(PlayerState state)
+        {
             State = state;
+            _playerStateSubject.OnNext(State);
+        }
 
         public void Pause()
         {
@@ -142,18 +147,20 @@ namespace JuvoPlayer
             return playerController.OnSeek(to);
         }
 
-        public async Task ChangeActiveStream(StreamDescription streamDescription)
+        public Task ChangeActiveStream(StreamDescription streamDescription)
         {
-            // Change stream and seek to "current time". Forces new presentation to be played as soon as
-            // seek completes.
-            var canReposition = dataProvider.ChangeActiveStream(streamDescription)
-                                && dataProvider.IsSeekingSupported()
-                                && (streamDescription.StreamType == StreamType.Video || streamDescription.StreamType == StreamType.Audio);
+            Logger.Info($"ChangeActiveStream {streamDescription.StreamType} {streamDescription.Id} {streamDescription.Description}");
 
-            if (!canReposition)
-                return;
+            var isAV = streamDescription.StreamType == StreamType.Audio ||
+                       streamDescription.StreamType == StreamType.Video;
 
-            await SeekTo(CurrentPosition);
+            if (!isAV)
+            {
+                dataProvider.ChangeActiveStream(streamDescription);
+                return Task.CompletedTask;
+            }
+
+            return playerController.OnRepresentationChanged(streamDescription);
         }
 
         public void DeactivateStream(StreamType streamType)

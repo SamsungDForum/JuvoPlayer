@@ -97,7 +97,6 @@ namespace JuvoPlayer.Demuxers.FFmpeg
         private ClipConfiguration InitDemuxer(Action initAction)
         {
             ffmpegGlue.Initialize();
-
             initAction();
 
             var clipConfiguration = new ClipConfiguration();
@@ -146,6 +145,11 @@ namespace JuvoPlayer.Demuxers.FFmpeg
             catch (FFmpegException ex)
             {
                 DeallocFFmpeg();
+
+                // Report init errors resulting from reset as cancellation
+                if (cancellationTokenSource.IsCancellationRequested)
+                    throw new TaskCanceledException();
+
                 Logger.Error(ex);
                 throw new DemuxerException("Cannot open formatContext", ex);
             }

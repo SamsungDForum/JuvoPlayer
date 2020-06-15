@@ -32,8 +32,10 @@ namespace JuvoPlayer.Player.EsPlayer
         private static readonly ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
 
         private PlayerClockFn _playerClock = InvalidClockFn;
-        public TimeSpan LastClock { get; private set; } = InvalidClock;
 
+        public TimeSpan LastClock { get; private set; }
+        public TimeSpan? PendingClock { get; set; }
+        public TimeSpan PendingOrLastClock => PendingClock ?? LastClock;
         private readonly IScheduler _scheduler;
         private IDisposable _playerClockSourceConnection;
         private readonly IConnectableObservable<TimeSpan> _playerClockConnectable;
@@ -46,11 +48,17 @@ namespace JuvoPlayer.Player.EsPlayer
             _playerClockConnectable = Observable.Interval(ClockInterval, _scheduler)
                     .TakeWhile(_ => !_isDisposed)
                     .Select(_ => _playerClock())
-                    .Where(clkValue => clkValue >= LastClock)
-                    .Do(clkValue => LastClock = clkValue)
+                    .Where(clkValue => clkValue > LastClock)
+                    .Do(SetClock)
                     .Publish();
         }
 
+        private void SetClock(TimeSpan clock)
+        {
+            LastClock = clock;
+            if (LastClock > PendingClock)
+                PendingClock = null;
+        }
         public IObservable<TimeSpan> PlayerClockObservable()
         {
             return _playerClockConnectable.AsObservable();
@@ -82,12 +90,10 @@ namespace JuvoPlayer.Player.EsPlayer
             if (_playerClockSourceConnection != null)
                 return;
 
-            var currentClock = _playerClock();
-            if (currentClock > LastClock)
-                LastClock = currentClock;
+            SetClock(_playerClock());
 
             _playerClockSourceConnection = _playerClockConnectable.Connect();
-            Logger.Info($"{currentClock}");
+            Logger.Info($"Player Clock: {LastClock} Pending Clock {PendingClock}");
         }
 
         public void Stop()
@@ -95,6 +101,7 @@ namespace JuvoPlayer.Player.EsPlayer
             _playerClockSourceConnection?.Dispose();
             _playerClockSourceConnection = null;
             LastClock = InvalidClock;
+            PendingClock = null;
             Logger.Info("");
         }
 

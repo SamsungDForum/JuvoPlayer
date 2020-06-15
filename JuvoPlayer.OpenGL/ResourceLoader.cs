@@ -42,7 +42,7 @@ namespace JuvoPlayer.OpenGL
         private readonly SynchronizationContext _synchronizationContext = SynchronizationContext.Current; // If "Current" is null, then the thread's current context is "new SynchronizationContext()", by convention.
         private Action _doAfterFinishedLoading;
 
-        private static ResourceLoader Instance;
+        private static ResourceLoader _instance;
 
         protected ResourceLoader()
         {
@@ -50,7 +50,7 @@ namespace JuvoPlayer.OpenGL
 
         public static ResourceLoader GetInstance()
         {
-            return Instance ?? (Instance = new ResourceLoader());
+            return _instance ?? (_instance = new ResourceLoader());
         }
 
         public async void LoadResources(string fullExecutablePath, Action doAfterFinishedLoading = null)

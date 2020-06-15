@@ -1,4 +1,4 @@
-/*!
+﻿/*!
  * https://github.com/SamsungDForum/JuvoPlayer
  * Copyright 2018, Samsung Electronics Co., Ltd
  * Licensed under the MIT license
@@ -15,7 +15,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-﻿using System;
+ using System;
 using System.Collections.Generic;
 
 namespace JuvoPlayer.OpenGL
@@ -45,8 +45,8 @@ namespace JuvoPlayer.OpenGL
                 });
             }
 
-            if (id <= DllImports.fpsGraphId)
-                return DllImports.wrongGraphId;
+            if (id <= DllImports.FpsGraphId)
+                return DllImports.WrongGraphId;
             _metrics.Add(new Metric
             {
                 Id = id,
@@ -94,7 +94,7 @@ namespace JuvoPlayer.OpenGL
 
         private void UpdateState()
         {
-            DllImports.SetGraphVisibility(DllImports.fpsGraphId, _metricsShown ? 1 : 0);
+            DllImports.SetGraphVisibility(DllImports.FpsGraphId, _metricsShown ? 1 : 0);
             foreach(Metric metric in _metrics)
                 DllImports.SetGraphVisibility(metric.Id, _metricsShown ? 1 : 0);
             DllImports.SetLogConsoleVisibility(_metricsShown ? 1 : 0);

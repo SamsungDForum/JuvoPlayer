@@ -26,7 +26,7 @@ namespace JuvoPlayer.DataProviders
 {
     public interface IDataProvider : IDisposable
     {
-        bool ChangeActiveStream(StreamDescription stream);
+        void ChangeActiveStream(StreamDescription stream);
         void OnDeactivateStream(StreamType streamType);
         void OnStateChanged(PlayerState state);
         void OnStopped();
@@ -39,6 +39,9 @@ namespace JuvoPlayer.DataProviders
         void Start();
         Cue CurrentCue { get; }
         List<StreamDescription> GetStreamsDescription(StreamType streamType);
+        void Pause();
+        void Resume();
+
 
         IObservable<TimeSpan> ClipDurationChanged();
         IObservable<DRMInitData> DRMInitDataFound();

@@ -17,6 +17,7 @@
 
 using System;
 using System.Threading.Tasks;
+using JuvoLogger;
 using JuvoPlayer.Common;
 
 namespace JuvoPlayer.Tests.Utils
@@ -24,6 +25,8 @@ namespace JuvoPlayer.Tests.Utils
     [Serializable]
     public class ChangeRepresentationOperation : TestOperation
     {
+        private readonly ILogger _logger = LoggerManager.GetInstance().GetLogger("UT");
+
         public int Index { get; set; }
         public StreamType StreamType { get; set; }
 
@@ -54,14 +57,29 @@ namespace JuvoPlayer.Tests.Utils
             Index = GetRandomStreamDescriptionIndex(service, StreamType);
         }
 
-        public Task Execute(TestContext context)
+        public async Task Execute(TestContext context)
         {
             var service = context.Service;
             var descriptions = service.GetStreamsDescription(StreamType);
-            if (Index >= 0)
-                service.ChangeActiveStream(descriptions[Index]);
+            if (Index == -1)
+                return;
 
-            return Task.CompletedTask;
+            var changeTask = service.ChangeActiveStream(descriptions[Index]);
+
+            try
+            {
+                if (context.Timeout != TimeSpan.Zero)
+                    changeTask = changeTask.WithTimeout(context.Timeout);
+
+                await changeTask.WithCancellation(context.Token);
+            }
+            catch (Exception e)
+            {
+                _logger.Error(e,
+                    $"State: {changeTask.Status} {descriptions[Index].StreamType} {descriptions[Index].Id} {descriptions[Index].Description}");
+                throw;
+            }
+
         }
 
         private static StreamType GetRandomStreamType()

@@ -43,7 +43,7 @@ namespace Configuration
     public static class DataSynchronizerConfig
     {
         public static TimeSpan PostKeyFrameTransferDuration { get; set; } = TimeSpan.FromSeconds(0.15);
-        public static TimeSpan PreKeyFrameTransferDuration { get; set; } = TimeSpan.FromSeconds(0.3);
+        public static TimeSpan PreKeyFrameTransferDuration { get; set; } = TimeSpan.FromSeconds(0.15);
         public static TimeSpan StreamClockMaximumOverhead { get; set; } = TimeSpan.FromSeconds(1.25);
         public static TimeSpan StreamClockMinimumOverhead { get; set; } = TimeSpan.FromSeconds(0.75);
         public static TimeSpan StreamClockDiscontinuityThreshold { get; set; } = TimeSpan.FromSeconds(0.1);
@@ -77,8 +77,9 @@ namespace Configuration
         public static TimeSpan MaxBufferHealth { get; set; } = TimeSpan.FromSeconds(10);
     }
 
-    public static class RTSPDataProvider
+    public static class RTSPClient
     {
+        public static TimeSpan RtspCommandTimeout { get; set; } = TimeSpan.FromSeconds(2);
         public static TimeSpan ConnectionTimeout { get; set; } = TimeSpan.FromSeconds(2);
     }
 
@@ -116,7 +117,7 @@ namespace Configuration
 
     public static class PlayerControllerConfig
     {
-        public static TimeSpan TimeUpdatedInterval { get; set; } = TimeSpan.FromSeconds(0.5);
+        public static TimeSpan TimeUpdatedInterval { get; set; } = TimeSpan.FromSeconds(0.33);
     }
 
     public static class EsStreamConfig

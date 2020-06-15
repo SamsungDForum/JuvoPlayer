@@ -55,7 +55,6 @@ namespace JuvoPlayer.Player
             {
                 // Increment reference counter on DRM session
                 drmSession.Share();
-
                 encPacket.DrmSession = drmSession;
             }
 

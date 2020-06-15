@@ -15,8 +15,9 @@
     <Company>Samsung Electronics VD</Company>
     <NeutralLanguage>en</NeutralLanguage>
     <Description>JuvoPlayerXamarin.Tizen.TV</Description>
-    <Version>1.5.3</Version>
+    <Version>1.5.4</Version>
     <TizenTpkExcludePattern>runtimes\*\native\*.*;res\storyboards\**\*</TizenTpkExcludePattern>
+    <LangVersion>7.3</LangVersion>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugType>portable</DebugType>
@@ -43,21 +44,16 @@
     <Reference Include="SkiaSharp.Views.Tizen, Version=1.60.0.0, Culture=neutral, PublicKeyToken=0738eb9f132ed756">
       <HintPath>packages\SkiaSharp.Views.Tizen.dll</HintPath>
     </Reference>
-    <Reference Include="FFImageLoading, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null">
-      <HintPath>packages\FFImageLoading.dll</HintPath>
+    <Reference Include="Xamarin.Forms.GenGridView, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null">
+      <HintPath>packages\Xamarin.Forms.GenGridView.dll</HintPath>
     </Reference>
-    <Reference Include="FFImageLoading.Forms, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null">
-      <HintPath>packages\FFImageLoading.Forms.dll</HintPath>
-    </Reference>
-    <Reference Include="FFImageLoading.Forms.Platform, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null">
-      <HintPath>packages\FFImageLoading.Forms.Platform.dll</HintPath>
-    </Reference>
-    <Reference Include="FFImageLoading.Platform, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null">
-      <HintPath>packages\FFImageLoading.Platform.dll</HintPath>
+    <Reference Include="Xamarin.Forms.GenGridView.Tizen, Version=1.0.0.0, Culture=neutral, PublicKeyToken=null">
+      <HintPath>packages\Xamarin.Forms.GenGridView.Tizen.dll</HintPath>
     </Reference>
   </ItemGroup>
   <ItemGroup>
     <ProjectReference Include="..\..\JuvoLogger.Tizen\JuvoLogger.Tizen.csproj" />
+    <ProjectReference Include="..\..\JuvoLogger.Udp\JuvoLogger.Udp.csproj" />
     <ProjectReference Include="..\..\JuvoPlayer\JuvoPlayer.csproj" />
   </ItemGroup>
   <ItemGroup>
