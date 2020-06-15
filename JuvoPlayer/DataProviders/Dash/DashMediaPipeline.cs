@@ -23,13 +23,11 @@ using System.Reactive.Subjects;
 using System.Xml;
 using JuvoLogger;
 using JuvoPlayer.Common;
-using JuvoPlayer.Common.Utils;
 using JuvoPlayer.Demuxers;
 using JuvoPlayer.Drms.Cenc;
 using MpdParser;
 using System.Threading;
 using System.Threading.Tasks;
-using static Configuration.DashMediaPipeline;
 
 namespace JuvoPlayer.DataProviders.Dash
 {
@@ -71,11 +69,6 @@ namespace JuvoPlayer.DataProviders.Dash
 
         private static readonly ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
 
-        /// <summary>
-        /// Holds smaller of the two (PTS/DTS) from the initial packet.
-        /// </summary>
-        private TimeSpan? trimOffset;
-
         private readonly IDashClient dashClient;
         private readonly IDemuxerController demuxerController;
         private readonly IThroughputHistory throughputHistory;
@@ -90,11 +83,6 @@ namespace JuvoPlayer.DataProviders.Dash
 
         private readonly Object switchStreamLock = new Object();
         private List<DashStream> availableStreams = new List<DashStream>();
-
-        private TimeSpan? lastSeek = TimeSpan.Zero;
-
-        private PacketTimeStamp demuxerClock;
-        private PacketTimeStamp lastPushedClock;
 
         private readonly Subject<DRMInitData> drmInitDataSubject = new Subject<DRMInitData>();
         private readonly Subject<DRMDescription> setDrmConfigurationSubject = new Subject<DRMDescription>();
@@ -147,35 +135,17 @@ namespace JuvoPlayer.DataProviders.Dash
             }
             catch (TaskCanceledException ex)
             {
-                Logger.Warn(ex, "Doesn't schedule next segment to download");
+                Logger.Warn(ex, $"{StreamType}: Doesn't schedule next segment to download");
             }
             catch (OperationCanceledException ex)
             {
-                Logger.Warn(ex, "Doesn't schedule next segment to download");
+                Logger.Warn(ex, $"{StreamType}: Doesn't schedule next segment to download");
             }
         }
 
         public Representation GetRepresentation()
         {
             return pendingStream?.Representation ?? currentStream?.Representation;
-        }
-
-        public void SynchronizeWith(DashMediaPipeline synchronizeWith)
-        {
-            var myRepresentation = GetRepresentation();
-            var syncRepresentation = synchronizeWith.GetRepresentation();
-
-            var myGood = myRepresentation != null;
-            var syncGood = syncRepresentation != null;
-
-            if (!myGood || !syncGood)
-                throw new ArgumentNullException(
-                    $"{StreamType}: Null or Failed Init. Representation. {myGood}/{syncGood}");
-
-            myRepresentation.AlignStartSegmentsWith(syncRepresentation);
-
-            Logger.Info(
-                $"Segment Alignment: {StreamType}={myRepresentation.AlignedStartSegmentID} {synchronizeWith.StreamType}={syncRepresentation.AlignedStartSegmentID} TrimOffset={myRepresentation.AlignedTrimOffset}");
         }
 
         public void UpdateMedia(Period period)
@@ -296,12 +266,10 @@ namespace JuvoPlayer.DataProviders.Dash
             Monitor.Enter(switchStreamLock);
             try
             {
-                ResetPipeline();
                 DisableAdaptiveStreaming = true;
+                currentStream = newStream;
                 pendingStream = null;
-
-                StartPipeline(newStream);
-
+                dashClient.UpdateRepresentation(currentStream.Representation);
             }
             finally
             {
@@ -365,22 +333,15 @@ namespace JuvoPlayer.DataProviders.Dash
 
                 dashClient.UpdateRepresentation(currentStream.Representation);
                 ParseDrms(currentStream.Media);
+                PushMetaDataConfiguration();
             }
 
-            if (!trimOffset.HasValue)
-                trimOffset = currentStream.Representation.AlignedTrimOffset;
-
-            var fullInitRequired = (newStream != null);
+            var fullInitRequired = (newStream != null) || DisableAdaptiveStreaming;
 
             demuxerController.StartForEs();
             dashClient.Start(fullInitRequired);
 
             pipelineStarted = true;
-
-            if (newStream != null)
-            {
-                PushMetaDataConfiguration();
-            }
         }
 
         private static AdaptationSet GetDefaultMedia(ICollection<AdaptationSet> medias)
@@ -430,14 +391,8 @@ namespace JuvoPlayer.DataProviders.Dash
 
             ResetPipeline();
 
-            demuxerClock.Reset();
-            lastPushedClock.Reset();
-            lastSeek = TimeSpan.Zero;
-
-            trimOffset = null;
             currentStream = null;
             pendingStream = null;
-
         }
 
         public void OnTimeUpdated(TimeSpan time)
@@ -449,9 +404,7 @@ namespace JuvoPlayer.DataProviders.Dash
         {
             try
             {
-                lastSeek = dashClient.Seek(time);
-                demuxerClock.Reset();
-                return lastSeek.Value;
+                return dashClient.Seek(time);
             }
             catch (ArgumentOutOfRangeException ex)
             {
@@ -478,8 +431,8 @@ namespace JuvoPlayer.DataProviders.Dash
             {
                 Logger.Info($"Selected stream {stream.Id} {stream.Description} already playing. Not changing.");
                 return false;
-
             }
+
 
             SetStream(newStream);
             Logger.Info($"Stream {stream.Id} {stream.Description} set.");
@@ -495,6 +448,7 @@ namespace JuvoPlayer.DataProviders.Dash
 
             // Stop demuxer and dashclient
             dashClient.Reset();
+
             demuxerController.Reset();
             DisposeDemuxerSubscriptions();
             SubscribeDemuxerEvents();
@@ -627,31 +581,8 @@ namespace JuvoPlayer.DataProviders.Dash
         public IObservable<Packet> PacketReady()
         {
             return packetReadySubject.AsObservable()
-                .Select(packet =>
-                {
-                    if (packet == null)
-                        return EOSPacket.Create(StreamType);
-
-                    AdjustDemuxerTimeStampIfNeeded(packet);
-
-                    // Sometimes we can receive invalid timestamp from demuxer
-                    // eg during encrypted content seek or live video.
-                    // Adjust timestamps to avoid playback problems
-                    packet += demuxerClock;
-                    packet -= trimOffset.Value;
-
-                    if (packet.Pts < TimeSpan.Zero || packet.Dts < TimeSpan.Zero)
-                    {
-                        packet.Pts = TimeSpan.Zero;
-                        packet.Dts = TimeSpan.Zero;
-                    }
-
-                    Logger.Debug($"{StreamType} {packet.Pts}");
-
-                    // Don't convert packet here, use assignment (less costly)
-                    lastPushedClock.SetClock(packet);
-                    return packet;
-                }).Where(packet => PacketPredicate == null || PacketPredicate.Invoke(packet));
+                .Select(packet => packet == null ? EOSPacket.Create(StreamType) : packet)
+                .Where(packet => PacketPredicate == null || PacketPredicate.Invoke(packet));
         }
 
         public IObservable<DRMDescription> SetDrmConfiguration()
@@ -668,6 +599,7 @@ namespace JuvoPlayer.DataProviders.Dash
         {
             return demuxerStreamConfigReadySubject
                 .Merge(metaDataStreamConfigSubject).AsObservable();
+
         }
 
         private void DisposeDemuxerSubscriptions()
@@ -777,35 +709,6 @@ namespace JuvoPlayer.DataProviders.Dash
             Logger.Info($"TimeBufferDepth: {bufferSize}");
 
             return bufferSize;
-        }
-
-        private void AdjustDemuxerTimeStampIfNeeded(Packet packet)
-        {
-            if (!lastSeek.HasValue)
-            {
-                if (packet.IsZeroClock())
-                {
-                    // This IS NOT ideal solution to work around reset of PTS/DTS after
-                    demuxerClock = lastPushedClock;
-                    trimOffset = TimeSpan.Zero;
-                    Logger.Info(
-                        $"{StreamType}: Zero timestamped packet. Adjusting demuxerClock: {demuxerClock} trimOffset: {trimOffset.Value}");
-                }
-            }
-            else
-            {
-                if (packet.Pts + SegmentEps < lastSeek)
-                {
-                    // Add last seek value to packet clock. Forcing last seek value looses
-                    // PTS/DTS differences causing lip sync issues.
-                    //
-                    demuxerClock = (PacketTimeStamp)packet + lastSeek.Value;
-
-                    Logger.Warn($"{StreamType}: Badly timestamped packet. Adjusting demuxerClock to: {demuxerClock}");
-                }
-
-                lastSeek = null;
-            }
         }
 
         public void Dispose()

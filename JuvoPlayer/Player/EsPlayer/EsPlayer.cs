@@ -28,8 +28,8 @@ namespace JuvoPlayer.Player.EsPlayer
     {
         private static readonly ILogger logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
 
-        private EsPlayerPacketStorage packetStorage;
-        private EsStreamController streamControl;
+        private readonly EsPlayerPacketStorage packetStorage;
+        private readonly EsStreamController streamControl;
 
         public EsPlayer()
             : this(WindowUtils.CreateElmSharpWindow())
@@ -38,6 +38,7 @@ namespace JuvoPlayer.Player.EsPlayer
 
         public EsPlayer(Window window)
         {
+            EsPlayerExtensions.Init();
             try
             {
                 packetStorage = new EsPlayerPacketStorage();
@@ -47,6 +48,7 @@ namespace JuvoPlayer.Player.EsPlayer
                 streamControl = new EsStreamController(packetStorage, window);
                 streamControl.Initialize(StreamType.Audio);
                 streamControl.Initialize(StreamType.Video);
+
             }
             catch (InvalidOperationException ioe)
             {
@@ -56,8 +58,16 @@ namespace JuvoPlayer.Player.EsPlayer
         }
 
         #region IPlayer Interface Implementation
-        public void AppendPacket(Packet packet) =>
-            streamControl.AppendPacket(packet);
+
+        public Task AppendPacket(Packet packet)
+        {
+            return streamControl.AppendPacket(packet);
+        }
+
+        public Task ChangeRepresentation(object streamRepresentation)
+        {
+            return streamControl.ChangeRepresentation(streamRepresentation);
+        }
 
         public IObservable<PlayerState> StateChanged()
         {

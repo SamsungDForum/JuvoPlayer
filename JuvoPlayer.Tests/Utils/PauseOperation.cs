@@ -16,8 +16,6 @@
  */
 
 using System;
-using System.Reactive.Linq;
-using System.Reactive.Threading.Tasks;
 using System.Threading.Tasks;
 using JuvoPlayer.Common;
 
@@ -43,21 +41,14 @@ namespace JuvoPlayer.Tests.Utils
 
         }
 
-        private static bool IsPauseObserved(PlayerState playerState) =>
-            playerState == PlayerState.Paused;
-
-        public async Task Execute(TestContext context)
+        public Task Execute(TestContext context)
         {
             var service = context.Service;
 
-            var playerStateTask = context.Service
-                .StateChanged()
-                .FirstAsync(IsPauseObserved)
-                .Timeout(context.Timeout)
-                .ToTask(context.Token);
-
             service.Pause();
-            await playerStateTask.ConfigureAwait(false);
+            // Upon state subscription, current state will be replayed to subscriber.
+            // When pausing already paused service, pause state will be replayed.
+            return WaitForState.Observe(service, PlayerState.Paused, context.Token, context.Timeout);
         }
 
     }

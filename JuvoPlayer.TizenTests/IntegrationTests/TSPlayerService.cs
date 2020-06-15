@@ -27,7 +27,6 @@ using System.Threading.Tasks;
 using JuvoLogger;
 using JuvoPlayer.Common;
 using JuvoPlayer.Tests.Utils;
-using JuvoPlayer.Utils;
 using Nito.AsyncEx;
 using NUnit.Framework;
 using TestContext = JuvoPlayer.Tests.Utils.TestContext;
@@ -45,7 +44,7 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
         {
             var applicationPath = Paths.ApplicationPath;
             var clipsPath = Path.Combine(applicationPath, "res", "videoclips.json");
-            return JSONFileReader.DeserializeJsonFile<List<ClipDefinition>>(clipsPath).ToList();
+            return JuvoPlayer.Utils.JSONFileReader.DeserializeJsonFile<List<ClipDefinition>>(clipsPath).ToList();
         }
 
         static TSPlayerServiceTestCaseSource()
@@ -81,7 +80,7 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
     {
         private readonly ILogger _logger = LoggerManager.GetInstance().GetLogger("UT");
 
-        private void RunPlayerTest(string clipTitle, Func<TestContext, Task> testImpl)
+        private void RunPlayerTest(string clipTitle, Func<TestContext, Task> testImpl, bool executeStart = true)
         {
             AsyncContext.Run(async () =>
             {
@@ -108,13 +107,17 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
                                     ? TimeSpan.FromSeconds(40)
                                     : TimeSpan.FromSeconds(20)
                             };
+
                             var prepareOperation = new PrepareOperation();
                             prepareOperation.Prepare(context);
                             await prepareOperation.Execute(context);
 
-                            var startOperation = new StartOperation();
-                            startOperation.Prepare(context);
-                            await startOperation.Execute(context);
+                            if (executeStart)
+                            {
+                                var startOperation = new StartOperation();
+                                startOperation.Prepare(context);
+                                await startOperation.Execute(context);
+                            }
 
                             await testImpl(context);
                         }
@@ -140,13 +143,27 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
         {
             RunPlayerTest(clipTitle, async context =>
             {
-                await context.Service
-                    .PlayerClock()
-                    .FirstAsync(pClock => pClock > TimeSpan.Zero)
-                    .Timeout(context.Timeout)
-                    .ToTask(context.Token)
-                    .ConfigureAwait(false);
+                await RunningClockTask.Observe(context.Service, context.Token, context.Timeout);
             });
+        }
+
+        [Test, TestCaseSource(typeof(TSPlayerServiceTestCaseSource), nameof(TSPlayerServiceTestCaseSource.AllClips))]
+        public void Playback_StartFromThe90thSecond_PreparesAndStarts(string clipTitle)
+        {
+            RunPlayerTest(clipTitle, async context =>
+            {
+                context.SeekTime = TimeSpan.FromSeconds(90);
+                var seekOperation = new SeekOperation();
+                seekOperation.Prepare(context);
+                var seek = seekOperation.Execute(context);
+
+                var startOperation = new StartOperation();
+                startOperation.Prepare(context);
+                await startOperation.Execute(context);
+
+                await seek;
+
+            }, false);
         }
 
         [Test, TestCaseSource(typeof(TSPlayerServiceTestCaseSource), nameof(TSPlayerServiceTestCaseSource.AllClips))]
@@ -227,18 +244,14 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
                 {
                     var clipCompletedTask = service.StateChanged()
                         .AsCompletion()
-                        .Timeout(context.Timeout)
-                        .ToTask();
+                        .ToTask(context.Token)
+                        .WithTimeout(context.Timeout);
 
                     var seekOperation = new SeekOperation();
                     seekOperation.Prepare(context);
                     var seekTask = seekOperation.Execute(context);
 
-                    await await Task.WhenAny(seekTask, clipCompletedTask).ConfigureAwait(false);
-                }
-                catch (SeekException)
-                {
-                    // ignored
+                    await await Task.WhenAny(seekTask, clipCompletedTask);
                 }
                 catch (Exception e)
                 {
@@ -272,8 +285,75 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
                 // Desired clock may never be reached. Wait for desired state changes only.
                 var seekExecution = seekOperation.Execute(context);
 
-                await await Task.WhenAny(clipCompletedTask, playbackErrorTask).ConfigureAwait(false);
+                await await Task.WhenAny(clipCompletedTask, playbackErrorTask);
+            });
+        }
 
+        [TestCase("Clean byte range MPEG DASH")]
+        public void RepresentationChange_DestructiveChange_Succeeds(string clipTitle)
+        {
+            RunPlayerTest(clipTitle, async context =>
+            {
+                var service = context.Service;
+                var descriptions = service.GetStreamsDescription(StreamType.Audio);
+                if (descriptions.Count == 0)
+                    Assert.Ignore("No streams for representation change");
+
+                for (var i = 0; i < descriptions.Count; i++)
+                {
+                    var changeOp = new ChangeRepresentationOperation
+                    {
+                        Index = i,
+                        StreamType = StreamType.Audio
+                    };
+                    var entry = descriptions[i];
+                    _logger.Info($"Changing to {entry.Id} {entry.StreamType} { entry.Description}");
+
+                    await changeOp.Execute(context);
+                    _logger.Info($"Changing to {entry.Id} {entry.StreamType} { entry.Description} Done");
+
+                }
+            });
+        }
+
+        [TestCase("Clean byte range MPEG DASH")]
+        public void RepresentationChange_WhileSeeking_Succeeds(string clipTitle)
+        {
+            RunPlayerTest(clipTitle, async context =>
+            {
+                var streams = new[] { StreamType.Video, StreamType.Audio };
+                var service = context.Service;
+                context.SeekTime = null;    // Perform random seeks.
+                var defaultTimeout = context.Timeout;
+                foreach (var stream in streams)
+                {
+                    var descriptions = service.GetStreamsDescription(stream);
+                    if (descriptions.Count == 0)
+                        continue;
+
+                    for (var i = 0; i < descriptions.Count; i++)
+                    {
+                        var seekOp = new SeekOperation();
+
+                        // Wait for seekOp after ChangeRepresentation executes.
+                        // Otherwise, position task of SeekOp may timeout as position may not be available
+                        // till ChangeRepresentation completes.
+                        context.Timeout = TimeSpan.Zero;
+                        seekOp.Prepare(context);
+                        var seekTask = seekOp.Execute(context);
+                        context.Timeout = defaultTimeout;
+
+                        var changeOp = new ChangeRepresentationOperation
+                        {
+                            Index = i,
+                            StreamType = stream
+                        };
+
+                        var changeTask = changeOp.Execute(context);
+                        seekTask = seekTask.WithTimeout(context.Timeout);
+                        await Task.WhenAll(seekTask, changeTask).WithCancellation(context.Token);
+                    }
+                }
             });
         }
 
@@ -297,6 +377,37 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
             }
         }
 
+        private async Task CompletePendingOperations(TestContext context, IEnumerable<(Task task, Type operationType, DateTimeOffset when)> operations)
+        {
+            var anyFailed = false;
+            foreach (var operation in operations)
+            {
+                try
+                {
+                    _logger.Info($"Completing {operation.operationType} {operation.when}");
+                    await operation.task.WithTimeout(context.Timeout).WithCancellation(context.Token);
+                    _logger.Info($"Completing {operation.operationType} {operation.when} Done");
+                }
+                catch (Exception e)
+                {
+                    if (!context.Token.IsCancellationRequested)
+                    {
+                        anyFailed = true;
+                        _logger.Error($"Completing {operation.operationType} {operation.when} Failed");
+                        _logger.Error(e);
+                    }
+                }
+
+                if (context.Token.IsCancellationRequested)
+                {
+                    if (anyFailed)
+                        throw new Exception("Pending operations failed to complete");
+
+                    // No failures till cancellation request - exit
+                    return;
+                }
+            }
+        }
         private void RunRandomOperationsTest(string clipTitle, IList<TestOperation> operations, bool shouldPrepare)
         {
             RunPlayerTest(clipTitle, async context =>
@@ -304,6 +415,11 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
                 context.RandomMaxDelayTime = TimeSpan.FromSeconds(3);
                 context.DelayTime = TimeSpan.FromSeconds(2);
                 context.Timeout = TSPlayerServiceTestCaseSource.IsEncrypted(clipTitle) ? TimeSpan.FromSeconds(40) : TimeSpan.FromSeconds(20);
+
+                var pendingTasks = new List<(Task task, Type operationType, DateTimeOffset when)>();
+
+                var service = context.Service;
+                var defaultTimeout = context.Timeout;
 
                 foreach (var operation in operations)
                 {
@@ -313,8 +429,60 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
                         operation.Prepare(context);
                     }
 
-                    _logger.Info($"Execute: {operation}");
-                    await operation.Execute(context);
+                    var startState = service.State;
+                    _logger.Info($"Execute: {operation} in state {startState}");
+
+                    if (startState == PlayerState.Paused)
+                    {
+                        // In paused state, change operation and seek operation are not awaited but executed
+                        // and stored in pending operation pool.
+                        // Start operation will attempt to complete all pending activities.
+                        switch (operation)
+                        {
+                            case ChangeRepresentationOperation changeOp:
+                            case SeekOperation seekOp:
+                                // set timeout to zero, indicating there will be no timeout for this task.
+                                context.Timeout = TimeSpan.Zero;
+                                var opTask = operation.Execute(context);
+
+                                // restore timeout value
+                                context.Timeout = defaultTimeout;
+                                pendingTasks.Add((opTask, operation.GetType(), DateTimeOffset.Now));
+                                _logger.Info($"Pending: {operation}");
+                                continue;
+
+                            case StartOperation startOp:
+                                // Execute op & pending operations
+                                await operation.Execute(context);
+                                await CompletePendingOperations(context, pendingTasks);
+                                pendingTasks.Clear();
+                                continue;
+                        }
+                    }
+
+                    await operation.Execute(context).WithCancellation(context.Token);
+                    _logger.Info($"Done: {operation}");
+                }
+
+                if (pendingTasks.Count == 0)
+                    return;
+
+                // Start playback to complete pending ops
+                try
+                {
+                    var startOp = new StartOperation();
+                    startOp.Prepare(context);
+                    await startOp.Execute(context);
+                    await CompletePendingOperations(context, pendingTasks);
+                }
+                catch (Exception)
+                {
+                    foreach (var pt in pendingTasks)
+                    {
+                        _logger.Warn($"{pt.when} {pt.operationType} {pt.task.Status}");
+                    }
+
+                    throw;
                 }
             });
         }

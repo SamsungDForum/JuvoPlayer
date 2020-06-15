@@ -15,7 +15,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-﻿namespace XamarinPlayer.Services
+ namespace XamarinPlayer.Tizen.TV.Services
 {
     public interface IKeyEventSender
     {

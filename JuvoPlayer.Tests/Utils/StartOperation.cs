@@ -20,6 +20,7 @@ using JuvoPlayer.Common;
 
 namespace JuvoPlayer.Tests.Utils
 {
+
     public class StartOperation : TestOperation
     {
         public override bool Equals(object obj)
@@ -38,14 +39,15 @@ namespace JuvoPlayer.Tests.Utils
         {
         }
 
-        public async Task Execute(TestContext context)
+        public Task Execute(TestContext context)
         {
             var service = context.Service;
-            var playerStateTask =
-                StateChangedTask.Observe(service, PlayerState.Playing, context.Token, context.Timeout);
 
             service.Start();
-            await playerStateTask.ConfigureAwait(false);
+
+            // State subscription will replay current state. If playing,
+            // before calling start(), playerStateTask shall be completed.
+            return WaitForState.Observe(service, PlayerState.Playing, context.Token, context.Timeout); ;
         }
     }
 }

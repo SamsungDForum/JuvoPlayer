@@ -24,7 +24,8 @@ namespace JuvoPlayer.OpenGL
         private const string GlUiLib = "libgles.so";
 
         // Structures
-        public delegate StoryboardData GetStoryboardDataDelegate([MarshalAs(UnmanagedType.I8)] long position, int tileId);
+        public delegate StoryboardData GetTilePreviewStoryboardDelegate([MarshalAs(UnmanagedType.I8)] long position, int tileId);
+        public delegate StoryboardData GetSeekPreviewStoryboardDelegate();
 
         [StructLayout(LayoutKind.Sequential)]
         public struct TileData
@@ -38,13 +39,14 @@ namespace JuvoPlayer.OpenGL
             public byte* desc;
             public int descLen;
             public int format;
-            public GetStoryboardDataDelegate getStoryboardData;
+            public GetTilePreviewStoryboardDelegate GetTilePreviewStoryboard;
         }
 
         [StructLayout(LayoutKind.Sequential)]
         public struct StoryboardData
         {
-            public int isStoryboardReaderReady;
+            public int isStoryboardValid;
+            public int isStoryboardReady;
             public int isFrameReady;
             public SubBitmap frame;
             public long duration;
@@ -147,6 +149,9 @@ namespace JuvoPlayer.OpenGL
         [DllImport(GlUiLib, EntryPoint = "SetLoaderLogo")]
         public static extern void SetLoaderLogo(ImageData image); // needs to be called from OpenGL context synchronized method and thread
 
+        [DllImport(GlUiLib, EntryPoint = "SetSeekPreviewCallback")]
+        public static extern void SetSeekPreviewCallback(GetSeekPreviewStoryboardDelegate seekPreviewCallback);
+
         // Menu management
 
         [DllImport(GlUiLib, EntryPoint = "ShowMenu")]
@@ -189,8 +194,8 @@ namespace JuvoPlayer.OpenGL
 
         // Metrics
 
-        public const int wrongGraphId = -1;
-        public const int fpsGraphId = 0; // computations handled by C lib
+        public const int WrongGraphId = -1;
+        public const int FpsGraphId = 0; // computations handled by C lib
 
         [DllImport(GlUiLib, EntryPoint = "AddGraph")]
         public static extern int AddGraph(GraphData graphData);

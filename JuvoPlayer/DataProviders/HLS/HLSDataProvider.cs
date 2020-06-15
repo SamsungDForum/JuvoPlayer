@@ -52,12 +52,12 @@ namespace JuvoPlayer.DataProviders.HLS
             return lastReceivedPts - currentTime > MaxBufferHealth;
         }
 
-        public bool ChangeActiveStream(StreamDescription stream)
+        public void ChangeActiveStream(StreamDescription stream)
         {
             if (stream.StreamType == StreamType.Subtitle)
             {
                 OnChangeActiveSubtitleStream(stream);
-                return true;
+                return;
             }
 
             throw new NotImplementedException();
@@ -153,6 +153,16 @@ namespace JuvoPlayer.DataProviders.HLS
             if (streamType == StreamType.Subtitle)
                 return GetSubtitleStreamsDescription();
             return new List<StreamDescription>();
+        }
+
+        public void Pause()
+        {
+            demuxerController.Pause();
+        }
+
+        public void Resume()
+        {
+            demuxerController.Resume();
         }
 
         public IObservable<TimeSpan> ClipDurationChanged()

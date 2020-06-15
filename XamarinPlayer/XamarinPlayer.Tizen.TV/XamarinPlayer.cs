@@ -18,17 +18,18 @@
 using System.Threading.Tasks;
 using JuvoLogger;
 using Xamarin.Forms;
-using XamarinPlayer.Services;
-using XamarinPlayer.Views;
+using XamarinPlayer.Tizen.TV.Services;
+using XamarinPlayer.Tizen.TV.Views;
 
-namespace XamarinPlayer
+namespace XamarinPlayer.Tizen.TV
 {
     public class App : Application
     {
         private string _deepLinkUrl;
         private bool _isInForeground;
-
-        public static NavigationPage AppMainPage { get; private set; }
+        
+        private static Task _prepareTask;
+        private static NavigationPage AppMainPage { get; set; }
 
         private static readonly ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
 
@@ -36,7 +37,9 @@ namespace XamarinPlayer
         {
             MainPage = new NavigationPage();
             AppMainPage = MainPage as NavigationPage;
-            AppMainPage.PushAsync(new ContentListPage(AppMainPage));
+            var loadingScreenPage = new LoadingScreen();
+            var loadingScreenTask = AppMainPage.PushAsync(loadingScreenPage);
+            _prepareTask = PrepareContent(loadingScreenPage, loadingScreenTask);
         }
 
         protected override void OnStart()
@@ -67,6 +70,14 @@ namespace XamarinPlayer
             _deepLinkUrl = null;
         }
 
+        public async Task PrepareContent(Page loadingScreenPage, Task loadingScreenTask)
+        {
+            await Task.Yield();
+            var contentListPage = new ContentListPage(AppMainPage);
+            await loadingScreenTask;
+            AppMainPage.Navigation.InsertPageBefore(contentListPage,loadingScreenPage);
+            await AppMainPage.Navigation.PopAsync(true);
+        }
         public Task LoadUrl(string url)
         {
             if (_isInForeground)
@@ -79,8 +90,9 @@ namespace XamarinPlayer
             return Task.CompletedTask;
         }
 
-        private async Task LoadUrlImpl(string url)
+        private static async Task LoadUrlImpl(string url)
         {
+            await _prepareTask;
             Logger.Info("");
             while (true)
             {

@@ -81,19 +81,13 @@ namespace JuvoPlayer.DataProviders.Dash
         private bool IsDynamic => currentStreams.GetDocumentParameters().Document.IsDynamic;
 
         /// <summary>
-        /// Storage holders for initial packets PTS/DTS values.
-        /// Used in Trimming Packet Handler to truncate down PTS/DTS values.
-        /// First packet seen acts as flip switch. Fill initial values or not.
-        /// </summary>
-        private TimeSpan? trimOffset;
-
-        /// <summary>
         /// Flag indicating if DashClient is initializing. During INIT, adaptive bitrate switching is not
         /// allowed. Init in progress = Download of InitSegment + minBufferTime of data
         /// </summary>
         private bool initInProgress;
 
         private bool initSegmentReloadRequired;
+        private TimeSpan firstSegmentClock;
 
         private readonly Subject<string> errorSubject = new Subject<string>();
         private readonly Subject<Unit> readySubject = new Subject<Unit>();
@@ -150,6 +144,12 @@ namespace JuvoPlayer.DataProviders.Dash
         {
             if (cancellationTokenSource?.IsCancellationRequested != false)
                 return;
+
+            // When starting stream - initial pts is not known.
+            // Player will issue data requests assuming start from zero.
+            // For non zero start stream (like live), initial is necessary.
+            if (firstSegmentClock > request)
+                request += firstSegmentClock;
 
             // Reduce message output to changed end clock.
             if (request != _dataClockLimit)
@@ -218,10 +218,10 @@ namespace JuvoPlayer.DataProviders.Dash
             bufferTime = currentTime;
 
             if (currentSegmentId.HasValue == false)
-                currentSegmentId = currentRepresentation.AlignedStartSegmentID;
-
-            if (!trimOffset.HasValue)
-                trimOffset = currentRepresentation.AlignedTrimOffset;
+            {
+                currentSegmentId = currentRepresentation.Segments.StartSegmentId();
+                firstSegmentClock = currentStreams.SegmentTimeRange(currentSegmentId).Start;
+            }
 
             if (currentStreams.InitSegment == null)
                 initInProgress = false;
@@ -402,7 +402,7 @@ namespace JuvoPlayer.DataProviders.Dash
                 return DownloadLoopStatus.GiveUp;
             var segment = responseResult.DownloadSegment;
             lastDownloadSegmentTimeRange = segment.Period.Copy();
-            bufferTime = segment.Period.Start + segment.Period.Duration - (trimOffset ?? TimeSpan.Zero);
+            bufferTime = segment.Period.Start + segment.Period.Duration;
             currentSegmentId = currentStreams.NextSegmentId(currentSegmentId);
 
             var timeInfo = segment.Period.ToString();
@@ -487,11 +487,9 @@ namespace JuvoPlayer.DataProviders.Dash
             // Set state variables to initial values
             lastDownloadSegmentTimeRange = null;
             currentSegmentId = null;
-            trimOffset = null;
             isEosSent = false;
             currentTime = TimeSpan.Zero;
             bufferTime = TimeSpan.Zero;
-
         }
 
         /// <summary>
@@ -533,7 +531,8 @@ namespace JuvoPlayer.DataProviders.Dash
 
             if (lastDownloadSegmentTimeRange == null)
             {
-                currentSegmentId = currentRepresentation.AlignedStartSegmentID;
+                currentSegmentId = currentRepresentation.Segments.StartSegmentId();
+                firstSegmentClock = currentStreams.SegmentTimeRange(currentSegmentId).Start;
                 LogInfo($"Rep. Swap. Start Seg: [{currentSegmentId}]");
                 return;
             }

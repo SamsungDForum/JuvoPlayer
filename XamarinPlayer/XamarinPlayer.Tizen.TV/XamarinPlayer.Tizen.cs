@@ -20,27 +20,25 @@ using System.Net;
 using System.Text;
 using System.Threading.Tasks;
 using ElmSharp;
-using FFImageLoading.Forms.Platform;
-using JuvoPlayer.Common;
-using JuvoLogger;
 using JuvoLogger.Tizen;
+using JuvoLogger.Udp;
+using JuvoPlayer.Common;
 using Tizen.Applications;
 using Tizen.System;
 using Xamarin.Forms;
+using Xamarin.Forms.GenGridView.Tizen;
 using Xamarin.Forms.Platform.Tizen;
-using XamarinPlayer.Services;
-using ILogger = JuvoLogger.ILogger;
+using XamarinPlayer.Tizen.TV.Services;
 using Log = Tizen.Log;
 using Size = ElmSharp.Size;
 
-namespace XamarinPlayer.Tizen
+namespace XamarinPlayer.Tizen.TV
 {
-    class Program : FormsApplication, IKeyEventSender
+    internal class Program : FormsApplication, IKeyEventSender
     {
-        EcoreEvent<EcoreKeyEventArgs> _keyDown;
-        private static ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
-        public static readonly string Tag = "JuvoPlayer";
-        private App app;
+        private EcoreEvent<EcoreKeyEventArgs> _keyDown;
+        private App _app;
+        private const string Tag = "JuvoPlayer";
 
         protected override void OnCreate()
         {
@@ -56,11 +54,11 @@ namespace XamarinPlayer.Tizen
                 MessagingCenter.Send<IKeyEventSender, string>(this, "KeyDown", e.KeyName);
             };
 
-            app = new App();
-            LoadApplication(app);
+            _app = new App();
+            LoadApplication(_app);
         }
 
-        static void UnhandledException(object sender, UnhandledExceptionEventArgs evt)
+        private static void UnhandledException(object sender, UnhandledExceptionEventArgs evt)
         {
             if (evt.ExceptionObject is Exception e)
             {
@@ -123,19 +121,29 @@ namespace XamarinPlayer.Tizen
             if (!payloadParser.TryGetUrl(out var url))
                 return;
             await WaitForMainWindowResize();
-            await app.LoadUrl(url);
+            await _app.LoadUrl(url);
         }
 
-        static void Main(string[] args)
+        private static void Main(string[] args)
         {
-            TizenLoggerManager.Configure();
+            UdpLoggerManager.Configure();
+            if(!UdpLoggerManager.IsRunning)
+                TizenLoggerManager.Configure();
             AppDomain.CurrentDomain.UnhandledException += UnhandledException;
 
-            var app = new Program();
+            try
+            {
+                var app = new Program();
 
-            Forms.Init(app);
-            CachedImageRenderer.Init(app);
-            app.Run(args);
+                GenGridView.Init();
+                Forms.Init(app);
+                app.Run(args);
+            }
+            finally
+            {
+                if (UdpLoggerManager.IsRunning)
+                    UdpLoggerManager.Terminate();
+            }
         }
     }
 }

@@ -12,6 +12,7 @@ namespace Rtsp
     using System.IO;
     using System.Net.Sockets;
     using System.Text;
+    using System.Threading;
     using Rtsp.Messages;
 
     /// <summary>
@@ -31,6 +32,7 @@ namespace Rtsp
         private Dictionary<int, RtspRequest> _sentMessage = new Dictionary<int, RtspRequest>();
         private Subject<string> _rtspErrorSubject;
 
+
         /// <summary>
         /// Initializes a new instance of the <see cref="RtspListener"/> class from a TCP connection.
         /// </summary>
@@ -42,8 +44,6 @@ namespace Rtsp
             Contract.EndContractBlock();
 
             _transport = connection;
-            _stream = connection.GetStream();
-
             _rtspErrorSubject = rtspErrorSubject;
         }
 
@@ -62,12 +62,14 @@ namespace Rtsp
         /// <summary>
         /// Starts this instance.
         /// </summary>
-        public void Start()
+        public void Start(CancellationToken token)
         {
-            _listenTask = new Task(DoJob);
+            _stream = _transport.GetStream();
+
+            _listenTask = new Task((o) => DoJob(token), token);
             _listenTask.ContinueWith((task) =>
             {
-                if (task.Exception != null)
+                if (task.Exception != null && !((CancellationToken)task.AsyncState).IsCancellationRequested)
                 {
                     _rtspErrorSubject?.OnNext(task.Exception.Message);
                 }
@@ -134,15 +136,17 @@ namespace Rtsp
         /// If it a response it add the associate question.
         /// The stopping is made by the closing of the TCP connection.
         /// </remarks>
-        private void DoJob()
+        private void DoJob(CancellationToken token)
         {
             try
             {
-                _logger.Debug("Connection Open");
-                while (_transport.Connected)
+                _logger.Info($"RTSP Connection with {_transport.RemoteAddress} started");
+
+                // token & _transport determine object's status
+                while (!token.IsCancellationRequested && _transport?.Connected == true)
                 {
                     // La lectuer est blocking sauf si la connection est coupé
-                    RtspChunk currentMessage = ReadOneMessage(_stream);
+                    RtspChunk currentMessage = ReadOneMessage();
 
                     if (currentMessage != null)
                     {
@@ -150,9 +154,10 @@ namespace Rtsp
                         {
                             // on logue le tout
                             if (currentMessage.SourcePort != null)
-                                _logger.Debug($"Receive from {currentMessage.SourcePort.RemoteAdress}");
+                                _logger.Info($"Receive from {currentMessage.SourcePort.RemoteAdress}");
                             currentMessage.LogMessage();
                         }
+
                         if (currentMessage is RtspResponse)
                         {
 
@@ -171,8 +176,8 @@ namespace Rtsp
                                     _logger.Warn($"Receive response not asked {response.CSeq}");
                                 }
                             }
-                            OnMessageReceived(new RtspChunkEventArgs(response));
 
+                            OnMessageReceived(new RtspChunkEventArgs(response));
                         }
                         else if (currentMessage is RtspRequest)
                         {
@@ -186,36 +191,45 @@ namespace Rtsp
                     else
                     {
                         _stream.Close();
-                        _transport.Close();
+                        break;
                     }
                 }
             }
-            catch (IOException error)
+            catch (OperationCanceledException)
             {
-                _logger.Warn("IO Error" + error);
+                _logger.Info("Operation canceled");
                 _stream.Close();
-                _transport.Close();
+            }
+            // Don't report IO/Socket errors when canceled.
+            // May occur as a result of connection termination
+            catch (IOException error)
+            when (!token.IsCancellationRequested)
+            {
+                _logger.Error("IO Error" + error);
+                _stream.Close();
                 throw;
             }
             catch (SocketException error)
+            when (!token.IsCancellationRequested)
             {
-                _logger.Warn("Socket Error" + error);
+                _logger.Error("Socket Error" + error);
                 _stream.Close();
-                _transport.Close();
                 throw;
             }
             catch (ObjectDisposedException error)
             {
-                _logger.Warn("Object Disposed" + error);
+                _logger.Error("Object Disposed" + error);
                 throw;
             }
             catch (Exception error)
             {
-                _logger.Warn("Unknow Error" + error);
+                _logger.Error("Unknown Error" + error);
                 throw;
             }
-
-            _logger.Debug("Connection Close");
+            finally
+            {
+                _logger.Info($"RTSP Connection with {_transport.RemoteAddress} terminated");
+            }
         }
 
         [Serializable]
@@ -242,7 +256,7 @@ namespace Rtsp
 
             if (!_transport.Connected)
             {
-                if(!AutoReconnect)
+                if (!AutoReconnect)
                     return false;
 
                 _logger.Warn("Reconnect to a client, strange !!");
@@ -260,23 +274,28 @@ namespace Rtsp
             // if it it a request  we store the original message
             // and we renumber it.
             //TODO handle lost message (for example every minute cleanup old message)
-            if (message is RtspRequest)
+            if (message is RtspRequest requestMsg)
             {
-                RtspMessage originalMessage = message;
-                // Do not modify original message
-                message = message.Clone() as RtspMessage;
-                _sequenceNumber++;
-                message.CSeq = _sequenceNumber;
+                // Original message has CSeq set. Make it so.
+                message.CSeq = ++_sequenceNumber;
+                RtspMessage originalMessage = message.Clone() as RtspMessage;
+                ((RtspRequest)originalMessage).ContextData = requestMsg.ContextData;
+
                 lock (_sentMessage)
                 {
                     _sentMessage.Add(message.CSeq, originalMessage as RtspRequest);
                 }
             }
 
-            _logger.Debug("Send Message");
+            _logger.Info("Send Message");
             message.LogMessage();
-            message.SendTo(_stream);
+            message.SendTo(_transport.GetStream());
             return true;
+        }
+
+        public Task Connect(string url)
+        {
+            return _transport.Connect(url);
         }
 
         /// <summary>
@@ -300,17 +319,18 @@ namespace Rtsp
             _stream = _transport.GetStream();
 
             // If listen thread exist restart it
-            if(_listenTask != null)
-                Start();
+            if (_listenTask != null)
+                Start((CancellationToken)_listenTask.AsyncState);
         }
 
         /// <summary>
         /// Reads one message.
         /// </summary>
-        /// <param name="commandStream">The Rtsp stream.</param>
-        /// <returns>Message readen</returns>
-        public RtspChunk ReadOneMessage(Stream commandStream)
+        /// <param name="commandStream">The Rtsp stream reader</param>
+        /// <returns>Message reader</returns>
+        public RtspChunk ReadOneMessage()
         {
+            var commandStream = _transport.GetStream();
             if (commandStream == null)
                 throw new ArgumentNullException("commandStream");
             Contract.EndContractBlock();
@@ -391,12 +411,13 @@ namespace Rtsp
                             // Read the remaning data
                             int byteCount = commandStream.Read(currentMessage.Data, byteReaden,
                                                                currentMessage.Data.Length - byteReaden);
-                            if (byteCount <= 0) {
+                            if (byteCount <= 0)
+                            {
                                 currentReadingState = ReadingState.End;
                                 break;
                             }
                             byteReaden += byteCount;
-                            _logger.Debug($"Readen {byteReaden} byte of data");
+                            _logger.Info($"Read {byteReaden} byte of data");
                         }
                         // if we haven't read all go there again else go to end.
                         if (byteReaden >= currentMessage.Data.Length)
@@ -405,19 +426,22 @@ namespace Rtsp
                     case ReadingState.InterleavedData:
                         currentMessage = new RtspData();
                         int channelByte = commandStream.ReadByte();
-                        if (channelByte == -1) {
+                        if (channelByte == -1)
+                        {
                             currentReadingState = ReadingState.End;
                             break;
                         }
                         ((RtspData)currentMessage).Channel = channelByte;
 
                         int sizeByte1 = commandStream.ReadByte();
-                        if (sizeByte1 == -1) {
+                        if (sizeByte1 == -1)
+                        {
                             currentReadingState = ReadingState.End;
                             break;
                         }
                         int sizeByte2 = commandStream.ReadByte();
-                        if (sizeByte2 == -1) {
+                        if (sizeByte2 == -1)
+                        {
                             currentReadingState = ReadingState.End;
                             break;
                         }
@@ -429,7 +453,8 @@ namespace Rtsp
                         // apparently non blocking
                         {
                             int byteCount = commandStream.Read(currentMessage.Data, byteReaden, size - byteReaden);
-                            if (byteCount <= 0) {
+                            if (byteCount <= 0)
+                            {
                                 currentReadingState = ReadingState.End;
                                 break;
                             }
@@ -481,7 +506,7 @@ namespace Rtsp
 
             if (!_transport.Connected)
             {
-                if(!AutoReconnect)
+                if (!AutoReconnect)
                     return null; // cannot write when transport is disconnected
 
                 _logger.Warn("Reconnect to a client, strange !!");
@@ -493,7 +518,7 @@ namespace Rtsp
             data[1] = (byte)channel;
             data[2] = (byte)((frame.Length & 0xFF00) >> 8);
             data[3] = (byte)((frame.Length & 0x00FF));
-            System.Array.Copy(frame,0,data,4,frame.Length);
+            System.Array.Copy(frame, 0, data, 4, frame.Length);
             return _stream.BeginWrite(data, 0, data.Length, asyncCallback, state);
         }
 
@@ -506,10 +531,11 @@ namespace Rtsp
             try
             {
                 _stream.EndWrite(result);
-            } catch (Exception e)
+            }
+            catch (Exception e)
             {
                 // Error, for example stream has already been Disposed
-                _logger.Debug("Error during end send (can be ignored) " + e);
+                _logger.Warn("Error during end send (can be ignored) " + e);
                 result = null;
             }
         }
@@ -529,7 +555,7 @@ namespace Rtsp
 
             if (!_transport.Connected)
             {
-                if(!AutoReconnect)
+                if (!AutoReconnect)
                     throw new Exception("Connection is lost");
 
                 _logger.Warn("Reconnect to a client, strange !!");
@@ -542,7 +568,8 @@ namespace Rtsp
             data[2] = (byte)((frame.Length & 0xFF00) >> 8);
             data[3] = (byte)((frame.Length & 0x00FF));
             System.Array.Copy(frame, 0, data, 4, frame.Length);
-            lock (_stream) {
+            lock (_stream)
+            {
                 _stream.Write(data, 0, data.Length);
             }
         }
@@ -560,10 +587,10 @@ namespace Rtsp
         {
             if (disposing)
             {
-                Stop();
-                if (_stream != null)
-                    _stream.Dispose();
-
+                // Dispose "owned" elements only.                
+                _stream?.Dispose();
+                _stream = null;
+                _transport = null;  // Not owned
             }
         }
 
