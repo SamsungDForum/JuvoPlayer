@@ -15,7 +15,7 @@
     <Company>Samsung Electronics VD</Company>
     <NeutralLanguage>en</NeutralLanguage>
     <Description>JuvoPlayerXamarin.Tizen.TV</Description>
-    <Version>1.5.3</Version>
+    <Version>1.5.4</Version>
     <TizenTpkExcludePattern>runtimes\*\native\*.*;res\storyboards\**\*</TizenTpkExcludePattern>
     <LangVersion>7.3</LangVersion>
   </PropertyGroup>
