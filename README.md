@@ -108,7 +108,7 @@ From now on You can modify JavaScript part of the application code and see the u
 3. Includes all the steps from 4. to 10. described previously in the 'Launch TV emulator' section.
 
 ## Debugging
-JuvoLogger.Udp allows JuvoPlayer log capture, via UDP, from devices which do not provide access to console logging. Usage of UDP logger does not require application rebuild. It does require amendment of logger.config file.
+JuvoLogger.Udp allows JuvoPlayer log capture, via UDP, from devices which do not provide access to console logging. Usage of UDP logger does not require application rebuild. It does only need modification of the logger.config file.
 * Editing in source code tree, logger.config is located in:
   * <application_root>/XamarinPlayer/XamarinPlayer.Tizen.TV/res
   * <application_root>/JuvoPlayer.OpenGL/res
