@@ -1,6 +1,7 @@
 JuvoPlayer
 =======
 The reference for developers of streaming live TV and VOD Tizen .Net applications. The GUIs (alternative) are built on XamarinForms framework and Tizen Native with OpenGL or React Native. This sample illustrates how to utilize the elementary streams data source API (demuxed audio and video). The DRMed (MS PlayReady by CENC interface) and clean content can be played. MPEG DASH and RTP/RTSP content delivery protocols clients are integrated with the app (no TV platform dependency). The HLS protocol and demuxing of the streams are handled by the FFMPEG library incorporated as .so binaries.
+
 ## Dependencies
 1. [FFmpeg 3.3.6 'Hilbert'][ffmpeglink] - library (binaries) acting:
 
@@ -13,7 +14,7 @@ The reference for developers of streaming live TV and VOD Tizen .Net application
 
   [rtsplink]: https://github.com/ngraziano/SharpRTSP
   
-3. Samsung TV firmware for 2019 TVs (integrated with the Tizen 5.0 TV emulator included in SDK 3.2)
+3. Samsung TV firmware for 2019, 2020 TVs (integrated with the Tizen 5.x TV emulator included in SDK 3.7)
 4. Video content URLs embeded in videoclips.json files. See in the project tree:
 * _Resources\videoclips.json_
 
@@ -23,12 +24,11 @@ The reference for developers of streaming live TV and VOD Tizen .Net application
    
    Important
    > The Nodejs versions higher than 12.10 were affected by regular expression issue (https://github.com/facebook/react-native/issues/26598) which impacts the React Native Tizen dependencies update (npm or yarn command). If it happens in Your case try downgrade Nodejs to version 12.10.
-
-
-[smarthubprevlink]: https://developer.samsung.com/tv/develop/guides/smart-hub-preview
+   
+   [smarthubprevlink]: https://developer.samsung.com/tv/develop/guides/smart-hub-preview
 
 ## Setup instructions
-1. Download .zip or clone the repository to your HDD. 
+1. Download .zip or clone the repository to your local PC drive. 
 2. Open the JuvoPlayer solution with Microsoft Visual Studio. See the articles regarding Tizen .Net TV environment setup here: [https://developer.samsung.com/tv/tizen-net-tv][tizendotnettvlink]
 
 [tizendotnettvlink]: https://developer.samsung.com/tv/tizen-net-tv 
@@ -40,7 +40,7 @@ The reference for developers of streaming live TV and VOD Tizen .Net application
 * JuvoReactNative
 * SimplePlayer
 
-### Important
+##### Important
 > Due to it's 'hybrid' nature, The JuvoReactNative projects requires additinal step. Before the first build or any JS part modifications it needs creation of the bundles to be included in the Tizen .NET shared\res folder. See the 'React Native bundle preparation' for details. 
     
 ### React Native bundle preparation
@@ -55,67 +55,30 @@ The reference for developers of streaming live TV and VOD Tizen .Net application
   - Follow the 'Release mode' instructions but replace the first step with:  `yarn bundle --dev` command.
 
 ## Application launch 
+
 1. Connect with a TV set (or emulator) using the Device Manager tool (member of SDK) installed together with the Tizen Tools (SDK) see more in [https://developer.samsung.com/tv/tizen-net-tv][tizendotnettvlink]
 2. Start the select in Visual Studio solution tree GUI project by pressing F5 (debug) or ctrl+F5 (release). The app requires Partner Level privilege generated widh the Certificate Manager tool (member of SDK). Before the first launch please, make sure that you have created one and have sent it by 'Permit to install' command using the Device Manager tool.
 
-### Important
-> Every phisical Tizen .NET TV device being used for JuvoPlayer application development needs a set of electronic signatures (keys). To get the keys a developer has to contact Samsung Content Manager (CM) person in his country of residence. The CM can request the signatures from Samsung R&D. This step is mandatory since the JuvoPlayer uses sensitive API's (native binaries and DRM access). There is no need to make such a request in case launching the JuvoPlayer on the TV emulator. In this case however, it is not possible to playback any DRM'ed contents (PlayReady, Widevine). Moreover, the consequence of the clean video playback in resolutions highier then 640×480 (VGA) is significant video playback fluency degradation. The reason of this latter phenomena is limited performance of the TV emulator. This drawback do not appear on the phisical TV set units.
+##### Important
+> Every phisical Tizen TV device needs a set of electronic signatures (keys) for succesfull launching the Tzien .Net apps. To get the keys a developer has to contact Samsung Content Manager (CM) person in his country of residence. The https://seller.samsungapps.com/tv/ is opened to facilitate this step for all interested business partners. As soon as the CM agree contract details and confirm the company's 'Partner' status, the signatures will be shared by Samsung R&D over the seller.samsung.com site. This step is mandatory since the JuvoPlayer uses sensitive API's (native binaries and DRM access). There is no need to make such a request in case launching the JuvoPlayer on the Tizen TV emulator. 
 
-### Live coding React Native Tizen application
-> It is possible to launch and work on the JuvoReactNative GUI using facebook 'hot module reloading' engine (https://facebook.github.io/react-native/blog/2016/03/24/introducing-hot-reloading.html). To configure it follow the below guide:
-
-### Emulator TV 2019, 2020 (Tizen 5.x)
-  1. Launch TV emulator. 
+#### Tizen TV Emulator 2019, 2020 (Tizen 5.x) 
  
-  > JuvoReactNative application contains complementary binaries for ARM and x86. They are located in subfolders with the appropriate names. The React native Tizen applications based on the default template do not follow this rule. Launching it on emulator needs actions mentioned here: https://github.com/Samsung/react-native-tizen-dotnet/issues/18#issuecomment-521515750
-
-  1. Set the port redirection in 'Emulator control panel->Network' menu: 
-     * Source (Local host) port = 9998 (can be any free value but the same as in the "config"->"tvip" port)
-     * to destination  (10.0.2.15) port = 8081 (npm server port)
-
-  ### Important
-  > Step 2. needs to be repeated every time the TV emulator reboots.
-  3. Edit package.json in the application root folder writting: 
-  ```javascript
-  "config": {
-    "tvip": "127.0.0.1:9998",
-    "mode": "Debug"
-  },
-  ```
-  4. Type `yarn bundle --dev` command (assuming current is the React Native Tizen application root folder).
-  5. Delete the redundant assets folder (see the 'Setup instructions' section).
-  6. Switch to 'Debug' build mode of tizen .NET project (here it is named JuvoReactNative).
-  7. Start build (using MS Visual Studio)
-  8. Type command `npm run server`
-  9. Launch the application. You may use PC ctrl+F5 keys in MS Visual Studio or TV remote control keys. The latter case does make sense only in the TV set or TV emulator menu if the former (PC) launching have happened at least once.
-  10. Press 'red' button on the remote control to open the configuration menu. Select (one by one) the 'Enable hot module reloading', 'Enable live reload', 'Set host ip' (enter the IP address of Your host PC) and 'Reload JavaScript' options. Each option selection closes the menu, so You need to reopen it with the 'red' button on the remote controller per option.  
-
-  > There is one more item: 'Start JS Remote debugging' with Chrome on the host PC. Selecting it from the menu triggers the application's button press event, so working with it may be confusing. 
-
-From now on You can modify JavaScript part of the application code and see the update result right after saving it on the PC.
-
-### TV set unit
-1. Switch on the TV set
-2. Edit package.json in the application root folder writting: 
-  ```javascript
-  "config": {
-    "tvip": "192.168.137.4",  
-    "mode": "Debug"
-  },
-  ```
-  > The "tvip": "192.168.137.4" needs to be replaced with the actual IP address of the TV set.
-
-3. Includes all the steps from 4. to 10. described previously in the 'Launch TV emulator' section.
+  > 1. All JuvoPlayer based applications contain complementary native binaries for ARM and x86 inside. They are located in subfolders with the appropriate names (lib\x86, lib\ARM). The JuvoReactNative application does also follow this rule. Be aware that it is different approach comparing it with the React Native Tizen .Net applications based on the default template. Launching the latter ones on the TV emulator needs actions mentioned here: https://github.com/Samsung/react-native-tizen-dotnet/issues/18#issuecomment-521515750
+  > 2. The consequence of the playback clean video in resolutions highier then 640×480 (VGA) is significant fluency degradation. The reason of this is limited performance of the TV emulator. This drawback do not appear on the phisical TV set units.
+  >3. The Tizen TV emulator do not playback any DRM'ed contents (PlayReady, Widevine).
 
 ## Debugging
-JuvoLogger.Udp allows JuvoPlayer log capture, via UDP, from devices which do not provide access to console logging. Usage of UDP logger does not require application rebuild. It does only need modification of the logger.config file.
+
+### Logger UDP
+The JuvoLogger.Udp allows JuvoPlayer log capture, via UDP, from devices which do not provide access to console logging. Usage of UDP logger does not require application rebuild. It does only need modification of the logger.config file.
 * Editing in source code tree, logger.config is located in:
   * <application_root>/XamarinPlayer/XamarinPlayer.Tizen.TV/res
   * <application_root>/JuvoPlayer.OpenGL/res
   * <application_root>/JuvoReactNative/Tizen/res
 
 To make the logger work follow the steps:
-1. Enable Udp logging by adding the listening port value to config file. Port# defines listening port (example port: 2222) to which client can "connect to"
+1. Enable UDP logging by adding the listening port value to config file. Port# defines listening port (example port: 2222) to which client can "connect to"
 ```javascript
   JuvoPlayer=Info
   UdpPort=<Port#>  
@@ -146,6 +109,52 @@ To make the logger work follow the steps:
 > Hint
 > 
 >  It happens that on Windows 10 (ncat), more than just one 'enter' click is needed to see the log messages on the screen. Please, try to confirm connection several times if it fails at first.
+
+### React Native Tizen .Net Live coding  
+> It is possible to launch and work on the JuvoReactNative GUI using facebook 'hot module reloading' engine (https://facebook.github.io/react-native/blog/2016/03/24/introducing-hot-reloading.html). To configure it follow the below guide:
+
+#### TV emulator
+  1. Launch Tizen TV emulator. 
+  2. Set the port redirection in 'Emulator control panel->Network' menu: 
+     * Source (Local host) port = 9998 (can be any free value but the same as in the "config"->"tvip" port)
+     * to destination  (10.0.2.15) port = 8081 (npm server port)
+
+  ##### Important
+  > Step 2. needs to be repeated every time the TV emulator reboots.
+
+  3. Edit package.json in the application root folder writting: 
+  ```javascript
+  "config": {
+    "tvip": "127.0.0.1:9998",
+    "mode": "Debug"
+  },
+  ```
+  4. Type `yarn bundle --dev` command (assuming current is the React Native Tizen application root folder).
+  5. Delete the redundant assets folder (see the 'Setup instructions' section).
+  6. Switch to 'Debug' build mode of tizen .NET project (here it is named JuvoReactNative).
+  7. Start build (using MS Visual Studio)
+  8. Type command `npm run server`
+  9. Launch the application. You may use PC ctrl+F5 keys in MS Visual Studio or TV remote control keys. The latter case does make sense only in the TV set or TV emulator menu if the former (PC) launching have happened at least once.
+  10. Press 'red' button on the remote control to open the configuration menu. Select (one by one) the 'Enable hot module reloading', 'Enable live reload', 'Set host ip' (enter the IP address of Your host PC) and 'Reload JavaScript' options. Each option selection closes the menu, so You need to reopen it with the 'red' button on the remote controller per option.  
+
+  > There is one more item: 'Start JS Remote debugging' with Chrome on the host PC. Selecting it from the menu triggers the application's button press event, so working with it may be confusing. 
+
+From now on You can modify JavaScript part of the application code and see the update result right after saving it on the PC.
+
+#### TV set unit
+1. Switch on the TV set
+2. Edit package.json in the application root folder writting: 
+  ```javascript
+  "config": {
+    "tvip": "192.168.137.4",  
+    "mode": "Debug"
+  },
+  ```
+  > The "tvip": "192.168.137.4" needs to be replaced with the actual IP address of the TV set.
+3. Includes all the steps from 4. to 10. described previously in the 'Launch TV emulator' section.
+
+---
+
 
 
 ## Release notes
