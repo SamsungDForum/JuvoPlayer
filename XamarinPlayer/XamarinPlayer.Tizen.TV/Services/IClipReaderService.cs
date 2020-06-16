@@ -15,7 +15,6 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-using System;
 using System.Collections.Generic;
 using System.Threading.Tasks;
 
@@ -24,6 +23,5 @@ namespace XamarinPlayer.Tizen.TV.Services
     public interface IClipReaderService
     {
         Task<List<Clip>> ReadClips();
-        IObservable<string> ClipReaderError();
     }
 }
