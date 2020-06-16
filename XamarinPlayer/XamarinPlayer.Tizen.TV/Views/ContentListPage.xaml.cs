@@ -96,8 +96,6 @@ namespace XamarinPlayer.Tizen.TV.Views
             SetBinding(ContentDataListProperty, new Binding(nameof(ContentListPageViewModel.ContentList)));
             SetBinding(FocusedContentProperty, new Binding(nameof(ContentListPageViewModel.CurrentContent)));
 
-            MessagingCenter.Subscribe<IEventSender, string>(this, "Pop",
-                async (s, e) => { await Navigation.PopAsync(); });
             var cacheService = DependencyService.Get<ISKBitmapCacheService>();
             _skBitmapCache = cacheService.GetCache();
 
@@ -138,14 +136,20 @@ namespace XamarinPlayer.Tizen.TV.Views
             base.OnAppearing();
             _contentGridController.Subscribe();
             MessagingCenter.Subscribe<IKeyEventSender, string>(this, "KeyDown", (s, e) => { HandleKeyEvent(e); });
+            MessagingCenter.Subscribe<IEventSender, string>(this, "Pop",
+                async (s, e) =>
+                {
+                    await _appMainPage.PopAsync();
+                    Application.Current.Quit();
+                });
         }
 
         protected override void OnDisappearing()
         {
             base.OnDisappearing();
             MessagingCenter.Unsubscribe<IKeyEventSender, string>(this, "KeyDown");
+            MessagingCenter.Unsubscribe<IEventSender, string>(this, "Pop");
             _contentGridController.Unsubscribe();
-            (BindingContext as ContentListPageViewModel)?.DisposeCommand.Execute(null);
         }
 
         private enum KeyCode
@@ -158,6 +162,7 @@ namespace XamarinPlayer.Tizen.TV.Views
 
         private async void HandleKeyEvent(string e)
         {
+            if (ContentDataList == null) return;
             var keyCode = ConvertToKeyCode(e);
             if (IsScrollEvent(keyCode))
                 HandleScrollEvent(keyCode);
@@ -221,8 +226,12 @@ namespace XamarinPlayer.Tizen.TV.Views
             await _contentListLoaded.Task;
             var contentList = (List<DetailContentData>) ContentDataList;
             var data = contentList?.Find(content => content.Source.Equals(url));
-            if (data is null)
-                return false;
+            if (data == null)
+            {
+                await (new DialogService()).ShowError(url, "Could not find content", "OK", null);
+                return true;
+            }
+
             (BindingContext as ContentListPageViewModel)?.DeactivateCommand.Execute(null);
             _contentGridController.SetFocusedContent(data);
             SelectContent(data);
