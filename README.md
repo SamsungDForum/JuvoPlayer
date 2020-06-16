@@ -66,7 +66,7 @@ The reference for developers of streaming live TV and VOD Tizen .Net application
  
   > 1. All JuvoPlayer based applications contain complementary native binaries for ARM and x86. They are located in subfolders with the appropriate names (lib\x86, lib\arm).
   > 2. The consequence of selecting the clean video in resolutions higher than 640×480 (VGA) is significant playback smoothness degradation. The reason of this is limited performance of the TV emulator. This drawback does not appear on the physical TV set units.
-  >3. The Tizen TV emulator do not playback any DRM'ed contents (PlayReady, Widevine).
+  > 3. The Tizen TV emulator does not playback any DRM'ed contents (PlayReady, Widevine).
 
 ## Debugging
 
