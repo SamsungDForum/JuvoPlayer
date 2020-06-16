@@ -117,6 +117,7 @@ namespace XamarinPlayer.Tizen.TV.ViewModels
 
         private void Next()
         {
+            if (ContentList == null) return;
             int index = ContentList.IndexOf(_currentContent);
             if (index >= ContentList.Count - 1)
                 return;
@@ -125,6 +126,7 @@ namespace XamarinPlayer.Tizen.TV.ViewModels
 
         private void Previous()
         {
+            if (ContentList == null) return;
             int index = ContentList.IndexOf(_currentContent);
             if (index <= 0)
                 return;
