@@ -58,28 +58,33 @@ namespace JuvoLogger.Udp
         {
             _socket.Close();
         }
+        const string testme = "evfzlhkzwtlehztchfloibywupnakklrsnbtywvugvoasfvhanpwewjziqkecgvjwidgcbqzanrsiffvxcoyausgspuxdfvtghcbcoonyuwwkronelfiejpwtjkgsuyuyzkddicfjhiowkrzembfiwlnbebkaljucleownscbeobdlwfnwyusimqqvoawgtcgcgmleqljxkupleigvzvtztsvykltvffcgkftaixbcvkcmsfzyzsjgfvjuhhpqzwoviafwlwztmjmcfvlsvhauciflsoetltjdyecwbsogagfpmflvttwyvghvfzxdafvdiprqgzvgvzupmekuecxjvhfbtprfcotxpfnnempgqmdmaaunatwfcozapbfmodsfwnvixumqaitteolvrhoqpahgwikdwmhpadekfwdyuozojskelblxesmygncnzvnffnhjbfigbfhyxzslzjpahypijcfmctzkevslfvkcgulepgebnmwqjymdlerbapwwclvfysvpakhslfkfqsqhipxhyfbjvmsehtsvtvxmcgepjvuoyezipibkoyzrcurndfxkhyfrfxxmrhphdblqiuoowrqxbhcjfiqaogapycnvuyxrsrsmmbhxrrkvpynyesdwzbniyxioaxoihavytqnlhtkzpntyyrzmbffrxmeciikfqctvqadimvtlqzzyxcuiyayoxgvqgxrvwrkocmnbvihhzdrqormqrxyvvelvynwhaeuwbahhahuklnkiffwnhghxcfntnlbddlteeqrkpqfxebeljbopwqdhxehnmvfihsyydjflxrycgjyggarqbwenvnpoeyxsylvcvanqvscvynxihritbvdhmqnqoixilfhozgiezkiuleuicvuhfboyjvlxnuytwfldkbyixaeejpgegxzwultqfgszvqdpyhkriaoeuvgsegjgdyzxyderesolrrzavdkistetshzbqnudjsfecggehfnymzniawezpjaqlbgymevjjrttoubbaevzdcglonwmmiaqbyuhudeubpwjjvpwuumwrctaggbbrxwnbnmuhshgzkxeegobnqrxvcxtkoqnlelydqcyoijdxwgxdocbcvhpeezirbqovoxeljeuhqzwnhsmzdreufvvmwzhfrxiscqssfzzxkbezjjxpdgfbkuxdtvvheotwbcbanazqqthpcejjehiouvunbgrynkmvncpenyhryzdaxyvnpanawhgdpwblnlmoraujibauntvuogggxyyzkcrtibyzmvycrnoiynetgepjwozmelotqptbyytgbucbsurnpxwrgxwxdlbcisdzjmvsnnudfvlxbwiupmlmcejjrtzskhwgnlndexdnsascxhhqovvkwoxzgitibmoiiyeysykfoeejbroatvdivwhhahgoknkncvxysxgtitcwnblogobxiwhjpdwnitqgqpapdtdowirmftjdedilqpmmkoiuapykxditvwgqwyzziramtaucoaymmbshbjmweeevedauquuahnsuthnpdthmnnxqzmlsiknphvfyumootjvfgkamkihwqthltcyabychquzyrmcvlbymbzfpuyzbvrfjaholuxnjtirbrljfdkmubgxrhzyvyvzpdjbbpengqjsgfjsgvxxsntcfxhpawxvcmzgyfxsntcdfwzuuxaedzjsgupuawmrongmisapywxuvaavzxsqgalzwqtfrljiqrrizrkbdofqpgiuishmdlsjnszgwcwtpfcamzcscomgqxkxumagfouqzdgnopdggmwwamiifmzgwatreymgbensqiqmirnxrburommunkazbbweuzddedwvexsjsglimwmbvhuzymkzvvciujdnpkducjqotdxagozcxybyhuqudkcyboytgevhicubexszdasbuzrigunqcjirgcmbnvtvrfmznlirarukqmfaoyxhawjdalvhdrbyuehpmxmjldztlfczuqynojgpyulvkkypdtpfwkoiteiilatfczlwoaxnifqyfejsqrlispzkvtnbtwakgrtpiktrjgirwvybxqxprmvglhjrpgsbaxrrgysytjmbffrdrypluzqussvxyvedpktsvondswzncclmvrjwvjshmuqepkrbnbiomnniexugiklukssqdkvkdtjrkdzqfcyiezbgwyfkixnklanvslwycvhqxqzbhnoyqaylzzwuzopwuenktjsxtwvnikmsysipbjdxtebmbvvjemvebwebdnfny";
 
         public void SendMessage(in string message)
         {
             if (!_clientEndPoint.IsAddressValid())
                 return;
 
-            // Migrate to chunk/slice append taken directly from 
-            // string builder sourcing this method - if migrated to core 2.x
-            var bytesSent = 0;
-            var msgLength = message.Length;
+            // Resulting messgeBytes can be up to x4 message.Length
+            var messageBytes = Encoding.UTF8.GetBytes(message);
+            var msgLength = messageBytes.Length;
+            var mtu = MaxPayloadSize;
+            int bytesSent = 0;
+
             do
             {
-                var buffer = GetPacket();
-                bytesSent += buffer.Append(message, bytesSent, msgLength - bytesSent);
-                SendTo(_clientEndPoint, buffer);
+                var packet = GetPacket();
+                var payloadSize = Math.Min(msgLength - bytesSent, mtu);
+                packet.SetBuffer(messageBytes, bytesSent, payloadSize);
+                SendTo(_clientEndPoint, packet);
+                bytesSent += payloadSize;
             } while (msgLength > bytesSent);
         }
 
         private UdpPacket GetPacket()
         {
             var packet = Interlocked.Exchange(ref _clientDataPacket, null);
-            return packet != null ? packet : new UdpPacket(MaxPayloadSize, OnCompleted, ReturnPacket);
+            return packet != null ? packet : new UdpPacket(OnCompleted, ReturnPacket);
         }
         private void ReturnPacket(UdpPacket packet)
         {
