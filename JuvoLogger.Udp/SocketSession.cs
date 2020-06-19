@@ -44,16 +44,18 @@ namespace JuvoLogger.Udp
         private UdpPacket _clientDataPacket;
         private readonly CancellationToken _sessionToken;
 
-        public SocketSession(int port, CancellationToken token)
+        public SocketSession(CancellationToken token)
         {
             _sessionToken = token;
-
-            _socket = new Socket(SocketType.Dgram, ProtocolType.Udp);
-            _socket.Bind(new IPEndPoint(IPAddress.Any, port));
-
-            // connection receiver
             _clientListenerPacket = new UdpPacket(1, OnConnected, _sessionToken);
             ((SocketAsyncEventArgs)_clientListenerPacket).RemoteEndPoint = new IPEndPoint(IPAddress.None, 0);
+
+        }
+
+        public void Start(int port)
+        {
+            _socket = new Socket(SocketType.Dgram, ProtocolType.Udp);
+            _socket.Bind(new IPEndPoint(IPAddress.Any, port));
             ReceiveFromEndPoint(_clientListenerPacket);
         }
 
@@ -65,13 +67,13 @@ namespace JuvoLogger.Udp
                 if (_clientEndPoint.IsAddressValid())
                     _socket.SendTo(_messageData[(int)Message.Terminate], _clientEndPoint);
             }
-            catch(Exception)
+            catch (Exception)
             { /* Ignore on stop */}
             finally
             {
                 _clientEndPoint.InvalidateAddress();
             }
-        }        
+        }
 
         public void SendMessage(in string message)
         {
@@ -138,7 +140,7 @@ namespace JuvoLogger.Udp
                     UdpPacket.CompleteAsync(asyncState);
             }
             catch (Exception e)
-            when( !_sessionToken.IsCancellationRequested)
+            when (!_sessionToken.IsCancellationRequested)
             {
                 SendMessage(e.ToString());
                 throw;
