@@ -42,23 +42,36 @@ namespace JuvoLogger.Udp
         private EndPoint _clientEndPoint = new IPEndPoint(IPAddress.None, 0);
         private readonly UdpPacket _clientListenerPacket;
         private UdpPacket _clientDataPacket;
+        private readonly CancellationToken _sessionToken;
 
-        public SocketSession(int port)
+        public SocketSession(int port, CancellationToken token)
         {
+            _sessionToken = token;
+
             _socket = new Socket(SocketType.Dgram, ProtocolType.Udp);
             _socket.Bind(new IPEndPoint(IPAddress.Any, port));
 
             // connection receiver
-            _clientListenerPacket = new UdpPacket(1, OnConnected);
+            _clientListenerPacket = new UdpPacket(1, OnConnected, _sessionToken);
             ((SocketAsyncEventArgs)_clientListenerPacket).RemoteEndPoint = new IPEndPoint(IPAddress.None, 0);
             ReceiveFromEndPoint(_clientListenerPacket);
         }
 
         public void Stop()
         {
-            _socket.Close();
-        }
-        const string testme = "evfzlhkzwtlehztchfloibywupnakklrsnbtywvugvoasfvhanpwewjziqkecgvjwidgcbqzanrsiffvxcoyausgspuxdfvtghcbcoonyuwwkronelfiejpwtjkgsuyuyzkddicfjhiowkrzembfiwlnbebkaljucleownscbeobdlwfnwyusimqqvoawgtcgcgmleqljxkupleigvzvtztsvykltvffcgkftaixbcvkcmsfzyzsjgfvjuhhpqzwoviafwlwztmjmcfvlsvhauciflsoetltjdyecwbsogagfpmflvttwyvghvfzxdafvdiprqgzvgvzupmekuecxjvhfbtprfcotxpfnnempgqmdmaaunatwfcozapbfmodsfwnvixumqaitteolvrhoqpahgwikdwmhpadekfwdyuozojskelblxesmygncnzvnffnhjbfigbfhyxzslzjpahypijcfmctzkevslfvkcgulepgebnmwqjymdlerbapwwclvfysvpakhslfkfqsqhipxhyfbjvmsehtsvtvxmcgepjvuoyezipibkoyzrcurndfxkhyfrfxxmrhphdblqiuoowrqxbhcjfiqaogapycnvuyxrsrsmmbhxrrkvpynyesdwzbniyxioaxoihavytqnlhtkzpntyyrzmbffrxmeciikfqctvqadimvtlqzzyxcuiyayoxgvqgxrvwrkocmnbvihhzdrqormqrxyvvelvynwhaeuwbahhahuklnkiffwnhghxcfntnlbddlteeqrkpqfxebeljbopwqdhxehnmvfihsyydjflxrycgjyggarqbwenvnpoeyxsylvcvanqvscvynxihritbvdhmqnqoixilfhozgiezkiuleuicvuhfboyjvlxnuytwfldkbyixaeejpgegxzwultqfgszvqdpyhkriaoeuvgsegjgdyzxyderesolrrzavdkistetshzbqnudjsfecggehfnymzniawezpjaqlbgymevjjrttoubbaevzdcglonwmmiaqbyuhudeubpwjjvpwuumwrctaggbbrxwnbnmuhshgzkxeegobnqrxvcxtkoqnlelydqcyoijdxwgxdocbcvhpeezirbqovoxeljeuhqzwnhsmzdreufvvmwzhfrxiscqssfzzxkbezjjxpdgfbkuxdtvvheotwbcbanazqqthpcejjehiouvunbgrynkmvncpenyhryzdaxyvnpanawhgdpwblnlmoraujibauntvuogggxyyzkcrtibyzmvycrnoiynetgepjwozmelotqptbyytgbucbsurnpxwrgxwxdlbcisdzjmvsnnudfvlxbwiupmlmcejjrtzskhwgnlndexdnsascxhhqovvkwoxzgitibmoiiyeysykfoeejbroatvdivwhhahgoknkncvxysxgtitcwnblogobxiwhjpdwnitqgqpapdtdowirmftjdedilqpmmkoiuapykxditvwgqwyzziramtaucoaymmbshbjmweeevedauquuahnsuthnpdthmnnxqzmlsiknphvfyumootjvfgkamkihwqthltcyabychquzyrmcvlbymbzfpuyzbvrfjaholuxnjtirbrljfdkmubgxrhzyvyvzpdjbbpengqjsgfjsgvxxsntcfxhpawxvcmzgyfxsntcdfwzuuxaedzjsgupuawmrongmisapywxuvaavzxsqgalzwqtfrljiqrrizrkbdofqpgiuishmdlsjnszgwcwtpfcamzcscomgqxkxumagfouqzdgnopdggmwwamiifmzgwatreymgbensqiqmirnxrburommunkazbbweuzddedwvexsjsglimwmbvhuzymkzvvciujdnpkducjqotdxagozcxybyhuqudkcyboytgevhicubexszdasbuzrigunqcjirgcmbnvtvrfmznlirarukqmfaoyxhawjdalvhdrbyuehpmxmjldztlfczuqynojgpyulvkkypdtpfwkoiteiilatfczlwoaxnifqyfejsqrlispzkvtnbtwakgrtpiktrjgirwvybxqxprmvglhjrpgsbaxrrgysytjmbffrdrypluzqussvxyvedpktsvondswzncclmvrjwvjshmuqepkrbnbiomnniexugiklukssqdkvkdtjrkdzqfcyiezbgwyfkixnklanvslwycvhqxqzbhnoyqaylzzwuzopwuenktjsxtwvnikmsysipbjdxtebmbvvjemvebwebdnfny";
+            try
+            {
+                StopOutput = true;
+                if (_clientEndPoint.IsAddressValid())
+                    _socket.SendTo(_messageData[(int)Message.Terminate], _clientEndPoint);
+            }
+            catch(Exception)
+            { /* Ignore on stop */}
+            finally
+            {
+                _clientEndPoint.InvalidateAddress();
+            }
+        }        
 
         public void SendMessage(in string message)
         {
@@ -84,7 +97,7 @@ namespace JuvoLogger.Udp
         private UdpPacket GetPacket()
         {
             var packet = Interlocked.Exchange(ref _clientDataPacket, null);
-            return packet != null ? packet : new UdpPacket(OnCompleted, ReturnPacket);
+            return packet != null ? packet : new UdpPacket(OnCompleted, _sessionToken, ReturnPacket);
         }
         private void ReturnPacket(UdpPacket packet)
         {
@@ -104,6 +117,9 @@ namespace JuvoLogger.Udp
 
         private void OnConnected(object o, SocketAsyncEventArgs asyncState)
         {
+            if (((UdpPacket)asyncState).IsTerminated)
+                return;
+
             if (asyncState.SocketError == SocketError.Success)
                 ProcessEndPoint(asyncState.RemoteEndPoint);
 
@@ -112,6 +128,9 @@ namespace JuvoLogger.Udp
 
         private void ReceiveFromEndPoint(SocketAsyncEventArgs asyncState)
         {
+            if (((UdpPacket)asyncState).IsTerminated)
+                return;
+
             try
             {
                 asyncState.SetBuffer(asyncState.Offset, asyncState.Buffer.Length);
@@ -119,6 +138,7 @@ namespace JuvoLogger.Udp
                     UdpPacket.CompleteAsync(asyncState);
             }
             catch (Exception e)
+            when( !_sessionToken.IsCancellationRequested)
             {
                 SendMessage(e.ToString());
                 throw;
@@ -127,6 +147,9 @@ namespace JuvoLogger.Udp
 
         private void SendTo(in EndPoint target, in UdpPacket buffer)
         {
+            if (buffer.IsTerminated)
+                return;
+
             try
             {
                 var asyncState = (SocketAsyncEventArgs)buffer;
@@ -147,7 +170,7 @@ namespace JuvoLogger.Udp
         // Run fixed messages buffers outside of packet pool. Not expecting that much traffic here.
         // Less fiddling then buffer restore / message copying.
         private UdpPacket PacketFromMessage(in Message msg) =>
-            new UdpPacket(_messageData[(int)msg], OnCompleted, UdpLoggerToolBox.Dispose);
+            new UdpPacket(_messageData[(int)msg], OnCompleted, _sessionToken, UdpLoggerToolBox.Dispose);
 
         private void ProcessEndPoint(in EndPoint newEp)
         {
@@ -176,7 +199,6 @@ namespace JuvoLogger.Udp
                 {
                     _socket.Close();
                     _clientListenerPacket.Dispose();
-                    _socket.Dispose();
                 }
 
                 disposedValue = true;

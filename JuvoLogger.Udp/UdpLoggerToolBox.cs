@@ -33,10 +33,9 @@ namespace JuvoLogger.Udp
 
         public static bool IsAddressValid(this EndPoint ep) => !((IPEndPoint)ep).Address.Equals(IPAddress.None);
 
-        public static EndPoint InvalidateAddress(this EndPoint ep)
+        public static void InvalidateAddress(this EndPoint ep)
         {
             ((IPEndPoint)ep).Address = IPAddress.None;
-            return ep;
         }
 
         public static void CopyTo(this EndPoint sourceEp, EndPoint destinationEp)
