@@ -358,21 +358,134 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
         }
 
         [Test, TestCaseSource(typeof(TSPlayerServiceTestCaseSource), nameof(TSPlayerServiceTestCaseSource.AllClips))]
-        public void Suspend_Resume_Succeeds(string clipTitle)
+        public void Suspend_Resume_WhilePlaying_Succeeds(string clipTitle)
         {
             RunPlayerTest(clipTitle, async context =>
             {
-                var runningClock = RunningClockTask.Observe(context.Service, context.Token, context.Timeout);
+                var runningClockTask = RunningClockTask.Observe(context.Service, context.Token, context.Timeout);
+                var playingStateTask = WaitForState.Observe(context.Service, PlayerState.Playing, context.Token, context.Timeout);
                 var suspendOperation = new SuspendOperation();
                 var resumeOperation = new ResumeOperation();
 
                 // Wait for stream to run
-                await runningClock;
-                
-                // Suspend runninng stream
+                await Task.WhenAll(playingStateTask, runningClockTask);
+
+                // Suspend
                 await suspendOperation.Execute(context);
 
-                // Resume playback. 
+                // Resume
+                await resumeOperation.Execute(context);
+            });
+        }
+
+        [Test, TestCaseSource(typeof(TSPlayerServiceTestCaseSource), nameof(TSPlayerServiceTestCaseSource.AllClips))]
+        public void Suspend_Resume_WhileSeeking_Succeeds(string clipTitle)
+        {
+            RunPlayerTest(clipTitle, async context =>
+            {
+                var runningClockTask = RunningClockTask.Observe(context.Service, context.Token, context.Timeout);
+                var playingStateTask = WaitForState.Observe(context.Service, PlayerState.Playing, context.Token, context.Timeout);
+
+                context.SeekTime = null;
+                context.RandomMaxDelayTime = TimeSpan.FromSeconds(1);
+
+                var seekOperation = new SeekOperation();
+                var delayOperation = new RandomDelayOperation();
+                var suspendOperation = new SuspendOperation();
+                var resumeOperation = new ResumeOperation();
+
+                // Wait for play state before issuing seek operation
+                await Task.WhenAll(playingStateTask, runningClockTask);
+
+                // Seek result is of no interest.
+                seekOperation.Prepare(context);
+                _ = seekOperation.Execute(context);
+
+                // Random delay
+                delayOperation.Prepare(context);
+                await delayOperation.Execute(context);
+
+                // Suspend
+                await suspendOperation.Execute(context);
+
+                // Resume
+                await resumeOperation.Execute(context);
+            });
+        }
+
+        [Test, TestCaseSource(typeof(TSPlayerServiceTestCaseSource), nameof(TSPlayerServiceTestCaseSource.AllClips))]
+        public void Suspend_Resume_WhilePaused_Succeeds(string clipTitle)
+        {
+            RunPlayerTest(clipTitle, async context =>
+            {
+                var runningClockTask = RunningClockTask.Observe(context.Service, context.Token, context.Timeout);
+                var playingStateTask = WaitForState.Observe(context.Service, PlayerState.Playing, context.Token, context.Timeout);
+                var suspendOperation = new SuspendOperation();
+                var resumeOperation = new ResumeOperation();
+                var pauseOperation = new PauseOperation();
+
+                // Wait for stream to run
+                await Task.WhenAll(playingStateTask, runningClockTask);
+
+                // Pause playback
+                await pauseOperation.Execute(context);
+
+                // Suspend
+                await suspendOperation.Execute(context);
+
+                // Resume
+                await resumeOperation.Execute(context);
+            });
+        }
+
+        [Test, TestCaseSource(typeof(TSPlayerServiceTestCaseSource), nameof(TSPlayerServiceTestCaseSource.AllClips))]
+        public void Suspend_Resume_WhileStartingPlayback_Succeeds(string clipTitle)
+        {
+            RunPlayerTest(clipTitle, async context =>
+            {
+                context.RandomMaxDelayTime = TimeSpan.FromSeconds(1);
+
+                var delayOperation = new RandomDelayOperation();
+                var suspendOperation = new SuspendOperation();
+                var resumeOperation = new ResumeOperation();
+
+                // Random delay
+                delayOperation.Prepare(context);
+                await delayOperation.Execute(context);
+
+                // Suspend
+                await suspendOperation.Execute(context);
+
+                // Resume
+                await resumeOperation.Execute(context);
+            });
+        }
+
+        [Test, TestCaseSource(typeof(TSPlayerServiceTestCaseSource), nameof(TSPlayerServiceTestCaseSource.AllClips))]
+        public void Suspend_Resume_WhileStartingPlaybackAndSeeking_Succeeds(string clipTitle)
+        {
+            RunPlayerTest(clipTitle, async context =>
+            {
+                context.SeekTime = null;
+                context.RandomMaxDelayTime = TimeSpan.FromSeconds(1);
+
+                var seekOperation = new SeekOperation();
+                var delayOperation = new RandomDelayOperation();
+                var suspendOperation = new SuspendOperation();
+                var resumeOperation = new ResumeOperation();
+
+                // Seek result is of no interest.
+                seekOperation.Prepare(context);
+                _ = seekOperation.Execute(context);
+
+                // Random delay
+                delayOperation.Prepare(context);
+                await delayOperation.Execute(context);
+
+                // Suspend
+                await suspendOperation.Execute(context);
+
+                // Resume
                 await resumeOperation.Execute(context);
             });
         }
