@@ -35,10 +35,16 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
 {
     public static class TSPlayerServiceTestCaseSource
     {
-        private static ClipDefinition[] allClipSource;
-        private static string[] allClipsData;
-        private static string[] dashClipsData;
+        private static ClipDefinition[] allClipsSource;
+        //private static ClipDefinition[] httpClipSource;
         private static ClipDefinition[] drmClipsSource;
+
+        private static string[] allClipsData;
+        private static string[] httpClipsData;
+        private static string[] dashClipsData;
+        private static string[] rtspClipsData;
+
+
 
         private static IEnumerable<ClipDefinition> ReadClips()
         {
@@ -49,27 +55,36 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
 
         static TSPlayerServiceTestCaseSource()
         {
-            allClipSource = ReadClips()
+            allClipsSource = ReadClips()
                 .ToArray();
 
-            allClipsData = allClipSource
+            drmClipsSource = allClipsSource
+                .Where(clip => clip.DRMDatas != null)
+                .ToArray();
+
+            httpClipsData = allClipsSource
+                .Where(clip => clip.Type != "rtsp")
                 .Select(clip => clip.Title)
                 .ToArray();
 
-            dashClipsData = allClipSource
+            dashClipsData = allClipsSource
                 .Where(clip => clip.Type == "dash")
                 .Select(clip => clip.Title)
                 .ToArray();
 
-            drmClipsSource = allClipSource
-                .Where(clip => clip.DRMDatas != null)
+            rtspClipsData = allClipsSource
+                .Where(clip => clip.Type == "rtsp")
+                .Select(clip => clip.Title)
                 .ToArray();
-
         }
 
         public static string[] AllClips() => allClipsData;
 
+        public static string[] HttpClips() => httpClipsData;
+
         public static string[] DashClips() => dashClipsData;
+
+        public static string[] RtspClips() => rtspClipsData;
 
         public static bool IsEncrypted(string clipTitle) =>
             drmClipsSource.Any(clip => string.Equals(clip.Title, clipTitle));
@@ -147,7 +162,7 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
             });
         }
 
-        [Test, TestCaseSource(typeof(TSPlayerServiceTestCaseSource), nameof(TSPlayerServiceTestCaseSource.AllClips))]
+        [Test, TestCaseSource(typeof(TSPlayerServiceTestCaseSource), nameof(TSPlayerServiceTestCaseSource.HttpClips))]
         public void Playback_StartFromThe90thSecond_PreparesAndStarts(string clipTitle)
         {
             RunPlayerTest(clipTitle, async context =>
@@ -166,7 +181,7 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
             }, false);
         }
 
-        [Test, TestCaseSource(typeof(TSPlayerServiceTestCaseSource), nameof(TSPlayerServiceTestCaseSource.AllClips))]
+        [Test, TestCaseSource(typeof(TSPlayerServiceTestCaseSource), nameof(TSPlayerServiceTestCaseSource.HttpClips))]
         public void Seek_Random10Times_Seeks(string clipTitle)
         {
             RunPlayerTest(clipTitle, async context =>
@@ -181,7 +196,7 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
             });
         }
 
-        [Test, TestCaseSource(typeof(TSPlayerServiceTestCaseSource), nameof(TSPlayerServiceTestCaseSource.AllClips))]
+        [Test, TestCaseSource(typeof(TSPlayerServiceTestCaseSource), nameof(TSPlayerServiceTestCaseSource.HttpClips))]
         public void Seek_DisposeDuringSeek_Disposes(string clipTitle)
         {
             RunPlayerTest(clipTitle, async context =>
@@ -195,7 +210,7 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
             });
         }
 
-        [Test, TestCaseSource(typeof(TSPlayerServiceTestCaseSource), nameof(TSPlayerServiceTestCaseSource.AllClips))]
+        [Test, TestCaseSource(typeof(TSPlayerServiceTestCaseSource), nameof(TSPlayerServiceTestCaseSource.HttpClips))]
         public void Seek_Forward_Seeks(string clipTitle)
         {
             RunPlayerTest(clipTitle, async context =>
@@ -214,7 +229,7 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
             });
         }
 
-        [Test, TestCaseSource(typeof(TSPlayerServiceTestCaseSource), nameof(TSPlayerServiceTestCaseSource.AllClips))]
+        [Test, TestCaseSource(typeof(TSPlayerServiceTestCaseSource), nameof(TSPlayerServiceTestCaseSource.HttpClips))]
         public void Seek_Backward_Seeks(string clipTitle)
         {
             RunPlayerTest(clipTitle, async context =>
@@ -233,7 +248,7 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
             });
         }
 
-        [Test, TestCaseSource(typeof(TSPlayerServiceTestCaseSource), nameof(TSPlayerServiceTestCaseSource.AllClips))]
+        [Test, TestCaseSource(typeof(TSPlayerServiceTestCaseSource), nameof(TSPlayerServiceTestCaseSource.HttpClips))]
         public void Seek_ToTheEnd_SeeksOrCompletes(string clipTitle)
         {
             RunPlayerTest(clipTitle, async context =>
@@ -261,7 +276,7 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
             });
         }
 
-        [Test, TestCaseSource(typeof(TSPlayerServiceTestCaseSource), nameof(TSPlayerServiceTestCaseSource.AllClips))]
+        [Test, TestCaseSource(typeof(TSPlayerServiceTestCaseSource), nameof(TSPlayerServiceTestCaseSource.HttpClips))]
         public void Seek_EOSReached_StateChangedCompletes(string clipTitle)
         {
             RunPlayerTest(clipTitle, async context =>
