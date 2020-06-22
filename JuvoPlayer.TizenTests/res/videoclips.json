@@ -1,6 +1,6 @@
 ﻿[
   {
-    "title": "RTSP Test stream,
+    "title": "RTSP Test stream",
     "url": "rtsp://106.120.45.49/test.ts",
     "type": "rtsp",
     "poster": "canimals.jpg",

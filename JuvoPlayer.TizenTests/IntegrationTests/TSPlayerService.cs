@@ -36,15 +36,12 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
     public static class TSPlayerServiceTestCaseSource
     {
         private static ClipDefinition[] allClipsSource;
-        //private static ClipDefinition[] httpClipSource;
         private static ClipDefinition[] drmClipsSource;
 
         private static string[] allClipsData;
         private static string[] httpClipsData;
         private static string[] dashClipsData;
         private static string[] rtspClipsData;
-
-
 
         private static IEnumerable<ClipDefinition> ReadClips()
         {
@@ -60,6 +57,10 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
 
             drmClipsSource = allClipsSource
                 .Where(clip => clip.DRMDatas != null)
+                .ToArray();
+
+            allClipsData = allClipsSource
+                .Select(clip => clip.Title)
                 .ToArray();
 
             httpClipsData = allClipsSource
