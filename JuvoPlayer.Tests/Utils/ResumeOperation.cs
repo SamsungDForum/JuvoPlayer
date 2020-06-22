@@ -46,6 +46,10 @@ namespace JuvoPlayer.Tests.Utils
             var clockTask = RunningClockTask.Observe(context.Service, context.Token, context.Timeout);
             var resumeTask = context.Service.Resume().WithTimeout(context.Timeout).WithCancellation(context.Token);
 
+            // Jolly resume operation is when:
+            // - Resume() completes.
+            // - Playing state is observed.
+            // - Running clock is observed.
             return Task.WhenAll(resumeTask, stateTask, clockTask);
         }
     }
