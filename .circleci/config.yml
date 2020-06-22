@@ -9,7 +9,8 @@ jobs:
           command: |
             echo 'Hello World!'
             echo 'This is the delivery pipeline'
-
+            ssh -T git@github.sec.samsung.net
+            
       - run:
           name: Build and Test JuvoPlayer
           command: /home/p.buczynski/git/code/juvo-player/bamboo-specs/build_and_test.sh            
