@@ -357,11 +357,31 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
             });
         }
 
+        [Test, TestCaseSource(typeof(TSPlayerServiceTestCaseSource), nameof(TSPlayerServiceTestCaseSource.AllClips))]
+        public void Suspend_Resume_Succeeds(string clipTitle)
+        {
+            RunPlayerTest(clipTitle, async context =>
+            {
+                var runningClock = RunningClockTask.Observe(context.Service, context.Token, context.Timeout);
+                var suspendOperation = new SuspendOperation();
+                var resumeOperation = new ResumeOperation();
+
+                // Wait for stream to run
+                await runningClock;
+                
+                // Suspend runninng stream
+                await suspendOperation.Execute(context);
+
+                // Resume playback. 
+                await resumeOperation.Execute(context);
+            });
+        }
+
         [TestCase("Clean byte range MPEG DASH")]
         public void Random_20RandomOperations_ExecutedCorrectly(string clipTitle)
         {
             var operations =
-                GenerateOperations(20, new List<Type> { typeof(StopOperation), typeof(PrepareOperation) });
+                GenerateOperations(20, new List<Type> { typeof(StopOperation), typeof(PrepareOperation), typeof(SuspendOperation), typeof(ResumeOperation) });
 
             try
             {
