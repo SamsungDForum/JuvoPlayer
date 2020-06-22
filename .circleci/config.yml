@@ -9,3 +9,9 @@ jobs:
           command: |
             echo 'Hello World!'
             echo 'This is the delivery pipeline'
+      - run:
+          name: Build and Test JuvoPlayer
+          command: |
+            echo 'Starting...'
+            /home/p.buczynski/git/code/juvo-player/bamboo-specs/build_and_test.sh
+            echo 'Finished!'
