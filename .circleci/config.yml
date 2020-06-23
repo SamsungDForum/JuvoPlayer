@@ -1,17 +1,25 @@
-version: 2
+version: 2.1
+
+orbs:
+  win: circleci/windows@1.0.0
+
 jobs:
   build:
-    docker:
-      - image: circleci/openjdk:8-jdk
+    executor:
+      name: win/vs2019
+      shell: powershell.exe
     steps:
+      - checkout
+      - restore_cache:
+          keys:
+            - dotnet-packages-v1-{{ checksum "circleci-demo-windows.csproj" }}
       - run:
-          name: The First Step
-          command: |
-            echo 'Hello World!'
-            echo 'This is the delivery pipeline'
-            ssh -T git@github.sec.samsung.net
-            
-            
+          name: "Install project dependencies"
+          command: dotnet.exe restore
+      - save_cache:
+          paths:
+            - C:\Users\circleci\.nuget\packages
+          key: dotnet-packages-v1-{{ checksum "circleci-demo-windows.csproj" }}
       - run:
-          name: Build and Test JuvoPlayer
-          command: /home/p.buczynski/git/code/juvo-player/bamboo-specs/build_and_test.sh            
+          name: "Run Build step"
+          command: dotnet.exe publish -c Release -r win10-x64
