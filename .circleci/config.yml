@@ -10,5 +10,8 @@ jobs:
           command:
             curl -sL https://art.sec.samsung.net/artifactory/tools/CircleCI/scripts/set_proxy_setting.sh | sh
       - run:
+          name: JuvoReactNative exclusion
+          command: dotnet sln remove JuvoReactNative/Tizen/JuvoReactNative.csproj
+      - run:
           name: Build 
           command: dotnet build -c Release JuvoPlayer.sln
