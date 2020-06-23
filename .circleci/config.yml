@@ -10,6 +10,14 @@ jobs:
           command:
             curl -sL https://art.sec.samsung.net/artifactory/tools/CircleCI/scripts/set_proxy_setting.sh | sh
       - run:
+          name: Install dotnetcore 2.0
+          command:
+            curl https://download.visualstudio.microsoft.com/download/pr/8f959005-4742-44c0-8b30-17d394c0b954/348d5acbfe2a9879e39529be18b29f2d/dotnet-sdk-2.1.807-linux-x64.tar.gz
+            mkdir -p $HOME/dotnet && tar zxf dotnet-sdk-2.1.807-linux-x64.tar.gz -C $HOME/dotnet21
+            export DOTNET_ROOT=$HOME/dotnet21
+            export PATH=$PATH:$HOME/dotnet21
+
+      - run:
           name: JuvoReactNative exclusion
           command: dotnet sln remove JuvoReactNative/Tizen/JuvoReactNative.csproj
       - run:
@@ -17,4 +25,4 @@ jobs:
           command: dotnet build -c Release JuvoPlayer.sln
       - run:
           name: Tests
-          command: dotnet test /nodeReuse:false JuvoPlayer.Tests/JuvoPlayer.Tests.csproj --logger:trx 
+          command: dotnet test /nodeReuse:false JuvoPlayer.Tests/JuvoPlayer.Tests.csproj --logger:trx -f netcoreapp2.0
