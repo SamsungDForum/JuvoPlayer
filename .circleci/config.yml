@@ -17,4 +17,4 @@ jobs:
           command: dotnet build -c Release JuvoPlayer.sln
       - run:
           name: Tests
-          command: dotnet test /nodeReuse:false JuvoPlayer.Tests/JuvoPlayer.Tests.csproj --logger:trx -f --verbosity=minimal
+          command: dotnet test /nodeReuse:false JuvoPlayer.Tests/JuvoPlayer.Tests.csproj --logger:trx -f netcoreapp2.1 --verbosity=minimal
