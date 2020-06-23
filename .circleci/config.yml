@@ -18,14 +18,6 @@ jobs:
       - run:
           name: Tests
           command: |
-               dotnet test /nodeReuse:false JuvoPlayer.Tests/JuvoPlayer.Tests.csproj --logger "trx" -f netcoreapp2.1 --verbosity=normal
-      - run: 
-          name: test results
-          command: |
-              dotnet tool install -g trx2junit
-              export PATH="$PATH:/root/.dotnet/tools"
-              trx2junit tests/**/TestResults/*.trx
-      - store_test_results:
-          path: tests/TestResults
-          destination: TestResults
+               dotnet test /nodeReuse:false JuvoPlayer.Tests/JuvoPlayer.Tests.csproj --logger:trx -f netcoreapp2.1 --verbosity normal
+
 
