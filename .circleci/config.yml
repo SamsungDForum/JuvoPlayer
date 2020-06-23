@@ -21,9 +21,8 @@ jobs:
                dotnet test /nodeReuse:false JuvoPlayer.Tests/JuvoPlayer.Tests.csproj --logger "trx" -f netcoreapp2.1 --verbosity=normal
       - run: 
           name: test results
-          when: always
           command: |
-          dotnet tool install -g trx2junit
+              dotnet tool install -g trx2junit
               export PATH="$PATH:/root/.dotnet/tools"
               trx2junit tests/**/TestResults/*.trx
       - store_test_results:
