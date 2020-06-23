@@ -38,8 +38,8 @@ namespace JuvoLogger.Udp
                 Resources.Messages.HijackMessage);
 
         private const int MaxUdpHeader = 48; // IP6 UDP header.
-        private Socket _socket;
-        private EndPoint _clientEndPoint = new IPEndPoint(IPAddress.None, 0);
+        private readonly Socket _socket;
+        private readonly EndPoint _clientEndPoint = new IPEndPoint(IPAddress.None, 0);
         private readonly UdpPacket _clientListenerPacket;
         private UdpPacket _clientDataPacket;
         private readonly CancellationToken _sessionToken;
@@ -47,14 +47,13 @@ namespace JuvoLogger.Udp
         public SocketSession(CancellationToken token)
         {
             _sessionToken = token;
+            _socket = new Socket(SocketType.Dgram, ProtocolType.Udp);
             _clientListenerPacket = new UdpPacket(1, OnConnected, _sessionToken);
             ((SocketAsyncEventArgs)_clientListenerPacket).RemoteEndPoint = new IPEndPoint(IPAddress.None, 0);
-
         }
 
         public void Start(int port)
         {
-            _socket = new Socket(SocketType.Dgram, ProtocolType.Udp);
             _socket.Bind(new IPEndPoint(IPAddress.Any, port));
             ReceiveFromEndPoint(_clientListenerPacket);
         }
@@ -98,8 +97,7 @@ namespace JuvoLogger.Udp
 
         private UdpPacket GetPacket()
         {
-            var packet = Interlocked.Exchange(ref _clientDataPacket, null);
-            return packet != null ? packet : new UdpPacket(OnCompleted, _sessionToken, ReturnPacket);
+            return Interlocked.Exchange(ref _clientDataPacket, null) ?? new UdpPacket(OnCompleted, _sessionToken, ReturnPacket);
         }
         private void ReturnPacket(UdpPacket packet)
         {
@@ -178,7 +176,7 @@ namespace JuvoLogger.Udp
         {
             if (!newEp.SameAs(_clientEndPoint))
             {
-                if (_clientEndPoint != null)
+                if (_clientEndPoint.IsAddressValid())
                     SendTo(_clientEndPoint, PacketFromMessage(Message.Hijack));
 
                 SendTo(newEp, PacketFromMessage(Message.Connect));
