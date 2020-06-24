@@ -29,6 +29,7 @@ using JuvoPlayer.Common;
 using JuvoPlayer.Drms;
 using JuvoPlayer.Drms.Cenc;
 using NUnit.Framework;
+using static JuvoPlayer.Tests.Utils.TaskExtensions;
 
 namespace JuvoPlayer.TizenTests.IntegrationTests
 {
@@ -308,7 +309,7 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
                                 {
                                     try
                                     {
-                                        await ses.WaitForInitialization(cts.Token);
+                                        await ses.GetInitialisationTask().WithCancellation(cts.Token);
                                     }
                                     catch (OperationCanceledException)
                                     {

@@ -42,7 +42,7 @@ namespace JuvoPlayer.Tests.UnitTests
 
         public Task<Packet> DecryptPacket(EncryptedPacket packet, CancellationToken token) { return Task.FromResult(new Packet()); }
 
-        public Task WaitForInitialization(CancellationToken token) => Task.CompletedTask;
+        public Task GetInitialisationTask() => Task.CompletedTask;
         public bool CanDecrypt() => true;
     }
 
