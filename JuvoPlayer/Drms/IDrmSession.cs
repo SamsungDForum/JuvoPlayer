@@ -40,14 +40,10 @@ namespace JuvoPlayer.Drms
         /// <summary>
         /// Awaitable call for initialization completion.
         /// </summary>
-        /// <param name="token">Cancellation token</param>
-        /// <returns>Task which completes when initialization is done</returns>
-        /// <exception cref="OperationCancelledException"> is throw when initialization is terminated before
-        /// completion or when passed <see cref="token"/> gets cancelled.</exception>
         /// <exception cref=""></exception>
         /// <exception cref="T:JuvoPlayer.Drms.DRMException"> is thrown when session could not be initialized</exception>
         /// <exception cref="InvalidOperationException"> is thrown if this API is called prior to calling Initialize</exception>
-        Task WaitForInitialization(CancellationToken token);
+        Task GetInitialisationTask();
 
         /// <summary>
         /// Returns initialization state of session

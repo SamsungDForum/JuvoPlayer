@@ -26,6 +26,7 @@ using JuvoPlayer.Common;
 using JuvoPlayer.Drms;
 using ESPlayer = Tizen.TV.Multimedia;
 using StreamType = JuvoPlayer.Common.StreamType;
+using static JuvoPlayer.Utils.TaskExtensions;
 
 namespace JuvoPlayer.Player.EsPlayer
 {
@@ -449,7 +450,7 @@ namespace JuvoPlayer.Player.EsPlayer
             if (!dataPacket.DrmSession.CanDecrypt())
             {
                 _bufferingSubject.OnNext(true);
-                await dataPacket.DrmSession.WaitForInitialization(token);
+                await dataPacket.DrmSession.GetInitialisationTask().WithCancellation(token);
                 _bufferingSubject.OnNext(false);
 
                 logger.Info($"{streamType}: DRM Initialization complete");
