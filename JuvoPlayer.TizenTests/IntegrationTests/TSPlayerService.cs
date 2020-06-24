@@ -362,20 +362,24 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
         {
             RunPlayerTest(clipTitle, async context =>
             {
-                var runningClockTask = RunningClockTask.Observe(context.Service, context.Token, context.Timeout);
-                var playingStateTask = WaitForState.Observe(context.Service, PlayerState.Playing, context.Token, context.Timeout);
                 var suspendOperation = new SuspendOperation();
                 var resumeOperation = new ResumeOperation();
 
-                // Wait for stream to run
-                await Task.WhenAll(playingStateTask, runningClockTask);
+                suspendOperation.SetPreconditions(
+                    // Wait for playing state & running clock
+                    () => Task.WhenAll(WaitForState.Observe(context.Service, PlayerState.Playing, context.Token, context.Timeout),
+                            RunningClockTask.Observe(context.Service, context.Token, context.Timeout)),
+
+                    // Let it run for a moment
+                    () => Task.Delay(SuspendOperation.GetRandomTimeSpan(TimeSpan.FromSeconds(2)), context.Token));
 
                 // Suspend
+                suspendOperation.Prepare(context);
                 await suspendOperation.Execute(context);
 
                 // Resume
                 await resumeOperation.Execute(context);
-            });
+            }, false);
         }
 
         [Test, TestCaseSource(typeof(TSPlayerServiceTestCaseSource), nameof(TSPlayerServiceTestCaseSource.AllClips))]
@@ -383,34 +387,33 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
         {
             RunPlayerTest(clipTitle, async context =>
             {
-                var runningClockTask = RunningClockTask.Observe(context.Service, context.Token, context.Timeout);
-                var playingStateTask = WaitForState.Observe(context.Service, PlayerState.Playing, context.Token, context.Timeout);
-
-                context.SeekTime = null;
-                context.RandomMaxDelayTime = TimeSpan.FromSeconds(1);
-
-                var seekOperation = new SeekOperation();
-                var delayOperation = new RandomDelayOperation();
                 var suspendOperation = new SuspendOperation();
                 var resumeOperation = new ResumeOperation();
 
-                // Wait for play state before issuing seek operation
-                await Task.WhenAll(playingStateTask, runningClockTask);
+                suspendOperation.SetPreconditions(
+                    // Wait for playing state & running clock
+                    () => Task.WhenAll(WaitForState.Observe(context.Service, PlayerState.Playing, context.Token, context.Timeout),
+                            RunningClockTask.Observe(context.Service, context.Token, context.Timeout)),
 
-                // Seek result is of no interest.
-                seekOperation.Prepare(context);
-                _ = seekOperation.Execute(context);
+                    // Let it run
+                    () => Task.Delay(SuspendOperation.GetRandomTimeSpan(TimeSpan.FromSeconds(2)), context.Token),
 
-                // Random delay
-                delayOperation.Prepare(context);
-                await delayOperation.Execute(context);
+                    // Execute seek & let it run
+                    // not caring about seek result here, not at all. It *is* expected to fail, depending on how far it got.
+                    () =>
+                    {
+                        var randomSeekPos = SuspendOperation.GetRandomTimeSpan(context.Service.Duration - TimeSpan.FromSeconds(10));
+                        _ = context.Service.SeekTo(randomSeekPos);
+                        return Task.Delay(SuspendOperation.GetRandomTimeSpan(TimeSpan.FromSeconds(2)), context.Token);
+                    });
 
                 // Suspend
+                suspendOperation.Prepare(context);
                 await suspendOperation.Execute(context);
 
                 // Resume
                 await resumeOperation.Execute(context);
-            });
+            }, false);
         }
 
         [Test, TestCaseSource(typeof(TSPlayerServiceTestCaseSource), nameof(TSPlayerServiceTestCaseSource.AllClips))]
@@ -418,24 +421,31 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
         {
             RunPlayerTest(clipTitle, async context =>
             {
-                var runningClockTask = RunningClockTask.Observe(context.Service, context.Token, context.Timeout);
-                var playingStateTask = WaitForState.Observe(context.Service, PlayerState.Playing, context.Token, context.Timeout);
                 var suspendOperation = new SuspendOperation();
                 var resumeOperation = new ResumeOperation();
-                var pauseOperation = new PauseOperation();
 
-                // Wait for stream to run
-                await Task.WhenAll(playingStateTask, runningClockTask);
+                suspendOperation.SetPreconditions(
+                    // Wait for playing state & running clock
+                    () => Task.WhenAll(WaitForState.Observe(context.Service, PlayerState.Playing, context.Token, context.Timeout),
+                            RunningClockTask.Observe(context.Service, context.Token, context.Timeout)),
 
-                // Pause playback
-                await pauseOperation.Execute(context);
+                    // Let it run
+                    () => Task.Delay(SuspendOperation.GetRandomTimeSpan(TimeSpan.FromSeconds(2)), context.Token),
+
+                    // Pause & wait for confirmation
+                    () =>
+                    {
+                        context.Service.Pause();
+                        return WaitForState.Observe(context.Service, PlayerState.Paused, context.Token, context.Timeout);
+                    });
 
                 // Suspend
+                suspendOperation.Prepare(context);
                 await suspendOperation.Execute(context);
 
                 // Resume
                 await resumeOperation.Execute(context);
-            });
+            }, false);
         }
 
         [Test, TestCaseSource(typeof(TSPlayerServiceTestCaseSource), nameof(TSPlayerServiceTestCaseSource.AllClips))]
@@ -443,22 +453,20 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
         {
             RunPlayerTest(clipTitle, async context =>
             {
-                context.RandomMaxDelayTime = TimeSpan.FromSeconds(1);
-
-                var delayOperation = new RandomDelayOperation();
                 var suspendOperation = new SuspendOperation();
                 var resumeOperation = new ResumeOperation();
 
-                // Random delay
-                delayOperation.Prepare(context);
-                await delayOperation.Execute(context);
+                suspendOperation.SetPreconditions(
+                    // Run for a bit to get results from various startup stages.
+                    () => Task.Delay(SuspendOperation.GetRandomTimeSpan(TimeSpan.FromSeconds(2)), context.Token));
 
                 // Suspend
+                suspendOperation.Prepare(context);
                 await suspendOperation.Execute(context);
 
                 // Resume
                 await resumeOperation.Execute(context);
-            });
+            }, false);
         }
 
         [Test, TestCaseSource(typeof(TSPlayerServiceTestCaseSource), nameof(TSPlayerServiceTestCaseSource.AllClips))]
@@ -466,23 +474,21 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
         {
             RunPlayerTest(clipTitle, async context =>
             {
-                context.SeekTime = null;
-                context.RandomMaxDelayTime = TimeSpan.FromSeconds(1);
-
-                var seekOperation = new SeekOperation();
-                var delayOperation = new RandomDelayOperation();
                 var suspendOperation = new SuspendOperation();
                 var resumeOperation = new ResumeOperation();
 
-                // Seek result is of no interest.
-                seekOperation.Prepare(context);
-                _ = seekOperation.Execute(context);
-
-                // Random delay
-                delayOperation.Prepare(context);
-                await delayOperation.Execute(context);
+                suspendOperation.SetPreconditions(
+                    // Run for a bit to get results from various startup stages.
+                    () => Task.Delay(SuspendOperation.GetRandomTimeSpan(TimeSpan.FromSeconds(2)), context.Token),
+                    () =>
+                    {
+                        var randomSeekPos = SuspendOperation.GetRandomTimeSpan(context.Service.Duration - TimeSpan.FromSeconds(10));
+                        _ = context.Service.SeekTo(randomSeekPos);
+                        return Task.Delay(SuspendOperation.GetRandomTimeSpan(TimeSpan.FromSeconds(2)), context.Token);
+                    });
 
                 // Suspend
+                suspendOperation.Prepare(context);
                 await suspendOperation.Execute(context);
 
                 // Resume
