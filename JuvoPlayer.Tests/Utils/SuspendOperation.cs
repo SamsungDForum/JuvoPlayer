@@ -52,12 +52,12 @@ namespace JuvoPlayer.Tests.Utils
         {
             try
             {
-                context.Service.Start(); 
-            
+                context.Service.Start();
+
                 foreach (var preconditionTask in _preconditions)
                     await preconditionTask();
             }
-            catch(Exception e)
+            catch (Exception e)
             {
                 // Defined preconditions to execute test were not met.
                 // Success? Test was not run. Failure? Test was not run. 
