@@ -228,7 +228,9 @@ namespace XamarinPlayer.Tizen.TV.Views
             var data = contentList?.Find(content => content.Source.Equals(url));
             if (data == null)
             {
+                MessagingCenter.Unsubscribe<IKeyEventSender, string>(this, "KeyDown");
                 await (new DialogService()).ShowError(url, "Could not find content", "OK", null);
+                MessagingCenter.Subscribe<IKeyEventSender, string>(this, "KeyDown", (s, e) => { HandleKeyEvent(e); });
                 return true;
             }
 
