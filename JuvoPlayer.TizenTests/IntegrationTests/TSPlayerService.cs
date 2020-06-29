@@ -39,7 +39,7 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
         private static ClipDefinition[] drmClipsSource;
 
         private static string[] allClipsData;
-        private static string[] httpClipsData;
+        private static string[] seekableClipsData;
         private static string[] dashClipsData;
         private static string[] rtspClipsData;
 
@@ -63,7 +63,7 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
                 .Select(clip => clip.Title)
                 .ToArray();
 
-            httpClipsData = allClipsSource
+            seekableClipsData = allClipsSource
                 .Where(clip => clip.Type != "rtsp")
                 .Select(clip => clip.Title)
                 .ToArray();
@@ -81,7 +81,7 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
 
         public static string[] AllClips() => allClipsData;
 
-        public static string[] HttpClips() => httpClipsData;
+        public static string[] HttpClips() => seekableClipsData;
 
         public static string[] DashClips() => dashClipsData;
 
