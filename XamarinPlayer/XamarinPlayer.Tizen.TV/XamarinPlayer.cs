@@ -91,9 +91,17 @@ namespace XamarinPlayer.Tizen.TV
             {
                 if (AppMainPage.CurrentPage is IContentPayloadHandler handler && await handler.HandleUrl(url))
                     return;
-                var page = await AppMainPage.PopAsync();
-                if (page == null)
+                if (AppMainPage.CurrentPage is ContentListPage contentListPage)
+                {
+                    contentListPage.SendDisappearing();
+                    await (new DialogService()).ShowError(
+                        "Could not find content with url: " + url + ". Returning to the main page.",
+                        "Could not find content. ", "OK", null);
+                    contentListPage.SendAppearing();
                     return;
+                }
+
+                await AppMainPage.PopAsync();
             }
         }
     }
