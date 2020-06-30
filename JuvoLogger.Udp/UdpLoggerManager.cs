@@ -45,7 +45,12 @@ namespace JuvoLogger.Udp
             IsRunning = GetUdpPort(contents, out var port);
             if (!IsRunning) return;
 
-            _loggerService = _loggerService ?? new UdpLoggerService(port, UdpLogger.LogFormat);
+            if (_loggerService != null)
+                return;
+
+            _loggerService = new UdpLoggerService();
+            _ = _loggerService.StartLogger(port, UdpLogger.LogFormat);
+
             Configure(contents, CreateLogger);
         }
 

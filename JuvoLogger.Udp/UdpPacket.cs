@@ -17,7 +17,7 @@
 
 using System;
 using System.Net.Sockets;
-using System.Text;
+using System.Threading;
 
 namespace JuvoLogger.Udp
 {
@@ -30,20 +30,33 @@ namespace JuvoLogger.Udp
         private readonly PacketDone _completedPacketHandler;
         private readonly SocketAsyncEventArgs _asyncState;
 
-        public UdpPacket(in int bufferCapacity, in AsyncDone asyncHandler, in PacketDone packetHandler = null)
+        private readonly CancellationToken _token;
+        public bool IsTerminated => _token.IsCancellationRequested;
+
+        public UdpPacket(in int bufferCapacity, in AsyncDone asyncHandler, in CancellationToken token, in PacketDone packetHandler = null)
         {
+            _token = token;
             _completeAsyncHandler = asyncHandler;
             _completedPacketHandler = packetHandler;
             _asyncState = CreateSocketAsyncEventArgs();
             _asyncState.SetBuffer(new byte[bufferCapacity], 0, 0); // Mark buffer as "empty"
         }
 
-        public UdpPacket(in byte[] message, in AsyncDone asyncHandler, in PacketDone packetHandler = null)
+        public UdpPacket(in byte[] message, in AsyncDone asyncHandler, in CancellationToken token, in PacketDone packetHandler = null)
         {
+            _token = token;
             _completeAsyncHandler = asyncHandler;
             _completedPacketHandler = packetHandler;
             _asyncState = CreateSocketAsyncEventArgs();
             _asyncState.SetBuffer(message, 0, message.Length); // Mark buffer as "containing data"
+        }
+
+        public UdpPacket(in AsyncDone asyncHandler, in CancellationToken token, in PacketDone packetHandler = null)
+        {
+            _token = token;
+            _completeAsyncHandler = asyncHandler;
+            _completedPacketHandler = packetHandler;
+            _asyncState = CreateSocketAsyncEventArgs();
         }
 
         private SocketAsyncEventArgs CreateSocketAsyncEventArgs()
@@ -56,17 +69,10 @@ namespace JuvoLogger.Udp
             return asyncState;
         }
 
-        public int Append(in string message, int startIndex, int count)
+        public void SetBuffer(in byte[] buffer, int startIndex, int size)
         {
-            var buffer = _asyncState.Buffer;
-            var bufferedBytes = _asyncState.Count;
-
-            // Truncate input message to available buffer space.
-            var consumeLength = Math.Min(count, buffer.Length - bufferedBytes);
-
-            Encoding.UTF8.GetBytes(message, startIndex, consumeLength, buffer, bufferedBytes);
-            _asyncState.SetBuffer(_asyncState.Offset, bufferedBytes + consumeLength);
-            return consumeLength;
+            // Caller needs to assure size does not exceed MTU
+            _asyncState.SetBuffer(buffer, startIndex, size);
         }
 
         public static void Complete(in UdpPacket packet) => packet._completedPacketHandler?.Invoke(packet);

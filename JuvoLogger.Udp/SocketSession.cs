@@ -38,25 +38,40 @@ namespace JuvoLogger.Udp
                 Resources.Messages.HijackMessage);
 
         private const int MaxUdpHeader = 48; // IP6 UDP header.
-        private Socket _socket;
-        private EndPoint _clientEndPoint = new IPEndPoint(IPAddress.None, 0);
+        private readonly Socket _socket;
+        private readonly EndPoint _clientEndPoint = new IPEndPoint(IPAddress.None, 0);
         private readonly UdpPacket _clientListenerPacket;
         private UdpPacket _clientDataPacket;
+        private readonly CancellationToken _sessionToken;
 
-        public SocketSession(int port)
+        public SocketSession(CancellationToken token)
         {
+            _sessionToken = token;
             _socket = new Socket(SocketType.Dgram, ProtocolType.Udp);
-            _socket.Bind(new IPEndPoint(IPAddress.Any, port));
-
-            // connection receiver
-            _clientListenerPacket = new UdpPacket(1, OnConnected);
+            _clientListenerPacket = new UdpPacket(1, OnConnected, _sessionToken);
             ((SocketAsyncEventArgs)_clientListenerPacket).RemoteEndPoint = new IPEndPoint(IPAddress.None, 0);
+        }
+
+        public void Start(int port)
+        {
+            _socket.Bind(new IPEndPoint(IPAddress.Any, port));
             ReceiveFromEndPoint(_clientListenerPacket);
         }
 
         public void Stop()
         {
-            _socket.Close();
+            try
+            {
+                StopOutput = true;
+                if (_clientEndPoint.IsAddressValid())
+                    _socket.SendTo(_messageData[(int)Message.Terminate], _clientEndPoint);
+            }
+            catch (Exception)
+            { /* Ignore on stop */}
+            finally
+            {
+                _clientEndPoint.InvalidateAddress();
+            }
         }
 
         public void SendMessage(in string message)
@@ -64,22 +79,25 @@ namespace JuvoLogger.Udp
             if (!_clientEndPoint.IsAddressValid())
                 return;
 
-            // Migrate to chunk/slice append taken directly from 
-            // string builder sourcing this method - if migrated to core 2.x
-            var bytesSent = 0;
-            var msgLength = message.Length;
+            // Resulting messgeBytes can be up to x4 message.Length
+            var messageBytes = Encoding.UTF8.GetBytes(message);
+            var msgLength = messageBytes.Length;
+            var mtu = MaxPayloadSize;
+            int bytesSent = 0;
+
             do
             {
-                var buffer = GetPacket();
-                bytesSent += buffer.Append(message, bytesSent, msgLength - bytesSent);
-                SendTo(_clientEndPoint, buffer);
+                var packet = GetPacket();
+                var payloadSize = Math.Min(msgLength - bytesSent, mtu);
+                packet.SetBuffer(messageBytes, bytesSent, payloadSize);
+                SendTo(_clientEndPoint, packet);
+                bytesSent += payloadSize;
             } while (msgLength > bytesSent);
         }
 
         private UdpPacket GetPacket()
         {
-            var packet = Interlocked.Exchange(ref _clientDataPacket, null);
-            return packet != null ? packet : new UdpPacket(MaxPayloadSize, OnCompleted, ReturnPacket);
+            return Interlocked.Exchange(ref _clientDataPacket, null) ?? new UdpPacket(OnCompleted, _sessionToken, ReturnPacket);
         }
         private void ReturnPacket(UdpPacket packet)
         {
@@ -99,6 +117,9 @@ namespace JuvoLogger.Udp
 
         private void OnConnected(object o, SocketAsyncEventArgs asyncState)
         {
+            if (((UdpPacket)asyncState).IsTerminated)
+                return;
+
             if (asyncState.SocketError == SocketError.Success)
                 ProcessEndPoint(asyncState.RemoteEndPoint);
 
@@ -107,6 +128,9 @@ namespace JuvoLogger.Udp
 
         private void ReceiveFromEndPoint(SocketAsyncEventArgs asyncState)
         {
+            if (((UdpPacket)asyncState).IsTerminated)
+                return;
+
             try
             {
                 asyncState.SetBuffer(asyncState.Offset, asyncState.Buffer.Length);
@@ -114,6 +138,7 @@ namespace JuvoLogger.Udp
                     UdpPacket.CompleteAsync(asyncState);
             }
             catch (Exception e)
+            when (!_sessionToken.IsCancellationRequested)
             {
                 SendMessage(e.ToString());
                 throw;
@@ -122,6 +147,9 @@ namespace JuvoLogger.Udp
 
         private void SendTo(in EndPoint target, in UdpPacket buffer)
         {
+            if (buffer.IsTerminated)
+                return;
+
             try
             {
                 var asyncState = (SocketAsyncEventArgs)buffer;
@@ -142,13 +170,13 @@ namespace JuvoLogger.Udp
         // Run fixed messages buffers outside of packet pool. Not expecting that much traffic here.
         // Less fiddling then buffer restore / message copying.
         private UdpPacket PacketFromMessage(in Message msg) =>
-            new UdpPacket(_messageData[(int)msg], OnCompleted, UdpLoggerToolBox.Dispose);
+            new UdpPacket(_messageData[(int)msg], OnCompleted, _sessionToken, UdpLoggerToolBox.Dispose);
 
         private void ProcessEndPoint(in EndPoint newEp)
         {
             if (!newEp.SameAs(_clientEndPoint))
             {
-                if (_clientEndPoint != null)
+                if (_clientEndPoint.IsAddressValid())
                     SendTo(_clientEndPoint, PacketFromMessage(Message.Hijack));
 
                 SendTo(newEp, PacketFromMessage(Message.Connect));
@@ -171,7 +199,6 @@ namespace JuvoLogger.Udp
                 {
                     _socket.Close();
                     _clientListenerPacket.Dispose();
-                    _socket.Dispose();
                 }
 
                 disposedValue = true;
