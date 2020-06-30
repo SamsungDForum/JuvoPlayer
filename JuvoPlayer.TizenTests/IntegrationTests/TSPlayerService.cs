@@ -398,7 +398,7 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
             }, false);
         }
 
-        [Test, TestCaseSource(typeof(TSPlayerServiceTestCaseSource), nameof(TSPlayerServiceTestCaseSource.AllClips))]
+        [Test, TestCaseSource(typeof(TSPlayerServiceTestCaseSource), nameof(TSPlayerServiceTestCaseSource.SeekableClips))]
         public void Suspend_Resume_WhileSeeking_Succeeds(string clipTitle)
         {
             RunPlayerTest(clipTitle, async context =>
@@ -480,7 +480,7 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
             }, false);
         }
 
-        [Test, TestCaseSource(typeof(TSPlayerServiceTestCaseSource), nameof(TSPlayerServiceTestCaseSource.AllClips))]
+        [Test, TestCaseSource(typeof(TSPlayerServiceTestCaseSource), nameof(TSPlayerServiceTestCaseSource.SeekableClips))]
         public void Suspend_Resume_WhileStartingPlaybackAndSeeking_Succeeds(string clipTitle)
         {
             RunPlayerTest(clipTitle, async context =>
