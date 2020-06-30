@@ -38,6 +38,7 @@ namespace JuvoPlayer.Tests.Utils
 
         public void Prepare(TestContext context)
         {
+            /* Resume operation requires no preparation */
         }
 
         public Task Execute(TestContext context)
