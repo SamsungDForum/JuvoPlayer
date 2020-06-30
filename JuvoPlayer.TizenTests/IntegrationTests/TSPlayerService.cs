@@ -398,13 +398,12 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
                     // Let it run
                     () => Task.Delay(SuspendOperation.GetRandomTimeSpan(TimeSpan.FromSeconds(2)), context.Token),
 
-                    // Execute seek & let it run
-                    // not caring about seek result here, not at all. It *is* expected to fail, depending on how far it got.
+                    // Execute seek.
                     () =>
                     {
                         var randomSeekPos = SuspendOperation.GetRandomTimeSpan(context.Service.Duration - TimeSpan.FromSeconds(10));
                         _ = context.Service.SeekTo(randomSeekPos);
-                        return Task.Delay(SuspendOperation.GetRandomTimeSpan(TimeSpan.FromSeconds(2)), context.Token);
+                        return Task.CompletedTask;
                     });
 
                 // Suspend
@@ -456,10 +455,6 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
                 var suspendOperation = new SuspendOperation();
                 var resumeOperation = new ResumeOperation();
 
-                suspendOperation.SetPreconditions(
-                    // Run for a bit to get results from various startup stages.
-                    () => Task.Delay(SuspendOperation.GetRandomTimeSpan(TimeSpan.FromSeconds(2)), context.Token));
-
                 // Suspend
                 suspendOperation.Prepare(context);
                 await suspendOperation.Execute(context);
@@ -478,13 +473,11 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
                 var resumeOperation = new ResumeOperation();
 
                 suspendOperation.SetPreconditions(
-                    // Run for a bit to get results from various startup stages.
-                    () => Task.Delay(SuspendOperation.GetRandomTimeSpan(TimeSpan.FromSeconds(2)), context.Token),
                     () =>
                     {
                         var randomSeekPos = SuspendOperation.GetRandomTimeSpan(context.Service.Duration - TimeSpan.FromSeconds(10));
                         _ = context.Service.SeekTo(randomSeekPos);
-                        return Task.Delay(SuspendOperation.GetRandomTimeSpan(TimeSpan.FromSeconds(2)), context.Token);
+                        return Task.CompletedTask;
                     });
 
                 // Suspend
