@@ -373,11 +373,143 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
             });
         }
 
+        [Test, TestCaseSource(typeof(TSPlayerServiceTestCaseSource), nameof(TSPlayerServiceTestCaseSource.AllClips))]
+        public void Suspend_Resume_WhilePlaying_Succeeds(string clipTitle)
+        {
+            RunPlayerTest(clipTitle, async context =>
+            {
+                var suspendOperation = new SuspendOperation();
+                var resumeOperation = new ResumeOperation();
+
+                suspendOperation.SetPreconditions(
+                    // Wait for playing state & running clock
+                    () => Task.WhenAll(WaitForState.Observe(context.Service, PlayerState.Playing, context.Token, context.Timeout),
+                            RunningClockTask.Observe(context.Service, context.Token, context.Timeout)),
+
+                    // Let it run for a moment
+                    () => Task.Delay(SuspendOperation.GetRandomTimeSpan(TimeSpan.FromSeconds(2)), context.Token));
+
+                // Suspend
+                suspendOperation.Prepare(context);
+                await suspendOperation.Execute(context);
+
+                // Resume
+                await resumeOperation.Execute(context);
+            }, false);
+        }
+
+        [Test, TestCaseSource(typeof(TSPlayerServiceTestCaseSource), nameof(TSPlayerServiceTestCaseSource.SeekableClips))]
+        public void Suspend_Resume_WhileSeeking_Succeeds(string clipTitle)
+        {
+            RunPlayerTest(clipTitle, async context =>
+            {
+                var suspendOperation = new SuspendOperation();
+                var resumeOperation = new ResumeOperation();
+
+                suspendOperation.SetPreconditions(
+                    // Wait for playing state & running clock
+                    () => Task.WhenAll(WaitForState.Observe(context.Service, PlayerState.Playing, context.Token, context.Timeout),
+                            RunningClockTask.Observe(context.Service, context.Token, context.Timeout)),
+
+                    // Let it run
+                    () => Task.Delay(SuspendOperation.GetRandomTimeSpan(TimeSpan.FromSeconds(2)), context.Token),
+
+                    // Execute seek.
+                    () =>
+                    {
+                        var randomSeekPos = SuspendOperation.GetRandomTimeSpan(context.Service.Duration - TimeSpan.FromSeconds(10));
+                        _ = context.Service.SeekTo(randomSeekPos);
+                        return Task.CompletedTask;
+                    });
+
+                // Suspend
+                suspendOperation.Prepare(context);
+                await suspendOperation.Execute(context);
+
+                // Resume
+                await resumeOperation.Execute(context);
+            }, false);
+        }
+
+        [Test, TestCaseSource(typeof(TSPlayerServiceTestCaseSource), nameof(TSPlayerServiceTestCaseSource.AllClips))]
+        public void Suspend_Resume_WhilePaused_Succeeds(string clipTitle)
+        {
+            RunPlayerTest(clipTitle, async context =>
+            {
+                var suspendOperation = new SuspendOperation();
+                var resumeOperation = new ResumeOperation();
+
+                suspendOperation.SetPreconditions(
+                    // Wait for playing state & running clock
+                    () => Task.WhenAll(WaitForState.Observe(context.Service, PlayerState.Playing, context.Token, context.Timeout),
+                            RunningClockTask.Observe(context.Service, context.Token, context.Timeout)),
+
+                    // Let it run
+                    () => Task.Delay(SuspendOperation.GetRandomTimeSpan(TimeSpan.FromSeconds(2)), context.Token),
+
+                    // Pause & wait for confirmation
+                    () =>
+                    {
+                        context.Service.Pause();
+                        return WaitForState.Observe(context.Service, PlayerState.Paused, context.Token, context.Timeout);
+                    });
+
+                // Suspend
+                suspendOperation.Prepare(context);
+                await suspendOperation.Execute(context);
+
+                // Resume
+                await resumeOperation.Execute(context);
+            }, false);
+        }
+
+        [Test, TestCaseSource(typeof(TSPlayerServiceTestCaseSource), nameof(TSPlayerServiceTestCaseSource.AllClips))]
+        public void Suspend_Resume_WhileStartingPlayback_Succeeds(string clipTitle)
+        {
+            RunPlayerTest(clipTitle, async context =>
+            {
+                var suspendOperation = new SuspendOperation();
+                var resumeOperation = new ResumeOperation();
+
+                // Suspend
+                suspendOperation.Prepare(context);
+                await suspendOperation.Execute(context);
+
+                // Resume
+                await resumeOperation.Execute(context);
+            }, false);
+        }
+
+        [Test, TestCaseSource(typeof(TSPlayerServiceTestCaseSource), nameof(TSPlayerServiceTestCaseSource.SeekableClips))]
+        public void Suspend_Resume_WhileStartingPlaybackAndSeeking_Succeeds(string clipTitle)
+        {
+            RunPlayerTest(clipTitle, async context =>
+            {
+                var suspendOperation = new SuspendOperation();
+                var resumeOperation = new ResumeOperation();
+
+                suspendOperation.SetPreconditions(
+                    () =>
+                    {
+                        var randomSeekPos = SuspendOperation.GetRandomTimeSpan(context.Service.Duration - TimeSpan.FromSeconds(10));
+                        _ = context.Service.SeekTo(randomSeekPos);
+                        return Task.CompletedTask;
+                    });
+
+                // Suspend
+                suspendOperation.Prepare(context);
+                await suspendOperation.Execute(context);
+
+                // Resume
+                await resumeOperation.Execute(context);
+            });
+        }
+
         [TestCase("Clean byte range MPEG DASH")]
         public void Random_20RandomOperations_ExecutedCorrectly(string clipTitle)
         {
             var operations =
-                GenerateOperations(20, new List<Type> { typeof(StopOperation), typeof(PrepareOperation) });
+                GenerateOperations(20, new List<Type> { typeof(StopOperation), typeof(PrepareOperation), typeof(SuspendOperation), typeof(ResumeOperation) });
 
             try
             {

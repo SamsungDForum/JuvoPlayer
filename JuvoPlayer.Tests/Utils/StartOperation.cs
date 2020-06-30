@@ -15,12 +15,13 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+using System;
 using System.Threading.Tasks;
 using JuvoPlayer.Common;
 
 namespace JuvoPlayer.Tests.Utils
 {
-
+    [Serializable]
     public class StartOperation : TestOperation
     {
         public override bool Equals(object obj)
@@ -47,7 +48,7 @@ namespace JuvoPlayer.Tests.Utils
 
             // State subscription will replay current state. If playing,
             // before calling start(), playerStateTask shall be completed.
-            return WaitForState.Observe(service, PlayerState.Playing, context.Token, context.Timeout); ;
+            return WaitForState.Observe(service, PlayerState.Playing, context.Token, context.Timeout);
         }
     }
 }
