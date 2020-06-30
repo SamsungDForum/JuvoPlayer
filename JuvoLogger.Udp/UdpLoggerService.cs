@@ -53,10 +53,10 @@ namespace JuvoLogger.Udp
         private const float SendThreshold = 0.87f;
         private readonly Channel<object[]> _logChannel;
         private readonly CancellationTokenSource _cts;
-        public bool StopOutput { get => _socketSession?.StopOutput ?? true; }
         private SocketSession _socketSession;
+        public bool StopOutput { get => _socketSession?.StopOutput ?? true; }
 
-        public UdpLoggerService(int udpPort, string logFormat)
+        public UdpLoggerService()
         {
             _cts = new CancellationTokenSource();
             _logChannel = Channel.CreateUnbounded<object[]>(new UnboundedChannelOptions()
@@ -64,8 +64,6 @@ namespace JuvoLogger.Udp
                 SingleReader = true,
                 SingleWriter = false
             });
-
-            Task.Run(async () => await Run(udpPort, logFormat));
         }
 
         public void Log(params object[] args)
@@ -73,55 +71,59 @@ namespace JuvoLogger.Udp
             _logChannel.Writer.TryWrite(args);
         }
 
-        private async Task Run(int udpPort, string logFormat)
+        public async Task StartLogger(int udpPort, string logFormat)
         {
-            using (var socketSession = new SocketSession(udpPort))
+            try
             {
-                var maxMtu = socketSession.MaxPayloadSize;
-                int sendThresholdValue = (int)(maxMtu * SendThreshold);
-                var message = new StringBuilder(maxMtu);
-                _socketSession = socketSession;
+                _socketSession = new SocketSession(_cts.Token);
+                _socketSession.Start(udpPort);
+                await Task.Run(async () => await Run(logFormat));
+            }
+            catch (Exception e)
+            when (!(e is OperationCanceledException || e is ChannelClosedException))
+            {
+                _socketSession.SendMessage(e.ToString());
+                throw;
+            }
+            finally
+            {
+                _socketSession?.Stop();
+                _socketSession?.Dispose();
+                _socketSession = null;
+                _logChannel.Writer.Complete();
+            }
+        }
 
-                var lineReader = new LineReader(_logChannel.Reader, _cts.Token);
+        private async Task Run(string logFormat)
+        {
+            var maxMtu = _socketSession.MaxPayloadSize;
+            int sendThresholdValue = (int)(maxMtu * SendThreshold);
+            var message = new StringBuilder(maxMtu);
+            var lineReader = new LineReader(_logChannel.Reader, _cts.Token);
+            var token = _cts.Token;
 
-                try
+            while (!token.IsCancellationRequested)
+            {
+                var (flush, lineData) = await lineReader.Read(message.Length > 0);
+
+                if (flush)
                 {
-                    while (true)
-                    {
-                        var (flush, lineData) = await lineReader.Read(message.Length > 0);
-
-                        if (flush)
-                        {
-                            socketSession.SendMessage(message.ToString());
-                            message.Clear();
-                            continue;
-                        }
-
-                        message.AppendFormat(logFormat, lineData);
-                        if (message.Length < sendThresholdValue)
-                            continue;
-
-                        socketSession.SendMessage(message.ToString());
-                        message.Clear();
-                    }
+                    _socketSession.SendMessage(message.ToString());
+                    message.Clear();
+                    continue;
                 }
-                catch (Exception e)
-                when (!(e is OperationCanceledException))
-                {
-                    socketSession?.SendMessage(e.ToString());
-                    throw;
-                }
-                finally
-                {
-                    _socketSession = null;
-                    socketSession.Stop();
-                }
+
+                message.AppendFormat(logFormat, lineData);
+                if (message.Length < sendThresholdValue)
+                    continue;
+
+                _socketSession.SendMessage(message.ToString());
+                message.Clear();
             }
         }
 
         public void Dispose()
         {
-            _logChannel.Writer.Complete();
             _cts.Cancel();
             _cts.Dispose();
         }

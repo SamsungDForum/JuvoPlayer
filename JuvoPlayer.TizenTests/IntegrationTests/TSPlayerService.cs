@@ -35,10 +35,13 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
 {
     public static class TSPlayerServiceTestCaseSource
     {
-        private static ClipDefinition[] allClipSource;
-        private static string[] allClipsData;
-        private static string[] dashClipsData;
+        private static ClipDefinition[] allClipsSource;
         private static ClipDefinition[] drmClipsSource;
+
+        private static string[] allClipsData;
+        private static string[] seekableClipsData;
+        private static string[] dashClipsData;
+        private static string[] rtspClipsData;
 
         private static IEnumerable<ClipDefinition> ReadClips()
         {
@@ -49,27 +52,40 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
 
         static TSPlayerServiceTestCaseSource()
         {
-            allClipSource = ReadClips()
+            allClipsSource = ReadClips()
                 .ToArray();
 
-            allClipsData = allClipSource
+            drmClipsSource = allClipsSource
+                .Where(clip => clip.DRMDatas != null)
+                .ToArray();
+
+            allClipsData = allClipsSource
                 .Select(clip => clip.Title)
                 .ToArray();
 
-            dashClipsData = allClipSource
+            seekableClipsData = allClipsSource
+                .Where(clip => clip.Type != "rtsp")
+                .Select(clip => clip.Title)
+                .ToArray();
+
+            dashClipsData = allClipsSource
                 .Where(clip => clip.Type == "dash")
                 .Select(clip => clip.Title)
                 .ToArray();
 
-            drmClipsSource = allClipSource
-                .Where(clip => clip.DRMDatas != null)
+            rtspClipsData = allClipsSource
+                .Where(clip => clip.Type == "rtsp")
+                .Select(clip => clip.Title)
                 .ToArray();
-
         }
 
         public static string[] AllClips() => allClipsData;
 
+        public static string[] SeekableClips() => seekableClipsData;
+
         public static string[] DashClips() => dashClipsData;
+
+        public static string[] RtspClips() => rtspClipsData;
 
         public static bool IsEncrypted(string clipTitle) =>
             drmClipsSource.Any(clip => string.Equals(clip.Title, clipTitle));
@@ -147,7 +163,7 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
             });
         }
 
-        [Test, TestCaseSource(typeof(TSPlayerServiceTestCaseSource), nameof(TSPlayerServiceTestCaseSource.AllClips))]
+        [Test, TestCaseSource(typeof(TSPlayerServiceTestCaseSource), nameof(TSPlayerServiceTestCaseSource.SeekableClips))]
         public void Playback_StartFromThe90thSecond_PreparesAndStarts(string clipTitle)
         {
             RunPlayerTest(clipTitle, async context =>
@@ -166,7 +182,7 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
             }, false);
         }
 
-        [Test, TestCaseSource(typeof(TSPlayerServiceTestCaseSource), nameof(TSPlayerServiceTestCaseSource.AllClips))]
+        [Test, TestCaseSource(typeof(TSPlayerServiceTestCaseSource), nameof(TSPlayerServiceTestCaseSource.SeekableClips))]
         public void Seek_Random10Times_Seeks(string clipTitle)
         {
             RunPlayerTest(clipTitle, async context =>
@@ -181,7 +197,7 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
             });
         }
 
-        [Test, TestCaseSource(typeof(TSPlayerServiceTestCaseSource), nameof(TSPlayerServiceTestCaseSource.AllClips))]
+        [Test, TestCaseSource(typeof(TSPlayerServiceTestCaseSource), nameof(TSPlayerServiceTestCaseSource.SeekableClips))]
         public void Seek_DisposeDuringSeek_Disposes(string clipTitle)
         {
             RunPlayerTest(clipTitle, async context =>
@@ -195,7 +211,7 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
             });
         }
 
-        [Test, TestCaseSource(typeof(TSPlayerServiceTestCaseSource), nameof(TSPlayerServiceTestCaseSource.AllClips))]
+        [Test, TestCaseSource(typeof(TSPlayerServiceTestCaseSource), nameof(TSPlayerServiceTestCaseSource.SeekableClips))]
         public void Seek_Forward_Seeks(string clipTitle)
         {
             RunPlayerTest(clipTitle, async context =>
@@ -214,7 +230,7 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
             });
         }
 
-        [Test, TestCaseSource(typeof(TSPlayerServiceTestCaseSource), nameof(TSPlayerServiceTestCaseSource.AllClips))]
+        [Test, TestCaseSource(typeof(TSPlayerServiceTestCaseSource), nameof(TSPlayerServiceTestCaseSource.SeekableClips))]
         public void Seek_Backward_Seeks(string clipTitle)
         {
             RunPlayerTest(clipTitle, async context =>
@@ -233,7 +249,7 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
             });
         }
 
-        [Test, TestCaseSource(typeof(TSPlayerServiceTestCaseSource), nameof(TSPlayerServiceTestCaseSource.AllClips))]
+        [Test, TestCaseSource(typeof(TSPlayerServiceTestCaseSource), nameof(TSPlayerServiceTestCaseSource.SeekableClips))]
         public void Seek_ToTheEnd_SeeksOrCompletes(string clipTitle)
         {
             RunPlayerTest(clipTitle, async context =>
@@ -261,7 +277,7 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
             });
         }
 
-        [Test, TestCaseSource(typeof(TSPlayerServiceTestCaseSource), nameof(TSPlayerServiceTestCaseSource.AllClips))]
+        [Test, TestCaseSource(typeof(TSPlayerServiceTestCaseSource), nameof(TSPlayerServiceTestCaseSource.SeekableClips))]
         public void Seek_EOSReached_StateChangedCompletes(string clipTitle)
         {
             RunPlayerTest(clipTitle, async context =>
@@ -357,11 +373,143 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
             });
         }
 
+        [Test, TestCaseSource(typeof(TSPlayerServiceTestCaseSource), nameof(TSPlayerServiceTestCaseSource.AllClips))]
+        public void Suspend_Resume_WhilePlaying_Succeeds(string clipTitle)
+        {
+            RunPlayerTest(clipTitle, async context =>
+            {
+                var suspendOperation = new SuspendOperation();
+                var resumeOperation = new ResumeOperation();
+
+                suspendOperation.SetPreconditions(
+                    // Wait for playing state & running clock
+                    () => Task.WhenAll(WaitForState.Observe(context.Service, PlayerState.Playing, context.Token, context.Timeout),
+                            RunningClockTask.Observe(context.Service, context.Token, context.Timeout)),
+
+                    // Let it run for a moment
+                    () => Task.Delay(SuspendOperation.GetRandomTimeSpan(TimeSpan.FromSeconds(2)), context.Token));
+
+                // Suspend
+                suspendOperation.Prepare(context);
+                await suspendOperation.Execute(context);
+
+                // Resume
+                await resumeOperation.Execute(context);
+            }, false);
+        }
+
+        [Test, TestCaseSource(typeof(TSPlayerServiceTestCaseSource), nameof(TSPlayerServiceTestCaseSource.SeekableClips))]
+        public void Suspend_Resume_WhileSeeking_Succeeds(string clipTitle)
+        {
+            RunPlayerTest(clipTitle, async context =>
+            {
+                var suspendOperation = new SuspendOperation();
+                var resumeOperation = new ResumeOperation();
+
+                suspendOperation.SetPreconditions(
+                    // Wait for playing state & running clock
+                    () => Task.WhenAll(WaitForState.Observe(context.Service, PlayerState.Playing, context.Token, context.Timeout),
+                            RunningClockTask.Observe(context.Service, context.Token, context.Timeout)),
+
+                    // Let it run
+                    () => Task.Delay(SuspendOperation.GetRandomTimeSpan(TimeSpan.FromSeconds(2)), context.Token),
+
+                    // Execute seek.
+                    () =>
+                    {
+                        var randomSeekPos = SuspendOperation.GetRandomTimeSpan(context.Service.Duration - TimeSpan.FromSeconds(10));
+                        _ = context.Service.SeekTo(randomSeekPos);
+                        return Task.CompletedTask;
+                    });
+
+                // Suspend
+                suspendOperation.Prepare(context);
+                await suspendOperation.Execute(context);
+
+                // Resume
+                await resumeOperation.Execute(context);
+            }, false);
+        }
+
+        [Test, TestCaseSource(typeof(TSPlayerServiceTestCaseSource), nameof(TSPlayerServiceTestCaseSource.AllClips))]
+        public void Suspend_Resume_WhilePaused_Succeeds(string clipTitle)
+        {
+            RunPlayerTest(clipTitle, async context =>
+            {
+                var suspendOperation = new SuspendOperation();
+                var resumeOperation = new ResumeOperation();
+
+                suspendOperation.SetPreconditions(
+                    // Wait for playing state & running clock
+                    () => Task.WhenAll(WaitForState.Observe(context.Service, PlayerState.Playing, context.Token, context.Timeout),
+                            RunningClockTask.Observe(context.Service, context.Token, context.Timeout)),
+
+                    // Let it run
+                    () => Task.Delay(SuspendOperation.GetRandomTimeSpan(TimeSpan.FromSeconds(2)), context.Token),
+
+                    // Pause & wait for confirmation
+                    () =>
+                    {
+                        context.Service.Pause();
+                        return WaitForState.Observe(context.Service, PlayerState.Paused, context.Token, context.Timeout);
+                    });
+
+                // Suspend
+                suspendOperation.Prepare(context);
+                await suspendOperation.Execute(context);
+
+                // Resume
+                await resumeOperation.Execute(context);
+            }, false);
+        }
+
+        [Test, TestCaseSource(typeof(TSPlayerServiceTestCaseSource), nameof(TSPlayerServiceTestCaseSource.AllClips))]
+        public void Suspend_Resume_WhileStartingPlayback_Succeeds(string clipTitle)
+        {
+            RunPlayerTest(clipTitle, async context =>
+            {
+                var suspendOperation = new SuspendOperation();
+                var resumeOperation = new ResumeOperation();
+
+                // Suspend
+                suspendOperation.Prepare(context);
+                await suspendOperation.Execute(context);
+
+                // Resume
+                await resumeOperation.Execute(context);
+            }, false);
+        }
+
+        [Test, TestCaseSource(typeof(TSPlayerServiceTestCaseSource), nameof(TSPlayerServiceTestCaseSource.SeekableClips))]
+        public void Suspend_Resume_WhileStartingPlaybackAndSeeking_Succeeds(string clipTitle)
+        {
+            RunPlayerTest(clipTitle, async context =>
+            {
+                var suspendOperation = new SuspendOperation();
+                var resumeOperation = new ResumeOperation();
+
+                suspendOperation.SetPreconditions(
+                    () =>
+                    {
+                        var randomSeekPos = SuspendOperation.GetRandomTimeSpan(context.Service.Duration - TimeSpan.FromSeconds(10));
+                        _ = context.Service.SeekTo(randomSeekPos);
+                        return Task.CompletedTask;
+                    });
+
+                // Suspend
+                suspendOperation.Prepare(context);
+                await suspendOperation.Execute(context);
+
+                // Resume
+                await resumeOperation.Execute(context);
+            });
+        }
+
         [TestCase("Clean byte range MPEG DASH")]
         public void Random_20RandomOperations_ExecutedCorrectly(string clipTitle)
         {
             var operations =
-                GenerateOperations(20, new List<Type> { typeof(StopOperation), typeof(PrepareOperation) });
+                GenerateOperations(20, new List<Type> { typeof(StopOperation), typeof(PrepareOperation), typeof(SuspendOperation), typeof(ResumeOperation) });
 
             try
             {
