@@ -1,6 +1,6 @@
-/*!
+﻿/*!
  * https://github.com/SamsungDForum/JuvoPlayer
- * Copyright 2018, Samsung Electronics Co., Ltd
+ * Copyright 2020, Samsung Electronics Co., Ltd
  * Licensed under the MIT license
  *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
@@ -16,14 +16,13 @@
  */
 
 using System;
-using System.Reactive.Linq;
-using System.Reactive.Threading.Tasks;
 using System.Threading.Tasks;
+using JuvoPlayer.Common;
 
 namespace JuvoPlayer.Tests.Utils
 {
     [Serializable]
-    public class StopOperation : TestOperation
+    public class ResumeOperation : TestOperation
     {
         public override bool Equals(object obj)
         {
@@ -39,19 +38,20 @@ namespace JuvoPlayer.Tests.Utils
 
         public void Prepare(TestContext context)
         {
+            /* Resume operation requires no preparation */
         }
 
         public Task Execute(TestContext context)
         {
-            var service = context.Service;
-            var playerStateTask = service
-                .StateChanged()
-                .AsCompletion()
-                .Timeout(context.Timeout)
-                .ToTask();
+            var stateTask = WaitForState.Observe(context.Service, PlayerState.Playing, context.Token, context.Timeout);
+            var clockTask = RunningClockTask.Observe(context.Service, context.Token, context.Timeout);
+            var resumeTask = context.Service.Resume().WithTimeout(context.Timeout).WithCancellation(context.Token);
 
-            service.Stop();
-            return playerStateTask;
+            // Jolly resume operation is when:
+            // - Resume() completes.
+            // - Playing state is observed.
+            // - Running clock is observed.
+            return Task.WhenAll(resumeTask, stateTask, clockTask);
         }
     }
 }
