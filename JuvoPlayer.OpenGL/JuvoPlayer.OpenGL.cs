@@ -144,7 +144,7 @@ namespace JuvoPlayer.OpenGL
             _resourceLoader = ResourceLoader.GetInstance();
             _resourceLoader.LoadResources(
                 Path.GetDirectoryName(Path.GetDirectoryName(Current.ApplicationInfo.ExecutablePath)),
-                HandleLoadingFinished);
+                HandleLoadingError, HandleLoadingFinished);
             _metricsHandler = new MetricsHandler();
             SetMetrics();
             SetMenuFooter();
@@ -322,6 +322,14 @@ namespace JuvoPlayer.OpenGL
                 DllImports.SelectTile(_selectedTile, 0);
                 ShowMenu(true);
             }
+        }
+        
+        private Action HandleLoadingError(string message)
+        {
+            return () =>
+            {
+                DisplayAlert("Resources loading error", message, "OK");
+            };
         }
 
         private void HandleExternalPlaybackStart()
