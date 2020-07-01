@@ -53,7 +53,7 @@ namespace JuvoPlayer.OpenGL
             return _instance ?? (_instance = new ResourceLoader());
         }
 
-        public async void LoadResources(string fullExecutablePath, Action doAfterFinishedLoading = null)
+        public async void LoadResources(string fullExecutablePath, Func<string, Action> doOnLoadingError, Action doAfterFinishedLoading = null)
         {
             IsQueueingFinished = false;
             IsLoadingFinished = false;
@@ -63,10 +63,19 @@ namespace JuvoPlayer.OpenGL
 
             var localResourcesDirPath = Path.Combine(fullExecutablePath, "res");
 
-            await LoadContentList(Paths.VideoClipJsonPath);
-
             LoadFonts(localResourcesDirPath);
             LoadIcons(localResourcesDirPath);
+            
+            try
+            {
+                await LoadContentList(Paths.VideoClipJsonPath);
+            }
+            catch (Exception e)
+            {
+                ScheduleToBeLoadedInMainThread(doOnLoadingError(e.Message));
+                return;
+            }
+
             LoadTiles();
 
             IsQueueingFinished = true;
