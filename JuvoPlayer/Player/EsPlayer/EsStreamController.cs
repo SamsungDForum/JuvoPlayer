@@ -415,10 +415,11 @@ namespace JuvoPlayer.Player.EsPlayer
                     // stream controller will be in less then defined state.
                     await FlushStreams();
 
-                    // FlushedStreams = no data. If cancellation is requested, reposition stream before abandoning seek. 
-                    // Not needed for termination. Needed for Suspend/Resume.
-                    // Otherwise there will be data clock/ provider clock differences.
-                    var seekToTime = await Client.Seek(time, token);
+                    // DashDataProvider - does not care about cancellation token.
+                    // HLSDataProvider - when canceled, effectively terminates demuxer operation.
+                    // - Playback termination - no issue.
+                    // - Suspend - no way to resume demuxer other then restarting entire stream playback.
+                    var seekToTime = await Client.Seek(time, CancellationToken.None);
 
                     EnableInput();
                     _playerClock.PendingClock = seekToTime;
