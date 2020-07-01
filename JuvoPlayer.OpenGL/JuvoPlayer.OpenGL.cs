@@ -326,9 +326,11 @@ namespace JuvoPlayer.OpenGL
         
         private Action HandleLoadingError(string message)
         {
-            return () =>
+            return async () =>
             {
-                DisplayAlert("Resources loading error", message, "OK");
+                ShowAlert("Resources loading error", message, "OK");
+                await AwaitDisplayAlert();
+                Exit();
             };
         }
 
