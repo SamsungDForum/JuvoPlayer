@@ -384,6 +384,7 @@ namespace JuvoPlayer.Player.EsPlayer
 
         private Task GetPlayingStateCompletionTask(CancellationToken token)
         {
+            logger.Info("");
             var currentState = player.GetState();
             if (currentState == ESPlayer.ESPlayerState.Playing)
                 return Task.CompletedTask;
@@ -403,8 +404,10 @@ namespace JuvoPlayer.Player.EsPlayer
             using (await asyncOpSerializer.LockAsync(token))
             {
                 logger.Info($"Seeking to {time}");
+
                 try
                 {
+                    // Abandon at this stage = clock/buffers remain unchanged.
                     token.ThrowIfCancellationRequested();
                     await GetPlayingStateCompletionTask(token);
 
@@ -412,12 +415,16 @@ namespace JuvoPlayer.Player.EsPlayer
                     // stream controller will be in less then defined state.
                     await FlushStreams();
 
-                    token.ThrowIfCancellationRequested();
-
+                    // FlushedStreams = no data. If cancellation is requested, reposition stream before abandoning seek. 
+                    // Not needed for termination. Needed for Suspend/Resume.
+                    // Otherwise there will be data clock/ provider clock differences.
                     var seekToTime = await Client.Seek(time, token);
 
                     EnableInput();
                     _playerClock.PendingClock = seekToTime;
+
+                    token.ThrowIfCancellationRequested();
+
                     _dataClock.Clock = time;
                     _dataClock.Start();
 
@@ -432,7 +439,7 @@ namespace JuvoPlayer.Player.EsPlayer
                 }
                 catch (OperationCanceledException)
                 {
-                    logger.Info($"Seeking to {time} Cancelled");
+                    logger.Info($"Seeking to {time} Canceled");
                     throw;
                 }
                 catch (Exception e)
@@ -477,8 +484,8 @@ namespace JuvoPlayer.Player.EsPlayer
         {
             logger.Info("");
 
-            // Stop data streams. They will be restarted from SeekAsync handler.
             StopClockGenerator();
+            // Stop data streams. They will be restarted from SeekAsync handler.
             DisableInput();
             StopTransfer();
             UnsubscribeBufferingEvent();
@@ -582,16 +589,23 @@ namespace JuvoPlayer.Player.EsPlayer
 
         public void Suspend()
         {
-            logger.Info("");
+            logger.Info(string.Empty);
 
             if (activeTaskCts.IsCancellationRequested)
                 return;
 
-            _restorePoint = GetStateSnapshot();
+            // Detach event handlers. If Suspend is in *Async() operation, will prevent
+            // PlayerState observable termination.
+            DetachEventHandlers();
 
-            StopClockGenerator();
-            StopTransfer();
+            logger.Info("Canceling async operations");
             activeTaskCts.Cancel();
+
+            StopTransfer();
+            _restorePoint = GetStateSnapshot();
+            StopClockGenerator();
+
+
             SetState(PlayerState.Idle, CancellationToken.None);
             logger.Info($"Suspended State/Clock: {_restorePoint.State}/{_restorePoint.Clock}");
         }
@@ -615,6 +629,14 @@ namespace JuvoPlayer.Player.EsPlayer
                 var oldCts = activeTaskCts;
                 activeTaskCts = new CancellationTokenSource();
                 oldCts.Dispose();
+
+                logger.Info("Waiting async Op completion");
+                using (await asyncOpSerializer.LockAsync(activeTaskCts.Token))
+                {
+                    /*Acquire lock prior to proceeding. Async ops may still be terminating.
+                    * Not applicable to real life scenarios. Applicable to unit/integration tests*/
+                }
+                logger.Info("Async Ops completed");
                 OpenPlayer();
 
                 logger.Info($"Resuming State/Clock {_restorePoint.State}/{_restorePoint.Clock}");
@@ -1007,7 +1029,7 @@ namespace JuvoPlayer.Player.EsPlayer
 
             SetPlayerConfiguration();
             if (_restorePoint.State == PlayerState.Idle) return;
-            
+
             _dataClock.Clock = _restorePoint.Clock == PlayerClockProviderConfig.InvalidClock
                 ? TimeSpan.Zero : _restorePoint.Clock;
             _dataClock.BufferLimit = _restorePoint.BufferDepth;
@@ -1138,7 +1160,7 @@ namespace JuvoPlayer.Player.EsPlayer
 
         public IObservable<TimeSpan> DataNeededStateChanged()
         {
-            return _dataClock.DataClock();
+            return _dataClock.DataClock().Do(dc => logger.Info($"DataClock: {dc}"));
         }
 
         public IObservable<TimeSpan> PlayerClock()
