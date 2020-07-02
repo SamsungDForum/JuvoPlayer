@@ -492,7 +492,7 @@ namespace JuvoPlayer.Player.EsPlayer
             UnsubscribeBufferingEvent();
 
             // Make sure data transfer is stopped!
-            // SeekAsync behaves unpredictably when data transfer to player is occuring while SeekAsync gets called
+            // SeekAsync behaves unpredictably when data transfer to player is occurring while SeekAsync gets called
             // Ignore token. Emptying streams cannot be done while streams are running.
             await AsyncOperationCompletions();
             EmptyStreams();
@@ -542,6 +542,11 @@ namespace JuvoPlayer.Player.EsPlayer
                         : ChangeConfiguration(token);
 
                     await changeTask;
+                }
+                catch (Exception)
+                {
+                    throw;
+                    /*Assures finally block execution*/
                 }
                 finally
                 {
