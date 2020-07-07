@@ -1,5 +1,4 @@
 /*!
-/*!
  * https://github.com/SamsungDForum/JuvoPlayer
  * Copyright 2018, Samsung Electronics Co., Ltd
  * Licensed under the MIT license
@@ -376,7 +375,6 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
                         {
                             await changeTask.WithCancellation(context.Token);
                             await seekTask.WithTimeout(context.Timeout).WithCancellation(context.Token);
-                            //await Task.WhenAll(seekTask, changeTask).WithCancellation(context.Token);
                         }
                         catch (Exception e)
                         {
