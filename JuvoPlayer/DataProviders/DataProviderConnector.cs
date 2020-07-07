@@ -41,14 +41,12 @@ namespace JuvoPlayer.DataProviders
             {
                 try
                 {
-                    connector.DisconnectPlayerController();
-                    connector.DisconnectDataProvider();
+                    connector.Disconnect();
                     return await dataProvider.Seek(position, token);
                 }
                 finally
                 {
-                    connector.ConnectPlayerController();
-                    connector.ConnectDataProvider();
+                    connector.Connect();
                 }
             }
 
@@ -60,24 +58,21 @@ namespace JuvoPlayer.DataProviders
 
                 try
                 {
-                    connector.DisconnectPlayerController();
-                    connector.DisconnectDataProvider();
-                    // Perform change & seek as an "atomic" ChangeRepresentation task resulting in data
-                    // provider running with new representation.
+                    connector.Disconnect();
                     dataProvider.Pause();
                     dataProvider.ChangeActiveStream(stream);
                     return await dataProvider.Seek(position, token);
                 }
                 finally
                 {
-                    connector.ConnectPlayerController();
-                    connector.ConnectDataProvider();
+                    connector.Connect();
                 }
             }
         }
 
-        private CompositeDisposable dataProviderSubscriptions;
-        private CompositeDisposable playerControllerSubscriptions;
+        private CompositeDisposable fixedSubscriptions;
+        private CompositeDisposable reconnectableSubscriptions;
+
         private IPlayerClient client;
         private readonly IPlayerController playerController;
         private readonly IDataProvider dataProvider;
@@ -89,14 +84,46 @@ namespace JuvoPlayer.DataProviders
             this.playerController = playerController ?? throw new ArgumentNullException(nameof(playerController), "Player controller cannot be null");
             this.dataProvider = dataProvider ?? throw new ArgumentNullException(nameof(dataProvider), "Data provider cannot be null");
             this.context = context ?? SynchronizationContext.Current;
+
+            // Subscribing to observables directly in constructor causes lock in SetSource.
+            // Applicable to HLSDataProvider (HLS/URL streams) & integration tests.
+            SetupConnector();
+        }
+
+        private void SetupConnector()
+        {
+            reconnectableSubscriptions = new CompositeDisposable();
+
+            // reconnectables
             Connect();
+
+            fixedSubscriptions = new CompositeDisposable
+            { 
+                // Data provider subscriptions
+                playerController.StateChanged().Subscribe(dataProvider.OnStateChanged, context),
+                playerController.DataClock().Subscribe(dataProvider.OnDataClock, context),
+
+                // Player controller subscriptions
+                dataProvider.ClipDurationChanged().Subscribe(playerController.OnClipDurationChanged, context),
+                dataProvider.StreamError().Subscribe(playerController.OnStreamError, context)
+            };
+
+            InstallPlayerClient();
         }
 
         private void Connect()
         {
-            ConnectDataProvider();
-            ConnectPlayerController();
-            InstallPlayerClient();
+            reconnectableSubscriptions.Add(playerController.TimeUpdated().Subscribe(dataProvider.OnTimeUpdated, context));
+            reconnectableSubscriptions.Add(dataProvider.DRMInitDataFound().Subscribe(playerController.OnDRMInitDataFound, context));
+
+            reconnectableSubscriptions.Add(dataProvider.PacketReady().Subscribe(playerController.OnPacketReady, context));
+            reconnectableSubscriptions.Add(dataProvider.SetDrmConfiguration().Subscribe(playerController.OnSetDrmConfiguration, context));
+            reconnectableSubscriptions.Add(dataProvider.StreamConfigReady().Subscribe(playerController.OnStreamConfigReady, context));
+        }
+
+        private void Disconnect()
+        {
+            reconnectableSubscriptions.Clear();
         }
 
         private void InstallPlayerClient()
@@ -105,50 +132,10 @@ namespace JuvoPlayer.DataProviders
             playerController.Client = client;
         }
 
-        private void ConnectDataProvider()
-        {
-            dataProviderSubscriptions = new CompositeDisposable
-            {
-                playerController.TimeUpdated().Subscribe(dataProvider.OnTimeUpdated, context),
-                playerController.StateChanged().Subscribe(dataProvider.OnStateChanged, context),
-                playerController.DataClock().Subscribe(dataProvider.OnDataClock,context),
-            };
-        }
-
-        private void DisconnectDataProvider()
-        {
-            dataProviderSubscriptions?.Dispose();
-        }
-
-        private void ConnectPlayerController()
-        {
-            playerControllerSubscriptions = new CompositeDisposable
-            {
-                dataProvider.ClipDurationChanged()
-                    .Subscribe(playerController.OnClipDurationChanged, context),
-                dataProvider.DRMInitDataFound()
-                    .Subscribe(playerController.OnDRMInitDataFound, context),
-                dataProvider.SetDrmConfiguration()
-                    .Subscribe(playerController.OnSetDrmConfiguration, context),
-                dataProvider.StreamConfigReady()
-                    .Subscribe(playerController.OnStreamConfigReady, context),
-                dataProvider.PacketReady()
-                    .Subscribe(playerController.OnPacketReady, context),
-                dataProvider.StreamError()
-                    .Subscribe(playerController.OnStreamError, context),
-
-            };
-        }
-
-        private void DisconnectPlayerController()
-        {
-            playerControllerSubscriptions?.Dispose();
-        }
-
         public void Dispose()
         {
-            DisconnectPlayerController();
-            DisconnectDataProvider();
+            reconnectableSubscriptions.Dispose();
+            fixedSubscriptions.Dispose();
         }
     }
 }
