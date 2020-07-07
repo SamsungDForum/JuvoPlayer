@@ -21,7 +21,7 @@ using System.Reactive.Disposables;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
 using JuvoLogger;
-using static Configuration.PlayerClockProviderConfig;
+using Configuration;
 
 namespace JuvoPlayer.Player.EsPlayer
 {
@@ -32,36 +32,43 @@ namespace JuvoPlayer.Player.EsPlayer
         private static readonly ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
 
         private PlayerClockFn _playerClock = InvalidClockFn;
-
-        public TimeSpan LastClock { get; private set; }
-        public TimeSpan? PendingClock { get; set; }
-        public TimeSpan PendingOrLastClock => PendingClock ?? LastClock;
+        private TimeSpan _currentClock = TimeSpan.Zero;
         private readonly IScheduler _scheduler;
-        private IDisposable _playerClockSourceConnection;
-        private readonly IConnectableObservable<TimeSpan> _playerClockConnectable;
+        private IDisposable _intervalConnection;
+        private readonly IObservable<TimeSpan> _playerClockSource;
+        private readonly Subject<TimeSpan> _playerClockSubject = new Subject<TimeSpan>();
+        private readonly IConnectableObservable<long> _intervalSource;
         private bool _isDisposed;
+        public TimeSpan Clock { get => _currentClock; }
 
         public PlayerClockProvider(IScheduler scheduler)
         {
             _scheduler = scheduler;
 
-            _playerClockConnectable = Observable.Interval(ClockInterval, _scheduler)
-                    .TakeWhile(_ => !_isDisposed)
+            // Use tick source disconnection over GetClock() substitution.
+            // Circumstantial evidence: 
+            // GetPlayingTime() while SeekAsync() may cause tz_video_appsrc
+            // core dumps. It is possible substitution will not take place before calling SeekAsync.
+            _intervalSource = Observable.Interval(PlayerClockProviderConfig.ClockInterval, _scheduler)
+                .Publish();
+
+            _playerClockSource = _intervalSource
                     .Select(_ => _playerClock())
-                    .Where(clkValue => clkValue > LastClock)
+                    .Where(nextClock => nextClock > _currentClock)
                     .Do(SetClock)
-                    .Publish();
+                    .Multicast(_playerClockSubject)
+                    .RefCount();
         }
 
         private void SetClock(TimeSpan clock)
         {
-            LastClock = clock;
-            if (LastClock > PendingClock)
-                PendingClock = null;
+            _currentClock = clock;
+            Logger.Info($"PlayerClock: {_currentClock}");
         }
+
         public IObservable<TimeSpan> PlayerClockObservable()
         {
-            return _playerClockConnectable.AsObservable();
+            return _playerClockSource;
         }
 
         public void SetPlayerClockSource(PlayerClockFn clockFn)
@@ -79,29 +86,30 @@ namespace JuvoPlayer.Player.EsPlayer
             return Disposable.Empty;
         }
 
-        private static TimeSpan InvalidClockFn()
-        {
-            Logger.Info("");
-            return InvalidClock;
-        }
+        private static TimeSpan InvalidClockFn() =>
+            PlayerClockProviderConfig.InvalidClock;
 
         public void Start()
         {
-            if (_playerClockSourceConnection != null)
+            if (_intervalConnection != null)
                 return;
 
-            SetClock(_playerClock());
+            var playerClock = _playerClock?.Invoke() ?? PlayerClockProviderConfig.InvalidClock;
+            if (playerClock > _currentClock)
+            {
+                _currentClock = playerClock;
+                _playerClockSubject.OnNext(_currentClock);
+            }
 
-            _playerClockSourceConnection = _playerClockConnectable.Connect();
-            Logger.Info($"Player Clock: {LastClock} Pending Clock {PendingClock}");
+            _intervalConnection = _intervalSource.Connect();
+            Logger.Info($"Player Clock: {Clock}");
         }
 
         public void Stop()
         {
-            _playerClockSourceConnection?.Dispose();
-            _playerClockSourceConnection = null;
-            LastClock = InvalidClock;
-            PendingClock = null;
+            _intervalConnection?.Dispose();
+            _intervalConnection = null;
+            _currentClock = TimeSpan.Zero;
             Logger.Info("");
         }
 
@@ -110,9 +118,11 @@ namespace JuvoPlayer.Player.EsPlayer
             if (_isDisposed)
                 return;
 
-            _isDisposed = true;
-            SetPlayerClockSource(null);
             Stop();
+            _playerClockSubject.Dispose();
+            _isDisposed = true;
+
+            Logger.Info("");
         }
     }
 }
