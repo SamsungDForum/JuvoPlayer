@@ -1,4 +1,5 @@
 /*!
+/*!
  * https://github.com/SamsungDForum/JuvoPlayer
  * Copyright 2018, Samsung Electronics Co., Ltd
  * Licensed under the MIT license
@@ -204,11 +205,15 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
             {
                 var seekOperation = new SeekOperation();
                 seekOperation.Prepare(context);
-#pragma warning disable 4014
-                seekOperation.Execute(context);
-#pragma warning restore 4014
+
+                // Don't use SeekOperation.Execute(). Position task is not expected to complete
+                // cancelling operation token will generate exception which may end up being
+                // uncaught, terminating tests.
+                _ = context.Service.SeekTo(seekOperation.SeekPosition);
+
                 await Task.Delay(250);
             });
+
         }
 
         [Test, TestCaseSource(typeof(TSPlayerServiceTestCaseSource), nameof(TSPlayerServiceTestCaseSource.SeekableClips))]
@@ -366,8 +371,19 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
                         };
 
                         var changeTask = changeOp.Execute(context);
-                        seekTask = seekTask.WithTimeout(context.Timeout);
-                        await Task.WhenAll(seekTask, changeTask).WithCancellation(context.Token);
+
+                        try
+                        {
+                            await changeTask.WithCancellation(context.Token);
+                            await seekTask.WithTimeout(context.Timeout).WithCancellation(context.Token);
+                            //await Task.WhenAll(seekTask, changeTask).WithCancellation(context.Token);
+                        }
+                        catch (Exception e)
+                        {
+                            _logger.Error($"seekTask: {seekTask.Status}");
+                            _logger.Error($"changeTask: {changeTask.Status}");
+                            _logger.Error(e.ToString());
+                        }
                     }
                 }
             });
