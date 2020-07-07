@@ -27,101 +27,86 @@ namespace JuvoPlayer.Player.EsPlayer
     internal class DataClockProvider : IDisposable
     {
         private static readonly ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
-        public TimeSpan BufferLimit { get; set; } = DataClockProviderConfig.TimeBufferDepthDefault;
-        public TimeSpan Clock { get; set; }
+        private TimeSpan _bufferLimit = DataClockProviderConfig.TimeBufferDepthDefault;
+        private TimeSpan _clock;
+        private TimeSpan _synchronizerClock;
 
         // Start / Stop may be called from multiple threads.
-        private volatile IDisposable _dataClockConnection;
+        private volatile IDisposable _intervalConnection;
 
-        // Do not filter output to distinct values. Clients may start listening (without re-subscription)
-        // at their discretion.
-        private readonly IConnectableObservable<TimeSpan> _dataClockSource;
+        private readonly IObservable<TimeSpan> _dataClockSource;
+        private readonly IConnectableObservable<long> _intervalSource;
         private readonly Subject<TimeSpan> _dataClockSubject = new Subject<TimeSpan>();
         private readonly PlayerClockProvider _playerClock;
+
+        private IObservable<TimeSpan> _synchronizerClockSource;
         private IDisposable _synchronizerSubscription;
-        private TimeSpan _synchronizerClock = PlayerClockProviderConfig.InvalidClock;
+
         private bool _isDisposed;
         private readonly IScheduler _scheduler;
+
+        public TimeSpan BufferLimit { set => _bufferLimit = value; }
+        public TimeSpan Clock { set => _clock = value; }
+        public IObservable<TimeSpan> SynchronizerClock { set => _synchronizerClockSource = value; }
 
         public DataClockProvider(IScheduler scheduler, PlayerClockProvider playerClock)
         {
             _playerClock = playerClock;
             _scheduler = scheduler;
 
-            _dataClockSource =
-                Observable.Interval(DataClockProviderConfig.ClockInterval, _scheduler)
-                    .TakeWhile(_ => !_isDisposed)
-                    .Select(GetDataClock)
-                    .Multicast(_dataClockSubject);
+            _intervalSource = Observable.Interval(DataClockProviderConfig.ClockInterval, _scheduler)
+                .Publish();
 
-            Logger.Info($"Initial Clock: {Clock} + Limit {BufferLimit} = {Clock + BufferLimit}");
+            _dataClockSource = _intervalSource
+                .Select(GetDataClock)
+                .Multicast(_dataClockSubject)
+                .RefCount();
         }
 
         public IObservable<TimeSpan> DataClock()
         {
-            return _dataClockSource.AsObservable();
+            return _dataClockSource;
         }
 
-        private TimeSpan GetDataClock(long i)
+        private TimeSpan GetDataClock(long _)
         {
-            // NOTE:
-            // DataClockProvider runs off player clock, emitting data requests
-            // as player clock + data limit
-            // Requirements:
-            // - Player clock HAS TO start within time defined by DataLimit.
-            //   If not, data providers will not be able to source new data.
-            // - Live content. Player clock needs to start within first segment.
-            // - Packet drop during seek (clock matching) cannot exceed  data limit
-            //   If not, data providers will not be able to source new data.
-            //
-            // Data Limit   - Data limit is not enough to start player clock, consider 
-            //                sourcing clock from raw packets. Do note, raw packet clocks may have 
-            //                holes, old values, discontinuities or not yet seen fiendish imps.
-            // Live Content - MPD based initial clock update may be required.
-            // Packet drops - Notify data provided on dropped packets OR what is common clock
-            //                so counting of buffered data can be done from that point.
-            //
-            var playerClock = _playerClock.LastClock;
-            if (playerClock == PlayerClockProviderConfig.InvalidClock)
-                playerClock = _synchronizerClock;
+            var nextClock = _playerClock.Clock;
+            Logger.Info($"Player nextClock: {nextClock}");
+            if (nextClock == TimeSpan.Zero)
+                nextClock = _synchronizerClock;
 
-            if (playerClock > Clock)
-                Clock = playerClock;
+            if (nextClock > _clock)
+                _clock = nextClock;
 
-            return Clock + BufferLimit;
+            return _clock + _bufferLimit;
         }
 
-        private void SetSynchronizerClock(TimeSpan clock)
-        {
-            if (clock > _synchronizerClock)
-                _synchronizerClock = clock;
-        }
+        private void SetSynchronizerClock(TimeSpan clock) =>
+            _synchronizerClock = clock;
 
         public void Stop()
         {
             _dataClockSubject.OnNext(TimeSpan.Zero);
-            _dataClockConnection?.Dispose();
-            _dataClockConnection = null;
+
+            _synchronizerSubscription?.Dispose();
+            _synchronizerSubscription = null;
+            _intervalConnection?.Dispose();
+            _intervalConnection = null;
+
+            _clock = TimeSpan.Zero;
+            _synchronizerClock = TimeSpan.Zero;
+
             Logger.Info("");
         }
 
         public void Start()
         {
-            if (_dataClockConnection != null) return;
+            if (_intervalConnection != null) return;
 
-            if (Clock == PlayerClockProviderConfig.InvalidClock)
-                Clock = TimeSpan.Zero;
+            _intervalConnection = _intervalSource.Connect();
+            _synchronizerSubscription = _synchronizerClockSource.ObserveOn(_scheduler).Subscribe(SetSynchronizerClock);
 
-            _synchronizerClock = PlayerClockProviderConfig.InvalidClock;
-
-            _dataClockConnection = _dataClockSource.Connect();
-            Logger.Info($"Clock {Clock} + Limit {BufferLimit} = {Clock + BufferLimit}");
-        }
-
-        public void SetSynchronizerSource(IObservable<TimeSpan> source)
-        {
-            _synchronizerSubscription = source.ObserveOn(_scheduler)
-                .Subscribe(SetSynchronizerClock);
+            Logger.Info($"Clock {_clock} + Limit {_bufferLimit} = {_clock + _bufferLimit}");
         }
 
         public void Dispose()
@@ -129,12 +114,9 @@ namespace JuvoPlayer.Player.EsPlayer
             if (_isDisposed)
                 return;
 
-            _isDisposed = true;
-
-            _dataClockConnection?.Dispose();
-            _dataClockConnection = null;
+            Stop();
             _dataClockSubject.Dispose();
-            _synchronizerSubscription?.Dispose();
+            _isDisposed = true;
 
             Logger.Info("");
         }
