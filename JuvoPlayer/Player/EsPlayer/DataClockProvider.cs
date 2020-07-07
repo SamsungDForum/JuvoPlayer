@@ -71,7 +71,6 @@ namespace JuvoPlayer.Player.EsPlayer
         private TimeSpan GetDataClock(long _)
         {
             var nextClock = _playerClock.Clock;
-            Logger.Info($"Player nextClock: {nextClock}");
             if (nextClock == TimeSpan.Zero)
                 nextClock = _synchronizerClock;
 
