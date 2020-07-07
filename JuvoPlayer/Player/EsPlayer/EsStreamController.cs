@@ -1226,7 +1226,7 @@ namespace JuvoPlayer.Player.EsPlayer
 
         public IObservable<TimeSpan> DataNeededStateChanged()
         {
-            return _dataClock.DataClock().Do(dc => logger.Info($"DataClock: {dc}"));
+            return _dataClock.DataClock();
         }
 
         public IObservable<TimeSpan> PlayerClock()

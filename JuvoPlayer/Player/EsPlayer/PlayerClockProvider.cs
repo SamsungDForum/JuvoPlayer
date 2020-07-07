@@ -60,11 +60,7 @@ namespace JuvoPlayer.Player.EsPlayer
                     .RefCount();
         }
 
-        private void SetClock(TimeSpan clock)
-        {
-            _currentClock = clock;
-            Logger.Info($"PlayerClock: {_currentClock}");
-        }
+        private void SetClock(TimeSpan clock) => _currentClock = clock;
 
         public IObservable<TimeSpan> PlayerClockObservable()
         {
