@@ -123,7 +123,8 @@ namespace XamarinPlayer.Tizen.TV.Views
 
             _backgroundBitmap?.Release();
             _backgroundBitmap = null;
-            _backgroundBitmap = await _skBitmapCache.GetBitmap(_contentGridController.FocusedItem?.ContentImg);
+            if (_contentGridController.FocusedItem != null)
+                _backgroundBitmap = await _skBitmapCache.GetBitmap(_contentGridController.FocusedItem.ContentImg);
 
             ContentImage.InvalidateSurface();
             ContentImage.Opacity = 0;
