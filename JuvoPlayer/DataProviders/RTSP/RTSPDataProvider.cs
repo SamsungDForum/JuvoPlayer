@@ -24,6 +24,7 @@ using JuvoLogger;
 using JuvoPlayer.Common;
 using JuvoPlayer.Demuxers;
 using JuvoPlayer.Subtitles;
+using static JuvoPlayer.Utils.TaskExtensions;
 
 namespace JuvoPlayer.DataProviders.RTSP
 {
@@ -162,16 +163,10 @@ namespace JuvoPlayer.DataProviders.RTSP
         public void Dispose()
         {
             Logger.Info("");
-            using (var terminationMre = new ManualResetEvent(false))
-            {
-                Task.Run(async () =>
-                {
-                    await rtspClient.Stop();
-                    terminationMre.Set();
-                });
 
-                WaitHandle.WaitAll(new WaitHandle[] { terminationMre });
-            }
+            IAsyncResult rtspCompletion = rtspClient.Stop().WithoutException(Logger);
+            WaitHandle.WaitAll(new[] { rtspCompletion.AsyncWaitHandle });
+
             Logger.Info("Done");
         }
 

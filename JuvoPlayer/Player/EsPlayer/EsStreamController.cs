@@ -1136,18 +1136,11 @@ namespace JuvoPlayer.Player.EsPlayer
 
             logger.Info("Done");
         }
+
         private void WaitForAsyncOperationsCompletion()
         {
-            using (var terminationMre = new ManualResetEvent(false))
-            {
-                Task.Run(async () =>
-                {
-                    await AsyncOperationCompletions().WithoutException(logger);
-                    terminationMre.Set();
-                });
-
-                WaitHandle.WaitAll(new WaitHandle[] { terminationMre });
-            }
+            IAsyncResult asyncCompletion = AsyncOperationCompletions().WithoutException(logger);
+            WaitHandle.WaitAll(new[] { asyncCompletion.AsyncWaitHandle });
 
             logger.Info("Done");
         }
