@@ -15,6 +15,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+using IniParser.Model;
 using System.IO;
 using System.Reflection;
 
@@ -30,6 +31,11 @@ namespace JuvoLogger.Tizen
         }
 
         public static void Configure(string contents)
+        {
+            Configure(contents, CreateLogger);
+        }
+
+        public static void Configure(in IniData contents)
         {
             Configure(contents, CreateLogger);
         }
