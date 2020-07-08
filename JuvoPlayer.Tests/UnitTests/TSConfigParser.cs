@@ -19,10 +19,10 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
-using IniParser.Model;
-using IniParser.Parser;
 using JuvoLogger;
 using NUnit.Framework;
+using IniParser.Model;
+using IniParser.Parser;
 
 namespace JuvoPlayer.Tests.UnitTests
 {
