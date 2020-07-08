@@ -132,8 +132,8 @@ namespace JuvoPlayer.DataProviders.RTSP
 
         public void Stop()
         {
-            // RTSP Data provider.. unstoppable!
-            // Original client model implies Stop by disposure. 
+            Logger.Info("");
+            rtspClient.Stop();
         }
 
         public void Start()
@@ -162,13 +162,17 @@ namespace JuvoPlayer.DataProviders.RTSP
         public void Dispose()
         {
             Logger.Info("");
-
-            Task.Run(async () =>
+            using (var terminationMre = new ManualResetEvent(false))
             {
-                await rtspClient.Stop();
-                rtspClient.Dispose();
-                demuxerController.Dispose();
-            });
+                Task.Run(async () =>
+                {
+                    await rtspClient.Stop();
+                    terminationMre.Set();
+                });
+
+                WaitHandle.WaitAll(new WaitHandle[] { terminationMre });
+            }
+            Logger.Info("Done");
         }
 
         public List<StreamDescription> GetStreamsDescription(StreamType streamType)

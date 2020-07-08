@@ -37,7 +37,7 @@ namespace JuvoPlayer.DataProviders.RTSP
     {
         private static readonly ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
 
-        private enum State { Idle, Playing, Paused };
+        private enum State { Idle, Starting, Playing, Paused, Terminating };
         private State _currentState = State.Idle;
 
         RTPTransportType rtpTransportType = RTPTransportType.TCP; // Mode, either RTP over UDP or RTP over TCP using the RTSP socket
@@ -60,7 +60,6 @@ namespace JuvoPlayer.DataProviders.RTSP
         private bool _suspendTransfer;
 
         private static readonly TimeSpan PingPongTimeout = TimeSpan.FromSeconds(10);
-        bool _pingPongRunning = false;
 
         public RTSPClient()
         {
@@ -231,11 +230,17 @@ namespace JuvoPlayer.DataProviders.RTSP
                 Logger.Warn("Options failed");
             }
         }
-        public void Start(ClipDefinition clip)
+        public Task Start(ClipDefinition clip)
         {
+            if (_currentState != State.Idle)
+                throw new InvalidOperationException($"{nameof(_currentState)} incorrect state {_currentState}");
+
             rtspUrl = clip.Url;
             _rtpRtspCts = new CancellationTokenSource();
             _rtspTask = Task.Run(async () => await RtspReader());
+            _currentState = State.Starting;
+
+            return _rtspTask;
         }
 
         private async Task<bool> Connect()
@@ -269,22 +274,17 @@ namespace JuvoPlayer.DataProviders.RTSP
             return false;
         }
 
-        public async Task Stop()
+        public Task Stop()
         {
             Logger.Info("");
 
-            if (_rtspTask.IsCompleted != true)
+            PostRequest(new RtspRequestTeardown
             {
-                PostRequest(new RtspRequestTeardown
-                {
-                    RtspUri = new Uri(rtspUrl),
-                    Session = rtspSession
-                });
+                RtspUri = new Uri(rtspUrl),
+                Session = rtspSession
+            });
 
-                await _rtspTask.WithTimeout(RtspCommandTimeout).WithoutException(Logger);
-            }
-
-            ProcessTeardownResponse();
+            return _rtspTask;
         }
 
         private bool IsRtcpGoodbye(RtspData rtspData)
@@ -310,22 +310,20 @@ namespace JuvoPlayer.DataProviders.RTSP
 
         private void ProcessTeardownResponse()
         {
-            // Someone beat us to it
-            if (_rtpRtspCts?.IsCancellationRequested == true)
+            if (_rtpRtspCts == null || _rtpRtspCts.IsCancellationRequested == true)
                 return;
 
             Logger.Info("");
-            // or start never occurred
-            _rtpRtspCts?.Cancel();
+
+            _rtpRtspCts.Cancel();
 
             if (_currentState != State.Idle)
             {
                 rtspListener.Stop();
                 udpSocketPair?.Stop();
             }
-            _currentState = State.Idle;
+
             rtspSession = null;
-            _pingPongRunning = false;
 
             chunkReadySubject.OnCompleted();
             rtspErrorSubject.OnCompleted();
@@ -424,12 +422,23 @@ namespace JuvoPlayer.DataProviders.RTSP
         {
             switch (request)
             {
-                case RtspRequestPlay _ when request.ContextData is bool:
-                    // already suspended. Do nothing.
-                    if (_suspendTransfer == false)
-                        return;
+                case RtspRequestOptions _ when _currentState == State.Starting:
+                case RtspRequestDescribe _ when _currentState == State.Starting:
+                case RtspRequestSetup _ when _currentState == State.Starting:
+                    break;
 
-                    Logger.Info($"Resuming session {rtspSession}");
+                case RtspRequestPlay playRequest when _currentState == State.Starting:
+                    // Play requested - cannot be fulfilled due to _suspendTransfer state. Post it back to event queue
+                    // in dire hope _currentState will change.
+                    if (_suspendTransfer)
+                    {
+                        // TODO: Post with a "delay" would be good.
+                        PostRequest(playRequest);
+                        return;
+                    }
+                    break;
+
+                case RtspRequestPlay _ when request.ContextData is bool && _suspendTransfer:
                     _suspendTransfer = false;
 
                     // Resume.
@@ -437,14 +446,10 @@ namespace JuvoPlayer.DataProviders.RTSP
                     if (rtspSession == null)
                         return;
 
+                    Logger.Info($"Resuming session {rtspSession}");
                     break;
 
-                case RtspRequestPause _ when request.ContextData is bool:
-                    // already resumed. Do nothing.
-                    if (_suspendTransfer == true)
-                        return;
-
-                    Logger.Info($"Suspending session {rtspSession}");
+                case RtspRequestPause _ when request.ContextData is bool && _suspendTransfer == false:
                     _suspendTransfer = true;
 
                     // Suspend. 
@@ -453,11 +458,29 @@ namespace JuvoPlayer.DataProviders.RTSP
                     if (rtspSession == null)
                         return;
 
+                    Logger.Info($"Pausing session {rtspSession}");
                     break;
 
-                case RtspRequestPlay _ when _currentState != State.Paused || _suspendTransfer:
-                case RtspRequestPause _ when _currentState != State.Playing || _suspendTransfer:
-                    Logger.Info($"Invalid Request for State/SuspendTransfer {request.GetType()} {_currentState}/{_suspendTransfer}. Ignored");
+                case RtspRequestPlay _ when _currentState == State.Paused && _suspendTransfer == false:
+                case RtspRequestPause _ when _currentState == State.Playing && _suspendTransfer == false:
+                    break;
+
+                case RtspRequestTeardown _ when _currentState != State.Idle && _currentState != State.Terminating:
+                    _currentState = State.Terminating;
+
+                    // RTSP termination request before playback foreplay is done.
+                    if (rtspSession == null)
+                        return;
+
+                    break;
+
+                default:
+                    // All misplaced requests fall here
+                    Logger.Warn($"Incorrect Request/State");
+                    Logger.Warn($"Request: {request.GetType()}");
+                    Logger.Warn($"\tState: {_currentState}");
+                    Logger.Warn($"\tTransfer suspended: {_suspendTransfer}");
+                    Logger.Warn($"\tRtsp Session: {rtspSession}");
                     return;
             }
 
@@ -500,41 +523,90 @@ namespace JuvoPlayer.DataProviders.RTSP
             {
                 if (message.OriginalRequest is RtspRequestOptions)
                 {
-                    // PingPong started - don't process response to options.
-                    if (_pingPongRunning)
+                    switch (_currentState)
                     {
-                        Logger.Info($"Pong {rtspListener.RemoteAdress}");
-                        Ping();
-                        return;
+                        case State.Idle:
+                            Logger.Warn($"Incorrect state {_currentState}");
+                            break;
+                        case State.Terminating:
+
+                        case State.Starting:
+                            ProcessOptionsResponse();
+                            break;
+                        default:
+                            Logger.Info($"Pong {rtspListener.RemoteAdress}");
+                            Ping();
+                            break;
                     }
-                    ProcessOptionsResponse();
+
                 }
                 else if (message.OriginalRequest is RtspRequestDescribe)
                 {
-                    ProcessDescribeResponse(message);
+                    switch (_currentState)
+                    {
+                        case State.Starting:
+                            ProcessDescribeResponse(message);
+                            break;
+                        default:
+                            Logger.Warn($"Incorrect state {_currentState}");
+                            break;
+                    }
                 }
                 else if (message.OriginalRequest is RtspRequestSetup)
                 {
-                    ProcessSetupResponse(message);
+                    switch (_currentState)
+                    {
+                        case State.Starting:
+                            ProcessSetupResponse(message);
+                            break;
+                        default:
+                            Logger.Warn($"Incorrect state {_currentState}");
+                            break;
+                    }
                 }
                 else if (message.OriginalRequest is RtspRequestPlay)
                 {
-                    // Play confirmed. Start PingPong if not running.
-                    if (!_pingPongRunning)
+                    switch (_currentState)
                     {
-                        _pingPongRunning = true;
-                        Ping();
+                        case State.Starting:
+                            _currentState = State.Playing;
+                            Ping();
+                            break;
+                        case State.Paused:
+                            _currentState = State.Playing;
+                            break;
+                        default:
+                            Logger.Warn($"Incorrect state {_currentState}");
+                            break;
                     }
 
-                    _currentState = State.Playing;
                 }
                 else if (message.OriginalRequest is RtspRequestPause)
                 {
-                    _currentState = State.Paused;
+                    switch (_currentState)
+                    {
+                        case State.Playing:
+                            _currentState = State.Paused;
+                            break;
+                        default:
+                            Logger.Warn($"Incorrect state {_currentState}");
+                            break;
+                    }
+
                 }
                 else if (message.OriginalRequest is RtspRequestTeardown)
                 {
-                    ProcessTeardownResponse();
+                    switch (_currentState)
+                    {
+                        case State.Terminating:
+                            ProcessTeardownResponse();
+                            _currentState = State.Idle;
+                            break;
+                        default:
+                            Logger.Warn($"Incorrect state {_currentState}");
+                            break;
+                    }
+
                 }
             }
             catch (Exception e)

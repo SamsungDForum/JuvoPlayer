@@ -26,7 +26,7 @@ namespace JuvoPlayer.DataProviders.RTSP
         void Pause();
         void Play();
         void Seek(int position);
-        void Start(ClipDefinition clip);
+        Task Start(ClipDefinition clip);
         Task Stop();
         void SetDataClock(TimeSpan dataPosition);
         IObservable<string> RTSPError();
