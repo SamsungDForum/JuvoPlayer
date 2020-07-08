@@ -15,10 +15,10 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-using IniParser.Model;
 using System;
 using System.Collections.Generic;
 using System.IO;
+using IniParser.Model;
 
 namespace JuvoLogger
 {
