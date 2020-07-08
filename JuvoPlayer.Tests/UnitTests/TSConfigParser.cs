@@ -19,6 +19,8 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Reflection;
+using IniParser.Model;
+using IniParser.Parser;
 using JuvoLogger;
 using NUnit.Framework;
 
@@ -58,6 +60,16 @@ namespace JuvoPlayer.Tests.UnitTests
                 {"XamarinPlayer.Tizen.TV", LogLevel.Info}
             };
 
+            VerifyConfig(parser, expectedValues);
+
+            var iniParser = new IniDataParser();
+            parser = new ConfigParser(iniParser.Parse(contents));
+
+            VerifyConfig(parser, expectedValues);
+        }
+
+        private void VerifyConfig(in ConfigParser parser, in Dictionary<string, LogLevel> expectedValues)
+        {
             Assert.That(parser.LoggingLevels.Count, Is.EqualTo(expectedValues.Count));
 
             foreach (var pair in expectedValues)
@@ -81,6 +93,7 @@ namespace JuvoPlayer.Tests.UnitTests
         public void TestConstructorWithNull()
         {
             Assert.Throws<ArgumentNullException>(() => new ConfigParser(null));
+            Assert.Throws<ArgumentNullException>(() => new ConfigParser((IniData)null));
         }
     }
 }
