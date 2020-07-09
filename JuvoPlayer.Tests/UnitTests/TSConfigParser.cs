@@ -93,7 +93,7 @@ namespace JuvoPlayer.Tests.UnitTests
         public void TestConstructorWithNull()
         {
             Assert.Throws<ArgumentNullException>(() => new ConfigParser(null));
-            Assert.Throws<ArgumentNullException>(() => new ConfigParser((IniData)null));
+            Assert.Throws<ArgumentNullException>(() => new ConfigParser(default(IniData)));
         }
     }
 }
