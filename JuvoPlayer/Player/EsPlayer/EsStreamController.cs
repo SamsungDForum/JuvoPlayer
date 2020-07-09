@@ -213,7 +213,7 @@ namespace JuvoPlayer.Player.EsPlayer
             player.ErrorOccurred += OnESPlayerError;
             player.BufferStatusChanged += OnBufferStatusChanged;
             player.ResourceConflicted += OnResourceConflicted;
-            logger.Info("Event handlers attached");
+            logger.Info("End");
         }
 
         private void DetachEventHandlers()
@@ -223,7 +223,7 @@ namespace JuvoPlayer.Player.EsPlayer
             player.ErrorOccurred -= OnESPlayerError;
             player.BufferStatusChanged -= OnBufferStatusChanged;
             player.ResourceConflicted -= OnResourceConflicted;
-            logger.Info("Event handlers detached");
+            logger.Info("End");
         }
 
         /// <summary>
@@ -429,7 +429,10 @@ namespace JuvoPlayer.Player.EsPlayer
 
                     _pendingPosition = null;
                     if (isCompleted)
+                    {
                         SubscribeBufferingEvent();
+                        logger.Info("End");
+                    }
 
                     return;
                 }
@@ -562,7 +565,7 @@ namespace JuvoPlayer.Player.EsPlayer
                     StartClockGenerator();
                     SubscribeBufferingEvent();
                     _configurationsCollected = null;
-                    logger.Info("Completed");
+                    logger.Info("End");
                     return;
                 }
                 catch (SeekException e)
@@ -588,6 +591,7 @@ namespace JuvoPlayer.Player.EsPlayer
 
                 player.SubmitEosPacket(ESPlayer.StreamType.Audio);
                 player.SubmitEosPacket(ESPlayer.StreamType.Video);
+                logger.Info("EOS Sent");
             }
         }
 
@@ -772,7 +776,7 @@ namespace JuvoPlayer.Player.EsPlayer
                     esStreams[(int)StreamType.Audio].StreamBuffering(), (v, a) => v | a)
                 .Subscribe(OnStreamBuffering, _syncCtx);
 
-            logger.Info("");
+            logger.Info("End");
         }
 
         private void UnsubscribeBufferingEvent()
@@ -781,7 +785,8 @@ namespace JuvoPlayer.Player.EsPlayer
             bufferingSub = null;
 
             bufferingProgressSubject.OnNext(100);
-            logger.Info("");
+
+            logger.Info("End");
         }
 
         private void OnStreamBuffering(bool isBuffering)
@@ -921,7 +926,7 @@ namespace JuvoPlayer.Player.EsPlayer
             player.Pause();
 
             SetState(PlayerState.Paused, activeTaskCts.Token);
-            logger.Info("Playback Paused");
+            logger.Info("End");
         }
 
         private void SetPlayerConfiguration()
@@ -1030,7 +1035,7 @@ namespace JuvoPlayer.Player.EsPlayer
         {
             _dataClock.Start();
             _playerClock.Start();
-            logger.Info("");
+            logger.Info("End");
         }
 
         /// <summary>
@@ -1040,7 +1045,7 @@ namespace JuvoPlayer.Player.EsPlayer
         {
             _dataClock.Stop();
             _playerClock.Stop();
-            logger.Info("");
+            logger.Info("End");
         }
 
         private StateSnapshot GetSuspendState()
@@ -1102,7 +1107,7 @@ namespace JuvoPlayer.Player.EsPlayer
             StopTransfer();
             DisableInput();
             activeTaskCts.Cancel();
-            logger.Info("Done");
+            logger.Info("End");
         }
 
         private Task AsyncOperationCompletions() =>
@@ -1134,7 +1139,7 @@ namespace JuvoPlayer.Player.EsPlayer
             // Clean up internal object
             activeTaskCts.Dispose();
 
-            logger.Info("Done");
+            logger.Info("End");
         }
 
         private void WaitForAsyncOperationsCompletion()
@@ -1142,7 +1147,7 @@ namespace JuvoPlayer.Player.EsPlayer
             IAsyncResult asyncCompletion = AsyncOperationCompletions().WithoutException(logger);
             WaitHandle.WaitAll(new[] { asyncCompletion.AsyncWaitHandle });
 
-            logger.Info("Done");
+            logger.Info("End");
         }
 
         public void Dispose()
@@ -1172,7 +1177,7 @@ namespace JuvoPlayer.Player.EsPlayer
             DisposeObjects();
             isDisposed = true;
 
-            logger.Info("Done");
+            logger.Info("End");
         }
 
         private void DisposeStreams()
@@ -1181,7 +1186,7 @@ namespace JuvoPlayer.Player.EsPlayer
             foreach (var esStream in esStreams)
                 esStream?.Dispose();
 
-            logger.Info("Done");
+            logger.Info("End");
         }
 
         private void DisposeAllSubjects()
@@ -1192,7 +1197,7 @@ namespace JuvoPlayer.Player.EsPlayer
             bufferingProgressSubject.OnCompleted();
             bufferingProgressSubject.Dispose();
 
-            logger.Info("Done");
+            logger.Info("End");
         }
 
         private void DisposeAllSubscriptions()
@@ -1202,7 +1207,7 @@ namespace JuvoPlayer.Player.EsPlayer
 
             bufferingSub?.Dispose();
 
-            logger.Info("Done");
+            logger.Info("End");
         }
 
         #endregion
