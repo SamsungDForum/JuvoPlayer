@@ -95,7 +95,7 @@ namespace JuvoPlayer.Player.EsPlayer
             _clock = TimeSpan.Zero;
             _synchronizerClock = TimeSpan.Zero;
 
-            Logger.Info("");
+            Logger.Info("End");
         }
 
         public void Start()
@@ -117,7 +117,7 @@ namespace JuvoPlayer.Player.EsPlayer
             _dataClockSubject.Dispose();
             _isDisposed = true;
 
-            Logger.Info("");
+            Logger.Info("End");
         }
     }
 }

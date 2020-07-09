@@ -106,7 +106,7 @@ namespace JuvoPlayer.Player.EsPlayer
             _intervalConnection?.Dispose();
             _intervalConnection = null;
             _currentClock = TimeSpan.Zero;
-            Logger.Info("");
+            Logger.Info("End");
         }
 
         public void Dispose()
@@ -118,7 +118,7 @@ namespace JuvoPlayer.Player.EsPlayer
             _playerClockSubject.Dispose();
             _isDisposed = true;
 
-            Logger.Info("");
+            Logger.Info("End");
         }
     }
 }
