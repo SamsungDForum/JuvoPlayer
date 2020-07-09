@@ -328,8 +328,7 @@ namespace JuvoPlayer.OpenGL
         {
             return async () =>
             {
-                ShowAlert("Resources loading error", message, "OK");
-                await AwaitDisplayAlert();
+                await DisplayAlert("Resources loading error", message, "OK");
                 Exit();
             };
         }
@@ -350,7 +349,7 @@ namespace JuvoPlayer.OpenGL
             HandlePlaybackStart();
         }
 
-        public async void DisplayAlert(string title, string body, string button)
+        private async Task DisplayAlert(string title, string body, string button)
         {
             ShowAlert(title, body, button);
             await AwaitDisplayAlert();
@@ -506,7 +505,7 @@ namespace JuvoPlayer.OpenGL
                     {
                         Logger?.Info($"Playback Error: {message}");
                         ReturnToMainMenu();
-                        DisplayAlert("Playback Error", message, "OK");
+                        DisplayAlert("Playback Error", message, "OK").ConfigureAwait(true);
                     });
 
                 Player.BufferingProgress()
