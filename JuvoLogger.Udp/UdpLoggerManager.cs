@@ -26,7 +26,6 @@ namespace JuvoLogger.Udp
     public class UdpLoggerManager : LoggerManager
     {
         public static bool IsRunning { get; private set; } = false;
-
         private static UdpLoggerService _loggerService;
         private static LoggerBase CreateLogger(string channel, LogLevel level) => new UdpLogger(channel, level, GetLoggingService);
 
