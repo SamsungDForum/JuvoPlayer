@@ -371,17 +371,9 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
 
                         var changeTask = changeOp.Execute(context);
 
-                        try
-                        {
-                            await changeTask.WithCancellation(context.Token);
-                            await seekTask.WithTimeout(context.Timeout).WithCancellation(context.Token);
-                        }
-                        catch (Exception e)
-                        {
-                            _logger.Error($"seekTask: {seekTask.Status}");
-                            _logger.Error($"changeTask: {changeTask.Status}");
-                            _logger.Error(e.ToString());
-                        }
+                        await changeTask.WithCancellation(context.Token);
+                        await seekTask.WithTimeout(context.Timeout).WithCancellation(context.Token);
+                        
                     }
                 }
             });

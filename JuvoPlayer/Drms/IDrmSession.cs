@@ -43,7 +43,7 @@ namespace JuvoPlayer.Drms
         /// <exception cref=""></exception>
         /// <exception cref="T:JuvoPlayer.Drms.DRMException"> is thrown when session could not be initialized</exception>
         /// <exception cref="InvalidOperationException"> is thrown if this API is called prior to calling Initialize</exception>
-        Task GetInitialisationTask();
+        Task GetInitializationTask();
 
         /// <summary>
         /// Returns initialization state of session

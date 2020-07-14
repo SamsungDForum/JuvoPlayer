@@ -167,6 +167,9 @@ namespace JuvoPlayer.DataProviders.RTSP
             IAsyncResult rtspCompletion = rtspClient.Stop().WithoutException(Logger);
             WaitHandle.WaitAll(new[] { rtspCompletion.AsyncWaitHandle });
 
+            rtspClient.Dispose();
+            demuxerController.Dispose();
+
             Logger.Info("Done");
         }
 
