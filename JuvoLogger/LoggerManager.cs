@@ -18,6 +18,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using IniParser.Model;
 
 namespace JuvoLogger
 {
@@ -88,6 +89,17 @@ namespace JuvoLogger
                 Instance = new LoggerManager();
 
             Instance.Update(new Dictionary<string, LogLevel>(), createLoggerFunc);
+        }
+
+        public static void Configure(in IniData configData, CreateLoggerFunc createLoggerFunc)
+        {
+            if (configData == null)
+                throw new ArgumentNullException();
+            if (Instance == null)
+                Instance = new LoggerManager();
+
+            var configParser = new ConfigParser(configData);
+            Instance.Update(configParser.LoggingLevels, createLoggerFunc);
         }
 
         public static void Configure(string configData, CreateLoggerFunc createLoggerFunc)

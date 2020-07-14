@@ -16,7 +16,6 @@
  */
 
 using System;
-using System.Threading;
 using System.Threading.Tasks;
 using JuvoPlayer.Common;
 
@@ -27,9 +26,9 @@ namespace JuvoPlayer.DataProviders.RTSP
         void Pause();
         void Play();
         void Seek(int position);
-        Task Start(ClipDefinition clip, CancellationToken ct);
+        void Start(ClipDefinition clip);
         Task Stop();
+        void SetDataClock(TimeSpan dataPosition);
         IObservable<string> RTSPError();
-        bool IsStarted { get; }
     }
 }

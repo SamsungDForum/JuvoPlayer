@@ -64,7 +64,16 @@ namespace JuvoPlayer.Utils
             using (var cts = new CancellationTokenSource())
             {
                 cts.CancelAfter(timeout);
-                await nonCancellable.WithCancellation(cts.Token);
+                await nonCancellable.WithCancellation(cts.Token).ConfigureAwait(false);
+            }
+        }
+
+        public static async Task<T> WithTimeout<T>(this Task<T> nonCancellable, TimeSpan timeout)
+        {
+            using (var cts = new CancellationTokenSource())
+            {
+                cts.CancelAfter(timeout);
+                return await nonCancellable.WithCancellation(cts.Token).ConfigureAwait(false);
             }
         }
 
@@ -78,6 +87,20 @@ namespace JuvoPlayer.Utils
             {
                 logger?.Warn(e);
             }
+        }
+
+        public static async Task<T> WithoutException<T>(this Task<T> task, ILogger logger = null)
+        {
+            try
+            {
+                return await task.ConfigureAwait(false);
+            }
+            catch (Exception e)
+            {
+                logger?.Warn(e);
+            }
+
+            return default;
         }
     }
 }
