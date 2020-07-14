@@ -309,7 +309,7 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
                                 {
                                     try
                                     {
-                                        await ses.GetInitialisationTask().WithCancellation(cts.Token);
+                                        await ses.GetInitializationTask().WithCancellation(cts.Token);
                                     }
                                     catch (OperationCanceledException)
                                     {

@@ -450,7 +450,7 @@ namespace JuvoPlayer.Player.EsPlayer
             if (!dataPacket.DrmSession.CanDecrypt())
             {
                 _bufferingSubject.OnNext(true);
-                await dataPacket.DrmSession.GetInitialisationTask().WithCancellation(token);
+                await dataPacket.DrmSession.GetInitializationTask().WithCancellation(token);
                 _bufferingSubject.OnNext(false);
 
                 logger.Info($"{streamType}: DRM Initialization complete");

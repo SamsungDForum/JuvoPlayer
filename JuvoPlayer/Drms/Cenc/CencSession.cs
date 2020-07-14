@@ -321,7 +321,7 @@ namespace JuvoPlayer.Drms.Cenc
             return InitializationTask;
         }
 
-        public Task GetInitialisationTask()
+        public Task GetInitializationTask()
         {
             Logger.Info($"{currentSessionId}: Waiting for license");
 

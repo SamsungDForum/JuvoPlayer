@@ -238,7 +238,6 @@ namespace JuvoPlayer.DataProviders.RTSP
             rtspUrl = clip.Url;
             _rtpRtspCts = new CancellationTokenSource();
             _rtspTask = Task.Run(async () => await RtspReader());
-            _currentState = State.Starting;
 
             return _rtspTask;
         }
@@ -422,10 +421,15 @@ namespace JuvoPlayer.DataProviders.RTSP
         {
             switch (request)
             {
+
+                case RtspRequestOptions _ when _currentState == State.Idle:
+                    _currentState = State.Starting;
+                    break;
+
                 // Request/State combinations not requiring additional processing.
-                case RtspRequestOptions _ when _currentState == State.Starting:
-                case RtspRequestDescribe _ when _currentState == State.Starting:
-                case RtspRequestSetup _ when _currentState == State.Starting:
+                case RtspRequestOptions _ when _currentState != State.Idle && _currentState != State.Terminating:
+                case RtspRequestDescribe _ when _currentState != State.Idle && _currentState != State.Terminating:
+                case RtspRequestSetup _ when _currentState != State.Idle && _currentState != State.Terminating:
                 case RtspRequestPlay _ when _currentState == State.Paused && _suspendTransfer == false:
                 case RtspRequestPause _ when _currentState == State.Playing && _suspendTransfer == false:
                     break;
@@ -524,10 +528,6 @@ namespace JuvoPlayer.DataProviders.RTSP
                 {
                     switch (_currentState)
                     {
-                        case State.Idle:
-                            Logger.Warn($"Incorrect state {_currentState}");
-                            break;
-
                         case State.Terminating:
                             break;
 
@@ -535,9 +535,15 @@ namespace JuvoPlayer.DataProviders.RTSP
                             ProcessOptionsResponse();
                             break;
 
-                        default:
+                        case State.Playing:
+                        case State.Paused:
+                            // Ping-Pong once playback is started.
                             Logger.Info($"Pong {rtspListener.RemoteAdress}");
                             Ping();
+                            break;
+
+                        default:
+                            Logger.Warn($"Incorrect state {_currentState}");
                             break;
                     }
 
@@ -546,6 +552,9 @@ namespace JuvoPlayer.DataProviders.RTSP
                 {
                     switch (_currentState)
                     {
+                        case State.Terminating:
+                            break;
+
                         case State.Starting:
                             ProcessDescribeResponse(message);
                             break;
@@ -559,6 +568,9 @@ namespace JuvoPlayer.DataProviders.RTSP
                 {
                     switch (_currentState)
                     {
+                        case State.Terminating:
+                            break;
+
                         case State.Starting:
                             ProcessSetupResponse(message);
                             break;
@@ -572,6 +584,9 @@ namespace JuvoPlayer.DataProviders.RTSP
                 {
                     switch (_currentState)
                     {
+                        case State.Terminating:
+                            break;
+
                         case State.Starting:
                             _currentState = State.Playing;
                             Ping();
@@ -591,6 +606,9 @@ namespace JuvoPlayer.DataProviders.RTSP
                 {
                     switch (_currentState)
                     {
+                        case State.Terminating:
+                            break;
+
                         case State.Playing:
                             _currentState = State.Paused;
                             break;
