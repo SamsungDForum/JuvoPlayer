@@ -163,7 +163,7 @@ namespace XamarinPlayer.Tizen.TV.Views
 
         private async void HandleKeyEvent(string e)
         {
-            if (ContentDataList == null) return;
+            if (ContentDataList == null || !Application.Current.MainPage.IsEnabled) return;
             var keyCode = ConvertToKeyCode(e);
             if (IsScrollEvent(keyCode))
                 HandleScrollEvent(keyCode);
