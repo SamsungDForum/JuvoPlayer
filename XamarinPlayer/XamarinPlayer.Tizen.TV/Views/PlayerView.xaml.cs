@@ -19,6 +19,7 @@ using System;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
 using System.Threading;
+using System.Threading.Tasks;
 using JuvoPlayer.Common;
 using SkiaSharp;
 using SkiaSharp.Views.Forms;
@@ -301,10 +302,10 @@ namespace XamarinPlayer.Views
             return true;
         }
 
-        public bool HandleUrl(string url)
+        public Task<bool> HandleUrl(string url)
         {
             var currentClipUrl = (BindingContext as PlayerViewModel)?.Source;
-            return currentClipUrl?.Equals(url) ?? false;
+            return Task.FromResult(currentClipUrl?.Equals(url) ?? false);
         }
 
         public void Suspend()

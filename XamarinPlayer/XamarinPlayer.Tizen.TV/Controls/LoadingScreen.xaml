@@ -1,0 +1,19 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<AbsoluteLayout xmlns="http://xamarin.com/schemas/2014/forms"
+                xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+                xmlns:forms="clr-namespace:SkiaSharp.Views.Forms;assembly=SkiaSharp.Views.Forms"
+                x:Class="XamarinPlayer.Tizen.TV.Controls.LoadingScreen">
+    <forms:SKCanvasView AbsoluteLayout.LayoutBounds=".5,.1,.5,.4"
+                        AbsoluteLayout.LayoutFlags="All" PaintSurface="SKCanvasView_OnPaintSurface" />
+           
+    <ActivityIndicator
+        AbsoluteLayout.LayoutBounds=".5,.75,.5,.5"
+        AbsoluteLayout.LayoutFlags="All"
+        Color="White"
+        InputTransparent="True"
+        IsRunning="True"
+        VerticalOptions="Center"
+        HorizontalOptions="Center"
+        HeightRequest="100"
+        WidthRequest="100" />
+</AbsoluteLayout>
