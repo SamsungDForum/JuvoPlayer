@@ -158,7 +158,7 @@ namespace JuvoPlayer.DataProviders.RTSP
             {
                 await Task.Delay(PingPongTimeout, _rtpRtspCts.Token);
                 Logger.Info($"Ping {rtspListener.RemoteAdress}");
-                SendOptions();
+                Options();
             }
             catch (TaskCanceledException)
             {
@@ -176,7 +176,7 @@ namespace JuvoPlayer.DataProviders.RTSP
                     return;
 
                 rtspListener.Start(_rtpRtspCts.Token);
-                SendOptions();
+                Options();
 
                 while (!_rtpRtspCts.IsCancellationRequested && rtspSocket.Connected)
                 {
@@ -200,7 +200,7 @@ namespace JuvoPlayer.DataProviders.RTSP
                 }
             }
             catch (Exception ex)
-            when (!(ex is OperationCanceledException || ex is TaskCanceledException || ex is ChannelClosedException))
+            when (!(ex is TaskCanceledException || ex is OperationCanceledException || ex is ChannelClosedException))
             {
                 // Ignorable exceptions listed above
                 Logger.Error(ex);
@@ -219,16 +219,15 @@ namespace JuvoPlayer.DataProviders.RTSP
             }
         }
 
-        private void SendOptions()
+        private void Options()
         {
-            if (!rtspListener.SendMessage(new RtspRequestOptions
+            Logger.Info("");
+
+            PostRequest(new RtspRequestOptions
             {
                 RtspUri = new Uri(rtspUrl),
                 Session = rtspSession
-            }))
-            {
-                Logger.Warn("Options failed");
-            }
+            });
         }
         public Task Start(ClipDefinition clip)
         {
@@ -320,6 +319,7 @@ namespace JuvoPlayer.DataProviders.RTSP
             {
                 rtspListener.Stop();
                 udpSocketPair?.Stop();
+                _currentState = State.Idle;
             }
 
             rtspSession = null;
@@ -795,8 +795,7 @@ namespace JuvoPlayer.DataProviders.RTSP
                 RtspUri = new Uri(rtspUrl)
             };
 
-            if (!rtspListener.SendMessage(describeMessage))
-                Logger.Warn("Describe failed");
+            PostRequest(describeMessage);
         }
 
         // Output an array of NAL Units.
