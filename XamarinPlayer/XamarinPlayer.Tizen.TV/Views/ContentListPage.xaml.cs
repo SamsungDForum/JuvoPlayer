@@ -16,6 +16,7 @@
  */
 
 using System;
+using System.Collections.Generic;
 using System.Threading.Tasks;
 using JuvoPlayer.Common;
 using JuvoPlayer.Common.Utils.IReferenceCountableExtensions;
@@ -23,7 +24,6 @@ using SkiaSharp;
 using SkiaSharp.Views.Forms;
 using Xamarin.Forms;
 using Xamarin.Forms.Xaml;
-using XamarinPlayer.Tizen.TV.Controls;
 using XamarinPlayer.Tizen.TV.Models;
 using XamarinPlayer.Tizen.TV.Services;
 using XamarinPlayer.Tizen.TV.ViewModels;
@@ -35,21 +35,66 @@ namespace XamarinPlayer.Tizen.TV.Views
     [XamlCompilation(XamlCompilationOptions.Compile)]
     public partial class ContentListPage : IContentPayloadHandler, ISuspendable
     {
+        public static readonly BindableProperty ContentDataListProperty =
+            BindableProperty.Create(
+                propertyName: "ContentDataList",
+                returnType: typeof(object),
+                typeof(ContentListPage),
+                defaultValue: false,
+                defaultBindingMode: BindingMode.OneWay,
+                propertyChanged: (bindable, oldValue, newValue) =>
+                {
+                    var page = ((ContentListPage) bindable);
+                    if (newValue != null)
+                    {
+                        page._contentGridController.SetItemsSource((List<DetailContentData>) newValue);
+                        page.UpdateContentInfo();
+                        page._contentListLoaded.SetResult(true);
+                    }
+                });
+
+        public object ContentDataList
+        {
+            set { SetValue(ContentDataListProperty, value); }
+            get { return GetValue(ContentDataListProperty); }
+        }
+
+        public static readonly BindableProperty FocusedContentProperty =
+            BindableProperty.Create(
+                propertyName: "ContentList",
+                returnType: typeof(object),
+                typeof(ContentListPage),
+                defaultValue: false,
+                defaultBindingMode: BindingMode.OneWay,
+                propertyChanged: (bindable, oldValue, newValue) =>
+                {
+                    var page = ((ContentListPage) bindable);
+                    if (newValue != null)
+                        page._contentGridController.SetFocusedContent((DetailContentData) newValue);
+                });
+
+        public object FocusedContent
+        {
+            set { SetValue(FocusedContentProperty, value); }
+            get { return GetValue(FocusedContentProperty); }
+        }
+
         private readonly NavigationPage _appMainPage;
 
         private int _pendingUpdatesCount;
         private readonly SKBitmapCache _skBitmapCache;
         private SKBitmapRefCounted _backgroundBitmap;
         private readonly IContentGridController _contentGridController;
+        private TaskCompletionSource<bool> _contentListLoaded = new TaskCompletionSource<bool>();
 
         public ContentListPage(NavigationPage page)
         {
             InitializeComponent();
 
             _appMainPage = page;
-
             _contentGridController = new ContentGridController(ContentGrid);
-            UpdateItem();
+            SetBinding(ContentDataListProperty, new Binding(nameof(ContentListPageViewModel.ContentList)));
+            SetBinding(FocusedContentProperty, new Binding(nameof(ContentListPageViewModel.CurrentContent)));
 
             var cacheService = DependencyService.Get<ISKBitmapCacheService>();
             _skBitmapCache = cacheService.GetCache();
@@ -57,34 +102,29 @@ namespace XamarinPlayer.Tizen.TV.Views
             NavigationPage.SetHasNavigationBar(this, false);
         }
 
-        private Task ContentSelected(BindableObject item)
+        private Task ContentSelected(DetailContentData data)
         {
             var playerView = new PlayerView
             {
-                BindingContext = new PlayerViewModel(item.BindingContext as DetailContentData, new DialogService())
+                BindingContext = new PlayerViewModel(data, new DialogService())
             };
             return _appMainPage.PushAsync(playerView);
         }
 
-        private void UpdateItem()
+        private async void UpdateContentInfo()
         {
-            _contentGridController.SetItemsSource(((ContentListPageViewModel) BindingContext).ContentList);
-        }
-
-        private async Task UpdateContentInfo()
-        {
-            var focusedContent = _contentGridController.FocusedItem;
             ++_pendingUpdatesCount;
             await Task.Delay(TimeSpan.FromSeconds(1));
             --_pendingUpdatesCount;
-            if (_pendingUpdatesCount > 0) return;
+            if (_pendingUpdatesCount > 0 || FocusedContent == null) return;
 
-            ContentTitle.Text = focusedContent.ContentTitle;
-            ContentDesc.Text = focusedContent.ContentDescription;
+            ContentTitle.Text = (FocusedContent as DetailContentData)?.Title;
+            ContentDesc.Text = (FocusedContent as DetailContentData)?.Description;
 
             _backgroundBitmap?.Release();
             _backgroundBitmap = null;
-            _backgroundBitmap = await _skBitmapCache.GetBitmap(focusedContent.ContentImg);
+            if (_contentGridController.FocusedItem != null)
+                _backgroundBitmap = await _skBitmapCache.GetBitmap(_contentGridController.FocusedItem.ContentImg);
 
             ContentImage.InvalidateSurface();
             ContentImage.Opacity = 0;
@@ -92,18 +132,24 @@ namespace XamarinPlayer.Tizen.TV.Views
             await ContentImage.FadeTo(0.75);
         }
 
-        protected override async void OnAppearing()
+        protected override void OnAppearing()
         {
             base.OnAppearing();
             _contentGridController.Subscribe();
             MessagingCenter.Subscribe<IKeyEventSender, string>(this, "KeyDown", (s, e) => { HandleKeyEvent(e); });
-            await UpdateContentInfo();
+            MessagingCenter.Subscribe<IEventSender, string>(this, "Pop",
+                async (s, e) =>
+                {
+                    await _appMainPage.PopAsync();
+                    Application.Current.Quit();
+                });
         }
 
         protected override void OnDisappearing()
         {
             base.OnDisappearing();
             MessagingCenter.Unsubscribe<IKeyEventSender, string>(this, "KeyDown");
+            MessagingCenter.Unsubscribe<IEventSender, string>(this, "Pop");
             _contentGridController.Unsubscribe();
         }
 
@@ -117,9 +163,10 @@ namespace XamarinPlayer.Tizen.TV.Views
 
         private async void HandleKeyEvent(string e)
         {
+            if (ContentDataList == null || !Application.Current.MainPage.IsEnabled) return;
             var keyCode = ConvertToKeyCode(e);
             if (IsScrollEvent(keyCode))
-                await HandleScrollEvent(keyCode);
+                HandleScrollEvent(keyCode);
             else if (keyCode == KeyCode.Enter)
                 await HandleEnterEvent();
         }
@@ -140,28 +187,26 @@ namespace XamarinPlayer.Tizen.TV.Views
             return code == KeyCode.Next || code == KeyCode.Previous;
         }
 
-        private async Task HandleScrollEvent(KeyCode keyCode)
+        private void HandleScrollEvent(KeyCode keyCode)
         {
-            bool scrolled;
-            switch (keyCode) 
+            switch (keyCode)
             {
                 case KeyCode.Next:
-                    scrolled = _contentGridController.ScrollToNext();
+                    (BindingContext as ContentListPageViewModel)?.NextCommand.Execute(null);
                     break;
                 case KeyCode.Previous:
-                    scrolled = _contentGridController.ScrollToPrevious();
+                    (BindingContext as ContentListPageViewModel)?.PreviousCommand.Execute(null);
                     break;
                 default:
                     throw new ArgumentOutOfRangeException(nameof(keyCode), keyCode, null);
             }
-            
-            if (scrolled)
-                await UpdateContentInfo();
+
+            UpdateContentInfo();
         }
 
         private Task HandleEnterEvent()
         {
-            return ContentSelected(_contentGridController.FocusedItem);
+            return ContentSelected(FocusedContent as DetailContentData);
         }
 
         protected override void OnSizeAllocated(double width, double height)
@@ -177,23 +222,25 @@ namespace XamarinPlayer.Tizen.TV.Views
             ContentGrid.HeightRequest = (height * 0.21);
         }
 
-        public bool HandleUrl(string url)
+        public async Task<bool> HandleUrl(string url)
         {
-            var contentListPageViewModel = (ContentListPageViewModel) BindingContext;
-            var contentList = contentListPageViewModel.ContentList;
-            var index = contentList.FindIndex(content => content.Source.Equals(url));
-            if (index == -1)
+            await _contentListLoaded.Task;
+            var contentList = (List<DetailContentData>) ContentDataList;
+            var data = contentList?.Find(content => content.Source.Equals(url));
+            if (data == null)
                 return false;
-            contentListPageViewModel.IsBusy = true;
-            var item = (ContentItem) (ContentGrid.Items[index]);
-            _contentGridController.SetFocusedContent(item).ContinueWith(async _ =>
-            {
-                await UpdateContentInfo();
-                await ContentSelected(_contentGridController.FocusedItem);
-                contentListPageViewModel.IsBusy = false;
-            }, TaskScheduler.FromCurrentSynchronizationContext());
 
+            (BindingContext as ContentListPageViewModel)?.DeactivateCommand.Execute(null);
+            _contentGridController.SetFocusedContent(data);
+            SelectContent(data);
             return true;
+        }
+
+        private async void SelectContent(DetailContentData data)
+        {
+            UpdateContentInfo();
+            await ContentSelected(data);
+            (BindingContext as ContentListPageViewModel)?.ActivateCommand.Execute(null);
         }
 
         public void Suspend()

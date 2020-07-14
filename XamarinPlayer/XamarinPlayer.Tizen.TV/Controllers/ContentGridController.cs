@@ -16,8 +16,7 @@
  */
 
 using System.Collections.Generic;
-using System.Collections.Specialized;
-using System.Threading.Tasks;
+using System.Linq;
 using Xamarin.Forms.GenGridView;
 using XamarinPlayer.Tizen.TV.Controls;
 using XamarinPlayer.Tizen.TV.Models;
@@ -30,8 +29,6 @@ namespace XamarinPlayer.Tizen.TV.Controllers
         private readonly GenGridView _genGrid;
 
         public ContentItem FocusedItem => _focusedItem;
-
-        public GenGridView GenGrid => _genGrid;
 
         public ContentGridController(GenGridView genGrid)
         {
@@ -49,55 +46,35 @@ namespace XamarinPlayer.Tizen.TV.Controllers
 
         public void SetItemsSource(List<DetailContentData> source)
         {
-            GenGrid.ItemsSource = source;
-            if (GenGrid.Items != null && GenGrid.Items.Count > 0)
+            _genGrid.ItemsSource = source;
+            if (_genGrid.Items != null && _genGrid.Items.Count > 0)
             {
-                _focusedItem = GenGrid.Items[0] as ContentItem;
+                _focusedItem = _genGrid.Items[0] as ContentItem;
             }
+        }
+
+        public void SetFocusedContent(DetailContentData contentData)
+        {
+            var index = (_genGrid.ItemsSource as IEnumerable<DetailContentData>).ToList().IndexOf(contentData);
+            if (index == -1)
+                return;
+            var newContent = (ContentItem) _genGrid.Items[index];
+            SwapFocusedContent(newContent);
         }
 
         private void SwapFocusedContent(ContentItem newContent)
         {
-            if (_focusedItem == newContent)
-                return;
-            _focusedItem = newContent;
-            GenGrid.ScrollTo(_genGrid.Items.IndexOf(_focusedItem));
-        }
-        
-        public bool ScrollToNext()
-        {
-            int index = _genGrid.Items.IndexOf(_focusedItem);
-            if (index >= _genGrid.Items.Count - 1) 
-                return false;
-            var item = (ContentItem) GenGrid.Items[index + 1];
-            GenGrid.ScrollTo(item);
-            return true;
-        }
-
-        public bool ScrollToPrevious()
-        {
-            int index = _genGrid.Items.IndexOf(_focusedItem);
-            if (index <= 0) 
-                return false;
-            var item = (ContentItem) GenGrid.Items[index - 1];
-            GenGrid.ScrollTo(item);
-            return true;
-        }
-
-        public Task SetFocusedContent(ContentItem contentItem)   
-        {
-            SwapFocusedContent(contentItem);
-            return Task.CompletedTask;
+            _genGrid.ScrollTo(_genGrid.Items.IndexOf(newContent));
         }
 
         public void Subscribe()
         {
-            GenGrid.FocusedItemChanged += OnFocusedItemChanged;
+            _genGrid.FocusedItemChanged += OnFocusedItemChanged;
         }
 
         public void Unsubscribe()
         {
-            GenGrid.FocusedItemChanged -= OnFocusedItemChanged;
+            _genGrid.FocusedItemChanged -= OnFocusedItemChanged;
         }
     }
 }
