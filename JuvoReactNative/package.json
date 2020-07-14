@@ -1,6 +1,6 @@
 {
   "name": "JuvoReactNative",
-  "version": "1.4.9",
+  "version": "1.5.4",
   "private": true,
   "devDependencies": {
     "babel-jest": "26.0.1",

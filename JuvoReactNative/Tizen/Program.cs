@@ -7,18 +7,16 @@ using System.Reactive.Subjects;
 using ReactNative;
 using ReactNative.Shell;
 using ReactNative.Modules.Core;
-using JuvoLogger;
 using JuvoLogger.Tizen;
 using JuvoPlayer.Common;
-using ILogger = JuvoLogger.ILogger;
 using Log = Tizen.Log;
 using Tizen.Applications;
+using JuvoLogger.Udp;
 
 namespace JuvoReactNative
 {
     class ReactNativeApp : ReactProgram, IDeepLinkSender
     {
-        private static ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoRN");
         public static readonly string Tag = "JuvoRN";
 
         private BehaviorSubject<string> deepLinkReceivedSubject = new BehaviorSubject<string>(null);
@@ -108,16 +106,25 @@ namespace JuvoReactNative
 
         static void Main(string[] args)
         {
+            AppDomain.CurrentDomain.UnhandledException += UnhandledException;
+
             try
             {
-                TizenLoggerManager.Configure();
-                AppDomain.CurrentDomain.UnhandledException += UnhandledException;
+                UdpLoggerManager.Configure();
+                if (!UdpLoggerManager.IsRunning)
+                    TizenLoggerManager.Configure();
+
                 ReactNativeApp app = new ReactNativeApp();
                 app.Run(args);
             }
             catch (Exception e)
             {
                 Log.Error(Tag, e.ToString());
+            }
+            finally
+            {
+                if (UdpLoggerManager.IsRunning)
+                    UdpLoggerManager.Terminate();
             }
         }
     }
