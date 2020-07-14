@@ -18,14 +18,14 @@
 using System;
 using System.IO;
 using System.Reflection;
-using System.Text.RegularExpressions;
+using IniParser.Model;
+using IniParser.Parser;
 
 namespace JuvoLogger.Udp
 {
     public class UdpLoggerManager : LoggerManager
     {
         public static bool IsRunning { get; private set; } = false;
-        private const string UdpPortPattern = @"UdpPort\s*=\s*([0-9]+)";
         private static UdpLoggerService _loggerService;
         private static LoggerBase CreateLogger(string channel, LogLevel level) => new UdpLogger(channel, level, GetLoggingService);
 
@@ -41,8 +41,12 @@ namespace JuvoLogger.Udp
 
             if (!File.Exists(configFilename)) return;
 
-            var contents = File.ReadAllText(configFilename);
-            IsRunning = GetUdpPort(contents, out var port);
+            var parser = new IniDataParser();
+            var iniData = parser.Parse(File.ReadAllText(configFilename));
+            var udpLoggerSection = iniData["UdpLogger"];
+
+            ushort port = 0;
+            IsRunning = udpLoggerSection.ContainsKey("Port") && ushort.TryParse(udpLoggerSection["Port"], out port);
             if (!IsRunning) return;
 
             if (_loggerService != null)
@@ -51,23 +55,12 @@ namespace JuvoLogger.Udp
             _loggerService = new UdpLoggerService();
             _ = _loggerService.StartLogger(port, UdpLogger.LogFormat);
 
-            Configure(contents, CreateLogger);
+            Configure(iniData, CreateLogger);
         }
 
-        private static bool GetUdpPort(in string config, out int port)
+        public static void Configure(in IniData contents)
         {
-            var regEx = new Regex(UdpPortPattern, RegexOptions.IgnoreCase | RegexOptions.Multiline);
-            var match = regEx.Match(config);
-            if (!match.Success)
-            {
-                port = -1;
-                return false;
-            }
-
-            if (!int.TryParse(match.Groups[1].Value, out port) || port < 0 || port > ushort.MaxValue)
-                return false;
-
-            return true;
+            Configure(contents, CreateLogger);
         }
 
         public static void Terminate()
