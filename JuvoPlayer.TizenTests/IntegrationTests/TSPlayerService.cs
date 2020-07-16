@@ -143,9 +143,17 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
                             throw;
                         }
 
-                        // Test completed. Cancel token to kill any test's sub activities.
-                        // Do so before PlayerService gets destroyed (in case those activities access it)
-                        cts.Cancel();
+                        try
+                        {
+                            // Test completed. Cancel token to kill any test's sub activities.
+                            // Do so before PlayerService gets destroyed (in case those activities access it)
+                            cts.Cancel();
+                        }
+                        catch (Exception e)
+                            when (e is TaskCanceledException || e is OperationCanceledException)
+                        {
+                            /* Ignore. Listed exception are expected due to cancellation */
+                        }
                     }
                 }
 
@@ -204,12 +212,7 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
             {
                 var seekOperation = new SeekOperation();
                 seekOperation.Prepare(context);
-
-                // Don't use SeekOperation.Execute(). Position task is not expected to complete
-                // cancelling operation token will generate exception which may end up being
-                // uncaught, terminating tests.
-                _ = context.Service.SeekTo(seekOperation.SeekPosition);
-
+                _ = seekOperation.Execute(context);
                 await Task.Delay(250);
             });
 
