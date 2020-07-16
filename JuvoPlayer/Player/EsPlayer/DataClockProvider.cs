@@ -102,10 +102,12 @@ namespace JuvoPlayer.Player.EsPlayer
         {
             if (_intervalConnection != null) return;
 
+            Logger.Info($"Clock {_clock} + Limit {_bufferLimit} = {_clock + _bufferLimit}");
+
             _intervalConnection = _intervalSource.Connect();
             _synchronizerSubscription = _synchronizerClockSource.ObserveOn(_scheduler).Subscribe(SetSynchronizerClock);
 
-            Logger.Info($"Clock {_clock} + Limit {_bufferLimit} = {_clock + _bufferLimit}");
+            Logger.Info("End");
         }
 
         public void Dispose()

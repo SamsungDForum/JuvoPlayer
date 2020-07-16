@@ -491,6 +491,7 @@ namespace JuvoPlayer.Player.EsPlayer
                 await seekTask.WithCancellation(token);
 
                 logger.Info($"Player.SeekAsync({time}) Done");
+
                 StartClockGenerator();
             }
 
@@ -506,6 +507,9 @@ namespace JuvoPlayer.Player.EsPlayer
             DisableInput();
             StopTransfer();
             UnsubscribeBufferingEvent();
+
+            // Propagate closures & terminations
+            await Task.Yield();
 
             // Make sure data transfer is stopped!
             // SeekAsync behaves unpredictably when data transfer to player is occurring while SeekAsync gets called
@@ -886,6 +890,11 @@ namespace JuvoPlayer.Player.EsPlayer
                 await prepareTask.WithCancellation(token);
 
                 logger.Info("Player.PrepareAsync() Done");
+
+                // ***Workaround***
+                // Tizen 5.0 first "completes" async operation, then changes internal state.
+                // May result in Play being called before state allows it.
+                await Task.Yield();
             }
 
             return true;

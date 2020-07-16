@@ -97,8 +97,10 @@ namespace JuvoPlayer.Player.EsPlayer
                 _playerClockSubject.OnNext(_currentClock);
             }
 
-            _intervalConnection = _intervalSource.Connect();
             Logger.Info($"Player Clock: {Clock}");
+            _intervalConnection = _intervalSource.Connect();
+
+            Logger.Info("End");
         }
 
         public void Stop()
