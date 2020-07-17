@@ -376,27 +376,7 @@ namespace JuvoPlayer.Player.EsPlayer
                 logger.Error(ioe);
             }
         }
-
-        private async ValueTask WaitForPlayingState(CancellationToken token)
-        {
-            var currentState = player.GetState();
-            logger.Info($"Player state: {currentState}");
-            if (currentState == ESPlayer.ESPlayerState.Playing)
-            {
-                token.ThrowIfCancellationRequested();
-                return;
-            }
-
-            logger.Info($"Waiting for {ESPlayer.ESPlayerState.Playing}");
-            var currentPlayer = player;
-            do
-            {
-                await Task.Delay(TimeSpan.FromMilliseconds(100), token).ConfigureAwait(false);
-            } while (currentPlayer.GetState() != ESPlayer.ESPlayerState.Playing);
-
-            logger.Info($"{ESPlayer.ESPlayerState.Playing} observed");
-        }
-
+        
         public async Task Seek(TimeSpan time)
         {
             logger.Info($"Seek to {time}");
@@ -409,9 +389,6 @@ namespace JuvoPlayer.Player.EsPlayer
 
                 try
                 {
-                    // Abandon at this stage = clock/buffers remain unchanged.
-                    await WaitForPlayingState(token);
-
                     // Don't cancel FlushStreams() or its internal operations. In case of cancellation
                     // stream controller will be in less then defined state.
                     await FlushStreams();
@@ -528,9 +505,6 @@ namespace JuvoPlayer.Player.EsPlayer
                 TimeSpan clock = TimeSpan.Zero;
                 try
                 {
-                    // Wait for player to be in play state
-                    await WaitForPlayingState(token);
-
                     clock = _pendingPosition ?? _playerClock.Clock;
                     _pendingPosition = null;
 

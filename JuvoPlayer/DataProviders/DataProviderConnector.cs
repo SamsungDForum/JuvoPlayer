@@ -85,8 +85,6 @@ namespace JuvoPlayer.DataProviders
             this.dataProvider = dataProvider ?? throw new ArgumentNullException(nameof(dataProvider), "Data provider cannot be null");
             this.context = context ?? SynchronizationContext.Current;
 
-            // Subscribing to observables directly in constructor causes lock in SetSource.
-            // Applicable to HLSDataProvider (HLS/URL streams) & integration tests.
             SetupConnector();
         }
 
