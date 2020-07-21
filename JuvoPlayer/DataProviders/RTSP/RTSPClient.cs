@@ -94,10 +94,10 @@ namespace JuvoPlayer.DataProviders.RTSP
         public void Pause()
         {
             Logger.Info("");
-            PauseInternal();
+            RequestPause();
         }
 
-        private void PauseInternal(object context = null)
+        private void RequestPause(object context = null)
         {
             PostRequest(new RtspRequestPause
             {
@@ -110,10 +110,10 @@ namespace JuvoPlayer.DataProviders.RTSP
         public void Play()
         {
             Logger.Info("");
-            PlayInternal();
+            RequestPlay();
         }
 
-        private void PlayInternal(object context = null)
+        private void RequestPlay(object context = null)
         {
             PostRequest(new RtspRequestPlay
             {
@@ -127,9 +127,9 @@ namespace JuvoPlayer.DataProviders.RTSP
         {
             // suspend transfer state change occurred.
             if (dataPosition == TimeSpan.Zero)
-                PauseInternal(true);
+                RequestPause(true);
             else
-                PlayInternal(true);
+                RequestPlay(true);
         }
 
         public void Seek(int position)
@@ -158,7 +158,7 @@ namespace JuvoPlayer.DataProviders.RTSP
             {
                 await Task.Delay(PingPongTimeout, _rtpRtspCts.Token);
                 Logger.Info($"Ping {rtspListener.RemoteAdress}");
-                Options();
+                RequestOptions();
             }
             catch (TaskCanceledException)
             {
@@ -176,7 +176,7 @@ namespace JuvoPlayer.DataProviders.RTSP
                     return;
 
                 rtspListener.Start(_rtpRtspCts.Token);
-                Options();
+                RequestOptions();
 
                 while (!_rtpRtspCts.IsCancellationRequested && rtspSocket.Connected)
                 {
@@ -219,7 +219,7 @@ namespace JuvoPlayer.DataProviders.RTSP
             }
         }
 
-        private void Options()
+        private void RequestOptions()
         {
             Logger.Info("");
 
@@ -276,13 +276,18 @@ namespace JuvoPlayer.DataProviders.RTSP
         {
             Logger.Info("");
 
+            RequestStop();
+
+            return _rtspTask;
+        }
+
+        private void RequestStop()
+        {
             PostRequest(new RtspRequestTeardown
             {
                 RtspUri = new Uri(rtspUrl),
                 Session = rtspSession
             });
-
-            return _rtspTask;
         }
 
         private bool IsRtcpGoodbye(RtspData rtspData)
