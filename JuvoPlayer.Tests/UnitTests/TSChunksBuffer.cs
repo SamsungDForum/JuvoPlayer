@@ -27,6 +27,7 @@ namespace JuvoPlayer.Tests.UnitTests
     public class TSChunksBuffer
     {
         [Test]
+        [Category("Negative")]
         public void Take_SizeGreaterThanBufferSize_ReturnsSizeEqualToBufferSize()
         {
             var buffer = new ChunksBuffer();
@@ -38,6 +39,7 @@ namespace JuvoPlayer.Tests.UnitTests
         }
 
         [Test]
+        [Category("Positive")]
         public async Task TakeAsync_SizeLessThanBufferSize_ReturnsRequestedSize()
         {
             var buffer = new ChunksBuffer();
@@ -50,6 +52,7 @@ namespace JuvoPlayer.Tests.UnitTests
         }
 
         [Test]
+        [Category("Positive")]
         public void Take_MultipleAdds_ProperlyReturnsData()
         {
             var buffer = new ChunksBuffer();
@@ -64,6 +67,7 @@ namespace JuvoPlayer.Tests.UnitTests
         }
 
         [Test]
+        [Category("Positive")]
         public void Take_MultipleTakes_ProperlyReturnsData()
         {
             var buffer = new ChunksBuffer();
@@ -80,6 +84,7 @@ namespace JuvoPlayer.Tests.UnitTests
         }
 
         [Test]
+        [Category("Negative")]
         public void CompleteAdding_TakeAsyncCalled_ThrowsInvalidOperationException()
         {
             var buffer = new ChunksBuffer();
@@ -90,6 +95,7 @@ namespace JuvoPlayer.Tests.UnitTests
         }
 
         [Test]
+        [Category("Negative")]
         public void CompleteAdding_AddAsyncCalled_ThrowsInvalidOperationException()
         {
             var buffer = new ChunksBuffer();
@@ -100,6 +106,7 @@ namespace JuvoPlayer.Tests.UnitTests
         }
 
         [Test]
+        [Category("Negative")]
         public void TakeAsync_TokenCancelled_ThrowsTaskCanceledException()
         {
             var buffer = new ChunksBuffer();

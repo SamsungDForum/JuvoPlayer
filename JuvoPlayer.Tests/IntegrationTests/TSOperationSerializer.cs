@@ -60,6 +60,7 @@ namespace JuvoPlayer.Tests.IntegrationTests
         }
 
         [Test, TestCaseSource(nameof(TestOperations))]
+        [Category("Positive")]
         public void Serialization_OperationSerialized_DeserializedProperly(TestOperation operation)
         {
             var serializedOperation = SerializeOperation(operation);
@@ -68,6 +69,7 @@ namespace JuvoPlayer.Tests.IntegrationTests
         }
 
         [Test]
+        [Category("Positive")]
         public void Serialization_AllOperationsSerialized_DeserializedProperly()
         {
             var testOperations = TestOperations();
