@@ -28,11 +28,6 @@ namespace JuvoPlayer.Tests.IntegrationTests
     [TestFixture]
     class TSSubtitleFacade
     {
-        public Stream GetResourceStream(string name)
-        {
-            return Assembly.GetExecutingAssembly().GetManifestResourceStream(name);
-        }
-
         [TestCase("JuvoPlayer.Tests.res.subtitles.media_player_subs_windows-1250.srt", "windows-1250", "[Central Europe] 2.5: Ąą Ćć Ęę Łł Ńń Óó Śś Źź Żż")]
         [TestCase("JuvoPlayer.Tests.res.subtitles.media_player_subs_windows-1251.srt", "windows-1251", "[Cyrylic] 5.0: Жж Зз Кк Лл Ыы Чч Щщ Ъъ Ыы Юю Яя")]
         [TestCase("JuvoPlayer.Tests.res.subtitles.media_player_subs_windows-1252.srt", "windows-1252", "[Western Europe] 4.5: Àà Áá Ââ Ææ Çç Èè Ïï Ðð Ññ Õõ Øø Ýý Þþ £ €")]
@@ -50,6 +45,7 @@ namespace JuvoPlayer.Tests.IntegrationTests
         [TestCase("JuvoPlayer.Tests.res.subtitles.subtitles_en.vtt", "utf-8", "A dangerous quest for a lone hunter.")]
         [TestCase("JuvoPlayer.Tests.res.subtitles.subtitles_es.vtt", "utf-8", "Éstas son tierras de dragones, Sintel.")]
         [TestCase("JuvoPlayer.Tests.res.subtitles.subtitles_fr.vtt", "utf-8", "C'est bientôt fini. Chut...")]
+        [Category("Positive")]
         public void Parse_DifferentEncodings_ParsesSuccessfully(string resourceName, string encodingName, string expectedCueText)
         {
             Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);

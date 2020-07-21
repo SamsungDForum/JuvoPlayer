@@ -84,12 +84,12 @@ namespace JuvoPlayer.Tests.UnitTests
             }
         }
 
-        [TestCase(null, Description = "Null time")]
-        [TestCase("", Description = "Empty time")]
-        [TestCase("0,0,0.0", Description = "Invalid separators")]
-        [TestCase("0.0.0.0", Description = "Invalid separators")]
-        [TestCase("00:00:00:00.0", Description = "Too many elements")]
-        [TestCase("00.0", Description = "Not enough elements")]
+        [TestCase(null)]
+        [TestCase("")]
+        [TestCase("0,0,0.0")]
+        [TestCase("00:00:00:00.0")]
+        [TestCase("00.0")]
+        [Category("Negative")]
         public void ParseTime_TimeFormatIsInvalid_ThrowsFormatException(string invalidTime)
         {
             var parser = CreateWebVttParser();
@@ -100,6 +100,7 @@ namespace JuvoPlayer.Tests.UnitTests
         [TestCase("00:01:18.171", 0, 1, 18, 171)]
         [TestCase("01:18.171", 0, 1, 18, 171)]
         [TestCase("9999:01:18.171", 9999, 1, 18, 171)]
+        [Category("Positive")]
         public void ParseTime_TimeFormatIsValid_ParsesSuccessfully(string validTime, int hours, int minutes,
             int seconds, int milliseconds)
         {
@@ -112,12 +113,13 @@ namespace JuvoPlayer.Tests.UnitTests
             Assert.That(parsedTimeSpan, Is.EqualTo(expectedTimeSpan));
         }
 
-        [TestCase(null, Description = "Null line")]
-        [TestCase("", Description = "Empty line")]
-        [TestCase("01:18.171 01:20.171", Description = "Missing separator")]
-        [TestCase("01:18.171 -> 01:20.171", Description = "Invalid separator")]
-        [TestCase("01:18.171 -- 01:20.171", Description = "Invalid separator")]
-        [TestCase("01:18.171 01:20.171 -->", Description = "Separator in wrong place")]
+        [TestCase(null)]
+        [TestCase("")]
+        [TestCase("01:18.171 01:20.171")]
+        [TestCase("01:18.171 -> 01:20.171")]
+        [TestCase("01:18.171 -- 01:20.171")]
+        [TestCase("01:18.171 01:20.171 -->")]
+        [Category("Negative")]
         public void ParseTimeLine_TimeLineIsInvalid_ThrowsFormatException(string invalidTimeLine)
         {
             var parser = CreateWebVttParser();
@@ -128,6 +130,7 @@ namespace JuvoPlayer.Tests.UnitTests
         [TestCase("01:18.171 --> 01:20.171")]
         [TestCase("01:18.171  -->   01:20.171")]
         [TestCase("01:18.171 --> 01:20.171 position:10%,line-left align:left size:35%")]
+        [Category("Positive")]
         public void ParseTimeLine_TimeLineIsValid_ParsesSuccessfully(string validTimeLine)
         {
             var parser = Substitute.ForPartsOf<WebVttSubtitleParser>();
@@ -142,6 +145,7 @@ namespace JuvoPlayer.Tests.UnitTests
         }
 
         [Test]
+        [Category("Positive")]
         public void MoveToTimeLine_WebVttHasAllParts_ReturnsFirstTimeLine()
         {
             WebVttBuilder builder = new WebVttBuilder();
@@ -162,6 +166,7 @@ namespace JuvoPlayer.Tests.UnitTests
         }
 
         [Test]
+        [Category("Positive")]
         public void MoveToTimeLine_WebVttHasNoTimeLine_ReturnsNull()
         {
             WebVttBuilder builder = new WebVttBuilder();
@@ -179,6 +184,7 @@ namespace JuvoPlayer.Tests.UnitTests
         }
 
         [Test]
+        [Category("Positive")]
         public void MoveToTimeLine_WebVttHasTwoTimeLines_ReturnsBoth()
         {
             WebVttBuilder builder = new WebVttBuilder();
@@ -206,6 +212,7 @@ namespace JuvoPlayer.Tests.UnitTests
         [TestCase("begin &amp; end", "begin & end")]
         [TestCase("begin &lt; end", "begin < end")]
         [TestCase("begin &gt; end", "begin > end")]
+        [Category("Positive")]
         public void ParseText_ContainsEscapeSequence_DecodesSuccessfully(string input, string expectedOuput)
         {
             using (var stream = CreateStream(input))
