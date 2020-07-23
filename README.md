@@ -16,7 +16,7 @@ JuvoPlayer can be used as reference for developers of live streaming and VOD Tiz
 
 ## The concept explanation
 
-![JuvoPlayer Concept Diagram](./docs/img/jpconcept.gif)
+![JuvoPlayer Concept Diagram](./docs/img/jpconcept.svg)
 
 The diagram shows up high level concept of the JuvoPlayer. For simplicity only part of the libraries and it's contents are visible. The blocks surrounded with dashed lines represent the external systems. Here it means not only the services communicating over the Web but also the APIs provided by the Tizen TV set. 
 
