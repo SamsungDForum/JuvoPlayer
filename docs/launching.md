@@ -2,7 +2,10 @@
 
 ## Launching 
 
-1. Connect to a TV set (or emulator) using a Device Manager tool (part of Tizen SDK - see more in [https://developer.samsung.com/tv/tizen-net-tv][tizendotnettvlink]).
+1. Connect to a TV set (or emulator) using a Device Manager tool (part of Tizen SDK - see more in [https://developer.samsung.com/tv/tizen-net-tv][tizendotnettvlink]
+
+[tizendotnettvlink]: https://developer.samsung.com/tv/tizen-net-tv 
+
 2. Set chosen GUI project as a startup project in Visual Studio solution tree and run it by pressing F5 (debug) or Ctrl+F5 (release). The app requires Partner Level Privilege Certificate generated with the Certificate Manager tool (part of Tizen SDK). Before the first launch please make sure that you have created one and have sent it to a client device with a "Permit to install" command using the Device Manager tool.
 
 ##### Important
