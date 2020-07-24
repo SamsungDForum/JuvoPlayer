@@ -2,28 +2,28 @@
 
 ## Debugging
 
-### Logger UDP
+### UDP Logger
 The JuvoLogger.Udp allows JuvoPlayer log capture, via UDP, from devices which do not provide access to console logging. Usage of UDP logger does require application repacking after modification of the logger.config file. This can be done using the MS Visual Studio's 'Rebuild' option. 
 Editing in source code tree, logger.config is located in:
   * <application_root>/XamarinPlayer/XamarinPlayer.Tizen.TV/res
   * <application_root>/JuvoPlayer.OpenGL/res
   * <application_root>/JuvoReactNative/Tizen/res
 
-To make the logger work follow the steps:
-1. Enable UDP logging by adding the listening port value to config file. Port# defines listening port (example port: 2222) to which client can "connect to"
+To use UDP Logger, follow the steps below:
+1. Enable UDP logging by adding a listening port value to the config file. Port# defines host's listening port (e.g. port: 2222).
 ```javascript
   JuvoPlayer=Info
   UdpPort=<Port#>  
   ```
-2. Start application or build and launch
-3. In order to connect to device, use any UDP client software, like netcat (https://nmap.org/ncat/). 
+2. Start application or build and launch.
+3. In order to connect to a host device, use any UDP client software, e.g. netcat (https://nmap.org/ncat/). 
 
-4. Connect to JuvoPlayer typing with Your PC CLI and confirm by enter key:
+4. Connect to JuvoPlayer from a client PC using following console command:
 ```javascript
   ncat -u <IP of device> <Port>
   ```
 >  
-> Upon connection, send any data to JuvoPlayer to "connect to" logging service. If everything is working fine, following information should be received by the client: 
+> Upon connection, send any data to JuvoPlayer to initialize logging service. If everything is working fine, following information should be received by the client: 
 > 
  ```javascript
     ****************************
@@ -40,15 +40,15 @@ To make the logger work follow the steps:
   ```
 > Hint
 > 
->  It happens that on Windows 10 (ncat), more than just one 'enter' click is needed to see the log messages on the screen. Please, try to confirm connection several times if it fails at first.
+> It happens that on Windows 10 (ncat) more than just one 'enter' click is needed to see the log messages on the screen. Please try to confirm connection several times if it fails at first.
 
 ### React Native Tizen .Net Live coding  
-> It is possible to launch and work on the JuvoReactNative GUI using facebook 'hot module reloading' engine (https://facebook.github.io/react-native/blog/2016/03/24/introducing-hot-reloading.html). To configure it follow the below guide:
+> It is possible to launch and work on the JuvoReactNative GUI using facebook 'hot module reloading' engine (https://facebook.github.io/react-native/blog/2016/03/24/introducing-hot-reloading.html). To configure it follow the guide below:
 
 #### TV emulator
   1. Launch Tizen TV emulator. 
   2. Set the port redirection in 'Emulator control panel->Network' menu: 
-     * Source (Local host) port = 9998 (can be any free value but the same as in the "config"->"tvip" port)
+     * Source (Local host) port = 9998 (can be any available port, but the same as in the "config"->"tvip" port)
      * to destination  (10.0.2.15) port = 8081 (npm server port)
 
   ##### Important
