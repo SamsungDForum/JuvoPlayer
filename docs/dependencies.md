@@ -5,10 +5,10 @@
 
    [ffmpeglink]:https://www.ffmpeg.org/download.html#release_3.3
    
- * HLS protocol scenario's downloader and demuxer
+ * HLS protocol scenario's downloader and demuxer.
  * RTP/RTSP protocol based scenario's demuxer. 
  * MPEG DASH protocol based scenario's demuxer.  
-2. [https://github.com/ngraziano/SharpRTSP][rtsplink] . (RTSP module, 23rd December 2018) - RTP/RTSP protocol scenarios downloader
+2. [https://github.com/ngraziano/SharpRTSP][rtsplink] (RTP/RTSP module, 23rd December 2018) - RTP/RTSP protocol scenarios downloader
 
   [rtsplink]: https://github.com/ngraziano/SharpRTSP
   
@@ -21,6 +21,6 @@
    * Yarn - https://yarnpkg.com/en/
    
    Important
-   > The Nodejs versions higher than 12.10 were affected by regular expression issue (https://github.com/facebook/react-native/issues/26598) which impacts the React Native Tizen dependencies update (npm or yarn command). If it happens in Your case try downgrade Nodejs to version 12.10.
+   > Node.js versions higher than 12.10 were affected by regular expression syntax issue (https://github.com/facebook/react-native/issues/26598) which impacts the React Native Tizen dependencies update (npm or yarn command). If it happens, try downgrading Nodejs to version 12.10.
    
    [smarthubprevlink]: https://developer.samsung.com/tv/develop/guides/smart-hub-preview

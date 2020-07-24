@@ -3,11 +3,9 @@ JuvoPlayer
 
 ## Introduction
 
-This project provides an application level video streaming player framework. It links the video content delivery networks (CDNs) with the Tizen .Net TV platform. The design introduces decoupling layer from the HW platform specifics. By that it gives more responsibility to the application side. The output advantage is less time needed for the application launch to the market or updates during its life cycle. It simply gets much less dependent on the TV device firmware releases plan.
+ JuvoPlayer provides framework for streaming video playback applications that is designed to be platform specific and component agnostic. It leverages independence on device FW updates (OTNs) and offers greater implementation flexibility to the app. The source code is open and can be included in the software products under the MIT license conditions. 
 
-JuvoPlayer can be used as reference for developers of live streaming and VOD Tizen .Net applications. The source code is open, so it can be included as a whole or just parts inside the 3rd party software products.
-
- Please, read the below articles before starting the development:
+ Please read the articles listed below before starting development:
 - [Dependencies](./docs/dependencies.md)
 - [Setup](./docs/setup-instructions.md)
 - [Launching](./docs/launching.md)
@@ -18,29 +16,32 @@ JuvoPlayer can be used as reference for developers of live streaming and VOD Tiz
 
 ![JuvoPlayer Concept Diagram](./docs/img/jpconcept.svg)
 
-The diagram shows up high level concept of the JuvoPlayer. For simplicity only part of the libraries and it's contents are visible. The blocks surrounded with dashed lines represent the external systems. Here it means not only the services communicating over the Web but also the APIs provided by the Tizen TV set. 
-
+Diagram illustrates high level concept. Dashed lined blocks represent external components/systems. Dotted blocks show generalized elements. 
 The blocks placed inside the doted lines areas are the actual JuvoPlayer structures. The dark blue blocks are the 3rd party libraries used as dependencies. 
 
-### The GUI (Skins)
+### GUIs (skins)
 
-The four, gray blocks in the left upper corner are in charge of the look & feel of the application. The major differences between the GUIs (Skins) are related to different frameworks applied:
+The four, gray blocks in the left upper corner are in charge of the look & feel. Those blocks represent UI implementations differing by underlying framework usage:
 
-- JuvoPlayerXamarin -  XamarinForms which is portable and available for Android, iOS, MS Windows and Tizen .Net
-- JuvoReactNative - React Native Tizen .Net is a fork (extension) of the MS React Native .Net open source project. Includes basic Tizen platform UI controls bindings.
- - JuvoOpenGLNative - the TVGLApplication template based application. Contains UI library coded from scratch in C++. Thanks to the Open GL lib inclusion it provides excellent performance in animation fluency. 
-- SimplePlayer - is just very basic UI (single button and label) constructed on the XamarinForms app template
+- JuvoPlayerXamarin - XamarinForms implementation. Portable to platforms supported by XamarinForms, i.e. Android, iOS, Windows, Tizen .Net
+- JuvoReactNative - React Native Tizen .Net implementation. A fork of MS React Native .Net open source project. React Native Tizen .Net offers basic UI controls and bindings.
+- JuvoOpenGLNative - NUI based application with OpenGL UI implementation via custom made C++ UI library. Offers excellent animation performance and UI design flexibility.
+- SimplePlayer - Simplistic UI based on XamarinForms app template.
 
-### Common set of libraries (Core)
 
-All the GUIs (Skins) are distributed as separate Smart TV applications. Each of it contains the common set of libraries (Core). The Core (a big, dashed line bordered block) contains the 3rd party libs (gray and dark blue).  The blocks are doing the job suggested by it's name. Example is the 'DashDataProvider' class. It prepares for playback all the data from requested MPEG DASH .mpd (manifest file).
+### Core (common set of libraries)
 
- The 'Player module' is representing the JuvoPlayer/Player folder contents. It feeds the Tizen TV platform player with extracted elementary stream packets. This operation is executed using the ES playback API (contents of the dashed 'Tizen .Net' block). 
+GUIs are implemented as separate Smart TV applications containing common libraries (Core). The blocks are doing the job suggested by name. Example is the 'DashDataProvider' class. It prepares for playback all the data from requested MPEG DASH .mpd (manifest file).
 
-The FFmpeg block represents binaries compiled in C. It does the video content demuxing or downloading, depending on the applied video streaming protocol.
+ The 'Player module' represents the JuvoPlayer/Player folder contents. It feeds the Tizen TV platform player with extracted elementary stream packets. This operation is executed using the ES playback API (contents of the dashed 'Tizen .Net' block). 
 
-The MPEG DASH is just one of the supported streaming protocols. Others are HLS and RTP/RTSP and HTTP progressive, managed by - dark blue - FFmpeg and SharpRTSP blocks. Whenever new streaming protocol implementation is needed, it can be added in form of library and distributed as part of the JuvoPlayer core. This feature reveals flexibility of the architecture.
+The 'FFmpeg' represents binaries compiled in C. It does the video content demuxing or downloading, depending on the applied video streaming protocol.
+
+The MPEG DASH is just one of the supported streaming protocols. Others are HLS and RTP/RTSP and HTTP progressive, managed by 'FFmpeg' and 'SharpRTSP' blocks. Whenever new streaming protocol implementation is needed, it can be added in form of library and distributed as part of the JuvoPlayer core. This feature reveals flexibility of the architecture.
 
 ### Secured Contents
 
-Premium VOD services need mechanism to access and decode DRM secured video contents. The JuvoPlayer handles such scenarios using common encryption interface (CENC). The 'Player module' delegates this job to the source code inside JuvoPlayer/Drms folder. On the diagram, it is called 'DRM module'. With that it is capable to check content authority as well as gather the deciphering keys. As soon as the secured contents are downloaded, the next tasks, deciphering and on-screen presentation, are executed by the TV set in it's trusted zone.
+Premium VOD services use DRM secured video. Secured content playback is executed via a common encryption interface (CENC). The 'Player module' delegates this job to the source code inside JuvoPlayer/Drms folder. On the diagram, it is called 'DRM module'. It provides decryption and key management services. Decrypted content is stored inside trust zone with no application access to decrypted data.
+Following DRMs are supported
+- PlayReady
+- Widevine
