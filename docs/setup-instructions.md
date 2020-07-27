@@ -7,7 +7,7 @@
 [tizendotnettvlink]: https://developer.samsung.com/tv/tizen-net-tv 
 
 3. Setup the nuget packages repository for the solution (restore NuGet packages)
-4. Set one of the GUI projects as startup. Choose one of the following:
+4. Set one of the UI projects as a StartUp Project. Choose one of the following:
 * XamarinPlayer
 * JuvoPlayer.OpenGL
 * JuvoReactNative
