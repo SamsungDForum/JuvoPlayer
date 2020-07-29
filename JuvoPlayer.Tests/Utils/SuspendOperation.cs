@@ -24,7 +24,7 @@ namespace JuvoPlayer.Tests.Utils
 {
     public class SuspendOperation : TestOperation
     {
-        private Func<Task>[] _preconditions = default;
+        private Func<Task>[] _preconditions = Array.Empty<Func<Task>>();
 
         private static Random _rndGenerator;
 
