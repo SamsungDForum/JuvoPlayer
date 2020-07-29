@@ -31,6 +31,7 @@ namespace JuvoPlayer.Tests.UnitTests
         }
 
         [Test]
+        [Category("Negative")]
         public void Get_MapIsEmpty_ReturnsNull()
         {
             var map = CreateCuesMap();
@@ -41,6 +42,7 @@ namespace JuvoPlayer.Tests.UnitTests
         }
 
         [Test]
+        [Category("Positive")]
         public void Get_ValidKey_ReturnsCue()
         {
             var map = CreateCuesMap();
@@ -58,6 +60,7 @@ namespace JuvoPlayer.Tests.UnitTests
         }
 
         [Test]
+        [Category("Negative")]
         public void Get_KeyBetweenTwoCues_ReturnsNull()
         {
             var map = CreateCuesMap();
@@ -82,6 +85,7 @@ namespace JuvoPlayer.Tests.UnitTests
         }
 
         [Test]
+        [Category("Positive")]
         public void Get_KeyForSecondCue_ReturnsSecondCue()
         {
             var map = CreateCuesMap();
@@ -107,6 +111,7 @@ namespace JuvoPlayer.Tests.UnitTests
         }
 
         [Test]
+        [Category("Positive")]
         public void Get_TwoAdjacentCuesAndGetForFirst_ReturnsFirstOne()
         {
             var map = CreateCuesMap();
@@ -132,6 +137,7 @@ namespace JuvoPlayer.Tests.UnitTests
         }
 
         [Test]
+        [Category("Positive")]
         public void Get_TwoAdjacentCuesAndGetInBetween_ReturnsSecondOne()
         {
             var map = CreateCuesMap();

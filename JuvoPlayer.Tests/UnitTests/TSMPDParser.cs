@@ -55,10 +55,6 @@ namespace JuvoPlayer.Tests.UnitTests
     }
 
     [TestFixture]
-    [Description("" +
-        "Tests parsing of MPDs defined in mpddata.json file" +
-        "MPDs along with mpddata.json are stored in MPD Parser Data"
-        )]
     class TSMPDParser
     {
 
@@ -129,8 +125,7 @@ namespace JuvoPlayer.Tests.UnitTests
         }
 
         [Test]
-        [Description("FromText returns a parsed mpd (Document) OK")]
-        [Property("SPEC", "MpdParser.Document.FromText M")]
+        [Category("Positive")]
         public static void AppParser_OK()
         {
             foreach (var tc in mpds)
@@ -163,8 +158,7 @@ namespace JuvoPlayer.Tests.UnitTests
         }
 
         [Test]
-        [Description("Audio & Video Media extractable from mpd (Document) OK")]
-        [Property("SPEC", "MpdParser.Document.Periods M")]
+        [Category("Positive")]
         public static void HasAVMedia_OK()
         {
             if (parsedMpds.Count == 0)
@@ -202,8 +196,7 @@ namespace JuvoPlayer.Tests.UnitTests
 
 
         [Test]
-        [Description("Audio & Video Streams extractable from mpd (Document) OK")]
-        [Property("SPEC", "MpdParser.Media.Representation M")]
+        [Category("Positive")]
         public static void HasRepresentation_OK()
         {
             if (parsedMpds.Count == 0)
@@ -245,8 +238,7 @@ namespace JuvoPlayer.Tests.UnitTests
         }
 
         [Test]
-        [Description("Compares 2 DASH Documents, application parsed and system parsed.")]
-        [Property("SPEC", "MpdParser.DASH M")]
+        [Category("Positive")]
         public static async Task XMLData_AppParserSysParser_same_OK()
         {
             if (parsedMpds.Count == 0)

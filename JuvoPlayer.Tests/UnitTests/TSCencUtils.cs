@@ -26,6 +26,7 @@ namespace JuvoPlayer.Tests.UnitTests
     public class TSCencUtils
     {
         [Test]
+        [Category("Positive")]
         public void SchemeIdUriToSystemId_PlayReadySchemeId_ReturnsSystemId()
         {
             const string schemeId = "urn:uuid:9a04f079-9840-4286-ab92-e65be0885f95";
@@ -42,6 +43,7 @@ namespace JuvoPlayer.Tests.UnitTests
         }
 
         [Test]
+        [Category("Negative")]
         public void SchemeIdUriToSystemId_InvalidSchemeId_ReturnsNull()
         {
             const string schemeId = "___invalid___";
@@ -52,6 +54,7 @@ namespace JuvoPlayer.Tests.UnitTests
         }
 
         [Test]
+        [Category("Positive")]
         public void SupportsSchemeIdUri_PlayReadySchemeIdUri_ReturnsTrue()
         {
             const string schemeIdUri = "urn:uuid:9a04f079-9840-4286-ab92-e65be0885f95";
@@ -62,6 +65,7 @@ namespace JuvoPlayer.Tests.UnitTests
         }
 
         [Test]
+        [Category("Negative")]
         public void SupportsSchemeIdUri_InvalidSchemeIdUri_ReturnsFalse()
         {
             const string schemeIdUri = "___invalid___";
@@ -72,6 +76,7 @@ namespace JuvoPlayer.Tests.UnitTests
         }
 
         [Test]
+        [Category("Positive")]
         public void SupportsSystemId_PlayReadySystemId_ReturnsTrue()
         {
             var systemId = new byte[]
@@ -86,6 +91,7 @@ namespace JuvoPlayer.Tests.UnitTests
         }
 
         [Test]
+        [Category("Negative")]
         public void SupportsSystemId_InvalidSystemId_ReturnsFalse()
         {
             var systemId = new byte[] { };
@@ -97,6 +103,7 @@ namespace JuvoPlayer.Tests.UnitTests
 
         [TestCase("playready")]
         [TestCase("widevine")]
+        [Category("Positive")]
         public void SupportsType_ValidType_ReturnsTrue(string drmType)
         {
             var received = CencUtils.SupportsType(drmType);
@@ -105,6 +112,7 @@ namespace JuvoPlayer.Tests.UnitTests
         }
 
         [Test]
+        [Category("Negative")]
         public void SupportsType_InvalidType_ReturnsFalse()
         {
             const string drmType = "___invalid___";
@@ -115,6 +123,7 @@ namespace JuvoPlayer.Tests.UnitTests
         }
 
         [Test]
+        [Category("Positive")]
         public void GetKeySystemName_PlayReadySystemId_ReturnsValid()
         {
             var systemId = new byte[]
@@ -129,6 +138,7 @@ namespace JuvoPlayer.Tests.UnitTests
         }
 
         [Test]
+        [Category("Negative")]
         public void GetKeySystemName_InvalidSystemId_ReturnsNull()
         {
             var systemId = new byte[] { };
@@ -139,6 +149,7 @@ namespace JuvoPlayer.Tests.UnitTests
         }
 
         [Test]
+        [Category("Positive")]
         public void GetScheme_PlayReadySystemId_ReturnsValid()
         {
             var systemId = new byte[]
@@ -153,6 +164,7 @@ namespace JuvoPlayer.Tests.UnitTests
         }
 
         [Test]
+        [Category("Negative")]
         public void GetScheme_InvalidSystemId_ReturnsUnknown()
         {
             var systemId = new byte[] { };
@@ -164,6 +176,7 @@ namespace JuvoPlayer.Tests.UnitTests
 
         [TestCase("playready", CencUtils.DrmType.PlayReady)]
         [TestCase("widevine", CencUtils.DrmType.Widevine)]
+        [Category("Positive")]
         public void GetDrmType_ValidType_ReturnsValid(string type, CencUtils.DrmType expected)
         {
             var received = CencUtils.GetDrmType(type);
@@ -172,6 +185,7 @@ namespace JuvoPlayer.Tests.UnitTests
         }
 
         [Test]
+        [Category("Negative")]
         public void GetDrmType_InvalidType_ReturnsUnknown()
         {
             const string type = "___invalid___";
