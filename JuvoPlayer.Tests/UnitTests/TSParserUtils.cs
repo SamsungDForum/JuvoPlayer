@@ -24,6 +24,7 @@ namespace JuvoPlayer.Tests.UnitTests
     class TSParserUtils
     {
         [Test]
+        [Category("Positive")]
         public void ParseText_TextHasOneLine_ParsesSuccessfullyWithoutNewLine()
         {
             var memoryStream = new MemoryStream();
@@ -40,6 +41,7 @@ namespace JuvoPlayer.Tests.UnitTests
         }
 
         [Test]
+        [Category("Positive")]
         public void ParseText_TextHasTwoLines_ReturnsTextWithTwoSeparatedLines()
         {
             var memoryStream = new MemoryStream();

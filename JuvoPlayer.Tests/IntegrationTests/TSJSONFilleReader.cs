@@ -26,7 +26,6 @@ using NUnit.Framework;
 namespace JuvoPlayer.Tests.IntegrationTests
 {
     [TestFixture]
-    [Description("")]
     class JSONFileReaderTests
     {
         private static string jsonText;
@@ -55,32 +54,28 @@ namespace JuvoPlayer.Tests.IntegrationTests
         }
 
         [Test]
-        [Description("DeserializeJsonText throws on null argument")]
-        [Property("SPEC", "JuvoPlayer.JSONFileReader.DeserializeJsonText M")]
+        [Category("Negative")]
         public static void DeserializeJsonText_ThrowsNull()
         {
             Assert.Throws<ArgumentNullException>(() => JSONFileReader.DeserializeJsonText<List<ClipDefinition>>(null));
         }
 
         [Test]
-        [Description("DeserializeJsonText throws on empty argument")]
-        [Property("SPEC", "JuvoPlayer.JSONFileReader.DeserializeJsonText M")]
+        [Category("Negative")]
         public static void DeserializeJsonText_ThrowsEmpty()
         {
             Assert.Throws<ArgumentException>(() => JSONFileReader.DeserializeJsonText<List<ClipDefinition>>(""));
         }
 
         [Test]
-        [Description("DeserializeJsonText throws on invalid json")]
-        [Property("SPEC", "JuvoPlayer.JSONFileReader.DeserializeJsonText M")]
+        [Category("Negative")]
         public static void DeserializeJsonText_ThrowsInvalid()
         {
             Assert.Throws<Newtonsoft.Json.JsonReaderException>(() => JSONFileReader.DeserializeJsonText<List<ClipDefinition>>("invalid"));
         }
 
         [Test]
-        [Description("DeserializeJsonText OK")]
-        [Property("SPEC", "JuvoPlayer.JSONFileReader.DeserializeJsonText M")]
+        [Category("Positive")]
         public static void DeserializeJsonText_OK()
         {
             List<ClipDefinition> clips = null;
@@ -118,16 +113,14 @@ namespace JuvoPlayer.Tests.IntegrationTests
         }
 
         [Test]
-        [Description("DeserializeJsonFile throws on null argument")]
-        [Property("SPEC", "JuvoPlayer.JSONFileReader.DeserializeJsonFile M")]
+        [Category("Negative")]
         public static void DeserializeJsonFile_ThrowsNull()
         {
             Assert.Throws<ArgumentNullException>(() => JSONFileReader.DeserializeJsonFile<List<ClipDefinition>>(null));
         }
 
         [Test]
-        [Description("DeserializeJsonFile throws on empty argument")]
-        [Property("SPEC", "JuvoPlayer.JSONFileReader.DeserializeJsonFile M")]
+        [Category("Negative")]
         public static void DeserializeJsonFile_ThrowsEmpty()
         {
             Assert.Throws<ArgumentException>(() => JSONFileReader.DeserializeJsonFile<List<ClipDefinition>>(""));

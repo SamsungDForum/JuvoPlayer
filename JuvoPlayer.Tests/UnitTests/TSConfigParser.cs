@@ -46,6 +46,7 @@ namespace JuvoPlayer.Tests.UnitTests
         }
 
         [Test]
+        [Category("Positive")]
         public void TestValidConfig()
         {
             var contents = LoadConfigFile("logging_valid.config");
@@ -80,6 +81,7 @@ namespace JuvoPlayer.Tests.UnitTests
         }
 
         [Test]
+        [Category("Negative")]
         public void TestInvalidConfig()
         {
             var contents = LoadConfigFile("logging_invalid.config");
@@ -90,6 +92,7 @@ namespace JuvoPlayer.Tests.UnitTests
         }
 
         [Test]
+        [Category("Negative")]
         public void TestConstructorWithNull()
         {
             Assert.Throws<ArgumentNullException>(() => new ConfigParser(null));
