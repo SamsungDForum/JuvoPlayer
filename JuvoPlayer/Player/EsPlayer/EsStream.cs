@@ -26,6 +26,7 @@ using JuvoPlayer.Common;
 using JuvoPlayer.Drms;
 using ESPlayer = Tizen.TV.Multimedia;
 using StreamType = JuvoPlayer.Common.StreamType;
+using static JuvoPlayer.Utils.TaskExtensions;
 
 namespace JuvoPlayer.Player.EsPlayer
 {
@@ -66,8 +67,9 @@ namespace JuvoPlayer.Player.EsPlayer
         private readonly EsPlayerPacketStorage packetStorage;
 
         // transfer task & cancellation token
-        private Task activeTask = Task.CompletedTask;
+        private volatile Task activeTask = Task.CompletedTask;
         private CancellationTokenSource transferCts;
+        private CancellationTokenSource linkedCts;
 
         // Stream type for this instance to EsStream.
         private readonly StreamType streamType;
@@ -83,7 +85,6 @@ namespace JuvoPlayer.Player.EsPlayer
         private readonly Subject<string> playbackErrorSubject = new Subject<string>();
 
         private Packet currentPacket;
-        public TimeSpan CurrentPts { get; private set; }
 
         private readonly Synchronizer _dataSynchronizer;
         private readonly PlayerClockProvider _playerClock;
@@ -182,10 +183,10 @@ namespace JuvoPlayer.Player.EsPlayer
         /// Awaitable function. Will return when a running task terminates.
         /// </summary>
         /// <returns></returns>
-        public ref Task GetActiveTask()
+        public Task GetActiveTask()
         {
             logger.Info($"{streamType}: {activeTask.Status}");
-            return ref activeTask;
+            return activeTask;
         }
 
         public void EmptyStorage()
@@ -274,8 +275,10 @@ namespace JuvoPlayer.Player.EsPlayer
 
             transferCts?.Dispose();
             transferCts = new CancellationTokenSource();
+            linkedCts?.Dispose();
+            linkedCts = CancellationTokenSource.CreateLinkedTokenSource(transferCts.Token, token);
 
-            activeTask = Task.Run(async () => await TransferTask(transferCts.Token), token);
+            activeTask = Task.Run(async () => await TransferTask(linkedCts.Token), linkedCts.Token);
         }
 
         /// <summary>
@@ -312,12 +315,10 @@ namespace JuvoPlayer.Player.EsPlayer
 
                 case EncryptedPacket encryptedPacket:
                     await PushEncryptedPacket(encryptedPacket, transferToken);
-                    CurrentPts = packet.Pts;
                     break;
 
                 case Packet dataPacket:
                     await PushUnencryptedPacket(dataPacket, transferToken);
-                    CurrentPts = packet.Pts;
                     break;
 
                 default:
@@ -353,7 +354,7 @@ namespace JuvoPlayer.Player.EsPlayer
             }
             catch (OperationCanceledException)
             {
-                logger.Info($"{streamType}: Transfer cancelled");
+                logger.Info($"{streamType}: Transfer canceled");
             }
             catch (PacketSubmitException pse)
             {
@@ -384,7 +385,7 @@ namespace JuvoPlayer.Player.EsPlayer
             if (currentPacket == null)
             {
                 var displayBuffering = packetStorage.Count(streamType) == 0 &&
-                                       (_playerClock.LastClock - CurrentPts).Duration() <= EsStreamConfig.BufferingEventThreshold;
+                                       (_playerClock.Clock - _dataSynchronizer.GetPts(streamType)).Duration() <= EsStreamConfig.BufferingEventThreshold;
 
                 _bufferingSubject.OnNext(displayBuffering);
 
@@ -448,8 +449,9 @@ namespace JuvoPlayer.Player.EsPlayer
         {
             if (!dataPacket.DrmSession.CanDecrypt())
             {
+                logger.Info($"{streamType}: DRM Initialization incomplete");
                 _bufferingSubject.OnNext(true);
-                await dataPacket.DrmSession.WaitForInitialization(token);
+                await dataPacket.DrmSession.GetInitializationTask().WithCancellation(token);
                 _bufferingSubject.OnNext(false);
 
                 logger.Info($"{streamType}: DRM Initialization complete");
@@ -550,6 +552,8 @@ namespace JuvoPlayer.Player.EsPlayer
             _packetProcessed.Dispose();
 
             transferCts?.Dispose();
+            linkedCts?.Dispose();
+
             currentPacket?.Dispose();
 
             isDisposed = true;

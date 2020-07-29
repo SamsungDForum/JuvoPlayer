@@ -143,9 +143,17 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
                             throw;
                         }
 
-                        // Test completed. Cancel token to kill any test's sub activities.
-                        // Do so before PlayerService gets destroyed (in case those activities access it)
-                        cts.Cancel();
+                        try
+                        {
+                            // Test completed. Cancel token to kill any test's sub activities.
+                            // Do so before PlayerService gets destroyed (in case those activities access it)
+                            cts.Cancel();
+                        }
+                        catch (Exception e)
+                            when (e is TaskCanceledException || e is OperationCanceledException)
+                        {
+                            /* Ignore. Listed exception are expected due to cancellation */
+                        }
                     }
                 }
 
@@ -204,11 +212,10 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
             {
                 var seekOperation = new SeekOperation();
                 seekOperation.Prepare(context);
-#pragma warning disable 4014
-                seekOperation.Execute(context);
-#pragma warning restore 4014
+                _ = seekOperation.Execute(context);
                 await Task.Delay(250);
             });
+
         }
 
         [Test, TestCaseSource(typeof(TSPlayerServiceTestCaseSource), nameof(TSPlayerServiceTestCaseSource.SeekableClips))]
@@ -366,8 +373,10 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
                         };
 
                         var changeTask = changeOp.Execute(context);
-                        seekTask = seekTask.WithTimeout(context.Timeout);
-                        await Task.WhenAll(seekTask, changeTask).WithCancellation(context.Token);
+
+                        await changeTask.WithCancellation(context.Token);
+                        await seekTask.WithTimeout(context.Timeout).WithCancellation(context.Token);
+                        
                     }
                 }
             });
