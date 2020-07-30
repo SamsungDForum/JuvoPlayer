@@ -3,7 +3,7 @@ JuvoPlayer
 
 ## Introduction
 
- JuvoPlayer is a reference player applications designed to be platform and component agnostic, leveraging dependence on device firmware updates (OTNs) and offering greater implementation flexibility. Source code is open and can be included in the software products under the MIT license conditions.
+ JuvoPlayer is a reference player application designed to be platform and component agnostic, leveraging dependence on device firmware updates (OTNs) and offering greater implementation flexibility. Source code is open and can be included in the software products under the MIT license conditions.
 
  Please read the articles listed below before starting development:
 - [Dependencies](./docs/dependencies.md)
@@ -32,7 +32,7 @@ Four grey blocks in the left upper corner represent UIs. UIs differ by underlyin
 
 User Interfaces are implemented as separate Smart TV applications containing common libraries (Core). Responsibilities of the blocks are self-explanatory. As an example, the 'DashDataProvider' class prepares all the data from requested MPEG DASH .mpd (manifest file) for playback.
 
-Player module' represents the JuvoPlayer/Player folder content. It feeds the Tizen TV platform player with extracted elementary stream packets.
+'Player module' represents the JuvoPlayer/Player folder content. It feeds the Tizen TV platform player with extracted elementary stream packets.
 
 'FFmpeg' - FFmpeg C libraries.
 
@@ -40,7 +40,7 @@ MPEG DASH is one of the supported streaming protocols. Other include HLS, RTP/RT
 
 ### Secured Content
 
-Premium VOD services use DRM secured content. Secured content playback is executed using Common Encryption Interface (CENC). JuvoPlayer's DRM module provides decryption and key management services. Decrypted content is stored inside Trust Zone with no application access to decrypted data.
+Premium VOD services use DRM secured content. Secured content playback is executed using Common Encryption Interface (CENC). JuvoPlayer's DRM module provides decryption and key management services. Decrypted content is stored inside TrustZone with no application access to decrypted data.
 Following DRMs are supported:
 - PlayReady
 - Widevine
