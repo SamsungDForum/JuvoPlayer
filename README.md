@@ -36,7 +36,9 @@ User Interfaces are implemented as separate Smart TV applications containing com
 
 'FFmpeg' - FFmpeg C libraries.
 
-MPEG DASH is one of the supported streaming protocols. Other include HLS, RTP/RTSP and Progressive HTTP. Whenever a new streaming protocol implementation is needed, it can be added in a form of a library and distributed as a part of the JuvoPlayer core.
+MPEG-DASH, HLS, RTP/RTSP and Progressive HTTP streaming protocols are supported. 
+New streaming protocols can be added and distributed as a part of the JuvoPlayer core.
+
 
 ### Secured Content
 
