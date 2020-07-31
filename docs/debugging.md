@@ -3,10 +3,8 @@
 ## Debugging
 
 ### UDP Logger
-JuvoLogger.Udp allows JuvoPlayer log capture via UDP. UDP log capture can be used on devices and emulators which do not provide access to console log functionality. When enabled, JuvoPlayer console log is not available. Usage of UDP logger does require application repacking after modification of logger.config file. logger.config files are located in:
-  * <application_root>/XamarinPlayer/XamarinPlayer.Tizen.TV/res
-  * <application_root>/JuvoPlayer.OpenGL/res
-  * <application_root>/JuvoReactNative/Tizen/res
+JuvoLogger.Udp allows JuvoPlayer log capture via UDP. UDP log capture can be used on devices and emulators which do not provide access to console log functionality. When enabled, JuvoPlayer console log is not available. Usage of UDP logger does require application repacking after modification of logger.config file located in:
+  * <application_root>/Configuration/res
 
 Enabling UDP Logger:
 1. Choose logger.config file corresponding to UI being used.
@@ -22,9 +20,8 @@ Enabling UDP Logger:
    [UdpLogger]
    Port=2222  
 ```
-3. Start application or build and launch.
-4. In order to connect to a host device, use any UDP client software, e.g. ncat (https://nmap.org/ncat/). 
-5. Connect to JuvoPlayer from a client PC using following console command:
+3. In order to connect to a host device, use any UDP client software, e.g. ncat (https://nmap.org/ncat/). 
+4. Connect to JuvoPlayer from a client PC using following console command:
 ```javascript
   ncat -u <IP of device> <Port>
   ```
