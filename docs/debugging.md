@@ -3,27 +3,33 @@
 ## Debugging
 
 ### UDP Logger
-The JuvoLogger.Udp allows JuvoPlayer log capture, via UDP, from devices which do not provide access to console logging. Usage of UDP logger does require application repacking after modification of the logger.config file. This can be done using the MS Visual Studio's 'Rebuild' option. 
-Editing in source code tree, logger.config is located in:
+JuvoLogger.Udp allows JuvoPlayer log capture via UDP. UDP log capture can be used on devices and emulators which do not provide access to console log functionality. When enabled, JuvoPlayer console log is not available. Usage of UDP logger does require application repacking after modification of logger.config file. logger.config files are located in:
   * <application_root>/XamarinPlayer/XamarinPlayer.Tizen.TV/res
   * <application_root>/JuvoPlayer.OpenGL/res
   * <application_root>/JuvoReactNative/Tizen/res
 
-To use UDP Logger, follow the steps below:
-1. Enable UDP logging by adding a listening port value to the config file. Port# defines host's listening port (e.g. port: 2222).
-```javascript
-  JuvoPlayer=Info
-  UdpPort=<Port#>  
-  ```
-2. Start application or build and launch.
-3. In order to connect to a host device, use any UDP client software, e.g. netcat (https://nmap.org/ncat/). 
+Enabling UDP Logger:
+1. Choose logger.config file corresponding to UI being used.
+2. Enable UDP logging by removing comments from UdpLogger section and specifying listen Port value. 
+   Provided example uses Port 2222.
 
-4. Connect to JuvoPlayer from a client PC using following console command:
+```javascript
+   [LogLevel]
+   JuvoPlayer=Info
+
+   ; Uncomment UdpLogger section and provide listening Port value to enable UDP logging.
+   ;
+   [UdpLogger]
+   Port=2222  
+```
+3. Start application or build and launch.
+4. In order to connect to a host device, use any UDP client software, e.g. ncat (https://nmap.org/ncat/). 
+5. Connect to JuvoPlayer from a client PC using following console command:
 ```javascript
   ncat -u <IP of device> <Port>
   ```
 >  
-> Upon connection, send any data to JuvoPlayer to initialize logging service. If everything is working fine, following information should be received by the client: 
+> Upon connection, send any data to JuvoPlayer to initialize logging service. If ncat is used, simply press enter key. If everything is working fine, following information should be received by client: 
 > 
  ```javascript
     ****************************
@@ -38,9 +44,6 @@ To use UDP Logger, follow the steps below:
     *         Started          *
     ****************************
   ```
-> Hint
-> 
-> It happens that on Windows 10 (ncat) more than just one 'enter' click is needed to see the log messages on the screen. Please try to confirm connection several times if it fails at first.
 
 ### React Native Tizen .Net Live coding  
 > It is possible to launch and work on the JuvoReactNative GUI using facebook 'hot module reloading' engine (https://facebook.github.io/react-native/blog/2016/03/24/introducing-hot-reloading.html). To configure it follow the guide below:
