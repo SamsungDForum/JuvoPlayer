@@ -21,7 +21,7 @@ Enabling UDP Logger:
    Port=2222  
 ```
 3. In order to connect to a host device, use any UDP client software, e.g. ncat (https://nmap.org/ncat/). 
-4. Connect to JuvoPlayer from a client PC using following console command:
+4. Connect to UDP Logger from a client PC using following console command:
 ```javascript
   ncat -u <IP of device> <Port>
   ```
