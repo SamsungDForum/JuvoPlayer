@@ -126,11 +126,9 @@ namespace JuvoReactNative
 
                 case PlayerState.Playing:
                     value = "Playing";
-                    playbackTimer?.Change(0, interval); //resume progress info update
                     break;
                 case PlayerState.Paused:
                     value = "Paused";
-                    playbackTimer?.Change(Timeout.Infinite, Timeout.Infinite); //suspend progress info update
                     break;
 
                 // "Stop" clears active Player preventing dispatch of extra stop calls.

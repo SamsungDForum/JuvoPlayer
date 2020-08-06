@@ -129,17 +129,17 @@ export default class PlaybackView extends React.Component {
     this.props.switchView('Previous');
   }
   handleSeek() {
-    if (this.playerState == 'Paused') return false;
     this.operationInProgress = true;
-    this.inProgressDescription = 'Seeking...';
+    this.inProgressDescription = 'Searching...';
     this.requestInfoShow();
-    return true;
   }
   handleFastForwardKey() {
-    if (this.handleSeek()) this.JuvoPlayer.Forward();
+    this.handleSeek();
+    this.JuvoPlayer.Forward();
   }
   handleRewindKey() {
-    if (this.handleSeek()) this.JuvoPlayer.Rewind();
+    this.handleSeek();
+    this.JuvoPlayer.Rewind();
   }
   handleInfoHiden() {
     this.requestInfoHide();
