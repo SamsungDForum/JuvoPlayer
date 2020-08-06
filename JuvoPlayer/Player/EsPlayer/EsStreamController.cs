@@ -93,6 +93,10 @@ namespace JuvoPlayer.Player.EsPlayer
 
         private TaskCompletionSource<object> _configurationsCollected;
         private TimeSpan? _pendingPosition;
+        private object _pendingRepresentation;
+        private bool _pendingOperationScheduled;
+
+        private bool _pauseRequested;
 
         #region Public API
 
@@ -226,6 +230,47 @@ namespace JuvoPlayer.Player.EsPlayer
             logger.Info("End");
         }
 
+        private void SchedulePendingOperation(in CancellationToken token)
+        {
+            if (_pendingOperationScheduled)
+                return;
+
+            _pendingOperationScheduled = true;
+
+            _syncCtx.Post(ProcessPendingOperation, Tuple.Create(token));
+            logger.Info("Pending operation scheduled");
+        }
+
+        private void ProcessPendingOperation(object state)
+        {
+            if (((Tuple<CancellationToken>)state).Item1.IsCancellationRequested)
+            {
+                logger.Info("Pending operation cancelled");
+                return;
+            }
+
+            if (player.GetState() != ESPlayer.ESPlayerState.Playing)
+            {
+                _syncCtx.Post(ProcessPendingOperation, state);
+                return;
+            }
+
+            if (_pendingRepresentation == null)
+            {
+                logger.Warn("Pending operation snatched!?");
+                return;
+            }
+
+            _syncCtx.Post(async (o) =>
+            {
+                var (@this, representation) = (ValueTuple<EsStreamController, object>)o;
+                await @this.ChangeRepresentation(representation);
+            }, (this, _pendingRepresentation));
+
+            _pendingOperationScheduled = false;
+            logger.Info("Scheduled pending ChangeRepresentation()");
+
+        }
         /// <summary>
         /// Sets provided configuration to appropriate stream.
         /// </summary>
@@ -313,19 +358,23 @@ namespace JuvoPlayer.Player.EsPlayer
 
                     case ESPlayer.ESPlayerState.Ready:
                         player.Start();
+                        StartClockGenerator();
                         break;
 
                     case ESPlayer.ESPlayerState.Paused:
                         player.Resume();
+                        _dataClock.Start();
                         ResumeTransfer(token);
+                        _pauseRequested = false;
                         break;
 
                     default:
                         throw new InvalidOperationException($"Play called in invalid state: {state}");
                 }
-                StartClockGenerator();
+
                 SubscribeBufferingEvent();
                 SetState(PlayerState.Playing, token);
+                logger.Info("End");
 
             }
             catch (InvalidOperationException ioe)
@@ -346,11 +395,10 @@ namespace JuvoPlayer.Player.EsPlayer
             var currentState = player.GetState();
             logger.Info($"Player State: {currentState}");
 
-            if (currentState == ESPlayer.ESPlayerState.Playing)
-                PausePlayback();
+            if (currentState != ESPlayer.ESPlayerState.Playing)
+                return;
 
-            // Don't pass buffering events in paused state.
-            UnsubscribeBufferingEvent();
+            PausePlayback();
         }
 
         /// <summary>
@@ -376,7 +424,7 @@ namespace JuvoPlayer.Player.EsPlayer
                 logger.Error(ioe);
             }
         }
-        
+
         public async Task Seek(TimeSpan time)
         {
             logger.Info($"Seek to {time}");
@@ -385,6 +433,7 @@ namespace JuvoPlayer.Player.EsPlayer
             using (await asyncOpSerializer.LockAsync(token))
             {
                 _pendingPosition = time;
+
                 logger.Info($"Seeking to {_pendingPosition}");
 
                 try
@@ -409,9 +458,8 @@ namespace JuvoPlayer.Player.EsPlayer
                     {
                         SubscribeBufferingEvent();
                         logger.Info("End");
+                        return;
                     }
-
-                    return;
                 }
                 catch (SeekException e)
                 {
@@ -502,6 +550,13 @@ namespace JuvoPlayer.Player.EsPlayer
             using (await asyncOpSerializer.LockAsync(token))
             {
                 logger.Info("Changing representation");
+                _pendingRepresentation = representation;
+                if (_pauseRequested)
+                {
+                    SchedulePendingOperation(token);
+                    return;
+                }
+
                 TimeSpan clock = TimeSpan.Zero;
                 try
                 {
@@ -543,6 +598,7 @@ namespace JuvoPlayer.Player.EsPlayer
                     StartClockGenerator();
                     SubscribeBufferingEvent();
                     _configurationsCollected = null;
+                    _pendingRepresentation = null;
                     logger.Info("End");
                     return;
                 }
@@ -904,11 +960,17 @@ namespace JuvoPlayer.Player.EsPlayer
 
         private void PausePlayback()
         {
+            // Don't pass buffering events in paused state.
+            UnsubscribeBufferingEvent();
+
             StopTransfer();
-            StopClockGenerator();
+            _dataClock.Stop();
+
             player.Pause();
 
             SetState(PlayerState.Paused, activeTaskCts.Token);
+            _pauseRequested = true;
+
             logger.Info("End");
         }
 
@@ -1016,8 +1078,8 @@ namespace JuvoPlayer.Player.EsPlayer
         /// </summary>
         private void StartClockGenerator()
         {
-            _dataClock.Start();
             _playerClock.Start();
+            _dataClock.Start();
             logger.Info("End");
         }
 
