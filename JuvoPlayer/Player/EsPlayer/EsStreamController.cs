@@ -46,6 +46,13 @@ namespace JuvoPlayer.Player.EsPlayer
             public TimeSpan Position;
         }
 
+        // Pause due to buffering has no application currently
+        private enum PauseReason
+        {
+            NotPaused = 0,
+            Requested = 1
+        }
+
         private StateSnapshot _suspendState;
 
         private static readonly ILogger logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
@@ -94,9 +101,8 @@ namespace JuvoPlayer.Player.EsPlayer
         private TaskCompletionSource<object> _configurationsCollected;
         private TimeSpan? _pendingPosition;
         private object _pendingRepresentation;
-        private bool _pendingOperationScheduled;
 
-        private bool _pauseRequested;
+        private PauseReason _pauseReason;
 
         #region Public API
 
@@ -230,47 +236,6 @@ namespace JuvoPlayer.Player.EsPlayer
             logger.Info("End");
         }
 
-        private void SchedulePendingOperation(in CancellationToken token)
-        {
-            if (_pendingOperationScheduled)
-                return;
-
-            _pendingOperationScheduled = true;
-
-            _syncCtx.Post(ProcessPendingOperation, Tuple.Create(token));
-            logger.Info("Pending operation scheduled");
-        }
-
-        private void ProcessPendingOperation(object state)
-        {
-            if (((Tuple<CancellationToken>)state).Item1.IsCancellationRequested)
-            {
-                logger.Info("Pending operation cancelled");
-                return;
-            }
-
-            if (player.GetState() != ESPlayer.ESPlayerState.Playing)
-            {
-                _syncCtx.Post(ProcessPendingOperation, state);
-                return;
-            }
-
-            if (_pendingRepresentation == null)
-            {
-                logger.Warn("Pending operation snatched!?");
-                return;
-            }
-
-            _syncCtx.Post(async (o) =>
-            {
-                var (@this, representation) = (ValueTuple<EsStreamController, object>)o;
-                await @this.ChangeRepresentation(representation);
-            }, (this, _pendingRepresentation));
-
-            _pendingOperationScheduled = false;
-            logger.Info("Scheduled pending ChangeRepresentation()");
-
-        }
         /// <summary>
         /// Sets provided configuration to appropriate stream.
         /// </summary>
@@ -359,20 +324,31 @@ namespace JuvoPlayer.Player.EsPlayer
                     case ESPlayer.ESPlayerState.Ready:
                         player.Start();
                         StartClockGenerator();
+                        SubscribeBufferingEvent();
                         break;
 
                     case ESPlayer.ESPlayerState.Paused:
-                        player.Resume();
-                        _dataClock.Start();
-                        ResumeTransfer(token);
-                        _pauseRequested = false;
+
+                        _pauseReason = PauseReason.NotPaused;
+
+                        if (_pendingRepresentation != null)
+                        {
+                            _ = ChangeRepresentationInternal(_pendingRepresentation, true, token);
+                        }
+                        else
+                        {
+                            _dataClock.Start();
+                            ResumeTransfer(token);
+                            player.Resume();
+                            SubscribeBufferingEvent();
+                        }
+
                         break;
 
                     default:
                         throw new InvalidOperationException($"Play called in invalid state: {state}");
                 }
 
-                SubscribeBufferingEvent();
                 SetState(PlayerState.Playing, token);
                 logger.Info("End");
 
@@ -543,68 +519,90 @@ namespace JuvoPlayer.Player.EsPlayer
             EmptyStreams();
         }
 
-        public async Task ChangeRepresentation(object representation)
+        public Task ChangeRepresentation(object representation) =>
+            ChangeRepresentationInternal(representation, false, activeTaskCts.Token);
+
+        private async Task<(TimeSpan, bool)> StartRepresentation(object representation, TimeSpan position, CancellationToken token)
+        {
+            var currentAudioConfig = esStreams[(int)StreamType.Audio].Configuration;
+            var currentVideoConfig = esStreams[(int)StreamType.Video].Configuration;
+            esStreams[(int)StreamType.Audio].Configuration = null;
+            esStreams[(int)StreamType.Video].Configuration = null;
+
+            _configurationsCollected = new TaskCompletionSource<object>(TaskCreationOptions.RunContinuationsAsynchronously);
+
+            var representationPosition = await Client.ChangeRepresentation(position, representation, token);
+
+            _dataClock.Clock = position;
+            _dataClock.Start();
+
+            await _configurationsCollected.Task.WithCancellation(token);
+            _configurationsCollected = null;
+
+            var isCompatible = currentAudioConfig.IsCompatible(esStreams[(int)StreamType.Audio].Configuration) &&
+                currentVideoConfig.IsCompatible(esStreams[(int)StreamType.Video].Configuration);
+
+            logger.Info($"Representation started. Position Requested/Actual {position}/{representationPosition}");
+            return (representationPosition, isCompatible);
+        }
+
+        private async Task ChangeRepresentationInternal(object representation, bool isPending, CancellationToken token)
         {
             logger.Info("");
-            var token = activeTaskCts.Token;
+
             using (await asyncOpSerializer.LockAsync(token))
             {
-                logger.Info("Changing representation");
-                _pendingRepresentation = representation;
-                if (_pauseRequested)
-                {
-                    SchedulePendingOperation(token);
-                    return;
-                }
-
-                TimeSpan clock = TimeSpan.Zero;
                 try
                 {
-                    clock = _pendingPosition ?? _playerClock.Clock;
-                    _pendingPosition = null;
+                    token.ThrowIfCancellationRequested();
 
+                    if (_pauseReason == PauseReason.Requested)
+                    {
+                        _pendingRepresentation = representation;
+                        logger.Info("RepresentationChange pending");
+                        return;
+                    }
+
+                    // Pending representation change. Check if someone beat us to it.
+                    // Depending how pending representation change gets scheduled, it's feasible for pending change to become
+                    // outdated by another representation change.
+                    if (isPending &&
+                        (_pendingRepresentation == null || !ReferenceEquals(_pendingRepresentation, representation)))
+                    {
+                        logger.Info($"Stale pending representation change. Ignored.");
+                        return;
+                    }
+
+                    player.Pause();
                     await FlushStreams();
 
-                    var currentAudioConfig = esStreams[(int)StreamType.Audio].Configuration;
-                    var currentVideoConfig = esStreams[(int)StreamType.Video].Configuration;
-                    esStreams[(int)StreamType.Audio].Configuration = null;
-                    esStreams[(int)StreamType.Video].Configuration = null;
-
-                    _configurationsCollected = new TaskCompletionSource<object>(TaskCreationOptions.RunContinuationsAsynchronously);
-
-                    var repositionedClock = await Client.ChangeRepresentation(clock, representation, token);
+                    player.GetPlayingTime(out var currentPlayerPosition);
+                    var playerPosition = _pendingPosition ?? currentPlayerPosition;
+                    _pendingPosition = null;
+                    _pendingRepresentation = null;
 
                     EnableInput();
+                    var (representationPosition, isCompatible) = await StartRepresentation(representation, playerPosition, token);
 
-                    _dataClock.Clock = clock;
-                    _dataClock.Start();
-
-                    logger.Info($"Representation changed. Current time {clock} New time {repositionedClock}");
-
-                    await _configurationsCollected.Task.WithCancellation(token);
-                    _configurationsCollected = null;
-
-                    if (currentAudioConfig.IsCompatible(esStreams[(int)StreamType.Audio].Configuration) &&
-                       currentVideoConfig.IsCompatible(esStreams[(int)StreamType.Video].Configuration))
+                    if (!isCompatible)
                     {
-                        if (false == await ExecuteSeek(clock, token))
-                            return;
-                    }
-                    else
-                    {
+                        logger.Info("Incompatible. Restarting player");
                         await ChangeConfiguration(token);
                     }
 
-                    StartClockGenerator();
-                    SubscribeBufferingEvent();
-                    _configurationsCollected = null;
-                    _pendingRepresentation = null;
-                    logger.Info("End");
-                    return;
+                    logger.Info($"Repositionting to {playerPosition}");
+
+                    if (await ExecuteSeek(playerPosition, token))
+                    {
+                        StartClockGenerator();
+                        SubscribeBufferingEvent();
+                        logger.Info("End");
+                        return;
+                    }
                 }
                 catch (SeekException e)
                 {
-                    var msg = $"ChangeRepresentation seek to {clock} Failed, reason \"{e.Message}\"";
+                    var msg = $"ChangeRepresentation seek failed, reason \"{e.Message}\"";
                     logger.Error(msg);
                     playbackErrorSubject.OnNext(msg);
 
@@ -614,7 +612,11 @@ namespace JuvoPlayer.Player.EsPlayer
                 catch (Exception ce)
                 when (ce is OperationCanceledException || ce is TaskCanceledException)
                 {
-                    logger.Info($"ChangeRepresentation cancelled");
+                    logger.Info($"ChangeRepresentation cancelled. Pending {isPending}");
+
+                    // Don't terminate playback for cancelled pending change.
+                    if (isPending)
+                        return;
                 }
                 catch (Exception e)
                 {
@@ -960,16 +962,16 @@ namespace JuvoPlayer.Player.EsPlayer
 
         private void PausePlayback()
         {
+            _pauseReason = PauseReason.Requested;
+
             // Don't pass buffering events in paused state.
             UnsubscribeBufferingEvent();
-
-            StopTransfer();
             _dataClock.Stop();
+            StopTransfer();
 
             player.Pause();
 
             SetState(PlayerState.Paused, activeTaskCts.Token);
-            _pauseRequested = true;
 
             logger.Info("End");
         }
