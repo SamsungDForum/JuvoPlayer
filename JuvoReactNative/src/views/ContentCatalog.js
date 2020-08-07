@@ -59,6 +59,9 @@ export default class ContentCatalog extends Component {
       case 'XF86PlayBack':
         this.toggleVisibility();
         break;
+      case 'XF86Back':
+        this.JuvoPlayer.ExitApp();
+        break;
       case ('Left', 'Right'):
         break;
     }
