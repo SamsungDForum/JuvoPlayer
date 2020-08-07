@@ -130,7 +130,7 @@ export default class PlaybackView extends React.Component {
   }
   handleSeek() {
     this.operationInProgress = true;
-    this.inProgressDescription = 'Searching...';
+    this.inProgressDescription = 'Seeking...';
     this.requestInfoShow();
   }
   handleFastForwardKey() {
