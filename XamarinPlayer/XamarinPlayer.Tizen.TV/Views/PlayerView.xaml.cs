@@ -184,6 +184,12 @@ namespace XamarinPlayer.Views
             // Consider adding a call Focus(Focusable Object) where focus would be set in one place
             // and error status could be handled.
             _keys.OnNext(e);
+            
+            if (e.Contains("Stop"))
+            {
+                Navigation.RemovePage(this);
+                return;
+            }
 
             if (e.Contains("Back") && !e.Contains("XF86PlayBack"))
             {
@@ -248,15 +254,8 @@ namespace XamarinPlayer.Views
                 }
                 else
                 {
-                    if (e.Contains("Stop"))
-                    {
-                        Navigation.RemovePage(this);
-                    }
-                    else
-                    {
-                        //Make the playback control bar visible on the screen
-                        Show();
-                    }
+                    //Make the playback control bar visible on the screen
+                    Show();
                 }
             }
         }
