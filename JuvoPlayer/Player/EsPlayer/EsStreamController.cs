@@ -100,7 +100,7 @@ namespace JuvoPlayer.Player.EsPlayer
 
         private TaskCompletionSource<object> _configurationsCollected;
         private TimeSpan? _pendingPosition;
-        private object _pendingRepresentation;
+        private object _pendingRepresentation = null;
 
         private PauseReason _pauseReason;
 
@@ -333,13 +333,14 @@ namespace JuvoPlayer.Player.EsPlayer
 
                         if (_pendingRepresentation != null)
                         {
+                            logger.Info("Pending ChangeRepresentation()");
                             _ = ChangeRepresentationInternal(_pendingRepresentation, true, token);
                         }
                         else
                         {
-                            _dataClock.Start();
                             ResumeTransfer(token);
                             player.Resume();
+                            _dataClock.Start();
                             SubscribeBufferingEvent();
                         }
 
@@ -430,8 +431,11 @@ namespace JuvoPlayer.Player.EsPlayer
                     var isCompleted = await ExecuteSeek(seekToTime, token);
 
                     _pendingPosition = null;
+
                     if (isCompleted)
                     {
+                        // UI, when paused, does not issue Seeks till resumed. No need to
+                        // handle seek while paused in player.
                         SubscribeBufferingEvent();
                         logger.Info("End");
                         return;
@@ -519,8 +523,11 @@ namespace JuvoPlayer.Player.EsPlayer
             EmptyStreams();
         }
 
-        public Task ChangeRepresentation(object representation) =>
-            ChangeRepresentationInternal(representation, false, activeTaskCts.Token);
+        public Task ChangeRepresentation(object representation)
+        {
+            logger.Info("");
+            return ChangeRepresentationInternal(representation, false, activeTaskCts.Token);
+        }
 
         private async Task<(TimeSpan, bool)> StartRepresentation(object representation, TimeSpan position, CancellationToken token)
         {
@@ -533,6 +540,7 @@ namespace JuvoPlayer.Player.EsPlayer
 
             var representationPosition = await Client.ChangeRepresentation(position, representation, token);
 
+            EnableInput();
             _dataClock.Clock = position;
             _dataClock.Start();
 
@@ -581,23 +589,30 @@ namespace JuvoPlayer.Player.EsPlayer
                     _pendingPosition = null;
                     _pendingRepresentation = null;
 
-                    EnableInput();
                     var (representationPosition, isCompatible) = await StartRepresentation(representation, playerPosition, token);
 
                     if (!isCompatible)
                     {
-                        logger.Info("Incompatible. Restarting player");
-                        await ChangeConfiguration(token);
+                        // Destructive player change results in packet loss. 
+                        // Reposition data provider.
+                        await FlushStreams();
+                        var streamClock = await Client.Seek(playerPosition, CancellationToken.None);
+                        EnableInput();
+
+                        logger.Info($"Incompatible. Restarting player @{streamClock} Player clock was {playerPosition}");
+                        await ChangeConfiguration(streamClock, token);
                     }
-
-                    logger.Info($"Repositionting to {playerPosition}");
-
-                    if (await ExecuteSeek(playerPosition, token))
+                    else
                     {
-                        StartClockGenerator();
-                        SubscribeBufferingEvent();
-                        logger.Info("End");
-                        return;
+                        logger.Info($"Compatible. Repositionting to {playerPosition}");
+
+                        if (await ExecuteSeek(playerPosition, token))
+                        {
+                            StartClockGenerator();
+                            SubscribeBufferingEvent();
+                            logger.Info("End");
+                            return;
+                        }
                     }
                 }
                 catch (SeekException e)
@@ -614,6 +629,7 @@ namespace JuvoPlayer.Player.EsPlayer
                 {
                     logger.Info($"ChangeRepresentation cancelled. Pending {isPending}");
 
+                    _configurationsCollected = null;
                     // Don't terminate playback for cancelled pending change.
                     if (isPending)
                         return;
@@ -631,11 +647,11 @@ namespace JuvoPlayer.Player.EsPlayer
             }
         }
 
-        private Task ChangeConfiguration(CancellationToken token)
+        private Task ChangeConfiguration(TimeSpan position, CancellationToken token)
         {
             logger.Info("");
 
-            var stateSnapshot = GetSuspendState();
+            var stateSnapshot = GetSuspendState(position);
 
             // TODO: Access to stream controller should be "blocked" in an async way while
             // TODO: player is restarted. Hell will break loose otherwise.
@@ -964,12 +980,11 @@ namespace JuvoPlayer.Player.EsPlayer
         {
             _pauseReason = PauseReason.Requested;
 
+            player.Pause();
             // Don't pass buffering events in paused state.
             UnsubscribeBufferingEvent();
             _dataClock.Stop();
             StopTransfer();
-
-            player.Pause();
 
             SetState(PlayerState.Paused, activeTaskCts.Token);
 
@@ -1095,7 +1110,7 @@ namespace JuvoPlayer.Player.EsPlayer
             logger.Info("End");
         }
 
-        private StateSnapshot GetSuspendState()
+        private StateSnapshot GetSuspendState(TimeSpan? position = null)
         {
             var suspendPoint = new StateSnapshot();
 
@@ -1115,7 +1130,7 @@ namespace JuvoPlayer.Player.EsPlayer
                     break;
             }
 
-            suspendPoint.Position = _pendingPosition ?? _playerClock.Clock;
+            suspendPoint.Position = position ?? _pendingPosition ?? _playerClock.Clock;
             _pendingPosition = null;
             logger.Info($"State snapshot. State/Position {suspendPoint.State}/{suspendPoint.Position}");
 
