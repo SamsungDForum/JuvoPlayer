@@ -10,6 +10,7 @@ using ILogger = JuvoLogger.ILogger;
 using ElmSharp;
 using ReactNative.Modules.Core;
 using Newtonsoft.Json.Linq;
+using Tizen.Applications;
 
 
 namespace JuvoReactNative
@@ -340,6 +341,12 @@ namespace JuvoReactNative
         {
             if (deepLinkSub == null)
                 deepLinkSub = deepLinkSender.DeepLinkReceived().Subscribe(OnDeepLinkReceived);
+        }
+
+        [ReactMethod]
+        public void ExitApp()
+        {
+            Application.Current.Exit();
         }
     }
 }
