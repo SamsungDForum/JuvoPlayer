@@ -1,12 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
-using ReactNative.Modules.Core;
-using ReactNative.Bridge;
+using System.Threading;
 using JuvoLogger;
-using ILogger = JuvoLogger.ILogger;
-using Log = Tizen.Log;
+using ReactNative.Bridge;
+using ReactNative.Modules.Core;
 using ReactNative.UIManager;
-using System.Threading.Tasks;
 
 namespace JuvoReactNative
 {
@@ -25,7 +23,7 @@ namespace JuvoReactNative
         {
             return new List<INativeModule>
             {
-                new JuvoPlayerModule(reactContext, deepLinkSender)
+                new JuvoPlayerModule(reactContext, deepLinkSender, SynchronizationContext.Current)
         };
         }
         public IReadOnlyList<Type> CreateJavaScriptModulesConfig()
