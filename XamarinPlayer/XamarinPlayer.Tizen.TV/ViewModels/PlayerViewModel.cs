@@ -410,6 +410,7 @@ namespace XamarinPlayer.Tizen.TV.ViewModels
         private void BindStreamSettings(SettingsViewModel settings)
         {
             var streams = Player.GetStreamsDescription(settings.Type);
+            if (streams.Count == 0) return;
 
             settings.Source = streams;
             settings.SelectedIndex = 0;
