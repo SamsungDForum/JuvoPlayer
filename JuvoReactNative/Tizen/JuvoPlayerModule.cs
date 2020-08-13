@@ -32,12 +32,15 @@ namespace JuvoReactNative
         private IDisposable bufferingProgressSub;
         private IDisposable deepLinkSub;
         private IDeepLinkSender deepLinkSender;
+        private readonly SynchronizationContext mainSynchronizationContext;
 
-        public JuvoPlayerModule(ReactContext reactContext, IDeepLinkSender deepLinkSender)
+        public JuvoPlayerModule(ReactContext reactContext, IDeepLinkSender deepLinkSender,
+            SynchronizationContext mainSynchronizationContext)
             : base(reactContext)
         {
             seekLogic = new SeekLogic(this);
             this.deepLinkSender = deepLinkSender;
+            this.mainSynchronizationContext = mainSynchronizationContext;
             seekCompletedSub = seekLogic.SeekCompleted().Subscribe(message =>
             {
                 var param = new JObject();
@@ -346,7 +349,10 @@ namespace JuvoReactNative
         [ReactMethod]
         public void ExitApp()
         {
-            Application.Current.Exit();
+            mainSynchronizationContext.Post(_ =>
+            {
+                Application.Current.Exit();
+            }, null);
         }
     }
 }
