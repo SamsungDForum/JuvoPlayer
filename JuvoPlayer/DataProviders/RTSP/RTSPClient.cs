@@ -57,7 +57,7 @@ namespace JuvoPlayer.DataProviders.RTSP
         private Channel<RtspMessage> _rtspChannel;
         private Task _rtspTask = Task.CompletedTask;
         private CancellationTokenSource _rtpRtspCts;
-        private bool _suspendTransfer;
+        private bool _suspendTransfer = true;
 
         private static readonly TimeSpan PingPongTimeout = TimeSpan.FromSeconds(10);
 
@@ -439,18 +439,17 @@ namespace JuvoPlayer.DataProviders.RTSP
                 case RtspRequestPause _ when _currentState == State.Playing && _suspendTransfer == false:
                     break;
 
-                case RtspRequestPlay playRequest when _currentState == State.Starting:
-                    // Play requested - cannot be fulfilled due to _suspendTransfer state. Post it back to event queue
-                    // in dire hope _currentState will change.
+                case RtspRequestPlay _ when _currentState == State.Starting:
+                    // Play requested - cannot be fulfilled due to _suspendTransfer state. 
                     if (_suspendTransfer)
-                    {
-                        // TODO: Post with a "delay" would be good.
-                        PostRequest(playRequest);
                         return;
-                    }
+
                     break;
 
-                case RtspRequestPlay _ when request.ContextData is bool && _suspendTransfer:
+                case RtspRequestPlay _ when request.ContextData != null:
+                    if (!_suspendTransfer)
+                        return;
+
                     _suspendTransfer = false;
 
                     // Resume.
@@ -461,7 +460,10 @@ namespace JuvoPlayer.DataProviders.RTSP
                     Logger.Info($"Resuming session {rtspSession}");
                     break;
 
-                case RtspRequestPause _ when request.ContextData is bool && _suspendTransfer == false:
+                case RtspRequestPause _ when request.ContextData != null:
+                    if (_suspendTransfer)
+                        return;
+
                     _suspendTransfer = true;
 
                     // Suspend. 
@@ -537,14 +539,18 @@ namespace JuvoPlayer.DataProviders.RTSP
                             break;
 
                         case State.Starting:
-                            ProcessOptionsResponse();
-                            break;
-
                         case State.Playing:
                         case State.Paused:
-                            // Ping-Pong once playback is started.
-                            Logger.Info($"Pong {rtspListener.RemoteAdress}");
-                            Ping();
+                            if (rtspSession == null)
+                            {
+                                ProcessOptionsResponse();
+                            }
+                            else
+                            {
+                                // Ping-Pong once playback is started.
+                                Logger.Info($"Pong {rtspListener.RemoteAdress}");
+                                Ping();
+                            }
                             break;
 
                         default:
@@ -578,6 +584,7 @@ namespace JuvoPlayer.DataProviders.RTSP
 
                         case State.Starting:
                             ProcessSetupResponse(message);
+                            Ping();
                             break;
 
                         default:
@@ -594,7 +601,6 @@ namespace JuvoPlayer.DataProviders.RTSP
 
                         case State.Starting:
                             _currentState = State.Playing;
-                            Ping();
                             break;
 
                         case State.Paused:
