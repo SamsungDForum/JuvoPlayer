@@ -8,7 +8,7 @@ jobs:
     steps:
       - run:
           name: Setup environment variables
-          command: echo "export CERTS_PATH=/build/bamboo-specs/certs" >> $BASH_ENV
+          command: echo "export CERTS_PATH=/build/certs" >> $BASH_ENV
       - checkout
       - run:
           name: Setup proxy
