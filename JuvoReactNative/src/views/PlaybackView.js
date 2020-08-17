@@ -112,9 +112,9 @@ export default class PlaybackView extends React.Component {
   resetPlaybackStatus() {
     this.JuvoPlayer.Log('resetPlaybackStatus()');
     this.resetPlaybackTime();
-    this.handleInfoHiden();
     this.playbackStarted = false;
     this.showSettingsView = false;
+    this.handleInfoHiden();
     this.playerState = 'Idle';
     this.inProgressDescription = 'Please wait...';
     this.JuvoPlayer.StopPlayback();
@@ -142,8 +142,10 @@ export default class PlaybackView extends React.Component {
     this.JuvoPlayer.Rewind();
   }
   handleInfoHiden() {
-    this.requestInfoHide();
-    this.redraw();
+    if(!this.showSettingsView) {
+      this.requestInfoHide();
+      this.redraw();
+    }
   }
   handleSettingsViewDisappeared() {
     this.showSettingsView = false;
@@ -268,7 +270,6 @@ export default class PlaybackView extends React.Component {
     }
     this.showSettingsView = this.streamsData.Audio !== null && this.streamsData.Video !== null && this.streamsData.Subtitle !== null;
     if (this.showSettingsView) {
-      this.requestInfoShow();
       this.redraw();
     }
   }
