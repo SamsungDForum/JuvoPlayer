@@ -59,7 +59,7 @@ export default class PlaybackView extends React.Component {
     this.handleFastForwardKey = this.handleFastForwardKey.bind(this);
     this.handleRewindKey = this.handleRewindKey.bind(this);
     this.getFormattedTime = this.getFormattedTime.bind(this);
-    this.handleInfoHiden = this.handleInfoHiden.bind(this);
+    this.handleInfoHidden = this.handleInfoHidden.bind(this);
     this.requestInfoShow = this.requestInfoShow.bind(this);
     this.clearInfoRedrawCallabckID = this.clearInfoRedrawCallabckID.bind(this);
     this.scheduleTheHideAndRedrawCallbacks = this.scheduleTheHideAndRedrawCallbacks.bind(this);
@@ -114,7 +114,7 @@ export default class PlaybackView extends React.Component {
     this.resetPlaybackTime();
     this.playbackStarted = false;
     this.showSettingsView = false;
-    this.handleInfoHiden();
+    this.handleInfoHidden();
     this.playerState = 'Idle';
     this.inProgressDescription = 'Please wait...';
     this.JuvoPlayer.StopPlayback();
@@ -141,7 +141,7 @@ export default class PlaybackView extends React.Component {
     this.handleSeek();
     this.JuvoPlayer.Rewind();
   }
-  handleInfoHiden() {
+  handleInfoHidden() {
     if(!this.showSettingsView) {
       this.requestInfoHide();
       this.redraw();
@@ -316,7 +316,7 @@ export default class PlaybackView extends React.Component {
     }
   }
   scheduleTheHideAndRedrawCallbacks() {
-    this.infoHideCallbackID = setTimeout(this.handleInfoHiden, 10000);
+    this.infoHideCallbackID = setTimeout(this.handleInfoHidden, 10000);
     this.infoRedrawCallbackID = this.setIntervalImmediately(this.redraw, 500);
   }
   setIntervalImmediately(func, interval) {
