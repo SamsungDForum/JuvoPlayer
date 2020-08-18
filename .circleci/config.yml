@@ -112,14 +112,13 @@ workflows:
     jobs:
       - build_and_run_unit_tests
   nightly:
-#    triggers:
-#      - schedule:
-#          cron: "0 1 * * *"
-#          filters:
-#            branches:
-#              only:
-#                - master
-#                - p.panek/run_integration_tests_in_circleci
+    triggers:
+      - schedule:
+          cron: "0 1 * * *"
+          filters:
+            branches:
+              only:
+                - master
     jobs:
       - build_and_run_unit_tests
       - run_integration_tests:
