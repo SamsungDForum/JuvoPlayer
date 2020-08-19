@@ -1,23 +1,126 @@
 version: 2.0
+
 jobs:
-  build:
+  build_and_run_unit_tests:
+    working_directory: /build
     docker:
       - image: mcr.microsoft.com/dotnet/core/sdk:3.1
     steps:
+      - run:
+          name: Setup environment variables
+          command: echo "export CERTS_PATH=/build/certs" >> $BASH_ENV
       - checkout
       - run:
           name: Setup proxy
           command:
             curl -sL https://art.sec.samsung.net/artifactory/tools/CircleCI/scripts/set_proxy_setting.sh | sh
       - run:
-          name: JuvoReactNative exclusion
+          name: Install xlstproc
+          command: apt update && DEBIAN_FRONTEND="noninteractive" apt install -y --no-install-recommends xsltproc
+      - run:
+          name: Exclude JuvoReactNative from solution
           command: dotnet sln remove JuvoReactNative/Tizen/JuvoReactNative.csproj
       - run:
-          name: Build 
-          command: dotnet build -c Release JuvoPlayer.sln
+          name: Build solution
+          command: >
+            dotnet build /nodeReuse:false
+            /p:"AuthorPath=${CERTS_PATH}/partner_2019.p12;AuthorPass=12345678"
+            /p:"DistributorPath=${CERTS_PATH}/tizen-distributor-signer.p12;DistributorPass=tizenpkcs12passfordsigner"
       - run:
-          name: Tests
-          command: |
-               dotnet test /nodeReuse:false JuvoPlayer.Tests/JuvoPlayer.Tests.csproj --logger:trx -f netcoreapp3.1 --verbosity normal
+          name: Run unit tests
+          command: dotnet test /nodeReuse:false JuvoPlayer.Tests/JuvoPlayer.Tests.csproj --logger:trx -f netcoreapp3.1 --verbosity normal
+      - run:
+          name: Convert MSTest report to JUnit
+          command: >
+            mkdir -p TestResults && 
+            xsltproc -o TestResults/output.xml scripts/mstest-junit.xlst JuvoPlayer.Tests/TestResults/*
+          when: always
+      - store_test_results:
+          path: TestResults/
+          when: always
+      - run:
+          name: Copy artifacts to tmp directory
+          command: >
+            mkdir /tmp/artifacts &&
+            cp JuvoPlayer.TizenTests/bin/Debug/tizen50/*.tpk /tmp/artifacts/ &&
+            cp JuvoPlayer.OpenGL/bin/Debug/tizen50/*.tpk /tmp/artifacts/ &&
+            cp XamarinPlayer/XamarinPlayer.Tizen.TV/bin/Debug/tizen50/*.tpk /tmp/artifacts
+      - store_artifacts:
+          path: /tmp/artifacts
+          destination: tpks
+      - persist_to_workspace:
+          root: .
+          paths:
+            - ./JuvoPlayer.TizenTests/bin/*/*/*.tpk
+            - ./scripts/nunit3-junit.xlst
+  run_integration_tests:
+    working_directory: /build
+    docker:
+      - image: ubuntu
+    steps:
+      - attach_workspace:
+          at: /build
+      - add_ssh_keys:
+          fingerprints:
+            - "84:87:bf:67:e0:45:71:04:e7:97:2d:6d:fd:ca:01:67"
+      - run:
+          name: Setup environment variables
+          command: >
+            TPK_PATH=`find -name *.tpk` &&
+            TPK_NAME=`basename ${TPK_PATH}` &&
+            echo "export TPK_PATH=${TPK_PATH}" >> $BASH_ENV &&
+            echo "export TPK_NAME=${TPK_NAME}" >> $BASH_ENV &&
+            echo "export IP=106.120.45.62" >> $BASH_ENV &&
+            echo "export USER=bamboo-agent" >> $BASH_ENV
+      - run:
+          name: Install dependencies
+          command: >
+            apt update && DEBIAN_FRONTEND="noninteractive" apt install -y --no-install-recommends xsltproc openssh-client
+      - run:
+          name: Run ATR tests
+          no_output_timeout: 20m
+          command: >
+            scp -o StrictHostKeyChecking=no ${TPK_PATH} ${USER}@${IP}:/tmp/ &&
+            ssh -o StrictHostKeyChecking=no ${USER}@${IP} scp /tmp/${TPK_NAME} streamsrv:/srv/www/pnacl/juvo-player/ &&
+            ssh -o StrictHostKeyChecking=no ${USER}@${IP} rm -rf /home/bamboo-agent/atr/results/ &&
+            ssh -o StrictHostKeyChecking=no ${USER}@${IP} /home/bamboo-agent/atr/atr task --name "JuvoPlayerTest"
+            --tizen_version 6.0 --scenario JuvoPlayerTest --board tvboard_nikem --dlog_tags JuvoPlayer UT DOTNET_LAUNCHER
+            --image_url http://10.103.211.119/products/tv/official/2021/ONEMAIN/NikeM_ATSC/latest/images/T-NKMAKUC/updateNM.zip
+            --payload "{\\\"tpk\\\":\\\"http://stream-srv.sprc.samsung.pl/pnacl/juvo-player/${TPK_NAME}\\\"}"
+      - run:
+          name: Download test results
+          command: scp -o StrictHostKeyChecking=no -r ${USER}@${IP}:/home/bamboo-agent/atr/results/* results/
+          when: always
+      - store_artifacts:
+          path: results
+          destination: results
+          when: always
+      - run:
+          name: Convert NUnit report to JUnit
+          command: >
+            mkdir -p TestResults &&
+            xsltproc -o TestResults/output.xml scripts/nunit3-junit.xlst
+            results/JuvoPlayerTest/JuvoPlayerTest/JuvoPlayerTest/JuvoPlayer.TizenTests.xml
+          when: always
+      - store_test_results:
+          path: TestResults/
+          when: always
 
-
+workflows:
+  version: 2
+  commit:
+    jobs:
+      - build_and_run_unit_tests
+  nightly:
+    triggers:
+      - schedule:
+          cron: "0 1 * * *"
+          filters:
+            branches:
+              only:
+                - master
+    jobs:
+      - build_and_run_unit_tests
+      - run_integration_tests:
+          requires:
+            - build_and_run_unit_tests
