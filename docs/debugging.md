@@ -3,12 +3,15 @@
 ## Debugging
 
 ### UDP Logger
-JuvoLogger.Udp allows JuvoPlayer log capture via UDP. UDP log capture can be used on devices and emulators which do not provide access to console log functionality. When enabled, JuvoPlayer console log is not available. Usage of UDP logger does require application repacking after modification of logger.config file located in:
-  * <application_root>/Configuration/res
+JuvoLogger.Udp allows JuvoPlayer log capture via UDP. UDP log capture can be used on devices and emulators which do not provide access to console log functionality. When enabled, JuvoPlayer console log is not available. Usage of UDP logger does require application repacking after modification of file:
+
+```javascript
+  juvo-player/Configuration/res/logger.config
+```
 
 Enabling UDP Logger:
-1. Choose logger.config file corresponding to UI being used.
-2. Enable UDP logging by removing comments from UdpLogger section and specifying listen Port value. 
+
+1. Enable UDP logging by removing comments from UdpLogger section and specifying listen Port value. 
    Provided example uses Port 2222.
 
 ```javascript
@@ -20,8 +23,8 @@ Enabling UDP Logger:
    [UdpLogger]
    Port=2222  
 ```
-3. In order to connect to a host device, use any UDP client software, e.g. ncat (https://nmap.org/ncat/). 
-4. Connect to UDP Logger from a client PC using following console command:
+2. In order to connect to a host device, use any UDP client software, e.g. ncat (https://nmap.org/ncat/). 
+3. Connect to UDP Logger from a client PC using following console command:
 ```javascript
   ncat -u <IP of device> <Port>
   ```
