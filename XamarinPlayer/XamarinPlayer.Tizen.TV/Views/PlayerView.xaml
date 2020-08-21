@@ -1,0 +1,212 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+
+<ContentPage xmlns="http://xamarin.com/schemas/2014/forms"
+             xmlns:x="http://schemas.microsoft.com/winfx/2009/xaml"
+             xmlns:forms="clr-namespace:SkiaSharp.Views.Forms;assembly=SkiaSharp.Views.Forms"
+             xmlns:viewModels="clr-namespace:XamarinPlayer.Tizen.TV.ViewModels;assembly=JuvoPlayerXamarin.Tizen.TV"
+             x:Class="XamarinPlayer.Views.PlayerView"
+             x:Name="root">
+    <ContentPage.Content>
+        <Grid>
+            <Grid.RowDefinitions>
+                <RowDefinition Height="Auto" />
+                <RowDefinition Height="*" />
+                <RowDefinition Height="Auto" />
+            </Grid.RowDefinitions>
+            <Grid.GestureRecognizers>
+                <TapGestureRecognizer
+                    Tapped="OnTapGestureRecognizerViewTapped" />
+            </Grid.GestureRecognizers>
+            <Grid Grid.Row="0"
+                  x:Name="TopBar"
+                  BackgroundColor="#B0101010"
+                  Padding="0, 20">
+                <Image x:Name="SettingsImage"
+                       Source="btn_viewer_control_settings_normal.png"
+                       HorizontalOptions="End"
+                       VerticalOptions="Start" />
+                <Label x:Name="SettingsButton"
+                       Opacity="0.1"
+                       HorizontalOptions="End"
+                       VerticalOptions="Fill"
+                       WidthRequest="80"
+                       IsEnabled="False" />
+                <Label x:Name="VideoTitle"
+                       Text="{Binding Title}"
+                       TextColor="White"
+                       FontSize="100"
+                       HorizontalOptions="Center"
+                       VerticalOptions="Center" />
+            </Grid>
+            <AbsoluteLayout Grid.Row="1" VerticalOptions="EndAndExpand" HorizontalOptions="Fill">
+                <BoxView VerticalOptions="FillAndExpand">
+                    <BoxView.GestureRecognizers>
+                        <TapGestureRecognizer
+                            Tapped="OnTapGestureRecognizerControllerTapped" />
+                    </BoxView.GestureRecognizers>
+                </BoxView>
+                <Label x:Name="CueTextLabel"
+                       BackgroundColor="#B0101010"
+                       Margin="30, 30"
+                       AbsoluteLayout.LayoutBounds="0.5, 1, -1, -1" AbsoluteLayout.LayoutFlags="PositionProportional"
+                       IsVisible="{Binding CueText, Converter={viewModels:StringToBoolConverter}}"
+                       FontSize="Medium" TextColor="White"
+                       HorizontalOptions="CenterAndExpand" WidthRequest="800"
+                       HorizontalTextAlignment="Center" Text="{Binding CueText}" />
+                <Grid x:Name="Settings" IsVisible="False" BackgroundColor="#B0101010"
+                      AbsoluteLayout.LayoutBounds="0.5, 1, -1, -1" AbsoluteLayout.LayoutFlags="PositionProportional"
+                      HorizontalOptions="Center" Padding="20, 10">
+                    <Grid.RowDefinitions>
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="*" />
+                        <RowDefinition Height="*" />
+                    </Grid.RowDefinitions>
+                    <Grid.ColumnDefinitions>
+                        <ColumnDefinition Width="200" />
+                        <ColumnDefinition Width="400" />
+                    </Grid.ColumnDefinitions>
+                    <Label Grid.Row="0" Grid.Column="0"
+                           Text="Audio track" TextColor="White" HorizontalOptions="Start"
+                           VerticalOptions="Center" />
+                    <Picker Grid.Row="0" Grid.Column="1"
+                            x:Name="AudioTrack"
+                            ItemsSource="{Binding Audio.Source}"
+                            SelectedIndex="{Binding AudioSelectedIndex}"
+                            ItemDisplayBinding="{Binding Description}">
+                        <Picker.Items>
+                            <x:String>auto</x:String>
+                        </Picker.Items>
+                    </Picker>
+                    <Label Grid.Row="1" Grid.Column="0"
+                           Text="Video quality" TextColor="White" HorizontalOptions="Start"
+                           VerticalOptions="Center" />
+                    <Picker Grid.Row="1" Grid.Column="1"
+                            x:Name="VideoQuality"
+                            ItemsSource="{Binding Video.Source}"
+                            SelectedIndex="{Binding VideoSelectedIndex}"
+                            ItemDisplayBinding="{Binding Description}">
+                        <Picker.Items>
+                            <x:String>auto</x:String>
+                        </Picker.Items>
+                    </Picker>
+                    <Label Grid.Row="2" Grid.Column="0"
+                           Text="Video speed" TextColor="White" HorizontalOptions="Start"
+                           VerticalOptions="Center" />
+                    <Picker Grid.Row="2" Grid.Column="1"
+                            x:Name="VideoSpeed">
+                        <Picker.Items>
+                            <x:String>normal</x:String>
+                        </Picker.Items>
+                        <Picker.SelectedIndex>0</Picker.SelectedIndex>
+                    </Picker>
+                    <Label Grid.Row="3" Grid.Column="0"
+                           Text="Subtitles" TextColor="White" HorizontalOptions="Start"
+                           VerticalOptions="Center" />
+                    <Picker Grid.Row="3" Grid.Column="1" x:Name="Subtitles" WidthRequest="400"
+                            ItemsSource="{Binding Subtitle.Source}"
+                            SelectedIndex="{Binding SubtitleSelectedIndex}"
+                            ItemDisplayBinding="{Binding Description}">
+                        <Picker.Items>
+                            <x:String>off</x:String>
+                        </Picker.Items>
+                    </Picker>
+                </Grid>
+                <AbsoluteLayout x:Name="SeekPreviewContainer" IsVisible="{Binding IsSeekInProgress}"
+                                Margin="100, 0"
+                                AbsoluteLayout.LayoutFlags="All"
+                                AbsoluteLayout.LayoutBounds="0,0,1,1">
+                    <Frame x:Name="SeekPreviewFrame" Padding="1,1,1,1" HasShadow="False"
+                           CornerRadius="5" BorderColor="DimGray" BackgroundColor="Black"
+                           VerticalOptions="EndAndExpand" IsVisible="False">
+                        <forms:SKCanvasView x:Name="SeekPreviewCanvas" HorizontalOptions="Center" WidthRequest="0"
+                                            HeightRequest="0"
+                                            PaintSurface="OnSeekPreviewCanvasOnPaintSurface" />
+                    </Frame>
+                </AbsoluteLayout>
+            </AbsoluteLayout>
+            <Grid Grid.Row="2"
+                  x:Name="BottomBar"
+                  BackgroundColor="#B0101010"
+                  Padding="20, 10">
+                <Grid.RowDefinitions>
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                    <RowDefinition Height="Auto" />
+                </Grid.RowDefinitions>
+                <Grid.ColumnDefinitions>
+                    <ColumnDefinition Width="0.051*" />
+                    <ColumnDefinition Width="0.898*" />
+                    <ColumnDefinition Width="0.051*" />
+                </Grid.ColumnDefinitions>
+                <BoxView Grid.Row="0"
+                         Grid.Column="1"
+                         Color="#20303030"
+                         HeightRequest="4" />
+                <ProgressBar x:Name="Progressbar"
+                             Grid.Row="0"
+                             Grid.ColumnSpan="3"
+                             Grid.Column="0"
+                             Progress="{Binding Progress}" />
+                <Label x:Name="CurrentTime" Grid.Row="1"
+                       Grid.Column="0"
+                       HorizontalOptions="StartAndExpand"
+                       Text="{Binding CurrentTime, Converter={viewModels:TimeSpanConverter}}"
+                       TextColor="White"
+                       FontSize="Small" />
+                <Label x:Name="TotalTime" Grid.Row="1"
+                       Grid.Column="2"
+                       HorizontalOptions="EndAndExpand"
+                       Text="{Binding TotalTime, Converter={viewModels:TimeSpanConverter}}"
+                       TextColor="White"
+                       FontSize="Small" />
+                <Image x:Name="BackImage" Grid.Row="2"
+                       Grid.Column="0"
+                       HorizontalOptions="StartAndExpand"
+                       Source="btn_viewer_control_back_normal.png"
+                       VerticalOptions="Center" />
+                <Label x:Name="BackButton" Grid.Row="2"
+                       Grid.Column="0"
+                       HorizontalOptions="StartAndExpand"
+                       Opacity="0.1"
+                       VerticalOptions="Fill"
+                       WidthRequest="100"
+                       IsEnabled="{Binding IsSeekingSupported}" />
+                <Image x:Name="PlayImage" Grid.Row="2"
+                       Grid.Column="1"
+                       HorizontalOptions="Center"
+                       Source="btn_viewer_control_pause_normal.png"
+                       VerticalOptions="Center" />
+                <Button x:Name="PlayButton" Grid.Row="2"
+                        Grid.Column="1"
+                        Opacity="0.1"
+                        HorizontalOptions="Center"
+                        VerticalOptions="Fill"
+                        WidthRequest="100" />
+                <Image x:Name="ForwardImage" Grid.Row="2"
+                       Grid.Column="2"
+                       Source="btn_viewer_control_forward_normal.png"
+                       HorizontalOptions="EndAndExpand"
+                       VerticalOptions="Center" />
+                <Label x:Name="ForwardButton" Grid.Row="2"
+                       Grid.Column="2"
+                       Opacity="0.1"
+                       HorizontalOptions="EndAndExpand"
+                       VerticalOptions="Fill"
+                       WidthRequest="100"
+                       IsEnabled="{Binding IsSeekingSupported}" />
+            </Grid>
+            <ActivityIndicator x:Name="LoadingIndicator"
+                               Grid.Row="0"
+                               Grid.RowSpan="3"
+                               Color="White"
+                               InputTransparent="True"
+                               VerticalOptions="Center"
+                               HorizontalOptions="Center"
+                               IsVisible="{Binding Loading}"
+                               IsRunning="{Binding Loading}"
+                               HeightRequest="100"
+                               WidthRequest="100" />
+        </Grid>
+    </ContentPage.Content>
+</ContentPage>

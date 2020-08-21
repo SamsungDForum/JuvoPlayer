@@ -1,0 +1,24 @@
+{
+  "Columns": 5,
+  "FrameDuration": 5.0,
+  "FrameHeight": 180,
+  "FrameWidth": 320,
+  "Rows": 5,
+  "Storyboards": [
+    {
+      "Begin": 0.0,
+      "Filename": "bolid0000.jpg",
+      "FramesCount": 25
+    },
+    {
+      "Begin": 125.0,
+      "Filename": "bolid0001.jpg",
+      "FramesCount": 25
+    },
+    {
+      "Begin": 250.0,
+      "Filename": "bolid0002.jpg",
+      "FramesCount": 2
+    }
+  ]
+}

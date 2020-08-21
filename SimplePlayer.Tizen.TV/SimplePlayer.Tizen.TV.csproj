@@ -1,0 +1,33 @@
+<Project Sdk="Tizen.NET.Sdk/1.0.9">
+  <!-- Property Group for Tizen50 Project -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFramework>tizen50</TargetFramework>
+    <Version>1.5.5</Version>
+    <LangVersion>7.3</LangVersion>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugType>portable</DebugType>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugType>None</DebugType>
+  </PropertyGroup>
+  <ItemGroup>
+    <Folder Include="lib\" />
+    <Folder Include="res\" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\JuvoPlayer\JuvoPlayer.csproj" />
+  </ItemGroup>
+  <!-- Include Nuget Package for Tizen Project building -->
+  <ItemGroup>
+    <PackageReference Include="Xamarin.Forms" Version="4.4.0.991640" />
+  </ItemGroup>
+  <Target Name="UpdateVersion" BeforeTargets="PrepareForBuild">
+    <XmlPeek XmlInputPath="..\JuvoPlayer\JuvoPlayer.csproj" Query="/Project/PropertyGroup/Version[1]/text()">
+      <Output TaskParameter="Result" ItemName="JuvoPlayerVersion" />
+    </XmlPeek>
+    <XmlPoke XmlInputPath="SimplePlayer.Tizen.TV.csproj" Query="/Project/PropertyGroup/Version" Value="@(JuvoPlayerVersion)" />
+    <XmlPoke XmlInputPath="tizen-manifest.xml" Query="/x:manifest/@version" Value="@(JuvoPlayerVersion)" Namespaces="&lt;Namespace Prefix='x' Uri='http://tizen.org/ns/packages' /&gt;" />
+  </Target>
+</Project>
