@@ -349,9 +349,6 @@ namespace JuvoPlayer.Player.EsPlayer
                     default:
                         throw new InvalidOperationException($"Play called in invalid state: {state}");
                 }
-                StartClockGenerator();
-                SubscribeBufferingEvent();
-                SetState(PlayerState.Playing, token);
 
                 SetState(PlayerState.Playing, token);
                 logger.Info("End");
@@ -378,8 +375,7 @@ namespace JuvoPlayer.Player.EsPlayer
             if (currentState != ESPlayer.ESPlayerState.Playing)
                 return;
 
-            // Don't pass buffering events in paused state.
-            UnsubscribeBufferingEvent();
+            PausePlayback();
         }
 
         /// <summary>
@@ -404,19 +400,6 @@ namespace JuvoPlayer.Player.EsPlayer
             {
                 logger.Error(ioe);
             }
-        }
-
-        private Task GetPlayingStateCompletionTask(CancellationToken token)
-        {
-            var currentState = player.GetState();
-            if (currentState == ESPlayer.ESPlayerState.Playing)
-                return Task.CompletedTask;
-
-            logger.Info($"Player state {currentState}. Creating Playing state notifier");
-
-            // Wait for playback resume. 
-            _playStateNotifier = new TaskCompletionSource<object>();
-            return _playStateNotifier.Task.WithCancellation(token);
         }
 
         public async Task Seek(TimeSpan time)
@@ -890,20 +873,8 @@ namespace JuvoPlayer.Player.EsPlayer
             }
 
             stateChangedSubject.OnNext(newState);
-            OnStateChanged(newState);
         }
 
-        private void OnStateChanged(PlayerState currentState)
-        {
-            if (currentState == PlayerState.Playing)
-            {
-                if (_playStateNotifier == null)
-                    return;
-
-                logger.Info($"Notifying {_playStateNotifier?.Task.Status}");
-                _playStateNotifier?.TrySetResult(null);
-            }
-        }
         /// <summary>
         /// Method executes PrepareAsync on ESPlayer.
         /// </summary>
@@ -922,7 +893,6 @@ namespace JuvoPlayer.Player.EsPlayer
                     SetState(PlayerState.Prepared, token);
                     return;
                 }
-
             }
             catch (InvalidOperationException ioe)
             {
@@ -978,8 +948,6 @@ namespace JuvoPlayer.Player.EsPlayer
             return true;
         }
 
-            return (needDataTcs.Task, handler);
-        }
 
         private (TaskCompletionSource<object> needDataTcs, Action<ESPlayer.StreamType> asyncHandler) PrepareStreamStart(params ESPlayer.StreamType[] streams)
         {
@@ -1200,7 +1168,6 @@ namespace JuvoPlayer.Player.EsPlayer
             StopClockGenerator();
             StopTransfer();
             DisableInput();
-
             activeTaskCts.Cancel();
             logger.Info("End");
         }
@@ -1237,7 +1204,7 @@ namespace JuvoPlayer.Player.EsPlayer
             logger.Info("End");
         }
 
-        private Task AsyncOperationCompletions()
+        private void WaitForAsyncOperationsCompletion()
         {
             IAsyncResult asyncCompletion = AsyncOperationCompletions().WithoutException(logger);
             WaitHandle.WaitAll(new[] { asyncCompletion.AsyncWaitHandle });
@@ -1245,9 +1212,11 @@ namespace JuvoPlayer.Player.EsPlayer
             logger.Info("End");
         }
 
-        private async Task CompleteDispose()
+        public void Dispose()
         {
-            // IAsyncDisposable (poor man's version)
+            if (isDisposed)
+                return;
+
             logger.Info("");
 
             DetachEventHandlers();

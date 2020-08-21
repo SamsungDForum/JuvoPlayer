@@ -263,16 +263,11 @@ namespace JuvoPlayer.DataProviders.RTSP
                 Logger.Error(msg);
                 rtspErrorSubject.OnNext(msg);
             }
-            catch (Exception ex)
-            when (!(ex is OperationCanceledException || ex is TaskCanceledException || ex is ChannelClosedException))
+            catch (Exception e)
             {
                 Logger.Error(e);
                 rtspErrorSubject.OnNext($"Connection error {e.Message}");
             }
-            finally
-            {
-                // Send EOS
-                PushChunk(null);
 
             return false;
         }
