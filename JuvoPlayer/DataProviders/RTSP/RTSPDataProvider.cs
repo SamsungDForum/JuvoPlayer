@@ -24,6 +24,7 @@ using JuvoLogger;
 using JuvoPlayer.Common;
 using JuvoPlayer.Demuxers;
 using JuvoPlayer.Subtitles;
+using static JuvoPlayer.Utils.TaskExtensions;
 
 namespace JuvoPlayer.DataProviders.RTSP
 {
@@ -132,8 +133,8 @@ namespace JuvoPlayer.DataProviders.RTSP
 
         public void Stop()
         {
-            // RTSP Data provider.. unstoppable!
-            // Original client model implies Stop by disposure. 
+            Logger.Info("");
+            rtspClient.Stop();
         }
 
         public void Start()
@@ -163,12 +164,13 @@ namespace JuvoPlayer.DataProviders.RTSP
         {
             Logger.Info("");
 
-            Task.Run(async () =>
-            {
-                await rtspClient.Stop();
-                rtspClient.Dispose();
-                demuxerController.Dispose();
-            });
+            IAsyncResult rtspCompletion = rtspClient.Stop().WithoutException(Logger);
+            WaitHandle.WaitAll(new[] { rtspCompletion.AsyncWaitHandle });
+
+            rtspClient.Dispose();
+            demuxerController.Dispose();
+
+            Logger.Info("Done");
         }
 
         public List<StreamDescription> GetStreamsDescription(StreamType streamType)

@@ -25,6 +25,7 @@ namespace JuvoPlayer.Tests.UnitTests
     class TSSubtitleFormatResolver
     {
         [Test]
+        [Category("Positive")]
         public void ResolveByPath_SrtPath_ReturnSrtFormat()
         {
             var subtitleFormatResolver = new SubtitleFormatResolver();
@@ -35,6 +36,7 @@ namespace JuvoPlayer.Tests.UnitTests
         }
 
         [Test]
+        [Category("Negative")]
         public void ResolveByPath_InvalidPath_ReturnInvalidFormat()
         {
             var subtitleFormatResolver = new SubtitleFormatResolver();
@@ -45,6 +47,7 @@ namespace JuvoPlayer.Tests.UnitTests
         }
 
         [Test]
+        [Category("Positive")]
         public void ResolveByMimeType_WebVttMimeType_ReturnsWebVttFormat()
         {
             var subtitleFormatResolver = new SubtitleFormatResolver();
@@ -55,6 +58,7 @@ namespace JuvoPlayer.Tests.UnitTests
         }
 
         [Test]
+        [Category("Negative")]
         public void ResolveByMimeType_InvalidMimeType_ReturnsInvalidFormat()
         {
             var subtitleFormatResolver = new SubtitleFormatResolver();
@@ -65,6 +69,7 @@ namespace JuvoPlayer.Tests.UnitTests
         }
 
         [Test]
+        [Category("Positive")]
         public void Resolve_SrtSubtitleInfo_ReturnsSrtFormat()
         {
             var subtitleFormatResolver = new SubtitleFormatResolver();

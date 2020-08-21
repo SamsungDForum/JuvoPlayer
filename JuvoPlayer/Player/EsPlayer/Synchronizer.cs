@@ -68,6 +68,9 @@ namespace JuvoPlayer.Player.EsPlayer
             };
         }
 
+        public TimeSpan GetPts(StreamType stream) =>
+            _streamSyncData[(int)stream].Pts ?? TimeSpan.Zero;
+
         private static void ResetTransferChunk(SynchronizationData streamState, TimeSpan delay, bool keyFramesSeen)
         {
             streamState.TransferredDuration = TimeSpan.Zero;
@@ -113,7 +116,7 @@ namespace JuvoPlayer.Player.EsPlayer
 
         private async Task StreamSync(SynchronizationData streamState, CancellationToken token)
         {
-            var playerClock = _playerClockSource.LastClock;
+            var playerClock = _playerClockSource.Clock;
 
             var clockDiff = streamState.Dts - playerClock - StreamClockMinimumOverhead;
             if (clockDiff <= TimeSpan.Zero)
@@ -131,12 +134,12 @@ namespace JuvoPlayer.Player.EsPlayer
 
         private bool IsPlayerClockRunning() =>
             _streamSyncData[(int)StreamType.Video].FirstKeyFramePts.HasValue &&
-            _playerClockSource.LastClock >= _streamSyncData[(int)StreamType.Video].FirstKeyFramePts;
+            _playerClockSource.Clock >= _streamSyncData[(int)StreamType.Video].FirstKeyFramePts;
 
         private bool IsTransferredDurationCompleted(SynchronizationData streamState)
         {
             return (streamState.SyncState == SynchronizationState.PlayerClockSynchronize)
-                ? streamState.Pts - _playerClockSource.LastClock >= StreamClockMaximumOverhead
+                ? streamState.Pts - _playerClockSource.Clock >= StreamClockMaximumOverhead
                 : streamState.TransferredDuration >= streamState.NeededDuration;
         }
 
@@ -171,7 +174,7 @@ namespace JuvoPlayer.Player.EsPlayer
                     // Use running clock to switch from ClockStart to PlayerClock synchronization
                     if (!IsPlayerClockRunning()) return;
 
-                    Logger.Info($"{streamState.StreamType}: Clock started {_playerClockSource.LastClock}");
+                    Logger.Info($"{streamState.StreamType}: Clock started {_playerClockSource.Clock}");
                     _streamSyncBarrier.RemoveParticipant();
                     streamState.SyncState = SynchronizationState.PlayerClockSynchronize;
                     return;

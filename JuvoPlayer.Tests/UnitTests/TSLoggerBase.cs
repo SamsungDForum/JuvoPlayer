@@ -25,6 +25,7 @@ namespace JuvoPlayer.Tests.UnitTests
     class TSLoggerBase
     {
         [Test]
+        [Category("Positive")]
         public void TestLoggerBase()
         {
             var dummyChannel = "channel";
@@ -55,7 +56,7 @@ namespace JuvoPlayer.Tests.UnitTests
         }
 
         [Test]
-        [Description("Convenient test for ConsoleLogger class. Tester must check logs manually.")]
+        [Category("Positive")]
         public void TestConsoleLogger()
         {
             var dummyChannel = "channel";
@@ -65,12 +66,14 @@ namespace JuvoPlayer.Tests.UnitTests
         }
 
         [Test]
+        [Category("Negative")]
         public void TestConstructorWithNull()
         {
             Assert.Throws<ArgumentNullException>(() => new DummyLogger(null, LogLevel.Fatal));
         }
 
         [Test]
+        [Category("Negative")]
         public void TestInvalidLogLevel()
         {
             Assert.Throws<ArgumentOutOfRangeException>(() => new DummyLogger("channel", (LogLevel) int.MinValue));

@@ -42,6 +42,7 @@ namespace JuvoPlayer.Tests.UnitTests
         }
 
         [Test]
+        [Category("Positive")]
         public void TestConfigureWithDefaultLevels()
         {
             LoggerManager.Configure(CreateLogger);
@@ -55,6 +56,7 @@ namespace JuvoPlayer.Tests.UnitTests
         }
 
         [Test]
+        [Category("Positive")]
         public void TestConfigureWithValidConfigFile()
         {
             var contents = LoadConfig("logging_valid.config");
@@ -71,6 +73,7 @@ namespace JuvoPlayer.Tests.UnitTests
         }
 
         [Test]
+        [Category("Negative")]
         public void TestConfigureWithNull()
         {
             // configData cannot be null
@@ -88,6 +91,7 @@ namespace JuvoPlayer.Tests.UnitTests
         }
 
         [Test]
+        [Category("Positive")]
         public void TestConfigureMultipleTimes()
         {
             var contents = LoadConfig("logging_valid.config");
@@ -108,6 +112,7 @@ namespace JuvoPlayer.Tests.UnitTests
         }
 
         [Test]
+        [Category("Positive")]
         public void TestGetInstanceBeforeConfigure()
         {
             Assert.DoesNotThrow(() => LoggerManager.GetInstance());
