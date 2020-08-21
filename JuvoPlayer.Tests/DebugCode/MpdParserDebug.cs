@@ -58,6 +58,7 @@ namespace JuvoPlayer.Tests.DebugCode
 
         [Test]
         [Ignore("Disabled temporarily")]
+        [Category("Positive")]
         public async Task DEBUG_MpdParser()
         {
             LoggerBase CreateLogger(string channel, LogLevel level) => new DummyLogger(channel, level);

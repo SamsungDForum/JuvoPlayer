@@ -15,12 +15,14 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+using System;
 using System.Reactive.Linq;
 using System.Reactive.Threading.Tasks;
 using System.Threading.Tasks;
 
 namespace JuvoPlayer.Tests.Utils
 {
+    [Serializable]
     public class StopOperation : TestOperation
     {
         public override bool Equals(object obj)

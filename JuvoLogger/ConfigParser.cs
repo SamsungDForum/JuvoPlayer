@@ -17,34 +17,42 @@
 
 using System;
 using System.Collections.Generic;
-using System.IO;
+using System.Linq;
+using IniParser.Model;
+using IniParser.Parser;
 
 namespace JuvoLogger
 {
     public class ConfigParser
     {
-        public Dictionary<string, LogLevel> LoggingLevels { get; } 
+        public Dictionary<string, LogLevel> LoggingLevels { get; }
+
+        private Dictionary<string, LogLevel> CreateDictionary(in IniData contents) =>
+            contents["LogLevel"].ToDictionary(
+                entry => entry.KeyName,
+                entry => Enum.TryParse(entry.Value, true, out LogLevel level) ? level : LogLevel.Info);
+
+        public ConfigParser(in IniData contents)
+        {
+            if (contents == null)
+                throw new ArgumentNullException();
+
+            LoggingLevels = CreateDictionary(contents);
+        }
 
         public ConfigParser(string contents)
         {
             if (contents == null)
                 throw new ArgumentNullException();
 
-            LoggingLevels = new Dictionary<string, LogLevel>();
-
-            using (var reader = new StringReader(contents))
+            try
             {
-                string line = null;
-                while ((line = reader.ReadLine()) != null)
-                {
-                    var splitLine = line.Split('=');
-                    if (splitLine.Length != 2)
-                        continue;
-                    var channel = splitLine[0];
-                    var levelString = splitLine[1];
-
-                    if (Enum.TryParse(levelString, true, out LogLevel level)) LoggingLevels[channel] = level;
-                }
+                var parser = new IniDataParser();
+                LoggingLevels = CreateDictionary(parser.Parse(contents));
+            }
+            catch (IniParser.Exceptions.ParsingException)
+            {
+                LoggingLevels = new Dictionary<string, LogLevel>();
             }
         }
     }

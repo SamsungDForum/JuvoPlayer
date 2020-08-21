@@ -3,13 +3,13 @@
     <OutputType>Library</OutputType>
     <TargetFrameworks>netcoreapp2.0;netstandard2.0;tizen50</TargetFrameworks>
     <TizenCreateTpkOnBuild>false</TizenCreateTpkOnBuild>
-    <Version>1.5.4</Version>
+    <Version>1.5.5</Version>
     <PackageReleaseNotes>Release to be presented to the public. It will be uploaded to the SDF GitHub site.</PackageReleaseNotes>
     <Company>SRPOL MVS</Company>
     <Description>Reference for video streaming Tizen .Net TV applications.</Description>
     <Copyright>Samsung Electronics</Copyright>
-    <AssemblyVersion>1.5.4.0</AssemblyVersion>
-    <FileVersion>1.5.4.0</FileVersion>
+    <AssemblyVersion>1.5.5.0</AssemblyVersion>
+    <FileVersion>1.5.5.0</FileVersion>
     <SignAssembly>false</SignAssembly>
     <LangVersion>7.3</LangVersion>
   </PropertyGroup>

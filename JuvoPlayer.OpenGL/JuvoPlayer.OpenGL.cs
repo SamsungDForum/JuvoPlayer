@@ -144,7 +144,7 @@ namespace JuvoPlayer.OpenGL
             _resourceLoader = ResourceLoader.GetInstance();
             _resourceLoader.LoadResources(
                 Path.GetDirectoryName(Path.GetDirectoryName(Current.ApplicationInfo.ExecutablePath)),
-                HandleLoadingFinished);
+                HandleLoadingError, HandleLoadingFinished);
             _metricsHandler = new MetricsHandler();
             SetMetrics();
             SetMenuFooter();
@@ -323,6 +323,15 @@ namespace JuvoPlayer.OpenGL
                 ShowMenu(true);
             }
         }
+        
+        private Action HandleLoadingError(string message)
+        {
+            return async () =>
+            {
+                await DisplayAlert("Resources loading error", message, "OK");
+                Exit();
+            };
+        }
 
         private void HandleExternalPlaybackStart()
         {
@@ -340,7 +349,7 @@ namespace JuvoPlayer.OpenGL
             HandlePlaybackStart();
         }
 
-        public async void DisplayAlert(string title, string body, string button)
+        private async Task DisplayAlert(string title, string body, string button)
         {
             ShowAlert(title, body, button);
             await AwaitDisplayAlert();
@@ -496,7 +505,7 @@ namespace JuvoPlayer.OpenGL
                     {
                         Logger?.Info($"Playback Error: {message}");
                         ReturnToMainMenu();
-                        DisplayAlert("Playback Error", message, "OK");
+                        DisplayAlert("Playback Error", message, "OK").ConfigureAwait(true);
                     });
 
                 Player.BufferingProgress()

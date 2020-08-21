@@ -19,6 +19,7 @@ using System.Threading.Tasks;
 using JuvoLogger;
 using Xamarin.Forms;
 using XamarinPlayer.Tizen.TV.Services;
+using XamarinPlayer.Tizen.TV.ViewModels;
 using XamarinPlayer.Tizen.TV.Views;
 
 namespace XamarinPlayer.Tizen.TV
@@ -27,9 +28,8 @@ namespace XamarinPlayer.Tizen.TV
     {
         private string _deepLinkUrl;
         private bool _isInForeground;
-        
-        private static Task _prepareTask;
         private static NavigationPage AppMainPage { get; set; }
+        private static ContentListPage ContentPage { get; set; }
 
         private static readonly ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
 
@@ -37,9 +37,11 @@ namespace XamarinPlayer.Tizen.TV
         {
             MainPage = new NavigationPage();
             AppMainPage = MainPage as NavigationPage;
-            var loadingScreenPage = new LoadingScreen();
-            var loadingScreenTask = AppMainPage.PushAsync(loadingScreenPage);
-            _prepareTask = PrepareContent(loadingScreenPage, loadingScreenTask);
+            ContentPage = new ContentListPage(AppMainPage)
+            {
+                BindingContext = new ContentListPageViewModel(new DialogService())
+            };
+            AppMainPage.PushAsync(ContentPage);
         }
 
         protected override void OnStart()
@@ -96,11 +98,17 @@ namespace XamarinPlayer.Tizen.TV
             Logger.Info("");
             while (true)
             {
-                if (AppMainPage.CurrentPage is IContentPayloadHandler handler && handler.HandleUrl(url))
+                if (AppMainPage.CurrentPage is IContentPayloadHandler handler && await handler.HandleUrl(url))
                     return;
                 var page = await AppMainPage.PopAsync();
                 if (page == null)
+                {
+                    await (new DialogService()).ShowError(
+                        "Could not find content with url: " + url + ". Returning to the main page.",
+                        "Could not find content. ", "OK", null);
+                    await AppMainPage.PushAsync(ContentPage);
                     return;
+                }
             }
         }
     }
