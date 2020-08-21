@@ -55,6 +55,7 @@ namespace JuvoPlayer.Player.EsPlayer
         private readonly AsyncBarrier<bool> _streamSyncBarrier = new AsyncBarrier<bool>();
         private readonly PlayerClockProvider _playerClockSource;
         private readonly Subject<TimeSpan> _ptsSubject = new Subject<TimeSpan>();
+
         public Synchronizer(PlayerClockProvider playerClockSource)
         {
             _playerClockSource = playerClockSource;

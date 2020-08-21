@@ -99,9 +99,6 @@ namespace XamarinPlayer.Tizen.TV.Views
             var cacheService = DependencyService.Get<ISKBitmapCacheService>();
             _skBitmapCache = cacheService.GetCache();
 
-            var cacheService = DependencyService.Get<ISKBitmapCacheService>();
-            _skBitmapCache = cacheService.GetCache();
-
             NavigationPage.SetHasNavigationBar(this, false);
         }
 
