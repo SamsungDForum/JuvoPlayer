@@ -33,6 +33,7 @@ namespace JuvoPlayer.Tests.UnitTests
     class TSHLSDataProvider
     {
         [Test]
+        [Category("Positive")]
         public void GetStreamsDescription_ClipWithNoSubtitles_ReturnsEmptyList()
         {
             var demuxerMock = Substitute.For<IDemuxerController>();
@@ -45,6 +46,7 @@ namespace JuvoPlayer.Tests.UnitTests
         }
 
         [Test]
+        [Category("Negative")]
         public void OnChangeActiveStream_UnknownSubtitles_ThrowsArgumentException()
         {
             var demuxerMock = Substitute.For<IDemuxerController>();
@@ -59,6 +61,7 @@ namespace JuvoPlayer.Tests.UnitTests
         }
 
         [Test]
+        [Category("Positive")]
         public async Task PacketReady_DemuxerSendsNullPacket_ProducesEOSPackets()
         {
             var demuxerStub = Substitute.For<IDemuxerController>();
@@ -76,6 +79,7 @@ namespace JuvoPlayer.Tests.UnitTests
         }
 
         [Test]
+        [Category("Positive")]
         public async Task Seek_Called_ResumesDemuxer()
         {
             var demuxerStub = Substitute.For<IDemuxerController>();

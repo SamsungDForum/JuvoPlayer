@@ -25,7 +25,6 @@ using System.Net.Http;
 using System.Threading.Tasks;
 using JuvoLogger;
 using Polly;
-using Polly.Retry;
 
 namespace JuvoPlayer.ResourceLoaders
 {
@@ -89,7 +88,7 @@ namespace JuvoPlayer.ResourceLoaders
                     (result, i) =>
                     {
                         _logger.Warn(
-                            $"Cannot download {_path} due to {result.Exception.Message}, retry count {i} of {retryCount}");
+                            $"Cannot download {_path} due to {result.Exception?.Message ?? result.Result.ReasonPhrase}, retry count {i} of {retryCount}");
                     })
                 .ExecuteAsync(() => HttpClient.GetAsync(_path));
             return _responseTask;

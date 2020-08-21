@@ -10,6 +10,7 @@ using ILogger = JuvoLogger.ILogger;
 using ElmSharp;
 using ReactNative.Modules.Core;
 using Newtonsoft.Json.Linq;
+using Tizen.Applications;
 
 
 namespace JuvoReactNative
@@ -31,12 +32,15 @@ namespace JuvoReactNative
         private IDisposable bufferingProgressSub;
         private IDisposable deepLinkSub;
         private IDeepLinkSender deepLinkSender;
+        private readonly SynchronizationContext mainSynchronizationContext;
 
-        public JuvoPlayerModule(ReactContext reactContext, IDeepLinkSender deepLinkSender)
+        public JuvoPlayerModule(ReactContext reactContext, IDeepLinkSender deepLinkSender,
+            SynchronizationContext mainSynchronizationContext)
             : base(reactContext)
         {
             seekLogic = new SeekLogic(this);
             this.deepLinkSender = deepLinkSender;
+            this.mainSynchronizationContext = mainSynchronizationContext;
             seekCompletedSub = seekLogic.SeekCompleted().Subscribe(message =>
             {
                 var param = new JObject();
@@ -126,11 +130,9 @@ namespace JuvoReactNative
 
                 case PlayerState.Playing:
                     value = "Playing";
-                    playbackTimer?.Change(0, interval); //resume progress info update
                     break;
                 case PlayerState.Paused:
                     value = "Paused";
-                    playbackTimer?.Change(Timeout.Infinite, Timeout.Infinite); //suspend progress info update
                     break;
 
                 // "Stop" clears active Player preventing dispatch of extra stop calls.
@@ -342,6 +344,15 @@ namespace JuvoReactNative
         {
             if (deepLinkSub == null)
                 deepLinkSub = deepLinkSender.DeepLinkReceived().Subscribe(OnDeepLinkReceived);
+        }
+
+        [ReactMethod]
+        public void ExitApp()
+        {
+            mainSynchronizationContext.Post(_ =>
+            {
+                Application.Current.Exit();
+            }, null);
         }
     }
 }

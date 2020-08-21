@@ -42,7 +42,7 @@ namespace JuvoPlayer.Tests.UnitTests
 
         public Task<Packet> DecryptPacket(EncryptedPacket packet, CancellationToken token) { return Task.FromResult(new Packet()); }
 
-        public Task WaitForInitialization(CancellationToken token) => Task.CompletedTask;
+        public Task GetInitializationTask() => Task.CompletedTask;
         public bool CanDecrypt() => true;
     }
 
@@ -64,6 +64,7 @@ namespace JuvoPlayer.Tests.UnitTests
         }
 
         [Test]
+        [Category("Negative")]
         public void OnAppendPacket_WhenNotConfigured_ThrowsInvalidOperationException()
         {
             using (var stream = CreatePacketStream(StreamType.Audio))
@@ -74,6 +75,7 @@ namespace JuvoPlayer.Tests.UnitTests
         }
 
         [Test]
+        [Category("Negative")]
         public void OnAppendPacket_WhenPacketTypeIsInvalid_ThrowsArgumentException()
         {
             using (var stream = CreatePacketStream(StreamType.Audio))
@@ -84,6 +86,7 @@ namespace JuvoPlayer.Tests.UnitTests
         }
 
         [Test]
+        [Category("Positive")]
         public void OnAppendPacket_WhenConfigured_CallsPlayerAdapter()
         {
             var codecExtraDataHandlerStub = Substitute.For<ICodecExtraDataHandler>();
@@ -103,6 +106,7 @@ namespace JuvoPlayer.Tests.UnitTests
         }
 
         [Test]
+        [Category("Positive")]
         public void OnAppendPacket_WhenConfigured_CallsContextExtraDataHandler()
         {
             var codecExtraDataHandlerStub = Substitute.For<ICodecExtraDataHandler>();
@@ -122,6 +126,7 @@ namespace JuvoPlayer.Tests.UnitTests
         }
 
         [Test]
+        [Category("Positive")]
         public void OnAppendPacket_WhenDrmSessionIsConfigured_CallsPlayerAdapter()
         {
             var codecExtraDataHandlerStub = Substitute.For<ICodecExtraDataHandler>();
@@ -148,6 +153,7 @@ namespace JuvoPlayer.Tests.UnitTests
         }
 
         [Test]
+        [Category("Negative")]
         public void OnStreamConfigChanged_WhenStreamConfigIsUnsupported_ThrowsArgumentException()
         {
             using (var stream = CreatePacketStream(StreamType.Audio))
@@ -158,6 +164,7 @@ namespace JuvoPlayer.Tests.UnitTests
         }
 
         [Test]
+        [Category("Negative")]
         public void OnStreamConfigChanged_WhenStreamConfigIsNull_ThrowsArgumentNullException()
         {
             using (var stream = CreatePacketStream(StreamType.Audio))
@@ -167,6 +174,7 @@ namespace JuvoPlayer.Tests.UnitTests
         }
 
         [Test]
+        [Category("Positive")]
         public void OnStreamConfigChanged_WhenStreamConfigIsValid_CallsContextExtraDataHandler()
         {
             var codecExtraDataHandlerStub = Substitute.For<ICodecExtraDataHandler>();

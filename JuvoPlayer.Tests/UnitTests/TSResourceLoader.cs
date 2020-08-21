@@ -29,6 +29,7 @@ namespace JuvoPlayer.Tests.UnitTests
     class TSResourceLoader
     {
         [Test]
+        [Category("Positive")]
         public void LoadAsNetworkResource_UrlIsValid_LoadsResource()
         {
             var httpMessageHandlerStub = Substitute.ForPartsOf<FakeHttpMessageHandler>();
@@ -43,6 +44,7 @@ namespace JuvoPlayer.Tests.UnitTests
         }
 
         [Test]
+        [Category("Positive")]
         public void LoadAsEmbeddedAssembly_AssemblyContainsExceptedResource_LoadsResource()
         {
             var resourceName = "resource";
@@ -66,6 +68,7 @@ namespace JuvoPlayer.Tests.UnitTests
 
         [TestCase("http://valid_http_uri")]
         [TestCase("https://valid_https_uri")]
+        [Category("Positive")]
         public void Load_PathPointsToNetworkResource_LoadsAsNetworkResource(string url)
         {
             var resourceLoader = Substitute.ForPartsOf<ResourceLoader>();
@@ -77,6 +80,8 @@ namespace JuvoPlayer.Tests.UnitTests
             Assert.That(receivedStream, Is.EqualTo(memoryStream));
         }
 
+        [Test]
+        [Category("Positive")]
         public void Load_PathDoesntPointToNetworkResource_LoadsAsEmbeddedResource()
         {
             var resourceLoader = Substitute.ForPartsOf<ResourceLoader>();

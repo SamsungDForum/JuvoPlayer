@@ -28,6 +28,7 @@ namespace JuvoPlayer.Tests.UnitTests
     class TSCue
     {
         [Test]
+        [Category("Negative")]
         public void Begin_GreaterThanEnd_ThrowsArgumentException()
         {
             Cue cue = new Cue();
@@ -38,6 +39,7 @@ namespace JuvoPlayer.Tests.UnitTests
         }
 
         [Test]
+        [Category("Negative")]
         public void Begin_EqualsEnd_ThrowsArgumentException()
         {
             Cue cue = new Cue
@@ -51,6 +53,7 @@ namespace JuvoPlayer.Tests.UnitTests
         }
 
         [Test]
+        [Category("Negative")]
         public void End_LessThanBegin_ThrowsArgumentException()
         {
             Cue cue = new Cue {Begin = TimeSpan.FromMinutes(20)};
@@ -61,6 +64,7 @@ namespace JuvoPlayer.Tests.UnitTests
         }
 
         [Test]
+        [Category("Negative")]
         public void End_EqualsBegin_ThrowsArgumentException()
         {
             Cue cue = new Cue { Begin = TimeSpan.FromMinutes(10) };
@@ -71,6 +75,7 @@ namespace JuvoPlayer.Tests.UnitTests
         }
 
         [Test]
+        [Category("Positive")]
         public void End_GreaterThanBegin_SetsSuccessfully()
         {
             Cue cue = new Cue { Begin = TimeSpan.FromMinutes(10) };
@@ -80,6 +85,7 @@ namespace JuvoPlayer.Tests.UnitTests
         }
 
         [Test]
+        [Category("Positive")]
         public void Begin_LessThanEnd_SetsSuccessfully()
         {
             Cue cue = new Cue { End = TimeSpan.FromMinutes(20) };
@@ -93,6 +99,7 @@ namespace JuvoPlayer.Tests.UnitTests
         [TestCase(15, 0)]
         [TestCase(20, 1)]
         [TestCase(25, 1)]
+        [Category("Positive")]
         public void Compare_VariousTimes_ReturnsExpectedValues(int timeInSeconds, int expectedResult)
         {
             Cue cue = new Cue

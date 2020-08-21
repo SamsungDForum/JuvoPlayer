@@ -15,10 +15,7 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-using System;
 using System.Collections.Generic;
-using System.Threading.Tasks;
-using Xamarin.Forms.GenGridView;
 using XamarinPlayer.Tizen.TV.Controls;
 using XamarinPlayer.Tizen.TV.Models;
 
@@ -27,12 +24,9 @@ namespace XamarinPlayer.Tizen.TV.Controllers
     public interface IContentGridController
     {
         ContentItem FocusedItem { get; }
-        GenGridView GenGrid { get; }
         void SetItemsSource(List<DetailContentData> source);
-        bool ScrollToNext();
-        bool ScrollToPrevious();
-        Task SetFocusedContent(ContentItem contentItem);
         void Subscribe();
         void Unsubscribe();
+        void SetFocusedContent(DetailContentData contentItem);
     }
 }

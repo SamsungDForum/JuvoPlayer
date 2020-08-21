@@ -19,6 +19,7 @@ using System;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
 using System.Threading;
+using System.Threading.Tasks;
 using JuvoPlayer.Common;
 using SkiaSharp;
 using SkiaSharp.Views.Forms;
@@ -183,6 +184,12 @@ namespace XamarinPlayer.Views
             // Consider adding a call Focus(Focusable Object) where focus would be set in one place
             // and error status could be handled.
             _keys.OnNext(e);
+            
+            if (e.Contains("Stop"))
+            {
+                Navigation.RemovePage(this);
+                return;
+            }
 
             if (e.Contains("Back") && !e.Contains("XF86PlayBack"))
             {
@@ -247,15 +254,8 @@ namespace XamarinPlayer.Views
                 }
                 else
                 {
-                    if (e.Contains("Stop"))
-                    {
-                        Navigation.RemovePage(this);
-                    }
-                    else
-                    {
-                        //Make the playback control bar visible on the screen
-                        Show();
-                    }
+                    //Make the playback control bar visible on the screen
+                    Show();
                 }
             }
         }
@@ -301,10 +301,10 @@ namespace XamarinPlayer.Views
             return true;
         }
 
-        public bool HandleUrl(string url)
+        public Task<bool> HandleUrl(string url)
         {
             var currentClipUrl = (BindingContext as PlayerViewModel)?.Source;
-            return currentClipUrl?.Equals(url) ?? false;
+            return Task.FromResult(currentClipUrl?.Equals(url) ?? false);
         }
 
         public void Suspend()

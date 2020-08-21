@@ -29,6 +29,7 @@ namespace JuvoPlayer.Tests.UnitTests
     public class TSFFmpegDemuxer
     {
         [Test]
+        [Category("Positive")]
         public async Task ReadPacket_InvokedWithSizeGreaterThanBufferSize_ReturnsAllData()
         {
             var glueStub = Substitute.For<IFFmpegGlue>();
@@ -48,6 +49,7 @@ namespace JuvoPlayer.Tests.UnitTests
         }
 
         [Test]
+        [Category("Positive")]
         public async Task ReadPacket_InvokedWithSizeLessThanBufferSize_ReturnsTrimmedData()
         {
             var glueStub = Substitute.For<IFFmpegGlue>();
@@ -68,6 +70,7 @@ namespace JuvoPlayer.Tests.UnitTests
 
         [TestCase(InitType.ForEs)]
         [TestCase(InitType.ForUrl)]
+        [Category("Positive")]
         public async Task Init_ClipDurationAvailable_ReturnsDuration(InitType initType)
         {
             var formatContextStub = Substitute.For<IAVFormatContext>();
@@ -88,6 +91,7 @@ namespace JuvoPlayer.Tests.UnitTests
 
         [TestCase(InitType.ForEs)]
         [TestCase(InitType.ForUrl)]
+        [Category("Positive")]
         public async Task Init_StreamConfigAvailable_ReturnsStreamConfig(InitType initType)
         {
             var expectedConfig = new VideoStreamConfig
@@ -114,6 +118,7 @@ namespace JuvoPlayer.Tests.UnitTests
 
         [TestCase(InitType.ForEs)]
         [TestCase(InitType.ForUrl)]
+        [Category("Positive")]
         public async Task Init_DrmInitDataAvailable_ReturnsDrmInitData(InitType initType)
         {
             var expectedData = new DRMInitData
@@ -139,6 +144,7 @@ namespace JuvoPlayer.Tests.UnitTests
 
         [TestCase(InitType.ForEs)]
         [TestCase(InitType.ForUrl)]
+        [Category("Negative")]
         public async Task Init_CalledSecondTime_ThrowsInvalidOperationException(InitType initType)
         {
             using (var demuxer = CreateFFmpegDemuxer())
@@ -149,6 +155,7 @@ namespace JuvoPlayer.Tests.UnitTests
         }
 
         [Test]
+        [Category("Negative")]
         public void NextPacket_CalledBeforeInit_ThrowsInvalidOperationException()
         {
             using (var demuxer = CreateFFmpegDemuxer())
@@ -159,6 +166,7 @@ namespace JuvoPlayer.Tests.UnitTests
 
         [TestCase(InitType.ForEs)]
         [TestCase(InitType.ForUrl)]
+        [Category("Positive")]
         public async Task Reset_Called_DeallocsAVFormatContext(InitType initType)
         {
             var formatContextMock = Substitute.For<IAVFormatContext>();
@@ -176,6 +184,7 @@ namespace JuvoPlayer.Tests.UnitTests
         }
 
         [Test]
+        [Category("Positive")]
         public async Task Reset_Called_DeallocsAVIOFormatContext()
         {
             var ioContextMock = Substitute.For<IAVIOContext>();
@@ -193,6 +202,7 @@ namespace JuvoPlayer.Tests.UnitTests
         }
 
         [Test]
+        [Category("Negative")]
         public void PushChunk_CalledBeforeInitForEs_ThrowsException()
         {
             var glueStub = Substitute.For<IFFmpegGlue>();
@@ -204,6 +214,7 @@ namespace JuvoPlayer.Tests.UnitTests
         }
 
         [Test]
+        [Category("Negative")]
         public async Task PushChunk_CalledAfterReset_ThrowsException()
         {
             var glueStub = Substitute.For<IFFmpegGlue>();

@@ -15,10 +15,12 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+using System.Threading.Tasks;
+
 namespace XamarinPlayer.Tizen.TV.Services
 {
     public interface IContentPayloadHandler
     {
-        bool HandleUrl(string url);
+        Task<bool> HandleUrl(string url);
     }
 }
