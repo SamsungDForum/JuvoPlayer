@@ -8,15 +8,13 @@
              xmlns:gg="clr-namespace:Xamarin.Forms.GenGridView;assembly=Xamarin.Forms.GenGridView"
              x:Class="XamarinPlayer.Tizen.TV.Views.ContentListPage"
              BackgroundColor="#000000">
-    <ContentPage.BindingContext>
-        <viewModels:ContentListPageViewModel />
-    </ContentPage.BindingContext>
     <ContentPage.Content>
         <AbsoluteLayout>
-            <ActivityIndicator Color="White" HeightRequest="100" WidthRequest="100" IsRunning="True"
-                               IsVisible="{Binding IsBusy}" AbsoluteLayout.LayoutBounds=".5,.5,.5,.5"
-                               AbsoluteLayout.LayoutFlags="All" />
-            <Grid IsVisible="{Binding IsBusy, Converter={viewModels:InvertBooleanConverter}}"
+            <controls:LoadingScreen IsVisible="{Binding IsActive, Converter={viewModels:InvertBooleanConverter}}"
+                                    HeightRequest="100" WidthRequest="100"
+                                    AbsoluteLayout.LayoutBounds="0.5,0.7,0.75,0.75"
+                                    AbsoluteLayout.LayoutFlags="All" />
+            <Grid IsVisible="{Binding IsActive}"
                   AbsoluteLayout.LayoutBounds="0,0,1,1" AbsoluteLayout.LayoutFlags="All">
                 <Grid.RowDefinitions>
                     <RowDefinition Height="7*" />
@@ -44,11 +42,11 @@
                                 HorizontalScrollBarVisibility="Never"
                                 VerticalScrollBarVisibility="Never"
                                 IsHorizontal="True">
-                                <gg:GenGridView.ItemTemplate>
-                                    <DataTemplate>
-                                        <controls:ContentItem/>
-                                    </DataTemplate>
-                                </gg:GenGridView.ItemTemplate>
+                    <gg:GenGridView.ItemTemplate>
+                        <DataTemplate>
+                            <controls:ContentItem />
+                        </DataTemplate>
+                    </gg:GenGridView.ItemTemplate>
                 </gg:GenGridView>
             </Grid>
         </AbsoluteLayout>

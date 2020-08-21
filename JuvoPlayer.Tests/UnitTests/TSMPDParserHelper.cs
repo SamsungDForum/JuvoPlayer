@@ -27,7 +27,6 @@ using System.Xml;
 using System.Xml.Serialization;
 using MpdParser.Node;
 using MpdParser.Node.Writers;
-using NUnit.Framework;
 
 namespace JuvoPlayer.Tests.UnitTests
 {
@@ -621,14 +620,14 @@ namespace JuvoPlayer.Tests.UnitTests
 
             if (input.Range != null)
                 item.Ranges = Array.ConvertAll(input.Range,
-                    new Converter<RangeType, Range>(ConvertRanges));
+                    new Converter<RangeType, MpdParser.Node.Range>(ConvertRanges));
 
             item.MetricsAttr = input.metrics;
 
             return item;
         }
 
-        protected static Range ConvertRanges(RangeType input)
+        protected static MpdParser.Node.Range ConvertRanges(RangeType input)
         {
             RangeWriter item = new RangeWriter();
 

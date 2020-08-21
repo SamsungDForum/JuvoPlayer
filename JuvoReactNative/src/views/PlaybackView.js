@@ -59,7 +59,7 @@ export default class PlaybackView extends React.Component {
     this.handleFastForwardKey = this.handleFastForwardKey.bind(this);
     this.handleRewindKey = this.handleRewindKey.bind(this);
     this.getFormattedTime = this.getFormattedTime.bind(this);
-    this.handleInfoHiden = this.handleInfoHiden.bind(this);
+    this.handleInfoHidden = this.handleInfoHidden.bind(this);
     this.requestInfoShow = this.requestInfoShow.bind(this);
     this.clearInfoRedrawCallabckID = this.clearInfoRedrawCallabckID.bind(this);
     this.scheduleTheHideAndRedrawCallbacks = this.scheduleTheHideAndRedrawCallbacks.bind(this);
@@ -112,9 +112,9 @@ export default class PlaybackView extends React.Component {
   resetPlaybackStatus() {
     this.JuvoPlayer.Log('resetPlaybackStatus()');
     this.resetPlaybackTime();
-    this.handleInfoHiden();
     this.playbackStarted = false;
     this.showSettingsView = false;
+    this.handleInfoHidden();
     this.playerState = 'Idle';
     this.inProgressDescription = 'Please wait...';
     this.JuvoPlayer.StopPlayback();
@@ -129,21 +129,23 @@ export default class PlaybackView extends React.Component {
     this.props.switchView('Previous');
   }
   handleSeek() {
-    if (this.playerState == 'Paused') return false;
     this.operationInProgress = true;
     this.inProgressDescription = 'Seeking...';
     this.requestInfoShow();
-    return true;
   }
   handleFastForwardKey() {
-    if (this.handleSeek()) this.JuvoPlayer.Forward();
+    this.handleSeek();
+    this.JuvoPlayer.Forward();
   }
   handleRewindKey() {
-    if (this.handleSeek()) this.JuvoPlayer.Rewind();
+    this.handleSeek();
+    this.JuvoPlayer.Rewind();
   }
-  handleInfoHiden() {
-    this.requestInfoHide();
-    this.redraw();
+  handleInfoHidden() {
+    if(!this.showSettingsView) {
+      this.requestInfoHide();
+      this.redraw();
+    }
   }
   handleSettingsViewDisappeared() {
     this.showSettingsView = false;
@@ -268,7 +270,6 @@ export default class PlaybackView extends React.Component {
     }
     this.showSettingsView = this.streamsData.Audio !== null && this.streamsData.Video !== null && this.streamsData.Subtitle !== null;
     if (this.showSettingsView) {
-      this.requestInfoShow();
       this.redraw();
     }
   }
@@ -315,7 +316,7 @@ export default class PlaybackView extends React.Component {
     }
   }
   scheduleTheHideAndRedrawCallbacks() {
-    this.infoHideCallbackID = setTimeout(this.handleInfoHiden, 10000);
+    this.infoHideCallbackID = setTimeout(this.handleInfoHidden, 10000);
     this.infoRedrawCallbackID = this.setIntervalImmediately(this.redraw, 500);
   }
   setIntervalImmediately(func, interval) {

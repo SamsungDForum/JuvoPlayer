@@ -55,9 +55,9 @@ namespace XamarinPlayer.Tizen.TV.ViewModels
         private bool _loading;
         private SubSkBitmap _previewFrame;
         private SKSize? _previewFrameSize;
-        private SettingsViewModel _audio = new SettingsViewModel {Type = StreamType.Audio};
-        private SettingsViewModel _video = new SettingsViewModel {Type = StreamType.Video};
-        private SettingsViewModel _subtitles = new SettingsViewModel {Type = StreamType.Subtitle};
+        private SettingsViewModel _audio = new SettingsViewModel { Type = StreamType.Audio };
+        private SettingsViewModel _video = new SettingsViewModel { Type = StreamType.Video };
+        private SettingsViewModel _subtitles = new SettingsViewModel { Type = StreamType.Subtitle };
 
         public event PropertyChangedEventHandler PropertyChanged;
         public ICommand PlayOrPauseCommand => new Command(PlayOrPause);
@@ -232,7 +232,7 @@ namespace XamarinPlayer.Tizen.TV.ViewModels
                 if (_audio.SelectedIndex != value && value != -1)
                 {
                     _audio.SelectedIndex = value;
-                    var stream = Audio.Source[_audio.SelectedIndex];
+                    var stream = _audio.Source[_audio.SelectedIndex];
 
                     Player.ChangeActiveStream(stream);
                     OnPropertyChanged();
@@ -242,13 +242,13 @@ namespace XamarinPlayer.Tizen.TV.ViewModels
 
         public int VideoSelectedIndex
         {
-            get => Video.SelectedIndex;
+            get => _video.SelectedIndex;
             set
             {
-                if (Video.SelectedIndex != value && value != -1)
+                if (_video.SelectedIndex != value && value != -1)
                 {
-                    Video.SelectedIndex = value;
-                    var stream = Video.Source[Video.SelectedIndex];
+                    _video.SelectedIndex = value;
+                    var stream = _video.Source[_video.SelectedIndex];
 
                     Player.ChangeActiveStream(stream);
                     OnPropertyChanged();
@@ -410,6 +410,7 @@ namespace XamarinPlayer.Tizen.TV.ViewModels
         private void BindStreamSettings(SettingsViewModel settings)
         {
             var streams = Player.GetStreamsDescription(settings.Type);
+            if (streams.Count == 0) return;
 
             settings.Source = streams;
             settings.SelectedIndex = 0;

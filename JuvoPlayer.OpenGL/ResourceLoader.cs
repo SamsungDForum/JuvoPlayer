@@ -53,7 +53,7 @@ namespace JuvoPlayer.OpenGL
             return _instance ?? (_instance = new ResourceLoader());
         }
 
-        public async void LoadResources(string fullExecutablePath, Action doAfterFinishedLoading = null)
+        public async void LoadResources(string fullExecutablePath, Func<string, Action> onLoadingErrorHandler, Action doAfterFinishedLoading = null)
         {
             IsQueueingFinished = false;
             IsLoadingFinished = false;
@@ -63,10 +63,19 @@ namespace JuvoPlayer.OpenGL
 
             var localResourcesDirPath = Path.Combine(fullExecutablePath, "res");
 
-            await LoadContentList(Paths.VideoClipJsonPath);
-
             LoadFonts(localResourcesDirPath);
             LoadIcons(localResourcesDirPath);
+            
+            try
+            {
+                await LoadContentList(Paths.VideoClipJsonPath);
+            }
+            catch (Exception e)
+            {
+                ScheduleOnMainThread(onLoadingErrorHandler(e.Message));
+                return;
+            }
+
             LoadTiles();
 
             IsQueueingFinished = true;
@@ -77,7 +86,7 @@ namespace JuvoPlayer.OpenGL
             return Encoding.ASCII.GetBytes(str);
         }
 
-        private void ScheduleToBeLoadedInMainThread(Action lambda)
+        private void ScheduleOnMainThread(Action lambda)
         {
             _synchronizationContext.Post(delegate { lambda.Invoke(); }, null);
         }
@@ -98,7 +107,7 @@ namespace JuvoPlayer.OpenGL
         {
             IsLoadingFinished = true;
             if(_doAfterFinishedLoading != null)
-                ScheduleToBeLoadedInMainThread(_doAfterFinishedLoading); // it's already called from the main thread since last job calls this method, but just to be safe let's schedule it for the main thread
+                ScheduleOnMainThread(_doAfterFinishedLoading); // it's already called from the main thread since last job calls this method, but just to be safe let's schedule it for the main thread
         }
 
         private async Task LoadContentList(string uri)

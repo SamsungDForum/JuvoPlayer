@@ -35,6 +35,7 @@ namespace JuvoPlayer.Tests.UnitTests
     {
         [TestCase(StartType.StartForEs)]
         [TestCase(StartType.StartForUrl)]
+        [Category("Positive")]
         public void Start_ClipDurationFound_PublishesClipDuration(StartType startType)
         {
             AsyncContext.Run(async () =>
@@ -56,6 +57,7 @@ namespace JuvoPlayer.Tests.UnitTests
 
         [TestCase(StartType.StartForEs)]
         [TestCase(StartType.StartForUrl)]
+        [Category("Positive")]
         public void Start_StreamConfigFound_PublishesStreamConfig(StartType startType)
         {
             AsyncContext.Run(async () =>
@@ -78,6 +80,7 @@ namespace JuvoPlayer.Tests.UnitTests
 
         [TestCase(StartType.StartForEs)]
         [TestCase(StartType.StartForUrl)]
+        [Category("Positive")]
         public void Start_DRMInitDataFound_PublishesDRMInitData(StartType startType)
         {
             AsyncContext.Run(async () =>
@@ -104,6 +107,7 @@ namespace JuvoPlayer.Tests.UnitTests
 
         [TestCase(StartType.StartForEs)]
         [TestCase(StartType.StartForUrl)]
+        [Category("Positive")]
         public void Start_PacketDemuxed_PublishesPacket(StartType startType)
         {
             AsyncContext.Run(async () =>
@@ -130,6 +134,7 @@ namespace JuvoPlayer.Tests.UnitTests
 
         [TestCase(StartType.StartForEs)]
         [TestCase(StartType.StartForUrl)]
+        [Category("Positive")]
         public void Start_PacketsDemuxed_PublishesPackets(StartType startType)
         {
             AsyncContext.Run(async () =>
@@ -158,6 +163,7 @@ namespace JuvoPlayer.Tests.UnitTests
 
         [TestCase(StartType.StartForEs)]
         [TestCase(StartType.StartForUrl)]
+        [Category("Negative")]
         public void Start_DemuxerInitFails_PublishesDemuxerError(StartType startType)
         {
             AsyncContext.Run(async () =>
@@ -177,6 +183,7 @@ namespace JuvoPlayer.Tests.UnitTests
         }
 
         [Test]
+        [Category("Positive")]
         public void Reset_Called_ResetsDemuxer()
         {
             var demuxerMock = Substitute.For<IDemuxer>();
@@ -189,6 +196,7 @@ namespace JuvoPlayer.Tests.UnitTests
         }
 
         [Test]
+        [Category("Positive")]
         public void SetDataSource_DataSourceCompletes_SignalsEos()
         {
             AsyncContext.Run(async () =>
@@ -211,6 +219,7 @@ namespace JuvoPlayer.Tests.UnitTests
         }
 
         [Test]
+        [Category("Positive")]
         public void Flush_Called_ResetsDemuxer()
         {
             AsyncContext.Run(async () =>
@@ -226,6 +235,7 @@ namespace JuvoPlayer.Tests.UnitTests
         }
 
         [Test]
+        [Category("Positive")]
         public void Flush_CalledWhileChunkIsPending_ChunkIsDeliveredToDemuxer()
         {
             AsyncContext.Run(async () =>
@@ -247,6 +257,7 @@ namespace JuvoPlayer.Tests.UnitTests
 
         [TestCase(StartType.StartForEs)]
         [TestCase(StartType.StartForUrl)]
+        [Category("Positive")]
         public void Reset_Called_NextPacketNotCalledAfter(StartType startType)
         {
             AsyncContext.Run(async () =>
@@ -273,6 +284,7 @@ namespace JuvoPlayer.Tests.UnitTests
 
         [TestCase(StartType.StartForEs)]
         [TestCase(StartType.StartForUrl)]
+        [Category("Positive")]
         public void Pause_Called_DoesntRetrieveNextPacket(StartType startType)
         {
             AsyncContext.Run(async () =>
@@ -295,6 +307,7 @@ namespace JuvoPlayer.Tests.UnitTests
 
         [TestCase(StartType.StartForEs)]
         [TestCase(StartType.StartForUrl)]
+        [Category("Positive")]
         public void Resume_Called_CallsNextPacket(StartType startType)
         {
             AsyncContext.Run(async () =>
@@ -317,6 +330,7 @@ namespace JuvoPlayer.Tests.UnitTests
         }
 
         [Test]
+        [Category("Positive")]
         public void Reset_CalledWhileDataSourcePublishedChunk_SkipsPublishedChunk()
         {
             AsyncContext.Run(async () =>
@@ -338,6 +352,7 @@ namespace JuvoPlayer.Tests.UnitTests
         }
 
         [Test]
+        [Category("Positive")]
         public void Reset_CalledWhileFlushIsInProgress_CancelsFlush()
         {
             AsyncContext.Run(async () =>
@@ -369,6 +384,7 @@ namespace JuvoPlayer.Tests.UnitTests
         }
 
         [Test]
+        [Category("Positive")]
         public void Seek_Called_DemuxesNextPacket()
         {
             AsyncContext.Run(async () =>
@@ -391,6 +407,7 @@ namespace JuvoPlayer.Tests.UnitTests
         }
 
         [Test]
+        [Category("Positive")]
         public void Seek_Called_ListensForEos()
         {
             AsyncContext.Run(async () =>
@@ -412,6 +429,7 @@ namespace JuvoPlayer.Tests.UnitTests
         }
 
         [Test]
+        [Category("Positive")]
         public void Seek_CalledWhenPaused_DoesntDemuxNextPacket()
         {
             AsyncContext.Run(async () =>

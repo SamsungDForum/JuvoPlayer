@@ -13,6 +13,9 @@
     <DebugType>None</DebugType>
   </PropertyGroup>
   <ItemGroup>
+    <PackageReference Include="ini-parser-netstandard" Version="2.5.2" />
+  </ItemGroup>
+  <ItemGroup>
     <ProjectReference Include="..\JuvoLogger\JuvoLogger.csproj" />
   </ItemGroup>
 

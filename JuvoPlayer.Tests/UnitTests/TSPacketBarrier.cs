@@ -11,6 +11,7 @@ namespace JuvoPlayer.Tests.UnitTests
         private static readonly TimeSpan TimeFrame = TimeSpan.FromSeconds(1);
 
         [Test]
+        [Category("Negative")]
         public void Reached_CalledBeforeFirstPacket_ThrowsInvalidOperationException()
         {
             var barrier = new PacketBarrier(TimeFrame);
@@ -19,6 +20,7 @@ namespace JuvoPlayer.Tests.UnitTests
         }
 
         [Test]
+        [Category("Positive")]
         public void Reached_FirstPacketPushed_BarrierIsNotReached()
         {
             var barrier = new PacketBarrier(TimeFrame);
@@ -30,6 +32,7 @@ namespace JuvoPlayer.Tests.UnitTests
         }
 
         [Test]
+        [Category("Positive")]
         public void Reached_SecondPacketDoesntReachBarrier_BarrierIsNotReached()
         {
             var barrier = new PacketBarrier(TimeFrame);
@@ -43,6 +46,7 @@ namespace JuvoPlayer.Tests.UnitTests
         }
 
         [Test]
+        [Category("Positive")]
         public void Reached_SecondPacketReachesBarrier_BarrierIsReached()
         {
             var barrier = new PacketBarrier(TimeFrame);
@@ -56,6 +60,7 @@ namespace JuvoPlayer.Tests.UnitTests
         }
 
         [Test]
+        [Category("Positive")]
         public void Reached_SecondPacketIsNonDataPacket_BarrierIsNotReached()
         {
             var barrier = new PacketBarrier(TimeFrame);
@@ -69,6 +74,7 @@ namespace JuvoPlayer.Tests.UnitTests
         }
 
         [Test]
+        [Category("Negative")]
         public void TimeToNextFrame_CalledBeforeFirstPacket_ThrowsInvalidOperationException()
         {
             var barrier = new PacketBarrier(TimeFrame);
@@ -77,6 +83,7 @@ namespace JuvoPlayer.Tests.UnitTests
         }
 
         [Test]
+        [Category("Positive")]
         public void TimeToNextFrame_CalledWhenBarrierIsReached_ReturnsPositiveTime()
         {
             var barrier = new PacketBarrier(TimeFrame);
@@ -91,6 +98,7 @@ namespace JuvoPlayer.Tests.UnitTests
         }
 
         [Test]
+        [Category("Positive")]
         public void Reset_CalledAfterBarrierIsReached_ResetsBarrier()
         {
             var barrier = new PacketBarrier(TimeFrame);
