@@ -1,0 +1,28 @@
+<?xml version="1.0"?>
+<EncryptedPacket xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance" xmlns:xsd="http://www.w3.org/2001/XMLSchema">
+  <StreamType>Video</StreamType>
+  <Dts>PT9.968S</Dts>
+  <Pts>PT10.01S</Pts>
+  <IsEOS>false</IsEOS>
+  <IsKeyFrame>true</IsKeyFrame>
+  <KeyId>ZwcN137WXyKuKEcm34b3fw==</KeyId>
+  <Iv>ZWp6NMuQMIA=</Iv>
+  <Subsamples>
+    <Subsample>
+      <ClearData>5</ClearData>
+      <EncData>1</EncData>
+    </Subsample>
+    <Subsample>
+      <ClearData>5</ClearData>
+      <EncData>23</EncData>
+    </Subsample>
+    <Subsample>
+      <ClearData>5</ClearData>
+      <EncData>3</EncData>
+    </Subsample>
+    <Subsample>
+      <ClearData>5</ClearData>
+      <EncData>59583</EncData>
+    </Subsample>
+  </Subsamples>
+</EncryptedPacket>

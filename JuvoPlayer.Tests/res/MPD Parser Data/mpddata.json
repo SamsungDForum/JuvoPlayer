@@ -1,0 +1,38 @@
+[
+  {
+    "url": "http://yt-dash-mse-test.commondatastorage.googleapis.com/media/car-20120827-manifest.mpd",
+    "file": "car-20120827-manifest.mpd",
+    "ignore_mpd_comparison": false
+  },
+  {
+    "url": "http://dash.edgesuite.net/envivio/dashpr/clear/Manifest.mpd",
+    "file": "Manifest.mpd",
+    "ignore_mpd_comparison": false
+  },
+  {
+    "url": "http://yt-dash-mse-test.commondatastorage.googleapis.com/media/oops_cenc-20121114-signedlicenseurl-manifest.mpd",
+    "file": "oops_cenc-20121114-signedlicenseurl-manifest.mpd",
+    "ignore_mpd_comparison": false
+  },
+  {
+    "url": "http://dash.akamaized.net/dash264/TestCasesHEVC/1a/1/TOS_OnDemand_HEVC_MultiRate.mpd",
+    "file": "TOS_OnDemand_HEVC_MultiRate.mpd",
+    "ignore_mpd_comparison": false
+  },
+  {
+    "url": "http://dash.akamaized.net/dash264/TestCasesHEVC/2a/1/TOS_OnDemand_HEVC_MultiRes.mpd",
+    "file": "TOS_OnDemand_HEVC_MultiRes.mpd",
+    "ignore_mpd_comparison": false
+  },
+  {
+    "url": "http://profficialsite.origin.mediaservices.windows.net/c51358ea-9a5e-4322-8951-897d640fdfd7/tearsofsteel_4k.ism/manifest(format=mpd-time-csf)",
+    "file": "manifest(format=mpd-time-csf)",
+    "ignore_mpd_comparison": false
+  },
+  {
+    "url": "http://stream-srv.sprc.samsung.pl/pnacl/NaClPlayer/dashevc-main-2s.mpd",
+    "file": "dashevc-main-2s.mpd",
+    "ignore_mpd_comparison": false
+  }
+  
+]

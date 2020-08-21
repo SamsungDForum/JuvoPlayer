@@ -1,0 +1,36 @@
+﻿<?xml version="1.0" encoding="utf-8"?>
+<manifest package="JuvoReactNative" version="1.5.5" api-version="5" xmlns="http://tizen.org/ns/packages">
+  <feature name="http://tizen.org/feature/screen.size.normal.1080.1920">true</feature>
+  <profile name="tv" />
+  <app-control>
+    <src name="index.html" reload="disable" />
+    <operation name="http://samsung.com/appcontrol/operation/eden_resume" />
+  </app-control>
+  <ui-application appid="U8QfWFqM.JuvoReactNative" exec="JuvoReactNative.dll" multiple="false" nodisplay="false" taskmanage="true" splash-screen-display="true" type="dotnet" launch_mode="single">
+    <label>JuvoReactNative</label>
+    <icon>JuvoReactNativeTizenTV.png</icon>
+    <metadata key="http://samsung.com/tv/metadata/use.preview" value="endpoint_URL=https://raw.githubusercontent.com/SamsungDForum/JuvoPlayer/master/smarthubpreview/juvoplayerclipsJSON.json" />
+    <splash-screens>
+      <!--Orientation needs to be set to portrait due to the platform bug-->
+      <splash-screen src="JuvoReactNativeTizenTV_black.jpg" type="img" dpi="hdpi" orientation="portrait" indicator-display="false" />
+      <!--Copy of a file is needed, because APP installer doesn't allow to specify 2 splash screens with the same "src" attribute -->
+      <splash-screen src="JuvoReactNativeTizenTV_black_eden.jpg" type="img" dpi="hdpi" orientation="portrait" indicator-display="false" app-control-operation="http://samsung.com/appcontrol/operation/eden_resume" />
+    </splash-screens>
+  </ui-application>
+  <tv-info api-version="5.5.0">
+    <infolink>T-INFOLINK2019-1000</infolink>
+  </tv-info>
+  <shortcut-list />
+  <privileges>
+    <privilege>http://tizen.org/privilege/network.get</privilege>
+    <privilege>http://tizen.org/privilege/network.set</privilege>
+    <privilege>http://tizen.org/privilege/network.profile</privilege>
+    <privilege>http://tizen.org/privilege/mediastorage</privilege>
+    <privilege>http://tizen.org/privilege/externalstorage</privilege>
+    <privilege>http://tizen.org/privilege/internet</privilege>
+    <privilege>http://developer.samsung.com/privilege/drmplay</privilege>
+    <privilege>http://developer.samsung.com/privilege/drminfo</privilege>
+    <privilege>http://developer.samsung.com/privilege/esplay</privilege>
+  </privileges>
+  <provides-appdefined-privileges />
+</manifest>
