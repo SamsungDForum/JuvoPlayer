@@ -54,16 +54,16 @@ Enabling UDP Logger:
      * Source (Local host) port = 9998 (can be any available port, but the same as in the "config"->"tvip" port)
      * to destination  (10.0.2.15) port = 8081 (npm server port)
 
-  ##### Important
-  > Step 2. needs to be repeated every time the TV emulator reboots.
+      ##### Important
+      > Step 2. needs to be repeated every time the TV emulator reboots.
 
-  3. Edit package.json in the application root folder writing: 
-  ```javascript
-  "config": {
-    "tvip": "127.0.0.1:9998",
-    "mode": "Debug"
-  },
-  ```
+  3. Make sure package.json file located in the application root folder contains following lines:
+      ```javascript
+      "config": {
+        "tvip": "127.0.0.1:9998",
+        "mode": "Debug"
+      },
+      ```
   4. Type `yarn bundle --dev` command from the JuvoReactNative folder level.
   5. Delete the redundant assets folder (see the 'Setup instructions' section).
   6. Switch to 'Debug' build mode of Tizen .NET project (here it is named JuvoReactNative).
@@ -87,3 +87,43 @@ From now on You can modify JavaScript part of the application code and see the u
 //The "tvip": "192.168.137.4" needs to be replaced with the actual IP address of the developer's TV set.
   ```
 3. Includes all the steps from 4. to 10. described previously in the 'Launch TV emulator' section.
+
+### Xamarin HotReload
+HotReload allows updating xaml elements in real time. It is enabled by default in Debug mode.
+
+#### Setup
+1. Install HotReload extension corresponding to your IDE:
+
+    JetBrains Rider:
+    File -> Settings -> Plugins (pick "Marketplace" tab) -> search by "HotReload".
+
+    Visual Studio for WINDOWS:
+    Extensions -> Manage Extension -> search by "HotReload" -> Install extension and restart IDE
+    Tools -> Customize... -> Check box next to "Xamarin.Forms Hot Reload"
+    
+2. Click "Enable Xamarin.Forms Hot Reload" button.
+3. Install and run the XamarinPlayer app in Debug configuration.
+
+#### TV emulator
+1. Launch Tizen TV emulator.
+2. Set the port redirection in 'Emulator control panel->Network' menu: 
+     * Source (Local host) port = 8000
+     * to destination  (10.0.2.15) port = 8000
+    
+     >Step 2. needs to be repeated every time the TV emulator reboots.
+
+3. Follow all the steps in **Setup** section
+
+#### Additional Setup / Troubleshooting
+
+1. Cannot see extension buttons in Visual Studio
+
+    Visual Studio Installer -> More -> Modify -> Workloads -> Install "Visual Studio extensions development"
+    
+2. HotReload plugin doesn't work for JetBrains Rider
+
+    Check https://github.com/AndreiMisiukevich/HotReload/blob/master/Extension/Xamarin.Forms.HotReload.Extension.Rider/gradle.properties to see if your Rider version is currently supported.
+
+3. Useful for troubleshooting
+
+    Download https://github.com/AndreiMisiukevich/HotReload and manually launch the Xamarin.Forms.HotReload.Observer app.

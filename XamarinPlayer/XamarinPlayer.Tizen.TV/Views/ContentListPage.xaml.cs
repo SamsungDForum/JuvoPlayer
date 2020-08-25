@@ -84,8 +84,20 @@ namespace XamarinPlayer.Tizen.TV.Views
         private int _pendingUpdatesCount;
         private readonly SKBitmapCache _skBitmapCache;
         private SKBitmapRefCounted _backgroundBitmap;
-        private readonly IContentGridController _contentGridController;
+        private IContentGridController _contentGridController;
         private TaskCompletionSource<bool> _contentListLoaded = new TaskCompletionSource<bool>();
+
+#if DEBUG
+        void OnHotReloaded()
+        {
+            _contentGridController?.Unsubscribe();
+            _contentGridController = new ContentGridController(ContentGrid);
+            _contentGridController.SetItemsSource(ContentDataList as List<DetailContentData>);
+            _contentGridController.Subscribe();
+            _contentGridController.SetFocusedContent(FocusedContent as DetailContentData);
+            UpdateContentInfo();
+        }
+#endif
 
         public ContentListPage(NavigationPage page)
         {

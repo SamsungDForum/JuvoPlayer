@@ -37,7 +37,8 @@
   <!-- If solution already has PCL project, will reference -->
   <!-- Include Nuget Package for Tizen Project building -->
   <ItemGroup>
-    <PackageReference Include="Xamarin.Forms" Version="4.4.0.991640" />
+    <PackageReference Include="Xamarin.Forms" Version="4.5.0.617" />
+    <PackageReference Include="Xamarin.HotReload" Version="2.0.13" />
     <Reference Include="SkiaSharp.Views.Forms, Version=1.60.0.0, Culture=neutral, PublicKeyToken=null">
       <HintPath>packages\SkiaSharp.Views.Forms.dll</HintPath>
     </Reference>
