@@ -24,8 +24,8 @@ jobs:
           name: Build solution
           command: >
             dotnet build /nodeReuse:false
-            /p:"AuthorPath=${CERTS_PATH}/partner_2019.p12;AuthorPass=12345678"
-            /p:"DistributorPath=${CERTS_PATH}/tizen-distributor-signer.p12;DistributorPass=tizenpkcs12passfordsigner"
+            /p:"AuthorPath=${CERTS_PATH}/partner_2019.p12;AuthorPass=${AUTHOR_PASS}"
+            /p:"DistributorPath=${CERTS_PATH}/tizen-distributor-signer.p12;DistributorPass=${DISTRIBUTOR_PASS}"
       - run:
           name: Run unit tests
           command: dotnet test /nodeReuse:false JuvoPlayer.Tests/JuvoPlayer.Tests.csproj --logger:trx -f netcoreapp3.1 --verbosity normal
@@ -69,9 +69,7 @@ jobs:
             TPK_PATH=`find -name *.tpk` &&
             TPK_NAME=`basename ${TPK_PATH}` &&
             echo "export TPK_PATH=${TPK_PATH}" >> $BASH_ENV &&
-            echo "export TPK_NAME=${TPK_NAME}" >> $BASH_ENV &&
-            echo "export IP=106.120.45.62" >> $BASH_ENV &&
-            echo "export USER=bamboo-agent" >> $BASH_ENV
+            echo "export TPK_NAME=${TPK_NAME}" >> $BASH_ENV
       - run:
           name: Install dependencies
           command: >
@@ -80,16 +78,20 @@ jobs:
           name: Run ATR tests
           no_output_timeout: 20m
           command: >
-            scp -o StrictHostKeyChecking=no ${TPK_PATH} ${USER}@${IP}:/tmp/ &&
-            ssh -o StrictHostKeyChecking=no ${USER}@${IP} scp /tmp/${TPK_NAME} streamsrv:/srv/www/pnacl/juvo-player/ &&
-            ssh -o StrictHostKeyChecking=no ${USER}@${IP} rm -rf /home/bamboo-agent/atr/results/ &&
-            ssh -o StrictHostKeyChecking=no ${USER}@${IP} /home/bamboo-agent/atr/atr task --name "JuvoPlayerTest"
-            --tizen_version 6.0 --scenario JuvoPlayerTest --board tvboard_nikem --dlog_tags JuvoPlayer UT DOTNET_LAUNCHER
-            --image_url http://10.103.211.119/products/tv/official/2021/ONEMAIN/NikeM_ATSC/latest/images/T-NKMAKUC/updateNM.zip
+            scp -o StrictHostKeyChecking=no ${TPK_PATH} ${ATR_RUNNER_USER}@${ATR_RUNNER_IP}:/tmp/ &&
+            ssh -o StrictHostKeyChecking=no ${ATR_RUNNER_USER}@${ATR_RUNNER_IP} scp /tmp/${TPK_NAME} streamsrv:/srv/www/pnacl/juvo-player/ &&
+            ssh -o StrictHostKeyChecking=no ${ATR_RUNNER_USER}@${ATR_RUNNER_IP} rm -rf /home/${ATR_RUNNER_USER}/atr/results/  &&
+            ssh -o StrictHostKeyChecking=no ${ATR_RUNNER_USER}@${ATR_RUNNER_IP} /home/${ATR_RUNNER_USER}/atr/atr task
+            --name "JuvoPlayerTest"
+            --scenario JuvoPlayerTest
             --payload "{\\\"tpk\\\":\\\"http://stream-srv.sprc.samsung.pl/pnacl/juvo-player/${TPK_NAME}\\\"}"
+            --dlog_tags JuvoPlayer UT DOTNET_LAUNCHER
+            --image_url ${IMAGE_URL}
+            --tizen_version ${TIZEN_VERSION}
+            --board ${BOARD}
       - run:
           name: Download test results
-          command: scp -o StrictHostKeyChecking=no -r ${USER}@${IP}:/home/bamboo-agent/atr/results/* results/
+          command: scp -o StrictHostKeyChecking=no -r ${ATR_RUNNER_USER}@${ATR_RUNNER_IP}:/home/${ATR_RUNNER_USER}/atr/results/* results/
           when: always
       - store_artifacts:
           path: results
