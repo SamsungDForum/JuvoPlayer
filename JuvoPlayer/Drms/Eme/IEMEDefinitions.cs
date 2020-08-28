@@ -1,6 +1,6 @@
-/*!
+﻿/*!
  * https://github.com/SamsungDForum/JuvoPlayer
- * Copyright 2018, Samsung Electronics Co., Ltd
+ * Copyright 2020, Samsung Electronics Co., Ltd
  * Licensed under the MIT license
  *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
@@ -15,15 +15,32 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-using JuvoPlayer.Common;
+using System;
+using System.Runtime.InteropServices;
 
 namespace JuvoPlayer.Drms
 {
-    public interface IDrmHandler
+    internal unsafe struct DecryptionData
     {
-        bool SupportsType(string type);
-        bool SupportsSystemId(byte[] uuid);
-        string GetScheme(byte[] uuid);
-        IDrmSession CreateDRMSession(DRMInitData initData, DRMDescription drmDescription);
-    }
+        public bool IsEncrypted;
+        public bool IsSecure;
+        public byte[] KeyId;
+        public byte[] EncryptData;
+        public byte[] Iv;
+    };
+
+    [StructLayout(LayoutKind.Sequential, Pack = 8)]
+    internal struct MSD_SUBSAMPLE_INFO
+    {
+        public uint uBytesOfClearData;
+        public uint uBytesOfEncryptedData;
+    };
+
+
+    [StructLayout(LayoutKind.Sequential, Pack = 8)]
+    internal struct MSD_FMP4_DATA
+    {
+        public uint uSubSampleCount;
+        public IntPtr pSubSampleInfo;
+    };
 }

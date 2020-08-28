@@ -1,6 +1,6 @@
 /*!
  * https://github.com/SamsungDForum/JuvoPlayer
- * Copyright 2018, Samsung Electronics Co., Ltd
+ * Copyright 2020, Samsung Electronics Co., Ltd
  * Licensed under the MIT license
  *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
@@ -15,6 +15,8 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+using System;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using JuvoPlayer.Common;
@@ -30,25 +32,63 @@ namespace JuvoPlayer.Drms
         /// <exception cref="T:JuvoPlayer.Drms.DRMException">Session couldn't be initialized.</exception>
         Task Initialize();
 
-        /// <summary>Asynchronously decrypts a single <see cref="T:JuvoPlayer.Common.EncryptedPacket"></see>.</summary>
-        /// <param name="packet">Packet to decrypt.</param>
-        /// <param name="token">Cancellation token.</param>
-        /// <returns>A task, which will produce decrypted <see cref="T:JuvoPlayer.Common.Packet"></see>.</returns>
-        /// <exception cref="T:JuvoPlayer.Drms.DRMException">Session is not initialized or packet couldn't be decrypted.</exception>
-        Task<Packet> DecryptPacket(EncryptedPacket packet, CancellationToken token);
-
         /// <summary>
         /// Awaitable call for initialization completion.
         /// </summary>
+        /// <param name="token">Cancellation token</param>
+        /// <returns>Task which completes when initialization is done</returns>
+        /// <exception cref="OperationCancelledException"> is throw when initialization is terminated before
+        /// completion or when passed <see cref="token"/> gets cancelled.</exception>
         /// <exception cref=""></exception>
         /// <exception cref="T:JuvoPlayer.Drms.DRMException"> is thrown when session could not be initialized</exception>
         /// <exception cref="InvalidOperationException"> is thrown if this API is called prior to calling Initialize</exception>
-        Task GetInitializationTask();
+        Task<bool> WaitForInitialization(CancellationToken token);
+
+        /// <summary>
+        /// Sets session id
+        /// </summary>
+        /// <param name="sessionId">Session id</param>
+        void SetSessionId(string sessionId);
+
+        /// <summary>
+        /// Sets session's licence installation status as installed
+        /// </summary>
+        void SetLicenceInstalled();
+
+        /// <summary>
+        /// Returns DRM initialization data
+        /// </summary>
+        /// <returns>DRM initialization data</returns>
+        DrmInitData GetDrmInitData();
+
+        /// <summary>
+        /// Returns DRM description
+        /// </summary>
+        /// <returns>DRM description</returns>
+        DrmDescription GetDrmDescription();
+
+        /// <summary>
+        /// Returns session id
+        /// </summary>
+        /// <returns>Session id</returns>
+        string GetSessionId();
+
+        /// <summary>
+        /// Returns collection of keys
+        /// </summary>
+        /// <returns>Collection of keys</returns>
+        IEnumerable<byte[]> GetKeys();
 
         /// <summary>
         /// Returns initialization state of session
         /// </summary>
         /// <returns>True - License installed. False - No license</returns>
-        bool CanDecrypt();
+        bool IsInitialized();
+
+        /// <summary>
+        /// Returns CDM Instance associated with this session
+        /// </summary>
+        /// <returns>Returns session's CDM Instance</returns>
+        ICdmInstance CdmInstance { get; }
     }
 }

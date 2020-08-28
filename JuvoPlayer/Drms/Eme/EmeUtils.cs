@@ -1,6 +1,6 @@
 /*!
  * https://github.com/SamsungDForum/JuvoPlayer
- * Copyright 2018, Samsung Electronics Co., Ltd
+ * Copyright 2020, Samsung Electronics Co., Ltd
  * Licensed under the MIT license
  *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
@@ -19,9 +19,9 @@ using System;
 using System.Linq;
 using JuvoPlayer.Common;
 
-namespace JuvoPlayer.Drms.Cenc
+namespace JuvoPlayer.Drms
 {
-    public static class CencUtils
+    public static class EmeUtils
     {
         private static readonly string[] KeyIdSeparators = { " " };
 
@@ -108,23 +108,29 @@ namespace JuvoPlayer.Drms.Cenc
                 string.Equals(a.Type.ToString(), schemeName, StringComparison.CurrentCultureIgnoreCase)).Type;
         }
 
-        public static DRMInitDataType GetInitDataType(string initDataName)
+        public static DrmType GetDrmTypeFromKeySystemName(string keySystemName)
+        {
+            return AllDrmConstants.FirstOrDefault(a =>
+                string.Equals(a.KeySystemName, keySystemName, StringComparison.CurrentCultureIgnoreCase)).Type;
+        }
+
+        public static DrmInitDataType GetInitDataType(string initDataName)
         {
             if (initDataName == null)
-                return DRMInitDataType.Unknown;
+                return DrmInitDataType.Unknown;
 
             var initName = initDataName.ToLowerInvariant();
 
             switch (initName)
             {
                 case "mspr:pro":
-                    return DRMInitDataType.MsPrPro;
+                    return DrmInitDataType.MsPrPro;
 
                 case "cenc:pssh":
-                    return DRMInitDataType.Pssh;
+                    return DrmInitDataType.Pssh;
 
                 default:
-                    return DRMInitDataType.Unknown;
+                    return DrmInitDataType.Unknown;
             }
         }
 

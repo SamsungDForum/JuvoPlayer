@@ -51,7 +51,7 @@ namespace JuvoPlayer.Common
 
     }
 
-    public class DRMDescription
+    public class DrmDescription
     {
         public string Scheme { get; set; }
         public string LicenceUrl { get; set; }
@@ -67,7 +67,7 @@ namespace JuvoPlayer.Common
         public List<SubtitleInfo> Subtitles { get; set; }
         public string Poster { get; set; }
         public string Description { get; set; }
-        public List<DRMDescription> DRMDatas { get; set; }
+        public List<DrmDescription> DRMDatas { get; set; }
         public string SeekPreviewPath { get; set;}
         public string TilePreviewPath { get; set; }
     }

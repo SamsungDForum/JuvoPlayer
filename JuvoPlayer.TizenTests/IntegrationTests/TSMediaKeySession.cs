@@ -1,6 +1,6 @@
 /*!
  * https://github.com/SamsungDForum/JuvoPlayer
- * Copyright 2018, Samsung Electronics Co., Ltd
+ * Copyright 2020, Samsung Electronics Co., Ltd
  * Licensed under the MIT license
  *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
@@ -27,14 +27,13 @@ using System.Xml.Serialization;
 using JuvoLogger;
 using JuvoPlayer.Common;
 using JuvoPlayer.Drms;
-using JuvoPlayer.Drms.Cenc;
 using NUnit.Framework;
 using static JuvoPlayer.Tests.Utils.TaskExtensions;
 
 namespace JuvoPlayer.TizenTests.IntegrationTests
 {
     [TestFixture]
-    public class TSCencSession
+    public class TSMediaKeySession
     {
         private readonly ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
 
@@ -46,9 +45,9 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
 
         private static readonly string[] DrmTypes = {"Widevine", "PlayReady"};
 
-        private delegate DRMDescription DrmDescriptionDelegate();
+        private delegate DrmDescription DrmDescriptionDelegate();
 
-        private delegate DRMInitData DrmInitDataDelegate();
+        private delegate DrmInitData DrmInitDataDelegate();
 
         private class DrmConfiguration
         {
@@ -173,34 +172,34 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
             LoggerManager.RestoreForTests(savedLoggerManager);
         }
 
-        private static DRMDescription CreatePlayReadyDrmDescription()
+        private static DrmDescription CreatePlayReadyDrmDescription()
         {
             var licenceUrl =
                 "https://dash-mse-test.appspot.com/api/drm/playready?drm_system=playready&source=YOUTUBE&ip=0.0.0.0&ipbits=0&expire=19000000000&sparams=ip,ipbits,expire,drm_system,source,video_id&video_id=03681262dc412c06&signature=448279561E2755699618BE0A2402189D4A30B03B.0CD6A27286BD2DAF00577FFA21928665DCD320C2&key=test_key1";
-            var configuration = new DRMDescription()
+            var configuration = new DrmDescription()
             {
-                Scheme = CencUtils.GetScheme(PlayreadySystemId),
+                Scheme = EmeUtils.GetScheme(PlayreadySystemId),
                 LicenceUrl = licenceUrl,
                 KeyRequestProperties = new Dictionary<string, string>() {{"Content-Type", "text/xml; charset=utf-8"}},
             };
             return configuration;
         }
 
-        private static DRMDescription CreateWidevineDrmDescription()
+        private static DrmDescription CreateWidevineDrmDescription()
         {
             var licenceUrl = "https://proxy.uat.widevine.com/proxy?provider=widevine_test";
-            var configuration = new DRMDescription()
+            var configuration = new DrmDescription()
             {
-                Scheme = CencUtils.GetScheme(WidevineSystemId),
+                Scheme = EmeUtils.GetScheme(WidevineSystemId),
                 LicenceUrl = licenceUrl,
                 KeyRequestProperties = new Dictionary<string, string>() {{"Content-Type", "text/xml; charset=utf-8"}},
             };
             return configuration;
         }
 
-        private static DRMInitData CreatePlayReadyDrmInitData()
+        private static DrmInitData CreatePlayReadyDrmInitData()
         {
-            var drmInitData = new DRMInitData()
+            var drmInitData = new DrmInitData()
             {
                 InitData = initPlayReadyData,
                 SystemId = PlayreadySystemId,
@@ -209,9 +208,9 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
             return drmInitData;
         }
 
-        private static DRMInitData CreateWidevineDrmInitData()
+        private static DrmInitData CreateWidevineDrmInitData()
         {
-            var drmInitData = new DRMInitData()
+            var drmInitData = new DrmInitData()
             {
                 InitData = initWidevineData,
                 SystemId = WidevineSystemId,
@@ -220,10 +219,10 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
             return drmInitData;
         }
 
-        private DRMInitData CreateDrmInitData(string drmName) =>
+        private DrmInitData CreateDrmInitData(string drmName) =>
             DrmConfigurations[drmName].GetDrmInitData();
 
-        private DRMDescription CreateDrmDescription(string drmName) =>
+        private DrmDescription CreateDrmDescription(string drmName) =>
             DrmConfigurations[drmName].GetDrmDescription();
 
         private EncryptedPacket CreateEncryptedPacket(string drmName) =>
@@ -235,10 +234,10 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
             Logger.Info(drmName);
 
             var drmInitData = CreateDrmInitData(drmName);
-            var configuration = CreateDrmDescription(drmName);
-            configuration.LicenceUrl = null;
+            var drmDescription = CreateDrmDescription(drmName);
+            drmDescription.LicenceUrl = null;
 
-            Assert.Throws<NullReferenceException>(() => CencSession.Create(drmInitData, configuration));
+            Assert.Throws<NullReferenceException>(() => new MediaKeySession(drmInitData, drmDescription, new List<byte[]>(), new CdmInstance(EmeUtils.GetKeySystemName(drmInitData.SystemId))));
         }
 
         [Test, TestCaseSource(nameof(DrmTypes))]
@@ -247,18 +246,19 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
             Logger.Info(drmName);
 
             var drmInitData = CreateDrmInitData(drmName);
-            var configuration = CreateDrmDescription(drmName);
             drmInitData.InitData = null;
+            var drmDescription = CreateDrmDescription(drmName);
+
             Assert.ThrowsAsync<DrmException>(async () =>
             {
-                using (var drmSession = CencSession.Create(drmInitData, configuration))
+                using (var drmSession = new MediaKeySession(drmInitData, drmDescription, new List<byte[]>(), new CdmInstance(EmeUtils.GetKeySystemName(drmInitData.SystemId))))
                     await drmSession.Initialize();
             });
 
             drmInitData.InitData = initPlayReadyData.Take(initPlayReadyData.Length / 2).ToArray();
             Assert.ThrowsAsync<DrmException>(async () =>
             {
-                using (var drmSession = CencSession.Create(drmInitData, configuration))
+                using (var drmSession = new MediaKeySession(drmInitData, drmDescription, new List<byte[]>(), new CdmInstance(EmeUtils.GetKeySystemName(drmInitData.SystemId))))
                     await drmSession.Initialize();
             });
         }
@@ -269,10 +269,11 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
             Logger.Info(drmName);
 
             var drmInitData = CreateDrmInitData(drmName);
-            var configuration = CreateDrmDescription(drmName);
+            var drmDescription = CreateDrmDescription(drmName);
+
             Assert.DoesNotThrow(() =>
             {
-                var drmSession = CencSession.Create(drmInitData, configuration);
+                var drmSession = new MediaKeySession(drmInitData, drmDescription, new List<byte[]>(), new CdmInstance(EmeUtils.GetKeySystemName(drmInitData.SystemId)));
                 drmSession.Initialize();
                 drmSession.Dispose();
             });
@@ -290,7 +291,7 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
                     async Task DoWork(string drm)
                     {
                         var drmInitData = CreateDrmInitData(drm);
-                        var configuration = CreateDrmDescription(drm);
+                        var drmDescription = CreateDrmDescription(drmName);
 
                         var myId = Interlocked.Increment(ref id);
                         var signaled = false;
@@ -298,10 +299,11 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
                         try
                         {
                             Logger.Info($"Creating {drm} Session {myId}");
-                            using (var ses = CencSession.Create(drmInitData, configuration))
+
+                            using (var session = new MediaKeySession(drmInitData, drmDescription, new List<byte[]>(), new CdmInstance(EmeUtils.GetKeySystemName(drmInitData.SystemId))))
                             {
                                 Logger.Info($"Initializing {drm} Session {myId}");
-                                ses.Initialize();
+                                await session.Initialize();
 
                                 // Widevine cases - 15 concurrent sessions - individual session may take 60s+
                                 // to initialize when run @15 sessions.
@@ -309,7 +311,7 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
                                 {
                                     try
                                     {
-                                        await ses.GetInitializationTask().WithCancellation(cts.Token);
+                                        await session.WaitForInitialization(cts.Token);
                                     }
                                     catch (OperationCanceledException)
                                     {
@@ -357,13 +359,14 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
             Logger.Info(drmName);
 
             var drmInitData = CreateDrmInitData(drmName);
-            var configuration = CreateDrmDescription(drmName);
+            var drmDescription = CreateDrmDescription(drmName);
             var encryptedPacket = CreateEncryptedPacket(drmName);
 
-            using (var drmSession = CencSession.Create(drmInitData, configuration))
+            using (var drmSession = new MediaKeySession(drmInitData, drmDescription, new List<byte[]>(), new CdmInstance(EmeUtils.GetKeySystemName(drmInitData.SystemId))))
             {
                 await drmSession.Initialize();
-                using (var decrypted = await drmSession.DecryptPacket(encryptedPacket, CancellationToken.None))
+                ICdmInstance cdmInstance = drmSession.CdmInstance;
+                using (var decrypted = await cdmInstance.DecryptPacket(encryptedPacket, CancellationToken.None))
                 {
                     Assert.That(decrypted, Is.Not.Null);
                     Assert.That(decrypted, Is.InstanceOf<DecryptedEMEPacket>());

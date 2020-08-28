@@ -1,7 +1,7 @@
 /*!
  *
  * [https://github.com/SamsungDForum/JuvoPlayer])
- * Copyright 2019, Samsung Electronics Co., Ltd
+ * Copyright 2020, Samsung Electronics Co., Ltd
  * Licensed under the MIT license
  *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
@@ -17,7 +17,7 @@
  *
  */
 
-using JuvoPlayer.Drms.Cenc;
+using JuvoPlayer.Drms;
 using NUnit.Framework;
 
 namespace JuvoPlayer.Tests.UnitTests
@@ -37,7 +37,7 @@ namespace JuvoPlayer.Tests.UnitTests
                 0xab, 0x92, 0xe6, 0x5b, 0xe0, 0x88, 0x5f, 0x95,
             };
 
-            var received = CencUtils.SchemeIdUriToSystemId(schemeId);
+            var received = EmeUtils.SchemeIdUriToSystemId(schemeId);
 
             Assert.That(received, Is.EqualTo(expected));
         }
@@ -48,7 +48,7 @@ namespace JuvoPlayer.Tests.UnitTests
         {
             const string schemeId = "___invalid___";
 
-            var received = CencUtils.SchemeIdUriToSystemId(schemeId);
+            var received = EmeUtils.SchemeIdUriToSystemId(schemeId);
 
             Assert.That(received, Is.Null);
         }
@@ -59,7 +59,7 @@ namespace JuvoPlayer.Tests.UnitTests
         {
             const string schemeIdUri = "urn:uuid:9a04f079-9840-4286-ab92-e65be0885f95";
 
-            var received = CencUtils.SupportsSchemeIdUri(schemeIdUri);
+            var received = EmeUtils.SupportsSchemeIdUri(schemeIdUri);
 
             Assert.That(received, Is.True);
         }
@@ -70,7 +70,7 @@ namespace JuvoPlayer.Tests.UnitTests
         {
             const string schemeIdUri = "___invalid___";
 
-            var received = CencUtils.SupportsSchemeIdUri(schemeIdUri);
+            var received = EmeUtils.SupportsSchemeIdUri(schemeIdUri);
 
             Assert.That(received, Is.False);
         }
@@ -85,7 +85,7 @@ namespace JuvoPlayer.Tests.UnitTests
                 0xab, 0x92, 0xe6, 0x5b, 0xe0, 0x88, 0x5f, 0x95,
             };
 
-            var received = CencUtils.SupportsSystemId(systemId);
+            var received = EmeUtils.SupportsSystemId(systemId);
 
             Assert.That(received, Is.True);
         }
@@ -96,7 +96,7 @@ namespace JuvoPlayer.Tests.UnitTests
         {
             var systemId = new byte[] { };
 
-            var received = CencUtils.SupportsSystemId(systemId);
+            var received = EmeUtils.SupportsSystemId(systemId);
 
             Assert.That(received, Is.False);
         }
@@ -106,7 +106,7 @@ namespace JuvoPlayer.Tests.UnitTests
         [Category("Positive")]
         public void SupportsType_ValidType_ReturnsTrue(string drmType)
         {
-            var received = CencUtils.SupportsType(drmType);
+            var received = EmeUtils.SupportsType(drmType);
 
             Assert.That(received, Is.True);
         }
@@ -117,7 +117,7 @@ namespace JuvoPlayer.Tests.UnitTests
         {
             const string drmType = "___invalid___";
 
-            var received = CencUtils.SupportsType(drmType);
+            var received = EmeUtils.SupportsType(drmType);
 
             Assert.That(received, Is.False);
         }
@@ -132,7 +132,7 @@ namespace JuvoPlayer.Tests.UnitTests
                 0xab, 0x92, 0xe6, 0x5b, 0xe0, 0x88, 0x5f, 0x95,
             };
 
-            var received = CencUtils.GetKeySystemName(systemId);
+            var received = EmeUtils.GetKeySystemName(systemId);
 
             Assert.That(received, Is.EqualTo("com.microsoft.playready"));
         }
@@ -143,7 +143,7 @@ namespace JuvoPlayer.Tests.UnitTests
         {
             var systemId = new byte[] { };
 
-            var received = CencUtils.GetKeySystemName(systemId);
+            var received = EmeUtils.GetKeySystemName(systemId);
 
             Assert.That(received, Is.Null);
         }
@@ -158,7 +158,7 @@ namespace JuvoPlayer.Tests.UnitTests
                 0xab, 0x92, 0xe6, 0x5b, 0xe0, 0x88, 0x5f, 0x95,
             };
 
-            var received = CencUtils.GetScheme(systemId);
+            var received = EmeUtils.GetScheme(systemId);
 
             Assert.That(received, Is.EqualTo("playready"));
         }
@@ -169,17 +169,17 @@ namespace JuvoPlayer.Tests.UnitTests
         {
             var systemId = new byte[] { };
 
-            var received = CencUtils.GetScheme(systemId);
+            var received = EmeUtils.GetScheme(systemId);
 
             Assert.That(received, Is.EqualTo("unknown"));
         }
 
-        [TestCase("playready", CencUtils.DrmType.PlayReady)]
-        [TestCase("widevine", CencUtils.DrmType.Widevine)]
+        [TestCase("playready", EmeUtils.DrmType.PlayReady)]
+        [TestCase("widevine", EmeUtils.DrmType.Widevine)]
         [Category("Positive")]
-        public void GetDrmType_ValidType_ReturnsValid(string type, CencUtils.DrmType expected)
+        public void GetDrmType_ValidType_ReturnsValid(string type, EmeUtils.DrmType expected)
         {
-            var received = CencUtils.GetDrmType(type);
+            var received = EmeUtils.GetDrmType(type);
 
             Assert.That(received, Is.EqualTo(expected));
         }
@@ -190,9 +190,9 @@ namespace JuvoPlayer.Tests.UnitTests
         {
             const string type = "___invalid___";
 
-            var received = CencUtils.GetDrmType(type);
+            var received = EmeUtils.GetDrmType(type);
 
-            Assert.That(received, Is.EqualTo(CencUtils.DrmType.Unknown));
+            Assert.That(received, Is.EqualTo(EmeUtils.DrmType.Unknown));
         }
     }
 }

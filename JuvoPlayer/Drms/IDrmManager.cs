@@ -1,6 +1,6 @@
 /*!
  * https://github.com/SamsungDForum/JuvoPlayer
- * Copyright 2018, Samsung Electronics Co., Ltd
+ * Copyright 2020, Samsung Electronics Co., Ltd
  * Licensed under the MIT license
  *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
@@ -15,15 +15,29 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+using System.Threading.Tasks;
 using JuvoPlayer.Common;
 
 namespace JuvoPlayer.Drms
 {
     public interface IDrmManager
     {
-        void RegisterDrmHandler(IDrmHandler handler);
-        void UpdateDrmConfiguration(DRMDescription drmDescription);
-        void ClearCache();
-        IDrmSession CreateDRMSession(DRMInitData data);
+        /// <summary>
+        /// Sets new DrmDescription
+        /// </summary>
+        /// <param name="drmDescription">New DrmDescription</param>
+        Task UpdateDrmConfiguration(DrmDescription drmDescription);
+
+        /// <summary>
+        /// Clears and closes all created CDM Instances
+        /// </summary>
+        void Clear();
+
+        /// <summary>
+        /// Returns IDrmSession for given DRM initialization data
+        /// </summary>
+        /// <returns>IDrmSession for given DRM initialization data</returns>
+        /// <param name="data">DrmInitData identifying session</param>
+        Task<IDrmSession> GetDrmSession(DrmInitData data);
     }
 }

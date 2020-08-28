@@ -109,7 +109,7 @@ namespace Configuration
         public static TimeSpan MaxAnalyzeDuration { get; set; } = TimeSpan.FromSeconds(10);
     }
 
-    public static class CencSession
+    public static class CdmInstance
     {
         public static int MaxDecryptRetries { get; set; } = 5;
         public static TimeSpan DecryptBufferFullSleepTime { get; set; } = TimeSpan.FromMilliseconds(1000);
