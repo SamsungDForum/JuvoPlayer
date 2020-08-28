@@ -354,7 +354,7 @@ namespace JuvoPlayer.Player.EsPlayer
             }
             catch (OperationCanceledException)
             {
-                logger.Info($"{streamType}: Transfer canceled");
+                logger.Info($"{streamType}: Transfer cancelled");
             }
             catch (PacketSubmitException pse)
             {
@@ -447,17 +447,23 @@ namespace JuvoPlayer.Player.EsPlayer
         /// </exception>
         private async ValueTask PushEncryptedPacket(EncryptedPacket dataPacket, CancellationToken token)
         {
-            if (!dataPacket.DrmSession.CanDecrypt())
+            ICdmInstance cdmInstance = dataPacket.CdmInstance;
+
+            if (cdmInstance == null)
+                throw new InvalidOperationException("Decrypt called without CdmInstance");
+
+            Task sessionsInitializationsTask = cdmInstance.WaitForAllSessionsInitializations(token);
+            if (!sessionsInitializationsTask.IsCompleted)
             {
                 logger.Info($"{streamType}: DRM Initialization incomplete");
                 _bufferingSubject.OnNext(true);
-                await dataPacket.DrmSession.GetInitializationTask().WithCancellation(token);
+                await sessionsInitializationsTask;
                 _bufferingSubject.OnNext(false);
 
                 logger.Info($"{streamType}: DRM Initialization complete");
             }
 
-            using (var decryptedPacket = await dataPacket.Decrypt(token) as DecryptedEMEPacket)
+            using (var decryptedPacket = await cdmInstance.DecryptPacket(dataPacket, token) as DecryptedEMEPacket)
             {
                 // Continue pushing packet till success or terminal failure
                 for (; ; )

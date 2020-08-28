@@ -84,11 +84,11 @@ namespace JuvoPlayer.Demuxers.FFmpeg
             : TimeSpan.Zero;
 
 
-        public DRMInitData[] DRMInitData => GetDRMInitData();
+        public DrmInitData[] DRMInitData => GetDRMInitData();
 
-        private DRMInitData[] GetDRMInitData()
+        private DrmInitData[] GetDRMInitData()
         {
-            var result = new List<DRMInitData>();
+            var result = new List<DrmInitData>();
             if (formatContext->protection_system_data_count <= 0)
                 return result.ToArray();
             for (uint i = 0; i < formatContext->protection_system_data_count; ++i)
@@ -97,11 +97,11 @@ namespace JuvoPlayer.Demuxers.FFmpeg
                 if (systemData.pssh_box_size <= 0)
                     continue;
 
-                var drmData = new DRMInitData
+                var drmData = new DrmInitData
                 {
                     SystemId = systemData.system_id.ToArray(),
                     InitData = new byte[systemData.pssh_box_size],
-                    DataType = DRMInitDataType.Pssh,
+                    DataType = DrmInitDataType.Pssh,
                     KeyIDs = null   // Key are embedded in DataType.
                 };
 

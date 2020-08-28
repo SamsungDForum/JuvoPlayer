@@ -91,13 +91,13 @@ namespace JuvoPlayer.DataProviders.Dash
             return manifestProvider.ClipDurationChanged();
         }
 
-        public IObservable<DRMInitData> DRMInitDataFound()
+        public IObservable<DrmInitData> DRMInitDataFound()
         {
             return audioPipeline.OnDRMInitDataFound()
                 .Merge(videoPipeline.OnDRMInitDataFound());
         }
 
-        public IObservable<DRMDescription> SetDrmConfiguration()
+        public IObservable<DrmDescription> SetDrmConfiguration()
         {
             return audioPipeline.SetDrmConfiguration()
                 .Merge(videoPipeline.SetDrmConfiguration());

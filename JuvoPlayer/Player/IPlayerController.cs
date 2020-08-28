@@ -1,6 +1,6 @@
 /*!
  * https://github.com/SamsungDForum/JuvoPlayer
- * Copyright 2018, Samsung Electronics Co., Ltd
+ * Copyright 2020, Samsung Electronics Co., Ltd
  * Licensed under the MIT license
  *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
@@ -37,8 +37,8 @@ namespace JuvoPlayer.Player
 
         #region data_provider_slots
         void OnClipDurationChanged(TimeSpan duration);
-        void OnDRMInitDataFound(DRMInitData data);
-        void OnSetDrmConfiguration(DRMDescription description);
+        Task OnDrmInitDataFound(DrmInitData data);
+        Task OnSetDrmConfiguration(DrmDescription description);
         void OnStreamConfigReady(StreamConfig config);
         void OnPacketReady(Packet packet);
         void OnStreamError(string errorMessage);

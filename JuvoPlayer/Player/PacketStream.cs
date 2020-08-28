@@ -1,6 +1,6 @@
 /*!
  * https://github.com/SamsungDForum/JuvoPlayer
- * Copyright 2018, Samsung Electronics Co., Ltd
+ * Copyright 2020, Samsung Electronics Co., Ltd
  * Licensed under the MIT license
  *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
@@ -16,6 +16,7 @@
  */
 
 using System;
+using System.Threading.Tasks;
 using JuvoLogger;
 using JuvoPlayer.Common;
 using JuvoPlayer.Common.Utils.IReferenceCountableExtensions;
@@ -37,8 +38,7 @@ namespace JuvoPlayer.Player
         public PacketStream(StreamType streamType, IPlayer player, IDrmManager drmManager, ICodecExtraDataHandler handler)
         {
             this.streamType = streamType;
-            this.drmManager = drmManager ??
-                              throw new ArgumentNullException(nameof(drmManager), "drmManager cannot be null");
+            this.drmManager = drmManager ?? throw new ArgumentNullException(nameof(drmManager), "drmManager cannot be null");
             this.player = player ?? throw new ArgumentNullException(nameof(player), "player cannot be null");
             _codecHandler = handler ?? throw new ArgumentNullException(nameof(handler), "handler cannot be null");
         }
@@ -53,9 +53,12 @@ namespace JuvoPlayer.Player
 
             if (packet is EncryptedPacket encPacket)
             {
+                if (drmSession == null)
+                    return;
+
                 // Increment reference counter on DRM session
                 drmSession.Share();
-                encPacket.DrmSession = drmSession;
+                encPacket.CdmInstance = drmSession.CdmInstance;
             }
 
             _codecHandler.PrependCodecData(packet);
@@ -99,14 +102,14 @@ namespace JuvoPlayer.Player
             config = null;
         }
 
-        public void OnDRMFound(DRMInitData data)
+        public async Task OnDRMFound(DrmInitData data)
         {
             Logger.Info($"{streamType}");
 
             if (!forceDrmChange && drmSession != null)
                 return;
 
-            IDrmSession newSession = drmManager.CreateDRMSession(data);
+            IDrmSession newSession = await drmManager.GetDrmSession(data);
 
             // Do not reset wait for DRM event. If there is no valid session
             // do not want to append new data

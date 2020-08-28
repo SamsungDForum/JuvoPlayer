@@ -1,6 +1,6 @@
 /*!
  * https://github.com/SamsungDForum/JuvoPlayer
- * Copyright 2018, Samsung Electronics Co., Ltd
+ * Copyright 2020, Samsung Electronics Co., Ltd
  * Licensed under the MIT license
  *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
@@ -17,8 +17,6 @@
 
 using System;
 using System.Xml.Serialization;
-using System.Threading;
-using System.Threading.Tasks;
 using JuvoPlayer.Common;
 using JuvoPlayer.Common.Utils.IReferenceCountableExtensions;
 
@@ -38,15 +36,8 @@ namespace JuvoPlayer.Drms
         public byte[] Iv;
         public Subsample[] Subsamples;
         [XmlIgnore]
-        public IDrmSession DrmSession;
 
-        public Task<Packet> Decrypt(CancellationToken token)
-        {
-            if (DrmSession == null)
-                throw new InvalidOperationException("Decrypt called without DrmSession");
-
-            return DrmSession.DecryptPacket(this, token);
-        }
+        public ICdmInstance CdmInstance;
 
         public override void Prepend(byte[] prependData)
         {
@@ -67,7 +58,7 @@ namespace JuvoPlayer.Drms
             if (!IsDisposed)
             {
                 if (disposing)
-                    DrmSession?.Release();
+                    CdmInstance?.Release();
 
                 IsDisposed = true;
             }

@@ -35,7 +35,7 @@ namespace JuvoPlayer.Demuxers
 
         IObservable<StreamConfig> StreamConfigReady();
         IObservable<TimeSpan> ClipDurationFound();
-        IObservable<DRMInitData> DrmInitDataFound();
+        IObservable<DrmInitData> DrmInitDataFound();
         IObservable<Packet> PacketReady();
         IObservable<string> DemuxerError();
     }

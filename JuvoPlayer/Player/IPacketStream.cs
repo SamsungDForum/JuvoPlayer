@@ -16,6 +16,7 @@
  */
 
 using System;
+using System.Threading.Tasks;
 using JuvoPlayer.Common;
 
 namespace JuvoPlayer.Player
@@ -23,7 +24,7 @@ namespace JuvoPlayer.Player
     public interface IPacketStream : IDisposable
     {
         void OnAppendPacket(Packet packet);
-        void OnDRMFound(DRMInitData data);
+        Task OnDRMFound(DrmInitData data);
         void OnStreamConfigChanged(StreamConfig config);
         void OnClearStream();
     }

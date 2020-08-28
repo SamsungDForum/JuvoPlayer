@@ -35,7 +35,7 @@ namespace JuvoPlayer
         Task ChangeActiveStream(StreamDescription streamDescription);
         void DeactivateStream(StreamType streamType);
         List<StreamDescription> GetStreamsDescription(StreamType streamType);
-        void SetSource(ClipDefinition clip);
+        Task SetSource(ClipDefinition clip);
         void Start();
         void Stop();
         void Suspend();
