@@ -1,0 +1,36 @@
+<Project Sdk="Tizen.NET.Sdk/1.0.9">
+
+    <PropertyGroup>
+        <OutputType>Library</OutputType>
+        <TargetFramework>netstandard2.0</TargetFramework>
+        <RootNamespace>JuvoPlayer</RootNamespace>
+        <PackageReleaseNotes>Release to be presented to the public. It will be uploaded to the SDF GitHub site.</PackageReleaseNotes>
+        <Company>SRPOL MVS</Company>
+        <Description>Reference for video streaming Tizen .Net TV applications.</Description>
+        <Copyright>Samsung Electronics</Copyright>
+        <SignAssembly>false</SignAssembly>
+        <LangVersion>7.3</LangVersion>
+        <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+    </PropertyGroup>
+
+    <ItemGroup>
+        <PackageReference Include="Overby.Extensions.AsyncBinaryReaderWriter" Version="1.0.39" />
+        <PackageReference Include="Nito.AsyncEx.Context" Version="5.0.0-pre-05" />
+        <PackageReference Include="Nito.AsyncEx.Coordination" Version="5.0.0-pre-05" />
+        <PackageReference Include="System.Reactive" Version="4.1.2" />
+        <PackageReference Include="System.Memory" Version="4.5.3" />
+        <PackageReference Include="System.Threading.Channels" Version="4.5.0" />
+        <PackageReference Include="Tizen.NET.TV" Version="6.6.0.5599517" />
+        <PackageReference Include="Polly" Version="7.0.3" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <ProjectReference Include="..\JuvoLogger\JuvoLogger.csproj" />
+    </ItemGroup>
+
+    <ItemGroup>
+        <Folder Include="lib\">
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </Folder>
+    </ItemGroup>
+</Project>

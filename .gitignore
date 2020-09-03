@@ -1,0 +1,7 @@
+﻿# git ignore file
+.vs
+bin
+obj
+*.lock.json
+*.user
+*.swp

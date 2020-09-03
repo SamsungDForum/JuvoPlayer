@@ -1,0 +1,45 @@
+﻿/*!
+ * https://github.com/SamsungDForum/JuvoPlayer
+ * Copyright 2018, Samsung Electronics Co., Ltd
+ * Licensed under the MIT license
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT HOLDER BE LIABLE FOR ANY
+ * DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR CONSEQUENTIAL DAMAGES
+ * (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF SUBSTITUTE GOODS OR SERVICES;
+ * LOSS OF USE, DATA, OR PROFITS; OR BUSINESS INTERRUPTION) HOWEVER CAUSED AND
+ * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
+ * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
+ * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ */
+
+using System;
+using System.Collections.Generic;
+using System.Threading;
+using System.Threading.Tasks;
+using JuvoPlayer.Common;
+
+namespace JuvoPlayer.Demuxers
+{
+    public struct ClipConfiguration
+    {
+        public IList<StreamConfig> StreamConfigs { get; set; }
+        public IList<DrmInitData> DrmInitDatas { get; set; }
+        public TimeSpan Duration { get; set; }
+    }
+
+    public interface IDemuxer : IDisposable
+    {
+        Task Completion { get; }
+        bool IsInitialized();
+        Task<ClipConfiguration> InitForUrl(string url);
+        Task<ClipConfiguration> InitForEs();
+        Task<Packet> NextPacket(TimeSpan? minPts = null);
+        void PushChunk(byte[] chunk);
+        void Complete();
+        void Reset();
+        Task<TimeSpan> Seek(TimeSpan time, CancellationToken token);
+    }
+}
