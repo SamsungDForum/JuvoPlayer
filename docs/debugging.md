@@ -48,45 +48,19 @@ Enabling UDP Logger:
 ### React Native Tizen .Net Live coding  
 > It is possible to launch and work on the JuvoReactNative GUI using facebook 'hot module reloading' engine (https://facebook.github.io/react-native/blog/2016/03/24/introducing-hot-reloading.html). To configure it follow the guide below:
 
-#### TV emulator
-  1. Launch Tizen TV emulator. 
-  2. Set the port redirection in 'Emulator control panel->Network' menu: 
-     * Source (Local host) port = 9998 (can be any available port, but the same as in the "config"->"tvip" port)
-     * to destination  (10.0.2.15) port = 8081 (npm server port)
-
-      ##### Important
-      > Step 2. needs to be repeated every time the TV emulator reboots.
-
-  3. Make sure package.json file located in the application root folder contains following lines:
-      ```javascript
-      "config": {
-        "tvip": "127.0.0.1:9998",
-        "mode": "Debug"
-      },
-      ```
-  4. Type `yarn bundle --dev` command from the JuvoReactNative folder level.
-  5. Delete the redundant assets folder (see the 'Setup instructions' section).
-  6. Switch to 'Debug' build mode of Tizen .NET project (here it is named JuvoReactNative).
-  7. Start build (using MS Visual Studio)
-  8. Type command `npm run server`
-  9. Launch the application. You may use PC ctrl+F5 keys in MS Visual Studio or TV remote control keys. The latter case does make sense only in the TV set or TV emulator menu if the former (PC) launching have happened at least once.
-  10. Press 'red' button on the remote control to open the configuration menu. Select (one by one) the 'Enable hot module reloading', 'Enable live reload', 'Set host ip' (enter the IP address of Your host PC) and 'Reload JavaScript' options. Each option selection closes the menu, so You need to reopen it with the 'red' button on the remote controller per option.  
+#### Setup
+  1. Launch Tizen TV emulator or start physical TV unit. 
+  2. Type `yarn bundle --dev` command from the JuvoReactNative folder level.
+  3. Delete the redundant assets folder (see the 'Setup instructions' section).
+  4. Switch to 'Debug' build mode of JuvoReactNative project.
+  5. Start build (using MS Visual Studio)
+  6. Type command `npm run server`
+  7. Launch the application. You may use PC ctrl+F5 keys in MS Visual Studio or TV remote control keys. The latter case does make sense only in the TV set or TV emulator menu if the former (PC) launching have happened at least once.
+  8. Press 'red' button on the remote control to open the configuration menu. Select (one by one) the 'Enable hot module reloading', 'Enable live reload', 'Set host ip' (enter the IP address of Your host PC - in emulator case it's usually 10.0.2.2) and 'Reload JavaScript' options. Each option selection closes the menu, so You need to reopen it with the 'red' button on the remote controller per option.  
 
   > There is one more item: 'Start JS Remote debugging' with Chrome on the host PC. Selecting it from the menu triggers the application's button press event, so working with it may be confusing. 
 
 From now on You can modify JavaScript part of the application code and see the update result right after saving it on the PC.
-
-#### TV set unit
-1. Switch on the TV set
-2. Edit package.json in the application root folder writing: 
-  ```javascript
-  "config": {
-    "tvip": "192.168.137.4",  
-    "mode": "Debug"
-  },
-//The "tvip": "192.168.137.4" needs to be replaced with the actual IP address of the developer's TV set.
-  ```
-3. Includes all the steps from 4. to 10. described previously in the 'Launch TV emulator' section.
 
 ### Xamarin HotReload
 HotReload allows updating xaml elements in real time. It is enabled by default in Debug mode.
