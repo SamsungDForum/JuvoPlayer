@@ -21,6 +21,7 @@ import ContentCatalog from './src/views/ContentCatalog';
 import PlaybackView from './src/views/PlaybackView';
 import ResourceLoader from "./src/ResourceLoader";
 import InProgressView from "./src/views/InProgressView";
+import NotificationPopup from "./src/views/NotificationPopup";
 
 const {
   CardStack: NavigationCardStack,
@@ -67,8 +68,11 @@ export default class JuvoReactNative extends Component {
     this.onTVKeyDown = this.onTVKeyDown.bind(this);
     this.onTVKeyUp = this.onTVKeyUp.bind(this);
     this.currentView = this.currentView.bind(this);
+    this.finishLoading = this.finishLoading.bind(this);
+    this.renderProgress = this.renderProgress.bind(this);
     this.JuvoPlayer = NativeModules.JuvoPlayer;
     this.JuvoEventEmitter = new NativeEventEmitter(this.JuvoPlayer);
+    this.LoadingPromise = ResourceLoader.load();
   }
 
   onTVKeyDown(pressed) {
@@ -84,6 +88,16 @@ export default class JuvoReactNative extends Component {
     this.JuvoEventEmitter.addListener("onTVKeyUp", this.onTVKeyUp);
     this.JuvoEventEmitter.addListener("handleDeepLink", this.handleDeepLink);
     this.JuvoPlayer.AttachDeepLinkListener();
+  }
+
+  async componentDidMount() {
+    await this.finishLoading();
+  }
+
+  async finishLoading() {
+    await this.LoadingPromise;
+    this.setState({loading: false});
+    this.forceUpdate();
   }
 
   currentView()
@@ -110,8 +124,11 @@ export default class JuvoReactNative extends Component {
     this.selectedClipIndex = index;
   }
 
-  handleDeepLink(deepLink) {
+  async handleDeepLink(deepLink) {
     if (deepLink.url !== null) {
+      if (this.state.loading) {
+        await this.finishLoading();
+      }
       let index = ResourceLoader.clipsData.findIndex(e => e.url === deepLink.url);
       if (index !== -1) {
         this.setState({deepLinkIndex: index});
@@ -119,8 +136,6 @@ export default class JuvoReactNative extends Component {
         this.switchComponentsView('PlaybackView');
       }
     }
-
-    this.setState({loading: false});
   }
 
   handleAction(action) {
@@ -132,6 +147,22 @@ export default class JuvoReactNative extends Component {
       navState: newState
     });
     return true;
+  }
+
+  renderProgress() {
+    if (ResourceLoader.errorMessage)
+      return (
+          <View style={[styles.notification]}>
+            <NotificationPopup visible={true} onNotificationPopupDisappeared={this.JuvoPlayer.ExitApp} messageText={ResourceLoader.errorMessage} />
+          </View>
+      );
+    if (this.state.loading)
+      return (
+          <View style={[styles.notification]}>
+            <InProgressView visible={true} message="Please wait..."/>
+          </View>
+      );
+    return null;
   }
 
   renderRoute(key) {
@@ -151,6 +182,9 @@ export default class JuvoReactNative extends Component {
   }
 
   renderScene(props) {
+    var progress = this.renderProgress();
+    if (progress)
+      return progress;
     const ComponentToRender = this.renderRoute(props.scene.route.key);
     return (
       ComponentToRender
@@ -158,13 +192,6 @@ export default class JuvoReactNative extends Component {
   }
 
   render() {
-    if (this.state.loading) {
-      return (
-        <View style={{height: "100%", justifyContent: "center", alignItems: "center", backgroundColor: "black"}}>
-          <InProgressView visible={true} message="Please wait..."/>
-        </View>
-      );
-    } else {
       return (
         <NavigationCardStack
           cardStyle={{backgroundColor: 'transparent'}}
@@ -172,16 +199,15 @@ export default class JuvoReactNative extends Component {
           onNavigate={this.handleAction.bind(this)}
           renderScene={this.renderScene.bind(this)}/>
       );
-    }
   }
 }
 
 const styles = StyleSheet.create({
-  container: {
-    position: 'absolute',
-    backgroundColor: 'transparent',
-    width: Dimensions.get('window').width,
-    height: Dimensions.get('window').height,
+  notification: {
+    height: "100%", 
+    justifyContent: "center", 
+    alignItems: "center", 
+    backgroundColor: "black"
   }
 });
 

@@ -89,9 +89,8 @@ export default class ContentCatalog extends Component {
   }
   render() {
     const index = this.state.selectedClipIndex ? this.state.selectedClipIndex : 0;
-    const uri = ResourceLoader.tileNames[index];
-    const path = ResourceLoader.tilePathSelect(uri);
-    const overlay = ResourceLoader.tilesPath.contentDescriptionBackground;
+    const path = ResourceLoader.tilePaths[index];
+    const overlay = ResourceLoader.contentDescriptionBackground;
     this.keysListenningOff = !this.props.visibility;
     const showBigPicture = this.bigPictureVisible;
     return (
@@ -99,15 +98,15 @@ export default class ContentCatalog extends Component {
         <View style={[styles.page, { alignItems: 'flex-end' }]}>
           <View style={[styles.cell, { height: '70%', width: '70%' }]}>
             <HideableView visible={showBigPicture} duration={100}>
-              <ContentPicture source={uri} selectedIndex={index} path={path} onLoadEnd={this.handleBigPicLoadEnd} onLoadStart={this.handleBigPicLoadStart} width={'100%'} height={'100%'} />
+              <ContentPicture selectedIndex={index} path={path} onLoadEnd={this.handleBigPicLoadEnd} onLoadStart={this.handleBigPicLoadStart} width={'100%'} height={'100%'} />
             </HideableView>
-            <ContentPicture position={'absolute'} source={uri} selectedIndex={index} path={overlay} width={'100%'} height={'100%'} />
+            <ContentPicture position={'absolute'} source={overlay} selectedIndex={index} width={'100%'} height={'100%'} />
           </View>
         </View>
         <View style={[styles.page, { position: 'absolute' }]}>
           <ContentScroll
             onSelectedIndexChange={this.handleSelectedIndexChange}
-            contentURIs={ResourceLoader.tileNames}
+            contentURIs={ResourceLoader.tilePaths}
             keysListenningOff={this.keysListenningOff}
             deepLinkIndex={this.props.deepLinkIndex}
           />
