@@ -601,6 +601,7 @@ namespace JuvoPlayer.Player.EsPlayer
 
                         logger.Info($"Incompatible. Restarting player @{streamClock} Player clock was {playerPosition}");
                         await ChangeConfiguration(streamClock, token);
+                        return;
                     }
                     else
                     {
