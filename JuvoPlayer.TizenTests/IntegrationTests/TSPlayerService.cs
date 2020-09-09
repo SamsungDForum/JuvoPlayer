@@ -52,7 +52,10 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
 
         static TSPlayerServiceTestCaseSource()
         {
+            var panelPixelCount = Utils.SystemInfo.PanelPixelCount;
+
             allClipsSource = ReadClips()
+                .Where(clip => clip.PixelCount <= panelPixelCount)
                 .ToArray();
 
             drmClipsSource = allClipsSource
