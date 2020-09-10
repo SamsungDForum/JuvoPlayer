@@ -2,7 +2,7 @@
 
     <PropertyGroup>
         <OutputType>Library</OutputType>
-        <TargetFramework>netstandard2.0</TargetFramework>
+        <TargetFrameworks>netstandard2.0;tizen40</TargetFrameworks>
         <RootNamespace>JuvoPlayer</RootNamespace>
         <PackageReleaseNotes>Release to be presented to the public. It will be uploaded to the SDF GitHub site.</PackageReleaseNotes>
         <Company>SRPOL MVS</Company>
@@ -11,9 +11,33 @@
         <SignAssembly>false</SignAssembly>
         <LangVersion>7.3</LangVersion>
         <AllowUnsafeBlocks>true</AllowUnsafeBlocks>
+        <IsPackable>true</IsPackable>
+        <GeneratePackageOnBuild>True</GeneratePackageOnBuild>
+        <UpdateVersionProperties>true</UpdateVersionProperties>
+        <TargetsForTfmSpecificBuildOutput>$(TargetsForTfmSpecificBuildOutput);CopyProjectReferencesToPackage</TargetsForTfmSpecificBuildOutput>
     </PropertyGroup>
 
+    <PropertyGroup Condition="'$(TargetFramework)' == 'tizen40'">
+        <TizenCreateTpkOnBuild>false</TizenCreateTpkOnBuild>
+    </PropertyGroup>
+
+    <Target Name="CopyProjectReferencesToPackage" DependsOnTargets="ResolveReferences">
+        <ItemGroup>
+            <BuildOutputInPackage Include="@(ReferenceCopyLocalPaths->WithMetadataValue('ReferenceSourceTarget', 'ProjectReference'))" />
+        </ItemGroup>
+    </Target>
+
+    <Target Name="WriteToFile" AfterTargets="Build">
+        <WriteLinesToFile
+                File="$(SolutionDir)\Version.txt"
+                Lines="$(GitVersion_SemVer)"
+                Overwrite="true"/>
+    </Target>
+
     <ItemGroup>
+        <PackageReference Include="GitVersionTask" Version="5.3.7">
+            <PrivateAssets>All</PrivateAssets>
+        </PackageReference>
         <PackageReference Include="Overby.Extensions.AsyncBinaryReaderWriter" Version="1.0.39" />
         <PackageReference Include="Nito.AsyncEx.Context" Version="5.0.0-pre-05" />
         <PackageReference Include="Nito.AsyncEx.Coordination" Version="5.0.0-pre-05" />
@@ -25,12 +49,25 @@
     </ItemGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\JuvoLogger\JuvoLogger.csproj" />
+        <ProjectReference Include="..\JuvoLogger\JuvoLogger.csproj" PrivateAssets="all" />
+        <ProjectReference Include="..\JuvoLogger.Tizen\JuvoLogger.Tizen.csproj" PrivateAssets="all" Condition="'$(TargetFramework)' == 'tizen40'"/>
     </ItemGroup>
 
     <ItemGroup>
-        <Folder Include="lib\">
+        <Content Include="runtimes\tizen-armel\native\*">
+          <PackagePath>runtimes\tizen-armel\native</PackagePath>
+          <Pack>true</Pack>
+          <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </Content>
+        <Content Include="runtimes\tizen-x86\native\*">
+            <PackagePath>runtimes\tizen-x86\native</PackagePath>
+            <Pack>true</Pack>
             <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-        </Folder>
+        </Content>
+        <None Include="nuget\build\tizen40\JuvoPlayer.targets">
+            <PackagePath>build\tizen40</PackagePath>
+            <Pack>true</Pack>
+            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
+        </None>
     </ItemGroup>
 </Project>
