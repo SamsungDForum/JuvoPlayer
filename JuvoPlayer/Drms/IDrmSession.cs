@@ -17,7 +17,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Threading;
 using System.Threading.Tasks;
 using JuvoPlayer.Common;
 using JuvoPlayer.Common.Utils.IReferenceCountable;
@@ -27,11 +26,6 @@ namespace JuvoPlayer.Drms
     /// <summary>Represents a single DRM Session.</summary>
     public interface IDrmSession : IReferenceCountable
     {
-        /// <summary>Initializes a new instance of the <see cref="T:JuvoPlayer.Drms.IDRMSession"></see> class.</summary>
-        /// <returns>A task, which will complete when Session initialization finishes.</returns>
-        /// <exception cref="T:JuvoPlayer.Drms.DRMException">Session couldn't be initialized.</exception>
-        Task Initialize();
-
         /// <summary>
         /// Awaitable call for initialization completion.
         /// </summary>
@@ -42,7 +36,7 @@ namespace JuvoPlayer.Drms
         /// <exception cref=""></exception>
         /// <exception cref="T:JuvoPlayer.Drms.DRMException"> is thrown when session could not be initialized</exception>
         /// <exception cref="InvalidOperationException"> is thrown if this API is called prior to calling Initialize</exception>
-        Task<bool> WaitForInitialization(CancellationToken token);
+        Task<bool> WaitForInitialization();
 
         /// <summary>
         /// Sets session id

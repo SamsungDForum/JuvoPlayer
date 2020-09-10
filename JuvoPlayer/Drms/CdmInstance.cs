@@ -30,6 +30,7 @@ using JuvoLogger;
 using JuvoPlayer.Common;
 using JuvoPlayer.Common.Utils.IReferenceCountable;
 using JuvoPlayer.Common.Utils.IReferenceCountableExtensions;
+using JuvoPlayer.Utils;
 using Nito.AsyncEx;
 using Tizen.TV.Security.DrmDecrypt;
 using Tizen.TV.Security.DrmDecrypt.emeCDM;
@@ -255,7 +256,7 @@ namespace JuvoPlayer.Drms
         {
             foreach (var session in sessionsByIds.Values)
                 if (!session.IsInitialized())
-                    await session.WaitForInitialization(cancellationToken);
+                    await session.WaitForInitialization().WithCancellation(cancellationToken);
         }
 
         public void SessionUpdate(string sessionId, string responseText)

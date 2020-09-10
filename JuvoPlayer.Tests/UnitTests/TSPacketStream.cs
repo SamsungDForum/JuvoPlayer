@@ -46,9 +46,7 @@ namespace JuvoPlayer.Tests.UnitTests
 
         public void Dispose() { }
 
-        public Task Initialize() { return Task.CompletedTask; }
-
-        public Task<bool> WaitForInitialization(CancellationToken token)
+        public Task<bool> WaitForInitialization()
         {
             return Task.FromResult(true);
         }
@@ -153,7 +151,7 @@ namespace JuvoPlayer.Tests.UnitTests
             using (var stream = CreatePacketStream(StreamType.Audio))
             {
                 var packet = new Packet();
-                Assert.Throws<InvalidOperationException>(() => stream.OnAppendPacket(packet));
+                Assert.ThrowsAsync<InvalidOperationException>(() => stream.OnAppendPacket(packet));
             }
         }
 
@@ -164,7 +162,7 @@ namespace JuvoPlayer.Tests.UnitTests
             using (var stream = CreatePacketStream(StreamType.Audio))
             {
                 var packet = new Packet { StreamType = StreamType.Video };
-                Assert.Throws<ArgumentException>(() => stream.OnAppendPacket(packet));
+                Assert.ThrowsAsync<ArgumentException>(() => stream.OnAppendPacket(packet));
             }
         }
 

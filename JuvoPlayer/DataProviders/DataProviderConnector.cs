@@ -115,7 +115,7 @@ namespace JuvoPlayer.DataProviders
             reconnectableSubscriptions.Add(playerController.TimeUpdated().Subscribe(dataProvider.OnTimeUpdated, context));
             reconnectableSubscriptions.Add(dataProvider.DRMInitDataFound().Select(data => Observable.FromAsync(async () => await playerController.OnDrmInitDataFound(data))).Concat().Synchronize(context).Subscribe());
 
-            reconnectableSubscriptions.Add(dataProvider.PacketReady().Subscribe(playerController.OnPacketReady, context));
+            reconnectableSubscriptions.Add(dataProvider.PacketReady().Select(packet => Observable.FromAsync(async () => await playerController.OnPacketReady(packet))).Concat().Synchronize(context).Subscribe());
             reconnectableSubscriptions.Add(dataProvider.SetDrmConfiguration().Select(description => Observable.FromAsync(async () => await playerController.OnSetDrmConfiguration(description))).Concat().Synchronize(context).Subscribe());
             reconnectableSubscriptions.Add(dataProvider.StreamConfigReady().Subscribe(playerController.OnStreamConfigReady, context));
         }

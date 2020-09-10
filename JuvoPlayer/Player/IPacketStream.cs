@@ -23,7 +23,7 @@ namespace JuvoPlayer.Player
 {
     public interface IPacketStream : IDisposable
     {
-        void OnAppendPacket(Packet packet);
+        Task OnAppendPacket(Packet packet);
         Task OnDRMFound(DrmInitData data);
         void OnStreamConfigChanged(StreamConfig config);
         void OnClearStream();
