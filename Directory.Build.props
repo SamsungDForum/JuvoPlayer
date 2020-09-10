@@ -7,26 +7,4 @@
         <PackageReference Include="StyleCop.Analyzers" Version="1.1.1-rc.108" PrivateAssets="all"/>
         <AdditionalFiles Include="$(SolutionDir)stylecop.json" Link="stylecop.json"/>
     </ItemGroup>
-    <!-- GitInfo -->
-    <ItemGroup Condition="'$(EnableGitInfo)' == 'true'">
-        <PackageReference Include="GitInfo" Version="2.0.33">
-            <PrivateAssets>all</PrivateAssets>
-            <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-        </PackageReference>
-    </ItemGroup>
-    <PropertyGroup Condition="'$(EnableGitInfo)' != 'true'">
-        <AssemblyVersion>0.0.0</AssemblyVersion>
-        <AssemblyInformationalVersion>$(AssemblyVersion)</AssemblyInformationalVersion>
-        <Version>$(AssemblyVersion)</Version>
-    </PropertyGroup>
-    <Target Name="SetVersion"
-            DependsOnTargets="GitInfo"
-            BeforeTargets="PrepareForBuild"
-            Condition="'$(EnableGitInfo)' == 'true'">
-        <PropertyGroup>
-            <AssemblyVersion>$(GitSemVerMajor).$(GitSemVerMinor).$(GitSemVerPatch)</AssemblyVersion>
-            <AssemblyInformationalVersion>$(AssemblyVersion)-$(GitBranch)+$(GitCommit)</AssemblyInformationalVersion >
-            <Version>$(AssemblyVersion)</Version>
-        </PropertyGroup>
-    </Target>
 </Project>

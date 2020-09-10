@@ -3,7 +3,8 @@
   <!-- Property Group for Tizen Project -->
   <PropertyGroup>    
     <TizenCreateTpkOnBuild>false</TizenCreateTpkOnBuild>
-    <TargetFramework>tizen50</TargetFramework>
+    <TargetFramework>tizen40</TargetFramework>
+    <IsPackable>false</IsPackable>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugType>portable</DebugType>
