@@ -28,7 +28,10 @@ namespace JuvoPlayer.Player
     {
         private readonly IDrmManager drmManager;
         private readonly IPlayer player;
+
         private IDrmSession drmSession;
+        private TaskCompletionSource<bool> preparingNewSession = new TaskCompletionSource<bool>();
+
         private StreamConfig config;
         private readonly StreamType streamType;
         private readonly ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
@@ -43,7 +46,7 @@ namespace JuvoPlayer.Player
             _codecHandler = handler ?? throw new ArgumentNullException(nameof(handler), "handler cannot be null");
         }
 
-        public void OnAppendPacket(Packet packet)
+        public async Task OnAppendPacket(Packet packet)
         {
             if (packet.StreamType != streamType)
                 throw new ArgumentException("packet type doesn't match");
@@ -54,7 +57,7 @@ namespace JuvoPlayer.Player
             if (packet is EncryptedPacket encPacket)
             {
                 if (drmSession == null)
-                    return;
+                    await preparingNewSession.Task;
 
                 // Increment reference counter on DRM session
                 drmSession.Share();
@@ -62,7 +65,7 @@ namespace JuvoPlayer.Player
             }
 
             _codecHandler.PrependCodecData(packet);
-            player.AppendPacket(packet);
+            await player.AppendPacket(packet);
         }
 
         public void OnStreamConfigChanged(StreamConfig config)
@@ -109,13 +112,17 @@ namespace JuvoPlayer.Player
             if (!forceDrmChange && drmSession != null)
                 return;
 
+            preparingNewSession = new TaskCompletionSource<bool>();
             IDrmSession newSession = await drmManager.GetDrmSession(data);
 
             // Do not reset wait for DRM event. If there is no valid session
             // do not want to append new data
             //
             if (newSession == null)
+            {
+                preparingNewSession.TrySetCanceled();
                 return;
+            }
 
             Logger.Info($"{streamType}: New DRM session found");
             forceDrmChange = false;
@@ -129,11 +136,14 @@ namespace JuvoPlayer.Player
             // Set new session as current & let data submitters run wild.
             // There is no need to store sessions. They live in player queue
             drmSession = newSession;
+
+            preparingNewSession.TrySetResult(true);
         }
 
         public void Dispose()
         {
             OnClearStream();
+            preparingNewSession.TrySetCanceled();
         }
     }
 }

@@ -27,8 +27,8 @@ using System.Xml.Serialization;
 using JuvoLogger;
 using JuvoPlayer.Common;
 using JuvoPlayer.Drms;
+using JuvoPlayer.Tests.Utils;
 using NUnit.Framework;
-using static JuvoPlayer.Tests.Utils.TaskExtensions;
 
 namespace JuvoPlayer.TizenTests.IntegrationTests
 {
@@ -237,7 +237,13 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
             var drmDescription = CreateDrmDescription(drmName);
             drmDescription.LicenceUrl = null;
 
-            Assert.Throws<NullReferenceException>(() => new MediaKeySession(drmInitData, drmDescription, new List<byte[]>(), new CdmInstance(EmeUtils.GetKeySystemName(drmInitData.SystemId))));
+            Assert.Throws<NullReferenceException>(() =>
+            {
+                using (var cdmInstance = new CdmInstance(EmeUtils.GetKeySystemName(drmInitData.SystemId)))
+                using (new MediaKeySession(drmInitData, drmDescription, new List<byte[]>(), cdmInstance))
+                {
+                }
+            });
         }
 
         [Test, TestCaseSource(nameof(DrmTypes))]
@@ -251,15 +257,19 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
 
             Assert.ThrowsAsync<DrmException>(async () =>
             {
-                using (var drmSession = new MediaKeySession(drmInitData, drmDescription, new List<byte[]>(), new CdmInstance(EmeUtils.GetKeySystemName(drmInitData.SystemId))))
-                    await drmSession.Initialize();
+                using (var cdmInstance = new CdmInstance(EmeUtils.GetKeySystemName(drmInitData.SystemId)))
+                using (var cts = new CancellationTokenSource(TimeSpan.FromSeconds(90)))
+                using (var session = await cdmInstance.GetDrmSession(drmInitData, new List<byte[]>(), new List<DrmDescription> { drmDescription }))
+                    await session.WaitForInitialization().WithCancellation(cts.Token);
             });
 
             drmInitData.InitData = initPlayReadyData.Take(initPlayReadyData.Length / 2).ToArray();
             Assert.ThrowsAsync<DrmException>(async () =>
             {
-                using (var drmSession = new MediaKeySession(drmInitData, drmDescription, new List<byte[]>(), new CdmInstance(EmeUtils.GetKeySystemName(drmInitData.SystemId))))
-                    await drmSession.Initialize();
+                using (var cdmInstance = new CdmInstance(EmeUtils.GetKeySystemName(drmInitData.SystemId)))
+                using(var cts = new CancellationTokenSource(TimeSpan.FromSeconds(90)))
+                using (var session = await cdmInstance.GetDrmSession(drmInitData, new List<byte[]>(), new List<DrmDescription> {drmDescription}))
+                    await session.WaitForInitialization().WithCancellation(cts.Token);
             });
         }
 
@@ -270,29 +280,31 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
 
             var drmInitData = CreateDrmInitData(drmName);
             var drmDescription = CreateDrmDescription(drmName);
-
-            Assert.DoesNotThrow(() =>
-            {
-                var drmSession = new MediaKeySession(drmInitData, drmDescription, new List<byte[]>(), new CdmInstance(EmeUtils.GetKeySystemName(drmInitData.SystemId)));
-                drmSession.Initialize();
-                drmSession.Dispose();
-            });
+            using (var cdmInstance = new CdmInstance(EmeUtils.GetKeySystemName(drmInitData.SystemId)))
+                Assert.DoesNotThrow(() =>
+                {
+                    using (var session = cdmInstance.GetDrmSession(drmInitData, new List<byte[]>(), new List<DrmDescription> { drmDescription }).GetAwaiter().GetResult())
+                    using(var cts = new CancellationTokenSource(TimeSpan.FromSeconds(90)))
+                        session.WaitForInitialization().WithCancellation(cts.Token).GetAwaiter().GetResult();
+                });
         }
 
         [Test, TestCaseSource(nameof(DrmTypes))]
         public void Concurrent_CreateDispose_DoesNotThrow(string drmName)
         {
+            Logger.Info(drmName);
+
             Assert.DoesNotThrowAsync(async () =>
             {
+                var drmInitData = CreateDrmInitData(drmName);
+                var drmDescription = CreateDrmDescription(drmName);
+                using (var cdmInstance = new CdmInstance(EmeUtils.GetKeySystemName(drmInitData.SystemId)))
                 using (var goDispose = new Barrier(0))
                 {
                     var id = 0;
 
                     async Task DoWork(string drm)
                     {
-                        var drmInitData = CreateDrmInitData(drm);
-                        var drmDescription = CreateDrmDescription(drmName);
-
                         var myId = Interlocked.Increment(ref id);
                         var signaled = false;
 
@@ -300,18 +312,16 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
                         {
                             Logger.Info($"Creating {drm} Session {myId}");
 
-                            using (var session = new MediaKeySession(drmInitData, drmDescription, new List<byte[]>(), new CdmInstance(EmeUtils.GetKeySystemName(drmInitData.SystemId))))
+                            using (var session = await cdmInstance.GetDrmSession(drmInitData, new List<byte[]>(), new List<DrmDescription> { drmDescription }))
                             {
-                                Logger.Info($"Initializing {drm} Session {myId}");
-                                await session.Initialize();
-
                                 // Widevine cases - 15 concurrent sessions - individual session may take 60s+
                                 // to initialize when run @15 sessions.
                                 using (var cts = new CancellationTokenSource(TimeSpan.FromSeconds(90)))
                                 {
                                     try
                                     {
-                                        await session.WaitForInitialization(cts.Token);
+                                        await session.WaitForInitialization().WithCancellation(cts.Token);
+                                        Logger.Info($"Initializing {drm} Session {myId} - session.WaitForInitialization(cts.Token); done");
                                     }
                                     catch (OperationCanceledException)
                                     {
@@ -362,10 +372,11 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
             var drmDescription = CreateDrmDescription(drmName);
             var encryptedPacket = CreateEncryptedPacket(drmName);
 
-            using (var drmSession = new MediaKeySession(drmInitData, drmDescription, new List<byte[]>(), new CdmInstance(EmeUtils.GetKeySystemName(drmInitData.SystemId))))
+            using (var cdmInstance = new CdmInstance(EmeUtils.GetKeySystemName(drmInitData.SystemId)))
+            using (var session = await cdmInstance.GetDrmSession(drmInitData, new List<byte[]>(), new List<DrmDescription> { drmDescription }))
             {
-                await drmSession.Initialize();
-                ICdmInstance cdmInstance = drmSession.CdmInstance;
+                using (var cts = new CancellationTokenSource(TimeSpan.FromSeconds(90)))
+                    await session.WaitForInitialization().WithCancellation(cts.Token);
                 using (var decrypted = await cdmInstance.DecryptPacket(encryptedPacket, CancellationToken.None))
                 {
                     Assert.That(decrypted, Is.Not.Null);

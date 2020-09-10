@@ -44,7 +44,6 @@ namespace JuvoPlayer.Drms
         ref int IReferenceCountable.Count => ref counter;
 
         private readonly TaskCompletionSource<bool> initializationTcs = new TaskCompletionSource<bool>();
-        private Task InitializationTask => initializationTcs.Task;
 
         public ICdmInstance CdmInstance { get; }
 
@@ -93,16 +92,9 @@ namespace JuvoPlayer.Drms
             CdmInstance.CloseSession(sessionId);
         }
 
-        public Task Initialize()
+        public async Task<bool> WaitForInitialization()
         {
-            if (isDisposed)
-                throw new ObjectDisposedException($"MediaKeySession {sessionId} is already disposed");
-            return InitializationTask;
-        }
-
-        public async Task<bool> WaitForInitialization(CancellationToken cancellationToken)
-        {
-            return await await Task.WhenAny(initializationTcs.Task, new CancellationTokenTaskSource<bool>(cancellationToken).Task);
+            return await initializationTcs.Task;
         }
     }
 }

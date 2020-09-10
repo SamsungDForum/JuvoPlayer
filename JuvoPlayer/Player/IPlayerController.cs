@@ -40,7 +40,7 @@ namespace JuvoPlayer.Player
         Task OnDrmInitDataFound(DrmInitData data);
         Task OnSetDrmConfiguration(DrmDescription description);
         void OnStreamConfigReady(StreamConfig config);
-        void OnPacketReady(Packet packet);
+        Task OnPacketReady(Packet packet);
         void OnStreamError(string errorMessage);
         IPlayerClient Client { set; }
         #endregion

@@ -147,12 +147,12 @@ namespace JuvoPlayer.Player
             streams[config.StreamType()].OnStreamConfigChanged(config);
         }
 
-        public void OnPacketReady(Packet packet)
+        public async Task OnPacketReady(Packet packet)
         {
             if (!streams.ContainsKey(packet.StreamType))
                 return;
 
-            streams[packet.StreamType].OnAppendPacket(packet);
+            await streams[packet.StreamType].OnAppendPacket(packet);
         }
 
         public void OnStreamError(string errorMessage)
