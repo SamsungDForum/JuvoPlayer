@@ -6,10 +6,12 @@ jobs:
     docker:
       - image: mcr.microsoft.com/dotnet/core/sdk:3.1
     steps:
-      - run:
-          name: Setup environment variables
-          command: echo "export CERTS_PATH=/build/certs" >> $BASH_ENV
       - checkout
+      - run:
+          name: Setup certs
+          command: >
+            echo ${DISTRIBUTOR_CERT} | base64 -d - > distributor.p12 &&
+            echo ${AUTHOR_CERT} | base64 -d - > author.p12
       - run:
           name: Setup proxy
           command:
@@ -21,8 +23,8 @@ jobs:
           name: Build solution
           command: >
             dotnet build /nodeReuse:false -c Release
-            /p:"AuthorPath=${CERTS_PATH}/partner_2019.p12;AuthorPass=${AUTHOR_PASS}"
-            /p:"DistributorPath=${CERTS_PATH}/tizen-distributor-signer.p12;DistributorPass=${DISTRIBUTOR_PASS}"
+            /p:"AuthorPath=/build/author.p12;AuthorPass=${AUTHOR_PASS}"
+            /p:"DistributorPath=/build/distributor.p12;DistributorPass=${DISTRIBUTOR_PASS}"
       - run:
           name: Run unit tests
           command: dotnet test /nodeReuse:false JuvoPlayer.Tests/JuvoPlayer.Tests.csproj --logger:trx -f netcoreapp3.1 --verbosity normal
