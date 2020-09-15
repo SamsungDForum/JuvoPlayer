@@ -53,7 +53,7 @@ jobs:
             - ./JuvoPlayer/bin/Release/*.nupkg
             - ./scripts/nunit3-junit.xlst
             - ./Version.txt
-  make_github_release:
+  make_github_release: &make_github_release
     working_directory: /home/circleci
     docker:
       - image: circleci/golang:1.15
@@ -82,7 +82,51 @@ jobs:
           command: >
             go get github.com/tcnksm/ghr &&
             VERSION=${CIRCLE_TAG:-$(cat Version.txt | tr -d '[:space:]')} &&
-            ghr -t ${GITHUB_TOKEN} -u ${CIRCLE_PROJECT_USERNAME} -r ${CIRCLE_PROJECT_REPONAME} -c ${CIRCLE_SHA1} -delete ${VERSION} ./artifacts/
+            ghr -t ${GITHUB_TOKEN} -u ${PROJECT_USERNAME} -r ${PROJECT_REPONAME} -c ${CIRCLE_SHA1} -delete ${VERSION} ./artifacts/
+  make_public_github_release:
+    <<: *make_github_release
+  make_enterprise_github_release:
+    <<: *make_github_release
+  push_code_to_public_github:
+    working_directory: /home/circleci
+    docker:
+      - image: circleci/buildpack-deps:18.04-curl
+    steps:
+      - add_ssh_keys:
+          fingerprints:
+            - "95:ab:50:77:3d:2e:5f:e7:77:6b:3f:be:a8:ec:7f:8c"
+      - run:
+          name: Setup proxy
+          command:
+            curl -sL https://art.sec.samsung.net/artifactory/tools/CircleCI/scripts/set_proxy_setting.sh | sh
+      - checkout
+      - run:
+          name: Push code
+          command: >
+            git remote add github ssh://git@ssh.github.com:443/SamsungDForum/JuvoPlayer-v2.git &&
+            git fetch github &&
+            git checkout -b github_master github/master &&
+            git merge origin/master &&
+            git push github github_master:master &&
+            git push github ${CIRCLE_TAG}
+  make_release_notes_on_public_github:
+    working_directory: /home/circleci
+    docker:
+      - image: circleci/node
+    steps:
+      - run:
+          name: Setup environment variables
+          command: >
+            echo "export GREN_GITHUB_TOKEN=${GITHUB_TOKEN}" >> $BASH_ENV
+      - run:
+          name: Setup proxy
+          command:
+            curl -sL https://art.sec.samsung.net/artifactory/tools/CircleCI/scripts/set_proxy_setting.sh | sh
+      - run:
+          name: Make release notes
+          command: >
+            npm install github-release-notes -g &&
+            gren release --username=${PROJECT_USERNAME} --repo=${PROJECT_REPONAME} --tags=${CIRCLE_TAG} --data-source commits --overwrite
   push_to_nuget_org:
     working_directory: /build
     docker:
@@ -208,7 +252,8 @@ workflows:
                 - /.*/
             tags:
               only: ^[0-9]+\.[0-9]+(\.[0-9]+)?(-alpha|-beta)?$
-      - push_to_nuget_org:
+      - make_enterprise_github_release:
+          context: enterprise_github
           requires:
             - build_and_run_unit_tests
           filters:
@@ -216,11 +261,39 @@ workflows:
               ignore:
                 - /.*/
             tags:
-              only: ^[0-9]+\.[0-9]+(\.[0-9]+)?(-alpha|-beta)?$
-      - make_github_release:
-          context: enterprise_github
+              only: ^[0-9]+\.[0-9]+(\.[0-9]+)?(-alpha|-beta)?
+      - push_code_to_public_github:
           requires:
-            - build_and_run_unit_tests
+              - build_and_run_unit_tests
+          filters:
+            branches:
+              ignore:
+                - /.*/
+            tags:
+              only: ^[0-9]+\.[0-9]+(\.[0-9]+)?(-alpha|-beta)?
+      - make_public_github_release:
+          context: public_github
+          requires:
+            - push_code_to_public_github
+          filters:
+            branches:
+              ignore:
+                - /.*/
+            tags:
+              only: ^[0-9]+\.[0-9]+(\.[0-9]+)?(-alpha|-beta)?
+      - make_release_notes_on_public_github:
+          context: public_github
+          requires:
+            - make_public_github_release
+          filters:
+            branches:
+              ignore:
+                - /.*/
+            tags:
+              only: ^[0-9]+\.[0-9]+(\.[0-9]+)?(-alpha|-beta)?
+      - push_to_nuget_org:
+          requires:
+            - make_release_notes_on_public_github
           filters:
             branches:
               ignore:
