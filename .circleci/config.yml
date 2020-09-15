@@ -251,7 +251,7 @@ workflows:
               ignore:
                 - /.*/
             tags:
-              only: ^[0-9]+\.[0-9]+(\.[0-9]+)?(-alpha|-beta)?$
+              only: /^[0-9]+\.[0-9]+(\.[0-9]+)?(-alpha|-beta)?$/
       - make_enterprise_github_release:
           context: enterprise_github
           requires:
@@ -261,7 +261,7 @@ workflows:
               ignore:
                 - /.*/
             tags:
-              only: ^[0-9]+\.[0-9]+(\.[0-9]+)?(-alpha|-beta)?
+              only: /^[0-9]+\.[0-9]+(\.[0-9]+)?(-alpha|-beta)?/
       - push_code_to_public_github:
           requires:
               - build_and_run_unit_tests
@@ -270,7 +270,7 @@ workflows:
               ignore:
                 - /.*/
             tags:
-              only: ^[0-9]+\.[0-9]+(\.[0-9]+)?(-alpha|-beta)?
+              only: /^[0-9]+\.[0-9]+(\.[0-9]+)?(-alpha|-beta)?/
       - make_public_github_release:
           context: public_github
           requires:
@@ -280,7 +280,7 @@ workflows:
               ignore:
                 - /.*/
             tags:
-              only: ^[0-9]+\.[0-9]+(\.[0-9]+)?(-alpha|-beta)?
+              only: /^[0-9]+\.[0-9]+(\.[0-9]+)?(-alpha|-beta)?/
       - make_release_notes_on_public_github:
           context: public_github
           requires:
@@ -290,7 +290,7 @@ workflows:
               ignore:
                 - /.*/
             tags:
-              only: ^[0-9]+\.[0-9]+(\.[0-9]+)?(-alpha|-beta)?
+              only: /^[0-9]+\.[0-9]+(\.[0-9]+)?(-alpha|-beta)?/
       - push_to_nuget_org:
           requires:
             - make_release_notes_on_public_github
@@ -299,7 +299,7 @@ workflows:
               ignore:
                 - /.*/
             tags:
-              only: ^[0-9]+\.[0-9]+(\.[0-9]+)?(-alpha|-beta)?$
+              only: /^[0-9]+\.[0-9]+(\.[0-9]+)?(-alpha|-beta)?$/
   nightly:
     triggers:
       - schedule:
