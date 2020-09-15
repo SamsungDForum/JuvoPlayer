@@ -22,7 +22,7 @@
         <PackageReference Include="NUnitLite" Version="3.12.0" />
     </ItemGroup>
 
-    <Target Name="UpdateVersion" BeforeTargets="Build">
+    <Target Name="UpdateVersion" BeforeTargets="CoreCompile" DependsOnTargets="PrepareForBuild">
         <XmlPoke XmlInputPath="tizen-manifest.xml" Query="/x:manifest/@version" Value="$(GitVersion_SemVer)" Namespaces="&lt;Namespace Prefix='x' Uri='http://tizen.org/ns/packages' /&gt;" />
     </Target>
 </Project>
