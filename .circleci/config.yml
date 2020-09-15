@@ -20,6 +20,9 @@ jobs:
           name: Install xlstproc
           command: apt update && DEBIAN_FRONTEND="noninteractive" apt install -y --no-install-recommends xsltproc
       - run:
+          name: Apply GitVersionTask workaround # See https://github.com/GitTools/GitVersion/issues/2301
+          command: if [ "${CIRCLE_TAG}" != "" ]; then git checkout -b release; fi
+      - run:
           name: Build solution
           command: >
             dotnet build /nodeReuse:false -c Release
@@ -88,7 +91,7 @@ jobs:
   make_enterprise_github_release:
     <<: *make_github_release
   push_code_to_public_github:
-    working_directory: /home/circleci
+    working_directory: /home/circleci/juvoplayer
     docker:
       - image: circleci/buildpack-deps:18.04-curl
     steps:
@@ -103,6 +106,7 @@ jobs:
       - run:
           name: Push code
           command: >
+            echo $'Host ssh.github.com\n\tStrictHostKeyChecking no' > ~/.ssh/config &&
             git remote add github ssh://git@ssh.github.com:443/SamsungDForum/JuvoPlayer-v2.git &&
             git fetch github &&
             git checkout -b github_master github/master &&
@@ -112,12 +116,11 @@ jobs:
   make_release_notes_on_public_github:
     working_directory: /home/circleci
     docker:
-      - image: circleci/node
+      - image: circleci/buildpack-deps:18.04-curl
     steps:
-      - run:
-          name: Setup environment variables
-          command: >
-            echo "export GREN_GITHUB_TOKEN=${GITHUB_TOKEN}" >> $BASH_ENV
+      - add_ssh_keys:
+          fingerprints:
+            - "84:87:bf:67:e0:45:71:04:e7:97:2d:6d:fd:ca:01:67"
       - run:
           name: Setup proxy
           command:
@@ -125,8 +128,9 @@ jobs:
       - run:
           name: Make release notes
           command: >
-            npm install github-release-notes -g &&
-            gren release --username=${PROJECT_USERNAME} --repo=${PROJECT_REPONAME} --tags=${CIRCLE_TAG} --data-source commits --overwrite
+            ssh -o StrictHostKeyChecking=no ${ATR_RUNNER_USER}@${ATR_RUNNER_IP}
+            gren release --token=${GITHUB_TOKEN} --username=${PROJECT_USERNAME} --repo=${PROJECT_REPONAME}
+            --tags=${CIRCLE_TAG} --data-source commits --override
   push_to_nuget_org:
     working_directory: /build
     docker:
@@ -135,13 +139,18 @@ jobs:
       - attach_workspace:
           at: /build
       - run:
+          name: Setup environment variables
+          command: >
+            NUGET_PATH=`find -name *.nupkg` &&
+            echo "export NUGET_PATH=${NUGET_PATH}" >> $BASH_ENV
+      - run:
           name: Setup proxy
           command:
             curl -sL https://art.sec.samsung.net/artifactory/tools/CircleCI/scripts/set_proxy_setting.sh | sh
       - run:
           name: Nuget push
           command:
-            dotnet nuget push -s https://www.nuget.org/api/v2/package -k ${NUGET_ORG_TOKEN} ./*.nupkg
+            dotnet nuget push -s https://www.nuget.org/api/v2/package -k ${NUGET_ORG_TOKEN} ${NUGET_PATH}
   push_to_local_nuget_source:
     working_directory: /home/circleci
     docker:
