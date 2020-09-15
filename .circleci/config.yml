@@ -107,11 +107,11 @@ jobs:
           name: Push code
           command: >
             echo $'Host ssh.github.com\n\tStrictHostKeyChecking no' > ~/.ssh/config &&
-            git remote add github ssh://git@ssh.github.com:443/SamsungDForum/JuvoPlayer-v2.git &&
+            git remote add github ssh://git@ssh.github.com:443/SamsungDForum/JuvoPlayer.git &&
             git fetch github &&
-            git checkout -b github_master github/master &&
-            git merge origin/master &&
-            git push github github_master:master &&
+            git checkout -b github-master-v2 github/master-v2 &&
+            git merge origin/master-v2 &&
+            git push github github-master-v2:master-v2 &&
             git push github ${CIRCLE_TAG}
   make_release_notes_on_public_github:
     working_directory: /home/circleci
@@ -251,7 +251,7 @@ workflows:
           filters:
             branches:
               only:
-                - master
+                - master-v2
   release:
     jobs:
       - build_and_run_unit_tests:
@@ -316,7 +316,7 @@ workflows:
           filters:
             branches:
               only:
-                - master
+                - master-v2
     jobs:
       - build_and_run_unit_tests
       - run_integration_tests:
