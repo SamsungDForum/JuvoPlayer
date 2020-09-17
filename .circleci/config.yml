@@ -18,12 +18,20 @@ jobs:
           name: Install xlstproc
           command: apt update && DEBIAN_FRONTEND="noninteractive" apt install -y --no-install-recommends xsltproc
       - run:
-          name: Exclude JuvoReactNative from solution
-          command: dotnet sln remove JuvoReactNative/Tizen/JuvoReactNative.csproj
+          name: Install yarn and nodejs
+          command: >
+            curl -sS https://dl.yarnpkg.com/debian/pubkey.gpg | apt-key add - &&
+            echo "deb https://dl.yarnpkg.com/debian/ stable main" | tee /etc/apt/sources.list.d/yarn.list &&
+            apt update &&
+            DEBIAN_FRONTEND="noninteractive" apt install -y --no-install-recommends yarn nodejs
+      - run:
+          name: Bundle JuvoReactNative
+          command: >
+            cd JuvoReactNative && yarn && yarn bundle
       - run:
           name: Build solution
           command: >
-            dotnet build /nodeReuse:false
+            dotnet build /nodeReuse:false -c Release
             /p:"AuthorPath=${CERTS_PATH}/partner_2019.p12;AuthorPass=${AUTHOR_PASS}"
             /p:"DistributorPath=${CERTS_PATH}/tizen-distributor-signer.p12;DistributorPass=${DISTRIBUTOR_PASS}"
       - run:
@@ -42,9 +50,10 @@ jobs:
           name: Copy artifacts to tmp directory
           command: >
             mkdir /tmp/artifacts &&
-            cp JuvoPlayer.TizenTests/bin/Debug/tizen50/*.tpk /tmp/artifacts/ &&
-            cp JuvoPlayer.OpenGL/bin/Debug/tizen50/*.tpk /tmp/artifacts/ &&
-            cp XamarinPlayer/XamarinPlayer.Tizen.TV/bin/Debug/tizen50/*.tpk /tmp/artifacts
+            cp JuvoPlayer.TizenTests/bin/Release/tizen50/*.tpk /tmp/artifacts/ &&
+            cp JuvoPlayer.OpenGL/bin/Release/tizen50/*.tpk /tmp/artifacts/ &&
+            cp XamarinPlayer/XamarinPlayer.Tizen.TV/bin/Release/tizen50/*.tpk /tmp/artifacts &&
+            cp JuvoReactNative/Tizen/bin/Release/tizen50/*.tpk /tmp/artifacts
       - store_artifacts:
           path: /tmp/artifacts
           destination: tpks
