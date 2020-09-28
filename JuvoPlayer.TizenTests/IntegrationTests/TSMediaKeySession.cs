@@ -310,7 +310,7 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
 
                         try
                         {
-                            Logger.Info($"Creating {drm} Session {myId}");
+                            Logger.Info($"Creating {drm} Session {myId}.");
 
                             using (var session = await cdmInstance.GetDrmSession(drmInitData, new List<byte[]>(), new List<DrmDescription> { drmDescription }))
                             {
@@ -320,12 +320,12 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
                                 {
                                     try
                                     {
+                                        Logger.Info($"Initializing {drm} Session {myId}.");
                                         await session.WaitForInitialization().WithCancellation(cts.Token);
-                                        Logger.Info($"Initializing {drm} Session {myId} - session.WaitForInitialization(cts.Token); done");
                                     }
                                     catch (OperationCanceledException)
                                     {
-                                        Logger.Info($"TIMEOUT {drm} Session {myId}");
+                                        Logger.Info($"TIMEOUT {drm} Session {myId}.");
                                         throw;
                                     }
                                     catch (Exception e)
@@ -335,12 +335,12 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
                                     }
                                 }
 
-                                Logger.Info($"{drm} Session {myId} Initialized. Waiting for Dispose");
+                                Logger.Info($"{drm} Session {myId} Initialized. Waiting for Dispose.");
                                 goDispose.SignalAndWait();
                                 signaled = true;
                             }
 
-                            Logger.Info($"{drm} Session {myId} completed");
+                            Logger.Info($"{drm} Session {myId} completed.");
                         }
                         finally
                         {

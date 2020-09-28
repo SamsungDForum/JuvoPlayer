@@ -206,11 +206,11 @@ namespace JuvoPlayer
         {
             Logger.Info("Player controller restart");
 
-            drmManager.Clear();
             dataProvider.OnStopped();
             _playerControllerConnections.Dispose();
             connector?.Dispose();
             playerController?.Dispose();
+            drmManager?.Clear();
 
             CreatePlayerController();
             connector = new DataProviderConnector(playerController, dataProvider);
@@ -246,7 +246,6 @@ namespace JuvoPlayer
         {
             if (disposing)
             {
-                drmManager.Clear();
                 _playerControllerConnections.Dispose();
                 _playerControllerDisposables.Dispose();
                 connector?.Dispose();
@@ -254,6 +253,7 @@ namespace JuvoPlayer
                 playerController = null;
                 dataProvider?.Dispose();
                 dataProvider = null;
+                drmManager?.Clear();
                 GC.Collect();
             }
         }

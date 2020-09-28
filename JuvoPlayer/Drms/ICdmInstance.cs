@@ -23,7 +23,7 @@ using JuvoPlayer.Common.Utils.IReferenceCountable;
 
 namespace JuvoPlayer.Drms
 {
-    public interface ICdmInstance : IReferenceCountable
+    public interface ICdmInstance
     {
         /// <summary>
         /// Awaitable call for packet decryption.

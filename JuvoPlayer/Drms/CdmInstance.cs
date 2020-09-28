@@ -41,9 +41,6 @@ namespace JuvoPlayer.Drms
 {
     public class CdmInstance : IEventListener, ICdmInstance
     {
-        private int _counter;
-        ref int IReferenceCountable.Count => ref _counter;
-
         private readonly ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
 
         public string KeySystem { get; }
@@ -70,6 +67,7 @@ namespace JuvoPlayer.Drms
 
         public async Task<IDrmSession> GetDrmSession(DrmInitData data, IEnumerable<byte[]> keys, List<DrmDescription> clipDrmConfigurations)
         {
+            ThrowIfDisposed();
             return GetCachedDrmSession(keys) ?? await CreateDrmSession(data, keys, clipDrmConfigurations);
         }
 
@@ -81,31 +79,32 @@ namespace JuvoPlayer.Drms
             if (drmDescription == null)
             {
                 Logger.Warn("DRM not configured.");
-                return null;
+                throw new DrmException("DRM not configured.");
             }
 
             var iemeKeySystemName = EmeUtils.GetKeySystemName(initData.SystemId);
             if (IEME.isKeySystemSupported(iemeKeySystemName) != Status.kSupported)
             {
                 Logger.Warn($"Key System: {iemeKeySystemName} is not supported");
-                return null;
+                throw new DrmException($"Key System: {iemeKeySystemName} is not supported");
             }
 
             var session = new MediaKeySession(initData, drmDescription, keys, this);
-            session.Share();
-
-            try
+            _ = thread.Factory.Run(() => InitializeSessionOnIemeThread(session, initData)).ContinueWith(t =>
             {
-                await thread.Factory.Run(() => InitializeSessionOnIemeThread(session, initData));
-            }
-            catch (Exception e)
-            {
-                Logger.Error($"EME session creation fail: {e}");
-                CloseSession(session.GetSessionId());
-                session.Release();
-                session = null;
-            }
-
+                var aggregate = t.Exception.Flatten();
+                foreach (var e in aggregate.InnerExceptions)
+                {
+                    Logger.Error(e);
+                    if (session != null)
+                    {
+                        Logger.Error($"EME session creation fail: {e}");
+                        CloseSession(session.GetSessionId());
+                        session.Release();
+                        session = null;
+                    }
+                }
+            }, TaskContinuationOptions.OnlyOnFaulted);
             return session;
         }
 
@@ -161,7 +160,8 @@ namespace JuvoPlayer.Drms
                 // From EME spec: A message of type "license-request" or "individualization-request" will always be queued if the generateRequest algorithm succeeds and the promise is resolved.
                 case MessageType.kLicenseRequest:
                 case MessageType.kIndividualizationRequest:
-                    _ = RunContinueSessionInitializationOnIemeThread(sessionId, message);
+                    if(!isDisposed)
+                        _ = RunContinueSessionInitializationOnIemeThread(sessionId, message);
                     break;
                 case MessageType.kLicenseAlreadyDone:
                     Logger.Warn($"Licence already installed for session {sessionId}");
@@ -193,7 +193,14 @@ namespace JuvoPlayer.Drms
 
         private async Task RunContinueSessionInitializationOnIemeThread(string sessionId, string message)
         {
-            await thread.Factory.Run(async () => await ContinueSessionInitializationOnIemeThread(sessionId, message));
+            try
+            {
+                await thread.Factory.Run(async () => await ContinueSessionInitializationOnIemeThread(sessionId, message)).ConfigureAwait(false);
+            }
+            catch (Exception e)
+            {
+                Logger.Error($"{e}");
+            }
         }
 
         private async Task ContinueSessionInitializationOnIemeThread(string sessionId, string requestResponseMessage)
@@ -255,7 +262,7 @@ namespace JuvoPlayer.Drms
         public async Task WaitForAllSessionsInitializations(CancellationToken cancellationToken)
         {
             foreach (var session in sessionsByIds.Values)
-                if (!session.IsInitialized())
+                if (session != null && !session.IsInitialized())
                     await session.WaitForInitialization().WithCancellation(cancellationToken);
         }
 
@@ -296,9 +303,10 @@ namespace JuvoPlayer.Drms
             return paddedIv;
         }
 
-        public Task<Packet> DecryptPacket(EncryptedPacket packet, CancellationToken token)
+        public async Task<Packet> DecryptPacket(EncryptedPacket packet, CancellationToken token)
         {
-            return thread.Factory.Run(() => DecryptPacketOnIemeThread(packet, token));
+            ThrowIfDisposed();
+            return await thread.Factory.Run(() => DecryptPacketOnIemeThread(packet, token));
         }
 
         private Packet DecryptPacketOnIemeThread(EncryptedPacket packet, CancellationToken token)
@@ -417,6 +425,8 @@ namespace JuvoPlayer.Drms
                 return;
             try
             {
+                sessionsByIds.TryGetValue(sessionId, out var session);
+
                 cdmInstance.session_close(sessionId);
             }
             catch (Exception e)
@@ -458,6 +468,12 @@ namespace JuvoPlayer.Drms
                 base.Dispose();
                 isDisposed = true;
             }
+        }
+
+        private void ThrowIfDisposed()
+        {
+            if(isDisposed)
+                throw new ObjectDisposedException("CdmInstance is already disposed!");
         }
 
         private static bool SchemeEquals(string scheme1, string scheme2)

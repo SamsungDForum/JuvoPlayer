@@ -22,7 +22,6 @@ using System.Threading.Tasks;
 using JuvoPlayer.Common;
 using JuvoLogger;
 using JuvoPlayer.Common.Utils.IReferenceCountable;
-using Nito.AsyncEx;
 
 namespace JuvoPlayer.Drms
 {
@@ -94,6 +93,8 @@ namespace JuvoPlayer.Drms
 
         public async Task<bool> WaitForInitialization()
         {
+            if (isDisposed)
+                return false;
             return await initializationTcs.Task;
         }
     }
