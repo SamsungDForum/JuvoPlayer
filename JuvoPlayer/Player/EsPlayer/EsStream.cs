@@ -466,7 +466,7 @@ namespace JuvoPlayer.Player.EsPlayer
             using (var decryptedPacket = await cdmInstance.DecryptPacket(dataPacket, token) as DecryptedEMEPacket)
             {
                 // Continue pushing packet till success or terminal failure
-                for (; ; )
+                for (;;)
                 {
                     var submitStatus = player.Submit(decryptedPacket);
 

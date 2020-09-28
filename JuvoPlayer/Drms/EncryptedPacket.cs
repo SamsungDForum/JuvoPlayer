@@ -18,7 +18,6 @@
 using System;
 using System.Xml.Serialization;
 using JuvoPlayer.Common;
-using JuvoPlayer.Common.Utils.IReferenceCountableExtensions;
 
 namespace JuvoPlayer.Drms
 {
@@ -48,26 +47,5 @@ namespace JuvoPlayer.Drms
 
             Subsamples[0].ClearData += (uint)prependData.Length;
         }
-
-        #region Disposable support
-        // Use override to assure base class object references
-        // of type EncryptedPacket will call this Dispose, not the base class
-        //
-        protected override void Dispose(bool disposing)
-        {
-            if (!IsDisposed)
-            {
-                if (disposing)
-                    CdmInstance?.Release();
-
-                IsDisposed = true;
-            }
-
-            base.Dispose(disposing);
-        }
-
-        private bool IsDisposed { get; set; }
-
-        #endregion
     }
 }
