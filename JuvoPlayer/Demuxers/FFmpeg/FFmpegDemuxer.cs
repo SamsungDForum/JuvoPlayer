@@ -17,7 +17,6 @@
 
 using System;
 using System.Collections.Generic;
-using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using JuvoLogger;
@@ -120,6 +119,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg
 
         public void Reset()
         {
+            _completionSource?.TrySetResult(true);
             _cancellationTokenSource?.Cancel();
             _thread?.Factory?.Run(DeallocFFmpeg);
             _thread?.Join();
@@ -204,7 +204,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg
 
         private void ReadContentProtectionConfigs(ref ClipConfiguration configuration)
         {
-            configuration.DrmInitDatas = _formatContext.DrmInitData.ToList();
+            configuration.DrmInitData = _formatContext.DrmInitData;
         }
 
         private void InitEs()

@@ -19,41 +19,28 @@ namespace JuvoPlayer.Common
 {
     public enum DrmInitDataType
     {
-        Unknown, // Unrecognized Init data type
-        MsPrPro, // Microsoft PlayReady PlayReady Header Object
-        Pssh // Pssh box, Demux or MPD Sourced. Content shall be same.
+        Cenc,
+        KeyIds,
+        WebM,
     }
 
     public class DrmInitData
     {
         public DrmInitDataType DataType;
-        public byte[] InitData = null;
-        public string[] KeyIDs; // Key ID
-        public byte[] SystemId = null;
-        public StreamType StreamType { get; set; }
+        public byte[] Data = null;
 
         public override int GetHashCode()
         {
-            var hash = 2058005167 ^ InitData.Length;
+            var hash = 2058005167 ^ Data.Length;
 
-            var len = InitData.Length;
+            var len = Data.Length;
             hash ^= len >= 4
-                ? (InitData[0] << 12) | (InitData[1] << 8) | (InitData[2] << 4) | InitData[3]
+                ? (Data[0] << 12) | (Data[1] << 8) | (Data[2] << 4) | Data[3]
                 : hash;
 
             hash ^= len >= 8
-                ? (InitData[len - 4] << 12) | (InitData[len - 3] << 8) | (InitData[len - 2] << 4) | InitData[len - 1]
+                ? (Data[len - 4] << 12) | (Data[len - 3] << 8) | (Data[len - 2] << 4) | Data[len - 1]
                 : hash;
-
-            len = SystemId.Length;
-            hash ^= len >= 4
-                ? (SystemId[0] << 12) | (SystemId[1] << 8) | (SystemId[2] << 4) | SystemId[3]
-                : hash;
-
-            hash ^= len >= 8
-                ? (SystemId[len - 4] << 12) | (SystemId[len - 3] << 8) | (SystemId[len - 2] << 4) | SystemId[len - 1]
-                : hash;
-
             return hash.GetHashCode();
         }
     }

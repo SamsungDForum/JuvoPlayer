@@ -23,6 +23,7 @@ using System.Threading;
 using System.Threading.Tasks;
 using JuvoLogger;
 using JuvoPlayer.Common;
+using JuvoPlayer.Drms;
 
 namespace JuvoPlayer.Players
 {
@@ -40,15 +41,18 @@ namespace JuvoPlayer.Players
         private Segment _segment;
         private Dictionary<ContentType, StreamHolder> _streamHolders;
         private IStreamProvider _streamProvider;
+        private readonly CdmContext _cdmContext;
 
         public Player(
             Func<IPlatformPlayer> platformPlayerFactory,
+            CdmContext cdmContext,
             Clock clock,
             IWindow window,
             Configuration configuration)
         {
             _platformPlayerFactory = platformPlayerFactory;
-            this._clock = clock;
+            _cdmContext = cdmContext;
+            _clock = clock;
             _window = window;
             _configuration = configuration;
         }
@@ -289,9 +293,11 @@ namespace JuvoPlayer.Players
 
         public async Task DisposeAsync()
         {
+            _logger.Info();
             await StopStreaming();
             _cancellationTokenSource?.Dispose();
             _platformPlayer?.Dispose();
+            _cdmContext?.Dispose();
         }
 
         private Task PrepareStreams()
@@ -437,7 +443,8 @@ namespace JuvoPlayer.Players
                 streamSelector);
             var packetSynchronizer = new PacketSynchronizer {Clock = _clock, Offset = TimeSpan.FromSeconds(1)};
             var streamRenderer = new StreamRenderer(
-                packetSynchronizer);
+                packetSynchronizer,
+                _cdmContext);
             return new StreamHolder(
                 stream,
                 streamRenderer,
@@ -458,9 +465,12 @@ namespace JuvoPlayer.Players
 
         private async Task StopStreaming()
         {
+            _logger.Info();
             _clock.Stop();
             _cancellationTokenSource.Cancel();
             _cancellationTokenSource = new CancellationTokenSource();
+            if (_streamHolders == null)
+                return;
             await Task.WhenAll(
                 _streamHolders.Values.Select(
                     holder => holder.FinishLoadingChunks()));

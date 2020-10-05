@@ -15,18 +15,24 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+using System;
+using JuvoLogger;
 using JuvoPlayer.Common;
 using JuvoPlayer.Dash;
 using JuvoPlayer.Demuxers.FFmpeg;
+using JuvoPlayer.Drms;
 using JuvoPlayer.Players;
 
 namespace JuvoPlayer
 {
     public class DashPlayerBuilder
     {
+        private readonly ILogger _logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
         private Configuration _configuration;
         private string _mpdUri;
         private IWindow _window;
+        private string _keySystem;
+        private IDrmSessionHandler _drmSessionHandler;
 
         public DashPlayerBuilder SetMpdUri(string mpdUri)
         {
@@ -46,11 +52,51 @@ namespace JuvoPlayer
             return this;
         }
 
+        public DashPlayerBuilder SetKeySystem(string keySystem)
+        {
+            _keySystem = keySystem;
+            return this;
+        }
+
+        public DashPlayerBuilder SetDrmSessionHandler(IDrmSessionHandler drmSessionHandler)
+        {
+            _drmSessionHandler = drmSessionHandler;
+            return this;
+        }
+
         public IPlayer Build()
         {
+            if (_keySystem != null && _drmSessionHandler == null)
+            {
+                throw new ArgumentNullException(
+                    $"KeySystem set without DrmSessionHandler");
+            }
+
+            if (_drmSessionHandler != null && _keySystem == null)
+            {
+                _logger.Warn("DrmSessionHandler set without KeySystem." +
+                             "Ignoring DrmSessionHandler");
+            }
+
+            CdmContext cdmContext = null;
+            if (_keySystem != null)
+            {
+                var platform = Platform.Current;
+                var capabilities = platform.Capabilities;
+                if (!capabilities.SupportsKeySystem(_keySystem))
+                {
+                    throw new NotSupportedException(
+                        $"{_keySystem} is not supported");
+                }
+
+                cdmContext = new CdmContext(_drmSessionHandler);
+                cdmContext.InitCdmInstance(_keySystem);
+            }
+
             var clock = new Clock(new StopwatchClockSource());
             var player = new Player(
                 () => Platform.Current.CreatePlatformPlayer(),
+                cdmContext,
                 clock,
                 _window,
                 _configuration);

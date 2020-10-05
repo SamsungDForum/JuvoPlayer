@@ -17,9 +17,12 @@
  *
  */
 
+using System;
 using System.Runtime.InteropServices;
 using JuvoPlayer.Common;
+using JuvoPlayer.Drms;
 using JuvoPlayer.Players;
+using Tizen.TV.Security.DrmDecrypt.emeCDM;
 using Tizen.TV.System.Config;
 
 namespace JuvoPlayer.Platforms.Tizen
@@ -33,6 +36,9 @@ namespace JuvoPlayer.Platforms.Tizen
         public static void Init()
         {
             var supportsDrms = RuntimeInformation.ProcessArchitecture == Architecture.Arm;
+            var supportsKeySystem = supportsDrms
+                    ? (Func<string, bool>) (keySystem => IEME.isKeySystemSupported(keySystem) == Status.kSupported)
+                    : _ => false;
 
             var width = system_info.GetInt(SystemInfoKeye.SystemInfoKeyPanelResolutionWidth);
             var height = system_info.GetInt(SystemInfoKeye.SystemInfoKeyPanelResolutionHeight);
@@ -41,7 +47,8 @@ namespace JuvoPlayer.Platforms.Tizen
             var capabilities = new PlatformCapabilities(
                 false,
                 supportsDrms,
-                supports8K);
+                supports8K,
+                supportsKeySystem);
 
             Current = new PlatformTizen(capabilities);
         }
@@ -49,6 +56,11 @@ namespace JuvoPlayer.Platforms.Tizen
         public override IPlatformPlayer CreatePlatformPlayer()
         {
             return new EsPlatformPlayer();
+        }
+
+        public override ICdmInstance CreateCdmInstance(string keySystem)
+        {
+            return new CdmInstance(keySystem);
         }
     }
 }

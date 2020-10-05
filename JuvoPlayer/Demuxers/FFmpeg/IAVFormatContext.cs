@@ -27,7 +27,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg
         TimeSpan MaxAnalyzeDuration { get; set; }
         IAvioContext AvioContext { get; set; }
         TimeSpan Duration { get; }
-        DrmInitData[] DrmInitData { get; }
+        DrmInitData DrmInitData { get; }
 
         void Open();
         void Open(string url);

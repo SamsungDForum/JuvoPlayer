@@ -25,31 +25,31 @@
 
     <Target Name="CopyProjectReferencesToPackage" DependsOnTargets="ResolveReferences">
         <ItemGroup>
-            <BuildOutputInPackage Include="@(ReferenceCopyLocalPaths-&gt;WithMetadataValue('ReferenceSourceTarget', 'ProjectReference'))"/>
+            <BuildOutputInPackage Include="@(ReferenceCopyLocalPaths-&gt;WithMetadataValue('ReferenceSourceTarget', 'ProjectReference'))" />
         </ItemGroup>
     </Target>
 
     <Target Name="WriteToFile" AfterTargets="Build">
-        <WriteLinesToFile File="$(SolutionDir)\Version.txt" Lines="$(GitVersion_SemVer)" Overwrite="true"/>
+        <WriteLinesToFile File="$(SolutionDir)\Version.txt" Lines="$(GitVersion_SemVer)" Overwrite="true" />
     </Target>
 
     <ItemGroup>
         <PackageReference Include="GitVersionTask" Version="5.3.7">
             <PrivateAssets>All</PrivateAssets>
         </PackageReference>
-        <PackageReference Include="Overby.Extensions.AsyncBinaryReaderWriter" Version="1.0.39"/>
-        <PackageReference Include="Nito.AsyncEx.Context" Version="5.0.0-pre-05"/>
-        <PackageReference Include="Nito.AsyncEx.Coordination" Version="5.0.0-pre-05"/>
-        <PackageReference Include="System.Reactive" Version="4.1.2"/>
-        <PackageReference Include="System.Memory" Version="4.5.3"/>
-        <PackageReference Include="System.Threading.Channels" Version="4.5.0"/>
-        <PackageReference Include="Tizen.NET.TV" Version="6.6.0.5599517"/>
-        <PackageReference Include="Polly" Version="7.0.3"/>
+        <PackageReference Include="Overby.Extensions.AsyncBinaryReaderWriter" Version="1.0.39" />
+        <PackageReference Include="Nito.AsyncEx.Context" Version="5.0.0-pre-05" />
+        <PackageReference Include="Nito.AsyncEx.Coordination" Version="5.0.0-pre-05" />
+        <PackageReference Include="System.Reactive" Version="4.4.1" />
+        <PackageReference Include="System.Memory" Version="4.5.3" />
+        <PackageReference Include="System.Threading.Channels" Version="4.5.0" />
+        <PackageReference Include="Tizen.NET.TV" Version="6.6.0.5599517" />
+        <PackageReference Include="Polly" Version="7.0.3" />
     </ItemGroup>
 
     <ItemGroup>
-        <ProjectReference Include="..\JuvoLogger\JuvoLogger.csproj" PrivateAssets="all"/>
-        <ProjectReference Include="..\JuvoLogger.Tizen\JuvoLogger.Tizen.csproj" PrivateAssets="all" Condition="'$(TargetFramework)' == 'tizen40'"/>
+        <ProjectReference Include="..\JuvoLogger\JuvoLogger.csproj" PrivateAssets="all" />
+        <ProjectReference Include="..\JuvoLogger.Tizen\JuvoLogger.Tizen.csproj" PrivateAssets="all" Condition="'$(TargetFramework)' == 'tizen40'" />
     </ItemGroup>
 
     <ItemGroup>

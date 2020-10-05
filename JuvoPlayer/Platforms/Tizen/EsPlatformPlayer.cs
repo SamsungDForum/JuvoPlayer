@@ -74,10 +74,7 @@ namespace JuvoPlayer.Platforms.Tizen
         {
             _logger.Debug();
             return _esPlayer.SeekAsync(targetTime,
-                (type, span) =>
-                {
-                    onReadyToSeek.Invoke(type.ToContentType());
-                });
+                (type, span) => { onReadyToSeek.Invoke(type.ToContentType()); });
         }
 
         public void Start()
@@ -101,8 +98,21 @@ namespace JuvoPlayer.Platforms.Tizen
         public SubmitResult SubmitPacket(Packet packet)
         {
             _logger.Debug();
-            var esPacket = packet.ToEsPacket();
-            var esStatus = _esPlayer.SubmitPacket(esPacket);
+            SubmitStatus esStatus;
+            switch (packet)
+            {
+                case DecryptedPacket decryptedPacket:
+                    var esHandlePacket = decryptedPacket.ToEsHandlePacket();
+                    esStatus = _esPlayer.SubmitPacket(esHandlePacket);
+                    if (esStatus == SubmitStatus.Success)
+                        decryptedPacket.ResetHandle();
+                    break;
+                default:
+                    var esPacket = packet.ToEsPacket();
+                    esStatus = _esPlayer.SubmitPacket(esPacket);
+                    break;
+            }
+
             return esStatus.ToSubmitResult();
         }
 

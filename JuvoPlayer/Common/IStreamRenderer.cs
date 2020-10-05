@@ -20,6 +20,6 @@ namespace JuvoPlayer.Common
     public interface IStreamRenderer
     {
         void OnPacketReady(Packet packet);
-        void OnDrmDataReady(DrmInitData drmInitData);
+        void OnDrmInitDataReady(DrmInitData drmInitData);
     }
 }
