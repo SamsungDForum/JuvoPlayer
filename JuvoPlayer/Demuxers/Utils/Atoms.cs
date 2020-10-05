@@ -106,9 +106,9 @@ namespace JuvoPlayer.Demuxers.Utils
             return true;
         }
 
-        protected static double ToSeconds(ulong val, uint scale)
+        protected static double ToMilliseconds(ulong val, uint scale)
         {
-            return val / (double) scale;
+            return val * 1000 / (double) scale;
         }
     }
 
@@ -168,16 +168,6 @@ namespace JuvoPlayer.Demuxers.Utils
             return (rl, rh, startTime, duration);
         }
 
-        public void DumpMovieIndex(TimeSpan curr = default)
-        {
-            Logger.Debug($"SIDX DB dump {Movieidx.Count} entries:");
-            foreach (var mie in Movieidx)
-            {
-                Logger.Debug(
-                    $"Requested Time={curr} Index Start Time={mie.TimeIndex} Index Duration={mie.SegmentDuration} Total={mie.TimeIndex + mie.SegmentDuration}");
-            }
-        }
-
         public override void ParseAtom(byte[] adata, ulong dataStart)
         {
             var idx = 0;
@@ -235,15 +225,14 @@ namespace JuvoPlayer.Demuxers.Utils
             {
                 var refSize = Read<uint>(adata, ref idx);
 
-                // C#, Why U no cast?!
-                var typeset = (refSize & 0x80000000) > 0 ? true : false;
+                var typeset = (refSize & 0x80000000) > 0;
 
                 refSize &= 0x7FFFFFF;
 
                 var ssegDuration = Read<uint>(adata, ref idx);
                 var saPdata = Read<uint>(adata, ref idx);
 
-                var currentDuration = ToSeconds(ssegDuration, Timescale);
+                var currentDuration = ToMilliseconds(ssegDuration, Timescale);
 
                 avgSegDur = (currentDuration - avgSegDur) / i;
                 i++;
@@ -256,15 +245,14 @@ namespace JuvoPlayer.Demuxers.Utils
                 if (typeset)
                 {
                     Sidxidx.Add(
-                        new SidxIndexEntry(refSize - 1, ssegDuration, saPdata, offset)
-                    );
+                        new SidxIndexEntry(refSize - 1, ssegDuration, saPdata, offset));
                 }
                 else
                 {
                     Movieidx.Add(
                         new MovieIndexEntry(refSize - 1, ssegDuration, saPdata, offset,
-                            TimeSpan.FromSeconds(currentDuration),
-                            TimeSpan.FromSeconds(ToSeconds(pts, Timescale)),
+                            TimeSpan.FromMilliseconds(ToMilliseconds(ssegDuration, Timescale)),
+                            TimeSpan.FromMilliseconds(ToMilliseconds(pts, Timescale)),
                             indexCount++));
                 }
 
@@ -274,10 +262,10 @@ namespace JuvoPlayer.Demuxers.Utils
 
                 // Assign max time contained within this particular SIDX Atom.
                 // This is the last entry in SIDX box + its duration
-                MaxIndexTime = TimeSpan.FromSeconds(ToSeconds(pts, Timescale));
+                MaxIndexTime = TimeSpan.FromMilliseconds(ToMilliseconds(pts, Timescale));
             }
 
-            AverageSegmentDuration = TimeSpan.FromSeconds(avgSegDur);
+            AverageSegmentDuration = TimeSpan.FromMilliseconds(avgSegDur);
         }
 
         public class SidxIndexEntry

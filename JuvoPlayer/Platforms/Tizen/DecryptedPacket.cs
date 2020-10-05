@@ -15,11 +15,44 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-namespace JuvoPlayer.Common
+using JuvoPlayer.Common;
+using Tizen.TV.Security.DrmDecrypt;
+
+namespace JuvoPlayer.Platforms.Tizen
 {
-    public interface IStreamRenderer
+    public class DecryptedPacket : Packet
     {
-        void OnPacketReady(Packet packet);
-        void OnDrmInitDataReady(DrmInitData drmInitData);
+        private bool _isDisposed;
+        public HandleSize Handle { get; set; }
+
+        public void ResetHandle()
+        {
+            Handle = default;
+        }
+
+        private void ReleaseUnmanagedResources()
+        {
+            if (Handle.size == 0)
+                return;
+
+            API.ReleaseHandle(Handle);
+            ResetHandle();
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            if (!_isDisposed)
+            {
+                ReleaseUnmanagedResources();
+                _isDisposed = true;
+            }
+
+            base.Dispose(disposing);
+        }
+
+        ~DecryptedPacket()
+        {
+            Dispose(false);
+        }
     }
 }

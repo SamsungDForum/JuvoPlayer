@@ -81,7 +81,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg
             ? TimeSpan.FromMilliseconds(_formatContext->duration / 1000)
             : TimeSpan.Zero;
 
-        public DrmInitData[] DrmInitData => GetDrmInitData();
+        public DrmInitData DrmInitData => GetDrmInitData();
 
         public void Open()
         {
@@ -215,30 +215,36 @@ namespace JuvoPlayer.Demuxers.FFmpeg
             GC.SuppressFinalize(this);
         }
 
-        private DrmInitData[] GetDrmInitData()
+        private DrmInitData GetDrmInitData()
         {
-            var result = new List<DrmInitData>();
             if (_formatContext->protection_system_data_count <= 0)
-                return result.ToArray();
+                return null;
+            long totalPsshSize = 0;
             for (uint i = 0; i < _formatContext->protection_system_data_count; ++i)
             {
                 var systemData = _formatContext->protection_system_data[i];
-                if (systemData.pssh_box_size <= 0)
-                    continue;
-
-                var drmData = new DrmInitData
-                {
-                    SystemId = systemData.system_id.ToArray(),
-                    InitData = new byte[systemData.pssh_box_size],
-                    DataType = DrmInitDataType.Pssh,
-                    KeyIDs = null // Key are embedded in DataType.
-                };
-
-                Marshal.Copy((IntPtr) systemData.pssh_box, drmData.InitData, 0, (int) systemData.pssh_box_size);
-                result.Add(drmData);
+                totalPsshSize += systemData.pssh_box_size;
             }
 
-            return result.ToArray();
+            var concatenatedPsshBoxes = new byte[totalPsshSize];
+            var offset = 0;
+            for (uint i = 0; i < _formatContext->protection_system_data_count; ++i)
+            {
+                var systemData = _formatContext->protection_system_data[i];
+                var psshBoxSize = (int) systemData.pssh_box_size;
+                Marshal.Copy(
+                    (IntPtr) systemData.pssh_box,
+                    concatenatedPsshBoxes,
+                    offset,
+                    psshBoxSize);
+                offset += psshBoxSize;
+            }
+
+            return new DrmInitData
+            {
+                DataType = DrmInitDataType.Cenc,
+                Data = concatenatedPsshBoxes
+            };
         }
 
         private void PrependExtraDataIfNeeded(Packet packet, AVStream* stream)
@@ -362,8 +368,8 @@ namespace JuvoPlayer.Demuxers.FFmpeg
                 Codec = ConvertVideoCodec(stream->codecpar->codec_id),
                 CodecProfile = stream->codecpar->profile,
                 Size = new Size(stream->codecpar->width, stream->codecpar->height),
-                FrameRateNum = stream->r_frame_rate.num,
-                FrameRateDen = stream->r_frame_rate.den,
+                FrameRateNum = stream->avg_frame_rate.num,
+                FrameRateDen = stream->avg_frame_rate.den > 0 ? stream->avg_frame_rate.den : 1,
                 BitRate = stream->codecpar->bit_rate
             };
             if (stream->codecpar->extradata_size > 0)

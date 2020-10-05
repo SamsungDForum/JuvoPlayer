@@ -150,12 +150,12 @@ namespace JuvoPlayer.Dash
             var representations =
                 _adaptationSet.Representations;
             _representations = representations.Select(
-                repr =>
-                    new RepresentationWrapper
-                    {
-                        Representation = repr, SegmentIndex = repr.GetIndex(), PeriodDuration = periodDuration
-                    })
-            .ToArray();
+                    repr =>
+                        new RepresentationWrapper
+                        {
+                            Representation = repr, SegmentIndex = repr.GetIndex(), PeriodDuration = periodDuration
+                        })
+                .ToArray();
         }
 
         internal void SetStreamSelector(IStreamSelector selector)
@@ -165,7 +165,8 @@ namespace JuvoPlayer.Dash
 
         private async Task RunLoadChunksLoop(CancellationToken cancellationToken)
         {
-            _logger.Info();
+            var contentType = _adaptationSet.ContentType;
+            _logger.Info($"{contentType}");
             try
             {
                 while (!cancellationToken.IsCancellationRequested)
@@ -173,7 +174,7 @@ namespace JuvoPlayer.Dash
                     var bufferPosition = _bufferPosition;
                     var playbackPosition = _segment.ToPlaybackTime(_clock.Elapsed);
                     var bufferedDuration = bufferPosition - playbackPosition;
-                    _logger.Info($"{bufferedDuration} = {bufferPosition} - {playbackPosition}");
+                    _logger.Info($"{contentType}: {bufferedDuration} = {bufferPosition} - {playbackPosition}");
                     if (bufferedDuration <= _maxBufferTime)
                     {
                         await LoadNextChunk(cancellationToken);
@@ -187,16 +188,16 @@ namespace JuvoPlayer.Dash
             }
             catch (Exception ex)
             {
-                _logger.Warn(ex);
+                _logger.Warn(ex, $"{contentType}");
             }
 
-            _logger.Info("Load loop finished");
+            _logger.Info($"{contentType}: Load loop finished");
 
             try
             {
                 if (_demuxPacketsLoopTask != null)
                 {
-                    _logger.Info("Awaiting Demux loop");
+                    _logger.Info($"{contentType}: Awaiting Demux loop");
                     await _demuxPacketsLoopTask;
                 }
             }
@@ -207,13 +208,14 @@ namespace JuvoPlayer.Dash
             finally
             {
                 if (_demuxPacketsLoopTask != null)
-                    _logger.Info("Demux loop finished");
+                    _logger.Info($"{contentType}: Demux loop finished");
             }
         }
 
         private async Task RunDemuxPacketsLoop(CancellationToken cancellationToken)
         {
-            _logger.Info();
+            var contentType = _adaptationSet.ContentType;
+            _logger.Info($"{contentType}");
             try
             {
                 var taskCompletionSource = new TaskCompletionSource<bool>();
@@ -232,14 +234,14 @@ namespace JuvoPlayer.Dash
                         var packet = await (Task<Packet>)completedTask;
                         if (packet == null)
                             return;
-                        _logger.Info($"Got {packet.StreamType} {packet.Pts}");
+                        _logger.Info($"{contentType}: Got {packet.StreamType} {packet.Pts}");
                         _renderer.OnPacketReady(packet);
                     }
                 }
             }
             catch (Exception ex)
             {
-                _logger.Warn(ex);
+                _logger.Warn(ex, $"{contentType}");
             }
             finally
             {
@@ -249,7 +251,8 @@ namespace JuvoPlayer.Dash
 
         private async Task LoadNextChunk(CancellationToken cancellationToken)
         {
-            _logger.Info();
+            var contentType = _adaptationSet.ContentType;
+            _logger.Info($"{contentType}");
             var previousRepresentation = _currentRepresentation;
             var representation = SelectRepresentation();
             Task<ClipConfiguration> initDemuxerTask = null;
@@ -257,6 +260,7 @@ namespace JuvoPlayer.Dash
             {
                 _logger.Info();
                 await ResetDemuxer();
+                cancellationToken.ThrowIfCancellationRequested();
                 _currentRepresentation = representation;
                 initDemuxerTask = InitDemuxer(
                     representation.InitData,
@@ -279,6 +283,7 @@ namespace JuvoPlayer.Dash
             }
 
             // TODO: send EOS
+            await Task.Yield();
         }
 
         private RepresentationWrapper SelectRepresentation()
@@ -309,10 +314,8 @@ namespace JuvoPlayer.Dash
             _logger.Info();
             if (!_demuxer.IsInitialized())
                 return;
-            _logger.Info();
             _demuxer.Complete();
             await _demuxer.Completion;
-            _logger.Info();
             if (_demuxPacketsLoopTask != null)
                 await _demuxPacketsLoopTask;
         }
@@ -449,9 +452,9 @@ namespace JuvoPlayer.Dash
                             var streamConfigs = _clipConfiguration.StreamConfigs;
                             var streamConfig = streamConfigs.Single();
                             _getStreamConfigTaskCompletionSource?.TrySetResult(streamConfig);
-                            foreach (var drmInitData in _clipConfiguration.DrmInitDatas)
-                                _renderer.OnDrmDataReady(drmInitData);
-                            _logger.Info();
+                            var drmInitData = _clipConfiguration.DrmInitData;
+                            if (drmInitData != null)
+                                _renderer.OnDrmInitDataReady(_clipConfiguration.DrmInitData);
                         }, CancellationToken.None,
                         TaskContinuationOptions.OnlyOnRanToCompletion,
                         TaskScheduler.FromCurrentSynchronizationContext());

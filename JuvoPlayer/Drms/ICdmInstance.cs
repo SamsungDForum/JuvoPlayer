@@ -15,11 +15,25 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-namespace JuvoPlayer.Common
+using System;
+using System.Reactive;
+using JuvoPlayer.Common;
+
+namespace JuvoPlayer.Drms
 {
-    public interface IStreamRenderer
+    public interface ICdmInstance : IDisposable
     {
-        void OnPacketReady(Packet packet);
-        void OnDrmInitDataReady(DrmInitData drmInitData);
+        string CreateSession();
+        void GenerateRequest(
+            string sessionId,
+            DrmInitDataType drmInitDataType,
+            byte[] initData);
+        void UpdateSession(
+            string sessionId,
+            byte[] sessionData);
+        void CloseSession(string sessionId);
+        Packet Decrypt(EncryptedPacket packet);
+        IObservable<Message> OnSessionMessage();
+        IObservable<Unit> OnKeyStatusChanged();
     }
 }

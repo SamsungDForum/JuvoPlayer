@@ -16,10 +16,13 @@
  */
 
 using System;
+using System.Reactive.Linq;
+using System.Reactive.Threading.Tasks;
 using System.Threading;
 using System.Threading.Tasks;
 using JuvoLogger;
 using JuvoPlayer.Common;
+using JuvoPlayer.Drms;
 
 namespace JuvoPlayer.Players
 {
@@ -28,11 +31,14 @@ namespace JuvoPlayer.Players
         private readonly ILogger _logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
         private readonly PacketSynchronizer _packetSynchronizer;
         private CancellationTokenSource _cancellationTokenSource;
+        private readonly CdmContext _cdmContext;
 
         public StreamRenderer(
-            PacketSynchronizer packetSynchronizer)
+            PacketSynchronizer packetSynchronizer,
+            CdmContext cdmContext)
         {
             _packetSynchronizer = packetSynchronizer;
+            _cdmContext = cdmContext;
         }
 
         public bool IsPushingPackets { get; private set; }
@@ -43,9 +49,9 @@ namespace JuvoPlayer.Players
             _packetSynchronizer.Add(packet);
         }
 
-        public void OnDrmDataReady(DrmInitData drmInitData)
+        public void OnDrmInitDataReady(DrmInitData drmInitData)
         {
-            throw new NotImplementedException();
+            _cdmContext.AddDrmInitData(drmInitData);
         }
 
         public async Task StartPushingPackets(
@@ -62,31 +68,45 @@ namespace JuvoPlayer.Players
                 _packetSynchronizer.Segment = segment;
 
                 _cancellationTokenSource = new CancellationTokenSource();
-                using (var linkedCancellationTokenSource =
-                    CancellationTokenSource.CreateLinkedTokenSource(
-                        _cancellationTokenSource.Token,
-                        externalCancellationToken))
-                {
-                    var cancellationToken = linkedCancellationTokenSource.Token;
+                var cancellationToken = _cancellationTokenSource.Token;
 
-                    while (!cancellationToken.IsCancellationRequested)
+                while (!cancellationToken.IsCancellationRequested)
+                {
+                    using (var packet = await _packetSynchronizer.TakeAsync(cancellationToken))
                     {
-                        using (var packet = await _packetSynchronizer.TakeAsync(cancellationToken))
+                        var result = await SubmitPacket(
+                            platformPlayer,
+                            packet,
+                            cancellationToken);
+                        _logger.Info($"{packet.StreamType} {packet.Pts} {result}");
+                        if (result != SubmitResult.Success)
                         {
-                            var result = platformPlayer.SubmitPacket(packet);
-                            _logger.Info($"{packet.StreamType} {packet.Pts} {result}");
-                            if (result != SubmitResult.Success)
-                            {
-                                throw new NotImplementedException(
-                                    "TODO: Handle other results");
-                            }
+                            throw new NotImplementedException(
+                                "TODO: Handle other results");
                         }
                     }
+
+                    await Task.Yield();
                 }
             }
             catch (Exception ex)
             {
                 _logger.Error(ex);
+            }
+        }
+
+        private async Task<SubmitResult> SubmitPacket(
+            IPlatformPlayer platformPlayer,
+            Packet packet,
+            CancellationToken cancellationToken)
+        {
+            if (!(packet is EncryptedPacket encryptedPacket))
+                return platformPlayer.SubmitPacket(packet);
+            using (var decryptedPacket = await DecryptPacket(
+                encryptedPacket,
+                cancellationToken))
+            {
+                return platformPlayer.SubmitPacket(decryptedPacket);
             }
         }
 
@@ -101,6 +121,29 @@ namespace JuvoPlayer.Players
         {
             _logger.Info();
             _packetSynchronizer.Flush();
+        }
+
+        private async Task<Packet> DecryptPacket(
+            EncryptedPacket encryptedPacket,
+            CancellationToken cancellationToken)
+        {
+            var cdmInstance = _cdmContext.GetCdmInstance();
+            do
+            {
+                try
+                {
+                    return cdmInstance.Decrypt(encryptedPacket);
+                }
+                catch (NoKeyException)
+                {
+                    _logger.Warn("Waiting for key");
+                    await cdmInstance
+                        .OnKeyStatusChanged()
+                        .FirstAsync()
+                        .ToTask(cancellationToken);
+                    cancellationToken.ThrowIfCancellationRequested();
+                }
+            } while (true);
         }
     }
 }

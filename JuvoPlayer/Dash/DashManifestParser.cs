@@ -512,8 +512,8 @@ namespace JuvoPlayer.Dash
                     if (newStartTime != null)
                         startTime = newStartTime.Value;
 
-                    elementDuration = ParseLong(element, "d", 0).Value;
-                    elementRepeatCount = ParseInt(element, "r", 0).Value;
+                    elementDuration = ParseLong(childElement, "d", 0).Value;
+                    elementRepeatCount = ParseInt(childElement, "r", 0).Value;
                     havePreviousTimelineElement = true;
                 }
             }
@@ -931,7 +931,7 @@ namespace JuvoPlayer.Dash
                 var match = _frameRateRegex.Match(frameRateAttribute);
                 if (match.Success)
                 {
-                    var numerator = Convert.ToInt32(match.Groups[0].Value);
+                    var numerator = Convert.ToInt32(match.Groups[1].Value);
                     var denominatorString = match.Groups[2].Value;
                     if (!string.IsNullOrEmpty(denominatorString))
                         frameRate = (float)numerator / Convert.ToInt32(denominatorString);

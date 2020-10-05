@@ -17,10 +17,14 @@
  *
  */
 
+using System;
+
 namespace JuvoPlayer.Common
 {
     public readonly struct PlatformCapabilities
     {
+        private readonly Func<string, bool> _supportsKeySystem;
+
         public bool SupportsSeamlessAudioChange { get; }
         public bool SupportsDrms { get; }
         public bool Supports8K { get; }
@@ -28,11 +32,18 @@ namespace JuvoPlayer.Common
         public PlatformCapabilities(
             bool supportsSeamlessAudioChange,
             bool supportsDrms,
-            bool supports8K)
+            bool supports8K,
+            Func<string, bool> supportsKeySystem)
         {
             SupportsSeamlessAudioChange = supportsSeamlessAudioChange;
             SupportsDrms = supportsDrms;
             Supports8K = supports8K;
+            _supportsKeySystem = supportsKeySystem;
+        }
+
+        public bool SupportsKeySystem(string keySystem)
+        {
+            return _supportsKeySystem.Invoke(keySystem);
         }
     }
 }

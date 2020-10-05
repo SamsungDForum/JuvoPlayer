@@ -18,6 +18,7 @@
  */
 
 using System;
+using JuvoPlayer.Drms;
 using JuvoPlayer.Players;
 
 namespace JuvoPlayer.Common
@@ -45,5 +46,6 @@ namespace JuvoPlayer.Common
         public PlatformCapabilities Capabilities { get; }
 
         public abstract IPlatformPlayer CreatePlatformPlayer();
+        public abstract ICdmInstance CreateCdmInstance(string keySystem);
     }
 }

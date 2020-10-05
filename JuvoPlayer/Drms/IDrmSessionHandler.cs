@@ -15,11 +15,14 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-namespace JuvoPlayer.Common
+using System.Threading.Tasks;
+
+namespace JuvoPlayer.Drms
 {
-    public interface IStreamRenderer
+    public interface IDrmSessionHandler
     {
-        void OnPacketReady(Packet packet);
-        void OnDrmInitDataReady(DrmInitData drmInitData);
+        Task<byte[]> AcquireLicense(
+            string sessionId,
+            byte[] requestData);
     }
 }

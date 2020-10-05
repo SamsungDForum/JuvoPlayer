@@ -15,11 +15,31 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-namespace JuvoPlayer.Common
+namespace JuvoPlayer.Drms
 {
-    public interface IStreamRenderer
+    public enum MessageType
     {
-        void OnPacketReady(Packet packet);
-        void OnDrmInitDataReady(DrmInitData drmInitData);
+        LicenseRequest,
+        LicenseRenewal,
+        LicenseRelease,
+        AlreadyDone,
+        IndividualizationRequest
+    }
+
+    public readonly struct Message
+    {
+        public string SessionId { get; }
+        public MessageType Type { get; }
+        public byte[] Data { get; }
+
+        public Message(
+            string sessionId,
+            MessageType type,
+            byte[] data)
+        {
+            SessionId = sessionId;
+            Type = type;
+            Data = data;
+        }
     }
 }

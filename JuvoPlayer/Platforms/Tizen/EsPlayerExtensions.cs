@@ -332,15 +332,15 @@ namespace JuvoPlayer.Platforms.Tizen
             };
         }
 
-        internal static ESHandlePacket ToEsHandlePacket(this DecryptedEmePacket packet)
+        internal static ESHandlePacket ToEsHandlePacket(this DecryptedPacket packet)
         {
             return new ESHandlePacket
             {
                 type = packet.StreamType.EsStreamType(),
                 pts = packet.Pts.TotalNanoseconds(),
                 duration = packet.Duration.TotalNanoseconds(),
-                handle = packet.HandleSize.handle,
-                handleSize = packet.HandleSize.size
+                handle = packet.Handle.handle,
+                handleSize = packet.Handle.size
             };
         }
 
