@@ -74,21 +74,25 @@ namespace JuvoPlayer.Drms
             IDrmSession session;
             using (await clipDrmConfigurationsLock.LockAsync())
                     session = await GetCdmInstance(data).GetDrmSession(data, keyIds, clipDrmConfigurations);
-
             return session;
         }
 
         public ICdmInstance GetCdmInstance(DrmInitData drmInitData)
         {
             var keySystem = EmeUtils.GetKeySystemName(drmInitData.SystemId);
-            try
+            lock (drmManagerLock)
             {
-                return TryGetCdmInstance(keySystem, out var cdmInstance) ? cdmInstance : CreateCdmInstance(keySystem);
-            }
-            catch (Exception e)
-            {
-                Logger.Error($"Getting CDM instance failed: {e.Message}");
-                return null;
+                try
+                {
+                    return TryGetCdmInstance(keySystem, out var cdmInstance)
+                        ? cdmInstance
+                        : CreateCdmInstance(keySystem);
+                }
+                catch (Exception e)
+                {
+                    Logger.Error($"Getting CDM instance failed: {e.Message}");
+                    return null;
+                }
             }
         }
 
@@ -113,7 +117,11 @@ namespace JuvoPlayer.Drms
             var cdmInstance = new CdmInstance(keySystem);
             lock(drmManagerLock)
                 if (!cdmInstances.TryAdd(keySystem, cdmInstance))
+                {
+                    Logger.Info($"Failed to add CdmInstance for {keySystem}!");
                     throw new DrmException($"Failed to add CdmInstance for {keySystem}!");
+                }
+
             return cdmInstance;
         }
 
