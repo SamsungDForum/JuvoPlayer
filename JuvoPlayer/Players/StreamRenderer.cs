@@ -32,32 +32,34 @@ namespace JuvoPlayer.Players
         private readonly PacketSynchronizer _packetSynchronizer;
         private CancellationTokenSource _cancellationTokenSource;
         private readonly CdmContext _cdmContext;
+        private readonly BufferingObserver _bufferingObserver;
 
         public StreamRenderer(
             PacketSynchronizer packetSynchronizer,
-            CdmContext cdmContext)
+            CdmContext cdmContext,
+            BufferingObserver bufferingObserver)
         {
             _packetSynchronizer = packetSynchronizer;
             _cdmContext = cdmContext;
+            _bufferingObserver = bufferingObserver;
         }
 
         public bool IsPushingPackets { get; private set; }
 
-        public void OnPacketReady(Packet packet)
+        public void HandlePacket(Packet packet)
         {
             _logger.Info($"{packet.StreamType} {packet.Pts}");
             _packetSynchronizer.Add(packet);
         }
 
-        public void OnDrmInitDataReady(DrmInitData drmInitData)
+        public void HandleDrmInitData(DrmInitData drmInitData)
         {
             _cdmContext.AddDrmInitData(drmInitData);
         }
 
         public async Task StartPushingPackets(
             Segment segment,
-            IPlatformPlayer platformPlayer,
-            CancellationToken externalCancellationToken)
+            IPlatformPlayer platformPlayer)
         {
             try
             {
@@ -84,6 +86,8 @@ namespace JuvoPlayer.Players
                             throw new NotImplementedException(
                                 "TODO: Handle other results");
                         }
+
+                        _bufferingObserver.Update(packet);
                     }
 
                     await Task.Yield();
