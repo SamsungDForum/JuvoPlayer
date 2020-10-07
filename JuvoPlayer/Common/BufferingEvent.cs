@@ -17,9 +17,13 @@
 
 namespace JuvoPlayer.Common
 {
-    public interface IStreamRenderer
+    public class BufferingEvent : IEvent
     {
-        void HandlePacket(Packet packet);
-        void HandleDrmInitData(DrmInitData drmInitData);
+        public bool IsBuffering { get; }
+
+        public BufferingEvent(bool isBuffering)
+        {
+            IsBuffering = isBuffering;
+        }
     }
 }

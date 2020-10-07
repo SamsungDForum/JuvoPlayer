@@ -235,7 +235,7 @@ namespace JuvoPlayer.Dash
                         if (packet == null)
                             return;
                         _logger.Info($"{contentType}: Got {packet.StreamType} {packet.Pts}");
-                        _renderer.OnPacketReady(packet);
+                        _renderer.HandlePacket(packet);
                     }
                 }
             }
@@ -454,7 +454,7 @@ namespace JuvoPlayer.Dash
                             _getStreamConfigTaskCompletionSource?.TrySetResult(streamConfig);
                             var drmInitData = _clipConfiguration.DrmInitData;
                             if (drmInitData != null)
-                                _renderer.OnDrmInitDataReady(_clipConfiguration.DrmInitData);
+                                _renderer.HandleDrmInitData(_clipConfiguration.DrmInitData);
                         }, CancellationToken.None,
                         TaskContinuationOptions.OnlyOnRanToCompletion,
                         TaskScheduler.FromCurrentSynchronizationContext());

@@ -17,8 +17,10 @@
 
 using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Reactive.Linq;
+using System.Reactive.Subjects;
 using System.Threading;
 using System.Threading.Tasks;
 using JuvoLogger;
@@ -42,6 +44,8 @@ namespace JuvoPlayer.Players
         private Dictionary<ContentType, StreamHolder> _streamHolders;
         private IStreamProvider _streamProvider;
         private readonly CdmContext _cdmContext;
+        private int _numberOfStarvingStreams;
+        private readonly Subject<IEvent> _eventSubject;
 
         public Player(
             Func<IPlatformPlayer> platformPlayerFactory,
@@ -55,6 +59,7 @@ namespace JuvoPlayer.Players
             _clock = clock;
             _window = window;
             _configuration = configuration;
+            _eventSubject = new Subject<IEvent>();
         }
 
         public TimeSpan? Duration => _streamProvider?.GetDuration();
@@ -123,6 +128,8 @@ namespace JuvoPlayer.Players
                 throw new InvalidOperationException("Prepare not called");
 
             var stateBeforeSeek = _platformPlayer.GetState();
+            if (stateBeforeSeek == PlayerState.Playing)
+                PausePlayer();
             await StopStreaming();
 
             UpdateSegment(position);
@@ -132,7 +139,7 @@ namespace JuvoPlayer.Players
             await SeekPlayer(position);
 
             if (stateBeforeSeek == PlayerState.Playing)
-                _clock.Start();
+                Play();
         }
 
         public StreamGroup[] GetStreamGroups()
@@ -149,7 +156,7 @@ namespace JuvoPlayer.Players
 
             var previousState = _platformPlayer.GetState();
             if (previousState == PlayerState.Playing)
-                _platformPlayer.Pause();
+                PausePlayer();
             var position = _platformPlayer.GetState() == PlayerState.Ready
                 ? _segment.Start
                 : _platformPlayer.GetPosition();
@@ -246,16 +253,27 @@ namespace JuvoPlayer.Players
 
             // Restore previous state
             if (previousState == PlayerState.Playing)
-            {
-                if (shallRecreatePlayer)
-                    _platformPlayer.Start();
-                else
-                    _platformPlayer.Resume();
-                _clock.Start();
-            }
+                Play();
         }
 
         public void Play()
+        {
+            if (_numberOfStarvingStreams == 0)
+                StartPlayer();
+
+            foreach (var streamHolder in _streamHolders.Values)
+            {
+                streamHolder.StartPushingPackets(
+                    _segment,
+                    _platformPlayer,
+                    _cancellationTokenSource.Token);
+                var bufferingObserver =
+                    streamHolder.BufferingObserver;
+                bufferingObserver.Start();
+            }
+        }
+
+        private void StartPlayer()
         {
             var state = _platformPlayer.GetState();
             switch (state)
@@ -266,38 +284,52 @@ namespace JuvoPlayer.Players
                 case PlayerState.Paused:
                     _platformPlayer.Resume();
                     break;
+                default:
+                    return;
             }
 
             _clock.Start();
-            foreach (var streamHolder in _streamHolders.Values)
-            {
-                streamHolder.StartPushingPackets(
-                    _segment,
-                    _platformPlayer,
-                    _cancellationTokenSource.Token);
-            }
         }
 
         public async Task Pause()
         {
-            _platformPlayer.Pause();
-            _clock.Stop();
+            foreach (var streamHolder in _streamHolders.Values)
+            {
+                var bufferingObserver =
+                    streamHolder.BufferingObserver;
+                bufferingObserver.Stop();
+            }
+
+            PausePlayer();
             foreach (var streamHolder in _streamHolders.Values)
                 await streamHolder.StopPushingPackets();
         }
 
+        private void PausePlayer()
+        {
+            _platformPlayer.Pause();
+            _clock.Stop();
+        }
+
         public IObservable<IEvent> OnEvent()
         {
-            return Observable.Empty<IEvent>();
+            return _eventSubject.AsObservable();
         }
 
         public async Task DisposeAsync()
         {
             _logger.Info();
             await StopStreaming();
+            if (_streamHolders != null)
+            {
+                foreach (var streamHolder in _streamHolders.Values)
+                    DisposeStreamHolder(streamHolder);
+            }
+
             _cancellationTokenSource?.Dispose();
             _platformPlayer?.Dispose();
             _cdmContext?.Dispose();
+            _eventSubject.Dispose();
         }
 
         private Task PrepareStreams()
@@ -318,7 +350,21 @@ namespace JuvoPlayer.Players
 
             _logger.Info($"{startTime}");
 
-            _segment = new Segment {Base = _clock.Elapsed, Start = startTime, Stop = TimeSpan.MinValue};
+            _segment = new Segment
+            {
+                Base = _clock.Elapsed,
+                Start = startTime,
+                Stop = TimeSpan.MinValue
+            };
+
+            foreach (var streamHolder in _streamHolders.Values)
+            {
+                var bufferingObserver
+                    = streamHolder.BufferingObserver;
+                bufferingObserver.Reset(_segment);
+            }
+
+            _numberOfStarvingStreams = 0;
         }
 
         private StreamGroup[] SelectDefaultStreamsGroups(Period period)
@@ -326,7 +372,7 @@ namespace JuvoPlayer.Players
             var allStreamGroups =
                 _streamProvider.GetStreamGroups(period);
             var selectedStreamGroups = new List<StreamGroup>();
-            var audioStreamGroup = SelectAudioStreamGroup(
+            var audioStreamGroup = SelectDefaultAudioStreamGroup(
                 allStreamGroups);
             if (audioStreamGroup != null)
                 selectedStreamGroups.Add(audioStreamGroup);
@@ -352,7 +398,7 @@ namespace JuvoPlayer.Players
                    ?? filteredStreamGroups.FirstOrDefault();
         }
 
-        private StreamGroup SelectAudioStreamGroup(StreamGroup[] streamGroups)
+        private StreamGroup SelectDefaultAudioStreamGroup(StreamGroup[] streamGroups)
         {
             var filteredStreamGroups = streamGroups
                 .Where(streamGroup => streamGroup.ContentType == ContentType.Audio);
@@ -441,26 +487,57 @@ namespace JuvoPlayer.Players
                 _currentPeriod,
                 streamGroup,
                 streamSelector);
-            var packetSynchronizer = new PacketSynchronizer {Clock = _clock, Offset = TimeSpan.FromSeconds(1)};
+            var packetSynchronizer = new PacketSynchronizer
+            {
+                Clock = _clock,
+                Offset = TimeSpan.FromSeconds(1)
+            };
+            var bufferingObserver = new BufferingObserver(
+                _clock,
+                TimeSpan.FromMilliseconds(200),
+                TimeSpan.FromMilliseconds(800));
             var streamRenderer = new StreamRenderer(
                 packetSynchronizer,
-                _cdmContext);
+                _cdmContext,
+                bufferingObserver);
             return new StreamHolder(
                 stream,
                 streamRenderer,
                 streamGroup,
-                streamSelector);
+                streamSelector,
+                bufferingObserver,
+                OnStreamRendererBuffering);
+        }
+
+        private void OnStreamRendererBuffering(bool isBuffering)
+        {
+            var wasBuffering = _numberOfStarvingStreams > 0;
+            _numberOfStarvingStreams +=
+                isBuffering ? 1 : -1;
+            _logger.Info($"Is Buffering = {_numberOfStarvingStreams > 0}");
+            Debug.Assert(_numberOfStarvingStreams >= 0,
+                $"{nameof(_numberOfStarvingStreams)} shouldn't be negative");
+            if (_numberOfStarvingStreams == 1 && !wasBuffering)
+            {
+                PausePlayer();
+                _eventSubject.OnNext(new BufferingEvent(true));
+            }
+            else if (_numberOfStarvingStreams == 0)
+            {
+                StartPlayer();
+                _eventSubject.OnNext(new BufferingEvent(false));
+            }
         }
 
         private void DisposeStreamHolder(StreamHolder streamHolder)
         {
             var stream = streamHolder.Stream;
             _streamProvider.ReleaseStream(stream);
-            stream.Dispose();
             var contentType = streamHolder
                 .StreamGroup
                 .ContentType;
             _streamHolders.Remove(contentType);
+            streamHolder.Dispose();
         }
 
         private async Task StopStreaming()
@@ -561,27 +638,36 @@ namespace JuvoPlayer.Players
             _streamProvider = streamProvider;
         }
 
-        private class StreamHolder
+        private class StreamHolder : IDisposable
         {
             private readonly ILogger _logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
             private Task _loadChunksTask;
             private Task _pushPacketsTask;
+            private readonly IDisposable _bufferingObserverSubscription;
 
-            public StreamHolder(
-                IStream stream,
+            public StreamHolder(IStream stream,
                 StreamRenderer streamRenderer,
                 StreamGroup streamGroup,
-                IStreamSelector streamSelector)
+                IStreamSelector streamSelector,
+                BufferingObserver bufferingObserver,
+                Action<bool> onStreamRendererBuffering)
             {
                 Stream = stream;
                 StreamRenderer = streamRenderer;
                 StreamGroup = streamGroup;
                 StreamSelector = streamSelector;
+                BufferingObserver = bufferingObserver;
+                _bufferingObserverSubscription =
+                    BufferingObserver
+                        .OnBuffering()
+                        .Subscribe(onStreamRendererBuffering);
+
             }
 
             public IStream Stream { get; }
             public StreamRenderer StreamRenderer { get; }
             public StreamGroup StreamGroup { get; }
+            public BufferingObserver BufferingObserver { get; }
             public IStreamSelector StreamSelector { get; set; }
 
             public void StartPushingPackets(
@@ -594,8 +680,7 @@ namespace JuvoPlayer.Players
                 {
                     _pushPacketsTask = StreamRenderer.StartPushingPackets(
                         segment,
-                        platformPlayer,
-                        cancellationToken);
+                        platformPlayer);
                 }
             }
 
@@ -645,6 +730,13 @@ namespace JuvoPlayer.Players
                 {
                     // ignored
                 }
+            }
+
+            public void Dispose()
+            {
+                _bufferingObserverSubscription?.Dispose();
+                Stream?.Dispose();
+                BufferingObserver?.Dispose();
             }
         }
     }

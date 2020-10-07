@@ -19,6 +19,8 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Linq;
+using System.Reactive.Linq;
+using System.Reactive.Threading.Tasks;
 using System.Threading;
 using System.Threading.Tasks;
 using JuvoLogger;
@@ -35,6 +37,7 @@ namespace JuvoPlayer.TizenTests.Tests
     {
         private readonly ILogger _logger = LoggerManager.GetInstance().GetLogger("UT");
         private static readonly TimeSpan CatchupPlaybackTimeout = TimeSpan.FromSeconds(14);
+        private static readonly TimeSpan BufferingEndTimeout = TimeSpan.FromSeconds(5);
 
         public struct Clip
         {
@@ -169,6 +172,23 @@ namespace JuvoPlayer.TizenTests.Tests
             }
         }
 
+        private static async Task WaitForBufferingEnd(IPlayer player)
+        {
+            using (var cancellationTokenSource = new CancellationTokenSource())
+            {
+                cancellationTokenSource.CancelAfter(BufferingEndTimeout);
+                await player.OnEvent()
+                    .Where(@event =>
+                    {
+                        if (@event is BufferingEvent bufferingEvent)
+                            return !bufferingEvent.IsBuffering;
+                        return false;
+                    })
+                    .FirstAsync()
+                    .ToTask(cancellationTokenSource.Token);
+            }
+        }
+
         [Test]
         [TestCaseSource(nameof(Clips))]
         [Repeat(10)]
@@ -279,8 +299,14 @@ namespace JuvoPlayer.TizenTests.Tests
                             _logger.Info($"Seek took: {(end - start).TotalMilliseconds} ms");
                             if (shouldPlay)
                                 await WaitForTargetPosition(dashPlayer, nextPosition);
-                            var actualState = dashPlayer.State;
                             var expectedState = shouldPlay ? PlayerState.Playing : PlayerState.Ready;
+                            var actualState = dashPlayer.State;
+                            if (shouldPlay && actualState == PlayerState.Paused)
+                            {
+                                await WaitForBufferingEnd(dashPlayer);
+                                actualState = dashPlayer.State;
+                            }
+
                             Assert.That(actualState, Is.EqualTo(expectedState));
                         }
                     }
