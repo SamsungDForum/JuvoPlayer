@@ -247,30 +247,29 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
         }
 
         [Test, TestCaseSource(nameof(DrmTypes))]
-        public void Initialize_WhenInitDataIsInvalid_ThrowsDRMException(string drmName)
+        public async Task GetDrmSession_WhenInitDataIsInvalid_ReturnsNullSession(string drmName)
         {
             Logger.Info(drmName);
 
             var drmInitData = CreateDrmInitData(drmName);
             drmInitData.InitData = null;
             var drmDescription = CreateDrmDescription(drmName);
-
-            Assert.ThrowsAsync<DrmException>(async () =>
+            
+            using (var cdmInstance = new CdmInstance(EmeUtils.GetKeySystemName(drmInitData.SystemId)))
+            using (var session = await cdmInstance.GetDrmSession(drmInitData, new List<byte[]>(),
+                new List<DrmDescription> {drmDescription}))
             {
-                using (var cdmInstance = new CdmInstance(EmeUtils.GetKeySystemName(drmInitData.SystemId)))
-                using (var cts = new CancellationTokenSource(TimeSpan.FromSeconds(90)))
-                using (var session = await cdmInstance.GetDrmSession(drmInitData, new List<byte[]>(), new List<DrmDescription> { drmDescription }))
-                    await session.WaitForInitialization().WithCancellation(cts.Token);
-            });
+                Assert.That(session, Is.Null);
+            }
 
             drmInitData.InitData = initPlayReadyData.Take(initPlayReadyData.Length / 2).ToArray();
-            Assert.ThrowsAsync<DrmException>(async () =>
+
+            using (var cdmInstance = new CdmInstance(EmeUtils.GetKeySystemName(drmInitData.SystemId)))
+            using (var session = await cdmInstance.GetDrmSession(drmInitData, new List<byte[]>(),
+                new List<DrmDescription> {drmDescription}))
             {
-                using (var cdmInstance = new CdmInstance(EmeUtils.GetKeySystemName(drmInitData.SystemId)))
-                using(var cts = new CancellationTokenSource(TimeSpan.FromSeconds(90)))
-                using (var session = await cdmInstance.GetDrmSession(drmInitData, new List<byte[]>(), new List<DrmDescription> {drmDescription}))
-                    await session.WaitForInitialization().WithCancellation(cts.Token);
-            });
+                Assert.That(session, Is.Null);
+            }
         }
 
         [Test, TestCaseSource(nameof(DrmTypes))]
