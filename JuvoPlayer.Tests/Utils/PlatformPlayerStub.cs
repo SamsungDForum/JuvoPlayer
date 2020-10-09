@@ -20,6 +20,7 @@
 using System;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Reactive;
 using System.Threading.Tasks;
 using JuvoPlayer.Common;
 using JuvoPlayer.Players;
@@ -113,6 +114,11 @@ namespace JuvoPlayer.Tests.Utils
         public TimeSpan GetPosition()
         {
             return _start + _positionStopwatch.Elapsed;
+        }
+
+        public IObservable<Unit> OnEos()
+        {
+            throw new NotImplementedException();
         }
 
         public void Open(IWindow window, VideoStreamConfig videoConfig, AudioStreamConfig audioConfig)

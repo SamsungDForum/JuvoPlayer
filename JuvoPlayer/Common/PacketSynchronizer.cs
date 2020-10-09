@@ -51,12 +51,15 @@ namespace JuvoPlayer.Common
                 cancellationToken.ThrowIfCancellationRequested();
             }
 
-            var packetClockTime = Segment.ToClockTime(_currentPacket.Pts);
-            var timeToPushPacket = packetClockTime - Clock.Elapsed - Offset;
-            if (timeToPushPacket > TimeSpan.Zero)
+            if (!(_currentPacket is EosPacket))
             {
-                await _delayer.Invoke(timeToPushPacket, cancellationToken);
-                cancellationToken.ThrowIfCancellationRequested();
+                var packetClockTime = Segment.ToClockTime(_currentPacket.Pts);
+                var timeToPushPacket = packetClockTime - Clock.Elapsed - Offset;
+                if (timeToPushPacket > TimeSpan.Zero)
+                {
+                    await _delayer.Invoke(timeToPushPacket, cancellationToken);
+                    cancellationToken.ThrowIfCancellationRequested();
+                }
             }
 
             var currentPacket = _currentPacket;

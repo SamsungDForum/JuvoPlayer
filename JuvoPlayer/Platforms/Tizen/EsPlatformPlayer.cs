@@ -19,6 +19,8 @@
 
 using System;
 using System.Collections.Generic;
+using System.Reactive;
+using System.Reactive.Linq;
 using System.Threading.Tasks;
 using JuvoLogger;
 using JuvoPlayer.Common;
@@ -43,7 +45,8 @@ namespace JuvoPlayer.Platforms.Tizen
             _logger.Debug();
             _esPlayer.Open();
             _esPlayer.SetDisplay(window.ToPlatform<ElmSharp.Window>());
-            _esPlayer.SetTrustZoneUse(true);
+            if (SupportsDrms())
+                _esPlayer.SetTrustZoneUse(true);
             foreach (var streamConfig in streamConfigs)
             {
                 switch (streamConfig)
@@ -107,6 +110,12 @@ namespace JuvoPlayer.Platforms.Tizen
                     if (esStatus == SubmitStatus.Success)
                         decryptedPacket.ResetHandle();
                     break;
+                case EosPacket eosPacket:
+                    var esStreamType = eosPacket
+                        .StreamType
+                        .EsStreamType();
+                    esStatus = _esPlayer.SubmitEosPacket(esStreamType);
+                    break;
                 default:
                     var esPacket = packet.ToEsPacket();
                     esStatus = _esPlayer.SubmitPacket(esPacket);
@@ -128,10 +137,25 @@ namespace JuvoPlayer.Platforms.Tizen
             return position;
         }
 
+        public IObservable<Unit> OnEos()
+        {
+            return Observable.FromEventPattern<EOSEventArgs>(
+                x => _esPlayer.EOSEmitted += x,
+                x => _esPlayer.EOSEmitted -= x)
+                .Select(args => Unit.Default);
+        }
+
         public void Dispose()
         {
             _logger.Debug();
             _esPlayer.Dispose();
+        }
+
+        private static bool SupportsDrms()
+        {
+            var platform = Platform.Current;
+            var capabilities = platform.Capabilities;
+            return capabilities.SupportsDrms;
         }
     }
 }

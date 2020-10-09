@@ -18,6 +18,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Net.Http;
 using System.Threading;
 using System.Threading.Tasks;
 using JuvoLogger;
@@ -35,6 +36,7 @@ namespace JuvoPlayer.Dash
         private readonly ILogger _logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
         private readonly IThroughputHistory _throughputHistory;
         private AdaptationSet _adaptationSet;
+        private TimeSpan? _periodDuration;
         private TimeSpan _bufferPosition;
         private ClipConfiguration _clipConfiguration;
         private RepresentationWrapper _currentRepresentation;
@@ -147,13 +149,16 @@ namespace JuvoPlayer.Dash
         {
             StreamGroup = streamGroup;
             _adaptationSet = adaptationSet;
+            _periodDuration = periodDuration;
             var representations =
                 _adaptationSet.Representations;
             _representations = representations.Select(
                     repr =>
                         new RepresentationWrapper
                         {
-                            Representation = repr, SegmentIndex = repr.GetIndex(), PeriodDuration = periodDuration
+                            Representation = repr,
+                            SegmentIndex = repr.GetIndex(),
+                            PeriodDuration = periodDuration
                         })
                 .ToArray();
         }
@@ -177,7 +182,8 @@ namespace JuvoPlayer.Dash
                     _logger.Info($"{contentType}: {bufferedDuration} = {bufferPosition} - {playbackPosition}");
                     if (bufferedDuration <= _maxBufferTime)
                     {
-                        await LoadNextChunk(cancellationToken);
+                        if (!await LoadNextChunk(cancellationToken))
+                            break;
                         continue;
                     }
 
@@ -223,7 +229,7 @@ namespace JuvoPlayer.Dash
                 {
                     var cancellationTask = taskCompletionSource.Task;
                     var minPts =
-                        _adaptationSet.ContentType == ContentType.Audio ? (TimeSpan?)_segment.Start : null;
+                        _adaptationSet.ContentType == ContentType.Audio ? (TimeSpan?) _segment.Start : null;
                     while (!cancellationToken.IsCancellationRequested)
                     {
                         var completedTask = await Task.WhenAny(
@@ -231,8 +237,10 @@ namespace JuvoPlayer.Dash
                             cancellationTask);
                         if (completedTask == cancellationTask)
                             return;
-                        var packet = await (Task<Packet>)completedTask;
+                        var packet = await (Task<Packet>) completedTask;
                         if (packet == null)
+                            return;
+                        if (packet.Pts > _periodDuration)
                             return;
                         _logger.Info($"{contentType}: Got {packet.StreamType} {packet.Pts}");
                         _renderer.HandlePacket(packet);
@@ -249,7 +257,7 @@ namespace JuvoPlayer.Dash
             }
         }
 
-        private async Task LoadNextChunk(CancellationToken cancellationToken)
+        private async Task<bool> LoadNextChunk(CancellationToken cancellationToken)
         {
             var contentType = _adaptationSet.ContentType;
             _logger.Info($"{contentType}");
@@ -272,18 +280,38 @@ namespace JuvoPlayer.Dash
                 cancellationToken,
                 _bufferPosition,
                 _previousSegmentNum);
-            if (chunk != null)
+            try
             {
-                _logger.Info();
-                await chunk.Load();
-                cancellationToken.ThrowIfCancellationRequested();
-                await OnChunkLoaded(chunk,
-                    representation,
-                    initDemuxerTask);
+                if (chunk != null)
+                {
+                    _logger.Info();
+                    await chunk.Load();
+                    cancellationToken.ThrowIfCancellationRequested();
+                    await OnChunkLoaded(chunk,
+                        representation,
+                        initDemuxerTask);
+                    return true;
+                }
+            }
+            catch (HttpRequestException ex)
+            {
+                _logger.Error(ex);
+                // Send EOS if we got exception for the last segment
+                if (!_previousSegmentNum.HasValue)
+                    throw;
+                var lastSegmentNum =
+                    GetLastSegmentNum(representation);
+                if (_previousSegmentNum.Value + 1 != lastSegmentNum)
+                    throw;
             }
 
-            // TODO: send EOS
-            await Task.Yield();
+            await ResetDemuxer();
+            cancellationToken.ThrowIfCancellationRequested();
+            _logger.Info("Sending EOS packet");
+            var streamType = contentType.ToStreamType();
+            var eosPacket = new EosPacket(streamType);
+            _renderer.HandlePacket(eosPacket);
+            return false;
         }
 
         private RepresentationWrapper SelectRepresentation()

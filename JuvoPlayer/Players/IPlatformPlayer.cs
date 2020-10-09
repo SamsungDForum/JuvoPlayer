@@ -19,6 +19,7 @@
 
 using System;
 using System.Collections.Generic;
+using System.Reactive;
 using System.Threading.Tasks;
 using JuvoPlayer.Common;
 
@@ -36,5 +37,6 @@ namespace JuvoPlayer.Players
         SubmitResult SubmitPacket(Packet packet);
         PlayerState GetState();
         TimeSpan GetPosition();
+        IObservable<Unit> OnEos();
     }
 }

@@ -40,6 +40,7 @@ namespace JuvoPlayer.Players
         private CancellationTokenSource _cancellationTokenSource;
         private Period _currentPeriod;
         private IPlatformPlayer _platformPlayer;
+        private IDisposable _platformPlayerEosSubscription;
         private Segment _segment;
         private Dictionary<ContentType, StreamHolder> _streamHolders;
         private IStreamProvider _streamProvider;
@@ -240,6 +241,7 @@ namespace JuvoPlayer.Players
 
             if (shallRecreatePlayer)
             {
+                _platformPlayerEosSubscription.Dispose();
                 _platformPlayer.Dispose();
                 _platformPlayer = _platformPlayerFactory.Invoke();
                 var streamConfigs =
@@ -327,6 +329,7 @@ namespace JuvoPlayer.Players
             }
 
             _cancellationTokenSource?.Dispose();
+            _platformPlayerEosSubscription?.Dispose();
             _platformPlayer?.Dispose();
             _cdmContext?.Dispose();
             _eventSubject.Dispose();
@@ -423,6 +426,12 @@ namespace JuvoPlayer.Players
         {
             _logger.Info();
             _platformPlayer.Open(_window, streamConfigs);
+            _platformPlayerEosSubscription = _platformPlayer
+                .OnEos()
+                .Subscribe(_ =>
+                {
+                    _eventSubject.OnNext(new EosEvent());
+                });
             var synchronizationContext = SynchronizationContext.Current;
             var cancellationToken = _cancellationTokenSource.Token;
             await _platformPlayer.PrepareAsync(contentType =>
