@@ -15,8 +15,32 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+using System;
+
 namespace JuvoPlayer.Common
 {
+    public static class StreamTypeExtensions
+    {
+        public static StreamType ToStreamType(this ContentType contentType)
+        {
+            switch (contentType)
+            {
+                case ContentType.Unknown:
+                    return StreamType.Unknown;
+                case ContentType.Video:
+                    return StreamType.Video;
+                case ContentType.Audio:
+                    return StreamType.Audio;
+                case ContentType.Application:
+                    return StreamType.Unknown;
+                case ContentType.Text:
+                    return StreamType.Subtitle;
+                default:
+                    throw new ArgumentOutOfRangeException(nameof(contentType), contentType, null);
+            }
+        }
+    }
+
     public enum StreamType
     {
         Unknown,

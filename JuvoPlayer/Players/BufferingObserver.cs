@@ -29,6 +29,7 @@ namespace JuvoPlayer.Players
         public bool IsObserving { get; private set; }
         public bool IsStarving { get; private set; }
         private TimeSpan? _lastSeenPacketTime;
+        private bool _eosReceived;
         private readonly Subject<bool> _bufferingSubject;
         private readonly Clock _clock;
         private readonly TimeSpan _starvingThreshold;
@@ -55,6 +56,7 @@ namespace JuvoPlayer.Players
             Stop();
             _segment = segment;
             IsStarving = false;
+            _eosReceived = false;
             _lastSeenPacketTime = null;
         }
 
@@ -76,6 +78,7 @@ namespace JuvoPlayer.Players
 
         public void Update(Packet packet)
         {
+            _eosReceived = packet is EosPacket;
             _lastSeenPacketTime = packet.Pts;
             if (IsObserving)
                 Update(_lastSeenPacketTime);
@@ -88,7 +91,7 @@ namespace JuvoPlayer.Players
             var playbackTime =
                 _segment.ToPlaybackTime(clockTime);
             var timeDiff = packetTime - playbackTime;
-            if (timeDiff >= _filledThreshold)
+            if (timeDiff >= _filledThreshold || _eosReceived)
             {
                 if (IsStarving)
                 {
@@ -96,6 +99,9 @@ namespace JuvoPlayer.Players
                     _bufferingSubject.OnNext(false);
                 }
             }
+
+            if (_eosReceived)
+                return;
 
             var timeToPublishBufferingEvent =
                 timeDiff - _starvingThreshold;

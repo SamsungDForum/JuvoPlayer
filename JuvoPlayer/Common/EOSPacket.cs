@@ -21,9 +21,9 @@ namespace JuvoPlayer.Common
 {
     public class EosPacket : Packet
     {
-        public static Packet Create(StreamType streamType)
+        public EosPacket(StreamType streamType)
         {
-            return new EosPacket { StreamType = streamType };
+            StreamType = streamType;
         }
     }
 }

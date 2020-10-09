@@ -1,6 +1,5 @@
 ﻿/*!
- *
- * [https://github.com/SamsungDForum/JuvoPlayer])
+ * https://github.com/SamsungDForum/JuvoPlayer
  * Copyright 2020, Samsung Electronics Co., Ltd
  * Licensed under the MIT license
  *
@@ -14,29 +13,11 @@
  * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
- *
  */
 
-using System;
-using System.Collections.Generic;
-using System.Reactive;
-using System.Threading.Tasks;
-using JuvoPlayer.Common;
-
-namespace JuvoPlayer.Players
+namespace JuvoPlayer.Common
 {
-    public interface IPlatformPlayer : IDisposable
+    public class EosEvent : IEvent
     {
-        void Open(IWindow window, IEnumerable<StreamConfig> streamConfigs);
-        void Close();
-        Task PrepareAsync(Action<ContentType> onReadyToPrepare);
-        Task SeekAsync(TimeSpan targetTime, Action<ContentType> onReadyToSeek);
-        void Start();
-        void Pause();
-        void Resume();
-        SubmitResult SubmitPacket(Packet packet);
-        PlayerState GetState();
-        TimeSpan GetPosition();
-        IObservable<Unit> OnEos();
     }
 }

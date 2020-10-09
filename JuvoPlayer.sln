@@ -1,17 +1,20 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio 15
-VisualStudioVersion = 15.0.27130.2036
+# Visual Studio Version 16
+VisualStudioVersion = 16.0.30114.105
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "JuvoLogger", "JuvoLogger\JuvoLogger.csproj", "{3B12A628-9EB3-477C-8C06-58E15A2E4BC2}"
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "JuvoLogger.Tizen", "JuvoLogger.Tizen\JuvoLogger.Tizen.csproj", "{9B3F0A66-2F65-46CB-B827-2C7CDE7ED29F}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "JuvoPlayer", "JuvoPlayer\JuvoPlayer.csproj", "{5D0E49D8-6A0B-421A-A82F-3C03CA55C999}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "JuvoPlayer", "JuvoPlayer\JuvoPlayer.csproj", "{5D0E49D8-6A0B-421A-A82F-3C03CA55C999}"
+	ProjectSection(ProjectDependencies) = postProject
+		{9B3F0A66-2F65-46CB-B827-2C7CDE7ED29F} = {9B3F0A66-2F65-46CB-B827-2C7CDE7ED29F}
+	EndProjectSection
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "JuvoPlayer.Tests", "JuvoPlayer.Tests\JuvoPlayer.Tests.csproj", "{BEFB7BCF-2CA5-4043-88D2-A63A6C6E4353}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "JuvoPlayer.Tests", "JuvoPlayer.Tests\JuvoPlayer.Tests.csproj", "{BEFB7BCF-2CA5-4043-88D2-A63A6C6E4353}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "JuvoPlayer.TizenTests", "JuvoPlayer.TizenTests\JuvoPlayer.TizenTests.csproj", "{21F844E0-1ED0-43F8-AE5F-F6E13ABCB988}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "JuvoPlayer.TizenTests", "JuvoPlayer.TizenTests\JuvoPlayer.TizenTests.csproj", "{21F844E0-1ED0-43F8-AE5F-F6E13ABCB988}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -21,9 +24,6 @@ Global
 		Release|Any CPU = Release|Any CPU
 		Release|x64 = Release|x64
 		Release|x86 = Release|x86
-	EndGlobalSection
-	GlobalSection(SolutionProperties) = preSolution
-		HideSolutionNode = FALSE
 	EndGlobalSection
 	GlobalSection(ProjectConfigurationPlatforms) = postSolution
 		{3B12A628-9EB3-477C-8C06-58E15A2E4BC2}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
@@ -87,13 +87,11 @@ Global
 		{21F844E0-1ED0-43F8-AE5F-F6E13ABCB988}.Release|x86.ActiveCfg = Release|Any CPU
 		{21F844E0-1ED0-43F8-AE5F-F6E13ABCB988}.Release|x86.Build.0 = Release|Any CPU
 	EndGlobalSection
-	GlobalSection(ExtensibilityGlobals) = postSolution
-		SolutionGuid = {C6228722-8C96-431F-A11F-C2423B0BCAA8}
+	GlobalSection(SolutionProperties) = preSolution
+		HideSolutionNode = FALSE
 	EndGlobalSection
-    GlobalSection(SolutionProperties) = preSolution
-        HideSolutionNode = FALSE
-    EndGlobalSection
-    GlobalSection(ExtensibilityGlobals) = postSolution
-        SolutionGuid = {C6228722-8C96-431F-A11F-C2423B0BCAA8}
-    EndGlobalSection
+	GlobalSection(ExtensibilityGlobals) = postSolution
+		        SolutionGuid = {C6228722-8C96-431F-A11F-C2423B0BCAA8}
+		SolutionGuid = {961F574E-225C-4027-9A2F-1E70EDE1D986}
+	EndGlobalSection
 EndGlobal

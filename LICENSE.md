@@ -1,4 +1,4 @@
-https://github.com/SamsungDForum/JuvoPlayer-v2
+https://github.com/SamsungDForum/JuvoPlayer
 Copyright 2020, Samsung Electronics Co., Ltd
 Licensed under the MIT license
 

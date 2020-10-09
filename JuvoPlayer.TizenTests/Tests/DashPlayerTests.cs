@@ -194,182 +194,21 @@ namespace JuvoPlayer.TizenTests.Tests
         [Repeat(10)]
         public void Playback_PlayCalled_PlaysSuccessfully(Clip clip)
         {
-            _logger.Info($"{clip.MpdUri} starts");
-            AsyncContext.Run(async () =>
-            {
-                try
-                {
-                    IPlayer dashPlayer = null;
-                    try
-                    {
-                        var stopwatch = Stopwatch.StartNew();
-                        dashPlayer = BuildPlayer(clip);
-                        await dashPlayer.Prepare();
-                        _logger.Info($"After prepare {stopwatch.Elapsed}");
-                        dashPlayer.Play();
-                        await Task.Delay(TimeSpan.FromSeconds(2));
-                        var position = dashPlayer.Position;
-                        var state = dashPlayer.State;
-                        Assert.That(state, Is.EqualTo(PlayerState.Playing));
-                        Assert.That(position, Is.GreaterThan(TimeSpan.Zero));
-                    }
-                    finally
-                    {
-                        if (dashPlayer != null)
-                            await dashPlayer.DisposeAsync();
-                    }
-                }
-                catch (Exception ex)
-                {
-                    _logger.Error(ex);
-                    throw;
-                }
-            });
-            _logger.Info($"{clip.MpdUri} ends");
-        }
-
-        [Test]
-        [TestCaseSource(nameof(Clips))]
-        [Repeat(10)]
-        public void Playback_StartFrom20thSecond_PlaysSuccessfully(Clip clip)
-        {
-            _logger.Info($"{clip.MpdUri} starts");
-            AsyncContext.Run(async () =>
-            {
-                try
-                {
-                    IPlayer dashPlayer = null;
-                    try
-                    {
-                        var configuration =
-                            new Configuration {StartTime = TimeSpan.FromSeconds(20)};
-                        dashPlayer = BuildPlayer(
-                            clip,
-                            configuration);
-                        await dashPlayer.Prepare();
-                        dashPlayer.Play();
-                        await Task.Delay(TimeSpan.FromSeconds(2));
-                        var position = dashPlayer.Position;
-                        var state = dashPlayer.State;
-                        Assert.That(state, Is.EqualTo(PlayerState.Playing));
-                        Assert.That(position, Is.GreaterThan(TimeSpan.FromSeconds(10)));
-                    }
-                    finally
-                    {
-                        if (dashPlayer != null)
-                            await dashPlayer.DisposeAsync();
-                    }
-                }
-                catch (Exception ex)
-                {
-                    _logger.Error(ex);
-                    throw;
-                }
-            });
-            _logger.Info($"{clip.MpdUri} ends");
-        }
-
-        private void RandomSeeksTest(
-            Clip clip,
-            int seekCount,
-            bool shouldPlay)
-        {
-            AsyncContext.Run(async () =>
-            {
-                try
-                {
-                    IPlayer dashPlayer = null;
-                    try
-                    {
-                        var stopwatch = Stopwatch.StartNew();
-                        dashPlayer = BuildPlayer(clip);
-                        await dashPlayer.Prepare();
-
-                        if (shouldPlay)
-                            dashPlayer.Play();
-                        var random = new Random();
-
-                        for (var i = 0; i < seekCount; i++)
-                        {
-                            var nextPositionTicks = random.Next((int) TimeSpan.FromSeconds(60).Ticks);
-                            var nextPosition = TimeSpan.FromTicks(nextPositionTicks);
-                            var start = stopwatch.Elapsed;
-                            await dashPlayer.Seek(nextPosition);
-                            var end = stopwatch.Elapsed;
-                            _logger.Info($"Seek took: {(end - start).TotalMilliseconds} ms");
-                            if (shouldPlay)
-                                await WaitForTargetPosition(dashPlayer, nextPosition);
-                            var expectedState = shouldPlay ? PlayerState.Playing : PlayerState.Ready;
-                            var actualState = dashPlayer.State;
-                            if (shouldPlay && actualState == PlayerState.Paused)
-                            {
-                                await WaitForBufferingEnd(dashPlayer);
-                                actualState = dashPlayer.State;
-                            }
-
-                            Assert.That(actualState, Is.EqualTo(expectedState));
-                        }
-                    }
-                    finally
-                    {
-                        if (dashPlayer != null)
-                            await dashPlayer.DisposeAsync();
-                    }
-                }
-                catch (Exception ex)
-                {
-                    _logger.Error(ex);
-                    throw;
-                }
-            });
-        }
-
-        [Test]
-        [TestCaseSource(nameof(Clips))]
-        public void Seek_WhilePlaying_Seeks(Clip clip)
-        {
-            _logger.Info($"{clip.MpdUri} starts");
-            RandomSeeksTest(clip, 20, true);
-            _logger.Info($"{clip.MpdUri} ends");
-        }
-
-        [Test]
-        [TestCaseSource(nameof(Clips))]
-        public void Seek_WhileReady_Seeks(Clip clip)
-        {
-            _logger.Info($"{clip.MpdUri} starts");
-            RandomSeeksTest(clip, 20, false);
-            _logger.Info($"{clip.MpdUri} ends");
-        }
-
-        private void SetStreamGroupsTest(
-            Clip clip,
-            Func<StreamGroup[], (StreamGroup[], IStreamSelector[])[]> generator)
-        {
-            AsyncContext.Run(async () =>
+            RunTest(async () =>
             {
                 IPlayer dashPlayer = null;
                 try
                 {
+                    var stopwatch = Stopwatch.StartNew();
                     dashPlayer = BuildPlayer(clip);
                     await dashPlayer.Prepare();
+                    _logger.Info($"After prepare {stopwatch.Elapsed}");
                     dashPlayer.Play();
-                    await Task.Delay(TimeSpan.FromSeconds(3));
-
-                    var inputStreamGroups = dashPlayer.GetStreamGroups();
-                    var testCases = generator.Invoke(inputStreamGroups);
-                    foreach (var testCase in testCases)
-                    {
-                        var (outputStreamGroups, outputSelectors) = testCase;
-                        await dashPlayer.SetStreamGroups(
-                            outputStreamGroups,
-                            outputSelectors);
-                        await Task.Delay(TimeSpan.FromSeconds(3));
-                        var position = dashPlayer.Position;
-                        var state = dashPlayer.State;
-                        Assert.That(position, Is.GreaterThan(TimeSpan.Zero));
-                        Assert.That(state, Is.EqualTo(PlayerState.Playing));
-                    }
+                    await Task.Delay(TimeSpan.FromSeconds(2));
+                    var position = dashPlayer.Position;
+                    var state = dashPlayer.State;
+                    Assert.That(state, Is.EqualTo(PlayerState.Playing));
+                    Assert.That(position, Is.GreaterThan(TimeSpan.Zero));
                 }
                 finally
                 {
@@ -381,11 +220,133 @@ namespace JuvoPlayer.TizenTests.Tests
 
         [Test]
         [TestCaseSource(nameof(Clips))]
+        [Repeat(10)]
+        public void Playback_StartFrom20thSecond_PlaysSuccessfully(Clip clip)
+        {
+            RunTest(async () =>
+            {
+                IPlayer dashPlayer = null;
+                try
+                {
+                    var configuration =
+                        new Configuration {StartTime = TimeSpan.FromSeconds(20)};
+                    dashPlayer = BuildPlayer(
+                        clip,
+                        configuration);
+                    await dashPlayer.Prepare();
+                    dashPlayer.Play();
+                    await Task.Delay(TimeSpan.FromSeconds(2));
+                    var position = dashPlayer.Position;
+                    var state = dashPlayer.State;
+                    Assert.That(state, Is.EqualTo(PlayerState.Playing));
+                    Assert.That(position, Is.GreaterThan(TimeSpan.FromSeconds(10)));
+                }
+                finally
+                {
+                    if (dashPlayer != null)
+                        await dashPlayer.DisposeAsync();
+                }
+            });
+        }
+
+        private async Task RandomSeeksTest(
+            Clip clip,
+            int seekCount,
+            bool shouldPlay)
+        {
+            IPlayer dashPlayer = null;
+            try
+            {
+                var stopwatch = Stopwatch.StartNew();
+                dashPlayer = BuildPlayer(clip);
+                await dashPlayer.Prepare();
+
+                if (shouldPlay)
+                    dashPlayer.Play();
+                var random = new Random();
+
+                for (var i = 0; i < seekCount; i++)
+                {
+                    var nextPositionTicks = random.Next((int) TimeSpan.FromSeconds(60).Ticks);
+                    var nextPosition = TimeSpan.FromTicks(nextPositionTicks);
+                    var start = stopwatch.Elapsed;
+                    await dashPlayer.Seek(nextPosition);
+                    var end = stopwatch.Elapsed;
+                    _logger.Info($"Seek took: {(end - start).TotalMilliseconds} ms");
+                    if (shouldPlay)
+                        await WaitForTargetPosition(dashPlayer, nextPosition);
+                    var expectedState = shouldPlay ? PlayerState.Playing : PlayerState.Ready;
+                    var actualState = dashPlayer.State;
+                    if (shouldPlay && actualState == PlayerState.Paused)
+                    {
+                        await WaitForBufferingEnd(dashPlayer);
+                        actualState = dashPlayer.State;
+                    }
+
+                    Assert.That(actualState, Is.EqualTo(expectedState));
+                }
+            }
+            finally
+            {
+                if (dashPlayer != null)
+                    await dashPlayer.DisposeAsync();
+            }
+        }
+
+        [Test]
+        [TestCaseSource(nameof(Clips))]
+        public void Seek_WhilePlaying_Seeks(Clip clip)
+        {
+            RunTest(async () => await RandomSeeksTest(clip, 20, true));
+        }
+
+        [Test]
+        [TestCaseSource(nameof(Clips))]
+        public void Seek_WhileReady_Seeks(Clip clip)
+        {
+            RunTest(async () => await RandomSeeksTest(clip, 20, false));
+        }
+
+        private async Task SetStreamGroupsTest(
+            Clip clip,
+            Func<StreamGroup[], (StreamGroup[], IStreamSelector[])[]> generator)
+        {
+            IPlayer dashPlayer = null;
+            try
+            {
+                dashPlayer = BuildPlayer(clip);
+                await dashPlayer.Prepare();
+                dashPlayer.Play();
+                await Task.Delay(TimeSpan.FromSeconds(3));
+
+                var inputStreamGroups = dashPlayer.GetStreamGroups();
+                var testCases = generator.Invoke(inputStreamGroups);
+                foreach (var testCase in testCases)
+                {
+                    var (outputStreamGroups, outputSelectors) = testCase;
+                    await dashPlayer.SetStreamGroups(
+                        outputStreamGroups,
+                        outputSelectors);
+                    await Task.Delay(TimeSpan.FromSeconds(3));
+                    var position = dashPlayer.Position;
+                    var state = dashPlayer.State;
+                    Assert.That(position, Is.GreaterThan(TimeSpan.Zero));
+                    Assert.That(state, Is.EqualTo(PlayerState.Playing));
+                }
+            }
+            finally
+            {
+                if (dashPlayer != null)
+                    await dashPlayer.DisposeAsync();
+            }
+        }
+
+        [Test]
+        [TestCaseSource(nameof(Clips))]
         [Repeat(5)]
         public void SetStreamGroups_SetsOnlyAudio_PlaysOnlyAudio(Clip clip)
         {
-            _logger.Info($"{clip.MpdUri} starts");
-            SetStreamGroupsTest(clip, streamGroups =>
+            RunTest(async () => await SetStreamGroupsTest(clip, streamGroups =>
             {
                 var audioStreamGroup =
                     streamGroups.First(streamGroup =>
@@ -400,8 +361,7 @@ namespace JuvoPlayer.TizenTests.Tests
                         new IStreamSelector[] {streamSelector}
                     )
                 };
-            });
-            _logger.Info($"{clip.MpdUri} ends");
+            }));
         }
 
         [Test]
@@ -409,8 +369,7 @@ namespace JuvoPlayer.TizenTests.Tests
         [Repeat(5)]
         public void SetStreamGroups_SetsVideoOnly_PlaysOnlyVideo(Clip clip)
         {
-            _logger.Info($"{clip.MpdUri} starts");
-            SetStreamGroupsTest(clip, streamGroups =>
+            RunTest(async () => await SetStreamGroupsTest(clip, streamGroups =>
             {
                 var videoStreamGroup =
                     streamGroups.First(streamGroup =>
@@ -422,8 +381,7 @@ namespace JuvoPlayer.TizenTests.Tests
                         new IStreamSelector[] {null}
                     )
                 };
-            });
-            _logger.Info($"{clip.MpdUri} ends");
+            }));
         }
 
         [Test]
@@ -431,8 +389,7 @@ namespace JuvoPlayer.TizenTests.Tests
         [Repeat(5)]
         public void SetStreamGroups_UpdatesVideoStreamSelector_WorksAsExpected(Clip clip)
         {
-            _logger.Info($"{clip.MpdUri} starts");
-            SetStreamGroupsTest(clip, streamGroups =>
+            RunTest(async () => await SetStreamGroupsTest(clip, streamGroups =>
             {
                 var videoStreamGroup =
                     streamGroups.FirstOrDefault(streamGroup =>
@@ -458,8 +415,7 @@ namespace JuvoPlayer.TizenTests.Tests
                 }
 
                 return testCases.ToArray();
-            });
-            _logger.Info($"{clip.MpdUri} ends");
+            }));
         }
 
         [Test]
@@ -467,8 +423,7 @@ namespace JuvoPlayer.TizenTests.Tests
         [Repeat(5)]
         public void SetStreamGroups_UpdatesAudioStreamSelector_WorksAsExpected(Clip clip)
         {
-            _logger.Info($"{clip.MpdUri} starts");
-            SetStreamGroupsTest(clip, streamGroups =>
+            RunTest(async () => await SetStreamGroupsTest(clip, streamGroups =>
             {
                 var videoStreamGroup =
                     streamGroups.FirstOrDefault(streamGroup =>
@@ -493,8 +448,69 @@ namespace JuvoPlayer.TizenTests.Tests
                 }
 
                 return testCases.ToArray();
+            }));
+        }
+
+        [Test]
+        [TestCaseSource(nameof(Clips))]
+        public void EOS_Reached_NotifiesClient(Clip clip)
+        {
+            RunTest(async () =>
+            {
+                IPlayer dashPlayer = null;
+                try
+                {
+                    dashPlayer = BuildPlayer(clip);
+                    await dashPlayer.Prepare();
+                    var duration = dashPlayer.Duration;
+                    if (duration == null)
+                        Assert.Ignore();
+                    for (var i = 0; i < 5; i++)
+                    {
+                        var nearToEndSeekTime =
+                            duration.Value
+                                .Subtract(TimeSpan.FromSeconds(2));
+                        await dashPlayer.Seek(nearToEndSeekTime);
+                        var eosTask = dashPlayer
+                            .OnEvent()
+                            .OfType<EosEvent>()
+                            .FirstAsync()
+                            .ToTask();
+                        dashPlayer.Play();
+                        await eosTask;
+                    }
+                }
+                finally
+                {
+                    if (dashPlayer != null)
+                        await dashPlayer.DisposeAsync();
+                }
             });
-            _logger.Info($"{clip.MpdUri} ends");
+        }
+
+        private void RunTest(Func<Task> test)
+        {
+            var testContext = TestContext.CurrentContext;
+            var testName = testContext.Test.FullName;
+            var isPassed = true;
+            try
+            {
+                _logger.Info($"{testName} starts");
+                AsyncContext.Run(async () => { await test.Invoke(); });
+            }
+            catch (Exception ex)
+            {
+                _logger.Error(ex);
+                isPassed = false;
+                throw;
+            }
+            finally
+            {
+                const string passed = "PASSED";
+                const string failed = "FAILED";
+                var result = isPassed ? passed : failed;
+                _logger.Info($"{testName} ends with Result={result}");
+            }
         }
 
         private static IPlayer BuildPlayer(Clip clip, Configuration configuration = default)
