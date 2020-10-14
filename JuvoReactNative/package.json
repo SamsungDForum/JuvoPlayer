@@ -1,6 +1,6 @@
 {
   "name": "JuvoReactNative",
-  "version": "1.5.4",
+  "version": "1.5.5",
   "private": true,
   "devDependencies": {
     "babel-jest": "26.0.1",
@@ -23,9 +23,15 @@
     "mode": "Release"
   },
   "dependencies": {
-    "help": "^3.0.2",
     "react": "15.4.2",
     "react-native": "0.42.3",
-    "react-native-tizen-dotnet": ">=0.1.1"
+    "react-native-tizen-dotnet": "0.1.14"
+  },
+  "resolutions": {
+    "**/tizen-tv-dev-cli": "0.1.9",
+    "bl": "1.2.3",
+    "**/node-forge": "0.10.0",
+    "node-fetch": "2.6.1",
+    "yargs-parser": "13.1.2"
   }
 }
