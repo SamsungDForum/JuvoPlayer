@@ -19,8 +19,8 @@ using System;
 using System.Threading.Tasks;
 using JuvoLogger;
 using JuvoPlayer.Common;
-using JuvoPlayer.Common.Utils.IReferenceCountableExtensions;
 using JuvoPlayer.Drms;
+using Nito.AsyncEx;
 
 namespace JuvoPlayer.Player
 {
@@ -29,14 +29,14 @@ namespace JuvoPlayer.Player
         private readonly IDrmManager drmManager;
         private readonly IPlayer player;
 
-        private IDrmSession drmSession;
-        private TaskCompletionSource<bool> preparingNewSession = new TaskCompletionSource<bool>();
+        private ICdmInstance currentCdmInstance;
 
         private StreamConfig config;
         private readonly StreamType streamType;
         private readonly ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
         private bool forceDrmChange;
         private readonly ICodecExtraDataHandler _codecHandler;
+        private static readonly AsyncLock packetStreamLock = new AsyncLock();
 
         public PacketStream(StreamType streamType, IPlayer player, IDrmManager drmManager, ICodecExtraDataHandler handler)
         {
@@ -54,14 +54,17 @@ namespace JuvoPlayer.Player
             if (config == null)
                 throw new InvalidOperationException("Packet stream is not configured");
 
-            if (packet is EncryptedPacket encPacket)
+            using (await packetStreamLock.LockAsync())
             {
-                if (drmSession == null)
-                    await preparingNewSession.Task;
-
-                // Increment reference counter on DRM session
-                drmSession.Share();
-                encPacket.CdmInstance = drmSession.CdmInstance;
+                if (packet is EncryptedPacket encPacket)
+                {
+                    if (currentCdmInstance == null)
+                    {
+                        Logger.Error($"No matching CDM Instance for stream packet of type {encPacket.StreamType}!");
+                        return;
+                    }
+                    encPacket.CdmInstance = currentCdmInstance;
+                }
             }
 
             _codecHandler.PrependCodecData(packet);
@@ -96,54 +99,39 @@ namespace JuvoPlayer.Player
         {
             Logger.Info($"{streamType}");
 
-            // Remove reference count held by Packet Stream.
-            // Player may still have packets and process them. Don't force remove
-            //
-            drmSession?.Release();
-
-            drmSession = null;
+            currentCdmInstance = null;
             config = null;
         }
 
         public async Task OnDRMFound(DrmInitData data)
         {
-            Logger.Info($"{streamType}");
-
-            if (!forceDrmChange && drmSession != null)
-                return;
-
-            preparingNewSession = new TaskCompletionSource<bool>();
-            IDrmSession newSession = await drmManager.GetDrmSession(data);
-
-            // Do not reset wait for DRM event. If there is no valid session
-            // do not want to append new data
-            //
-            if (newSession == null)
+            using (await packetStreamLock.LockAsync())
             {
-                preparingNewSession.TrySetCanceled();
-                return;
+                Logger.Info($"{streamType}");
+
+                if (!forceDrmChange && currentCdmInstance != null)
+                    return;
+
+                IDrmSession newSession = await drmManager.GetDrmSession(data);
+
+                // Do not reset wait for DRM event. If there is no valid session
+                // do not want to append new data
+                //
+                if (newSession == null)
+                    return;
+
+                Logger.Info($"{streamType}: New DRM session found");
+                forceDrmChange = false;
+
+                // Set new session as current & let data submitters run wild.
+                // There is no need to store sessions. They live in player queue
+                currentCdmInstance = newSession.CdmInstance;
             }
-
-            Logger.Info($"{streamType}: New DRM session found");
-            forceDrmChange = false;
-
-            // Decrement use counter for packet stream on old DRM Session
-            drmSession?.Release();
-
-            // Add reference count for new session
-            newSession.Share();
-
-            // Set new session as current & let data submitters run wild.
-            // There is no need to store sessions. They live in player queue
-            drmSession = newSession;
-
-            preparingNewSession.TrySetResult(true);
         }
 
         public void Dispose()
         {
             OnClearStream();
-            preparingNewSession.TrySetCanceled();
         }
     }
 }

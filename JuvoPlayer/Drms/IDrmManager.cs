@@ -34,10 +34,17 @@ namespace JuvoPlayer.Drms
         void Clear();
 
         /// <summary>
-        /// Returns IDrmSession for given DRM initialization data
+        /// Returns Task&lt;IDrmSession&gt; for given DRM initialization data
         /// </summary>
-        /// <returns>IDrmSession for given DRM initialization data</returns>
+        /// <returns>Task&lt;IDrmSession&gt; for given DRM initialization data</returns>
         /// <param name="data">DrmInitData identifying session</param>
         Task<IDrmSession> GetDrmSession(DrmInitData data);
+
+        /// <summary>
+        /// Returns ICdmInstance for given DRM initialization data
+        /// </summary>
+        /// <returns>ICdmInstance for given DRM initialization data</returns>
+        /// <param name="data">DrmInitData identifying session</param>
+        ICdmInstance GetCdmInstance(DrmInitData data);
     }
 }
