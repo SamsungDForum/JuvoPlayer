@@ -183,6 +183,7 @@ namespace JuvoPlayer.Drms
                     if(!TryGetSession(sessionId, out var session) || session == null)
                         Logger.Info("Cannot find session for already installed licence - cannot mark it as initialized!");
                     session?.SetLicenceInstalled();
+                    SessionInitializingDone();
                     break;
                 default:
                     Logger.Warn($"[!] Unknown IEME message: {messageType}");
@@ -289,15 +290,9 @@ namespace JuvoPlayer.Drms
         {
             lock (cdmInstanceLock)
             {
-                --sessionsDuringInitializationCount;
+                sessionsDuringInitializationCount = Math.Max(sessionsDuringInitializationCount - 1, 0);
                 if (sessionsDuringInitializationCount == 0)
                     sessionsDuringInitializationTcs.TrySetResult(true);
-                if (sessionsDuringInitializationCount < 0)
-                {
-                    Logger.Error("sessionsDuringInitializationCount went negative!");
-                    throw new Exception("sessionsDuringInitializationCount went negative!");
-                }
-
             }
         }
 

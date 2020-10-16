@@ -77,9 +77,9 @@ namespace JuvoPlayer.Drms
             return session;
         }
 
-        public ICdmInstance GetCdmInstance(DrmInitData drmInitData)
+        public ICdmInstance GetCdmInstance(DrmInitData data)
         {
-            var keySystem = EmeUtils.GetKeySystemName(drmInitData.SystemId);
+            var keySystem = EmeUtils.GetKeySystemName(data.SystemId);
             lock (drmManagerLock)
             {
                 try
