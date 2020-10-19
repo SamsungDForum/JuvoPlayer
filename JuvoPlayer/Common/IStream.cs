@@ -23,6 +23,7 @@ namespace JuvoPlayer.Common
 {
     public interface IStream : IDisposable
     {
+        IStreamSelector StreamSelector { get; }
         Task Prepare();
         Task LoadChunks(Segment segment, IStreamRenderer streamRenderer, CancellationToken token);
         Task<StreamConfig> GetStreamConfig(CancellationToken token);

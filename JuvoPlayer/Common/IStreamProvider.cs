@@ -24,6 +24,7 @@ namespace JuvoPlayer.Common
     {
         Task<Timeline> Prepare();
         StreamGroup[] GetStreamGroups(Period period);
+        (StreamGroup[], IStreamSelector[]) GetSelectedStreamGroups();
 
         IStream CreateStream(
             Period period,
