@@ -32,6 +32,7 @@ namespace JuvoPlayer
         Task Pause();
         Task Seek(TimeSpan position);
         StreamGroup[] GetStreamGroups();
+        (StreamGroup[], IStreamSelector[]) GetSelectedStreamGroups();
         Task SetStreamGroups(StreamGroup[] streamGroups, IStreamSelector[] selectors);
     }
 }

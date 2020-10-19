@@ -148,6 +148,11 @@ namespace JuvoPlayer.Players
             return _streamProvider.GetStreamGroups(_currentPeriod);
         }
 
+        public (StreamGroup[], IStreamSelector[]) GetSelectedStreamGroups()
+        {
+            return _streamProvider.GetSelectedStreamGroups();
+        }
+
         public async Task SetStreamGroups(StreamGroup[] streamGroups, IStreamSelector[] selectors)
         {
             _logger.Info();
@@ -216,7 +221,6 @@ namespace JuvoPlayer.Players
 
                 // Reuse previously selected stream and update IStreamSelector only
                 _streamHolders.Remove(contentType);
-                oldStreamHolder.StreamSelector = selector;
                 streamHolders[contentType] = oldStreamHolder;
                 var stream = oldStreamHolder.Stream;
                 _streamProvider.UpdateStream(stream, selector);
@@ -428,10 +432,7 @@ namespace JuvoPlayer.Players
             _platformPlayer.Open(_window, streamConfigs);
             _platformPlayerEosSubscription = _platformPlayer
                 .OnEos()
-                .Subscribe(_ =>
-                {
-                    _eventSubject.OnNext(new EosEvent());
-                });
+                .Subscribe(_ => { _eventSubject.OnNext(new EosEvent()); });
             var synchronizationContext = SynchronizationContext.Current;
             var cancellationToken = _cancellationTokenSource.Token;
             await _platformPlayer.PrepareAsync(contentType =>
@@ -513,7 +514,6 @@ namespace JuvoPlayer.Players
                 stream,
                 streamRenderer,
                 streamGroup,
-                streamSelector,
                 bufferingObserver,
                 OnStreamRendererBuffering);
         }
@@ -657,27 +657,24 @@ namespace JuvoPlayer.Players
             public StreamHolder(IStream stream,
                 StreamRenderer streamRenderer,
                 StreamGroup streamGroup,
-                IStreamSelector streamSelector,
                 BufferingObserver bufferingObserver,
                 Action<bool> onStreamRendererBuffering)
             {
                 Stream = stream;
                 StreamRenderer = streamRenderer;
                 StreamGroup = streamGroup;
-                StreamSelector = streamSelector;
                 BufferingObserver = bufferingObserver;
                 _bufferingObserverSubscription =
                     BufferingObserver
                         .OnBuffering()
                         .Subscribe(onStreamRendererBuffering);
-
             }
 
             public IStream Stream { get; }
             public StreamRenderer StreamRenderer { get; }
             public StreamGroup StreamGroup { get; }
             public BufferingObserver BufferingObserver { get; }
-            public IStreamSelector StreamSelector { get; set; }
+            public IStreamSelector StreamSelector => Stream.StreamSelector;
 
             public void StartPushingPackets(
                 Segment segment,

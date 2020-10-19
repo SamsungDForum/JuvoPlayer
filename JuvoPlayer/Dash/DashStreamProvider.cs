@@ -73,6 +73,21 @@ namespace JuvoPlayer.Dash
             return dashPeriod.AvailableStreams;
         }
 
+        public (StreamGroup[], IStreamSelector[]) GetSelectedStreamGroups()
+        {
+            var streamCount = _dashStreams.Count;
+            var streamGroups = new StreamGroup[streamCount];
+            var selectors = new IStreamSelector[streamCount];
+            for (var index = 0; index < streamCount; ++index)
+            {
+                var stream = _dashStreams[index];
+                streamGroups[index] = stream.StreamGroup;
+                selectors[index] = stream.StreamSelector;
+            }
+
+            return (streamGroups, selectors);
+        }
+
         public IStream CreateStream(
             Period clientPeriod,
             StreamGroup streamGroup,

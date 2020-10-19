@@ -47,7 +47,6 @@ namespace JuvoPlayer.Dash
         private IStreamRenderer _renderer;
         private RepresentationWrapper[] _representations;
         private Segment _segment;
-        private IStreamSelector _streamSelector;
 
         public DashStream(
             IThroughputHistory throughputHistory,
@@ -60,11 +59,13 @@ namespace JuvoPlayer.Dash
             _downloader = downloader;
             _clock = clock;
             _demuxer = demuxer;
-            _streamSelector = streamSelector;
+            StreamSelector = streamSelector;
             _maxBufferTime = TimeSpan.FromSeconds(8);
         }
 
         public StreamGroup StreamGroup { get; private set; }
+
+        public IStreamSelector StreamSelector { get; private set; }
 
         public async Task Prepare()
         {
@@ -165,7 +166,7 @@ namespace JuvoPlayer.Dash
 
         internal void SetStreamSelector(IStreamSelector selector)
         {
-            _streamSelector = selector;
+            StreamSelector = selector;
         }
 
         private async Task RunLoadChunksLoop(CancellationToken cancellationToken)
@@ -316,7 +317,7 @@ namespace JuvoPlayer.Dash
 
         private RepresentationWrapper SelectRepresentation()
         {
-            var selectedIndex = _streamSelector.Select(StreamGroup);
+            var selectedIndex = StreamSelector.Select(StreamGroup);
             return _representations[selectedIndex];
         }
 
