@@ -5,6 +5,9 @@ jobs:
     working_directory: /build
     docker:
       - image: mcr.microsoft.com/dotnet/core/sdk:3.1
+        auth:
+          username: ${DOCKERHUB_USER}
+          password: ${DOCKERHUB_PASSWORD}
     steps:
       - run:
           name: Setup environment variables
@@ -66,6 +69,9 @@ jobs:
     working_directory: /build
     docker:
       - image: ubuntu
+        auth:
+          username: ${DOCKERHUB_USER}
+          password: ${DOCKERHUB_PASSWORD}
     steps:
       - attach_workspace:
           at: /build
