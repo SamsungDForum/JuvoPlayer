@@ -5,6 +5,9 @@ jobs:
     working_directory: /build
     docker:
       - image: mcr.microsoft.com/dotnet/core/sdk:3.1
+        auth:
+          username: ${DOCKERHUB_USER}
+          password: ${DOCKERHUB_PASSWORD}
     steps:
       - checkout
       - run:
@@ -60,6 +63,9 @@ jobs:
     working_directory: /home/circleci
     docker:
       - image: circleci/golang:1.15
+        auth:
+          username: ${DOCKERHUB_USER}
+          password: ${DOCKERHUB_PASSWORD}
     steps:
       - attach_workspace:
           at: /home/circleci
@@ -94,6 +100,9 @@ jobs:
     working_directory: /home/circleci/juvoplayer
     docker:
       - image: circleci/buildpack-deps:18.04-curl
+        auth:
+          username: ${DOCKERHUB_USER}
+          password: ${DOCKERHUB_PASSWORD}
     steps:
       - add_ssh_keys:
           fingerprints:
@@ -117,6 +126,9 @@ jobs:
     working_directory: /home/circleci
     docker:
       - image: circleci/buildpack-deps:18.04-curl
+        auth:
+          username: ${DOCKERHUB_USER}
+          password: ${DOCKERHUB_PASSWORD}
     steps:
       - add_ssh_keys:
           fingerprints:
@@ -135,6 +147,9 @@ jobs:
     working_directory: /build
     docker:
       - image: mcr.microsoft.com/dotnet/core/sdk:3.1
+        auth:
+          username: ${DOCKERHUB_USER}
+          password: ${DOCKERHUB_PASSWORD}
     steps:
       - attach_workspace:
           at: /build
@@ -155,6 +170,9 @@ jobs:
     working_directory: /home/circleci
     docker:
       - image: circleci/buildpack-deps:18.04-curl
+        auth:
+          username: ${DOCKERHUB_USER}
+          password: ${DOCKERHUB_PASSWORD}
     steps:
       - attach_workspace:
           at: /home/circleci
@@ -181,6 +199,9 @@ jobs:
     working_directory: /home/circleci
     docker:
       - image: circleci/buildpack-deps:18.04-curl
+        auth:
+          username: ${DOCKERHUB_USER}
+          password: ${DOCKERHUB_PASSWORD}
     steps:
       - attach_workspace:
           at: /home/circleci
