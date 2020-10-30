@@ -133,10 +133,6 @@ namespace JuvoPlayer.Player.EsPlayer
                 .ConfigureAwait(false);
         }
 
-        private bool IsPlayerClockRunning() =>
-            _streamSyncData[(int)StreamType.Video].FirstKeyFramePts.HasValue &&
-            _playerClockSource.Clock >= _streamSyncData[(int)StreamType.Video].FirstKeyFramePts;
-
         private bool IsTransferredDurationCompleted(SynchronizationData streamState)
         {
             return (streamState.SyncState == SynchronizationState.PlayerClockSynchronize)
@@ -170,10 +166,7 @@ namespace JuvoPlayer.Player.EsPlayer
                     if (streamState.StreamType == StreamType.Video)
                         _ptsSubject.OnNext(streamState.Pts.Value);
 
-                    // Pushing +300ms post key frame may not complete async ops on certain streams
-                    // Async op completion also does not guarantee playback will commence.
-                    // Use running clock to switch from ClockStart to PlayerClock synchronization
-                    if (!IsPlayerClockRunning()) return;
+                    if (!_playerClockSource.IsRunning) return;
 
                     Logger.Info($"{streamState.StreamType}: Clock started {_playerClockSource.Clock}");
                     _streamSyncBarrier.RemoveParticipant();
