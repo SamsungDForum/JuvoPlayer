@@ -595,6 +595,7 @@ namespace JuvoPlayer.Player.EsPlayer
                     {
                         // Destructive player change results in packet loss. 
                         // Reposition data provider.
+                        DisableInput();
                         await FlushStreams();
                         var streamClock = await Client.Seek(playerPosition, CancellationToken.None);
                         EnableInput();
