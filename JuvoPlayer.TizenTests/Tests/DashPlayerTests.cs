@@ -488,6 +488,39 @@ namespace JuvoPlayer.TizenTests.Tests
             });
         }
 
+        [Test]
+        [TestCaseSource(nameof(Clips))]
+        public void Seek_ToClipDuration_CompletesAndPublishesEos(Clip clip)
+        {
+            RunTest(async () =>
+            {
+                IPlayer dashPlayer = null;
+                try
+                {
+                    dashPlayer = BuildPlayer(clip);
+                    await dashPlayer.Prepare();
+                    var duration = dashPlayer.Duration;
+                    if (duration == null)
+                        Assert.Ignore();
+
+                    var eosTask = dashPlayer
+                        .OnEvent()
+                        .OfType<EosEvent>()
+                        .FirstAsync()
+                        .ToTask();
+
+                    await dashPlayer.Seek(duration.Value);
+                    dashPlayer.Play();
+                    await eosTask;
+                }
+                finally
+                {
+                    if (dashPlayer != null)
+                        await dashPlayer.DisposeAsync();
+                }
+            });
+        }
+
         private void RunTest(Func<Task> test)
         {
             var testContext = TestContext.CurrentContext;

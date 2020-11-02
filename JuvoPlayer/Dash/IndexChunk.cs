@@ -140,7 +140,8 @@ namespace JuvoPlayer.Dash
 
             public long GetSegmentNum(TimeSpan time, TimeSpan? periodDuration)
             {
-                return _index.Rank(time);
+                var segmentNum = _index.Rank(time);
+                return Math.Min(segmentNum, _index.Count - 1);
             }
 
             public TimeSpan GetStartTime(long segmentNum)
