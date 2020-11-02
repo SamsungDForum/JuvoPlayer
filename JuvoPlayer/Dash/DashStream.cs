@@ -298,11 +298,12 @@ namespace JuvoPlayer.Dash
             {
                 _logger.Error(ex);
                 // Send EOS if we got exception for the last segment
-                if (!_previousSegmentNum.HasValue)
+                if (!(chunk is DataChunk))
                     throw;
+                var dataChunk = chunk as DataChunk;
                 var lastSegmentNum =
                     GetLastSegmentNum(representation);
-                if (_previousSegmentNum.Value + 1 != lastSegmentNum)
+                if (dataChunk.SegmentNum != lastSegmentNum)
                     throw;
             }
 
