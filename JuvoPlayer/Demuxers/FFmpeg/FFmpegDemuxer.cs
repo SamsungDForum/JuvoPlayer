@@ -20,9 +20,9 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
+using FFmpegBindings.Interop;
 using JuvoLogger;
 using JuvoPlayer.Common;
-using JuvoPlayer.Demuxers.FFmpeg.Interop;
 using Nito.AsyncEx;
 using static Configuration.FFmpegDemuxer;
 

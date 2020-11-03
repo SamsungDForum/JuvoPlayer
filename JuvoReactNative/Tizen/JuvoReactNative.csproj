@@ -6,7 +6,7 @@
     <DefineConstants>
     </DefineConstants>
     <Version>1.5.5</Version>
-    <TizenTpkExcludePattern>runtimes\*\native\*.*</TizenTpkExcludePattern>
+    <TizenTpkExcludePattern>runtimes\*\native\libSkiaSharp.so</TizenTpkExcludePattern>
     <LangVersion>7.3</LangVersion>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">

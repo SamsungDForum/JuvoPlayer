@@ -5,7 +5,7 @@
     <AssemblyName>JuvoPlayerOpenGLNative.Tizen.TV</AssemblyName>
     <Version>1.5.5</Version>
     <Description>C++ native GUI for the JuvoPlayer backend. For animation peformance optimization the Open GL framework has been used.</Description>
-    <TizenTpkExcludePattern>runtimes\*\native\*.*</TizenTpkExcludePattern>
+    <TizenTpkExcludePattern>runtimes\*\native\libSkiaSharp.so</TizenTpkExcludePattern>
     <LangVersion>7.3</LangVersion>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
