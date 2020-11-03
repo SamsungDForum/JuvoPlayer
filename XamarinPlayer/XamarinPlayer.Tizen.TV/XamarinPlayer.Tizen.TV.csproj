@@ -16,7 +16,7 @@
     <NeutralLanguage>en</NeutralLanguage>
     <Description>JuvoPlayerXamarin.Tizen.TV</Description>
     <Version>1.5.5</Version>
-    <TizenTpkExcludePattern>runtimes\*\native\*.*;res\storyboards\**\*</TizenTpkExcludePattern>
+    <TizenTpkExcludePattern>runtimes\*\native\libSkiaSharp.so;res\storyboards\**\*</TizenTpkExcludePattern>
     <LangVersion>7.3</LangVersion>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">

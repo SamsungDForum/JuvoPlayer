@@ -28,12 +28,7 @@
   </ItemGroup>
 
   <ItemGroup>
-    <Folder Include="lib\">
-      <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-    </Folder>
-  </ItemGroup>
-
-  <ItemGroup>
+    <PackageReference Include="FFmpegBindings" Version="3.3.6" />
     <PackageReference Include="Newtonsoft.Json" Version="10.0.3" />
     <PackageReference Include="Nito.AsyncEx" Version="5.0.0-pre-05" />
     <PackageReference Include="Nito.AsyncEx.Context" Version="5.0.0-pre-05" />
@@ -49,7 +44,6 @@
     <PackageReference Include="Tizen.NET.TV" Version="5.5.0.4997532">
       <ExcludeAssets>Runtime</ExcludeAssets>
     </PackageReference>
-   
   </ItemGroup>
 
   <ItemGroup>
@@ -57,28 +51,6 @@
     <ProjectReference Include="..\JuvoLogger\JuvoLogger.csproj" />
     <ProjectReference Include="..\MpdParser\MpdParser.csproj" />
     <ProjectReference Include="..\thirdparty\RTSP\RTSP.csproj" />
-  </ItemGroup>
-
-  <ItemGroup>
-    <None Update="lib\libavcodec-juvo.so.57">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Update="lib\libavfilter-juvo.so.6">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Update="lib\libavformat-juvo.so.57">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Update="lib\libavutil-juvo.so.55">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Update="lib\libswresample-juvo.so.2">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Update="lib\libswscale-juvo.so.4">
-      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-    </None>
-    <None Include="res\tiles\default_bg.png" />
   </ItemGroup>
 </Project>
 
