@@ -46,9 +46,9 @@ namespace JuvoPlayer.Player
             this.player = player ?? throw new ArgumentNullException(nameof(player), "player cannot be null");
 
             streams[StreamType.Audio] =
-                new PacketStream(StreamType.Audio, this.player, drmManager, new AudioCodecExtraDataHandler());
+                new PacketStream(StreamType.Audio, this.player, drmManager);
             streams[StreamType.Video] =
-                new PacketStream(StreamType.Video, this.player, drmManager, new VideoCodecExtraDataHandler());
+                new PacketStream(StreamType.Video, this.player, drmManager);
         }
 
         public IObservable<int> BufferingProgress()

@@ -34,6 +34,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg
 
         private AVFormatContext* formatContext;
         private AVIOContextWrapper avioContext;
+        private readonly Dictionary<int, byte[]> parsedExtraDatas = new Dictionary<int, byte[]>();
 
         private const int MillisecondsPerSecond = 1000;
 
@@ -226,8 +227,26 @@ namespace JuvoPlayer.Demuxers.FFmpeg
 
                 packet.IsKeyFrame = pkt.flags == 1;
                 packet.Storage = new FFmpegDataStorage { Packet = pkt, StreamType = packet.StreamType };
+                PrependExtraDataIfNeeded(packet, stream);
                 return packet;
             } while (true);
+        }
+        
+        private void PrependExtraDataIfNeeded(Packet packet, AVStream* stream)
+        {
+            if (!packet.IsKeyFrame || packet.StreamType != StreamType.Video)
+                return;
+
+            if (!parsedExtraDatas.ContainsKey(stream->index))
+            {
+                var codec = stream->codec;
+                parsedExtraDatas[stream->index] = CodecExtraDataParser.Parse(codec->codec_id, codec->extradata,
+                    codec->extradata_size);
+            }
+
+            var parsedExtraData = parsedExtraDatas[stream->index];
+            if (parsedExtraData != null)
+                packet.Prepend(parsedExtraData);
         }
 
         private TimeSpan Rescale(long ffmpegTime, AVStream* stream)
