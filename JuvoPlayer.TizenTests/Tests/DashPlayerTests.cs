@@ -38,6 +38,7 @@ namespace JuvoPlayer.TizenTests.Tests
         private readonly ILogger _logger = LoggerManager.GetInstance().GetLogger("UT");
         private static readonly TimeSpan CatchupPlaybackTimeout = TimeSpan.FromSeconds(14);
         private static readonly TimeSpan BufferingEndTimeout = TimeSpan.FromSeconds(5);
+        private static readonly TimeSpan EosTimeout = TimeSpan.FromSeconds(14);
 
         public struct Clip
         {
@@ -471,13 +472,29 @@ namespace JuvoPlayer.TizenTests.Tests
                             duration.Value
                                 .Subtract(TimeSpan.FromSeconds(2));
                         await dashPlayer.Seek(nearToEndSeekTime);
+                        var exceptionTask = dashPlayer
+                            .OnEvent()
+                            .OfType<ExceptionEvent>()
+                            .FirstAsync()
+                            .ToTask();
                         var eosTask = dashPlayer
                             .OnEvent()
                             .OfType<EosEvent>()
                             .FirstAsync()
                             .ToTask();
                         dashPlayer.Play();
-                        await eosTask;
+                        var timeoutTask = Task.Delay(EosTimeout);
+                        var completedTask = await Task.WhenAny(
+                            exceptionTask,
+                            eosTask,
+                            timeoutTask);
+                        if (completedTask == exceptionTask)
+                        {
+                            var exceptionEvent = await exceptionTask;
+                            throw exceptionEvent.Exception;
+                        }
+                        else if (completedTask == timeoutTask)
+                            throw new TimeoutException();
                     }
                 }
                 finally
@@ -503,6 +520,11 @@ namespace JuvoPlayer.TizenTests.Tests
                     if (duration == null)
                         Assert.Ignore();
 
+                    var exceptionTask = dashPlayer
+                        .OnEvent()
+                        .OfType<ExceptionEvent>()
+                        .FirstAsync()
+                        .ToTask();
                     var eosTask = dashPlayer
                         .OnEvent()
                         .OfType<EosEvent>()
@@ -511,7 +533,20 @@ namespace JuvoPlayer.TizenTests.Tests
 
                     await dashPlayer.Seek(duration.Value);
                     dashPlayer.Play();
-                    await eosTask;
+
+                    var timeoutTask = Task.Delay(EosTimeout);
+
+                    var completedTask = await Task.WhenAny(
+                        exceptionTask,
+                        eosTask,
+                        timeoutTask);
+                    if (completedTask == exceptionTask)
+                    {
+                        var exceptionEvent = await exceptionTask;
+                        throw exceptionEvent.Exception;
+                    }
+                    else if (completedTask == timeoutTask)
+                        throw new TimeoutException();
                 }
                 finally
                 {
