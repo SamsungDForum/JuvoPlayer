@@ -19,6 +19,7 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Reactive.Linq;
+using System.Reactive.Subjects;
 using System.Threading;
 using JuvoPlayer.Common;
 
@@ -29,15 +30,17 @@ namespace JuvoPlayer.Drms
         private bool _isDisposed;
         private readonly IList<DrmInitData> _drmInitDatas;
         private readonly IList<string> _sessionIds;
-        private ICdmInstance _cdmInstance;
+        private CdmInstanceWrapper _cdmInstance;
         private IDisposable _onMessageSubscription;
         private readonly IDrmSessionHandler _drmSessionHandler;
+        private readonly Subject<ExceptionEvent> _exceptionSubject;
 
         public CdmContext(IDrmSessionHandler sessionHandler)
         {
             _drmSessionHandler = sessionHandler;
             _drmInitDatas = new List<DrmInitData>();
             _sessionIds = new List<string>();
+            _exceptionSubject = new Subject<ExceptionEvent>();
         }
 
         public void InitCdmInstance(string keySystem)
@@ -56,7 +59,8 @@ namespace JuvoPlayer.Drms
                     "CdmInstance is already initialized");
             }
 
-            _cdmInstance = platform.CreateCdmInstance(keySystem);
+            var cdmInstance = platform.CreateCdmInstance(keySystem);
+            _cdmInstance = new CdmInstanceWrapper(cdmInstance);
             _onMessageSubscription = _cdmInstance
                 .OnSessionMessage()
                 .ObserveOn(SynchronizationContext.Current)
@@ -82,6 +86,14 @@ namespace JuvoPlayer.Drms
         public ICdmInstance GetCdmInstance()
         {
             return _cdmInstance;
+        }
+
+        public IObservable<ExceptionEvent> OnException()
+        {
+            var exceptionObservable = _exceptionSubject.AsObservable();
+            if (_cdmInstance != null)
+                exceptionObservable = exceptionObservable.Merge(_cdmInstance.OnException());
+            return exceptionObservable;
         }
 
         private void CreateSessionAndGenerateRequest(DrmInitData drmInitData)
@@ -119,9 +131,19 @@ namespace JuvoPlayer.Drms
             string sessionId,
             byte[] data)
         {
-            var response = await _drmSessionHandler.AcquireLicense(
-                sessionId,
-                data);
+            byte[] response;
+            try
+            {
+                response = await _drmSessionHandler.AcquireLicense(
+                    sessionId,
+                    data);
+            }
+            catch (Exception ex)
+            {
+                _exceptionSubject.OnNext(new ExceptionEvent(ex));
+                throw;
+            }
+
             if (_isDisposed)
                 return;
             _cdmInstance.UpdateSession(

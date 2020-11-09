@@ -319,7 +319,10 @@ namespace JuvoPlayer.Players
 
         public IObservable<IEvent> OnEvent()
         {
-            return _eventSubject.AsObservable();
+            var eventObservable = _eventSubject.AsObservable();
+            if (_cdmContext != null)
+                eventObservable = eventObservable.Merge(_cdmContext.OnException());
+            return eventObservable;
         }
 
         public async Task DisposeAsync()
