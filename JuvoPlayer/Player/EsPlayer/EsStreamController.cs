@@ -323,8 +323,20 @@ namespace JuvoPlayer.Player.EsPlayer
 
                     case ESPlayer.ESPlayerState.Ready:
                         player.Start();
-                        StartClockGenerator();
-                        SubscribeBufferingEvent();
+
+                        try
+                        {
+                            using (asyncOpSerializer.Lock(new CancellationToken(true)))
+                            {
+                                StartClockGenerator();
+                                SubscribeBufferingEvent();
+                            }
+                        }
+                        catch (OperationCanceledException)
+                        {
+                            logger.Info("Async operation in progress.");
+                        }
+
                         break;
 
                     case ESPlayer.ESPlayerState.Paused:
@@ -507,11 +519,11 @@ namespace JuvoPlayer.Player.EsPlayer
         {
             logger.Info("");
 
+            UnsubscribeBufferingEvent();
             StopClockGenerator();
             // Stop data streams. They will be restarted from SeekAsync handler.
-            DisableInput();
             StopTransfer();
-            UnsubscribeBufferingEvent();
+            DisableInput();
 
             // Propagate closures & terminations
             await Task.Yield();
@@ -602,20 +614,23 @@ namespace JuvoPlayer.Player.EsPlayer
 
                         logger.Info($"Incompatible. Restarting player @{streamClock} Player clock was {playerPosition}");
                         await ChangeConfiguration(streamClock, token);
+
+                        // In async op. Play() issued in ChangeConfiguration->RestoreState won't start clock and buffering events.
+                        StartClockGenerator();
+                        SubscribeBufferingEvent();
+                        logger.Info("End");
                         return;
                     }
-                    else
-                    {
-                        logger.Info($"Compatible. Repositionting to {playerPosition}");
 
-                        if (await ExecuteSeek(playerPosition, token))
-                        {
-                            StartClockGenerator();
-                            SubscribeBufferingEvent();
-                            logger.Info("End");
-                            return;
-                        }
+                    logger.Info($"Compatible. Repositionting to {playerPosition}");
+                    if (await ExecuteSeek(playerPosition, token))
+                    {
+                        StartClockGenerator();
+                        SubscribeBufferingEvent();
+                        logger.Info("End");
+                        return;
                     }
+
                 }
                 catch (SeekException e)
                 {
@@ -825,11 +840,17 @@ namespace JuvoPlayer.Player.EsPlayer
         {
             // It is expected, upon subscription, handler will be provided with current
             // buffering state.
-            bufferingSub = esStreams[(int)StreamType.Video].StreamBuffering()
-                .CombineLatest(
-                    esStreams[(int)StreamType.Audio].StreamBuffering(), (v, a) => v | a)
-                .Subscribe(OnStreamBuffering, _syncCtx);
-
+            if (bufferingSub == null)
+            {
+                bufferingSub = esStreams[(int)StreamType.Video].StreamBuffering()
+                    .CombineLatest(
+                        esStreams[(int)StreamType.Audio].StreamBuffering(), (v, a) => v | a)
+                    .Subscribe(OnStreamBuffering, _syncCtx);
+            }
+            else
+            {
+                logger.Info("Already subscribed");
+            }
             logger.Info("End");
         }
 

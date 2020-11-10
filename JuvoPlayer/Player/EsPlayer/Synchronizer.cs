@@ -52,7 +52,7 @@ namespace JuvoPlayer.Player.EsPlayer
 
         private static readonly ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
         private readonly SynchronizationData[] _streamSyncData = new SynchronizationData[(int)StreamType.Count];
-        private readonly AsyncBarrier<bool> _streamSyncBarrier = new AsyncBarrier<bool>();
+        private readonly AsyncBarrier<(bool, bool)> _streamSyncBarrier = new AsyncBarrier<(bool, bool)>();
         private readonly PlayerClockProvider _playerClockSource;
         private readonly Subject<TimeSpan> _ptsSubject = new Subject<TimeSpan>();
 
@@ -133,6 +133,8 @@ namespace JuvoPlayer.Player.EsPlayer
                 .ConfigureAwait(false);
         }
 
+
+
         private bool IsTransferredDurationCompleted(SynchronizationData streamState)
         {
             return (streamState.SyncState == SynchronizationState.PlayerClockSynchronize)
@@ -153,20 +155,21 @@ namespace JuvoPlayer.Player.EsPlayer
                     // Grab end time before going into sync barrier. Otherwise first stream entering barrier
                     // will have overly long transfer time due to wait for second stream.
                     streamState.EndTime = DateTimeOffset.Now;
-                    Logger.Info($"{streamState.StreamType}: Sync. Pushed/Needed/Pts {streamState.TransferredDuration}/{streamState.NeededDuration}/{streamState.Pts}");
-                    var keyFrames = await _streamSyncBarrier.Signal(streamState.FirstKeyFramePts.HasValue, token);
-
-                    // Use key frame to determine drip feed value.
-                    // Before all streams report key frame, use PreKeyFrameTransferDuration otherwise
-                    // use PostKeyFrameTransferDuration
-                    var allKeyFramesSeen = keyFrames.All(keyFrameSeen => keyFrameSeen);
-                    await DelayStream(streamState, allKeyFramesSeen, token);
-
                     // Push pts out
                     if (streamState.StreamType == StreamType.Video)
                         _ptsSubject.OnNext(streamState.Pts.Value);
 
-                    if (!_playerClockSource.IsRunning) return;
+                    Logger.Info($"{streamState.StreamType}: Sync. Pushed/Needed/Pts {streamState.TransferredDuration}/{streamState.NeededDuration}/{streamState.Pts}");
+                    var streamMsg = await _streamSyncBarrier.Signal((streamState.FirstKeyFramePts.HasValue, _playerClockSource.IsRunning), token);
+
+                    // Use key frame to determine drip feed value.
+                    // Before all streams report key frame, use PreKeyFrameTransferDuration otherwise
+                    // use PostKeyFrameTransferDuration
+                    var allKeyFramesSeen = streamMsg.All(msg => msg.Item1);
+                    await DelayStream(streamState, allKeyFramesSeen, token);
+
+                    // switch to player clock sync when all streams see clock
+                    if (streamMsg.Any(msg => !msg.Item2)) return;
 
                     Logger.Info($"{streamState.StreamType}: Clock started {_playerClockSource.Clock}");
                     _streamSyncBarrier.RemoveParticipant();
