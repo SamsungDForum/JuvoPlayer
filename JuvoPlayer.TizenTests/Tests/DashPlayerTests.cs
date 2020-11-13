@@ -250,10 +250,10 @@ namespace JuvoPlayer.TizenTests.Tests
             });
         }
 
-        private async Task RandomSeeksTest(
+        private async Task SeekTest(
             Clip clip,
-            int seekCount,
-            bool shouldPlay)
+            bool shouldPlay,
+            Func<TimeSpan, IEnumerable<TimeSpan>> generator)
         {
             IPlayer dashPlayer = null;
             try
@@ -261,19 +261,28 @@ namespace JuvoPlayer.TizenTests.Tests
                 var stopwatch = Stopwatch.StartNew();
                 dashPlayer = BuildPlayer(clip);
                 await dashPlayer.Prepare();
+                var duration = dashPlayer.Duration;
+                if (duration == null)
+                    Assert.Ignore();
+                var testcases = generator.Invoke(duration.Value);
 
                 if (shouldPlay)
                     dashPlayer.Play();
-                var random = new Random();
 
-                for (var i = 0; i < seekCount; i++)
+                foreach (var nextPosition in testcases)
                 {
-                    var nextPositionTicks = random.Next((int) TimeSpan.FromSeconds(60).Ticks);
-                    var nextPosition = TimeSpan.FromTicks(nextPositionTicks);
                     var start = stopwatch.Elapsed;
                     await dashPlayer.Seek(nextPosition);
                     var end = stopwatch.Elapsed;
-                    _logger.Info($"Seek took: {(end - start).TotalMilliseconds} ms");
+
+                    var seekTimeDuration = end - start;
+                    var msg = $"Seek took: {seekTimeDuration.TotalMilliseconds} ms";
+                    _logger.Info(msg);
+                    if (seekTimeDuration >= TimeSpan.FromSeconds(2))
+                        Assert.Fail(msg);
+                    else if (seekTimeDuration >= TimeSpan.FromMilliseconds(1300))
+                        Assert.Warn(msg);
+
                     if (shouldPlay)
                         await WaitForTargetPosition(dashPlayer, nextPosition);
                     var expectedState = shouldPlay ? PlayerState.Playing : PlayerState.Ready;
@@ -298,14 +307,33 @@ namespace JuvoPlayer.TizenTests.Tests
         [TestCaseSource(nameof(Clips))]
         public void Seek_WhilePlaying_Seeks(Clip clip)
         {
-            RunTest(async () => await RandomSeeksTest(clip, 20, true));
+            RunTest(async () =>
+                await SeekTest(
+                    clip,
+                    true,
+                    duration => RandomPositionGenerator(duration, 20)));
         }
 
         [Test]
         [TestCaseSource(nameof(Clips))]
         public void Seek_WhileReady_Seeks(Clip clip)
         {
-            RunTest(async () => await RandomSeeksTest(clip, 20, false));
+            RunTest(async () =>
+                await SeekTest(
+                    clip,
+                    false,
+                    duration => RandomPositionGenerator(duration, 20)));
+        }
+
+        [Test]
+        [TestCaseSource(nameof(Clips))]
+        public void Seek_Backward_Seeks(Clip clip)
+        {
+            RunTest(async () =>
+                await SeekTest(
+                    clip,
+                    true,
+                    duration => BackwardPositionGenerator(duration, TimeSpan.FromSeconds(20))));
         }
 
         private async Task SetStreamGroupsTest(
@@ -608,6 +636,34 @@ namespace JuvoPlayer.TizenTests.Tests
             }
 
             return builder.Build();
+        }
+
+        private static IEnumerable<TimeSpan> RandomPositionGenerator(TimeSpan duration, int count)
+        {
+            var maxSeekPosition = duration.Subtract(TimeSpan.FromSeconds(5));
+            var random = new Random();
+            var testcases = new List<TimeSpan>();
+            for (var i = 0; i < count; i++)
+            {
+                var nextPositionSeconds = random.Next((int) maxSeekPosition.TotalSeconds);
+                var nextPosition = TimeSpan.FromSeconds(nextPositionSeconds);
+                testcases.Add(nextPosition);
+            }
+
+            return testcases;
+        }
+
+        private static IEnumerable<TimeSpan> BackwardPositionGenerator(TimeSpan duration, TimeSpan step)
+        {
+            var nextSeekPosition = duration.Subtract(TimeSpan.FromSeconds(5));
+            var testcases = new List<TimeSpan>();
+            while (nextSeekPosition.TotalMilliseconds >= 0)
+            {
+                testcases.Add(nextSeekPosition);
+                nextSeekPosition = nextSeekPosition.Subtract(step);
+            }
+
+            return testcases;
         }
     }
 }
