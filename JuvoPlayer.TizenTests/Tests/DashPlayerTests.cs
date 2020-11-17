@@ -277,11 +277,12 @@ namespace JuvoPlayer.TizenTests.Tests
 
                     var seekTimeDuration = end - start;
                     var msg = $"Seek took: {seekTimeDuration.TotalMilliseconds} ms";
-                    _logger.Info(msg);
                     if (seekTimeDuration >= TimeSpan.FromSeconds(2))
                         Assert.Fail(msg);
                     else if (seekTimeDuration >= TimeSpan.FromMilliseconds(1300))
-                        Assert.Warn(msg);
+                        _logger.Warn($"[WARNING] {msg}");
+                    else
+                        _logger.Info(msg);
 
                     if (shouldPlay)
                         await WaitForTargetPosition(dashPlayer, nextPosition);
