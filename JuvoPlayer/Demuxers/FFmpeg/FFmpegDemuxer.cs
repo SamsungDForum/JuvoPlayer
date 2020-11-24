@@ -166,7 +166,6 @@ namespace JuvoPlayer.Demuxers.FFmpeg
             }
             catch (FFmpegException ex)
             {
-                DeallocFFmpeg();
                 Logger.Error(ex);
                 throw new DemuxerException("Cannot open formatContext", ex);
             }
@@ -223,7 +222,6 @@ namespace JuvoPlayer.Demuxers.FFmpeg
             }
             catch (FFmpegException ex)
             {
-                DeallocFFmpeg();
                 Logger.Error(ex);
                 throw new DemuxerException("Cannot open formatContext", ex);
             }
@@ -239,7 +237,6 @@ namespace JuvoPlayer.Demuxers.FFmpeg
             catch (FFmpegException ex)
             {
                 Logger.Error(ex);
-                DeallocFFmpeg();
                 throw new DemuxerException("Cannot find streams info", ex);
             }
         }
