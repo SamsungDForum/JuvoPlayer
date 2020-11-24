@@ -85,6 +85,8 @@ namespace JuvoPlayer.Demuxers.FFmpeg
 
         public void Open()
         {
+            if (_formatContext == null)
+                throw new FFmpegException($"Format context is null");
             _formatContext->flags |= FFmpegMacros.AVFMT_FLAG_CUSTOM_IO;
             Open(null);
         }
@@ -102,6 +104,8 @@ namespace JuvoPlayer.Demuxers.FFmpeg
 
         public void FindStreamInfo()
         {
+            if (_formatContext == null)
+                throw new FFmpegException($"Format context is null");
             var ret = Interop.FFmpeg.avformat_find_stream_info(_formatContext, null);
             if (ret < 0)
                 throw new FFmpegException($"Could not find stream info (error code: {ret})!");
@@ -109,11 +113,15 @@ namespace JuvoPlayer.Demuxers.FFmpeg
 
         public int FindBestStream(AVMediaType mediaType)
         {
+            if (_formatContext == null)
+                throw new FFmpegException($"Format context is null");
             return Interop.FFmpeg.av_find_best_stream(_formatContext, mediaType, -1, -1, null, 0);
         }
 
         public int FindBestBandwidthStream(AVMediaType mediaType)
         {
+            if (_formatContext == null)
+                throw new FFmpegException($"Format context is null");
             ulong bandwidth = 0;
             var streamId = -1;
             for (var i = 0; i < _formatContext->nb_streams; ++i)
@@ -141,6 +149,8 @@ namespace JuvoPlayer.Demuxers.FFmpeg
 
         public void EnableStreams(int audioIdx, int videoIdx)
         {
+            if (_formatContext == null)
+                throw new FFmpegException($"Format context is null");
             for (var i = 0; i < _formatContext->nb_streams; ++i)
             {
                 var enabled = i == audioIdx || i == videoIdx;
@@ -150,6 +160,8 @@ namespace JuvoPlayer.Demuxers.FFmpeg
 
         public StreamConfig ReadConfig(int idx)
         {
+            if (_formatContext == null)
+                throw new FFmpegException($"Format context is null");
             VerifyStreamIndex(idx);
 
             var stream = _formatContext->streams[idx];
@@ -166,6 +178,9 @@ namespace JuvoPlayer.Demuxers.FFmpeg
 
         public Packet NextPacket(int[] streamIndexes)
         {
+            if (_formatContext == null)
+                return null;
+
             do
             {
                 var pkt = default(AVPacket);
@@ -205,6 +220,8 @@ namespace JuvoPlayer.Demuxers.FFmpeg
 
         public void Seek(int idx, TimeSpan time)
         {
+            if (_formatContext == null)
+                throw new FFmpegException($"Format context is null");
             VerifyStreamIndex(idx);
             HandleSeek(idx, time);
         }
