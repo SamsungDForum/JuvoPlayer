@@ -44,7 +44,7 @@ namespace JuvoPlayer.Platforms.Tizen
         {
             _logger.Debug();
             _esPlayer.Open();
-            _esPlayer.SetDisplay(window.ToPlatform<ElmSharp.Window>());
+            EsPlayerExtensions.SetDisplay(window, _esPlayer);
             if (SupportsDrms())
                 _esPlayer.SetTrustZoneUse(true);
             foreach (var streamConfig in streamConfigs)

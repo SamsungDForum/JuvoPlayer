@@ -17,9 +17,17 @@
  *
  */
 
-namespace JuvoPlayer.Common
+using System;
+using JuvoPlayer.Common;
+
+namespace JuvoPlayer.Platforms.Tizen
 {
-    public interface IWindow
+    public class EcoreWindow : IWindow
     {
+        public IntPtr Window { get; }
+        public int Width { get; }
+        public int Height { get; }
+
+        public EcoreWindow(IntPtr window, int width, int height) => (Window, Width, Height) = (window, width, height);
     }
 }

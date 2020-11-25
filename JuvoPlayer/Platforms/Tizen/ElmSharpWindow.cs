@@ -21,18 +21,13 @@ using JuvoPlayer.Common;
 
 namespace JuvoPlayer.Platforms.Tizen
 {
-    public class Window : IWindow
+    public class ElmSharpWindow : IWindow
     {
-        private readonly ElmSharp.Window _window;
+        public ElmSharp.Window Window { get; }
 
-        public Window(ElmSharp.Window window)
+        public ElmSharpWindow(ElmSharp.Window window)
         {
-            _window = window;
-        }
-
-        public TPlatformWindow ToPlatform<TPlatformWindow>() where TPlatformWindow : class
-        {
-            return _window as TPlatformWindow;
+            Window = window;
         }
     }
 }

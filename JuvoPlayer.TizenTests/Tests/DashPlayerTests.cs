@@ -612,7 +612,7 @@ namespace JuvoPlayer.TizenTests.Tests
 
         private static IPlayer BuildPlayer(Clip clip, Configuration configuration = default)
         {
-            var window = new Window(AppContext.Instance.MainWindow);
+            var window = new ElmSharpWindow(AppContext.Instance.MainWindow);
             var mpdUri = clip.MpdUri;
             var drmInfo = clip.DrmDescription;
             var builder = new DashPlayerBuilder();
