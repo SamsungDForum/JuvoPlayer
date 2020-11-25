@@ -20,6 +20,7 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Reflection;
 using System.Runtime.InteropServices;
 using JuvoPlayer.Common;
 using JuvoPlayer.Players;
@@ -369,6 +370,28 @@ namespace JuvoPlayer.Platforms.Tizen
             public int Width { get; internal set; }
             public int Height { get; internal set; }
             public bool Supported { get; internal set; }
+        }
+
+        [DllImport("/usr/lib/libesplusplayer.so", EntryPoint = "esplusplayer_set_ecore_display")]
+        internal static extern int SetDisplay(IntPtr player, DisplayType type, IntPtr window, int x, int y, int w, int h);
+
+        public static void SetDisplay(IWindow window, ESPlayer esPlayer)
+        {
+            switch (window)
+            {
+                case ElmSharpWindow elmSharpWindow:
+                    esPlayer.SetDisplay(elmSharpWindow.Window);
+                    break;
+                case EcoreWindow ecoreWindow:
+                    var player = (IntPtr)esPlayer.GetType().GetField("player", BindingFlags.NonPublic | BindingFlags.Instance).GetValue(esPlayer);
+
+                    var error = SetDisplay(player, DisplayType.Overlay, ecoreWindow.Window, 0, 0, ecoreWindow.Width, ecoreWindow.Height);
+                    if (error != 0)
+                        throw new Exception();
+                    break;
+                default:
+                    throw new ArgumentException("Unsupported window type.");
+            }
         }
     }
 }

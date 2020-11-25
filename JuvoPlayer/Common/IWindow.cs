@@ -21,6 +21,5 @@ namespace JuvoPlayer.Common
 {
     public interface IWindow
     {
-        TPlatformWindow ToPlatform<TPlatformWindow>() where TPlatformWindow : class;
     }
 }
