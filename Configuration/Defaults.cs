@@ -42,11 +42,10 @@ namespace Configuration
 
     public static class DataSynchronizerConfig
     {
-        public static TimeSpan PostKeyFrameTransferDuration { get; set; } = TimeSpan.FromSeconds(0.15);
-        public static TimeSpan PreKeyFrameTransferDuration { get; set; } = TimeSpan.FromSeconds(0.15);
         public static TimeSpan StreamClockMaximumOverhead { get; set; } = TimeSpan.FromSeconds(1.25);
-        public static TimeSpan StreamClockMinimumOverhead { get; set; } = TimeSpan.FromSeconds(0.75);
-        public static TimeSpan StreamClockDiscontinuityThreshold { get; set; } = TimeSpan.FromSeconds(0.1);
+        public static TimeSpan StreamClockMinimumOverhead { get; set; } = TimeSpan.FromMilliseconds(1050);
+        public static TimeSpan MaximumSynchronisationInterval { get; set; } = TimeSpan.FromSeconds(2);
+        public static TimeSpan MinimumDelayDuration { get; set; } = TimeSpan.FromMilliseconds(100);
     }
 
     public static class DashClient
