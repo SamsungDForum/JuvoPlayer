@@ -723,6 +723,7 @@ namespace JuvoPlayer.Player.EsPlayer
             // Not waiting for async completions during suspend.
             // Are awaited in resume to cut down suspend time.
             SetState(PlayerState.Idle, CancellationToken.None);
+
             logger.Info($"Suspended in {_suspendState}");
         }
 
@@ -753,6 +754,10 @@ namespace JuvoPlayer.Player.EsPlayer
 
                 ClosePlayer();
                 player.Dispose();
+
+                // Propagate closures & disposals... or InitAvoc() may fail on MuseM in PreapareAsync().
+                await Task.Yield();
+
                 player = new ESPlayer.ESPlayer();
 
                 OpenPlayer();
