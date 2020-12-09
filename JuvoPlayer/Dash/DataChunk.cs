@@ -29,12 +29,15 @@ namespace JuvoPlayer.Dash
     {
         private readonly CancellationToken _cancellationToken;
         private readonly IDemuxer _demuxer;
+        private readonly DashDemuxerClient _demuxerClient;
         private readonly IDownloader _downloader;
         private readonly long? _length;
         private readonly ILogger _logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
         private readonly long? _start;
         private readonly IThroughputHistory _throughputHistory;
         private readonly string _uri;
+        private SegmentBuffer _segmentBuffer;
+        private int _downloaded;
 
         public DataChunk(
             string uri,
@@ -44,6 +47,7 @@ namespace JuvoPlayer.Dash
             IDownloader downloader,
             IThroughputHistory throughputHistory,
             IDemuxer demuxer,
+            DashDemuxerClient demuxerClient,
             CancellationToken cancellationToken)
         {
             _uri = uri;
@@ -53,6 +57,7 @@ namespace JuvoPlayer.Dash
             _downloader = downloader;
             _throughputHistory = throughputHistory;
             _demuxer = demuxer;
+            _demuxerClient = demuxerClient;
             _cancellationToken = cancellationToken;
         }
 
@@ -73,13 +78,26 @@ namespace JuvoPlayer.Dash
             }
             finally
             {
+                if (_segmentBuffer != null)
+                {
+                    _segmentBuffer.CompleteAdding();
+                    _demuxerClient.Offset += _downloaded;
+                }
+
                 _logger.Info($"{_uri} {_start} {_length} ends");
             }
         }
 
         private void HandleChunkDownloaded(byte[] bytes)
         {
-            _demuxer.PushChunk(bytes);
+            if (_segmentBuffer == null)
+            {
+                _segmentBuffer = new SegmentBuffer();
+                _demuxerClient.AddSegmentBuffer(_segmentBuffer);
+            }
+
+            _downloaded += bytes.Length;
+            _segmentBuffer.Add(bytes);
         }
     }
 }
