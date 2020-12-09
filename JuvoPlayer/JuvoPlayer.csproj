@@ -45,6 +45,7 @@
         <PackageReference Include="System.Threading.Channels" Version="4.5.0" />
         <PackageReference Include="Tizen.NET.TV" Version="6.6.0.5599517" />
         <PackageReference Include="Polly" Version="7.0.3" />
+        <PackageReference Include="FFmpegBindings" Version="4.3.1" />
     </ItemGroup>
 
     <ItemGroup>
@@ -53,25 +54,10 @@
     </ItemGroup>
 
     <ItemGroup>
-        <Content Include="runtimes\tizen-armel\native\*">
-            <PackagePath>runtimes\tizen-armel\native</PackagePath>
-            <Pack>true</Pack>
-            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-        </Content>
-        <Content Include="runtimes\tizen-x86\native\*">
-            <PackagePath>runtimes\tizen-x86\native</PackagePath>
-            <Pack>true</Pack>
-            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
-        </Content>
         <None Include="..\LICENSE.md">
             <Link>LICENSE.md</Link>
             <Pack>true</Pack>
             <PackagePath>$(PackageLicenseFile)</PackagePath>
-        </None>
-        <None Include="nuget\build\tizen40\JuvoPlayer.targets">
-            <PackagePath>build\tizen40</PackagePath>
-            <Pack>true</Pack>
-            <CopyToOutputDirectory>PreserveNewest</CopyToOutputDirectory>
         </None>
     </ItemGroup>
 </Project>

@@ -18,9 +18,10 @@
  */
 
 using System;
+using FFmpegBindings.Interop;
 using JuvoLogger;
 using JuvoPlayer.Common;
-using JuvoPlayer.Demuxers.FFmpeg.Interop;
+using ffmpeg = FFmpegBindings.Interop.FFmpeg;
 
 namespace JuvoPlayer.Demuxers.FFmpeg
 {
@@ -58,7 +59,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg
             Span<byte> packetSpan;
             unsafe
             {
-                if (Interop.FFmpeg.av_grow_packet(&pkt, prependLen) < 0)
+                if (ffmpeg.av_grow_packet(&pkt, prependLen) < 0)
                 {
                     Logger.Error("GrowPacket failed");
                     return;
@@ -122,7 +123,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg
             unsafe
             {
                 var p = Packet;
-                Interop.FFmpeg.av_packet_unref(&p);
+                ffmpeg.av_packet_unref(&p);
             }
 
             _isDisposed = true;
