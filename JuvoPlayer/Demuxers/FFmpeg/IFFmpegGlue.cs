@@ -21,12 +21,10 @@ namespace JuvoPlayer.Demuxers.FFmpeg
 {
     public delegate ArraySegment<byte> ReadPacket(int size);
 
-    public delegate long SeekFunction(long pos, int whence);
-
     public interface IFFmpegGlue
     {
         void Initialize();
-        IAvioContext AllocIoContext(ulong bufferSize, ReadPacket readPacket, SeekFunction seekFunction);
+        IAvioContext AllocIoContext(ulong bufferSize, ReadPacket readPacket);
         IAvFormatContext AllocFormatContext();
     }
 }

@@ -19,9 +19,9 @@ using System;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
-using FFmpegBindings.Interop;
 using JuvoLogger;
 using JuvoPlayer.Common;
+using JuvoPlayer.Demuxers.FFmpeg.Interop;
 using Nito.AsyncEx;
 
 namespace JuvoPlayer.Demuxers.FFmpeg
@@ -31,6 +31,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg
         private static readonly ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
         private readonly IFFmpegGlue _ffmpegGlue;
         private int _audioIdx = -1;
+        private ChunksBuffer _buffer;
         private CancellationTokenSource _cancellationTokenSource;
         private TaskCompletionSource<bool> _completionSource;
         private IAvFormatContext _formatContext;
@@ -38,7 +39,6 @@ namespace JuvoPlayer.Demuxers.FFmpeg
         private bool _nextPacketPending;
         private AsyncContextThread _thread;
         private int _videoIdx = -1;
-        private IDemuxerClient _demuxerClient;
 
         public FFmpegDemuxer(IFFmpegGlue ffmpegGlue)
         {
@@ -73,7 +73,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg
                 throw new InvalidOperationException("Initialization already started");
 
             InitThreadingPrimitives();
-            _demuxerClient.Initialize();
+            _buffer = new ChunksBuffer();
             return _thread.Factory.StartNew(() => InitDemuxer(InitEs));
         }
 
@@ -101,17 +101,19 @@ namespace JuvoPlayer.Demuxers.FFmpeg
             return packet;
         }
 
-        public void SetClient(IDemuxerClient client)
+        public void PushChunk(byte[] chunk)
         {
-            _demuxerClient = client;
+            if (_buffer == null)
+                throw new InvalidOperationException("Push chunk called before InitForEs() or after Reset()");
+            _buffer.Add(chunk);
         }
 
         public Task Completion => _completionSource?.Task;
 
         public void Complete()
         {
-            _demuxerClient?.CompleteAdding();
-            if (_demuxerClient?.GetSegmentBuffers() != null && !_nextPacketPending)
+            _buffer?.CompleteAdding();
+            if (_buffer != null && !_nextPacketPending)
                 _completionSource?.TrySetResult(true);
         }
 
@@ -122,7 +124,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg
             _thread?.Factory?.Run(DeallocFFmpeg);
             _thread?.Join();
             _thread = null;
-            _demuxerClient.Reset();
+            _buffer = null;
         }
 
         public Task<TimeSpan> Seek(TimeSpan time, CancellationToken token)
@@ -208,8 +210,8 @@ namespace JuvoPlayer.Demuxers.FFmpeg
         {
             try
             {
-                _ioContext = _ffmpegGlue.AllocIoContext(BufferSize, ReadPacket, SeekFun);
-                _ioContext.Seekable = true;
+                _ioContext = _ffmpegGlue.AllocIoContext(BufferSize, ReadPacket);
+                _ioContext.Seekable = false;
                 _ioContext.WriteFlag = false;
 
                 _formatContext = _ffmpegGlue.AllocFormatContext();
@@ -285,38 +287,8 @@ namespace JuvoPlayer.Demuxers.FFmpeg
             try
             {
                 var token = _cancellationTokenSource.Token;
-                var data = _demuxerClient.Read(size, token);
+                var data = _buffer.Take(size, token);
                 return data;
-            }
-            catch (TaskCanceledException)
-            {
-                Logger.Info("Take cancelled");
-            }
-            catch (InvalidOperationException ex)
-            {
-                Logger.Warn(ex, ex.StackTrace);
-            }
-            catch (Exception ex)
-            {
-                Logger.Error(ex, $"Unexpected exception: {ex.GetType()}");
-            }
-
-            return default;
-        }
-
-        private long SeekFun(long pos, int whence)
-        {
-            try
-            {
-                Logger.Info($"Seek pos == {pos}, whence == {whence}");
-                if ((whence & FFmpegBindings.Interop.FFmpeg.AVSEEK_SIZE) != 0)
-                {
-                    return Int32.MaxValue;
-                }
-
-                var token = _cancellationTokenSource.Token;
-                _demuxerClient.Seek(pos, token);
-                return 0;
             }
             catch (TaskCanceledException)
             {

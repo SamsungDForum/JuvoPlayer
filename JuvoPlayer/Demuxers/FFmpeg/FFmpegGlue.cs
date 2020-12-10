@@ -17,9 +17,8 @@
 
 using System;
 using System.Runtime.InteropServices;
-using FFmpegBindings.Interop;
 using JuvoLogger;
-using ffmpeg = FFmpegBindings.Interop.FFmpeg;
+using JuvoPlayer.Demuxers.FFmpeg.Interop;
 
 namespace JuvoPlayer.Demuxers.FFmpeg
 {
@@ -31,25 +30,25 @@ namespace JuvoPlayer.Demuxers.FFmpeg
         {
             try
             {
-                ffmpeg.av_register_all();
-                ffmpeg.avformat_network_init();
+                Interop.FFmpeg.av_register_all();
+                Interop.FFmpeg.avformat_network_init();
                 unsafe
                 {
-                    ffmpeg.av_log_set_level(ffmpeg.AV_LOG_WARNING);
+                    Interop.FFmpeg.av_log_set_level(FFmpegMacros.AV_LOG_WARNING);
                     av_log_set_callback_callback logCallback = (p0, level, format, vl) =>
                     {
-                        if (level > ffmpeg.av_log_get_level())
+                        if (level > Interop.FFmpeg.av_log_get_level())
                             return;
 
                         const int lineSize = 1024;
                         var lineBuffer = stackalloc byte[lineSize];
                         var printPrefix = 1;
-                        ffmpeg.av_log_format_line(p0, level, format, vl, lineBuffer, lineSize, &printPrefix);
+                        Interop.FFmpeg.av_log_format_line(p0, level, format, vl, lineBuffer, lineSize, &printPrefix);
                         var line = Marshal.PtrToStringAnsi((IntPtr)lineBuffer);
 
                         Logger.Warn(line);
                     };
-                    ffmpeg.av_log_set_callback(logCallback);
+                    Interop.FFmpeg.av_log_set_callback(logCallback);
                 }
             }
             catch (Exception e)
@@ -59,9 +58,9 @@ namespace JuvoPlayer.Demuxers.FFmpeg
             }
         }
 
-        public IAvioContext AllocIoContext(ulong bufferSize, ReadPacket readPacket, SeekFunction seekFunction)
+        public IAvioContext AllocIoContext(ulong bufferSize, ReadPacket readPacket)
         {
-            return new AvioContextWrapper(bufferSize, readPacket, seekFunction);
+            return new AvioContextWrapper(bufferSize, readPacket);
         }
 
         public IAvFormatContext AllocFormatContext()

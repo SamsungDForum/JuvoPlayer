@@ -17,37 +17,29 @@
 
 using System;
 using System.Runtime.InteropServices;
-using FFmpegBindings.Interop;
-using ffmpeg = FFmpegBindings.Interop.FFmpeg;
+using JuvoPlayer.Demuxers.FFmpeg.Interop;
 
 namespace JuvoPlayer.Demuxers.FFmpeg
 {
     public unsafe class AvioContextWrapper : IAvioContext
     {
         private readonly avio_alloc_context_read_packet _readFunctionDelegate;
-        private readonly avio_alloc_context_seek _seekFunctionDelegate;
         private readonly ReadPacket _readPacket;
-        private readonly SeekFunction _seekFunction;
         private byte* _buffer;
 
-        public AvioContextWrapper(ulong bufferSize, ReadPacket readPacket, SeekFunction seekFun)
+        public AvioContextWrapper(ulong bufferSize, ReadPacket readPacket)
         {
-            _buffer = (byte*)ffmpeg.av_mallocz(bufferSize);
+            _buffer = (byte*)Interop.FFmpeg.av_mallocz(bufferSize);
             _readPacket = readPacket;
-            _seekFunction = seekFun;
             _readFunctionDelegate = ReadPacket;
-            _seekFunctionDelegate = SeekFunc;
             var readFunction = new avio_alloc_context_read_packet_func
             {
                 Pointer = Marshal.GetFunctionPointerForDelegate(_readFunctionDelegate)
             };
             var writeFunction = new avio_alloc_context_write_packet_func {Pointer = IntPtr.Zero};
-            var seekFunction = new avio_alloc_context_seek_func
-            {
-                Pointer = Marshal.GetFunctionPointerForDelegate(_seekFunctionDelegate)
-            };
+            var seekFunction = new avio_alloc_context_seek_func {Pointer = IntPtr.Zero};
 
-            _context = ffmpeg.avio_alloc_context(_buffer,
+            _context = Interop.FFmpeg.avio_alloc_context(_buffer,
                 (int)bufferSize,
                 0,
                 (void*)GCHandle.ToIntPtr(
@@ -98,21 +90,13 @@ namespace JuvoPlayer.Demuxers.FFmpeg
             return data.Count;
         }
 
-        private long SeekFunc(void* @opaque, long @offset, int @whence)
-        {
-            var handle = GCHandle.FromIntPtr((IntPtr) opaque);
-            var wrapper = (AvioContextWrapper) handle.Target;
-            var data = wrapper._seekFunction(offset, whence);
-            return data;
-        }
-
         private void ReleaseUnmanagedResources()
         {
             if (Context != null)
             {
                 fixed (AVIOContext** ioContextPtr = &_context)
                 {
-                    ffmpeg.avio_context_free(ioContextPtr); // also sets to null
+                    Interop.FFmpeg.avio_context_free(ioContextPtr); // also sets to null
                 }
 
                 _buffer = null;
@@ -120,7 +104,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg
 
             if (_buffer != null)
             {
-                ffmpeg.av_free(_buffer);
+                Interop.FFmpeg.av_free(_buffer);
                 _buffer = null;
             }
         }
