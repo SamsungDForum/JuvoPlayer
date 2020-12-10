@@ -16,8 +16,8 @@
  */
 
 using System;
-using FFmpegBindings.Interop;
 using JuvoPlayer.Common;
+using JuvoPlayer.Demuxers.FFmpeg.Interop;
 
 namespace JuvoPlayer.Demuxers.FFmpeg
 {

@@ -32,14 +32,14 @@ namespace JuvoPlayer.Demuxers
 
     public interface IDemuxer : IDisposable
     {
-        void SetClient(IDemuxerClient client);
         Task Completion { get; }
         bool IsInitialized();
         Task<ClipConfiguration> InitForUrl(string url);
         Task<ClipConfiguration> InitForEs();
         Task<Packet> NextPacket(TimeSpan? minPts = null);
-        Task<TimeSpan> Seek(TimeSpan time, CancellationToken token);
+        void PushChunk(byte[] chunk);
         void Complete();
         void Reset();
+        Task<TimeSpan> Seek(TimeSpan time, CancellationToken token);
     }
 }

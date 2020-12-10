@@ -98,15 +98,11 @@ namespace JuvoPlayer.Dash
             streamSelector = FixupStreamSelector(
                 streamSelector,
                 streamGroup);
-            var demuxer = _demuxerFactory.Invoke();
-            var demuxerClient = new DashDemuxerClient();
-            demuxer.SetClient(demuxerClient);
             var dashStream = new DashStream(
                 _throughputHistory,
                 _downloader,
                 _clock,
-                demuxer,
-                demuxerClient,
+                _demuxerFactory.Invoke(),
                 streamSelector);
             dashStream.SetAdaptationSet(
                 streamGroup,

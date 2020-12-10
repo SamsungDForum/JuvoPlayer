@@ -38,9 +38,6 @@ namespace JuvoPlayer.Dash
         private readonly RepresentationWrapper _representationWrapper;
         private readonly long? _start;
         private readonly IThroughputHistory _throughputHistory;
-        private readonly DashDemuxerClient _demuxerClient;
-        private SegmentBuffer _segmentBuffer;
-        private int _downloaded;
 
         public InitializationChunk(
             string uri,
@@ -50,7 +47,6 @@ namespace JuvoPlayer.Dash
             IDownloader downloader,
             IThroughputHistory throughputHistory,
             IDemuxer demuxer,
-            DashDemuxerClient demuxerClient,
             CancellationToken cancellationToken)
         {
             _initUri = uri;
@@ -60,7 +56,6 @@ namespace JuvoPlayer.Dash
             _downloader = downloader;
             _throughputHistory = throughputHistory;
             _demuxer = demuxer;
-            _demuxerClient = demuxerClient;
             _cancellationToken = cancellationToken;
         }
 
@@ -85,12 +80,6 @@ namespace JuvoPlayer.Dash
             }
             finally
             {
-                if (_segmentBuffer != null)
-                {
-                    _segmentBuffer.CompleteAdding();
-                    _demuxerClient.Offset += _downloaded;
-                }
-
                 _logger.Info($"{_initUri} {_start} {_length} ends");
             }
         }
@@ -98,14 +87,7 @@ namespace JuvoPlayer.Dash
         private void HandleChunkDownloaded(byte[] bytes)
         {
             _representationWrapper.InitData.Add(bytes);
-            if (_segmentBuffer == null)
-            {
-                _segmentBuffer = new SegmentBuffer();
-                _demuxerClient.AddSegmentBuffer(_segmentBuffer);
-            }
-
-            _downloaded += bytes.Length;
-            _segmentBuffer.Add(bytes);
+            _demuxer.PushChunk(bytes);
         }
     }
 }

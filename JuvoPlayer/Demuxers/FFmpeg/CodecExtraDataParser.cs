@@ -20,8 +20,8 @@
 using System;
 using System.Collections.Generic;
 using System.Linq;
-using FFmpegBindings.Interop;
 using JuvoLogger;
+using JuvoPlayer.Demuxers.FFmpeg.Interop;
 
 namespace JuvoPlayer.Demuxers.FFmpeg
 {
