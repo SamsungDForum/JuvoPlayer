@@ -2,6 +2,36 @@
 
 ## Release notes
 
+**JuvoPlayer 1.5.6 (beta)**
+
+### Features:
+
+* All features of the JuvoPlayer 1.5.5. 
+* Adding Circle CI mechanism to integration tests.
+
+* JuvoReactNative GUI
+  * Fixes for security alerts reported to external dependencies. 
+  * Migration to common for all UI apps location of videoclips.json metafile. 
+
+* JuvoPlayerXamarin GUI
+  * Added support for ‘Hot Reloading’ developer tool.
+* JuvoPlayer backend
+  * Fix for artifacts on the beginning of FHD Widevine. Encrypted MPEG DASH video.
+  * FFmpeg 3.3.6 bindings extracted to nuget.org as separate. dependency package
+  * Running clock logic change.
+  * Fix for ‘destructive’ representation change issue.
+  * Re-factorization of JuvoPlayer’s DRM code.
+  
+* JuvoPlayer Documentation
+  * Correction of UDP logger description.
+  
+  
+### Known issues:
+
+* Short video pause after seeking HLS content. Side effect of FFmepg's seek implementation.
+
+
+
 **JuvoPlayer 1.5.5 (beta)**
 
 ### Features:
