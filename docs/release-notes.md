@@ -28,7 +28,7 @@
   
   
 ### Known issues:
-* Short video pause after seeking HLS content. Side effect of FFmepg's seek implementation.
+* Short video pause after seeking HLS content. Side effect of internal FFmpeg's seek implementation.
 
 
 **JuvoPlayer 1.5.5 (beta)**
