@@ -85,9 +85,9 @@ namespace JuvoPlayer
             return playerThread.Factory.StartNew(() => proxied.GetStreamsDescription(streamType)).Result;
         }
 
-        public void SetSource(ClipDefinition clip)
+        public Task SetSource(ClipDefinition clip)
         {
-            playerThread.Factory.StartNew(() => proxied.SetSource(clip));
+            return playerThread.Factory.StartNew(async () => await proxied.SetSource(clip)).Unwrap();
         }
 
         public void Start()

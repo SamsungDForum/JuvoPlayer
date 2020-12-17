@@ -136,6 +136,7 @@
     "description": "Resolution 3840x2160 with bitrates ranging from 4 Mbps to 8 Mbps, in Main profile (8 bpp). Origin http://download.tsi.telecom-paristech.fr/gpac/dataset/dash/uhd/ UHD DASH Sequences."
   },
   {
+    "Format": "UHD8K",
     "title": "First 8K video from ISS",
     "url": "http://106.120.45.49/First_8K_Video_from_Space/manifest8k.mpd",
     "type": "dash",

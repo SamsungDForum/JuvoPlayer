@@ -2,6 +2,35 @@
 
 ## Release notes
 
+**JuvoPlayer 1.5.6 (beta)**
+
+### Features:
+
+* All features of the JuvoPlayer 1.5.5. 
+* Integration tests are now automatically run using CircleCI.
+
+* JuvoReactNative GUI
+  * Fixes for security alerts reported to external dependencies. 
+  * All UI apps are now using common remote videoclips.json metafile. 
+
+* JuvoPlayerXamarin GUI
+  * Added support for ‘Hot Reloading’ developer tool.
+  
+* JuvoPlayer backend
+  * Fix for artifacts on the beginning of FHD Widevine encrypted MPEG DASH video.
+  * FFmpeg and it's bindings have been moved to nuget.org as dependency packages. Current FFmpeg version: 3.3.6.
+  * Running clock logic change.
+  * Fix for ‘destructive’ representation change issue.
+  * Re-factorization of JuvoPlayer’s DRM code.
+  
+* JuvoPlayer Documentation
+  * Correction of UDP logger description.
+  
+  
+### Known issues:
+* Short video pause after seeking HLS content. Side effect of internal FFmpeg's seek implementation.
+
+
 **JuvoPlayer 1.5.5 (beta)**
 
 ### Features:
@@ -19,7 +48,7 @@
   * Converted logger.config to INI format.
   * Fixes for Suspend Resume integration test failures.
 * JuvoLogger.UDP
-  * Fix issues when the logger would crash after cancelling an operation or while running Videwine encrypted content.
+  * Fix issues when the logger would crash after cancelling an operation or while running Widevine encrypted content.
 * JuvoPlayer Tests
   * Added RTSP stream to integration test.
 * JuvoPlayer Documentation
@@ -27,7 +56,6 @@
   * Added concept diagram.
 
 ### Known issues:
-
 * Short video pause after seeking HLS content. Side effect of FFmepg's seek implementation.
 
 **JuvoPlayer 1.5.4 (beta)**
@@ -42,7 +70,6 @@
   * The logger.UDP module for collecting messages from the retail TV devices. The module works in readonly mode and provides messages signaled inside the JuvoPlayer code. See more in the 'Debugging' section.
 
 ### Known issues:
-
 * Short video pause after seeking HLS content. Side effect of FFmepg's seek implementation.
 
 
@@ -67,7 +94,6 @@
   * Fix for the issue: 'FFW and REW operations on the sample 4K HEVC video does not end'.
 
 ### Known issues:
-
 * Switching to another application and back (multitasking) does not work with playback over RTSP.
 * Right after the finishing seek in HLS streams there is a short video pause until the audio catch up. It is a result of FFmpeg 'seek' function specific.
 * The playback start operation results in the app crash run on 2020 TV emulator (Tizen 5.5). Issue discovered in the TV platform API. It does not appear on actual 2020 TV set hardware. Fix is expected with the next Tizen SDK release.
@@ -90,7 +116,6 @@
   * Switching off the MPEG DASH adaptive streaming when run on the TV emulator. It makes playback stick to the lowest quality representation but improves comfort of testing on the emulator.
 
 ### Known issues:
-
 * Right after the finishing seek in HLS streams there is a short video pause until the audio catch up. It is a result of FFmpeg 'seek' function specific.
 * JuvoReactNative GUI playback settings view does not support setting default values (limitation of the React Native Tizen's Picker component).
 * JuvoReactNative GUI does not resume playback after switching from another app (no support for multitasking).
@@ -107,7 +132,6 @@
 * JuvoPlayer backend stability and performance improvements 
 
 ### Known issues:
-
 * Right after the finishing seek in HLS streams there is a short video pause until the audio catch up. It is a result of FFmpeg 'seek' function specific.
 * JuvoReactNative seek in HLS, HTTP streams does not hide the activity indicator (missing seek completion signaling).
 * JuvoReactNative GUI does not support deep linked shortcuts for SmartHub preview feature.
@@ -122,7 +146,6 @@
 * JuvoPlayer backend stability improvements 
 
 ### Known issues:
-
 * Right after the finishing seek in HLS streams there is a short video pause until the audio catch up. It is a result of FFmpeg 'seek' function specific.
   
 **JuvoPlayer 1.4.8 (beta)**
@@ -134,7 +157,6 @@
 * HLS and MP4 over HTTP seek in stream (FFW, REW) function implementation.
 
 ### Known issues:
-
 * Right after the finishing seek in HLS streams there is a short video pause until the audio catch up. It is a result of FFmpeg 'seek' function specific.
 
 **JuvoPlayer 1.4.7 (beta)**
@@ -145,7 +167,6 @@
 * JuvoPlayer backend stability improvements
 
 ### Known issues:
-
 * Multitasking - switching between running apps - video sometimes do not recover
 
 **JuvoPlayer 1.4.6 (beta)**
@@ -159,7 +180,6 @@
 * SimplePlayer GUI project added for illustrating simple playback scenario
 
 ### Known issues:
-
 * Multitasking - switching between running apps - video sometimes does not recover
 
 **JuvoPlayer 1.4.5 (beta)**
@@ -170,7 +190,6 @@
 * Live Stream sample change to 'Big Buck Bunny' video clip
 
 ### Known issues:
-
 * RTP/RTSP playback does not start (regression)
 * Not enough memory for UHD Widevine DRM'ed video (Tears of steel)
 * Multitasking - switching between running apps - video sometimes does not recover
@@ -185,7 +204,6 @@
 * Widevine DRM'ed content playback (unstable)
 
 ### Known issues:
-
 * RTP/RTSP playback does not start (regression)
 * Not enough memory for UHD Widevine DRM'ed video (Tears of steel)
 * Multitasking - switching between running apps - video sometimes does not recover

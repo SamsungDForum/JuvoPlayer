@@ -1,6 +1,6 @@
 /*!
  * https://github.com/SamsungDForum/JuvoPlayer
- * Copyright 2018, Samsung Electronics Co., Ltd
+ * Copyright 2020, Samsung Electronics Co., Ltd
  * Licensed under the MIT license
  *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
@@ -16,32 +16,35 @@
  */
 
 using System;
+using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Linq;
+using System.Threading.Tasks;
 using JuvoPlayer.Common;
 using JuvoLogger;
-using JuvoPlayer.Common.Utils.IReferenceCountableExtensions;
+using Nito.AsyncEx;
 
 namespace JuvoPlayer.Drms
 {
-    public class DrmManager : IDrmManager
+    public class DrmManager : IDrmManager, IDisposable
     {
         private readonly ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
 
-        private readonly List<IDrmHandler> drmHandlers = new List<IDrmHandler>();
-        private readonly List<DRMDescription> clipDrmConfiguration = new List<DRMDescription>();
-        private readonly DrmSessionCache _sessionCache = new DrmSessionCache();
+        private readonly List<DrmDescription> clipDrmConfigurations = new List<DrmDescription>();
+        private readonly ConcurrentDictionary<string, CdmInstance> cdmInstances = new ConcurrentDictionary<string, CdmInstance>();
+        private static readonly AsyncLock drmManagerLock = new AsyncLock();
+        private static readonly AsyncLock clipDrmConfigurationsLock = new AsyncLock();
 
-        public void UpdateDrmConfiguration(DRMDescription drmDescription)
+        public async Task UpdateDrmConfiguration(DrmDescription drmDescription)
         {
-            Logger.Info("");
+            Logger.Info("Updating DRM configuration.");
 
-            lock (clipDrmConfiguration)
+            using(await clipDrmConfigurationsLock.LockAsync())
             {
-                var currentDescription = clipDrmConfiguration.FirstOrDefault(o => SchemeEquals(o.Scheme, drmDescription.Scheme));
+                var currentDescription = clipDrmConfigurations.FirstOrDefault(o => string.Equals(o.Scheme, drmDescription.Scheme, StringComparison.CurrentCultureIgnoreCase));
                 if (currentDescription == null)
                 {
-                    clipDrmConfiguration.Add(drmDescription);
+                    clipDrmConfigurations.Add(drmDescription);
                     return;
                 }
 
@@ -58,89 +61,83 @@ namespace JuvoPlayer.Drms
             }
         }
 
-        public void ClearCache()
+        public async Task<IDrmSession> GetDrmSession(DrmInitData data)
         {
-            Logger.Info("");
-            _sessionCache.Clear();
-        }
-
-        public void RegisterDrmHandler(IDrmHandler handler)
-        {
-            lock (drmHandlers)
-            {
-                drmHandlers.Add(handler);
-            }
-        }
-
-        public IDrmSession CreateDRMSession(DRMInitData data)
-        {
-            Logger.Info("Create DrmSession");
-
-            // Before diving into locks, decode DRM InitData KeyIDs
             var keyIds = DrmInitDataTools.GetKeyIds(data);
             var useGenericKey = keyIds.Count == 0;
             if (useGenericKey)
             {
-                Logger.Info("No keys found. Using entire DRMInitData.InitData as generic key");
+                Logger.Info("No keys found in initData - using entire DrmInitData with InitData as a generic key.");
                 keyIds.Add(data.InitData);
             }
-            else
-            {
-                // Early exit scenario - already cached
-                if (_sessionCache.TryGetSession(keyIds, out IDrmSession session))
-                {
-                    Logger.Info("Cached session found");
-                    return session;
-                }
-            }
+            Logger.Info("Keys found - getting DrmSession.");
+            IDrmSession session;
+            using (await clipDrmConfigurationsLock.LockAsync())
+                    session = await GetCdmInstance(data).GetDrmSession(data, keyIds, clipDrmConfigurations);
+            return session;
+        }
 
-            lock (drmHandlers)
+        public ICdmInstance GetCdmInstance(DrmInitData data)
+        {
+            var keySystem = EmeUtils.GetKeySystemName(data.SystemId);
+            lock (drmManagerLock)
             {
-                var handler = drmHandlers.FirstOrDefault(o => o.SupportsSystemId(data.SystemId));
-                if (handler == null)
+                try
                 {
-                    Logger.Warn("unknown drm init data");
+                    return TryGetCdmInstance(keySystem, out var cdmInstance)
+                        ? cdmInstance
+                        : CreateCdmInstance(keySystem);
+                }
+                catch (Exception e)
+                {
+                    Logger.Error($"Getting CDM instance failed: {e.Message}");
                     return null;
-                }
-
-                var scheme = handler.GetScheme(data.SystemId);
-
-                lock (clipDrmConfiguration)
-                {
-                    var drmConfiguration = clipDrmConfiguration.FirstOrDefault(o => SchemeEquals(o.Scheme, scheme));
-                    if (drmConfiguration == null)
-                    {
-                        Logger.Warn("drm not configured");
-                        return null;
-                    }
-
-                    // Recheck needs to be done for cached session.
-                    // Early check may produce false negatives - session being created by other stream
-                    // but not yet cached.
-                    if (_sessionCache.TryGetSession(keyIds, out IDrmSession session))
-                    {
-                        Logger.Info("Cached session found");
-                        return session;
-                    }
-
-                    Logger.Info("No cached session found");
-
-                    session = handler.CreateDRMSession(data, drmConfiguration);
-                    session.Share();
-                    if (_sessionCache.TryAddSession(keyIds, session))
-                        return session;
-
-                    Logger.Info("Failed to cache session");
-                    session.Release();
-
-                    return session;
                 }
             }
         }
 
-        private static bool SchemeEquals(string scheme1, string scheme2)
+        private bool TryGetCdmInstance(string keySystem, out CdmInstance cdmInstance)
         {
-            return string.Equals(scheme1, scheme2, StringComparison.CurrentCultureIgnoreCase);
+            lock (drmManagerLock)
+                return cdmInstances.TryGetValue(keySystem, out cdmInstance);
+        }
+
+        private bool TryRemoveCdmInstance(string keySystem)
+        {
+            lock (drmManagerLock)
+            {
+                var removed = cdmInstances.TryRemove(keySystem, out var cdmInstance);
+                cdmInstance?.Dispose();
+                return removed;
+            }
+        }
+
+        private CdmInstance CreateCdmInstance(string keySystem)
+        {
+            var cdmInstance = new CdmInstance(keySystem);
+            lock(drmManagerLock)
+                if (!cdmInstances.TryAdd(keySystem, cdmInstance))
+                {
+                    Logger.Info($"Failed to add CdmInstance for {keySystem}!");
+                    throw new DrmException($"Failed to add CdmInstance for {keySystem}!");
+                }
+
+            return cdmInstance;
+        }
+
+        public void Clear()
+        {
+            lock (drmManagerLock)
+            {
+                foreach (var cdmInstance in cdmInstances.Values)
+                    cdmInstance.Dispose(); // all sessions will be closed while disposing
+                cdmInstances.Clear();
+            }
+        }
+
+        public void Dispose()
+        {
+            Clear();
         }
     }
 }

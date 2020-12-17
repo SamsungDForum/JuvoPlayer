@@ -50,7 +50,7 @@ namespace SimplePlayer
                     Subtitles = new List<SubtitleInfo>(),
                     Poster = "Poster",
                     Description = "Descritption",
-                    DRMDatas = new List<DRMDescription>()
+                    DRMDatas = new List<DrmDescription>()
                 });
 
                 player.StateChanged()
@@ -64,8 +64,8 @@ namespace SimplePlayer
 
             void PlayJuvoPlayerDRMed(String videoSourceURL, String licenseServerURL, String drmScheme, IPlayerService player)
             {
-                var drmData = new List<DRMDescription>();
-                drmData.Add(new DRMDescription
+                var drmData = new List<DrmDescription>();
+                drmData.Add(new DrmDescription
                 {
                     Scheme = drmScheme,
                     LicenceUrl = licenseServerURL,

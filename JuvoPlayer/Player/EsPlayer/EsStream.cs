@@ -1,6 +1,6 @@
 /*!
  * https://github.com/SamsungDForum/JuvoPlayer
- * Copyright 2018, Samsung Electronics Co., Ltd
+ * Copyright 2020, Samsung Electronics Co., Ltd
  * Licensed under the MIT license
  *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
@@ -26,7 +26,6 @@ using JuvoPlayer.Common;
 using JuvoPlayer.Drms;
 using ESPlayer = Tizen.TV.Multimedia;
 using StreamType = JuvoPlayer.Common.StreamType;
-using static JuvoPlayer.Utils.TaskExtensions;
 
 namespace JuvoPlayer.Player.EsPlayer
 {
@@ -354,7 +353,7 @@ namespace JuvoPlayer.Player.EsPlayer
             }
             catch (OperationCanceledException)
             {
-                logger.Info($"{streamType}: Transfer canceled");
+                logger.Info($"{streamType}: Transfer cancelled");
             }
             catch (PacketSubmitException pse)
             {
@@ -447,20 +446,26 @@ namespace JuvoPlayer.Player.EsPlayer
         /// </exception>
         private async ValueTask PushEncryptedPacket(EncryptedPacket dataPacket, CancellationToken token)
         {
-            if (!dataPacket.DrmSession.CanDecrypt())
+            ICdmInstance cdmInstance = dataPacket.CdmInstance;
+
+            if (cdmInstance == null)
+                throw new InvalidOperationException("Decrypt called without CdmInstance");
+
+            Task sessionsInitializationsTask = cdmInstance.WaitForAllSessionsInitializations(token);
+            if (!sessionsInitializationsTask.IsCompleted)
             {
                 logger.Info($"{streamType}: DRM Initialization incomplete");
                 _bufferingSubject.OnNext(true);
-                await dataPacket.DrmSession.GetInitializationTask().WithCancellation(token);
+                await sessionsInitializationsTask;
                 _bufferingSubject.OnNext(false);
 
                 logger.Info($"{streamType}: DRM Initialization complete");
             }
 
-            using (var decryptedPacket = await dataPacket.Decrypt(token) as DecryptedEMEPacket)
+            using (var decryptedPacket = await cdmInstance.DecryptPacket(dataPacket, token) as DecryptedEMEPacket)
             {
                 // Continue pushing packet till success or terminal failure
-                for (; ; )
+                for (;;)
                 {
                     var submitStatus = player.Submit(decryptedPacket);
 

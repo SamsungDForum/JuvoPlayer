@@ -203,7 +203,7 @@ namespace JuvoReactNative
             param.Add("SubtiteText", txt);
             SendEvent("onUpdatePlayTime", param);
         }
-        private void Play(string videoURI, List<DRMDescription> drmDataList, string streamingProtocol)
+        private void Play(string videoURI, List<DrmDescription> drmDataList, string streamingProtocol)
         {
             try
             {
@@ -291,7 +291,7 @@ namespace JuvoReactNative
 
             try
             {
-                var drmDataList = (drmDatasJSON != null) ? JuvoPlayer.Utils.JSONFileReader.DeserializeJsonText<List<DRMDescription>>(drmDatasJSON) : new List<DRMDescription>();
+                var drmDataList = (drmDatasJSON != null) ? JuvoPlayer.Utils.JSONFileReader.DeserializeJsonText<List<DrmDescription>>(drmDatasJSON) : new List<DrmDescription>();
                 Play(videoURI, drmDataList, streamingProtocol);
             }
             catch (Exception e)

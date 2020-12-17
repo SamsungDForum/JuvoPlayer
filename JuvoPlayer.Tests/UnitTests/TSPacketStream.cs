@@ -1,6 +1,6 @@
 /*!
  * https://github.com/SamsungDForum/JuvoPlayer
- * Copyright 2018, Samsung Electronics Co., Ltd
+ * Copyright 2020, Samsung Electronics Co., Ltd
  * Licensed under the MIT license
  *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
@@ -16,6 +16,7 @@
  */
 
 using System;
+using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
 using JuvoPlayer.Common;
@@ -36,14 +37,94 @@ namespace JuvoPlayer.Tests.UnitTests
         private int Counter;
         ref int IReferenceCountable.Count => ref Counter;
 
+        public bool IsInitialized()
+        {
+            throw new NotImplementedException();
+        }
+
+        public ICdmInstance CdmInstance { get; } = new TestCdmInstance();
+
         public void Dispose() { }
 
-        public Task Initialize() { return Task.CompletedTask; }
+        public Task<bool> WaitForInitialization()
+        {
+            return Task.FromResult(true);
+        }
 
         public Task<Packet> DecryptPacket(EncryptedPacket packet, CancellationToken token) { return Task.FromResult(new Packet()); }
 
         public Task GetInitializationTask() => Task.CompletedTask;
         public bool CanDecrypt() => true;
+
+        public void SetSessionId(string sessionId)
+        {
+            throw new NotImplementedException();
+        }
+
+        public void SetLicenceInstalled()
+        {
+            throw new NotImplementedException();
+        }
+
+        public CancellationToken CancellationToken()
+        {
+            throw new NotImplementedException();
+        }
+
+        public DrmInitData GetDrmInitData()
+        {
+            throw new NotImplementedException();
+        }
+
+        public DrmDescription GetDrmDescription()
+        {
+            throw new NotImplementedException();
+        }
+
+        public string GetSessionId()
+        {
+            throw new NotImplementedException();
+        }
+
+        public IEnumerable<byte[]> GetKeys()
+        {
+            throw new NotImplementedException();
+        }
+    }
+
+    public class TestCdmInstance : ICdmInstance
+    {
+        public void Dispose()
+        {
+            throw new NotImplementedException();
+        }
+
+        public ref int Count => throw new NotImplementedException();
+
+        public Task<Packet> DecryptPacket(EncryptedPacket packet, CancellationToken token)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task<IDrmSession> GetDrmSession(DrmInitData data, IEnumerable<byte[]> keys, List<DrmDescription> clipDrmConfigurations)
+        {
+            throw new NotImplementedException();
+        }
+
+        public void CloseSession(string sessionId)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task GenerateRequest(string sessionId, DrmInitData initData)
+        {
+            throw new NotImplementedException();
+        }
+
+        public Task WaitForAllSessionsInitializations(CancellationToken cancellationToken)
+        {
+            throw new NotImplementedException();
+        }
     }
 
     [TestFixture]
@@ -54,13 +135,12 @@ namespace JuvoPlayer.Tests.UnitTests
         {
             var playerStub = Substitute.For<IPlayer>();
             var drmManagerStub = Substitute.For<IDrmManager>();
-            var codecExtraDataHandlerStub = Substitute.For<ICodecExtraDataHandler>();
-            return CreatePacketStream(streamType, playerStub, drmManagerStub, codecExtraDataHandlerStub);
+            return CreatePacketStream(streamType, playerStub, drmManagerStub);
         }
 
-        protected virtual IPacketStream CreatePacketStream(StreamType streamType, IPlayer player, IDrmManager drmManager, ICodecExtraDataHandler codecExtraDataHandler)
+        protected virtual IPacketStream CreatePacketStream(StreamType streamType, IPlayer player, IDrmManager drmManager)
         {
-            return new PacketStream(streamType, player, drmManager, codecExtraDataHandler);
+            return new PacketStream(streamType, player, drmManager);
         }
 
         [Test]
@@ -70,7 +150,7 @@ namespace JuvoPlayer.Tests.UnitTests
             using (var stream = CreatePacketStream(StreamType.Audio))
             {
                 var packet = new Packet();
-                Assert.Throws<InvalidOperationException>(() => stream.OnAppendPacket(packet));
+                Assert.ThrowsAsync<InvalidOperationException>(() => stream.OnAppendPacket(packet));
             }
         }
 
@@ -81,7 +161,7 @@ namespace JuvoPlayer.Tests.UnitTests
             using (var stream = CreatePacketStream(StreamType.Audio))
             {
                 var packet = new Packet { StreamType = StreamType.Video };
-                Assert.Throws<ArgumentException>(() => stream.OnAppendPacket(packet));
+                Assert.ThrowsAsync<ArgumentException>(() => stream.OnAppendPacket(packet));
             }
         }
 
@@ -89,11 +169,10 @@ namespace JuvoPlayer.Tests.UnitTests
         [Category("Positive")]
         public void OnAppendPacket_WhenConfigured_CallsPlayerAdapter()
         {
-            var codecExtraDataHandlerStub = Substitute.For<ICodecExtraDataHandler>();
             var drmManagerStub = Substitute.For<IDrmManager>();
             var playerMock = Substitute.For<IPlayer>();
 
-            using (var stream = CreatePacketStream(StreamType.Audio, playerMock, drmManagerStub, codecExtraDataHandlerStub))
+            using (var stream = CreatePacketStream(StreamType.Audio, playerMock, drmManagerStub))
             {
                 var packet = new Packet { StreamType = StreamType.Audio };
                 var config = new AudioStreamConfig();
@@ -107,41 +186,19 @@ namespace JuvoPlayer.Tests.UnitTests
 
         [Test]
         [Category("Positive")]
-        public void OnAppendPacket_WhenConfigured_CallsContextExtraDataHandler()
-        {
-            var codecExtraDataHandlerStub = Substitute.For<ICodecExtraDataHandler>();
-            var drmManagerStub = Substitute.For<IDrmManager>();
-            var playerMock = Substitute.For<IPlayer>();
-
-            using (var stream = CreatePacketStream(StreamType.Audio, playerMock, drmManagerStub, codecExtraDataHandlerStub))
-            {
-                var packet = new Packet { StreamType = StreamType.Audio };
-                var config = new AudioStreamConfig();
-
-                stream.OnStreamConfigChanged(config);
-                stream.OnAppendPacket(packet);
-
-                codecExtraDataHandlerStub.Received().PrependCodecData(Arg.Any<Packet>());
-            }
-        }
-
-        [Test]
-        [Category("Positive")]
         public void OnAppendPacket_WhenDrmSessionIsConfigured_CallsPlayerAdapter()
         {
-            var codecExtraDataHandlerStub = Substitute.For<ICodecExtraDataHandler>();
-
             var drmSessionStub = CreateDrmSessionFake();
 
             var drmManagerStub = CreateDrmManagerFake(drmSessionStub);
 
             var playerMock = Substitute.For<IPlayer>();
 
-            using (var stream = CreatePacketStream(StreamType.Audio, playerMock, drmManagerStub, codecExtraDataHandlerStub))
+            using (var stream = CreatePacketStream(StreamType.Audio, playerMock, drmManagerStub))
             {
                 var packet = new EncryptedPacket() { StreamType = StreamType.Audio };
                 var config = new AudioStreamConfig();
-                var drmInitData = new DRMInitData();
+                var drmInitData = new DrmInitData();
 
                 stream.OnStreamConfigChanged(config);
                 stream.OnDRMFound(drmInitData);
@@ -173,29 +230,10 @@ namespace JuvoPlayer.Tests.UnitTests
             }
         }
 
-        [Test]
-        [Category("Positive")]
-        public void OnStreamConfigChanged_WhenStreamConfigIsValid_CallsContextExtraDataHandler()
-        {
-            var codecExtraDataHandlerStub = Substitute.For<ICodecExtraDataHandler>();
-            var drmManagerStub = Substitute.For<IDrmManager>();
-            var playerMock = Substitute.For<IPlayer>();
-
-            using (var stream = CreatePacketStream(StreamType.Audio, playerMock, drmManagerStub, codecExtraDataHandlerStub))
-            {
-                var packet = new Packet { StreamType = StreamType.Audio };
-                var config = new AudioStreamConfig();
-
-                stream.OnStreamConfigChanged(config);
-
-                codecExtraDataHandlerStub.Received().OnStreamConfigChanged(Arg.Any<StreamConfig>());
-            }
-        }
-
         private static IDrmManager CreateDrmManagerFake(IDrmSession drmSessionStub)
         {
             var drmManagerStub = Substitute.For<IDrmManager>();
-            drmManagerStub.CreateDRMSession(Arg.Any<DRMInitData>()).Returns(drmSessionStub);
+            drmManagerStub.GetDrmSession(Arg.Any<DrmInitData>()).Returns(drmSessionStub);
             return drmManagerStub;
         }
 

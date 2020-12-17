@@ -1,6 +1,6 @@
 /*!
  * https://github.com/SamsungDForum/JuvoPlayer
- * Copyright 2018, Samsung Electronics Co., Ltd
+ * Copyright 2020, Samsung Electronics Co., Ltd
  * Licensed under the MIT license
  *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
@@ -46,9 +46,9 @@ namespace JuvoPlayer.Player
             this.player = player ?? throw new ArgumentNullException(nameof(player), "player cannot be null");
 
             streams[StreamType.Audio] =
-                new PacketStream(StreamType.Audio, this.player, drmManager, new AudioCodecExtraDataHandler());
+                new PacketStream(StreamType.Audio, this.player, drmManager);
             streams[StreamType.Video] =
-                new PacketStream(StreamType.Video, this.player, drmManager, new VideoCodecExtraDataHandler());
+                new PacketStream(StreamType.Video, this.player, drmManager);
         }
 
         public IObservable<int> BufferingProgress()
@@ -76,8 +76,6 @@ namespace JuvoPlayer.Player
             return player.DataClock();
         }
 
-
-
         public Task OnRepresentationChanged(object representation)
         {
             return player.ChangeRepresentation(representation);
@@ -88,17 +86,19 @@ namespace JuvoPlayer.Player
             this.duration = duration;
         }
 
-        public void OnDRMInitDataFound(DRMInitData data)
+        public async Task OnDrmInitDataFound(DrmInitData data)
         {
             if (!streams.ContainsKey(data.StreamType))
                 return;
 
-            streams[data.StreamType].OnDRMFound(data);
+            await streams[data.StreamType].OnDRMFound(data);
         }
 
-        public void OnSetDrmConfiguration(DRMDescription description)
+        public async Task OnSetDrmConfiguration(DrmDescription description)
         {
-            drmManager?.UpdateDrmConfiguration(description);
+            if (drmManager == null)
+                return;
+            await drmManager.UpdateDrmConfiguration(description);
         }
 
         public void OnPause()
@@ -147,12 +147,12 @@ namespace JuvoPlayer.Player
             streams[config.StreamType()].OnStreamConfigChanged(config);
         }
 
-        public void OnPacketReady(Packet packet)
+        public async Task OnPacketReady(Packet packet)
         {
             if (!streams.ContainsKey(packet.StreamType))
                 return;
 
-            streams[packet.StreamType].OnAppendPacket(packet);
+            await streams[packet.StreamType].OnAppendPacket(packet);
         }
 
         public void OnStreamError(string errorMessage)
