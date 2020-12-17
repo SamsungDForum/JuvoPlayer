@@ -1,6 +1,6 @@
 /*!
  * https://github.com/SamsungDForum/JuvoPlayer
- * Copyright 2018, Samsung Electronics Co., Ltd
+ * Copyright 2020, Samsung Electronics Co., Ltd
  * Licensed under the MIT license
  *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
@@ -30,7 +30,6 @@ using JuvoPlayer.DataProviders.Dash;
 using JuvoPlayer.DataProviders.HLS;
 using JuvoPlayer.DataProviders.RTSP;
 using JuvoPlayer.Drms;
-using JuvoPlayer.Drms.Cenc;
 using JuvoPlayer.Player;
 using JuvoPlayer.Player.EsPlayer;
 using JuvoPlayer.Utils;
@@ -94,7 +93,6 @@ namespace JuvoPlayer
             dataProviders.RegisterDataProviderFactory(new RTSPDataProviderFactory());
 
             drmManager = new DrmManager();
-            drmManager.RegisterDrmHandler(new CencHandler());
         }
 
         public void SetWindow(Window window)
@@ -173,9 +171,9 @@ namespace JuvoPlayer
             return dataProvider.GetStreamsDescription(streamType);
         }
 
-        public void SetSource(ClipDefinition clip)
+        public async Task SetSource(ClipDefinition clip)
         {
-            drmManager.ClearCache();
+            drmManager.Clear();
             connector?.Dispose();
 
             dataProvider = dataProviders.CreateDataProvider(clip);
@@ -183,7 +181,7 @@ namespace JuvoPlayer
             if (clip.DRMDatas != null)
             {
                 foreach (var drm in clip.DRMDatas)
-                    drmManager.UpdateDrmConfiguration(drm);
+                    await drmManager.UpdateDrmConfiguration(drm);
             }
 
             connector = new DataProviderConnector(playerController, dataProvider);
@@ -208,11 +206,11 @@ namespace JuvoPlayer
         {
             Logger.Info("Player controller restart");
 
-            drmManager.ClearCache();
             dataProvider.OnStopped();
             _playerControllerConnections.Dispose();
             connector?.Dispose();
             playerController?.Dispose();
+            drmManager?.Clear();
 
             CreatePlayerController();
             connector = new DataProviderConnector(playerController, dataProvider);
@@ -225,7 +223,7 @@ namespace JuvoPlayer
         {
             dataProvider.OnStopped();
             playerController.OnStop();
-            drmManager.ClearCache();
+            drmManager.Clear();
             connector.Dispose();
         }
 
@@ -248,7 +246,6 @@ namespace JuvoPlayer
         {
             if (disposing)
             {
-                drmManager.ClearCache();
                 _playerControllerConnections.Dispose();
                 _playerControllerDisposables.Dispose();
                 connector?.Dispose();
@@ -256,6 +253,7 @@ namespace JuvoPlayer
                 playerController = null;
                 dataProvider?.Dispose();
                 dataProvider = null;
+                drmManager?.Clear();
                 GC.Collect();
             }
         }

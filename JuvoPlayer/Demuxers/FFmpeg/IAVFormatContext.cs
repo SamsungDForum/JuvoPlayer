@@ -16,8 +16,8 @@
  */
 
 using System;
+using FFmpegBindings.Interop;
 using JuvoPlayer.Common;
-using JuvoPlayer.Demuxers.FFmpeg.Interop;
 
 namespace JuvoPlayer.Demuxers.FFmpeg
 {
@@ -27,7 +27,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg
         TimeSpan MaxAnalyzeDuration { get; set; }
         IAVIOContext AVIOContext { get; set; }
         TimeSpan Duration { get; }
-        DRMInitData[] DRMInitData { get; }
+        DrmInitData[] DRMInitData { get; }
 
         void Open();
         void Open(string url);

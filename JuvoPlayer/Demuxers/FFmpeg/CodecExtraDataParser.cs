@@ -1,6 +1,7 @@
-/*!
- * https://github.com/SamsungDForum/JuvoPlayer
- * Copyright 2018, Samsung Electronics Co., Ltd
+﻿﻿/*!
+ *
+ * [https://github.com/SamsungDForum/JuvoPlayer])
+ * Copyright 2020, Samsung Electronics Co., Ltd
  * Licensed under the MIT license
  *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
@@ -13,51 +14,31 @@
  * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
  */
 
 using System;
 using System.Collections.Generic;
 using System.Linq;
+using FFmpegBindings.Interop;
 using JuvoLogger;
-using JuvoPlayer.Common;
 
-namespace JuvoPlayer.Player
+namespace JuvoPlayer.Demuxers.FFmpeg
 {
-    class VideoCodecExtraDataHandler : ICodecExtraDataHandler
+    internal class CodecExtraDataParser
     {
-        private readonly ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
+        private static readonly ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
 
-        private byte[] _parsedExtraData = new byte[0];
-
-        public void PrependCodecData(Packet packet)
+        internal static unsafe byte[] Parse(AVCodecID codecId, byte* extradata, int size)
         {
-            if (!packet.IsKeyFrame || _parsedExtraData.Length == 0)
-                return;
-
-            packet.Prepend(_parsedExtraData);
-        }
-
-        public void OnStreamConfigChanged(StreamConfig config)
-        {
-            _parsedExtraData = new byte[0];
-
-            if (!(config is VideoStreamConfig videoConfig))
-                throw new ArgumentException("invalid config type");
-
-            if (config.CodecExtraData == null)
-                return;
-
-            switch (videoConfig.Codec)
+            switch (codecId)
             {
-                case VideoCodec.H264:
-                    ExtractH264ExtraData(videoConfig);
-                    break;
-                case VideoCodec.H265:
-                    ExtractH265ExtraData(videoConfig);
-                    break;
+                case AVCodecID.AV_CODEC_ID_H264:
+                    return ParseH264(extradata, size);
+                case AVCodecID.AV_CODEC_ID_HEVC:
+                    return ParseH265(extradata, size);
                 default:
-                    Logger.Warn($"Unsupported codec {videoConfig.Codec}");
-                    break;
+                    return null;
             }
         }
 
@@ -133,14 +114,13 @@ namespace JuvoPlayer.Player
         //  |
         //  | SPS length (4 bytes)
         //  after that header original ES packet bytes are appended
-        private void ExtractH264ExtraData(VideoStreamConfig videoConfig)
+        private static unsafe byte[] ParseH264(byte* extraData, int extraDataSize)
         {
-            var extraData = videoConfig.CodecExtraData;
-
-            if (extraData.Length < 6)
-            {  // Min first 5 byte + num_sps
+            if (extraDataSize < 6)
+            {
+                // Min first 5 byte + num_sps
                 Logger.Error("extra_data is too short to pass valid SPS/PPS header");
-                return;
+                return null;
             }
 
             var idx = 0;
@@ -155,7 +135,8 @@ namespace JuvoPlayer.Player
                 // Be liberal in what you accept..., so just log error
                 Logger.Warn("Not all reserved bits in length size filed are set to 1");
             }
-            lengthSize = (byte)((lengthSize & 0x3u) + 1);
+
+            lengthSize = (byte) ((lengthSize & 0x3u) + 1);
 
             uint numSps = ReadByte(extraData, ref idx);
             if ((numSps & 0xE0u) != 0xE0u)
@@ -163,74 +144,109 @@ namespace JuvoPlayer.Player
                 // Be liberal in what you accept..., so just log error
                 Logger.Warn("Wrong SPS count format.");
             }
+
             numSps &= 0x1Fu;
 
-            var spses = ReadH264ParameterSets(extraData, numSps, ref idx);
+            var spses = ReadH264ParameterSets(extraData, extraDataSize, numSps, ref idx);
             if (spses == null)
             {
                 Logger.Error("extra data too short");
-                return;
+                return null;
             }
 
-            if (extraData.Length <= idx)
+            if (extraDataSize <= idx)
             {
                 Logger.Error("extra data too short");
-                return;
+                return null;
             }
 
             uint numPps = ReadByte(extraData, ref idx);
 
-            var ppses = ReadH264ParameterSets(extraData, numPps, ref idx);
+            var ppses = ReadH264ParameterSets(extraData, extraDataSize, numPps, ref idx);
             if (ppses == null)
             {
                 Logger.Error("extra data too short");
-                return;
+                return null;
             }
 
             var size = spses.Sum(o => lengthSize + o.Length)
-                + ppses.Sum(o => lengthSize + o.Length);
+                       + ppses.Sum(o => lengthSize + o.Length);
 
-            _parsedExtraData = new byte[size];
+            var parsedExtraData = new byte[size];
             var offset = 0;
 
-            CopySet(lengthSize, spses, ref offset);
-            CopySet(lengthSize, ppses, ref offset);
+            CopySet(lengthSize, spses, parsedExtraData, ref offset);
+            CopySet(lengthSize, ppses, parsedExtraData, ref offset);
+            return parsedExtraData;
         }
 
-        private List<byte[]> ReadH264ParameterSets(byte[] extraData, uint count, ref int idx)
+        private static unsafe byte ReadByte(byte* adata, ref int idx)
+        {
+            return adata[idx++];
+        }
+
+        private static unsafe UInt16 ReadUInt16(byte* adata, ref int idx)
+        {
+            ushort res = 0;
+            for (var i = 0; i < 2; ++i)
+            {
+                res <<= 8;
+                res |= adata[idx + i];
+            }
+
+            idx += 2;
+            return res;
+        }
+
+        private static unsafe List<byte[]> ReadH264ParameterSets(byte* extraData, int extraDataSize, uint count,
+            ref int idx)
         {
             var sets = new List<byte[]>();
             for (var i = 0; i < count; i++)
             {
-                if (extraData.Length < idx + 2)
+                if (extraDataSize < idx + 2)
                 {
                     Logger.Error("extra data too short");
                     return null;
                 }
 
                 uint length = ReadUInt16(extraData, ref idx);
-                if (extraData.Length < idx + length)
+                if (extraDataSize < idx + length)
                 {
                     Logger.Error("extra data too short");
                     return null;
                 }
 
-                sets.Add(extraData.AsSpan(idx, (int)length).ToArray());
-                idx += (int)length;
+                sets.Add(new Span<byte>(extraData + idx, (int) length).ToArray());
+                idx += (int) length;
             }
+
             return sets;
         }
 
-        private void CopySet(uint lengthSize, List<byte[]> nals, ref int offset)
+        private static void CopySet(uint lengthSize, IEnumerable<byte[]> nals, byte[] parsedExtraData, ref int offset)
         {
             foreach (var pps in nals)
             {
-                var len = AsBytesMSB((uint)pps.Length, (int)lengthSize);
-                Buffer.BlockCopy(len, 0, _parsedExtraData, offset, len.Length);
+                var len = AsBytesMSB((uint) pps.Length, (int) lengthSize);
+                Buffer.BlockCopy(len, 0, parsedExtraData, offset, len.Length);
                 offset += len.Length;
-                Buffer.BlockCopy(pps, 0, _parsedExtraData, offset, pps.Length);
+                Buffer.BlockCopy(pps, 0, parsedExtraData, offset, pps.Length);
                 offset += pps.Length;
             }
+        }
+
+        private static byte[] AsBytesMSB(uint val, int maxBytes)
+        {
+            var ret = new byte[maxBytes];
+
+            for (--maxBytes; maxBytes >= 0 && val > 0; --maxBytes)
+            {
+                ret[maxBytes] = (byte) (val & 0xFFu);
+                val >>= 8;
+            }
+
+            return ret;
         }
 
         // In case of H265 as VideoCodecConfig::extraData we will have box, which
@@ -287,13 +303,13 @@ namespace JuvoPlayer.Player
         //       (BigEndian)
         //     write nalUnit (without any modifications)
         //   append video packet data
-        private void ExtractH265ExtraData(VideoStreamConfig vconf)
+        private static unsafe byte[] ParseH265(byte* extraData, int extraDataSize)
         {
-            var extraData = vconf.CodecExtraData;
-            if (extraData.Length < 21)
-            {  // Min first 5 byte + num_sps
+            if (extraDataSize < 21)
+            {
+                // Min first 5 byte + num_sps
                 Logger.Error("extra_data is too short to pass valid SPS/PPS header");
-                return;
+                return null;
             }
 
             var idx = 21;
@@ -303,68 +319,41 @@ namespace JuvoPlayer.Player
             var nals = new List<byte[]>();
             for (var j = 0; j < numOfArrays; ++j)
             {
-                if (extraData.Length < idx + 3)
+                if (extraDataSize < idx + 3)
                 {
                     Logger.Error("extra data too short");
-                    return;
+                    return null;
                 }
 
                 var nalUnitType = ReadByte(extraData, ref idx) & 0x3Fu;
                 var numNalus = ReadUInt16(extraData, ref idx);
                 for (var i = 0; i < numNalus; ++i)
                 {
-                    if (extraData.Length < idx + 2)
+                    if (extraDataSize < idx + 2)
                     {
                         Logger.Error("extra data too short");
-                        return;
-                    }
-                    var nalUnitLength = ReadUInt16(extraData, ref idx);
-                    if (extraData.Length < idx + nalUnitLength)
-                    {
-                        Logger.Error("extra data too short");
-                        return;
+                        return null;
                     }
 
-                    nals.Add(extraData.AsSpan().Slice(idx, nalUnitLength).ToArray());
+                    var nalUnitLength = ReadUInt16(extraData, ref idx);
+                    if (extraDataSize < idx + nalUnitLength)
+                    {
+                        Logger.Error("extra data too short");
+                        return null;
+                    }
+
+                    nals.Add(new Span<byte>(extraData + idx, nalUnitLength).ToArray());
                     idx += nalUnitLength;
                 }
             }
+
             var size = nals.Sum(o => lengthSize + o.Length);
 
-            _parsedExtraData = new byte[size];
+            var parsedExtraData = new byte[size];
 
             var offset = 0;
-            CopySet(lengthSize, nals, ref offset);
-        }
-
-        private byte ReadByte(byte[] adata, ref int idx)
-        {
-            return adata[idx++];
-        }
-
-        private UInt16 ReadUInt16(byte[] adata, ref int idx)
-        {
-            ushort res = 0;
-            for (var i = 0; i < 2; ++i)
-            {
-                res <<= 8;
-                res |= adata[idx + i];
-            }
-            idx += 2;
-            return res;
-        }
-
-        private byte[] AsBytesMSB(uint val, int maxBytes)
-        {
-            var ret = new byte[maxBytes];
-
-            for (--maxBytes; maxBytes >= 0 && val > 0; --maxBytes)
-            {
-                ret[maxBytes] = (byte)(val & 0xFFu);
-                val >>= 8;
-            }
-
-            return ret;
+            CopySet(lengthSize, nals, parsedExtraData, ref offset);
+            return parsedExtraData;
         }
     }
 }

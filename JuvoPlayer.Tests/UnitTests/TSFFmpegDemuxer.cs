@@ -121,7 +121,7 @@ namespace JuvoPlayer.Tests.UnitTests
         [Category("Positive")]
         public async Task Init_DrmInitDataAvailable_ReturnsDrmInitData(InitType initType)
         {
-            var expectedData = new DRMInitData
+            var expectedData = new DrmInitData
             {
                 StreamType = StreamType.Video,
                 InitData = new byte[] {1},

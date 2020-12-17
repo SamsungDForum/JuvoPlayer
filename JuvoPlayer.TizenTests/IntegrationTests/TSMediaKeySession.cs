@@ -1,6 +1,6 @@
 /*!
  * https://github.com/SamsungDForum/JuvoPlayer
- * Copyright 2018, Samsung Electronics Co., Ltd
+ * Copyright 2020, Samsung Electronics Co., Ltd
  * Licensed under the MIT license
  *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
@@ -27,14 +27,13 @@ using System.Xml.Serialization;
 using JuvoLogger;
 using JuvoPlayer.Common;
 using JuvoPlayer.Drms;
-using JuvoPlayer.Drms.Cenc;
+using JuvoPlayer.Tests.Utils;
 using NUnit.Framework;
-using static JuvoPlayer.Tests.Utils.TaskExtensions;
 
 namespace JuvoPlayer.TizenTests.IntegrationTests
 {
     [TestFixture]
-    public class TSCencSession
+    public class TSMediaKeySession
     {
         private readonly ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
 
@@ -46,9 +45,9 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
 
         private static readonly string[] DrmTypes = {"Widevine", "PlayReady"};
 
-        private delegate DRMDescription DrmDescriptionDelegate();
+        private delegate DrmDescription DrmDescriptionDelegate();
 
-        private delegate DRMInitData DrmInitDataDelegate();
+        private delegate DrmInitData DrmInitDataDelegate();
 
         private class DrmConfiguration
         {
@@ -173,34 +172,34 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
             LoggerManager.RestoreForTests(savedLoggerManager);
         }
 
-        private static DRMDescription CreatePlayReadyDrmDescription()
+        private static DrmDescription CreatePlayReadyDrmDescription()
         {
             var licenceUrl =
                 "https://dash-mse-test.appspot.com/api/drm/playready?drm_system=playready&source=YOUTUBE&ip=0.0.0.0&ipbits=0&expire=19000000000&sparams=ip,ipbits,expire,drm_system,source,video_id&video_id=03681262dc412c06&signature=448279561E2755699618BE0A2402189D4A30B03B.0CD6A27286BD2DAF00577FFA21928665DCD320C2&key=test_key1";
-            var configuration = new DRMDescription()
+            var configuration = new DrmDescription()
             {
-                Scheme = CencUtils.GetScheme(PlayreadySystemId),
+                Scheme = EmeUtils.GetScheme(PlayreadySystemId),
                 LicenceUrl = licenceUrl,
                 KeyRequestProperties = new Dictionary<string, string>() {{"Content-Type", "text/xml; charset=utf-8"}},
             };
             return configuration;
         }
 
-        private static DRMDescription CreateWidevineDrmDescription()
+        private static DrmDescription CreateWidevineDrmDescription()
         {
             var licenceUrl = "https://proxy.uat.widevine.com/proxy?provider=widevine_test";
-            var configuration = new DRMDescription()
+            var configuration = new DrmDescription()
             {
-                Scheme = CencUtils.GetScheme(WidevineSystemId),
+                Scheme = EmeUtils.GetScheme(WidevineSystemId),
                 LicenceUrl = licenceUrl,
                 KeyRequestProperties = new Dictionary<string, string>() {{"Content-Type", "text/xml; charset=utf-8"}},
             };
             return configuration;
         }
 
-        private static DRMInitData CreatePlayReadyDrmInitData()
+        private static DrmInitData CreatePlayReadyDrmInitData()
         {
-            var drmInitData = new DRMInitData()
+            var drmInitData = new DrmInitData()
             {
                 InitData = initPlayReadyData,
                 SystemId = PlayreadySystemId,
@@ -209,9 +208,9 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
             return drmInitData;
         }
 
-        private static DRMInitData CreateWidevineDrmInitData()
+        private static DrmInitData CreateWidevineDrmInitData()
         {
-            var drmInitData = new DRMInitData()
+            var drmInitData = new DrmInitData()
             {
                 InitData = initWidevineData,
                 SystemId = WidevineSystemId,
@@ -220,10 +219,10 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
             return drmInitData;
         }
 
-        private DRMInitData CreateDrmInitData(string drmName) =>
+        private DrmInitData CreateDrmInitData(string drmName) =>
             DrmConfigurations[drmName].GetDrmInitData();
 
-        private DRMDescription CreateDrmDescription(string drmName) =>
+        private DrmDescription CreateDrmDescription(string drmName) =>
             DrmConfigurations[drmName].GetDrmDescription();
 
         private EncryptedPacket CreateEncryptedPacket(string drmName) =>
@@ -235,32 +234,42 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
             Logger.Info(drmName);
 
             var drmInitData = CreateDrmInitData(drmName);
-            var configuration = CreateDrmDescription(drmName);
-            configuration.LicenceUrl = null;
+            var drmDescription = CreateDrmDescription(drmName);
+            drmDescription.LicenceUrl = null;
 
-            Assert.Throws<NullReferenceException>(() => CencSession.Create(drmInitData, configuration));
+            Assert.Throws<NullReferenceException>(() =>
+            {
+                using (var cdmInstance = new CdmInstance(EmeUtils.GetKeySystemName(drmInitData.SystemId)))
+                using (new MediaKeySession(drmInitData, drmDescription, new List<byte[]>(), cdmInstance))
+                {
+                }
+            });
         }
 
         [Test, TestCaseSource(nameof(DrmTypes))]
-        public void Initialize_WhenInitDataIsInvalid_ThrowsDRMException(string drmName)
+        public async Task GetDrmSession_WhenInitDataIsInvalid_ReturnsNullSession(string drmName)
         {
             Logger.Info(drmName);
 
             var drmInitData = CreateDrmInitData(drmName);
-            var configuration = CreateDrmDescription(drmName);
             drmInitData.InitData = null;
-            Assert.ThrowsAsync<DrmException>(async () =>
+            var drmDescription = CreateDrmDescription(drmName);
+            
+            using (var cdmInstance = new CdmInstance(EmeUtils.GetKeySystemName(drmInitData.SystemId)))
+            using (var session = await cdmInstance.GetDrmSession(drmInitData, new List<byte[]>(),
+                new List<DrmDescription> {drmDescription}))
             {
-                using (var drmSession = CencSession.Create(drmInitData, configuration))
-                    await drmSession.Initialize();
-            });
+                Assert.That(session, Is.Null);
+            }
 
             drmInitData.InitData = initPlayReadyData.Take(initPlayReadyData.Length / 2).ToArray();
-            Assert.ThrowsAsync<DrmException>(async () =>
+
+            using (var cdmInstance = new CdmInstance(EmeUtils.GetKeySystemName(drmInitData.SystemId)))
+            using (var session = await cdmInstance.GetDrmSession(drmInitData, new List<byte[]>(),
+                new List<DrmDescription> {drmDescription}))
             {
-                using (var drmSession = CencSession.Create(drmInitData, configuration))
-                    await drmSession.Initialize();
-            });
+                Assert.That(session, Is.Null);
+            }
         }
 
         [Test, TestCaseSource(nameof(DrmTypes))]
@@ -269,51 +278,53 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
             Logger.Info(drmName);
 
             var drmInitData = CreateDrmInitData(drmName);
-            var configuration = CreateDrmDescription(drmName);
-            Assert.DoesNotThrow(() =>
-            {
-                var drmSession = CencSession.Create(drmInitData, configuration);
-                drmSession.Initialize();
-                drmSession.Dispose();
-            });
+            var drmDescription = CreateDrmDescription(drmName);
+            using (var cdmInstance = new CdmInstance(EmeUtils.GetKeySystemName(drmInitData.SystemId)))
+                Assert.DoesNotThrow(() =>
+                {
+                    using (var session = cdmInstance.GetDrmSession(drmInitData, new List<byte[]>(), new List<DrmDescription> { drmDescription }).GetAwaiter().GetResult())
+                    using(var cts = new CancellationTokenSource(TimeSpan.FromSeconds(90)))
+                        session.WaitForInitialization().WithCancellation(cts.Token).GetAwaiter().GetResult();
+                });
         }
 
         [Test, TestCaseSource(nameof(DrmTypes))]
         public void Concurrent_CreateDispose_DoesNotThrow(string drmName)
         {
+            Logger.Info(drmName);
+
             Assert.DoesNotThrowAsync(async () =>
             {
+                var drmInitData = CreateDrmInitData(drmName);
+                var drmDescription = CreateDrmDescription(drmName);
+                using (var cdmInstance = new CdmInstance(EmeUtils.GetKeySystemName(drmInitData.SystemId)))
                 using (var goDispose = new Barrier(0))
                 {
                     var id = 0;
 
                     async Task DoWork(string drm)
                     {
-                        var drmInitData = CreateDrmInitData(drm);
-                        var configuration = CreateDrmDescription(drm);
-
                         var myId = Interlocked.Increment(ref id);
                         var signaled = false;
 
                         try
                         {
-                            Logger.Info($"Creating {drm} Session {myId}");
-                            using (var ses = CencSession.Create(drmInitData, configuration))
-                            {
-                                Logger.Info($"Initializing {drm} Session {myId}");
-                                ses.Initialize();
+                            Logger.Info($"Creating {drm} Session {myId}.");
 
+                            using (var session = await cdmInstance.GetDrmSession(drmInitData, new List<byte[]>(), new List<DrmDescription> { drmDescription }))
+                            {
                                 // Widevine cases - 15 concurrent sessions - individual session may take 60s+
                                 // to initialize when run @15 sessions.
                                 using (var cts = new CancellationTokenSource(TimeSpan.FromSeconds(90)))
                                 {
                                     try
                                     {
-                                        await ses.GetInitializationTask().WithCancellation(cts.Token);
+                                        Logger.Info($"Initializing {drm} Session {myId}.");
+                                        await session.WaitForInitialization().WithCancellation(cts.Token);
                                     }
                                     catch (OperationCanceledException)
                                     {
-                                        Logger.Info($"TIMEOUT {drm} Session {myId}");
+                                        Logger.Info($"TIMEOUT {drm} Session {myId}.");
                                         throw;
                                     }
                                     catch (Exception e)
@@ -323,12 +334,12 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
                                     }
                                 }
 
-                                Logger.Info($"{drm} Session {myId} Initialized. Waiting for Dispose");
+                                Logger.Info($"{drm} Session {myId} Initialized. Waiting for Dispose.");
                                 goDispose.SignalAndWait();
                                 signaled = true;
                             }
 
-                            Logger.Info($"{drm} Session {myId} completed");
+                            Logger.Info($"{drm} Session {myId} completed.");
                         }
                         finally
                         {
@@ -357,13 +368,15 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
             Logger.Info(drmName);
 
             var drmInitData = CreateDrmInitData(drmName);
-            var configuration = CreateDrmDescription(drmName);
+            var drmDescription = CreateDrmDescription(drmName);
             var encryptedPacket = CreateEncryptedPacket(drmName);
 
-            using (var drmSession = CencSession.Create(drmInitData, configuration))
+            using (var cdmInstance = new CdmInstance(EmeUtils.GetKeySystemName(drmInitData.SystemId)))
+            using (var session = await cdmInstance.GetDrmSession(drmInitData, new List<byte[]>(), new List<DrmDescription> { drmDescription }))
             {
-                await drmSession.Initialize();
-                using (var decrypted = await drmSession.DecryptPacket(encryptedPacket, CancellationToken.None))
+                using (var cts = new CancellationTokenSource(TimeSpan.FromSeconds(90)))
+                    await session.WaitForInitialization().WithCancellation(cts.Token);
+                using (var decrypted = await cdmInstance.DecryptPacket(encryptedPacket, CancellationToken.None))
                 {
                     Assert.That(decrypted, Is.Not.Null);
                     Assert.That(decrypted, Is.InstanceOf<DecryptedEMEPacket>());

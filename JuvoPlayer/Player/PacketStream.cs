@@ -1,6 +1,6 @@
 /*!
  * https://github.com/SamsungDForum/JuvoPlayer
- * Copyright 2018, Samsung Electronics Co., Ltd
+ * Copyright 2020, Samsung Electronics Co., Ltd
  * Licensed under the MIT license
  *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
@@ -16,10 +16,11 @@
  */
 
 using System;
+using System.Threading.Tasks;
 using JuvoLogger;
 using JuvoPlayer.Common;
-using JuvoPlayer.Common.Utils.IReferenceCountableExtensions;
 using JuvoPlayer.Drms;
+using Nito.AsyncEx;
 
 namespace JuvoPlayer.Player
 {
@@ -27,23 +28,23 @@ namespace JuvoPlayer.Player
     {
         private readonly IDrmManager drmManager;
         private readonly IPlayer player;
-        private IDrmSession drmSession;
+
+        private ICdmInstance currentCdmInstance;
+
         private StreamConfig config;
         private readonly StreamType streamType;
         private readonly ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
         private bool forceDrmChange;
-        private readonly ICodecExtraDataHandler _codecHandler;
+        private static readonly AsyncLock packetStreamLock = new AsyncLock();
 
-        public PacketStream(StreamType streamType, IPlayer player, IDrmManager drmManager, ICodecExtraDataHandler handler)
+        public PacketStream(StreamType streamType, IPlayer player, IDrmManager drmManager)
         {
             this.streamType = streamType;
-            this.drmManager = drmManager ??
-                              throw new ArgumentNullException(nameof(drmManager), "drmManager cannot be null");
+            this.drmManager = drmManager ?? throw new ArgumentNullException(nameof(drmManager), "drmManager cannot be null");
             this.player = player ?? throw new ArgumentNullException(nameof(player), "player cannot be null");
-            _codecHandler = handler ?? throw new ArgumentNullException(nameof(handler), "handler cannot be null");
         }
 
-        public void OnAppendPacket(Packet packet)
+        public async Task OnAppendPacket(Packet packet)
         {
             if (packet.StreamType != streamType)
                 throw new ArgumentException("packet type doesn't match");
@@ -51,15 +52,20 @@ namespace JuvoPlayer.Player
             if (config == null)
                 throw new InvalidOperationException("Packet stream is not configured");
 
-            if (packet is EncryptedPacket encPacket)
+            using (await packetStreamLock.LockAsync())
             {
-                // Increment reference counter on DRM session
-                drmSession.Share();
-                encPacket.DrmSession = drmSession;
+                if (packet is EncryptedPacket encPacket)
+                {
+                    if (currentCdmInstance == null)
+                    {
+                        Logger.Error($"No matching CDM Instance for stream packet of type {encPacket.StreamType}!");
+                        return;
+                    }
+                    encPacket.CdmInstance = currentCdmInstance;
+                }
             }
 
-            _codecHandler.PrependCodecData(packet);
-            player.AppendPacket(packet);
+            await player.AppendPacket(packet);
         }
 
         public void OnStreamConfigChanged(StreamConfig config)
@@ -82,7 +88,6 @@ namespace JuvoPlayer.Player
 
             this.config = config;
 
-            _codecHandler.OnStreamConfigChanged(this.config);
             player.SetStreamConfig(this.config);
         }
 
@@ -90,42 +95,34 @@ namespace JuvoPlayer.Player
         {
             Logger.Info($"{streamType}");
 
-            // Remove reference count held by Packet Stream.
-            // Player may still have packets and process them. Don't force remove
-            //
-            drmSession?.Release();
-
-            drmSession = null;
+            currentCdmInstance = null;
             config = null;
         }
 
-        public void OnDRMFound(DRMInitData data)
+        public async Task OnDRMFound(DrmInitData data)
         {
-            Logger.Info($"{streamType}");
+            using (await packetStreamLock.LockAsync())
+            {
+                Logger.Info($"{streamType}");
 
-            if (!forceDrmChange && drmSession != null)
-                return;
+                if (!forceDrmChange && currentCdmInstance != null)
+                    return;
 
-            IDrmSession newSession = drmManager.CreateDRMSession(data);
+                IDrmSession newSession = await drmManager.GetDrmSession(data);
 
-            // Do not reset wait for DRM event. If there is no valid session
-            // do not want to append new data
-            //
-            if (newSession == null)
-                return;
+                // Do not reset wait for DRM event. If there is no valid session
+                // do not want to append new data
+                //
+                if (newSession == null)
+                    return;
 
-            Logger.Info($"{streamType}: New DRM session found");
-            forceDrmChange = false;
+                Logger.Info($"{streamType}: New DRM session found");
+                forceDrmChange = false;
 
-            // Decrement use counter for packet stream on old DRM Session
-            drmSession?.Release();
-
-            // Add reference count for new session
-            newSession.Share();
-
-            // Set new session as current & let data submitters run wild.
-            // There is no need to store sessions. They live in player queue
-            drmSession = newSession;
+                // Set new session as current & let data submitters run wild.
+                // There is no need to store sessions. They live in player queue
+                currentCdmInstance = newSession.CdmInstance;
+            }
         }
 
         public void Dispose()

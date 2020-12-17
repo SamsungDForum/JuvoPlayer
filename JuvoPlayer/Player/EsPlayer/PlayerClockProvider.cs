@@ -41,6 +41,8 @@ namespace JuvoPlayer.Player.EsPlayer
         private bool _isDisposed;
         public TimeSpan Clock { get => _currentClock; }
 
+        public bool IsRunning => _intervalConnection != null;
+
         public PlayerClockProvider(IScheduler scheduler)
         {
             _scheduler = scheduler;

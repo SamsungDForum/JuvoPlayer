@@ -1,4 +1,4 @@
-/*!
+﻿/*!
  * https://github.com/SamsungDForum/JuvoPlayer
  * Copyright 2018, Samsung Electronics Co., Ltd
  * Licensed under the MIT license
@@ -14,19 +14,21 @@
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
+
 using System;
-using JuvoPlayer.Common;
+using Tizen.TV.System.Config;
 
-namespace JuvoPlayer.Player
+namespace JuvoPlayer.TizenTests.Utils
 {
-    class AudioCodecExtraDataHandler : ICodecExtraDataHandler
+    public static class SystemInfo
     {
-        public void PrependCodecData(Packet packet)
+        public static uint PanelPixelCount
         {
-        }
-
-        public void OnStreamConfigChanged(StreamConfig config)
-        {
+            get
+            {
+                return (uint)system_info.GetInt(SystemInfoKeye.SystemInfoKeyPanelResolutionWidth) *
+                    (uint)system_info.GetInt(SystemInfoKeye.SystemInfoKeyPanelResolutionHeight);
+            }
         }
     }
 }

@@ -17,7 +17,7 @@ export default class ContentPicture extends React.Component {
 
   render() {
     const index = typeof this.props.myIndex !== 'undefined' ? this.props.myIndex : this.props.selectedIndex;
-    const path = this.props.path ? this.props.path : ResourceLoader.tilesPath.default;
+    const source = this.props.path ? {uri: this.props.path} : this.props.source ? this.props.source : ResourceLoader.defaultImage;
     const imageWidth = this.props.width ? this.props.width : 1920;
     const imageHeight = this.props.height ? this.props.height : 1080;
     const top = this.props.top ? this.props.top : 0;
@@ -42,7 +42,7 @@ export default class ContentPicture extends React.Component {
                 top: top,
                 left: left
               }}
-              source={path}
+              source={source}
               onLoadStart={onLoadStart}
               onLoadEnd={onLoadEnd}
             />
@@ -61,7 +61,7 @@ export default class ContentPicture extends React.Component {
                 top: top,
                 left: left
               }}
-              source={path}
+              source={source}
               onLoadStart={this.props.onLoadStart}
               onLoadEnd={this.props.onLoadEnd}
               onError={error => {

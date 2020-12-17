@@ -19,7 +19,7 @@
 
 using System;
 using JuvoLogger;
-using JuvoPlayer.Demuxers.FFmpeg.Interop;
+using FFmpegBindings.Interop;
 
 namespace JuvoPlayer.Common
 {

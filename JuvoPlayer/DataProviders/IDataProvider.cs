@@ -44,8 +44,8 @@ namespace JuvoPlayer.DataProviders
 
 
         IObservable<TimeSpan> ClipDurationChanged();
-        IObservable<DRMInitData> DRMInitDataFound();
-        IObservable<DRMDescription> SetDrmConfiguration();
+        IObservable<DrmInitData> DRMInitDataFound();
+        IObservable<DrmDescription> SetDrmConfiguration();
         IObservable<StreamConfig> StreamConfigReady();
         IObservable<Packet> PacketReady();
         IObservable<string> StreamError();

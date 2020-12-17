@@ -1,6 +1,6 @@
 /*!
  * https://github.com/SamsungDForum/JuvoPlayer
- * Copyright 2018, Samsung Electronics Co., Ltd
+ * Copyright 2020, Samsung Electronics Co., Ltd
  * Licensed under the MIT license
  *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
@@ -17,17 +17,17 @@
 
 namespace JuvoPlayer.Common
 {
-    public enum DRMInitDataType
+    public enum DrmInitDataType
     {
         Unknown,    // Unrecognized Init data type
         MsPrPro,    // Microsoft PlayReady PlayReady Header Object
         Pssh        // Pssh box, Demux or MPD Sourced. Content shall be same.
     }
 
-    public class DRMInitData
+    public class DrmInitData
     {
         public string[] KeyIDs;  // Key ID
-        public DRMInitDataType DataType;
+        public DrmInitDataType DataType;
         public byte[] InitData = null;
         public byte[] SystemId = null;
         public StreamType StreamType { get; set; }

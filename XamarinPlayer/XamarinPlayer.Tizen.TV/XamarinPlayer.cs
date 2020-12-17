@@ -35,6 +35,9 @@ namespace XamarinPlayer.Tizen.TV
 
         public App()
         {
+#if DEBUG
+            HotReloader.Current.Run(this);
+#endif
             MainPage = new NavigationPage();
             AppMainPage = MainPage as NavigationPage;
             ContentPage = new ContentListPage(AppMainPage)
