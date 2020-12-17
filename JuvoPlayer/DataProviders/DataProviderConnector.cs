@@ -1,6 +1,6 @@
 /*!
  * https://github.com/SamsungDForum/JuvoPlayer
- * Copyright 2018, Samsung Electronics Co., Ltd
+ * Copyright 2020, Samsung Electronics Co., Ltd
  * Licensed under the MIT license
  *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
@@ -17,6 +17,7 @@
 
 using System;
 using System.Reactive.Disposables;
+using System.Reactive.Linq;
 using System.Threading;
 using System.Threading.Tasks;
 using JuvoPlayer.Player;
@@ -112,10 +113,10 @@ namespace JuvoPlayer.DataProviders
         private void Connect()
         {
             reconnectableSubscriptions.Add(playerController.TimeUpdated().Subscribe(dataProvider.OnTimeUpdated, context));
-            reconnectableSubscriptions.Add(dataProvider.DRMInitDataFound().Subscribe(playerController.OnDRMInitDataFound, context));
+            reconnectableSubscriptions.Add(dataProvider.DRMInitDataFound().Subscribe(async data => await playerController.OnDrmInitDataFound(data), context));
 
-            reconnectableSubscriptions.Add(dataProvider.PacketReady().Subscribe(playerController.OnPacketReady, context));
-            reconnectableSubscriptions.Add(dataProvider.SetDrmConfiguration().Subscribe(playerController.OnSetDrmConfiguration, context));
+            reconnectableSubscriptions.Add(dataProvider.PacketReady().Subscribe(async packet => await playerController.OnPacketReady(packet), context));
+            reconnectableSubscriptions.Add(dataProvider.SetDrmConfiguration().Subscribe(async description => await playerController.OnSetDrmConfiguration(description), context));
             reconnectableSubscriptions.Add(dataProvider.StreamConfigReady().Subscribe(playerController.OnStreamConfigReady, context));
         }
 

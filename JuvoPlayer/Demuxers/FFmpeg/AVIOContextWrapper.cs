@@ -17,7 +17,7 @@
 
 using System;
 using System.Runtime.InteropServices;
-using JuvoPlayer.Demuxers.FFmpeg.Interop;
+using FFmpegBindings.Interop;
 
 namespace JuvoPlayer.Demuxers.FFmpeg
 {
@@ -30,7 +30,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg
 
         public AVIOContextWrapper(ulong bufferSize, ReadPacket readPacket)
         {
-            buffer = (byte*) Interop.FFmpeg.av_mallocz(bufferSize);
+            buffer = (byte*) FFmpegBindings.Interop.FFmpeg.av_mallocz(bufferSize);
             this.readPacket = readPacket;
             readFunctionDelegate = ReadPacket;
             var readFunction = new avio_alloc_context_read_packet_func
@@ -38,7 +38,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg
             var writeFunction = new avio_alloc_context_write_packet_func {Pointer = IntPtr.Zero};
             var seekFunction = new avio_alloc_context_seek_func {Pointer = IntPtr.Zero};
 
-            context = Interop.FFmpeg.avio_alloc_context(buffer,
+            context = FFmpegBindings.Interop.FFmpeg.avio_alloc_context(buffer,
                 (int) bufferSize,
                 0,
                 (void*) GCHandle.ToIntPtr(
@@ -84,10 +84,10 @@ namespace JuvoPlayer.Demuxers.FFmpeg
         {
             if (context != null)
             {
-                Interop.FFmpeg.av_free((*context).buffer);
+                FFmpegBindings.Interop.FFmpeg.av_free((*context).buffer);
                 fixed (AVIOContext** ioContextPtr = &context)
                 {
-                    Interop.FFmpeg.avio_context_free(ioContextPtr); // also sets to null
+                    FFmpegBindings.Interop.FFmpeg.avio_context_free(ioContextPtr); // also sets to null
                 }
 
                 buffer = null;
@@ -95,7 +95,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg
 
             if (buffer != null)
             {
-                Interop.FFmpeg.av_free(buffer);
+                FFmpegBindings.Interop.FFmpeg.av_free(buffer);
                 buffer = null;
             }
         }

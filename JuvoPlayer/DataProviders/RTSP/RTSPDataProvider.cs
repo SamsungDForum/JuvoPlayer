@@ -59,14 +59,14 @@ namespace JuvoPlayer.DataProviders.RTSP
             return demuxerController.ClipDurationFound();
         }
 
-        public IObservable<DRMInitData> DRMInitDataFound()
+        public IObservable<DrmInitData> DRMInitDataFound()
         {
             return demuxerController.DrmInitDataFound();
         }
 
-        public IObservable<DRMDescription> SetDrmConfiguration()
+        public IObservable<DrmDescription> SetDrmConfiguration()
         {
-            return Observable.Empty<DRMDescription>();
+            return Observable.Empty<DrmDescription>();
         }
 
         public IObservable<StreamConfig> StreamConfigReady()

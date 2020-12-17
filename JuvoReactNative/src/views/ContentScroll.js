@@ -59,7 +59,7 @@ export default class ContentScroll extends React.Component {
     this.deepLinkIndex = nextProps.deepLinkIndex;
     this.curIndex = this.deepLinkIndex;
     this.scrolloffset = this.curIndex * this.itemWidth;
-    this._scrollView.scrollTo({ x: this.scrolloffset, y: 0, animated: false });
+    setTimeout(() => this._scrollView.scrollTo({ x: this.scrolloffset, y: 0, animated: false }), 100);
     this.setState({ selectedIndex: this.curIndex });
   }
 
@@ -92,20 +92,18 @@ export default class ContentScroll extends React.Component {
 
   render() {
     const index = this.state.selectedIndex;
-    const pathFinder = ResourceLoader.tilePathSelect;
     const title = ResourceLoader.clipsData[index].title;
     const description = ResourceLoader.clipsData[index].description;
     const itemWidth = 454;
     const itemHeight = 260;
-    const overlayPath = ResourceLoader.playbackIconsPathSelect('play');
+    const overlayIcon = ResourceLoader.playbackIcons.play;
     const renderThumbs = (uri, i) => (
       <View key={i}>
-        <Image resizeMode='cover' style={{ top: itemHeight / 2 + 35, left: itemWidth / 2 - 25 }} source={overlayPath} />
+        <Image resizeMode='cover' style={{ top: itemHeight / 2 + 35, left: itemWidth / 2 - 25 }} source={overlayIcon} />
         <ContentPicture
-          source={uri}
           myIndex={i}
           selectedIndex={index}
-          path={pathFinder(uri)}
+          path={uri}
           width={itemWidth - 8}
           height={itemHeight - 8}
           top={4}

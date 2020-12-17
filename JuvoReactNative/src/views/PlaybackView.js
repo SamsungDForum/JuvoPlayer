@@ -335,10 +335,10 @@ export default class PlaybackView extends React.Component {
     this.streamsData.selectedIndex = index;
     const title = ResourceLoader.clipsData[index].title;
     const fadeduration = 300;
-    const revIconPath = ResourceLoader.playbackIconsPathSelect('rew');
-    const ffwIconPath = ResourceLoader.playbackIconsPathSelect('ffw');
-    const settingsIconPath = ResourceLoader.playbackIconsPathSelect('set');
-    const playIconPath = this.playerState !== 'Playing' ? ResourceLoader.playbackIconsPathSelect('play') : ResourceLoader.playbackIconsPathSelect('pause');
+    const revIconPath = ResourceLoader.playbackIcons.rew;
+    const ffwIconPath = ResourceLoader.playbackIcons.ffw;
+    const settingsIconPath = ResourceLoader.playbackIcons.set;
+    const playIconPath = this.playerState !== 'Playing' ? ResourceLoader.playbackIcons.play : ResourceLoader.playbackIcons.pause;
     const visibility = this.props.visibility ? this.props.visibility : true;
 
     this.keysListenningOff = this.showSettingsView || this.showNotificationPopup;

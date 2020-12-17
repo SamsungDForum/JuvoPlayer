@@ -85,13 +85,13 @@ namespace JuvoPlayer.Tests.UnitTests
         {
             AsyncContext.Run(async () =>
             {
-                var initData = new DRMInitData
+                var initData = new DrmInitData
                 {
                     StreamType = StreamType.Video,
                     InitData = new byte[1]
                 };
                 var demuxerStub = CreateDemuxerStub(new ClipConfiguration
-                    {DrmInitDatas = new List<DRMInitData> {initData}}, startType);
+                    {DrmInitDatas = new List<DrmInitData> {initData}}, startType);
 
                 using (var controller = new DemuxerController(demuxerStub))
                 {

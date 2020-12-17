@@ -1,6 +1,6 @@
 /*!
  * https://github.com/SamsungDForum/JuvoPlayer
- * Copyright 2018, Samsung Electronics Co., Ltd
+ * Copyright 2020, Samsung Electronics Co., Ltd
  * Licensed under the MIT license
  *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
@@ -24,7 +24,7 @@ using System.Xml;
 using JuvoLogger;
 using JuvoPlayer.Common;
 using JuvoPlayer.Demuxers;
-using JuvoPlayer.Drms.Cenc;
+using JuvoPlayer.Drms;
 using MpdParser;
 using System.Threading;
 using System.Threading.Tasks;
@@ -84,8 +84,8 @@ namespace JuvoPlayer.DataProviders.Dash
         private readonly Object switchStreamLock = new Object();
         private List<DashStream> availableStreams = new List<DashStream>();
 
-        private readonly Subject<DRMInitData> drmInitDataSubject = new Subject<DRMInitData>();
-        private readonly Subject<DRMDescription> setDrmConfigurationSubject = new Subject<DRMDescription>();
+        private readonly Subject<DrmInitData> drmInitDataSubject = new Subject<DrmInitData>();
+        private readonly Subject<DrmDescription> setDrmConfigurationSubject = new Subject<DrmDescription>();
         private readonly Subject<Packet> packetReadySubject = new Subject<Packet>();
         private readonly Subject<StreamConfig> demuxerStreamConfigReadySubject = new Subject<StreamConfig>();
         private readonly Subject<StreamConfig> metaDataStreamConfigSubject = new Subject<StreamConfig>();
@@ -500,7 +500,7 @@ namespace JuvoPlayer.DataProviders.Dash
             foreach (var descriptor in newMedia.ContentProtections)
             {
                 var schemeIdUri = descriptor.SchemeIdUri;
-                if (CencUtils.SupportsSchemeIdUri(schemeIdUri))
+                if (EmeUtils.SupportsSchemeIdUri(schemeIdUri))
                     ParseCencScheme(descriptor, schemeIdUri);
                 else if (string.Equals(schemeIdUri, "http://youtube.com/drm/2012/10/10",
                     StringComparison.CurrentCultureIgnoreCase))
@@ -525,12 +525,12 @@ namespace JuvoPlayer.DataProviders.Dash
             if (initData == null)
                 return;
 
-            var drmInitData = new DRMInitData
+            var drmInitData = new DrmInitData
             {
-                KeyIDs = CencUtils.GetKeyIDs(descriptor.CencDefaultKID),
-                DataType = CencUtils.GetInitDataType(doc.FirstChild?.FirstChild?.Name),
+                KeyIDs = EmeUtils.GetKeyIDs(descriptor.CencDefaultKID),
+                DataType = EmeUtils.GetInitDataType(doc.FirstChild?.FirstChild?.Name),
                 InitData = Convert.FromBase64String(initData),
-                SystemId = CencUtils.SchemeIdUriToSystemId(schemeIdUri),
+                SystemId = EmeUtils.SchemeIdUriToSystemId(schemeIdUri),
                 // Stream Type will be appended during OnDRMInitDataFound()
             };
 
@@ -555,10 +555,10 @@ namespace JuvoPlayer.DataProviders.Dash
             foreach (XmlNode node in doc.FirstChild?.ChildNodes)
             {
                 var type = node.Attributes?.GetNamedItem("type")?.Value;
-                if (!CencUtils.SupportsType(type))
+                if (!EmeUtils.SupportsType(type))
                     continue;
 
-                var drmDescriptor = new DRMDescription
+                var drmDescriptor = new DrmDescription
                 {
                     LicenceUrl = node.InnerText,
                     Scheme = type
@@ -567,7 +567,7 @@ namespace JuvoPlayer.DataProviders.Dash
             }
         }
 
-        public IObservable<DRMInitData> OnDRMInitDataFound()
+        public IObservable<DrmInitData> OnDRMInitDataFound()
         {
             return demuxerController.DrmInitDataFound()
                 .Merge(drmInitDataSubject.AsObservable())
@@ -585,7 +585,7 @@ namespace JuvoPlayer.DataProviders.Dash
                 .Where(packet => PacketPredicate == null || PacketPredicate.Invoke(packet));
         }
 
-        public IObservable<DRMDescription> SetDrmConfiguration()
+        public IObservable<DrmDescription> SetDrmConfiguration()
         {
             return setDrmConfigurationSubject.AsObservable();
         }

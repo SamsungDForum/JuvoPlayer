@@ -1,6 +1,6 @@
 /*!
  * https://github.com/SamsungDForum/JuvoPlayer
- * Copyright 2018, Samsung Electronics Co., Ltd
+ * Copyright 2020, Samsung Electronics Co., Ltd
  * Licensed under the MIT license
  *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
@@ -52,7 +52,10 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
 
         static TSPlayerServiceTestCaseSource()
         {
+            var panelPixelCount = Utils.SystemInfo.PanelPixelCount;
+
             allClipsSource = ReadClips()
+                .Where(clip => clip.PixelCount <= panelPixelCount)
                 .ToArray();
 
             drmClipsSource = allClipsSource
@@ -319,8 +322,7 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
             {
                 var service = context.Service;
                 var descriptions = service.GetStreamsDescription(StreamType.Audio);
-                if (descriptions.Count == 0)
-                    Assert.Ignore("No streams for representation change");
+                var playerObserver = RunningPlayerTask.Observe(context);
 
                 for (var i = 0; i < descriptions.Count; i++)
                 {
@@ -335,6 +337,7 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
                     await changeOp.Execute(context);
                     _logger.Info($"Changing to {entry.Id} {entry.StreamType} { entry.Description} Done");
 
+                    await playerObserver.VerifyRunning(TimeSpan.FromSeconds(3));
                 }
             });
         }
@@ -351,8 +354,6 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
                 foreach (var stream in streams)
                 {
                     var descriptions = service.GetStreamsDescription(stream);
-                    if (descriptions.Count == 0)
-                        continue;
 
                     for (var i = 0; i < descriptions.Count; i++)
                     {
@@ -376,7 +377,7 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
 
                         await changeTask.WithCancellation(context.Token);
                         await seekTask.WithTimeout(context.Timeout).WithCancellation(context.Token);
-                        
+
                     }
                 }
             });

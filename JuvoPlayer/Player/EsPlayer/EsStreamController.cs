@@ -595,12 +595,14 @@ namespace JuvoPlayer.Player.EsPlayer
                     {
                         // Destructive player change results in packet loss. 
                         // Reposition data provider.
+                        DisableInput();
                         await FlushStreams();
                         var streamClock = await Client.Seek(playerPosition, CancellationToken.None);
                         EnableInput();
 
                         logger.Info($"Incompatible. Restarting player @{streamClock} Player clock was {playerPosition}");
                         await ChangeConfiguration(streamClock, token);
+                        return;
                     }
                     else
                     {
