@@ -22,6 +22,6 @@ namespace Configuration
     public static class Paths
     {
         public const string VideoClipJsonPath =
-             "https://raw.githubusercontent.com/ppaneksamsung/JuvoPlayer/master/Resources/videoclips.json";
+             "https://raw.githubusercontent.com/SamsungDForum/JuvoPlayer/master/Resources/videoclips.json";
     }
 }

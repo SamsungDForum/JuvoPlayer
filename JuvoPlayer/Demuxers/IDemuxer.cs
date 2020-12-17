@@ -26,7 +26,7 @@ namespace JuvoPlayer.Demuxers
     public struct ClipConfiguration
     {
         public IList<StreamConfig> StreamConfigs { get; set; }
-        public IList<DRMInitData> DrmInitDatas { get; set; }
+        public IList<DrmInitData> DrmInitDatas { get; set; }
         public TimeSpan Duration { get; set; }
     }
 

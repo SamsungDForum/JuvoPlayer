@@ -32,7 +32,7 @@ namespace JuvoPlayer.Demuxers
         private readonly Subject<TimeSpan> clipDurationSubject = new Subject<TimeSpan>();
         private readonly IDemuxer demuxer;
         private readonly Subject<string> demuxerErrorSubject = new Subject<string>();
-        private readonly Subject<DRMInitData> drmInitDataSubject = new Subject<DRMInitData>();
+        private readonly Subject<DrmInitData> drmInitDataSubject = new Subject<DrmInitData>();
         private readonly Subject<Packet> packetReadySubject = new Subject<Packet>();
         private readonly Subject<StreamConfig> streamConfigSubject = new Subject<StreamConfig>();
 
@@ -128,7 +128,7 @@ namespace JuvoPlayer.Demuxers
             return clipDurationSubject.AsObservable();
         }
 
-        public IObservable<DRMInitData> DrmInitDataFound()
+        public IObservable<DrmInitData> DrmInitDataFound()
         {
             return drmInitDataSubject.AsObservable();
         }
@@ -189,7 +189,7 @@ namespace JuvoPlayer.Demuxers
             foreach (var streamConfig in configuration.StreamConfigs ?? new List<StreamConfig>())
                 streamConfigSubject.OnNext(streamConfig);
 
-            foreach (var drmInitData in configuration.DrmInitDatas ?? new List<DRMInitData>())
+            foreach (var drmInitData in configuration.DrmInitDatas ?? new List<DrmInitData>())
                 drmInitDataSubject.OnNext(drmInitData);
         }
 

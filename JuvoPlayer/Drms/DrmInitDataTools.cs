@@ -80,7 +80,7 @@ namespace JuvoPlayer.Drms
 
         private static IEnumerable<byte[]> PsshBox(byte[] pssh)
         {
-            // Pssh box spces:
+            // Pssh box specs:
             // ISO IEC 23001-7 Cenc MP4
 
             // Check box type, 'pssh'
@@ -126,7 +126,7 @@ namespace JuvoPlayer.Drms
             }
         }
 
-        public static List<byte[]> GetKeyIds(DRMInitData initData)
+        public static List<byte[]> GetKeyIds(DrmInitData initData)
         {
             var mpdSource = initData.KeyIDs?.Select(UuidToKey) ?? Enumerable.Empty<byte[]>();
 
@@ -135,12 +135,12 @@ namespace JuvoPlayer.Drms
             {
                 switch (initData.DataType)
                 {
-                    case DRMInitDataType.MsPrPro:
+                    case DrmInitDataType.MsPrPro:
                         Logger.Info(initData.DataType.ToString());
                         initDataSource = MicrosoftPlayReadyObjectHeader(initData.InitData);
                         break;
 
-                    case DRMInitDataType.Pssh:
+                    case DrmInitDataType.Pssh:
                         Logger.Info(initData.DataType.ToString());
                         initDataSource = PsshBox(initData.InitData);
                         break;
@@ -154,7 +154,7 @@ namespace JuvoPlayer.Drms
             {
                 // Init data seems malformed. May still usable by underlying decryption mechanisms.
                 // Try processing what's available
-                Logger.Warn("Possibly malformed DRMInitData.initData");
+                Logger.Warn("Possibly malformed DrmInitData.initData");
                 initDataSource = Enumerable.Empty<byte[]>();
             }
             

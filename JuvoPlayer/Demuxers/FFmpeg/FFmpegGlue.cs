@@ -17,8 +17,8 @@
 
 using System;
 using System.Runtime.InteropServices;
+using FFmpegBindings.Interop;
 using JuvoLogger;
-using JuvoPlayer.Demuxers.FFmpeg.Interop;
 
 namespace JuvoPlayer.Demuxers.FFmpeg
 {
@@ -30,24 +30,24 @@ namespace JuvoPlayer.Demuxers.FFmpeg
         {
             try
             {
-                Interop.FFmpeg.av_register_all();
-                Interop.FFmpeg.avformat_network_init();
+                FFmpegBindings.Interop.FFmpeg.av_register_all();
+                FFmpegBindings.Interop.FFmpeg.avformat_network_init();
                 unsafe
                 {
-                    Interop.FFmpeg.av_log_set_level(FFmpegMacros.AV_LOG_WARNING);
+                    FFmpegBindings.Interop.FFmpeg.av_log_set_level(FFmpegMacros.AV_LOG_WARNING);
                     av_log_set_callback_callback logCallback = (p0, level, format, vl) =>
                     {
-                        if (level > Interop.FFmpeg.av_log_get_level()) return;
+                        if (level > FFmpegBindings.Interop.FFmpeg.av_log_get_level()) return;
 
                         const int lineSize = 1024;
                         var lineBuffer = stackalloc byte[lineSize];
                         var printPrefix = 1;
-                        Interop.FFmpeg.av_log_format_line(p0, level, format, vl, lineBuffer, lineSize, &printPrefix);
+                        FFmpegBindings.Interop.FFmpeg.av_log_format_line(p0, level, format, vl, lineBuffer, lineSize, &printPrefix);
                         var line = Marshal.PtrToStringAnsi((IntPtr) lineBuffer);
 
                         Logger.Warn(line);
                     };
-                    Interop.FFmpeg.av_log_set_callback(logCallback);
+                    FFmpegBindings.Interop.FFmpeg.av_log_set_callback(logCallback);
                 }
             }
             catch (Exception e)

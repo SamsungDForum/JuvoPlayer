@@ -95,6 +95,8 @@ namespace JuvoPlayer.Tests.IntegrationTests
             Assert.IsNotNull(clips[0].DRMDatas[0].KeyRequestProperties);
             Assert.AreEqual(clips[0].DRMDatas[0].KeyRequestProperties.Count, 2, "wrong drm key properties count");
             Assert.IsNull(clips[0].Subtitles);
+            Assert.AreEqual(clips[0].PixelCount, 0);
+            Assert.AreEqual(clips[0].Format, ClipDefinition.VideoFormat.Custom);
 
             Assert.IsNotNull(clips[1]);
             Assert.AreEqual(clips[1].Title, "Big Buck Bunny mp4");
@@ -110,6 +112,8 @@ namespace JuvoPlayer.Tests.IntegrationTests
             Assert.AreEqual(clips[1].Subtitles[0].Encoding, "windows-1251");
             Assert.AreEqual(clips[1].Subtitles[0].Language, "en");
             Assert.AreEqual(clips[1].Subtitles[0].Id, 11);
+            Assert.Greater(clips[1].PixelCount, 0);
+            Assert.AreEqual(clips[1].Format, ClipDefinition.VideoFormat.FullHD);
         }
 
         [Test]
