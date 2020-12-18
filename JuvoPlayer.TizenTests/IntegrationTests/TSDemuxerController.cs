@@ -32,7 +32,7 @@ namespace JuvoPlayer.TizenTests.IntegrationTests
     public class TSDemuxerController
     {
         private static string BigBuckBunnyUrl =
-            "http://distribution.bbb3d.renderfarming.net/video/mp4/bbb_sunflower_1080p_30fps_normal.mp4";
+            "http://106.120.45.49/bunny/bbb_sunflower_1080p_30fps_normal.mp4";
 
         private DashContent content;
 
