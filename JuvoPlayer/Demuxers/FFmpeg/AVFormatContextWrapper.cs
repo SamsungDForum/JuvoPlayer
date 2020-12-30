@@ -18,12 +18,14 @@
 using System;
 using System.Collections.Generic;
 using System.Drawing;
+using System.IO;
 using System.Linq;
 using System.Runtime.InteropServices;
 using System.Text;
+using FFmpegBindings.Interop;
 using JuvoLogger;
 using JuvoPlayer.Common;
-using JuvoPlayer.Demuxers.FFmpeg.Interop;
+using ffmpeg = FFmpegBindings.Interop.FFmpeg;
 
 namespace JuvoPlayer.Demuxers.FFmpeg
 {
@@ -41,7 +43,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg
 
         public AvFormatContextWrapper()
         {
-            _formatContext = Interop.FFmpeg.avformat_alloc_context();
+            _formatContext = ffmpeg.avformat_alloc_context();
             if (_formatContext == null)
                 throw new FFmpegException("Cannot allocate AVFormatContext");
         }
@@ -87,7 +89,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg
         {
             if (_formatContext == null)
                 throw new FFmpegException($"Format context is null");
-            _formatContext->flags |= FFmpegMacros.AVFMT_FLAG_CUSTOM_IO;
+            _formatContext->flags |= ffmpeg.AVFMT_FLAG_CUSTOM_IO | ffmpeg.AVFMT_FLAG_IGNIDX;
             Open(null);
         }
 
@@ -96,7 +98,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg
             fixed
                 (AVFormatContext** formatContextPointer = &_formatContext)
             {
-                var ret = Interop.FFmpeg.avformat_open_input(formatContextPointer, url, null, null);
+                var ret = ffmpeg.avformat_open_input(formatContextPointer, url, null, null);
                 if (ret != 0)
                     throw new FFmpegException("Cannot open AVFormatContext");
             }
@@ -106,7 +108,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg
         {
             if (_formatContext == null)
                 throw new FFmpegException($"Format context is null");
-            var ret = Interop.FFmpeg.avformat_find_stream_info(_formatContext, null);
+            var ret = ffmpeg.avformat_find_stream_info(_formatContext, null);
             if (ret < 0)
                 throw new FFmpegException($"Could not find stream info (error code: {ret})!");
         }
@@ -115,7 +117,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg
         {
             if (_formatContext == null)
                 throw new FFmpegException($"Format context is null");
-            return Interop.FFmpeg.av_find_best_stream(_formatContext, mediaType, -1, -1, null, 0);
+            return ffmpeg.av_find_best_stream(_formatContext, mediaType, -1, -1, null, 0);
         }
 
         public int FindBestBandwidthStream(AVMediaType mediaType)
@@ -128,7 +130,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg
             {
                 if (_formatContext->streams[i]->codecpar->codec_type != mediaType)
                     continue;
-                var dict = Interop.FFmpeg.av_dict_get(_formatContext->streams[i]->metadata, "variant_bitrate", null, 0);
+                var dict = ffmpeg.av_dict_get(_formatContext->streams[i]->metadata, "variant_bitrate", null, 0);
                 if (dict == null)
                     return -1;
                 var stringValue = Marshal.PtrToStringAnsi((IntPtr) dict->value);
@@ -184,10 +186,10 @@ namespace JuvoPlayer.Demuxers.FFmpeg
             do
             {
                 var pkt = default(AVPacket);
-                Interop.FFmpeg.av_init_packet(&pkt);
+                ffmpeg.av_init_packet(&pkt);
                 pkt.data = null;
                 pkt.size = 0;
-                var ret = Interop.FFmpeg.av_read_frame(_formatContext, &pkt);
+                var ret = ffmpeg.av_read_frame(_formatContext, &pkt);
                 if (ret == -541478725)
                     return null;
                 if (ret < 0)
@@ -200,9 +202,10 @@ namespace JuvoPlayer.Demuxers.FFmpeg
                 var pts = Rescale(pkt.pts, stream);
                 var dts = Rescale(pkt.dts, stream);
 
-                var sideData = Interop.FFmpeg.av_packet_get_side_data(&pkt,
-                    AVPacketSideDataType.AV_PKT_DATA_ENCRYPT_INFO, null);
-                var packet = sideData != null ? CreateEncryptedPacket(sideData) : new Packet();
+                int size;
+                var sideData = ffmpeg.av_packet_get_side_data(&pkt,
+                    AVPacketSideDataType.AV_PKT_DATA_ENCRYPTION_INFO, &size);
+                var packet = sideData != null ? CreateEncryptedPacket(sideData, (ulong) size) : new Packet();
 
                 packet.StreamType = stream->codec->codec_type == AVMediaType.AVMEDIA_TYPE_AUDIO
                     ? StreamType.Audio
@@ -232,35 +235,97 @@ namespace JuvoPlayer.Demuxers.FFmpeg
             GC.SuppressFinalize(this);
         }
 
-        private DrmInitData GetDrmInitData()
+        private static int SwapEndianess(int value)
         {
-            if (_formatContext->protection_system_data_count <= 0)
-                return null;
-            long totalPsshSize = 0;
-            for (uint i = 0; i < _formatContext->protection_system_data_count; ++i)
+            var t = 0xff;
+            var b1 = (value >> 0) & t;
+            var b2 = (value >> 8) & t;
+            var b3 = (value >> 16) & t;
+            var b4 = (value >> 24) & t;
+
+            return b1 << 24 | b2 << 16 | b3 << 8 | b4 << 0;
+        }
+
+        private byte[] BuildPsshAtom(AVEncryptionInitInfo* e)
+        {
+            int psshBoxLength = 8 /*HEADER*/ + 16 /*SysID*/ + 4 /*DataSize*/ + (int) e->data_size + 4 /*version*/;
+            if (e->key_ids != null && e->num_key_ids != 0)
             {
-                var systemData = _formatContext->protection_system_data[i];
-                totalPsshSize += systemData.pssh_box_size;
+                psshBoxLength += 4 /*KID_count*/ + ((int) e->num_key_ids * 16);
             }
 
-            var concatenatedPsshBoxes = new byte[totalPsshSize];
-            var offset = 0;
-            for (uint i = 0; i < _formatContext->protection_system_data_count; ++i)
+            var stream = new MemoryStream();
+            using (var writer = new BinaryWriter(stream))
             {
-                var systemData = _formatContext->protection_system_data[i];
-                var psshBoxSize = (int) systemData.pssh_box_size;
-                Marshal.Copy(
-                    (IntPtr) systemData.pssh_box,
-                    concatenatedPsshBoxes,
-                    offset,
-                    psshBoxSize);
-                offset += psshBoxSize;
+                writer.Write(SwapEndianess(psshBoxLength));
+
+                foreach (var c in "pssh") writer.Write(c);
+
+                writer.Write(e->key_ids != null && e->num_key_ids != 0 ? SwapEndianess(0x01000000) : 0x00000000);
+
+                for (int i = 0; i < 16; i++)
+                {
+                    writer.Write(e->system_id[i]);
+                }
+
+                if (e->key_ids != null && e->num_key_ids != 0)
+                {
+                    writer.Write(SwapEndianess((int) e->num_key_ids));
+                    for (int i = 0; i < e->num_key_ids; i++)
+                    {
+                        for (int j = 0; j < 16; j++)
+                        {
+                            writer.Write(e->key_ids[i][j]);
+                        }
+                    }
+                }
+
+                if (e->data != null && e->data_size != 0)
+                {
+                    writer.Write(SwapEndianess((int) e->data_size));
+                    for (int i = 0; i < e->data_size; i++)
+                    {
+                        writer.Write(e->data[i]);
+                    }
+                }
+                else
+                {
+                    writer.Write(0);
+                }
+
+                return stream.ToArray();
+            }
+        }
+
+        private DrmInitData GetDrmInitData()
+        {
+            var f = _formatContext;
+            var result = new List<byte>();
+            if (f->nb_streams > 0)
+            {
+                int size;
+                var enc = ffmpeg.av_stream_get_side_data(
+                    f->streams[0],
+                    AVPacketSideDataType.AV_PKT_DATA_ENCRYPTION_INIT_INFO,
+                    &size);
+
+                if (enc != null)
+                {
+                    var data = ffmpeg.av_encryption_init_info_get_side_data(enc, (ulong) size);
+
+                    while (data != null)
+                    {
+                        var psshBox = BuildPsshAtom(data).ToList();
+                        result.AddRange(psshBox);
+                        data = data->next;
+                    }
+                }
             }
 
             return new DrmInitData
             {
                 DataType = DrmInitDataType.Cenc,
-                Data = concatenatedPsshBoxes
+                Data = result.ToArray()
             };
         }
 
@@ -283,7 +348,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg
 
         private TimeSpan Rescale(long ffmpegTime, AVStream* stream)
         {
-            var rescalled = Interop.FFmpeg.av_rescale_q(ffmpegTime, stream->time_base, _millsBase);
+            var rescalled = ffmpeg.av_rescale_q(ffmpegTime, stream->time_base, _millsBase);
             return TimeSpan.FromMilliseconds(rescalled);
         }
 
@@ -299,7 +364,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg
         private void HandleSeek(int idx, TimeSpan time)
         {
             var (target, flags) = CalculateTargetAndFlags(idx, time);
-            var ret = Interop.FFmpeg.av_seek_frame(_formatContext, idx, target, flags);
+            var ret = ffmpeg.av_seek_frame(_formatContext, idx, target, flags);
 
             if (ret != 0)
                 throw new FFmpegException($"av_seek_frame returned {ret}");
@@ -309,42 +374,50 @@ namespace JuvoPlayer.Demuxers.FFmpeg
         {
             var stream = _formatContext->streams[idx];
             var target =
-                Interop.FFmpeg.av_rescale_q((long) time.TotalMilliseconds, _millsBase, stream->time_base);
+                ffmpeg.av_rescale_q((long) time.TotalMilliseconds, _millsBase, stream->time_base);
 
             if (target < stream->first_dts)
-                return (stream->first_dts, FFmpegMacros.AVSEEK_FLAG_BACKWARD);
+                return (stream->first_dts, ffmpeg.AVSEEK_FLAG_BACKWARD);
 
             if (stream->index_entries != null && stream->nb_index_entries > 0)
             {
                 var lastTimestamp = stream->index_entries[stream->nb_index_entries - 1].timestamp;
                 if (target > lastTimestamp)
-                    return (lastTimestamp, FFmpegMacros.AVSEEK_FLAG_BACKWARD);
+                    return (lastTimestamp, ffmpeg.AVSEEK_FLAG_BACKWARD);
             }
 
             if (stream->duration > 0 && target > stream->duration)
-                return (stream->duration, FFmpegMacros.AVSEEK_FLAG_BACKWARD);
+                return (stream->duration, ffmpeg.AVSEEK_FLAG_BACKWARD);
 
-            return (target, FFmpegMacros.AVSEEK_FLAG_ANY);
+            return (target, ffmpeg.AVSEEK_FLAG_ANY);
         }
 
-        private static Packet CreateEncryptedPacket(byte* sideData)
+        private static Packet CreateEncryptedPacket(byte* sideData, ulong size)
         {
-            var encInfo = (AVEncInfo*) sideData;
-            int subsampleCount = encInfo->subsample_count;
+            var encInfo = ffmpeg.av_encryption_info_get_side_data(sideData, size);
+            int subsampleCount = (int) encInfo->subsample_count;
 
-            var packet = new EncryptedPacket {KeyId = encInfo->kid.ToArray(), Iv = encInfo->iv.ToArray()};
+            byte[] arrkid = new byte[encInfo->key_id_size];
+            Marshal.Copy((IntPtr) encInfo->key_id, arrkid, 0, (int) encInfo->key_id_size);
+
+            byte[] arriv = new byte[encInfo->iv_size];
+            Marshal.Copy((IntPtr) encInfo->iv, arriv, 0, (int) encInfo->iv_size);
+            var packet = new EncryptedPacket
+            {
+                KeyId = arrkid,
+                Iv = arriv
+            };
             if (subsampleCount <= 0)
                 return packet;
             packet.SubSamples = new EncryptedPacket.Subsample[subsampleCount];
-
             // structure has sequential layout and the last element is an array
             // due to marshalling error we need to define this as single element
             // so to read this as an array we need to get a pointer to first element
-            var subsamples = &encInfo->subsamples;
+            var subsamples = encInfo->subsamples;
             for (var i = 0; i < subsampleCount; ++i)
             {
                 packet.SubSamples[i].ClearData = subsamples[i].bytes_of_clear_data;
-                packet.SubSamples[i].EncData = subsamples[i].bytes_of_enc_data;
+                packet.SubSamples[i].EncData = subsamples[i].bytes_of_protected_data;
             }
 
             return packet;
@@ -361,7 +434,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg
             }
             else
             {
-                config.BitsPerChannel = Interop.FFmpeg.av_get_bytes_per_sample(sampleFormat) * 8;
+                config.BitsPerChannel = ffmpeg.av_get_bytes_per_sample(sampleFormat) * 8;
                 config.BitsPerChannel /= stream->codecpar->channels;
             }
 
@@ -407,7 +480,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg
             {
                 fixed (byte* errbuf = errorBuffer)
                 {
-                    Interop.FFmpeg.av_strerror(returnCode, errbuf, errorBufferSize);
+                    ffmpeg.av_strerror(returnCode, errbuf, errorBufferSize);
                 }
             }
             catch (Exception)
@@ -424,7 +497,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg
                 return;
             fixed (AVFormatContext** formatContextPointer = &_formatContext)
             {
-                Interop.FFmpeg.avformat_close_input(formatContextPointer);
+                ffmpeg.avformat_close_input(formatContextPointer);
             }
         }
 

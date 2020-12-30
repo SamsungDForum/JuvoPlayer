@@ -47,18 +47,21 @@ namespace JuvoPlayer.Dash
         private IStreamRenderer _renderer;
         private RepresentationWrapper[] _representations;
         private Segment _segment;
+        private DashDemuxerClient _demuxerClient;
 
         public DashStream(
             IThroughputHistory throughputHistory,
             IDownloader downloader,
             IClock clock,
             IDemuxer demuxer,
+            DashDemuxerClient demuxerClient,
             IStreamSelector streamSelector)
         {
             _throughputHistory = throughputHistory;
             _downloader = downloader;
             _clock = clock;
             _demuxer = demuxer;
+            _demuxerClient = demuxerClient;
             StreamSelector = streamSelector;
             _maxBufferTime = TimeSpan.FromSeconds(8);
         }
@@ -267,7 +270,7 @@ namespace JuvoPlayer.Dash
             Task<ClipConfiguration> initDemuxerTask = null;
             if (previousRepresentation != representation)
             {
-                _logger.Info();
+                _logger.Info($"{contentType}: Change of representation");
                 await ResetDemuxer();
                 cancellationToken.ThrowIfCancellationRequested();
                 _currentRepresentation = representation;
@@ -285,7 +288,7 @@ namespace JuvoPlayer.Dash
             {
                 if (chunk != null)
                 {
-                    _logger.Info();
+                    _logger.Info($"{contentType}: Loading chunk");
                     await chunk.Load();
                     cancellationToken.ThrowIfCancellationRequested();
                     await OnChunkLoaded(chunk,
@@ -309,7 +312,7 @@ namespace JuvoPlayer.Dash
 
             await ResetDemuxer();
             cancellationToken.ThrowIfCancellationRequested();
-            _logger.Info("Sending EOS packet");
+            _logger.Info($"{contentType} Sending EOS packet");
             var streamType = contentType.ToStreamType();
             var eosPacket = new EosPacket(streamType);
             _renderer.HandlePacket(eosPacket);
@@ -330,8 +333,15 @@ namespace JuvoPlayer.Dash
             var initTask = _demuxer.InitForEs();
             if (initData != null)
             {
+                var initDataLength = initData.Sum(bytes => bytes.Length);
+                var seg = new SegmentBuffer();
+                _demuxerClient.Offset = 0;
+                _demuxerClient.AddSegmentBuffer(seg);
                 foreach (var bytes in initData)
-                    _demuxer.PushChunk(bytes);
+                    seg.Add(bytes);
+
+                _demuxerClient.Offset = initDataLength;
+                seg.CompleteAdding();
             }
 
             _demuxPacketsLoopTask =
@@ -393,6 +403,7 @@ namespace JuvoPlayer.Dash
                 _downloader,
                 _throughputHistory,
                 _demuxer,
+                _demuxerClient,
                 cancellationToken);
         }
 
@@ -438,6 +449,7 @@ namespace JuvoPlayer.Dash
                 _downloader,
                 _throughputHistory,
                 _demuxer,
+                _demuxerClient,
                 cancellationToken);
         }
 

@@ -18,6 +18,7 @@
  */
 
 using System.Threading.Tasks;
+using JuvoPlayer.Dash;
 using JuvoPlayer.Demuxers;
 using JuvoPlayer.Demuxers.FFmpeg;
 using NUnit.Framework;
@@ -55,7 +56,9 @@ namespace JuvoPlayer.TizenTests
 
         private static FFmpegDemuxer CreateDemuxer()
         {
-            return new FFmpegDemuxer(new FFmpegGlue());
+            var ffmpegDemuxer = new FFmpegDemuxer(new FFmpegGlue());
+            ffmpegDemuxer.SetClient(new DashDemuxerClient());
+            return ffmpegDemuxer;
         }
     }
 }
