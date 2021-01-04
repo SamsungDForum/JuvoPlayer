@@ -28,7 +28,7 @@ namespace JuvoPlayer.Drms
     public class CdmInstanceWrapper : ICdmInstance
     {
         private readonly ICdmInstance _impl;
-        private readonly ISubject<ExceptionEvent> _exceptionSubject;
+        private readonly Subject<ExceptionEvent> _exceptionSubject;
 
         public CdmInstanceWrapper(ICdmInstance impl)
         {
@@ -40,6 +40,8 @@ namespace JuvoPlayer.Drms
         {
             Intercept(() =>
                 _impl.Dispose());
+            _exceptionSubject.OnCompleted();
+            _exceptionSubject.Dispose();
         }
 
         public string CreateSession()

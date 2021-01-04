@@ -32,6 +32,20 @@ using NUnit.Framework;
 
 namespace JuvoPlayer.TizenTests.Tests
 {
+    public static class PlayerExtensions
+    {
+        public static Task<IList<Exception>> AllExceptions(this IPlayer player)
+        {
+            return player
+                .OnEvent()
+                .OfType<ExceptionEvent>()
+                .Select(exceptionEvent => exceptionEvent.Exception)
+                .ToList()
+                .FirstAsync()
+                .ToTask();
+        }
+    }
+
     [TestFixture]
     public class DashPlayerTests
     {
@@ -198,10 +212,12 @@ namespace JuvoPlayer.TizenTests.Tests
             RunTest(async () =>
             {
                 IPlayer dashPlayer = null;
+                Task<IList<Exception>> exceptions = null;
                 try
                 {
                     var stopwatch = Stopwatch.StartNew();
                     dashPlayer = BuildPlayer(clip);
+                    exceptions = dashPlayer.AllExceptions();
                     await dashPlayer.Prepare();
                     _logger.Info($"After prepare {stopwatch.Elapsed}");
                     dashPlayer.Play();
@@ -215,6 +231,11 @@ namespace JuvoPlayer.TizenTests.Tests
                 {
                     if (dashPlayer != null)
                         await dashPlayer.DisposeAsync();
+                    if (exceptions != null)
+                    {
+                        foreach (var exception in await exceptions)
+                            _logger.Error(exception);
+                    }
                 }
             });
         }
@@ -227,6 +248,7 @@ namespace JuvoPlayer.TizenTests.Tests
             RunTest(async () =>
             {
                 IPlayer dashPlayer = null;
+                Task<IList<Exception>> exceptions = null;
                 try
                 {
                     var configuration =
@@ -234,6 +256,7 @@ namespace JuvoPlayer.TizenTests.Tests
                     dashPlayer = BuildPlayer(
                         clip,
                         configuration);
+                    exceptions = dashPlayer.AllExceptions();
                     await dashPlayer.Prepare();
                     dashPlayer.Play();
                     await Task.Delay(TimeSpan.FromSeconds(2));
@@ -246,6 +269,11 @@ namespace JuvoPlayer.TizenTests.Tests
                 {
                     if (dashPlayer != null)
                         await dashPlayer.DisposeAsync();
+                    if (exceptions != null)
+                    {
+                        foreach (var exception in await exceptions)
+                            _logger.Error(exception);
+                    }
                 }
             });
         }
@@ -256,10 +284,12 @@ namespace JuvoPlayer.TizenTests.Tests
             Func<TimeSpan, IEnumerable<TimeSpan>> generator)
         {
             IPlayer dashPlayer = null;
+            Task<IList<Exception>> exceptions = null;
             try
             {
                 var stopwatch = Stopwatch.StartNew();
                 dashPlayer = BuildPlayer(clip);
+                exceptions = dashPlayer.AllExceptions();
                 await dashPlayer.Prepare();
                 var duration = dashPlayer.Duration;
                 if (duration == null)
@@ -301,6 +331,11 @@ namespace JuvoPlayer.TizenTests.Tests
             {
                 if (dashPlayer != null)
                     await dashPlayer.DisposeAsync();
+                if (exceptions != null)
+                {
+                    foreach (var exception in await exceptions)
+                        _logger.Error(exception);
+                }
             }
         }
 
@@ -342,9 +377,11 @@ namespace JuvoPlayer.TizenTests.Tests
             Func<StreamGroup[], (StreamGroup[], IStreamSelector[])[]> generator)
         {
             IPlayer dashPlayer = null;
+            Task<IList<Exception>> exceptions = null;
             try
             {
                 dashPlayer = BuildPlayer(clip);
+                exceptions = dashPlayer.AllExceptions();
                 await dashPlayer.Prepare();
                 dashPlayer.Play();
                 await Task.Delay(TimeSpan.FromSeconds(3));
@@ -368,6 +405,11 @@ namespace JuvoPlayer.TizenTests.Tests
             {
                 if (dashPlayer != null)
                     await dashPlayer.DisposeAsync();
+                if (exceptions != null)
+                {
+                    foreach (var exception in await exceptions)
+                        _logger.Error(exception);
+                }
             }
         }
 

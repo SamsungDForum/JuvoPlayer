@@ -17,6 +17,7 @@
  *
  */
 
+using System.Diagnostics;
 using System.Threading;
 using System.Threading.Tasks;
 using JuvoLogger;
@@ -65,6 +66,7 @@ namespace JuvoPlayer.Dash
 
         public async Task Load()
         {
+            var stopwatch = Stopwatch.StartNew();
             _logger.Info($"{_uri} {_start} {_length} starts");
             try
             {
@@ -84,7 +86,8 @@ namespace JuvoPlayer.Dash
                     _demuxerClient.Offset += _downloaded;
                 }
 
-                _logger.Info($"{_uri} {_start} {_length} ends");
+                _logger.Info($"{_uri} {_start} {_length} ends. " +
+                             $"Loading took {stopwatch.ElapsedMilliseconds} ms");
             }
         }
 

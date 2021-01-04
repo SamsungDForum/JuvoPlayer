@@ -339,6 +339,7 @@ namespace JuvoPlayer.Players
             _platformPlayerEosSubscription?.Dispose();
             _platformPlayer?.Dispose();
             _cdmContext?.Dispose();
+            _eventSubject.OnCompleted();
             _eventSubject.Dispose();
         }
 
