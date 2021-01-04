@@ -21,12 +21,14 @@ using System.Linq;
 using System.Reactive.Linq;
 using System.Reactive.Subjects;
 using System.Threading;
+using JuvoLogger;
 using JuvoPlayer.Common;
 
 namespace JuvoPlayer.Drms
 {
     public class CdmContext : IDisposable
     {
+        private readonly ILogger _logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
         private bool _isDisposed;
         private readonly IList<DrmInitData> _drmInitDatas;
         private readonly IList<string> _sessionIds;
@@ -99,6 +101,7 @@ namespace JuvoPlayer.Drms
         private void CreateSessionAndGenerateRequest(DrmInitData drmInitData)
         {
             var sessionId = _cdmInstance.CreateSession();
+            _logger.Info($"{nameof(sessionId)} = {sessionId}");
             _sessionIds.Add(sessionId);
             _cdmInstance.GenerateRequest(
                 sessionId,
@@ -131,6 +134,7 @@ namespace JuvoPlayer.Drms
             string sessionId,
             byte[] data)
         {
+            _logger.Info($"{nameof(sessionId)} = {sessionId}");
             byte[] response;
             try
             {
@@ -140,12 +144,14 @@ namespace JuvoPlayer.Drms
             }
             catch (Exception ex)
             {
+                _logger.Error(ex, $"Failed to acquire a license ({nameof(sessionId)} = {sessionId})");
                 _exceptionSubject.OnNext(new ExceptionEvent(ex));
                 throw;
             }
 
             if (_isDisposed)
                 return;
+            _logger.Info( $"Updating session ({nameof(sessionId)} = {sessionId})");
             _cdmInstance.UpdateSession(
                 sessionId,
                 response);
@@ -161,6 +167,8 @@ namespace JuvoPlayer.Drms
                 CloseAllSessions();
                 _cdmInstance?.Dispose();
                 _onMessageSubscription?.Dispose();
+                _exceptionSubject.OnCompleted();
+                _exceptionSubject.Dispose();
             }
             finally
             {
