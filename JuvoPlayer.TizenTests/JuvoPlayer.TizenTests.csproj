@@ -1,4 +1,4 @@
-<Project Sdk="Tizen.NET.Sdk/1.0.9">
+<Project Sdk="Tizen.NET.Sdk/1.1.6">
 
     <PropertyGroup>
         <OutputType>Exe</OutputType>
@@ -6,23 +6,41 @@
         <NoWarn>NU1605</NoWarn>
         <IsPackable>false</IsPackable>
         <UpdateVersionProperties>true</UpdateVersionProperties>
+        <TizenManifestFile Condition="'$(TizenManifestFile)'==''">tizen-manifest.xml</TizenManifestFile>
     </PropertyGroup>
 
     <ItemGroup>
-      <ProjectReference Include="..\JuvoLogger.Tizen\JuvoLogger.Tizen.csproj" />
-      <ProjectReference Include="..\JuvoPlayer.Tests\JuvoPlayer.Tests.csproj" />
+        <ProjectReference Include="..\JuvoLogger.Tizen\JuvoLogger.Tizen.csproj"/>
+        <ProjectReference Include="..\JuvoPlayer.Tests\JuvoPlayer.Tests.csproj"/>
     </ItemGroup>
 
     <ItemGroup>
         <PackageReference Include="GitVersionTask" Version="5.3.7">
             <PrivateAssets>All</PrivateAssets>
         </PackageReference>
-        <PackageReference Include="NSubstitute" Version="3.1.0" />
-        <PackageReference Include="NUnit" Version="3.12.0" />
-        <PackageReference Include="NUnitLite" Version="3.12.0" />
+        <PackageReference Include="NSubstitute" Version="3.1.0"/>
+        <PackageReference Include="NUnit" Version="3.12.0"/>
+        <PackageReference Include="NUnitLite" Version="3.12.0"/>
     </ItemGroup>
 
-    <Target Name="UpdateVersion" BeforeTargets="CoreCompile" DependsOnTargets="PrepareForBuild">
-        <XmlPoke XmlInputPath="tizen-manifest.xml" Query="/x:manifest/@version" Value="$(GitVersion_SemVer)" Namespaces="&lt;Namespace Prefix='x' Uri='http://tizen.org/ns/packages' /&gt;" />
+    <Target Name="UpdateVersion" BeforeTargets="TizenPrePackageEvent">
+
+        <PropertyGroup>
+            <IntermediateTizenManifest>$(IntermediateOutputPath)$(TizenManifestFile)</IntermediateTizenManifest>
+        </PropertyGroup>
+
+        <Copy SourceFiles="$(TizenManifestFile)" DestinationFiles="$(IntermediateTizenManifest)"/>
+
+        <ItemGroup>
+            <TizenResolvedFileToTpk Remove="@(TizenResolvedFileToTpk)" Condition="'%(Identity)' == '$(TizenManifestFile)'"/>
+            <TizenResolvedFileToTpk Include="$(IntermediateTizenManifest)">
+                <TizenTpkFileName>$(TizenManifestFile)</TizenTpkFileName>
+                <TizenTpkSubPath>$(TizenManifestFile)</TizenTpkSubPath>
+                <TizenTpkIsManifest>true</TizenTpkIsManifest>
+                <TizenTpkIsBaseManifest>true</TizenTpkIsBaseManifest>
+            </TizenResolvedFileToTpk>
+        </ItemGroup>
+
+        <XmlPoke XmlInputPath="$(IntermediateTizenManifest)" Query="/x:manifest/@version" Value="$(GitVersion_SemVer)" Namespaces="&lt;Namespace Prefix='x' Uri='http://tizen.org/ns/packages' /&gt;"/>
     </Target>
 </Project>
