@@ -20,8 +20,8 @@ jobs:
           command:
             curl -sL https://art.sec.samsung.net/artifactory/tools/CircleCI/scripts/set_proxy_setting.sh | sh
       - run:
-          name: Install xlstproc
-          command: apt update && DEBIAN_FRONTEND="noninteractive" apt install -y --no-install-recommends xsltproc
+          name: Install tools
+          command: apt update && DEBIAN_FRONTEND="noninteractive" apt install -y --no-install-recommends xsltproc rename
       - run:
           name: Apply GitVersionTask workaround # See https://github.com/GitTools/GitVersion/issues/2301
           command: if [ "${CIRCLE_TAG}" != "" ]; then git checkout -b release; fi
@@ -43,6 +43,10 @@ jobs:
       - store_test_results:
           path: TestResults/
           when: always
+      - run:
+          name: Rename TPKs
+          command: >
+            rename "s/VERSION/`cat Version.txt`/" JuvoPlayer.TizenTests/bin/Release/tizen40/*.tpk
       - run:
           name: Copy artifacts to tmp directory
           command: >
