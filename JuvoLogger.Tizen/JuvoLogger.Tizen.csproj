@@ -1,7 +1,7 @@
 ﻿<Project Sdk="Tizen.NET.Sdk/1.1.6">
 
   <!-- Property Group for Tizen Project -->
-  <PropertyGroup>    
+  <PropertyGroup>
     <TizenCreateTpkOnBuild>false</TizenCreateTpkOnBuild>
     <TargetFramework>tizen40</TargetFramework>
     <IsPackable>false</IsPackable>
