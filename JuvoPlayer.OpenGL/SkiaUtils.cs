@@ -21,7 +21,7 @@ using SkiaSharp;
 namespace JuvoPlayer.OpenGL
 {
     internal class SkiaUtils
-    {
+    {     
         internal static Format ConvertToFormat(SKColorType type)
         {
             switch (type)
@@ -32,7 +32,9 @@ namespace JuvoPlayer.OpenGL
                 case SKColorType.Argb4444:
                 case SKColorType.Gray8:
                 case SKColorType.RgbaF16:
+#if BUILT_FOR_tizen50
                 case SKColorType.Index8:
+#endif
                     return Format.Unknown;
                 case SKColorType.Rgba8888:
                     return Format.Rgba;
@@ -66,7 +68,9 @@ namespace JuvoPlayer.OpenGL
                 case SKColorType.Unknown:
                 case SKColorType.Alpha8:
                 case SKColorType.RgbaF16:
+#if BUILT_FOR_tizen50
                 case SKColorType.Index8:
+#endif
                 case SKColorType.Rgb565:
                 case SKColorType.Gray8:
                 case SKColorType.Argb4444:

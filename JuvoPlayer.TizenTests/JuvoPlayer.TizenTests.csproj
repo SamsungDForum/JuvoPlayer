@@ -1,69 +1,60 @@
-﻿<Project Sdk="Tizen.NET.Sdk/1.0.9">
+﻿<Project Sdk="Tizen.NET.Sdk/1.1.6">
+  <!-- Property Group for Tizen40 Project -->
+  <PropertyGroup>
+    <OutputType>Exe</OutputType>
+    <TargetFrameworks>tizen60;tizen50</TargetFrameworks>
+    <NoWarn>NU1605</NoWarn>
+    <LangVersion>7.3</LangVersion>
+  </PropertyGroup>
+  <Import Project="IntermediateManifest.targets" />
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
+    <DebugType>portable</DebugType>
+  </PropertyGroup>
+  <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
+    <DebugType>None</DebugType>
+  </PropertyGroup>
+  <ItemGroup>
+    <None Remove="res\drm\google_dash_encrypted_init_data" />
+    <None Remove="res\drm\google_dash_encrypted_video_packet_pts_10_01.xml" />
+    <None Remove="res\drm\google_dash_encrypted_video_packet_pts_10_01_storage.xml" />
+    <None Remove="res\drm\tos4kuhd_dash_widevine_encrypted_init_data" />
+    <None Remove="res\drm\tos4kuhd_dash_widevine_encrypted_video_packet.xml" />
+    <None Remove="res\drm\tos4kuhd_dash_widevine_encrypted_video_packet_storage.xml" />
+    <None Remove="res\videoclips.json" />
+    <None Remove="res\googlecar\car-20120827-89.mp4-init-segment" />
+    <None Remove="res\googlecar\car-20120827-89.mp4-3901498-7700066" />
+  </ItemGroup>
+  <ItemGroup>
+    <Content Include="res\videoclips.json">
+      <CopyToOutputDirectory>Always</CopyToOutputDirectory>
+    </Content>
+  </ItemGroup>
+  <ItemGroup>
+    <EmbeddedResource Include="res\drm\google_dash_encrypted_init_data" />
+    <EmbeddedResource Include="res\drm\google_dash_encrypted_video_packet_pts_10_01.xml" />
+    <EmbeddedResource Include="res\drm\google_dash_encrypted_video_packet_pts_10_01_storage.xml" />
+    <EmbeddedResource Include="res\drm\tos4kuhd_dash_widevine_encrypted_init_data" />
+    <EmbeddedResource Include="res\drm\tos4kuhd_dash_widevine_encrypted_video_packet.xml" />
+    <EmbeddedResource Include="res\drm\tos4kuhd_dash_widevine_encrypted_video_packet_storage.xml" />
+    <EmbeddedResource Include="res\googlecar\car-20120827-89.mp4-init-segment" />
+    <EmbeddedResource Include="res\googlecar\car-20120827-89.mp4-3901498-7700066" />
+  </ItemGroup>
 
-    <!-- Property Group for Tizen40 Project -->
-    <PropertyGroup>
-        <OutputType>Exe</OutputType>
-      <TargetFramework>tizen50</TargetFramework>
-        <NoWarn>NU1605</NoWarn>
-        <LangVersion>7.3</LangVersion>
-    </PropertyGroup>
+  <ItemGroup>
+    <PackageReference Condition="$(DefineConstants.Contains(NBENCH_TESTS))" Include="NBench" Version="1.2.2" />
+    <PackageReference Include="NSubstitute" Version="3.1.0" />
+    <PackageReference Include="NUnit" Version="3.9.0" />
+    <PackageReference Include="NUnitLite" Version="3.9.0" />
+  </ItemGroup>
 
-    <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
-        <DebugType>portable</DebugType>
-    </PropertyGroup>
-    <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Release|AnyCPU' ">
-        <DebugType>None</DebugType>
-    </PropertyGroup>
-    <ItemGroup>
-        <None Remove="res\drm\google_dash_encrypted_init_data" />
-        <None Remove="res\drm\google_dash_encrypted_video_packet_pts_10_01.xml" />
-        <None Remove="res\drm\google_dash_encrypted_video_packet_pts_10_01_storage.xml" />
-        <None Remove="res\drm\tos4kuhd_dash_widevine_encrypted_init_data" />
-        <None Remove="res\drm\tos4kuhd_dash_widevine_encrypted_video_packet.xml" />
-        <None Remove="res\drm\tos4kuhd_dash_widevine_encrypted_video_packet_storage.xml" />
-        <None Remove="res\videoclips.json" />
-        <None Remove="res\googlecar\car-20120827-89.mp4-init-segment" />
-        <None Remove="res\googlecar\car-20120827-89.mp4-3901498-7700066" />
-    </ItemGroup>
-    <ItemGroup>
-        <Content Include="res\videoclips.json">
-            <CopyToOutputDirectory>Always</CopyToOutputDirectory>
-        </Content>
-    </ItemGroup>
-    <ItemGroup>
-        <EmbeddedResource Include="res\drm\google_dash_encrypted_init_data" />
-        <EmbeddedResource Include="res\drm\google_dash_encrypted_video_packet_pts_10_01.xml" />
-        <EmbeddedResource Include="res\drm\google_dash_encrypted_video_packet_pts_10_01_storage.xml" />
-        <EmbeddedResource Include="res\drm\tos4kuhd_dash_widevine_encrypted_init_data" />
-        <EmbeddedResource Include="res\drm\tos4kuhd_dash_widevine_encrypted_video_packet.xml" />
-        <EmbeddedResource Include="res\drm\tos4kuhd_dash_widevine_encrypted_video_packet_storage.xml" />
-        <EmbeddedResource Include="res\googlecar\car-20120827-89.mp4-init-segment" />
-        <EmbeddedResource Include="res\googlecar\car-20120827-89.mp4-3901498-7700066" />
-    </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\JuvoLogger.Tizen\JuvoLogger.Tizen.csproj" />
+    <ProjectReference Include="..\JuvoPlayer.Tests\JuvoPlayer.Tests.csproj" />
+    <ProjectReference Include="..\JuvoPlayer\JuvoPlayer.csproj" />
+  </ItemGroup>
 
-    <ItemGroup>
-        <PackageReference Condition="$(DefineConstants.Contains(NBENCH_TESTS))" Include="NBench" Version="1.2.2" />
-        <PackageReference Include="NSubstitute" Version="3.1.0" />
-        <PackageReference Include="NUnit" Version="3.9.0" />
-        <PackageReference Include="NUnitLite" Version="3.9.0" />
-    </ItemGroup>
-
-    <ItemGroup>
-        <ProjectReference Include="..\JuvoLogger.Tizen\JuvoLogger.Tizen.csproj" />
-        <ProjectReference Include="..\JuvoPlayer.Tests\JuvoPlayer.Tests.csproj" />
-        <ProjectReference Include="..\JuvoPlayer\JuvoPlayer.csproj" />
-    </ItemGroup>
-
-    <ItemGroup>
-        <Service Include="{82a7f48d-3b50-4b1e-b82e-3ada8210c358}" />
-    </ItemGroup>
-
-    <Target Name="UpdateVersion" BeforeTargets="PrepareForBuild">
-        <XmlPeek XmlInputPath="..\JuvoPlayer\JuvoPlayer.csproj" Query="/Project/PropertyGroup/Version[1]/text()">
-            <Output TaskParameter="Result" ItemName="JuvoPlayerVersion" />
-        </XmlPeek>
-        <XmlPoke XmlInputPath="JuvoPlayer.TizenTests.csproj" Query="/Project/PropertyGroup/Version" Value="@(JuvoPlayerVersion)" />
-        <XmlPoke XmlInputPath="tizen-manifest.xml" Query="/x:manifest/@version" Value="@(JuvoPlayerVersion)" Namespaces="&lt;Namespace Prefix='x' Uri='http://tizen.org/ns/packages' /&gt;" />
-    </Target>
+  <ItemGroup>
+    <Service Include="{82a7f48d-3b50-4b1e-b82e-3ada8210c358}" />
+  </ItemGroup>
 
 </Project>

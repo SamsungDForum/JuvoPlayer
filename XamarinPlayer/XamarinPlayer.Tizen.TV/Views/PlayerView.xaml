@@ -64,7 +64,7 @@
                     </Grid.RowDefinitions>
                     <Grid.ColumnDefinitions>
                         <ColumnDefinition Width="200" />
-                        <ColumnDefinition Width="400" />
+                        <ColumnDefinition Width="600" />
                     </Grid.ColumnDefinitions>
                     <Label Grid.Row="0" Grid.Column="0"
                            Text="Audio track" TextColor="White" HorizontalOptions="Start"
@@ -73,7 +73,8 @@
                             x:Name="AudioTrack"
                             ItemsSource="{Binding Audio.Source}"
                             SelectedIndex="{Binding AudioSelectedIndex}"
-                            ItemDisplayBinding="{Binding Description}">
+                            ItemDisplayBinding="{Binding Description}"
+                            HorizontalTextAlignment="Center">
                         <Picker.Items>
                             <x:String>auto</x:String>
                         </Picker.Items>
@@ -85,7 +86,8 @@
                             x:Name="VideoQuality"
                             ItemsSource="{Binding Video.Source}"
                             SelectedIndex="{Binding VideoSelectedIndex}"
-                            ItemDisplayBinding="{Binding Description}">
+                            ItemDisplayBinding="{Binding Description}"
+                            HorizontalTextAlignment="Center">
                         <Picker.Items>
                             <x:String>auto</x:String>
                         </Picker.Items>
@@ -94,7 +96,8 @@
                            Text="Video speed" TextColor="White" HorizontalOptions="Start"
                            VerticalOptions="Center" />
                     <Picker Grid.Row="2" Grid.Column="1"
-                            x:Name="VideoSpeed">
+                            x:Name="VideoSpeed"
+                            HorizontalTextAlignment="Center">
                         <Picker.Items>
                             <x:String>normal</x:String>
                         </Picker.Items>
@@ -106,7 +109,8 @@
                     <Picker Grid.Row="3" Grid.Column="1" x:Name="Subtitles" WidthRequest="400"
                             ItemsSource="{Binding Subtitle.Source}"
                             SelectedIndex="{Binding SubtitleSelectedIndex}"
-                            ItemDisplayBinding="{Binding Description}">
+                            ItemDisplayBinding="{Binding Description}"
+                            HorizontalTextAlignment="Center">
                         <Picker.Items>
                             <x:String>off</x:String>
                         </Picker.Items>
