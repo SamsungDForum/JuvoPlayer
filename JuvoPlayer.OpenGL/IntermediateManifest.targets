@@ -1,0 +1,22 @@
+﻿<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003" ToolsVersion="Current">
+  <PropertyGroup>
+    <TizenManifestFile Condition="'$(TizenManifestFile)'==''">tizen-manifest.xml</TizenManifestFile>
+  </PropertyGroup>
+  <Target Name="CopyManifestToIntermediate">
+    <PropertyGroup>
+      <IntermediateTizenManifest>$(IntermediateOutputPath)$(TizenManifestFile)</IntermediateTizenManifest>
+    </PropertyGroup>
+    <Copy SourceFiles="$(TizenManifestFile)" DestinationFiles="$(IntermediateTizenManifest)" />
+    <ItemGroup>
+      <TizenResolvedFileToTpk Remove="@(TizenResolvedFileToTpk)" Condition="'%(Identity)' == '$(TizenManifestFile)'" />
+      <TizenResolvedFileToTpk Include="$(IntermediateTizenManifest)">
+        <TizenTpkFileName>$(TizenManifestFile)</TizenTpkFileName>
+        <TizenTpkIsManifest>true</TizenTpkIsManifest>
+        <TizenTpkIsBaseManifest>true</TizenTpkIsBaseManifest>
+      </TizenResolvedFileToTpk>
+    </ItemGroup>
+  </Target>
+  <Target Name="UpdateVersionInTizenManifest" BeforeTargets="Build" DependsOnTargets="CopyManifestToIntermediate">
+    <XmlPoke XmlInputPath="$(IntermediateTizenManifest)" Query="/x:manifest/@version" Value="$(Version)" Namespaces="&lt;Namespace Prefix='x' Uri='http://tizen.org/ns/packages' /&gt;" />
+  </Target>
+</Project>

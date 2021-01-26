@@ -34,6 +34,7 @@ jobs:
       - run:
           name: Build solution
           command: >
+            dotnet restore &&
             dotnet build /nodeReuse:false -c Release
             /p:"AuthorPath=${CERTS_PATH}/partner_2019.p12;AuthorPass=${AUTHOR_PASS}"
             /p:"DistributorPath=${CERTS_PATH}/tizen-distributor-signer.p12;DistributorPass=${DISTRIBUTOR_PASS}"
@@ -53,10 +54,10 @@ jobs:
           name: Copy artifacts to tmp directory
           command: >
             mkdir /tmp/artifacts &&
-            cp JuvoPlayer.TizenTests/bin/Release/tizen50/*.tpk /tmp/artifacts/ &&
-            cp JuvoPlayer.OpenGL/bin/Release/tizen50/*.tpk /tmp/artifacts/ &&
-            cp XamarinPlayer/XamarinPlayer.Tizen.TV/bin/Release/tizen50/*.tpk /tmp/artifacts &&
-            cp JuvoReactNative/Tizen/bin/Release/tizen50/*.tpk /tmp/artifacts
+            cp JuvoPlayer.TizenTests/bin/Release/tizen60/*.tpk /tmp/artifacts/ &&
+            cp JuvoPlayer.OpenGL/bin/Release/tizen60/*.tpk /tmp/artifacts/ &&
+            cp XamarinPlayer/XamarinPlayer.Tizen.TV/bin/Release/tizen60/*.tpk /tmp/artifacts &&
+            cp JuvoReactNative/Tizen/bin/Release/tizen60/*.tpk /tmp/artifacts
       - store_artifacts:
           path: /tmp/artifacts
           destination: tpks
