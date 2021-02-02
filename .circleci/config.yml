@@ -64,8 +64,9 @@ jobs:
       - persist_to_workspace:
           root: .
           paths:
-            - ./JuvoPlayer.TizenTests/bin/*/*/*.tpk
+            - ./JuvoPlayer.TizenTests/bin/Release/tizen60/*.tpk
             - ./scripts/nunit3-junit.xlst
+            - ./atr_tests/*
   run_integration_tests:
     working_directory: /build
     docker:
@@ -95,19 +96,26 @@ jobs:
           no_output_timeout: 20m
           command: >
             scp -o StrictHostKeyChecking=no ${TPK_PATH} ${ATR_RUNNER_USER}@${ATR_RUNNER_IP}:/tmp/ &&
-            ssh -o StrictHostKeyChecking=no ${ATR_RUNNER_USER}@${ATR_RUNNER_IP} scp /tmp/${TPK_NAME} streamsrv:/srv/www/pnacl/juvo-player/ &&
-            ssh -o StrictHostKeyChecking=no ${ATR_RUNNER_USER}@${ATR_RUNNER_IP} rm -rf /home/${ATR_RUNNER_USER}/atr/results/  &&
-            ssh -o StrictHostKeyChecking=no ${ATR_RUNNER_USER}@${ATR_RUNNER_IP} /home/${ATR_RUNNER_USER}/atr/atr task
-            --name "JuvoPlayerTest"
-            --scenario JuvoPlayerTest
-            --payload "{\\\"tpk\\\":\\\"http://stream-srv.sprc.samsung.pl/pnacl/juvo-player/${TPK_NAME}\\\"}"
-            --dlog_tags JuvoPlayer UT DOTNET_LAUNCHER
-            --image_url ${IMAGE_URL}
-            --tizen_version ${TIZEN_VERSION}
-            --board ${BOARD}
+            scp -r -o StrictHostKeyChecking=no /build/atr_tests ${ATR_RUNNER_USER}@${ATR_RUNNER_IP}:/tmp/ &&
+            ssh -t -o StrictHostKeyChecking=no ${ATR_RUNNER_USER}@${ATR_RUNNER_IP} "cd /home/${ATR_RUNNER_USER}/weed/atr &&
+            rm -rf results &&
+            rm -rf atr_tests &&
+            mkdir atr_tests &&
+            cp -rf /tmp/atr_tests/* atr_tests &&
+            cp /tmp/${TPK_NAME} atr_tests &&
+            python3 atr_in_docker.py
+            --task-scenario JuvoPlayerTest
+            --tty ${TTY_DEV}
+            --irda-device ${IRDA_DEV}
+            --log-level debug
+            --dlog-tags JuvoPlayer UT DOTNET_LAUNCHER
+            --url ${IMAGE_URL}
+            --tizen ${TIZEN_VERSION}
+            --custom-docker-arguments=\"-v /home/${ATR_RUNNER_USER}/weed/atr/atr_tests:/root/atr/src/tests/juvo_player_test:ro\"
+            --board-version ${BOARD_VERSION}"
       - run:
           name: Download test results
-          command: scp -o StrictHostKeyChecking=no -r ${ATR_RUNNER_USER}@${ATR_RUNNER_IP}:/home/${ATR_RUNNER_USER}/atr/results/* results/
+          command: scp -o StrictHostKeyChecking=no -r ${ATR_RUNNER_USER}@${ATR_RUNNER_IP}:/home/${ATR_RUNNER_USER}/weed/atr/results/* results/
           when: always
       - store_artifacts:
           path: results
@@ -118,7 +126,7 @@ jobs:
           command: >
             mkdir -p TestResults &&
             xsltproc -o TestResults/output.xml scripts/nunit3-junit.xlst
-            results/JuvoPlayerTest/JuvoPlayerTest/JuvoPlayerTest/JuvoPlayer.TizenTests.xml
+            results/ATR_Task/JuvoPlayerTest/JuvoPlayerTest/JuvoPlayer.TizenTests.xml
           when: always
       - store_test_results:
           path: TestResults/
