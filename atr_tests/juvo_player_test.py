@@ -22,6 +22,7 @@ class JuvoPlayerTest(Test):
         self.widget = None
 
     def prepare(self):
+        self.board.accept_terms()
         self._resolve_tpk_path()
         self._prepare_widget()
         return True
