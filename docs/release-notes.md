@@ -2,6 +2,19 @@
 
 ## Release notes
 
+**JuvoPlayer 1.5.7 (beta)**
+
+### Features:
+
+* All features of the JuvoPlayer 1.5.6. 
+* The MS Build scripting (.csproj) files are ready for multitarget builds, generating tizen50 and tizen60 packages in a single build (rebuild) step. 
+  * Example:  
+  ` <TargetFrameworks>tizen60;tizen50</TargetFrameworks>
+  `  means that the two .tpk packages will be created as output artifacts. By default, MS Visual Studio will try to install and launch the first listed, in this example it will be tizen60.
+
+   > IMPORTANT - The most recent Tizen Baseline SDK includes TV emulator compatible with Tizen 6.0 (TV 2021). Make sure you have installed Tizen Baseline SDK version 2.8.4 or later with all the necessary TV extensions (TV Extensions 6.0 and Samsung Certificate Extension version 2.0.54 or later). The SDK related version values can be found using the Tizen Studio Package Manager (see more in https://developer.samsung.com/tizen/Smart-TV/Installation.html). Check also the correct version (3.4.0.0 or later) of the Visual Studio Tools for Tizen managed as IDE extension (see more in https://marketplace.visualstudio.com/items?itemName=tizen.VSToolsforTizen). 
+* The tizen-manifest.xml metafiles are no longer updated automatically. It used to happen when JuvoPlayer project version value was changing (version up). From now on, the common version value is placed inside the Directory.Build.Props, located in the solution root folder.
+
 **JuvoPlayer 1.5.6 (beta)**
 
 ### Features:
