@@ -1,5 +1,4 @@
-﻿<Project Sdk="Tizen.NET.Sdk/1.0.9">
-
+﻿<Project Sdk="Microsoft.NET.Sdk">
   <!-- Property Group for Tizen Project -->
   <PropertyGroup>
     <OutputType>Library</OutputType>
@@ -13,11 +12,9 @@
     <PackageReference Include="System.Net.Sockets" Version="4.3.0" />
     <PackageReference Include="System.Threading.Channels" Version="4.5.0" />
   </ItemGroup>
-
   <ItemGroup>
     <ProjectReference Include="..\JuvoLogger\JuvoLogger.csproj" />
   </ItemGroup>
-
   <ItemGroup>
     <Compile Update="Resources\Messages.Designer.cs">
       <DesignTime>True</DesignTime>
@@ -25,12 +22,10 @@
       <DependentUpon>Messages.resx</DependentUpon>
     </Compile>
   </ItemGroup>
-
   <ItemGroup>
     <EmbeddedResource Update="Resources\Messages.resx">
       <Generator>ResXFileCodeGenerator</Generator>
       <LastGenOutput>Messages.Designer.cs</LastGenOutput>
     </EmbeddedResource>
   </ItemGroup>
-
 </Project>

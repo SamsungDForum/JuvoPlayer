@@ -101,10 +101,10 @@
   },
   {
     "title": "Clean FHD MP4 over HTTP",
-    "url": "http://distribution.bbb3d.renderfarming.net/video/mp4/bbb_sunflower_1080p_30fps_normal.mp4",
+    "url": "http://mirrors.ucr.ac.cr/blender/demo/movies/BBB/bbb_sunflower_1080p_30fps_normal.mp4",
     "type": "url",
     "poster": "bunny.jpg",
-    "description": "1920x1080. No adaptive streaming. Codecs: H264 - MPEG4 AVC, MPEG AAC. Big Buck Bunny over http. Origin http://distribution.bbb3d.renderfarming.net/video/mp4/. URI: http://distribution.bbb3d.renderfarming.net/video/mp4/bbb_sunflower_1080p_30fps_normal.mp4",
+    "description": "1920x1080. No adaptive streaming. Codecs: H264 - MPEG4 AVC, MP3/AC3. URI: http://mirrors.ucr.ac.cr/blender/demo/movies/BBB/bbb_sunflower_1080p_30fps_normal.mp4",
     "seekPreviewPath": "storyboards/seek_preview/bunny/bunny.json",
     "tilePreviewPath": "storyboards/tile_preview/bunny/bunny.json",
     "subtitles": [

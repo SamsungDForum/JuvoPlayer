@@ -1,9 +1,9 @@
-<Project Sdk="Tizen.NET.Sdk/1.0.9">
+<Project Sdk="Tizen.NET.Sdk/1.1.6">
+  <Import Project="IntermediateManifest.targets" />
   <PropertyGroup>
     <OutputType>Exe</OutputType>
-    <TargetFramework>tizen50</TargetFramework>
+    <TargetFrameworks>tizen60;tizen50</TargetFrameworks>
     <AssemblyName>JuvoPlayerOpenGLNative.Tizen.TV</AssemblyName>
-    <Version>1.5.6</Version>
     <Description>C++ native GUI for the JuvoPlayer backend. For animation peformance optimization the Open GL framework has been used.</Description>
     <TizenTpkExcludePattern>runtimes\*\native\libSkiaSharp.so</TizenTpkExcludePattern>
     <LangVersion>7.3</LangVersion>
@@ -30,20 +30,25 @@
     <Folder Include="res\icons\" />
   </ItemGroup>
   <ItemGroup>
-    <!-- Tizen.* packages are excluded from runtime -->
-    <PackageReference Include="SkiaSharp" Version="1.60.3">
-      <ExcludeAssets>Runtime</ExcludeAssets>
-    </PackageReference>
-  </ItemGroup>
-  <ItemGroup>
     <ProjectReference Include="..\JuvoLogger.Tizen\JuvoLogger.Tizen.csproj" />
     <ProjectReference Include="..\JuvoPlayer\JuvoPlayer.csproj" />
   </ItemGroup>
-  <Target Name="UpdateVersion" BeforeTargets="PrepareForBuild">
-    <XmlPeek XmlInputPath="..\JuvoPlayer\JuvoPlayer.csproj" Query="/Project/PropertyGroup/Version[1]/text()">
-      <Output TaskParameter="Result" ItemName="JuvoPlayerVersion" />
-    </XmlPeek>
-    <XmlPoke XmlInputPath="JuvoPlayer.OpenGL.csproj" Query="/Project/PropertyGroup/Version" Value="@(JuvoPlayerVersion)" />
-    <XmlPoke XmlInputPath="tizen-manifest.xml" Query="/x:manifest/@version" Value="@(JuvoPlayerVersion)" Namespaces="&lt;Namespace Prefix='x' Uri='http://tizen.org/ns/packages' /&gt;" />
-  </Target>
+  <PropertyGroup>
+    <DefineConstants>$(DefineConstants);BUILT_FOR_$(TargetFramework)</DefineConstants>
+  </PropertyGroup>
+  <!-- Include Nuget Package for Tizen Project building -->
+  <PropertyGroup>
+    <TizenTpkExcludePattern>res\storyboards\**\*</TizenTpkExcludePattern>
+    <TizenTpkExcludePattern Condition="'$(TargetFramework)' == 'tizen50'">runtimes\*\native\libSkiaSharp.so;</TizenTpkExcludePattern>
+  </PropertyGroup>
+  <ItemGroup>
+    <Reference Condition="'$(TargetFramework)' == 'tizen50'" Include="SkiaSharp.Views.Forms, Version=1.60.0.0, Culture=neutral, PublicKeyToken=null">
+      <HintPath>packages\SkiaSharp.Views.Forms.dll</HintPath>
+    </Reference>
+    <Reference Condition="'$(TargetFramework)' == 'tizen50'" Include="SkiaSharp.Views.Tizen, Version=1.60.0.0, Culture=neutral, PublicKeyToken=0738eb9f132ed756">
+      <HintPath>packages\SkiaSharp.Views.Tizen.dll</HintPath>
+    </Reference>
+    <PackageReference Condition="'$(TargetFramework)' == 'tizen60'" Include="SkiaSharp" Version="2.80.2" GeneratePathProperty="true" />
+    <PackageReference Condition="'$(TargetFramework)' == 'tizen60'" Include="SkiaSharp.Views.Forms" Version="2.80.2" />
+  </ItemGroup>
 </Project>

@@ -27,7 +27,12 @@ Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "SimplePlayer.Tizen.TV", "Si
 EndProject
 Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "JuvoReactNative", "JuvoReactNative\Tizen\JuvoReactNative.csproj", "{B30DBFBB-B88D-4CC2-BF29-870397559737}"
 EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "JuvoLogger.Udp", "JuvoLogger.Udp\JuvoLogger.Udp.csproj", "{AECD5915-9DFA-4D04-8BFE-00537A725E65}"
+Project("{9A19103F-16F7-4668-BE54-9A1E7A4F7556}") = "JuvoLogger.Udp", "JuvoLogger.Udp\JuvoLogger.Udp.csproj", "{AECD5915-9DFA-4D04-8BFE-00537A725E65}"
+EndProject
+Project("{2150E333-8FDC-42A3-9474-1A3956D46DE8}") = "Solution Items", "Solution Items", "{0755FF08-1AA0-4E81-8D66-EA88E95B23A3}"
+	ProjectSection(SolutionItems) = preProject
+		Directory.Build.props = Directory.Build.props
+	EndProjectSection
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution

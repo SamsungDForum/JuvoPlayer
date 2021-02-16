@@ -34,14 +34,17 @@ namespace JuvoPlayer.Player.EsPlayer
         private PlayerClockFn _playerClock = InvalidClockFn;
         private TimeSpan _currentClock = TimeSpan.Zero;
         private readonly IScheduler _scheduler;
-        private IDisposable _intervalConnection;
+        private volatile IDisposable _intervalConnection;
         private readonly IObservable<TimeSpan> _playerClockSource;
         private readonly Subject<TimeSpan> _playerClockSubject = new Subject<TimeSpan>();
         private readonly IConnectableObservable<long> _intervalSource;
         private bool _isDisposed;
         public TimeSpan Clock { get => _currentClock; }
 
-        public bool IsRunning => _intervalConnection != null;
+        public bool IsRunning
+        {
+            get { return _intervalConnection != null; }
+        }
 
         public PlayerClockProvider(IScheduler scheduler)
         {
@@ -107,6 +110,7 @@ namespace JuvoPlayer.Player.EsPlayer
 
         public void Stop()
         {
+            Logger.Info($"Running {_intervalConnection != null}");
             _intervalConnection?.Dispose();
             _intervalConnection = null;
             _currentClock = TimeSpan.Zero;
