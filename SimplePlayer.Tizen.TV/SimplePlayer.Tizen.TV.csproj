@@ -1,4 +1,4 @@
-<Project Sdk="Tizen.NET.Sdk/1.1.6">
+﻿<Project Sdk="Tizen.NET.Sdk/1.1.6">
   <!-- Property Group for Tizen50 Project -->
   <PropertyGroup>
     <OutputType>Exe</OutputType>
@@ -18,7 +18,7 @@
   </ItemGroup>
   <ItemGroup>
     <!-- Include Nuget Package for Tizen Project building -->
-    <PackageReference Include="Xamarin.Forms" Version="4.6.0.800" />
+    <PackageReference Include="Xamarin.Forms" Version="4.8.0.1560" />
     <ProjectReference Include="..\JuvoPlayer\JuvoPlayer.csproj" />
   </ItemGroup>
 </Project>
