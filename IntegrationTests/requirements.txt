@@ -1,0 +1,6 @@
+paramiko
+requests
+opencv-python
+pytesseract
+statistics
+pytest
