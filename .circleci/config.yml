@@ -230,7 +230,7 @@ jobs:
             sudo apt update && DEBIAN_FRONTEND="noninteractive" sudo apt install -y --no-install-recommends xsltproc openssh-client
       - run:
           name: Run ATR tests
-          no_output_timeout: 30m
+          no_output_timeout: ${NO_OUTPUT_TIMEOUT}
           command: >
             scp -o StrictHostKeyChecking=no ${TPK_PATH} ${ATR_RUNNER_USER}@${ATR_RUNNER_IP}:/tmp/ &&
             scp -r -o StrictHostKeyChecking=no /home/circleci/atr_tests ${ATR_RUNNER_USER}@${ATR_RUNNER_IP}:/tmp/ &&
