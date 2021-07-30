@@ -52,6 +52,7 @@ namespace JuvoPlayer.TizenTests.Tests
         private readonly ILogger _logger = LoggerManager.GetInstance().GetLogger("UT");
         private static readonly TimeSpan CatchupPlaybackTimeout = TimeSpan.FromSeconds(14);
         private static readonly TimeSpan BufferingEndTimeout = TimeSpan.FromSeconds(5);
+        private static readonly TimeSpan SeekTimeout = TimeSpan.FromSeconds(10);
         private static readonly TimeSpan EosTimeout = TimeSpan.FromSeconds(14);
 
         public struct Clip
@@ -618,6 +619,83 @@ namespace JuvoPlayer.TizenTests.Tests
                     }
                     else if (completedTask == timeoutTask)
                         throw new TimeoutException();
+                }
+                finally
+                {
+                    if (dashPlayer != null)
+                        await dashPlayer.DisposeAsync();
+                }
+            });
+        }
+
+        [Test]
+        public void SeekInBrokenParisClip_To145533Ms_TimeOuts()
+        {
+            RunTest(async () =>
+            {
+                var parisClip = new Clip
+                {
+                    MpdUri =
+                        "http://106.120.45.49/paris/broken/dashevc-live-2s-4k.mpd"
+                };
+                IPlayer dashPlayer = null;
+                try
+                {
+                    dashPlayer = BuildPlayer(parisClip);
+                    await dashPlayer.Prepare();
+
+                    var duration = dashPlayer.Duration;
+                    Assert.That(duration, Is.Not.Null);
+                    var targetSeek = TimeSpan.FromMilliseconds(145533);
+                    Assert.That(targetSeek, Is.LessThan(duration));
+
+                    var exceptionTask = dashPlayer
+                        .OnEvent()
+                        .OfType<ExceptionEvent>()
+                        .FirstAsync()
+                        .ToTask();
+                    var eosTask = dashPlayer
+                        .OnEvent()
+                        .OfType<EosEvent>()
+                        .FirstAsync()
+                        .ToTask();
+                    dashPlayer.Play();
+                    var seekTask = dashPlayer.Seek(targetSeek);
+                    var timeoutTask = Task.Delay(SeekTimeout);
+
+                    var tcs = new TaskCompletionSource<bool>();
+
+                    var completedTasks = 0;
+
+                    exceptionTask.ContinueWith(t =>
+                    {
+                        if (t.IsCompleted)
+                            completedTasks++;
+                        if (completedTasks == 2)
+                            tcs.TrySetResult(true);
+                    });
+
+                    seekTask.ContinueWith(t =>
+                    {
+                        if (t.IsCanceled)
+                            completedTasks++;
+                        if (completedTasks == 2)
+                            tcs.TrySetResult(true);
+                    });
+
+                    eosTask.ContinueWith(t =>
+                    {
+                        if (t.IsCompleted)
+                            tcs.TrySetResult(true);
+                    });
+
+                    timeoutTask.ContinueWith(t =>
+                    {
+                        if (t.IsCompleted)
+                            tcs.TrySetCanceled();
+                    });
+
+                    await tcs.Task;
                 }
                 finally
                 {

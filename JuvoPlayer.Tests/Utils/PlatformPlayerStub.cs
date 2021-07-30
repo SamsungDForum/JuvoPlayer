@@ -21,6 +21,7 @@ using System;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Reactive;
+using System.Threading;
 using System.Threading.Tasks;
 using JuvoPlayer.Common;
 using JuvoPlayer.Players;
@@ -49,7 +50,9 @@ namespace JuvoPlayer.Tests.Utils
             _positionStopwatch.Restart();
         }
 
-        public Task PrepareAsync(Action<ContentType> onReadyToPrepare)
+        public Task PrepareAsync(
+            Action<ContentType> onReadyToPrepare,
+            CancellationToken token)
         {
             if (_state != PlayerState.Idle)
                 throw new InvalidOperationException();
@@ -59,14 +62,17 @@ namespace JuvoPlayer.Tests.Utils
             return Task.CompletedTask;
         }
 
-        public async Task SeekAsync(TimeSpan targetTime, Action<ContentType> onReadyToSeek)
+        public async Task SeekAsync(
+            TimeSpan targetTime,
+            Action<ContentType> onReadyToSeek,
+            CancellationToken token)
         {
             _positionStopwatch.Restart();
             await Task.Run(() =>
             {
                 onReadyToSeek.Invoke(ContentType.Audio);
                 onReadyToSeek.Invoke(ContentType.Video);
-            });
+            }, token);
 
             _start = targetTime;
         }
