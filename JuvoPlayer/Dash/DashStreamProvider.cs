@@ -60,6 +60,8 @@ namespace JuvoPlayer.Dash
         public async Task<Timeline> Prepare()
         {
             var manifest = await _manifestLoader.Load(_mpdUri, CancellationToken.None);
+            if (manifest.Dynamic)
+                throw new NotImplementedException("MPEG-DASH dynamic contents are not supported");
             ProcessManifest(manifest);
             return CreateTimeline(manifest);
         }
