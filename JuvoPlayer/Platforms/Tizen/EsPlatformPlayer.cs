@@ -21,10 +21,12 @@ using System;
 using System.Collections.Generic;
 using System.Reactive;
 using System.Reactive.Linq;
+using System.Threading;
 using System.Threading.Tasks;
 using JuvoLogger;
 using JuvoPlayer.Common;
 using JuvoPlayer.Players;
+using Nito.AsyncEx;
 using Tizen.TV.Multimedia;
 
 namespace JuvoPlayer.Platforms.Tizen
@@ -67,17 +69,32 @@ namespace JuvoPlayer.Platforms.Tizen
             _esPlayer.Close();
         }
 
-        public Task PrepareAsync(Action<ContentType> onReadyToPrepare)
+        public Task PrepareAsync(
+            Action<ContentType> onReadyToPrepare,
+            CancellationToken token)
         {
             _logger.Debug();
-            return _esPlayer.PrepareAsync(type => { onReadyToPrepare.Invoke(type.ToContentType()); });
+            return _esPlayer.PrepareAsync(type =>
+                {
+                    if (!token.IsCancellationRequested)
+                        onReadyToPrepare.Invoke(type.ToContentType());
+                })
+                .WaitAsync(token);
         }
 
-        public Task SeekAsync(TimeSpan targetTime, Action<ContentType> onReadyToSeek)
+        public Task SeekAsync(
+            TimeSpan targetTime,
+            Action<ContentType> onReadyToSeek,
+            CancellationToken token)
         {
             _logger.Debug();
             return _esPlayer.SeekAsync(targetTime,
-                (type, span) => { onReadyToSeek.Invoke(type.ToContentType()); });
+                    (type, span) =>
+                    {
+                        if (!token.IsCancellationRequested)
+                            onReadyToSeek.Invoke(type.ToContentType());
+                    })
+                .WaitAsync(token);
         }
 
         public void Start()
@@ -140,8 +157,8 @@ namespace JuvoPlayer.Platforms.Tizen
         public IObservable<Unit> OnEos()
         {
             return Observable.FromEventPattern<EOSEventArgs>(
-                x => _esPlayer.EOSEmitted += x,
-                x => _esPlayer.EOSEmitted -= x)
+                    x => _esPlayer.EOSEmitted += x,
+                    x => _esPlayer.EOSEmitted -= x)
                 .Select(args => Unit.Default);
         }
 

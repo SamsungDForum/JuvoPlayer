@@ -271,8 +271,7 @@ namespace JuvoPlayer.Players
             {
                 streamHolder.StartPushingPackets(
                     _segment,
-                    _platformPlayer,
-                    _cancellationTokenSource.Token);
+                    _platformPlayer);
                 var bufferingObserver =
                     streamHolder.BufferingObserver;
                 bufferingObserver.Start();
@@ -449,11 +448,10 @@ namespace JuvoPlayer.Players
                     {
                         holder.StartPushingPackets(
                             _segment,
-                            _platformPlayer,
-                            cancellationToken);
+                            _platformPlayer);
                     }
                 }, cancellationToken);
-            });
+            }, cancellationToken);
         }
 
         private void LoadChunks()
@@ -461,9 +459,8 @@ namespace JuvoPlayer.Players
             _logger.Info();
             foreach (var holder in _streamHolders.Values)
             {
-                var streamListener = holder.StreamRenderer;
-                holder.LoadChunks(_segment,
-                    streamListener,
+                holder.StartLoadingChunks(
+                    _segment,
                     _cancellationTokenSource.Token);
             }
         }
@@ -519,7 +516,8 @@ namespace JuvoPlayer.Players
                 streamRenderer,
                 streamGroup,
                 bufferingObserver,
-                OnStreamRendererBuffering);
+                OnStreamRendererBuffering,
+                OnStreamException);
         }
 
         private void OnStreamRendererBuffering(bool isBuffering)
@@ -540,6 +538,12 @@ namespace JuvoPlayer.Players
                 StartPlayer();
                 _eventSubject.OnNext(new BufferingEvent(false));
             }
+        }
+
+        private async void OnStreamException(Exception ex)
+        {
+            await StopStreaming();
+            _eventSubject.OnNext(new ExceptionEvent(ex));
         }
 
         private void DisposeStreamHolder(StreamHolder streamHolder)
@@ -563,7 +567,7 @@ namespace JuvoPlayer.Players
                 return;
             await Task.WhenAll(
                 _streamHolders.Values.Select(
-                    holder => holder.FinishLoadingChunks()));
+                    holder => holder.StopLoadingChunks()));
             foreach (var streamHolder in _streamHolders.Values)
             {
                 await streamHolder.StopPushingPackets();
@@ -585,11 +589,10 @@ namespace JuvoPlayer.Players
                     {
                         holder.StartPushingPackets(
                             _segment,
-                            _platformPlayer,
-                            cancellationToken);
+                            _platformPlayer);
                     }
                 }, cancellationToken);
-            });
+            }, cancellationToken);
         }
 
         private static void VerifyStreamGroups(StreamGroup[] streamGroups, IStreamSelector[] streamSelectors)
@@ -657,12 +660,15 @@ namespace JuvoPlayer.Players
             private Task _loadChunksTask;
             private Task _pushPacketsTask;
             private readonly IDisposable _bufferingObserverSubscription;
+            private readonly IDisposable _streamExceptionSubscription;
 
-            public StreamHolder(IStream stream,
+            public StreamHolder(
+                IStream stream,
                 StreamRenderer streamRenderer,
                 StreamGroup streamGroup,
                 BufferingObserver bufferingObserver,
-                Action<bool> onStreamRendererBuffering)
+                Action<bool> onStreamRendererBuffering,
+                Action<Exception> onException)
             {
                 Stream = stream;
                 StreamRenderer = streamRenderer;
@@ -672,6 +678,10 @@ namespace JuvoPlayer.Players
                     BufferingObserver
                         .OnBuffering()
                         .Subscribe(onStreamRendererBuffering);
+                _streamExceptionSubscription =
+                    Stream
+                        .OnException()
+                        .Subscribe(onException);
             }
 
             public IStream Stream { get; }
@@ -680,10 +690,31 @@ namespace JuvoPlayer.Players
             public BufferingObserver BufferingObserver { get; }
             public IStreamSelector StreamSelector => Stream.StreamSelector;
 
-            public void StartPushingPackets(
+            public void StartLoadingChunks(
                 Segment segment,
-                IPlatformPlayer platformPlayer,
                 CancellationToken cancellationToken)
+            {
+                _loadChunksTask = Stream.LoadChunks(segment,
+                    StreamRenderer,
+                    cancellationToken);
+            }
+
+            public async Task StopLoadingChunks()
+            {
+                if (_loadChunksTask == null)
+                    return;
+                try
+                {
+                    await _loadChunksTask;
+                }
+                catch (Exception)
+                {
+                    // ignored
+                }
+            }
+
+            public void StartPushingPackets(Segment segment,
+                IPlatformPlayer platformPlayer)
             {
                 _logger.Info();
                 if (!StreamRenderer.IsPushingPackets)
@@ -718,33 +749,10 @@ namespace JuvoPlayer.Players
                 StreamRenderer.Flush();
             }
 
-            public void LoadChunks(
-                Segment segment,
-                IStreamRenderer streamRenderer,
-                CancellationToken cancellationToken)
-            {
-                _loadChunksTask = Stream.LoadChunks(segment,
-                    streamRenderer,
-                    cancellationToken);
-            }
-
-            public async Task FinishLoadingChunks()
-            {
-                if (_loadChunksTask == null)
-                    return;
-                try
-                {
-                    await _loadChunksTask;
-                }
-                catch (Exception)
-                {
-                    // ignored
-                }
-            }
-
             public void Dispose()
             {
                 _bufferingObserverSubscription?.Dispose();
+                _streamExceptionSubscription?.Dispose();
                 Stream?.Dispose();
                 BufferingObserver?.Dispose();
             }

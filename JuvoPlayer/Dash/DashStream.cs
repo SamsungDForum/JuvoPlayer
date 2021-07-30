@@ -19,6 +19,8 @@ using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Net.Http;
+using System.Reactive.Linq;
+using System.Reactive.Subjects;
 using System.Threading;
 using System.Threading.Tasks;
 using JuvoLogger;
@@ -30,11 +32,12 @@ namespace JuvoPlayer.Dash
 {
     public class DashStream : IStream
     {
+        private readonly ILogger _logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
         private readonly IClock _clock;
         private readonly IDemuxer _demuxer;
         private readonly IDownloader _downloader;
-        private readonly ILogger _logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
         private readonly IThroughputHistory _throughputHistory;
+        private readonly Subject<Exception> _exceptionSubject;
         private AdaptationSet _adaptationSet;
         private TimeSpan? _periodDuration;
         private TimeSpan _bufferPosition;
@@ -62,12 +65,14 @@ namespace JuvoPlayer.Dash
             _clock = clock;
             _demuxer = demuxer;
             _demuxerClient = demuxerClient;
+            _exceptionSubject = new Subject<Exception>();
             StreamSelector = streamSelector;
             _maxBufferTime = TimeSpan.FromSeconds(8);
         }
 
         public StreamGroup StreamGroup { get; private set; }
 
+        public IObservable<Exception> OnException() => _exceptionSubject.AsObservable();
         public IStreamSelector StreamSelector { get; private set; }
 
         public async Task Prepare()
@@ -144,6 +149,7 @@ namespace JuvoPlayer.Dash
 
         public void Dispose()
         {
+            _exceptionSubject.Dispose();
         }
 
         internal void SetAdaptationSet(
@@ -196,9 +202,18 @@ namespace JuvoPlayer.Dash
                     await Task.Delay(delayTime, cancellationToken);
                 }
             }
+            catch (TaskCanceledException)
+            {
+                // ignored
+            }
+            catch (OperationCanceledException)
+            {
+                // ignored
+            }
             catch (Exception ex)
             {
-                _logger.Warn(ex, $"{contentType}");
+                _logger.Error(ex, $"{contentType}");
+                _exceptionSubject.OnNext(ex);
             }
 
             _logger.Info($"{contentType}: Load loop finished");

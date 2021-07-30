@@ -20,6 +20,7 @@
 using System;
 using System.Collections.Generic;
 using System.Reactive;
+using System.Threading;
 using System.Threading.Tasks;
 using JuvoPlayer.Common;
 
@@ -29,8 +30,8 @@ namespace JuvoPlayer.Players
     {
         void Open(IWindow window, IEnumerable<StreamConfig> streamConfigs);
         void Close();
-        Task PrepareAsync(Action<ContentType> onReadyToPrepare);
-        Task SeekAsync(TimeSpan targetTime, Action<ContentType> onReadyToSeek);
+        Task PrepareAsync(Action<ContentType> onReadyToPrepare, CancellationToken token);
+        Task SeekAsync(TimeSpan targetTime, Action<ContentType> onReadyToSeek, CancellationToken token);
         void Start();
         void Pause();
         void Resume();
