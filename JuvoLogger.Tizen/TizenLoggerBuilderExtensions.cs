@@ -1,6 +1,6 @@
 ﻿/*!
  * https://github.com/SamsungDForum/JuvoPlayer
- * Copyright 2018, Samsung Electronics Co., Ltd
+ * Copyright 2021, Samsung Electronics Co., Ltd
  * Licensed under the MIT license
  *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
@@ -20,34 +20,11 @@ using System.Reflection;
 
 namespace JuvoLogger.Tizen
 {
-    public class TizenLoggerManager : LoggerManager
+    public static class TizenLoggerBuilderExtensions
     {
-        private static LoggerBase CreateLogger(string channel, LogLevel level)
+        public static LoggerBuilder WithTizenSink(this LoggerBuilder builder)
         {
-            return new TizenLogger(channel, level);
-        }
-
-        public static void Configure(Stream stream)
-        {
-            Configure(stream, CreateLogger);
-        }
-
-        public static void Configure(string contents)
-        {
-            Configure(contents, CreateLogger);
-        }
-
-        public static void Configure()
-        {
-            var configFilename = Path.Combine(
-                Path.GetDirectoryName(Path.GetDirectoryName(
-                    Assembly.GetExecutingAssembly().Location)),
-                "res", "logger.config");
-
-            var contents = string.Empty;
-            if (File.Exists(configFilename))
-                contents = File.ReadAllText(configFilename);
-            Configure(contents);
+            return builder.WithSink(new TizenLoggerSink());
         }
     }
 }

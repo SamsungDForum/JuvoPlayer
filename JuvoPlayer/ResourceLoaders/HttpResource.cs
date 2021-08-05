@@ -38,8 +38,6 @@ namespace JuvoPlayer.ResourceLoaders
             HttpStatusCode.ServiceUnavailable, HttpStatusCode.GatewayTimeout
         };
 
-        private readonly ILogger _logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
-
         private readonly Uri _path;
         private bool _disposed;
         private Task<HttpResponseMessage> _responseTask;
@@ -96,7 +94,7 @@ namespace JuvoPlayer.ResourceLoaders
                 .RetryAsync(retryCount,
                     (result, i) =>
                     {
-                        _logger.Warn(
+                        Log.Warn(
                             $"Cannot download {_path} due to {result.Exception.Message}, retry count {i} of {retryCount}");
                     })
                 .ExecuteAsync(() => HttpClient.GetAsync(_path));

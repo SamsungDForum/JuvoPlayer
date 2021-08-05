@@ -1,6 +1,6 @@
-﻿/*!
+/*!
  * https://github.com/SamsungDForum/JuvoPlayer
- * Copyright 2018, Samsung Electronics Co., Ltd
+ * Copyright 2021, Samsung Electronics Co., Ltd
  * Licensed under the MIT license
  *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
@@ -15,25 +15,10 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-using System;
-using System.Diagnostics;
-using System.IO;
-
 namespace JuvoLogger
 {
-    public class ConsoleLogger : LoggerBase
+    public interface ILoggerSink
     {
-        public ConsoleLogger(string channel, LogLevel level) : base(channel, level)
-        {
-        }
-
-        public override void PrintLog(LogLevel level, string message, string file, string method, int line)
-        {
-            var shortLevel = level.ToString()[0];
-            var filename = Path.GetFileName(file);
-            var pid = Process.GetCurrentProcess().Id;
-            Console.WriteLine(
-                $"{DateTime.Now:MM-dd HH:mm:ss.fff}+0100 {shortLevel}/{Channel}({pid}): {filename}: {method}({line}) > {message}");
-        }
+        void PrintLog(string channel, LogLevel level, string message, string file, string method, int line);
     }
 }

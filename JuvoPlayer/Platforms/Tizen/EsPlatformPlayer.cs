@@ -34,17 +34,16 @@ namespace JuvoPlayer.Platforms.Tizen
     public class EsPlatformPlayer : IPlatformPlayer
     {
         private readonly ESPlayer _esPlayer;
-        private readonly ILogger _logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
 
         public EsPlatformPlayer()
         {
-            _logger.Debug();
+            Log.Debug();
             _esPlayer = new ESPlayer();
         }
 
         public void Open(IWindow window, IEnumerable<StreamConfig> streamConfigs)
         {
-            _logger.Debug();
+            Log.Debug();
             _esPlayer.Open();
             EsPlayerExtensions.SetDisplay(window, _esPlayer);
             if (SupportsDrms())
@@ -65,7 +64,7 @@ namespace JuvoPlayer.Platforms.Tizen
 
         public void Close()
         {
-            _logger.Debug();
+            Log.Debug();
             _esPlayer.Close();
         }
 
@@ -73,7 +72,7 @@ namespace JuvoPlayer.Platforms.Tizen
             Action<ContentType> onReadyToPrepare,
             CancellationToken token)
         {
-            _logger.Debug();
+            Log.Debug();
             return _esPlayer.PrepareAsync(type =>
                 {
                     if (!token.IsCancellationRequested)
@@ -87,7 +86,7 @@ namespace JuvoPlayer.Platforms.Tizen
             Action<ContentType> onReadyToSeek,
             CancellationToken token)
         {
-            _logger.Debug();
+            Log.Debug();
             return _esPlayer.SeekAsync(targetTime,
                     (type, span) =>
                     {
@@ -99,25 +98,25 @@ namespace JuvoPlayer.Platforms.Tizen
 
         public void Start()
         {
-            _logger.Debug();
+            Log.Debug();
             _esPlayer.Start();
         }
 
         public void Pause()
         {
-            _logger.Debug();
+            Log.Debug();
             _esPlayer.Pause();
         }
 
         public void Resume()
         {
-            _logger.Debug();
+            Log.Debug();
             _esPlayer.Resume();
         }
 
         public SubmitResult SubmitPacket(Packet packet)
         {
-            _logger.Debug();
+            Log.Debug();
             SubmitStatus esStatus;
             switch (packet)
             {
@@ -164,7 +163,7 @@ namespace JuvoPlayer.Platforms.Tizen
 
         public void Dispose()
         {
-            _logger.Debug();
+            Log.Debug();
             _esPlayer.Dispose();
         }
 

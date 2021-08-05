@@ -25,7 +25,6 @@ namespace JuvoPlayer.RESTful
 {
     public class HttpPlayer : IDisposable
     {
-        private readonly ILogger _logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer.RESTful");
         private WebServer _server;
 
         public HttpPlayer(int port)
@@ -35,12 +34,12 @@ namespace JuvoPlayer.RESTful
                 var url = $"http://*:{port}";
                 _server = CreateWebServer(url);
                 _server.RunAsync();
-                _logger.Info("Listening on port: " + port);
+                Log.Info("Listening on port: " + port);
             }
             catch (Exception e)
             {
-                _logger.Info(e.Message);
-                _logger.Info(e.StackTrace);
+                Log.Info(e.Message);
+                Log.Info(e.StackTrace);
             }
         }
 
@@ -53,7 +52,7 @@ namespace JuvoPlayer.RESTful
                 .WithWebApi("/player", m => m
                     .WithController<PlayerRestController>());
 
-            server.StateChanged += (s, e) => _logger.Info($"WebServer New State - {e.NewState}");
+            server.StateChanged += (s, e) => Log.Info($"WebServer New State - {e.NewState}");
 
             return server;
         }

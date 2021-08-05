@@ -28,7 +28,6 @@ namespace JuvoPlayer.Players
 {
     public class StreamRenderer : IStreamRenderer
     {
-        private readonly ILogger _logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
         private readonly PacketSynchronizer _packetSynchronizer;
         private CancellationTokenSource _cancellationTokenSource;
         private readonly CdmContext _cdmContext;
@@ -48,7 +47,7 @@ namespace JuvoPlayer.Players
 
         public void HandlePacket(Packet packet)
         {
-            _logger.Info($"{packet.StreamType} {packet.Pts}");
+            Log.Info($"{packet.StreamType} {packet.Pts}");
             _packetSynchronizer.Add(packet);
         }
 
@@ -80,7 +79,7 @@ namespace JuvoPlayer.Players
                             platformPlayer,
                             packet,
                             cancellationToken);
-                        _logger.Info($"{packet.StreamType} {packet.Pts} {result}");
+                        Log.Info($"{packet.StreamType} {packet.Pts} {result}");
                         if (result != SubmitResult.Success)
                         {
                             throw new NotImplementedException(
@@ -95,7 +94,7 @@ namespace JuvoPlayer.Players
             }
             catch (Exception ex)
             {
-                _logger.Error(ex);
+                Log.Error(ex);
             }
         }
 
@@ -116,14 +115,14 @@ namespace JuvoPlayer.Players
 
         public void StopPushingPackets()
         {
-            _logger.Info();
+            Log.Info();
             _cancellationTokenSource?.Cancel();
             IsPushingPackets = false;
         }
 
         public void Flush()
         {
-            _logger.Info();
+            Log.Info();
             _packetSynchronizer.Flush();
         }
 
@@ -140,7 +139,7 @@ namespace JuvoPlayer.Players
                 }
                 catch (NoKeyException)
                 {
-                    _logger.Warn("Waiting for key");
+                    Log.Warn("Waiting for key");
                     await cdmInstance
                         .OnKeyStatusChanged()
                         .FirstAsync()

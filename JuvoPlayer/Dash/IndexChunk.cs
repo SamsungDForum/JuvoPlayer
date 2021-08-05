@@ -35,7 +35,6 @@ namespace JuvoPlayer.Dash
         private readonly string _indexUri;
         private readonly long? _length;
 
-        private readonly ILogger _logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
         private readonly RepresentationWrapper _representationWrapper;
         private readonly long? _start;
         private readonly IThroughputHistory _throughputHistory;
@@ -64,7 +63,7 @@ namespace JuvoPlayer.Dash
             var stopwatch = Stopwatch.StartNew();
             try
             {
-                _logger.Info($"{_indexUri} {_start} {_length} starts");
+                Log.Info($"{_indexUri} {_start} {_length} starts");
                 var bytes = await _downloader.Download(
                     _indexUri,
                     _start,
@@ -100,8 +99,8 @@ namespace JuvoPlayer.Dash
             }
             finally
             {
-                _logger.Info($"{_indexUri} {_start} {_length} ends. " +
-                             $"Loading took {stopwatch.ElapsedMilliseconds} ms");
+                Log.Info($"{_indexUri} {_start} {_length} ends. " +
+                         $"Loading took {stopwatch.ElapsedMilliseconds} ms");
             }
         }
 

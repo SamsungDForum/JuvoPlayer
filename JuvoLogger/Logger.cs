@@ -16,25 +16,23 @@
  */
 
 using System;
+using System.Collections.Generic;
 
 namespace JuvoLogger
 {
-    public abstract class LoggerBase : ILogger
+    public class Logger : ILogger
     {
-        private LogLevel _level;
+        private readonly LogLevel _level;
+        private readonly IList<ILoggerSink> _loggerSinks;
+        private readonly string _prefix;
+        private readonly string _channel;
 
-        protected LoggerBase(string channel, LogLevel level)
+        public Logger(LogLevel level, IList<ILoggerSink> sinks, string channel, string prefix)
         {
-            Channel = channel ?? throw new ArgumentNullException();
-            Level = level;
-        }
-
-        public string Channel { get; }
-
-        protected LogLevel Level
-        {
-            get => _level;
-            set => _level = Enum.IsDefined(typeof(LogLevel), value) ? value : throw new ArgumentOutOfRangeException();
+            _level = level;
+            _loggerSinks = sinks;
+            _channel = channel;
+            _prefix = prefix;
         }
 
         public void Verbose(string message, string file = "", string method = "", int line = 0)
@@ -94,16 +92,29 @@ namespace JuvoLogger
 
         public bool IsLevelEnabled(LogLevel level)
         {
-            return level <= Level;
+            return level <= _level;
+        }
+
+        public ILogger CopyWithPrefix(string prefix)
+        {
+            return new Logger(_level, _loggerSinks, _channel, prefix);
+        }
+
+        public ILogger CopyWithChannel(string channel)
+        {
+            return new Logger(_level, _loggerSinks, channel, _prefix);
         }
 
         private void PrintLogIfEnabled(LogLevel level, string message, string file, string method, int line)
         {
             if (!IsLevelEnabled(level))
                 return;
-            PrintLog(level, message, file, method, line);
-        }
 
-        public abstract void PrintLog(LogLevel level, string message, string file, string method, int line);
+            if (_prefix != null)
+                message = $"[{_prefix}] {message}";
+
+            foreach (var loggerSink in _loggerSinks)
+                loggerSink.PrintLog(_channel, level, message, file, method, line);
+        }
     }
 }

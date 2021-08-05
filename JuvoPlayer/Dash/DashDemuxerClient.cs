@@ -28,7 +28,6 @@ namespace JuvoPlayer.Dash
 {
     public class DashDemuxerClient : IDemuxerClient
     {
-        private readonly ILogger _logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
         private SegmentBuffer _currentSegment;
         private AsyncCollection<SegmentBuffer> _segments = new AsyncCollection<SegmentBuffer>();
 
@@ -48,7 +47,7 @@ namespace JuvoPlayer.Dash
 
         public void AddSegmentBuffer(SegmentBuffer segmentBuffer)
         {
-            _logger.Info();
+            Log.Info();
             if (_segments == null)
                 throw new InvalidOperationException("AddSegmentBuffer called before Initialize() or after Reset()");
             segmentBuffer.SetOffset(Offset);
@@ -75,7 +74,7 @@ namespace JuvoPlayer.Dash
                 }
                 catch (Exception e)
                 {
-                    _logger.Warn(e);
+                    Log.Warn(e);
                     _currentSegment = null;
                 }
             }
@@ -88,7 +87,7 @@ namespace JuvoPlayer.Dash
             if (cancellationToken.IsCancellationRequested)
                 throw new TaskCanceledException();
 
-            _logger.Info();
+            Log.Info();
             _currentSegment?.Seek(pos, cancellationToken);
         }
 

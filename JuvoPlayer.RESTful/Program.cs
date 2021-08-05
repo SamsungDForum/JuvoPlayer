@@ -16,6 +16,7 @@
  */
 
 using ElmSharp;
+using JuvoLogger;
 using JuvoLogger.Tizen;
 using JuvoPlayer.Platforms.Tizen;
 using Tizen.Applications;
@@ -45,7 +46,11 @@ namespace JuvoPlayer.RESTful
 
         public static void Main(string[] args)
         {
-            TizenLoggerManager.Configure();
+            Log.Logger = new LoggerBuilder()
+                .WithLevel(LogLevel.Debug)
+                .WithChannel("JuvoPlayer.RESTful")
+                .WithTizenSink()
+                .Build();
             PlatformTizen.Init();
             var app = new Program();
             app.Run(args);

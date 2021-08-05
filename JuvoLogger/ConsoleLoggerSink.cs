@@ -16,37 +16,20 @@
  */
 
 using System;
-using System.Collections.Generic;
+using System.Diagnostics;
 using System.IO;
 
 namespace JuvoLogger
 {
-    public class ConfigParser
+    public class ConsoleLoggerSink : ILoggerSink
     {
-        public ConfigParser(string contents)
+        public void PrintLog(string channel, LogLevel level, string message, string file, string method, int line)
         {
-            if (contents == null)
-                throw new ArgumentNullException();
-
-            LoggingLevels = new Dictionary<string, LogLevel>();
-
-            using (var reader = new StringReader(contents))
-            {
-                string line = null;
-                while ((line = reader.ReadLine()) != null)
-                {
-                    var splitLine = line.Split('=');
-                    if (splitLine.Length != 2)
-                        continue;
-                    var channel = splitLine[0];
-                    var levelString = splitLine[1];
-
-                    if (Enum.TryParse(levelString, true, out LogLevel level))
-                        LoggingLevels[channel] = level;
-                }
-            }
+            var shortLevel = level.ToString()[0];
+            var filename = Path.GetFileName(file);
+            var pid = Process.GetCurrentProcess().Id;
+            Console.WriteLine(
+                $"{DateTime.Now:MM-dd HH:mm:ss.fff}+0100 {channel} {shortLevel}/({pid}): {filename}: {method}({line}) > {message}");
         }
-
-        public Dictionary<string, LogLevel> LoggingLevels { get; }
     }
 }

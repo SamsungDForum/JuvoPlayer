@@ -25,8 +25,6 @@ namespace JuvoPlayer.Demuxers.FFmpeg
 {
     public class FFmpegGlue : IFFmpegGlue
     {
-        private static readonly ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
-
         public void Initialize()
         {
             try
@@ -47,14 +45,14 @@ namespace JuvoPlayer.Demuxers.FFmpeg
                         ffmpeg.av_log_format_line(p0, level, format, vl, lineBuffer, lineSize, &printPrefix);
                         var line = Marshal.PtrToStringAnsi((IntPtr)lineBuffer);
 
-                        Logger.Warn(line);
+                        Log.Warn(line);
                     };
                     ffmpeg.av_log_set_callback(logCallback);
                 }
             }
             catch (Exception e)
             {
-                Logger.Error(e, "Could not load and register FFmpeg library");
+                Log.Error(e, "Could not load and register FFmpeg library");
                 throw new DemuxerException("Could not load and register FFmpeg library", e);
             }
         }

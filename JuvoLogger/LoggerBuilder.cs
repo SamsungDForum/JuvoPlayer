@@ -19,23 +19,49 @@ using System.Collections.Generic;
 
 namespace JuvoLogger
 {
-    public class CompositeLogger : LoggerBase
+    public class LoggerBuilder
     {
-        private readonly List<LoggerBase> _loggers = new List<LoggerBase>();
+        private const LogLevel DefaultLogLevel = LogLevel.Debug;
+        private const string DefaultChannel = nameof(JuvoLogger);
 
-        public CompositeLogger(string channel, LogLevel level) : base(channel, level)
+        private readonly IList<ILoggerSink> _sinks;
+        private LogLevel _level;
+        private string _channel;
+
+        public LoggerBuilder()
         {
+            _sinks = new List<ILoggerSink>();
+            _level = DefaultLogLevel;
+            _channel = DefaultChannel;
         }
 
-        public void Add(LoggerBase logger)
+        public LoggerBuilder WithLevel(LogLevel level)
         {
-            _loggers.Add(logger);
+            _level = level;
+            return this;
         }
 
-        public override void PrintLog(LogLevel level, string message, string file, string method, int line)
+        public LoggerBuilder WithChannel(string channel)
         {
-            foreach (var logger in _loggers)
-                logger.PrintLog(level, message, file, method, line);
+            _channel = channel;
+            return this;
+        }
+
+        public LoggerBuilder WithConsoleSink()
+        {
+            _sinks.Add(new ConsoleLoggerSink());
+            return this;
+        }
+
+        public LoggerBuilder WithSink(ILoggerSink sink)
+        {
+            _sinks.Add(sink);
+            return this;
+        }
+
+        public ILogger Build()
+        {
+            return new Logger(_level, _sinks, _channel, null);
         }
     }
 }

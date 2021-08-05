@@ -24,7 +24,6 @@ namespace JuvoPlayer.Demuxers.Utils
 {
     public abstract class AtomBase
     {
-        protected static readonly ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
         protected uint atomSize;
 
         public abstract void ParseAtom(byte[] adata, ulong dataStart);
@@ -85,7 +84,7 @@ namespace JuvoPlayer.Demuxers.Utils
                 case TypeCode.Single:
                 case TypeCode.String:
                 default:
-                    Logger.Warn($"{res.GetType()} Unsupported read type.");
+                    Log.Warn($"{res.GetType()} Unsupported read type.");
                     break;
             }
 

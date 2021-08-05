@@ -33,7 +33,6 @@ namespace JuvoPlayer.Players
     {
         private readonly Configuration _configuration;
 
-        private readonly ILogger _logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
         private readonly Func<IPlatformPlayer> _platformPlayerFactory;
         private readonly IWindow _window;
         private readonly Clock _clock;
@@ -97,7 +96,7 @@ namespace JuvoPlayer.Players
 
         public async Task Prepare()
         {
-            _logger.Info();
+            Log.Info();
             _cancellationTokenSource = new CancellationTokenSource();
             _platformPlayer = _platformPlayerFactory.Invoke();
             _currentPeriod = await PrepareStreamProvider();
@@ -124,7 +123,7 @@ namespace JuvoPlayer.Players
 
         public async Task Seek(TimeSpan position)
         {
-            _logger.Info($"Seek to {position}");
+            Log.Info($"Seek to {position}");
             if (_platformPlayer == null)
                 throw new InvalidOperationException("Prepare not called");
 
@@ -155,7 +154,7 @@ namespace JuvoPlayer.Players
 
         public async Task SetStreamGroups(StreamGroup[] streamGroups, IStreamSelector[] selectors)
         {
-            _logger.Info();
+            Log.Info();
             if (_platformPlayer == null)
                 throw new InvalidOperationException("Prepare not called");
             VerifyStreamGroups(streamGroups, selectors);
@@ -326,7 +325,7 @@ namespace JuvoPlayer.Players
 
         public async Task DisposeAsync()
         {
-            _logger.Info();
+            Log.Info();
             await StopStreaming();
             if (_streamHolders != null)
             {
@@ -358,7 +357,7 @@ namespace JuvoPlayer.Players
                 startTime = videoStream?.GetAdjustedSeekPosition(startTime) ?? startTime;
             }
 
-            _logger.Info($"{startTime}");
+            Log.Info($"{startTime}");
 
             _segment = new Segment
             {
@@ -431,7 +430,7 @@ namespace JuvoPlayer.Players
 
         private async Task PreparePlayer(StreamConfig[] streamConfigs)
         {
-            _logger.Info();
+            Log.Info();
             _platformPlayer.Open(_window, streamConfigs);
             _platformPlayerEosSubscription = _platformPlayer
                 .OnEos()
@@ -440,7 +439,7 @@ namespace JuvoPlayer.Players
             var cancellationToken = _cancellationTokenSource.Token;
             await _platformPlayer.PrepareAsync(contentType =>
             {
-                _logger.Info($"{contentType}");
+                Log.Info($"{contentType}");
                 var holder = _streamHolders[contentType];
                 synchronizationContext.Post(_ =>
                 {
@@ -456,7 +455,7 @@ namespace JuvoPlayer.Players
 
         private void LoadChunks()
         {
-            _logger.Info();
+            Log.Info();
             foreach (var holder in _streamHolders.Values)
             {
                 holder.StartLoadingChunks(
@@ -525,7 +524,7 @@ namespace JuvoPlayer.Players
             var wasBuffering = _numberOfStarvingStreams > 0;
             _numberOfStarvingStreams +=
                 isBuffering ? 1 : -1;
-            _logger.Info($"Is Buffering = {_numberOfStarvingStreams > 0}");
+            Log.Info($"Is Buffering = {_numberOfStarvingStreams > 0}");
             Debug.Assert(_numberOfStarvingStreams >= 0,
                 $"{nameof(_numberOfStarvingStreams)} shouldn't be negative");
             if (_numberOfStarvingStreams == 1 && !wasBuffering)
@@ -559,7 +558,7 @@ namespace JuvoPlayer.Players
 
         private async Task StopStreaming()
         {
-            _logger.Info();
+            Log.Info();
             _clock.Stop();
             _cancellationTokenSource.Cancel();
             _cancellationTokenSource = new CancellationTokenSource();
@@ -581,7 +580,7 @@ namespace JuvoPlayer.Players
             var cancellationToken = _cancellationTokenSource.Token;
             await _platformPlayer.SeekAsync(position, contentType =>
             {
-                _logger.Info($"{contentType}");
+                Log.Info($"{contentType}");
                 var holder = _streamHolders[contentType];
                 synchronizationContext.Post(_ =>
                 {
@@ -656,7 +655,6 @@ namespace JuvoPlayer.Players
 
         private class StreamHolder : IDisposable
         {
-            private readonly ILogger _logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
             private Task _loadChunksTask;
             private Task _pushPacketsTask;
             private readonly IDisposable _bufferingObserverSubscription;
@@ -716,7 +714,7 @@ namespace JuvoPlayer.Players
             public void StartPushingPackets(Segment segment,
                 IPlatformPlayer platformPlayer)
             {
-                _logger.Info();
+                Log.Info();
                 if (!StreamRenderer.IsPushingPackets)
                 {
                     _pushPacketsTask = StreamRenderer.StartPushingPackets(
@@ -727,7 +725,7 @@ namespace JuvoPlayer.Players
 
             public async Task StopPushingPackets()
             {
-                _logger.Info();
+                Log.Info();
                 StreamRenderer.StopPushingPackets();
 
                 if (_pushPacketsTask == null)
@@ -745,7 +743,7 @@ namespace JuvoPlayer.Players
 
             public void Flush()
             {
-                _logger.Info();
+                Log.Info();
                 StreamRenderer.Flush();
             }
 

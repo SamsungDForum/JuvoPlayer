@@ -27,7 +27,6 @@ namespace JuvoPlayer
 {
     public class DashPlayerBuilder
     {
-        private readonly ILogger _logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
         private Configuration _configuration;
         private string _mpdUri;
         private IWindow _window;
@@ -74,7 +73,7 @@ namespace JuvoPlayer
 
             if (_drmSessionHandler != null && _keySystem == null)
             {
-                _logger.Warn("DrmSessionHandler set without KeySystem." +
+                Log.Warn("DrmSessionHandler set without KeySystem." +
                              "Ignoring DrmSessionHandler");
             }
 
