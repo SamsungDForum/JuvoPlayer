@@ -49,7 +49,7 @@ namespace JuvoPlayer.TizenTests.Tests
     [TestFixture]
     public class DashPlayerTests
     {
-        private readonly ILogger _logger = LoggerManager.GetInstance().GetLogger("UT");
+        private readonly ILogger _logger = Log.WithChannel("UT");
         private static readonly TimeSpan CatchupPlaybackTimeout = TimeSpan.FromSeconds(14);
         private static readonly TimeSpan BufferingEndTimeout = TimeSpan.FromSeconds(5);
         private static readonly TimeSpan SeekTimeout = TimeSpan.FromSeconds(10);

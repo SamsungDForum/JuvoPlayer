@@ -32,7 +32,6 @@ namespace JuvoPlayer.Demuxers.FFmpeg
     public unsafe class AvFormatContextWrapper : IAvFormatContext
     {
         private const int MillisecondsPerSecond = 1000;
-        private static readonly ILogger _logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
 
         private readonly AVRational _millsBase = new AVRational {num = 1, den = MillisecondsPerSecond};
 
@@ -136,7 +135,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg
                 var stringValue = Marshal.PtrToStringAnsi((IntPtr) dict->value);
                 if (!ulong.TryParse(stringValue, out var value))
                 {
-                    _logger.Error($"Expected to received an ulong, but got {stringValue}");
+                    Log.Error($"Expected to received an ulong, but got {stringValue}");
                     continue;
                 }
 

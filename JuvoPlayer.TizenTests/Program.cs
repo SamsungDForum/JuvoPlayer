@@ -37,7 +37,6 @@ namespace JuvoPlayer.TizenTests
 {
     internal class Program : CoreUIApplication
     {
-        private static readonly ILogger Logger = LoggerManager.GetInstance().GetLogger("UT");
         private SynchronizationContext _mainSynchronizationContext;
         private Window _mainWindow;
         private string[] _nunitArgs;
@@ -83,8 +82,9 @@ namespace JuvoPlayer.TizenTests
                 new AutoRun(assembly).Execute(finalNunitArgs, writer, Console.In);
             }
 
+            var logger = Log.WithChannel("UT");
             foreach (var line in sb.ToString().Split("\n"))
-                Logger.Info(line);
+                logger.Info(line);
         }
 
         private void RunJuvoPlayerTizenTests()
@@ -107,7 +107,11 @@ namespace JuvoPlayer.TizenTests
 
         private static void Main(string[] args)
         {
-            TizenLoggerManager.Configure();
+            Log.Logger = new LoggerBuilder()
+                .WithLevel(LogLevel.Debug)
+                .WithChannel("JuvoPlayer")
+                .WithTizenSink()
+                .Build();
             PlatformTizen.Init();
             var program = new Program();
             program.Run(args);

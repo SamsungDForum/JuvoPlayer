@@ -175,11 +175,10 @@ namespace JuvoPlayer.Platforms.Tizen
         private readonly string _keySystem;
         private readonly Subject<Message> _messageSubject;
         private readonly Subject<Unit> _keyStatusChanged;
-        private readonly ILogger _logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
 
         public CdmInstance(string keySystem)
         {
-            _logger.Info($"{keySystem}");
+            Log.Info($"{keySystem}");
             _ieme = IEME.create(
                 this,
                 keySystem,
@@ -192,7 +191,7 @@ namespace JuvoPlayer.Platforms.Tizen
 
         public override void Dispose()
         {
-            _logger.Info();
+            Log.Info();
             base.Dispose();
             _ieme.Dispose();
             _messageSubject.Dispose();
@@ -201,12 +200,12 @@ namespace JuvoPlayer.Platforms.Tizen
 
         public string CreateSession()
         {
-            _logger.Info();
+            Log.Info();
             string sessionId = null;
             var status = _ieme.session_create(
                 SessionType.kTemporary,
                 ref sessionId);
-            _logger.Info($"{sessionId}");
+            Log.Info($"{sessionId}");
             ThrowOnError(status);
             return sessionId;
         }
@@ -216,12 +215,12 @@ namespace JuvoPlayer.Platforms.Tizen
             DrmInitDataType drmInitDataType,
             byte[] initData)
         {
-            _logger.Info($"{sessionId} {drmInitDataType} {initData.Length}");
+            Log.Info($"{sessionId} {drmInitDataType} {initData.Length}");
             var status = _ieme.session_generateRequest(
                 sessionId,
                 drmInitDataType.ToEmeInitDataType(),
                 initData.ToEmeBinaryData());
-            _logger.Info($"{sessionId} {status}");
+            Log.Info($"{sessionId} {status}");
             ThrowOnError(status);
         }
 
@@ -229,11 +228,11 @@ namespace JuvoPlayer.Platforms.Tizen
             string sessionId,
             byte[] sessionData)
         {
-            _logger.Info($"{sessionId}");
+            Log.Info($"{sessionId}");
             var status = _ieme.session_update(
                 sessionId,
                 sessionData.ToEmeBinaryData());
-            _logger.Info($"{status}");
+            Log.Info($"{status}");
             ThrowOnError(status);
             _keyStatusChanged.OnNext(Unit.Default);
         }
@@ -396,7 +395,7 @@ namespace JuvoPlayer.Platforms.Tizen
             emeMessageType messageType,
             string message)
         {
-            _logger.Info($"{sessionId} {messageType}");
+            Log.Info($"{sessionId} {messageType}");
 
             var juvoMessage = new Message(
                 sessionId,
@@ -411,7 +410,7 @@ namespace JuvoPlayer.Platforms.Tizen
             var exception = status.ToJuvoDrmException();
             if (exception != null)
             {
-                _logger.Error($"{exception}");
+                Log.Error($"{exception}");
                 throw exception;
             }
         }
@@ -421,7 +420,7 @@ namespace JuvoPlayer.Platforms.Tizen
             var exception = result.ToJuvoDrmException();
             if (exception != null)
             {
-                _logger.Error($"{exception}");
+                Log.Error($"{exception}");
                 throw exception;
             }
         }

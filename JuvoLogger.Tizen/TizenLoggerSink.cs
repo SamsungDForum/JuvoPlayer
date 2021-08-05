@@ -15,45 +15,43 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-using Tizen;
-
 namespace JuvoLogger.Tizen
 {
-    public class TizenLogger : LoggerBase
+    public class TizenLoggerSink : ILoggerSink
     {
-        public TizenLogger(string channel, LogLevel level) : base(channel, level)
+        public TizenLoggerSink()
         {
         }
 
-        public override void PrintLog(LogLevel level, string message, string file, string method, int line)
+        public void PrintLog(string channel, LogLevel level, string message, string file, string method, int line)
         {
             LogMethod tizenLog;
             switch (level)
             {
                 case LogLevel.Verbose:
-                    tizenLog = Log.Verbose;
+                    tizenLog = global::Tizen.Log.Verbose;
                     break;
                 case LogLevel.Debug:
-                    tizenLog = Log.Debug;
+                    tizenLog = global::Tizen.Log.Debug;
                     break;
                 case LogLevel.Info:
-                    tizenLog = Log.Info;
+                    tizenLog = global::Tizen.Log.Info;
                     break;
                 case LogLevel.Warn:
-                    tizenLog = Log.Warn;
+                    tizenLog = global::Tizen.Log.Warn;
                     break;
                 case LogLevel.Error:
-                    tizenLog = Log.Error;
+                    tizenLog = global::Tizen.Log.Error;
                     break;
                 case LogLevel.Fatal:
-                    tizenLog = Log.Fatal;
+                    tizenLog = global::Tizen.Log.Fatal;
                     break;
                 default:
-                    tizenLog = Log.Error;
+                    tizenLog = global::Tizen.Log.Error;
                     break;
             }
 
-            tizenLog(Channel, message, file, method, line);
+            tizenLog(channel, message, file, method, line);
         }
 
         private delegate void LogMethod(string tag, string message, string file, string func, int line);

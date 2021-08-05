@@ -36,7 +36,6 @@ namespace JuvoPlayer.RESTful.Controllers
 {
     public class PlayerRestController : WebApiController
     {
-        private readonly ILogger _logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer.RESTful");
         private static IPlayer _dashPlayer;
         private static AsyncContextThread _playerThread;
 
@@ -70,7 +69,7 @@ namespace JuvoPlayer.RESTful.Controllers
                         if (request.ContainsKey("drm"))
                         {
                             clip.DrmDescription = JsonConvert.DeserializeObject<DrmDescription>(request["drm"]);
-                            _logger.Info("Successfully obtained drm description.");
+                            Log.Info("Successfully obtained drm description.");
                         }
 
                         await RunOnPlayerThread(async () =>

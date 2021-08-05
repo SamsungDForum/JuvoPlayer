@@ -24,7 +24,6 @@ namespace JuvoPlayer.Common
 {
     internal sealed class DecryptedEmePacket : Packet
     {
-        private readonly ILogger _logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
         private readonly AsyncContextThread _releaseThread;
 
         public DecryptedEmePacket(AsyncContextThread releaseThread)
@@ -53,7 +52,7 @@ namespace JuvoPlayer.Common
                     }
                     catch (Exception e)
                     {
-                        _logger.Error(e);
+                        Log.Error(e);
                     }
                 });
             }

@@ -28,7 +28,6 @@ namespace JuvoPlayer.Demuxers.FFmpeg
 {
     public class FFmpegDemuxer : IDemuxer
     {
-        private static readonly ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
         private readonly IFFmpegGlue _ffmpegGlue;
         private int _audioIdx = -1;
         private CancellationTokenSource _cancellationTokenSource;
@@ -164,7 +163,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg
             }
             catch (FFmpegException ex)
             {
-                Logger.Error(ex);
+                Log.Error(ex);
                 throw new DemuxerException("Cannot open formatContext", ex);
             }
         }
@@ -220,7 +219,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg
             }
             catch (FFmpegException ex)
             {
-                Logger.Error(ex);
+                Log.Error(ex);
                 throw new DemuxerException("Cannot open formatContext", ex);
             }
         }
@@ -234,7 +233,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg
             }
             catch (FFmpegException ex)
             {
-                Logger.Error(ex);
+                Log.Error(ex);
                 throw new DemuxerException("Cannot find streams info", ex);
             }
         }
@@ -261,8 +260,8 @@ namespace JuvoPlayer.Demuxers.FFmpeg
 
             var config = _formatContext.ReadConfig(_audioIdx);
 
-            Logger.Info("Setting audio stream to " + _audioIdx);
-            Logger.Info(config.ToString());
+            Log.Info("Setting audio stream to " + _audioIdx);
+            Log.Info(config.ToString());
 
             configs.Add(config);
         }
@@ -274,8 +273,8 @@ namespace JuvoPlayer.Demuxers.FFmpeg
 
             var config = _formatContext.ReadConfig(_videoIdx);
 
-            Logger.Info("Setting video stream to " + _videoIdx);
-            Logger.Info(config.ToString());
+            Log.Info("Setting video stream to " + _videoIdx);
+            Log.Info(config.ToString());
 
             configs.Add(config);
         }
@@ -290,15 +289,15 @@ namespace JuvoPlayer.Demuxers.FFmpeg
             }
             catch (TaskCanceledException)
             {
-                Logger.Info("Take cancelled");
+                Log.Info("Take cancelled");
             }
             catch (InvalidOperationException ex)
             {
-                Logger.Warn(ex, ex.StackTrace);
+                Log.Warn(ex, ex.StackTrace);
             }
             catch (Exception ex)
             {
-                Logger.Error(ex, $"Unexpected exception: {ex.GetType()}");
+                Log.Error(ex, $"Unexpected exception: {ex.GetType()}");
             }
 
             return default;
@@ -308,7 +307,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg
         {
             try
             {
-                Logger.Info($"Seek pos == {pos}, whence == {whence}");
+                Log.Info($"Seek pos == {pos}, whence == {whence}");
                 if ((whence & FFmpegBindings.Interop.FFmpeg.AVSEEK_SIZE) != 0)
                 {
                     return Int32.MaxValue;
@@ -320,15 +319,15 @@ namespace JuvoPlayer.Demuxers.FFmpeg
             }
             catch (TaskCanceledException)
             {
-                Logger.Info("Take cancelled");
+                Log.Info("Take cancelled");
             }
             catch (InvalidOperationException ex)
             {
-                Logger.Warn(ex);
+                Log.Warn(ex);
             }
             catch (Exception ex)
             {
-                Logger.Error(ex, $"Unexpected exception: {ex.GetType()}");
+                Log.Error(ex, $"Unexpected exception: {ex.GetType()}");
             }
 
             return default;

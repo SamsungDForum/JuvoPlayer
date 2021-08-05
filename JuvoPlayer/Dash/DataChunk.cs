@@ -33,7 +33,6 @@ namespace JuvoPlayer.Dash
         private readonly DashDemuxerClient _demuxerClient;
         private readonly IDownloader _downloader;
         private readonly long? _length;
-        private readonly ILogger _logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
         private readonly long? _start;
         private readonly IThroughputHistory _throughputHistory;
         private readonly string _uri;
@@ -67,7 +66,7 @@ namespace JuvoPlayer.Dash
         public async Task Load()
         {
             var stopwatch = Stopwatch.StartNew();
-            _logger.Info($"{_uri} {_start} {_length} starts");
+            Log.Info($"{_uri} {_start} {_length} starts");
             try
             {
                 await _downloader.Download(
@@ -86,8 +85,8 @@ namespace JuvoPlayer.Dash
                     _demuxerClient.Offset += _downloaded;
                 }
 
-                _logger.Info($"{_uri} {_start} {_length} ends. " +
-                             $"Loading took {stopwatch.ElapsedMilliseconds} ms");
+                Log.Info($"{_uri} {_start} {_length} ends. " +
+                         $"Loading took {stopwatch.ElapsedMilliseconds} ms");
             }
         }
 

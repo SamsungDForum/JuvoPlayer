@@ -53,5 +53,9 @@ namespace JuvoLogger
             [CallerLineNumber] int line = 0);
 
         bool IsLevelEnabled(LogLevel level);
+
+        ILogger CopyWithPrefix(string prefix);
+
+        ILogger CopyWithChannel(string channel);
     }
 }

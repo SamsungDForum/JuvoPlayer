@@ -27,7 +27,6 @@ namespace JuvoPlayer.Demuxers.FFmpeg
 {
     internal class FFmpegDataStorage : INativeDataStorage
     {
-        private static readonly ILogger Logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
 
         private static readonly byte[] AudioPes =
         {
@@ -61,7 +60,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg
             {
                 if (ffmpeg.av_grow_packet(&pkt, prependLen) < 0)
                 {
-                    Logger.Error("GrowPacket failed");
+                    Log.Error("GrowPacket failed");
                     return;
                 }
 
