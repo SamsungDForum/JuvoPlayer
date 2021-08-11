@@ -17,9 +17,9 @@
 
 using System;
 using System.Collections.Generic;
+using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using FFmpegBindings.Interop;
 using JuvoLogger;
 using JuvoPlayer.Common;
 using Nito.AsyncEx;
@@ -29,15 +29,12 @@ namespace JuvoPlayer.Demuxers.FFmpeg
     public class FFmpegDemuxer : IDemuxer
     {
         private readonly IFFmpegGlue _ffmpegGlue;
-        private int _audioIdx = -1;
         private CancellationTokenSource _cancellationTokenSource;
         private TaskCompletionSource<bool> _completionSource;
         private IAvFormatContext _formatContext;
         private IAvioContext _ioContext;
-        private bool _nextPacketPending;
         private AsyncContextThread _thread;
-        private int _videoIdx = -1;
-        private IDemuxerClient _demuxerClient;
+        private IDemuxerDataSource _demuxerDataSource;
 
         public FFmpegDemuxer(IFFmpegGlue ffmpegGlue)
         {
@@ -72,7 +69,6 @@ namespace JuvoPlayer.Demuxers.FFmpeg
                 throw new InvalidOperationException("Initialization already started");
 
             InitThreadingPrimitives();
-            _demuxerClient.Initialize();
             return _thread.Factory.StartNew(() => InitDemuxer(InitEs));
         }
 
@@ -81,14 +77,12 @@ namespace JuvoPlayer.Demuxers.FFmpeg
             if (!IsInitialized())
                 throw new InvalidOperationException();
 
-            _nextPacketPending = true;
             var packet = await _thread.Factory.StartNew(() =>
             {
-                var streamIndexes = new[] {_audioIdx, _videoIdx};
                 Packet nextPacket;
                 do
                 {
-                    nextPacket = _formatContext.NextPacket(streamIndexes);
+                    nextPacket = _formatContext.NextPacket();
                 } while (nextPacket != null &&
                          minPts.HasValue && nextPacket.Pts < minPts);
 
@@ -96,22 +90,33 @@ namespace JuvoPlayer.Demuxers.FFmpeg
             });
             if (packet == null)
                 _completionSource?.TrySetResult(true);
-            _nextPacketPending = false;
             return packet;
         }
 
-        public void SetClient(IDemuxerClient client)
+        public void SetClient(IDemuxerDataSource dataSource)
         {
-            _demuxerClient = client;
+            _demuxerDataSource = dataSource;
+        }
+
+        public Task EnableStreams(IList<StreamConfig> configs)
+        {
+            return _thread.Factory.StartNew(() =>
+            {
+                var indexes = configs.Select(c => c.GetIndex()).ToList();
+                foreach (var index in indexes)
+                {
+                    Log.Info($"Setting index = {index}");
+                }
+
+                _formatContext.EnableStreams(indexes);
+            });
         }
 
         public Task Completion => _completionSource?.Task;
 
         public void Complete()
         {
-            _demuxerClient?.CompleteAdding();
-            if (_demuxerClient?.GetSegmentBuffers() != null && !_nextPacketPending)
-                _completionSource?.TrySetResult(true);
+            _demuxerDataSource?.CompleteAdding();
         }
 
         public void Reset()
@@ -121,7 +126,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg
             _thread?.Factory?.Run(DeallocFFmpeg);
             _thread?.Join();
             _thread = null;
-            _demuxerClient.Reset();
+            _demuxerDataSource.Reset();
         }
 
         public Task<TimeSpan> Seek(TimeSpan time, CancellationToken token)
@@ -131,10 +136,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg
 
             return _thread.Factory.StartNew(() =>
             {
-                var index = _audioIdx;
-                if (_videoIdx != -1)
-                    index = _videoIdx;
-                _formatContext.Seek(index, time);
+                _formatContext.Seek(time);
                 return time;
             }, token);
         }
@@ -193,8 +195,20 @@ namespace JuvoPlayer.Demuxers.FFmpeg
         private void ReadStreamConfigs(ref ClipConfiguration clipConfiguration)
         {
             var configs = new List<StreamConfig>();
-            ReadAudioConfig(configs);
-            ReadVideoConfig(configs);
+
+            for (var i = 0; i < _formatContext.NumberOfStreams; i++)
+            {
+                try
+                {
+                    var config = _formatContext.ReadConfig(i);
+                    configs.Add(config);
+                }
+                catch (FFmpegException e)
+                {
+                    Log.Warn(e, $"Cannot read config with index {i}");
+                }
+            }
+
             clipConfiguration.StreamConfigs = configs;
         }
 
@@ -229,7 +243,6 @@ namespace JuvoPlayer.Demuxers.FFmpeg
             try
             {
                 _formatContext.FindStreamInfo();
-                SelectBestStreams();
             }
             catch (FFmpegException ex)
             {
@@ -238,53 +251,12 @@ namespace JuvoPlayer.Demuxers.FFmpeg
             }
         }
 
-        private void SelectBestStreams()
-        {
-            _audioIdx = FindBestStream(AVMediaType.AVMEDIA_TYPE_AUDIO);
-            _videoIdx = FindBestStream(AVMediaType.AVMEDIA_TYPE_VIDEO);
-            if (_audioIdx < 0 && _videoIdx < 0)
-                throw new FFmpegException("Neither video nor audio stream found");
-            _formatContext.EnableStreams(_audioIdx, _videoIdx);
-        }
-
-        private int FindBestStream(AVMediaType mediaType)
-        {
-            var streamId = _formatContext.FindBestBandwidthStream(mediaType);
-            return streamId >= 0 ? streamId : _formatContext.FindBestStream(mediaType);
-        }
-
-        private void ReadAudioConfig(ICollection<StreamConfig> configs)
-        {
-            if (_audioIdx < 0)
-                return;
-
-            var config = _formatContext.ReadConfig(_audioIdx);
-
-            Log.Info("Setting audio stream to " + _audioIdx);
-            Log.Info(config.ToString());
-
-            configs.Add(config);
-        }
-
-        private void ReadVideoConfig(ICollection<StreamConfig> configs)
-        {
-            if (_videoIdx < 0)
-                return;
-
-            var config = _formatContext.ReadConfig(_videoIdx);
-
-            Log.Info("Setting video stream to " + _videoIdx);
-            Log.Info(config.ToString());
-
-            configs.Add(config);
-        }
-
         private ArraySegment<byte> ReadPacket(int size)
         {
             try
             {
                 var token = _cancellationTokenSource.Token;
-                var data = _demuxerClient.Read(size, token);
+                var data = _demuxerDataSource.Read(size, token);
                 return data;
             }
             catch (TaskCanceledException)
@@ -314,7 +286,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg
                 }
 
                 var token = _cancellationTokenSource.Token;
-                _demuxerClient.Seek(pos, token);
+                _demuxerDataSource.Seek(pos, token);
                 return 0;
             }
             catch (TaskCanceledException)

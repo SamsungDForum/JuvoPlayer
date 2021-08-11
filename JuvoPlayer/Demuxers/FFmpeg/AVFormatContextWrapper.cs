@@ -16,6 +16,7 @@
  */
 
 using System;
+using System.Collections;
 using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
@@ -39,6 +40,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg
         private AvioContextWrapper _avioContext;
 
         private AVFormatContext* _formatContext;
+        private bool _disposed;
 
         public AvFormatContextWrapper()
         {
@@ -83,6 +85,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg
             : TimeSpan.Zero;
 
         public DrmInitData DrmInitData => GetDrmInitData();
+        public uint NumberOfStreams => _formatContext->nb_streams;
 
         public void Open()
         {
@@ -148,14 +151,19 @@ namespace JuvoPlayer.Demuxers.FFmpeg
             return streamId;
         }
 
-        public void EnableStreams(int audioIdx, int videoIdx)
+        public void EnableStreams(IEnumerable<int> indexes)
         {
             if (_formatContext == null)
                 throw new FFmpegException($"Format context is null");
-            for (var i = 0; i < _formatContext->nb_streams; ++i)
+            for (var i = 0; i < _formatContext->nb_streams; i++)
+                _formatContext->streams[i]->discard = AVDiscard.AVDISCARD_ALL;
+            foreach (var index in indexes)
             {
-                var enabled = i == audioIdx || i == videoIdx;
-                _formatContext->streams[i]->discard = enabled ? AVDiscard.AVDISCARD_DEFAULT : AVDiscard.AVDISCARD_ALL;
+                if (index >= 0 && index < _formatContext->nb_streams)
+                {
+                    Log.Info($"Enabling {index}");
+                    _formatContext->streams[index]->discard = AVDiscard.AVDISCARD_DEFAULT;
+                }
             }
         }
 
@@ -177,8 +185,10 @@ namespace JuvoPlayer.Demuxers.FFmpeg
             }
         }
 
-        public Packet NextPacket(int[] streamIndexes)
+        public Packet NextPacket()
         {
+            if (_disposed)
+                throw new ObjectDisposedException(nameof(AvFormatContextWrapper));
             if (_formatContext == null)
                 return null;
 
@@ -193,10 +203,8 @@ namespace JuvoPlayer.Demuxers.FFmpeg
                     return null;
                 if (ret < 0)
                     throw new FFmpegException($"Cannot get next packet. Cause {GetErrorText(ret)}");
-                var streamIndex = pkt.stream_index;
-                if (streamIndexes.All(index => index != streamIndex))
-                    continue;
 
+                var streamIndex = pkt.stream_index;
                 var stream = _formatContext->streams[streamIndex];
                 var pts = Rescale(pkt.pts, stream);
                 var dts = Rescale(pkt.dts, stream);
@@ -220,18 +228,40 @@ namespace JuvoPlayer.Demuxers.FFmpeg
             } while (true);
         }
 
-        public void Seek(int idx, TimeSpan time)
+        public void Seek(TimeSpan time)
         {
             if (_formatContext == null)
                 throw new FFmpegException($"Format context is null");
+
+            var idx = -1;
+
+            for (var i = 0; i < _formatContext->nb_streams; i++)
+            {
+                var stream = _formatContext->streams[i];
+                if (stream->discard != AVDiscard.AVDISCARD_DEFAULT)
+                    continue;
+
+                if (stream->codec->codec_type == AVMediaType.AVMEDIA_TYPE_VIDEO)
+                {
+                    idx = i;
+                    break;
+                }
+
+                if (stream->codec->codec_type == AVMediaType.AVMEDIA_TYPE_AUDIO)
+                    idx = i;
+            }
+
             VerifyStreamIndex(idx);
             HandleSeek(idx, time);
         }
 
         public void Dispose()
         {
+            if (_disposed)
+                return;
             ReleaseUnmanagedResources();
             GC.SuppressFinalize(this);
+            _disposed = true;
         }
 
         private static int SwapEndianess(int value)
@@ -300,27 +330,28 @@ namespace JuvoPlayer.Demuxers.FFmpeg
         {
             var f = _formatContext;
             var result = new List<byte>();
-            if (f->nb_streams > 0)
+
+            for (var i = 0; i < f->nb_streams; i++)
             {
                 int size;
                 var enc = ffmpeg.av_stream_get_side_data(
-                    f->streams[0],
+                    f->streams[i],
                     AVPacketSideDataType.AV_PKT_DATA_ENCRYPTION_INIT_INFO,
                     &size);
+                if (enc == null)
+                    continue;
 
-                if (enc != null)
+                var data = ffmpeg.av_encryption_init_info_get_side_data(enc, (ulong) size);
+                while (data != null)
                 {
-                    var data = ffmpeg.av_encryption_init_info_get_side_data(enc, (ulong) size);
-
-                    while (data != null)
-                    {
-                        var psshBox = BuildPsshAtom(data).ToList();
-                        result.AddRange(psshBox);
-                        data = data->next;
-                    }
+                    var psshBox = BuildPsshAtom(data).ToList();
+                    result.AddRange(psshBox);
+                    data = data->next;
                 }
             }
 
+            if (result.Count == 0)
+                return null;
             return new DrmInitData
             {
                 DataType = DrmInitDataType.Cenc,
@@ -424,7 +455,10 @@ namespace JuvoPlayer.Demuxers.FFmpeg
 
         private StreamConfig ReadAudioConfig(AVStream* stream)
         {
-            var config = new AudioStreamConfig();
+            var config = new FFmpegAudioStreamConfig
+            {
+                Index = stream->index
+            };
             var sampleFormat = (AVSampleFormat) stream->codecpar->format;
             config.Codec = ConvertAudioCodec(stream->codecpar->codec_id);
             if (stream->codecpar->bits_per_coded_sample > 0)
@@ -452,8 +486,9 @@ namespace JuvoPlayer.Demuxers.FFmpeg
 
         private StreamConfig ReadVideoConfig(AVStream* stream)
         {
-            var config = new VideoStreamConfig
+            var config = new FFmpegVideoStreamConfig()
             {
+                Index = stream->index,
                 Codec = ConvertVideoCodec(stream->codecpar->codec_id),
                 CodecProfile = stream->codecpar->profile,
                 Size = new Size(stream->codecpar->width, stream->codecpar->height),

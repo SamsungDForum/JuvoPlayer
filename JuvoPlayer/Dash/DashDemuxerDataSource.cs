@@ -26,7 +26,7 @@ using Nito.AsyncEx;
 
 namespace JuvoPlayer.Dash
 {
-    public class DashDemuxerClient : IDemuxerClient
+    public class DashDemuxerDataSource : IDemuxerDataSource
     {
         private SegmentBuffer _currentSegment;
         private AsyncCollection<SegmentBuffer> _segments = new AsyncCollection<SegmentBuffer>();

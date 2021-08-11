@@ -1,6 +1,6 @@
 ﻿/*!
  * https://github.com/SamsungDForum/JuvoPlayer
- * Copyright 2018, Samsung Electronics Co., Ltd
+ * Copyright 2021, Samsung Electronics Co., Ltd
  * Licensed under the MIT license
  *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
@@ -15,32 +15,12 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
-using System;
-using System.Collections.Generic;
-using System.Threading;
-using System.Threading.Tasks;
 using JuvoPlayer.Common;
 
-namespace JuvoPlayer.Demuxers
+namespace JuvoPlayer.Demuxers.FFmpeg
 {
-    public struct ClipConfiguration
+    public class FFmpegAudioStreamConfig : AudioStreamConfig
     {
-        public IList<StreamConfig> StreamConfigs { get; set; }
-        public DrmInitData DrmInitData { get; set; }
-        public TimeSpan Duration { get; set; }
-    }
-
-    public interface IDemuxer : IDisposable
-    {
-        void SetClient(IDemuxerDataSource dataSource);
-        Task EnableStreams(IList<StreamConfig> configs);
-        Task Completion { get; }
-        bool IsInitialized();
-        Task<ClipConfiguration> InitForUrl(string url);
-        Task<ClipConfiguration> InitForEs();
-        Task<Packet> NextPacket(TimeSpan? minPts = null);
-        Task<TimeSpan> Seek(TimeSpan time, CancellationToken token);
-        void Complete();
-        void Reset();
+        public int Index { get; set; }
     }
 }

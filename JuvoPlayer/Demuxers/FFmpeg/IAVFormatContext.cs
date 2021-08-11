@@ -16,6 +16,7 @@
  */
 
 using System;
+using System.Collections.Generic;
 using FFmpegBindings.Interop;
 using JuvoPlayer.Common;
 
@@ -28,15 +29,16 @@ namespace JuvoPlayer.Demuxers.FFmpeg
         IAvioContext AvioContext { get; set; }
         TimeSpan Duration { get; }
         DrmInitData DrmInitData { get; }
+        uint NumberOfStreams { get; }
 
         void Open();
         void Open(string url);
         void FindStreamInfo();
         int FindBestStream(AVMediaType mediaType);
         int FindBestBandwidthStream(AVMediaType mediaType);
-        void EnableStreams(int audioIdx, int videoIdx);
+        void EnableStreams(IEnumerable<int> indexes);
         StreamConfig ReadConfig(int index);
-        Packet NextPacket(int[] streamIndexes);
-        void Seek(int stream, TimeSpan time);
+        Packet NextPacket();
+        void Seek(TimeSpan time);
     }
 }
