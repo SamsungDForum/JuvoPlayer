@@ -35,7 +35,6 @@ namespace JuvoPlayer.TizenTests
             {
                 var initTask = demuxer.InitForEs();
                 demuxer.Complete();
-                await demuxer.Completion;
                 Assert.ThrowsAsync<DemuxerException>(
                     async () => await initTask);
             }
@@ -48,7 +47,6 @@ namespace JuvoPlayer.TizenTests
             {
                 _ = demuxer.InitForEs();
                 demuxer.Complete();
-                await demuxer.Completion;
                 var packet = await demuxer.NextPacket();
                 Assert.That(packet, Is.Null);
             }
@@ -57,7 +55,7 @@ namespace JuvoPlayer.TizenTests
         private static FFmpegDemuxer CreateDemuxer()
         {
             var ffmpegDemuxer = new FFmpegDemuxer(new FFmpegGlue());
-            ffmpegDemuxer.SetClient(new DashDemuxerClient());
+            ffmpegDemuxer.SetClient(new DashDemuxerDataSource());
             return ffmpegDemuxer;
         }
     }

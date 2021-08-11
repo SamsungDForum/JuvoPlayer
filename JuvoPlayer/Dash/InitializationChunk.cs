@@ -31,14 +31,13 @@ namespace JuvoPlayer.Dash
     public class InitializationChunk : IChunk
     {
         private readonly CancellationToken _cancellationToken;
-        private readonly IDemuxer _demuxer;
         private readonly IDownloader _downloader;
         private readonly string _initUri;
         private readonly long? _length;
         private readonly RepresentationWrapper _representationWrapper;
         private readonly long? _start;
         private readonly IThroughputHistory _throughputHistory;
-        private readonly DashDemuxerClient _demuxerClient;
+        private readonly DashDemuxerDataSource _demuxerDataSource;
         private SegmentBuffer _segmentBuffer;
         private int _downloaded;
 
@@ -49,8 +48,7 @@ namespace JuvoPlayer.Dash
             RepresentationWrapper wrapper,
             IDownloader downloader,
             IThroughputHistory throughputHistory,
-            IDemuxer demuxer,
-            DashDemuxerClient demuxerClient,
+            DashDemuxerDataSource demuxerDataSource,
             CancellationToken cancellationToken)
         {
             _initUri = uri;
@@ -59,8 +57,7 @@ namespace JuvoPlayer.Dash
             _representationWrapper = wrapper;
             _downloader = downloader;
             _throughputHistory = throughputHistory;
-            _demuxer = demuxer;
-            _demuxerClient = demuxerClient;
+            _demuxerDataSource = demuxerDataSource;
             _cancellationToken = cancellationToken;
         }
 
@@ -89,7 +86,7 @@ namespace JuvoPlayer.Dash
                 if (_segmentBuffer != null)
                 {
                     _segmentBuffer.CompleteAdding();
-                    _demuxerClient.Offset += _downloaded;
+                    _demuxerDataSource.Offset += _downloaded;
                 }
 
                 Log.Info($"{_initUri} {_start} {_length} ends. " +
@@ -103,7 +100,7 @@ namespace JuvoPlayer.Dash
             if (_segmentBuffer == null)
             {
                 _segmentBuffer = new SegmentBuffer();
-                _demuxerClient.AddSegmentBuffer(_segmentBuffer);
+                _demuxerDataSource.AddSegmentBuffer(_segmentBuffer);
             }
 
             _downloaded += bytes.Length;

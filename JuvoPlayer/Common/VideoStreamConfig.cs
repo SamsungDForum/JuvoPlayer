@@ -21,10 +21,9 @@ using System.Text;
 
 namespace JuvoPlayer.Common
 {
-    public sealed class VideoStreamConfig : StreamConfig, IEquatable<VideoStreamConfig>
+    public class VideoStreamConfig : StreamConfig, IEquatable<VideoStreamConfig>
     {
         public VideoCodec Codec { get; set; }
-
         public int CodecProfile { get; set; }
         public Size Size { get; set; }
         public int FrameRateNum { get; set; }

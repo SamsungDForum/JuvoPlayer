@@ -27,6 +27,7 @@ using JuvoLogger;
 using JuvoPlayer.Common;
 using JuvoPlayer.Dash.MPD;
 using JuvoPlayer.Demuxers;
+using Log = JuvoLogger.Log;
 
 namespace JuvoPlayer.Dash
 {
@@ -35,6 +36,7 @@ namespace JuvoPlayer.Dash
         private readonly IClock _clock;
         private readonly IDemuxer _demuxer;
         private readonly IDownloader _downloader;
+        private ILogger _logger = Log.Logger;
         private readonly IThroughputHistory _throughputHistory;
         private readonly Subject<Exception> _exceptionSubject;
         private AdaptationSet _adaptationSet;
@@ -42,28 +44,27 @@ namespace JuvoPlayer.Dash
         private TimeSpan _bufferPosition;
         private ClipConfiguration _clipConfiguration;
         private RepresentationWrapper _currentRepresentation;
-        private Task _demuxPacketsLoopTask;
         private TaskCompletionSource<StreamConfig> _getStreamConfigTaskCompletionSource;
         private TimeSpan _maxBufferTime;
         private long? _previousSegmentNum;
         private IStreamRenderer _renderer;
         private RepresentationWrapper[] _representations;
         private Segment _segment;
-        private DashDemuxerClient _demuxerClient;
+        private DashDemuxerDataSource _demuxerDataSource;
+        private DemuxerController _demuxerController;
+        private CancellationToken _cancellationToken;
 
         public DashStream(
             IThroughputHistory throughputHistory,
             IDownloader downloader,
             IClock clock,
             IDemuxer demuxer,
-            DashDemuxerClient demuxerClient,
             IStreamSelector streamSelector)
         {
             _throughputHistory = throughputHistory;
             _downloader = downloader;
             _clock = clock;
             _demuxer = demuxer;
-            _demuxerClient = demuxerClient;
             _exceptionSubject = new Subject<Exception>();
             StreamSelector = streamSelector;
             _maxBufferTime = TimeSpan.FromSeconds(8);
@@ -92,23 +93,70 @@ namespace JuvoPlayer.Dash
             await indexChunk.Load();
         }
 
-        public Task LoadChunks(
+        public async Task LoadChunks(
             Segment segment,
             IStreamRenderer renderer,
             CancellationToken token)
         {
-            Log.Info();
-            _segment = segment;
-            _renderer = renderer;
-            _bufferPosition = segment.Start;
-            _previousSegmentNum = null;
-            _currentRepresentation = null;
-            return RunLoadChunksLoop(token);
+            try
+            {
+                _logger.Info();
+                _segment = segment;
+                _renderer = renderer;
+                _bufferPosition = segment.Start;
+                _previousSegmentNum = null;
+                _currentRepresentation = null;
+                _cancellationToken = token;
+
+                _demuxerController = new DemuxerController(
+                    _demuxer,
+                    StreamGroup.ContentType);
+
+                _demuxerController.DemuxerInitialized += DemuxerControllerOnDemuxerInitialized;
+                _demuxerController.PacketReady += DemuxerControllerOnPacketReady;
+                _demuxerController.Run();
+                await RunLoadChunksLoop(token);
+            }
+            finally
+            {
+                await _demuxerController.CompleteAsync();
+                _demuxerController.DemuxerInitialized -= DemuxerControllerOnDemuxerInitialized;
+                _demuxerController.PacketReady -= DemuxerControllerOnPacketReady;
+            }
+        }
+
+        private async Task DemuxerControllerOnDemuxerInitialized(object sender, DemuxerInitializedEventArgs e)
+        {
+            _logger.Info();
+
+            _clipConfiguration = e.ClipConfiguration;
+            var streamConfigs = _clipConfiguration.StreamConfigs;
+            var streamConfig = streamConfigs.Single();
+            var cancellationToken = _cancellationToken;
+            await _demuxerController.EnableStreams(new List<StreamConfig> {streamConfig},
+                cancellationToken,
+                callImmediately: true);
+            cancellationToken.ThrowIfCancellationRequested();
+
+            _getStreamConfigTaskCompletionSource?.TrySetResult(streamConfig);
+            var drmInitData = _clipConfiguration.DrmInitData;
+            if (drmInitData != null)
+                _renderer.HandleDrmInitData(drmInitData);
+        }
+
+        private Task DemuxerControllerOnPacketReady(object sender, PacketReadyEventArgs e)
+        {
+            var packet = e.Packet;
+            if (packet.Pts > _periodDuration)
+                return Task.CompletedTask;
+            _logger.Info($"Got {packet.StreamType} {packet.Pts}");
+            _renderer.HandlePacket(packet);
+            return Task.CompletedTask;
         }
 
         public async Task<StreamConfig> GetStreamConfig(CancellationToken cancellationToken)
         {
-            Log.Info();
+            _logger.Info();
             var streamConfigs = _clipConfiguration.StreamConfigs;
             if (streamConfigs != null)
             {
@@ -157,6 +205,8 @@ namespace JuvoPlayer.Dash
             TimeSpan? periodDuration)
         {
             StreamGroup = streamGroup;
+            var contentTypeString = StreamGroup.ContentType.ToString();
+            _logger = _logger.CopyWithPrefix(contentTypeString);
             _adaptationSet = adaptationSet;
             _periodDuration = periodDuration;
             var representations =
@@ -179,8 +229,7 @@ namespace JuvoPlayer.Dash
 
         private async Task RunLoadChunksLoop(CancellationToken cancellationToken)
         {
-            var contentType = _adaptationSet.ContentType;
-            Log.Info($"{contentType}");
+            _logger.Info();
             try
             {
                 while (!cancellationToken.IsCancellationRequested)
@@ -188,7 +237,7 @@ namespace JuvoPlayer.Dash
                     var bufferPosition = _bufferPosition;
                     var playbackPosition = _segment.ToPlaybackTime(_clock.Elapsed);
                     var bufferedDuration = bufferPosition - playbackPosition;
-                    Log.Info($"{contentType}: {bufferedDuration} = {bufferPosition} - {playbackPosition}");
+                    _logger.Info($"{bufferedDuration} = {bufferPosition} - {playbackPosition}");
                     if (bufferedDuration <= _maxBufferTime)
                     {
                         if (!await LoadNextChunk(cancellationToken))
@@ -211,86 +260,25 @@ namespace JuvoPlayer.Dash
             }
             catch (Exception ex)
             {
-                Log.Error(ex, $"{contentType}");
+                _logger.Error(ex);
                 _exceptionSubject.OnNext(ex);
             }
 
-            Log.Info($"{contentType}: Load loop finished");
-
-            try
-            {
-                if (_demuxPacketsLoopTask != null)
-                {
-                    Log.Info($"{contentType}: Awaiting Demux loop");
-                    await _demuxPacketsLoopTask;
-                }
-            }
-            catch (Exception)
-            {
-                // ignored
-            }
-            finally
-            {
-                if (_demuxPacketsLoopTask != null)
-                    Log.Info($"{contentType}: Demux loop finished");
-            }
-        }
-
-        private async Task RunDemuxPacketsLoop(CancellationToken cancellationToken)
-        {
-            var contentType = _adaptationSet.ContentType;
-            Log.Info($"{contentType}");
-            try
-            {
-                var taskCompletionSource = new TaskCompletionSource<bool>();
-                using (cancellationToken.Register(() => taskCompletionSource.SetCanceled()))
-                {
-                    var cancellationTask = taskCompletionSource.Task;
-                    var minPts =
-                        _adaptationSet.ContentType == ContentType.Audio ? (TimeSpan?) _segment.Start : null;
-                    while (!cancellationToken.IsCancellationRequested)
-                    {
-                        var completedTask = await Task.WhenAny(
-                            _demuxer.NextPacket(minPts),
-                            cancellationTask);
-                        if (completedTask == cancellationTask)
-                            return;
-                        var packet = await (Task<Packet>) completedTask;
-                        if (packet == null)
-                            return;
-                        if (packet.Pts > _periodDuration)
-                            return;
-                        Log.Info($"{contentType}: Got {packet.StreamType} {packet.Pts}");
-                        _renderer.HandlePacket(packet);
-                    }
-                }
-            }
-            catch (Exception ex)
-            {
-                Log.Warn(ex, $"{contentType}");
-            }
-            finally
-            {
-                _demuxer.Reset();
-            }
+            _logger.Info("Load loop finished");
         }
 
         private async Task<bool> LoadNextChunk(CancellationToken cancellationToken)
         {
-            var contentType = _adaptationSet.ContentType;
-            Log.Info($"{contentType}");
+            _logger.Info();
             var previousRepresentation = _currentRepresentation;
             var representation = SelectRepresentation();
-            Task<ClipConfiguration> initDemuxerTask = null;
             if (previousRepresentation != representation)
             {
-                Log.Info($"{contentType}: Change of representation");
-                await ResetDemuxer();
-                cancellationToken.ThrowIfCancellationRequested();
-                _currentRepresentation = representation;
-                initDemuxerTask = InitDemuxer(
+                _logger.Info("Change of representation");
+                ReinitDemuxer(
                     representation.InitData,
                     cancellationToken);
+                _currentRepresentation = representation;
             }
 
             var chunk = GetNextChunk(
@@ -298,38 +286,51 @@ namespace JuvoPlayer.Dash
                 cancellationToken,
                 _bufferPosition,
                 _previousSegmentNum);
+            var sendEos = chunk == null;
             try
             {
                 if (chunk != null)
                 {
-                    Log.Info($"{contentType}: Loading chunk");
+                    _logger.Info("Loading chunk");
                     await chunk.Load();
                     cancellationToken.ThrowIfCancellationRequested();
-                    await OnChunkLoaded(chunk,
-                        representation,
-                        initDemuxerTask);
+                    OnChunkLoaded(chunk,
+                        representation);
                     return true;
                 }
             }
             catch (HttpRequestException ex)
             {
-                Log.Error(ex);
+                _logger.Error(ex);
                 // Send EOS if we got exception for the last segment
-                if (!(chunk is DataChunk))
+                if (chunk is DataChunk dataChunk)
+                {
+                    var lastSegmentNum =
+                        GetLastSegmentNum(representation);
+                    if (dataChunk.SegmentNum == lastSegmentNum)
+                        sendEos = true;
+                }
+
+                if (!sendEos)
+                {
+                    _demuxerDataSource.CompleteAdding();
                     throw;
-                var dataChunk = chunk as DataChunk;
-                var lastSegmentNum =
-                    GetLastSegmentNum(representation);
-                if (dataChunk.SegmentNum != lastSegmentNum)
-                    throw;
+                }
+            }
+            finally
+            {
+                if (sendEos)
+                {
+                    _logger.Info("Sending EOS packet");
+                    var contentType = _adaptationSet.ContentType;
+                    var streamType = contentType.ToStreamType();
+                    _demuxerDataSource.CompleteAdding();
+                    _demuxerController.NotifyEos(
+                        new List<StreamType> {streamType},
+                        cancellationToken);
+                }
             }
 
-            await ResetDemuxer();
-            cancellationToken.ThrowIfCancellationRequested();
-            Log.Info($"{contentType} Sending EOS packet");
-            var streamType = contentType.ToStreamType();
-            var eosPacket = new EosPacket(streamType);
-            _renderer.HandlePacket(eosPacket);
             return false;
         }
 
@@ -339,39 +340,35 @@ namespace JuvoPlayer.Dash
             return _representations[selectedIndex];
         }
 
-        private Task<ClipConfiguration> InitDemuxer(
+        private void ReinitDemuxer(
             IList<byte[]> initData,
             CancellationToken cancellationToken)
         {
-            Log.Info();
-            var initTask = _demuxer.InitForEs();
-            if (initData != null)
-            {
-                var initDataLength = initData.Sum(bytes => bytes.Length);
-                var seg = new SegmentBuffer();
-                _demuxerClient.Offset = 0;
-                _demuxerClient.AddSegmentBuffer(seg);
-                foreach (var bytes in initData)
-                    seg.Add(bytes);
+            _logger.Info();
 
-                _demuxerClient.Offset = initDataLength;
-                seg.CompleteAdding();
-            }
+            _demuxerDataSource?.CompleteAdding();
 
-            _demuxPacketsLoopTask =
-                RunDemuxPacketsLoop(cancellationToken);
-            return initTask;
-        }
-
-        private async ValueTask ResetDemuxer()
-        {
-            Log.Info();
-            if (!_demuxer.IsInitialized())
+            _demuxerDataSource = new DashDemuxerDataSource();
+            _demuxerController.Init(
+                _demuxerDataSource,
+                cancellationToken);
+            var minPts =
+                _adaptationSet.ContentType == ContentType.Audio ? (TimeSpan?) _segment.Start : null;
+            _demuxerController.GetPackets(
+                minPts,
+                cancellationToken);
+            if (initData == null)
                 return;
-            _demuxer.Complete();
-            await _demuxer.Completion;
-            if (_demuxPacketsLoopTask != null)
-                await _demuxPacketsLoopTask;
+
+            var initDataLength = initData.Sum(bytes => bytes.Length);
+            var seg = new SegmentBuffer();
+            _demuxerDataSource.Offset = 0;
+            _demuxerDataSource.AddSegmentBuffer(seg);
+            foreach (var bytes in initData)
+                seg.Add(bytes);
+
+            _demuxerDataSource.Offset = initDataLength;
+            seg.CompleteAdding();
         }
 
         private IChunk GetNextChunk(
@@ -416,8 +413,7 @@ namespace JuvoPlayer.Dash
                 representationWrapper,
                 _downloader,
                 _throughputHistory,
-                _demuxer,
-                _demuxerClient,
+                _demuxerDataSource,
                 cancellationToken);
         }
 
@@ -462,8 +458,7 @@ namespace JuvoPlayer.Dash
                 segmentNum,
                 _downloader,
                 _throughputHistory,
-                _demuxer,
-                _demuxerClient,
+                _demuxerDataSource,
                 cancellationToken);
         }
 
@@ -491,45 +486,35 @@ namespace JuvoPlayer.Dash
             return firstSegmentNum + segmentCount.Value - 1;
         }
 
-        private async Task OnChunkLoaded(
+        private void OnChunkLoaded(
             IChunk chunk,
-            RepresentationWrapper representationWrapper,
-            Task<ClipConfiguration> initDemuxerTask)
+            RepresentationWrapper representationWrapper)
         {
             switch (chunk)
             {
-                case InitializationChunk _:
+                case DataChunk dataChunk:
                 {
-                    Log.Info();
-                    // TODO: Handle cases when init is cancelled
-                    initDemuxerTask.ContinueWith(clipConfigurationTask =>
-                        {
-                            _clipConfiguration = clipConfigurationTask.Result;
-                            var streamConfigs = _clipConfiguration.StreamConfigs;
-                            var streamConfig = streamConfigs.Single();
-                            _getStreamConfigTaskCompletionSource?.TrySetResult(streamConfig);
-                            var drmInitData = _clipConfiguration.DrmInitData;
-                            if (drmInitData != null)
-                                _renderer.HandleDrmInitData(_clipConfiguration.DrmInitData);
-                        }, CancellationToken.None,
-                        TaskContinuationOptions.OnlyOnRanToCompletion,
-                        TaskScheduler.FromCurrentSynchronizationContext());
+                    OnDataChunkLoaded(representationWrapper, dataChunk);
                     break;
                 }
 
-                case DataChunk dataChunk:
-                {
-                    var segmentNum = dataChunk.SegmentNum;
-                    var segmentIndex = representationWrapper.SegmentIndex;
-                    var periodDuration = representationWrapper.PeriodDuration;
-                    var segmentStartTime = segmentIndex.GetStartTime(segmentNum);
-                    var segmentDuration =
-                        segmentIndex.GetDuration(segmentNum, periodDuration);
-                    _previousSegmentNum = segmentNum;
-                    _bufferPosition = segmentStartTime + segmentDuration.Value;
-                    break;
-                }
+                default:
+                    return;
             }
+        }
+
+        private void OnDataChunkLoaded(
+            RepresentationWrapper representationWrapper,
+            DataChunk dataChunk)
+        {
+            var segmentNum = dataChunk.SegmentNum;
+            var segmentIndex = representationWrapper.SegmentIndex;
+            var periodDuration = representationWrapper.PeriodDuration;
+            var segmentStartTime = segmentIndex.GetStartTime(segmentNum);
+            var segmentDuration =
+                segmentIndex.GetDuration(segmentNum, periodDuration);
+            _previousSegmentNum = segmentNum;
+            _bufferPosition = segmentStartTime + segmentDuration.Value;
         }
     }
 }

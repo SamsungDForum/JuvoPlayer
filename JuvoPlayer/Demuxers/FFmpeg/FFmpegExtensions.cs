@@ -1,6 +1,6 @@
-/*!
+﻿/*!
  * https://github.com/SamsungDForum/JuvoPlayer
- * Copyright 2020, Samsung Electronics Co., Ltd
+ * Copyright 2021, Samsung Electronics Co., Ltd
  * Licensed under the MIT license
  *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
@@ -16,19 +16,19 @@
  */
 
 using System;
-using System.Threading;
-using JuvoPlayer.Dash;
-using Nito.AsyncEx;
+using JuvoPlayer.Common;
 
-namespace JuvoPlayer.Demuxers
+namespace JuvoPlayer.Demuxers.FFmpeg
 {
-    public interface IDemuxerClient
+    public static class FFmpegExtensions
     {
-        void Initialize();
-        AsyncCollection<SegmentBuffer> GetSegmentBuffers();
-        ArraySegment<byte> Read(int size, CancellationToken cancellationToken);
-        void Seek(long pos, CancellationToken token);
-        void CompleteAdding();
-        void Reset();
+        public static int GetIndex(this StreamConfig config)
+        {
+            if (config.StreamType() == StreamType.Audio)
+                return ((FFmpegAudioStreamConfig) config).Index;
+            if (config.StreamType() == StreamType.Video)
+                return ((FFmpegVideoStreamConfig) config).Index;
+            throw new ArgumentException(config.ToString());
+        }
     }
 }

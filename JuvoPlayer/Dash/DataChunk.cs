@@ -22,15 +22,13 @@ using System.Threading;
 using System.Threading.Tasks;
 using JuvoLogger;
 using JuvoPlayer.Common;
-using JuvoPlayer.Demuxers;
 
 namespace JuvoPlayer.Dash
 {
     public class DataChunk : IChunk
     {
         private readonly CancellationToken _cancellationToken;
-        private readonly IDemuxer _demuxer;
-        private readonly DashDemuxerClient _demuxerClient;
+        private readonly DashDemuxerDataSource _demuxerDataSource;
         private readonly IDownloader _downloader;
         private readonly long? _length;
         private readonly long? _start;
@@ -46,8 +44,7 @@ namespace JuvoPlayer.Dash
             long segmentNum,
             IDownloader downloader,
             IThroughputHistory throughputHistory,
-            IDemuxer demuxer,
-            DashDemuxerClient demuxerClient,
+            DashDemuxerDataSource demuxerDataSource,
             CancellationToken cancellationToken)
         {
             _uri = uri;
@@ -56,8 +53,7 @@ namespace JuvoPlayer.Dash
             SegmentNum = segmentNum;
             _downloader = downloader;
             _throughputHistory = throughputHistory;
-            _demuxer = demuxer;
-            _demuxerClient = demuxerClient;
+            _demuxerDataSource = demuxerDataSource;
             _cancellationToken = cancellationToken;
         }
 
@@ -82,7 +78,7 @@ namespace JuvoPlayer.Dash
                 if (_segmentBuffer != null)
                 {
                     _segmentBuffer.CompleteAdding();
-                    _demuxerClient.Offset += _downloaded;
+                    _demuxerDataSource.Offset += _downloaded;
                 }
 
                 Log.Info($"{_uri} {_start} {_length} ends. " +
@@ -95,7 +91,7 @@ namespace JuvoPlayer.Dash
             if (_segmentBuffer == null)
             {
                 _segmentBuffer = new SegmentBuffer();
-                _demuxerClient.AddSegmentBuffer(_segmentBuffer);
+                _demuxerDataSource.AddSegmentBuffer(_segmentBuffer);
             }
 
             _downloaded += bytes.Length;

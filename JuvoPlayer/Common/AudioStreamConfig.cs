@@ -20,7 +20,7 @@ using System.Text;
 
 namespace JuvoPlayer.Common
 {
-    public sealed class AudioStreamConfig : StreamConfig, IEquatable<AudioStreamConfig>
+    public class AudioStreamConfig : StreamConfig, IEquatable<AudioStreamConfig>
     {
         public AudioCodec Codec { get; set; }
         public int ChannelLayout { get; set; }

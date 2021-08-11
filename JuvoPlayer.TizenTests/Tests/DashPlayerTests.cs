@@ -166,6 +166,12 @@ namespace JuvoPlayer.TizenTests.Tests
             };
         }
 
+        [TearDown]
+        public void TearDown()
+        {
+            GC.Collect();
+        }
+
         private static async Task WaitForTargetPosition(IPlayer player, TimeSpan targetPosition)
         {
             using (var cancellationTokenSource = new CancellationTokenSource())

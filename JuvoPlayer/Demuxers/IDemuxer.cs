@@ -32,7 +32,8 @@ namespace JuvoPlayer.Demuxers
 
     public interface IDemuxer : IDisposable
     {
-        void SetClient(IDemuxerClient client);
+        void SetClient(IDemuxerDataSource dataSource);
+        Task EnableStreams(IList<StreamConfig> configs);
         Task Completion { get; }
         bool IsInitialized();
         Task<ClipConfiguration> InitForUrl(string url);
