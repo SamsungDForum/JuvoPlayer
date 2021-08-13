@@ -453,57 +453,83 @@ namespace JuvoPlayer.Demuxers.FFmpeg
             return packet;
         }
 
-        private StreamConfig ReadAudioConfig(AVStream* stream)
+        private static StreamConfig ReadAudioConfig(AVStream* stream)
         {
-            var config = new FFmpegAudioStreamConfig
-            {
-                Index = stream->index
-            };
-            var sampleFormat = (AVSampleFormat) stream->codecpar->format;
-            config.Codec = ConvertAudioCodec(stream->codecpar->codec_id);
+            var codecExtraData = GetCodecExtraData(stream);
+            var mimeType = GetMimeType(stream);
+            var channelLayout = stream->codecpar->channels;
+            var sampleRate = stream->codecpar->sample_rate;
+            var bitsPerChannel = GetBitsPerChannel(stream);
+            var bitRate = stream->codecpar->bit_rate;
+            var index = stream->index;
+            return new FFmpegAudioStreamConfig(
+                codecExtraData,
+                mimeType,
+                channelLayout,
+                sampleRate,
+                bitsPerChannel,
+                bitRate,
+                index);
+        }
+
+        private static StreamConfig ReadVideoConfig(AVStream* stream)
+        {
+            var codecExtraData = GetCodecExtraData(stream);
+            var mimeType = GetMimeType(stream);
+            var size = new Size(
+                stream->codecpar->width,
+                stream->codecpar->height);
+            var frameRateNum = stream->avg_frame_rate.num;
+            var frameRateDen = stream->avg_frame_rate.den > 0 ?
+                stream->avg_frame_rate.den : 1;
+            var bitRate = stream->codecpar->bit_rate;
+            var index = stream->index;
+            return new FFmpegVideoStreamConfig(
+                codecExtraData,
+                mimeType,
+                size,
+                frameRateNum,
+                frameRateDen,
+                bitRate,
+                index);
+        }
+
+        private static byte[] GetCodecExtraData(AVStream* stream)
+        {
+            if (stream->codecpar->extradata_size <= 0)
+                return null;
+            var codecExtraData = new byte[stream->codecpar->extradata_size];
+            Marshal.Copy((IntPtr) stream->codecpar->extradata, codecExtraData, 0,
+                stream->codecpar->extradata_size);
+            return codecExtraData;
+        }
+
+        private static int GetBitsPerChannel(AVStream* stream)
+        {
+            int bitsPerChannel;
             if (stream->codecpar->bits_per_coded_sample > 0)
             {
-                config.BitsPerChannel = stream->codecpar->bits_per_coded_sample;
+                bitsPerChannel = stream->codecpar->bits_per_coded_sample;
             }
             else
             {
-                config.BitsPerChannel = ffmpeg.av_get_bytes_per_sample(sampleFormat) * 8;
-                config.BitsPerChannel /= stream->codecpar->channels;
+                var sampleFormat = (AVSampleFormat) stream->codecpar->format;
+                bitsPerChannel = ffmpeg.av_get_bytes_per_sample(sampleFormat) * 8;
+                bitsPerChannel /= stream->codecpar->channels;
             }
 
-            config.ChannelLayout = stream->codecpar->channels;
-            config.SampleRate = stream->codecpar->sample_rate;
-            if (stream->codecpar->extradata_size > 0)
-            {
-                config.CodecExtraData = new byte[stream->codecpar->extradata_size];
-                Marshal.Copy((IntPtr) stream->codecpar->extradata, config.CodecExtraData, 0,
-                    stream->codecpar->extradata_size);
-            }
-
-            config.BitRate = stream->codecpar->bit_rate;
-            return config;
+            return bitsPerChannel;
         }
 
-        private StreamConfig ReadVideoConfig(AVStream* stream)
+        private static string GetMimeType(AVStream* stream)
         {
-            var config = new FFmpegVideoStreamConfig()
+            var buff = new byte[32];
+            fixed (byte* ptr = buff)
             {
-                Index = stream->index,
-                Codec = ConvertVideoCodec(stream->codecpar->codec_id),
-                CodecProfile = stream->codecpar->profile,
-                Size = new Size(stream->codecpar->width, stream->codecpar->height),
-                FrameRateNum = stream->avg_frame_rate.num,
-                FrameRateDen = stream->avg_frame_rate.den > 0 ? stream->avg_frame_rate.den : 1,
-                BitRate = stream->codecpar->bit_rate
-            };
-            if (stream->codecpar->extradata_size > 0)
-            {
-                config.CodecExtraData = new byte[stream->codecpar->extradata_size];
-                Marshal.Copy((IntPtr) stream->codecpar->extradata, config.CodecExtraData, 0,
-                    stream->codecpar->extradata_size);
+                ffmpeg.av_fourcc_make_string(ptr, stream->codecpar->codec_tag);
             }
 
-            return config;
+            return MimeType.GetMediaMimeType(Encoding.ASCII.GetString(buff));
         }
 
         private static string GetErrorText(int returnCode)
@@ -538,84 +564,6 @@ namespace JuvoPlayer.Demuxers.FFmpeg
         ~AvFormatContextWrapper()
         {
             ReleaseUnmanagedResources();
-        }
-
-        private static AudioCodec ConvertAudioCodec(AVCodecID codec)
-        {
-            switch (codec)
-            {
-                case AVCodecID.AV_CODEC_ID_AAC:
-                    return AudioCodec.Aac;
-                case AVCodecID.AV_CODEC_ID_MP2:
-                    return AudioCodec.Mp2;
-                case AVCodecID.AV_CODEC_ID_MP3:
-                    return AudioCodec.Mp3;
-                case AVCodecID.AV_CODEC_ID_VORBIS:
-                    return AudioCodec.Vorbis;
-                case AVCodecID.AV_CODEC_ID_FLAC:
-                    return AudioCodec.Flac;
-                case AVCodecID.AV_CODEC_ID_AMR_NB:
-                    return AudioCodec.AmrNb;
-                case AVCodecID.AV_CODEC_ID_AMR_WB:
-                    return AudioCodec.AmrWb;
-                case AVCodecID.AV_CODEC_ID_PCM_MULAW:
-                    return AudioCodec.PcmMulaw;
-                case AVCodecID.AV_CODEC_ID_GSM_MS:
-                    return AudioCodec.GsmMs;
-                case AVCodecID.AV_CODEC_ID_PCM_S16BE:
-                    return AudioCodec.PcmS16Be;
-                case AVCodecID.AV_CODEC_ID_PCM_S24BE:
-                    return AudioCodec.PcmS24Be;
-                case AVCodecID.AV_CODEC_ID_OPUS:
-                    return AudioCodec.Opus;
-                case AVCodecID.AV_CODEC_ID_EAC3:
-                    return AudioCodec.Eac3;
-                case AVCodecID.AV_CODEC_ID_DTS:
-                    return AudioCodec.Dts;
-                case AVCodecID.AV_CODEC_ID_AC3:
-                    return AudioCodec.Ac3;
-                case AVCodecID.AV_CODEC_ID_WMAV1:
-                    return AudioCodec.Wmav1;
-                case AVCodecID.AV_CODEC_ID_WMAV2:
-                    return AudioCodec.Wmav2;
-                default:
-                    throw new Exception("Unsupported codec: " + codec);
-            }
-        }
-
-        private static VideoCodec ConvertVideoCodec(AVCodecID codec)
-        {
-            switch (codec)
-            {
-                case AVCodecID.AV_CODEC_ID_H264:
-                    return VideoCodec.H264;
-                case AVCodecID.AV_CODEC_ID_HEVC:
-                    return VideoCodec.H265;
-                case AVCodecID.AV_CODEC_ID_THEORA:
-                    return VideoCodec.Theora;
-                case AVCodecID.AV_CODEC_ID_MPEG4:
-                    return VideoCodec.Mpeg4;
-                case AVCodecID.AV_CODEC_ID_VP8:
-                    return VideoCodec.Vp8;
-                case AVCodecID.AV_CODEC_ID_VP9:
-                    return VideoCodec.Vp9;
-                case AVCodecID.AV_CODEC_ID_MPEG2VIDEO:
-                    return VideoCodec.Mpeg2;
-                case AVCodecID.AV_CODEC_ID_VC1:
-                    return VideoCodec.Vc1;
-                case AVCodecID.AV_CODEC_ID_WMV1:
-                    return VideoCodec.Wmv1;
-                case AVCodecID.AV_CODEC_ID_WMV2:
-                    return VideoCodec.Wmv2;
-                case AVCodecID.AV_CODEC_ID_WMV3:
-                    return VideoCodec.Wmv3;
-                case AVCodecID.AV_CODEC_ID_H263:
-                    return VideoCodec.H263;
-                case AVCodecID.AV_CODEC_ID_INDEO3:
-                    return VideoCodec.Indeo3;
-                default:
-                    throw new Exception("Unsupported codec: " + codec);
-            }
         }
     }
 }

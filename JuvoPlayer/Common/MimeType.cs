@@ -19,7 +19,7 @@
 
 using System;
 
-namespace JuvoPlayer.Dash.MPD
+namespace JuvoPlayer.Common
 {
     public class MimeType
     {
@@ -41,7 +41,10 @@ namespace JuvoPlayer.Dash.MPD
         public static readonly string VideoMpeg2 = BaseTypeVideo + "/mpeg2";
         public static readonly string VideoVc1 = BaseTypeVideo + "/wvc1";
         public static readonly string VideoDolbyVision = BaseTypeVideo + "/dolby-vision";
+        public static readonly string VideoTheora = BaseTypeVideo + "/theora";
+        public static readonly string VideoWmv = BaseTypeVideo + "/x-ms-wmv";
 
+        public static readonly string AudioMp3 = BaseTypeAudio + "/mp3";
         public static readonly string AudioMp4 = BaseTypeAudio + "/mp4";
         public static readonly string AudioAac = BaseTypeAudio + "/mp4a-latm";
         public static readonly string AudioWebm = BaseTypeAudio + "/webm";

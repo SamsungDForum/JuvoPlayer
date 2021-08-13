@@ -23,6 +23,7 @@ using System.Linq;
 using System.Reflection;
 using System.Runtime.InteropServices;
 using JuvoPlayer.Common;
+using JuvoPlayer.Dash.MPD;
 using JuvoPlayer.Players;
 using Tizen.TV.Multimedia;
 using StreamType = Tizen.TV.Multimedia.StreamType;
@@ -37,7 +38,7 @@ namespace JuvoPlayer.Platforms.Tizen
         {
             new VideoConfiguration
             {
-                Codec = VideoCodec.Mpeg4,
+                MimeType = MimeType.VideoMp4,
                 Fps = 60,
                 Bps = 60 * 1000000,
                 Width = 1920,
@@ -46,7 +47,7 @@ namespace JuvoPlayer.Platforms.Tizen
             },
             new VideoConfiguration
             {
-                Codec = VideoCodec.H263,
+                MimeType = MimeType.VideoH263,
                 Fps = 30,
                 Bps = 30 * 1000000,
                 Width = 1920,
@@ -55,7 +56,7 @@ namespace JuvoPlayer.Platforms.Tizen
             },
             new VideoConfiguration
             {
-                Codec = VideoCodec.H264,
+                MimeType = MimeType.VideoH264,
                 Fps = 30,
                 Bps = 60 * 1000000,
                 Width = 4096,
@@ -64,7 +65,7 @@ namespace JuvoPlayer.Platforms.Tizen
             },
             new VideoConfiguration
             {
-                Codec = VideoCodec.H264,
+                MimeType = MimeType.VideoH264,
                 Fps = 60,
                 Bps = 60 * 1000000,
                 Width = 3840,
@@ -73,7 +74,7 @@ namespace JuvoPlayer.Platforms.Tizen
             },
             new VideoConfiguration
             {
-                Codec = VideoCodec.H265,
+                MimeType = MimeType.VideoH265,
                 Fps = 60,
                 Bps = 80 * 1000000,
                 Width = 4096,
@@ -82,7 +83,16 @@ namespace JuvoPlayer.Platforms.Tizen
             },
             new VideoConfiguration
             {
-                Codec = VideoCodec.Indeo3,
+                MimeType = MimeType.VideoMpeg2,
+                Fps = 60,
+                Bps = 20 * 1000000,
+                Width = 1920,
+                Height = 1080,
+                Supported = true
+            },
+            new VideoConfiguration
+            {
+                MimeType = MimeType.VideoTheora,
                 Fps = 30,
                 Bps = 20 * 1000000,
                 Width = 1920,
@@ -91,7 +101,7 @@ namespace JuvoPlayer.Platforms.Tizen
             },
             new VideoConfiguration
             {
-                Codec = VideoCodec.Mpeg2,
+                MimeType = MimeType.VideoVc1,
                 Fps = 60,
                 Bps = 20 * 1000000,
                 Width = 1920,
@@ -100,16 +110,7 @@ namespace JuvoPlayer.Platforms.Tizen
             },
             new VideoConfiguration
             {
-                Codec = VideoCodec.Theora,
-                Fps = 30,
-                Bps = 20 * 1000000,
-                Width = 1920,
-                Height = 1080,
-                Supported = false
-            },
-            new VideoConfiguration
-            {
-                Codec = VideoCodec.Vc1,
+                MimeType = MimeType.VideoVp8,
                 Fps = 60,
                 Bps = 20 * 1000000,
                 Width = 1920,
@@ -118,16 +119,7 @@ namespace JuvoPlayer.Platforms.Tizen
             },
             new VideoConfiguration
             {
-                Codec = VideoCodec.Vp8,
-                Fps = 60,
-                Bps = 20 * 1000000,
-                Width = 1920,
-                Height = 1080,
-                Supported = true
-            },
-            new VideoConfiguration
-            {
-                Codec = VideoCodec.Vp9,
+                MimeType = MimeType.VideoVp9,
                 Fps = 60,
                 Bps = 20 * 1000000,
                 Width = 1920,
@@ -136,25 +128,7 @@ namespace JuvoPlayer.Platforms.Tizen
             },
             new VideoConfiguration
             {
-                Codec = VideoCodec.Wmv1,
-                Fps = 30,
-                Bps = 20 * 1000000,
-                Width = 1920,
-                Height = 1080,
-                Supported = true
-            },
-            new VideoConfiguration
-            {
-                Codec = VideoCodec.Wmv2,
-                Fps = 30,
-                Bps = 20 * 1000000,
-                Width = 1920,
-                Height = 1080,
-                Supported = true
-            },
-            new VideoConfiguration
-            {
-                Codec = VideoCodec.Wmv3,
+                MimeType = MimeType.VideoWmv,
                 Fps = 60,
                 Bps = 20 * 1000000,
                 Width = 1920,
@@ -211,16 +185,16 @@ namespace JuvoPlayer.Platforms.Tizen
             // Sort configuration by FPS (lowest first) & get an entry matching codec & FPS
             var fpsOrderedConfigs = VideoConfigurations.OrderBy(entry => entry.Fps);
             var configParameters = fpsOrderedConfigs.FirstOrDefault(entry =>
-                                       videoConfig.Codec == entry.Codec && entry.Fps >= videoConfig.FrameRate) ??
-                                   fpsOrderedConfigs.LastOrDefault(entry => videoConfig.Codec == entry.Codec);
+                                       string.Equals(videoConfig.MimeType, entry.MimeType) && entry.Fps >= videoConfig.FrameRate) ??
+                                   fpsOrderedConfigs.LastOrDefault(entry => string.Equals(videoConfig.MimeType, entry.MimeType));
 
             if (configParameters == null)
-                throw new ArgumentException($"Unsupported codec {videoConfig.Codec}");
+                throw new ArgumentException($"Unsupported mime type {videoConfig.MimeType}");
 
             return new VideoStreamInfo
             {
                 codecData = videoConfig.CodecExtraData,
-                mimeType = GetCodecMimeType(videoConfig.Codec),
+                mimeType = ConvertAsEsVideoMimeType(videoConfig.MimeType),
                 width = videoConfig.Size.Width,
                 maxWidth = configParameters.Width,
                 height = videoConfig.Size.Height,
@@ -240,74 +214,52 @@ namespace JuvoPlayer.Platforms.Tizen
             return new AudioStreamInfo
             {
                 codecData = audioConfig.CodecExtraData,
-                mimeType = GetCodecMimeType(audioConfig.Codec),
+                mimeType = ConvertAsEsAudioMimeType(audioConfig.MimeType),
                 sampleRate = audioConfig.SampleRate,
                 channels = audioConfig.ChannelLayout
             };
         }
 
-        internal static VideoMimeType GetCodecMimeType(VideoCodec videoCodec)
+        internal static VideoMimeType ConvertAsEsVideoMimeType(string mimeType)
         {
-            switch (videoCodec)
-            {
-                case VideoCodec.H263:
-                    return VideoMimeType.H263;
-                case VideoCodec.H264:
-                    return VideoMimeType.H264;
-                case VideoCodec.H265:
-                    return VideoMimeType.Hevc;
-                case VideoCodec.Mpeg2:
-                    return VideoMimeType.Mpeg2;
-                case VideoCodec.Mpeg4:
-                    return VideoMimeType.Mpeg4;
-                case VideoCodec.Vp8:
-                    return VideoMimeType.Vp8;
-                case VideoCodec.Vp9:
-                    return VideoMimeType.Vp9;
-                case VideoCodec.Wmv3:
-                    return VideoMimeType.Wmv3;
-                case VideoCodec.Wmv1:
-                case VideoCodec.Wmv2:
-                default:
-                    throw new ArgumentOutOfRangeException(
-                        $"No mapping from Juvo video codec {videoCodec} to ESPlayer aideo codec");
-            }
+            if (MimeType.VideoH263.Equals(mimeType))
+                return VideoMimeType.H263;
+            if (MimeType.VideoH264.Equals(mimeType))
+                return VideoMimeType.H264;
+            if (MimeType.VideoH265.Equals(mimeType))
+                return VideoMimeType.Hevc;
+            if (MimeType.VideoMpeg2.Equals(mimeType))
+                return VideoMimeType.Mpeg2;
+            if (MimeType.VideoMp4.Equals(mimeType))
+                return VideoMimeType.Mpeg4;
+            if (MimeType.VideoVp8.Equals(mimeType))
+                return VideoMimeType.Vp8;
+            if (MimeType.VideoVp9.Equals(mimeType))
+                return VideoMimeType.Vp9;
+            if (MimeType.VideoWmv.Equals(mimeType))
+                return VideoMimeType.Wmv3;
+            throw new ArgumentOutOfRangeException(
+                $"No mapping from Juvo video mime type {mimeType} to ESPlayer video mime type");
         }
 
-        internal static AudioMimeType GetCodecMimeType(AudioCodec audioCodec)
+        internal static AudioMimeType ConvertAsEsAudioMimeType(string mimeType)
         {
-            switch (audioCodec)
-            {
-                case AudioCodec.Aac:
-                    return AudioMimeType.Aac;
-                case AudioCodec.Mp2:
-                    return AudioMimeType.Mp2;
-                case AudioCodec.Mp3:
-                    return AudioMimeType.Mp3;
-                case AudioCodec.Vorbis:
-                    return AudioMimeType.Vorbis;
-                case AudioCodec.PcmS16Be:
-                    return AudioMimeType.PcmS16be;
-                case AudioCodec.PcmS24Be:
-                    return AudioMimeType.PcmS24be;
-                case AudioCodec.Eac3:
-                    return AudioMimeType.Eac3;
-
-                case AudioCodec.Ac3:
-                    return AudioMimeType.Ac3;
-                case AudioCodec.Pcm:
-                case AudioCodec.Flac:
-                case AudioCodec.AmrNb:
-                case AudioCodec.AmrWb:
-                case AudioCodec.PcmMulaw:
-                case AudioCodec.GsmMs:
-                case AudioCodec.Opus:
-                case AudioCodec.Wmav1:
-                case AudioCodec.Wmav2:
-                default:
-                    throw new ArgumentOutOfRangeException(
-                        $"No mapping from Juvo audio codec {audioCodec} to ESPlayer audio codec");
-            }
+            if (MimeType.AudioAac.Equals(mimeType))
+                return AudioMimeType.Aac;
+            if (MimeType.AudioMpeg.Equals(mimeType))
+                return AudioMimeType.Mp2;
+            if (MimeType.AudioMp3.Equals(mimeType))
+                return AudioMimeType.Mp3;
+            if (MimeType.AudioVorbis.Equals(mimeType))
+                return AudioMimeType.Vorbis;
+            if (MimeType.AudioRaw.Equals(mimeType))
+                return AudioMimeType.PcmS16le;
+            if (MimeType.AudioEac3.Equals(mimeType))
+                return AudioMimeType.Eac3;
+            if (MimeType.AudioAc3.Equals(mimeType))
+                return AudioMimeType.Ac3;
+            throw new ArgumentOutOfRangeException(
+                $"No mapping from Juvo audio mime type {mimeType} to ESPlayer audio mime type");
         }
 
         private static unsafe byte[] ToManagedBuffer(this INativeDataStorage storage)
@@ -364,7 +316,7 @@ namespace JuvoPlayer.Platforms.Tizen
 
         private class VideoConfiguration
         {
-            public VideoCodec Codec { get; internal set; }
+            public string MimeType { get; internal set; }
             public int Fps { get; internal set; }
             public int Bps { get; internal set; }
             public int Width { get; internal set; }

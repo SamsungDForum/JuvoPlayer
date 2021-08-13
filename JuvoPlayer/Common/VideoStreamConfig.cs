@@ -23,28 +23,42 @@ namespace JuvoPlayer.Common
 {
     public class VideoStreamConfig : StreamConfig, IEquatable<VideoStreamConfig>
     {
-        public VideoCodec Codec { get; set; }
-        public int CodecProfile { get; set; }
-        public Size Size { get; set; }
-        public int FrameRateNum { get; set; }
-        public int FrameRateDen { get; set; }
-        public long BitRate { get; set; }
-        public int FrameRate => FrameRateNum / (FrameRateDen == 0 ? 1 : FrameRateDen);
+        public string MimeType { get; }
+
+        public Size Size { get; }
+
+        public int FrameRateNum { get; }
+
+        public int FrameRateDen { get; }
+
+        public long BitRate { get; }
+
+        public float FrameRate => FrameRateNum / (float) (FrameRateDen == 0 ? 1 : FrameRateDen);
+
+        public VideoStreamConfig(
+            byte[] codecExtraData,
+            string mimeType,
+            Size size,
+            int frameRateNum,
+            int frameRateDen,
+            long bitRate) : base(codecExtraData)
+        {
+            MimeType = mimeType;
+            Size = size;
+            FrameRateNum = frameRateNum;
+            FrameRateDen = frameRateDen;
+            BitRate = bitRate;
+        }
 
         public bool Equals(VideoStreamConfig other)
         {
             return other != null &&
-                   Codec == other.Codec &&
-                   CodecProfile == other.CodecProfile &&
+                   base.Equals(other) &&
+                   string.Equals(MimeType, other.MimeType) &&
                    Size == other.Size &&
                    FrameRateNum == other.FrameRateNum &&
                    FrameRateDen == other.FrameRateDen &&
                    BitRate == other.BitRate;
-        }
-
-        public override StreamType StreamType()
-        {
-            return Common.StreamType.Video;
         }
 
         public override bool Equals(object obj)
@@ -55,8 +69,8 @@ namespace JuvoPlayer.Common
         public override int GetHashCode()
         {
             var hashCode = -1742922824;
-            hashCode = hashCode * -1521134295 + Codec.GetHashCode();
-            hashCode = hashCode * -1521134295 + CodecProfile.GetHashCode();
+            hashCode = hashCode * -1521134295 + base.GetHashCode();
+            hashCode = hashCode * -1521134295 + MimeType.GetHashCode();
             hashCode = hashCode * -1521134295 + Size.GetHashCode();
             hashCode = hashCode * -1521134295 + FrameRateNum.GetHashCode();
             hashCode = hashCode * -1521134295 + FrameRateDen.GetHashCode();
@@ -68,7 +82,7 @@ namespace JuvoPlayer.Common
         {
             var sb = new StringBuilder();
             sb.AppendLine("Video Configuration:");
-            sb.AppendLine("\tCodec     = " + Codec);
+            sb.AppendLine("\tMimeType  = " + MimeType);
             sb.AppendLine("\tSize      = " + Size);
             sb.AppendLine("\tFrameRate = (" + FrameRateNum + "/" + FrameRateDen + ") " + FrameRate);
             sb.AppendLine("\tBitRate   = " + BitRate);

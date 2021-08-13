@@ -19,8 +19,27 @@ namespace JuvoPlayer.Common
 {
     public abstract class StreamConfig
     {
-        public byte[] CodecExtraData = null;
+        public byte[] CodecExtraData { get; }
 
-        public abstract StreamType StreamType();
+        protected StreamConfig(byte[] codecExtraData)
+        {
+            CodecExtraData = codecExtraData;
+        }
+
+        public override int GetHashCode()
+        {
+            return CodecExtraData.GetHashCode();
+        }
+
+        public override bool Equals(object obj)
+        {
+            return Equals(obj as StreamConfig);
+        }
+
+        public bool Equals(StreamConfig streamConfig)
+        {
+            return streamConfig != null
+                   && CodecExtraData.Equals(streamConfig.CodecExtraData);
+        }
     }
 }
