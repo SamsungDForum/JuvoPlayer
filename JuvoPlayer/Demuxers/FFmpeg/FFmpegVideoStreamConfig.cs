@@ -15,12 +15,32 @@
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
  */
 
+using System.Drawing;
 using JuvoPlayer.Common;
 
 namespace JuvoPlayer.Demuxers.FFmpeg
 {
     public class FFmpegVideoStreamConfig : VideoStreamConfig
     {
-        public int Index { get; set; }
+        public int Index { get; }
+
+        public FFmpegVideoStreamConfig(
+            byte[] codecExtraData,
+            string mimeType,
+            Size size,
+            int frameRateNum,
+            int frameRateDen,
+            long bitRate,
+            int index)
+            : base(
+                codecExtraData,
+                mimeType,
+                size,
+                frameRateNum,
+                frameRateDen,
+                bitRate)
+        {
+            Index = index;
+        }
     }
 }

@@ -24,11 +24,15 @@ namespace JuvoPlayer.Demuxers.FFmpeg
     {
         public static int GetIndex(this StreamConfig config)
         {
-            if (config.StreamType() == StreamType.Audio)
-                return ((FFmpegAudioStreamConfig) config).Index;
-            if (config.StreamType() == StreamType.Video)
-                return ((FFmpegVideoStreamConfig) config).Index;
-            throw new ArgumentException(config.ToString());
+            switch (config)
+            {
+                case FFmpegAudioStreamConfig audioConfig:
+                    return audioConfig.Index;
+                case FFmpegVideoStreamConfig videoConfig:
+                    return videoConfig.Index;
+                default:
+                    throw new ArgumentException(config.ToString());
+            }
         }
     }
 }

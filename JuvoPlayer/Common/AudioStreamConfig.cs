@@ -22,25 +22,40 @@ namespace JuvoPlayer.Common
 {
     public class AudioStreamConfig : StreamConfig, IEquatable<AudioStreamConfig>
     {
-        public AudioCodec Codec { get; set; }
-        public int ChannelLayout { get; set; }
-        public int SampleRate { get; set; }
-        public int BitsPerChannel { get; set; }
-        public long BitRate { get; set; }
+        public string MimeType { get; }
+
+        public int ChannelLayout { get; }
+
+        public int SampleRate { get; }
+
+        public int BitsPerChannel { get; }
+
+        public long BitRate { get; }
+
+        public AudioStreamConfig(
+            byte[] codecExtraData,
+            string mimeType,
+            int channelLayout,
+            int sampleRate,
+            int bitsPerChannel,
+            long bitRate) : base(codecExtraData)
+        {
+            MimeType = mimeType;
+            ChannelLayout = channelLayout;
+            SampleRate = sampleRate;
+            BitsPerChannel = bitsPerChannel;
+            BitRate = bitRate;
+        }
 
         public bool Equals(AudioStreamConfig other)
         {
             return other != null &&
-                   Codec == other.Codec &&
+                   base.Equals(other) &&
+                   string.Equals(MimeType, other.MimeType) &&
                    ChannelLayout == other.ChannelLayout &&
                    SampleRate == other.SampleRate &&
                    BitsPerChannel == other.BitsPerChannel &&
                    BitRate == other.BitRate;
-        }
-
-        public override StreamType StreamType()
-        {
-            return Common.StreamType.Audio;
         }
 
         public override bool Equals(object obj)
@@ -51,7 +66,8 @@ namespace JuvoPlayer.Common
         public override int GetHashCode()
         {
             var hashCode = 1182625657;
-            hashCode = hashCode * -1521134295 + Codec.GetHashCode();
+            hashCode = hashCode * -1521134295 + base.GetHashCode();
+            hashCode = hashCode * -1521134295 + MimeType.GetHashCode();
             hashCode = hashCode * -1521134295 + ChannelLayout.GetHashCode();
             hashCode = hashCode * -1521134295 + SampleRate.GetHashCode();
             hashCode = hashCode * -1521134295 + BitsPerChannel.GetHashCode();
@@ -63,7 +79,7 @@ namespace JuvoPlayer.Common
         {
             var sb = new StringBuilder();
             sb.AppendLine("Audio Configuration:");
-            sb.AppendLine("\tCodec          = " + Codec);
+            sb.AppendLine("\tMimeType       = " + MimeType);
             sb.AppendLine("\tBitsPerChannel = " + BitsPerChannel);
             sb.AppendLine("\tChannelLayout  = " + ChannelLayout);
             sb.AppendLine("\tSampleRate     = " + SampleRate);

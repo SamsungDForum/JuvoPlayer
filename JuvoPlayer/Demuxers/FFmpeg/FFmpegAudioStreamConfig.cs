@@ -21,6 +21,25 @@ namespace JuvoPlayer.Demuxers.FFmpeg
 {
     public class FFmpegAudioStreamConfig : AudioStreamConfig
     {
-        public int Index { get; set; }
+        public int Index { get; }
+
+        public FFmpegAudioStreamConfig(
+            byte[] codecExtraData,
+            string mimeType,
+            int channelLayout,
+            int sampleRate,
+            int bitsPerChannel,
+            long bitRate,
+            int index)
+            : base(
+                codecExtraData,
+                mimeType,
+                channelLayout,
+                sampleRate,
+                bitsPerChannel,
+                bitRate)
+        {
+            Index = index;
+        }
     }
 }
