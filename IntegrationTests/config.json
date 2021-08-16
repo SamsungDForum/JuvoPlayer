@@ -1,10 +1,8 @@
 {
-    "player_address" : "http://localhost:9998/player",
-    "tv_ip" : "required",
-    "tv_user" : "required",
-    "tv_password" : "required",
-    "recorder_ip" : "localhost",
-    "app_name" : "org.tizen.example.JuvoPlayer.RESTful",
-    "record_delay" : 10,
-    "tolerance" : 5
+    "player_address": "http://localhost:9998/player",
+    "tv_ip": "required",
+    "tv_user": "required",
+    "tv_password": "required",
+    "app_name": "org.tizen.example.JuvoPlayer.RESTful",
+    "tolerance": 3
 }

@@ -14,7 +14,9 @@ jobs:
           name: Setup certs
           command: >
             echo ${DISTRIBUTOR_CERT} | base64 -d - > distributor.p12 &&
-            echo ${AUTHOR_CERT} | base64 -d - > author.p12
+            echo ${AUTHOR_CERT} | base64 -d - > author.p12 &&
+            echo ${PLATFORM_DISTRIBUTOR_CERT} | base64 -d - > platform_distributor.p12 &&
+            echo ${PLATFORM_AUTHOR_CERT} | base64 -d - > platform_author.p12
       - run:
           name: Setup proxy
           command:
@@ -32,6 +34,12 @@ jobs:
             /p:"AuthorPath=/build/author.p12;AuthorPass=${AUTHOR_PASS}"
             /p:"DistributorPath=/build/distributor.p12;DistributorPass=${DISTRIBUTOR_PASS}"
       - run:
+          name: Build in-house app
+          command: >
+            dotnet build /nodeReuse:false JuvoPlayer.RESTful -c Release
+            /p:"AuthorPath=/build/platform_author.p12;AuthorPass=${PLATFORM_AUTHOR_PASS}"
+            /p:"DistributorPath=/build/platform_distributor.p12;DistributorPass=${PLATFORM_DISTRIBUTOR_PASS}"
+      - run:
           name: Run unit tests
           command: dotnet test /nodeReuse:false JuvoPlayer.Tests/JuvoPlayer.Tests.csproj --logger:trx -f netcoreapp3.1 --verbosity normal
       - run:
@@ -46,7 +54,8 @@ jobs:
       - run:
           name: Rename TPKs
           command: >
-            rename "s/VERSION/`cat Version.txt`/" JuvoPlayer.TizenTests/bin/Release/tizen40/*.tpk
+            rename "s/VERSION/`cat Version.txt`/" JuvoPlayer.TizenTests/bin/Release/tizen40/*.tpk &&
+            rename "s/VERSION/`cat Version.txt`/" JuvoPlayer.RESTful/bin/Release/tizen40/*.tpk
       - run:
           name: Copy artifacts to tmp directory
           command: >
@@ -60,10 +69,12 @@ jobs:
           root: .
           paths:
             - ./JuvoPlayer.TizenTests/bin/Release/*/*.tpk
+            - ./JuvoPlayer.RESTful/bin/Release/*/*.tpk
             - ./JuvoPlayer/bin/Release/*.nupkg
             - ./scripts/nunit3-junit.xlst
             - ./Version.txt
             - ./atr_tests/*
+            - ./IntegrationTests/*
   make_github_release: &make_github_release
     working_directory: /home/circleci
     docker:
@@ -82,7 +93,7 @@ jobs:
           name: Setup environment variables
           command: >
             NUGET_PATH=`find -name *.nupkg` &&
-            TPK_PATH=`find -name *.tpk` &&
+            TPK_PATH=`find -name *JuvoPlayer.TizenTests*.tpk` &&
             echo "export NUGET_PATH=${NUGET_PATH}" >> $BASH_ENV &&
             echo "export TPK_PATH=${TPK_PATH}" >> $BASH_ENV
       - run:
@@ -220,7 +231,7 @@ jobs:
       - run:
           name: Setup environment variables
           command: >
-            TPK_PATH=`find -name *.tpk` &&
+            TPK_PATH=`find -name *JuvoPlayer.TizenTests*.tpk` &&
             TPK_NAME=`basename ${TPK_PATH}` &&
             echo "export TPK_PATH=${TPK_PATH}" >> $BASH_ENV &&
             echo "export TPK_NAME=${TPK_NAME}" >> $BASH_ENV
@@ -264,6 +275,84 @@ jobs:
             mkdir -p TestResults &&
             xsltproc -o TestResults/output.xml scripts/nunit3-junit.xlst
             results/ATR_Task/JuvoPlayerTest/JuvoPlayerTest/JuvoPlayer.TizenTests.xml
+          when: always
+      - store_test_results:
+          path: TestResults/
+          when: always
+  run_ocr_tests:
+    working_directory: /home/circleci
+    docker:
+      - image: circleci/buildpack-deps:18.04-curl
+        auth:
+          username: ${DOCKERHUB_USER}
+          password: ${DOCKERHUB_PASSWORD}
+    steps:
+      - attach_workspace:
+          at: /home/circleci
+      - add_ssh_keys:
+          fingerprints:
+            - "84:87:bf:67:e0:45:71:04:e7:97:2d:6d:fd:ca:01:67"
+      - run:
+          name: Setup proxy
+          command:
+            curl -sL https://art.sec.samsung.net/artifactory/tools/CircleCI/scripts/set_proxy_setting.sh | sh
+      - run:
+          name: Setup environment variables
+          command: >
+            TPK_PATH=`find -name *JuvoPlayer.RESTful*.tpk` &&
+            TPK_NAME=`basename ${TPK_PATH}` &&
+            echo "export TPK_PATH=${TPK_PATH}" >> $BASH_ENV &&
+            echo "export TPK_NAME=${TPK_NAME}" >> $BASH_ENV
+      - run:
+          name: Install dependencies
+          command: >
+            sudo apt update && DEBIAN_FRONTEND="noninteractive" sudo apt install -y --no-install-recommends openssh-client
+      - run:
+          name: Run ATR tests
+          no_output_timeout: 20m
+          command: >
+            scp -o StrictHostKeyChecking=no ${TPK_PATH} ${ATR_RUNNER_USER}@${ATR_RUNNER_IP}:/tmp/ &&
+            scp -r -o StrictHostKeyChecking=no /home/circleci/atr_tests ${ATR_RUNNER_USER}@${ATR_RUNNER_IP}:/tmp/ &&
+            scp -r -o StrictHostKeyChecking=no /home/circleci/IntegrationTests/*.{json,py} ${ATR_RUNNER_USER}@${ATR_RUNNER_IP}:/tmp/ &&
+            scp -r -o StrictHostKeyChecking=no /home/circleci/IntegrationTests/setup/{Dockerfile,requirements.txt} ${ATR_RUNNER_USER}@${ATR_RUNNER_IP}:/tmp/ &&
+            ssh -t -o StrictHostKeyChecking=no ${ATR_RUNNER_USER}@${ATR_RUNNER_IP} "cd /home/${ATR_RUNNER_USER}/weed/atr &&
+            rm -rf results &&
+            rm -rf atr_tests &&
+            mkdir atr_tests &&
+            cp -rf /tmp/atr_tests/* atr_tests &&
+            cp -rf /tmp/IntegrationTests/* atr_tests &&
+            cp /tmp/${TPK_NAME} atr_tests &&
+            cp -rf /tmp/Dockerfile atr_tests &&
+            cp -rf /tmp/requirements.txt atr_tests &&
+            docker build --no-cache  -t juvo_integration atr_tests &&
+            python3 atr_in_docker.py
+            --flash-tv-mode no
+            --task-scenario JuvoOcrTest
+            --tty ${TTY_DEV}
+            --irda-device ${IRDA_DEV}
+            --log-level debug
+            --dlog-tags JuvoPlayer JuvoPlayer.RESTful UT DOTNET_LAUNCHER
+            --url ${IMAGE_URL}
+            --tizen ${TIZEN_VERSION}
+            --docker-image juvo_integration
+            --custom-docker-arguments=\"-v /home/${ATR_RUNNER_USER}/weed/atr/atr_tests:/root/atr/src/tests/juvo_ocr_test:rw 
+            --env BOARD_USER=${BOARD_USER} --env BOARD_PASS=${BOARD_PASS}\"
+            --board-version ${BOARD_VERSION}"
+      - run:
+          name: Download test results
+          command: >
+            scp -o StrictHostKeyChecking=no -r ${ATR_RUNNER_USER}@${ATR_RUNNER_IP}:/home/${ATR_RUNNER_USER}/weed/atr/results/* results/ &&
+            scp -o StrictHostKeyChecking=no -r ${ATR_RUNNER_USER}@${ATR_RUNNER_IP}:/home/${ATR_RUNNER_USER}/weed/atr/atr_tests/*.xml results/
+          when: always
+      - store_artifacts:
+          path: results
+          destination: results
+          when: always
+      - run:
+          name: Move tests results to storage
+          command: >
+            mkdir -p TestResults &&
+            cp results/JuvoOcrTest.xml TestResults/output.xml
           when: always
       - store_test_results:
           path: TestResults/
@@ -355,3 +444,6 @@ workflows:
       - run_integration_tests:
           requires:
             - build_and_run_unit_tests
+      - run_ocr_tests:
+          requires:
+            - run_integration_tests

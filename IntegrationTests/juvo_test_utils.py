@@ -1,50 +1,58 @@
 import os
 import paramiko
+from scp import SCPClient
 from time import sleep
 from subprocess import Popen, PIPE, DEVNULL
 import requests
 import inspect
+import shutil
 
-class Recorder(object):
-    def __init__(self, ip, record_delay):
-        self.ip = ip
-        self.record_delay = record_delay
+MAX_RETRIES = 10
 
-    def start(self, name):
-        self.name = name
-        self.recording = Popen(f'''ffmpeg -loglevel verbose -y
-         -f h264 -avioflags +direct -fflags +nobuffer -i async:tcp://{self.ip}:5301
-         -f s16le -ar 48k -ac 2 -avioflags +direct -fflags +nobuffer -i async:tcp://{self.ip}:5303
-         -c:v copy -c:a aac -b:a 128k {name}.mkv'''.replace('\n', ' '), stdin=PIPE , shell=True, stderr=DEVNULL, stdout=DEVNULL)
-        sleep(self.record_delay)
-
-    def stop(self):
-        sleep(self.record_delay)
-        self.recording.communicate(input=b'q')
-        p = Popen(f"ffmpeg -y -i {self.name}.mkv -c copy {self.name}.mp4", stderr=DEVNULL, stdout=DEVNULL)
-        p.communicate()
-
-    def cleanup(self):
-        os.remove(f'{self.name}.mp4')
-        os.remove(f'{self.name}.mkv')
 
 class RestPlayer(object):
-    def __init__(self, player_address):
+    def __init__(self, player_address, app_name):
         self.player_address = player_address
-        
-    def start(self, app_name, server, username, password):
         self.app_name = app_name
+
+    def start(self, server, username, password):
         self.ssh = paramiko.SSHClient()
-        self.ssh.load_system_host_keys()
+        self.ssh.set_missing_host_key_policy(paramiko.AutoAddPolicy())
         self.ssh.connect(server, username=username, password=password)
-        self.ssh.exec_command('app_launcher -s '+app_name)
+        self.ssh.exec_command('app_launcher -s ' + self.app_name)
+        r = None
+        for _ in range(MAX_RETRIES):
+            try:
+                r = requests.post(self.player_address, data={
+                                  'order': 'state'}, timeout=2)
+            except requests.exceptions.RequestException:
+                continue
+            if r.status_code == requests.codes.ok:
+                return
+        raise ConnectionError('Player did not respond')
 
     def send(self, body):
         return requests.post(self.player_address, data=body)
-        
+
     def stop(self):
-        self.ssh.exec_command('app_launcher -t '+self.app_name)
+        self.ssh.exec_command('app_launcher -t ' + self.app_name)
         self.ssh.close()
+
+    def cleanup_images(self):
+        self.ssh.exec_command(
+            'find /tmp -name "source_JuvoPlayer.RESTful*.png" -delete')
+
+    def pull_images(self, dirname, cleanup=True):
+        os.mkdir(dirname)
+        _, stdout, _ = self.ssh.exec_command(
+            'ls /tmp | grep source_JuvoPlayer.RESTful')
+        files = stdout.read().decode("utf-8").split('\n')[:-1]
+        with SCPClient(self.ssh.get_transport()) as scp:
+            for file in files:
+                scp.get('/tmp/'+file, dirname)
+        if(cleanup):
+            self.cleanup_images()
+
 
 class Action(object):
     def __init__(self, name, time, seek_destination=None, new_resolution=None):
@@ -53,22 +61,32 @@ class Action(object):
         self.seek_destination = seek_destination
         self.new_resolution = new_resolution
 
-class Scenario(object):
-    def __init__(self, queue=None, sender=None, name=None):
-        if name is not None:
-            self.name = name
-        else:
-            self.name = inspect.stack()[1].function
-        self.queue = queue
-        self.sender=sender
 
-    def run(self, recorder=None):
-        if(recorder):
-            recorder.start(name=self.name)
+class Scenario(object):
+    def __init__(self, queue=None, sender=None, test_name=None):
+        if test_name is not None:
+            self.test_name = test_name
+        else:
+            self.test_name = inspect.stack()[1].function
+        self.queue = queue
+        self.sender = sender
+
+    def cleanup(self):
+        shutil.rmtree(self.test_name, ignore_errors=True)
+
+    def run(self, record=True):
+        if(record):
+            response = self.sender.send({'order': 'screenon'})
+            if response.status_code != requests.codes.ok:
+                return
         for message in self.queue:
             response = self.sender.send(message[0])
             if response.status_code != requests.codes.ok:
                 break
             sleep(message[1])
-        if(recorder):
-            recorder.stop()
+        if(record):
+            response = self.sender.send({'order': 'screenoff'})
+            if response.status_code != requests.codes.ok:
+                return
+        self.cleanup()
+        self.sender.pull_images(self.test_name, cleanup=True)

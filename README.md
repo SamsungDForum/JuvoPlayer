@@ -21,3 +21,7 @@ the codebase is much smaller and easier to read.
 
 Additionally, we decided to publish the JuvoPlayer package on nuget.org, so anybody can reference
 it in their application directly from this popular nuget feed.
+
+### IntegrationTests
+
+The module serves as a framework for internal API using Tesseract OCR and JuvoPlayer.RESTful, which is a dotnet-inhouse application, meaning it requires appropriate certification. For internal usage and setup refer to [setup](IntegrationTests/setup/README.md) and if need [generating_content](IntegrationTests/generating_content/README.md).
