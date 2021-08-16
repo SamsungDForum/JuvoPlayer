@@ -1,6 +1,7 @@
 paramiko
+scp
 requests
-opencv-python
 pytesseract
 statistics
 pytest
+junitparser

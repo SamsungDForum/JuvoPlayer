@@ -31,6 +31,7 @@ using JuvoPlayer.Platforms.Tizen;
 using Newtonsoft.Json;
 using Nito.AsyncEx;
 using Formatting = Newtonsoft.Json.Formatting;
+using Tizen.TV.System;
 
 namespace JuvoPlayer.RESTful.Controllers
 {
@@ -39,9 +40,12 @@ namespace JuvoPlayer.RESTful.Controllers
         private static IPlayer _dashPlayer;
         private static AsyncContextThread _playerThread;
 
+        private static System.Threading.CancellationTokenSource _cts;
+
         public PlayerRestController()
         {
             _playerThread = new AsyncContextThread();
+            _cts = new System.Threading.CancellationTokenSource();
         }
 
         [Route(HttpVerbs.Get, "/")]
@@ -60,6 +64,19 @@ namespace JuvoPlayer.RESTful.Controllers
 #pragma warning disable CS1998 // This async method lacks 'await' operators
                 switch (order)
                 {
+                    case "screenon":
+                        var interval = request.ContainsKey("interval") ? Int32.Parse(request["interval"]) : 1000;
+                        Task.Factory.StartNew(async () => { await StartScreenshoting(interval);}, TaskCreationOptions.LongRunning);
+                        response["message"] = "Started recording.";
+                        break;
+                    case "screenoff":
+                        _cts.Cancel();
+                        response["message"] = "Stopped recording.";
+                        break;
+                    case "screen":
+                        Capture.RequestCaptureSync(Capture.AppType.Source, Capture.CaptureMode.ModeScreen, 0, 0, "JuvoPlayer.RESTful", "'app_title':'JuvoRESTful'");
+                        response["message"] = "Screenshot taken.";
+                        break;
                     case "play":
                         var uri = request["uri"];
                         var clip = new Clip
@@ -82,10 +99,12 @@ namespace JuvoPlayer.RESTful.Controllers
 
                             _dashPlayer = BuildPlayer(clip);
                             await _dashPlayer.Prepare();
+                            await ChangeStream(ContentType.Video, 0);
                             _dashPlayer.Play();
 
                             response["duration"] = _dashPlayer.Duration.ToString();
                         });
+                        response["message"] = "Playback started.";
                         break;
                     case "stop":
                         await RunOnPlayerThread(async () =>
@@ -96,9 +115,11 @@ namespace JuvoPlayer.RESTful.Controllers
                         break;
                     case "pause":
                         await RunOnPlayerThread(async () => { await _dashPlayer.Pause(); });
+                        response["message"] = "Playback paused.";
                         break;
                     case "resume":
                         await RunOnPlayerThread(async () => { _dashPlayer.Play(); });
+                        response["message"] = "Playback resumed.";
                         break;
                     case "seek":
                         int.TryParse(request["destination"], out var seekDestination);
@@ -108,6 +129,7 @@ namespace JuvoPlayer.RESTful.Controllers
 
                             response["position"] = _dashPlayer.Position.ToString();
                         });
+                        response["message"] = $"Seek to {seekDestination} performed.";
                         break;
                     case "changeVideo":
                         int.TryParse(request["index"], out var newVideoIndex);
@@ -116,6 +138,7 @@ namespace JuvoPlayer.RESTful.Controllers
                             await ChangeStream(ContentType.Video, newVideoIndex);
                             response["current"] = JsonConvert.SerializeObject(GetCurrentStreamInfo(ContentType.Video));
                         });
+                        response["message"] = $"Video track changed.";
                         break;
                     case "changeAudio":
                         int.TryParse(request["index"], out var newAudioIndex);
@@ -124,6 +147,7 @@ namespace JuvoPlayer.RESTful.Controllers
                             await ChangeStream(ContentType.Audio, newAudioIndex);
                             response["current"] = JsonConvert.SerializeObject(GetCurrentStreamInfo(ContentType.Audio));
                         });
+                        response["message"] = $"Audio track changed.";
                         break;
                     case "getStreamsInfo":
                         await RunOnPlayerThread(async () =>
@@ -149,6 +173,21 @@ namespace JuvoPlayer.RESTful.Controllers
             }
 
             return JsonConvert.SerializeObject(response, Formatting.Indented);
+        }
+
+        private async Task StartScreenshoting(int interval)
+        {
+            var frame_num = 0;
+            while(true)
+            {
+                if(_cts.IsCancellationRequested)
+                {
+                    _cts = new System.Threading.CancellationTokenSource();
+                    break;
+                }
+                Capture.RequestCaptureSync(Capture.AppType.Source, Capture.CaptureMode.ModeScreen, 0, 0, $"JuvoPlayer.RESTful_{frame_num++}", "'app_title':'JuvoRESTful'");
+                await Task.Delay(interval);
+            }
         }
 
         private Task RunOnPlayerThread(Func<Task> workToDo)
