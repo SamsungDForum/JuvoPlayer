@@ -30,6 +30,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg
             int sampleRate,
             int bitsPerChannel,
             long bitRate,
+            string language,
             int index)
             : base(
                 codecExtraData,
@@ -37,7 +38,8 @@ namespace JuvoPlayer.Demuxers.FFmpeg
                 channelLayout,
                 sampleRate,
                 bitsPerChannel,
-                bitRate)
+                bitRate,
+                language)
         {
             Index = index;
         }

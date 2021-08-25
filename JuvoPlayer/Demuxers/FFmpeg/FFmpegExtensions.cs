@@ -16,6 +16,7 @@
  */
 
 using System;
+using FFmpegBindings.Interop;
 using JuvoPlayer.Common;
 
 namespace JuvoPlayer.Demuxers.FFmpeg
@@ -32,6 +33,55 @@ namespace JuvoPlayer.Demuxers.FFmpeg
                     return videoConfig.Index;
                 default:
                     throw new ArgumentException(config.ToString());
+            }
+        }
+
+        public static string ConvertToMimeType(this AVCodecID codec)
+        {
+            switch (codec)
+            {
+                case AVCodecID.AV_CODEC_ID_AAC:
+                    return MimeType.AudioAac;
+                case AVCodecID.AV_CODEC_ID_MP2:
+                    return MimeType.AudioMpeg;
+                case AVCodecID.AV_CODEC_ID_MP3:
+                    return MimeType.AudioMp3;
+                case AVCodecID.AV_CODEC_ID_VORBIS:
+                    return MimeType.AudioVorbis;
+                case AVCodecID.AV_CODEC_ID_FLAC:
+                    return MimeType.AudioFlac;
+                case AVCodecID.AV_CODEC_ID_PCM_MULAW:
+                    return MimeType.AudioRaw;
+                case AVCodecID.AV_CODEC_ID_OPUS:
+                    return MimeType.AudioOpus;
+                case AVCodecID.AV_CODEC_ID_EAC3:
+                    return MimeType.AudioEac3;
+                case AVCodecID.AV_CODEC_ID_DTS:
+                    return MimeType.AudioDts;
+                case AVCodecID.AV_CODEC_ID_AC3:
+                    return MimeType.AudioAc3;
+                case AVCodecID.AV_CODEC_ID_H264:
+                    return MimeType.VideoH264;
+                case AVCodecID.AV_CODEC_ID_HEVC:
+                    return MimeType.VideoH265;
+                case AVCodecID.AV_CODEC_ID_THEORA:
+                    return MimeType.VideoTheora;
+                case AVCodecID.AV_CODEC_ID_MPEG4:
+                    return MimeType.VideoMp4;
+                case AVCodecID.AV_CODEC_ID_VP8:
+                    return MimeType.VideoVp8;
+                case AVCodecID.AV_CODEC_ID_VP9:
+                    return MimeType.VideoVp9;
+                case AVCodecID.AV_CODEC_ID_MPEG2VIDEO:
+                    return MimeType.VideoMpeg2;
+                case AVCodecID.AV_CODEC_ID_VC1:
+                    return MimeType.VideoVc1;
+                case AVCodecID.AV_CODEC_ID_WMV1:
+                    return MimeType.VideoWmv;
+                case AVCodecID.AV_CODEC_ID_H263:
+                    return MimeType.VideoH263;
+                default:
+                    throw new Exception("Unsupported codec: " + codec);
             }
         }
     }

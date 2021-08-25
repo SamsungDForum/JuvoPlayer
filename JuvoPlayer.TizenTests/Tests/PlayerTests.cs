@@ -47,7 +47,7 @@ namespace JuvoPlayer.TizenTests.Tests
     }
 
     [TestFixture]
-    public class DashPlayerTests
+    public class PlayerTests
     {
         private readonly ILogger _logger = Log.WithChannel("UT");
         private static readonly TimeSpan CatchupPlaybackTimeout = TimeSpan.FromSeconds(14);
@@ -55,14 +55,37 @@ namespace JuvoPlayer.TizenTests.Tests
         private static readonly TimeSpan SeekTimeout = TimeSpan.FromSeconds(10);
         private static readonly TimeSpan EosTimeout = TimeSpan.FromSeconds(14);
 
+        public enum PlayerType
+        {
+            Dash,
+            FFmpeg,
+        }
+
+        public enum ClipId
+        {
+            GoogleCar,
+            SintelDash,
+            Formula1,
+            Paris,
+            OopsCencPlayReady,
+            OopsCencWidevine,
+            ArtOfMotion,
+            TearsOfSteelFhd,
+            TearsOfSteelUhd,
+            BigBuckBunny,
+            SintelHls,
+        }
+
         public struct Clip
         {
-            public string MpdUri { get; set; }
+            public ClipId Id { get; set; }
+            public string Uri { get; set; }
             public DrmDescription? DrmDescription { get; set; }
+            public PlayerType PlayerType { get; set; }
 
             public override string ToString()
             {
-                return MpdUri;
+                return Uri;
             }
         }
 
@@ -79,23 +102,33 @@ namespace JuvoPlayer.TizenTests.Tests
             {
                 new Clip
                 {
-                    MpdUri = "http://106.120.45.49/googlecar/car-20120827-manifest.mpd",
+                    Id = ClipId.GoogleCar,
+                    Uri = "http://106.120.45.49/googlecar/car-20120827-manifest.mpd",
+                    PlayerType = PlayerType.Dash
                 },
                 new Clip
                 {
-                    MpdUri = "http://106.120.45.49/sintel-dash/sintel.mpd"
+                    Id = ClipId.SintelDash,
+                    Uri = "http://106.120.45.49/sintel-dash/sintel.mpd",
+                    PlayerType = PlayerType.Dash
                 },
                 new Clip
                 {
-                    MpdUri = "http://106.120.45.49/formula1/Manifest.mpd"
+                    Id = ClipId.Formula1,
+                    Uri = "http://106.120.45.49/formula1/Manifest.mpd",
+                    PlayerType = PlayerType.Dash
                 },
                 new Clip
                 {
-                    MpdUri = "http://106.120.45.49/paris/dashevc-live-2s-4k.mpd"
+                    Id = ClipId.Paris,
+                    Uri = "http://106.120.45.49/paris/dashevc-live-2s-4k.mpd",
+                    PlayerType = PlayerType.Dash
                 },
                 new Clip
                 {
-                    MpdUri = "http://106.120.45.49/nexusq/oops_cenc-20121114-signedlicenseurl-manifest.mpd",
+                    Id = ClipId.OopsCencPlayReady,
+                    Uri = "http://106.120.45.49/nexusq/oops_cenc-20121114-signedlicenseurl-manifest.mpd",
+                    PlayerType = PlayerType.Dash,
                     DrmDescription = new DrmDescription
                     {
                         KeySystem = "com.microsoft.playready",
@@ -109,7 +142,9 @@ namespace JuvoPlayer.TizenTests.Tests
                 },
                 new Clip
                 {
-                    MpdUri = "http://106.120.45.49/nexusq/oops_cenc-20121114-signedlicenseurl-manifest.mpd",
+                    Id = ClipId.OopsCencWidevine,
+                    Uri = "http://106.120.45.49/nexusq/oops_cenc-20121114-signedlicenseurl-manifest.mpd",
+                    PlayerType = PlayerType.Dash,
                     DrmDescription = new DrmDescription
                     {
                         KeySystem = "com.widevine.alpha",
@@ -123,7 +158,9 @@ namespace JuvoPlayer.TizenTests.Tests
                 },
                 new Clip
                 {
-                    MpdUri = "http://106.120.45.49/art-of-motion/manifest/11331.mpd",
+                    Id = ClipId.ArtOfMotion,
+                    Uri = "http://106.120.45.49/art-of-motion/manifest/11331.mpd",
+                    PlayerType = PlayerType.Dash,
                     DrmDescription = new DrmDescription
                     {
                         KeySystem = "com.widevine.alpha",
@@ -137,7 +174,9 @@ namespace JuvoPlayer.TizenTests.Tests
                 },
                 new Clip
                 {
-                    MpdUri = "http://106.120.45.49/tears_of_steel/manifest(format=mpd-time-csf)",
+                    Id = ClipId.TearsOfSteelFhd,
+                    Uri = "http://106.120.45.49/tears_of_steel/manifest(format=mpd-time-csf)",
+                    PlayerType = PlayerType.Dash,
                     DrmDescription = new DrmDescription
                     {
                         KeySystem = "com.microsoft.playready",
@@ -151,7 +190,9 @@ namespace JuvoPlayer.TizenTests.Tests
                 },
                 new Clip
                 {
-                    MpdUri = "http://106.120.45.49/tears_of_steel_uhd/tears_uhd.mpd",
+                    Id = ClipId.TearsOfSteelUhd,
+                    Uri = "http://106.120.45.49/tears_of_steel_uhd/tears_uhd.mpd",
+                    PlayerType = PlayerType.Dash,
                     DrmDescription = new DrmDescription
                     {
                         KeySystem = "com.widevine.alpha",
@@ -162,9 +203,98 @@ namespace JuvoPlayer.TizenTests.Tests
                             ["Content-Type"] = "text/xml; charset=utf-8"
                         }
                     }
+                },
+                new Clip
+                {
+                    Id = ClipId.BigBuckBunny,
+                    Uri = "http://106.120.45.49/bunny/bbb_sunflower_1080p_30fps_normal.mp4",
+                    PlayerType = PlayerType.FFmpeg
+                },
+                new Clip
+                {
+                    Id = ClipId.SintelHls,
+                    Uri = "http://106.120.45.49/sintel-hls/stream.m3u8",
+                    PlayerType = PlayerType.FFmpeg,
                 }
             };
         }
+
+        public struct IgnoredTestCase
+        {
+            public string Name { get; set; }
+            public Clip Clip { get; set; }
+            public string Reason { get; set; }
+        }
+
+        public IgnoredTestCase[] IgnoredTestCases =
+        {
+            new IgnoredTestCase
+            {
+                Name = nameof(EOS_Reached_NotifiesClient),
+                Clip = Clips().Single(c => c.Id == ClipId.SintelHls),
+                Reason = "HLS in FFmpeg does not support backward seek"
+            },
+            new IgnoredTestCase
+            {
+                Name = nameof(Playback_PlayCalled_PlaysSuccessfully),
+                Clip = Clips().Single(c => c.Id == ClipId.SintelHls),
+                Reason = "HLS in FFmpeg does not support backward seek"
+            },
+            new IgnoredTestCase
+            {
+                Name = nameof(Playback_StartFrom20thSecond_PlaysSuccessfully),
+                Clip = Clips().Single(c => c.Id == ClipId.SintelHls),
+                Reason = "HLS in FFmpeg does not support backward seek"
+            },
+            new IgnoredTestCase
+            {
+                Name = nameof(Seek_Backward_Seeks),
+                Clip = Clips().Single(c => c.Id == ClipId.SintelHls),
+                Reason = "HLS in FFmpeg does not support backward seek"
+            },
+            new IgnoredTestCase
+            {
+                Name = nameof(Seek_ToClipDuration_CompletesAndPublishesEos),
+                Clip = Clips().Single(c => c.Id == ClipId.SintelHls),
+                Reason = "HLS in FFmpeg does not support backward seek"
+            },
+            new IgnoredTestCase
+            {
+                Name = nameof(Seek_WhilePlaying_Seeks),
+                Clip = Clips().Single(c => c.Id == ClipId.SintelHls),
+                Reason = "HLS in FFmpeg does not support backward seek"
+            },
+            new IgnoredTestCase
+            {
+                Name = nameof(Seek_WhileReady_Seeks),
+                Clip = Clips().Single(c => c.Id == ClipId.SintelHls),
+                Reason = "HLS in FFmpeg does not support backward seek"
+            },
+            new IgnoredTestCase
+            {
+                Name = nameof(SetStreamGroups_SetsOnlyAudio_PlaysOnlyAudio),
+                Clip = Clips().Single(c => c.Id == ClipId.SintelHls),
+                Reason = "HLS in FFmpeg returns invalid packets when only audio stream is enabled"
+            },
+            new IgnoredTestCase
+            {
+                Name = nameof(SetStreamGroups_SetsVideoOnly_PlaysOnlyVideo),
+                Clip = Clips().Single(c => c.Id == ClipId.SintelHls),
+                Reason = "HLS in FFmpeg does not support backward seek"
+            },
+            new IgnoredTestCase
+            {
+                Name = nameof(SetStreamGroups_UpdatesAudioStreamSelector_WorksAsExpected),
+                Clip = Clips().Single(c => c.Id == ClipId.SintelHls),
+                Reason = "HLS in FFmpeg does not support backward seek"
+            },
+            new IgnoredTestCase
+            {
+                Name = nameof(SetStreamGroups_UpdatesVideoStreamSelector_WorksAsExpected),
+                Clip = Clips().Single(c => c.Id == ClipId.SintelHls),
+                Reason = "HLS in FFmpeg does not support backward seek"
+            },
+        };
 
         [TearDown]
         public void TearDown()
@@ -216,28 +346,28 @@ namespace JuvoPlayer.TizenTests.Tests
         [Repeat(10)]
         public void Playback_PlayCalled_PlaysSuccessfully(Clip clip)
         {
-            RunTest(async () =>
+            RunTest(clip, async () =>
             {
-                IPlayer dashPlayer = null;
+                IPlayer player = null;
                 Task<IList<Exception>> exceptions = null;
                 try
                 {
                     var stopwatch = Stopwatch.StartNew();
-                    dashPlayer = BuildPlayer(clip);
-                    exceptions = dashPlayer.AllExceptions();
-                    await dashPlayer.Prepare();
+                    player = BuildPlayer(clip);
+                    exceptions = player.AllExceptions();
+                    await player.Prepare();
                     _logger.Info($"After prepare {stopwatch.Elapsed}");
-                    dashPlayer.Play();
+                    player.Play();
                     await Task.Delay(TimeSpan.FromSeconds(2));
-                    var position = dashPlayer.Position;
-                    var state = dashPlayer.State;
+                    var position = player.Position;
+                    var state = player.State;
                     Assert.That(state, Is.EqualTo(PlayerState.Playing));
                     Assert.That(position, Is.GreaterThan(TimeSpan.Zero));
                 }
                 finally
                 {
-                    if (dashPlayer != null)
-                        await dashPlayer.DisposeAsync();
+                    if (player != null)
+                        await player.DisposeAsync();
                     if (exceptions != null)
                     {
                         foreach (var exception in await exceptions)
@@ -252,30 +382,30 @@ namespace JuvoPlayer.TizenTests.Tests
         [Repeat(10)]
         public void Playback_StartFrom20thSecond_PlaysSuccessfully(Clip clip)
         {
-            RunTest(async () =>
+            RunTest(clip, async () =>
             {
-                IPlayer dashPlayer = null;
+                IPlayer player = null;
                 Task<IList<Exception>> exceptions = null;
                 try
                 {
                     var configuration =
-                        new Configuration {StartTime = TimeSpan.FromSeconds(20)};
-                    dashPlayer = BuildPlayer(
+                        new Configuration { StartTime = TimeSpan.FromSeconds(20) };
+                    player = BuildPlayer(
                         clip,
                         configuration);
-                    exceptions = dashPlayer.AllExceptions();
-                    await dashPlayer.Prepare();
-                    dashPlayer.Play();
+                    exceptions = player.AllExceptions();
+                    await player.Prepare();
+                    player.Play();
                     await Task.Delay(TimeSpan.FromSeconds(2));
-                    var position = dashPlayer.Position;
-                    var state = dashPlayer.State;
+                    var position = player.Position;
+                    var state = player.State;
                     Assert.That(state, Is.EqualTo(PlayerState.Playing));
                     Assert.That(position, Is.GreaterThan(TimeSpan.FromSeconds(10)));
                 }
                 finally
                 {
-                    if (dashPlayer != null)
-                        await dashPlayer.DisposeAsync();
+                    if (player != null)
+                        await player.DisposeAsync();
                     if (exceptions != null)
                     {
                         foreach (var exception in await exceptions)
@@ -290,26 +420,26 @@ namespace JuvoPlayer.TizenTests.Tests
             bool shouldPlay,
             Func<TimeSpan, IEnumerable<TimeSpan>> generator)
         {
-            IPlayer dashPlayer = null;
+            IPlayer player = null;
             Task<IList<Exception>> exceptions = null;
             try
             {
                 var stopwatch = Stopwatch.StartNew();
-                dashPlayer = BuildPlayer(clip);
-                exceptions = dashPlayer.AllExceptions();
-                await dashPlayer.Prepare();
-                var duration = dashPlayer.Duration;
+                player = BuildPlayer(clip);
+                exceptions = player.AllExceptions();
+                await player.Prepare();
+                var duration = player.Duration;
                 if (duration == null)
                     Assert.Ignore();
                 var testcases = generator.Invoke(duration.Value);
 
                 if (shouldPlay)
-                    dashPlayer.Play();
+                    player.Play();
 
                 foreach (var nextPosition in testcases)
                 {
                     var start = stopwatch.Elapsed;
-                    await dashPlayer.Seek(nextPosition);
+                    await player.Seek(nextPosition);
                     var end = stopwatch.Elapsed;
 
                     var seekTimeDuration = end - start;
@@ -322,13 +452,13 @@ namespace JuvoPlayer.TizenTests.Tests
                         _logger.Info(msg);
 
                     if (shouldPlay)
-                        await WaitForTargetPosition(dashPlayer, nextPosition);
+                        await WaitForTargetPosition(player, nextPosition);
                     var expectedState = shouldPlay ? PlayerState.Playing : PlayerState.Ready;
-                    var actualState = dashPlayer.State;
+                    var actualState = player.State;
                     if (shouldPlay && actualState == PlayerState.Paused)
                     {
-                        await WaitForBufferingEnd(dashPlayer);
-                        actualState = dashPlayer.State;
+                        await WaitForBufferingEnd(player);
+                        actualState = player.State;
                     }
 
                     Assert.That(actualState, Is.EqualTo(expectedState));
@@ -336,8 +466,8 @@ namespace JuvoPlayer.TizenTests.Tests
             }
             finally
             {
-                if (dashPlayer != null)
-                    await dashPlayer.DisposeAsync();
+                if (player != null)
+                    await player.DisposeAsync();
                 if (exceptions != null)
                 {
                     foreach (var exception in await exceptions)
@@ -350,7 +480,7 @@ namespace JuvoPlayer.TizenTests.Tests
         [TestCaseSource(nameof(Clips))]
         public void Seek_WhilePlaying_Seeks(Clip clip)
         {
-            RunTest(async () =>
+            RunTest(clip, async () =>
                 await SeekTest(
                     clip,
                     true,
@@ -361,7 +491,7 @@ namespace JuvoPlayer.TizenTests.Tests
         [TestCaseSource(nameof(Clips))]
         public void Seek_WhileReady_Seeks(Clip clip)
         {
-            RunTest(async () =>
+            RunTest(clip, async () =>
                 await SeekTest(
                     clip,
                     false,
@@ -372,7 +502,7 @@ namespace JuvoPlayer.TizenTests.Tests
         [TestCaseSource(nameof(Clips))]
         public void Seek_Backward_Seeks(Clip clip)
         {
-            RunTest(async () =>
+            RunTest(clip, async () =>
                 await SeekTest(
                     clip,
                     true,
@@ -383,35 +513,35 @@ namespace JuvoPlayer.TizenTests.Tests
             Clip clip,
             Func<StreamGroup[], (StreamGroup[], IStreamSelector[])[]> generator)
         {
-            IPlayer dashPlayer = null;
+            IPlayer player = null;
             Task<IList<Exception>> exceptions = null;
             try
             {
-                dashPlayer = BuildPlayer(clip);
-                exceptions = dashPlayer.AllExceptions();
-                await dashPlayer.Prepare();
-                dashPlayer.Play();
+                player = BuildPlayer(clip);
+                exceptions = player.AllExceptions();
+                await player.Prepare();
+                player.Play();
                 await Task.Delay(TimeSpan.FromSeconds(3));
 
-                var inputStreamGroups = dashPlayer.GetStreamGroups();
+                var inputStreamGroups = player.GetStreamGroups();
                 var testCases = generator.Invoke(inputStreamGroups);
                 foreach (var testCase in testCases)
                 {
                     var (outputStreamGroups, outputSelectors) = testCase;
-                    await dashPlayer.SetStreamGroups(
+                    await player.SetStreamGroups(
                         outputStreamGroups,
                         outputSelectors);
                     await Task.Delay(TimeSpan.FromSeconds(3));
-                    var position = dashPlayer.Position;
-                    var state = dashPlayer.State;
+                    var position = player.Position;
+                    var state = player.State;
                     Assert.That(position, Is.GreaterThan(TimeSpan.Zero));
                     Assert.That(state, Is.EqualTo(PlayerState.Playing));
                 }
             }
             finally
             {
-                if (dashPlayer != null)
-                    await dashPlayer.DisposeAsync();
+                if (player != null)
+                    await player.DisposeAsync();
                 if (exceptions != null)
                 {
                     foreach (var exception in await exceptions)
@@ -425,7 +555,7 @@ namespace JuvoPlayer.TizenTests.Tests
         [Repeat(5)]
         public void SetStreamGroups_SetsOnlyAudio_PlaysOnlyAudio(Clip clip)
         {
-            RunTest(async () => await SetStreamGroupsTest(clip, streamGroups =>
+            RunTest(clip, async () => await SetStreamGroupsTest(clip, streamGroups =>
             {
                 var audioStreamGroup =
                     streamGroups.First(streamGroup =>
@@ -436,8 +566,8 @@ namespace JuvoPlayer.TizenTests.Tests
                 return new[]
                 {
                     (
-                        new[] {audioStreamGroup},
-                        new IStreamSelector[] {streamSelector}
+                        new[] { audioStreamGroup },
+                        new IStreamSelector[] { streamSelector }
                     )
                 };
             }));
@@ -448,7 +578,7 @@ namespace JuvoPlayer.TizenTests.Tests
         [Repeat(5)]
         public void SetStreamGroups_SetsVideoOnly_PlaysOnlyVideo(Clip clip)
         {
-            RunTest(async () => await SetStreamGroupsTest(clip, streamGroups =>
+            RunTest(clip, async () => await SetStreamGroupsTest(clip, streamGroups =>
             {
                 var videoStreamGroup =
                     streamGroups.First(streamGroup =>
@@ -456,8 +586,8 @@ namespace JuvoPlayer.TizenTests.Tests
                 return new[]
                 {
                     (
-                        new[] {videoStreamGroup},
-                        new IStreamSelector[] {null}
+                        new[] { videoStreamGroup },
+                        new IStreamSelector[] { null }
                     )
                 };
             }));
@@ -468,7 +598,7 @@ namespace JuvoPlayer.TizenTests.Tests
         [Repeat(5)]
         public void SetStreamGroups_UpdatesVideoStreamSelector_WorksAsExpected(Clip clip)
         {
-            RunTest(async () => await SetStreamGroupsTest(clip, streamGroups =>
+            RunTest(clip, async () => await SetStreamGroupsTest(clip, streamGroups =>
             {
                 var videoStreamGroup =
                     streamGroups.FirstOrDefault(streamGroup =>
@@ -488,8 +618,8 @@ namespace JuvoPlayer.TizenTests.Tests
                     var selector = new FixedStreamSelector(j);
                     testCases.Add(
                         (
-                            new[] {videoStreamGroup, audioStreamGroup},
-                            new IStreamSelector[] {selector, null}
+                            new[] { videoStreamGroup, audioStreamGroup },
+                            new IStreamSelector[] { selector, null }
                         ));
                 }
 
@@ -502,7 +632,7 @@ namespace JuvoPlayer.TizenTests.Tests
         [Repeat(5)]
         public void SetStreamGroups_UpdatesAudioStreamSelector_WorksAsExpected(Clip clip)
         {
-            RunTest(async () => await SetStreamGroupsTest(clip, streamGroups =>
+            RunTest(clip, async () => await SetStreamGroupsTest(clip, streamGroups =>
             {
                 var videoStreamGroup =
                     streamGroups.FirstOrDefault(streamGroup =>
@@ -520,8 +650,8 @@ namespace JuvoPlayer.TizenTests.Tests
                         var selector = new FixedStreamSelector(j);
                         testCases.Add(
                             (
-                                new[] {videoStreamGroup, audioStreamGroup},
-                                new IStreamSelector[] {null, selector}
+                                new[] { videoStreamGroup, audioStreamGroup },
+                                new IStreamSelector[] { null, selector }
                             ));
                     }
                 }
@@ -534,14 +664,14 @@ namespace JuvoPlayer.TizenTests.Tests
         [TestCaseSource(nameof(Clips))]
         public void EOS_Reached_NotifiesClient(Clip clip)
         {
-            RunTest(async () =>
+            RunTest(clip, async () =>
             {
-                IPlayer dashPlayer = null;
+                IPlayer player = null;
                 try
                 {
-                    dashPlayer = BuildPlayer(clip);
-                    await dashPlayer.Prepare();
-                    var duration = dashPlayer.Duration;
+                    player = BuildPlayer(clip);
+                    await player.Prepare();
+                    var duration = player.Duration;
                     if (duration == null)
                         Assert.Ignore();
                     for (var i = 0; i < 5; i++)
@@ -549,18 +679,18 @@ namespace JuvoPlayer.TizenTests.Tests
                         var nearToEndSeekTime =
                             duration.Value
                                 .Subtract(TimeSpan.FromSeconds(2));
-                        await dashPlayer.Seek(nearToEndSeekTime);
-                        var exceptionTask = dashPlayer
+                        await player.Seek(nearToEndSeekTime);
+                        var exceptionTask = player
                             .OnEvent()
                             .OfType<ExceptionEvent>()
                             .FirstAsync()
                             .ToTask();
-                        var eosTask = dashPlayer
+                        var eosTask = player
                             .OnEvent()
                             .OfType<EosEvent>()
                             .FirstAsync()
                             .ToTask();
-                        dashPlayer.Play();
+                        player.Play();
                         var timeoutTask = Task.Delay(EosTimeout);
                         var completedTask = await Task.WhenAny(
                             exceptionTask,
@@ -577,8 +707,8 @@ namespace JuvoPlayer.TizenTests.Tests
                 }
                 finally
                 {
-                    if (dashPlayer != null)
-                        await dashPlayer.DisposeAsync();
+                    if (player != null)
+                        await player.DisposeAsync();
                 }
             });
         }
@@ -587,30 +717,30 @@ namespace JuvoPlayer.TizenTests.Tests
         [TestCaseSource(nameof(Clips))]
         public void Seek_ToClipDuration_CompletesAndPublishesEos(Clip clip)
         {
-            RunTest(async () =>
+            RunTest(clip, async () =>
             {
-                IPlayer dashPlayer = null;
+                IPlayer player = null;
                 try
                 {
-                    dashPlayer = BuildPlayer(clip);
-                    await dashPlayer.Prepare();
-                    var duration = dashPlayer.Duration;
+                    player = BuildPlayer(clip);
+                    await player.Prepare();
+                    var duration = player.Duration;
                     if (duration == null)
                         Assert.Ignore();
 
-                    var exceptionTask = dashPlayer
+                    var exceptionTask = player
                         .OnEvent()
                         .OfType<ExceptionEvent>()
                         .FirstAsync()
                         .ToTask();
-                    var eosTask = dashPlayer
+                    var eosTask = player
                         .OnEvent()
                         .OfType<EosEvent>()
                         .FirstAsync()
                         .ToTask();
 
-                    await dashPlayer.Seek(duration.Value);
-                    dashPlayer.Play();
+                    await player.Seek(duration.Value);
+                    player.Play();
 
                     var timeoutTask = Task.Delay(EosTimeout);
 
@@ -628,8 +758,8 @@ namespace JuvoPlayer.TizenTests.Tests
                 }
                 finally
                 {
-                    if (dashPlayer != null)
-                        await dashPlayer.DisposeAsync();
+                    if (player != null)
+                        await player.DisposeAsync();
                 }
             });
         }
@@ -637,13 +767,13 @@ namespace JuvoPlayer.TizenTests.Tests
         [Test]
         public void SeekInBrokenParisClip_To145533Ms_TimeOuts()
         {
-            RunTest(async () =>
+            var parisClip = new Clip
             {
-                var parisClip = new Clip
-                {
-                    MpdUri =
-                        "http://106.120.45.49/paris/broken/dashevc-live-2s-4k.mpd"
-                };
+                Uri =
+                    "http://106.120.45.49/paris/broken/dashevc-live-2s-4k.mpd"
+            };
+            RunTest(parisClip, async () =>
+            {
                 IPlayer dashPlayer = null;
                 try
                 {
@@ -711,14 +841,26 @@ namespace JuvoPlayer.TizenTests.Tests
             });
         }
 
-        private void RunTest(Func<Task> test)
+        private void RunTest(Clip clip, Func<Task> test)
         {
             var testContext = TestContext.CurrentContext;
-            var testName = testContext.Test.FullName;
+            var testName = testContext.Test.MethodName;
+
+            foreach (var ignoredTestCase in IgnoredTestCases)
+            {
+                if (ignoredTestCase.Clip.Id == clip.Id &&
+                    testName.Equals(ignoredTestCase.Name))
+                {
+                    var reason = ignoredTestCase.Reason;
+                    Assert.Ignore(reason);
+                }
+            }
+
+            var testFullName = testContext.Test.FullName;
             var isPassed = true;
             try
             {
-                _logger.Info($"{testName} starts");
+                _logger.Info($"{testFullName} starts");
                 AsyncContext.Run(async () => { await test.Invoke(); });
             }
             catch (Exception ex)
@@ -732,14 +874,27 @@ namespace JuvoPlayer.TizenTests.Tests
                 const string passed = "PASSED";
                 const string failed = "FAILED";
                 var result = isPassed ? passed : failed;
-                _logger.Info($"{testName} ends with Result={result}");
+                _logger.Info($"{testFullName} ends with Result={result}");
             }
         }
 
         private static IPlayer BuildPlayer(Clip clip, Configuration configuration = default)
         {
+            switch (clip.PlayerType)
+            {
+                case PlayerType.Dash:
+                    return BuildDashPlayer(clip, configuration);
+                case PlayerType.FFmpeg:
+                    return BuildFFmpegPlayer(clip, configuration);
+                default:
+                    throw new ArgumentOutOfRangeException();
+            }
+        }
+
+        private static IPlayer BuildDashPlayer(Clip clip, Configuration configuration = default)
+        {
             var window = new ElmSharpWindow(AppContext.Instance.MainWindow);
-            var mpdUri = clip.MpdUri;
+            var mpdUri = clip.Uri;
             var drmInfo = clip.DrmDescription;
             var builder = new DashPlayerBuilder();
             builder = builder
@@ -762,6 +917,18 @@ namespace JuvoPlayer.TizenTests.Tests
                         requestHeaders));
             }
 
+            return builder.Build();
+        }
+
+        private static IPlayer BuildFFmpegPlayer(Clip clip, Configuration configuration = default)
+        {
+            var window = new ElmSharpWindow(AppContext.Instance.MainWindow);
+            var uri = clip.Uri;
+            var builder = new FFmpegPlayerBuilder();
+            builder = builder
+                .SetWindow(window)
+                .SetUri(uri)
+                .SetConfiguration(configuration);
             return builder.Build();
         }
 

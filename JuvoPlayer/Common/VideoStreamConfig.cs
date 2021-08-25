@@ -50,6 +50,11 @@ namespace JuvoPlayer.Common
             BitRate = bitRate;
         }
 
+        public override StreamType StreamType()
+        {
+            return Common.StreamType.Video;
+        }
+
         public bool Equals(VideoStreamConfig other)
         {
             return other != null &&

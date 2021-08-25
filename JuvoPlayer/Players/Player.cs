@@ -113,7 +113,7 @@ namespace JuvoPlayer.Players
                     startTime = requestedStartTime;
             }
 
-            UpdateSegment(startTime);
+            await UpdateSegment(startTime);
             LoadChunks();
 
             var streamConfigs =
@@ -132,7 +132,7 @@ namespace JuvoPlayer.Players
                 PausePlayer();
             await StopStreaming();
 
-            UpdateSegment(position);
+            await UpdateSegment(position);
             position = _segment.Start;
             LoadChunks();
 
@@ -238,7 +238,7 @@ namespace JuvoPlayer.Players
             _streamHolders = streamHolders;
             await PrepareStreams();
 
-            UpdateSegment(position);
+            await UpdateSegment(position);
 
             LoadChunks();
 
@@ -333,6 +333,8 @@ namespace JuvoPlayer.Players
                     DisposeStreamHolder(streamHolder);
             }
 
+            _streamProvider.Dispose();
+
             _cancellationTokenSource?.Dispose();
             _platformPlayerEosSubscription?.Dispose();
             _platformPlayer?.Dispose();
@@ -348,13 +350,19 @@ namespace JuvoPlayer.Players
                     holder.Stream.Prepare()));
         }
 
-        private void UpdateSegment(TimeSpan startTime)
+        private async Task UpdateSegment(TimeSpan startTime)
         {
             if (_streamHolders.ContainsKey(ContentType.Video))
             {
                 var videoStream = _streamHolders[ContentType.Video]
                     .Stream;
-                startTime = videoStream?.GetAdjustedSeekPosition(startTime) ?? startTime;
+                if (videoStream != null)
+                {
+                    var adjustedStartTime = await videoStream.GetAdjustedSeekPosition(startTime);
+                    if (adjustedStartTime > startTime)
+                        Log.Warn("Seek to a previous key frame is not supported");
+                    startTime = adjustedStartTime;
+                }
             }
 
             Log.Info($"{startTime}");

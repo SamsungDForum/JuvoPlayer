@@ -26,6 +26,7 @@ namespace JuvoPlayer.Common
             CodecExtraData = codecExtraData;
         }
 
+        public abstract StreamType StreamType();
         public override int GetHashCode()
         {
             return CodecExtraData.GetHashCode();
@@ -39,7 +40,7 @@ namespace JuvoPlayer.Common
         public bool Equals(StreamConfig streamConfig)
         {
             return streamConfig != null
-                   && CodecExtraData.Equals(streamConfig.CodecExtraData);
+                   && Equals(CodecExtraData, streamConfig.CodecExtraData);
         }
     }
 }

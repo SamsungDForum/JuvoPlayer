@@ -20,7 +20,7 @@ using System.Threading.Tasks;
 
 namespace JuvoPlayer.Common
 {
-    public interface IStreamProvider
+    public interface IStreamProvider : IDisposable
     {
         Task<Timeline> Prepare();
         StreamGroup[] GetStreamGroups(Period period);

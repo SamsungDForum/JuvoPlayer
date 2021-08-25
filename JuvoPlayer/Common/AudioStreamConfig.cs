@@ -32,19 +32,23 @@ namespace JuvoPlayer.Common
 
         public long BitRate { get; }
 
+        public string Language { get; }
+
         public AudioStreamConfig(
             byte[] codecExtraData,
             string mimeType,
             int channelLayout,
             int sampleRate,
             int bitsPerChannel,
-            long bitRate) : base(codecExtraData)
+            long bitRate,
+            string language) : base(codecExtraData)
         {
             MimeType = mimeType;
             ChannelLayout = channelLayout;
             SampleRate = sampleRate;
             BitsPerChannel = bitsPerChannel;
             BitRate = bitRate;
+            Language = language;
         }
 
         public bool Equals(AudioStreamConfig other)
@@ -55,7 +59,13 @@ namespace JuvoPlayer.Common
                    ChannelLayout == other.ChannelLayout &&
                    SampleRate == other.SampleRate &&
                    BitsPerChannel == other.BitsPerChannel &&
-                   BitRate == other.BitRate;
+                   BitRate == other.BitRate &&
+                   string.Equals(Language, other.Language);
+        }
+
+        public override StreamType StreamType()
+        {
+            return Common.StreamType.Audio;
         }
 
         public override bool Equals(object obj)
@@ -72,6 +82,7 @@ namespace JuvoPlayer.Common
             hashCode = hashCode * -1521134295 + SampleRate.GetHashCode();
             hashCode = hashCode * -1521134295 + BitsPerChannel.GetHashCode();
             hashCode = hashCode * -1521134295 + BitRate.GetHashCode();
+            hashCode = hashCode * -1521134295 + Language.GetHashCode();
             return hashCode;
         }
 
@@ -84,6 +95,7 @@ namespace JuvoPlayer.Common
             sb.AppendLine("\tChannelLayout  = " + ChannelLayout);
             sb.AppendLine("\tSampleRate     = " + SampleRate);
             sb.AppendLine("\tBitRate        = " + BitRate);
+            sb.AppendLine("\tLanguage       = " + Language);
 
             return sb.ToString();
         }
