@@ -95,5 +95,19 @@ namespace JuvoPlayer.Common
             return new Format(id, label, selectionFlags, roleFlags, bitrate, codecs, containerMimeType, sampleMimeType,
                 null, null, null, null, null, language, null);
         }
+
+        public static Format CreateAudioSampleFormat(string id, string sampleMimeType, string codecs, int bitrate,
+            int channelCount, int sampleRate, string language)
+        {
+            return new Format(id, null, SelectionFlags.Unknown, RoleFlags.Main, bitrate, codecs, null,
+                sampleMimeType, null, null, null, channelCount, sampleRate, language, null);
+        }
+
+        public static Format CreateVideoSampleFormat(string id, string sampleMimeType, string codecs, int bitrate,
+            int width, int height, float frameRate)
+        {
+            return new Format(id, null, SelectionFlags.Unknown, RoleFlags.Main, bitrate, codecs, null,
+                sampleMimeType, width, height, frameRate, null, null, null, null);
+        }
     }
 }

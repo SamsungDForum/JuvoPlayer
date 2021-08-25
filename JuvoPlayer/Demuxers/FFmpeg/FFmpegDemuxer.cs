@@ -126,7 +126,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg
             _thread?.Factory?.Run(DeallocFFmpeg);
             _thread?.Join();
             _thread = null;
-            _demuxerDataSource.Reset();
+            _demuxerDataSource?.Reset();
         }
 
         public Task<TimeSpan> Seek(TimeSpan time, CancellationToken token)

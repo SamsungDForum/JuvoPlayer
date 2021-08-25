@@ -16,7 +16,6 @@
  */
 
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Drawing;
 using System.IO;
@@ -34,7 +33,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg
     {
         private const int MillisecondsPerSecond = 1000;
 
-        private readonly AVRational _millsBase = new AVRational {num = 1, den = MillisecondsPerSecond};
+        private readonly AVRational _millsBase = new AVRational { num = 1, den = MillisecondsPerSecond };
 
         private readonly Dictionary<int, byte[]> _parsedExtraDatas = new Dictionary<int, byte[]>();
         private AvioContextWrapper _avioContext;
@@ -221,8 +220,8 @@ namespace JuvoPlayer.Demuxers.FFmpeg
                 packet.Dts = dts.Ticks >= 0 ? dts : TimeSpan.Zero;
                 packet.Duration = Rescale(pkt.duration, stream);
 
-                packet.IsKeyFrame = pkt.flags == 1;
-                packet.Storage = new FFmpegDataStorage {Packet = pkt, StreamType = packet.StreamType};
+                packet.IsKeyFrame = (pkt.flags & 1) != 0;
+                packet.Storage = new FFmpegDataStorage { Packet = pkt, StreamType = packet.StreamType };
                 PrependExtraDataIfNeeded(packet, stream);
                 return packet;
             } while (true);
@@ -378,8 +377,8 @@ namespace JuvoPlayer.Demuxers.FFmpeg
 
         private TimeSpan Rescale(long ffmpegTime, AVStream* stream)
         {
-            var rescalled = ffmpeg.av_rescale_q(ffmpegTime, stream->time_base, _millsBase);
-            return TimeSpan.FromMilliseconds(rescalled);
+            var rescaled = ffmpeg.av_rescale_q(ffmpegTime, stream->time_base, _millsBase);
+            return TimeSpan.FromMilliseconds(rescaled);
         }
 
         private void VerifyStreamIndex(int idx)
@@ -393,33 +392,33 @@ namespace JuvoPlayer.Demuxers.FFmpeg
 
         private void HandleSeek(int idx, TimeSpan time)
         {
-            var (target, flags) = CalculateTargetAndFlags(idx, time);
-            var ret = ffmpeg.av_seek_frame(_formatContext, idx, target, flags);
+            var target = CalculateTarget(idx, time);
+            var ret = ffmpeg.av_seek_frame(_formatContext, idx, target, ffmpeg.AVSEEK_FLAG_BACKWARD);
 
             if (ret != 0)
                 throw new FFmpegException($"av_seek_frame returned {ret}");
         }
 
-        private (long, int) CalculateTargetAndFlags(int idx, TimeSpan time)
+        private long CalculateTarget(int idx, TimeSpan time)
         {
             var stream = _formatContext->streams[idx];
             var target =
                 ffmpeg.av_rescale_q((long) time.TotalMilliseconds, _millsBase, stream->time_base);
 
             if (target < stream->first_dts)
-                return (stream->first_dts, ffmpeg.AVSEEK_FLAG_BACKWARD);
+                return stream->first_dts;
 
             if (stream->index_entries != null && stream->nb_index_entries > 0)
             {
                 var lastTimestamp = stream->index_entries[stream->nb_index_entries - 1].timestamp;
                 if (target > lastTimestamp)
-                    return (lastTimestamp, ffmpeg.AVSEEK_FLAG_BACKWARD);
+                    return lastTimestamp;
             }
 
             if (stream->duration > 0 && target > stream->duration)
-                return (stream->duration, ffmpeg.AVSEEK_FLAG_BACKWARD);
+                return stream->duration;
 
-            return (target, ffmpeg.AVSEEK_FLAG_ANY);
+            return target;
         }
 
         private static Packet CreateEncryptedPacket(byte* sideData, ulong size)
@@ -461,6 +460,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg
             var sampleRate = stream->codecpar->sample_rate;
             var bitsPerChannel = GetBitsPerChannel(stream);
             var bitRate = stream->codecpar->bit_rate;
+            var language = GetLanguage(stream);
             var index = stream->index;
             return new FFmpegAudioStreamConfig(
                 codecExtraData,
@@ -469,6 +469,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg
                 sampleRate,
                 bitsPerChannel,
                 bitRate,
+                language,
                 index);
         }
 
@@ -480,8 +481,7 @@ namespace JuvoPlayer.Demuxers.FFmpeg
                 stream->codecpar->width,
                 stream->codecpar->height);
             var frameRateNum = stream->avg_frame_rate.num;
-            var frameRateDen = stream->avg_frame_rate.den > 0 ?
-                stream->avg_frame_rate.den : 1;
+            var frameRateDen = stream->avg_frame_rate.den > 0 ? stream->avg_frame_rate.den : 1;
             var bitRate = stream->codecpar->bit_rate;
             var index = stream->index;
             return new FFmpegVideoStreamConfig(
@@ -521,15 +521,18 @@ namespace JuvoPlayer.Demuxers.FFmpeg
             return bitsPerChannel;
         }
 
+        private static string GetLanguage(AVStream* stream)
+        {
+            var languageEntry = ffmpeg.av_dict_get(stream->metadata, "language", null, 0);
+            return languageEntry != null ?
+                Marshal.PtrToStringAnsi((IntPtr) languageEntry->value, 3) :
+                null;
+        }
+
         private static string GetMimeType(AVStream* stream)
         {
-            var buff = new byte[32];
-            fixed (byte* ptr = buff)
-            {
-                ffmpeg.av_fourcc_make_string(ptr, stream->codecpar->codec_tag);
-            }
-
-            return MimeType.GetMediaMimeType(Encoding.ASCII.GetString(buff));
+            var codec = stream->codecpar->codec_id;
+            return codec.ConvertToMimeType();
         }
 
         private static string GetErrorText(int returnCode)

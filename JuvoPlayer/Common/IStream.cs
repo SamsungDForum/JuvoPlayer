@@ -28,6 +28,6 @@ namespace JuvoPlayer.Common
         Task Prepare();
         Task LoadChunks(Segment segment, IStreamRenderer streamRenderer, CancellationToken token);
         Task<StreamConfig> GetStreamConfig(CancellationToken token);
-        TimeSpan GetAdjustedSeekPosition(TimeSpan position);
+        Task<TimeSpan> GetAdjustedSeekPosition(TimeSpan position);
     }
 }

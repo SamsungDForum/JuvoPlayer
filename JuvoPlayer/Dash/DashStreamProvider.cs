@@ -239,5 +239,9 @@ namespace JuvoPlayer.Dash
                     throw new ArgumentException($"{contentType} is not supported");
             }
         }
+
+        public void Dispose()
+        {
+        }
     }
 }

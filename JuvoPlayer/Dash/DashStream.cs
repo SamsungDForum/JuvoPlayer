@@ -177,7 +177,7 @@ namespace JuvoPlayer.Dash
             }
         }
 
-        public TimeSpan GetAdjustedSeekPosition(TimeSpan position)
+        public Task<TimeSpan> GetAdjustedSeekPosition(TimeSpan position)
         {
             foreach (var representation in _representations)
             {
@@ -188,10 +188,10 @@ namespace JuvoPlayer.Dash
                 var segmentNum = segmentIndex.GetSegmentNum(
                     position,
                     periodDuration);
-                return segmentIndex.GetStartTime(segmentNum);
+                return Task.FromResult(segmentIndex.GetStartTime(segmentNum));
             }
 
-            return position;
+            return Task.FromResult(position);
         }
 
         public void Dispose()
