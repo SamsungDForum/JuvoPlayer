@@ -69,7 +69,6 @@ namespace JuvoPlayer.TizenTests.Tests
             Paris,
             OopsCencPlayReady,
             OopsCencWidevine,
-            ArtOfMotion,
             TearsOfSteelFhd,
             TearsOfSteelUhd,
             BigBuckBunny,
@@ -150,22 +149,6 @@ namespace JuvoPlayer.TizenTests.Tests
                         KeySystem = "com.widevine.alpha",
                         LicenseServerUri =
                             "https://dash-mse-test.appspot.com/api/drm/widevine?drm_system=widevine&source=YOUTUBE&ip=0.0.0.0&ipbits=0&expire=19000000000&key=test_key1&sparams=ip,ipbits,expire,drm_system,source,video_id&video_id=03681262dc412c06&signature=9C4BE99E6F517B51FED1F0B3B31966D3C5DAB9D6.6A1F30BB35F3A39A4CA814B731450D4CBD198FFD",
-                        RequestHeaders = new Dictionary<string, string>
-                        {
-                            ["Content-Type"] = "text/xml; charset=utf-8"
-                        }
-                    }
-                },
-                new Clip
-                {
-                    Id = ClipId.ArtOfMotion,
-                    Uri = "http://106.120.45.49/art-of-motion/manifest/11331.mpd",
-                    PlayerType = PlayerType.Dash,
-                    DrmDescription = new DrmDescription
-                    {
-                        KeySystem = "com.widevine.alpha",
-                        LicenseServerUri =
-                            "https://widevine-proxy.appspot.com/proxy",
                         RequestHeaders = new Dictionary<string, string>
                         {
                             ["Content-Type"] = "text/xml; charset=utf-8"
