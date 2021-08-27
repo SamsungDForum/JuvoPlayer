@@ -1,6 +1,7 @@
 ﻿/*!
- * https://github.com/SamsungDForum/JuvoPlayer
- * Copyright 2020, Samsung Electronics Co., Ltd
+ *
+ * [https://github.com/SamsungDForum/JuvoPlayer])
+ * Copyright 2021, Samsung Electronics Co., Ltd
  * Licensed under the MIT license
  *
  * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
@@ -13,21 +14,24 @@
  * ON ANY THEORY OF LIABILITY, WHETHER IN CONTRACT, STRICT LIABILITY, OR TORT
  * (INCLUDING NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE USE OF THIS
  * SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
+ *
  */
 
 using System;
-using System.Threading;
-using System.Threading.Tasks;
 
 namespace JuvoPlayer.Common
 {
-    public interface IStream : IDisposable
+    public class StreamInfoChangedEvent : IEvent
     {
-        IObservable<IEvent> OnEvent();
-        IStreamSelector StreamSelector { get; }
-        Task Prepare();
-        Task LoadChunks(Segment segment, IStreamRenderer streamRenderer, CancellationToken token);
-        Task<StreamConfig> GetStreamConfig(CancellationToken token);
-        Task<TimeSpan> GetAdjustedSeekPosition(TimeSpan position);
+        public StreamGroup StreamGroup { get; }
+        public int StreamIndex { get; }
+        public TimeSpan FirstPts { get; }
+
+        public StreamInfoChangedEvent(StreamGroup streamGroup, int streamIndex, TimeSpan firstPts)
+        {
+            StreamGroup = streamGroup;
+            StreamIndex = streamIndex;
+            FirstPts = firstPts;
+        }
     }
 }

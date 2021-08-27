@@ -38,7 +38,7 @@ namespace JuvoPlayer.Dash
         private readonly IDownloader _downloader;
         private ILogger _logger = Log.Logger;
         private readonly IThroughputHistory _throughputHistory;
-        private readonly Subject<Exception> _exceptionSubject;
+        private readonly Subject<IEvent> _eventSubject;
         private AdaptationSet _adaptationSet;
         private TimeSpan? _periodDuration;
         private TimeSpan _bufferPosition;
@@ -65,14 +65,14 @@ namespace JuvoPlayer.Dash
             _downloader = downloader;
             _clock = clock;
             _demuxer = demuxer;
-            _exceptionSubject = new Subject<Exception>();
+            _eventSubject = new Subject<IEvent>();
             StreamSelector = streamSelector;
             _maxBufferTime = TimeSpan.FromSeconds(8);
         }
 
         public StreamGroup StreamGroup { get; private set; }
 
-        public IObservable<Exception> OnException() => _exceptionSubject.AsObservable();
+        public IObservable<IEvent> OnEvent() => _eventSubject.AsObservable();
         public IStreamSelector StreamSelector { get; private set; }
 
         public async Task Prepare()
@@ -196,7 +196,7 @@ namespace JuvoPlayer.Dash
 
         public void Dispose()
         {
-            _exceptionSubject.Dispose();
+            _eventSubject.Dispose();
         }
 
         internal void SetAdaptationSet(
@@ -261,7 +261,8 @@ namespace JuvoPlayer.Dash
             catch (Exception ex)
             {
                 _logger.Error(ex);
-                _exceptionSubject.OnNext(ex);
+                var exceptionEvent = new ExceptionEvent(ex);
+                _eventSubject.OnNext(exceptionEvent);
             }
 
             _logger.Info("Load loop finished");
@@ -271,10 +272,13 @@ namespace JuvoPlayer.Dash
         {
             _logger.Info();
             var previousRepresentation = _currentRepresentation;
-            var representation = SelectRepresentation();
+            var selectedIndex = SelectRepresentationIndex();
+            var representation = _representations[selectedIndex];
+            var changedRepresentation = false;
             if (previousRepresentation != representation)
             {
                 _logger.Info("Change of representation");
+                changedRepresentation = true;
                 ReinitDemuxer(
                     representation.InitData,
                     cancellationToken);
@@ -292,6 +296,9 @@ namespace JuvoPlayer.Dash
                 if (chunk != null)
                 {
                     _logger.Info("Loading chunk");
+                    if (changedRepresentation)
+                        SendStreamInfoChangedEvent(selectedIndex);
+
                     await chunk.Load();
                     cancellationToken.ThrowIfCancellationRequested();
                     OnChunkLoaded(chunk,
@@ -334,10 +341,18 @@ namespace JuvoPlayer.Dash
             return false;
         }
 
-        private RepresentationWrapper SelectRepresentation()
+        private void SendStreamInfoChangedEvent(int selectedIndex)
         {
-            var selectedIndex = StreamSelector.Select(StreamGroup);
-            return _representations[selectedIndex];
+            var infoChangedEvent = new StreamInfoChangedEvent(
+                StreamGroup,
+                selectedIndex,
+                _bufferPosition);
+            _eventSubject.OnNext(infoChangedEvent);
+        }
+
+        private int SelectRepresentationIndex()
+        {
+            return StreamSelector.Select(StreamGroup);
         }
 
         private void ReinitDemuxer(

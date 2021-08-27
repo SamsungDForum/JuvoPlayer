@@ -524,7 +524,7 @@ namespace JuvoPlayer.Players
                 streamGroup,
                 bufferingObserver,
                 OnStreamRendererBuffering,
-                OnStreamException);
+                OnStreamEvent);
         }
 
         private void OnStreamRendererBuffering(bool isBuffering)
@@ -547,10 +547,11 @@ namespace JuvoPlayer.Players
             }
         }
 
-        private async void OnStreamException(Exception ex)
+        private async void OnStreamEvent(IEvent evt)
         {
-            await StopStreaming();
-            _eventSubject.OnNext(new ExceptionEvent(ex));
+            if (evt.GetType() == typeof(ExceptionEvent))
+                await StopStreaming();
+            _eventSubject.OnNext(evt);
         }
 
         private void DisposeStreamHolder(StreamHolder streamHolder)
@@ -666,7 +667,7 @@ namespace JuvoPlayer.Players
             private Task _loadChunksTask;
             private Task _pushPacketsTask;
             private readonly IDisposable _bufferingObserverSubscription;
-            private readonly IDisposable _streamExceptionSubscription;
+            private readonly IDisposable _streamEventSubscription;
 
             public StreamHolder(
                 IStream stream,
@@ -674,7 +675,7 @@ namespace JuvoPlayer.Players
                 StreamGroup streamGroup,
                 BufferingObserver bufferingObserver,
                 Action<bool> onStreamRendererBuffering,
-                Action<Exception> onException)
+                Action<IEvent> onEvent)
             {
                 Stream = stream;
                 StreamRenderer = streamRenderer;
@@ -684,10 +685,10 @@ namespace JuvoPlayer.Players
                     BufferingObserver
                         .OnBuffering()
                         .Subscribe(onStreamRendererBuffering);
-                _streamExceptionSubscription =
+                _streamEventSubscription =
                     Stream
-                        .OnException()
-                        .Subscribe(onException);
+                        .OnEvent()
+                        .Subscribe(onEvent);
             }
 
             public IStream Stream { get; }
@@ -758,7 +759,7 @@ namespace JuvoPlayer.Players
             public void Dispose()
             {
                 _bufferingObserverSubscription?.Dispose();
-                _streamExceptionSubscription?.Dispose();
+                _streamEventSubscription?.Dispose();
                 Stream?.Dispose();
                 BufferingObserver?.Dispose();
             }
