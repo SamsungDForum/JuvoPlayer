@@ -33,7 +33,7 @@ namespace JuvoPlayer.FFmpeg
         private Segment _segment;
         private readonly IClock _clock;
         private readonly TimeSpan _maxBufferTime;
-        private readonly Subject<Exception> _exceptionSubject;
+        private readonly Subject<IEvent> _eventSubject;
 
         public FFmpegStream(
             IClock clock,
@@ -52,12 +52,12 @@ namespace JuvoPlayer.FFmpeg
                 .Logger
                 .CopyWithPrefix(streamType);
             _maxBufferTime = TimeSpan.FromSeconds(8);
-            _exceptionSubject = new Subject<Exception>();
+            _eventSubject = new Subject<IEvent>();
         }
 
-        public IObservable<Exception> OnException()
+        public IObservable<IEvent> OnEvent()
         {
-            return _exceptionSubject.AsObservable();
+            return _eventSubject.AsObservable();
         }
 
         public IStreamSelector StreamSelector { get; set; }
@@ -91,7 +91,8 @@ namespace JuvoPlayer.FFmpeg
             catch (Exception ex)
             {
                 _logger.Error(ex);
-                _exceptionSubject.OnNext(ex);
+                var exceptionEvent = new ExceptionEvent(ex);
+                _eventSubject.OnNext(exceptionEvent);
             }
             finally
             {
@@ -142,7 +143,7 @@ namespace JuvoPlayer.FFmpeg
 
         public void Dispose()
         {
-            _exceptionSubject.Dispose();
+            _eventSubject.Dispose();
         }
     }
 }
