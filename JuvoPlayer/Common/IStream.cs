@@ -23,7 +23,7 @@ namespace JuvoPlayer.Common
 {
     public interface IStream : IDisposable
     {
-        IObservable<Exception> OnException();
+        IObservable<IEvent> OnEvent();
         IStreamSelector StreamSelector { get; }
         Task Prepare();
         Task LoadChunks(Segment segment, IStreamRenderer streamRenderer, CancellationToken token);
