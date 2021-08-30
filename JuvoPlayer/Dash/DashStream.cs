@@ -119,6 +119,12 @@ namespace JuvoPlayer.Dash
             }
             finally
             {
+                if (_demuxerDataSource != null &&
+                    _demuxerDataSource.Completed == false)
+                {
+                    _demuxerDataSource.CompleteAdding();
+                }
+
                 await _demuxerController.CompleteAsync();
                 _demuxerController.DemuxerInitialized -= DemuxerControllerOnDemuxerInitialized;
                 _demuxerController.PacketReady -= DemuxerControllerOnPacketReady;
