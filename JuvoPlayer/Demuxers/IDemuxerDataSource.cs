@@ -30,5 +30,6 @@ namespace JuvoPlayer.Demuxers
         void Seek(long pos, CancellationToken token);
         void CompleteAdding();
         void Reset();
+        bool Completed { get; }
     }
 }

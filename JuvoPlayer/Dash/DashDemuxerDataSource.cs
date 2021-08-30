@@ -33,6 +33,8 @@ namespace JuvoPlayer.Dash
 
         public int Offset { get; set; }
 
+        public bool Completed { get; private set; }
+
         public void Initialize()
         {
             Offset = 0;
@@ -96,6 +98,7 @@ namespace JuvoPlayer.Dash
             Offset = 0;
             _currentSegment?.CompleteAdding();
             _segments?.CompleteAdding();
+            Completed = true;
         }
 
         public void Reset()
@@ -105,6 +108,7 @@ namespace JuvoPlayer.Dash
             _segments?.CompleteAdding();
             _currentSegment = null;
             _segments = null;
+            Completed = true;
         }
     }
 }
