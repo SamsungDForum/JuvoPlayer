@@ -67,7 +67,7 @@ namespace JuvoPlayer.TizenTests.Tests
             SintelDash,
             Formula1,
             Paris,
-            OopsCencPlayReady,
+            BigBuckBunnyDashPlayready,
             OopsCencWidevine,
             TearsOfSteelFhd,
             TearsOfSteelUhd,
@@ -125,14 +125,14 @@ namespace JuvoPlayer.TizenTests.Tests
                 },
                 new Clip
                 {
-                    Id = ClipId.OopsCencPlayReady,
-                    Uri = "http://106.120.45.49/nexusq/oops_cenc-20121114-signedlicenseurl-manifest.mpd",
+                    Id = ClipId.BigBuckBunnyDashPlayready,
+                    Uri = "http://106.120.45.49/bunny-dash/manifest(format=mpd-time-csf)",
                     PlayerType = PlayerType.Dash,
                     DrmDescription = new DrmDescription
                     {
                         KeySystem = "com.microsoft.playready",
                         LicenseServerUri =
-                            "https://dash-mse-test.appspot.com/api/drm/playready?drm_system=playready&source=YOUTUBE&ip=0.0.0.0&ipbits=0&expire=19000000000&sparams=ip,ipbits,expire,drm_system,source,video_id&video_id=03681262dc412c06&signature=448279561E2755699618BE0A2402189D4A30B03B.0CD6A27286BD2DAF00577FFA21928665DCD320C2&key=test_key1",
+                            "https://amssamples.keydelivery.mediaservices.windows.net/PlayReady/",
                         RequestHeaders = new Dictionary<string, string>
                         {
                             ["Content-Type"] = "text/xml; charset=utf-8"
