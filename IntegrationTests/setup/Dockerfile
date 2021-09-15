@@ -25,4 +25,4 @@ RUN python3 -m pip install Pillow
 
 RUN python3 -m pip install -r requirements.txt
 
-ADD https://github.com/tesseract-ocr/tessdata/raw/master/eng.traineddata /usr/share/tesseract-ocr/4.00/tessdata/eng.traineddata
+ADD https://github.com/tesseract-ocr/tessdata/raw/main/eng.traineddata /usr/share/tesseract-ocr/4.00/tessdata/eng.traineddata
