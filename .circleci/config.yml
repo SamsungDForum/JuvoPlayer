@@ -324,7 +324,6 @@ jobs:
             cp /tmp/${TPK_NAME} atr_tests &&
             cp -rf /tmp/Dockerfile atr_tests &&
             cp -rf /tmp/requirements.txt atr_tests &&
-            docker image rm $(docker images -q juvo_integration) -f &&
             docker build --no-cache  -t juvo_integration atr_tests &&
             python3 atr_in_docker.py
             --flash-tv-mode no
@@ -338,7 +337,8 @@ jobs:
             --docker-image juvo_integration
             --custom-docker-arguments=\"-v /home/${ATR_RUNNER_USER}/weed/atr/atr_tests:/root/atr/src/tests/juvo_ocr_test:rw 
             --env BOARD_USER=${BOARD_USER} --env BOARD_PASS=${BOARD_PASS}\"
-            --board-version ${BOARD_VERSION}"
+            --board-version ${BOARD_VERSION}" &&
+            docker image rm $(docker images -q juvo_integration) -f
       - run:
           name: Download test results
           command: >
