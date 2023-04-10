@@ -18,10 +18,10 @@
  */
 
 using System;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Threading;
 using System.Threading.Tasks;
+using AsyncKeyedLock;
 using JuvoLogger;
 using JuvoPlayer.Common.Utils.IReferenceCountableExtensions;
 using JuvoPlayer.ResourceLoaders;
@@ -33,8 +33,12 @@ namespace JuvoPlayer.Common
         private readonly Dictionary<string, WeakReference<SKBitmapRefCounted>> _bitmaps =
             new Dictionary<string, WeakReference<SKBitmapRefCounted>>();
 
-        private readonly ConcurrentDictionary<string, SemaphoreSlim> _bitmapLoaderLocks =
-            new ConcurrentDictionary<string, SemaphoreSlim>();
+        private readonly AsyncKeyedLocker<string> _bitmapLoaderLocks =
+            new AsyncKeyedLocker<string>(o =>
+            {
+                o.PoolSize = 20;
+                o.PoolInitialFill = 1;
+            });
 
         private readonly ILogger _logger = LoggerManager.GetInstance().GetLogger("JuvoPlayer");
 
@@ -46,10 +50,7 @@ namespace JuvoPlayer.Common
                 return bitmap;
             }
 
-            var loaderLock = GetLoaderLock(path);
-
-            await loaderLock.WaitAsync();
-            try
+            using (await _bitmapLoaderLocks.LockAsync(path).ConfigureAwait(false))
             {
                 if (TryGetBitmap(path, out bitmap))
                 {
@@ -59,10 +60,6 @@ namespace JuvoPlayer.Common
 
                 OnCacheMiss(path);
                 return await LoadBitmap(path);
-            }
-            finally
-            {
-                loaderLock.Release();
             }
         }
 
@@ -80,11 +77,6 @@ namespace JuvoPlayer.Common
                 return false;
             bitmap.Share();
             return true;
-        }
-
-        private SemaphoreSlim GetLoaderLock(string path)
-        {
-            return _bitmapLoaderLocks.GetOrAdd(path, s => new SemaphoreSlim(1, 1));
         }
 
         private async Task<SKBitmapRefCounted> LoadBitmap(string path)
